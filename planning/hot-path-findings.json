@@ -273,11 +273,6 @@
       "packet": "PKT-448 (g)",
       "note": "closed on every served entry by PRF-220 (hot-path-fixes-bp): fn-bpr-host-accept and fn-bpreq-existing-record look the record up through the event index (fn-bpaj-record-lookup-fast); what remains is the recovery replay at fn-bprj-install (cold)"
     },
-    "fn-ccar-seek recursion N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (h)"
-    },
     "fn-cei-build-aux recursion N": {
       "class": "cold",
       "packet": "PKT-448 (d)",
@@ -307,18 +302,6 @@
       "class": "cold",
       "packet": "PKT-448 (d)",
       "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
-    },
-    "fn-cpo-configure-durable append N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (e)"
-    },
-    "fn-cpo-configure-durable true-listp N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (e)"
-    },
-    "fn-cpr-loop recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (e)"
     },
     "fn-ctl-apply-records recursion N": {
       "class": "unexpected",
@@ -511,10 +494,20 @@
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (a)"
     },
-    "fn-own-refresh len N": {
+    "fn-oclc-configure append N": {
       "class": "unexpected",
-      "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-324 (1)"
+      "packet": "PKT-448 (e)",
+      "note": "moved from fn-cpo-configure-durable by control-quanta (batch AW): the carried completion walks the CONFIG history (config records, not articles) as the replayed one did; fn-cpr-loop's replay is gone"
+    },
+    "fn-oclc-configure len N": {
+      "class": "unexpected",
+      "packet": "PKT-448 (e)",
+      "note": "moved from fn-cpo-configure-durable by control-quanta (batch AW): the carried completion walks the CONFIG history (config records, not articles) as the replayed one did; fn-cpr-loop's replay is gone"
+    },
+    "fn-oclc-configure true-listp N": {
+      "class": "unexpected",
+      "packet": "PKT-448 (e)",
+      "note": "moved from fn-cpo-configure-durable by control-quanta (batch AW): the carried completion walks the CONFIG history (config records, not articles) as the replayed one did; fn-cpr-loop's replay is gone"
     },
     "fn-own-retain-find-id-unguarded recursion N": {
       "class": "cold",
@@ -529,16 +522,6 @@
       "class": "unexpected",
       "packet": "PKT-448 (f)"
     },
-    "fn-pcar-candidatep len N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
-      "packet": "PKT-324 (4)"
-    },
-    "fn-pcar-next-lower recursion N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
-      "packet": "PKT-324 (4)"
-    },
     "fn-pcb-tally-records recursion N": {
       "class": "unexpected",
       "packet": "PKT-324 (6)"
@@ -551,6 +534,36 @@
       "class": "unexpected",
       "packet": "PKT-448 (h)"
     },
+    "fn-prc-add-new-releases recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build)."
+    },
+    "fn-prc-add-pins recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's rebuild (fn-prc-build). The owner open (fn-owner-install-extended) builds the carry for the ledger it opens with (hbox REPL, 10,000 pins: 4.8 MB, 0.02 s), so on the served POST (fn-owner-prepare-buffer) it runs only when the carry names a ledger no retention delta reaches, which no host-selected owner step produces between an open and a POST (a reopen goes through the open)."
+    },
+    "fn-prc-add-releases recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's rebuild (fn-prc-build). The owner open (fn-owner-install-extended) builds the carry for the ledger it opens with (hbox REPL, 10,000 pins: 4.8 MB, 0.02 s), so on the served POST (fn-owner-prepare-buffer) it runs only when the carry names a ledger no retention delta reaches, which no host-selected owner step produces between an open and a POST (a reopen goes through the open)."
+    },
+    "fn-prc-all-released recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build)."
+    },
+    "fn-prc-pins-walk recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build)."
+    },
+    "fn-prc-releases-tailp recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build)."
+    },
     "fn-rcl-held-count recursion N": {
       "class": "unexpected",
       "packet": "PKT-324 (8)"
@@ -562,10 +575,6 @@
     "fn-rcl-verdict-heldp recursion N": {
       "class": "unexpected",
       "packet": "PKT-324 (8)"
-    },
-    "fn-rcon-sf-record-dir-result append N": {
-      "class": "unexpected",
-      "packet": "PKT-324 (2)"
     },
     "fn-replay-identity-loop recursion N": {
       "class": "cold",
@@ -624,6 +633,16 @@
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (a)"
     },
+    "fn-rii-kbuild-pins recursion N": {
+      "class": "cold",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-289): books/post-retain-carried.lisp no longer calls fn-rii-kbuild (the carried set is its own path-compressed id trie); the remaining reach is the open's replay fold (fn-rii-ix-of), cold."
+    },
+    "fn-rii-kbuild-releases recursion N": {
+      "class": "cold",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-289): books/post-retain-carried.lisp no longer calls fn-rii-kbuild (the carried set is its own path-compressed id trie); the remaining reach is the open's replay fold (fn-rii-ix-of), cold."
+    },
     "fn-rtf-pin-count len N": {
       "class": "unexpected",
       "packet": "PKT-448 (f)"
@@ -645,10 +664,20 @@
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
       "packet": "PKT-324 (8)"
     },
-    "fn-scka-canon-lens recursion N": {
+    "fn-scka-next-checkpoint nthcdr N": {
       "class": "unexpected",
       "packet": "PKT-041",
-      "note": "checkpoint-arena-2 (2026-09-27): the state checkpoint publication's setup canonicalizes the live rows (alpha of each row through the arena, interned at the canonical handle) and reads each canonical payload's length for the arena run's batches: one walk of the history per publication, where fn-sco-capture's walk was; reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex (fn-owner-sco-prepare), never from a served command"
+      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex, never from a served command"
+    },
+    "fn-sco-drop recursion N": {
+      "class": "unexpected",
+      "packet": "PKT-041",
+      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex, never from a served command"
+    },
+    "fn-store-sco-publish-setup len N": {
+      "class": "unexpected",
+      "packet": "PKT-041",
+      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex, never from a served command"
     },
     "fn-scka-canon-rows recursion N": {
       "class": "unexpected",
@@ -672,11 +701,6 @@
       "class": "unexpected",
       "packet": "PKT-448 (d)"
     },
-    "fn-sf-emit-success append N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
-      "packet": "PKT-324 (3)"
-    },
     "fn-sf-next-lower recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
@@ -685,10 +709,6 @@
     "fn-sf-prepare-record append N": {
       "class": "unexpected",
       "packet": "PKT-223"
-    },
-    "fn-sf-record-dir-result append N": {
-      "class": "unexpected",
-      "packet": "PKT-324 (2)"
     },
     "fn-sf-record-has-pairp recursion N": {
       "class": "unexpected",
@@ -708,6 +728,21 @@
     "fn-sim-acceptance-durable-okp len N": {
       "class": "unexpected",
       "packet": "PKT-448 (f)"
+    },
+    "fn-sl-of len N": {
+      "class": "cold",
+      "packet": "PKT-448 (d)",
+      "note": "the model crash event (fn-sn-crash -> fn-sf-crash builds the post-crash image with fn-sf-make, which converts its lists to snoc-lists, books/snoc-list.lisp): reached only through fn-own-step's (:store (:crash ...)) arm, which no host line selects (every fn-owner-step call names its event); post-alloc-2 2026-09-27"
+    },
+    "fn-sl-of true-listp N": {
+      "class": "cold",
+      "packet": "PKT-448 (d)",
+      "note": "the model crash event (fn-sn-crash -> fn-sf-crash builds the post-crash image with fn-sf-make, which converts its lists to snoc-lists, books/snoc-list.lisp): reached only through fn-own-step's (:store (:crash ...)) arm, which no host line selects (every fn-owner-step call names its event); post-alloc-2 2026-09-27"
+    },
+    "fn-sl-rev-onto recursion N": {
+      "class": "cold",
+      "packet": "PKT-448 (d)",
+      "note": "the model crash event (fn-sn-crash -> fn-sf-crash builds the post-crash image with fn-sf-make, which converts its lists to snoc-lists, books/snoc-list.lisp): reached only through fn-own-step's (:store (:crash ...)) arm, which no host line selects (every fn-owner-step call names its event); post-alloc-2 2026-09-27"
     },
     "fn-sn-find-record recursion N": {
       "class": "unexpected",

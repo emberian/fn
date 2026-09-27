@@ -12,6 +12,10 @@
 ; (the only allocation per octet: one cons, the model's line-rev).  CR, LF, a
 ; refusal and the line end still go through fn-wire-feed-byte itself, so the
 ; framing, the dot rule and every limit are the reference machine's.
+; A WHOLE line inside the range (an empty retained line, the run, CR LF) is
+; built forward from the buffer (fn-wscan-slice-onto, one cons per octet) and
+; handed to fn-wire-after-line directly, instead of consed onto line-rev and
+; reversed at LF (two conses per octet; lane input-loop-2, item 4).
 ;
 ; KEYSTONE fn-wire-scan-is-span-fold (no hypothesis): the scan IS
 ; fn-wire-span-fold (state, events and the next index), hence, by
@@ -163,7 +167,59 @@
                                   fn-wscan-after-run-fast-statep
                                   fn-wscan-plain-end-within-limit))))))
 
-(in-theory (disable fn-wscan-after-run fn-wscan-runp))
+;; -----------------------------------------------------------------------------
+;; A whole line inside the range (item 4 of lane input-loop-2).  When the
+;; retained partial line is empty and the run [I, K) is followed by CR LF
+;; inside the range, the completed line is built FORWARD from the buffer, one
+;; cons per octet, and handed to fn-wire-after-line: the reference conses the
+;; run onto line-rev and then reverses it at LF, two conses per octet.
+
+; Octets [I, K) consed onto ACC in order (the octet at I first), from the
+; last down: tail recursive, one cons per octet.
+(defun fn-wscan-slice-onto (i k acc fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp i) (natp k) (<= i k)
+                              (<= k (fn-octets-len fn-octets)))
+                  :measure (nfix (- k i))))
+  (if (or (not (natp i)) (not (natp k)) (>= i k))
+      acc
+    (fn-wscan-slice-onto i (- k 1) (cons (fn-octets-get (- k 1) fn-octets) acc)
+                         fn-octets)))
+
+; Whether the octets from I are a whole line the scan takes at once: a run
+; (fn-wscan-runp) onto an EMPTY retained line, ending at K with CR LF at K and
+; K + 1, both inside the range.
+(defun fn-wscan-linep (wire-state i end fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (fn-wire-fast-statep wire-state)
+                              (natp i) (natp end) (< i end)
+                              (<= end (fn-octets-len fn-octets)))))
+  (and (fn-wscan-runp wire-state i fn-octets)
+       (null (fn-wire-state-line-rev wire-state))
+       (let ((k (fn-wscan-plain-end i end (fn-wire-state-line-len wire-state)
+                                    (fn-wire-state-line-limit wire-state)
+                                    fn-octets)))
+         (and (< (+ 1 k) end)
+              (equal (fn-octets-get k fn-octets) 13)
+              (equal (fn-octets-get (+ 1 k) fn-octets) 10)))))
+
+(defthm fn-wscan-after-line-fast-statep
+  (implies (fn-wire-fast-statep wire-state)
+           (fn-wire-fast-statep
+            (fn-wire-result-state (fn-wire-after-line wire-state line))))
+  :hints (("Goal" :in-theory (enable fn-wire-after-line fn-wire-close
+                                     fn-wire-fast-statep))))
+
+(defthm fn-wscan-linep-line-ends-inside
+  (implies (fn-wscan-linep wire-state i end fn-octets)
+           (< (+ 1 (fn-wscan-plain-end i end (fn-wire-state-line-len wire-state)
+                                       (fn-wire-state-line-limit wire-state)
+                                       fn-octets))
+              end))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn-wscan-linep))))
+
+(in-theory (disable fn-wscan-after-run fn-wscan-runp fn-wscan-linep))
 
 ; -----------------------------------------------------------------------------
 ; The scan.  A closed wire consumes the rest of the range and yields nothing,
@@ -176,11 +232,21 @@
                               (<= end (fn-octets-len fn-octets)))
                   :measure (nfix (- end i))
                   :verify-guards nil
-                  :hints (("Goal" :in-theory (enable fn-wscan-runp)))))
+                  :hints (("Goal" :in-theory (enable fn-wscan-runp fn-wscan-linep)))))
   (cond ((or (not (natp i)) (not (natp end)) (>= i end))
          (fn-wsp-make wire-state nil (nfix i)))
         ((equal (fn-wire-state-mode wire-state) :closed)
          (fn-wsp-make wire-state nil end))
+        ((fn-wscan-linep wire-state i end fn-octets)
+         (let* ((k (fn-wscan-plain-end i end (fn-wire-state-line-len wire-state)
+                                       (fn-wire-state-line-limit wire-state)
+                                       fn-octets))
+                (r (fn-wire-after-line wire-state
+                                       (fn-wscan-slice-onto i k nil fn-octets))))
+           (if (consp (fn-wire-result-events r))
+               (fn-wsp-make (fn-wire-result-state r) (fn-wire-result-events r)
+                            (+ 2 k))
+             (fn-wire-scan (fn-wire-result-state r) (+ 2 k) end fn-octets))))
         ((fn-wscan-runp wire-state i fn-octets)
          (let ((k (fn-wscan-plain-end i end (fn-wire-state-line-len wire-state)
                                       (fn-wire-state-line-limit wire-state)
@@ -202,8 +268,9 @@
            :in-theory (disable fn-wire-feed-byte fn-wire-fast-statep))))
 
 (verify-guards fn-wire-scan
-  :hints (("Goal" :in-theory (e/d (fn-wscan-runp)
-                                  (fn-wire-feed-byte fn-wire-fast-statep)))))
+  :hints (("Goal" :in-theory (e/d (fn-wscan-runp fn-wscan-linep)
+                                  (fn-wire-feed-byte fn-wire-fast-statep
+                                   fn-wire-after-line)))))
 
 (defthm fn-wire-scan-next-bounds
   (implies (and (natp i) (natp end) (< i end))
@@ -212,13 +279,13 @@
                     end)))
   :rule-classes :linear
   :hints (("Goal" :induct (fn-wire-scan wire-state i end fn-octets)
-           :in-theory (e/d (fn-wscan-runp) (fn-wire-feed-byte)))))
+           :in-theory (e/d (fn-wscan-runp) (fn-wire-feed-byte fn-wire-after-line)))))
 
 (defthm fn-wire-scan-next-natp
   (natp (fn-wsp-next (fn-wire-scan wire-state i end fn-octets)))
   :rule-classes :type-prescription
   :hints (("Goal" :induct (fn-wire-scan wire-state i end fn-octets)
-           :in-theory (disable fn-wire-feed-byte))))
+           :in-theory (disable fn-wire-feed-byte fn-wire-after-line))))
 
 ; -----------------------------------------------------------------------------
 ; The correspondence.
@@ -385,6 +452,113 @@
    :hints (("Goal" :induct (fn-wire-span-fold ws i end fn-octets)
             :in-theory (enable fn-wire-feed-byte)))))
 
+;; The whole-line branch.  The line built forward is the reverse of the one
+;; consed onto an empty line-rev (fn-wscan-reverse-revonto), fn-wire-after-line
+;; reads only the mode, the body and the limits (fn-wscan-after-line-after-run),
+;; and CR LF after the run is the reference's two steps (fn-wscan-span-fold-crlf).
+(local
+ (defthm fn-wscan-slice-onto-empty
+   (equal (fn-wscan-slice-onto i i acc fn-octets) acc)
+   :hints (("Goal" :expand ((fn-wscan-slice-onto i i acc fn-octets))))))
+
+(local
+ (defthm fn-wscan-slice-onto-split
+   (implies (and (natp i) (natp j) (natp k) (<= i j) (<= j k))
+            (equal (fn-wscan-slice-onto i k acc fn-octets)
+                   (fn-wscan-slice-onto i j (fn-wscan-slice-onto j k acc fn-octets)
+                                        fn-octets)))
+   :hints (("Goal" :induct (fn-wscan-slice-onto j k acc fn-octets)))))
+
+(local
+ (defthm fn-wscan-slice-onto-first
+   (implies (and (natp i) (natp k) (< i k))
+            (equal (fn-wscan-slice-onto i k acc fn-octets)
+                   (cons (fn-octets-get i fn-octets)
+                         (fn-wscan-slice-onto (+ 1 i) k acc fn-octets))))
+   :hints (("Goal" :use ((:instance fn-wscan-slice-onto-split (j (+ 1 i))))
+            :in-theory (disable fn-wscan-slice-onto-split)))))
+
+(local
+ (defthm fn-wscan-reverse-revonto
+   (equal (fn-wire-reverse-octets-aux (fn-wscan-revonto i k acc fn-octets) a)
+          (fn-wire-reverse-octets-aux acc (fn-wscan-slice-onto i k a fn-octets)))
+   :hints (("Goal" :induct (fn-wscan-revonto i k acc fn-octets)
+            :in-theory (disable fn-wscan-slice-onto-split)))))
+
+(local
+ (defthm fn-wscan-after-line-after-run
+   (equal (fn-wire-after-line (fn-wscan-after-run ws i k fn-octets) line)
+          (fn-wire-after-line ws line))
+   :hints (("Goal" :in-theory (enable fn-wire-after-line fn-wscan-after-run
+                                      fn-wire-close)))))
+
+(local
+ (defthm fn-wscan-span-fold-crlf
+   (implies (and (fn-wire-state-shapep s)
+                 (not (equal (fn-wire-state-mode s) :closed))
+                 (not (fn-wire-state-pending-crp s))
+                 (natp k) (natp end) (< (+ 1 k) end)
+                 (equal (fn-octets-get k fn-octets) 13)
+                 (equal (fn-octets-get (+ 1 k) fn-octets) 10))
+            (equal (fn-wire-span-fold s k end fn-octets)
+                   (let ((r (fn-wire-after-line
+                             s (fn-wire-reverse-octets (fn-wire-state-line-rev s)))))
+                     (if (consp (fn-wire-result-events r))
+                         (fn-wsp-make (fn-wire-result-state r)
+                                      (fn-wire-result-events r) (+ 2 k))
+                       (fn-wire-span-fold (fn-wire-result-state r) (+ 2 k)
+                                          end fn-octets)))))
+   :hints (("Goal" :in-theory (e/d (fn-wire-feed-byte)
+                                   (fn-wire-after-line fn-wire-reverse-octets))
+            :expand ((fn-wire-span-fold s k end fn-octets)
+                     (:free (x) (fn-wire-span-fold x (+ 1 k) end fn-octets)))))))
+
+(local
+(defthm fn-wscan-span-fold-over-line
+   (implies (and (fn-wscan-linep ws i end fn-octets)
+                 (natp i) (natp end) (< i end))
+            (equal (fn-wire-span-fold ws i end fn-octets)
+                   (let* ((k (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
+                                                 (fn-wire-state-line-limit ws)
+                                                 fn-octets))
+                          (r (fn-wire-after-line
+                              ws (fn-wscan-slice-onto i k nil fn-octets))))
+                     (if (consp (fn-wire-result-events r))
+                         (fn-wsp-make (fn-wire-result-state r)
+                                      (fn-wire-result-events r) (+ 2 k))
+                       (fn-wire-span-fold (fn-wire-result-state r) (+ 2 k)
+                                          end fn-octets)))))
+   :hints (("Goal"
+            :use ((:instance fn-wscan-span-fold-over-run-any)
+                  (:instance fn-wscan-linep-line-ends-inside (wire-state ws))
+                  (:instance fn-wscan-span-fold-crlf
+                             (s (fn-wscan-after-run
+                                 ws i (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
+                                                          (fn-wire-state-line-limit ws)
+                                                          fn-octets)
+                                 fn-octets))
+                             (k (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
+                                                    (fn-wire-state-line-limit ws)
+                                                    fn-octets))))
+            :in-theory (e/d (fn-wire-reverse-octets)
+                            (fn-wscan-span-fold-over-run-any
+                             fn-wscan-span-fold-crlf
+                             fn-wscan-linep-line-ends-inside
+                             fn-wscan-slice-onto-split fn-wscan-ordinaryp
+                             fn-wire-span-fold fn-wire-after-line
+                             fn-wscan-plain-end fn-wscan-slice-onto
+                             fn-wscan-revonto)))
+           (and stable-under-simplificationp
+                '(:in-theory (e/d (fn-wire-reverse-octets fn-wscan-linep
+                                   fn-wscan-runp fn-wscan-after-run)
+                                  (fn-wscan-span-fold-over-run-any
+                                   fn-wscan-span-fold-crlf
+                                   fn-wscan-linep-line-ends-inside
+                                   fn-wscan-slice-onto-split fn-wscan-ordinaryp
+                                   fn-wire-span-fold fn-wire-after-line
+                                   fn-wscan-plain-end fn-wscan-slice-onto
+                                   fn-wscan-revonto)))))))
+
 ; KEYSTONE (PKT-479), no hypothesis: the line-at-a-time scan the served fold
 ; runs is the octet-at-a-time fold, on every wire state and every range.
 (defthm fn-wire-scan-is-span-fold
@@ -392,9 +566,10 @@
          (fn-wire-span-fold wire-state i end fn-octets))
   :hints (("Goal" :induct (fn-wire-scan wire-state i end fn-octets)
            :in-theory (e/d (fn-wire-scan)
-                           (fn-wire-feed-byte fn-wscan-runp
+                           (fn-wire-feed-byte fn-wscan-runp fn-wscan-linep
                             fn-wscan-ordinaryp fn-wscan-after-run
-                            fn-wscan-plain-end)))
+                            fn-wscan-plain-end fn-wire-after-line
+                            fn-wscan-slice-onto fn-wscan-slice-onto-split)))
           (and stable-under-simplificationp
                '(:expand ((fn-wire-span-fold wire-state i end fn-octets))))))
 

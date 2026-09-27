@@ -24,6 +24,7 @@ import time
 import unittest
 
 from tests.native_process import wait_for_announcement
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
@@ -104,7 +105,7 @@ class NativeControlFilingTests(unittest.TestCase):
     def session(self, node, lines):
         """One connection: send each command, collect its first reply line."""
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             replies = []
             for item in lines:
@@ -380,7 +381,7 @@ class NativeControlFilingTests(unittest.TestCase):
         target = "<c3b-target@example.invalid>"
         codes = {"target": author("target", target, None)}
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
-            pinned = client.makefile("rwb", buffering=0)
+            pinned = whole_stream(client)
             self.assertTrue(pinned.readline().startswith(b"200 "))
             pinned_before = first_line(pinned, b"ARTICLE " + target.encode() + b"\r\n")
             codes["cancel"] = author("cancel", "<c3b-cancel@example.invalid>",
@@ -410,7 +411,7 @@ class NativeControlFilingTests(unittest.TestCase):
         withdrawn_numbered = [by_number[2].decode().strip(), by_number[3].decode().strip()]
         withdrawn_msgid = self.article_reply(node, target).decode().strip()
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"HDR :fn-control <c3b-cancel@example.invalid>\r\n")
             hdr_status = stream.readline().decode().strip()
@@ -548,7 +549,7 @@ class NativeControlFilingTests(unittest.TestCase):
 
         def fetch(node, message_id):
             with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as c:
-                stream = c.makefile("rwb", buffering=0)
+                stream = whole_stream(c)
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"ARTICLE " + message_id.encode() + b"\r\n")
                 status = stream.readline()
@@ -595,7 +596,7 @@ class NativeControlFilingTests(unittest.TestCase):
         author(a, p, t1, "fn.test")
         relay(a, b, t1)
         with socket.create_connection(("127.0.0.1", b["port"]), timeout=30) as client:
-            pinned = client.makefile("rwb", buffering=0)
+            pinned = whole_stream(client)
             self.assertTrue(pinned.readline().startswith(b"200 "))
 
             def pinned_article(message_id):

@@ -126,7 +126,11 @@ class NativeLogTests(unittest.TestCase):
 
     def test_every_log_cut_recovers_to_a_prefix(self):
         seen = []
-        for cut in native_cuts.LOG_CUTS:
+        # The extension's cuts (fn-lg-extend-program) are the served commit's:
+        # this verb writes a fixed extent; tests/test_native_commit_log.py
+        # kills at them.
+        rig_cuts = [c for c in native_cuts.LOG_CUTS if c.program != "fn-lg-extend-program"]
+        for cut in rig_cuts:
             with self.subTest(cut=cut.name):
                 if os.path.exists(self.seg):
                     os.unlink(self.seg)
@@ -147,7 +151,7 @@ class NativeLogTests(unittest.TestCase):
                 self.assertEqual(line["next"], line["records"] + 1)
                 self.assertTrue(self.zeros_past(line["frontier"]))
                 seen.append(cut.name)
-        self.assertEqual(seen, [c.name for c in native_cuts.LOG_CUTS])
+        self.assertEqual(seen, [c.name for c in rig_cuts])
 
 
 if __name__ == "__main__":

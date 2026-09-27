@@ -43,6 +43,14 @@
 (include-book "books/served-plan")
 (include-book "books/owner-scheduler")
 (include-book "books/owner-commit-class")
+;; PKT-688 (4) slice 2 (PRF-267): the gate calls fn-ocs-next and the committer
+;; fn-ocs-commit-event (host/native/owner.lisp fnn-owner-commit-batch).
+(include-book "books/owner-commit-steps")
+;; Lane log-2: the pipelined commit (fn-ocp-*), over fn-ocs-*.
+(include-book "books/owner-commit-pipeline")
+;; PKT-828: readers during a barrier at the reader view (host/owner-host.lisp
+;; fn-owner-at-reader-view, fn-owner-reader-views-capture).
+(include-book "books/owner-reader-view")
 (include-book "books/owner-open-carried")
 ;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
 (include-book "books/reader-open-carried")
@@ -81,6 +89,7 @@
 (include-book "books/owner-served-carried")
 (include-book "books/served-span")
 (include-book "books/owner-commit-carried")
+(include-book "books/owner-refresh-indexed")
 (include-book "books/owner-prepare-carried")
 ;; fn-owner-io (host/owner-host.lisp) calls fn-rcon-ocfg-io.
 (include-book "books/records-concrete-owner")
@@ -102,6 +111,15 @@
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
 (include-book "books/post-identity-index")
+;; fn-owner-prepare-buffer calls fn-prc-refresh and fn-prc-sbud-prepare.
+(include-book "books/post-retain-carried")
+;; PRF-284: host/owner-host.lisp calls fn-pvc-make and the carried budget,
+;; verdict and POST boundary (fn-pvc-*-carried).
+(include-book "books/store-profile-carried")
+;; lane prepare-served: fn-owner-prepare-buffer, fn-owner-prepare,
+;; fn-owner-prepare-identity, fn-owner-prepare-topic, fn-owner-reconfigure-unstage
+;; call books/owner-prepare-served (fn-psrv-).
+(include-book "books/owner-prepare-served")
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer).

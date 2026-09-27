@@ -118,10 +118,10 @@
       "name": "240 after a consumed completion",
       "contract": "After the owner consumes an article's completion the POST reply is 240 or uncertain, never a refusal, and each refusal kind stays distinct.",
       "host": {
-        "function": "fn-ccar-own-finish",
+        "function": "fn-apc-own-finish",
         "file": "host/owner-host.lisp"
       },
-      "bridge": "fn-ccar-own-finish-is-own-finish",
+      "bridge": "fn-apc-own-finish-is-own-finish",
       "keystone": "fn-own-240-follows-consumed-completion",
       "tested": {
         "image": "69046a76",
@@ -194,10 +194,11 @@
       "name": "live reconfiguration",
       "contract": "No reader observes a half-applied configuration change, and a crash at any instant recovers the live or the whole published generation.",
       "host": {
-        "function": "fn-ocl-publish",
+        "function": "fn-oclc-publish",
         "file": "host/owner-host.lisp"
       },
       "keystone": "fn-ocl-no-reader-observes-a-half-change",
+      "bridge": "fn-oclc-publish-is-publish",
       "tested": {
         "image": "69046a76",
         "profile": "native-operator matrix and native modules (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section)"
@@ -212,7 +213,7 @@
       "name": "two nodes exchange both ways",
       "contract": "An accepted article is offered to every configured peer except the one it came from and those its Path names, and a relayed article keeps the received Path tail.",
       "host": {
-        "function": "fn-icar-submission-intent",
+        "function": "fn-apc-submission-intent",
         "file": "host/owner-host.lisp"
       },
       "bridge": "fn-own-submission-targets-are-feed-targets",
@@ -250,10 +251,10 @@
       "name": "keep until release, refuse the unaffordable",
       "contract": "An article prepare at the store profile's transaction budget is refused `unaffordable` by name, and below it is exactly the owner's prepare.",
       "host": {
-        "function": "fn-pcar-sbud-prepare",
+        "function": "fn-psrv-prepare",
         "file": "host/owner-host.lisp"
       },
-      "bridge": "fn-pcar-sbud-prepare-is-sbud-prepare",
+      "bridge": "fn-psrv-prepare-is-sbud-prepare-when-served",
       "keystone": "fn-sbud-prepare-refuses-at-budget",
       "tested": {
         "image": "69046a76",

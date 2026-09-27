@@ -1384,6 +1384,73 @@ statement's owner conjunct does not transfer
 path with `(:complete)` only on pins, served tables, connection records and
 the stage).
 
+### P6 completion from the carried state (2026-09-27)
+
+`fn-owner-reconfigure-complete` now calls `fn-oclc-publish`
+(`books/config-owner-carried.lisp`, PRF-274), not `fn-ocl-publish`.
+`fn-ocl-complete` replayed the whole configuration and Store histories three
+times inside the owner's control quantum (`fn-cpo-history-relation`, the
+extended history in `fn-cpo-configure-durable`, `fn-ocl-store-config`), so a
+live group create or grant held the owner 2 s at 1,000 articles and 40-46 s
+at 10,000 (planning/evidence/control-quanta-2026-09-27.md). `fn-oclc-publish`
+applies the one record to what the owner carries: the store's node (the
+replayed node advanced to the frontier) and the owner's configuration (the
+replayed configuration). `fn-oclc-publish-is-publish` equates it with
+`fn-ocl-publish` under the owner invariant `fn-ocl-relation`, so the
+headline and the theorems above hold of the called path under that
+hypothesis (where before they held with none, because the replay tested the
+relation at run time and answered `:recovery-required` without it);
+`fn-oclc-publish-carries-ocl-relation` keeps the invariant for the next
+completion. What establishes the invariant: `fn-owner-recover-rows`
+(`fn-orec-started-owner-ocl-relation`); what is not yet proved to preserve
+it: the format-9 log route's two owner steps (PKT-827 (c)).
+
+### The owner invariant across the format-9 commit (2026-09-27)
+
+`fn-ocl-relation` alone is not an invariant of the commit: its Store
+conjunct `fn-cst-relation` demands, at `:completing`,
+`fn-sn-completion-enabledp` (the consumer projection and the topic prefix
+accept the completion record, and a held row's context generation is the
+keyring's), and its record-phase arms carry only the node links, so the
+directory observation that publishes an article cannot re-establish it
+from the relation (`tests/acl2/owner-log-ocl-tests.lisp`: an owner that
+satisfies `fn-ocl-relation` at `:record-attempted` with the topic counter
+off the history does not satisfy it after the order step). The carried
+invariant is `fn-lgoc-invariantp` (`books/owner-log-ocl.lisp`, PRF-286):
+`fn-ocl-relation` and the Store's companion `fn-cstp-carriedp`
+(`books/config-store-steps.lisp`, PRF-285: the prepare gate's facts about
+the candidate from staging to the directory observation; at `:completing`
+the topic prefix one short of the history; elsewhere the topic prefix at
+the history's length with status `:ok`). Recovery installs it on either
+path; the log route's reservation, the host's prepare of an article whose
+groups the live configuration serves, the order step, the finish, the
+refused reservation, the recovery barriers and the live completion
+`fn-oclc-publish` keep it. The prepare does not test the served table
+(`fn-owner-prepare-buffer` does, before it calls the prepare): an article
+in a retired group, still in the Store's allocation domain, would be staged
+and break the relation, so the served test is a hypothesis of the
+prepare's theorem, not a property of the prepare. Not covered: the
+deferred publications (retention, identity, consumer and topic prepares
+and their order), the known abort.
+
+### The live request's authorization from the carried state (2026-09-27)
+
+Before publication, `fnn-owner-live-reconfigure-locked` asks the owner
+`fn-owner-reconfigure-authorizedp`, ACL2's `fn-oclc-live-authorizep`
+(`books/config-owner-carried.lisp`, PRF-287): the staged record applies to
+the owner's carried node and configuration. It reads no record. An
+authorized record's completion is `:durable` and an unauthorized one's
+would be `:recovery-required`
+(`fn-oclc-live-authorizep-is-durable-completion`); under the owner invariant
+the Store the completion installs is the one the durable history reopens
+to -- the configured fold of the configuration history extended by the
+record over the Store's history, at the frontier
+(`fn-oclc-authorized-record-reopens`). The candidate open
+`fnn-admin-authorize` runs over `transactions/`, which a format-9 store
+does not have, so it had checked the configuration history against an
+empty Store history; it stays for the publication's lock, occupied names
+and final name.
+
 ### P6 recovery as the host calls it (2026-09-24)
 
 Headline 2 is restated over the replay recovery calls, in

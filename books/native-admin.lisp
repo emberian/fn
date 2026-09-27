@@ -577,6 +577,24 @@
                                 (fn-native-admin-decimal-value
                                  (coerce (cadddr words) 'list))
                                 nil nil))
+       ; Lane log-2: the record log's batch bounds, `policy set
+       ; log-batch-records N' and `policy set log-batch-octets N'
+       ; (books/owner-log-route.lisp fn-olr-bmax / fn-olr-omax read these
+       ; `:set-limit' rows), each keyed (SLOT, ""), staged, published and
+       ; replayed like the transit limits.  A bound is positive and under the
+       ; row's ceiling.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (member-equal (caddr words) '("log-batch-records" "log-batch-octets"))
+             (fn-native-admin-decimalp (cadddr words))
+             (posp (fn-native-admin-decimal-value (coerce (cadddr words) 'list)))
+             (<= (fn-native-admin-decimal-value (coerce (cadddr words) 'list))
+                 (fn-cfg-limit-ceiling (caddr words))))
+        (fn-native-admin-result :accepted nil :set-transit-limit (caddr argv)
+                                (fn-native-admin-decimal-value
+                                 (coerce (cadddr words) 'list))
+                                nil nil))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ; D13 (STO-014): the operator's content-retention rule.  Two

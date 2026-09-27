@@ -61,6 +61,8 @@ import subprocess
 import sys
 import threading
 import time
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # the repository root
+from tools.wire_stream import whole_stream  # noqa: E402  writes are sendall
 
 IMAGE = "fn-openbsd-qemu:local"
 FN = "/usr/local/fn-a04213276edf/bin/fn"
@@ -239,7 +241,7 @@ class Conn:
     def __init__(self, port, timeout=120):
         self.sock = socket.create_connection(("127.0.0.1", port), timeout=timeout)
         self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        self.f = self.sock.makefile("rwb", buffering=0)
+        self.f = whole_stream(self.sock)
         self.greeting = self.f.readline()
         if not self.greeting:
             raise ConnectionError("no greeting")

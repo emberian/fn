@@ -11,6 +11,7 @@ import tempfile
 import time
 import unittest
 from tests.native_process import wait_for_announcement, stop_and_diagnostics
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
@@ -195,7 +196,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
         owner = self.start_owner()
         try:
             with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
-                with sock.makefile("rwb", buffering=0) as stream:
+                with whole_stream(sock) as stream:
                     self.assertTrue(stream.readline().startswith(b"200 "))
                     stream.write(("ARTICLE {}\r\n".format(msgid)).encode())
                     self.assertTrue(stream.readline().startswith(b"220 "))
@@ -384,7 +385,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
         def post(octets):
             with socket.create_connection(("127.0.0.1", self.port),
                                           timeout=30) as sock:
-                stream = sock.makefile("rwb", buffering=0)
+                stream = whole_stream(sock)
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"POST\r\n")
                 self.assertTrue(stream.readline().startswith(b"340 "))
@@ -513,7 +514,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
 
         def post(octets):
             with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
-                with sock.makefile("rwb", buffering=0) as stream:
+                with whole_stream(sock) as stream:
                     self.assertTrue(stream.readline().startswith(b"200 "))
                     stream.write(b"POST\r\n")
                     self.assertTrue(stream.readline().startswith(b"340 "))
@@ -525,7 +526,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
 
         def verdict(msgid):
             with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
-                with sock.makefile("rwb", buffering=0) as stream:
+                with whole_stream(sock) as stream:
                     self.assertTrue(stream.readline().startswith(b"200 "))
                     stream.write(b"HDR :fn-verified " + msgid + b"\r\n")
                     status = stream.readline()
@@ -632,7 +633,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
 
         def read_article(port):
             with socket.create_connection(("127.0.0.1", port), timeout=15) as sock:
-                with sock.makefile("rwb", buffering=0) as stream:
+                with whole_stream(sock) as stream:
                     self.assertTrue(stream.readline().startswith(b"200 "))
                     stream.write(b"ARTICLE " + msgid.encode() + b"\r\n")
                     status = stream.readline()
@@ -707,7 +708,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
             ok("hybrid-verify-carrier", carried, self.ml_public)
             # The receiver's own kind-4 verdict, recovered after restart.
             with socket.create_connection(("127.0.0.1", other_port), timeout=15) as sock:
-                with sock.makefile("rwb", buffering=0) as stream:
+                with whole_stream(sock) as stream:
                     self.assertTrue(stream.readline().startswith(b"200 "))
                     stream.write(b"HDR :fn-verified " + msgid.encode() + b"\r\n")
                     self.assertEqual(stream.readline(), b"225 headers follow\r\n")
@@ -796,7 +797,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
                 sum(1 for line in other_log.read_text().splitlines()
                     if line.startswith(receiver_line)), 1)
             with socket.create_connection(("127.0.0.1", other_port), timeout=15) as sock:
-                with sock.makefile("rwb", buffering=0) as stream:
+                with whole_stream(sock) as stream:
                     self.assertTrue(stream.readline().startswith(b"200 "))
                     stream.write(b"STAT " + msgid.encode() + b"\r\n")
                     self.assertTrue(stream.readline().startswith(b"430 "))
@@ -865,7 +866,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
 
     def _hdr(self, port, msgid):
         with socket.create_connection(("127.0.0.1", port), timeout=15) as sock:
-            with sock.makefile("rwb", buffering=0) as stream:
+            with whole_stream(sock) as stream:
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"HDR :fn-verified " + msgid.encode() + b"\r\n")
                 status = stream.readline()
@@ -985,7 +986,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
 
     def _article(self, port, msgid):
         with socket.create_connection(("127.0.0.1", port), timeout=15) as sock:
-            with sock.makefile("rwb", buffering=0) as stream:
+            with whole_stream(sock) as stream:
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"ARTICLE " + msgid.encode() + b"\r\n")
                 self.assertTrue(stream.readline().startswith(b"220 "))
@@ -999,7 +1000,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
 
     def _ihave(self, port, msgid, article):
         with socket.create_connection(("127.0.0.1", port), timeout=30) as sock:
-            with sock.makefile("rwb", buffering=0) as stream:
+            with whole_stream(sock) as stream:
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"IHAVE " + msgid.encode() + b"\r\n")
                 self.assertTrue(stream.readline().startswith(b"335 "))

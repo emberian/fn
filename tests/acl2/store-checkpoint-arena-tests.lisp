@@ -31,7 +31,18 @@
       (eq (symbol-class 'fn-scka-initial-state (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-scka-write-donep (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-scka-canon-rows (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-intern-events (w state)) :common-lisp-compliant)))
+      (eq (symbol-class 'fn-intern-events (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-sshr-share (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-scka-srcs-n (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-scka-lens-setup (w state)) :common-lisp-compliant)))
+
+; fn-sshr-share-is-identity (no hypothesis): repeated contents, a dotted
+; tail, a string tail, nested lists, atoms.  (That the answer holds one
+; object per content is measured, not stated: the heap census by content,
+; planning/evidence/checkpoint-arena-3-2026-09-27.md.)
+(assert-event
+ (let ((x (list "a" (cons "a" "b") (list* 1 2 "c") "c" nil 7 (list (list "a" "")) "")))
+   (equal (fn-sshr-share x) x)))
 
 ; -----------------------------------------------------------------------------
 ; The history: three articles and a retention event (a wire event that seals
@@ -195,20 +206,31 @@
                            (cons (list header a (+ a (len chunk)) trailer) acc)
                            (1- fuel) fn-octets))))))
 
+; The host's walk (host/native/io.lisp fnn-checkpoint-walk): fn-scka-srcs-n
+; N rows per call until the rows are consumed.
+(defun sckat-walk (st n fuel fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil :measure (nfix fuel)))
+  (if (or (zp fuel) (atom (nth 0 st)))
+      st
+    (sckat-walk (fn-scka-srcs-n (nth 0 st) n (nth 1 st) (nth 2 st) fn-arena) n (1- fuel)
+                fn-arena)))
+
 ; The writer over the live store: (VERDICT ESTIMATE V-ARENA A-OCTETS
 ; V-TABLES T-OCTETS NEXT TABLES WRITE-SETUP), KS the batches (or the setup's).
+; The arena run's setup and sources come from the walk, two rows per call.
 (defun sckat-write-in (rows ks-override b fn-arena fn-octets)
   (declare (xargs :stobjs (fn-arena fn-octets) :verify-guards nil))
   (let* ((canon (fn-scka-canon-rows rows fn-arena 0))
          (next (fn-sco-capture *sckat-configs* canon))
-         (ws (fn-scka-write-setup rows *sckat-seg* fn-arena))
+         (walk (sckat-walk (list rows nil nil) 2 100 fn-arena))
+         (ws (fn-scka-lens-setup (reverse (nth 1 walk)) *sckat-seg*))
          (ks (or ks-override (nth 1 ws)))
          (setup (fn-scka-publication-setup next 9 "rev-test" nil *sckat-seg* 1000000000
                                            1000000000000 (nth 3 ws)))
          (s (len rows)))
     (mv-let (v1 aoct fn-octets)
-      (fn-scka-write-run (fn-scka-initial-state rows ks 0) (nth 0 ws) (+ 1 (len ks)) s
-                         100000 100000000 1000 fn-arena fn-octets)
+      (fn-scka-write-run (fn-scka-initial-state (reverse (nth 2 walk)) ks 0) (nth 0 ws)
+                         (+ 1 (len ks)) s 100000 100000000 1000 fn-arena fn-octets)
       (mv-let (v2 toct fn-octets)
         (fn-ockp-run setup (fn-ockp-initial-state (cadr setup) fn-octets) b 1000000
                      *sckat-seg* s 100000 100000000 1000 fn-octets)
@@ -331,6 +353,120 @@
    (and (< 50 (len (nth 3 (nth 0 r))))
         (equal (car (car (nth 1 r))) :refused))))
 
+;; -----------------------------------------------------------------------------
+;; 3b. The walk and the sources (checkpoint-arena-3).  On the live store the
+;; orphan payload sits between the second and the third article, so the
+;; third article's SOURCE is its live handle 3 while its canonical position
+;; is 2: the sources are not the canonical handles, and they read back the
+;; canonical payloads (fn-scka-src-payloads-of-canon-srcs).
+;; (WALK-BY-2 WALK-AT-ONCE CANON-LENS CANON-SRCS SRC-PAYLOADS CANON-PAYLOADS
+;;  SRCS-OKP ROWS-TRUE-LISTP)
+(defun sckat-walked ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (out fn-arena)
+      (mv-let (rows fn-arena)
+        (sckat-live-in fn-arena)
+        (mv (list (sckat-walk (list rows '(9) '(x)) 2 100 fn-arena)
+                  (fn-scka-srcs-n rows (len rows) '(9) '(x) fn-arena)
+                  (fn-scka-canon-lens rows fn-arena)
+                  (fn-scka-canon-srcs rows fn-arena)
+                  (fn-scka-src-payloads (fn-scka-canon-srcs rows fn-arena) fn-arena)
+                  (fn-scka-canon-payloads rows fn-arena)
+                  (fn-scka-srcs-okp (fn-scka-canon-srcs rows fn-arena) fn-arena)
+                  (true-listp rows)
+                  (len rows))
+            fn-arena))
+      out)))
+
+; fn-scka-srcs-n-compose and -complete (reachable, nonempty accumulators):
+; the walk two rows per call is the walk at once, the canonical lengths and
+; sources reversed onto the accumulators, the rows consumed.
+(assert-event
+ (let ((r (sckat-walked)))
+   (and (nth 7 r) (< 2 (nth 8 r))
+        (equal (nth 0 r) (nth 1 r))
+        (equal (nth 1 r) (list nil (revappend (nth 2 r) '(9)) (revappend (nth 3 r) '(x)))))))
+
+; fn-scka-src-payloads-of-canon-srcs, fn-scka-srcs-okp-of-canon-srcs: the
+; sources are the live handles (0 1 3), not the canonical ones (0 1 2), and
+; read back the canonical payloads.
+(assert-event
+ (let ((r (sckat-walked)))
+   (and (equal (nth 3 r) '(0 1 3))
+        (equal (nth 4 r) *sckat-canon-payloads*)
+        (equal (nth 5 r) *sckat-canon-payloads*)
+        (nth 6 r))))
+
+(defun sckat-walk-short (n)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (out fn-arena)
+      (mv-let (rows fn-arena)
+        (sckat-live-in fn-arena)
+        (mv (fn-scka-srcs-n rows n nil nil fn-arena) fn-arena))
+      out)))
+
+; fn-scka-srcs-n-complete without "the walk covers the rows": one row short,
+; the rows are not consumed and the lengths and sources are not all there.
+(assert-event
+ (let* ((r (sckat-walked)) (n (1- (nth 8 r))))
+   (and (nth 7 r) (not (<= (nth 8 r) n))
+        (not (equal (sckat-walk-short n)
+                    (list nil (reverse (nth 2 r)) (reverse (nth 3 r))))))))
+
+;; -----------------------------------------------------------------------------
+;; 3c. REPRESENTATION BOUNDS of the load keystone (checkpoint-arena-3).
+;; fn-scka-load-of-written-file assumes the file's counts fit the codec's
+;; fields: the run's and each table's segment count below 2^64 (the
+;; (< (+ 1 (len ks)) *fn-scc-u64-bound*) and fn-sct-programs-widthp
+;; hypotheses), S below 2^64, every chunk shorter than 2^64 octets
+;; (fn-scc-chunk-listp), and at most 2^32 records (the P table's reference
+;; index keys a u32).  No store reaches them: the profile's bounds are far
+;; below, and a file past them cannot be built to load.  So the witness for
+;; each hypothesis is at the FIELD it protects: the value at the bound reads
+;; back, the value one past it does not (the count the loader would read is
+;; not the count written), which is how the keystone's conclusion fails
+;; without it.  Component-level witnesses, labelled as such.
+
+; The segment count (the header's count field, both the arena run's and a
+; table run's): 2^64 - 1 reads back, 2^64 reads as 0.
+(assert-event
+ (let ((at (fn-scc-parse-header (fn-scc-header 0 (1- *fn-scc-u64-bound*) 5 3)))
+       (past (fn-scc-parse-header (fn-scc-header 0 *fn-scc-u64-bound* 5 3))))
+   (and (equal (nth 1 at) (1- *fn-scc-u64-bound*))
+        (consp past)
+        (not (equal (nth 1 past) *fn-scc-u64-bound*))
+        (equal (nth 1 past) 0))))
+
+; S (the header's sequence field): 2^64 - 1 reads back, 2^64 reads as 0,
+; so the loader's check that the F row's S is the run's compares a
+; different number.
+(assert-event
+ (let ((at (fn-scc-parse-header (fn-scc-header 0 2 5 (1- *fn-scc-u64-bound*))))
+       (past (fn-scc-parse-header (fn-scc-header 0 2 5 *fn-scc-u64-bound*))))
+   (and (equal (nth 3 at) (1- *fn-scc-u64-bound*))
+        (not (equal (nth 3 past) *fn-scc-u64-bound*))
+        (equal (nth 3 past) 0))))
+
+; A chunk's length (the header's length field): 2^64 octets would read as
+; an empty chunk.
+(assert-event
+ (let ((at (fn-scc-parse-header (fn-scc-header 0 2 (1- *fn-scc-u64-bound*) 3)))
+       (past (fn-scc-parse-header (fn-scc-header 0 2 *fn-scc-u64-bound* 3))))
+   (and (equal (nth 2 at) (1- *fn-scc-u64-bound*))
+        (not (equal (nth 2 past) *fn-scc-u64-bound*))
+        (equal (nth 2 past) 0))))
+
+; At most 2^32 records: the P table's reference index (fn-cei-build, the
+; E and R tables' ref op) finds the payload at 2^32 - 1 and nothing at
+; 2^32, so a reference past it is :dangling and the load refuses.
+(assert-event
+ (let ((ix (fn-cei-put *fn-cbor-max-uint* (list 7 7)
+                       (fn-cei-put (+ 1 *fn-cbor-max-uint*) (list 9 9) nil))))
+   (and (equal (fn-sct-ref-get *fn-cbor-max-uint* ix) (list 7 7))
+        (null (fn-sct-ref-get (+ 1 *fn-cbor-max-uint*) ix)))))
+
 ; -----------------------------------------------------------------------------
 ; 4. The owner's next checkpoint (fn-scka-next-checkpoint-is-capture): BASE
 ; the capture (under BASE-CONFIGS) of the canonical rows of the first PLEN
@@ -382,6 +518,28 @@
    (and (equal (nth 2 r) 2)
         (not (nth 3 r)) (nth 4 r)
         (not (equal (car r) (cadr r))))))
+
+; fn-scka-restore-base-of-strip-of-capture (reachable positive witness): the
+; owner's base at the open (the capture of the prefix's canonical rows),
+; stripped as the owner keeps it, has no event index, and restored is the
+; capture again, whose index is not empty.
+(defun sckat-kept-base ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (out fn-arena)
+      (mv-let (rows fn-arena)
+        (sckat-live-in fn-arena)
+        (mv (fn-sco-capture *sckat-configs* (fn-scka-canon-rows (take 3 rows) fn-arena 0))
+            fn-arena))
+      out)))
+
+(assert-event
+ (let* ((base (sckat-kept-base)) (kept (fn-scka-strip-base base)))
+   (and (equal (len (fn-sco-records base)) 3)
+        (fn-sco-event-index base)
+        (null (fn-sco-event-index kept))
+        (equal (fn-sco-records kept) (fn-sco-records base))
+        (equal (fn-scka-restore-base kept) base))))
 
 ; -----------------------------------------------------------------------------
 ; 5. fn-scka-recover-from-checkpoint-is-full-recover without "the whole

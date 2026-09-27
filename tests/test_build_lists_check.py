@@ -39,7 +39,20 @@ BUFFER_INCLUDES = ('(include-book "books/octets-stobj")\n'
                    ';; PRF-191: fn-owner-existing-action-buffer and '
                    'fn-owner-prepare-buffer call\n'
                    ';; fn-pidx-existing-action and fn-pidx-sbud-prepare.\n'
-                   '(include-book "books/post-identity-index")\n')
+                   '(include-book "books/post-identity-index")\n'
+                   # post-alloc-2: the served POST's retention admission.
+                   ';; fn-owner-prepare-buffer calls fn-prc-refresh and '
+                   'fn-prc-sbud-prepare.\n'
+                   '(include-book "books/post-retain-carried")\n'
+                   # prepare-served: the served decision inside the prepares.
+                   ';; PRF-284: host/owner-host.lisp calls fn-pvc-make and the carried budget,\n'
+    ';; verdict and POST boundary (fn-pvc-*-carried).\n'
+    '(include-book "books/store-profile-carried")\n'
+    ';; lane prepare-served: fn-owner-prepare-buffer, fn-owner-prepare,\n'
+                   ';; fn-owner-prepare-identity, fn-owner-prepare-topic, '
+                   'fn-owner-reconfigure-unstage\n'
+                   ';; call books/owner-prepare-served (fn-psrv-).\n'
+                   '(include-book "books/owner-prepare-served")\n')
 # rep-wave-d-2: the state checkpoint's publication over the buffer.  The book
 # includes books/octets-stobj itself, so a fixture that omits the buffer
 # includes omits this one too, or the omission is served transitively.
@@ -70,21 +83,32 @@ CHECKPOINT_BUFFER_INCLUDES = (
 # post-identity-index (PRF-191): the served POST's owner-host calls are now
 # fn-pidx-existing-action and fn-pidx-sbud-prepare (books/post-identity-index,
 # which includes store-reclaim-buffer), so those two are the findings.
+# post-alloc-2: the prepare is fn-prc-sbud-prepare over fn-prc-refresh's
+# carry (books/post-retain-carried), which replaced fn-pidx-sbud-prepare.
 # commit-onto-log: the bare copy drops books/owner-log-route too, so the
 # owner's four log-route names are findings in any loader.
-LOG_ROUTE_NAMES = ("fn-olr-bmax", "fn-olr-ocfg-order", "fn-olr-ocfg-reserve", "fn-olr-omax")
+LOG_ROUTE_NAMES = ("fn-olr-bounds", "fn-olr-ocfg-order", "fn-olr-ocfg-reserve")
 BUFFER_FINDINGS = [
     f"included: host/owner-host.lisp uses {name}, defined in "
     "books/owner-log-route.lisp, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp"
     for name in LOG_ROUTE_NAMES] + [
     f"included: host/owner-host.lisp uses {name}, defined in "
-    "books/post-identity-index.lisp, which host/native/build-dtn.lisp has not "
+    f"{book}, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp"
-    for name in ("fn-pidx-existing-action", "fn-pidx-sbud-prepare")] + [
-    "included: host/owner-host.lisp uses fn-scar-ocfg-read-span, defined in "
-    "books/served-span.lisp, which host/native/build-dtn.lisp has not "
-    "included when it loads host/owner-host.lisp"]
+    for name, book in (
+        ("fn-pidx-existing-action", "books/post-identity-index.lisp"),
+        ("fn-prc-refresh", "books/post-retain-carried.lisp"),
+        # prepare-served: fn-psrv-prepare replaced the call of
+        # fn-prc-sbud-prepare; its book is dropped with the rest.
+        ("fn-psrv-prepare", "books/owner-prepare-served.lisp"),
+        ("fn-psrv-prepare-identity", "books/owner-prepare-served.lisp"),
+        ("fn-psrv-prepare-topic", "books/owner-prepare-served.lisp"),
+        ("fn-psrv-refusal-kind", "books/owner-prepare-served.lisp"),
+        ("fn-psrv-unstage", "books/owner-prepare-served.lisp"))]
+# served-readers-cat (catalog step 8): fn-owner-chunk-span-at reads through
+# books/served-catalog-chain's fn-scr-ocfg-read-span, which the bare copy
+# still reaches, so the served-span finding is gone.
 # checkpoint-pipeline (2026-09-26): host/store-node-host.lisp includes
 # books/store-checkpoint-tables-reader and books/owner-checkpoint-pipeline
 # itself (their closure holds octets-stobj, the buffer and the reader), so
@@ -109,7 +133,16 @@ OWNER_HOST_SELF_INCLUDES = ('(include-book "../books/records-concrete-owner")\n'
                             '(include-book "../books/store-reclaim-buffer")\n')
 # post-identity-index (PRF-191): the book of the two calls that replaced
 # fn-rclb-existing-action and fn-pcar-sbud-prepare in the served POST.
-OWNER_HOST_PIDX_INCLUDE = ('(include-book "../books/post-identity-index")\n')
+# post-alloc-2: the carried obligation-id trie's book (it includes
+# post-identity-index, so it is removed with it).
+OWNER_HOST_PIDX_INCLUDE = ('(include-book "../books/post-identity-index")\n'
+                           '; The retention admission of a POST through a carried obligation-id trie\n'
+                           '; (fn-prc-refresh, fn-prc-sbud-prepare; fn-owner-prepare-buffer).\n'
+                           '(include-book "../books/post-retain-carried")\n'
+                           ';; lane prepare-served: the served decision inside the prepares the host calls\n'
+                           ';; (fn-psrv-prepare, fn-psrv-refusal-kind, fn-psrv-prepare-identity,\n'
+                           ';; fn-psrv-prepare-topic) and the configuration un-stage (fn-psrv-unstage).\n'
+                           '(include-book "../books/owner-prepare-served")\n')
 # commit-onto-log: the owner's log-route composites (it includes
 # books/records-concrete-owner too, so the bare copy drops it with the rest).
 OWNER_HOST_LOG_ROUTE_INCLUDE = ('(include-book "../books/owner-log-route")\n')
@@ -255,7 +288,14 @@ class BuildListsCheckTests(unittest.TestCase):
                 # post-identity-index: the served POST calls the two below
                 # instead of fn-rclb-existing-action.
                 ("fn-pidx-existing-action", "books/post-identity-index.lisp"),
-                ("fn-pidx-sbud-prepare", "books/post-identity-index.lisp"),
+                # post-alloc-2: the prepare through the carried id trie.
+                ("fn-prc-refresh", "books/post-retain-carried.lisp"),
+                # prepare-served: the prepares' served decision.
+                ("fn-psrv-prepare", "books/owner-prepare-served.lisp"),
+                ("fn-psrv-prepare-identity", "books/owner-prepare-served.lisp"),
+                ("fn-psrv-prepare-topic", "books/owner-prepare-served.lisp"),
+                ("fn-psrv-refusal-kind", "books/owner-prepare-served.lisp"),
+                ("fn-psrv-unstage", "books/owner-prepare-served.lisp"),
                 ("fn-rcon-ocfg-io", "books/records-concrete-owner.lisp"))])
 
     def test_a_nested_ld_serves_its_loader(self):

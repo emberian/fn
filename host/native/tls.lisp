@@ -755,14 +755,18 @@ signals FNN-TLS-HANDSHAKE-ERROR; the caller frees SSL."
   (and (fnn-tls-channel-pointer channel)
        (> (fnn-%ssl-pending (fnn-tls-channel-pointer channel)) 0)))
 
-(defun fnn-tls-read-now (channel &optional (limit +fnn-max-read+))
-  "One SSL_read attempt: decrypted octets (empty at close_notify), or
-:input/:output when the session must wait."
+(defun fnn-tls-read-now (channel &optional (limit +fnn-max-read+) buffer)
+  "One SSL_read attempt of at most LIMIT octets, into BUFFER when given (at
+least LIMIT long; the caller's reused buffer), else a fresh one: decrypted
+octets (empty at close_notify), or :input/:output when the session must
+wait."
   (let ((ssl (fnn-tls-channel-pointer channel))
-        (buffer (fnn-make-octets limit)))
+        (buffer (or buffer (fnn-make-octets limit))))
+    (unless (<= limit (length buffer))
+      (fnn-fault "TLS read buffer shorter than its limit"))
     (sb-sys:with-pinned-objects (buffer)
       (fnn-%err-clear-error)
-      (let ((result (fnn-%ssl-read ssl (fnn-tls-pointer buffer) (length buffer))))
+      (let ((result (fnn-%ssl-read ssl (fnn-tls-pointer buffer) limit)))
         (if (> result 0)
             (subseq buffer 0 result)
           (let ((disposition (fnn-tls-retry-direction ssl result)))

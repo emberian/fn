@@ -42,7 +42,7 @@
   (fn-own-refresh
    (fn-own-make st (fn-own-view o) (fn-own-conns o)
                 (fn-own-next-id o) (fn-own-max-conns o)
-                (fn-own-pending o) (fn-own-ledger o)
+                (fn-own-pending o) (fn-own-ledger-field o)
                 (fn-own-clock o) (fn-own-facts o)
                 (fn-own-config o) (fn-own-queue o)
                 (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
@@ -567,7 +567,7 @@
                             (o (fn-own-make
                                 st (fn-own-view o) (fn-own-conns o)
                                 (fn-own-next-id o) (fn-own-max-conns o)
-                                (fn-own-pending o) (fn-own-ledger o)
+                                (fn-own-pending o) (fn-own-ledger-field o)
                                 (fn-own-clock o) (fn-own-facts o)
                                 (fn-own-config o) (fn-own-queue o)
                                 (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))))
@@ -617,7 +617,7 @@
                                 (fn-own-next-id (fn-ocfg-owner oc))
                                 (fn-own-max-conns (fn-ocfg-owner oc))
                                 (fn-own-pending (fn-ocfg-owner oc))
-                                (fn-own-ledger (fn-ocfg-owner oc))
+                                (fn-own-ledger-field (fn-ocfg-owner oc))
                                 (fn-own-clock (fn-ocfg-owner oc))
                                 (fn-own-facts (fn-ocfg-owner oc))
                                 (fn-own-config (fn-ocfg-owner oc))

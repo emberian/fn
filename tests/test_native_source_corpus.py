@@ -41,6 +41,7 @@ import time
 import unittest
 
 from tests.native_process import wait_for_announcement
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 CORPUS = ROOT / "tests" / "fixtures" / "source-corpus"
@@ -152,7 +153,7 @@ class NativeSourceCorpusTests(unittest.TestCase):
 
     def connect(self, node):
         client = socket.create_connection(("127.0.0.1", node["port"]), timeout=30)
-        stream = client.makefile("rwb", buffering=0)
+        stream = whole_stream(client)
         self.assertTrue(stream.readline().startswith(b"200 "))
         return client, stream
 

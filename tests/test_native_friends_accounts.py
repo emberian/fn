@@ -35,6 +35,7 @@ import ssl
 import subprocess
 import tempfile
 import unittest
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
@@ -151,7 +152,7 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
         raw = socket.create_connection(("127.0.0.1", self.tls_port), timeout=60)
-        stream = context.wrap_socket(raw).makefile("rwb", buffering=0)
+        stream = whole_stream(context.wrap_socket(raw))
         stream.readline()
         return stream
 
@@ -230,7 +231,7 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         code = self.invite(self.node)
         # Cleartext on the protected listener: 483, nothing taken.
         with socket.create_connection(("127.0.0.1", self.port), timeout=60) as raw:
-            plain = raw.makefile("rwb", buffering=0)
+            plain = whole_stream(raw)
             plain.readline()
             self.assertTrue(self.exchange(plain, "XREDEEM {} robin".format(code))
                             .startswith("483"))

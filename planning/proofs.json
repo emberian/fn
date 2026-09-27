@@ -3686,7 +3686,9 @@
         "books/store-checkpoint-arena-load.lisp",
         "books/store-checkpoint-arena-writer.lisp",
         "tests/acl2/store-checkpoint-arena-tests.lisp",
-        "planning/evidence/checkpoint-arena-2-2026-09-27.md"
+        "planning/evidence/checkpoint-arena-2-2026-09-27.md",
+        "books/store-checkpoint-share.lisp",
+        "planning/evidence/checkpoint-arena-3-2026-09-27.md"
       ],
       "progress_note": "Open items: K0 coverage of the publish program's :root rename and :root fsync (fn-bs-k0-step-inputp admits neither; the profile program has the same gap); the whole-file statement over the host's range loop; the publication keystone's history hypothesis has no must-fail (the identity fold's fault is absorbing); the pack, compaction and export verbs still re-encode the covered prefix's octets after a checkpoint open (fn-store-sco-prefix-octets; the owner's open no longer does, checkpoint-arena-2) and the Store open and the owner open each replay the suffix.",
       "events": [
@@ -3713,7 +3715,12 @@
         "fn-scka-recover-rows-rii-is-recover-rows",
         "fn-scka-write-run-is-run-segments",
         "fn-scka-next-checkpoint-is-capture",
-        "fn-scka-select-named-refuses-the-arena-by-name"
+        "fn-scka-select-named-refuses-the-arena-by-name",
+        "fn-sshr-share-is-identity",
+        "fn-scka-src-payloads-of-canon-srcs",
+        "fn-scka-srcs-n-compose",
+        "fn-scka-srcs-n-complete",
+        "fn-scka-restore-base-of-strip-of-capture"
       ]
     },
     {
@@ -7223,7 +7230,7 @@
     {
       "id": "PRF-181",
       "title": "The served read the host calls over the octet buffer is the reference list read: fn-owner-chunk-span -> fn-scar-ocfg-read-span reads the range by index and equals fn-ocfg-read-tls-prefix over the range's octets, and the wire read is fn-wire-feed-proper over the slice",
-      "statement": "Subject fn-scar-ocfg-read-span (books/served-span.lisp), called by host/owner-host.lisp fn-owner-chunk-span from host/native/owner.lisp fnn-owner-handle-chunk (which fills fn-octets from the socket vector with fnn-octets-fill and calls fn-owner-chunk-span with the range [0, len), no fnn-octet-list on the read path). KEYSTONE fn-scar-feed-span-is-feed-counted (no hypothesis): the served buffer fold fn-scar-feed-span, reading the range's bytes by fn-octets-get, equals the carried list counted fold fn-scar-feed-counted over (fn-oct-slice-list i end fn-octets), byte for byte. fn-scar-ocfg-read-span-is-read-tls-prefix: for natural i, end the span read is fn-scar-ocfg-read-tls-prefix over the slice. KEYSTONE fn-scar-ocfg-read-span-is-reference-under-ocl-relation: under the configured owner's relation (fn-ocl-relation) and its view trie's correspondence, the span read is fn-ocfg-read-tls-prefix over the slice, the reference read the list path already establishes (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation). fn-scar-ocfg-read-span-keeps-store and fn-scar-ocfg-read-span-preserves-node-premise: the read leaves the store and its node premise. Every executable function is guard-verified (fn-scar-feed-span-consumed-is-natural). The executable (PKT-479, lane input-loop): fn-scar-step-span-core runs (mbe :logic fn-scar-feed-span :exec fn-scar-scan-span); books/served-scan.lisp fn-scar-scan-span dispatches once per framed event and books/wire-scan.lisp fn-wire-scan runs the wire machine a line at a time (the run of ordinary octets found by index, consed once onto line-rev; CR, LF, refusals and limits through fn-wire-feed-byte). KEYSTONE fn-scar-scan-span-is-feed-counted (no hypothesis): the event scan IS fn-scar-feed-counted over the slice; KEYSTONE fn-wire-scan-is-span-fold (no hypothesis): the line scan IS the octet fold fn-wire-span-fold, hence fn-wire-feed-proper over the octets it consumed (fn-wire-span-fold-is-feed-proper). Teeth: tests/acl2/served-scan-tests.lisp. What it does not say: the retained partial line and the article body are still octet lists (the model's line-rev and body-rev, O(article) retained by definition); the body in a concrete buffer is not claimed.",
+      "statement": "Subject fn-scar-ocfg-read-span (books/served-span.lisp), called by host/owner-host.lisp fn-owner-chunk-span from host/native/owner.lisp fnn-owner-handle-chunk (which fills fn-octets from the socket vector with fnn-octets-fill and calls fn-owner-chunk-span with the range [0, len), no fnn-octet-list on the read path). KEYSTONE fn-scar-feed-span-is-feed-counted (no hypothesis): the served buffer fold fn-scar-feed-span, reading the range's bytes by fn-octets-get, equals the carried list counted fold fn-scar-feed-counted over (fn-oct-slice-list i end fn-octets), byte for byte. fn-scar-ocfg-read-span-is-read-tls-prefix: for natural i, end the span read is fn-scar-ocfg-read-tls-prefix over the slice. KEYSTONE fn-scar-ocfg-read-span-is-reference-under-ocl-relation: under the configured owner's relation (fn-ocl-relation) and its view trie's correspondence, the span read is fn-ocfg-read-tls-prefix over the slice, the reference read the list path already establishes (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation). fn-scar-ocfg-read-span-keeps-store and fn-scar-ocfg-read-span-preserves-node-premise: the read leaves the store and its node premise. Every executable function is guard-verified (fn-scar-feed-span-consumed-is-natural). The executable (PKT-479, lane input-loop): fn-scar-step-span-core runs (mbe :logic fn-scar-feed-span :exec fn-scar-scan-span); books/served-scan.lisp fn-scar-scan-span dispatches once per framed event and books/wire-scan.lisp fn-wire-scan runs the wire machine a line at a time (the run of ordinary octets found by index, consed once onto line-rev; a whole line inside the read, from an empty retained line, built forward from the buffer by fn-wscan-slice-onto and handed to fn-wire-after-line, one cons per octet instead of two (lane input-loop-2); CR, LF, refusals and limits through fn-wire-feed-byte). KEYSTONE fn-scar-scan-span-is-feed-counted (no hypothesis): the event scan IS fn-scar-feed-counted over the slice; KEYSTONE fn-wire-scan-is-span-fold (no hypothesis): the line scan IS the octet fold fn-wire-span-fold, hence fn-wire-feed-proper over the octets it consumed (fn-wire-span-fold-is-feed-proper). Teeth: tests/acl2/served-scan-tests.lisp. What it does not say: the retained partial line and the article body are still octet lists (the model's line-rev and body-rev, O(article) retained by definition); the body in a concrete buffer is not claimed.",
       "milestone": "M5",
       "requirements": [
         "REP-012"
@@ -7394,7 +7401,12 @@
         "planning/evidence/manifests/certify-20260927T044349Z-763688.json",
         "planning/evidence/manifests/certify-20260927T053413Z-938097.json",
         "planning/evidence/manifests/certify-20260927T082505Z-2325383.json",
-        "planning/evidence/manifests/certify-20260927T090307Z-2876073.json"
+        "planning/evidence/manifests/certify-20260927T090307Z-2876073.json",
+        "books/served-catalog-chain.lisp",
+        "books/served-catalog-owner.lisp",
+        "tests/acl2/served-catalog-chain-tests.lisp",
+        "tests/acl2/served-catalog-owner-tests.lisp",
+        "books/catalog-relation.lisp"
       ],
       "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); proved by lane catalog-boundary-owner (Fable, gpt-6's wave-5 review section 5) on 2026-09-26 in books/catalog-refresh.lisp over the owner's own view vocabulary, so the statement's subject is the refresh the host reaches today; the catalog-side twins are the same book's. catalog-slice-2 and -4's groundwork (the delta grammar, fn-view-cancel-after-target, fn-cat-view-articles) is what the catalog side is stated over.",
       "events": [
@@ -7427,9 +7439,16 @@
         "fn-scat-number-article-is-find-group-number",
         "fn-nntp-msgid-retrieval-cat-is-scan",
         "fn-nntp-number-retrieval-cat-is-walk",
-        "fn-nntp-archive-command-cat-is-pinned"
+        "fn-nntp-archive-command-cat-is-pinned",
+        "fn-scr-ocfg-read-span-is-reference-under-ocl-relation",
+        "fn-cat-relation-of-complete-hidden",
+        "fn-sca-load-history-establishes-relation",
+        "fn-sca-finish-keeps-the-relation",
+        "fn-sca-finish-keeps-pinned-views",
+        "fn-sca-finish-hides-the-hidden-row",
+        "fn-sca-finish-hides-the-targets-from-fresh-views"
       ],
-      "progress_note": "catalog-slice-5 (2026-09-26): step 7a, the pinned-view semantics in the served machine the host calls today (the served connection carries the owner's committed view as its live pin; GROUP/LISTGROUP re-pin before the arm and keep the re-pin exactly on 211); the retrieval arms over the catalog are 7b (PKT-585). catalog-slice-6 (2026-09-27): 7a certified over its closure (the farm runs in the record); 7b first increment in books/served-catalog.lisp: the Message-ID and article-number finders over the catalog (fn-scat-msgid-article through the Message-ID column, fn-scat-number-article through index-stobjs fn-cnx-view-seq), the two retrieval arms over them, and the boundary theorem fn-nntp-archive-command-cat-is-pinned: the pinned case split with those arms reading the catalog equals fn-nntp-archive-command-pinned under archive = the view's articles, trie = its Message-ID index, a fresh number column. OVER/XOVER, LISTGROUP, LIST COUNTS, HDR/XHDR/XPAT, the lift to fn-served-dispatch-core and the host switch remain (7b rest, 8). catalog-slice-7 (2026-09-27): 7b rest -- OVER/XOVER of a range, LISTGROUP, GROUP, LIST COUNTS, HDR/XHDR and XPAT over the catalog (index-stobjs' fn-cnx-view-range and the number table, never a walk of the view's articles), KEYSTONE N fn-scat-range-numbers-is-group-range-numbers and KEYSTONE P fn-scat-available-article-is-available, one -is-archive theorem per arm, and fn-nntp-archive-command-cat-is-pinned over the whole pinned case split (hypotheses added: fn-nntp-projectionp and fn-gidx-pin-correspondencep of the archive); crossing witnesses in tests/acl2/served-catalog-tests.lisp (append, cancel after and before its target, redecision, reclamation).",
+      "progress_note": "catalog-slice-5 (2026-09-26): step 7a, the pinned-view semantics in the served machine the host calls today (the served connection carries the owner's committed view as its live pin; GROUP/LISTGROUP re-pin before the arm and keep the re-pin exactly on 211); the retrieval arms over the catalog are 7b (PKT-585). catalog-slice-6 (2026-09-27): 7a certified over its closure (the farm runs in the record); 7b first increment in books/served-catalog.lisp: the Message-ID and article-number finders over the catalog (fn-scat-msgid-article through the Message-ID column, fn-scat-number-article through index-stobjs fn-cnx-view-seq), the two retrieval arms over them, and the boundary theorem fn-nntp-archive-command-cat-is-pinned: the pinned case split with those arms reading the catalog equals fn-nntp-archive-command-pinned under archive = the view's articles, trie = its Message-ID index, a fresh number column. OVER/XOVER, LISTGROUP, LIST COUNTS, HDR/XHDR/XPAT, the lift to fn-served-dispatch-core and the host switch remain (7b rest, 8). catalog-slice-7 (2026-09-27): 7b rest -- OVER/XOVER of a range, LISTGROUP, GROUP, LIST COUNTS, HDR/XHDR and XPAT over the catalog (index-stobjs' fn-cnx-view-range and the number table, never a walk of the view's articles), KEYSTONE N fn-scat-range-numbers-is-group-range-numbers and KEYSTONE P fn-scat-available-article-is-available, one -is-archive theorem per arm, and fn-nntp-archive-command-cat-is-pinned over the whole pinned case split (hypotheses added: fn-nntp-projectionp and fn-gidx-pin-correspondencep of the archive); crossing witnesses in tests/acl2/served-catalog-tests.lisp (append, cancel after and before its target, redecision, reclamation). catalog-slice-8 (2026-09-27): step 8, the host switch -- fn-owner-chunk-span reads through books/served-catalog-chain.lisp fn-scr-ocfg-read-span over the live arena and catalog (fn-scr-ocfg-read-span-is-reference-under-ocl-relation, under fn-scr-owner-catalogp); the catalog is maintained at the owner's entries (books/served-catalog-owner.lisp): E fn-sca-load-history at recovery, T4-then-T2 fn-sca-finish at fn-owner-finish-submission (fn-sca-finish-keeps-the-relation, -keeps-pinned-views, -hides-the-hidden-row (R1), -hides-the-targets-from-fresh-views), the prepare fn-cat-prepare at fn-owner-prepare-buffer. The join fn-sca-join is the open R-side target.",
       "pending_subject": "fn-view-apply-is-refresh as registered is deferred to 7b/8 (the delta equation needs the arms over the catalog); the proved events are the version semantics over the host-called served path and, since catalog-slice-6, the Message-ID and number retrieval arms and (catalog-slice-7) the range arms over the catalog equal to the pinned arms (not yet host-called: the lift and the host switch are 7b rest and 8)."
     },
     {
@@ -7612,7 +7631,7 @@
     {
       "id": "PRF-198",
       "title": "The process heap is the store profile's figure: an accepted figure holds every store the profile admits and fits the observed machine; a profile the machine cannot hold is refused by name",
-      "statement": "RE-DERIVED (lane reservation-after-flip, 2026-09-27; supersedes the list figure below for every command): since the records flip the served state is the payload arena, so books/heap-store-figure.lisp models what a process holding a store of USED payload octets in N records needs, having opened an input of OU octets in ON records, at the collector's TRIGGER: fn-heap-store-need = DYN + 3 USED (the arena's byte array, doubling, old copy live during a resize) + 48 N (handles) + 2 N (5,120 + 320 G) (each record's retained small objects and group memberships, twice for the collector; measured 3.5-4.8 KiB and 0.25 KiB) + 2 x 16 x 2 OU + 2 x 16,384 ON (the full replay's transient: the recovery decodes the records as octet lists; measured about 54 B per octet and 34 KiB per record) + 2 x 16 x (R + 3 HDR) + 2 x fn-ock-capture-budget (the request in flight and both buffers) + 2 TRIGGER. DYN is the image's dynamic content: CORE is the image observation (FILE . DYNAMIC) (host/native/heap.lisp fnn-heap-image-observation), a natural CORE being the whole file as before. TRIGGER is fn-heap-nursery-trigger (d nursery) = max(8 MiB, min(cap, d/16)), which host/native/io.lisp fnn-gc-nursery-octets now calls; the figure fn-heap-store-figure-octets = fn-heap-with-nursery (the base, nursery), the least D of three candidates with D >= base + 2 trigger(D) (fn-heap-with-nursery-holds-the-trigger, for every D at least the figure). OBSERVED (the probe's (OCTETS . RECORDS) of the store's history files, transaction files counted; host/native/heap.lisp fnn-heap-history-observation) bounds the open's input (fn-heap-open-octets-bound, -records-bound; H and T when NIL); the state stays at H and T since a run grows the store. KEYSTONE fn-heap-store-figure-holds-every-store: (implies (and (natp d) (<= (fn-heap-store-figure-octets profile core nursery observed) d) (<= (nfix used) (nfix H)) (<= (nfix n) (nfix T)) (<= (nfix ou) (fn-heap-open-octets-bound profile observed)) (<= (nfix on) (fn-heap-open-records-bound profile observed))) (<= (fn-heap-store-need profile core used n ou on (fn-heap-nursery-trigger d nursery)) d)). fn-heap-figure-octets is the unobserved store figure; KEYSTONE fn-heap-decide-admits-every-store-the-profile-admits now concludes that store need (ou <= H, on <= T) within the decision's megabytes and those within the machine. fn-heap-operation-decide sizes EVERY command by the observation (:init by the empty store, fn-heap-operation-observation) and the offline verbs by the larger of their list copies and the store figure; KEYSTONE fn-heap-operation-decide-holds-the-store (every action; the member hypothesis removed after proving the weakened theorem). heap-reservation: the threads are 12 fixed + 2 I/O loops + 16 control clients whatever the connections (fn-heap-thread-count; host fnn-mux-thread-count calls it), the core outside the dynamic space is the core file (fn-heap-core-file); fn-heap-reserve-decide-holds-every-thread-the-node-runs drops (natp connections); init judges the first run of the empty store it makes (fn-heap-reserve-first-run-decide). The small preset: 1,662 MB at its bounds on the production image (1,736 on the image-floor core), 583 MB for the run of an empty store and 791 MB for the 1,000-post store (dev before: 824 MB for all); 925 and 1,133 MB in all with 30 threads (before 1,316). fn-heap-small-profile-run-fits-a-small-machine replaces -fits-a-small-machine (the nursery hypothesis removed after proving the weakened theorem). Record: planning/evidence/reservation-after-flip-2026-09-27.md. books/heap-figure.lisp. fn-heap-decide (profile core nursery observations) is the host-called subject: host/native/heap.lisp fnn-heap-decision calls it, from fnn-command-heap (the `heap -- ARGV` probe the installed packaging/fn runs before it execs the command with --dynamic-space-size MB) and fnn-heap-print-store-line (the line `operator CONFIG status` and `health` print). The figure fn-heap-figure-octets = CORE + NURSERY + 2 x 16 x (2H + R) + 2 x fn-ock-capture-budget(profile), in SBCL megabytes rounded up (fn-heap-mb-of); the machine is fn-heap-machine-octets, the least positive observation. KEYSTONE fn-heap-decide-admits-every-store-the-profile-admits: (implies (and (fn-bs-profile-admittedp profile) (equal (car d) :heap) (<= used (fn-bs-profile-max-history-octets profile)) (natp core) (natp nursery)) (and (<= (+ core nursery (* 32 (+ used used R)) (* 2 (fn-ock-capture-budget profile))) (* 2^20 (fn-heap-decision-mb d))) (<= (* 2^20 (fn-heap-decision-mb d)) (fn-heap-machine-octets observations)))) with d = (fn-heap-decide profile core nursery observations): for every history of USED octets within H (the store budget's bound, fn-sbud-verdict-at), the image, the nursery, the lists at sixteen bytes per octet with the collector's copy, and both checkpoint buffers fit the megabytes passed, which fit the machine. (natp used) was removed after proving the weakened theorem. fn-heap-decide-refuses-exactly-past-the-machine: for an admitted profile and an observed machine the decision is (:heap MB WORD MACHINE-MB) when MB x 2^20 <= machine and (:refused :machine-cannot-hold-profile MB MACHINE-MB) otherwise; fn-heap-decision-exit-code-of-a-refusal: a refusal exits 1 (outcome-class :refused). The small preset (*fn-heap-small-request*: the development base with T 16384, H 8 MiB, R 196608, G 16, K 128) is admitted and fn-heap-small-profile-fits-a-small-machine: with core <= 512 MiB and nursery <= 64 MiB it is accepted on every machine of at least 1536 MiB (OpenBSD's default datasize); (heap-figure's fn-heap-init-request and its two theorems are retired from this row, 2026-09-27: no host line calls it; init's choice is books/heap-reservation.lisp fn-heap-init-decide.) Scope: the 16 B per octet is the octet-list representation's cons (rep-wave-d section 1.2); the second history copy is the open's transient; the model states retained octets, not SBCL's allocator, and the native case measures VmHWM against it. EXTENSION (lane image-floor, HST-017): books/heap-reservation.lisp fn-heap-reserve-decide (profile core nursery observations connections), the subject host/native/heap.lisp fnn-heap-reservation calls from fnn-command-heap, is fn-heap-decide's decision and, when that accepts an admitted profile, the stack (fn-heap-stack-kib: the constant *fn-heap-stack-octets*, 1,024 KiB, since lane served-line-iterative made the served path's stack need independent of the article: least 142 KiB for 16 lines, 2,000,000 lines and one 4 MiB line; the per-line term 512 KiB + 40 x (floor(A/2) + 1024) is retired) and THREADS = connections + fn-native-control-max-active-clients + 12; the whole HEAP + CORE + THREADS x (STACK + 4 MiB) is refused by name (:machine-cannot-hold-threads) past the machine. KEYSTONE fn-heap-reserve-decide-holds-every-thread-the-node-runs: (implies (and (fn-bs-profile-admittedp profile) (equal (car r) :heap) (natp connections)) (and (equal (fn-heap-decision-mb r) (fn-heap-decision-mb (fn-heap-decide ...))) (<= (+ connections clients 12) threads) (<= *fn-heap-stack-octets* (* 1024 stack-kib)) (<= (+ (* 2^20 mb) (nfix core) (* threads (+ (* 1024 stack-kib) 4 MiB))) (fn-heap-machine-octets observations)))); fn-heap-reserve-decide-refuses-exactly-past-the-machine and -keeps-heap-figures-refusals. Scope: the stack constant rests on a measurement of compiled frames on SBCL 2.6.8 (served-line-iterative's record section 5; image-floor's section 4), pinned by tests/test_native_image_floor.py's stack witnesses, not a theorem about frames. INIT (PKT-582, in the shape of gpt-6's wave-5 review s.8): fn-heap-init-decide (request core nursery physical limits budget-octets sizing-octets), called by host/native/heap.lisp fnn-heap-init-decision (from operator.lisp fnn-operator-execute-init, which prints fn-heap-init-report-line, and from the heap probe through fnn-heap-init-request), sizes within an explicit budget: the least of the physical memory less the OS's reserve (a quarter, at least 512 MiB), each limit the process runs under (RLIMIT_DATA, RLIMIT_AS, every cgroup memory.max) and FN_INIT_BUDGET_MB. A request naming no capacity field (a bare init, every mission) takes the development candidate when the budget holds its whole reservation at the default max-connections, else the small candidate (conservative; never scale); FN_INIT_SIZING=largest takes the first of scale, development, small; the request's own fields are laid last and never lowered, and each candidate is fn-heap-article-held of the preset under them: R raised to the article record of its A and G and H to at least R, as the preset derivation does, so a request's article bound never makes a candidate invalid (lane fix-line-stack, 2026-09-27: batch AR's candidates laid A over development's R, and `init --max-article-octets 8388608' was refused invalid-init-profile). fn-heap-article-held-holds-the-article-record: (implies (and (fn-bs-profile-requestp request) (not (equal v0 :bad))) (and (equal (car q) (car request)) (not (equal v :bad)) (<= (fn-record-encoded-octets-ceiling A G) R) (<= R H) T, A, G unchanged, H and R never lowered)) over the values v of q = (fn-heap-article-held request) and v0 of request; KEYSTONE fn-heap-article-held-meets-the-article-relations: under requestp, a non-:current preset and well-formed fields, the resolution of the held request is neither (:invalid :max-history-octets-below-max-record-octets) nor (:invalid :max-record-octets-below-the-article-record). When none holds it, init refuses by name (init-budget-cannot-hold-profile). Any other request (a named preset or capacity field) is the operator's: written as named, never resized, the decision's HELDP (nth 6) saying whether the budget holds it (fn-heap-init-decide-honors-the-operators-request; -sized-init-is-held: a capacity-free init is always held). KEYSTONE fn-heap-init-decide-fits-the-budget-and-the-machine: (implies (and (equal (car d) :init) (nth 6 d)) (and (fn-bs-profile-admittedp p) (<= (fn-heap-init-reservation-octets p core nursery) budget) (implies (posp (fn-heap-machine-octets (cons physical limits))) (equal (car (fn-heap-reserve-decide p core nursery (cons physical limits) 32)) :heap)))) with p the resolved written request and budget the machine octets of fn-heap-init-observations: the chosen preset's whole reservation is under the printed budget and the run's own decision on the same machine accepts it. fn-heap-init-decide-honors-the-operators-request; -sized-init-is-held; -conservative-is-development-or-small; -conservative-takes-development-when-it-fits; -largest-takes-scale-when-it-fits; fn-heap-init-budget-is-under-each-part; fn-heap-reserve-decide-accepts-on-a-larger-machine. heap-figure's fn-heap-init-request is no longer the host's init choice. EXTENSION (lane friend-blockers, 2026-09-27, the stranger rehearsal's stops): PKT-707 (decided by the coordinator): a capacity-free init (every mission, a bare init) takes the largest friend rung the budget holds (fn-heap-friend-candidate at 64, 32, 16 MiB of history, transaction slots one per 512 octets), else the floor (8 MiB, 16,384: the small preset), refused by name when the budget cannot hold it; never development's 128 transactions. KEYSTONE fn-heap-init-decide-conservative-is-a-friend-rung; KEYSTONE fn-heap-init-decide-conservative-holds-the-floor: an accepted capacity-free init writes a request with at least 16,384 transactions and 8 MiB of history (fn-heap-request-transactions / -history); KEYSTONE fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits. They replace -conservative-is-development-or-small and -conservative-takes-development-when-it-fits (retired). BATCH AV (2026-09-27) reconciles fix-line-stack with it: the friend rung's H is the larger of the rung and R (fn-heap-friend-candidate), so a rung holds the request's article record under H (fix-line-stack's relation; the floor is the small candidate of that lane), and FN_INIT_SIZING=largest's scale and development candidates are fn-heap-preset-candidate (fn-heap-article-held); fn-heap-article-held-meets-the-article-relations stands. fix-line-stack's -conservative-is-development-or-small is replaced by -conservative-is-a-friend-rung. OPERATION FIGURE (lane openbsd-release-fixes, PKT-686): the compaction verbs hold more than the served path's two list copies of the history (measured on the production image at 3,000 articles, 7,271,160 history octets, small preset fields with a 16-record open suffix: store compact 1,280 to 1,381 MB and store reclaim 1,179 to 1,447 MB on Linux, compact 1,256 MB on OpenBSD 7.9, recover and the open 666 to 716 MB, against the 821 MB figure; at most 5.13 list copies for the compaction verbs, 1.61 for the open). books/heap-figure.lisp fn-heap-operation-decide (action profile core nursery observations) counts fn-heap-operation-history-copies ACTION copies: 6 for :compact and :reclaim, 2 otherwise. fn-heap-operation-decide-holds-the-operation: (implies (and (fn-bs-profile-admittedp profile) (equal (car decision) :heap) (<= used H) (natp core) (natp nursery)) (and (<= (+ core nursery (* 2 16 (+ (* copies used) R (* 3 HDR))) (* 2 capture-budget)) (* MiB mb)) (<= (* MiB mb) machine))); fn-heap-operation-decide-of-a-serve-action-is-heap-decide: every other action's decision is fn-heap-decide's. books/heap-reservation.lisp fn-heap-reserve-operation-decide (the host-called subject: host/native/heap.lisp fnn-heap-reservation from fnn-command-heap, with ACL2's native action for ARGV, fn-native-operator-host-result-native-action): fn-heap-reserve-operation-decide-holds-the-operation (an accepted reservation is the operation's accepted figure, and heap, core and thread stacks fit the machine); fn-heap-reserve-operation-decide-of-a-serve-action-by-definition (every other command reserves as fn-heap-reserve-decide); fn-heap-reserve-decide-is-reserve-of-heap-decide. Consequence: the small preset's store reclaim reserves 1,843 MB heap and 2,170 MB in all on a 195,856,696-octet core, refused by name on a 2 GiB machine.",
+      "statement": "RE-DERIVED (lane reservation-after-flip, 2026-09-27; supersedes the list figure below for every command): since the records flip the served state is the payload arena, so books/heap-store-figure.lisp models what a process holding a store of USED payload octets in N records needs, having opened an input of OU octets in ON records, at the collector's TRIGGER: fn-heap-store-need = DYN + 3 USED (the arena's byte array, doubling, old copy live during a resize) + 48 N (handles) + 2 N (5,120 + 320 G) (each record's retained small objects and group memberships, twice for the collector; measured 3.5-4.8 KiB and 0.25 KiB) + 2 x 16 x 2 OU + 2 x 16,384 ON (the full replay's transient: the recovery decodes the records as octet lists; measured about 54 B per octet and 34 KiB per record) + 2 x 16 x (R + 3 HDR) + 2 x fn-ock-capture-budget (the request in flight and both buffers) + 2 TRIGGER. DYN is the image's dynamic content: CORE is the image observation (FILE . DYNAMIC) (host/native/heap.lisp fnn-heap-image-observation), a natural CORE being the whole file as before. TRIGGER is fn-heap-nursery-trigger (d nursery) = max(8 MiB, min(cap, d/16)), which host/native/io.lisp fnn-gc-nursery-octets now calls; the figure fn-heap-store-figure-octets = fn-heap-with-nursery (the base, nursery), the least D of three candidates with D >= base + 2 trigger(D) (fn-heap-with-nursery-holds-the-trigger, for every D at least the figure). OBSERVED (the probe's (OCTETS . RECORDS) of the store's history files, transaction files counted; host/native/heap.lisp fnn-heap-history-observation) bounds the open's input (fn-heap-open-octets-bound, -records-bound; H and T when NIL); the state stays at H and T since a run grows the store. KEYSTONE fn-heap-store-figure-holds-every-store: (implies (and (natp d) (<= (fn-heap-store-figure-octets profile core nursery observed) d) (<= (nfix used) (nfix H)) (<= (nfix n) (nfix T)) (<= (nfix ou) (fn-heap-open-octets-bound profile observed)) (<= (nfix on) (fn-heap-open-records-bound profile observed))) (<= (fn-heap-store-need profile core used n ou on (fn-heap-nursery-trigger d nursery)) d)). fn-heap-figure-octets is the unobserved store figure; KEYSTONE fn-heap-decide-admits-every-store-the-profile-admits now concludes that store need (ou <= H, on <= T) within the decision's megabytes and those within the machine. fn-heap-operation-decide sizes EVERY command by the observation (:init by the empty store, fn-heap-operation-observation) and the offline verbs by the larger of their list copies and the store figure; KEYSTONE fn-heap-operation-decide-holds-the-store (every action; the member hypothesis removed after proving the weakened theorem). heap-reservation: the threads are 12 fixed + 2 I/O loops + 16 control clients whatever the connections (fn-heap-thread-count; host fnn-mux-thread-count calls it), the core outside the dynamic space is the core file (fn-heap-core-file); fn-heap-reserve-decide-holds-every-thread-the-node-runs drops (natp connections); init judges the first run of the empty store it makes (fn-heap-reserve-first-run-decide). The small preset: 1,662 MB at its bounds on the production image (1,736 on the image-floor core), 583 MB for the run of an empty store and 791 MB for the 1,000-post store (dev before: 824 MB for all); 925 and 1,133 MB in all with 30 threads (before 1,316). fn-heap-small-profile-run-fits-a-small-machine replaces -fits-a-small-machine (the nursery hypothesis removed after proving the weakened theorem). Record: planning/evidence/reservation-after-flip-2026-09-27.md. books/heap-figure.lisp. fn-heap-decide (profile core nursery observations) is the host-called subject: host/native/heap.lisp fnn-heap-decision calls it, from fnn-command-heap (the `heap -- ARGV` probe the installed packaging/fn runs before it execs the command with --dynamic-space-size MB) and fnn-heap-print-store-line (the line `operator CONFIG status` and `health` print). The figure fn-heap-figure-octets = CORE + NURSERY + 2 x 16 x (2H + R) + 2 x fn-ock-capture-budget(profile), in SBCL megabytes rounded up (fn-heap-mb-of); the machine is fn-heap-machine-octets, the least positive observation. KEYSTONE fn-heap-decide-admits-every-store-the-profile-admits: (implies (and (fn-bs-profile-admittedp profile) (equal (car d) :heap) (<= used (fn-bs-profile-max-history-octets profile)) (natp core) (natp nursery)) (and (<= (+ core nursery (* 32 (+ used used R)) (* 2 (fn-ock-capture-budget profile))) (* 2^20 (fn-heap-decision-mb d))) (<= (* 2^20 (fn-heap-decision-mb d)) (fn-heap-machine-octets observations)))) with d = (fn-heap-decide profile core nursery observations): for every history of USED octets within H (the store budget's bound, fn-sbud-verdict-at), the image, the nursery, the lists at sixteen bytes per octet with the collector's copy, and both checkpoint buffers fit the megabytes passed, which fit the machine. (natp used) was removed after proving the weakened theorem. fn-heap-decide-refuses-exactly-past-the-machine: for an admitted profile and an observed machine the decision is (:heap MB WORD MACHINE-MB) when MB x 2^20 <= machine and (:refused :machine-cannot-hold-profile MB MACHINE-MB) otherwise; fn-heap-decision-exit-code-of-a-refusal: a refusal exits 1 (outcome-class :refused). The small preset (*fn-heap-small-request*: the development base with T 16384, H 8 MiB, R 196608, G 16, K 128) is admitted and fn-heap-small-profile-fits-a-small-machine: with core <= 512 MiB and nursery <= 64 MiB it is accepted on every machine of at least 1536 MiB (OpenBSD's default datasize); (heap-figure's fn-heap-init-request and its two theorems are retired from this row, 2026-09-27: no host line calls it; init's choice is books/heap-reservation.lisp fn-heap-init-decide.) Scope: the 16 B per octet is the octet-list representation's cons (rep-wave-d section 1.2); the second history copy is the open's transient; the model states retained octets, not SBCL's allocator, and the native case measures VmHWM against it. EXTENSION (lane image-floor, HST-017): books/heap-reservation.lisp fn-heap-reserve-decide (profile core nursery observations connections), the subject host/native/heap.lisp fnn-heap-reservation calls from fnn-command-heap, is fn-heap-decide's decision and, when that accepts an admitted profile, the stack (fn-heap-stack-kib: the constant *fn-heap-stack-octets*, 1,024 KiB, since lane served-line-iterative made the served path's stack need independent of the article: least 142 KiB for 16 lines, 2,000,000 lines and one 4 MiB line; the per-line term 512 KiB + 40 x (floor(A/2) + 1024) is retired) and THREADS = connections + fn-native-control-max-active-clients + 12; the whole HEAP + CORE + THREADS x (STACK + 4 MiB) is refused by name (:machine-cannot-hold-threads) past the machine. KEYSTONE fn-heap-reserve-decide-holds-every-thread-the-node-runs: (implies (and (fn-bs-profile-admittedp profile) (equal (car r) :heap) (natp connections)) (and (equal (fn-heap-decision-mb r) (fn-heap-decision-mb (fn-heap-decide ...))) (<= (+ connections clients 12) threads) (<= *fn-heap-stack-octets* (* 1024 stack-kib)) (<= (+ (* 2^20 mb) (nfix core) (* threads (+ (* 1024 stack-kib) 4 MiB))) (fn-heap-machine-octets observations)))); fn-heap-reserve-decide-refuses-exactly-past-the-machine and -keeps-heap-figures-refusals. Scope: the stack constant rests on a measurement of compiled frames on SBCL 2.6.8 (served-line-iterative's record section 5; image-floor's section 4), pinned by tests/test_native_image_floor.py's stack witnesses, not a theorem about frames. INIT (PKT-582, in the shape of gpt-6's wave-5 review s.8): fn-heap-init-decide (request core nursery physical limits budget-octets sizing-octets), called by host/native/heap.lisp fnn-heap-init-decision (from operator.lisp fnn-operator-execute-init, which prints fn-heap-init-report-line, and from the heap probe through fnn-heap-init-request), sizes within an explicit budget: the least of the physical memory less the OS's reserve (a quarter, at least 512 MiB), each limit the process runs under (RLIMIT_DATA, RLIMIT_AS, every cgroup memory.max) and FN_INIT_BUDGET_MB. A request naming no capacity field (a bare init, every mission) takes the development candidate when the budget holds its whole reservation at the default max-connections, else the small candidate (conservative; never scale); FN_INIT_SIZING=largest takes the first of scale, development, small; the request's own fields are laid last and never lowered, and each candidate is fn-heap-article-held of the preset under them: R raised to the article record of its A and G and H to at least R, as the preset derivation does, so a request's article bound never makes a candidate invalid (lane fix-line-stack, 2026-09-27: batch AR's candidates laid A over development's R, and `init --max-article-octets 8388608' was refused invalid-init-profile). fn-heap-article-held-holds-the-article-record: (implies (and (fn-bs-profile-requestp request) (not (equal v0 :bad))) (and (equal (car q) (car request)) (not (equal v :bad)) (<= (fn-record-encoded-octets-ceiling A G) R) (<= R H) T, A, G unchanged, H and R never lowered)) over the values v of q = (fn-heap-article-held request) and v0 of request; KEYSTONE fn-heap-article-held-meets-the-article-relations: under requestp, a non-:current preset and well-formed fields, the resolution of the held request is neither (:invalid :max-history-octets-below-max-record-octets) nor (:invalid :max-record-octets-below-the-article-record). When none holds it, init refuses by name (init-budget-cannot-hold-profile). Any other request (a named preset or capacity field) is the operator's: written as named, never resized, the decision's HELDP (nth 6) saying whether the budget holds it (fn-heap-init-decide-honors-the-operators-request; -sized-init-is-held: a capacity-free init is always held). KEYSTONE fn-heap-init-decide-fits-the-budget-and-the-machine: (implies (and (equal (car d) :init) (nth 6 d)) (and (fn-bs-profile-admittedp p) (<= (fn-heap-init-reservation-octets p core nursery) budget) (implies (posp (fn-heap-machine-octets (cons physical limits))) (equal (car (fn-heap-reserve-decide p core nursery (cons physical limits) 32)) :heap)))) with p the resolved written request and budget the machine octets of fn-heap-init-observations: the chosen preset's whole reservation is under the printed budget and the run's own decision on the same machine accepts it. fn-heap-init-decide-honors-the-operators-request; -sized-init-is-held; -conservative-is-development-or-small; -conservative-takes-development-when-it-fits; -largest-takes-scale-when-it-fits; fn-heap-init-budget-is-under-each-part; fn-heap-reserve-decide-accepts-on-a-larger-machine. heap-figure's fn-heap-init-request is no longer the host's init choice. EXTENSION (lane friend-blockers, 2026-09-27, the stranger rehearsal's stops): PKT-707 (decided by the coordinator): a capacity-free init (every mission, a bare init) takes the largest friend rung the budget holds (fn-heap-friend-candidate at 64, 32, 16 MiB of history, transaction slots one per 512 octets), else the floor (8 MiB, 16,384: the small preset), refused by name when the budget cannot hold it; never development's 128 transactions. KEYSTONE fn-heap-init-decide-conservative-is-a-friend-rung; KEYSTONE fn-heap-init-decide-conservative-holds-the-floor: an accepted capacity-free init writes a request with at least 16,384 transactions and 8 MiB of history (fn-heap-request-transactions / -history); KEYSTONE fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits. They replace -conservative-is-development-or-small and -conservative-takes-development-when-it-fits (retired). BATCH AV (2026-09-27) reconciles fix-line-stack with it: the friend rung's H is the larger of the rung and R (fn-heap-friend-candidate), so a rung holds the request's article record under H (fix-line-stack's relation; the floor is the small candidate of that lane), and FN_INIT_SIZING=largest's scale and development candidates are fn-heap-preset-candidate (fn-heap-article-held); fn-heap-article-held-meets-the-article-relations stands. fix-line-stack's -conservative-is-development-or-small is replaced by -conservative-is-a-friend-rung. OPERATION FIGURE (lane openbsd-release-fixes, PKT-686): the compaction verbs hold more than the served path's two list copies of the history (measured on the production image at 3,000 articles, 7,271,160 history octets, small preset fields with a 16-record open suffix: store compact 1,280 to 1,381 MB and store reclaim 1,179 to 1,447 MB on Linux, compact 1,256 MB on OpenBSD 7.9, recover and the open 666 to 716 MB, against the 821 MB figure; at most 5.13 list copies for the compaction verbs, 1.61 for the open). books/heap-figure.lisp fn-heap-operation-decide (action profile core nursery observations) counts fn-heap-operation-history-copies ACTION copies: 6 for :compact and :reclaim, 2 otherwise. fn-heap-operation-decide-holds-the-operation: (implies (and (fn-bs-profile-admittedp profile) (equal (car decision) :heap) (<= used H) (natp core) (natp nursery)) (and (<= (+ core nursery (* 2 16 (+ (* copies used) R (* 3 HDR))) (* 2 capture-budget)) (* MiB mb)) (<= (* MiB mb) machine))); fn-heap-operation-decide-of-a-serve-action-is-heap-decide: every other action's decision is fn-heap-decide's. books/heap-reservation.lisp fn-heap-reserve-operation-decide (the host-called subject: host/native/heap.lisp fnn-heap-reservation from fnn-command-heap, with ACL2's native action for ARGV, fn-native-operator-host-result-native-action): fn-heap-reserve-operation-decide-holds-the-operation (an accepted reservation is the operation's accepted figure, and heap, core and thread stacks fit the machine); fn-heap-reserve-operation-decide-of-a-serve-action-by-definition (every other command reserves as fn-heap-reserve-decide); fn-heap-reserve-decide-is-reserve-of-heap-decide. Consequence: the small preset's store reclaim reserves 1,843 MB heap and 2,170 MB in all on a 195,856,696-octet core, refused by name on a 2 GiB machine. LANE compact-arena (PKT-686 items 3 and 4, 2026-09-27). STORE-LESS: a command naming no store gets books/heap-figure.lisp fn-heap-storeless-decide, min(*fn-heap-storeless-mb* = 1,024 MB, the whole MB of the machine less the core file and one thread's 6 MiB), refused by name (:machine-cannot-hold-image) only when core and nursery do not fit (before, the whole machine was the heap: `fn --version' died in mmap under OpenBSD's 4 GiB datasize). KEYSTONE fn-heap-storeless-decide-is-small-and-fits ((natp machine) removed after proving the weakened theorem); fn-heap-decide-of-no-store-by-definition; books/heap-reservation.lisp fn-heap-reserve-storeless checks the whole reservation of a store-less command, so fn-heap-reserve-of-holds-the-decision and fn-heap-reserve-operation-decide-holds-the-operation hold with no profile hypothesis (removed after proving the weakened theorems). SPEED: heap-reservation's forms 11.65 s -> 6.0 s in the REPL (induction schemes and small theories for the field lemmas and the reservation keystones). The observed-history figure of the offline verbs (item 1) is lane reservation-after-flip's restatement above (fn-heap-operation-history-octets over the probe's observation).",
       "milestone": "M5",
       "requirements": [
         "HST-013",
@@ -7654,7 +7673,8 @@
         "fn-heap-with-nursery-holds-the-trigger",
         "fn-heap-store-figure-observed-is-at-most-unobserved",
         "fn-heap-operation-decide-holds-the-store",
-        "fn-heap-reserve-first-run-accepted-is-within-the-machine"
+        "fn-heap-reserve-first-run-accepted-is-within-the-machine",
+        "fn-heap-storeless-decide-is-small-and-fits"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -7672,7 +7692,8 @@
         "planning/evidence/manifests/certify-20260927T081222Z-2154140.json",
         "planning/evidence/manifests/certify-20260927T081801Z-2227997.json",
         "books/heap-store-figure.lisp",
-        "planning/evidence/reservation-after-flip-2026-09-27.md"
+        "planning/evidence/reservation-after-flip-2026-09-27.md",
+        "planning/evidence/compact-arena-2026-09-27.md"
       ],
       "progress_note": "Lane heap-from-profile (2026-09-26): every event and the test book admitted in the persvati REPL (proof_repl, the farm toolchain w25); certification is the batch's (Validation by batch). The native case ran on hbox under MemoryMax=2G (planning/evidence/heap-from-profile-2026-09-26.md). Lane openbsd-release-fixes (2026-09-27): certified by persvati farm runs run-20260927T081126Z-3648 (certify-20260927T081222Z-2154140: checkpoint-pack-chain-once, heap-figure, heap-reservation and their test books) and run-20260927T081705Z-af7b (certify-20260927T081801Z-2227997: heap-reservation and its test book after the keystone was re-proved by instances; the book was 13.7 s before the lane and is 14.4 s, over D26's 10 s, pre-existing)."
     },
@@ -8477,7 +8498,7 @@
     {
       "id": "PRF-223",
       "title": "A served connection's memory is named and a node refuses, by name, at start and at every live change, a connection capacity the machine cannot hold beside the store's heap figure, the core and the fixed threads; every connection fn-exp-open admits under an accepted capacity, trusted sources included, fits the machine",
-      "statement": "books/connection-budget.lisp. The subjects are fn-cbud-run-decide, which host/owner-host.lisp fn-owner-connection-budget calls once per run after recovery and before listen (host/native/mux.lisp fnn-mux-budget-install, from host/native/owner.lisp fnn-owner-run), and fn-cbud-deltas-refusal, which host/owner-host.lisp fn-owner-reconfigure-deltas calls before any live reconfiguration is staged (native-admin, peer-invite and auth all reach it), over the host's observations (the machine: heap-figure's fn-heap-machine-octets; the core's length; the fixed threads, 12 + 2 I/O loops + the control clients; the thread control stack) and the store's profile (heap-figure's fn-heap-figure-octets is the base's heap; the profile's largest article A sizes the connection). The per-connection figure is fn-cbud-conn-octets: a heap part (the connection record, its input of two +fnn-max-read+ reads, the one reply of the STATED WORKLOAD -- the largest article rendered, 2A + 1,024 -- and the parser's line and body as octet lists, 32 octets per octet) and a native part (kernel socket buffers; the TLS session when a context is loaded); the record, kernel and TLS constants are measurements (tests/test_native_mux.py pins the resident cost). fn-cbud-bound-holds-its-connections: when the base (the store's heap figure, the core, the threads with their stacks and 4 MiB of runtime each) fits the machine, the base plus n connections at the whole per-connection figure fits for every n up to fn-cbud-bound; fn-cbud-bound-is-the-most: one more does not. The resident heap is at most the process's dynamic space, so fn-cbud-resident-octets of n connections is min(dynamic, figure + n x heap part) + the rest of the base + n x native part, and fn-cbud-limit is the larger of fn-cbud-bound and the dynamic space's bound (the whole dynamic space plus each connection's native part). KEYSTONE fn-cbud-limit-holds-its-connections: when either way holds the base (fn-cbud-base-fitsp), the resident figure of every n up to the limit is within the machine; fn-cbud-limit-is-the-most: of limit + 1 it is not. KEYSTONE fn-cbud-run-decide-holds-the-capacity: an accepted run (:hold L) has capacity <= L, L the limit, and the resident figure of capacity connections within the machine; fn-cbud-run-decide-refuses-exactly-past-the-limit: it refuses exactly when the capacity passes the limit or the base does not fit. KEYSTONE fn-cbud-admitted-connections-fit-the-machine: under PRF-211's hypotheses, when the live capacity is within the limit and the base fits, an admission (fn-exp-admit-decision = (:admit)) with nconns held leaves the resident figure of nconns + 1 within the machine; the trusted range exempts no connection from the capacity (fn-exp-open-refuses-exactly-at-the-capacity). fn-cbud-deltas-refusal-keeps-the-capacity-held: a delta list the refusal passes leaves the capacity of the applied configuration within the limit, so the maintained relation 'capacity <= held limit' (established by the run's decision) survives every live change. fn-cbud-launch-decide-keeps-the-store-figure: the launcher's probe (host/native/heap.lisp fnn-heap-decision) adds room for the connections' heap parts and never lowers heap-figure's figure. Not claimed: replies larger than the stated workload's (range OVER/LISTGROUP) until replies are rendered in windows (PKT-644); the measured constants as theorems; that the probe sees the live capacity (it cannot: PKT-644).",
+      "statement": "books/connection-budget.lisp. The subjects are fn-cbud-run-decide, which host/owner-host.lisp fn-owner-connection-budget calls once per run after recovery and before listen (host/native/mux.lisp fnn-mux-budget-install, from host/native/owner.lisp fnn-owner-run), and fn-cbud-deltas-refusal, which host/owner-host.lisp fn-owner-reconfigure-deltas calls before any live reconfiguration is staged (native-admin, peer-invite and auth all reach it), over the host's observations (the machine: heap-figure's fn-heap-machine-octets; the core's length; the fixed threads, 12 + 2 I/O loops + the control clients; the thread control stack) and the store's profile (heap-figure's fn-heap-figure-octets is the base's heap; the profile's largest article A sizes the connection). The per-connection figure is fn-cbud-conn-octets: a heap part (the connection record, its input of two reads of the largest size a served step may read (fn-cbud-step-read-octets, called by host/owner-host.lisp fn-owner-read-octets from host/native/owner.lisp fnn-owner-refresh-read-octets under the owner mutex after the exposure install and after every served step; host/native/mux.lisp reads into one buffer per I/O loop of that size: 512 octets under a step rate, fn-cbud-step-read-octets-under-a-rate-by-definition, so exposure-steps-per-second keeps its meaning in octets; 4 KiB without one (the measured trade between steps and the owner mutex hold: planning/evidence/input-loop-2-2026-09-27.md), fn-cbud-step-read-octets-is-bounded; the figure holds two, fn-cbud-read-covers-the-step; lane input-loop-2), the one reply of the STATED WORKLOAD -- the largest article rendered, 2A + 1,024 -- and the parser's line and body as octet lists, 32 octets per octet) and a native part (kernel socket buffers; the TLS session when a context is loaded); the record, kernel and TLS constants are measurements (tests/test_native_mux.py pins the resident cost). fn-cbud-bound-holds-its-connections: when the base (the store's heap figure, the core, the threads with their stacks and 4 MiB of runtime each) fits the machine, the base plus n connections at the whole per-connection figure fits for every n up to fn-cbud-bound; fn-cbud-bound-is-the-most: one more does not. The resident heap is at most the process's dynamic space, so fn-cbud-resident-octets of n connections is min(dynamic, figure + n x heap part) + the rest of the base + n x native part, and fn-cbud-limit is the larger of fn-cbud-bound and the dynamic space's bound (the whole dynamic space plus each connection's native part). KEYSTONE fn-cbud-limit-holds-its-connections: when either way holds the base (fn-cbud-base-fitsp), the resident figure of every n up to the limit is within the machine; fn-cbud-limit-is-the-most: of limit + 1 it is not. KEYSTONE fn-cbud-run-decide-holds-the-capacity: an accepted run (:hold L) has capacity <= L, L the limit, and the resident figure of capacity connections within the machine; fn-cbud-run-decide-refuses-exactly-past-the-limit: it refuses exactly when the capacity passes the limit or the base does not fit. KEYSTONE fn-cbud-admitted-connections-fit-the-machine: under PRF-211's hypotheses, when the live capacity is within the limit and the base fits, an admission (fn-exp-admit-decision = (:admit)) with nconns held leaves the resident figure of nconns + 1 within the machine; the trusted range exempts no connection from the capacity (fn-exp-open-refuses-exactly-at-the-capacity). fn-cbud-deltas-refusal-keeps-the-capacity-held: a delta list the refusal passes leaves the capacity of the applied configuration within the limit, so the maintained relation 'capacity <= held limit' (established by the run's decision) survives every live change. fn-cbud-launch-decide-keeps-the-store-figure: the launcher's probe (host/native/heap.lisp fnn-heap-decision) adds room for the connections' heap parts and never lowers heap-figure's figure. Not claimed: replies larger than the stated workload's (range OVER/LISTGROUP) until replies are rendered in windows (PKT-644); the measured constants as theorems; that the probe sees the live capacity (it cannot: PKT-644).",
       "milestone": "M6",
       "requirements": [
         "HST-024"
@@ -8511,7 +8532,9 @@
         "fn-cbud-run-decide-refuses-exactly-past-the-limit",
         "fn-cbud-admitted-connections-fit-the-machine",
         "fn-cbud-deltas-refusal-keeps-the-capacity-held",
-        "fn-cbud-launch-decide-keeps-the-store-figure"
+        "fn-cbud-launch-decide-keeps-the-store-figure",
+        "fn-cbud-step-read-octets-is-bounded",
+        "fn-cbud-read-covers-the-step"
       ]
     },
     {
@@ -9868,6 +9891,73 @@
     },
     {
       "id": "PRF-272",
+      "title": "The pipelined group commit: the next batch prepares behind the barrier, and no record is revealed or acknowledged before its own barrier",
+      "statement": "Subjects fn-ocp-commit-event and fn-ocp-committer-wake (books/owner-commit-pipeline.lisp), which host/native/owner.lisp fnn-owner-commit-event and fnn-owner-commit-wake call from the committer (fnn-owner-commit-pipeline), and fn-ocp-next / fn-ocp-observe, which fnn-owner-gate-pick / fnn-owner-gate-leave call at every release of the owner. KEYSTONE fn-ocp-next-open-only-in-flight: after any commit event, a next batch is open only while the commit's ocs phase is in flight, so (fn-ocp-next-is-ocs-next, fn-ocs-in-flight-admits-only-inspect-and-commit, restated over the host's pick as fn-ocp-in-flight-admits-only-inspect-commit-and-reader) no reader, poster, transit or mutating control quantum runs while a prepared record of the batch in flight or of the one behind it is not durable. fn-ocp-commit-event-completes-only-after-the-barrier: COMPLETE (the acknowledgements and the replies of the batch in flight) is named only for a staged batch whose syncer returned :fenced; the next batch's members become the staged batch only through COMPLETE's :sync (fn-ocp-sync-only-when-none-in-flight: a batch is handed to the syncer only from an idle owner after a START or by COMPLETE after the batch in flight was fenced), so appends are in the batches' order and at most one is in flight, as the kernel requires (fn-lgk-append refuses a second). fn-ocp-start-next-only-behind-a-sync: START-NEXT runs only while a batch is staged, its barrier not returned, no next batch open, a member queued. The crash half is PRF (commit-onto-log) fn-olr-crash-reads-a-prefix-of-the-history, whose link (committed ++ in flight ++ open batch) covers the batch prepared behind the barrier; the host's kernel updates are serialized by the log's lock (host/native/io.lisp fnn-log-with-kernel) and the syncer touches only the log struct. Teeth: tests/acl2/owner-commit-pipeline-tests.lisp (the pipeline reached step by step from fn-ocp-init; hypothesis removal for the keystone and the completion rule); native: tests/test_native_commit_log.py test_the_next_batch_prepares_behind_the_barrier (the operator's batch bound 2, the barrier held 700 ms, 16 POSTs from 8 posters: START-NEXT ran, every POST 240 and served after a restart).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-ocp-next-open-only-in-flight",
+        "fn-ocp-commit-event-completes-only-after-the-barrier",
+        "fn-ocp-complete-only-after-the-barrier",
+        "fn-ocp-sync-only-when-none-in-flight",
+        "fn-ocp-next-opens-only-behind-a-sync",
+        "fn-ocp-start-next-only-behind-a-sync",
+        "fn-ocp-next-is-ocs-next",
+        "fn-ocp-in-flight-admits-only-inspect-commit-and-reader"
+      ],
+      "evidence": [
+        "books/owner-commit-pipeline.lisp",
+        "tests/acl2/owner-commit-pipeline-tests.lisp",
+        "host/native/owner.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_commit_log.py"
+      ]
+    },
+    {
+      "id": "PRF-294",
+      "title": "Payloads off the heap: the arena's extent handles, the open's verified extent seals and the served read's trailer check",
+      "statement": "books/payload-arena-extent.lisp, books/payload-arena-extent-logic.lisp, books/payload-extent.lisp, books/payload-arena.lisp: payloads off the heap (arena-offheap stage 2). The generic fn-arena gains the export fn-arena-seal-extent (logic: append of fn-durable-octets FILE POFF PLEN, A-DURABLE-EXTENT); KEYSTONE fn-arena-seal-extent-payload: the new handle is the old count and denotes the extent's durable octets, every older handle keeps its payload, the count grows by one. The attachment fn-arena-extent (books/payload-arena-extent.lisp) nests the paged arena (PRF-281) as a child plus an EXT array; an extent handle holds no octets; its relation fn-arena$xcorr is fn-arx-view of the child's logical value, and every {correspondence}/{guard-thm}/{preserved} obligation is proved (fn-arena-extent-get{correspondence} reads an extent handle through the realizer fn-durable-realize-octet, equal to the durable octet by A-DURABLE-EXTENT; fn-arena-extent-seal-extent{correspondence}). At the open (books/payload-extent.lisp): fn-arx-positions answers each log entry's start, frame length and trailer; fn-arx-extent-of finds the payload's place by the codec's suffix length and VERIFIES it octet for octet; fn-arx-extent-of-denotes-payload: under the faithful read the extent's durable octets are the decoded payload; KEYSTONE fn-arx-intern-step-refines: the host's chunk step with extents (host/native/io.lisp fnn-bridge-recover calls fn-arx-intern-step) equals fn-srs-intern-step when fn-arx-faithful-p (each record's octets are its entry's durable octets: A-HOST's read and A-DURABLE-EXTENT), so every theorem about the open's rows and arena holds. Served reads of an extent handle: the host realizer (host/native/extent.lisp) preads the entry's protected prefix and asks fn-arx-entry-ok (SHA-256 equals the recorded trailer); fn-arx-entry-ok-of-durable: a faithful read passes; a mismatch is refused by name (arena-extent-digest), a store fault. Host subject: host/native/io.lisp fnn-bridge-recover (fn-arx-intern-step), fnn-log-scan-segments (fn-arx-positions via fnn-extent-positions), host/native/extent.lisp fnn-extent-entry (fn-arx-entry-ok, fn-arx-read-cache-entries).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [
+        "PRF-221",
+        "PRF-281"
+      ],
+      "assumptions": [
+        "A-HOST",
+        "A-DURABLE-EXTENT"
+      ],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-arena-seal-extent-payload",
+        "fn-arena-extent-get{correspondence}",
+        "fn-arena-extent-seal-extent{correspondence}",
+        "fn-arx-extent-of-denotes-payload",
+        "fn-arx-intern-step-refines",
+        "fn-arx-entry-ok-of-durable"
+      ],
+      "evidence": [
+        "books/assumptions.lisp",
+        "books/payload-arena-extent-logic.lisp",
+        "books/payload-arena-extent.lisp",
+        "books/payload-arena.lisp",
+        "books/payload-extent.lisp",
+        "tests/acl2/payload-arena-extent-tests.lisp",
+        "tests/acl2/payload-extent-tests.lisp",
+        "planning/evidence/arena-offheap-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane arena-offheap-2 (2026-09-27): stage 2 of the coordinator's off-heap decision. The open of a format-9 store seals extents on its full replay; the state-checkpoint route, the commit and format 8 stay resident (the record's section on what is not done)."
+    },
+    {
+      "id": "PRF-281",
       "title": "The paged payload arena: fixed pages, no doubling; the node's arena attachment corresponds to the generic's list of sealed payloads",
       "statement": "books/payload-arena-paged.lisp: fn-arena-paged is an abstract stobj over the concrete fn-arena$p (a resizable table of page stobjs, each a byte array of *fn-arp-page* = 262,144 octets: above SBCL's large-object size, 131,072, so the collector never copies a page allocated when the page is added; an offset and a size per handle; the count, the fill and the page count). Its logical side is fn-arena-bytes's, verbatim (fn-arena$ap, create-fn-arena$a, the eight fn-arena$a-*), so books/payload-arena-attach.lisp's (attach-stobj fn-arena fn-arena-paged) makes the generic fn-arena (PRF-221) execute over pages while every certificate above the generic stays the generic's. The abstraction fn-arena$pcorr is fn-arena$corr's (PRF-118) with the pages' byte lists concatenated (fn-arp-flat over the first npages pages, each full: fn-arp-fullp) in place of the byte array, and the fill within the pages' capacity. The page arithmetic is proved once: fn-arp-nth-flat and fn-arp-flat-of-page-write (page K's octet J is the flat view's position J + 262144 K; a write there is the flat view's update-nth), fn-arp-nth-flat-at / fn-arp-flat-of-write-at (the same at floor and mod of a position), fn-arp-flat-snoc and fn-arp-flat-of-resize-list (adding a page appends its octets; doubling the table of POINTERS keeps the view). Steps: fn-arp-put-step (a page write is the flat view's update), fn-arp-add-page-step (one more page; every octet below the old capacity kept), fn-arp-write-octet-step, fn-arp-write-appends, fn-arp-seal-list-step; reads fn-arp-byte-is-nth and fn-arp-list-pages-is-list-from (the payload reader walks pages). Every {correspondence}, {preserved} and {guard-thm} obligation is proved before the defabsstobj (fn-arena-paged-get{correspondence} ... fn-arena-paged-clear{preserved}); every executable function is guard-verified. What it changes: a sealed octet never moves and a seal never copies an older payload; growth allocates one 256 KiB page and, when the table has no spare slot, doubles the table's pointers (8 octets per page); the arena's footprint is its payload octets plus under one page plus the handle arrays, and no two copies are live (recover-memory-2's packet P1: the byte array's last doubling kept 256 and 512 MiB live together). The clear releases the page table. Host subject: every host call of an fn-arena export (host/native/io.lisp fnn-arena-seal-*, host/store-node-host.lisp fn-store-sn-lookup through fn-handle-bytes, host/owner-host.lisp's clears) runs over this attachment; the host names only the generic.",
       "milestone": "M5",
@@ -9904,42 +9994,647 @@
       "progress_note": "Lane arena-offheap (2026-09-27), stage 1 of the coordinator's off-heap decision: the paged attachment replaces the byte array in the image. Stage 2 (payloads off the heap: handle -> durable file extent, A-DURABLE-EXTENT) builds on the same generic."
     },
     {
-      "id": "PRF-281",
-      "title": "Payloads off the heap: the arena's extent handles, the open's verified extent seals and the served read's trailer check",
-      "statement": "books/payload-arena-extent.lisp, books/payload-arena-extent-logic.lisp, books/payload-extent.lisp, books/payload-arena.lisp: payloads off the heap (arena-offheap stage 2). The generic fn-arena gains the export fn-arena-seal-extent (logic: append of fn-durable-octets FILE POFF PLEN, A-DURABLE-EXTENT); KEYSTONE fn-arena-seal-extent-payload: the new handle is the old count and denotes the extent's durable octets, every older handle keeps its payload, the count grows by one. The attachment fn-arena-extent (books/payload-arena-extent.lisp) nests the paged arena (PRF-272) as a child plus an EXT array; an extent handle holds no octets; its relation fn-arena$xcorr is fn-arx-view of the child's logical value, and every {correspondence}/{guard-thm}/{preserved} obligation is proved (fn-arena-extent-get{correspondence} reads an extent handle through the realizer fn-durable-realize-octet, equal to the durable octet by A-DURABLE-EXTENT; fn-arena-extent-seal-extent{correspondence}). At the open (books/payload-extent.lisp): fn-arx-positions answers each log entry's start, frame length and trailer; fn-arx-extent-of finds the payload's place by the codec's suffix length and VERIFIES it octet for octet; fn-arx-extent-of-denotes-payload: under the faithful read the extent's durable octets are the decoded payload; KEYSTONE fn-arx-intern-step-refines: the host's chunk step with extents (host/native/io.lisp fnn-bridge-recover calls fn-arx-intern-step) equals fn-srs-intern-step when fn-arx-faithful-p (each record's octets are its entry's durable octets: A-HOST's read and A-DURABLE-EXTENT), so every theorem about the open's rows and arena holds. Served reads of an extent handle: the host realizer (host/native/extent.lisp) preads the entry's protected prefix and asks fn-arx-entry-ok (SHA-256 equals the recorded trailer); fn-arx-entry-ok-of-durable: a faithful read passes; a mismatch is refused by name (arena-extent-digest), a store fault. Host subject: host/native/io.lisp fnn-bridge-recover (fn-arx-intern-step), fnn-log-scan-segments (fn-arx-positions via fnn-extent-positions), host/native/extent.lisp fnn-extent-entry (fn-arx-entry-ok, fn-arx-read-cache-entries).",
+      "id": "PRF-267",
+      "title": "The owner's commit runs in three scheduled steps with its log barrier off the owner: a status or health request waits at most one quantum and never a barrier, and a batch's members are told acceptance or refusal only after its barrier, each as its own outcome",
+      "statement": "fn-ocs-inspect-waits-at-most-one (books/owner-commit-steps.lisp; keystone, no hypothesis on the state or the commit's events): for every scheduler value S and every sequence WS of pick observations, each (W EVENT) with W the six waiting counts (control reader poster transit commit inspect) and EVENT what a :commit quantum picked there reports, if the :inspect class has a waiter at every pick (fn-ocs-inspect-waitsp) then the quanta of other classes picked before the first :inspect pick, fn-ocs-inspect-delay, is at most 1. The barrier is not a quantum: it is the :barrier ACTION fn-ocs-commit-step names after a START, which the committer runs with the owner released. So the wall time an :inspect request waits at the gate is at most the longest single quantum of another class; its bound's hypotheses: the store commits through the record log (format 9; on a format-8 store there is no committer and a served POST's commit is still inside its reader quantum), and no quantum of another class contains a barrier (true of the START and the COMPLETE when no feed peer is configured: a configured peer's intent flush fsyncs per member inside the START, PKT-825). fn-ocs-in-flight-admits-only-inspect-commit-and-reader: while a batch is in flight (phase :staged, :fenced or :failed) the pick is :inspect, :commit, :reader or nil -- no control-socket poster, transit or mutating control quantum runs between a batch's START and its COMPLETE; a reader runs at the reader view (PRF-288), so no read reveals an unfenced record (coordinator decision PKT-828); fn-ocs-in-flight-commit-before-reader: in flight a waiting commit step (START-NEXT, COMPLETE) is picked before any reader. fn-ocs-next-otherwise-is-ocm-next: outside a batch every non-:inspect pick is books/owner-commit-class.lisp fn-ocm-next's pick and state, so PRF-248's control bound (via fn-ocm-next-otherwise-is-osch-next) and fn-ocm-commit-waits-at-most-the-bound hold over the non-:inspect quanta; fn-ocs-inspect-pick-keeps-the-ocm. fn-ocs-complete-only-after-the-barrier: the step machine names :complete (the step that releases the members' replies) only for phase :staged and event :fenced; fn-ocs-barrier-only-from-a-start, fn-ocs-staged-only-by-a-start, fn-ocs-in-flight-until-completed. The keystone's per-pick subjects, each about fn-ocs-next itself: fn-ocs-inspect-first-when-not-last (an :inspect waits and the last pick was not an :inspect: the pick is :inspect), fn-ocs-inspect-waiting-picks-someone (an :inspect waits: the pick is not nil), fn-ocs-other-pick-clears-lasti (a pick that is neither nil nor :inspect clears LASTI). The members' replies (lane scheduler-2-rebase, onto commit-onto-log's per-member uncertain replies): fn-ocs-members-told-only-after-the-barrier (keystone; subjects the host's two calls per batch, fn-ocs-commit-step -- through fn-ocs-commit-event for the committer, directly for the inline commit fnn-owner-commit-queued-locked -- and fn-ocs-member-releases, which host/native/owner.lisp fnn-owner-commit-complete-locked calls over each member's (WORD RENDERABLE)): if the releases for the step's action name any member :rendered (its own rendered completion: the acceptance or refusal its word decided), then the phase was :staged and the event :fenced. fn-ocs-failed-barrier-stops-telling-no-member: a staged batch whose barrier failed gets the :stop (the recovery event: the store fenced, exit 3) and no member :rendered. fn-ocs-member-rendered-only-in-a-complete (iff: :rendered exactly when the action is :complete and the word is not :uncertain), fn-ocs-member-otherwise-uncertain (every other release is :own-uncertain, :uncertain-reply or :close), fn-ocs-member-uncertain-word-told-uncertain. Scope: accepted and refused are the member's own ACL2 word and rendered reply, unchanged by the COMPLETE; after a stop a refused member is answered uncertain too (its refusal can rest on an earlier member whose record the log may not hold). A service stopped by the operator during a barrier answers every member with the close (host, uncertain), outside this theorem.",
       "milestone": "M5",
       "requirements": [
-        "REP-010",
-        "REP-014"
+        "HST-023"
       ],
       "depends_on": [
-        "PRF-221",
-        "PRF-272"
+        "PRF-248"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-commit-steps.lisp",
+        "tests/acl2/owner-commit-steps-tests.lisp",
+        "host/native/owner.lisp",
+        "host/native/control.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_owner_scheduler.py"
+      ],
+      "progress_note": "Lane owner-scheduler-2 (Opus 5.5, 2026-09-27; PKT-688 (4) slice 2, on lane commit-onto-log's :commit class). Host lines: host/native/owner.lisp fnn-owner-gate-pick calls fn-ocs-next at every release of the owner and every arrival at an idle one; fnn-owner-gate-leave calls fn-ocs-observe; fnn-owner-commit-event calls fn-ocs-commit-event inside the committer's :commit quanta (fnn-owner-commit-batch: START = fnn-owner-commit-start-locked, then fnn-owner-commit-barrier with the owner released, then COMPLETE = fnn-owner-commit-complete-locked under a second :commit quantum whose unwind-protect applies :completed); host/native/control.lisp fnn-control-live-status-answer enters as :inspect after ACL2's fn-native-live-status-host-requestp chose that path. Teeth: tests/acl2/owner-commit-steps-tests.lisp (states reached from fn-ocs-init; the keystone tight at 1 in and out of a batch; must-fail with the inspect absent for three picks: delay 3; in flight only readers waiting: nobody admitted, and the same readers admitted after :fenced/:completed (must-fail); the step machine's whole cycle and its faults). Native: tests.test_native_owner_scheduler test_status_is_answered_while_a_batch_barrier_is_in_flight (a developer selector holds the barrier 6 s: status answered inside it, GROUP and the 240 after it).",
+      "events": [
+        "fn-ocs-inspect-waits-at-most-one",
+        "fn-ocs-in-flight-admits-only-inspect-commit-and-reader",
+        "fn-ocs-next-otherwise-is-ocm-next",
+        "fn-ocs-inspect-pick-keeps-the-ocm",
+        "fn-ocs-complete-only-after-the-barrier",
+        "fn-ocs-barrier-only-from-a-start",
+        "fn-ocs-staged-only-by-a-start",
+        "fn-ocs-in-flight-until-completed",
+        "fn-ocs-inspect-first-when-not-last",
+        "fn-ocs-inspect-waiting-picks-someone",
+        "fn-ocs-other-pick-clears-lasti",
+        "fn-ocs-members-told-only-after-the-barrier",
+        "fn-ocs-failed-barrier-stops-telling-no-member",
+        "fn-ocs-member-rendered-only-in-a-complete",
+        "fn-ocs-member-otherwise-uncertain",
+        "fn-ocs-member-uncertain-word-told-uncertain",
+        "fn-ocs-in-flight-commit-before-reader"
+      ]
+    },
+    {
+      "id": "PRF-268",
+      "title": "A format-9 store is initialized and its log segment extended by modelled programs whose every cut is a model crash point",
+      "statement": "Extension: books/store-log-extend.lisp, host/native/io.lisp fnn-log-ensure-extent (called by fnn-log-seal-open-batch and fnn-log-commit-open-batch): KEYSTONE fn-lg-extend-program-keeps-the-relation (the log relation R holds after the segment grows by zeros to fn-olr-next-extent, over the same kernel), KEYSTONE fn-lg-extension-written-crash-reads-the-committed-records (a process death at the new cut log-extended, under any tear, scans to exactly the committed records and chain head, whole units, the old octets kept), fn-olr-extension-target-is-an-extent; the host keeps one spare unit past every append (fn-olr-extension-needed-p; a tooth shows a garbled extension of a full segment forging a record without it). fnn-log-preallocate grows from the old extent (the non-Linux fallback zeroed [0, EXTENT) and erased the log). Init: books/store-init-log-publication.lisp (host fnn-command-init-published): fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log, fn-bs-init-log-classify-by-what-is-known, fn-bs-init-log-segment-is-the-empty-log; books/byte-store-log-initializer.lisp (host fnn-initialize): fn-bsi-log-init-program-establishes-the-empty-log. A format-9 init writes no allocation-frontier.json and no transactions/. Teeth: tests/acl2/store-log-extend-tests.lisp, store-init-log-publication-tests.lisp, byte-store-log-initializer-tests. Lane log-2 (fork log-2-init), PKT-COL-2 and PKT-COL-4.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028"
+      ],
+      "depends_on": [
+        "PRF-273"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-extend.lisp",
+        "books/store-init-log-publication.lisp",
+        "books/byte-store-log-initializer.lisp",
+        "planning/evidence/manifests/certify-20260927T111520Z-2734710.json",
+        "planning/evidence/manifests/certify-20260927T113845Z-2889974.json"
+      ],
+      "events": [
+        "fn-lg-extend-program-keeps-the-relation",
+        "fn-lg-extension-written-crash-reads-the-committed-records",
+        "fn-olr-extension-target-is-an-extent",
+        "fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log",
+        "fn-bs-init-log-classify-by-what-is-known",
+        "fn-bs-init-log-segment-is-the-empty-log",
+        "fn-bsi-log-init-program-establishes-the-empty-log"
+      ]
+    },
+    {
+      "id": "PRF-269",
+      "title": "A txid reused after a crash is a fresh feed intent: the open decides a dead intent without its txid",
+      "statement": "books/owner-feed-txid-reuse.lisp, host host/native/owner.lisp fnn-owner-feed-reconcile (every intent resolved before the owner serves): fn-own-feed-intent-reconcile-kind-reads-no-txid (the open decides a dead FNFD intent from its Message-ID, identity and evidence, never its txid) and KEYSTONE fn-own-feed-intent-reuse-is-a-fresh-intent (with no pending intent of that key, a new intent naming a reused txid and its resolution restore the pending set exactly). So the log's derived next txid (the PostgreSQL rule: a txid handed out and never logged is reused after a crash) needs no floor at the feed journals' intents (PKT-COL-8, option ii). Teeth: tests/acl2/owner-feed-txid-reuse-tests.lisp. Lane log-2 (fork log-2-init).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-feed-txid-reuse.lisp",
+        "tests/acl2/owner-feed-txid-reuse-tests.lisp",
+        "planning/evidence/manifests/certify-20260927T111520Z-2734710.json"
+      ],
+      "events": [
+        "fn-own-feed-intent-reconcile-kind-reads-no-txid",
+        "fn-own-feed-intent-reuse-is-a-fresh-intent"
+      ]
+    },
+    {
+      "id": "PRF-273",
+      "title": "Every process-death cut of the record-log route is a cut of a model program, at a related state",
+      "statement": "books/store-log-route-programs.lisp: the format-9 arms of host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-mark-committed and fnn-recover call fnn-log-reserve, fnn-log-publish, nothing, and fnn-recover-log, whose durable steps and process-death cuts in source order are exactly fn-lg-reserve-program (frontier-reserved), fn-lg-append-program ++ fn-lg-fence-program ++ fn-lg-order-program (log-written, log-fenced, record-completing; a batch of one), and fn-lg-open-program (P-LOG-RECOVER's log-truncated and log-recovered, then recover-replayed and the five recovery barriers each followed by recover-barrier): tools/native_program_check.py checks each arm (tests/campaign/native_cuts.py verify_log_route_arms, in make check; teeth in tests/test_native_program_check.py LogRouteArmTests). fn-lg-reserve-program-keeps-the-relation: from R, the state at frontier-reserved (the kernel caught up by fn-olr-consume-to) is R-related; fn-lg-order-program-keeps-the-relation: from R and a record, the state at record-completing (the record taken into the open batch, fn-olr-take) is related; fn-lg-open-suffix-keeps-the-relation: from R with nothing in flight (as fn-lg-recover-program-establishes-the-relation leaves it), every state after log-recovered is related. So a process death at any cut is a crash of an R-related state (fn-lgk-crash-of-related-state-is-a-prefix). Teeth: tests/acl2/store-log-route-programs-tests.lisp (reached states of store-log-kernel-tests; R removed; a batch in flight at the open's barrier).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-route-programs.lisp",
+        "tests/acl2/store-log-route-programs-tests.lisp",
+        "tests/campaign/native_cuts.py",
+        "tools/native_program_check.py",
+        "tests/test_native_program_check.py"
+      ],
+      "events": [
+        "fn-lg-reserve-program-keeps-the-relation",
+        "fn-lg-order-program-keeps-the-relation",
+        "fn-lg-open-suffix-keeps-the-relation",
+        "fn-lg-open-program-is-recover-then-the-suffix-by-definition"
+      ]
+    },
+    {
+      "id": "PRF-274",
+      "title": "The live configuration completion applies its one record to the owner's carried node and configuration: under the owner invariant it is fn-ocl-publish, and it carries the invariant, so no control quantum replays the Store history",
+      "statement": "fn-oclc-publish-is-publish (books/config-owner-carried.lisp; keystone, hypothesis fn-ocl-relation OC, the owner invariant books/config-owner-live.lisp defines): (fn-oclc-publish OC GENERATION MAX-OCTETS) equals (fn-ocl-publish OC GENERATION MAX-OCTETS), verdict and owner, for every record, generation and phase. fn-oclc-publish is the host-called completion (host/owner-host.lisp fn-owner-reconfigure-complete, reached from host/native/admin.lisp fnn-owner-live-reconfigure-locked for every live group create, control grant and the other live configuration verbs); it replaces fn-ocl-complete's fn-cpo-configure-durable (fn-cpo-history-relation's full fn-cpr-replay and fn-sn-statep of the store, a second full replay over the extended configuration history, fn-sn-statep of the candidate) and fn-ocl-store-config (a third replay) by one configuration step from the store's node and the owner's configuration: fn-oclc-configure, whose install is fn-cpo-configure-durable (fn-oclc-configure-is-configure-durable, hypotheses fn-cpo-history-relation ST and CONFIG the replayed configuration) and whose configuration is fn-ocl-store-config of the installed store on success (fn-oclc-configure-config-is-store-config); fn-oclc-complete-is-complete (the staged completion, from fn-cst-relation and fn-ocl-config-historyp); fn-oclc-ready-cst-relation-is-history-relation (fn-cst-relation at the :ready phase is fn-cpo-history-relation). fn-oclc-publish-carries-ocl-relation (keystone, hypothesis fn-ocl-relation OC): the owner fn-oclc-publish answers satisfies fn-ocl-relation again, whatever the verdict (:durable through config-owner-live's fn-ocl-complete-preserves-full-historical-relation; :refused and :recovery-required keep OC). The invariant is established by fn-owner-recover (books/owner-recover-ocl.lisp fn-orec-started-owner-ocl-relation) and preserved by the owner's other transitions (the fn-ocl-*-preserves-historical-relation family of books/config-owner-live.lisp, config-owner-advance-invariants, owner-commit-ocl); fn-oclc-publish tests none of it at run time (guard t), which is the point: its hold no longer grows with the store.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-209",
+        "PRF-259"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config-owner-carried.lisp",
+        "tests/acl2/config-owner-carried-tests.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/control-quanta-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T104208Z-2515026.json",
+        "planning/evidence/manifests/certify-20260927T104257Z-2518354.json"
+      ],
+      "progress_note": "Lane control-quanta (Opus 5.5, 2026-09-27; F4, PKT-827). Profiled with sb-sprof on hbox (tools/profile/): at 1,000 articles 85 per cent of a live group create's owner samples were fn-ocl-complete's three replays; at 10,000 the replay is quadratic (fn-retain-pin-id-scanp, fn-acceptedp per event) and one control quantum held the owner 40 to 46 s. Teeth: tests/acl2/config-owner-carried-tests.lisp (the native live arm's staged request: carried = full, :durable, generation 3; the wrong generation refused alike; hypothesis removal: an owner claiming the initial configuration, carried :recovery-required vs full :durable, and its owner fails the invariant; both must-fail).",
+      "events": [
+        "fn-oclc-publish-is-publish",
+        "fn-oclc-publish-carries-ocl-relation",
+        "fn-oclc-configure-is-configure-durable",
+        "fn-oclc-configure-config-is-store-config",
+        "fn-oclc-complete-is-complete",
+        "fn-oclc-ready-cst-relation-is-history-relation"
+      ]
+    },
+    {
+      "id": "PRF-275",
+      "title": "The Store kernel holds its history and its success history as snoc-lists: a commit and a success append in O(1), and the prepare, the finish and the refresh read the length, the last and the newest records in O(1)",
+      "statement": "books/snoc-list.lisp and books/store-files.lisp (post-alloc-2). The kernel state's RECORDS and SUCCESSES fields hold (:snoc N . REV) (the length-N list whose reverse is the first N of REV); fn-sf-records / fn-sf-successes read the lists back and every accessor lemma of fn-sf-make is unchanged; fn-sf-shapep requires each field to be the representation of its list. KEYSTONES: fn-sl-list-of-fn-sl-of (every value round-trips), fn-sl-list-of-fn-sl-snoc and fn-sl-snoc-of-fn-sl-of (the O(1) snoc is the append, for every value / list), fn-sl-count-is-len, fn-sl-last-is-last, fn-sl-nth-is-nth (no hypothesis); fn-sf-make-fields-is-make, fn-sf-make-fields-snoc-records-is-make, fn-sf-make-fields-snoc-successes-is-make (under fn-sf-shapep: what every transition's mbe executes). The logic of every store-files transition is unchanged (the mbe :logic is the former body). Host subjects: the commit host/owner-host.lisp fn-owner-io -> books/records-concrete.lisp fn-rcon-sf-record-dir-result (O(1) append); the prepare fn-owner-prepare-buffer -> books/owner-prepare-carried.lisp fn-pcar-stage-record over fn-pcar-files-candidatep (fn-pcar-files-candidatep-is-candidatep, no hypothesis) and fn-pcar-sbud-prepare over fn-sf-records-count (fn-pcar-records-count-is-sbud-used); the finish fn-owner-finish-submission -> books/owner-commit-carried.lisp fn-ccar-completion-record over fn-ccar-seek-at (fn-ccar-seek-at-is-seek, no hypothesis); books/owner.lisp fn-own-refresh reads the count in O(1) and keeps its withdrawals without reading the history when the acceptance is unchanged (mbe; logic unchanged). Local policy (D27: bound work, not data); no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020",
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-144",
+        "PRF-180",
+        "PRF-193"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/snoc-list.lisp",
+        "books/store-files.lisp",
+        "books/records-concrete.lisp",
+        "books/owner-prepare-carried.lisp",
+        "books/owner-commit-carried.lisp",
+        "tests/acl2/snoc-list-tests.lisp"
+      ],
+      "progress_note": "post-alloc-2 2026-09-27: owner POST bytes/POST flat in N (hbox, see planning/evidence post-alloc-2 measurements in the lane record). Farm persvati run-20260927T114842Z-7d85 (manifest certify-20260927T115018Z-460522).",
+      "events": [
+        "fn-sl-list-of-fn-sl-of",
+        "fn-sl-list-of-fn-sl-snoc",
+        "fn-sl-snoc-of-fn-sl-of",
+        "fn-sl-count-is-len",
+        "fn-sl-last-is-last",
+        "fn-sl-nth-is-nth",
+        "fn-sf-make-fields-is-make",
+        "fn-sf-make-fields-snoc-records-is-make",
+        "fn-sf-make-fields-snoc-successes-is-make",
+        "fn-pcar-files-candidatep-is-candidatep",
+        "fn-pcar-records-count-is-sbud-used",
+        "fn-ccar-seek-at-is-seek"
+      ]
+    },
+    {
+      "id": "PRF-276",
+      "title": "An owner POST's article is parsed once, at take, and every owner-side reader is its reference over the carried parse",
+      "statement": "books/owner-parse-carried.lisp (post-alloc-2). The carry (fn-apc-p: each entry's parse is fn-article-parse of its octets; it mentions no owner state) is written only by host/owner-host.lisp fn-owner-take (fn-apc-take, fn-apc-p-of-take). KEYSTONE fn-apc-parse-is-article-parse; each host call is its reference under fn-apc-p: fn-apc-take-is-take-result (fn-owner-take), fn-apc-submission-intent-is-reference and fn-apc-submission-resolution-publication-is-reference (fn-owner-submission-intent / -resolution, with fn-icar-carryp), fn-apc-filing-plan-is-reference (fn-owner-control-filing), fn-apc-carrier-form-is-reference, fn-apc-current-plan-is-reference (fn-owner-peer-carrier-form / -plan), fn-apc-transit-verdict and refusal detail (fn-owner-transit-verdict), fn-apc-intern-row-at-is-reference with fn-apc-held-facts-of-is-reference (fn-owner-prepare-buffer, fn-owner-prepare), fn-apc-own-finish-is-own-finish (fn-owner-finish-submission, with fn-ceis-indexedp of the owner Store, fn-osi-live-owner-store-is-indexed), fn-apc-own-outcome-is-acar-own-outcome (fn-owner-outcome, with fn-icar-carryp). A stale carry costs a parse, never a wrong value. Local policy; no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-144",
+        "PRF-191"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-parse-carried.lisp",
+        "tests/acl2/owner-parse-carried-tests.lisp"
+      ],
+      "progress_note": "post-alloc-2 (helper post-alloc-2-parse) 2026-09-27: 13 owner-side parses of the stored octets per POST -> 1 (the two served-phase parses in books/nntp-post.lisp are served-readers': request in the lane record).",
+      "events": [
+        "fn-apc-parse-is-article-parse",
+        "fn-apc-take-is-take-result",
+        "fn-apc-intern-row-at-is-reference",
+        "fn-apc-held-facts-of-is-reference",
+        "fn-apc-own-finish-is-ccar-own-finish",
+        "fn-apc-own-outcome-is-acar-own-outcome",
+        "fn-apc-submission-intent-is-reference",
+        "fn-apc-carrier-form-is-reference",
+        "fn-apc-current-plan-is-reference",
+        "fn-apc-filing-plan-is-reference"
+      ]
+    },
+    {
+      "id": "PRF-277",
+      "title": "A POST's retention admission reads a carried obligation-id trie",
+      "statement": "books/post-retain-carried.lisp (post-alloc-2). The carry pairs a retention ledger with its id trie; fn-prc-carryp: the trie answers exactly the known ids of the ledger it names (no owner state, so no owner step falsifies it; since PRF-289 a path-compressed id trie, fn-prc-set-okp). KEYSTONES fn-prc-sbud-prepare-is-pidx-sbud-prepare (under fn-prc-carryp, the prepare host/owner-host.lisp fn-owner-prepare-buffer installs is PRF-191's fn-pidx-sbud-prepare), fn-prc-carryp-of-refresh (the host's one writer, fn-prc-refresh, keeps the recognizer), fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare (the composition). Local policy; no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-191"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/post-retain-carried.lisp",
+        "tests/acl2/post-retain-carried-tests.lisp"
+      ],
+      "progress_note": "post-alloc-2 (helper post-alloc-2-retain) 2026-09-27: the per-POST pin walk (fn-retain-pin-id-scanp, ~12% of POST CPU at N=10,000) replaced by one trie lookup; cost: the trie (~2 KB per pin) and a rebuild after a release (both closed by PRF-289).",
+      "events": [
+        "fn-prc-sbud-prepare-is-pidx-sbud-prepare",
+        "fn-prc-carryp-of-refresh",
+        "fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare"
+      ]
+    },
+    {
+      "id": "PRF-278",
+      "title": "The cancel refresh's row lookup and the view's record count read the Store's event index",
+      "statement": "books/control-visible-indexed.lisp and books/owner-refresh-indexed.lisp (post-alloc-2). KEYSTONES fn-ctl-row-event-ix-is-row-event and fn-ctl-refresh-withdrawals-ix-is-refresh-withdrawals (under fn-cei-correspondencep of the index and fn-ctl-rows-okp, which every Store history satisfies: fn-ctl-rows-okp-of-sf-state); fn-own-refresh-ix-is-own-refresh (under fn-sn-statep and fn-ceis-indexedp); the completions the host calls: fn-rix-own-finish-is-ccar-own-finish (through fn-apc-own-finish, host/owner-host.lisp fn-owner-finish-submission) and fn-rix-ocfg-complete-is-ccar-ocfg-complete (fn-owner-finish), under fn-ceis-indexedp of the owner Store (fn-osi-live-owner-store-is-indexed). The oldest event carrying the Message-ID is kept (flip-L8-2's semantics). books/control-visible.lisp fn-ctl-event-row: a standalone kind-2 verdict event is no longer read as a row (the held shape is required). Local policy; RFC 5537 s5.3 cancel semantics unchanged.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-180",
+        "PRF-210"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/control-visible-indexed.lisp",
+        "books/owner-refresh-indexed.lisp",
+        "tests/acl2/control-visible-indexed-tests.lisp",
+        "tests/acl2/owner-refresh-indexed-tests.lisp"
+      ],
+      "progress_note": "post-alloc-2 (helper post-alloc-2-refresh) 2026-09-27: the per-POST head-first walk of the history for the new article's row -> one Message-ID trie walk and one sequence read.",
+      "events": [
+        "fn-ctl-row-event-ix-is-row-event",
+        "fn-ctl-refresh-withdrawals-ix-is-refresh-withdrawals",
+        "fn-own-refresh-ix-is-own-refresh",
+        "fn-rix-own-finish-is-ccar-own-finish",
+        "fn-rix-ocfg-complete-is-ccar-ocfg-complete"
+      ]
+    },
+    {
+      "id": "PRF-279",
+      "title": "Compaction and reclaim off the whole history's octet lists: the compaction verb decides and captures over the history's length and one link's window, and the reclaim decision is a fold over one record at a time; each answers exactly what the whole-history function answers",
+      "statement": "books/store-compact-window.lisp (lane compact-arena, PKT-686 item 2). fn-scw-window-count (lens lower), the count of records the next link takes read from the records' lengths, is fn-ccc-fit of the records above LOWER: fn-scw-window-count-is-fit (equal (fn-scw-window-count (fn-scw-lens records) lower) (fn-ccc-fit (nthcdr (nfix lower) records))), no hypothesis. KEYSTONE fn-cverb-decide-window-is-cverb-decide: (implies (and (equal used (len records)) (equal window (fn-scw-window records lower))) (equal (fn-cverb-decide-window profile used lower window names generations selected disk-free) (fn-cverb-decide profile records lower names generations selected disk-free))). KEYSTONE fn-ccc-capture-link-window-is-capture-link: under the same two hypotheses (equal (fn-ccc-capture-link-window used window lower lower-frontier pred-generation pred-digest) (fn-ccc-capture-link records lower lower-frontier pred-generation pred-digest)). So PRF-085's and books/store-compact-verb.lisp's theorems about fn-cverb-decide and fn-ccc-capture-link (the capture succeeds, the pack fits the disk, the chain reconstructs the history, the publication crash walks the old or new chain) hold of what the host calls. Host: host/checkpoint-host.lisp fn-store-compact-window-count, fn-store-compact-decide-window, fn-store-checkpoint-chain-capture-window, called from host/native/checkpoint.lisp fnn-compact-window (the records' lengths, then the octet lists of the COUNT records from LOWER), fnn-compact-decide and fnn-pack-publish-generation. The two hypotheses are the host's reading of the records it holds (the lengths of its octet vectors; the window it slices by ACL2's count). RECLAIM: books/store-reclaim-stream.lisp fn-rcls-step folds one record into (USED MSGIDS-REVERSED FREED NEW-REVERSED SIZE SPANS) from fn-rcls-init, dropping the rewritten history once the rewritten prefix passes one link (*fn-cc-max-events*, *fn-cc-max-octets*; length and size only grow). KEYSTONE fn-rcls-decide-is-rclp-decide: (implies (and (true-listp records) (equal acc (fn-rcls-fold records (fn-rclp-ctx rule now s) (fn-rcls-init)))) (equal (fn-rcls-decide profile rule now s acc frontier lower names generations selected disk-free dry) (fn-rclp-decide profile rule now s records frontier lower names generations selected disk-free dry))), so books/store-reclaim-pack.lisp's keystones (fn-rclp-decide-publishes-the-rewrite, -pack-fits-the-disk, -reclaiming-pack-is-a-first-link, -keep-forever-writes-nothing) hold of what the host calls. Host: host/checkpoint-host.lisp fn-store-reclaim-context, fn-store-reclaim-init, fn-store-reclaim-step, fn-store-reclaim-decide-stream (the same clock observation for the context and the decision), from host/native/checkpoint.lisp fnn-reclaim-observe, which hands ACL2 one record's octet list at a time. Scope: the chain walk and coverage still read every link as octet lists; the process-death cuts are unchanged (same host functions and order).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-012",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-085",
+        "PRF-119",
+        "PRF-240"
       ],
       "assumptions": [
-        "A-HOST",
-        "A-DURABLE-EXTENT"
+        "A-HOST"
       ],
       "status": "uncertified-at-current-digest",
-      "events": [
-        "fn-arena-seal-extent-payload",
-        "fn-arena-extent-get{correspondence}",
-        "fn-arena-extent-seal-extent{correspondence}",
-        "fn-arx-extent-of-denotes-payload",
-        "fn-arx-intern-step-refines",
-        "fn-arx-entry-ok-of-durable"
-      ],
       "evidence": [
-        "books/assumptions.lisp",
-        "books/payload-arena-extent-logic.lisp",
-        "books/payload-arena-extent.lisp",
-        "books/payload-arena.lisp",
-        "books/payload-extent.lisp",
-        "tests/acl2/payload-arena-extent-tests.lisp",
-        "tests/acl2/payload-extent-tests.lisp",
-        "planning/evidence/arena-offheap-2-2026-09-27.md"
+        "books/store-compact-window.lisp",
+        "tests/acl2/store-compact-window-tests.lisp",
+        "host/checkpoint-host.lisp",
+        "host/native/checkpoint.lisp",
+        "planning/evidence/compact-arena-2026-09-27.md",
+        "books/store-reclaim-stream.lisp",
+        "tests/acl2/store-reclaim-stream-tests.lisp"
       ],
-      "progress_note": "Lane arena-offheap-2 (2026-09-27): stage 2 of the coordinator's off-heap decision. The open of a format-9 store seals extents on its full replay; the state-checkpoint route, the commit and format 8 stay resident (the record's section on what is not done)."
+      "progress_note": "Lane compact-arena (2026-09-27): both books and their test books REPL-admitted on hbox (w28); certification is the batch's. Renumbered from PRF-264 (dev's format-9 log row took it).",
+      "events": [
+        "fn-scw-window-count-is-fit",
+        "fn-cverb-decide-window-is-cverb-decide",
+        "fn-ccc-capture-link-window-is-capture-link",
+        "fn-rcls-decide-is-rclp-decide"
+      ]
+    },
+    {
+      "id": "PRF-280",
+      "title": "Every history the profile admits reopens: the open's recovery input bound is H plus the profile's transaction count times the per-record encoding overhead, which holds every admitted history's encoded records",
+      "statement": "books/store-replay-bound.lisp (lane compact-arena, the coordinator's addition to PKT-686). Since the records flip the history budget H counts an article row's payload octets while its transaction file holds the whole encoded record, so a store the budget admitted up to H held more than H octets of records and the open refused it at every heap size (\"transaction recovery input exceeds configured bound\": a small-preset store of 3,500 x 2 KiB posts, lane reservation-after-flip; post-alloc's capacity-vector store). fn-srb-replay-input-bound PROFILE = H + T x fn-srb-record-overhead, the overhead fn-record-encoded-octets-ceiling 0 G (books/records-shape.lisp: 1,083 + 261 G). KEYSTONE fn-srb-admitted-history-is-within-the-bound: (implies (and (fn-bs-profile-admittedp profile) (<= (len encoded) T) (<= (fn-srb-sum stored) H) (fn-srb-pointwise-within encoded stored (fn-srb-record-overhead profile))) (fn-srb-replay-within-boundp profile (fn-srb-sum encoded))): any history of at most T records whose budget octets sum within H, each record encoded within its budget octets plus the overhead, is within the bound. fn-srb-within-h-is-within-the-bound: everything the H bound accepted is accepted. Host: host/store-host.lisp fn-store-profile-replay-within-bound calls fn-srb-replay-within-boundp, from host/native/io.lisp fnn-durable-records and fnn-read-suffix-records. Scope: the per-record hypothesis is records-seam's narrow length bound for the records the POST path produces (fn-sbud-article-figure-bounds-the-record); every other row's budget octets are its whole encoding (fn-sbud-row-octets), overhead 0. The small preset's bound is 94,552,064 octets.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-023",
+        "STO-005"
+      ],
+      "depends_on": [
+        "PRF-198"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-replay-bound.lisp",
+        "tests/acl2/store-replay-bound-tests.lisp",
+        "host/store-host.lisp",
+        "host/native/io.lisp",
+        "planning/evidence/compact-arena-2026-09-27.md"
+      ],
+      "progress_note": "Lane compact-arena (2026-09-27): the book and its test book REPL-admitted on hbox (w28, --source-deps); certification is the batch's.",
+      "events": [
+        "fn-srb-admitted-history-is-within-the-bound",
+        "fn-srb-within-h-is-within-the-bound"
+      ]
+    },
+    {
+      "id": "PRF-285",
+      "title": "The configured Store relation, with its carried companion, survives every Store step of the article commit: the reservation's file steps, the carried prepare of a served article, the record file steps, the publishing directory observation, the refused reservation and the recovery barriers",
+      "statement": "books/config-store-steps.lisp. The configured fold over a history extended by one Store event is one event step from the fold without it (fn-cstp-replay-append-event: hypotheses the history recoverable at the event's transaction id, the event's sequence and transaction id, and the event served by the fold's configuration). fn-cst-relation (books/config-store-traces.lisp) is preserved by fn-sn-io for the reservation's and recovery barrier's operations for every result (fn-cstp-reserve-io-preserves-relation), by the record file and link steps and a non-publishing directory observation (fn-cstp-record-io-preserves-relation), by the carried article prepare the host calls (books/store-prepare-correspondence.lisp fn-spc-prepare) when the article's groups are served by the replayed configuration (fn-cstp-spc-prepare-preserves-relation), by the directory observation that publishes an article candidate given the carried companion fn-cstp-carriedp (fn-cstp-held-record-dir-preserves-relation), and with fn-cstp-carriedp by the refused reservation (fn-cstp-refuse-reservation-preserves). fn-cstp-carriedp (the prepare gate's facts about the candidate from staging to the directory observation; at :completing the topic prefix one short of the history; elsewhere the topic prefix at the history's length with status :ok) is preserved by the same steps, by fn-sn-finish (fn-cstp-finish-preserves-carriedp) and by the configuration install (fn-cstp-configure-durable-preserves-carriedp), and established by the configured open (fn-cstp-open-establishes-carriedp). The companion is necessary: fn-cst-relation's :completing arm demands fn-sn-completion-enabledp, which no record-phase arm carries (corrupted-state witness in the teeth).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-001",
+        "PRF-004"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config-store-steps.lisp",
+        "planning/evidence/control-quanta-2-2026-09-27.md",
+        "tests/acl2/owner-log-ocl-tests.lisp"
+      ],
+      "progress_note": "Lane control-quanta-2 (Opus 5.5, 2026-09-27; PKT-827 (c)). REPL-admitted on hbox against dev; teeth in tests/acl2/owner-log-ocl-tests.lisp (every keystone's reachable witness on the configured owner and its POST article; hypothesis witnesses: the served hypothesis by a retired group, the companion by a topic counter off the history, fn-cst-relation by a node advanced past the frontier).",
+      "events": [
+        "fn-cstp-replay-append-event",
+        "fn-cstp-reserve-io-preserves-relation",
+        "fn-cstp-record-io-preserves-relation",
+        "fn-cstp-spc-prepare-preserves-relation",
+        "fn-cstp-held-record-dir-preserves-relation",
+        "fn-cstp-refuse-reservation-preserves",
+        "fn-cstp-finish-preserves-carriedp",
+        "fn-cstp-open-establishes-carriedp"
+      ]
+    },
+    {
+      "id": "PRF-286",
+      "title": "The configured owner's invariant is carried across the format-9 commit, the live configuration completion and recovery, so the carried completion's hypothesis holds at every completion",
+      "statement": "books/owner-log-ocl.lisp. fn-lgoc-invariantp OC = (fn-ocl-relation OC) and fn-cstp-carriedp of its Store. It is established by the recovery the host calls on either path (fn-lgoc-recover-installs-invariant: fn-ock-recover-extended of a capture extended over the rest of the history, not :fault) and preserved by every host step of an article's life on the log route: fn-olr-ocfg-reserve (host/owner-host.lisp fn-owner-io :log-reserve; fn-lgoc-log-reserve-preserves-invariant), the prepare below the budget gate (fn-sbud-prepare; fn-lgoc-sbud-prepare-preserves-invariant) and the host's fn-pidx-sbud-prepare under its two carried index premises (fn-lgoc-pidx-sbud-prepare-preserves-invariant), both with the hypothesis that an article's groups are served by the live configuration (host/owner-host.lisp fn-owner-prepare-buffer tests it; the prepare does not), fn-olr-ocfg-order with an article staged (:log-order; fn-lgoc-log-order-preserves-invariant), the finish (fn-owner-finish-submission; fn-lgoc-finish-preserves-invariant), the refused reservation (fn-owner-refuse-reservation; fn-lgoc-refuse-reservation-preserves-invariant), every safe file observation incl. the recovery barriers (fn-lgoc-rcon-io-preserves-invariant), and the live configuration completion fn-oclc-publish (fn-lgoc-publish-preserves-invariant). The step lemma: an owner over a Store related to the same configuration history and a history extending its own satisfies fn-ocl-relation (fn-lgoc-ocl-relation-of-owner-with-store).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-285",
+        "PRF-274",
+        "PRF-001",
+        "PRF-191"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-log-ocl.lisp",
+        "planning/evidence/control-quanta-2-2026-09-27.md",
+        "tests/acl2/owner-log-ocl-tests.lisp"
+      ],
+      "progress_note": "Lane control-quanta-2 (Opus 5.5, 2026-09-27; PKT-827 (c)). Proved against the owner-model steps the host calls on dev 92bb10df1 (it contains log-2 and scheduler-2-rebase: their START/BARRIER/COMPLETE and pipelined sync call the same fn-olr-ocfg-reserve/-order, prepare and finish per member). Not covered: the deferred publications (retention, identity, consumer, topic prepares and their order), fn-owner-known-abort, :begin/:take and the served reads (they leave the Store unchanged; their fn-ocl-relation theorems exist).",
+      "events": [
+        "fn-lgoc-ocl-relation-of-owner-with-store",
+        "fn-lgoc-log-reserve-preserves-invariant",
+        "fn-lgoc-sbud-prepare-preserves-invariant",
+        "fn-lgoc-pidx-sbud-prepare-preserves-invariant",
+        "fn-lgoc-log-order-preserves-invariant",
+        "fn-lgoc-finish-preserves-invariant",
+        "fn-lgoc-refuse-reservation-preserves-invariant",
+        "fn-lgoc-rcon-io-preserves-invariant",
+        "fn-lgoc-publish-preserves-invariant",
+        "fn-lgoc-recover-installs-invariant"
+      ]
+    },
+    {
+      "id": "PRF-287",
+      "title": "A live configuration request is authorized from the owner's carried state before publication: an authorized record's completion is durable, and the durable history reopens to the state it installs",
+      "statement": "books/config-owner-carried.lisp fn-oclc-live-authorizep (host/owner-host.lisp fn-owner-reconfigure-authorizedp, called by host/native/admin.lisp fnn-owner-live-reconfigure-locked after staging and before fnn-admin-publish): the staged record applies to the owner's carried node and configuration (fn-oclc-configure changes the configuration history). fn-oclc-live-authorizep-is-durable-completion: for a staged record at its generation, the completion fn-oclc-publish answers :durable iff the request was authorized (never :recovery-required for an authorized record). KEYSTONE fn-oclc-authorized-record-reopens (hypotheses fn-ocl-relation OC and the authorization): the Store the completion installs satisfies fn-cpo-history-relation -- the configured fold of the configuration history extended by the record over the Store's history (the log's records the owner carries) succeeds and its node at the frontier, domain and capacity are the installed ones -- with the history extended by exactly the record, the Store history and frontier unchanged, and the live configuration the reopened fold's (fn-ocl-store-config). It reads no record and replays nothing.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-274",
+        "PRF-209"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config-owner-carried.lisp",
+        "host/owner-host.lisp",
+        "host/native/admin.lisp",
+        "planning/evidence/control-quanta-2-2026-09-27.md",
+        "tests/acl2/owner-log-ocl-tests.lisp"
+      ],
+      "progress_note": "Lane control-quanta-2 (Opus 5.5, 2026-09-27; PKT-827 (b)). The candidate open fnn-admin-authorize runs over transactions/ (empty on a format-9 store) is kept for the publication's lock, names and final name. The identity, consumer and topic replays of the reopen do not depend on the configuration history and are not restated here.",
+      "events": [
+        "fn-oclc-live-authorizep-is-durable-completion",
+        "fn-oclc-authorized-record-reopens"
+      ]
+    },
+    {
+      "id": "PRF-288",
+      "title": "While a batch's barrier is in flight readers are served at the durable view and new POSTs are prepared into the next batch: no read reveals a record of the batch in flight or of the next one before its COMPLETE, and no new POST joins the batch in flight",
+      "statement": "Subjects: fn-ocv-capture (host/owner-host.lisp fn-owner-reader-views-capture, called by host/native/owner.lisp fnn-owner-reader-capture at the committer's START, START-NEXT, COMPLETE and drop), fn-ocfg-with-view / fn-ocfg-at-reader-view (host/owner-host.lisp fn-owner-at-reader-view, around fn-owner-chunk-span and fn-owner-open), fn-olr-take (host/native/io.lisp fnn-log-take). KEYSTONE fn-ocvm-reader-view-is-the-completed-prefix (books/owner-reader-view.lisp): in the capture discipline's count model (a view as the record count it is the view of), along every legal run of START (at an idle owner), START-NEXT (behind a batch in flight, no next open), :unnext, COMPLETE and drop events from the idle owner, the reader view fn-ocv-reader-view is C, the count of records whose batch COMPLETED (whose barrier returned fenced: fn-ocp-complete-only-after-the-barrier), while the working view is C + A + B (A the batch in flight, B the next batch): no read counts a record of either batch before its COMPLETE. Hypothesis: the run is legal (fn-ocvm-legal-run-p), which fn-ocp-start-next-only-behind-a-sync and fn-ocp-sync-only-when-none-in-flight give the host's event order; the model counts views, the host captures the view objects at the same points. KEYSTONE fn-ocl-relation-of-a-view-captured-before-appends: the view of a related owner OC0 (fn-ocl-relation), put into a related owner OC whose Store has only appended records since OC0 (the same configuration history and configuration), gives a related owner, and the view's version is at most OC0's record count: every served-read theorem stated under fn-ocl-relation (fn-scar-ocfg-read-span-is-reference-under-ocl-relation among them) holds of the read a reader quantum runs during a barrier, over the replay of at most the records the Store held at the capture. Hypotheses: the append-only Store and the unchanged configuration between capture and read (in flight no control quantum runs: fn-ocs-in-flight-admits-only-inspect-commit-and-reader). Scope: the relation of the owner AFTER the reader's entry, with the working view put back, is not restated here (no read-preservation theorem exists for the served path today). KEYSTONE fn-olr-take-never-joins-the-batch-in-flight: the log's take never changes the kernel's INFLIGHT, and a taken record is appended to the open BATCH; with fn-ocp-sync-only-when-none-in-flight (the open batch is sealed only after the batch in flight is fenced) a POST a reader queued during a barrier never joins the batch in flight.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-267",
+        "PRF-272"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reader-view.lisp",
+        "tests/acl2/owner-reader-view-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_owner_scheduler.py"
+      ],
+      "progress_note": "Lane owner-scheduler-2 (Opus 5.5, 2026-09-27; PKT-688 (4) slice 2, on lane commit-onto-log's :commit class). Host lines: host/native/owner.lisp fnn-owner-gate-pick calls fn-ocs-next at every release of the owner and every arrival at an idle one; fnn-owner-gate-leave calls fn-ocs-observe; fnn-owner-commit-event calls fn-ocs-commit-event inside the committer's :commit quanta (fnn-owner-commit-batch: START = fnn-owner-commit-start-locked, then fnn-owner-commit-barrier with the owner released, then COMPLETE = fnn-owner-commit-complete-locked under a second :commit quantum whose unwind-protect applies :completed); host/native/control.lisp fnn-control-live-status-answer enters as :inspect after ACL2's fn-native-live-status-host-requestp chose that path. Teeth: tests/acl2/owner-commit-steps-tests.lisp (states reached from fn-ocs-init; the keystone tight at 1 in and out of a batch; must-fail with the inspect absent for three picks: delay 3; in flight only readers waiting: nobody admitted, and the same readers admitted after :fenced/:completed (must-fail); the step machine's whole cycle and its faults). Native: tests.test_native_owner_scheduler test_status_is_answered_while_a_batch_barrier_is_in_flight (a developer selector holds the barrier 6 s: status answered inside it, GROUP and the 240 after it).",
+      "events": [
+        "fn-ocvm-reader-view-is-the-completed-prefix",
+        "fn-ocl-relation-of-a-view-captured-before-appends",
+        "fn-olr-take-never-joins-the-batch-in-flight",
+        "fn-ocl-view-historyp-of-a-view-captured-before-appends",
+        "fn-ocl-view-configp-of-a-view-captured-before-appends",
+        "fn-ocfg-at-reader-view-reads-the-reader-view",
+        "fn-ocfg-with-view-keeps-the-rest"
+      ]
+    },
+    {
+      "id": "PRF-283",
+      "title": "The owner holds its ledger as a snoc-list: the commit appends one pair in O(1), and the take, the outcome and the host's finish read its length in O(1)",
+      "statement": "books/owner.lisp (post-alloc-3). The owner record's ledger field holds a snoc-list (books/snoc-list.lisp; a plain list, nil included, represents itself: fn-sl-list-when-plain); fn-own-ledger reads the list back (fn-sl-list of fn-own-ledger-field) and fn-own-make takes the FIELD, so a transition that keeps the ledger passes the field through and fn-own-ledger-of-fn-own-make reads (fn-sl-list FIELD), which fn-sl-list-of-fn-own-ledger-field names back as the ledger. fn-own-ledger-count (O(1) on a snoc form) is the length for every owner (fn-own-ledger-count-is-len); fn-own-take-submission's mark and fn-own-completion-consumedp read it through mbe (logic unchanged). KEYSTONES (no hypothesis): fn-rix-own-complete-enabled-ledger-field (the completion the host calls puts the pair on the field with fn-sl-snoc: one cons) and fn-rix-own-complete-enabled-ledger (the ledger it represents is the old one with the pair appended); fn-sl-list-of-fn-sl-snoc (PRF-275) for every value. Host subjects: host/owner-host.lisp fn-owner-finish-submission -> books/owner-refresh-indexed.lisp fn-rix-own-finish -> fn-rix-own-complete -> fn-rix-own-complete-enabled; fn-owner-finish -> fn-rix-ocfg-complete (the same completion) and compares fn-own-ledger-count before and after. Before: the commit copied the ledger (fn-ag-append), 16 B x POSTs-since-open per POST, and the take and the outcome walked it for its length. Local policy (D27: bound work, not data); no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020",
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-275",
+        "PRF-278"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/snoc-list.lisp",
+        "books/owner.lisp",
+        "books/owner-refresh-indexed.lisp",
+        "tests/acl2/owner-refresh-indexed-tests.lisp"
+      ],
+      "progress_note": "post-alloc-3 2026-09-27.",
+      "events": [
+        "fn-own-ledger-of-fn-own-make",
+        "fn-own-refresh-ix-keeps-ledger-field",
+        "fn-rix-own-complete-enabled-ledger-field",
+        "fn-rix-own-complete-enabled-ledger"
+      ]
+    },
+    {
+      "id": "PRF-284",
+      "title": "A POST's profile admission is decided once per open and carried",
+      "statement": "books/store-profile-carried.lisp (post-alloc-3). The carry pairs the Store profile with its admission verdict (fn-pvc-make, written once by host/owner-host.lisp fn-owner-install-profile; NIL at the recovery reset); fn-pvc-carryp: the verdict is fn-bs-profile-admittedp of the profile it names (no owner state, so no owner step falsifies it; fn-pvc-carryp-of-make, fn-pvc-carryp-when-atom); a reader uses the verdict only for the profile the carry names and decides afresh otherwise. KEYSTONES fn-pvc-article-budget-carried-is-cvec-article-budget-for (under fn-pvc-carryp, the budget fn-owner-prepare-buffer and fn-owner-prepare hand the prepare is fn-cvec-article-budget-for of the profile in hand), fn-pvc-post-boundary-carried-is-sbud-post-boundary (fn-owner-post-boundary), fn-pvc-verdict-carried-is-cvec-verdict-at (fn-owner-publication-verdict). Local policy; no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-profile-carried.lisp",
+        "tests/acl2/store-profile-carried-tests.lisp"
+      ],
+      "progress_note": "post-alloc-3 (helper post-alloc-3-profile) 2026-09-27: the store profile's validation (frame layout, the texts' UTF-8 decode, every relation) ran about a dozen times per POST in the budget and the POST boundary; now once per open.",
+      "events": [
+        "fn-pvc-article-budget-carried-is-cvec-article-budget-for",
+        "fn-pvc-post-boundary-carried-is-sbud-post-boundary",
+        "fn-pvc-verdict-carried-is-cvec-verdict-at",
+        "fn-pvc-carryp-of-make"
+      ]
+    },
+    {
+      "id": "PRF-289",
+      "title": "The carried obligation-id set is a path-compressed id trie, updated by the retention delta",
+      "statement": "books/post-retain-carried.lisp (post-alloc-3). The carry's set is a path-compressed id trie whose leaves are the ledger's own id strings (fn-rit-put, fn-rit-hasp; fn-rit-hasp-of-put holds for every node). fn-prc-carryp is fn-prc-set-okp: every pin and release id is in the trie and every string stored in it is a known id; fn-prc-set-okp-is-knownp: the trie then answers exactly fn-rii-knownp of the ledger it names. fn-prc-refresh keeps the carry for the same ledger, applies the retention delta (releases consed on the carried ones; pins = new pins over the carried ones less released ones: fn-prc-delta, fn-prc-set-okp-of-delta) and rebuilds only otherwise (fn-prc-set-okp-of-build); fn-prc-carryp-of-refresh. KEYSTONE unchanged: fn-prc-sbud-prepare-is-pidx-sbud-prepare (the prepare host/owner-host.lisp fn-owner-prepare-buffer installs is PRF-191's fn-pidx-sbud-prepare under fn-prc-carryp), through fn-prc-admissiblep-is-admissiblep. host/owner-host.lisp fn-owner-install-extended builds the carry at every recovery (fn-prc-refresh of nil). Local policy; no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-277",
+        "PRF-191"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/post-retain-carried.lisp",
+        "tests/acl2/post-retain-carried-tests.lisp"
+      ],
+      "progress_note": "post-alloc-3 (helper post-alloc-3-retain) 2026-09-27, hbox REPL, 10,000 pins with random 64-hex ids: live set 1,246,448 -> 27,820 conses (~2 KB -> ~45 B per pin); a release refresh 24.3 MB rebuild -> ~50 us and no allocation (delta); the first POST's build moved to the owner open (4.8 MB, 0.02 s).",
+      "events": [
+        "fn-rit-hasp-of-put",
+        "fn-prc-set-okp-is-knownp",
+        "fn-prc-set-okp-of-build",
+        "fn-prc-set-okp-of-delta",
+        "fn-prc-carryp-of-refresh",
+        "fn-prc-admissiblep-is-admissiblep",
+        "fn-prc-sbud-prepare-is-pidx-sbud-prepare"
+      ]
+    },
+    {
+      "id": "PRF-266",
+      "title": "The open streams the transaction files: the numbered chunk checks each file's sequence in its one decode, and the unframe answers the payload without copying it",
+      "statement": "Subjects, called by the host: fn-srs-checked-decode and fn-srs-unframe (books/store-recover-stream.lisp sections 5 and 6). host/native/io.lisp fnn-recover-full-replay (fnn-recover: every full-replay open, the store verbs and the owner start) reads the transaction files a chunk at a time as the replay takes them (fnn-recover-file-chunks): each file unframed by fnn-unframe-list, which sends the file as its protected prefix and its trailer to host/store-host.lisp fn-store-unframe-split (fn-srs-unframe), then the chunk of (FILE-NUMBER . RECORD) pairs to fn-srs-checked-decode, then its value to the guard-verified fn-srs-intern-step unless it answered :sequence (the host faults, as the per-file check did). KEYSTONE fn-srs-checked-decode-is-the-per-file-check: for every numbered chunk, fn-srs-checked-decode is :bad when a record does not decode, otherwise :sequence unless every record's sequence (fn-srs-record-sequence, which host/store-host.lisp fn-store-record-sequence is) is its file's number, and otherwise the decode of the chunk's records. fn-srs-checked-step-is-the-step: the host's two calls over a numbered chunk are fn-srs-step over its records, so PRF-261's fold keystone carries over. KEYSTONE fn-srs-unframe-is-the-frame-decode (no hypothesis, guard-verified subject): fn-srs-unframe of PREFIX and TRAILER is fn-frame-store-decode of their concatenation with fn-frame-trailer of PREFIX, which is what fnn-unframe computed for the whole file and its digest; on a well-formed frame its payload is PREFIX's own tail (no copy). Scope: the full-replay path without a selected pack (with one, the history is fnn-committed-history's and goes over in chunks by PRF-261); the open now answers the record count, and the verbs that need the records read them with fnn-history-records, which on a format-9 store reads the record log (fnn-log-history-records: the log kernel's committed records) and on format 8 the per-file layout (lane rm2-format9).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-025",
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-261"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-recover-stream.lisp",
+        "tests/acl2/store-recover-stream-tests.lisp",
+        "host/native/io.lisp",
+        "host/store-host.lisp",
+        "planning/evidence/recover-memory-2-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T101827Z-2393395.json",
+        "planning/evidence/manifests/certify-20260927T102055Z-2406623.json",
+        "planning/evidence/manifests/certify-20260927T115349Z-494554.json",
+        "planning/evidence/rm2-format9-2026-09-27.md"
+      ],
+      "progress_note": "Lane recover-memory-2 (2026-09-27, PKT-823 items 1-4): every form REPL-admitted on hbox; certified on hbox at the lane's book bytes (books/store-recover-stream 6.2 s in certify-20260927T101827Z-2393395; tests/acl2/store-recover-stream-tests 2.6 s at 2 jobs, farm run-20260927T102005Z-f809, certify-20260927T102055Z-2406623). Measured on the 32 KiB fixture, interleaved: peak dynamic 1,811 -> 1,514 MB, live after the open 1,148 -> 831 MB, consed 49.0 -> 16.0 GB; production image recover RSS 1.83 -> 1.25 GB.",
+      "events": [
+        "fn-srs-checked-decode-is-the-per-file-check",
+        "fn-srs-checked-step-is-the-step",
+        "fn-srs-unframe-is-the-frame-decode"
+      ]
+    },
+    {
+      "id": "PRF-290",
+      "title": "The owner's prepares decide the served groups themselves, and the carried owner invariant holds across every owner prepare the host calls, the deferred publications' order and the known abort",
+      "statement": "books/owner-prepare-served.lisp and books/owner-prepare-served-ocl.lisp. The host's article prepare is fn-psrv-prepare (host/owner-host.lisp fn-owner-prepare-buffer and fn-owner-prepare): fn-prc-sbud-prepare when fn-psrv-event-servedp of the live configuration and the record, the owner unchanged otherwise (fn-psrv-prepare-refuses-unserved, fn-psrv-prepare-when-served); the refusal word is fn-psrv-refusal-kind (:refused for an unserved group). The host makes no served test. fn-psrv-event-servedp equals the configured replay's fn-cpr-event-servedp at the configuration (fn-psrv-event-servedp-is-cpr-event-servedp). KEYSTONES, each with fn-lgoc-invariantp (PRF-286) as the only hypothesis unless named: fn-psrv-prepare-preserves-invariant (plus fn-prc-carryp and the two carried index premises of PRF-191/PRF-242; no served hypothesis), fn-psrv-prepare-identity-preserves-invariant (fn-owner-prepare-identity: fn-psrv-prepare-identity tests a signed composite's article groups), fn-psrv-prepare-retention-preserves-invariant and fn-psrv-prepare-consumer-preserves-invariant ((:store (:prepare-retention/consumer E)) through fn-ocfg-step), fn-psrv-prepare-topic-preserves-invariant (fn-owner-prepare-topic: fn-psrv-prepare-topic, which is (:store (:prepare-topic E)) where the consumer projection admits E, fn-psrv-prepare-topic-is-ocfg-step-when-admitted), fn-psrv-known-abort-preserves-invariant ((:store (:known-abort))), fn-psrv-rcon-io-preserves-invariant (every record file observation of any staged record) and fn-psrv-log-order-preserves-invariant (fn-olr-ocfg-order whatever is staged). Store level: fn-psrv-deferred-stage-preserves (a deferred candidate staged at the reservation keeps fn-cst-relation and fn-cstp-carriedp), fn-psrv-deferred-record-dir-preserves-relation, fn-psrv-known-abort-preserves. The bridge to the budget gate: fn-psrv-prepare-is-sbud-prepare-when-served (under the carry's recognizer and PRF-191/PRF-242's carried view premises, the host's prepare of a served record is fn-sbud-prepare). The standalone Store's POST (host/store-node-host.lisp fn-store-sn-prepare) calls fn-psrv-store-prepare-next (books/store-prepare-served.lisp), which stages only a record whose groups the configuration serves (fn-psrv-store-prepare-next-cases).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-286",
+        "PRF-285",
+        "PRF-191",
+        "PRF-242",
+        "PRF-144"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-prepare-served.lisp",
+        "books/owner-prepare-served-ocl.lisp",
+        "books/store-prepare-served.lisp",
+        "tests/acl2/owner-prepare-served-tests.lisp",
+        "planning/evidence/prepare-served-2026-09-27.md"
+      ],
+      "progress_note": "Lane prepare-served (Opus 5.5, 2026-09-27; PKT-827 (d)). The retired-group witness (control-quanta-2's *lgt-r-prepared*) is refused by the host's prepare with the invariant kept. Teeth for the identity, consumer and topic prepares are the theorems' corrupted-state witnesses only (no configured-owner fixture carries those events); the index and carry premises of the article prepare keep PRF-191's and post-alloc-2's teeth.",
+      "events": [
+        "fn-psrv-prepare-preserves-invariant",
+        "fn-psrv-prepare-identity-preserves-invariant",
+        "fn-psrv-prepare-retention-preserves-invariant",
+        "fn-psrv-prepare-consumer-preserves-invariant",
+        "fn-psrv-prepare-topic-preserves-invariant",
+        "fn-psrv-prepare-topic-is-ocfg-step-when-admitted",
+        "fn-psrv-known-abort-preserves-invariant",
+        "fn-psrv-rcon-io-preserves-invariant",
+        "fn-psrv-log-order-preserves-invariant",
+        "fn-psrv-deferred-record-dir-preserves-relation",
+        "fn-psrv-known-abort-preserves",
+        "fn-psrv-prepare-is-sbud-prepare-when-served",
+        "fn-psrv-store-prepare-next-cases"
+      ]
+    },
+    {
+      "id": "PRF-291",
+      "title": "A configuration request refused before its record is written is un-staged by ACL2, so the configuration lock does not outlive the refusal",
+      "statement": "books/owner-prepare-served.lisp fn-psrv-unstage, called by host/owner-host.lisp fn-owner-reconfigure-unstage from host/native/admin.lisp fnn-owner-live-reconfigure-locked on the three pre-publication refusals (fn-oclc-live-authorizep refused, fnn-admin-authorize's candidate open refused, the immutable publisher's :refused); an uncertain publication or a fault keeps the stage and fences. KEYSTONE fn-psrv-unstage-preserves-invariant (hypothesis fn-lgoc-invariantp): the result carries the invariant, has the same owner (so the same Store and durable state: a process death on either side of the un-stage recovers the same history), configuration and pins, and nothing staged. Before it, a refused request left the record staged and fn-ocfg-step refused every :begin and :take (every POST) until a restart.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-286",
+        "PRF-287"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-prepare-served.lisp",
+        "books/owner-prepare-served-ocl.lisp",
+        "tests/acl2/owner-prepare-served-tests.lisp",
+        "planning/evidence/prepare-served-2026-09-27.md"
+      ],
+      "progress_note": "Lane prepare-served (Opus 5.5, 2026-09-27). Teeth: control-quanta-2's *lgt-stale* refuses :begin before and admits it after.",
+      "events": [
+        "fn-psrv-unstage-preserves-invariant"
+      ]
     }
   ]
 }

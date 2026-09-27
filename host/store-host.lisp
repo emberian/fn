@@ -25,6 +25,7 @@
 (include-book "../books/byte-store-txn-name")
 (include-book "../books/store-budget-naming")
 (include-book "../books/store-profile-facts")
+(include-book "../books/store-replay-bound")
 (include-book "../books/store-profile-open")
 (include-book "../books/store-mount-identity")
 (include-book "../books/store-profile-namespace")
@@ -32,6 +33,8 @@
 (include-book "../books/article-fields")
 (include-book "../books/store-log-route")
 (include-book "../books/store-log-segments")
+(include-book "../books/store-log-extend")
+(include-book "../books/store-init-log-publication")
 
 (defconst *fn-store-max-text* 512)
 
@@ -141,14 +144,13 @@
 
 ; A journal record's sequence, read off the WIRE event its octets decode to
 ; (fn-rcon-wire-event-sequence-is-wire-event-sequence, books/records-concrete):
-; the host names and orders transaction files by it before any intern.
+; the host names and orders transaction files by it before any intern.  It is
+; books/store-recover-stream.lisp fn-srs-record-sequence, whose check the
+; streaming open makes inside its one decode (fn-srs-checked-decode,
+; KEYSTONE fn-srs-checked-decode-is-the-per-file-check).
 (defun fn-store-record-sequence (octets)
   (declare (xargs :mode :program))
-  (let ((decoded (fn-store-event-decode-exact octets)))
-    (if (and (consp decoded) (equal (car decoded) :ok)
-             (consp (cdr decoded)) (fn-rcon-wire-event-p (car (cdr decoded))))
-        (fn-rcon-wire-event-sequence (car (cdr decoded)))
-      -1)))
+  (fn-srs-record-sequence octets))
 
 (defun fn-store-record-txid (octets)
   (declare (xargs :mode :program))
@@ -288,6 +290,15 @@
 
 (defun fn-store-frame-store-decode (octets digest)
   (fn-store-frame-result (fn-frame-store-decode octets digest)))
+
+; The open's unframe of a transaction file split at its trailer
+; (host/native/io.lisp fnn-unframe-list): books/store-recover-stream.lisp
+; fn-srs-unframe, KEYSTONE fn-srs-unframe-is-the-frame-decode (the frame
+; decode of PREFIX then TRAILER with PREFIX's trailer, as
+; fn-store-frame-store-decode above answers for the whole file and its
+; digest), with the payload PREFIX's own tail.
+(defun fn-store-unframe-split (prefix trailer)
+  (fn-store-frame-result (fn-srs-unframe prefix trailer)))
 
 (defun fn-store-frame-workflow-encode (kind values digest)
   (fn-frame-workflow-encode kind values digest))
@@ -532,10 +543,11 @@
       :admissible
     :refused))
 
-;; The replay bound every open checks per record
-;; (books/store-profile-facts.lisp).
+;; The replay bound every open checks per record: H plus T records' encoding
+;; overhead (books/store-replay-bound.lisp; every history the profile admits
+;; is within it, `fn-srb-admitted-history-is-within-the-bound').
 (defun fn-store-profile-replay-within-bound (profile aggregate)
-  (fn-profile-replay-within-boundp profile aggregate))
+  (fn-srb-replay-within-boundp profile aggregate))
 
 (defun fn-store-publication-kind-ceiling (kind)
   (fn-store-publication-ceiling kind))

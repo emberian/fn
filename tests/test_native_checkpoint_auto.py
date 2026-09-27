@@ -73,9 +73,18 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         self.assertIn("(fnn-core 'fn-owner-sco-prepare base base-payloads configs records", publish)
         self.assertIn("(fnn-live-octets-pub) arun)", publish)
         prepare = native_cuts.host_function(owner_host, "fn-owner-sco-prepare")
-        self.assertIn("(fn-scka-next-checkpoint base h0 configs records fn-arena)", prepare)
-        self.assertIn("(fn-scka-publication-setup next frontier revision seg budget free", prepare)
-        self.assertIn("(fn-scka-write-setup records seg fn-arena)", prepare)
+        # (the base is kept stripped of its event index and restored here:
+        # fn-scka-restore-base-of-strip-of-capture, PKT-PRS-2)
+        self.assertIn("(fn-scka-next-checkpoint (fn-scka-restore-base base) h0 configs records", prepare)
+        self.assertIn("(fn-scka-publication-setup next frontier revision log seg budget free", prepare)
+        # checkpoint-arena-3: the arena run's setup from the host's bounded
+        # walk (fn-scka-srcs-n: lengths and sources in one pass, no alpha
+        # in the write), not a second walk of the rows.
+        self.assertIn("(fn-scka-lens-setup (reverse (nth 1 walked)) seg)", prepare)
+        self.assertIn("(fn-scka-initial-state (reverse (nth 2 walked)) (nth 1 ws) 0)", prepare)
+        self.assertIn("(fnn-checkpoint-walk records)", publish)
+        walk = native_cuts.host_function(io, "fnn-checkpoint-walk")
+        self.assertIn("(fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+", walk)
         self.assertIn("(fnn-live-octets-pub)", publish)
         self.assertNotIn("(fnn-live-octets)", publish)
         self.assertNotIn("'fn-ock-publication ", publish)
@@ -169,6 +178,8 @@ class AutoCheckpointFixture(scp.StateCheckpointFixture):
 class AutoCheckpointTests(AutoCheckpointFixture):
     def test_the_owner_publishes_after_half_k_and_the_file_reopens_as_the_full_replay(self):
         self.init_development()
+        # the segments the publication will drop (T8) stay readable
+        self.keep_log()
         owner = self.start_owner(self.image)
         self.ids = self.post_batch(0, 64)
         line = self.owner_line(owner, CHECKPOINT_AUTO)
@@ -192,6 +203,7 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         from_checkpoint = self.observation()
         aside = self.root / "aside.fnsc"
         self.path().rename(aside)
+        self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
         self.assertEqual(self.open_line(), "open=full-replay reason=absent")
         self.assertEqual(self.observation(), from_checkpoint)
         aside.rename(self.path())

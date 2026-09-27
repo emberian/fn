@@ -60,7 +60,7 @@
 ; The same through the store the host reads (fn-sbud-bytes-used over the
 ; kernel's records; fn-sbud-bytes-used-is-the-stored-octets).
 (defconst *sbst-store*
-  (list nil nil (list :store-files :ready 2 nil (nth 4 *sbst-open*) nil nil nil 0)))
+  (list nil nil (fn-sf-make :ready 2 nil (nth 4 *sbst-open*) nil nil nil 0)))
 (assert-event (equal (fn-sbud-bytes-used *sbst-store*) 8))
 ; The carried sum from a prefix cache agrees (fn-sbud-bytes-used-is-kernel-sum).
 (assert-event (equal (fn-sbud-bytes-extend

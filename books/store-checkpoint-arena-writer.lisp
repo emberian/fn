@@ -78,11 +78,14 @@
 
 ; (list N KS COUNT OCTETS): the payload count, the batches, the run's
 ; segments and the run's octets.
+(defun fn-scka-lens-setup (lens seg)
+  (declare (xargs :guard (and (nat-listp lens) (natp seg)) :verify-guards nil))
+  (let ((ks (fn-scka-batches lens seg)))
+    (list (len lens) ks (+ 1 (len ks)) (fn-scka-run-octets lens (+ 1 (len ks))))))
+
 (defun fn-scka-write-setup (rows seg fn-arena)
   (declare (xargs :stobjs fn-arena :guard (natp seg) :verify-guards nil))
-  (let* ((lens (fn-scka-canon-lens rows fn-arena))
-         (ks (fn-scka-batches lens seg)))
-    (list (len lens) ks (+ 1 (len ks)) (fn-scka-run-octets lens (+ 1 (len ks))))))
+  (fn-scka-lens-setup (fn-scka-canon-lens rows fn-arena) seg))
 
 (defthm fn-scka-write-setup-facts
   (let ((su (fn-scka-write-setup rows seg fn-arena))
@@ -93,21 +96,86 @@
   :hints (("Goal" :in-theory (disable fn-scka-batches fn-scka-lens))))
 
 ; -----------------------------------------------------------------------------
+; 1b. Each canonical payload's SOURCE (lane checkpoint-arena-3): where the
+; writer copies it from.  A held row's payload is its handle in the live
+; arena (when the handle is sealed; else no octets), any other sealing
+; row's is the octet list its wire event carries (a composite's article).
+; The writer copies a handle's octets straight from the arena, one
+; fn-arena-get per octet (`fn-scka-append-src'), so the arena run is written
+; without alpha: the history is never materialized as wire records to write
+; it.  One walk of the rows (`fn-scka-srcs-n', in bounded steps) gives the
+; lengths and the sources together.
+
+(defun fn-scka-src-of (row w fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (if (and (fn-held-p row) (fn-record-p w))
+      (let ((h (fn-record-payload row)))
+        (if (and (natp h) (< h (fn-arena-count fn-arena))) h nil))
+    (fn-scka-payload-of w)))
+
+(defun fn-scka-canon-srcs (rows fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (if (atom rows)
+      nil
+    (let ((w (fn-row-wire-of (car rows) fn-arena)))
+      (if (fn-scka-sealsp w)
+          (cons (fn-scka-src-of (car rows) w fn-arena) (fn-scka-canon-srcs (cdr rows) fn-arena))
+        (fn-scka-canon-srcs (cdr rows) fn-arena)))))
+
+; (A true list whatever the value: the writer's step theorems need no
+; hypothesis about the arena; true-list-fix of a true list is the list, one
+; walk and no allocation.)
+(defun fn-scka-src-payload (s fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (true-list-fix
+   (if (natp s)
+       (if (< s (fn-arena-count fn-arena)) (fn-arena-payload s fn-arena) nil)
+     s)))
+
+(defun fn-scka-src-payloads (srcs fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (atom srcs)
+      nil
+    (cons (fn-scka-src-payload (car srcs) fn-arena)
+          (fn-scka-src-payloads (cdr srcs) fn-arena))))
+
+; -----------------------------------------------------------------------------
 ; 2. The batch: the next K canonical payloads appended to the buffer, each
 ; its length and its octets; the rows after the K-th sealing row.
 ; (mv ROWS' fn-octets)
 
-(defun fn-scka-append-batch (rows k fn-arena fn-octets)
-  (declare (xargs :stobjs (fn-arena fn-octets) :guard (natp k) :verify-guards nil
-                  :measure (len rows)))
-  (if (or (atom rows) (zp k))
-      (mv rows fn-octets)
-    (let ((w (fn-row-wire-of (car rows) fn-arena)))
-      (if (fn-scka-sealsp w)
-          (let ((fn-octets (fn-octets-append-list
-                            (fn-scka-payload-octets (fn-scka-payload-of w)) fn-octets)))
-            (fn-scka-append-batch (cdr rows) (1- k) fn-arena fn-octets))
-        (fn-scka-append-batch (cdr rows) k fn-arena fn-octets)))))
+; A source the writer can copy: a sealed handle, or an octet list; either
+; way a length the run's length field encodes (at most 255 digits).
+(defun fn-scka-src-okp (s fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (natp s)
+      (and (< s (fn-arena-count fn-arena))
+           (fn-scc-nat-encodablep (fn-arena-payload-len s fn-arena)))
+    (and (fn-cbor-octet-listp s) (true-listp s)
+         (fn-scc-nat-encodablep (len s)))))
+
+(defun fn-scka-srcs-okp (srcs fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (atom srcs)
+      t
+    (and (fn-scka-src-okp (car srcs) fn-arena)
+         (fn-scka-srcs-okp (cdr srcs) fn-arena))))
+
+; One source's length field and octets, in one bulk append (the payload's
+; octets read from the arena as one list, never through alpha).
+(defun fn-scka-append-src (s fn-arena fn-octets)
+  (declare (xargs :stobjs (fn-arena fn-octets) :verify-guards nil
+                  :guard (fn-scka-src-okp s fn-arena)))
+  (fn-octets-append-list (fn-scka-payload-octets (fn-scka-src-payload s fn-arena)) fn-octets))
+
+(defun fn-scka-append-batch (srcs k fn-arena fn-octets)
+  (declare (xargs :stobjs (fn-arena fn-octets) :verify-guards nil
+                  :guard (and (natp k) (fn-scka-srcs-okp srcs fn-arena))
+                  :measure (len srcs)))
+  (if (or (atom srcs) (zp k))
+      (mv srcs fn-octets)
+    (let ((fn-octets (fn-scka-append-src (car srcs) fn-arena fn-octets)))
+      (fn-scka-append-batch (cdr srcs) (1- k) fn-arena fn-octets))))
 
 ; A sealed event's payload is an octet list (the record's payload field).
 (local
@@ -193,17 +261,41 @@
  (defthm fn-scka-append-assoc
    (equal (append (append a b) c) (append a (append b c)))))
 
+(local
+ (defthm fn-scka-payload-listp-nth
+   (implies (fn-arn-payload-listp xs)
+            (and (fn-cbor-octet-listp (nth h xs)) (true-listp (nth h xs))))
+   :hints (("Goal" :in-theory (enable nth fn-cbor-octet-listp)))))
+
+; An admissible source reads back an octet list whose length encodes.
+(defthm fn-scka-src-okp-payload
+  (implies (and (fn-arena-p fn-arena) (fn-scka-src-okp s fn-arena))
+           (let ((p (fn-scka-src-payload s fn-arena)))
+             (and (fn-cbor-octet-listp p) (true-listp p)
+                  (fn-scc-nat-encodablep (len p)))))
+  :hints (("Goal" :in-theory (e/d (fn-arena-p-is-payload-listp) (fn-scc-nat-encodablep)))))
+
 (defthm fn-scka-append-batch-is-body
-  (implies (and (natp k) (<= k (len (fn-scka-canon-payloads rows fn-arena)))
-                (true-listp fn-octets))
-           (let ((r (fn-scka-append-batch rows k fn-arena fn-octets)))
+  (implies (and (natp k) (<= k (len srcs)) (true-listp fn-octets))
+           (let ((r (fn-scka-append-batch srcs k fn-arena fn-octets)))
              (and (equal (mv-nth 1 r)
                          (append fn-octets
-                                 (fn-scka-body (take k (fn-scka-canon-payloads rows fn-arena)))))
-                  (equal (fn-scka-canon-payloads (mv-nth 0 r) fn-arena)
-                         (nthcdr k (fn-scka-canon-payloads rows fn-arena))))))
-  :hints (("Goal" :induct (fn-scka-append-batch rows k fn-arena fn-octets)
-           :in-theory (e/d (fn-oct-append-list-is-append) (fn-scka-payload-octets)))))
+                                 (fn-scka-body (take k (fn-scka-src-payloads srcs fn-arena)))))
+                  (equal (mv-nth 0 r) (nthcdr k srcs)))))
+  :hints (("Goal" :induct (fn-scka-append-batch srcs k fn-arena fn-octets)
+           :in-theory (e/d (fn-oct-append-list-is-append) (fn-scka-payload-octets
+                                                           fn-scka-src-payload
+                                                           fn-scka-src-okp)))))
+
+(defthm fn-scka-len-src-payloads
+  (equal (len (fn-scka-src-payloads srcs fn-arena)) (len srcs)))
+
+(local (defthm fn-scka-nthcdr-nil (equal (nthcdr n nil) nil)))
+
+(defthm fn-scka-src-payloads-nthcdr
+  (equal (fn-scka-src-payloads (nthcdr k srcs) fn-arena)
+         (nthcdr k (fn-scka-src-payloads srcs fn-arena)))
+  :hints (("Goal" :in-theory (disable fn-scka-src-payload))))
 
 (verify-guards fn-scka-payload-of)
 (verify-guards fn-scka-canon-lens)
@@ -213,7 +305,126 @@
  (defthm fn-scka-canon-lens-nat-listp
    (nat-listp (fn-scka-canon-lens rows fn-arena))))
 
+; (Section 1b, continued: the sources read back the canonical payloads.)
+(local
+ (defthm fn-scka-record-payload-of-held-wire
+   (equal (fn-record-payload (fn-held-wire h p)) p)
+   :hints (("Goal" :in-theory (enable fn-held-wire)))))
+
+(local
+ (defthm fn-scka-payload-of-not-natp
+   (implies (fn-scka-sealsp w)
+            (not (natp (fn-scka-payload-of w))))
+   :hints (("Goal" :use ((:instance fn-scka-payload-of-octets))
+            :in-theory (disable fn-scka-payload-of-octets fn-scka-payload-of fn-scka-sealsp)))))
+
+(local
+ (defthm fn-scka-payload-of-record
+   (implies (fn-record-p w) (equal (fn-scka-payload-of w) (fn-record-payload w)))
+   :hints (("Goal" :in-theory (enable fn-scka-payload-of)))))
+
+; A sealing row's source reads back its canonical payload.
+(defthm fn-scka-src-payload-of-src-of
+  (implies (fn-scka-sealsp (fn-row-wire-of row fn-arena))
+           (equal (fn-scka-src-payload (fn-scka-src-of row (fn-row-wire-of row fn-arena) fn-arena)
+                                       fn-arena)
+                  (fn-scka-payload-of (fn-row-wire-of row fn-arena))))
+  :hints (("Goal" :cases ((and (fn-held-p row) (fn-record-p (fn-row-wire-of row fn-arena))))
+           :in-theory (e/d (fn-scka-src-of fn-scka-src-payload)
+                           (fn-scka-sealsp fn-scka-payload-of fn-record-p fn-row-wire-of)))
+          ("Subgoal 1" :use ((:instance fn-scka-payload-of-octets
+                                        (w (fn-row-wire-of row fn-arena))))
+           :in-theory (e/d (fn-scka-src-of fn-scka-src-payload fn-row-wire-of
+                                        fn-row-bytes)
+                                       (fn-scka-sealsp fn-scka-payload-of fn-record-p
+                                        fn-held-wire fn-scka-payload-of-octets)))))
+
+(defthm fn-scka-src-payloads-of-canon-srcs
+  (equal (fn-scka-src-payloads (fn-scka-canon-srcs rows fn-arena) fn-arena)
+         (fn-scka-canon-payloads rows fn-arena))
+  :hints (("Goal" :induct (fn-scka-canon-srcs rows fn-arena)
+           :in-theory (disable fn-scka-src-of fn-scka-src-payload fn-row-wire-of
+                               fn-scka-sealsp fn-scka-payload-of))))
+
+; The walk: up to N rows per call, the lengths and the sources consed onto
+; LACC and SACC (reversed).  (list ROWS' LACC' SACC').
+(defun fn-scka-srcs-n (rows n lacc sacc fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (natp n) :verify-guards nil
+                  :measure (nfix n)))
+  (if (or (atom rows) (zp n))
+      (list rows lacc sacc)
+    (let ((w (fn-row-wire-of (car rows) fn-arena)))
+      (if (fn-scka-sealsp w)
+          (fn-scka-srcs-n (cdr rows) (1- n)
+                          (cons (len (fn-scka-payload-of w)) lacc)
+                          (cons (fn-scka-src-of (car rows) w fn-arena) sacc)
+                          fn-arena)
+        (fn-scka-srcs-n (cdr rows) (1- n) lacc sacc fn-arena)))))
+
+; The host's bounded calls are one walk (the state after A rows, walked B
+; more, is the walk of A + B rows).
+(defthm fn-scka-srcs-n-compose
+  (implies (and (natp a) (natp b))
+           (equal (let ((st (fn-scka-srcs-n rows a lacc sacc fn-arena)))
+                    (fn-scka-srcs-n (nth 0 st) b (nth 1 st) (nth 2 st) fn-arena))
+                  (fn-scka-srcs-n rows (+ a b) lacc sacc fn-arena)))
+  :hints (("Goal" :induct (fn-scka-srcs-n rows a lacc sacc fn-arena)
+           :in-theory (disable fn-scka-src-of fn-row-wire-of fn-scka-sealsp fn-scka-payload-of))))
+
+; The whole walk is the lengths and the sources, reversed onto the
+; accumulators; the rows are consumed.
+(defthm fn-scka-srcs-n-complete
+  (implies (and (true-listp rows) (<= (len rows) (nfix n)))
+           (equal (fn-scka-srcs-n rows n lacc sacc fn-arena)
+                  (list nil
+                        (revappend (fn-scka-canon-lens rows fn-arena) lacc)
+                        (revappend (fn-scka-canon-srcs rows fn-arena) sacc))))
+  :hints (("Goal" :induct (fn-scka-srcs-n rows n lacc sacc fn-arena)
+           :in-theory (disable fn-scka-src-of fn-row-wire-of fn-scka-sealsp fn-scka-payload-of))))
+
+(verify-guards fn-scka-lens-setup)
 (verify-guards fn-scka-write-setup)
+(verify-guards fn-scka-src-of)
+(verify-guards fn-scka-canon-srcs)
+(verify-guards fn-scka-srcs-n)
+
+; The lengths are naturals (the host hands the walk's lengths to
+; fn-scka-lens-setup).
+(defthm fn-scka-srcs-n-lens-nat-listp
+  (implies (nat-listp lacc)
+           (nat-listp (nth 1 (fn-scka-srcs-n rows n lacc sacc fn-arena))))
+  :hints (("Goal" :in-theory (disable fn-scka-src-of fn-row-wire-of fn-scka-sealsp
+                                      fn-scka-payload-of))))
+
+; Every source of a sealing row is one the writer can copy.
+(local
+ (defthm fn-scka-held-wire-payloadp
+   (implies (fn-record-p (fn-held-wire row bytes))
+            (fn-record-payloadp bytes))
+   :hints (("Goal" :use ((:instance fn-scka-record-payloadp (x (fn-held-wire row bytes))))
+            :in-theory (disable fn-scka-record-payloadp fn-held-wire fn-record-p)))))
+
+(local
+ (defthm fn-scka-payloadp-encodable
+   (implies (fn-record-payloadp p)
+            (fn-scc-nat-encodablep (len p)))
+   :hints (("Goal" :use ((:instance fn-scka-len-le-digits-bound (n (len p)) (k 8)))
+            :in-theory (e/d (fn-record-payloadp fn-scc-nat-encodablep)
+                            (fn-scka-len-le-digits-bound))))))
+
+(defthm fn-scka-src-okp-of-src-of
+  (implies (fn-scka-sealsp (fn-row-wire-of row fn-arena))
+           (fn-scka-src-okp (fn-scka-src-of row (fn-row-wire-of row fn-arena) fn-arena) fn-arena))
+  :hints (("Goal" :use ((:instance fn-scka-payload-of-octets (w (fn-row-wire-of row fn-arena)))
+                        (:instance fn-scka-record-payloadp-bound (w (fn-row-wire-of row fn-arena))))
+           :in-theory (e/d (fn-row-wire-of fn-row-bytes fn-scka-sealsp fn-scka-payload-of)
+                           (fn-scka-payload-of-octets fn-scka-record-payloadp-bound
+                            fn-held-wire fn-record-p fn-stxa-p fn-replay-composite-record)))))
+
+(defthm fn-scka-srcs-okp-of-canon-srcs
+  (fn-scka-srcs-okp (fn-scka-canon-srcs rows fn-arena) fn-arena)
+  :hints (("Goal" :induct (fn-scka-canon-srcs rows fn-arena)
+           :in-theory (disable fn-scka-src-of fn-scka-src-okp fn-row-wire-of fn-scka-sealsp))))
 
 ; The publication's setup: the table pipeline's (books/owner-checkpoint-
 ; writer.lisp fn-ockp-setup: the tables of NEXT, their estimate, the
@@ -230,30 +441,36 @@
       (let ((estimate (+ alen (nfix (fn-sco-at 6 setup)))))
         (update-nth 6 estimate
                     (update-nth 0 (fn-ockp-decide estimate budget free) setup))))))
+(verify-guards fn-scka-append-src
+  :hints (("Goal" :use ((:instance fn-scka-src-okp-payload))
+           :in-theory (e/d (fn-scc-nat-encodablep)
+                           (fn-scka-src-okp-payload fn-scka-payload-octets fn-scka-src-payload
+                            fn-scka-src-okp)))))
+
 (verify-guards fn-scka-append-batch
-  :hints (("Goal" :use ((:instance fn-scka-payload-of-digits
-                                   (w (fn-row-wire-of (car rows) fn-arena)))
-                        (:instance fn-scka-payload-of-octets
-                                   (w (fn-row-wire-of (car rows) fn-arena))))
-           :in-theory (disable fn-scka-payload-of-digits fn-scka-payload-of-octets
-                               fn-scka-payload-octets))))
+  :hints (("Goal" :in-theory (disable fn-scka-append-src fn-scka-src-okp))))
+
+(defthm fn-scka-append-src-octets-p
+  (implies (and (fn-arena-p fn-arena) (fn-scka-src-okp s fn-arena) (fn-octets-p fn-octets))
+           (fn-octets-p (fn-scka-append-src s fn-arena fn-octets)))
+  :hints (("Goal" :use ((:instance fn-scka-src-okp-payload)
+                        (:instance fn-scka-payload-octets-cbor
+                                   (p (fn-scka-src-payload s fn-arena))))
+           :in-theory (e/d (fn-oct-octets-p-is-octet-listp fn-oct-append-list-is-append
+                            fn-scc-nat-encodablep)
+                           (fn-scka-src-okp-payload fn-scka-payload-octets-cbor
+                            fn-scka-payload-octets fn-scka-src-payload fn-scka-src-okp)))))
 
 (defthm fn-scka-append-batch-octets-p
-  (implies (fn-octets-p fn-octets)
-           (fn-octets-p (mv-nth 1 (fn-scka-append-batch rows k fn-arena fn-octets))))
-  :hints (("Goal" :induct (fn-scka-append-batch rows k fn-arena fn-octets)
-           :in-theory (e/d (fn-oct-octets-p-is-octet-listp fn-oct-append-list-is-append)
-                           (fn-scka-payload-octets)))
-          ("Subgoal *1/2" :use ((:instance fn-scka-payload-octets-cbor
-                                           (p (fn-scka-payload-of (fn-row-wire-of (car rows)
-                                                                                  fn-arena))))
-                                (:instance fn-scka-payload-of-digits
-                                           (w (fn-row-wire-of (car rows) fn-arena)))
-                                (:instance fn-scka-payload-of-octets
-                                           (w (fn-row-wire-of (car rows) fn-arena))))
-           :in-theory (e/d (fn-oct-octets-p-is-octet-listp fn-oct-append-list-is-append)
-                           (fn-scka-payload-octets fn-scka-payload-octets-cbor
-                            fn-scka-payload-of-digits fn-scka-payload-of-octets)))))
+  (implies (and (fn-arena-p fn-arena) (fn-scka-srcs-okp srcs fn-arena) (fn-octets-p fn-octets))
+           (fn-octets-p (mv-nth 1 (fn-scka-append-batch srcs k fn-arena fn-octets))))
+  :hints (("Goal" :induct (fn-scka-append-batch srcs k fn-arena fn-octets)
+           :in-theory (disable fn-scka-append-src fn-scka-src-okp))))
+
+(defthm fn-scka-srcs-okp-nthcdr
+  (implies (fn-scka-srcs-okp srcs fn-arena)
+           (fn-scka-srcs-okp (nthcdr k srcs) fn-arena))
+  :hints (("Goal" :in-theory (disable fn-scka-src-okp))))
 
 (local
  (defthm fn-scka-last-frame-true-list-listp
@@ -285,7 +502,8 @@
 (defun fn-scka-write-step (pst n count s segment-bound file-bound fn-arena fn-octets)
   (declare (xargs :stobjs (fn-arena fn-octets) :verify-guards nil
                   :guard (and (true-listp pst) (natp n) (fn-scc-nat-encodablep n)
-                              (natp count) (natp s))))
+                              (natp count) (natp s)
+                              (fn-scka-srcs-okp (nth 1 pst) fn-arena))))
   (let* ((index (nfix (nth 0 pst))) (rows (nth 1 pst)) (ks (nth 2 pst))
          (prev (nth 3 pst)) (total (nfix (nth 4 pst)))
          (fn-octets (fn-octets-clear fn-octets)))
@@ -372,7 +590,7 @@
 ; advanced over it.
 (defthm fn-scka-write-step-batch
   (let* ((r (fn-scka-write-step pst n count s segment-bound file-bound fn-arena fn-octets))
-         (ps (fn-scka-canon-payloads (nth 1 pst) fn-arena))
+         (ps (fn-scka-src-payloads (nth 1 pst) fn-arena))
          (k (nfix (car (nth 2 pst))))
          (c (fn-scka-body (take k ps))))
     (implies (and (posp (nth 0 pst)) (<= k (len ps))
@@ -381,17 +599,18 @@
                          (fn-scc-concat (fn-scc-frames (list c) (nth 0 pst) count s (nth 3 pst))))
                   (consp (mv-nth 2 r))
                   (equal (nth 0 (mv-nth 2 r)) (+ 1 (nth 0 pst)))
-                  (equal (fn-scka-canon-payloads (nth 1 (mv-nth 2 r)) fn-arena) (nthcdr k ps))
+                  (equal (nth 1 (mv-nth 2 r)) (nthcdr k (nth 1 pst)))
                   (equal (nth 2 (mv-nth 2 r)) (cdr (nth 2 pst)))
                   (equal (nth 3 (mv-nth 2 r))
                          (fn-scc-seal (nth 3 pst) (fn-scc-header (nth 0 pst) count (len c) s) c)))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-scka-append-batch-is-body
-                            (rows (nth 1 pst)) (k (nfix (car (nth 2 pst)))) (fn-octets nil)))
+                            (srcs (nth 1 pst)) (k (nfix (car (nth 2 pst)))) (fn-octets nil)))
            :in-theory (e/d (fn-oct-append-list-is-append)
                            (fn-scka-append-batch-is-body fn-scka-append-batch fn-scka-body
+                            fn-scka-head fn-scc-le-digits fn-sccr-nth-is-cell
                             fn-ockp-admit-frames fn-scc-header fn-scc-seal fn-scc-frames
-                            fn-scka-canon-payloads fn-sccb-plan-octets)))))
+                            fn-scka-src-payloads fn-sccb-plan-octets fn-scka-srcs-okp)))))
 
 ; The head step: the tag and N framed at 0.
 (defthm fn-scka-write-step-head
@@ -446,61 +665,88 @@
     (implies (and (posp (nth 0 pst))
                   (equal count (+ (nth 0 pst) (len (nth 2 pst))))
                   (equal (fn-scka-sum (nth 2 pst))
-                         (len (fn-scka-canon-payloads (nth 1 pst) fn-arena)))
+                         (len (fn-scka-src-payloads (nth 1 pst) fn-arena)))
                   (equal (mv-nth 0 r) :ok))
              (equal (mv-nth 1 r)
                     (fn-scc-concat
-                     (fn-scc-frames (fn-scka-chunks (fn-scka-canon-payloads (nth 1 pst) fn-arena)
+                     (fn-scc-frames (fn-scka-chunks (fn-scka-src-payloads (nth 1 pst) fn-arena)
                                                     (nth 2 pst))
                                     (nth 0 pst) count s (nth 3 pst))))))
   :hints (("Goal" :induct (fn-scka-write-run pst n count s segment-bound file-bound fuel
                                              fn-arena fn-octets)
            :in-theory (e/d () (fn-scka-write-step fn-scka-body fn-scc-header fn-scc-seal
                                fn-scka-write-step-batch fn-scka-write-step-head
-                               fn-scka-canon-payloads fn-sccb-plan-octets fn-scka-chunks)))
+                               fn-scka-src-payloads fn-sccb-plan-octets fn-scka-srcs-okp fn-scka-chunks
+                               ; rules the octet buffer and the NNTP books export that
+                               ; fire on every list here and never help
+                               fn-nntp-article-idp-is-consp fn-oct-bufp-true-listp
+                               fn-octets$c-bufp)))
           ("Subgoal *1/4" :use ((:instance fn-scka-write-step-batch
                                            (count (+ (car pst) (len (nth 2 pst)))))))))
 
-; KEYSTONE (the writer).  From the initial state over the live ROWS, the
-; octets of every step's frames, in order, are the arena run of the rows'
-; canonical payloads with the batches KS: exactly the segments
+; From the initial state over the sources SRCS, the octets of every step's
+; frames, in order, are the arena run of the sources' payloads with the
+; batches KS: exactly the segments
 ; books/store-checkpoint-arena-load.lisp `fn-scka-load-of-written-file'
 ; loads to those payloads.  Any buffer contents before the first step.
 ; The hypotheses are what `fn-scka-write-setup' establishes
 ; (fn-scka-write-setup-facts: N, the sum of KS, COUNT); a step the reader
 ; would refuse ends the loop with its reason, which is not :ok.
-(defthm fn-scka-write-run-is-run-segments
-  (let* ((ps (fn-scka-canon-payloads rows fn-arena))
-         (r (fn-scka-write-run (fn-scka-initial-state rows ks total) (len ps) (+ 1 (len ks))
+(defthm fn-scka-write-run-srcs-is-run-segments
+  (let* ((ps (fn-scka-src-payloads srcs fn-arena))
+         (r (fn-scka-write-run (fn-scka-initial-state srcs ks total) (len ps) (+ 1 (len ks))
                                s segment-bound file-bound fuel fn-arena fn-octets)))
     (implies (and (equal (fn-scka-sum ks) (len ps))
                   (equal (mv-nth 0 r) :ok))
              (equal (mv-nth 1 r) (fn-scc-concat (fn-scka-run-segments ps ks s)))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-scka-write-step-head
-                            (pst (fn-scka-initial-state rows ks total))
-                            (n (len (fn-scka-canon-payloads rows fn-arena)))
+                            (pst (fn-scka-initial-state srcs ks total))
+                            (n (len (fn-scka-src-payloads srcs fn-arena)))
                             (count (+ 1 (len ks))))
                  (:instance fn-scka-write-run-batches
                             (pst (mv-nth 2 (fn-scka-write-step
-                                            (fn-scka-initial-state rows ks total)
-                                            (len (fn-scka-canon-payloads rows fn-arena))
+                                            (fn-scka-initial-state srcs ks total)
+                                            (len (fn-scka-src-payloads srcs fn-arena))
                                             (+ 1 (len ks)) s segment-bound file-bound
                                             fn-arena fn-octets)))
-                            (n (len (fn-scka-canon-payloads rows fn-arena)))
+                            (n (len (fn-scka-src-payloads srcs fn-arena)))
                             (count (+ 1 (len ks))) (fuel (1- fuel))
                             (fn-octets (mv-nth 3 (fn-scka-write-step
-                                                  (fn-scka-initial-state rows ks total)
-                                                  (len (fn-scka-canon-payloads rows fn-arena))
+                                                  (fn-scka-initial-state srcs ks total)
+                                                  (len (fn-scka-src-payloads srcs fn-arena))
                                                   (+ 1 (len ks)) s segment-bound file-bound
                                                   fn-arena fn-octets)))))
            :in-theory (e/d (fn-scka-run-segments fn-scka-run-chunks)
                            (fn-scka-write-step-head fn-scka-write-run-batches
                             fn-scka-write-step-batch fn-scka-write-step
                             fn-scka-body fn-scc-header fn-scc-seal fn-scka-head
-                            fn-scka-canon-payloads fn-sccb-plan-octets fn-scka-chunks)))))
+                            fn-scka-src-payloads fn-sccb-plan-octets fn-scka-srcs-okp fn-scka-chunks)))))
 
 ; -----------------------------------------------------------------------------
+
+; KEYSTONE (the writer).  From the initial state over the SOURCES of the
+; live ROWS (fn-scka-canon-srcs, which the host's bounded fn-scka-srcs-n
+; calls produce: fn-scka-srcs-n-compose, fn-scka-srcs-n-complete), the
+; octets of every step's frames, in order, are the arena run of the rows'
+; canonical payloads with the batches KS: exactly the segments
+; books/store-checkpoint-arena-load.lisp `fn-scka-load-of-written-file'
+; loads to those payloads.  Any buffer contents before the first step.
+(defthm fn-scka-write-run-is-run-segments
+  (let* ((ps (fn-scka-canon-payloads rows fn-arena))
+         (r (fn-scka-write-run (fn-scka-initial-state (fn-scka-canon-srcs rows fn-arena) ks total)
+                               (len ps) (+ 1 (len ks))
+                               s segment-bound file-bound fuel fn-arena fn-octets)))
+    (implies (and (equal (fn-scka-sum ks) (len ps))
+                  (equal (mv-nth 0 r) :ok))
+             (equal (mv-nth 1 r) (fn-scc-concat (fn-scka-run-segments ps ks s)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-scka-write-run-srcs-is-run-segments
+                            (srcs (fn-scka-canon-srcs rows fn-arena))))
+           :in-theory (disable fn-scka-write-run-srcs-is-run-segments fn-scka-write-run
+                               fn-scka-initial-state fn-scka-run-segments fn-scka-canon-srcs
+                               fn-scka-canon-payloads))))
+
 ; 5. The owner's next checkpoint.  The owner publishes from its live rows
 ; while it serves: BASE is the checkpoint it last captured (at the open, the
 ; open's extended checkpoint E; after a publication, that publication's
@@ -597,3 +843,48 @@
                             fn-scka-intern-at fn-scka-payloads fn-rows-wire-of
                             fn-sco-extend fn-sco-capture fn-scka-canon-rows
                             fn-scka-canon-payloads)))))
+
+; -----------------------------------------------------------------------------
+; 6. The base the owner KEEPS between publications (lane checkpoint-arena-3;
+; per-record-state PKT-PRS-2: a kept base's own event index was 0.68 KB per
+; record, a second trie beside the store node's).  The owner keeps the base
+; STRIPPED of its event index (`fn-scka-strip-base') and rebuilds it from the
+; base's records when it publishes (`fn-scka-restore-base', the index
+; fn-sco-capture builds), so between publications only the records and the
+; four projections are retained.  host/owner-host.lisp: the base is stored
+; stripped (fn-owner-install-extended, fn-owner-sco-publication-done) and
+; restored in fn-owner-sco-prepare before fn-scka-next-checkpoint.
+
+(defun fn-scka-strip-base (c)
+  (declare (xargs :guard t))
+  (fn-sco-make (fn-sco-records c) (fn-sco-cpr c) (fn-sco-identity c)
+               (fn-sco-consumer c) (fn-sco-topic c) nil))
+
+(defun fn-scka-restore-base (c)
+  (declare (xargs :guard t))
+  (fn-sco-make (fn-sco-records c) (fn-sco-cpr c) (fn-sco-identity c)
+               (fn-sco-consumer c) (fn-sco-topic c)
+               (fn-cei-build-aux (true-list-fix (fn-sco-records c)) 0 nil)))
+
+(local
+ (defthm fn-scka-true-list-fix-true-list-fix
+   (equal (true-list-fix (true-list-fix x)) (true-list-fix x))))
+
+; KEYSTONE (the kept base): restoring the stripped capture is the capture,
+; so fn-scka-next-checkpoint-is-capture's BASE hypothesis holds of what the
+; owner restores exactly when it held of what it stripped.
+(defthm fn-scka-restore-base-of-strip-of-capture
+  (equal (fn-scka-restore-base (fn-scka-strip-base (fn-sco-capture configs records)))
+         (fn-sco-capture configs records))
+  :hints (("Goal" :in-theory (e/d (fn-sco-capture fn-sco-make fn-sco-records fn-sco-cpr
+                                   fn-sco-identity fn-sco-consumer fn-sco-topic
+                                   fn-sco-event-index fn-sco-at)
+                                  (fn-sco-cpr-prefix fn-replay-identity-loop
+                                   fn-cpe-projection-replay fn-th-prefix-loop
+                                   fn-cei-build-aux)))))
+
+; The stripped base keeps what the owner reads of it between publications:
+; its records (the covered count).
+(defthm fn-scka-strip-base-keeps-the-records
+  (equal (fn-sco-records (fn-scka-strip-base c)) (fn-sco-records c))
+  :hints (("Goal" :in-theory (enable fn-sco-make fn-sco-records fn-sco-at))))

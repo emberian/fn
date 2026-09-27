@@ -181,7 +181,8 @@
 ; image is the store itself, and every acknowledged member's record is in its
 ; scan.  With the batch in flight (st4/bs4), the two anonymous acknowledged
 ; members (r1, r2) are in the scan of each of three admissible images: all
-; units landed, none landed, the first entry's landed.
+; units landed, none landed, the first units landed (the batch is one packed
+; entry since PKT-749, read whole or not at all).
 
 (defun owb-sels (count k sel other)
   (declare (xargs :guard t :verify-guards nil))
@@ -192,7 +193,7 @@
   (let ((ks (fn-owb-ks (owb-st4))))
     (floor (len (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (owb-unit))) (owb-unit))))
 (defun owb-e1 () (declare (xargs :guard t :verify-guards nil))
-  (floor (len (fn-lg-entry (fn-lgk-last (fn-owb-ks (owb-st4))) (owb-r 3) (owb-unit))) (owb-unit)))
+  (floor (len (fn-lg-entry (fn-lgk-last (fn-owb-ks (owb-st4))) (list (owb-r 3)) (owb-unit))) (owb-unit)))
 (defun owb-choice (k) (declare (xargs :guard t :verify-guards nil))
   (list (owb-sels (owb-units) k :new :old)))
 (defun owb-image-scan (bs choices) (declare (xargs :guard t :verify-guards nil))
@@ -224,7 +225,9 @@
         (equal (owb-image-scan bs (owb-choice (owb-units)))
                (append (list (owb-r 1) (owb-r 2)) (owb-batch)))
         (equal (owb-image-scan bs (owb-choice 0)) (list (owb-r 1) (owb-r 2)))
-        (equal (owb-image-scan bs (owb-choice (owb-e1))) (list (owb-r 1) (owb-r 2) (owb-r 3)))
+        ; the first record's worth of units of the one packed entry: the
+        ; batch is not read in part (PKT-749)
+        (equal (owb-image-scan bs (owb-choice (owb-e1))) (list (owb-r 1) (owb-r 2)))
         (member-equal (owb-r 1) (owb-image-scan bs (owb-choice 0)))
         (member-equal (owb-r 2) (owb-image-scan bs (owb-choice (owb-e1)))))))
 
@@ -294,7 +297,8 @@
         ; the store the failed fsync left is the crash image of the selection
         (equal (owb-eio-bs choices) (fn-bs-crash bs choices))
         (null (fn-bs-pending (owb-eio-bs choices)))
-        (equal (fn-lgk-committed (owb-eio-ks choices)) (list (owb-r 1) (owb-r 2) (owb-r 3)))
+        ; a partial selection of the one packed entry recovers nothing of it
+        (equal (fn-lgk-committed (owb-eio-ks choices)) (list (owb-r 1) (owb-r 2)))
         (fn-lg-prefixp (nthcdr 2 (fn-lgk-committed (owb-eio-ks choices))) (owb-batch))
         ; the other selections: everything landed, nothing landed
         (equal (fn-lgk-committed (owb-eio-ks (owb-choice (owb-units))))

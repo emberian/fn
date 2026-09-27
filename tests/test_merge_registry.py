@@ -114,7 +114,7 @@ class RuleTests(unittest.TestCase):
         merged, conflicts = merge_registry.merge_documents(
             {"rows": [row("A")]}, {"rows": [row("A"), row("B", title="ours")]},
             {"rows": [row("A"), row("B", title="theirs")]}, "x.json")
-        self.assertEqual(merged["rows"][1]["title"], "ours")
+        self.assertEqual([r.get("title") for r in merged["rows"][1:]], ["ours", "theirs"])
         self.assertEqual(len(conflicts), 1)
         self.assertIn("CONFLICT B: both sides added this id", conflicts[0])
 

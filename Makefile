@@ -219,6 +219,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-carried-folds \
 	tests/acl2/store-carried-folds-tests \
 	books/store-profile-facts \
+	books/store-replay-bound \
+	tests/acl2/store-replay-bound-tests \
 	books/store-export \
 	tests/acl2/store-export-tests \
 	books/store-import-publication \
@@ -364,6 +366,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-reclaim-holders-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
+	books/store-reclaim-stream \
+	tests/acl2/store-reclaim-stream-tests \
 	books/reclaim-admission \
 	tests/acl2/reclaim-admission-tests \
 	tests/acl2/store-history-marker-tests \
@@ -395,6 +399,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-reclaim \
 	tests/acl2/store-log-reclaim-tests \
 	books/store-log-route-phases \
+	books/store-log-extend \
+	tests/acl2/store-log-extend-tests \
+	books/store-init-log-publication \
+	tests/acl2/store-init-log-publication-tests \
+	books/owner-feed-txid-reuse \
+	tests/acl2/owner-feed-txid-reuse-tests \
+	books/byte-store-log-initializer \
+	tests/acl2/byte-store-log-initializer-tests \
 	books/owner-log-route \
 	tests/acl2/owner-log-route-tests \
 	books/payload-lz \
@@ -428,7 +440,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-ingress-tests \
 	tests/acl2/bp-ingress-guards-tests \
 	books/bp-ingress-carried \
+	books/snoc-list \
 	tests/acl2/bp-ingress-carried-tests \
+	tests/acl2/snoc-list-tests \
 	books/record-width-producers \
 	tests/acl2/record-width-producers-tests \
 	tests/acl2/profile-monotonicity-tests \
@@ -494,6 +508,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-signed-binding-tests \
 	books/post-identity-index \
 	tests/acl2/post-identity-index-tests \
+	books/post-retain-carried \
+	tests/acl2/post-retain-carried-tests \
+	books/store-profile-carried \
+	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
 	books/owner-store-indexed \
@@ -851,6 +869,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-refresh \
 	books/catalog-number-index \
 	books/served-catalog \
+	books/served-catalog-chain \
+	books/served-catalog-owner \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -859,6 +879,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
 	books/store-checkpoint-arena \
+	books/store-checkpoint-share \
 	books/store-checkpoint-arena-load \
 	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \
@@ -877,6 +898,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
+	tests/acl2/served-catalog-chain-tests \
+	tests/acl2/served-catalog-owner-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
 	tests/acl2/catalog-number-index-tests \
@@ -931,6 +954,15 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-recover-ocl-tests \
 	books/config-owner-publish \
 	tests/acl2/config-owner-publish-tests \
+	books/config-owner-carried \
+	tests/acl2/config-owner-carried-tests \
+	books/config-store-steps \
+	books/owner-log-ocl \
+	tests/acl2/owner-log-ocl-tests \
+	books/owner-prepare-served \
+	books/store-prepare-served \
+	books/owner-prepare-served-ocl \
+	tests/acl2/owner-prepare-served-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \
@@ -1057,6 +1089,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-authored-accept-tests \
 	books/peer-carriage-rows \
 	books/peer-carriage \
+	books/owner-parse-carried \
+	tests/acl2/owner-parse-carried-tests \
 	tests/acl2/peer-carriage-tests \
 	books/peer-pull \
 	tests/acl2/peer-pull-tests \
@@ -1073,6 +1107,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/tls-reload-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
+	books/control-visible-indexed \
+	tests/acl2/control-visible-indexed-tests \
+	books/owner-refresh-indexed \
+	tests/acl2/owner-refresh-indexed-tests \
 	books/node-secret \
 	tests/acl2/node-secret-tests \
 	books/cancel-lock-lines \
@@ -1108,6 +1146,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-scheduler-tests \
 	books/owner-commit-class \
 	tests/acl2/owner-commit-class-tests \
+	books/owner-commit-steps \
+	tests/acl2/owner-commit-steps-tests \
+	books/owner-commit-pipeline \
+	tests/acl2/owner-commit-pipeline-tests \
+	books/owner-reader-view \
+	tests/acl2/owner-reader-view-tests \
+	books/store-log-route-programs \
+	tests/acl2/store-log-route-programs-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \

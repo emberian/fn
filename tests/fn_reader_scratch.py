@@ -33,6 +33,8 @@ import subprocess
 import sys
 import threading
 import time
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # the repository root
+from tools.wire_stream import whole_stream  # noqa: E402  writes are sendall
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -118,7 +120,7 @@ def main():
 
     def tls():
         raw = socket.create_connection(("127.0.0.1", tls_port), timeout=60)
-        stream = context.wrap_socket(raw, server_hostname="localhost").makefile("rwb", buffering=0)
+        stream = whole_stream(context.wrap_socket(raw, server_hostname="localhost"))
         stream.readline()
         return stream
 

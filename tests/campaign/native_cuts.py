@@ -195,16 +195,26 @@ LOG_PROGRAM_HOSTS = {
     "fn-lg-append-program": "fnn-log-append",
     "fn-lg-fence-program": "fnn-log-fence",
     "fn-lg-recover-program": "fnn-log-recover",
+    # The segment's extension (lane log-2, PKT-COL-4).
+    "fn-lg-extend-program": "fnn-log-ensure-extent",
 }
+LOG_EXTEND_BOOK = "store-log-extend.lisp"
+LOG_PROGRAM_BOOKS = {"fn-lg-extend-program": LOG_EXTEND_BOOK}
 LOG_CUTS = (
     NativeCut("log-written", "fn-lg-append-program", "either", book=LOG_BOOK),
     NativeCut("log-fenced", "fn-lg-fence-program", "present",
               follows="fn-lg-append-program", book=LOG_BOOK),
     NativeCut("log-truncated", "fn-lg-recover-program", "present", book=LOG_BOOK),
     NativeCut("log-recovered", "fn-lg-recover-program", "present", book=LOG_BOOK),
+    # A death during the extension (at rest: no batch in flight) leaves the
+    # committed records exactly (fn-lg-extension-written-crash-reads-the-
+    # committed-records); no member is in the log's batch yet.
+    NativeCut("log-extended", "fn-lg-extend-program", "present", book=LOG_EXTEND_BOOK),
+    NativeCut("log-extent-fenced", "fn-lg-extend-program", "present", book=LOG_EXTEND_BOOK),
 )
 # The host primitive that performs each log step kind, and its cut call.
-LOG_STEP_HOST = {"write-at": "(fnn-log-pwrite ", "fence": "(fnn-log-fdatasync "}
+LOG_STEP_HOST = {"write-at": "(fnn-log-pwrite ", "fence": "(fnn-log-fdatasync ",
+                 "extend-to": "(fnn-log-preallocate "}
 
 # The served commit on a format-9 store (lane commit-onto-log): P-BATCH as the
 # owner's commit quantum runs it (host/native/owner.lisp
@@ -268,7 +278,9 @@ STEP_KINDS = ("observe", "cut", "create", "write-all", "fsync-file", "fsync-dir"
               # books/store-import-publication.lisp's two directory steps.
               "mkdir", "rename-dir-noreplace",
               # books/store-log-programs.lisp's positioned write and barrier.
-              "write-at", "fence")
+              "write-at", "fence",
+              # books/store-log-extend.lisp's zero extension.
+              "extend-to")
 SYSCALL_KINDS = frozenset(STEP_KINDS[2:])
 
 
@@ -861,14 +873,16 @@ def verify_log_cut_map() -> None:
     if declared != native_declared_cut_names("fnn-log-model-cuts"):
         raise AssertionError("native/model log cuts differ")
     program_cuts = tuple(name for program in LOG_PROGRAM_HOSTS
-                         for name in model_cut_names(program, LOG_BOOK))
+                         for name in model_cut_names(
+                             program, LOG_PROGRAM_BOOKS.get(program, LOG_BOOK)))
     if declared != program_cuts:
         raise AssertionError("log cuts are not the log programs': {!r}".format(program_cuts))
     source = (ROOT / "host/native/io.lisp").read_text()
     for program, host in LOG_PROGRAM_HOSTS.items():
+        book = LOG_PROGRAM_BOOKS.get(program, LOG_BOOK)
         body = host_function(source, host)
         at, order = 0, []
-        for step in model_steps(program, LOG_BOOK):
+        for step in model_steps(program, book):
             needle = ("(fnn-log-at :{})".format(step.args[0]) if step.kind == "cut"
                       else LOG_STEP_HOST[step.kind])
             found = body.find(needle, at)
@@ -878,10 +892,10 @@ def verify_log_cut_map() -> None:
             order.append(found)
             at = found + len(needle)
         cuts = set(re.findall(r"\(fnn-log-at :([a-z-]+)\)", body))
-        if cuts != set(model_cut_names(program, LOG_BOOK)):
+        if cuts != set(model_cut_names(program, book)):
             raise AssertionError("{} cuts {} are not {}'s".format(host, sorted(cuts), program))
         for kind, needle in LOG_STEP_HOST.items():
-            if body.count(needle) != sum(1 for s in model_steps(program, LOG_BOOK)
+            if body.count(needle) != sum(1 for s in model_steps(program, book)
                                          if s.kind == kind):
                 raise AssertionError("{}: {} count differs from {}".format(host, kind, program))
     for cut in LOG_CUTS:
@@ -953,13 +967,174 @@ def verify_post_log_cut_map() -> None:
     for name in declared[:2]:
         if "(fnn-at store :{})".format(name) not in finish:
             raise AssertionError("fnn-finish lacks the {} cut".format(name))
+    # The pipelined commit (lane log-2): SEAL is P-BATCH's append and its
+    # cut, SYNC its barrier and cut, in the log's own functions.
+    for name, (call, cut) in (("fnn-log-seal-open-batch", POST_LOG_HOST[0]),
+                              ("fnn-log-sync-sealed-batch", POST_LOG_HOST[1])):
+        body = host_function(source, name)
+        if not (0 <= body.find(call) < body.find(cut)):
+            raise AssertionError("{}: {} then {} missing or out of order".format(name, call, cut))
     owner = (ROOT / "host/native/owner.lisp").read_text()
+    # START drains its members, then seals; COMPLETE acknowledges, then
+    # delivers; the inline quantum runs START, SYNC, COMPLETE; the committer
+    # collects the syncer's word before COMPLETE, and seals the next batch
+    # only after the replies of the batch in flight.
+    start = host_function(owner, "fnn-owner-commit-start-locked")
+    if not (0 <= start.find("(fnn-owner-drain-one ") < start.find("(fnn-log-seal-open-batch ")):
+        raise AssertionError("START does not drain its members before the seal")
+    complete = host_function(owner, "fnn-owner-commit-complete-locked")
+    if not (0 <= complete.find("(fnn-log-batch-finish ") < complete.rfind("(fnn-owner-deliver ")):
+        raise AssertionError("COMPLETE does not acknowledge before it delivers")
     quantum = host_function(owner, "fnn-owner-commit-queued-locked")
-    drain = quantum.find("(fnn-owner-drain-one ")
-    batch = quantum.find("(fnn-log-commit-open-batch ")
-    ack = quantum.find("(fnn-log-batch-finish ")
-    deliver = quantum.rfind("(fnn-owner-deliver ")
-    if not (0 <= drain < batch < ack < deliver):
-        raise AssertionError("the commit quantum's order is not drain, batch, acknowledge, deliver")
+    order = [quantum.find(x) for x in ("(fnn-owner-commit-start-locked ",
+                                       "(fnn-owner-commit-sync ",
+                                       "(fnn-owner-commit-complete-locked ")]
+    if not (0 <= order[0] < order[1] < order[2]):
+        raise AssertionError("the inline commit quantum's order is not START, SYNC, COMPLETE")
+    pipeline = host_function(owner, "fnn-owner-commit-pipeline")
+    order = [pipeline.find(x) for x in ("(fnn-owner-start-syncer ",
+                                        "(sb-thread:join-thread syncer",
+                                        "(fnn-owner-commit-complete-locked service members nil deferred)",
+                                        "(fnn-log-seal-open-batch store)")]
+    if not (0 <= order[0] < order[1] < order[2] < order[3]):
+        raise AssertionError("the committer's order is not SYNC, collect, COMPLETE, seal the next batch")
     for cut in POST_LOG_CUTS[2:]:
         cut_step_index(cut)
+
+
+# The record-log route's arms (lane log-2; books/store-log-route-programs.lisp).
+# Each per-file host function above has a format-9 arm, `(when (fnn-store-logp
+# store) ...)', that calls the log route instead; tools/native_program_check.py
+# reads the per-file route and checks each arm here: the arm's callee's
+# durable steps and process-death cuts, in source order, are its programs'
+# steps.  Host steps: fnn-log-pwrite is a :write-at, fnn-log-fdatasync and a
+# recovery barrier thunk are a :fence, `(fnn-at store :NAME)' and
+# `(fnn-log-at :NAME)' are the cut NAME (the log's own and the store's
+# injection at one point are one cut), the recovery barrier loop runs once per
+# thunk of fnn-store-recovery-barriers.  Calls into LOG_ROUTE_EXPAND are read
+# from the callee's own defun; any other call is not a step (fnn-log-take's
+# :full arm commits at the operator's bound, a runtime arm; fnn-log-ensure-
+# extent's growth is PKT-COL-4's).
+LOG_ROUTE_BOOK = "store-log-route-programs.lisp"
+LOG_ROUTE_ARMS = {
+    "fnn-advance-frontier": ("fnn-log-reserve", (("fn-lg-reserve-program", LOG_ROUTE_BOOK),)),
+    "fnn-publish": ("fnn-log-publish", (("fn-lg-append-program", LOG_BOOK),
+                                        ("fn-lg-fence-program", LOG_BOOK),
+                                        ("fn-lg-order-program", LOG_ROUTE_BOOK))),
+    "fnn-mark-committed": (None, ()),
+    "fnn-recover": ("fnn-recover-log", (("fn-lg-open-program", LOG_ROUTE_BOOK),)),
+}
+# fnn-log-scan-segments (lane log-recovery): the multi-segment open reads the
+# closed segments only (no step) and recovers the active one through
+# fnn-log-recover; a rotation it completes is P-ROTATE's, not the open's.
+LOG_ROUTE_EXPAND = ("fnn-log-commit-open-batch", "fnn-log-append", "fnn-log-fence",
+                    "fnn-log-recover", "fnn-log-scan-segments")
+_LOG_ROUTE_TOKEN = re.compile(
+    r"\((fnn-log-pwrite|fnn-log-fdatasync|fnn-log-commit-open-batch|fnn-log-append|"
+    r"fnn-log-fence|fnn-log-recover|fnn-log-scan-segments)[\s)]"
+    r"|\(fnn-at store :([a-z0-9-]+)\)|\(fnn-log-at :([a-z0-9-]+)\)"
+    r"|\(funcall barrier\)|RECOVER-BARRIER-")
+
+
+def _strip_lisp_text(body: str) -> str:
+    """BODY without comments and string literals (a docstring may name a call)."""
+    out, i, n = [], 0, len(body)
+    while i < n:
+        c = body[i]
+        if c == ";":
+            j = body.find("\n", i)
+            i = n if j < 0 else j
+        elif c == '"':
+            j = i + 1
+            while j < n and body[j] != '"':
+                j += 2 if body[j] == "\\" else 1
+            if body[i:j].startswith('"RECOVER-BARRIER-'):
+                out.append("RECOVER-BARRIER-")
+            i = j + 1
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
+
+
+def _recovery_barrier_count(source: str) -> int:
+    body = _strip_lisp_text(host_function(source, "fnn-store-recovery-barriers"))
+    at = body.index("(list") + len("(list")
+    depth, count = 0, 0
+    for c in body[at:]:
+        if c == "(":
+            if depth == 0:
+                count += 1
+            depth += 1
+        elif c == ")":
+            if depth == 0:
+                break
+            depth -= 1
+    return count
+
+
+def log_route_host_steps(source: str, name: str) -> list:
+    body = _strip_lisp_text(host_function(source, name))
+    steps: list = []
+    barrier = None
+    for m in _LOG_ROUTE_TOKEN.finditer(body):
+        call, cut_store, cut_log = m.group(1), m.group(2), m.group(3)
+        text = m.group(0)
+        if call in LOG_ROUTE_EXPAND:
+            steps.extend(log_route_host_steps(source, call))
+        elif call == "fnn-log-pwrite":
+            steps.append(("write",))
+        elif call == "fnn-log-fdatasync":
+            steps.append(("fence",))
+        elif text == "(funcall barrier)":
+            barrier = len(steps)
+            steps.append(("fence",))
+        elif text == "RECOVER-BARRIER-":
+            steps.append(("cut", "recover-barrier"))
+            if barrier is not None:
+                loop = steps[barrier:]
+                steps.extend(loop * (_recovery_barrier_count(source) - 1))
+                barrier = None
+        else:
+            cut = ("cut", cut_store or cut_log)
+            if not (steps and steps[-1] == cut):
+                steps.append(cut)
+    return steps
+
+
+def verify_log_route_arms(source: str | None = None) -> list:
+    """Each format-9 arm's host steps equal its log programs' steps; returns
+    the mismatches (empty when every arm matches).  SOURCE: io.lisp's text
+    (a test's mutation), the file by default."""
+    if source is None:
+        source = (ROOT / "host/native/io.lisp").read_text()
+    problems = []
+    for host, (callee, programs) in LOG_ROUTE_ARMS.items():
+        body = host_function(source, host)
+        arm = re.search(r"\(when \(fnn-store-logp store\)\s*\(return-from {}\s*(\S*)".format(
+            re.escape(host)), body)
+        if not arm:
+            problems.append("{}: no format-9 arm".format(host))
+            continue
+        called = arm.group(1).strip("()")
+        if callee is None:
+            if called not in ("nil", ""):
+                problems.append("{}: the arm calls {}, expected nothing".format(host, called))
+            continue
+        if called != callee:
+            problems.append("{}: the arm calls {}, expected {}".format(host, called, callee))
+            continue
+        model = []
+        for program, book in programs:
+            for step in model_steps(program, book):
+                if step.kind == "write-at":
+                    model.append(("write",))
+                elif step.kind == "fence":
+                    model.append(("fence",))
+                elif step.kind == "cut":
+                    model.append(("cut", step.args[0]))
+        hosted = log_route_host_steps(source, callee)
+        if hosted != model:
+            problems.append("{} -> {}: host {} is not {} {}".format(
+                host, callee, hosted, [p for p, _ in programs], model))
+    return problems

@@ -18,7 +18,10 @@ cat > /dev/null
 printf '%s\\n' "$FAKE_LINE"
 echo "mldsa=$FN_MLDSA_LIBRARY openssl=${FN_OPENSSL_PREFIX:-unset}"
 echo FN_NATIVE_BUILD_LOADED
-printf '#!/bin/sh\\n' > "$FN_NATIVE_IMAGE"; chmod +x "$FN_NATIVE_IMAGE"
+echo FN_NATIVE_WORLD_STRIPPED
+echo 'fn-world-deps 1' > "$FN_NATIVE_IMAGE.world-deps"
+printf '#!/bin/sh\\nexec "/sbcl" --tls-limit 16384 --dynamic-space-size 32000 --core "c"\\n' > "$FN_NATIVE_IMAGE"
+chmod +x "$FN_NATIVE_IMAGE"
 echo core > "$FN_NATIVE_IMAGE.core"
 """
 MARKERS = ("ACL2 Error [Failure] in ( DEFUN FNN-X ...)",
@@ -43,6 +46,8 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
             answer = subprocess.run(["sh", str(SCRIPT)], env=env, cwd=ROOT,
                                     capture_output=True, text=True, timeout=60)
             library = [p for p in (base / "lib").glob("libfn-mldsa65.*")]
+            launcher = base / "fn-host-test"
+            self.launcher_text = launcher.read_text() if launcher.exists() else ""
             return answer, (base / "build.log").read_text(), library, base
 
     def test_each_marker_refuses_the_build_and_prints_the_line(self):
@@ -59,6 +64,10 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         answer, log, library, base = self.build("ACL2 !>")
         self.assertEqual(answer.returncode, 0, answer.stdout + answer.stderr)
         self.assertIn("built ", answer.stdout)
+        # The saved launcher runs at the build's TLS limit, not ACL2's 16384.
+        launcher = self.launcher_text
+        self.assertIn("--tls-limit 65536 ", launcher)
+        self.assertNotIn("--tls-limit 16384", launcher)
         # HST-016: the ML-DSA-65 library is built into lib/ beside the image
         # and named to the build; no OpenSSL prefix is needed.
         self.assertEqual(len(library), 1, answer.stderr)

@@ -94,6 +94,7 @@
 
 (in-package "ACL2")
 (include-book "store-observed")
+(include-book "snoc-list")
 (include-book "served")
 (include-book "clock")
 (include-book "owner-feed")
@@ -788,10 +789,28 @@
   (declare (xargs :guard t))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr o))))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr o))))))))
-(defun fn-own-ledger (o)
+; The ledger (PRF-283).  It grows by one pair per commit and never shrinks
+; while the process lives, so it is held as a snoc-list (books/snoc-list.lisp:
+; newest first, with its length): the field is its representation and
+; fn-own-ledger reads the list back (fn-sl-list; a plain list, nil included,
+; represents itself).  fn-own-make takes the FIELD: a transition that keeps
+; the ledger passes (fn-own-ledger-field o) through, one pointer; the commit
+; appends one pair with fn-sl-snoc, one cons, and fn-own-ledger of the result
+; is the append for every field value (fn-sl-list-of-fn-sl-snoc).  Held as a
+; plain list the commit copied the whole ledger: 16 B x POSTs-since-open per
+; POST (post-alloc-2's packet), and the take and the outcome walked it for
+; its length (now fn-own-ledger-count, O(1) on a snoc form).
+(defun fn-own-ledger-field (o)
   (declare (xargs :guard t))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr o)))))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr o)))))))))
+(defun fn-own-ledger (o)
+  (declare (xargs :guard t))
+  (fn-sl-list (fn-own-ledger-field o)))
+(defun fn-own-ledger-count (o)
+  (declare (xargs :guard t))
+  (mbe :logic (len (fn-own-ledger o))
+       :exec (fn-sl-count (fn-own-ledger-field o))))
 (defun fn-own-clock (o)
   (declare (xargs :guard t))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr o))))))))
@@ -857,9 +876,17 @@
 (defthm fn-own-pending-of-fn-own-make
   (equal (fn-own-pending (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret refused))
          pending))
+(defthm fn-own-ledger-field-of-fn-own-make
+  (equal (fn-own-ledger-field (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret refused))
+         ledger))
 (defthm fn-own-ledger-of-fn-own-make
   (equal (fn-own-ledger (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret refused))
-         ledger))
+         (fn-sl-list ledger)))
+; The field read back is the ledger (fn-own-ledger stays closed below).
+(defthm fn-sl-list-of-fn-own-ledger-field
+  (equal (fn-sl-list (fn-own-ledger-field o)) (fn-own-ledger o)))
+(defthm fn-own-ledger-count-is-len
+  (equal (fn-own-ledger-count o) (len (fn-own-ledger o))))
 (defthm fn-own-clock-of-fn-own-make
   (equal (fn-own-clock (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight feeds node-secret refused))
          clock))
@@ -932,7 +959,8 @@
                                     :trigger-terms ((fn-own-refused x)))))
 (in-theory (disable (:d fn-own-shapep) (:d fn-own-store) (:d fn-own-view) (:d fn-own-conns)
                     (:d fn-own-next-id) (:d fn-own-max-conns) (:d fn-own-pending)
-                    (:d fn-own-ledger) (:d fn-own-clock) (:d fn-own-facts)
+                    (:d fn-own-ledger) (:d fn-own-ledger-field) fn-own-ledger-count
+                    (:d fn-own-clock) (:d fn-own-facts)
                     (:d fn-own-config) (:d fn-own-queue) (:d fn-own-inflight)
                     (:d fn-own-feeds) (:d fn-own-node-secret) (:d fn-own-refused) (:d fn-own-make)))
 
@@ -1092,7 +1120,9 @@
 ; Recovery's rebuild decides alike (`fn-ctl-refresh-withdrawals-is-the-
 ; journal', books/control-visible.lisp).
 (defun fn-own-refresh (o)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (enable fn-sf-records-count
+                                                           fn-ctl-refresh-withdrawals)))))
   (let ((s (fn-own-store o)))
     (if (fn-own-store-idlep s)
         (let* ((old-view (fn-own-view o))
@@ -1100,10 +1130,21 @@
                (raw (fn-state-articles acceptance))
                (old-raw (fn-own-view-raw old-view))
                (verdicts (fn-sn-verdicts s))
-               (withdrawals (fn-ctl-refresh-withdrawals
-                             raw old-raw (fn-own-view-withdrawals old-view)
-                             verdicts (fn-sf-records (fn-sn-files s))
-                             (fn-sn-config-history s)))
+               ; The history is held as a snoc-list (books/store-files.lisp):
+               ; reading it conses it back, so the refresh reads it only when
+               ; the acceptance changed (a refresh that sees no new article
+               ; keeps the withdrawals: the reference's first arm), and reads
+               ; the count in O(1) (fn-sl-count-is-len).
+               (withdrawals (mbe :logic (fn-ctl-refresh-withdrawals
+                                         raw old-raw (fn-own-view-withdrawals old-view)
+                                         verdicts (fn-sf-records (fn-sn-files s))
+                                         (fn-sn-config-history s))
+                                 :exec (if (equal raw old-raw)
+                                           (fn-own-view-withdrawals old-view)
+                                         (fn-ctl-refresh-withdrawals
+                                          raw old-raw (fn-own-view-withdrawals old-view)
+                                          verdicts (fn-sf-records (fn-sn-files s))
+                                          (fn-sn-config-history s)))))
                (old-visible (fn-state-articles (fn-own-view-archive old-view)))
                (visible (fn-ctl-refresh-visible
                          raw old-raw old-visible withdrawals
@@ -1116,7 +1157,8 @@
                        (fn-own-view-index old-view) old-visible visible)))
           (fn-own-make s
                      (fn-own-view-make-visible
-                      (len (fn-sf-records (fn-sn-files s)))
+                      (mbe :logic (len (fn-sf-records (fn-sn-files s)))
+                           :exec (fn-sf-records-count (fn-sn-files s)))
                       (fn-sf-frontier (fn-sn-files s))
                       archive verdicts index
                       (fn-gidx-refresh (fn-own-view-group-index old-view)
@@ -1124,7 +1166,7 @@
                       withdrawals raw withdrawn
                       (fn-sn-keyring-snapshots s))
                      (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
-                     (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
+                     (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
                      (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
                      (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
       o)))
@@ -1218,7 +1260,7 @@
 (defun fn-own-set-conns (o conns)
   (declare (xargs :guard t))
   (fn-own-make (fn-own-store o) (fn-own-view o) conns (fn-own-next-id o)
-               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
 
 (defun fn-own-reader-context (o id cfg)
@@ -1302,7 +1344,7 @@
         (cons (fn-served-result-effects opened)
               (fn-own-make (fn-own-store o) view (cons conn (fn-own-conns o))
                            (1+ (nfix id)) (fn-own-max-conns o) (fn-own-pending o)
-                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
+                           (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
     (cons nil o)))
 
 ; The transit port.  A peer connection is accepted on the SAME listener as a
@@ -1366,7 +1408,7 @@
         (cons (fn-served-result-effects opened)
               (fn-own-make (fn-own-store o) view (cons conn (fn-own-conns o))
                            (1+ (nfix id)) (fn-own-max-conns o) (fn-own-pending o)
-                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                           (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                            (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
     (cons nil o)))
 
@@ -1390,7 +1432,7 @@
 (defun fn-own-enqueue (o sub)
   (declare (xargs :guard t))
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
-               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                (fn-ag-append (fn-own-queue o) (list sub)) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
 
@@ -1846,7 +1888,7 @@
                (fn-own-remove-conn id (fn-own-conns o))
                (fn-own-next-id o) (fn-own-max-conns o)
                (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
-               (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+               (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                (fn-own-remove-subs id (fn-own-queue o))
                (if (and (fn-own-inflight o)
                         (equal (fn-own-sub-id (fn-own-inflight o)) id))
@@ -1863,7 +1905,7 @@
            (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :ready))
       (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                    (fn-own-next-id o) (fn-own-max-conns o) id
-                   (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))
+                   (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))
     o))
 
 ; Every kernel/node transition of the store, including the resolution
@@ -1875,7 +1917,7 @@
   (fn-own-refresh
    (fn-own-make (fn-snrt-step (fn-own-store o) event) (fn-own-view o)
                 (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
-                (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
+                (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
                 (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 
 ; Completion is the actual fn-sn-finish.  It is consumed exactly when the
@@ -1889,8 +1931,7 @@
         (fn-own-refresh
          (fn-own-make (fn-sn-finish s) (fn-own-view o) (fn-own-conns o)
                       (fn-own-next-id o) (fn-own-max-conns o) nil
-                      (fn-ag-append (fn-own-ledger o)
-                                    (list (fn-sf-completion (fn-sn-files s))))
+                      (fn-sl-snoc (fn-own-ledger-field o) (fn-sf-completion (fn-sn-files s)))
                       (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                       (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
       o)))
@@ -1916,7 +1957,7 @@
         (fn-own-refresh
          (fn-own-make (fn-sn-open-state opened) (fn-own-view o) nil
                       (fn-own-next-id o) (fn-own-max-conns o) nil
-                      (fn-own-ledger o) nil (fn-own-facts o) (fn-own-config o)
+                      (fn-own-ledger-field o) nil (fn-own-facts o) (fn-own-config o)
                       nil nil (fn-own-feed-restart-all (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o)))
       o)))
 
@@ -1973,7 +2014,7 @@
         o
       (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                    (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
-                   (fn-own-ledger o)
+                   (fn-own-ledger-field o)
                    (if (equal outcome :observed) obs nil)
                    (fn-own-facts o) (fn-own-config o)
                    (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))))
@@ -1987,7 +2028,7 @@
            (not (member-equal name (fn-own-replay-facts (fn-own-facts o)))))
       (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                    (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
-                   (fn-own-ledger o) (fn-own-clock o)
+                   (fn-own-ledger-field o) (fn-own-clock o)
                    (fn-ag-append (fn-own-facts o)
                                  (list (fn-own-group-fact-make name (fn-own-clock o))))
                    (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))
@@ -2021,7 +2062,7 @@
   (declare (xargs :guard t))
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
-               (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+               (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) feeds (fn-own-node-secret o) (fn-own-refused o)))
 
 ; What a submission tells the feed.  Both kinds carry the Message-ID and the
@@ -2461,7 +2502,7 @@
 (defun fn-own-configure (o config)
   (declare (xargs :guard t))
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
-               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) config (fn-own-queue o)
                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
 
@@ -2472,7 +2513,7 @@
 (defun fn-own-with-node-secret (o secret)
   (declare (xargs :guard t))
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
-               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
                (fn-own-inflight o) (fn-own-feeds o) secret (fn-own-refused o)))
 
@@ -2490,10 +2531,11 @@
       (let ((sub (car (fn-own-queue o))))
         (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                      (fn-own-next-id o) (fn-own-max-conns o) (fn-own-sub-id sub)
-                     (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                     (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                      (fn-own-config o) (cdr (fn-own-queue o))
                      (fn-own-sub-make-author (fn-own-sub-id sub) (fn-own-sub-version sub)
-                                             (len (fn-own-ledger o))
+                                             (mbe :logic (len (fn-own-ledger o))
+                                                  :exec (fn-own-ledger-count o))
                                              (fn-own-sub-decision sub)
                                              (fn-own-sub-login sub)
                                              (fn-own-sub-account sub))
@@ -2520,7 +2562,9 @@
   (let ((sub (fn-own-inflight o)))
     (and sub
          (natp (fn-own-sub-mark sub))
-         (< (fn-own-sub-mark sub) (len (fn-own-ledger o))))))
+         (< (fn-own-sub-mark sub)
+            (mbe :logic (len (fn-own-ledger o))
+                 :exec (fn-own-ledger-count o))))))
 
 ; The completion the owner reports for the submission in flight, from the
 ; word the host observed.  :durable needs a completion consumed into the
@@ -2622,7 +2666,7 @@
                (next (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                                  (fn-own-next-id o) (fn-own-max-conns o)
                                  (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
-                                 (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                                 (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                                  (fn-own-config o) (fn-own-queue o) nil
                                  (if (equal completion :durable)
                                      (fn-own-feed-durable o sub)
@@ -2672,7 +2716,7 @@
                      (fn-own-next-id o) (fn-own-max-conns o)
                      (if (equal (fn-own-pending o) *fn-own-control-id*)
                          nil (fn-own-pending o))
-                     (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                     (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                      (fn-own-config o) (fn-own-queue o) nil
                      (if (equal completion :durable)
                          (fn-own-feed-durable o sub)
@@ -2762,7 +2806,7 @@
                (next (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                                   (fn-own-next-id o) (fn-own-max-conns o)
                                   (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
-                                  (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                                  (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                                   (fn-own-config o) (fn-own-queue o) nil
                                   (if (equal completion :durable)
                                       (fn-own-feed-durable o sub)

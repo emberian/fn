@@ -94,22 +94,75 @@
 
 (in-theory (disable fn-pcar-candidatep))
 
+; The candidate test over the kernel state: the history's length and its last
+; record are read in O(1) from the snoc-list the kernel holds
+; (books/store-files.lisp fn-sf-records-count, fn-sf-records-last), where
+; fn-pcar-candidatep walked the history twice (LEN and the step to the last
+; cons).  Equal to it with no hypothesis.
+(local
+ (defthm fn-pcar-next-lower-is-after-the-last
+   (equal (fn-pcar-next-lower records)
+          (if (consp records)
+              (1+ (fn-rcon-store-event-txid (car (last records))))
+            0))
+   :hints (("Goal" :induct (fn-pcar-next-lower records)
+            :in-theory (e/d (fn-pcar-next-lower)
+                            (fn-pcar-next-lower-is-next-lower
+                             fn-rcon-store-event-txid))))))
+
+(defun fn-pcar-files-candidatep (record files)
+  (declare (xargs :guard (fn-sf-statep files) :verify-guards nil))
+  (let ((n (fn-sf-records-count files)))
+    (and (fn-rcon-store-event-p record)
+         (equal (fn-rcon-store-event-sequence record) n)
+         (equal (1+ (fn-rcon-store-event-txid record)) (fn-sf-frontier files))
+         (<= (if (zp n)
+                 0
+               (1+ (fn-rcon-store-event-txid (fn-sf-records-last files))))
+             (fn-rcon-store-event-txid record))
+         (equal (fn-rcon-store-event-generation record)
+                (fn-rcon-store-event-txid record)))))
+
+(local
+ (defthm fn-pcar-len-of-consp
+   (implies (consp x) (< 0 (len x)))
+   :rule-classes (:linear :rewrite)))
+
+(defthm fn-pcar-files-candidatep-is-candidatep
+  (equal (fn-pcar-files-candidatep record files)
+         (fn-pcar-candidatep record (fn-sf-records files)
+                             (fn-sf-frontier files)))
+  :hints (("Goal" :in-theory (e/d (fn-pcar-files-candidatep fn-pcar-candidatep
+                                   fn-sf-records-count fn-sf-records-last)
+                                  (fn-rcon-store-event-p
+                                   fn-rcon-store-event-sequence
+                                   fn-rcon-store-event-txid
+                                   fn-rcon-store-event-generation
+                                   fn-pcar-next-lower-is-next-lower
+                                   fn-pcar-candidatep-is-candidatep)))))
+
+(local
+ (defthm fn-pcar-last-of-values-is-an-event
+   (implies (and (fn-sf-record-valuesp records) (consp records))
+            (fn-store-event-p (car (last records))))
+   :hints (("Goal" :in-theory (disable fn-store-event-p)))))
+
 ; fn-spc-stage-record (books/store-prepare-correspondence.lisp), carried.
+; The staged state keeps the history's field (fn-sf-remake): no copy.
 (defun fn-pcar-stage-record (files record)
   (declare (xargs :guard (fn-sf-statep files) :verify-guards nil))
   (if (and (equal (fn-sf-phase files) :reserved)
-           (fn-pcar-candidatep record (fn-sf-records files)
-                               (fn-sf-frontier files)))
-      (fn-sf-make :record-staged (fn-sf-frontier files) nil
-                  (fn-sf-records files) record nil
-                  (fn-sf-successes files) (fn-sf-barriers files))
+           (fn-pcar-files-candidatep record files))
+      (fn-sf-remake :record-staged (fn-sf-frontier files) nil
+                    record nil (fn-sf-barriers files) files)
     files))
 
 (defthm fn-pcar-stage-record-is-stage-record
   (equal (fn-pcar-stage-record files record)
          (fn-spc-stage-record files record))
   :hints (("Goal" :in-theory (e/d (fn-pcar-stage-record fn-spc-stage-record)
-                                  (fn-sf-statep fn-sf-candidatep)))))
+                                  (fn-sf-statep fn-sf-candidatep
+                                   fn-pcar-files-candidatep)))))
 
 (local
  (defthm fn-pcar-record-list-implies-values
@@ -129,9 +182,27 @@
                              (sequence 0) (lower 0)
                              (frontier (fn-sf-frontier files))))))))
 
+(local
+ (defthm fn-pcar-event-txid-natural
+   (implies (fn-store-event-p record) (natp (fn-store-event-txid record)))
+   :rule-classes (:rewrite :type-prescription)
+   :hints (("Goal" :in-theory (disable fn-store-event-p)))))
+
+(verify-guards fn-pcar-files-candidatep
+  :hints (("Goal" :use (fn-pcar-state-has-candidate-guard-domain
+                        (:instance fn-pcar-last-of-values-is-an-event
+                                   (records (fn-sf-records files))))
+           :in-theory (e/d (fn-sf-records-last fn-sf-records-count)
+                           (fn-sf-statep fn-pcar-files-candidatep-is-candidatep
+                            fn-pcar-last-of-values-is-an-event
+                            fn-store-event-p)))))
+
+(in-theory (disable fn-pcar-files-candidatep))
+
 (verify-guards fn-pcar-stage-record
   :hints (("Goal" :use fn-pcar-state-has-candidate-guard-domain
-           :in-theory (disable fn-sf-statep fn-pcar-candidatep-is-candidatep))))
+           :in-theory (disable fn-sf-statep fn-pcar-candidatep-is-candidatep
+                               fn-pcar-files-candidatep-is-candidatep))))
 
 (in-theory (disable fn-pcar-stage-record))
 
@@ -186,7 +257,7 @@
    (fn-own-make (fn-pcar-spc-prepare (fn-own-store o) record)
                 (fn-own-view o) (fn-own-conns o)
                 (fn-own-next-id o) (fn-own-max-conns o)
-                (fn-own-pending o) (fn-own-ledger o)
+                (fn-own-pending o) (fn-own-ledger-field o)
                 (fn-own-clock o) (fn-own-facts o)
                 (fn-own-config o) (fn-own-queue o)
                 (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
@@ -214,9 +285,18 @@
 (in-theory (disable fn-pcar-opc-prepare))
 
 ; The function host/owner-host.lisp fn-owner-prepare installs.
+; The O(1) count is the budget's committed-transaction count, for every Store.
+(defthm fn-pcar-records-count-is-sbud-used
+  (equal (fn-sf-records-count (fn-sn-files s)) (fn-sbud-used s))
+  :hints (("Goal" :in-theory (enable fn-sf-records-count fn-sbud-used))))
+
+; The budget test reads the history's length in O(1)
+; (fn-sf-records-count, whose logic is fn-sbud-used's LEN).
 (defun fn-pcar-sbud-prepare (oc record budget)
-  (declare (xargs :guard (fn-sn-statep (fn-sbud-oc-store oc))))
-  (if (fn-sbud-admitp budget (fn-sbud-used (fn-sbud-oc-store oc)))
+  (declare (xargs :guard (fn-sn-statep (fn-sbud-oc-store oc))
+                  :guard-hints (("Goal" :in-theory (enable fn-sn-statep fn-sf-statep)))))
+  (if (fn-sbud-admitp budget (fn-sf-records-count
+                              (fn-sn-files (fn-sbud-oc-store oc))))
       (fn-pcar-opc-prepare oc record)
     oc))
 
@@ -229,9 +309,9 @@
 (defthm fn-pcar-sbud-prepare-is-sbud-prepare
   (equal (fn-pcar-sbud-prepare oc record budget)
          (fn-sbud-prepare oc record budget))
-  :hints (("Goal" :in-theory (e/d (fn-pcar-sbud-prepare fn-sbud-prepare)
-                                  (fn-opc-prepare fn-sbud-admitp
-                                   fn-sbud-used)))))
+  :hints (("Goal" :in-theory (e/d (fn-pcar-sbud-prepare fn-sbud-prepare
+                                   fn-sbud-used fn-sf-records-count)
+                                  (fn-opc-prepare fn-sbud-admitp)))))
 
 ; The guard is carried, not evaluated: the owner relation keeps it across the
 ; prepare (fn-opc-prepare-preserves-owner-relation over the reference; the

@@ -58,6 +58,7 @@ import time
 import unittest
 
 from tests.native_process import wait_for_announcement
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
@@ -242,7 +243,7 @@ class ScriptedPeer:
 
     def serve(self, client):
         try:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             stream.write(b"200 scripted peer ready (no posting)\r\n")
             while True:
                 line = stream.readline()
@@ -281,7 +282,7 @@ class ScriptedPeer:
                     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
                     context.load_cert_chain(str(self.tls[0]), str(self.tls[1]))
                     client = context.wrap_socket(client, server_side=True)
-                    stream = client.makefile("rwb", buffering=0)
+                    stream = whole_stream(client)
                 elif word == "QUIT":
                     stream.write(b"205 bye\r\n")
                     return
@@ -403,7 +404,7 @@ class NativePeerPullTests(unittest.TestCase):
 
     def session(self, port, lines):
         with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             greeting = stream.readline()
             self.assertTrue(greeting.startswith(b"200 ") or greeting.startswith(b"201 "),
                             greeting)
@@ -607,7 +608,7 @@ class NativePeerPullTests(unittest.TestCase):
     def count_article(self, node, message_id):
         """How many local articles of fn.test carry MESSAGE_ID (XOVER 1-)."""
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             stream.readline()
             stream.write(b"GROUP fn.test\r\n")
             stream.readline()
@@ -1197,7 +1198,7 @@ class InnLab:
             try:
                 with socket.create_connection(("127.0.0.1", self.innd_port),
                                               timeout=30) as client:
-                    stream = client.makefile("rwb", buffering=0)
+                    stream = whole_stream(client)
                     stream.readline()
                     stream.write(b"IHAVE " + message_id.encode() + b"\r\n")
                     first = stream.readline()

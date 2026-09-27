@@ -62,8 +62,13 @@
 (defconst *slst-r2* (fn-lg-workload-record 2 100))
 (defconst *slst-r3* (fn-lg-workload-record 3 100))
 (defconst *slst-g0* *fn-lg-genesis*)
-(make-event `(defconst *slst-g1* ',(fn-lg-last-trailer (list *slst-r1* *slst-r2*) *slst-g0*)))
-(make-event `(defconst *slst-seg1* ',(append (fn-lg-log (list *slst-r1* *slst-r2*) *slst-g0* *slst-unit*)
+; Segment 1 holds two entries, one record each (two batches: since log-2 an
+; entry carries a whole batch, so one fn-lg-log of both would be ONE entry and
+; the torn-tail case below would tear the only entry).
+(make-event `(defconst *slst-g01* ',(fn-lg-last-trailer (list *slst-r1*) *slst-g0*)))
+(make-event `(defconst *slst-g1* ',(fn-lg-last-trailer (list *slst-r2*) *slst-g01*)))
+(make-event `(defconst *slst-seg1* ',(append (fn-lg-log (list *slst-r1*) *slst-g0* *slst-unit*)
+                              (fn-lg-log (list *slst-r2*) *slst-g01* *slst-unit*)
                               (fn-bs-zeros *slst-unit*))))
 (make-event `(defconst *slst-seg2* ',(append (fn-lg-log (list *slst-r3*) *slst-g1* *slst-unit*)
                               (fn-bs-zeros *slst-unit*))))

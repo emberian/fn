@@ -32,6 +32,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tests.campaign import native_cuts  # noqa: E402
 from tests.native_process import wait_for_announcement  # noqa: E402
+from tools.wire_stream import whole_stream
 
 DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST", "")
 PRODUCTION = os.environ.get("FN_NATIVE_HOST", "")
@@ -56,7 +57,7 @@ def article(i: int) -> bytes:
 class Conn:
     def __init__(self, port: int):
         self.sock = socket.create_connection(("127.0.0.1", port), timeout=300)
-        self.stream = self.sock.makefile("rwb", buffering=0)
+        self.stream = whole_stream(self.sock)
         self.greeting = self.stream.readline()
 
     def line(self, text: str) -> bytes:
@@ -207,6 +208,44 @@ class CommitLogMixin:
 class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
     image = DEVELOPER
 
+    def test_the_next_batch_prepares_behind_the_barrier(self):
+        # Lane log-2 (books/owner-commit-pipeline.lisp): with the operator's
+        # batch bound at 2 (`policy set log-batch-records 2') and each
+        # barrier held 700 ms (the developer selector), eight posters leave a
+        # backlog: while a batch's barrier runs, the next batch is prepared
+        # behind it (START-NEXT, the developer trace line) and sealed by the
+        # COMPLETE.  Every POST is answered 240 and served again after a
+        # restart; the batch bound is the operator's configuration.
+        node = Node(self.image, self.root)
+        node.init()
+        bound = node.fn("operator", str(node.config), "policy", "set", "log-batch-records", "2")
+        self.assertEqual(bound.returncode, 0, bound.stderr[-800:])
+        node.start(env={"FN_NATIVE_OWNER_TEST_BARRIER_MS": "700",
+                        "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE": "1"})
+        try:
+            replies, errors = post_concurrently(node.port, range(16), 8)
+        finally:
+            node.stop()
+        self.assertEqual(errors, [])
+        self.assertEqual(sorted(replies), list(range(16)))
+        self.assertTrue(all(r.startswith(b"240") for r in replies.values()), replies)
+        trace = (self.root / "owner.stderr").read_bytes()
+        self.assertIn(b"prepared behind the barrier", trace, trace[-2000:])
+        # Served again after a restart: STAT by Message-ID (223).  The body
+        # is not read here: on the post-flip base the served ARTICLE answers
+        # 503 for every article (the served read is not given the arena;
+        # planning/evidence/log-2-2026-09-27.md section 5), which the other
+        # cases of this module still assert.
+        node.start()
+        try:
+            c = Conn(node.port)
+            for i in range(16):
+                reply = c.line("STAT %s" % msgid(i))
+                self.assertTrue(reply.startswith(b"223"), (i, reply))
+            c.close()
+        finally:
+            node.stop()
+
     def test_every_post_log_cut_is_old_or_new_and_the_node_goes_on(self):
         names = tuple(cut.name for cut in native_cuts.POST_LOG_CUTS)
         self.assertEqual(names, ("finish-consumed", "finish-durable", "log-written", "log-fenced"))
@@ -252,6 +291,44 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
                 finally:
                     node.stop()
 
+    def test_the_segment_grows_and_a_death_while_it_grows_keeps_every_acknowledged_post(self):
+        # books/store-log-extend.lisp: when the open batch and a spare unit
+        # do not fit, the segment grows to ACL2's target (twice the extent)
+        # and is fenced, at rest, before the append.  A death at each of the
+        # extension's cuts (FN_NATIVE_LOG_FAULT) keeps every POST answered
+        # 240; the next owner serves them, grows the segment and goes on.
+        initial = 1048576
+        for cut in ("log-extended", "log-extent-fenced"):
+            with self.subTest(cut=cut):
+                root = self.root / cut
+                root.mkdir()
+                node = Node(self.image, root)
+                node.init()
+                segment = node.store / "journal" / "000001.log"
+                self.assertEqual(segment.stat().st_size, initial)
+                node.start({"FN_NATIVE_LOG_FAULT": cut})
+                replies, _errors = post_concurrently(node.port, range(400), 4)
+                node.proc.wait(timeout=300)
+                node.stderr.close()
+                self.assertEqual(node.proc.returncode, -9, cut)
+                acked = sorted(i for i, r in replies.items() if r.startswith(b"240"))
+                self.assertGreater(len(acked), 200, cut)
+                node.start()
+                try:
+                    c = Conn(node.port)
+                    for i in acked:
+                        head, body = c.article(i)
+                        self.assertTrue(head.startswith(b"220"), (cut, i, head))
+                        self.assertIn(b"body of %d" % i, body)
+                    c.close()
+                    more, errors = post_concurrently(node.port, range(1000, 1300), 4)
+                    self.assertEqual(errors, [])
+                    self.assertTrue(all(r.startswith(b"240") for r in more.values()), cut)
+                finally:
+                    node.stop()
+                self.assertGreater(segment.stat().st_size, initial, cut)
+                self.assertEqual(segment.stat().st_size % 4096, 0, cut)
+
     def test_store_post_and_probe_commit_through_the_log(self):
         # The developer entries that commit without an owner (fnn-command-post,
         # fnn-command-probe) take the same route: a batch of one each.
@@ -282,6 +359,41 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
                                env=env, capture_output=True, timeout=900)
         self.assertEqual(probe.returncode, 0, probe.stderr[-800:])
         self.assertTrue((probe_root / "journal" / "000001.log").is_file())
+
+    def test_format_9_history_is_read_from_the_log_after_the_open(self):
+        # The open answers the history's COUNT and keeps no records (PKT-823);
+        # a reader that needs records reads them after the open
+        # (fnn-history-records / fnn-history-last-record), which on format 9
+        # is the log kernel's committed records, never transactions/ (lane
+        # rm2-format9).  `store recover' reports the log's count; the owner
+        # start reads the newest record for its pending key statement
+        # (fnn-owner-install), so a restarted owner that answers the duplicate
+        # 441 and admits the next POST 240 read the history through the log.
+        node = Node(self.image, self.root)
+        node.init()
+        node.start()
+        try:
+            c = Conn(node.port)
+            for i in (910, 911, 912):
+                self.assertTrue(c.post(i).startswith(b"240"), i)
+            c.close()
+        finally:
+            node.stop()
+        self.assertEqual(node.transaction_files(), [])
+        recovered = node.fn("store", str(node.store), "recover")
+        self.assertEqual(recovered.returncode, 0, recovered.stderr[-800:])
+        self.assertIn(b"recovered transactions=3 articles=3", recovered.stdout)
+        node.start()
+        try:
+            c = Conn(node.port)
+            self.assertTrue(c.post(911).startswith(b"441"))
+            self.assertTrue(c.post(913).startswith(b"240"))
+            c.close()
+        finally:
+            node.stop()
+        recovered = node.fn("store", str(node.store), "recover")
+        self.assertEqual(recovered.returncode, 0, recovered.stderr[-800:])
+        self.assertIn(b"recovered transactions=4 articles=4", recovered.stdout)
 
     def test_format_9_compact_reclaim_and_export_run_over_the_log(self):
         # Lane log-recovery: `store compact' (rotation and drop), `store
