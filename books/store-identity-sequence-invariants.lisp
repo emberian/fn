@@ -178,15 +178,16 @@
                     (fn-replay-identity-step ctx event))
                    (1+ (fn-stxk-context-next ctx))))
    :hints (("Goal"
-            :use ((:instance fn-sis-snapshot-ok-next (e event))
-                  (:instance fn-sis-verdict-ok-next (e event))
+            :use ((:instance fn-sis-snapshot-ok-next (e (fn-replay-identity-wire event)))
+                  (:instance fn-sis-verdict-ok-next (e (fn-replay-identity-wire event)))
                   (:instance fn-sis-verdict-ok-next
                    (e (fn-stmt-value
-                       (fn-stxe-decode-exact (fn-stxa-verdict-event event))))))
+                       (fn-stxe-decode-exact
+                        (fn-stxa-verdict-event (fn-replay-identity-wire event)))))))
             :in-theory
             (e/d (fn-replay-identity-step fn-replay-identity-advance
                   fn-stxk-fault fn-stxk-context)
-                 (fn-stxk-p fn-stxe-p fn-stxa-p fn-stxa-bindsp
+                 (fn-stxk-p fn-stxe-p fn-stxa-p fn-stxa-bindsp fn-replay-identity-wire
                   fn-hsig-article-event-snapshot-bindsp
                   fn-stxk-apply-snapshot fn-stxk-apply-verdict
                   fn-stxe-decode-exact fn-stxk-find
@@ -336,7 +337,7 @@
                        (fn-sn-completion-record s)))
                  (or (fn-stxe-p (fn-sn-completion-record s))
                      (fn-stxk-p (fn-sn-completion-record s))
-                     (fn-stxa-p (fn-sn-completion-record s))))
+                     (fn-hstxa-p (fn-sn-completion-record s))))
             (equal (fn-stxk-context-next
                     (fn-replay-identity-step
                      (fn-sn-identity-context s)
