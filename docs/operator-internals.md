@@ -422,7 +422,7 @@ running owner's automatic checkpoint does the same under the owner mutex,
 so a node that runs rarely needs the verb. The open reads the checkpoint
 first and scans from the segment its F row names, with the chain carried
 across segments; the drop preserves the history that open replays (KEYSTONE
-`fn-lg-segment-drop-preserves-the-open`, books/store-log-segments.lisp,
+`fn-lgw-segment-drop-preserves-the-open`, books/store-log-stream.lisp,
 PRF-270). A checkpoint ACL2 will not write is refused by name before
 anything is allocated (`checkpoint deferred reason=... estimate=...
 budget=...`, the profile's checkpoint budget and the free space). The open

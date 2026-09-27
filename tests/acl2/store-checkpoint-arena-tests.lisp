@@ -18,6 +18,7 @@
 
 (in-package "ACL2")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/store-checkpoint-arena-load")
 (include-book "../../books/store-checkpoint-arena-writer")
 
@@ -710,7 +711,7 @@
            (and (<= (nth 6 *sckat-bad-psetup*) 1000)
                 (natp 100000)
                 (<= (nth 6 *sckat-bad-psetup*) (fn-ockp-space 100000))))))
-(must-fail
+(must-fail-checked
  (defthm sckat-plans-within-the-disk-without-encodable
    (let* ((setup (fn-scka-publication-setup next frontier revision log seg budget free alen))
           (estimate (nth 6 setup)))

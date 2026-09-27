@@ -478,7 +478,7 @@ at any rotation or drop cut reopens to the same history: before
 `rotate-durable` the new segment is an interrupted rotation the open
 completes, and a covered segment left by a drop is dropped again
 (`fn-lgs-open-plan-scan-ignores-covered`). The history the open replays after
-the drop is the full chain's (T8, `fn-lg-segment-drop-preserves-the-open`).
+the drop is the full chain's (T8, `fn-lgw-segment-drop-preserves-the-open`, over the streamed open).
 `store compact` on a `fn-store-9` store is a checkpoint with rotation
 followed by the drop; the owner's automatic checkpoint does the same.
 The open reads each segment one entry at a time (books/store-log-stream.lisp,
@@ -1050,7 +1050,7 @@ On the record log (format 9, the one store format) `store compact` is the
 state checkpoint published at the history's end with the log rotated, then
 the drop of the segments it covers (host/native/checkpoint.lisp
 `fnn-command-compact`; STO-034). The drop preserves the history the open
-replays (`fn-lg-segment-drop-preserves-the-open`, PRF-270), and the open
+replays (`fn-lgw-segment-drop-preserves-the-open`, PRF-270), and the open
 reads the checkpoint, then the segments its F row names. The checkpoint is
 written from the state in bounded steps (`fn-store-sco-pass-step`), so no
 unit of work bounds the history: tests/test_native_pack_chain.py compacts a
