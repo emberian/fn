@@ -288,9 +288,19 @@
 ; record in the node).  Every other event commits no article record and
 ; maps to itself, which is never `fn-record-p'.  Cost: a composite's
 ; article record octets are decoded when a walk reaches it.
+;
+; After the records flip the history retains a signed article's composite as
+; the ROW `fn-hstxa-p' (books/held-record.lisp): its article is the held row
+; the intern made of the article record above (books/store-intern.lisp
+; fn-intern-event), so a signed article stays in the history's article
+; records exactly as a plain one's held row does.  Their WIRE forms (alpha
+; through the arena) are this fold over the wire history:
+; books/history-fold-refinement.lisp fn-bpr-article-records-over-alpha.
 (defun fn-bpr-event-article (event)
   (declare (xargs :guard t))
-  (if (fn-stxa-p event) (fn-replay-composite-record event) event))
+  (cond ((fn-hstxa-p event) (fn-hstxa-held event))
+        ((fn-stxa-p event) (fn-replay-composite-record event))
+        (t event)))
 
 ; The article records of a Store history, one per event, in order.
 (defun fn-bpr-article-records (events)

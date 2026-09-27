@@ -609,8 +609,9 @@
 (defthm fn-osp-replay-records-a-carried-composite
   (implies (and (fn-hsig-article-event-carried-bindsp e)
                 (equal (fn-stxk-context-kind ctx) :ok)
-                (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx)))
-           (equal (fn-replay-identity-step ctx e)
+                (fn-hstxa-p r) (equal (fn-hstxa-stxa r) e)
+                (equal (fn-store-event-sequence r) (fn-stxk-context-next ctx)))
+           (equal (fn-replay-identity-step ctx r)
                   (fn-replay-apply-carried-verdict
                    ctx (fn-stmt-value
                         (fn-stxe-decode-exact (fn-stxa-verdict-event e))))))
@@ -635,8 +636,9 @@
 (defthm fn-osp-replay-records-a-revoked-composite
   (implies (and (fn-hsig-article-event-revoked-bindsp e)
                 (equal (fn-stxk-context-kind ctx) :ok)
-                (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx)))
-           (equal (fn-replay-identity-step ctx e)
+                (fn-hstxa-p r) (equal (fn-hstxa-stxa r) e)
+                (equal (fn-store-event-sequence r) (fn-stxk-context-next ctx)))
+           (equal (fn-replay-identity-step ctx r)
                   (fn-replay-apply-revoked-verdict
                    ctx (fn-stmt-value
                         (fn-stxe-decode-exact (fn-stxa-verdict-event e)))
@@ -670,11 +672,12 @@
 (defthm fn-osp-replay-admits-a-revoked-composite-exactly-at-its-tombstone
   (let* ((v (fn-stmt-value (fn-stxe-decode-exact (fn-stxa-verdict-event e))))
          (keys (fn-hsig-article-event-carrier-keys e))
-         (next (fn-replay-identity-step ctx e)))
+         (next (fn-replay-identity-step ctx r)))
     (implies (and (fn-hsig-article-event-revoked-bindsp e)
                   (fn-stxe-p v)
                   (equal (fn-stxk-context-kind ctx) :ok)
-                  (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx))
+                  (fn-hstxa-p r) (equal (fn-hstxa-stxa r) e)
+                (equal (fn-store-event-sequence r) (fn-stxk-context-next ctx))
                   (equal (fn-stxe-sequence v) (fn-stxk-context-next ctx)))
              (and (iff (equal (fn-stxk-context-kind next) :ok)
                        (fn-hsig-revoked-tombstone-bindsp
@@ -703,8 +706,9 @@
 (defthm fn-osp-carried-composite-keeps-the-keyring
   (implies (and (fn-hsig-article-event-carried-bindsp e)
                 (equal (fn-stxk-context-kind ctx) :ok)
-                (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx)))
-           (equal (fn-stxk-context-snapshots (fn-replay-identity-step ctx e))
+                (fn-hstxa-p r) (equal (fn-hstxa-stxa r) e)
+                (equal (fn-store-event-sequence r) (fn-stxk-context-next ctx)))
+           (equal (fn-stxk-context-snapshots (fn-replay-identity-step ctx r))
                   (fn-stxk-context-snapshots ctx)))
   :hints (("Goal"
            :use ((:instance fn-osp-replay-records-a-carried-composite))
@@ -718,8 +722,9 @@
 (defthm fn-osp-revoked-composite-keeps-the-keyring
   (implies (and (fn-hsig-article-event-revoked-bindsp e)
                 (equal (fn-stxk-context-kind ctx) :ok)
-                (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx)))
-           (equal (fn-stxk-context-snapshots (fn-replay-identity-step ctx e))
+                (fn-hstxa-p r) (equal (fn-hstxa-stxa r) e)
+                (equal (fn-store-event-sequence r) (fn-stxk-context-next ctx)))
+           (equal (fn-stxk-context-snapshots (fn-replay-identity-step ctx r))
                   (fn-stxk-context-snapshots ctx)))
   :hints (("Goal"
            :use ((:instance fn-osp-replay-records-a-revoked-composite))

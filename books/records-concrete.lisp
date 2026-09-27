@@ -260,9 +260,11 @@
      ((fn-stxk-p event)
       (fn-th-prefix-state :ok (1+ (nfix next)) (cons event snapshots)
                           accepted anchors installed nil))
-     ((fn-stxa-p event)
+     ; The retained composite row records the wire composite it carries,
+     ; as books/topic-history-prefix.lisp fn-th-prefix-step does.
+     ((fn-hstxa-p event)
       (fn-th-prefix-state :ok (1+ (nfix next)) snapshots
-                          (cons event accepted) anchors installed nil))
+                          (cons (fn-hstxa-stxa event) accepted) anchors installed nil))
      ((fn-th-local-admin-eventp event)
       (let ((updated (fn-th-local-admin-commit event installed)))
         (if (fn-stmt-okp updated)

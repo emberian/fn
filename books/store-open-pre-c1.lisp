@@ -28,6 +28,7 @@
 (in-package "ACL2")
 (include-book "store-checkpoint-open")
 (include-book "store-identity-sequence-invariants")
+(include-book "history-wire")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -41,20 +42,26 @@
 ; whose Newsgroups already are its filing group binds today and is not
 ; named; a record whose groups are neither is not a pre-C1 filing and is
 ; not named (the fault stays a fault).
+; EVENT is a history event: after the records flip the retained row of a
+; composite (`fn-hstxa-p'), read as the wire composite it carries
+; (`fn-hw-composite', books/history-wire.lisp), exactly as the identity fold
+; reads it (books/replay.lisp `fn-replay-identity-wire').
 (defun fn-sopc-article (event)
   (declare (xargs :guard t))
-  (let ((article (fn-record-decode-exact (fn-stxa-article-record event))))
+  (let* ((event (fn-hw-composite event))
+         (article (fn-record-decode-exact (fn-stxa-article-record event))))
     (if (fn-record-result-okp article)
         (fn-record-result-record article)
       nil)))
 
-(defun fn-sopc-pre-c1-control-record-p (event)
+(defun fn-sopc-pre-c1-control-record-p (row)
   (declare (xargs :guard t))
+  (let ((event (fn-hw-composite row)))
   (and (fn-stxa-p event)
        (equal (fn-stxa-schema event) *fn-stxa-carried-version*)
        (fn-record-result-okp
         (fn-record-decode-exact (fn-stxa-article-record event)))
-       (let* ((record (fn-sopc-article event))
+       (let* ((record (fn-sopc-article row))
               (source (fn-stxa-authored-source event))
               (fields (fn-hsig-authored-source-fields source))
               (classified (fn-ctl-classify-octets source)))
@@ -64,7 +71,7 @@
               (eq (car classified) :control)
               (equal (fn-record-groups record) (fn-hsig-second fields))
               (not (equal (fn-record-groups record)
-                          (fn-hsig-source-filed-groups source fields)))))))
+                          (fn-hsig-source-filed-groups source fields))))))))
 
 ; No record of the history is one.
 (defun fn-sopc-free-p (records)
@@ -151,8 +158,9 @@
 ; groups `fn-hsig-source-filed-groups' derives, and this record does not.
 (defthm fn-sopc-pre-c1-control-record-facts
   (implies (fn-sopc-pre-c1-control-record-p event)
-           (and (fn-stxa-p event)
-                (equal (fn-stxa-schema event) *fn-stxa-carried-version*)))
+           (and (fn-stxa-p (fn-hw-composite event))
+                (equal (fn-stxa-schema (fn-hw-composite event))
+                       *fn-stxa-carried-version*)))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
                                              '(fn-sopc-pre-c1-control-record-p)))))
@@ -160,9 +168,10 @@
 (defthm fn-sopc-pre-c1-record-has-no-carried-metadata
   (implies (fn-sopc-pre-c1-control-record-p event)
            (not (fn-hsig-carried-record-metadatap
-                 (fn-stxa-authored-source event) received
+                 (fn-stxa-authored-source (fn-hw-composite event)) received
                  (fn-record-result-record
-                  (fn-record-decode-exact (fn-stxa-article-record event))))))
+                  (fn-record-decode-exact
+                   (fn-stxa-article-record (fn-hw-composite event)))))))
   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
                                              '(fn-sopc-pre-c1-control-record-p
                                                fn-sopc-article
@@ -170,9 +179,10 @@
 
 (defthm fn-sopc-pre-c1-record-binds-no-composite
   (implies (fn-sopc-pre-c1-control-record-p event)
-           (and (not (fn-hsig-article-event-carried-bindsp event))
-                (not (fn-hsig-article-event-revoked-bindsp event))
-                (not (fn-hsig-article-event-snapshot-bindsp event snapshot))))
+           (and (not (fn-hsig-article-event-carried-bindsp (fn-hw-composite event)))
+                (not (fn-hsig-article-event-revoked-bindsp (fn-hw-composite event)))
+                (not (fn-hsig-article-event-snapshot-bindsp (fn-hw-composite event)
+                                                            snapshot))))
   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
                                              '(fn-hsig-article-event-carried-bindsp
                                                fn-hsig-article-event-revoked-bindsp
@@ -185,15 +195,15 @@
                             (received (fn-record-payload
                                        (fn-record-result-record
                                         (fn-record-decode-exact
-                                         (fn-stxa-article-record event))))))
+                                         (fn-stxa-article-record (fn-hw-composite event)))))))
                  (:instance fn-sopc-pre-c1-record-has-no-carried-metadata
                             (received (and (fn-record-result-okp
                                             (fn-record-decode-exact
-                                             (fn-stxa-article-record event)))
+                                             (fn-stxa-article-record (fn-hw-composite event))))
                                            (fn-record-payload
                                             (fn-record-result-record
                                              (fn-record-decode-exact
-                                              (fn-stxa-article-record event)))))))))))
+                                              (fn-stxa-article-record (fn-hw-composite event))))))))))))
 
 ; The three identity event kinds are records of different widths.
 (defthm fn-sopc-stxa-is-neither-stxk-nor-stxe
@@ -216,15 +226,17 @@
                 (equal (fn-stxk-context-next (fn-replay-identity-step ctx event))
                        (fn-stxk-context-next ctx))))
   :hints (("Goal"
-           :use ((:instance fn-sopc-stxa-is-neither-stxk-nor-stxe (x event))
+           :use ((:instance fn-sopc-stxa-is-neither-stxk-nor-stxe (x (fn-hw-composite event)))
                  (:instance fn-sopc-pre-c1-record-binds-no-composite
-                            (snapshot (fn-stxk-find (fn-stxa-keyring-generation event)
+                            (snapshot (fn-stxk-find (fn-stxa-keyring-generation
+                                                     (fn-hw-composite event))
                                                     (fn-stxk-context-snapshots ctx)))))
            :in-theory (union-theories (theory 'minimal-theory)
                                       '(fn-replay-identity-step fn-stxk-fault
                                         fn-stxk-context fn-stxk-context-kind
                                         fn-stxk-context-next
                                         fn-sopc-pre-c1-control-record-facts
+                                        fn-replay-identity-wire fn-hw-composite
                                         car-cons cdr-cons
                                         (:executable-counterpart equal))))))
 
