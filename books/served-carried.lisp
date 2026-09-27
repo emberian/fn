@@ -188,7 +188,9 @@
   :hints (("Goal" :in-theory (e/d (fn-scar-auth-step-pinned fn-auth-step-pinned)
                                   (fn-midx-correspondencep fn-scar-auth-sessionp fn-auth-sessionp fn-scar-auth-delegate-pinned fn-auth-delegate-pinned fn-auth-command fn-auth-tls-established fn-auth-redeem-outcome fn-node-statep)))))
 
-(defun fn-scar-dispatch (conn event live trie arts)
+; The dispatch proper (fn-served-dispatch-core carried); fn-scar-dispatch
+; below puts NNT-042's advance in front of it exactly as fn-served-dispatch does.
+(defun fn-scar-dispatch-core (conn event live trie arts)
   (declare (xargs :guard t))
   (let* ((r (fn-scar-auth-step-pinned (fn-served-conn-session conn) live trie arts
                                (fn-served-conn-archive conn)
@@ -207,14 +209,15 @@
                       wire (fn-wire-article-line-limit wire)))
                   wire)))
     (fn-served-make-result
-     (fn-served-make-conn-group-indexed wire2 (fn-post-result-session r)
+     (fn-served-make-conn-live wire2 (fn-post-result-session r)
                           (fn-served-conn-archive conn)
                           (fn-served-conn-config conn)
                           (fn-served-conn-observation conn)
                           (fn-served-conn-injection conn)
                           (fn-served-conn-verdicts conn)
                           (fn-served-conn-index conn)
-                          (fn-served-conn-group-index conn) (fn-served-conn-control conn))
+                          (fn-served-conn-group-index conn) (fn-served-conn-control conn)
+                          (fn-served-conn-pinned conn) (fn-served-conn-live conn))
      (mbe :logic (append effects
                          (if submission
                              (list (fn-served-submit-effect submission (fn-served-login (fn-served-conn-session conn))
@@ -226,13 +229,35 @@
                                 (fn-served-account (fn-served-conn-session conn))))
                                 nil))))))
 
+(defthm fn-scar-dispatch-core-is-served-dispatch-core
+  (implies (and (fn-node-statep live)
+                (fn-midx-correspondencep trie arts))
+           (equal (fn-scar-dispatch-core conn event live trie arts)
+                  (fn-served-dispatch-core conn event)))
+  :hints (("Goal" :in-theory (e/d (fn-scar-dispatch-core fn-served-dispatch-core)
+                                  (fn-midx-correspondencep fn-scar-auth-step-pinned fn-auth-step-pinned fn-node-statep)))))
+
+(defun fn-scar-dispatch (conn event live trie arts)
+  (declare (xargs :guard t))
+  (if (fn-served-advance-eventp event)
+      (let ((r (fn-scar-dispatch-core (fn-served-repin conn) event live trie arts)))
+        (if (fn-served-selectedp (fn-served-result-effects r))
+            r
+          (fn-served-make-result
+           (fn-served-conn-with-wire conn (fn-served-conn-wire (fn-served-result-conn r)))
+           (fn-served-result-effects r))))
+    (fn-scar-dispatch-core conn event live trie arts)))
+
 (defthm fn-scar-dispatch-is-served-dispatch
   (implies (and (fn-node-statep live)
                 (fn-midx-correspondencep trie arts))
            (equal (fn-scar-dispatch conn event live trie arts)
                   (fn-served-dispatch conn event)))
   :hints (("Goal" :in-theory (e/d (fn-scar-dispatch fn-served-dispatch)
-                                  (fn-midx-correspondencep fn-scar-auth-step-pinned fn-auth-step-pinned fn-node-statep)))))
+                                  (fn-midx-correspondencep fn-scar-dispatch-core
+                                   fn-served-dispatch-core fn-node-statep
+                                   fn-served-repin fn-served-advance-eventp
+                                   fn-served-selectedp)))))
 
 (defun fn-scar-dispatch-events (conn events live trie arts)
   (declare (xargs :guard t))
@@ -288,15 +313,7 @@
   (declare (xargs :guard (fn-wire-fast-statep (fn-served-conn-wire conn))))
   (let ((fed (fn-wire-feed-byte (fn-served-conn-wire conn) byte)))
     (fn-scar-dispatch-events
-     (fn-served-make-conn-group-indexed (fn-wire-result-state fed)
-                          (fn-served-conn-session conn)
-                          (fn-served-conn-archive conn)
-                          (fn-served-conn-config conn)
-                          (fn-served-conn-observation conn)
-                          (fn-served-conn-injection conn)
-                          (fn-served-conn-verdicts conn)
-                          (fn-served-conn-index conn)
-                          (fn-served-conn-group-index conn) (fn-served-conn-control conn))
+     (fn-served-conn-with-wire conn (fn-wire-result-state fed))
      (fn-wire-result-events fed) live trie arts)))
 
 (defthm fn-scar-feed-byte-is-served-feed-byte
@@ -322,18 +339,11 @@
                             (wire-state (fn-served-conn-wire conn)))
                  (:instance fn-scar-dispatch-events-preserves-fast-statep
                             (conn
-                             (fn-served-make-conn-group-indexed
+                             (fn-served-conn-with-wire
+                              conn
                               (fn-wire-result-state
                                (fn-wire-feed-byte
-                                (fn-served-conn-wire conn) byte))
-                              (fn-served-conn-session conn)
-                              (fn-served-conn-archive conn)
-                              (fn-served-conn-config conn)
-                              (fn-served-conn-observation conn)
-                              (fn-served-conn-injection conn)
-                              (fn-served-conn-verdicts conn)
-                              (fn-served-conn-index conn)
-                              (fn-served-conn-group-index conn) (fn-served-conn-control conn)))
+                                (fn-served-conn-wire conn) byte))))
                             (events
                              (fn-wire-result-events
                               (fn-wire-feed-byte
@@ -449,6 +459,7 @@
 (in-theory (disable fn-scar-node-statep fn-scar-peer-sessionp
                     fn-scar-auth-sessionp fn-scar-peer-step-pinned
                     fn-scar-auth-delegate-pinned fn-scar-auth-step-pinned
+                    fn-scar-dispatch-core
                     fn-scar-dispatch fn-scar-dispatch-events fn-scar-feed-byte
                     fn-scar-feed-counted fn-scar-step-counted-core
                     fn-scar-step-counted-fast))

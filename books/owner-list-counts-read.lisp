@@ -127,7 +127,7 @@
                           (fn-served-result-conn
                            (fn-served-dispatch conn (list :command line))))
                          (fn-served-conn-wire conn)))))
-  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-auth-step-pinned
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-auth-step-pinned
                                    fn-auth-command fn-auth-delegate-pinned
                                    fn-peer-step-pinned fn-peer-delegate-pinned
                                    fn-nntp-post-step-pinned fn-nntp-step-pinned
@@ -310,7 +310,7 @@
                           (fn-served-result-conn
                            (fn-served-dispatch conn (list :command line))))
                          (fn-served-conn-wire conn)))))
-  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-auth-step-pinned
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-auth-step-pinned
                                    fn-auth-command fn-auth-delegate-pinned
                                    fn-peer-step-pinned fn-peer-delegate-pinned
                                    fn-nntp-post-step-pinned fn-nntp-step-pinned

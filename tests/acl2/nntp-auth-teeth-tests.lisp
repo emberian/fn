@@ -1207,7 +1207,7 @@
                     (fn-served-conn-wire conn)))
     :hints (("Goal"
              :do-not-induct t
-             :in-theory (e/d (fn-served-dispatch fn-served-post-command-eventp)
+             :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-served-post-command-eventp)
                              (fn-auth-step fn-auth-sessionp fn-auth-postingp
                               fn-wire-begin-article fn-post-offeredp
                               fn-served-submission fn-served-connp
@@ -1248,7 +1248,7 @@
                     (fn-served-conn-wire conn)))
     :hints (("Goal"
              :do-not-induct t
-             :in-theory (e/d (fn-served-dispatch fn-served-post-command-eventp)
+             :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-served-post-command-eventp)
                              (fn-auth-step fn-auth-sessionp fn-auth-postingp
                               fn-wire-begin-article fn-post-offeredp
                               fn-served-submission fn-served-connp

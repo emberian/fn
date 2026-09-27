@@ -2060,7 +2060,8 @@
       "proof_targets": [
         "PRF-102",
         "PRF-131",
-        "PRF-134"
+        "PRF-134",
+        "PRF-249"
       ],
       "verification": [
         "proof",
@@ -2072,7 +2073,9 @@
         "books/native-admin.lisp",
         "books/native-auth-profile.lisp",
         "books/native-auth-admin.lisp",
-        "planning/evidence/bounds-profile-2026-09-25.md"
+        "planning/evidence/bounds-profile-2026-09-25.md",
+        "books/bp-request-reference.lisp",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
       "implementation_note": "Configuration generations (field 11) and credentials (field 12) are read from the profile the store opened; consumers (9) are read too since community-bounds (PRF-167, STO-021); BP rows (10) and policy members (13) still have constants (4096, 64), recorded as open in the evidence. fn.toml's size bounds are classified as work."
     },
@@ -2425,7 +2428,9 @@
         "PRF-121",
         "PRF-131",
         "PRF-134",
-        "PRF-136"
+        "PRF-136",
+        "PRF-225",
+        "PRF-250"
       ],
       "verification": [
         "proof",
@@ -2442,7 +2447,8 @@
         "books/bp-fragment-sweep.lisp",
         "tests/acl2/bp-fragment-sweep-tests.lisp",
         "tests/test_bp_fragment_node_native.py",
-        "planning/evidence/bp-lifecycle-2026-09-25.md"
+        "planning/evidence/bp-lifecycle-2026-09-25.md",
+        "books/bp-fragment-resume.lisp"
       ],
       "implementation_note": "RFC 9174 section 5.4.1 forbids a transfer longer than the peer's Transfer MRU (an RFC requirement); RFC 9171 section 5.8 permits fragmenting a bundle whose no-fragment flag is clear (fn fragments proactively, a local policy choice) and requires the replicate-flagged extension blocks in every fragment (fn replicates every extension block, a stronger fn choice). ACL2's fn-bpfs-plan decides from the session's negotiated Transfer MTU; host/native/bp-service.lisp fnn-bps-send-effect sends the answer and reads each further fragment's transfer through fn-bpfs-fragment-outcome. Not covered: held transit to a small-MRU hop still waits (fn-bpnp-forward-mru-waitp) rather than fragmenting; the receiver's reassembler has no family-size ceiling since PRF-121 (fn-bpfw-reassemble, linear in the octets received), but a family is still bounded by the held-image cap, the 1 MiB bundle decoder and the 65538-octet ADU record (P5).",
       "keystones": [
@@ -3830,7 +3836,7 @@
     },
     {
       "id": "NNT-042",
-      "title": "A reader connection's view is a version that advances at GROUP and LISTGROUP between commands and is fixed within a command; a cancel committed after an article leaves it visible to a connection pinned before the cancel until it advances past it",
+      "title": "A reader connection's view is a version (ViewId): a successful GROUP or LISTGROUP acquires a fresh coherent view and performs its normal selection effects; other reads stay on that view until the next refresh boundary; a failed selection leaves the previous view and cursor unchanged; a cancel committed after an article leaves it visible to a connection pinned before the cancel until it acquires a view past it",
       "specification": "specs/nntp.md#sessions-and-framing",
       "milestone": "M5",
       "status": "specified",
@@ -3846,12 +3852,23 @@
       "evidence": [
         "books/catalog-delta.lisp",
         "tests/acl2/catalog-delta-tests.lisp",
-        "planning/evidence/catalog-slice-2026-09-26.md"
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "books/served.lisp",
+        "books/owner.lisp",
+        "books/owner-invariants.lisp",
+        "books/config-owner-live.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_reader_freshness.py"
       ],
       "keystones": [
-        "fn-view-cancel-after-target"
+        "fn-view-cancel-after-target",
+        "fn-served-step-pin-is-old-or-live",
+        "fn-served-successful-selection-is-the-repinned-dispatch",
+        "fn-served-failed-selection-keeps-the-connection",
+        "fn-own-read-preserves-relation",
+        "fn-ocl-read-preserves-historical-relation"
       ],
-      "implementation_note": "A stronger fn guarantee than RFC 3977 (which fixes no view semantics), from the NNTP inventory's finding that a reader connection today keeps the view it opened with. The ACL2 half is certified (catalog-slice-2, 2026-09-26: fn-view-advance, fn-view-sees, fn-view-apply, fn-view-cancel-after-target over the catalog; SCN-131's two-connection case run on the live catalog in tests/acl2/catalog-delta-tests.lisp). The served path still pins a per-connection archive copy (fn-own-conn-archive); moving GROUP/LISTGROUP to the version and the served reads to the catalog is PKT-585 (steps 7 and 8), with tests.test_native_catalog_view.",
+      "implementation_note": "An explicit specification change (2026-09-26, gpt-6's wave-5 review section 1; before it a connection kept the view it pinned at open until the control channel advanced it). Implemented in the served machine the host calls (catalog-slice-5): the owner hands every read its committed view as the served connection's live pin (books/owner.lisp fn-own-served-conn, fn-own-view-live); fn-served-dispatch dispatches a GROUP/LISTGROUP line over the connection re-pinned at it (fn-served-repin) and keeps the re-pin exactly when the reply is 211 (fn-served-selectedp); fn-own-finish-read takes the pin back and the configured owner moves the connection's configuration pin with it (fn-ocfg-with-read-owner). ACL2: fn-served-step-pin-is-old-or-live, fn-served-successful-selection-is-the-repinned-dispatch, fn-served-failed-selection-keeps-the-connection, fn-served-repin-preserves-connp; the owner relations re-proved with the second case. Witness: tests/acl2/owner-tests.lisp (the reader pinned at version 0 lists the article after LISTGROUP and GROUP, is pinned at the view afterwards, and STAT on it before that still answers 430 with no pin moved). Native: tests.test_native_reader_freshness asserts the long-lived reader sees another connection's POST and a peer's IHAVE after its next GROUP. The catalog form (fn-view-advance = fn-cat-count, fn-view-cancel-after-target) is the same semantics over the catalog; the retrieval arms over the catalog and the crossed-view acceptance tests (HDR/XHDR, OVER/XOVER, XPAT, counts) are 7b (PKT-585).",
       "note": "Lane catalog-slice-2 (wave 5 lane 2 continuation, D33; the id the deputy assigned for PKT-585's REQ line)."
     },
     {
@@ -4339,6 +4356,35 @@
         "tools/run_owner.py"
       ],
       "implementation_note": "Lane adapter-retirement: FeedPublication and ConfigResult typed; fnn-owner-name-list and fnn-owner-config-names deleted; the feed flush consumes one sealed frame plan. Lane adapter-retirement-2: the submission path's publication admits the owner's two submission ids (the batch AM fault: the operator post's :control), with keystones for every outcome; the take returns a SubmissionTaken (six fn-owner-submit-* mailboxes retired; the transit decision's memberships are its own fn-owner-transit-groups); Capture takes checkpoint-pipeline-5's field names. ServedStep is fenced to lane owner-scheduler (its render plan replaces the served step's return)."
+    },
+    {
+      "id": "REP-015",
+      "title": "The BP application handoff is reported durable only when the application committed the delivered ADU (the Store holds the article, or the receipt's release is durable); a durable kind 7 recording a refusal is reported refused, naming the disposition, never durable",
+      "specification": "specs/bp-node-machine.md#494-the-handoff-reports-the-applications-disposition-2026-09-27-lane-bp-fragments-10mib-prf-224",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-224"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc9171.txt",
+        "books/bp-handoff-report.lisp",
+        "books/bp-node-foundation.lisp",
+        "books/bp-node-progress.lisp",
+        "tests/acl2/bp-handoff-report-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp-node.lisp",
+        "tests/test_bp_node_native.py",
+        "tests/test_bp_fragment_node_native.py",
+        "specs/bp-node-machine.md",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 9171 section 5.7 (local bundle delivery) leaves the application's disposition to the node; a durable kind 7 completes delivery at the BP layer whatever the application decided (spec bp-node-machine 3.1). fn's stronger guarantee: the host reports the disposition ACL2 names (fn-bpah-handoff-report), so 'handoff durable' means the application committed. PKT-630 (7).",
+      "note": "SCN-158; SCN-077's 10 MiB case is the positive witness once its Store admits the article."
     }
   ]
 }

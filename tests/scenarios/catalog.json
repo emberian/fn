@@ -2349,9 +2349,10 @@
       "id": "SCN-077",
       "title": "A 10 MiB article carried by BP through 4 KiB fragments, under a node profile that admits it, is reassembled once and handed to the Store once",
       "milestone": "M4",
-      "status": "specified",
+      "status": "validated",
       "requirements": [
         "REP-008",
+        "REP-015",
         "STO-015"
       ],
       "steps": [
@@ -2360,16 +2361,27 @@
         "Kill the receiver with SIGKILL halfway through the family, restart it on the same journal, and send the rest."
       ],
       "expected": [
-        "The receiver publishes one kind-18 family, logs `BP application handoff durable` once, and the Store holds one article whose bytes are the ADU.",
-        "Arrivals no longer block it (PRF-136, bp-lifecycle-5): a bp-node serve session costs about 60 ms at 64 to 256 held rows (3.7 to 15.9 s before) and the first 1,311 fragments arrive in 90 s. Blocked now by the open: a journal of 1,311 held rows opens in 51.9 s (three re-encodings per row, an unverified bundle decode, a quadratic held-octet sum), so the restarted receiver misses the harness's waits in the second half. PKT-308."
+        "The receiver publishes one kind-18 family, logs `BP application handoff durable disposition=request-accepted` once, and the Store holds one article whose bytes are the ADU. Under the development-base Store (32,768-octet articles) the Store refuses the article as oversize and the handoff is reported refused (PKT-630 (7), PRF-224): the harness raises the Store profile (--max-article-octets 11534336 --max-record-octets 33554432 --max-history-octets 268435456).",
+        "Arrivals no longer block it (PRF-136, bp-lifecycle-5): a bp-node serve session costs about 60 ms at 64 to 256 held rows (3.7 to 15.9 s before) and the first 1,311 fragments arrive in 90 s. Blocked now by the open: a journal of 1,311 held rows opens in 51.9 s (three re-encodings per row, an unverified bundle decode, a quadratic held-octet sum), so the restarted receiver misses the harness's waits in the second half. PKT-308. 2026-09-27 (bp-fragments-10mib): the reopen and the family pass; with the Store and the neighbour's inbound bound raised the delivery is refused by FNRJ, whose request-ADU :blob is 131,072 octets (PKT-646, open), and reported `BP application handoff refused disposition=request-refused (kind 7 durable)`. Reassembly and handoff 280.3 s -> 117.2 s with the table-driven CRC-16 (PRF-225). 2026-09-27 (bp-fragments-10mib-4): PKT-646 closed; accepted, `disposition=request-accepted`, and the Store's own open reads one article byte-equal to the authored one (`store PATH status`, `store PATH inspect`), on the developer and production images at be7e5cb17 (tests.test_bp_fragment_node_native)."
       ],
       "evidence": [
         "planning/evidence/bp-lifecycle-3-2026-09-26.md",
         "books/bp-node-profile.lisp",
         "planning/evidence/bp-lifecycle-4-2026-09-26.md",
         "books/bp-node-profile-admission.lisp",
-        "planning/evidence/bp-lifecycle-5-2026-09-26.md"
-      ]
+        "planning/evidence/bp-lifecycle-5-2026-09-26.md",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md",
+        "tests/test_bp_fragment_node_native.py"
+      ],
+      "implementation": {
+        "test": "tests.test_bp_fragment_node_native",
+        "cases": [
+          "test_ten_mebibyte_article_through_four_kib_fragments"
+        ],
+        "native": true,
+        "log": "planning/evidence/bp-fragments-10mib-2026-09-27/scn077-developer-be7e5cb17.log",
+        "record": "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      }
     },
     {
       "id": "SCN-073",
@@ -3702,9 +3714,11 @@
         "NNT-042"
       ],
       "steps": [
-        "tests.test_native_catalog_view (to write): connection A selects a group and lists it; connection B posts an article and then a cancel for it; A issues ARTICLE by number (visible: pinned before the cancel), then GROUP, then ARTICLE by number again (withdrawn).",
+        "tests.test_native_reader_freshness (catalog-slice-5, 2026-09-26; the freshness half): a long-lived reader selects the group before the article exists; another connection POSTs (store A) or a peer IHAVEs (store B); the reader's next GROUP reports the new count and its STAT/ARTICLE by Message-ID answer 223/220 as a fresh connection's do (asserted since NNT-042).",
+        "tests/acl2/owner-tests.lisp (catalog-slice-5): the reader pinned at version 0 lists the posted article after LISTGROUP and after GROUP and is pinned at the view afterwards; STAT on the reader still at version 0 answers 430 and moves no pin; fn-own-read-repinned says which.",
         "ACL2 half (catalog-slice-2): tests/acl2/catalog-delta-tests.lisp cdt-exec: on the live catalog over the live arena, connection A advances to version 2 before the cancel; the cancel's :withdraw delta and its own row commit; connection B advances to version 3; fn-view-sees at A's and B's versions of row 0 and of the cancel's row.",
-        "ACL2 half over the view (catalog-slice-4): tests/acl2/catalog-view-tests.lisp cvt-run: the view at version 2 over the mixed history (two articles, a retention event skipped) built on live stobjs; the machine's own lookups (fn-midx-lookup of fn-midx-build, fn-gidx-number-article of fn-gidx-build) equal the walks fn-cat-view-find / fn-cat-view-bound-find; a cancel of row 0 committed at count 2 leaves row 0 in the view at version 2 (2 articles) and out of the view at version 3 (1 article)."
+        "ACL2 half over the view (catalog-slice-4): tests/acl2/catalog-view-tests.lisp cvt-run: the view at version 2 over the mixed history (two articles, a retention event skipped) built on live stobjs; the machine's own lookups (fn-midx-lookup of fn-midx-build, fn-gidx-number-article of fn-gidx-build) equal the walks fn-cat-view-find / fn-cat-view-bound-find; a cancel of row 0 committed at count 2 leaves row 0 in the view at version 2 (2 articles) and out of the view at version 3 (1 article).",
+        "Cancel-after-target over two native connections (A pinned before the cancel reads the article; A's GROUP; A reads it withdrawn) is 7b's module with the crossed-view arms (PKT-585)."
       ],
       "expected": "A's first read returns the article (223/220), the GROUP reply's count advances, the second read returns 423. ACL2 half: A (version 2) sees row 0 and not the cancel's row; B (version 3) does not see row 0 and sees the cancel's row; a delta does not move A's version.",
       "evidence": [
@@ -3712,9 +3726,12 @@
         "planning/evidence/manifests/certify-20260926T212645Z-2809134.json",
         "tests/acl2/catalog-view-tests.lisp",
         "planning/evidence/manifests/certify-20260926T222802Z-3457759.json",
-        "planning/evidence/manifests/certify-20260926T224259Z-3607880.json"
+        "planning/evidence/manifests/certify-20260926T224259Z-3607880.json",
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_reader_freshness.py",
+        "books/served.lisp"
       ],
-      "note": "Lane catalog-slice (2026-09-26): the native module is not written (PKT-585); the ACL2 half runs in catalog-delta-tests (catalog-slice-2)."
+      "note": "Lane catalog-slice (2026-09-26): the ACL2 half runs in catalog-delta-tests (catalog-slice-2) and catalog-view-tests (-4); the freshness half runs natively in tests.test_native_reader_freshness (catalog-slice-5); the cancel-after-target native half is 7b (PKT-585)."
     },
     {
       "id": "SCN-123",
@@ -4912,6 +4929,27 @@
         "native": true,
         "record": "planning/evidence/adapter-retirement-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-158",
+      "title": "A request the receiving Store refuses is reported as a refused BP handoff naming the disposition, never a durable one",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-015"
+      ],
+      "steps": [
+        "Start a receiving bp-node whose channel is admitted but whose policy grants no inbound scope (tests.test_bp_node_native test_admitted_channel_without_inbound_scope_refuses_store_request).",
+        "Send one request bundle; the application refuses it and kind 7 records :request-refused durably."
+      ],
+      "expected": [
+        "The node logs `BP application handoff refused disposition=request-refused (kind 7 durable)` and `BP node delivery request-refused`, never `BP application handoff durable`, and the Store holds no article."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "books/bp-handoff-report.lisp",
+        "tests/acl2/bp-handoff-report-tests.lisp"
+      ]
     }
   ]
 }

@@ -491,11 +491,50 @@
                 (fn-bpnf-correlation st) nil nil
                 (fn-bpnf-epoch st) (fn-bpnf-next-op st)
                 (fn-bpnf-next-arrival st))
-               (list (list :delivery-answer :durable)))))
+               ;; PRF-224: the answer names the application's disposition
+               ;; the kind-7 record holds, so the host reports the Store's
+               ;; outcome (fn-bpah-handoff-report), never a bare durable.
+               (list (list :delivery-answer :durable
+                           (fn-bpn-nth 5 record))))))
         (fn-bpnf-answer
          (fn-bpnf-with-issued
           st (fn-bpnf-operation epoch operation-id :deliver record :uncertain))
          (list (list :delivery-answer :uncertain)))))))
+
+;; PRF-224 (PKT-630 (7)): what the host reports for a delivery answer.  A
+;; durable kind 7 completes the delivery at this layer whatever the
+;; application decided (spec bp-node-machine 3.1: a refusal is a completed
+;; delivery), so the publication's durability is not the application's
+;; acceptance.  The report is :durable only for a disposition under which
+;; the application committed (the Store holds the article, or the receipt's
+;; release is durable), :refused for a refusal, named with the disposition,
+;; and :uncertain otherwise.  bp-service.lisp fnn-bps-drive-effects prints
+;; exactly this word.
+(defun fn-bpah-accepting-dispositionp (status)
+  (declare (xargs :guard t))
+  (if (member-equal status '(:request-accepted :request-duplicate
+                             :request-returned :receipt-accepted
+                             :receipt-duplicate))
+      t
+    nil))
+
+(defun fn-bpah-refusing-dispositionp (status)
+  (declare (xargs :guard t))
+  (if (member-equal status '(:request-refused :receipt-refused)) t nil))
+
+(defun fn-bpah-disposition-report (status)
+  (declare (xargs :guard t))
+  (cond ((fn-bpah-accepting-dispositionp status) :durable)
+        ((fn-bpah-refusing-dispositionp status) :refused)
+        (t :uncertain)))
+
+(defun fn-bpah-handoff-report (effect)
+  (declare (xargs :guard t))
+  (cond ((not (equal (fn-cbor-ag-car effect) :delivery-answer)) :uncertain)
+        ((equal (fn-bpn-nth 1 effect) :durable)
+         (fn-bpah-disposition-report (fn-bpn-nth 2 effect)))
+        ((equal (fn-bpn-nth 1 effect) :refused) :refused)
+        (t :uncertain)))
 
 ; Recovery is cold-path validation of the ACL2 byte replay result.  The host
 ; obtains that result from fn-bpnf-replay-rows on observed FNBS name/bytes;

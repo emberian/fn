@@ -521,6 +521,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-rotation-buffer-tests \
 	books/bp-held-projection \
 	tests/acl2/bp-held-projection-tests \
+	books/bp-handoff-report \
+	tests/acl2/bp-handoff-report-tests \
+	books/bp-request-ref \
+	books/bp-request-reference \
+	tests/acl2/bp-request-reference-tests \
 	books/bp-held-payload \
 	tests/acl2/bp-held-payload-tests \
 	books/bp-node-rotation-step \
@@ -595,6 +600,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fragment-invariants \
 	books/bp-fragment-fast \
 	books/bp-fragment-sweep \
+	books/bp-fragment-resume \
+	tests/acl2/bp-fragment-resume-tests \
 	books/bp-limits \
 	tests/acl2/bp-fragment-tests \
 	tests/acl2/bp-fragment-fast-tests \
@@ -786,6 +793,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-entries \
 	books/catalog-refresh \
 	books/catalog-number-index \
+	books/served-catalog \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -804,6 +812,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-view-tests \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
+	tests/acl2/served-catalog-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
 	tests/acl2/catalog-number-index-tests \
