@@ -105,7 +105,8 @@ Hello, news.
                    (fn-ipp-date obs) (fn-inj-decision-msgid (fn-inj-decide source config obs))
                    (fn-inj-config-agent config) (fn-ipp-gid source) (fn-ipp-gdate source)
                    (fn-ipp-params secret login (fn-ipp-complaints cfg)))
-                  source))))
+                  source))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)))))
 
 ; fn-ipp-with-params-of-an-injection: the same antecedent; its removal is
 ; the witness above with PARAMS the parameters.
@@ -118,7 +119,8 @@ Hello, news.
                    (fn-ipp-date obs) (fn-inj-decision-msgid (fn-inj-decide source config obs))
                    (fn-inj-config-agent config) (fn-ipp-gid source) (fn-ipp-gdate source)
                    params)
-                  source))))
+                  source))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)))))
 
 ; fn-ipp-with-params-keeps-the-source: an injection and a parameter run.
 ; Positive: "; x=1".  Omitted run hypothesis: a "parameter" with a CR LF
@@ -149,7 +151,8 @@ Hello, news.
                      params)
                     (fn-inj-config-agent config)
                     (fn-inj-decision-msgid (fn-inj-decide source config obs)))
-                   (cons t source)))))
+                   (cons t source)))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)))))
 (must-fail
  (defthm ipt-keeps-the-source-without-an-injection
    (implies (fn-ipp-params-okp params)
@@ -160,7 +163,8 @@ Hello, news.
                      params)
                     (fn-inj-config-agent config)
                     (fn-inj-decision-msgid (fn-inj-decide source config obs)))
-                   (cons t source)))))
+                   (cons t source)))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)))))
 
 ; fn-ipp-params-of-a-login / -without-a-login / fn-ipp-a-login-has-parameters.
 (assert-event
@@ -183,14 +187,17 @@ Hello, news.
           (append *fn-ipp-account-open*
                   (fn-pa-account-value secret (fn-ipp-octets login))
                   *fn-ipp-quote*
-                  (if (consp addr) (fn-ipp-complaints-param addr) nil)))))
+                  (if (consp addr) (fn-ipp-complaints-param addr) nil)))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)))))
 (must-fail
  (defthm ipt-params-never-an-account
    (equal (fn-ipp-params secret login addr)
-          (if (consp addr) (fn-ipp-complaints-param addr) nil))))
+          (if (consp addr) (fn-ipp-complaints-param addr) nil))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)))))
 (must-fail
  (defthm ipt-everyone-has-parameters
-   (consp (fn-ipp-params secret login addr))))
+   (consp (fn-ipp-params secret login addr))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)))))
 
 ; fn-ipp-params-are-a-parameter-run: without parameters there is no run.
 (assert-event
@@ -200,7 +207,8 @@ Hello, news.
  (fn-ipp-params-okp (fn-ipp-params *ipt-secret* *ipt-login* (fn-ipp-complaints *ipt-cfg1*))))
 (must-fail
  (defthm ipt-params-always-a-run
-   (fn-ipp-params-okp (fn-ipp-params secret login (fn-ipp-complaints cfg)))))
+   (fn-ipp-params-okp (fn-ipp-params secret login (fn-ipp-complaints cfg)))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)))))
 
 ; fn-ipp-injected-octets-without-parameters: each hypothesis matters.
 (assert-event
@@ -218,12 +226,14 @@ Hello, news.
  (defthm ipt-without-parameters-under-a-login
    (implies (not (fn-ipp-complaints cfg))
             (equal (fn-ipp-injected-octets d secret login cfg)
-                   (fn-inj-decision-octets d)))))
+                   (fn-inj-decision-octets d)))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)))))
 (must-fail
  (defthm ipt-without-parameters-with-an-address
    (implies (not (fn-ipp-accountp secret login))
             (equal (fn-ipp-injected-octets d secret login cfg)
-                   (fn-inj-decision-octets d)))))
+                   (fn-inj-decision-octets d)))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)))))
 
 ; The complaints address: an addr-spec has no DQUOTE, backslash, ";", CR,
 ; LF; a string with a DQUOTE is no addr-spec (so it never reaches the
@@ -233,7 +243,8 @@ Hello, news.
 (assert-event (not (fn-ipp-addr-specp (ipt-o "abuse"))))
 (must-fail
  (defthm ipt-any-text-is-quote-free
-   (not (member-equal 34 x))))
+   (not (member-equal 34 x))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)))))
 
 (defun ipt-argv (words)
   (if (consp words)
@@ -314,7 +325,8 @@ Hello, news.
                                                  secret login cfg)
                          (fn-inj-config-agent config)
                          (fn-inj-decision-msgid (fn-inj-decide source config obs)))
-          (cons :source source))))
+          (cons :source source))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)))))
 
 ; fn-ipp-a-same-source-retry-is-the-same-article and
 ; fn-ipp-same-articlep-of-two-injections: the positive witnesses are the D25
@@ -357,7 +369,8 @@ Hello, news.
 (assert-event (and (fn-inj-injectedp *ipt-d*) (equal (car *ipt-stored*) 80)))
 (must-fail
  (defthm ipt-never-opens-with-c
-   (not (equal (car (fn-ipp-injected-octets d secret login cfg)) 67))))
+   (not (equal (car (fn-ipp-injected-octets d secret login cfg)) 67))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)))))
 
 ; The supplied-Path (recipe v3) retry, concretely (the general theorem,
 ; fn-ipp-a-same-source-retry-is-the-same-article, covers both recipes): one source with a Path and a Message-ID, injected at two

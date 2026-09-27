@@ -46,7 +46,10 @@
                 (fn-inj-source-of x (fn-pb-path-agent x msgid) msgid)
                 (fn-inj-source-of y (fn-pb-path-agent x msgid) msgid))
            (equal (fn-pb-same-articlep msgid p h) (fn-pb-same-articlep msgid x y)))
-  :hints (("Goal" :in-theory (enable fn-pb-same-articlep fn-pb-subject fn-pb-path-agent))))
+  :hints (("Goal" :in-theory (union-theories '(fn-pb-same-articlep fn-pb-subject
+                                               fn-pb-path-agent car-cons cdr-cons
+                                               cons-equal)
+                                             (theory 'minimal-theory)))))
 
 (local
  (defthm fn-cld-a-tombstone-opens-with-nul

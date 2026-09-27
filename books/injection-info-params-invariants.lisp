@@ -608,7 +608,8 @@
 (local
  (defthm fn-ipp-no-crlfp-without-cr-or-lf
    (implies (and (not (member-equal 13 x)) (not (member-equal 10 x)))
-            (fn-ipp-no-crlfp x))))
+            (fn-ipp-no-crlfp x))
+   :hints (("Goal" :induct (fn-ipp-no-crlfp x)))))
 
 (local
  (defthm fn-ipp-complaints-is-an-addr-spec
@@ -882,7 +883,8 @@
 
 (local
  (defthm fn-ipp-v3-no-crlfp-has-no-lf
-   (implies (fn-ipp-no-crlfp x) (not (member-equal 10 x)))))
+   (implies (fn-ipp-no-crlfp x) (not (member-equal 10 x)))
+   :hints (("Goal" :induct (fn-ipp-no-crlfp x)))))
 
 (local
  (defthm fn-ipp-v3-true-listp-append
