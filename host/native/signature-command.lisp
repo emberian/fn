@@ -170,10 +170,17 @@ A valid carrier does not establish topic anchoring or report admission."
                      (fnn-command-hybrid-verify-source (cons first rest))))
 
 (defun fnn-command-consumer-project (args)
-  "Project exact poll output with ACL2. Supplied files alone do not prove Store provenance."
+  "Project exact poll output with ACL2. Supplied files alone do not prove Store provenance.
+`consumer-project --bounds' prints the two file ceilings ACL2 applies (the
+cursor's, then the event's), so a caller asks them instead of copying them."
+  (when (equal args '("--bounds"))
+    (fnn-out "fn-consumer-project-bounds-v1 ~d ~d"
+             (fnn-core 'fn-cpj-max-cursor-octets)
+             (fnn-core 'fn-cpj-max-event-octets))
+    (return-from fnn-command-consumer-project 0))
   (unless (= (length args) 2)
     (error 'fnn-usage-error
-           :message "usage: fn consumer-project CURSOR.fncu ACCEPTED.fn-e"))
+           :message "usage: fn consumer-project CURSOR.fncu ACCEPTED.fn-e | --bounds"))
   (let* ((cursor (handler-case
                      (fnn-octet-list
                       (fnn-read-regular-bounded
