@@ -544,3 +544,28 @@
  (equal (rft-exec)
         (list (list t t t t (list *rft-w0* *rft-w2*) (len *rft-p0*))
               (list t *rft-p0* *rft-tomb* 4))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE fn-stx-index-of-store-without-a-keyring (books/stx-index.lisp,
+; PKT-EG-3): with no keyring the index of ANY article list is empty, so the
+; keyring-less opens build (fn-stx-index-empty) and never walk the retained
+; articles.  Witness: the signed article (its octets verify under
+; *rft-keyring*) and a retained article whose payload is a HANDLE.
+(defconst *rft-signed-article*
+  (fn-make-article (fn-record-msgid (car *rft-cs*)) (nth 0 *rft-as*)
+                   (fn-record-groups (car *rft-cs*))
+                   (fn-held-numbers (car *rft-cs*)) t
+                   (fn-record-stamp (car *rft-cs*))))
+(defconst *rft-handle-article*
+  (fn-make-article (fn-record-msgid (car *rft-cs*)) 0
+                   (fn-record-groups (car *rft-cs*))
+                   (fn-held-numbers (car *rft-cs*)) t
+                   (fn-record-stamp (car *rft-cs*))))
+(assert-event
+ (equal (fn-stx-index-of-store (list *rft-signed-article* *rft-handle-article*) nil)
+        (fn-stx-index-empty)))
+; The omitted hypothesis (no keyring): under the keyring that verifies it,
+; the signed article's index is not empty.
+(must-fail-checked
+ (assert-event (equal (fn-stx-index-of-store (list *rft-signed-article*) *rft-keyring*)
+                      (fn-stx-index-empty))))

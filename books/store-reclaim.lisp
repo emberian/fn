@@ -237,18 +237,23 @@
           (fn-rcl-verdict-heldp msgid (cdr verdicts)))
     nil))
 
-; Why an article stays, or :reclaimable.  VERDICTS is the Store's
-; newest-first (msgid . verdict) list: an article with an authorship
-; verdict other than :absent keeps its payload (above; STO-008).
-(defun fn-rcl-verdict (rule now h verdicts article)
+;; Why an article stays, or :reclaimable, from everything but its payload:
+; the rule, the Store's verdicts and the obligations.  VERDICTS is the
+; Store's newest-first (msgid . verdict) list: an article with an authorship
+; verdict other than :absent keeps its payload (above; STO-008).  It reads
+; no payload, so it is the same over a retained article (whose payload is a
+; HANDLE since the records flip) and over its octet model: the log reclaim's
+; context (books/store-reclaim-pack.lisp fn-rclp-ctx-reclaimable) calls it
+; on the Store's articles and tests the tombstone on the record's own
+; octets; the counts (books/store-reclaim-holders.lisp fn-rcl-verdict-in)
+; test it through the arena.
+(defun fn-rcl-standing-verdict (rule now h verdicts article)
   (declare (xargs :guard t
                   :guard-hints (("Goal" :in-theory (disable fn-rcl-rulep
-                                                            fn-rcl-tombstonep
                                                             fn-rcl-rule-permits)))))
   (let ((msgid (fn-article-msgid article))
         (memberships (fn-article-memberships article)))
-    (cond ((fn-rcl-tombstonep (fn-article-payload article)) :already-reclaimed)
-          ((equal rule '(:keep-forever)) :rule-keeps)
+    (cond ((equal rule '(:keep-forever)) :rule-keeps)
           ((not (fn-rcl-rulep rule)) :rule-refused)
           ((not (fn-rcl-rule-permits rule now (fn-article-stamp article)))
            :too-recent)
@@ -260,9 +265,32 @@
           ((member-equal msgid (true-list-fix (fn-rcl-bp h))) :held-bp-obligation)
           (t :reclaimable))))
 
+; The verdict of the OCTET model: an article whose payload is its octets
+; (a tombstone is :already-reclaimed).  The host never hands it a retained
+; article: the counts it prints are fn-rcl-verdict-in over the arena, whose
+; keystone (fn-rcl-verdict-in-is-verdict-of-alpha) is this verdict of the
+; article's octet model.
+(fn-payload-kind fn-rcl-verdict :wire "the octet model; the host's counts read the arena (fn-rcl-verdict-in-is-verdict-of-alpha)")
+(defun fn-rcl-verdict (rule now h verdicts article)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-rcl-tombstonep
+                                                            fn-rcl-standing-verdict)))))
+  (if (fn-rcl-tombstonep (fn-article-payload article))
+      :already-reclaimed
+    (fn-rcl-standing-verdict rule now h verdicts article)))
+
+; Whether the rule and the obligations let the article go.  Its tombstone
+; test is the caller's, on the octets it holds (a record's own payload, or
+; the arena at the handle).
 (defun fn-rcl-reclaimable (rule now h verdicts article)
   (declare (xargs :guard t))
-  (equal (fn-rcl-verdict rule now h verdicts article) :reclaimable))
+  (equal (fn-rcl-standing-verdict rule now h verdicts article) :reclaimable))
+
+(defthm fn-rcl-verdict-reclaimable-by-definition
+  (equal (equal (fn-rcl-verdict rule now h verdicts article) :reclaimable)
+         (and (not (fn-rcl-tombstonep (fn-article-payload article)))
+              (fn-rcl-reclaimable rule now h verdicts article)))
+  :hints (("Goal" :in-theory '(fn-rcl-verdict fn-rcl-reclaimable))))
 
 ; -----------------------------------------------------------------------------
 ; The keystone: the executable decision is the obligation test.
@@ -301,15 +329,14 @@
         (fn-rcl-unacknowledged-p memberships cursors))))
 
 ;  KEYSTONE (PRF-088, the decision).  An article is reclaimable exactly when
-; it is not already a tombstone, the rule is not keep-forever and permits it
+; the rule is not keep-forever and permits it
 ; by age, it carries no authorship verdict but :absent, and NO obligation in the list the
 ; lifetimes table names -- reader pin, consumer cursor, undelivered feed to a
 ; live peer, BP obligation -- names it.  The executable side reads one fl
 ; per consumer group; the obligation side reads every cursor.
 (defthm fn-rcl-reclaimable-is-no-obligation-names-it
   (equal (fn-rcl-reclaimable rule now h verdicts article)
-         (and (not (fn-rcl-tombstonep (fn-article-payload article)))
-              (not (equal rule '(:keep-forever)))
+         (and (not (equal rule '(:keep-forever)))
               (fn-rcl-rulep rule)
               (fn-rcl-rule-permits rule now (fn-article-stamp article))
               (not (fn-rcl-verdict-heldp (fn-article-msgid article) verdicts))
@@ -714,6 +741,7 @@
     nil))
 
 ; (reclaimable reclaimable-octets reclaimed reclaimed-octets-freed)
+(fn-payload-kind fn-rcl-summary :wire "the octet model; the host's counts are fn-rcl-summary-in over the arena (fn-rcl-summary-in-is-summary-of-alpha)")
 (defun fn-rcl-summary (rule now h verdicts articles)
   (declare (xargs :guard t))
   (if (consp articles)

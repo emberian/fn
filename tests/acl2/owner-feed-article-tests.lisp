@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-feed-article")
 (include-book "acceptance-payload-ref-tests")
+(include-book "must-fail-checked")
 
 (defconst *ofa-t-o* (cons *apr-t-s* nil))
 (defconst *ofa-t-msgid-1* (fn-record-string-octets "<apr-1@example.invalid>"))
@@ -68,6 +69,28 @@
 (assert-event (equal (ofa-t-wire *ofa-t-unindexed* *ofa-t-msgid-1*) '(89 111 13 10)))
 (assert-event (not (equal (ofa-t-article *ofa-t-unindexed* *ofa-t-msgid-1*)
                           (ofa-t-wire *ofa-t-unindexed* *ofa-t-msgid-1*))))
+
+;  KEYSTONE fn-ofa-feed-article-is-the-owner-step-article (PKT-EG-2b): the
+; book owner's step reads the handle's bytes, the host's article.
+(defun ofa-t-model (o msgid)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (let ((fn-arena (ofa-t-arena fn-arena)))
+        (mv (fn-handle-bytes (fn-own-feed-article o msgid) fn-arena) fn-arena))
+      r)))
+(assert-event (fn-apr-store-at-restp (fn-own-store *ofa-t-o*)))
+(assert-event (equal (ofa-t-model *ofa-t-o* *ofa-t-msgid-1*) '(89 111 13 10)))
+(assert-event (equal (ofa-t-article *ofa-t-o* *ofa-t-msgid-1*)
+                     (ofa-t-model *ofa-t-o* *ofa-t-msgid-1*)))
+; Mutation (the defect): the model handing the HANDLE is not the host's bytes.
+(must-fail-checked (assert-event (equal (ofa-t-article *ofa-t-o* *ofa-t-msgid-1*)
+                                        (fn-own-feed-article *ofa-t-o* *ofa-t-msgid-1*))))
+; Hypothesis removal (fn-apr-store-at-restp): the unindexed Store; the host
+; finds no row, the model's acceptance field still names handle 1.
+(assert-event (not (fn-apr-store-at-restp (fn-own-store *ofa-t-unindexed*))))
+(assert-event (not (equal (ofa-t-article *ofa-t-unindexed* *ofa-t-msgid-1*)
+                          (ofa-t-model *ofa-t-unindexed* *ofa-t-msgid-1*))))
 
 ; fn-ofa-feed-article-is-an-octet-list: the witness arena is an arena
 ; (fn-arena-p) and the bytes are octets; the handle is not.

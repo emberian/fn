@@ -27,9 +27,8 @@ when the value goes
     so its payload IS octets.
 
 Anything else is a finding: the function consumes a handle without saying
-which kind it takes.  WAIVERS below name the known live defects owned by
-another lane (each with its owner); a waiver whose finding is gone is itself
-a finding, so the table only shrinks.
+which kind it takes.  There are no waivers (lane entry-guards-2 closed the
+fourteen the first version named): a finding is fixed, never excused.
 
     python3 tools/payload_kind_check.py            # findings, exit 1 if any
     python3 tools/payload_kind_check.py --report   # everything, exit 0
@@ -50,38 +49,6 @@ from tools import ledger  # noqa: E402
 ACCESSORS = {"fn-article-payload", "fn-held-payload"}
 DEFINERS = {"defun", "defund", "defun-inline", "defun-nx", "define"}
 DECLARER = "fn-payload-kind"
-
-# Known live handle-as-octets consumers, owned elsewhere: (book, function) ->
-# owner.  Each is a defect; the entry leaves this table when the owner's fix
-# merges (a stale entry is a finding).
-WAIVERS: dict[tuple[str, str], str] = {
-    # Live defects this lane found and did not fix (each a packet in
-    # planning/backlog-2026-09-25.md; the owner fixes, then drops the row).
-    ("books/control-served.lisp", "fn-ctl-control-status"):
-        "PKT-EG-1: the control status reads the target and keys of a handle",
-    ("books/control-served.lisp", "fn-ctl-served-status"):
-        "PKT-EG-1: the served control status reads the target and keys of a handle",
-    ("books/nntp.lisp", "fn-nntp-control-hdr-response"):
-        "PKT-EG-1: HDR :fn-control reads the target of a handle",
-    ("books/store-reclaim.lisp", "fn-rcl-verdict"):
-        "PKT-EG-2: never :already-reclaimed over a handle",
-    ("books/store-reclaim.lisp", "fn-rcl-summary"):
-        "PKT-EG-2: reclaimable and freed octets count a handle's len (0)",
-    ("books/owner.lisp", "fn-own-feed-reply"):
-        "PKT-EG-2b: the book owner's feed reply sends fn-own-feed-article's handle "
-        "(the host reads fn-ofa-feed-article)",
-    ("books/stx-index.lisp", "fn-stx-index-of-store"):
-        "PKT-EG-3: parses a handle; benign only because live callers pass a NIL keyring",
-    # Pre-flip twins with no live caller: they compare a handle with octets.
-    ("books/store-node.lisp", "fn-sn-existing-action"): "PKT-EG-4: retire (pre-flip twin)",
-    ("books/poster-bytes.lisp", "fn-pb-existing-action"): "PKT-EG-4: retire (pre-flip twin)",
-    ("books/poster-bytes-buffer.lisp", "fn-pbb-existing-action"): "PKT-EG-4: retire (pre-flip twin)",
-    ("books/store-reclaim.lisp", "fn-rcl-existing-action"): "PKT-EG-4: retire (pre-flip twin)",
-    ("books/store-reclaim-buffer.lisp", "fn-rclb-existing-action"): "PKT-EG-4: retire (pre-flip twin)",
-    ("books/moderation-verbs.lisp", "fn-mvb-held-article"):
-        "matrix-reds (the sixth instance, 2026-09-27)",
-}
-
 
 def forms_of(relative: str) -> list[tuple[object, int]]:
     return ledger.Reader((ROOT / relative).read_text(encoding="utf-8")).top_level()
@@ -202,8 +169,7 @@ def scan() -> tuple[list[dict], dict]:
     findings: list[dict] = []
     counts = {"definitions_reading_payload": 0, "accepted_sites": 0,
               "wire_definitions": 0, "handle_definitions": 0,
-              "handle_sinks": len(sinks), "waived": 0}
-    seen_waivers: set = set()
+              "handle_sinks": len(sinks)}
     for relative, forms in parsed.items():
         for form, line in forms:
             defs: list = []
@@ -231,11 +197,6 @@ def scan() -> tuple[list[dict], dict]:
                 counts["accepted_sites"] += len(total) - len(bad)
                 if not bad:
                     continue
-                key = (relative, name)
-                if key in WAIVERS:
-                    seen_waivers.add(key)
-                    counts["waived"] += 1
-                    continue
                 findings.append({
                     "where": "{}:{}".format(relative, where), "function": name,
                     "sites": len(bad),
@@ -246,11 +207,6 @@ def scan() -> tuple[list[dict], dict]:
                                "(fn-payload-kind {} :wire ...) if its articles are the "
                                "octet model's".format(
                                    "; ".join(sorted({b[1] for b in bad})), name)})
-    for key, owner in sorted(WAIVERS.items()):
-        if key not in seen_waivers:
-            findings.append({"where": key[0], "function": key[1], "sites": 0,
-                             "problem": "stale waiver ({}): the finding is gone; "
-                                        "drop it from WAIVERS".format(owner)})
     return findings, counts
 
 
@@ -265,8 +221,6 @@ def main(argv: list[str] | None = None) -> int:
     print("payload-kind: {} finding{}; {}".format(
         len(findings), "" if len(findings) == 1 else "s",
         ", ".join("{} {}".format(k.replace("_", " "), v) for k, v in counts.items())))
-    for key, owner in sorted(WAIVERS.items()):
-        print("payload-kind: waived {}:{} ({})".format(key[0], key[1], owner))
     if args.json:
         Path(args.json).write_text(json.dumps({"findings": findings, "counts": counts},
                                               indent=2) + "\n", encoding="utf-8")

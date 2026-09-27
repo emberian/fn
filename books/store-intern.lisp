@@ -1028,11 +1028,8 @@
 ; ALPHA of the acceptance articles: each article's handle replaced by its
 ; bytes (a handle outside the arena reads as no bytes, as fn-row-bytes).
 
-(defun fn-handle-bytes (h fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (if (and (natp h) (< h (fn-arena-count fn-arena)))
-      (fn-arena-payload h fn-arena)
-    nil))
+; fn-handle-bytes (the octets at a handle, nil outside the arena) is defined
+; in books/payload-arena.lisp, beside the arena, so the owner reads it too.
 
 (defun fn-articles-wire-of (articles fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))

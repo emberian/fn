@@ -119,6 +119,7 @@
 ; the counts the host calls read each length and the tombstone's fixed head
 ; through the arena, never copying an article's bytes, and are the model's
 ; counts over ALPHA (KEYSTONE fn-rcl-store-counts-is-the-model-over-alpha).
+(fn-payload-kind fn-rcl-payload-bytes :handle "reads the arena at the handle")
 (defun fn-rcl-payload-bytes (p fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (if (natp p)
@@ -178,6 +179,7 @@
                (fn-rcl-prefixp *fn-rcl-magic* payload)))
    :hints (("Goal" :in-theory '(fn-rcl-tombstonep fn-rcl-at-leastp-is-len
                                  (:e natp))))))
+(fn-payload-kind fn-rcl-payload-len :handle "reads the arena at the handle")
 (defun fn-rcl-payload-len (p fn-arena)
   (declare (xargs :stobjs fn-arena :guard t
                   :guard-hints (("Goal" :in-theory '(fn-rcl-payload-bytes
@@ -188,6 +190,7 @@
        :exec (if (and (natp p) (< p (fn-arena-count fn-arena)))
                  (fn-arena-payload-len p fn-arena)
                (len (fn-rcl-payload-bytes p fn-arena)))))
+(fn-payload-kind fn-rcl-payload-tombstonep :handle "reads the arena at the handle")
 (defun fn-rcl-payload-tombstonep (p fn-arena)
   (declare (xargs :stobjs fn-arena :guard t
                   :guard-hints (("Goal" :in-theory '(fn-rcl-tombstonep-unfolds
@@ -203,6 +206,7 @@
                (fn-rcl-tombstonep (fn-rcl-payload-bytes p fn-arena)))))
 ; A tombstone is small (its fixed 89 octets and the Path agent), so its
 ; length field is read from its bytes.
+(fn-payload-kind fn-rcl-payload-tomb-length :handle "reads the arena at the handle")
 (defun fn-rcl-payload-tomb-length (p fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (fn-rcl-tomb-length (fn-rcl-payload-bytes p fn-arena)))
@@ -211,7 +215,7 @@
   (declare (xargs :stobjs fn-arena :guard t))
   (if (fn-rcl-payload-tombstonep (fn-article-payload a) fn-arena)
       :already-reclaimed
-    (fn-rcl-verdict rule now h verdicts a)))
+    (fn-rcl-standing-verdict rule now h verdicts a)))
 
 (defun fn-rcl-summary-in (rule now h verdicts articles fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
@@ -267,20 +271,20 @@
    :hints (("Goal" :in-theory (enable fn-rcl-tombstonep fn-rcl-at-leastp)))))
 
 ; The verdict reads the payload only for the tombstone test, so the verdict
-; of ALPHA is the tombstone test of the bytes, else the verdict of the article
-; itself (whose handle is no tombstone).
+; of ALPHA is the tombstone test of the bytes, else the standing verdict of
+; the article itself (which reads no payload).
 (local
  (defthm fn-rcl-verdict-of-alpha
    (equal (fn-rcl-verdict rule now h verdicts (fn-rcl-article-alpha a fn-arena))
           (if (fn-rcl-tombstonep (fn-rcl-payload-bytes (fn-article-payload a) fn-arena))
               :already-reclaimed
-            (fn-rcl-verdict rule now h verdicts a)))
-   :hints (("Goal" :in-theory (e/d (fn-rcl-verdict fn-rcl-article-alpha-accessors)
+            (fn-rcl-standing-verdict rule now h verdicts a)))
+   :hints (("Goal" :in-theory (e/d (fn-rcl-verdict fn-rcl-standing-verdict
+                                    fn-rcl-article-alpha-accessors)
                                    (fn-rcl-tombstonep fn-rcl-rulep fn-rcl-rule-permits
                                     fn-rcl-verdict-heldp fn-rcl-pinned-p
                                     fn-rcl-unacknowledged-p fn-rcl-undelivered-p
-                                    fn-rcl-article-alpha))
-            :cases ((natp (fn-article-payload a)))))))
+                                    fn-rcl-article-alpha fn-rcl-payload-bytes))))))
 
 (defthm fn-rcl-verdict-in-is-verdict-of-alpha
   (equal (fn-rcl-verdict-in rule now h verdicts a fn-arena)
