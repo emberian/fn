@@ -2,19 +2,37 @@
 import subprocess
 
 
-def stop_and_diagnostics(process, timeout=10):
-    """Stop before collecting pipes; an idle live server will not close stderr."""
-    if process.poll() is None:
+def stop_and_diagnostics(process, timeout=10, stderr_path=None):
+    """Stop before collecting pipes; an idle live server will not close stderr.
+
+    The answer names the exit status, and says where stderr went when the
+    caller did not pipe it: an empty `stderr=' from a process whose stderr
+    was a file read as a silent failure (lane ops-fixes, 2026-09-27: the
+    owner had refused by name, into a file the harness then removed).
+    STDERR_PATH is that file, whose tail is included."""
+    exited = process.poll()
+    if exited is None:
         process.terminate()
     try:
         _, stderr = process.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
         process.kill()
         _, stderr = process.communicate(timeout=timeout)
-    return (stderr or b"")[-8192:].decode("utf-8", "replace")
+    status = ("exit={}".format(exited) if exited is not None
+              else "stopped by the harness (exit={})".format(process.returncode))
+    if process.stderr is None and stderr_path is None:
+        return "{} (not piped: the caller redirected stderr)".format(status)
+    text = (stderr or b"")
+    if stderr_path is not None:
+        try:
+            with open(stderr_path, "rb") as handle:
+                text += handle.read()
+        except OSError as error:
+            text += "(cannot read {}: {})".format(stderr_path, error).encode()
+    return "{} {}".format(status, text[-8192:].decode("utf-8", "replace"))
 
 
-def wait_for_announcement(process, prefix, timeout=180, max_bytes=8192):
+def wait_for_announcement(process, prefix, timeout=180, max_bytes=8192, stderr_path=None):
     """Read bounded startup lines under one deadline, including CONTROL first.
 
     Read the descriptor directly so select does not overlook a second line
@@ -43,7 +61,7 @@ def wait_for_announcement(process, prefix, timeout=180, max_bytes=8192):
             buffered += chunk
         raise AssertionError("native startup output exceeded byte bound")
     except (AssertionError, OSError) as error:
-        diagnostic = stop_and_diagnostics(process)
+        diagnostic = stop_and_diagnostics(process, stderr_path=stderr_path)
         raise AssertionError("{}; stdout={!r}; stderr={}".format(
             error, observed, diagnostic)) from error
 

@@ -531,6 +531,36 @@ If `recover` refuses with `pre-C1 control record ... run store repair-control`,
 the store was made by a release before 2026-09-25 and holds a cancel filed
 in an old way. Keep the store as it is and ask the developers.
 
+### The node does not start
+
+fn never stops without saying why. The reason is one line starting
+`refused`, `fault` or `uncertain`, and the exit code matches it (see
+[exit codes](#exit-codes)). Under systemd it is in the journal:
+
+```sh
+journalctl -u fn -n 20
+```
+
+Without a service it is on the screen, or in `log/fn.log` when `fn.toml`
+names a `[log] path`. A program that starts fn and keeps its error output
+in a file must show that file: the reason is there.
+
+The memory refusals, and what to do:
+
+- `fn: refused machine-cannot-hold-profile heap=H MB machine=M MB`: the
+  store's limits need more memory than this machine (or the service's
+  `MemoryMax`) gives. Raise the limit, or move the store to settings that
+  fit (`store export`, then `store import` with smaller `--max-...`).
+- `fn: refused machine-cannot-hold-threads reservation=R MB machine=M MB`:
+  the same, for the whole node with its threads. Raise the limit.
+- `refused connections-exceed-memory capacity=C holds=B ...`: the node
+  can hold only B of its C connections. Lower the count
+  (`fn operator CONFIG policy set exposure-connections N`), or give it
+  more memory. When the line goes on `base-exceeds-machine`, not even the
+  store fits: this happens when fn is started without `bin/fn` (which
+  sizes the memory from the store) under a limit smaller than the image's
+  own size. Start it through `bin/fn`, or raise the limit.
+
 ### "no store"
 
 ```
@@ -668,8 +698,9 @@ Limits: `--max-transactions`, `--max-history-octets`,
 `--max-record-octets`, `--max-article-octets`, `--max-groups-per-article`,
 `--max-open-suffix`, `--max-consumers`, `--max-config-generations`,
 `--max-credentials`. `--profile scale|development|default` names a starting
-set. fn refuses limits the machine's memory cannot hold, with
-`fn: refused machine-cannot-hold-profile`.
+set. `init` writes limits you name even when this machine's memory cannot
+hold them, and says so (`within-budget=no`); fn then refuses to run that
+store here, with `fn: refused machine-cannot-hold-profile`.
 
 `init` with no `--profile` and no limit (and every `init` under a
 `mission`) sizes small: the **development** set when the machine holds it,

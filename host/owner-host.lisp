@@ -872,7 +872,8 @@
                               (fn-record-string-octets
                                (if (equal (car d) :hold)
                                    (fn-cbud-hold-line d article tlsp)
-                                 (fn-cbud-refusal-line d article tlsp machine)))
+                                 (fn-cbud-run-refusal-line d article tlsp machine dynamic
+                                                           hneed core threads stack)))
                               state)))
     (value (car d))))
 
