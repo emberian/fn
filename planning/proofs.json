@@ -402,8 +402,8 @@
         "fn-snrt-acknowledged-history-retained-through-mixed-trace",
         "fn-snrt-new-success-is-actual-matching-durable-completion",
         "fn-sn-open-observed-success-exact-history",
-        "fn-sn-open-observed-not-ready-before-the-barriers",
-        "fn-sn-open-observed-barriers-open-ready",
+        "fn-sn-open-observed-not-ready-before-five-barriers",
+        "fn-sn-open-observed-five-barriers-open-ready",
         "fn-bprv-successful-replay-has-invariant",
         "fn-bprv-replay-no-receipt-before-committed-decision",
         "fn-bprv-replayed-receipt-is-grounded",
@@ -9875,19 +9875,7 @@
         "fn-lgob-recovered-segment-fence-is-identity",
         "fn-lgob-file-fence-keeps-entry-operations",
         "fn-lgob-one-barrier-loses-a-rotated-segment",
-        "fn-lgob-journal-fence-keeps-the-rotated-segment",
-        "fn-lgob-fence-of-a-fenced-file-is-identity",
-        "fn-lgob-three-barrier-open-is-the-five-at-every-cut",
-        "fn-lgob-three-and-five-barrier-opens-have-the-same-cut-states",
-        "fn-lgob-only-a-write-unfences-a-file",
-        "fn-lgob-recovered-state-meets-the-segment-hypothesis",
-        "fn-lgob-three-barrier-open-after-recovery-is-the-five",
-        "fn-lgob-two-barriers-without-journal-lose-a-rotated-segment",
-        "fn-lgob-three-barriers-keep-the-rotated-segment",
-        "fn-lgob-two-barriers-without-root-lose-a-checkpointed-history",
-        "fn-lgob-three-barriers-keep-the-checkpoint",
-        "fn-lgob-two-barriers-without-parent-lose-an-imported-store",
-        "fn-lgob-three-barriers-keep-the-imported-store"
+        "fn-lgob-journal-fence-keeps-the-rotated-segment"
       ]
     },
     {
