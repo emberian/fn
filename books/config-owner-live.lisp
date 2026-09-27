@@ -1877,7 +1877,15 @@
                             fn-own-read-survivor-is-archive-bounded
                             fn-ocl-connection-history-keeps-replaced-session
                             fn-ocl-conn-historyp-under-same-store-and-pin
-                            fn-ocl-view-archive-has-current-domain)))))
+                            fn-ocl-view-archive-has-current-domain
+                            ; the four :use'd rewrite rules, else the
+                            ; rewriter loops on the read's owner
+                            fn-ocl-related-found-connection-has-history
+                            fn-ocl-ocfg-read-unfolds fn-ocl-own-read-keeps-store
+                            fn-ocl-own-read-keeps-owner-control
+                            fn-ocl-unchanged-view-new-pin-is-historical
+                            fn-ocl-own-read-survivor-had-original
+                            fn-own-find-conn fn-own-conn-boundedp-is-auth-session)))))
 
 (defthm fn-ocl-replace-cannot-create-other-found-id
   (implies (and (not (equal selected (fn-own-conn-id next)))
