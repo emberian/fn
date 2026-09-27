@@ -6810,12 +6810,113 @@
         {
           "kind": "theorem",
           "name": "fn-cat-relation-of-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-load-of-nil"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-load-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-of-non-article-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-is-prefix-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-prefix-relation-of-growth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-wire-list-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-wire-list-of-redecide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-prefix-relation-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-prefix-relation-of-redecide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-at-recover"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-at-init"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-article-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-before-article-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-other-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-redecide"
         }
       ]
     },
     {
       "id": "PRF-202",
-      "events": []
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-view-apply-is-refresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-crf-apply-article-plain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-below-of-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-articles-of-commit-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-articles-of-commit-advanced"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-below-of-withdraw-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-articles-of-withdraw-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-below-of-withdraw-advanced"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-withdraw-then-commit-view"
+        }
+      ]
     },
     {
       "id": "PRF-203",
@@ -7377,6 +7478,35 @@
           "kind": "theorem",
           "name": "fn-ocfg-read-tls-prefix-carries-at-most-one-submission",
           "note": "KEYSTONE at the owner: the read host/owner-host.lisp fn-owner-chunk(-span) calls hands fn-own-finish-read at most one submission."
+        }
+      ]
+    },
+    {
+      "id": "PRF-219",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-apr-replay-establishes-refs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-apply-record-keeps-refs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-replay-node-refs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-payload-of-is-the-article-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-feed-article-is-own-feed-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-foundp-is-article-found"
         }
       ]
     }
