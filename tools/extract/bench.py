@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """tools/extract/bench.py -- the per-command cost of extracted programs
 against the SBCL developer image, on the same transcripts (lane
-extract-writable, E2).
+extract-writable).  A label beginning `core' is the Common Lisp product
+(tools/extract/core.sh), run with the image's CLI.
 
     bench.py IMAGE OUT.json LABEL=SERVED [LABEL=SERVED ...]
              [--store STORE] [--cpu N] [--runs N]
@@ -86,8 +87,9 @@ def main(argv):
 
     def argv_of(label, path, case):
         chunks, st, _ = cases[case]
-        if path is None:
-            return [image, "--fn", "model", str(files[case]), st or "-"]
+        if path is None or label.startswith("core"):
+            # the image, and the Common Lisp product (its CLI is the image's)
+            return [path or image, "--fn", "model", str(files[case]), st or "-"]
         return [path, "model", str(files[case])] + ([st] if st else [])
 
     for r in range(runs):
