@@ -11,12 +11,12 @@
 ;
 ; A live held payload is compared in place exactly as
 ; `fn-pbb-same-articlep' does.  A held tombstone is compared by digest.
-; The whole submission is digested in place (`fn-sha256-of-prefixed-buffer',
-; books/sha256-buffer, with the empty prefix).  When the tombstone kept a D25
+; The whole submission is digested in place (`fn-blake3-of-prefixed-buffer',
+; books/blake3-stobj, with the empty prefix).  When the tombstone kept a D25
 ; source under the submission's own agent, the submission's source is D32's
 ; description (K A B) (books/poster-bytes-buffer `fn-pbb-source-index'): the
 ; octets st[K..A) then st[B..).  Those two ranges are sliced into one list
-; the size of the source and hashed by `fn-sha256-stobj'; that list is built
+; the size of the source and hashed by `fn-blake3-stobj'; that list is built
 ; only on the resend-of-a-reclaimed-article path (a two-range buffer digest
 ; reader would remove it; recorded as open in the record).  The live path
 ; conses nothing new.
@@ -26,14 +26,13 @@
 (in-package "ACL2")
 (include-book "store-reclaim")
 (include-book "poster-bytes-buffer")
-(include-book "sha256-stobj")
-(include-book "sha256-buffer")
+(include-book "blake3-stobj")
 
 (defun fn-rclb-desc-digest (d fn-octets)
-  ; SHA-256 of the octets the description D names in the buffer.
+  ; BLAKE3 of the octets the description D names in the buffer.
   (declare (xargs :stobjs fn-octets
                   :guard (fn-pbb-descp d (fn-octets-len fn-octets))))
-  (fn-sha256-stobj
+  (fn-blake3-stobj
    (append (fn-oct-slice-list (car d) (cadr d) fn-octets)
            (fn-oct-slice-list (caddr d) (fn-octets-len fn-octets) fn-octets))))
 
@@ -51,10 +50,10 @@
    (implies (and (true-listp x) (natp i) (<= i (len x)))
             (equal (take (- (len x) i) (nthcdr i x)) (nthcdr i x)))))
 
-(defthm fn-rclb-desc-digest-is-sha256-of-desc-list
+(defthm fn-rclb-desc-digest-is-blake3-of-desc-list
   (implies (and (true-listp fn-octets) (fn-pbb-descp d (len fn-octets)))
            (equal (fn-rclb-desc-digest d fn-octets)
-                  (fn-sha256 (fn-pbb-desc-list d fn-octets))))
+                  (fn-blake3 (fn-pbb-desc-list d fn-octets))))
   :hints (("Goal" :in-theory (enable fn-octets-len))))
 
 (defun fn-rclb-same-as-tombstonep (msgid fn-octets tomb)
@@ -70,7 +69,7 @@
              d)
         (equal (fn-rclb-desc-digest d fn-octets)
                (fn-rcl-tomb-source-digest tomb))
-      (equal (fn-sha256-of-prefixed-buffer nil fn-octets)
+      (equal (fn-blake3-of-prefixed-buffer nil fn-octets)
              (fn-rcl-tomb-octets-digest tomb)))))
 
 (defun fn-rclb-same-articlep (msgid fn-octets held-payload)
@@ -89,16 +88,16 @@
                                    (agent (fn-pb-path-agent fn-octets msgid)))
                         (:instance fn-pbb-source-index-bounds
                                    (agent (fn-pb-path-agent fn-octets msgid)))
-                        (:instance fn-sha256-of-prefixed-buffer-is-sha256 (prefix nil)))
+                        (:instance fn-blake3-of-prefixed-buffer-is-blake3 (prefix nil)))
                   :in-theory (e/d (fn-pb-subject)
-                                  (fn-sha256 fn-rcl-tomb-sourcep fn-rcl-tomb-agent
+                                  (fn-blake3 fn-rcl-tomb-sourcep fn-rcl-tomb-agent
                                    fn-pb-path-agent fn-inj-source-of fn-octets-p
                                    fn-pbb-path-agent-is-pb-path-agent
                                    fn-pbb-source-index-is-inj-source-of
                                    fn-pbb-source-index-bounds
-                                   fn-sha256-of-prefixed-buffer-is-sha256
+                                   fn-blake3-of-prefixed-buffer-is-blake3
                                    fn-pbb-source-index fn-pbb-desc-list
-                                   fn-sha256-of-prefixed-buffer fn-pbb-descp
+                                   fn-blake3-of-prefixed-buffer fn-pbb-descp
                                    fn-rclb-desc-digest
                                    fn-rcl-tomb-source-digest fn-rcl-tomb-octets-digest)))))
 

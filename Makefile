@@ -54,6 +54,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-config \
 	books/sha256 \
 	tests/acl2/sha256-tests \
+	books/blake3 \
+	tests/acl2/blake3-tests \
+	books/blake3-stobj \
+	tests/acl2/blake3-stobj-tests \
 	books/frame-octets \
 	books/frame-fields \
 	books/frame-journal \
@@ -233,6 +237,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-init-publication \
 	tests/acl2/store-init-publication-tests \
 	tests/acl2/store-profile-facts-tests \
+	books/store-genesis \
+	tests/acl2/store-genesis-tests \
+	books/store-format-9 \
+	books/store-format-9-records \
+	tests/acl2/store-format-9-tests \
+	tests/acl2/store-format-9-records-tests \
 	books/store-profile-open \
 	tests/acl2/store-profile-open-tests \
 	books/store-profile-namespace \
@@ -314,8 +324,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-tests \
 	books/byte-store-frame \
 	tests/acl2/byte-store-frame-tests \
-	books/byte-store-profile-v1 \
-	tests/acl2/byte-store-profile-v1-tests \
 	books/byte-store-txn-name \
 	tests/acl2/byte-store-txn-name-tests \
 	books/byte-store-initializer \
@@ -929,10 +937,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-feed-article \
 	tests/acl2/owner-feed-article-tests \
 	tests/acl2/catalog-number-index-tests \
-	books/sha256-buffer \
-	tests/acl2/sha256-buffer-tests \
-	books/sha256-range \
-	tests/acl2/sha256-range-tests \
+	books/octet-window \
+	books/subject-id-buffer \
+	tests/acl2/subject-id-buffer-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -1219,7 +1226,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/group-status-tests \
 	tests/acl2/moderation-tests \
 	tests/acl2/peer-host-tests \
-	tests/acl2/sha256-stobj-tests \
 	tests/acl2/topic-history-identity-disjoint-tests \
 	books/public-exposure \
 	tests/acl2/public-exposure-tests \
@@ -1364,9 +1370,18 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-pages-exec \
 	books/history-pages-row \
 	books/history-pages-read \
-	tests/acl2/history-pages-read-tests
+	tests/acl2/history-pages-read-tests \
+	books/history-pages-arith \
+	books/history-pages-write \
+	books/history-pages-write-exec \
+	books/history-pages-write-keys \
+	tests/acl2/history-pages-write-tests \
+	books/history-pages-placed \
+	books/history-pages-nest \
+	books/history-pages-placed-write \
+	tests/acl2/history-pages-placed-tests
 
-.PHONY: site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: extract-check site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -1380,6 +1395,15 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/store-prepare-correspondence books/config-records books/node-config \
 	books/checkpoint books/checkpoint-compaction books/checkpoint-publish \
 	books/records-shape books/statement books/statement-invariants
+
+# The extraction differential (A-EXTRACT, specs/failures.md; lane extract-2):
+# the world extracted to a CHICKEN program and compared with the developer
+# image -- the served transcripts, the boundary probes, a real store's replies
+# and the per-function differential -- on hbox (tools/extract/check.sh; from
+# elsewhere tools/extract/remote_check.sh ships the tree with hbox_native.sh).
+EXTRACT_REV ?= .
+extract-check:
+	sh tools/extract/remote_check.sh $(EXTRACT_REV)
 
 # fn's static website: a newsreader over the guides' Usenet articles
 # (docs/articles/*.txt) in build/site/ (open build/site/index.html); GitHub

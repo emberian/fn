@@ -10,14 +10,17 @@ The two `FN-Topic` field files are exact results of ACL2
 field values against the executable encoder. The root value
 is `(:root [1]×32 [85]×32 KEYSET "fn.test" (([85]×32 KEYSET)))`, where
 `KEYSET` is the 48-octet `fn-th-verified-author-ref` keyset ID
-`666e2f7375626a6563742f7631000101c9a3b20836655e1acfc6f495998f5a34fa8122d10254c74ac89306b04460c478`.
+`666e2f7375626a6563742f7631000102bbbc6e65db95b8315029519aa0eec38bf50e2c912481534a2d7fa102a1975749`.
 The report value is `(:report ROOT-ID ROOT-ID nil)`, with `ROOT-ID` obtained
 from the authenticated exact `matched-root.source` by the native
 `hybrid-verify-source` ACL2 path:
-`666e2f7375626a6563742f76310001018922d895eb0b7e0c4ede370a7dc4813609c43991e546033950f6014ea4c67d0a`.
+`666e2f7375626a6563742f76310001020be9100e274debb5a9f99e0ada546a8041cd0a120079234dc5abe695e4bd6e27`.
 
 The source files contain those exact field bytes. Editing the root source
-changes its ID and invalidates the report fixture, by design. Before native
+changes its ID and invalidates the report fixture, by design.  The IDs are
+BLAKE3 identities (algorithm 2, store format 10); lane blake3-digest
+rewrote the SHA-256 (algorithm 1) fixtures by re-deriving both IDs
+(tools/blake3_ref.py) and re-encoding the fields, octet for octet otherwise. Before native
 admission, an existing signed-carrier image independently verified both
 fixed sources and reported `controller-matched` for the root. A source-matched
 image must still run the admission/reopen test; the fixtures alone do not

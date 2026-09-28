@@ -7,6 +7,13 @@ unchanged.  Licence: CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception
 Only the C intrinsics files are kept (no assembly, no TBB, no CMake, and
 not README.md, whose relative links name files not copied).
 
+test_vectors/test_vectors.json: the repository's test_vectors/test_vectors.json
+at tag 1.8.7 (https://raw.githubusercontent.com/BLAKE3-team/BLAKE3/1.8.7/
+test_vectors/test_vectors.json; not in the crate), unchanged, SHA-256
+dcb91ea8accc77e6d6e632af7cdc1a99a9f3ae78cf648da595c7d064db32f624.  Every case
+is transcribed into tests/acl2/blake3-tests.lisp (the ACL2 definition,
+books/blake3.lisp) and tests/acl2/blake3-stobj-tests.lisp (its buffer twin).
+
 Used by: host/native/fn-blake3.c (lane digest-native's prototype: Bao-style
 verified streaming), built by tools/build_blake3.sh.  Not loaded by any
 served image.
@@ -25,3 +32,4 @@ d388dca3574602c8849805ea3c8c0a12d082ac0e428756f305e111942f099af4  blake3_impl.h
 a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499  LICENSE_CC0
 00fcc7a934ddbc9ece2a7cc063ac788e284b703b1d705ccbba72d462aa97921e  LICENSE_A2
 a5695f57ea0c221e0e8b7d784ff774c35e88c3d3270353646a925880bb3492cc  LICENSE_A2LLVM
+dcb91ea8accc77e6d6e632af7cdc1a99a9f3ae78cf648da595c7d064db32f624  test_vectors/test_vectors.json

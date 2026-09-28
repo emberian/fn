@@ -231,15 +231,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             (if (and (natp value) (< value 18446744073709551616)) value nil))
         nil))))
 
-; A flag's value: the history requirement's field (D31) takes a word,
-; `unmarked' (0) or `required' (1); every other field a decimal.
+; A flag's value: a decimal (every field of the format-10 profile).
 (defun fn-nop-profile-flag-value (field text)
-  (declare (xargs :guard t))
-  (if (equal field *fn-bs-pf-history-marker*)
-      (cond ((equal text "unmarked") 0)
-            ((equal text "required") 1)
-            (t nil))
-    (fn-nop-profile-decimal text)))
+  (declare (xargs :guard t) (ignore field))
+  (fn-nop-profile-decimal text))
 
 (defun fn-nop-profile-field-namedp (field overrides)
   (declare (xargs :guard t))
@@ -312,9 +307,9 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; books/native-mission.lisp that it is the profile the store then opens with.
 (defun fn-native-mission-request (name)
   (declare (xargs :guard t))
-  (cond ((equal name "small-community") (list :default (list (cons 5 1048576) (cons 6 8))))
-        ((equal name "relay") (list :default (list (cons 5 1048576) (cons 6 16))))
-        ((equal name "archive") (list :default (list (cons 5 1048576) (cons 6 16))))
+  (cond ((equal name "small-community") (list :default (list (cons *fn-bs-pf-max-article-octets* 1048576) (cons *fn-bs-pf-max-groups-per-article* 8))))
+        ((equal name "relay") (list :default (list (cons *fn-bs-pf-max-article-octets* 1048576) (cons *fn-bs-pf-max-groups-per-article* 16))))
+        ((equal name "archive") (list :default (list (cons *fn-bs-pf-max-article-octets* 1048576) (cons *fn-bs-pf-max-groups-per-article* 16))))
         (t nil)))
 
 ; The groups a mission's `init' serves when the operator names none; only a
@@ -325,14 +320,12 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defthm fn-native-mission-profiles-valid
   (implies (member-equal name *fn-ncfg-mission-names*)
-           (and (fn-bs-profile-validp
-                 (fn-bs-profile-resolve (fn-native-mission-request name) nil))
-                (not (equal (fn-bs-pf 14 (fn-bs-profile-resolve
-                                          (fn-native-mission-request name) nil))
-                            1))))
-  :hints (("Goal" :in-theory (disable fn-bs-profile-validp fn-bs-profile-resolve
-                                      (:e fn-bs-profile-validp)))
-          ("Goal'" :in-theory (enable (:e fn-bs-profile-validp)))))
+           (fn-bs-profile-validp
+            (fn-bs-profile-resolve (fn-native-mission-request name) nil)))
+  :hints (("Goal" :in-theory (e/d ((:e fn-bs-profile-validp) (:e fn-bs-profile-resolve)
+                                   (:e fn-native-mission-request))
+                                  (fn-bs-profile-validp fn-bs-profile-resolve
+                                   fn-native-mission-request)))))
 
 ;; PRF-171 (PKT-451 (C)): field 7, max-group-name-octets, governs the names
 ;; `init' creates, as it governs `group create' (books/store-capacity-config

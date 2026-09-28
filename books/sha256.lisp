@@ -125,48 +125,34 @@
         xs
       (fn-sha256-nthcdrx (- n 1) (cdr xs)))))
 
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-sha256-appx-loop (xs ys acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp xs)
-      (fn-sha256-appx-loop (cdr xs) ys (cons (car xs) acc))
-    (revappend acc ys)))
-
-(defun fn-sha256-appx (xs ys)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp xs)
-           (cons (car xs) (fn-sha256-appx (cdr xs) ys))
-         ys)
-       :exec (fn-sha256-appx-loop xs ys nil)))
-
-(local
- (defthm fn-sha256-appx-loop-is-revappend
-   (equal (fn-sha256-appx-loop xs ys acc)
-          (revappend acc (fn-sha256-appx xs ys)))
-   :hints (("Goal" :induct (fn-sha256-appx-loop xs ys acc)
-                   :in-theory (union-theories '(fn-sha256-appx-loop fn-sha256-appx revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-sha256-appx-loop)
-
-(verify-guards fn-sha256-appx
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-sha256-appx)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-sha256-appx-loop-is-revappend (acc nil))))))
-
-
 (defun fn-sha256-revx (xs acc)
   (declare (xargs :guard t))
   (if (consp xs)
       (fn-sha256-revx (cdr xs) (cons (car xs) acc))
     acc))
+
+; Executes by two loops (lane format10-import, the thread-stacks pattern):
+; the padding appends the whole message, and the recursion ran one
+; control-stack frame per octet -- a 15 KB signed article's archive entry
+; exhausted the launcher's 1,024 KiB stack at `store import' of a format-9
+; archive (its MANIFEST is SHA-256).  The :logic is the recursion, unchanged;
+; `fn-sha256-revx-revx-is-appx' is the guard proof's equality.
+(defun fn-sha256-appx (xs ys)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp xs)
+                  (cons (car xs) (fn-sha256-appx (cdr xs) ys))
+                ys)
+       :exec (fn-sha256-revx (fn-sha256-revx xs nil) ys)))
+
+(defthm fn-sha256-revx-of-revx
+  (equal (fn-sha256-revx (fn-sha256-revx xs acc) ys)
+         (fn-sha256-revx acc (fn-sha256-appx xs ys))))
+
+(defthm fn-sha256-revx-revx-is-appx
+  (equal (fn-sha256-revx (fn-sha256-revx xs nil) ys)
+         (fn-sha256-appx xs ys)))
+
+(verify-guards fn-sha256-appx)
 
 (defthm fn-sha256-len-of-nthcdrx-decreases
   (implies (and (consp xs) (not (zp n)))
@@ -419,44 +405,32 @@
 (defthm fn-sha256-len-of-words-octets
   (equal (len (fn-sha256-words-octets ws)) (* 4 (len ws))))
 
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-sha256-fix-octets-loop (m acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+(defun fn-sha256-fix-octets-acc (m acc)
+  (declare (xargs :guard t))
   (if (consp m)
-      (fn-sha256-fix-octets-loop (cdr m) (cons (fn-sha256-byte (car m)) acc))
-    (revappend acc nil)))
+      (fn-sha256-fix-octets-acc (cdr m) (cons (fn-sha256-byte (car m)) acc))
+    acc))
 
+; Executes by loops, as `fn-sha256-appx' does (one frame per octet before).
 (defun fn-sha256-fix-octets (m)
   ; Any object as an octet list.  The identity on octet lists; see
   ; `fn-sha256-fix-octets-is-identity' in books/crypto-attach.lisp.
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp m)
-           (cons (fn-sha256-byte (car m)) (fn-sha256-fix-octets (cdr m)))
-         nil)
-       :exec (fn-sha256-fix-octets-loop m nil)))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp m)
+                  (cons (fn-sha256-byte (car m)) (fn-sha256-fix-octets (cdr m)))
+                nil)
+       :exec (fn-sha256-revx (fn-sha256-fix-octets-acc m nil) nil)))
+
+(defthm fn-sha256-fix-octets-acc-is-revx
+  (equal (fn-sha256-fix-octets-acc m acc)
+         (fn-sha256-revx (fn-sha256-fix-octets m) acc)))
 
 (local
- (defthm fn-sha256-fix-octets-loop-is-revappend
-   (equal (fn-sha256-fix-octets-loop m acc)
-          (revappend acc (fn-sha256-fix-octets m)))
-   :hints (("Goal" :induct (fn-sha256-fix-octets-loop m acc)
-                   :in-theory (union-theories '(fn-sha256-fix-octets-loop fn-sha256-fix-octets revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
+ (defthm fn-sha256-appx-nil-of-fix-octets
+   (equal (fn-sha256-appx (fn-sha256-fix-octets m) nil)
+          (fn-sha256-fix-octets m))))
 
-(verify-guards fn-sha256-fix-octets-loop)
-
-(verify-guards fn-sha256-fix-octets
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-sha256-fix-octets)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-sha256-fix-octets-loop-is-revappend (acc nil))))))
-
+(verify-guards fn-sha256-fix-octets)
 
 (defthm fn-sha256-octet-listp-of-fix-octets
   (fn-sha256-octet-listp (fn-sha256-fix-octets m)))

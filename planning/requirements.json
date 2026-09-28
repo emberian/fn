@@ -264,7 +264,8 @@
       "proof_targets": [
         "PRF-005",
         "PRF-035",
-        "PRF-048"
+        "PRF-048",
+        "PRF-347"
       ],
       "verification": [
         "proof",
@@ -631,7 +632,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-035",
-        "PRF-043"
+        "PRF-043",
+        "PRF-347"
       ],
       "verification": [
         "integration",
@@ -1594,7 +1596,8 @@
         "PRF-276",
         "PRF-278",
         "PRF-283",
-        "PRF-293"
+        "PRF-293",
+        "PRF-347"
       ],
       "verification": [
         "proof",
@@ -2121,7 +2124,8 @@
       "proof_targets": [
         "PRF-089",
         "PRF-336",
-        "PRF-345"
+        "PRF-345",
+        "PRF-352"
       ],
       "verification": [
         "proof",
@@ -2323,8 +2327,6 @@
         "books/records.lisp",
         "books/records-schema-v1.lisp",
         "tests/acl2/records-schema-v1-teeth-tests.lisp",
-        "books/byte-store-profile-v1.lisp",
-        "tests/acl2/byte-store-profile-v1-tests.lisp",
         "planning/evidence/bounds-p6-2026-09-25.md",
         "books/record-width-producers.lisp",
         "tests/acl2/record-width-producers-tests.lisp"
@@ -3699,7 +3701,10 @@
         "PRF-258",
         "PRF-264",
         "PRF-273",
-        "PRF-268"
+        "PRF-268",
+        "PRF-350",
+        "PRF-355",
+        "PRF-356"
       ],
       "verification": [
         "proof",
@@ -3713,7 +3718,10 @@
         "tests/test_native_store_export.py",
         "tests/test_native_older_release_open.py",
         "planning/evidence/fixtures-refresh-2026-09-27.md",
-        "planning/evidence/log-recovery-2026-09-27.md"
+        "planning/evidence/log-recovery-2026-09-27.md",
+        "books/store-format-9-records.lisp",
+        "tests/acl2/store-format-9-records-tests.lisp",
+        "tests/test_native_format_9_every_kind.py"
       ],
       "implementation_note": "D34. The open refuses a profile frame of another format (:store-format) with the line naming the reinstall and import; store export writes the archive (ACL2's names and MANIFEST), store import builds a new store from it and admits it by the ordinary open. Lane log-recovery (2026-09-27): export of a format-9 store reads the recovered history (the checkpoint's records then the log's); import writes a format-9 store (fn-sxp-log-profile: a format-8 archive migrates) with the records written into journal/000001.log through the log's append and barrier."
     },
@@ -4420,7 +4428,7 @@
         "books/injection.lisp",
         "planning/evidence/header-limits-profile-2026-09-27.md"
       ],
-      "implementation_note": "Fields 15 to 17 (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660)."
+      "implementation_note": "Fields 13 to 15 (format 10) (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660)."
     },
     {
       "id": "HST-019",
@@ -4580,7 +4588,8 @@
         "PRF-299",
         "PRF-296",
         "PRF-303",
-        "PRF-310"
+        "PRF-310",
+        "PRF-354"
       ],
       "verification": [
         "proof",
@@ -4701,7 +4710,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-311",
-        "PRF-323"
+        "PRF-323",
+        "PRF-354"
       ],
       "verification": [
         "proof",
@@ -4911,6 +4921,27 @@
         "planning/evidence/web-native-2026-09-28.md"
       ],
       "implementation_note": "Replaces tools/fn_reader.py and tools/fn_web.py (a second implementation of the boundary in Python) with the node's own face; lane web-native-2 packaged it (install.sh --reader, WEB-004) and retired the Python readers."
+    },
+    {
+      "id": "STO-036",
+      "title": "Position 0 of a store's log is its genesis: the node identity, format, schema digest, profile digest, history salt, created-at and image revision, recorded at init and checked at every open by name",
+      "specification": "specs/storage.md#one-format-and-the-archive",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-349"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-genesis.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_replay_determinism.py",
+        "planning/evidence/format-bump-10-2026-09-28.md"
+      ],
+      "implementation_note": "Lane format-bump-10. Non-determinism recorded (ember 2026-09-27): the CSPRNG node identity and salt, the clock reading. Never recorded: the node secret, credential salts."
     }
   ]
 }

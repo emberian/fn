@@ -13,7 +13,7 @@
 ; certification time, 11.4 s at 2 jobs; lane reservation-figure).
 (defconst *srt-small*
   (fn-bs-profile-resolve
-   '(:development ((2 . 16384) (3 . 8388608) (4 . 196608) (6 . 16) (8 . 128))) nil))
+   '(:development ((1 . 16384) (2 . 8388608) (3 . 196608) (5 . 16) (7 . 128))) nil))
 (defconst *srt-h* 8388608)
 (defconst *srt-o* (fn-srb-record-overhead *srt-small*))
 

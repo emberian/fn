@@ -19,7 +19,7 @@
                    (not (fn-cvec-retention-recordp *cvc-other*))))
 ; A profile whose max-config-generations is 2: generation 2 is the last.
 (defconst *cvc-profile*
-  (fn-bs-profile-set-fields *fn-bs-profile-defaults* '((11 . 2))))
+  (fn-bs-profile-set-fields *fn-bs-profile-defaults* '((10 . 2))))
 (assert-event (and (equal (fn-bs-profile-max-config-generations *cvc-profile*) 2)
                    (equal (fn-cvec-config-generations *cvc-profile* *cvc-other*) 1)
                    (equal (fn-cvec-config-generations *cvc-profile* *cvc-release*) 2)))
@@ -44,7 +44,7 @@
              :max-config-generations)))
 ; Below the last generation the ordinary record is accepted (bound 3).
 (assert-event
- (let ((p (fn-bs-profile-set-fields *fn-bs-profile-defaults* '((11 . 3)))))
+ (let ((p (fn-bs-profile-set-fields *fn-bs-profile-defaults* '((10 . 3)))))
    (and (equal (fn-native-admin-publication-status
                 (fn-native-admin-publication-authorize
                  nil 0 (list *fn-cfg-default-record*) *cvc-other* t nil
@@ -74,7 +74,7 @@
 ; host/store-node-host.lisp fn-store-cfg-native-admin-authorize).
 
 (defconst *cvc-p100*
-  (fn-bs-profile-set-fields *fn-bs-profile-defaults* '((7 . 100))))
+  (fn-bs-profile-set-fields *fn-bs-profile-defaults* '((6 . 100))))
 (defconst *cvc-name-100*
   (coerce (append (coerce "fn." 'list) (make-list 97 :initial-element #\a))
           'string))
@@ -126,7 +126,7 @@
               (cvc-group-authorize *cvc-create-101* *fn-bs-profile-defaults*))
              :accepted)))
 ; A record creating no group is untouched by field 7 (even at 1).
-(defconst *cvc-p1* (fn-bs-profile-set-fields *fn-bs-profile-defaults* '((7 . 1))))
+(defconst *cvc-p1* (fn-bs-profile-set-fields *fn-bs-profile-defaults* '((6 . 1))))
 (assert-event
  (and (equal (fn-bs-profile-max-group-name-octets *cvc-p1*) 1)
       (equal (fn-native-admin-publication-status

@@ -91,7 +91,7 @@
 ; 138 251 and 400 memberships at 320).  Under packet 1's H of 250 000 the
 ; crosspost never fits; these witnesses take the same profile with
 ; H = 500 000.
-(defconst *smt-p* (fn-bs-profile-set-fields *pmt-old* '((3 . 500000))))
+(defconst *smt-p* (fn-bs-profile-set-fields *pmt-old* '((2 . 500000))))
 (defconst *smt-h2* 500000)
 (assert-event (fn-bs-profile-admittedp *smt-p*))
 (defconst *smt-fig* (fn-sbud-article-figure 32768 400))

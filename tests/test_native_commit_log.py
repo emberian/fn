@@ -380,9 +380,12 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
                     self.assertTrue(all(r.startswith(b"240") for r in more.values()), cut)
                 finally:
                     node.stop()
-                # The next owner went on: every journal segment (a checkpoint
-                # may have rotated past 000001.log and dropped it) is whole units.
-                segments = sorted((node.store / "journal").glob("*.log"))
+                # The next owner went on: every history segment (a checkpoint
+                # may have rotated past 000001.log and dropped it) is whole
+                # units.  Format 10's genesis, 000000.log, is one fixed record
+                # and never extended.
+                segments = sorted(p for p in (node.store / "journal").glob("*.log")
+                                  if p.name != "000000.log")
                 self.assertTrue(segments, cut)
                 for path in segments:
                     self.assertEqual(path.stat().st_size % 4096, 0, (cut, path.name))

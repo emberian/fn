@@ -88,7 +88,7 @@
 ; The credential.  The verifier is books/auth-secret.lisp's, over a salt and
 ; the secret; the digest is written out because ACL2 refuses to call an
 ; attachment while computing a `defconst' (:DOC ignored-attachment), and the
-; assert-event below re-derives it under the real SHA-256 so the literal
+; assert-event below re-derives it under the real digest (BLAKE3) so the literal
 ; cannot drift from what enrolment produces.
 (defconst *aut-principal* (make-list 32 :initial-element 7))
 (assert-event (fn-prin-idp *aut-principal*))
@@ -96,8 +96,8 @@
 (defconst *aut-secret* (fn-nntp-string-octets "correct-horse"))
 (defconst *aut-salt* (make-list 16 :initial-element 3))
 (defconst *aut-digest*
-  '(60 237 250 71 154 204 168 180 72 224 241 93 232 185 72 59
-    73 5 240 237 54 116 175 93 127 219 39 238 113 83 63 194))
+  '(42 82 187 10 181 221 230 125 199 188 135 91 193 55 205 245
+    177 50 208 139 71 236 67 86 54 24 223 76 55 144 61 51))
 (defconst *aut-verifier* (fn-authsec-verifier *aut-salt* *aut-digest*))
 (assert-event (equal *aut-verifier* (fn-authsec-enrol *aut-salt* *aut-secret*)))
 (defconst *aut-cred*
@@ -1451,12 +1451,12 @@
 
 ; The second credential: a real enrolment for a different principal, which
 ; no row of any table names.  Its verifier literal is the one
-; tests/acl2/nntp-auth-tests.lisp re-derives under the real SHA-256.
+; tests/acl2/nntp-auth-tests.lisp re-derives under the real digest (BLAKE3).
 (defconst *aut-principal-guest* (make-list 32 :initial-element 9))
 (defconst *aut-salt-guest* (make-list 16 :initial-element 5))
 (defconst *aut-digest-guest*
-  '(16 253 71 139 166 161 40 4 128 152 222 245 150 31 146 146
-    162 213 89 91 217 56 233 234 208 64 14 230 20 40 189 59))
+  '(157 10 51 45 80 59 232 56 203 127 1 240 240 207 113 96
+    173 125 217 47 2 249 4 17 4 12 204 53 48 56 55 153))
 (defconst *aut-cred-guest*
   (fn-auth-make-cred (fn-nntp-string-octets "guest") *aut-principal-guest*
                      (fn-authsec-verifier *aut-salt-guest* *aut-digest-guest*)
@@ -1860,7 +1860,7 @@
                      (aut-single "482 authentication commands issued out of sequence")))
 (local (must-fail-checked (aut-k9 aut-k9-without-p10 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p11))))
 
-; P11 dropped: a secret that does not check is 481, under the real SHA-256.
+; P11 dropped: a secret that does not check is 481, under the real digest (BLAKE3).
 (assert-event (not (fn-auth-checkp *aut-cred* (fn-nntp-string-octets "wrong-horse"))))
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "AUTHINFO PASS wrong-horse")
                      (aut-single "481 authentication failed")))

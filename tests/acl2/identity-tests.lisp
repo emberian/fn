@@ -18,17 +18,17 @@
 (defconst *fn-id-test-payload*
   '(104 101 108 108 111 32 119 111 114 108 100 10))
 
-; SHA-256 of the subject-v1 preimage, supplied by the host.
-; 02af9c8c081529a5711c6dd798876c40aa331bd1c07ba7b6fbe261143db58a27
+; BLAKE3 of the subject-v1 preimage, supplied by the host (tools/blake3_ref.py).
+; 2bf0bdf8bfb0bc6e49805284ddfe2cfdac77755453bb3e1ebc8471633ce54b0f
 (defconst *fn-id-test-subject-digest*
-  '(2 175 156 140 8 21 41 165 113 28 109 215 152 135 108 64 170 51 27
-    209 192 123 167 182 251 226 97 20 61 181 138 39))
+  '(43 240 189 248 191 176 188 110 73 128 82 132 221 254 44 253 172 119 117
+    84 83 187 62 30 188 132 113 99 60 229 75 15))
 
-; SHA-256 of the obligation-v1 preimage, supplied by the host.
-; cb713c96d6692d192d8e13448497907925de0d1bbe053d1ececca989b0da3f61
+; BLAKE3 of the obligation-v1 preimage, supplied by the host.
+; ce9e6d925a169b127049756c6331e8c0f7919a0c31474aa7d51e606d0df60efe
 (defconst *fn-id-test-obligation-digest*
-  '(203 113 60 150 214 105 45 25 45 142 19 68 132 151 144 121 37 222 13
-    27 190 5 61 30 206 204 169 137 176 218 63 97))
+  '(206 158 109 146 90 22 155 18 112 73 117 108 99 49 232 192 247 145 154
+    12 49 71 74 167 213 30 96 109 13 246 14 254))
 
 ; -----------------------------------------------------------------------------
 ; The preimages, exactly as `specs/encoding.md` writes them
@@ -39,12 +39,12 @@
         '(102 110 47 115 117 98 106 101 99 116 47 118 49 0 0 0 0 12 104 101
           108 108 111 32 119 111 114 108 100 10)))
 
-; The subject identity: label, separator, version 1, algorithm 1, digest.
+; The subject identity: label, separator, version 1, algorithm 2 (BLAKE3), digest.
 (assert-event
  (equal (fn-id-subject *fn-id-test-subject-digest*)
-        '(102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 1 2 175 156 140 8
-          21 41 165 113 28 109 215 152 135 108 64 170 51 27 209 192 123 167
-          182 251 226 97 20 61 181 138 39)))
+        '(102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 43 240 189 248 191
+          176 188 110 73 128 82 132 221 254 44 253 172 119 117 84 83 187 62
+          30 188 132 113 99 60 229 75 15)))
 
 ; "fn/obligation/v1" || 0x00 || uint32-be(19) || msgid
 ;                    || uint32-be(48) || subject
@@ -53,15 +53,15 @@
          *fn-id-test-msgid* (fn-id-subject *fn-id-test-subject-digest*))
         '(102 110 47 111 98 108 105 103 97 116 105 111 110 47 118 49 0 0 0 0
           19 60 97 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100
-          62 0 0 0 48 102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 1 2
-          175 156 140 8 21 41 165 113 28 109 215 152 135 108 64 170 51 27 209
-          192 123 167 182 251 226 97 20 61 181 138 39)))
+          62 0 0 0 48 102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 43
+          240 189 248 191 176 188 110 73 128 82 132 221 254 44 253 172 119 117 84
+          83 187 62 30 188 132 113 99 60 229 75 15)))
 
 (assert-event
  (equal (fn-id-obligation *fn-id-test-obligation-digest*)
-        '(102 110 47 111 98 108 105 103 97 116 105 111 110 47 118 49 0 1 1 203
-          113 60 150 214 105 45 25 45 142 19 68 132 151 144 121 37 222 13 27
-          190 5 61 30 206 204 169 137 176 218 63 97)))
+        '(102 110 47 111 98 108 105 103 97 116 105 111 110 47 118 49 0 1 2 206
+          158 109 146 90 22 155 18 112 73 117 108 99 49 232 192 247 145 154 12
+          49 71 74 167 213 30 96 109 13 246 14 254)))
 
 (assert-event
  (equal (len (fn-id-subject *fn-id-test-subject-digest*)) 48))
@@ -138,18 +138,19 @@
 (assert-event
  (not (fn-id-subjectp (append *fn-id-subject-label* '(0 1 1 0 0)))))
 
-; The right label and width with the wrong algorithm octet is refused, so a
-; future suite cannot be read as this one.
+; The right label and width with the wrong algorithm octet is refused, so
+; another suite cannot be read as this one: algorithm 1 is SHA-256, the
+; suite of store formats up to 9.
 (assert-event
  (not (fn-id-subjectp
        (append *fn-id-subject-label*
-               (cons 0 (cons 1 (cons 2 *fn-id-test-subject-digest*)))))))
+               (cons 0 (cons 1 (cons 1 *fn-id-test-subject-digest*)))))))
 
 ; And the wrong version octet is refused for the same reason.
 (assert-event
  (not (fn-id-subjectp
        (append *fn-id-subject-label*
-               (cons 0 (cons 2 (cons 1 *fn-id-test-subject-digest*)))))))
+               (cons 0 (cons 2 (cons 2 *fn-id-test-subject-digest*)))))))
 
 ; Two digests that differ in one octet give different subjects.
 (assert-event

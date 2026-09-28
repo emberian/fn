@@ -794,7 +794,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.assertIn(b"within-budget=no target-budget=99999999 MB", created.stdout)
         fields = self.profile_line()
-        self.assertEqual(fields["format"], 9)   # the record log (fn-store-9)
+        self.assertEqual(fields["format"], 10)  # the record log with its genesis (fn-store-10)
         self.assertEqual(fields["max-transactions"], 1000)
         self.assertEqual(fields["max-article-octets"], 20000)
         self.assertEqual(fields["max-history-octets"], 1 << 40)
@@ -818,7 +818,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         # development's 128 transactions (books/heap-reservation.lisp
         # fn-heap-init-decide-conservative-holds-the-floor).
         self.assertIn(line.group(1), (b"custom", b"small"), created.stdout.decode())
-        self.assertEqual(fields["format"], 9)   # the record log (fn-store-9)
+        self.assertEqual(fields["format"], 10)  # the record log with its genesis (fn-store-10)
         self.assertIn(fields["max-transactions"], (131072, 65536, 32768, 16384))
         status = self.operator("status")
         self.assertIn(b"capacity articles-left=", status.stdout, status.stdout.decode())

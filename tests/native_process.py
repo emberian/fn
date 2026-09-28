@@ -1,4 +1,5 @@
 """Bounded cleanup for failed native-test startup diagnostics."""
+import contextlib
 import subprocess
 
 
@@ -61,6 +62,45 @@ def stderr_digest(text):
     else:
         parts.append("stderr:\n{}".format(decoded))
     return "\n".join(parts)
+
+
+def node_log_digest(log_path):
+    """The node's log at LOG_PATH as a diagnostic: the lines that name an
+    uncertain outcome or a fault first (the owner writes one for every
+    uncertain answer it gives: host/native/owner.lisp
+    fnn-owner-attempt-handlers, fnn-owner-commit-complete-locked), then
+    stderr_digest's refusals and tail."""
+    try:
+        with open(log_path, "rb") as handle:
+            text = handle.read()
+    except OSError as error:
+        return "(cannot read the node's log {}: {})".format(log_path, error)
+    decoded = text.decode("utf-8", "replace")
+    reasons = [line.strip() for line in decoded.splitlines()
+               if "uncertain" in line or " fault" in line]
+    head = ("uncertain/fault lines ({}): {}\n".format(len(reasons), " | ".join(reasons[:REFUSAL_LINES]))
+            if reasons else "")
+    return head + stderr_digest(text)
+
+
+@contextlib.contextmanager
+def node_log_on_failure(log_path):
+    """Attach the node's log to any assertion that fails inside the block.
+
+    A reply assertion that fails says what the client saw; why the node
+    answered so is in its log, which a test's temporary tree removes with
+    the test (lane full-vs-uncertain, 2026-09-28: a `441 ... uncertain' seen
+    once at a full store left no evidence of its reason).  Wrap every block
+    that asserts a node's replies:
+
+        with node_log_on_failure(self.tmp / "owner.log"):
+            self.assertEqual(reply, expected)
+    """
+    try:
+        yield
+    except AssertionError as error:
+        raise AssertionError("{}\n--- the node's log ({}) ---\n{}".format(
+            error, log_path, node_log_digest(log_path))) from None
 
 
 def wait_for_announcement(process, prefix, timeout=180, max_bytes=8192, stderr_path=None):

@@ -7,7 +7,7 @@ checking, stobj and attachment dispatch, LP's start and error reporting read
 stays at its current value.  These witnesses run the saved images:
 
 * a guard violation at the host boundary (the developer verb `guard-probe'
-  calls fn-sha256-of-string on 42 through fnn-call) is the fault it was
+  calls fn-b3-left-chunks on 42 and -1 through fnn-call) is the fault it was
   before the strip: the same stderr line and exit 4
   (planning/evidence/image-floor-2026-09-26.md has the unstripped image's
   line, byte-identical);
@@ -52,8 +52,12 @@ DEVELOPER = Path(os.environ.get(
 MEASURE = ROOT / "tools" / "runtime_image" / "node_measure.py"
 
 EXIT_FAULT, EXIT_USAGE = 4, 5
-GUARD_LINE = (b"store: ACL2 error in fn-sha256-of-string: "
-              b"(EV-FNCALL-GUARD-ER FN-SHA256-OF-STRING (42) (STRINGP S) (NIL) NIL)\n")
+# The entry is caught by the host's entry guard (io.lisp fnn-call's
+# host-entry-guard) before ACL2 evaluates it: still one fault line, exit 4.
+# (Until store format 10 the probe called fn-sha256-of-string, which the
+# entry guard did not describe, and the line was ACL2's EV-FNCALL-GUARD-ER.)
+GUARD_LINE = (b"store: host-entry-guard: fn-b3-left-chunks argument 2 (n) must be a "
+              b"natural (natp); the host passed the integer -1\n")
 CORE_CEILING_KIB = 128 * 1024
 SMALL_STACK_KIB = 1024          # fn-heap-stack-kib: the constant (served-line-iterative)
 
@@ -290,32 +294,39 @@ class DeepInputStackTests(unittest.TestCase):
                 self.stop(owner)
 
     def test_a_long_history_reopens_and_replays_at_the_decided_stack(self):
-        """2,000 articles; reopened from the checkpoint and by full replay
-        (no checkpoint) at the probe's stack."""
+        """2,000 articles; reopened from the checkpoint, and by full replay
+        (no checkpoint) of a store whose log holds the whole history, at the
+        probe's stack.  The full replay needs a store the owner never
+        compacted: deleting the checkpoint of a compacted store leaves the log
+        short of the history, which the open refuses by name
+        (checkpoint-damaged; batch AY, as lane fitness found for
+        test_native_image_differential)."""
         # The small preset (T = 16,384) on any machine: a 1,500 MB budget.
-        cfg, port, stack = self.store("long", ["--profile", "default"],
-                                      FN_INIT_BUDGET_MB="1500")
-        print("NATIVE-DEEP long-history stack={} KB".format(stack))
-        owner = self.start(cfg, stack)
-        try:
-            c = Nntp(port)
-            for n in range(2000):
-                self.assertTrue(c.post(headers(n), 3).startswith(b"240"), n)
-            c.close()
-        finally:
-            self.stop(owner)
-        for phase in ("reopen", "replay"):
-            if phase == "replay":
-                for p in sorted((self.tmp / "long").rglob("*"), reverse=True):
+        # The replay store keeps its whole history in one segment: its open
+        # suffix (the automatic checkpoint's period) is above 2,000 records.
+        for name, extra in (("long", []), ("long-replay", ["--max-open-suffix", "4096"])):
+            cfg, port, stack = self.store(name, ["--profile", "default"] + extra,
+                                          FN_INIT_BUDGET_MB="1500")
+            print("NATIVE-DEEP {} stack={} KB".format(name, stack))
+            owner = self.start(cfg, stack)
+            try:
+                c = Nntp(port)
+                for n in range(2000):
+                    self.assertTrue(c.post(headers(n), 3).startswith(b"240"), (name, n))
+                c.close()
+            finally:
+                self.stop(owner)
+            if name == "long-replay":
+                for p in sorted((self.tmp / name).rglob("*"), reverse=True):
                     if p.is_file() and "checkpoint" in p.name:
                         p.unlink()
             owner = self.start(cfg, stack)
             try:
                 c = Nntp(port)
-                self.assertTrue(c.command("GROUP local.test").startswith(b"211 2000 "))
+                self.assertTrue(c.command("GROUP local.test").startswith(b"211 2000 "), name)
                 for n in (0, 1999):
                     self.assertTrue(c.command("ARTICLE <deep-%d@example.invalid>" % n)
-                                    .startswith(b"220"), (phase, n))
+                                    .startswith(b"220"), (name, n))
                     c.body()
                 c.close()
             finally:

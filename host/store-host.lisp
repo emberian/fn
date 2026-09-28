@@ -15,6 +15,7 @@
 (include-book "../books/replay")
 (include-book "../books/store-intern")
 (include-book "../books/store-recover-stream")
+(include-book "../books/store-format-9-records")
 ; The open's extent seals and the served read's trailer check (PRF-294);
 ; the commit's extent reseat (PRF-309; it includes payload-extent).
 (include-book "../books/payload-commit-extent")
@@ -34,6 +35,8 @@
 (include-book "../books/byte-store-txn-name")
 (include-book "../books/store-budget-naming")
 (include-book "../books/store-profile-facts")
+; Format 10: the genesis at position 0 of the log (lane format-bump-10).
+(include-book "../books/store-genesis")
 (include-book "../books/store-replay-bound")
 (include-book "../books/store-profile-open")
 (include-book "../books/store-mount-identity")
@@ -148,6 +151,19 @@
   (declare (xargs :mode :program
                   :guard (fn-cbor-octet-listp octets)))
   (fn-srs-record-sequence octets))
+
+; An archive record's sequence at `store import': the journal record's, or,
+; for a format-9 topic anchor or admission (which format 10 does not decode),
+; the sequence its envelope names (books/store-format-9-records.lisp
+; fn-f9r-signed-topic-sequence), so the MANIFEST check names the right entry
+; and the translation then refuses it by name.
+(defun fn-store-archive-record-sequence (octets)
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
+  (let ((sequence (fn-srs-record-sequence octets)))
+    (if (natp sequence)
+        sequence
+      (fn-f9r-signed-topic-sequence octets))))
 
 (defun fn-store-record-txid (octets)
   (declare (xargs :mode :program
@@ -595,3 +611,36 @@
 (defun fn-store-compress-min-octets (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-lzr-config-min (fn-cfg-value (f-get-global 'fn-store-cfg state)))))
+;; -----------------------------------------------------------------------------
+;; The genesis (books/store-genesis.lisp; lane format-bump-10).  `init' and
+;; `store import' write the file ACL2 builds from the host's recorded
+;; readings (the CSPRNG node identity and salt, the clock reading, the image
+;; revision); every open reads it through ACL2's open, which refuses by name;
+;; the verdict is kept for the owner's install (the history salt) and for
+;; `store digest'.  The host passes octets and verdicts through unread.
+(defun fn-store-genesis-file-name ()
+  (fn-gen-file-name))
+
+(defun fn-store-genesis-octets (node salt created revision profile)
+  (fn-gen-octets-for node salt created revision profile))
+
+(defun fn-store-genesis-open (octets profile)
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
+  (fn-gen-open octets profile))
+
+(defun fn-store-genesis-refusal-text (verdict)
+  (fn-gen-refusal-text verdict))
+
+;; The chain value segment 1 starts from: the verdict's trailer.
+(defun fn-store-genesis-chain (verdict)
+  (if (and (consp verdict) (equal (car verdict) :genesis)
+           (consp (cdr verdict)) (consp (cddr verdict)))
+      (caddr verdict)
+    nil))
+
+;; The open's verdict, kept for this process: the owner's install reads the
+;; salt from it (fn-gen-verdict-salt), `store digest' its record.
+(defun fn-store-genesis-install (verdict state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-store-genesis verdict state)))
+    (mv nil t state)))

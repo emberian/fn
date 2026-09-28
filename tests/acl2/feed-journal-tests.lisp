@@ -7,7 +7,7 @@
 (defconst *fj-protected*
   (fn-frame-protected *fn-feed-magic* *fn-frame-version* 1
     (fn-frame-fields-octets '(:text :text :nat) *fj-values*)))
-(defconst *fj-frame* (append *fj-protected* (fn-sha256 *fj-protected*)))
+(defconst *fj-frame* (append *fj-protected* (fn-blake3 *fj-protected*)))
 (defconst *fj-prefix* (fn-cbor-u32-bytes (len *fj-frame*)))
 (defun fj-frame-of (kind values)
   (declare (xargs :guard t :verify-guards nil))
@@ -15,7 +15,7 @@
                    0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
          (unsigned (fn-feed-encode kind values zeroes))
          (prefix (fn-frame-protected-prefix unsigned)))
-    (fn-feed-encode kind values (fn-sha256 prefix))))
+    (fn-feed-encode kind values (fn-blake3 prefix))))
 (defmacro fn-feed-journal-test-scan ()
   '(fn-feed-journal-scan *fj-peer* *fj-prefix* *fj-frame* 99))
 

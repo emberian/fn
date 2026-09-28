@@ -14,21 +14,24 @@
 (defun sil-bs () (declare (xargs :guard t))
   (fn-bs-make 4 nil (list (cons :parent nil)) nil 0))
 (defun sil-files () (declare (xargs :guard t :verify-guards nil))
-  (fn-bs-init-log-files '(1 2 3) "00000001.cfg" '(4 5) 16))
+  (fn-bs-init-log-files '(1 2 3) "00000001.cfg" '(4 5) 16 '(6 7)))
 (defun sil-run () (declare (xargs :guard t :verify-guards nil))
   (fn-bs-imp-run (sil-bs) nil (fn-bs-init-log-program "store.init-x" "store" '(1 2 3)
-                                                      "00000001.cfg" '(4 5) 16)
+                                                      "00000001.cfg" '(4 5) 16 '(6 7))
                  nil nil nil))
 
-; The plan: three subdirectories, no transactions/, no frontier file.
+; The plan: three subdirectories, no transactions/, no frontier file; the
+; genesis before the segment.
 (assert-event (equal (fn-bs-init-log-subdir-names) '("staging" "config" "journal")))
 (assert-event (not (member-equal "allocation-frontier.json" (strip-cadrs (sil-files)))))
-(assert-event (equal (cddr (third (sil-files))) (fn-bs-zeros 16)))
+(assert-event (equal (cddr (third (sil-files))) '(6 7)))
+(assert-event (equal (cadr (third (sil-files))) "000000.log"))
+(assert-event (equal (cddr (fourth (sil-files))) (fn-bs-zeros 16)))
 ; Its cuts are init's names for the import program's, in order.
 (assert-event
- (equal (fn-bs-init-log-program "s" "r" '(1) "c" '(2) 4)
+ (equal (fn-bs-init-log-program "s" "r" '(1) "c" '(2) 4 '(3))
         (fn-bs-init-pub-rename-cuts
-         (fn-bs-imp-program "s" "r" *fn-bs-init-log-subdirs* (fn-bs-init-log-files '(1) "c" '(2) 4)))))
+         (fn-bs-imp-program "s" "r" *fn-bs-init-log-subdirs* (fn-bs-init-log-files '(1) "c" '(2) 4 '(3))))))
 ; The keystone's hypotheses hold of this reachable input, and the run ends
 ; in the complete store at ROOT with the segment's 16 zeros durable.
 (assert-event (fn-bs-imp-inputp (sil-bs) "store.init-x" "store" *fn-bs-init-log-subdirs*
@@ -37,7 +40,8 @@
  (let ((final (car (car (last (sil-run))))))
    (and (equal (fn-bs-durable-entry final :parent "store") :stage)
         (fn-bs-imp-completep final *fn-bs-init-log-subdirs* (sil-files) 0)
-        (equal (fn-bs-durable-content final 2) (fn-bs-zeros 16))
+        (equal (fn-bs-durable-content final 2) '(6 7))
+        (equal (fn-bs-durable-content final 3) (fn-bs-zeros 16))
         (fn-bs-imp-no-store-or-completep (fn-bs-crash final nil) "store"
                                          *fn-bs-init-log-subdirs* (sil-files) 0 nil))))
 ; A crash before the rename: no store at ROOT (the first state of the run).
@@ -89,7 +93,7 @@
                         (fn-bs-durable-entry img :parent "store"))))
 (defun sil-run-outs (bs outs) (declare (xargs :guard t :verify-guards nil))
   (fn-bs-imp-run bs nil (fn-bs-init-log-program "store.init-x" "store" '(1 2 3)
-                                                "00000001.cfg" '(4 5) 16)
+                                                "00000001.cfg" '(4 5) 16 '(6 7))
                  outs nil nil))
 ; Positive: the input and the outcomes hold; the first state's crash image
 ; is :no-store with no ROOT entry, the final state's is :store-present with
