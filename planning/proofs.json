@@ -12204,7 +12204,6 @@
         "fn-web-head-frame-bounded",
         "fn-web-route-is-a-row",
         "fn-web-response-head-crlf-count",
-        "fn-web-client-address-without-proxy-unfolds",
         "fn-web-parse-head-answers",
         "fn-wrq-span-decode-is-urldecode"
       ]
