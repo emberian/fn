@@ -11805,7 +11805,7 @@
         "tests/test_native_replay_determinism.py",
         "tests/test_native_initializer_fidelity.py"
       ],
-      "progress_note": "Lane format-bump-10 (2026-09-28). Admitted in the persvati REPL; certification in the lane's runs.",
+      "progress_note": "Lane format-bump-10 (2026-09-28). Certified in the persvati runs of PRF-350's note; hbox native-n4: replay_determinism test_g (two genesis records, one history) and test_d over the format-10 fixture OK.",
       "events": [
         "fn-gen-open-of-octets-for",
         "fn-gen-open-of-the-genesis-init-writes",
@@ -11817,7 +11817,7 @@
     {
       "id": "PRF-350",
       "title": "Format 10: a format-9 store is refused at open by name with the way out, and store import reads the format-9 archive",
-      "statement": "books/store-profile-open.lisp fn-spo-open-of-a-format-9-frame-refuses-by-name: for all octets whose profile frame, opened under the SHA-256 trailer format 9 sealed with (books/store-format-9.lisp fn-f9-saved-format-word), names fn-store-9, fn-spo-config-open (host/native/io.lisp fnn-metadata-config-decode through host/store-host.lisp fn-store-metadata-config-open, every open) is (:refused :store-format-9), whose line names the way out (export with that release, import here), exit 1, whatever the seam's digest (fn-f9-format-9-frame-does-not-decode: such a frame never decodes as format 10). fn-spo-open-of-a-valid-profile-opens-it: every frame init or import seals opens as its values. fn-spo-config-open-store-format-is-exactly-a-foreign-frame: :store-format exactly for a sealed frame of another word. books/store-format-9.lisp fn-f9-config-decode-of-a-format-9-frame (D38's witness): every format-9 profile that translates reads back from its SHA-256-sealed frame as its format-10 translation (word fn-store-10, fields 2-13 and 15-17 in order, the frontier word and the history marker dropped; refusals by name otherwise). books/store-export.lisp fn-sxp-import-of-a-format-9-export: the import plan (host/native/io.lisp fnn-command-store-import) over a format-9 archive with its SHA-256 MANIFEST imports under that translation with the same configuration records and records. Not claimed: the identity re-derivation of records under BLAKE3 (open, with lane blake3-digest).",
+      "statement": "books/store-profile-open.lisp fn-spo-open-of-a-format-9-frame-refuses-by-name: for all octets whose profile frame, opened under the SHA-256 trailer format 9 sealed with (books/store-format-9.lisp fn-f9-saved-format-word), names fn-store-9, fn-spo-config-open (host/native/io.lisp fnn-metadata-config-decode through host/store-host.lisp fn-store-metadata-config-open, every open) is (:refused :store-format-9), whose line names the way out (export with that release, import here), exit 1, whatever the seam's digest (fn-f9-format-9-frame-does-not-decode: such a frame never decodes as format 10). fn-spo-open-of-a-valid-profile-opens-it: every frame init or import seals opens as its values. fn-spo-config-open-store-format-is-exactly-a-foreign-frame: :store-format exactly for a sealed frame of another word. books/store-format-9.lisp fn-f9-config-decode-of-a-format-9-frame (D38's witness): every format-9 profile that translates reads back from its SHA-256-sealed frame as its format-10 translation (word fn-store-10, fields 2-13 and 15-17 in order, the frontier word and the history marker dropped; refusals by name otherwise). books/store-export.lisp fn-sxp-import-of-a-format-9-export: the import plan (host/native/io.lisp fnn-command-store-import) over a format-9 archive with its SHA-256 MANIFEST imports under that translation with the same configuration records and records. books/store-format-9-records.lisp fn-f9r-article-identities-are-format-10s and fn-f9r-article-keeps-every-other-field: the import (fn-sxp-import-plan's fn-f9r-records) re-derives each article record's subject and obligation identity under this format's digest (BLAKE3, algorithm 2) exactly as a format-10 node derives them (the derivation books/hybrid-store.lisp checks at replay) and keeps every other field; retention events are rewritten through the articles' map; an unknown format-9 identity (:unknown-identity) and a kind without a translation yet (:untranslatable-kind: signed composites, verdicts, keyring snapshots, topic events) are refused by name. Native: tests/test_native_format_9_migration.py (hbox native-n4: a batch AY format-9 image exports n1k-2k, this image refuses it by name, imports it, and its re-export holds the same 1,000 records with the identities re-derived, checked independently). Not claimed: the translation of the kinds refused as untranslatable.",
       "milestone": "M5",
       "requirements": [
         "STO-028"
@@ -11838,16 +11838,20 @@
         "host/native/io.lisp",
         "host/store-host.lisp",
         "tests/older_release_store.py",
-        "tests/test_native_older_release_open.py"
+        "tests/test_native_older_release_open.py",
+        "books/store-format-9-records.lisp",
+        "tests/test_native_format_9_migration.py"
       ],
-      "progress_note": "Lane format-bump-10 (2026-09-28). persvati run-20260928T025120Z-9ee0 and run-20260928T025925Z-a4e9 certified every changed root.",
+      "progress_note": "Lane format-bump-10 (2026-09-28). persvati certify-20260928T035927Z-1472047 (986 roots, 792 passed at the merge) + certify-20260928T041705Z-1638417 (the 9 fresh) + certify-20260928T043810Z-1835473 (732 passed after the comment-only edits); hbox native-n4 (cfdb53c99): format_9_migration, store_export, older_release_open, replay_determinism, initializer_fidelity OK.",
       "events": [
         "fn-spo-open-of-a-format-9-frame-refuses-by-name",
         "fn-spo-open-of-a-valid-profile-opens-it",
         "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
         "fn-f9-config-decode-of-a-format-9-frame",
         "fn-f9-format-9-frame-does-not-decode",
-        "fn-sxp-import-of-a-format-9-export"
+        "fn-sxp-import-of-a-format-9-export",
+        "fn-f9r-article-identities-are-format-10s",
+        "fn-f9r-article-keeps-every-other-field"
       ]
     },
     {

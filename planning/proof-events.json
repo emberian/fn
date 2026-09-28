@@ -11422,6 +11422,16 @@
           "kind": "theorem",
           "name": "fn-sxp-import-of-a-format-9-export",
           "note": "KEYSTONE (the migration). Host: host/native/io.lisp fnn-command-store-import. Teeth: tests/acl2/store-export-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-article-identities-are-format-10s",
+          "note": "KEYSTONE (identical across the migration: the identities are format 10's). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan. Teeth: tests/acl2/store-export-tests.lisp; native tests/test_native_format_9_migration.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-article-keeps-every-other-field",
+          "note": "KEYSTONE (the translation keeps the article)."
         }
       ]
     }
