@@ -60,11 +60,33 @@
   (declare (xargs :guard t))
   (fn-midx-put-chars (fn-midx-key-chars (fn-article-msgid article)) article trie))
 
-(defun fn-midx-build (articles)
+; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
+; retained article on the owner's open.  The :logic is the recursion,
+; unchanged; the :exec is a loop, equal by the guard proof.
+(defun fn-midx-build-loop (rev acc)
   (declare (xargs :guard t))
-  (if (consp articles)
-      (fn-midx-extend (fn-ag-car articles) (fn-midx-build (fn-ag-cdr articles)))
-    nil))
+  (if (consp rev)
+      (fn-midx-build-loop (cdr rev) (fn-midx-extend (car rev) acc))
+    acc))
+
+(defun fn-midx-build (articles)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp articles)
+           (fn-midx-extend (fn-ag-car articles) (fn-midx-build (fn-ag-cdr articles)))
+         nil)
+       :exec (fn-midx-build-loop (fn-ag-rev-onto articles nil) nil)))
+
+(encapsulate ()
+  (local
+   (defthm fn-midx-build-loop-of-rev-onto
+     (equal (fn-midx-build-loop (fn-ag-rev-onto xs zs) nil)
+            (fn-midx-build-loop zs (fn-midx-build xs)))
+     :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                     :in-theory (disable fn-midx-extend)))))
+  (verify-guards fn-midx-build
+    :hints (("Goal" :in-theory (disable fn-midx-extend fn-ag-rev-onto)
+                    :use ((:instance fn-midx-build-loop-of-rev-onto (xs articles) (zs nil)))))))
 
 (defun fn-midx-lookup (msgid trie)
   (declare (xargs :guard t))

@@ -56,13 +56,45 @@
     nil))
 
 ; XS without what the records caused by CAUSE withdraw.
-(defun fn-ctl-drop-via (xs ws cause verdicts)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
+; retained article on the owner's open.  The :logic is the recursion,
+; unchanged; the :exec is a loop, equal by the guard proof.
+(defun fn-ctl-drop-via-rev (xs ws cause verdicts acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp xs)
-      (if (fn-ctl-withdrawn-via-p (car xs) ws cause verdicts)
-          (fn-ctl-drop-via (cdr xs) ws cause verdicts)
-        (cons (car xs) (fn-ctl-drop-via (cdr xs) ws cause verdicts)))
-    nil))
+      (fn-ctl-drop-via-rev (cdr xs) ws cause verdicts (if (fn-ctl-withdrawn-via-p (car xs) ws cause verdicts) acc (cons (car xs) acc)))
+    acc))
+
+(defun fn-ctl-drop-via (xs ws cause verdicts)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (if (fn-ctl-withdrawn-via-p (car xs) ws cause verdicts)
+               (fn-ctl-drop-via (cdr xs) ws cause verdicts)
+             (cons (car xs) (fn-ctl-drop-via (cdr xs) ws cause verdicts)))
+         nil)
+       :exec (reverse (fn-ctl-drop-via-rev xs ws cause verdicts nil))))
+
+(encapsulate ()
+  (local
+   (defthm fn-ctl-drop-via-rev-is-revappend
+     (equal (fn-ctl-drop-via-rev xs ws cause verdicts acc)
+            (revappend (fn-ctl-drop-via xs ws cause verdicts) acc))
+     :hints (("Goal" :in-theory (disable fn-ctl-withdrawn-via-p)))))
+  (local
+   (defthm fn-ctl-drop-via-true-listp-od
+     (true-listp (fn-ctl-drop-via xs ws cause verdicts))))
+  (local
+   (defthm fn-ctl-drop-via-od-revappend-revappend
+     (equal (revappend (revappend x y) z) (revappend y (append x z)))))
+  (local
+   (defthm fn-ctl-drop-via-od-append-nil-when-true-listp
+     (implies (true-listp x) (equal (append x nil) x))))
+  (local
+   (defthm fn-ctl-drop-via-od-true-listp-of-revappend
+     (implies (true-listp y) (true-listp (revappend x y)))))
+  (verify-guards fn-ctl-drop-via
+    :hints (("Goal" :in-theory (disable fn-ctl-withdrawn-via-p)))))
 
 ; One new article A over OLD, whose visible list is OLD-VISIBLE.
 (defun fn-ctl-visible-add (a old-visible old ws verdicts)
@@ -455,13 +487,37 @@
           nil))
     nil))
 
-(defun fn-ctl-articles-withdrawals-in (arts verdicts tbl configs)
+; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
+; retained article on the owner's open.  The :logic is the recursion,
+; unchanged; the :exec is a loop, equal by the guard proof.
+(defun fn-ctl-articles-withdrawals-in-loop (rev verdicts tbl configs acc)
   (declare (xargs :guard t))
-  (if (consp arts)
-      (fn-ctl-prepend (let ((plan (fn-ctl-article-plan-in (car arts) verdicts tbl configs)))
-                        (if (fn-ctl-withdrawalp plan) (list plan) nil))
-                      (fn-ctl-articles-withdrawals-in (cdr arts) verdicts tbl configs))
-    nil))
+  (if (consp rev)
+      (fn-ctl-articles-withdrawals-in-loop (cdr rev) verdicts tbl configs (fn-ctl-prepend (let ((plan (fn-ctl-article-plan-in (car rev) verdicts tbl configs)))
+                                         (if (fn-ctl-withdrawalp plan) (list plan) nil))
+                                       acc))
+    acc))
+
+(defun fn-ctl-articles-withdrawals-in (arts verdicts tbl configs)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp arts)
+           (fn-ctl-prepend (let ((plan (fn-ctl-article-plan-in (car arts) verdicts tbl configs)))
+                             (if (fn-ctl-withdrawalp plan) (list plan) nil))
+                           (fn-ctl-articles-withdrawals-in (cdr arts) verdicts tbl configs))
+         nil)
+       :exec (fn-ctl-articles-withdrawals-in-loop (fn-ag-rev-onto arts nil) verdicts tbl configs nil)))
+
+(encapsulate ()
+  (local
+   (defthm fn-ctl-articles-withdrawals-in-loop-of-rev-onto
+     (equal (fn-ctl-articles-withdrawals-in-loop (fn-ag-rev-onto xs zs) verdicts tbl configs nil)
+            (fn-ctl-articles-withdrawals-in-loop zs verdicts tbl configs (fn-ctl-articles-withdrawals-in xs verdicts tbl configs)))
+     :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                     :in-theory (disable fn-ctl-article-plan-in fn-ctl-withdrawalp fn-ctl-prepend)))))
+  (verify-guards fn-ctl-articles-withdrawals-in
+    :hints (("Goal" :in-theory (disable fn-ctl-article-plan-in fn-ctl-withdrawalp fn-ctl-prepend fn-ag-rev-onto)
+                    :use ((:instance fn-ctl-articles-withdrawals-in-loop-of-rev-onto (xs arts) (zs nil)))))))
 
 (defthm fn-ctl-article-plan-in-row-table
   (equal (fn-ctl-article-plan-in a verdicts (fn-ctl-row-table records nil) configs)

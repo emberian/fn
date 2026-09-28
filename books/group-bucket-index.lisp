@@ -38,11 +38,33 @@
           (cons (car buckets) (fn-gidx-put entry (cdr buckets))))
       (list (cons group (cons (list entry) (fn-gnix-add group entry nil)))))))
 
-(defun fn-gidx-build-entries (entries)
+; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
+; retained article on the owner's open.  The :logic is the recursion,
+; unchanged; the :exec is a loop, equal by the guard proof.
+(defun fn-gidx-build-entries-loop (rev acc)
   (declare (xargs :guard t))
-  (if (consp entries)
-      (fn-gidx-put (car entries) (fn-gidx-build-entries (cdr entries)))
-    nil))
+  (if (consp rev)
+      (fn-gidx-build-entries-loop (cdr rev) (fn-gidx-put (car rev) acc))
+    acc))
+
+(defun fn-gidx-build-entries (entries)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp entries)
+           (fn-gidx-put (car entries) (fn-gidx-build-entries (cdr entries)))
+         nil)
+       :exec (fn-gidx-build-entries-loop (fn-ag-rev-onto entries nil) nil)))
+
+(encapsulate ()
+  (local
+   (defthm fn-gidx-build-entries-loop-of-rev-onto
+     (equal (fn-gidx-build-entries-loop (fn-ag-rev-onto xs zs) nil)
+            (fn-gidx-build-entries-loop zs (fn-gidx-build-entries xs)))
+     :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                     :in-theory (disable fn-gidx-put)))))
+  (verify-guards fn-gidx-build-entries
+    :hints (("Goal" :in-theory (disable fn-gidx-put fn-ag-rev-onto)
+                    :use ((:instance fn-gidx-build-entries-loop-of-rev-onto (xs entries) (zs nil)))))))
 
 (defun fn-gidx-build (articles)
   (declare (xargs :guard t))

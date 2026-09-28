@@ -1029,11 +1029,29 @@
 ; -----------------------------------------------------------------------------
 ; The durable prefix a version names, and the archive it projects to.
 
-(defun fn-own-take (n xs)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-876, lane open-depth): N is a version, the durable
+; record count, so the recursion was one control-stack frame per record.
+; The :logic is the recursion, unchanged; equal by the guard proof.
+(defun fn-own-take-rev (n xs acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (and (posp n) (consp xs))
-      (cons (car xs) (fn-own-take (1- n) (cdr xs)))
-    nil))
+      (fn-own-take-rev (1- n) (cdr xs) (cons (car xs) acc))
+    (revappend acc nil)))
+
+(defun fn-own-take (n xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (and (posp n) (consp xs))
+           (cons (car xs) (fn-own-take (1- n) (cdr xs)))
+         nil)
+       :exec (fn-own-take-rev n xs nil)))
+
+(encapsulate ()
+  (local
+   (defthm fn-own-take-rev-is-revappend
+     (equal (fn-own-take-rev n xs acc)
+            (revappend acc (fn-own-take n xs)))))
+  (verify-guards fn-own-take))
 
 ; The acceptance projection of the replay of the first `version` records,
 ; advanced to `frontier`.  Every pinned archive equals this over the durable
