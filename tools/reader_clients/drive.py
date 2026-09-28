@@ -557,11 +557,14 @@ def tin(args, wire, out):
     tindir.mkdir(exist_ok=True)
     # No first-run questions, no confirmation of quitting, the editor ours.
     (tindir / "tinrc").write_text(
+        "mail_address={u}@matrix.example.invalid\n"
         "confirm_choice=0\nauto_reconnect=ON\nshow_description=OFF\n"
         "use_mouse=OFF\nbeginner_level=OFF\nshow_only_unread_arts=OFF\n"
-        "default_editor_format=%E %F\nshow_signatures=OFF\n")
+        "default_editor_format=%E %F\nshow_signatures=OFF\n".format(u=args.user))
     editor = home / "editor.sh"
-    editor.write_text("#!/bin/sh\necho '{}' >> \"$1\"\n".format(BODY.format("tin")))
+    # tin calls the editor as `EDITOR +LINE FILE': the file is the last word.
+    editor.write_text("#!/bin/sh\nfor f; do :; done\necho '{}' >> \"$f\"\n".format(
+        BODY.format("tin")))
     editor.chmod(0o755)
     base = ("env HOME={h} TERM=xterm EDITOR={e} VISUAL={e} NNTPSERVER=127.0.0.1 "
             "tin -r -T -A -p {p} -q -d".format(h=shlex.quote(str(home)),
@@ -589,16 +592,21 @@ def tin(args, wire, out):
     time.sleep(1)
     pane.keys("Enter")
     act["group"] = pane.wait(r"{}".format(re.escape(args.group)), 30)
-    time.sleep(1)
-    pane.keys("Enter")
-    act["article"] = wire.wait(offset, r"C: (ARTICLE|BODY|HEAD)[^\n]*\n[^\n]* S: \d{3}[^\n]*", 60)
+    time.sleep(3)
+    pager = r"--More--|\(\d+%\)|-- Last response --|No responses|^Lines \d+"
+    for key in ("Enter", "Enter", "Right"):            # the first thread's article
+        pane.keys(key)
+        if pane.wait(pager, 8):
+            break
+    act["article"] = wire.wait(offset, r"C: (ARTICLE|BODY|HEAD)[^\n]*", 30)
     pane.shot("read")
+    act["pager"] = bool(pane.wait(pager, 2))
 
-    # follow up to the article on screen
+    # follow up to the article on screen (the pager's `f')
     offset = wire.mark("reply")
     pane.keys("f")
     final, seen = pane.answer([(r"[Pp]ost.*followup.*\?|[Qq]uote", "y"),
-                               (r"q\)uit, e\)dit.*p\)ost|p\)ost.*:", "p"),
+                               (r"p=post|p\)ost", "p"),
                                (r"[Cc]ontinue\?|[Aa]re you sure", "y")],
                               lambda: wire.posted(offset, timeout=0.1), 90)
     pane.shot("reply")
@@ -610,27 +618,38 @@ def tin(args, wire, out):
     time.sleep(1)
     pane.keys("w")
     final, seen = pane.answer([(r"[Ss]ubject", (SUBJECT.format("tin"),)),
-                               (r"q\)uit, e\)dit.*p\)ost|p\)ost.*:", "p"),
+                               (r"p=post|p\)ost", "p"),
                                (r"[Cc]ontinue\?|[Aa]re you sure", "y")],
                               lambda: wire.posted(offset, timeout=0.1), 90)
     pane.shot("post")
     acts["post"] = {"prompts": seen, "node": final}
 
-    # cancel it: rescan, last article, D (delete/cancel), confirm.
+    # cancel it: back to the group list, into the group again, the last
+    # article (ours, the newest), D (delete/cancel), confirm.
     offset = wire.mark("cancel")
     time.sleep(2)
-    pane.keys("C-r")                                   # reread the group
-    time.sleep(3)
+    for _ in range(3):
+        if pane.wait(r"Group Selection", 2):
+            break
+        pane.keys("q")
+    pane.keys("g")
+    pane.answer([(r"[Gg]roup", (args.group,))], lambda: None, 3)
+    pane.keys("Enter")
+    pane.wait(r"{} \(".format(re.escape(args.group)), 20)
+    time.sleep(2)
     pane.keys("End")
     time.sleep(1)
-    pane.keys("Enter")
+    for key in ("Enter", "Enter"):
+        pane.keys(key)
+        if pane.wait(pager, 8):
+            break
     act = {"opened": wire.wait(offset, r"S: Subject: {}".format(
         re.escape(SUBJECT.format("tin"))), 30)}
     pane.shot("cancel-open")
     if act["opened"]:
         pane.keys("D")
         final, seen = pane.answer([(r"[Cc]ancel.*\?|[Dd]elete", "d"),
-                                   (r"q\)uit, e\)dit.*p\)ost|p\)ost.*:|[Cc]ancel.*\[", "p"),
+                                   (r"p=post|p\)ost", "p"), (r"d=delete", "d"),
                                    (r"[Aa]re you sure|[Cc]ontinue\?", "y")],
                                   lambda: wire.posted(offset, timeout=0.1), 60)
         act.update(prompts=seen, node=final)

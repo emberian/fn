@@ -394,7 +394,15 @@ def make_article(msgid, groups, subject, body_octets, references=None, extra=())
     rng = random.Random(msgid)
     lines = []
     while sum(len(l) + 2 for l in lines) < body_octets:
-        lines.append(" ".join(rng.choice(WORDS) for _ in range(rng.randint(6, 14))))
+        # at most 72 columns: a reader quoting it (slrn's "> ") stays under
+        # 80, which slrn refuses to post past (found by its reply here)
+        line = ""
+        for _ in range(rng.randint(6, 14)):
+            word = rng.choice(WORDS)
+            if len(line) + len(word) + 1 > 72:
+                break
+            line = (line + " " + word).strip()
+        lines.append(line)
     if rng.random() < 0.2:
         lines.insert(rng.randint(0, len(lines)), ".a line that begins with a dot")
     head = ["From: fitness <fit@fitness.example.invalid>",
@@ -479,7 +487,10 @@ class Load:
                 time.sleep(0.5)
                 continue
             try:
-                return self.node.session(self.creds[who % len(self.creds)], timeout=90)
+                started = now()
+                conn = self.node.session(self.creds[who % len(self.creds)], timeout=90)
+                self.ledger.note("CONNECT+AUTHINFO", now() - started, "281")
+                return conn
             except Exception as error:                  # noqa: BLE001
                 if not self.ledger.in_window(now()) and not self.paused.is_set():
                     self.events.emit("connect-failed", who=who, error=str(error)[:200])
@@ -658,12 +669,20 @@ def sample(node: Node, load: Load, ledger: Ledger, events: Events, fsync_seconds
         lat = {k: list(v) for k, v in ledger.lat.items()}
         codes = json.loads(json.dumps(ledger.codes))
         ledger.lat = {}
-    row = dict(proc_status(pid), pid=pid,
+    try:
+        pressure = Path("/proc/pressure/io").read_text().split()
+        io_some = float(pressure[1].split("=")[1])
+        io_full = float([w for w in pressure if w.startswith("avg10=")][1].split("=")[1])
+    except (OSError, IndexError, ValueError):
+        io_some = io_full = None
+    row = dict(proc_status(pid), pid=pid, io_pressure_some10=io_some, io_pressure_full10=io_full,
                fsyncs=fsyncs, fsync_window_posts=posts,
                fsyncs_per_post=(round(fsyncs / posts, 3) if fsyncs is not None and posts else None),
                fsync_note=err if fsyncs is None else "",
                post_p50=pct(lat.get("POST", []), 0.5), post_p99=pct(lat.get("POST", []), 0.99),
                article_p50=pct(lat.get("ARTICLE", []), 0.5),
+               login_p50=pct(lat.get("CONNECT+AUTHINFO", []), 0.5),
+               login_max=pct(lat.get("CONNECT+AUTHINFO", []), 1.0),
                over_p50=pct(lat.get("OVER", []), 0.5), group_p50=pct(lat.get("GROUP", []), 0.5),
                status_s=round(status_s, 3), status_rc=status.returncode,
                health_rc=health.returncode,
@@ -810,11 +829,19 @@ def prepare(node: Node, events: Events, fixture=None, groups=GROUPS, profile=())
     if fixture:
         copy_fixture(Path(fixture), node)
     else:
-        init = node.op("init", *profile, *groups)
+        # `operator' takes at most 32 words (books/native-operator.lisp
+        # *fn-nop-max-arguments*): init names a few groups, `group create'
+        # the rest.
+        first, rest = list(groups[:4]), list(groups[4:])
+        init = node.op("init", *profile, *first)
         events.emit("init", node=node.name, rc=init.returncode,
                     out=(init.stdout + init.stderr).decode("utf-8", "replace")[-400:])
         if init.returncode:
             raise RuntimeError("init: " + init.stderr.decode()[-400:])
+        for group in rest:
+            made = node.op("group", "create", group)
+            if made.returncode:
+                raise RuntimeError("group create {}: {}".format(group, made.stderr.decode()[-300:]))
 
 
 def ensure_groups(node, events, groups):
@@ -825,12 +852,22 @@ def ensure_groups(node, events, groups):
 
 
 def digest_check(node: Node, events: Events, label):
-    """`store digest` of the store as left, and of a copy with no checkpoint."""
+    """`store digest' of the store as left, against a full replay of its log.
+
+    While the log still holds segment 1, the replay is a copy with the
+    checkpoint removed, and the two digests must agree.  After a compaction
+    (the owner's automatic checkpoint or `store compact') dropped the
+    segments the checkpoint covers, a copy without its checkpoint is not a
+    replay: the open must refuse it by name (reason=checkpoint-damaged,
+    books/store-log-segments.lisp) and `health' must say so; the digest is
+    then compared with a second open of an identical copy."""
     first = node.fn("store", node.store, "digest")
     copy = node.dir / "digest-copy"
     if copy.exists():
         shutil.rmtree(copy)
     subprocess.run(["cp", "-a", "--reflink=auto", str(node.store), str(copy)], check=True)
+    compacted = not (node.store / "journal" / "000001.log").exists()
+    twin = node.fn("store", copy, "digest") if compacted else None
     dropped = []
     for path in copy.glob("store-checkpoint*"):
         dropped.append(path.name)
@@ -839,6 +876,12 @@ def digest_check(node: Node, events: Events, label):
         else:
             path.unlink()
     second = node.fn("store", copy, "digest")
+    health = None
+    if compacted:
+        cfg = node.dir / "digest-copy.toml"
+        cfg.write_text('[store]\npath = "{}"\n'.format(copy), encoding="ascii")
+        h = node.fn("operator", cfg, "health")
+        health = [h.returncode, (h.stdout + h.stderr).decode("utf-8", "replace")[-600:]]
     journal = node.fn("store", node.store, "journal")
 
     def digests(text):
@@ -846,17 +889,37 @@ def digest_check(node: Node, events: Events, label):
 
     a = first.stdout.decode("utf-8", "replace")
     b = second.stdout.decode("utf-8", "replace")
-    same = digests(a) == digests(b) and first.returncode == 0 and second.returncode == 0
-    row = events.emit("digest", label=label, rc=[first.returncode, second.returncode],
+    err_b = second.stderr.decode("utf-8", "replace")
+    if compacted:
+        t = twin.stdout.decode("utf-8", "replace")
+        same = first.returncode == 0 and twin.returncode == 0 and digests(a) == digests(t)
+        refused_by_name = second.returncode == 1 and "reason=checkpoint-damaged" in err_b
+        health_names_it = bool(health and "checkpoint-damaged" in health[1])
+    else:
+        same = digests(a) == digests(b) and first.returncode == 0 and second.returncode == 0
+        refused_by_name = health_names_it = None
+    row = events.emit("digest", label=label, compacted=compacted,
+                      rc=[first.returncode, second.returncode],
                       seconds=[round(first.seconds, 1), round(second.seconds, 1)],
-                      dropped=dropped, same=same, first=a[-700:], second=b[-700:],
+                      dropped=dropped, same=same, refused_by_name=refused_by_name,
+                      health=health, health_names_it=health_names_it,
+                      first=a[-700:], second=(b or err_b)[-700:],
                       journal_rc=journal.returncode,
                       journal=journal.stdout.decode("utf-8", "replace")[-400:],
                       errs=(first.stderr + second.stderr).decode("utf-8", "replace")[-400:])
     shutil.rmtree(copy, ignore_errors=True)
+    if journal.returncode != 0:
+        events.emit("finding", what="store journal: the decision journal does not replay",
+                    label=label, journal=journal.stdout.decode("utf-8", "replace")[-300:])
     if not same:
-        events.emit("finding", what="store digest: checkpointed open differs from full replay",
-                    label=label)
+        events.emit("finding", what="store digest: two opens of one history disagree",
+                    label=label, compacted=compacted)
+    if compacted and not refused_by_name:
+        events.emit("finding", what="a compacted store without its checkpoint was not refused "
+                    "by name", label=label, rc=second.returncode, err=err_b[-300:])
+    if compacted and not health_names_it:
+        events.emit("finding", what="health does not name checkpoint-damaged on a compacted "
+                    "store without its checkpoint", label=label, health=health)
     return row
 
 
@@ -904,13 +967,22 @@ def cmd_soak(args):
                     samples.append(row)
                 next_sample += args.sample_minutes * 60
             if now() >= next_client:
-                reader_client_session(node, events, work, args.clients)
+                try:
+                    reader_client_session(node, events, work, args.clients)
+                except Exception as error:              # noqa: BLE001
+                    events.emit("reader-client", error="{}: {}".format(
+                        type(error).__name__, str(error)[:300]))
                 next_client += args.client_minutes * 60
             if checkpoint_at and now() >= checkpoint_at:
-                timed_op(node, events, "checkpoint", "store", "checkpoint")
+                # `store checkpoint' and `store compact' open the store as
+                # `recover' does: refused while the owner runs (documented,
+                # docs/operator-internals.md); the running owner checkpoints
+                # itself at half the profile's K.  Recorded once, then the
+                # compaction is a maintenance window: stop, compact, start.
+                timed_op(node, events, "checkpoint-live", "store", "checkpoint")
                 checkpoint_at = None
             if compact_at and now() >= compact_at:
-                timed_op(node, events, "compact", "store", "compact")
+                maintenance(node, load, ledger, events, creds, image_for_run)
                 compact_at = None
             if chaos and now() >= chaos[0][0]:
                 _, what = chaos.pop(0)
@@ -945,6 +1017,7 @@ def cmd_soak(args):
         summary["codes"] = ledger.codes
         summary["windows"] = ledger.windows
         summary["rss_kb"] = [s.get("VmRSS") for s in samples]
+        summary["auto_checkpoints"] = auto_checkpoints(node)
     finally:
         if node.pid():
             node.stop()
@@ -959,6 +1032,31 @@ def cmd_soak(args):
     print(json.dumps({k: summary.get(k) for k in (
         "posts_accepted", "posts_refused", "posts_uncertain", "rss_kb")}, default=str))
     return 0
+
+
+def maintenance(node, load, ledger, events, creds, image):
+    """Stop the owner, `store compact', start it: the offline window."""
+    window = ledger.open_window("maintenance")
+    load.paused.set()
+    started = now()
+    rc = node.stop()
+    stopped = now() - started
+    compact = timed_op(node, events, "compact", "store", "compact")
+    ready = node.start(image=image)
+    ledger.close_window(window)
+    load.paused.clear()
+    events.emit("maintenance", stop_rc=rc, stop_s=round(stopped, 2),
+                compact_rc=compact.returncode, compact_s=round(compact.seconds, 2),
+                start_s=round(ready, 2), total_s=round(now() - started, 2))
+    verify_presence(node, creds[0], ledger, events, "maintenance", limit=3000)
+
+
+def auto_checkpoints(node):
+    try:
+        text = (node.dir / "owner.stderr").read_text(errors="replace")
+    except OSError:
+        return []
+    return [l for l in text.splitlines() if l.startswith("CHECKPOINT")]
 
 
 def timed_op(node, events, label, *words):
@@ -1165,7 +1263,9 @@ def cmd_memory(args):
 # --------------------------------------------------------------------------
 # two nodes peering (f3)
 
-PAIR_PROFILE = ("--max-transactions", "1048576", "--max-history-octets", str(1 << 30),
+# ~13.9 GB of init reservation (the heap figure the owner checks against its
+# unit's memory): room for 10,000 x 2 KiB articles with a wide margin.
+PAIR_PROFILE = ("--max-transactions", "131072", "--max-history-octets", "300000000",
                 "--max-record-octets", "196608", "--max-article-octets", "32768",
                 "--max-groups-per-article", "16", "--max-open-suffix", "4096")
 

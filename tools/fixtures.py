@@ -257,26 +257,34 @@ def recipe_rep_store(ctx: Context, n: int, octets: int) -> None:
                                          and not p.name.endswith(".sock")))
 
 
-# The synthesized stores' seed: CAPACITY with room for 1M x 2 KiB articles in
-# the profile (T 4,000,000; H 8 GB), its configured capacity raised to
-# 4,000,000 units (capseed.py: a 2 KiB article is charged 2 units).
-CAPACITY_SYNTH = ("--max-transactions", "4000000", "--max-history-octets", "8000000000",
-                  "--max-open-suffix", "65536", "--max-record-octets", "17138486",
-                  "--max-article-octets", "32768", "--max-groups-per-article", "65535")
+# The synthesized stores' seed: a profile sized for N x 2 KiB articles
+# (T = N + 10% + 2,000 transactions, H = N x 2,800 octets), its configured
+# capacity raised to 2 N + 4,000 units (capseed.py: a 2 KiB article is
+# charged 2 units).  Lane fitness (2026-09-28): the fixed profile these
+# recipes used (T 4,000,000, H 8 GB) asks init for a 188,400 MB
+# reservation on batch AY's head, over hbox's 94,716 MB budget, so neither
+# fixture could be rebuilt; the reservation is ~25 KB per transaction plus
+# ~10.5 octets per history octet, and N-sized profiles fit (syn1m-2k:
+# ~62 GB, run in a 72G unit; syn100k-2k: ~14 GB).
+def synth_capacity(n: int) -> tuple:
+    return ("--max-transactions", str(n + n // 10 + 2000),
+            "--max-history-octets", str(n * 2800),
+            "--max-open-suffix", "65536", "--max-record-octets", "17138486",
+            "--max-article-octets", "32768", "--max-groups-per-article", "65535")
 
 
 def recipe_synth(ctx: Context, n: int) -> None:
     """tools/synth_log_store.py: a seed of 1,000 POSTed 2 KiB articles (the
-    n1k-2k recipe under CAPACITY_SYNTH, then capacity 4,000,000), renumbered
-    to N article records written as the log directly (batch-8 entries, no
-    checkpoint): the first open is a full replay of N records
+    n1k-2k recipe under synth_capacity(N), then capacity 2 N + 4,000),
+    renumbered to N article records written as the log directly (batch-8
+    entries, no checkpoint): the first open is a full replay of N records
     (planning/evidence/snapshot-open-2-2026-09-27.md section 5)."""
     work = ctx.work / "seed"
-    env = dict(ctx.env, FN_FIXTURE_INIT_FLAGS=" ".join(CAPACITY_SYNTH))
+    env = dict(ctx.env, FN_FIXTURE_INIT_FLAGS=" ".join(synth_capacity(n)))
     ctx.run([PY, TREE / EVIDENCE / "post-identity-index-2026-09-26/postmeasure.py", "load",
              ctx.image, work, 1000], env=env)
     ctx.run([PY, TREE / EVIDENCE / "snapshot-open-3-2026-09-27/capseed.py", ctx.image,
-             work / "store", 4000000])
+             work / "store", 2 * n + 4000])
     # The seed's history is its journal: no checkpoint goes into the copy.
     for path in (work / "store").glob("store-checkpoint*"):
         path.unlink()
@@ -344,12 +352,12 @@ REGISTRY = [
             readme="SCN-077's first half (1,311 held rows): pre-rotation.tar and post-rotation.tar "
                    "of the BP journal t/, built by fixture.py; measure.py LABEL TREE IMAGE times "
                    "the three opens."),
-    Fixture("syn100k-2k", lambda c: recipe_synth(c, 100000), mem="40G",
+    Fixture("syn100k-2k", lambda c: recipe_synth(c, 100000), mem="24G",
             readme="100,000 x 2 KiB article records synthesized as the log (tools/synth_log_store.py "
-                   "from a 1,000-article seed, capacity 4,000,000, batch-8 entries, no checkpoint): "
+                   "from a 1,000-article seed, capacity 2 N + 4,000, batch-8 entries, no checkpoint): "
                    "the open is a full replay (OWNER-OPEN open=full-replay). Copy store/ and touch "
                    "writer.lock (mode 600) before use."),
-    Fixture("syn1m-2k", lambda c: recipe_synth(c, 1000000), mem="40G",
+    Fixture("syn1m-2k", lambda c: recipe_synth(c, 1000000), mem="72G",
             readme="1,000,000 x 2 KiB article records, as syn100k-2k (2.56 GB of entries). A full "
                    "replay: run it in a unit with MemoryMax (the open's peak was 9.2 GB on the "
                    "list walk)."),

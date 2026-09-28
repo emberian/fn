@@ -279,15 +279,23 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
             results[label] = (outcome, tree(store), store)
         return results
 
-    def compare(self, name, results, durable="bytes"):
+    def compare(self, name, results, durable="bytes", clocked=()):
+        """CLOCKED: files the run writes from its own clock readings (the
+        decision journal, books/owner-time-journal.lisp): compared by
+        presence, every other file by bytes."""
         (a, ta, sa), (b, tb, sb) = results["full"], results["stripped"]
+        for key in clocked:
+            for t in (ta, tb):
+                if key in t:
+                    t[key] = "present"
         na = [normalize(x, sa, self.tmp) if isinstance(x, bytes) else x for x in a]
         nb = [normalize(x, sb, self.tmp) if isinstance(x, bytes) else x for x in b]
         row = {"outcome": na, "outcome-equal": na == nb}
         self.assertEqual(na, nb, name)
         if durable == "bytes":
             differing = sorted(k for k in set(ta) | set(tb) if ta.get(k) != tb.get(k))
-            row["durable"] = "bytes-equal" if not differing else "differs: " + " ".join(differing)
+            row["durable"] = ("bytes-equal" if not differing else "differs: " + " ".join(differing)) \
+                + ("" if not clocked else " (clocked, by presence: " + " ".join(clocked) + ")")
             self.assertEqual(differing, [], name)
         else:
             row["durable"] = durable
@@ -413,7 +421,10 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
             transcript = s.close()
             stop_and_diagnostics(owner, timeout=120)
             return list(status) + [owner.returncode, transcript]
-        self.compare("full-replay", self.pair("replay", act, base=self.base_log))
+        # The run appends its clock readings to the decision journal (lane
+        # time-model-2): that file differs by the wall clock, never by image.
+        self.compare("full-replay", self.pair("replay", act, base=self.base_log),
+                     clocked=("decisions/decisions.fnj",))
 
     def test_checkpoint_deleted_after_compaction_is_refused_by_name(self):
         """An operator error: the checkpoint removed after `store checkpoint'

@@ -974,8 +974,14 @@ Returns (values WORD READING)."
         (setf (fnn-owner-gate-sched gate) sched
               word w
               entry jline
-              line lline)))
-    (fnn-journal-line entry)
+              line lline))
+      ;; Offered under the gate mutex that numbered it: two events numbered
+      ;; N and N+1 on two threads (the syncer's :return, a reader's
+      ;; :served) reached the writer's FIFO as N+1, N when the offer came
+      ;; after the release, and replay read the swap as a gap (lane
+      ;; fitness: 6 swaps in 18,821 entries of an 8-client soak).  The
+      ;; offer never waits (fnn-log-offer: ACL2's sink queues or drops).
+      (fnn-journal-line entry))
     (when line (fnn-log-line line))
     (values word reading)))
 
@@ -986,8 +992,9 @@ decision that changed nothing in the value, with its two counts."
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
       (destructuring-bind (sched jline)
           (fnn-core 'fn-otm-note-step (fnn-owner-gate-sched gate) a b)
-        (setf (fnn-owner-gate-sched gate) sched entry jline)))
-    (fnn-journal-line entry)))
+        (setf (fnn-owner-gate-sched gate) sched entry jline))
+      ;; In the numbering's critical section, as fnn-owner-disk-event's.
+      (fnn-journal-line entry))))
 
 (defun fnn-owner-disk-admission (service)
   "The write admission at the gate's recorded time (fn-otm-admit-post):
