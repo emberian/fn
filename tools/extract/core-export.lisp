@@ -156,6 +156,13 @@
     (let ((state (xt-print (list 'defparameter (caar consts) (list 'quote (cdar consts))) channel state)))
       (xt-print-consts (cdr consts) channel state))))
 
+(defun xt-entry-fns (entries acc)
+  (if (endp entries) (reverse acc)
+    (xt-entry-fns (cdr entries)
+                  (if (member-eq (cadr (car entries)) '(:defun :alias :stobj-prim))
+                      (cons (car (car entries)) acc)
+                    acc))))
+
 (defun xt-props (roots w acc)
   (if (endp roots) (reverse acc)
     (xt-props (cdr roots) w
@@ -269,7 +276,10 @@
                 (let* ((state (xt-print '(in-package "ACL2") channel state))
                        (state (xt-print-consts consts channel state))
                        (state (xt-print-globals globals channel state))
-                       (state (xt-print (list 'xl-set-props (list 'quote (xt-props roots w nil)))
+                       ; every function of the closure (host/native's fnn-call
+                       ; may name any): formals, stobjs-in, guard
+                       (state (xt-print (list 'xl-set-props
+                                              (list 'quote (xt-props (xt-entry-fns entries nil) w nil)))
                                         channel state))
                        (state (close-output-channel channel state)))
                   (value (list :roots (len roots) :consts (len consts) :globals (len globals)
