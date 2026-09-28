@@ -371,9 +371,6 @@ production image, which refuses to start with the variable set."
     (fnn-native-auth-admin-core
      'fn-native-auth-admin-host-rp-outcome phase)))
 
-(defun fnn-native-auth-admin-reason-text (reason)
-  (if reason (string-downcase (symbol-name reason)) "none"))
-
 (defun fnn-native-auth-admin-emit (status action &optional reason)
   (fnn-err "~(~a~) operator principal ~(~a~)~@[ ~(~a~)~]"
            status action reason))

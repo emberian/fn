@@ -11,21 +11,6 @@
      (f-get-global 'fn-bprj-bound-store state)
    (f-get-global 'fn-store-sn state)))
 
-(defun fn-bprj-bind-store (store state)
- (declare (xargs :stobjs state :mode :program))
- ; This low-level setter is called only by fn-owner-app-bind-receipt-store,
- ; whose STORE argument is read from the canonical fn-owner in the same ACL2
- ; state transition.  The native host has no store argument to invent.
- (let* ((state (f-put-global 'fn-bprj-bound-store store state))
-        (state (f-put-global 'fn-bprj-store-source :owner-bound state)))
-  (value :ready)))
-
-(defun fn-bprj-use-standalone-store (state)
- (declare (xargs :stobjs state :mode :program))
- (let* ((state (f-put-global 'fn-bprj-store-source :standalone state))
-        (state (f-put-global 'fn-bprj-bound-store nil state)))
-  (value :ready)))
-
 (defun fn-bprj-valid-config (record state)
  (declare (xargs :stobjs state :mode :program))
  (value (if (and (fn-bprr-configp record)
@@ -89,13 +74,6 @@
      (f-get-global 'fn-bprj-state state)
      (fn-record-parse-value parsed)) nil))))
 
-; Native application projections.  These read the same joined replay state the
-; publication preflight and apply functions above update.
-(defun fn-bprj-request-status (request-octets state)
- (declare (xargs :stobjs state :mode :program))
- (value (fn-bpaj-request-status-fast
-         (f-get-global 'fn-bpaj-state state) request-octets)))
-
 (defun fn-bprj-request-action (request-octets generation fn-arena fn-hist state)
  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program
                   :guard (fn-cbor-octet-listp request-octets)))
@@ -145,11 +123,6 @@
  (let ((request (fn-bpaj-request request-octets)))
   (value (and request (fn-bpaj-receipt-id request)))))
 
-(defun fn-bprj-request-source-eid (request-octets state)
- (declare (xargs :stobjs state :mode :program))
- (let ((request (fn-bpaj-request request-octets)))
-  (value (and request (fn-bpa-request-source-eid request)))))
-
 (defun fn-bprj-request-bound-inbound-id (request-octets state)
  (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp request-octets)))
@@ -166,11 +139,6 @@
  (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp request-octets)))
  (value (fn-bpaj-request-result
-         (f-get-global 'fn-bpaj-state state) request-octets)))
-
-(defun fn-bprj-request-planned-txid (request-octets state)
- (declare (xargs :stobjs state :mode :program))
- (value (fn-bpaj-request-planned-txid
          (f-get-global 'fn-bpaj-state state) request-octets)))
 
 (defun fn-bprj-request-planned-result (request-octets state)

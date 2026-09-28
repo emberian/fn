@@ -1249,6 +1249,23 @@ def uncited_in_selection(root: Path, books: list[str], affected_by: list[str]) -
     return certified_claims.uncited_books(root, certify_books.with_dependencies(roots))
 
 
+# tools/boxes.sh's seam for the reservation wait (the tests stub it).
+BOXES = subprocess.run
+
+
+def honour_reservation(host: str) -> None:
+    """Wait while HOST is reserved for someone else's measurement.
+
+    `tools/boxes.sh reserve` leaves a lease on the box; `wait` prints who
+    holds it and until when, and returns when it ends (or at once when the
+    lease is this worktree's).  Past its bound no run starts.
+    """
+    done = BOXES(["sh", str(Path(__file__).resolve().parent / "boxes.sh"), "wait", host],
+                 check=False)
+    if done.returncode != 0:
+        raise FarmError(f"no farm run started: {host} is reserved (tools/boxes.sh)")
+
+
 def pick_host(runner=subprocess.run) -> str:
     """The build box with the lowest load per core now (tools/boxes.sh --pick).
 
@@ -1342,6 +1359,7 @@ def main(argv: list[str] | None = None) -> int:
                          "every root; pass --all if that is what you mean")
         if arguments.all and (named or arguments.affected_by):
             parser.error("--all certifies every root; it takes no books or --affected-by")
+    named_box = arguments.action == "submit" and arguments.host in HOSTS
     if arguments.action == "submit" and arguments.host not in HOSTS:
         if arguments.host != "auto":
             # `farm.py submit books/x`: no box named, so the first word is a book.
@@ -1359,6 +1377,8 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
     try:
         if arguments.action == "submit":
+            if named_box:
+                honour_reservation(arguments.host)
             identifier = submit(arguments.host, root, list(arguments.rest),
                                 arguments.jobs, arguments.timeout_seconds,
                                 list(arguments.affected_by),

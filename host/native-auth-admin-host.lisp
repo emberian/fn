@@ -9,14 +9,13 @@
 (set-state-ok t)
 (program)
 
+;; test-only (tools/host_callers.py): tests/acl2/native-auth-admin-host-tests.lisp
 (defun fn-native-auth-admin-host-parse-argv (argv)
   (fn-native-auth-admin-parse-argv argv))
 (defun fn-native-auth-admin-host-plan-status (result)
   (fn-native-auth-admin-plan-status result))
 (defun fn-native-auth-admin-host-plan-reason (result)
   (fn-native-auth-admin-plan-reason result))
-(defun fn-native-auth-admin-host-plan-action (result)
-  (fn-native-auth-admin-plan-action result))
 (defun fn-native-auth-admin-host-action-kind (result)
   (fn-native-auth-admin-action-kind result))
 (defun fn-native-auth-admin-host-action-name (result)
