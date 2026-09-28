@@ -253,6 +253,53 @@ class StoreExportTests(ProfileFixture):
             done = self.operator_with(config2, "store", "import", str(archive))
             self.assertEqual(done.returncode, EXIT_OK, done.stderr.decode())
 
+    def test_an_export_killed_at_every_cut_is_incomplete_or_complete(self):
+        """PRF-370 (books/store-export-durability.lisp): the export's data
+        share one sync and the MANIFEST is renamed into place last.  A
+        process death at every cut of fn-sxd-program
+        (FN_NATIVE_EXPORT_FAULT=CUT:kill, the cut's first occurrence; the
+        table is tests/campaign/native_cuts.py EXPORT_CUTS) leaves an archive
+        the import refuses by name -- archive-incomplete entry=MANIFEST, exit
+        1, no store -- until the MANIFEST is in place, and after that the
+        complete archive, which imports.  An OS error at the sync's cut is a
+        known failure of the export, and its archive is refused the same way."""
+        if not verbs.executable(verbs.DEVELOPER):
+            self.skipTest("the developer image is required (FN_NATIVE_EXPORT_FAULT)")
+        from tests.campaign import native_cuts
+        native_cuts.verify_export_cut_map()
+        self.assertIn("FN_NATIVE_EXPORT_FAULT", native_cuts.developer_selectors())
+        self.served_store()
+        runs = [(cut.name, "kill", cut.candidate) for cut in native_cuts.EXPORT_CUTS]
+        runs.append(("export-data-written", "eio", "absent"))
+        for name, action, candidate in runs:
+            with self.subTest(cut=name, action=action):
+                archive = self.root / ("archive-{}-{}".format(name, action))
+                env = dict(verbs.environment(),
+                           FN_NATIVE_EXPORT_FAULT="{}:{}".format(name, action))
+                died = self.operator("store", "export", str(archive),
+                                     image=verbs.DEVELOPER, env=env)
+                if action == "kill":
+                    self.assertEqual(died.returncode, -9, died.stderr.decode())
+                else:
+                    self.assertNotIn(died.returncode, (EXIT_OK, -9), died.stderr.decode())
+                self.assertTrue(archive.is_dir(), name)
+                store2 = self.root / ("store-{}-{}".format(name, action))
+                config2 = self.second_config(store2)
+                got = self.operator_with(config2, "store", "import", str(archive))
+                present = (archive / "MANIFEST").exists()
+                if candidate == "absent":
+                    self.assertFalse(present, name)
+                elif candidate == "present":
+                    self.assertTrue(present, name)
+                if present:
+                    self.assertEqual(got.returncode, EXIT_OK, got.stderr.decode())
+                    self.assertTrue(store2.exists(), name)
+                else:
+                    self.assertEqual(got.returncode, EXIT_REFUSED, got.stderr.decode())
+                    self.assertIn(b"import refused reason=archive-incomplete entry=MANIFEST",
+                                  got.stderr + got.stdout)
+                    self.assertFalse(store2.exists(), name)
+
     def refused_by_name(self, kind):
         made, config, _ = older.make_store(kind, self.image, self.root / "older",
                                            verbs.environment())
