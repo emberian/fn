@@ -13,6 +13,10 @@
 (include-book "records-shape")
 (include-book "acceptance-alloc")
 (include-book "byte-store-txn-name")
+; fan-in-cuts (lane/fan-in-cuts) moves byte-store-txn-name onto a leaf seam,
+; which no longer carries consumer-position; the proofs below apply its
+; fn-cp-append-nil-left.
+(include-book "consumer-position")
 
 (defconst *fn-native-admin-config-name-width* 8)
 (defconst *fn-native-admin-config-name-limit* 100000000)
