@@ -10131,9 +10131,10 @@
         "books/payload-arena-attach.lisp",
         "planning/evidence/arena-offheap-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T122543Z-3171271.json",
-        "planning/evidence/manifests/certify-20260927T125739Z-3340064.json"
+        "planning/evidence/manifests/certify-20260927T125739Z-3340064.json",
+        "planning/evidence/manifests/certify-20260928T002033Z-3553464.json"
       ],
-      "progress_note": "Lane arena-offheap (2026-09-27), stage 1 of the coordinator's off-heap decision: the paged attachment replaces the byte array in the image. Stage 2 (payloads off the heap: handle -> durable file extent, A-DURABLE-EXTENT) builds on the same generic. A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them."
+      "progress_note": "Lane arena-offheap (2026-09-27), stage 1 of the coordinator's off-heap decision: the paged attachment replaces the byte array in the image. Stage 2 (payloads off the heap: handle -> durable file extent, A-DURABLE-EXTENT) builds on the same generic. A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them. Recertified after records-shape's octet-conversion loops (PRF-345, lane thread-stacks): persvati certify-20260928T002033Z-3553464 certifies books/payload-arena-paged and its tests at the lane's digest."
     },
     {
       "id": "PRF-285",
@@ -10456,11 +10457,13 @@
       "status": "uncertified-at-current-digest",
       "evidence": [
         "books/nntp-article-block.lisp",
+        "books/nntp-responses.lisp",
+        "books/nntp-article-pass.lisp",
         "books/nntp-reader-compat.lisp",
         "tests/acl2/nntp-article-block-tests.lisp",
         "planning/evidence/gate-regress-2026-09-27.md"
       ],
-      "progress_note": "gate-regress (2026-09-27): books and teeth REPL-admitted on hbox; batch certification pending.",
+      "progress_note": "gate-regress (2026-09-27): books and teeth REPL-admitted on hbox; batch certification pending. served-columns-body (2026-09-27, PRF-334): the one pass and its equations moved to books/nntp-article-pass.lisp and fn-nntp-article-response-of-bytes with fn-nntp-article-response-is-of-bytes to books/nntp-responses.lisp (statements unchanged).",
       "events": [
         "fn-nntp-block-rev-is-the-block",
         "fn-nntp-crlf-validp-is-crlf-lines-ok",
@@ -11848,7 +11851,7 @@
     {
       "id": "PRF-336",
       "title": "The running owner's report string and obligation lines are built with constant stack: `obligations` at 5,000 answers and the owner keeps running",
-      "statement": "fn-nls-octets-string-is-record-octets-string: fn-nls-buffer (called by host/native-live-status-host.lisp fn-native-live-status-host-answer) builds the report text with fn-nls-octets-string, a loop, equal to fn-record-octets-string on every value; fn-record-octets-string's non-tail recursion exhausted the 1,024 KB control stack past about 50,000 octets. fn-nls-obligation-lines executes fn-nls-obligation-lines-rev (mbe; the equation is its guard).",
+      "statement": "fn-nls-octets-string-is-record-octets-string: fn-nls-octets-string, a loop, equals fn-record-octets-string on every value. fn-nls-buffer (called by host/native-live-status-host.lisp fn-native-live-status-host-answer) builds the report text with fn-record-octets-string, which since PRF-345 executes by a loop itself (books/records-shape.lisp); before, its non-tail recursion exhausted the 1,024 KB control stack past about 50,000 octets. fn-nls-obligation-lines executes fn-nls-obligation-lines-rev (mbe; the equation is its guard).",
       "milestone": "M5",
       "requirements": [
         "HST-006"
@@ -11866,7 +11869,7 @@
         "tests/test_native_peering.py",
         "planning/evidence/feed-queue-2026-09-27.md"
       ],
-      "progress_note": "Open: books/records-shape.lisp fn-record-octets-chars and fn-record-string-octets-aux recurse once per octet (393 call sites); any conversion past about 50,000 octets on a node thread dies the same way. Fixing them at the cause recertifies 1,084 books (a coordinator decision).",
+      "progress_note": "Closed at the cause by PRF-345 (lane thread-stacks, PKT-693): books/records-shape.lisp fn-record-octets-chars and fn-record-string-octets-aux execute an accumulator loop (mbe), so every caller of the two conversions runs in constant stack; fn-nls-buffer now calls fn-record-octets-string directly and fn-nls-octets-string stays with its equation and tests.",
       "events": [
         "fn-nls-octets-string-is-record-octets-string"
       ]
@@ -12074,6 +12077,136 @@
         "planning/evidence/sca-join-2026-09-27.md"
       ],
       "progress_note": "Lane sca-join-5 (2026-09-28): REPL-admitted and certified on persvati (affected roots of catalog, served-catalog, served-catalog-chain, served-catalog-tests: certify-20260928T003009Z-3659350, 172 passed; served-catalog-join-inv re-proved over batch AY's fn-otm-read-span: certify-20260928T003941Z-3754893). Lookup counts before/after in planning/evidence/sca-join-2026-09-27.md. Native on hbox (709b2824a, /tank/fn/scratch/sca-join-5/native-f2): served_differential OK 7, reader_index OK 7, reader_freshness OK 2; served_cost FAILED 1 (test_owner_calls_fast_span_entry: its static text check expects the pre-batch-AY host call shape; host code not changed by this lane). f2_lookups at 1k/10k/100k: every measured command O(1) + the O(log N) bisection, LISTGROUP/OVER proportional to their output; VERDICT MET."
+    },
+    {
+      "id": "PRF-345",
+      "title": "The record's octet/string conversions and the article Message-ID walk execute in constant stack: fn-record-octets-chars, fn-record-string-octets-aux and fn-article-msgids run an accumulator loop equal to their definitions",
+      "statement": "books/records-shape.lisp: fn-record-octets-chars (under fn-record-octets-string) and fn-record-string-octets-aux (under fn-record-string-octets) are each (mbe :logic <the per-octet recursion, unchanged> :exec (reverse (<twin> x nil))) with the twins fn-record-octets-chars-rev and fn-record-string-octets-rev, tail-recursive accumulators; their verify-guards events prove exec = logic on every input satisfying the guard (fn-cbor-octet-listp, character-listp), by the local lemmas fn-record-octets-chars-rev-is-revappend and fn-record-string-octets-rev-is-revappend (the twin is revappend of the definition). The host reaches them through every conversion site, e.g. host/store-host.lisp fn-store-octets->string and fn-store-frame-wire-to-logical-values (fn-record-octets-string), host/native-live-status-host.lisp fn-native-live-status-host-answer (fn-nls-buffer). Before, execution recursed once per octet: on a node thread's 1,024 KB control stack 80,000 octets exhausted it (the 5,000-obligation report stopped the owner). Scope: the octet list stays the representation (D27's concrete twin is PKT-864). books/acceptance.lisp fn-article-msgids is the same shape (twin fn-article-msgids-rev, lemma fn-article-msgids-rev-is-revappend); fn-article-listp's :exec calls it over the whole article list, and on a full-replay open (host/store-node-host.lisp fn-store-sn-recover-rows -> fn-store-sn-open-extended -> fn-sco-cpr-finish's fn-cnode-statep) 100,000 articles exhausted the 1,024 KB main-thread stack at 30,526 frames.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-006"
+      ],
+      "depends_on": [
+        "PRF-014"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/records-shape.lisp",
+        "books/acceptance.lisp",
+        "tests/acl2/records-shape-tests.lisp",
+        "tests/test_native_bounds_join.py",
+        "tests/test_native_peering.py",
+        "planning/evidence/manifests/certify-20260928T002033Z-3553464.json",
+        "planning/evidence/manifests/certify-20260928T002216Z-3243313.json",
+        "planning/evidence/manifests/certify-20260928T003307Z-3688271.json",
+        "planning/evidence/manifests/certify-20260928T030827Z-1007200.json",
+        "planning/evidence/manifests/certify-20260928T031001Z-3653036.json",
+        "planning/evidence/manifests/certify-20260928T031352Z-1055761.json",
+        "planning/evidence/thread-stacks-2026-09-28.md"
+      ],
+      "progress_note": "hbox REPL (1 MiB thread, raw mode): 80,000, 1,000,000 and 17,000,000 octets round-trip; the old recursion as a raw copy: 40,000 ok, 80,000 control-stack-exhausted. Native (hbox native-ts5, production image, FN_TEST_CONTROL_STACK_KB=1024): TenMibArticleTests and the 5,000-obligation report OK. Open: the full-replay open still exhausts the 1,024 KB main-thread stack past about 30,000 retained articles in other R-long walks under fn-cnode-statep (PKT-876).",
+      "events": [
+        "fn-record-octets-chars",
+        "fn-record-string-octets-aux",
+        "fn-article-msgids"
+      ]
+    },
+    {
+      "id": "PRF-334",
+      "title": "Every served ARTICLE, HEAD and BODY reads the article's bytes once, and HEAD and BODY split them once, equal to the specified reply",
+      "statement": "Lane served-columns-body (2026-09-27). The host's served read (host/owner-host.lisp fn-owner-chunk-span -> fn-otm-read-span -> fn-orr-read-span -> fn-scr-ocfg-read-span -> ... -> fn-scr-command -> books/served-catalog.lisp fn-nntp-archive-command-cat) answers ARTICLE/HEAD through fn-rcompat-article-reply (books/nntp-reader-compat.lisp, exec fn-rcompat-article-reply-exec: one read) and BODY/STAT through fn-nntp-number-retrieval-cat / fn-nntp-msgid-retrieval-cat -> fn-nntp-article-response (books/nntp-responses.lisp), whose executable is now fn-nntp-article-response-of-bytes over ONE fn-nntp-article-bytes (before: the section and the framing check each read the arena -- two realizer calls, two preads and trailer checks on an extent -- and each split). KEYSTONE fn-nntp-article-response-is-of-bytes (no hypothesis; now the guard obligation of that mbe). The of-bytes reply's executable builds every kind's block with fn-nntp-response-block-rev: ARTICLE by the one pass fn-nntp-block-rev, HEAD and BODY by fn-nntp-section-rev (framing checked by fn-nntp-crlf-validp, allocating nothing; ONE split fn-nntp-split-article-aux; one pass over the section) where the specification builds fn-nntp-crlf-lines of the whole payload and splits it twice. KEYSTONE fn-nntp-response-block-rev-is-the-block (no hypothesis): :error exactly when the specification's reply is not framed or its section does not split into lines, otherwise a true list whose reverse onto .CRLF is fn-nntp-stuff-lines of the section then .CRLF; from fn-nntp-section-rev-is-the-section (hypothesis: kind is not :article) and fn-nntp-block-rev-is-the-block (PRF-292). fn-nntp-response-okp-of-bytes (the stored reply's session) decides HEAD/BODY by fn-nntp-response-validp (fn-nntp-response-validp-is-framed-section, no hypothesis). Reply bytes unchanged: every statement is over the unchanged :logic definitions.",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-052"
+      ],
+      "depends_on": [
+        "PRF-292"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/nntp-article-pass.lisp",
+        "books/nntp-responses.lisp",
+        "books/nntp-article-block.lisp",
+        "tests/acl2/nntp-article-block-tests.lisp"
+      ],
+      "progress_note": "served-columns-body (2026-09-27): books and teeth REPL-admitted on hbox; certification in the lane's manifest.",
+      "events": [
+        "fn-nntp-article-response-is-of-bytes",
+        "fn-nntp-response-block-rev-is-the-block",
+        "fn-nntp-section-rev-is-the-section",
+        "fn-nntp-response-validp-is-framed-section"
+      ]
+    },
+    {
+      "id": "PRF-332",
+      "title": "The served OVER/XOVER, HDR/XHDR and XPAT read the overview column decided once at intern, never the payload, and answer what the bytes answer",
+      "statement": "books/held-record.lisp: a held row's facts carry NOV (fn-hnov: tombstone flag, parse verdict, the five RFC 3977 section 8.3.2 fields as strings; nil = not decided). books/catalog-record.lisp fn-hnov-of(-parsed) decides it inside fn-held-facts-of from ONE parse (the open's books/store-intern-once.lisp fn-ipo-facts-context and the POST's books/owner-parse-carried.lisp fn-apc-held-facts-of pass their parse; the fields are books/nov-fields.lisp fn-nov-header-content, the function OVER renders with). books/served-columns.lisp: F = fn-scol-okp (the arena recognizer and every catalog row whose column is decided carries exactly fn-held-facts-of of the octets its handle names). The lookup fn-scol-facts finds a row of the article's Message-ID (the catalog's Message-ID column) whose handle IS the article's; KEYSTONE fn-scol-facts-are-the-bytes-facts: under F its facts are the facts of the article's bytes, so no join, uniqueness or version fact is used. KEYSTONES fn-scol-tombstonep-is-bytes, fn-scol-overview-of-is-bytes, fn-scol-hdr-content-is-bytes: under F alone the column readers equal fn-nntp-article-tombstonep, fn-nov-overview and fn-nntp-hdr-content (a field token lowercasing to one of the five names reads the column: fn-scol-header-content-by-downcase; :bytes/:lines from the O(1) length and the facts' body lines; any other field reads the bytes). The served twins fn-nov-served-lines-numbered-col, fn-nntp-over-range/current/msgid-served-col and KEYSTONE fn-nntp-xref-reply-col-is-xref-reply equal the nntp-xref arms under F. books/served-catalog.lisp: fn-nntp-archive-command-cat calls fn-nntp-xref-reply-col and its HDR/XPAT arms call fn-scol-hdr-content; fn-nntp-archive-command-cat-is-pinned and the four HDR/XPAT -is-archive keystones are restated with F; books/served-catalog-chain.lisp fn-scr-catalogp carries F, so the chain's -is- theorems to fn-ocfg-read-tls-prefix hold over the column path. F at the transitions: fn-scol-okp-of-commit, -of-withdraw, -of-redecide, -of-clear, -of-seal-list, -of-arena-append, -of-faithful-reseat, -of-intern-list, fn-scol-row-okp-of-intern-list; at the owner's entries (books/served-catalog-owner.lisp) fn-scol-okp-of-load-held-rows (E, from fn-scol-history-okp of the store's rows), fn-scol-row-okp-of-intern-row-at (T1), fn-scol-okp-of-sca-complete (T2), -of-sca-withdraw-targets (T4), -of-sca-finish. OPEN: that the store's history rows stay faithful (fn-scol-history-okp) across the owner's steps and the opens is the same establishment obligation as the join's (PRF-302). Host subject: host/owner-host.lisp fn-owner-chunk-span -> fn-otm-read-span -> fn-orr-read-span -> fn-scr-* -> fn-nntp-archive-command-cat.",
+      "milestone": "M6",
+      "requirements": [
+        "STO-027",
+        "NNT-052"
+      ],
+      "depends_on": [
+        "PRF-302",
+        "PRF-292"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/nov-fields.lisp",
+        "books/held-record.lisp",
+        "books/catalog-record.lisp",
+        "books/served-columns.lisp",
+        "books/served-catalog.lisp",
+        "books/served-catalog-chain.lisp",
+        "books/served-catalog-owner.lisp",
+        "tests/acl2/served-columns-tests.lisp",
+        "tests/acl2/served-catalog-owner-tests.lisp",
+        "planning/evidence/served-columns-2026-09-27.md"
+      ],
+      "progress_note": "Lane served-columns (2026-09-27): never do at read time what could have been done once at write time.",
+      "events": [
+        "fn-scol-facts-are-the-bytes-facts",
+        "fn-scol-tombstonep-is-bytes",
+        "fn-scol-overview-of-is-bytes",
+        "fn-scol-hdr-content-is-bytes",
+        "fn-nntp-xref-reply-col-is-xref-reply",
+        "fn-nov-served-lines-numbered-col-is-served",
+        "fn-scol-okp-of-commit",
+        "fn-scol-okp-of-withdraw",
+        "fn-scol-okp-of-seal-list",
+        "fn-scol-okp-of-faithful-reseat",
+        "fn-scol-okp-of-intern-list",
+        "fn-scol-okp-of-load-held-rows",
+        "fn-scol-row-okp-of-intern-row-at",
+        "fn-scol-okp-of-sca-finish"
+      ]
+    },
+    {
+      "id": "PRF-333",
+      "title": "The record decode checks each payload once: the payload's length bound and the record check without the payload, under mbe",
+      "statement": "books/records.lisp (the codec implementation behind the seam; books/records-attach.lisp attaches fn-record-decode-exact-impl to fn-record-decode-exact): the :logic definitions of fn-record-decode-after-header and fn-record-decode-tail are unchanged; their :exec branches test the payload once. fn-record-payloadp-of-octets-by-definition (definitional, not cited): (implies (fn-cbor-octet-listp payload) (equal (fn-record-payloadp payload) (<= (len payload) *fn-record-max-payload*))) -- the item the decoder read from the checked input is an octet list (fn-record-read-bytes-success-domain), so after-header's exec tests only the length. fn-record-p-of-make-is-without-payload: (implies (fn-record-payloadp payload) (equal (fn-record-p (fn-record-make ... payload ...)) (fn-record-p (fn-record-make ... nil ...)))) -- decode-tail's final check runs over the record with the empty payload in place (the payload is in its guard). Both discharge the guard obligations of the mbe (verify-guards of the two decoders). Host subject: host/native/io.lisp's recovery decode (fnn-recover-log-stream-flush -> fn-lgb-decode-next -> fn-srs-decode -> fn-store-event-decode-exact -> fn-record-decode-exact, attached to fn-record-decode-exact-impl). Measured (hbox REPL, 100k decodes of a 2083-octet record): 3.99/3.78 s -> 2.59/2.14 s.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003"
+      ],
+      "depends_on": [
+        "PRF-331"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/records.lisp",
+        "tests/acl2/records-teeth-tests.lisp"
+      ],
+      "progress_note": "Lane served-columns (sub-lane served-columns-rec, 2026-09-27): snapshot-open-3 section 9's 'the record decode validates each payload twice'. Certified at 9e6d74369 over records.lisp's 1005 affected roots, split across the boxes: persvati certify-20260927T225417Z-2698332 (822 passed, 0 failed), hbox certify-20260927T225521Z-2956521 (821 passed, 0 failed). Both equations are withdrawn on export: enabled, the payload equation stalled books/store-checkpoint-arena-writer past 300 s on both boxes (certify-20260927T223451Z-2518854, -223609Z-2920078); withdrawn it certifies in 15 to 20 s at 20 jobs.",
+      "events": [
+        "fn-record-p-of-make-is-without-payload"
+      ]
     }
   ]
 }

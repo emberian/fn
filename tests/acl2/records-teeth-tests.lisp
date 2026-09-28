@@ -210,3 +210,56 @@
                              *rec-teeth-unknown-version*))))))
 (assert-event (not (equal (take 5 *rec-teeth-event-octets*)
                           *fn-record-magic-octets*)))
+
+; -----------------------------------------------------------------------------
+; PRF-333: the decode checks each payload once (books/records.lisp,
+; fn-record-decode-after-header and fn-record-decode-tail run their payload
+; checks under mbe).  Teeth for the two equations the exec branches run on.
+
+; fn-record-payloadp-of-octets-is-len-bound: a reachable witness (the
+; witness record's payload, an octet list) with its antecedent and both sides.
+(defconst *rec-teeth-payload* (fn-record-payload *rec-teeth-record*))
+(assert-event (fn-cbor-octet-listp *rec-teeth-payload*))
+(assert-event (fn-record-payloadp *rec-teeth-payload*))
+(assert-event (<= (len *rec-teeth-payload*) *fn-record-max-payload*))
+; Hypothesis removal: a list that is not an octet list has a length inside
+; the bound and is no payload, so the conclusion fails without the hypothesis.
+(assert-event (not (fn-cbor-octet-listp '(300))))
+(assert-event (<= (len '(300)) *fn-record-max-payload*))
+(assert-event (not (fn-record-payloadp '(300))))
+(must-fail-checked
+ (defthm rec-teeth-payloadp-is-len-bound-without-octets
+   (equal (fn-record-payloadp payload)
+          (<= (len payload) *fn-record-max-payload*))))
+
+; fn-record-p-of-make-is-without-payload: a reachable witness (the witness
+; record remade with its own payload, and with none) with both sides true.
+(defmacro rec-teeth-remake (payload)
+  `(fn-record-make 1 2 3 "<a@example.invalid>" ,payload
+                   '("fn.letters" "fn.test") "archive-a" "content-a"
+                   "release-a" 4 841000000))
+(assert-event (equal (rec-teeth-remake *rec-teeth-payload*) *rec-teeth-record*))
+(assert-event (fn-record-p (rec-teeth-remake *rec-teeth-payload*)))
+(assert-event (fn-record-p (rec-teeth-remake nil)))
+; Hypothesis removal: with a payload that is not one, every other field of
+; the witness still checks (the right side holds) and the left side fails.
+(assert-event (fn-record-p (rec-teeth-remake nil)))
+(assert-event (not (fn-record-payloadp '(300))))
+(assert-event (not (fn-record-p (rec-teeth-remake '(300)))))
+(must-fail-checked
+ (defthm rec-teeth-record-p-without-payload-without-payloadp
+   (equal (fn-record-p (fn-record-make sequence txid generation msgid payload groups
+                                       obligation-id content-subject
+                                       release-evidence charge stamp))
+          (fn-record-p (fn-record-make sequence txid generation msgid nil groups
+                                       obligation-id content-subject
+                                       release-evidence charge stamp)))
+   :hints (("Goal" :in-theory (enable fn-record-p fn-record-internals)))))
+
+; The decode through both exec branches: the witness's encoding decodes to
+; the witness, and one octet cut from its payload is refused.
+(defconst *rec-teeth-encoded* (fn-record-encode-impl *rec-teeth-record*))
+(assert-event (equal (fn-record-decode-exact-impl *rec-teeth-encoded*)
+                     (fn-record-result-ok *rec-teeth-record*)))
+(assert-event (not (fn-record-result-okp
+                    (fn-record-decode-exact-impl (butlast *rec-teeth-encoded* 1)))))

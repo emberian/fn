@@ -222,3 +222,21 @@
                      (and (fn-record-ascii-stringp *rst-high*)
                           (fn-record-nonempty-at-mostp (fn-record-string-octets *rst-high*)
                                                        *fn-record-max-msgid*))))
+
+; The octet conversions by a loop (PKT-693, PRF-345, lane thread-stacks):
+; fn-record-octets-chars and fn-record-string-octets-aux execute their :exec
+; branches here (both guard-verified; the verify-guards events prove exec =
+; logic).  Each witness runs the host-called wrappers; the long ones are 200,000
+; octets, past the 80,000 at which the per-octet recursion exhausted a node
+; thread's 1,024 KB stack (the native cases are tests/test_native_bounds_join
+; TenMibArticleTests and tests/test_native_peering's 5,000 obligations).
+(defconst *rst-long-octets* (make-list 200000 :initial-element 255))
+(assert-event (equal (fn-record-string-octets "fn") '(102 110)))
+(assert-event (equal (fn-record-octets-string '(102 110 0 255))
+                     (coerce (list #\f #\n (code-char 0) (code-char 255)) 'string)))
+(assert-event (equal (fn-record-octets-string '(102 256)) ""))
+(assert-event (equal (fn-record-octets-chars '(102 110)) (list #\f #\n)))
+(assert-event (equal (fn-record-string-octets-aux (list #\f #\n)) '(102 110)))
+(assert-event (equal (length (fn-record-octets-string *rst-long-octets*)) 200000))
+(assert-event (equal (fn-record-string-octets (fn-record-octets-string *rst-long-octets*))
+                     *rst-long-octets*))

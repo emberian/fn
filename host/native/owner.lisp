@@ -975,8 +975,13 @@ Returns (values WORD READING)."
         (setf (fnn-owner-gate-sched gate) sched
               word w
               entry jline
-              line lline)))
-    (fnn-journal-line entry)
+              line lline)
+        ;; Offered under the gate mutex, which numbered it: the queue then
+        ;; holds the entries in their sequence (offered after the release,
+        ;; two producers' entries landed 161, 162, 160; batch AY,
+        ;; test_native_slow_disk).  The offer only enqueues (never writes,
+        ;; never waits), and the queue's lock never takes the gate mutex.
+        (fnn-journal-line entry)))
     (when line (fnn-log-line line))
     (values word reading)))
 
@@ -987,8 +992,9 @@ decision that changed nothing in the value, with its two counts."
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
       (destructuring-bind (sched jline)
           (fnn-core 'fn-otm-note-step (fnn-owner-gate-sched gate) a b)
-        (setf (fnn-owner-gate-sched gate) sched entry jline)))
-    (fnn-journal-line entry)))
+        (setf (fnn-owner-gate-sched gate) sched entry jline)
+        ;; Under the gate mutex, in sequence (fnn-owner-disk-event).
+        (fnn-journal-line entry)))))
 
 (defun fnn-owner-disk-admission (service)
   "The write admission at the gate's recorded time (fn-otm-admit-post):
