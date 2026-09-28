@@ -577,6 +577,16 @@
                    fn-auth-with-base fn-auth-fold-post-awaiting)
                  (fn-auth-single fn-auth-principal-rolep))))))
 
+; RFC 8054: COMPRESS keeps the base session (fn-auth-compress rebuilds
+; only the compression field and the hold).
+(local
+ (defthm fn-auth-fold-compress-keeps-post-awaiting
+   (equal (fn-auth-fold-post-awaiting
+           (fn-post-result-session (fn-auth-compress as args)))
+          (fn-auth-fold-post-awaiting as))
+   :hints (("Goal" :in-theory (e/d (fn-auth-compress fn-auth-fold-post-awaiting)
+                                   (fn-auth-single fn-zc-decide))))))
+
 (local
  (defthm fn-auth-fold-command-keeps-post-awaiting
    (implies (fn-auth-command as config keyword args)
@@ -586,7 +596,8 @@
                    (fn-auth-fold-post-awaiting as)))
    :hints (("Goal" :in-theory
             (e/d (fn-auth-command)
-                 (fn-auth-authinfo fn-auth-starttls fn-auth-single
+                 (fn-auth-authinfo fn-auth-starttls fn-auth-single fn-auth-compress
+                  fn-auth-compressed-refusedp fn-zc-capability-lines fn-auth-compress-mayp
                   fn-auth-fold-post-awaiting
                   fn-auth-gatedp fn-auth-postingp fn-nntp-keywordp
                   fn-nntp-keyword-tokenp fn-nntp-multi
