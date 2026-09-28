@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1436 |
-| Certification roots in the Makefile | 1405 |
-| Books inside the root closure | 1433 |
-| `defthm` and `defthmd` events | 23100 |
-| `defun` events | 15622 |
+| Books read | 1438 |
+| Certification roots in the Makefile | 1407 |
+| Books inside the root closure | 1435 |
+| `defthm` and `defthmd` events | 23248 |
+| `defun` events | 15680 |
 | Functions with verified guards | 2966 |
-| Functions declared `:verify-guards nil` and never verified | 1829 |
-| Functions left at the default with an explicit guard | 8554 |
-| Functions left at the default with no guard | 2273 |
-| `assert-event` checks | 20326 |
+| Functions declared `:verify-guards nil` and never verified | 1836 |
+| Functions left at the default with an explicit guard | 8582 |
+| Functions left at the default with no guard | 2296 |
+| `assert-event` checks | 20331 |
 | `must-fail` checks | 2264 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 139 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 277 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 246 |
-| Include-hygiene warnings | 1756 |
+| Include-hygiene warnings | 1758 |
 | Host-names warnings | 1784 |
 | Hand-written-record warnings | 18 |
 
@@ -440,6 +440,7 @@ that `make certify` requests.
 | `books/history-pages-write-keys.lisp` | root | 52 | 5 | 0/2/2/1 | 0 | 0 | 0 |
 | `books/history-pages-write.lisp` | root | 63 | 20 | 0/8/7/5 | 0 | 0 | 1 |
 | `books/history-pages.lisp` | root | 70 | 28 | 0/19/7/2 | 0 | 0 | 0 |
+| `books/history-records.lisp` | root | 141 | 46 | 0/0/28/18 | 0 | 0 | 0 |
 | `books/history-wire.lisp` | closure | 3 | 1 | 0/0/1/0 | 0 | 0 | 2 |
 | `books/hybrid-carrier.lisp` | root | 21 | 35 | 4/0/31/0 | 0 | 0 | 1 |
 | `books/hybrid-lifecycle-store-invariants.lisp` | root | 23 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -1171,6 +1172,7 @@ that `make certify` requests.
 | `tests/acl2/history-pages-step-tests.lisp` | root | 10 | 2 | 0/0/0/2 | 0 | 1 | 0 |
 | `tests/acl2/history-pages-tests.lisp` | root | 8 | 2 | 0/0/0/2 | 0 | 4 | 0 |
 | `tests/acl2/history-pages-write-tests.lisp` | root | 9 | 1 | 0/0/0/1 | 1 | 6 | 0 |
+| `tests/acl2/history-records-tests.lisp` | root | 7 | 12 | 0/7/0/5 | 5 | 0 | 0 |
 | `tests/acl2/hostile-reader-archive.lisp` | root | 4 | 11 | 0/2/0/9 | 11 | 0 | 0 |
 | `tests/acl2/hybrid-carrier-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 4 | 0 |
 | `tests/acl2/hybrid-lifecycle-store-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 2 | 0 |
