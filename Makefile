@@ -1374,6 +1374,11 @@ check:
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
+# The shape-books table in docs/proof-style.md (books by certification
+# fan-in, the farm's graph).  A WARNING when stale, never a failure: the
+# counts move with every include (lane lane-tools-2, for served-columns).
+	@$(CHECK_STEP) $(PYTHON) tools/shape_books.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_shape_books
 # The website renders the guides' articles (site/build_site.py, stdlib only):
 # every article is well-formed (tools/docs_articles.py: its headers, its
 # Message-ID, 72 columns), every repository path it names exists, and every
