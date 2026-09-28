@@ -85,8 +85,9 @@ CHECKPOINT_BUFFER_INCLUDES = (
 # post-alloc-2: the prepare is fn-prc-sbud-prepare over fn-prc-refresh's
 # carry (books/post-retain-carried), which replaced fn-pidx-sbud-prepare.
 # commit-onto-log: the bare copy drops books/owner-log-route too, so the
-# owner's four log-route names are findings in any loader.
-LOG_ROUTE_NAMES = ("fn-olr-bounds", "fn-olr-ocfg-order", "fn-olr-ocfg-reserve")
+# owner's log-route names are findings in any loader (health-truth, PRF-359:
+# the free-space need reads fn-olr-omax).
+LOG_ROUTE_NAMES = ("fn-olr-bounds", "fn-olr-ocfg-order", "fn-olr-ocfg-reserve", "fn-olr-omax")
 # host-decisions-2 (packet A): the owner entries' words are
 # books/owner-prepare-outcome's (fn-pout-); the host no longer calls
 # fn-oiis-prepare-identity, fn-psrv-prepare, fn-psrv-prepare-topic or

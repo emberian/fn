@@ -232,6 +232,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-replay-bound-tests \
 	books/store-export \
 	tests/acl2/store-export-tests \
+	books/store-export-stream \
+	tests/acl2/store-export-stream-tests \
 	books/store-import-publication \
 	tests/acl2/store-import-publication-tests \
 	books/store-init-publication \
@@ -364,6 +366,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/visibility-join-tests \
 	books/store-reclaim-holders \
 	tests/acl2/store-reclaim-holders-tests \
+	tests/acl2/native-status-columns-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
 	books/store-reclaim-stream \

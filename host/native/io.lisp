@@ -2823,6 +2823,25 @@ which the process is killed, or NIL."
             (fnn-fault "invalid FN_NATIVE_CHECKPOINT_BATCH_FAULT (expected K:kill)"))
           k)))))
 
+;;; Lane scale-reads: a stop ends a checkpoint publication at its next batch.
+;;; The owner's publication thread binds this to a test of the service's stop
+;;; fence (host/native/owner.lisp fnn-owner-publish-captured); each batch loop
+;;; below asks it first and, when it answers true, ends the publication as a
+;;; known failure before the rename (fnn-refuse-io): the staged file is
+;;; dropped and the old checkpoint, or none, stays -- the state a process
+;;; death between two batches leaves (fn-bs-scp-program-crash-is-old-or-new),
+;;; and the record log stays authoritative.  Before this the stop joined the
+;;; publication, which walks the whole history: at syn100k-2k the owner took
+;;; 102 s to stop.  Unbound (the offline verbs), nothing is asked.
+(defvar *fnn-checkpoint-stop-test* nil)
+
+(defun fnn-checkpoint-yield (where count)
+  "Refuse the publication at a batch boundary when the owner is stopping."
+  (let ((test *fnn-checkpoint-stop-test*))
+    (when (and test (funcall test))
+      (fnn-refuse-io "the owner is stopping: the checkpoint publication ends before ~a batch ~d; the old checkpoint stays"
+                     where count))))
+
 (defun fnn-checkpoint-walk (records)
   "The walk of the owner's captured RECORDS: each canonical payload's length
 and source (books/store-checkpoint-arena-writer.lisp fn-scka-srcs-n), a
@@ -2832,6 +2851,7 @@ one walk: fn-scka-srcs-n-compose).  READS the arena.  The last state,
   (let ((walk (list records nil nil)) (arena (fnn-live-arena)))
     (loop
       (when (atom (first walk)) (return walk))
+      (fnn-checkpoint-yield "walk" (length (second walk)))
       (setq walk (fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+
                            (second walk) (third walk) arena))
       (unless (and (consp walk) (= (length walk) 3))
@@ -2850,6 +2870,7 @@ the publication buffer ST."
     (let ((steps 0) (arena (fnn-live-arena)))
       (loop
         (when (fnn-core 'fn-scka-write-donep state count) (return steps))
+        (fnn-checkpoint-yield "arena" steps)
         (let ((answer (fnn-call 'fn-scka-write-step state n count sequence
                                 segment-bound file-bound arena st)))
           (unless (and (consp answer) (>= (length answer) 3))
@@ -2878,6 +2899,7 @@ number of steps."
          (state (fnn-core 'fn-ockp-initial-state (second setup) st)))
     (loop
       (when (fnn-core 'fn-ockp-donep state) (return steps))
+      (fnn-checkpoint-yield "table" steps)
       (let ((answer (fnn-call 'fn-ockp-step setup state +fnn-checkpoint-batch-rows+
                               +fnn-checkpoint-batch-octets+
                               segment sequence segment-bound file-bound st)))
@@ -3017,8 +3039,8 @@ lock, so a running owner refuses this) and publish its exact-state checkpoint
 log; a format-8 profile is refused by name at the open,
 books/store-profile-open.lisp fn-spo-open-of-a-format-8-profile-refuses-by-name):
 fnn-recover-log.  Answers the history's record COUNT; the records themselves
-are not kept (PKT-823): a caller that needs their octets reads them with
-`fnn-committed-history'."
+are not kept (PKT-823): a caller that needs their octets reads them after the
+open, a record at a time (`fnn-log-history-each')."
   (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil
         (fnn-store-open-mode store) '(:full-replay :absent))
   ;; the collector's trigger for the open (no effect on the store; before the
@@ -3645,13 +3667,6 @@ last (fn-store-sco-last-record-octets)."
              (and octets (fnn-as-octets octets))))
           (t nil))))
 
-(defun fnn-committed-history (store)
-  "`fnn-history-records', for a reader that has not opened STORE through `fnn-recover'.  The caller
-holds STORE's writer lock for as long as it uses the result.  A format-9 store
-has no marker object (M := D: the log's last complete entry is the committed
-history)."
-  (fnn-history-records store))
-
 ;;; `store export DIR' and `store import DIR' (D34, books/store-export.lisp).
 
 (defun fnn-archive-write-file (path octets)
@@ -3668,14 +3683,43 @@ history)."
       (fnn-fault "ACL2 returned an invalid archive entry name"))
     name))
 
+(defconstant +fnn-export-chunk+ 1024
+  "History records per ACL2 export step (fn-sxp-export-chunk): a work and
+allocation quantum per call, never a bound on the store; every record is in
+exactly one step.")
+
+(defun fnn-export-entries (dir entries)
+  "Write each (NAME . OCTETS) of ENTRIES, an ACL2 export step's, under DIR."
+  (unless (listp entries)
+    (fnn-fault "ACL2 returned malformed archive entries"))
+  (dolist (entry entries)
+    (fnn-archive-write-file (fnn-join dir (fnn-archive-name (car entry))) (cdr entry))))
+
+(defun fnn-export-step (dir manifest-fd step)
+  "An export step's value (ENTRIES . LINES): write the entries, then append
+the MANIFEST lines to the staged MANIFEST."
+  (unless (and (consp step) (fnn-octet-list-p (cdr step)))
+    (fnn-fault "ACL2 returned a malformed archive step"))
+  (fnn-export-entries dir (car step))
+  (fnn-write-all manifest-fd (fnn-octets (cdr step))))
+
 (defun fnn-command-store-export (root dir)
   "Offline: write the archive of ROOT's committed history to DIR (it must not
 exist).  The store is acquired under its writer lock (a running owner refuses
-this), the history is the one the open reads, read after the open
-(`fnn-committed-history': on format 9 the log as the open read it, the
-checkpoint's covered prefix then the scanned segments,
-`fnn-log-history-records'), and the entries and MANIFEST are ACL2's
-(fn-sxp-entries, fn-sxp-manifest)."
+this), and the history is the one the open read, read after the open a chunk
+of +fnn-export-chunk+ records at a time (`fnn-log-history-each': the
+checkpoint's covered prefix, then the scanned segments); no list of the
+history is built.  ACL2 decides every entry and MANIFEST line: the head
+(fn-sxp-export-head: profile, frontier, configuration records), then per
+chunk fn-sxp-export-chunk; books/store-export-stream.lisp
+fn-sxp-stream-is-the-export proves that, for every chunking, the entries
+written in this order are fn-sxp-entries of the whole history and the
+MANIFEST's octets are fn-sxp-manifest of them.  The MANIFEST's lines are
+appended to DIR/MANIFEST.partial as the steps go and it is renamed onto
+DIR/MANIFEST only after every entry is fenced: an interrupted export (a crash
+or a refusal of the history read) leaves DIR without a MANIFEST, which the
+import refuses by name (archive-incomplete entry=MANIFEST), never a MANIFEST
+over a prefix of the history."
   (when (fnn-lstat dir)
     (fnn-refuse "export refused reason=archive-exists"))
   (multiple-value-bind (store count) (fnn-open-live-store root nil)
@@ -3690,27 +3734,41 @@ checkpoint's covered prefix then the scanned segments,
                            (fnn-metadata-frontier-frame (fnn-store-frontier store))))
                 (configs (mapcar (lambda (pair) (cons (car pair) (fnn-octet-list (cdr pair))))
                                  (fnn-config-record-observation store)))
-                ;; The history the open recovered, read after it: on format
-                ;; 9 the checkpoint's records, then the log's scan from the
-                ;; segment its F row names (T8: the whole chain).
-                (records (mapcar (lambda (record)
-                                   (cons (fnn-bridge-record-sequence record)
-                                         (fnn-octet-list record)))
-                                 (fnn-committed-history store)))
-                (entries (fnn-core 'fn-sxp-entries profile frontier configs records))
-                (manifest (fnn-core 'fn-sxp-manifest entries)))
-           (unless (and (consp entries) (fnn-octet-list-p manifest))
+                (head (fnn-core 'fn-sxp-export-head profile frontier configs))
+                (staged (fnn-join dir "MANIFEST.partial"))
+                (records 0))
+           (unless (and (consp head) (consp (car head)))
              (fnn-fault "ACL2 returned a malformed archive"))
            (fnn-mkdir dir #o700)
            (fnn-mkdir (fnn-join dir "config") #o700)
            (fnn-mkdir (fnn-join dir "records") #o700)
-           (dolist (entry entries)
-             (fnn-archive-write-file (fnn-join dir (fnn-archive-name (car entry))) (cdr entry)))
-           (fnn-archive-write-file (fnn-join dir "MANIFEST") manifest)
+           (let ((fd (fnn-open staged (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
+                                              +fnn-o-nofollow+)
+                               #o600))
+                 (chunk nil) (n 0))
+             (unwind-protect
+                  (flet ((flush ()
+                           (when chunk
+                             (fnn-export-step dir fd (fnn-core 'fn-sxp-export-chunk (nreverse chunk)))
+                             (setq chunk nil n 0))))
+                    (fnn-export-step dir fd head)
+                    (fnn-log-history-each
+                     store
+                     (lambda (record)
+                       ;; The record's sequence as ACL2's decoder reads it.
+                       (push (cons (fnn-bridge-record-sequence record) (fnn-octet-list record))
+                             chunk)
+                       (incf n)
+                       (incf records)
+                       (when (>= n +fnn-export-chunk+) (flush))))
+                    (flush)
+                    (fnn-fsync-file fd))
+               (fnn-close fd)))
            (fnn-fsync-dir (fnn-join dir "records"))
            (fnn-fsync-dir (fnn-join dir "config"))
+           (fnn-replace staged (fnn-join dir "MANIFEST"))
            (fnn-fsync-dir dir)
-           (fnn-out "exported records=~d configuration=~d" (length records) (length configs))
+           (fnn-out "exported records=~d configuration=~d" records (length configs))
            +fnn-exit-ok+)
       (fnn-store-close store))))
 

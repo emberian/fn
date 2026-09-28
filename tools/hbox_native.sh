@@ -28,7 +28,9 @@
 #      lacked books the profiling entry's world loads (served-columns,
 #      native-n1: outcome-class, replay, node).  Build it here, in the run
 #      that certifies, not by hand in a copied tree;
-#   4. runs each MODULE under systemd-run --user --scope -p MemoryMax (24G by
+#   4. runs each MODULE (a --mem of 48G or more waits on one box-wide flock,
+#      /tank/fn/scratch/.hbox-native-bigmem.lock, so two such scopes never
+#      overlap) under systemd-run --user --scope -p MemoryMax (24G by
 #      default, --mem; a served-read measurement through
 #      tools/fundamentals/sr_measure.py or served_ab.sh needs 40G: at 24G the
 #      owner refuses its connections, connections-exceed-memory), against
@@ -330,9 +332,17 @@ BOX
             esac
         done
     done
+    # A scope of 48G or more waits for every other such scope on the box
+    # (one flock, held for the module): two 80G open_depth runs collided on
+    # hbox's 123 GiB (2026-09-28).  Smaller scopes run as before.
+    BIGMEM=
+    case ${MEM%G} in
+        ''|*[!0-9]*) ;;
+        *) [ "${MEM%G}" -ge 48 ] && BIGMEM="flock /tank/fn/scratch/.hbox-native-bigmem.lock" ;;
+    esac
     echo "$PLAN" | while read -r module assignments; do
         cat <<BOX
-tstep test-$module env $assignments systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=$MEM -p MemorySwapMax=0 -- sh -c 'echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one $module'
+tstep test-$module $BIGMEM env $assignments systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=$MEM -p MemorySwapMax=0 -- sh -c 'echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one $module'
 BOX
     done
     echo 'echo "== modules: $passed OK, $skipped SKIPPED (no test executed), $broke FAILED"'

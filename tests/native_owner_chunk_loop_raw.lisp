@@ -185,6 +185,10 @@ unbounded (&rest or &key)."
 (defun fnn-now () (get-internal-real-time))
 ;; The graceful close's shutdown(2) of the output side.
 (defun fnn-%shutdown (fd how) (declare (ignore fd how)) (incf *graceful*) 0)
+;; statvfs(3) of the store (health-truth, PRF-359: the owner observes the free
+;; space before a read's write admission): unobservable here, so every :space
+;; event carries nil and nothing is shed for space.
+(defun fnn-%statvfs (path buffer) (declare (ignore path buffer)) -1)
 ;; The owner mutex and its gate: the quantum runs at once.
 (defun fnn-owner-serialized (service cid thunk &optional class)
   (declare (ignore service cid class)) (funcall thunk))
