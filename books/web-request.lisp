@@ -1,8 +1,8 @@
 ; fn: the node's own web face, part 1 -- the HTTP/1.1 request, read in
 ; place (lane web-native, PRF-337, WEB-005; 2026-09-28).
 ;
-; The friends' web reader was a Python process in front of the node
-; (tools/fn_reader.py, tools/fn_web.py): a second implementation of the
+; The friends' web reader was a Python process in front of the node (it
+; was retired on 2026-09-28): a second implementation of the
 ; boundary -- request parsing, login pacing, cookies, rendering -- behind an
 ; NNTP client.  This book and its three siblings make the web face the
 ; node's own: the host (host/native/web-host.lisp) moves octets between a

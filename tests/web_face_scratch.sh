@@ -14,7 +14,7 @@
 # Secure).  The operator's welcome post goes in over TLS with
 # tools/fn_client.py; the invitation code is the node's `account invite'.
 # DIR/secrets.json (mode 0600) holds the code, a password for the friend to
-# choose, and the welcome's subject and body: the browser's inputs.  Nothing
+# choose, and the welcome's subject as shown and body: the browser's inputs.  Nothing
 # here decides anything; the node does.
 set -eu
 [ "$#" -ge 3 ] || { echo 'usage: web_face_scratch.sh prepare|run|seed IMAGE DIR [PORT]' >&2; exit 2; }
@@ -66,7 +66,10 @@ TOML
     exec "$image" --fn operator "$dir/fn.toml" run ;;
   seed)
     tls=$(sed -n 's/^tls_port = //p' "$dir/fn.toml")
-    subject="Welcome to Friends news"
+    # The subject is an RFC 2047 encoded-word (section 4.2, Q): the page shows
+    # it decoded (books/web-2047.lisp), and the browser looks for the text.
+    subject="=?UTF-8?Q?Welcome_to_Friends_news_=E2=9C=93?="
+    shown="Welcome to Friends news \342\234\223"
     body="Say hello here. The node checks every password and keeps every post."
     printf '%s\n' "$body" | python3 tools/fn_client.py post local.general \
       --node "127.0.0.1:$tls" --tls --cafile "$dir/cert.pem" \
@@ -76,7 +79,7 @@ TOML
     password=$(openssl rand -hex 10)
     umask 077
     printf '{"code": "%s", "password": "%s", "welcome": "%s", "welcomeBody": "%s"}\n' \
-      "$code" "$password" "$subject" "$body" > "$dir/secrets.json"
+      "$code" "$password" "$(printf "$shown")" "$body" > "$dir/secrets.json"
     echo "web_face_scratch: seeded; inputs in $dir/secrets.json" ;;
   *) echo "web_face_scratch: unknown verb $verb" >&2; exit 2 ;;
 esac

@@ -396,9 +396,10 @@ exchange, and (fail closed) a word that is no final outcome."
         (t :fenced)))
 
 ; KEYSTONE.  A connection that ends or never opens is never reported as a
-; refusal and never as an account made: `fn redeem' exits uncertain, so the
-; web reader (tools/fn_reader.py Node.redeem) never counts it as a refused
-; code, and the server's answers keep their classes: the class is accepted
+; refusal and never as an account made: `fn redeem' exits uncertain, so a
+; caller never counts it as a refused code (the Python web reader that
+; called it was retired on 2026-09-28), and the server's answers keep their
+; classes: the class is accepted
 ; exactly on the 281 after the password, and every other answer
 ; fn-redeem-step ends with is refused.
 (defthm fn-redeem-lost-is-fenced-and-server-answers-are-not

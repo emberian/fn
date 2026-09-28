@@ -204,7 +204,7 @@
 (assert-event (not (equal (fn-redeem-outcome-class (fn-redeem-step :code *rd-381*))
                           :refused)))
 ; The exit codes the host prints: accepted 0, refused 1, the lost outcomes 3
-; (books/outcome-class.lisp), which tools/fn_reader.py reads as not sure.
+; (books/outcome-class.lisp): a caller reads 3 as not sure.
 (assert-event (equal (fn-outcome-code (fn-redeem-outcome-class (list :done))) 0))
 (assert-event (equal (fn-outcome-code (fn-redeem-outcome-class (list :refused :code))) 1))
 (assert-event (equal (fn-outcome-code (fn-redeem-outcome-class (fn-redeem-lost :connect))) 3))
