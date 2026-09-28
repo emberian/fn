@@ -16,6 +16,10 @@ wave where the proofs are; an ordinary run leaves `<book>.certify.log`, which
 prints the same summaries.  Either works; given several directories, the
 newest log per book wins.  A full-tree map needs one run over every root with
 nothing installed from the cache (`--closure`): an installed book has no log.
+The map of 2026-09-28 (every root, `certify_books.py --closure --pcert` at
+48a736d5e + the utf8 cut, 1,470 books, green) is on hbox at
+/tank/fn/measurements/rule-usage-20260928T201512Z (the Convert logs and the
+manifest); it goes stale book by book as books change.
 
 **What "used" means.**  ACL2 ends every event's summary with `Rules:` (every
 rune the proof applied, `(:REWRITE NAME)`, `(:DEFINITION FN)`, ...) and, when
