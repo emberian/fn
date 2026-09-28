@@ -93,7 +93,3 @@
                 (fn-sched-with-tick ss)))
         (state (f-put-global 'fn-sched-state next state)))
   (value :ready)))
-
-(defun fn-sched-host-queue-ids (state)
- (declare (xargs :stobjs state :mode :program))
- (value (fn-sched-queue (f-get-global 'fn-sched-state state))))
