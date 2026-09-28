@@ -63,7 +63,7 @@ MULTI = (b"215", b"220", b"221", b"222", b"224", b"225", b"230", b"231", b"101")
 
 def exchange(client, line):
     """The reply to LINE, a multi-line block included, as the octets sent."""
-    status = exchange(client, line)
+    status = client.command(line)
     out = [status]
     if status[:3] in MULTI:
         while True:
@@ -76,7 +76,7 @@ def exchange(client, line):
 
 def post(client, data):
     """The final POST reply, or the first when it was not 340."""
-    first, final = post(client, data)
+    first, final = client.post(data)
     return first if final is None else final
 
 

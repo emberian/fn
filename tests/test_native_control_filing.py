@@ -20,7 +20,8 @@ import sys
 import unittest
 
 from tests.native_harness import (
-    ROOT, Client, EXIT_OK, Node, environment, executable, free_port, native_image, run)
+    ROOT, Client, EXIT_OK, Node, environment, executable, free_port, native_image, run,
+    scratch)
 
 IMAGE = native_image("FN_NATIVE_HOST")
 READY = executable(IMAGE)
@@ -43,6 +44,7 @@ def article(message_id, subject, control=None, path=None):
 class NativeControlFilingTests(unittest.TestCase):
     def setUp(self):
         self.env = environment()
+        self.base = scratch(self)
 
     def command(self, arguments, expected=EXIT_OK):
         result = run(arguments, env=self.env)
