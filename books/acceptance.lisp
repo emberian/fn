@@ -41,14 +41,50 @@
            (fn-article-stamp fn-record-stampp))
   :recognizer-formals (configured))
 
+; Executes by a loop (PKT-693, lane thread-stacks): the recursion below ran
+; one control-stack frame per article, and `fn-article-listp''s :exec calls it
+; over the whole article list whenever a node recognizer runs; a full-replay
+; open of 100,000 articles exhausted the 1,024 KB main-thread stack at 30,526
+; frames of it (fn-sco-cpr-finish's fn-cnode-statep, hbox 2026-09-28).  The
+; :logic is the recursion, unchanged; the :exec reverses the accumulator
+; twin, equal by the guard proof.
+(defun fn-article-msgids-rev (xs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp xs)
+      (fn-article-msgids-rev (cdr xs) (cons (fn-article-msgid (car xs)) acc))
+    acc))
+
 (defun fn-article-msgids (xs)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp xs)
-      (cons (fn-article-msgid (car xs))
-            (fn-article-msgids (cdr xs)))
-    nil))
+  (mbe :logic
+       (if (consp xs)
+           (cons (fn-article-msgid (car xs))
+                 (fn-article-msgids (cdr xs)))
+         nil)
+       :exec (reverse (fn-article-msgids-rev xs nil))))
 
-(verify-guards fn-article-msgids)
+(encapsulate ()
+  (local
+   (defthm fn-article-msgids-rev-is-revappend
+     (equal (fn-article-msgids-rev xs acc)
+            (revappend (fn-article-msgids xs) acc))
+     :hints (("Goal" :in-theory (disable fn-article-msgid)))))
+  (local
+   (defthm fn-article-revappend-revappend-msgids
+     (equal (revappend (revappend x y) z)
+            (revappend y (append x z)))))
+  (local
+   (defthm fn-article-true-listp-of-msgids
+     (true-listp (fn-article-msgids xs))))
+  (local
+   (defthm fn-article-append-nil-when-true-listp-msgids
+     (implies (true-listp x) (equal (append x nil) x))))
+  (local
+   (defthm fn-article-true-listp-of-revappend-msgids
+     (implies (true-listp y) (true-listp (revappend x y)))))
+  (verify-guards fn-article-msgids-rev)
+  (verify-guards fn-article-msgids
+    :hints (("Goal" :in-theory (disable fn-article-msgid)))))
 
 ; Every element an article, the list NIL-terminated.
 (defun fn-article-list-shapep (configured xs)
