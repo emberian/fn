@@ -209,48 +209,6 @@ budget words of ROWS (the peer's row group), then the newline."
   (fn-napb-before-last (fn-native-admin-peer-row-octets p rows)
                        (fn-native-admin-peer-budget-octets rows)))
 
-; The peer table's walks, as loops, for the report's :exec: books/config.lisp
-; `fn-cfg-rows-with-key' and books/peer-config.lisp `fn-cfg-peer-names' are
-; recursions over the whole peer table (every peer's rows), and both books
-; are wide (743 and 520 dependents), so the report calls these twins in its
-; :exec and the lemmas equate them; the two definitions stay as they are
-; until those books are next opened (tools/depth_baseline.json "debt").
-(defun fn-napb-rows-with-key-loop (rows a acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-napb-rows-with-key-loop
-       (cdr rows) a
-       (if (equal (fn-cfg-row-a (car rows)) a) (cons (car rows) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defthm fn-napb-rows-with-key-loop-is-rev-onto
-  (equal (fn-napb-rows-with-key-loop rows a acc)
-         (fn-ag-rev-onto acc (fn-cfg-rows-with-key rows a)))
-  :hints (("Goal" :induct (fn-napb-rows-with-key-loop rows a acc)
-                  :in-theory (union-theories
-                              '(fn-napb-rows-with-key-loop fn-cfg-rows-with-key
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(defun fn-napb-peer-names-loop (peers acc)
-  (declare (xargs :guard t))
-  (if (consp peers)
-      (fn-napb-peer-names-loop
-       (cdr peers)
-       (if (equal (fn-cfg-row-b (car peers)) "path-identity")
-           (cons (fn-cfg-row-a (car peers)) acc)
-         acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defthm fn-napb-peer-names-loop-is-rev-onto
-  (equal (fn-napb-peer-names-loop peers acc)
-         (fn-ag-rev-onto acc (fn-cfg-peer-names peers)))
-  :hints (("Goal" :induct (fn-napb-peer-names-loop peers acc)
-                  :in-theory (union-theories
-                              '(fn-napb-peer-names-loop fn-cfg-peer-names
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
 ; The report's right fold, from the left over the reversed names.  Each
 ; name's rows are found once (fn-cfg-peer-find is the typed record of the
 ; same rows).
@@ -259,7 +217,7 @@ budget words of ROWS (the peer's row group), then the newline."
   (if (consp rev)
       (fn-napb-report-rows-loop
        (cdr rev) peers
-       (let* ((rows (fn-napb-rows-with-key-loop peers (car rev) nil))
+       (let* ((rows (fn-cfg-rows-with-key peers (car rev)))
               (p (fn-cfg-peer-of-rows (car rev) rows)))
          (append (if p (fn-native-admin-peer-budget-row-octets p rows) nil)
                  acc)))
@@ -288,7 +246,6 @@ budget words of ROWS (the peer's row group), then the newline."
                                '(fn-napb-report-rows-loop
                                  fn-native-admin-peer-budget-report-rows
                                  fn-cfg-peer-find fn-ag-rev-onto
-                                 fn-napb-rows-with-key-loop-is-rev-onto
                                  car-cons cdr-cons)
                                (union-theories (theory 'minimal-theory)
                                                (executable-counterpart-theory :here)))))))
@@ -307,10 +264,7 @@ budget words of ROWS (the peer's row group), then the newline."
   "The `peer list' report: books/native-admin.lisp fn-native-admin-query-report
 and books/native-live-status.lisp fn-nls-report (:peers) call it."
   (declare (xargs :guard t))
-  (fn-native-admin-peer-budget-report-rows
-   (mbe :logic (fn-cfg-peer-names peers)
-        :exec (fn-napb-peer-names-loop peers nil))
-   peers))
+  (fn-native-admin-peer-budget-report-rows (fn-cfg-peer-names peers) peers))
 
 ;; A line that ends in its newline: inserting before the last octet is
 ;; inserting before the newline.
