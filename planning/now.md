@@ -1,9 +1,9 @@
-# Now — 2026-09-27
+# Now — 2026-09-28
 
 The one page a new agent reads first: where dev is, what is being worked on,
-and where the rest is. Written by lane docs-sync from dev `33bbfae9c` (batch
-AW, round 18) at about 16:30 UTC. The log that lived here before is
-[archive/now-2026-09-26.md](archive/now-2026-09-26.md).
+and where the rest is. Written by lane records-steward from dev `940bc3104`
+at about 21:30 UTC. The page it replaces (2026-09-27, format 9) is in git
+history; the log before that is [archive/now-2026-09-26.md](archive/now-2026-09-26.md).
 
 ## Coordinates
 
@@ -15,87 +15,103 @@ AGENTS.md keeps four coordinates apart; none implies another.
   merged lanes' manifests are under
   [`evidence/manifests/`](evidence/manifests/), cited in each batch's
   "cite round" commit.
-- **Qualified image.** The newest qualification record is
-  [qual-69046a76](evidence/qual-69046a76-2026-09-26.md) (2026-09-26), from
-  before the record log. No image of the one store format, 9, is qualified
-  yet. Batch AW builds a native image per round and runs the affected
-  modules on it; those are lane evidence, not a qualification.
-- **Deployment.** hbox `/tank/fn/node` runs `bbf52159` with a format-8
-  store ([node record](evidence/node-hbox-bbf52159-2026-09-25.md)). dev
-  refuses that store by name (below), so the next deployment is a fresh
-  install and an import (D34). There is no release for friends yet:
-  [release-v6.6.0](release-v6.6.0.md) is NOT CUT until its fundamentals are
-  met.
+- **Qualified image.** None of the current store format. The newest
+  qualification record is [qual-69046a76](evidence/qual-69046a76-2026-09-26.md)
+  (2026-09-26, format 8). Qualification now runs once, in the prerelease
+  convergence checklist ([release-v6.6.0](release-v6.6.0.md) section 2b),
+  not per change (ember, 2026-09-28).
+- **Deployment.** Two live nodes, both on fn 6.6.0 built from dev
+  `a3553e6b4a23` (release `fn-6.6.0-linux-x86_64.tar.gz`, sha256
+  `401c6324...6bf0`), both with format-10 stores, peered (the fsn1 node
+  accepts node #2's inbound feed; node #2's push to fsn1 is PKT-882). Neither
+  image is qualified; each is a release build of that source.
+  - `fn.fg-goose.online`, the public node on the fsn1 anchor (88.99.126.35;
+    119 STARTTLS, 563 TLS, Let's Encrypt), logins by invitation.
+  - node #2, hbox `/tank/fn/node` (LAN only, self-signed).
+  Both were migrated to format 10 on 2026-09-28 by `store export`/`store
+  import` ([node-migrate](evidence/node-migrate-2026-09-28.md)). That was the
+  last migration: at the cut every node is redeployed fresh (below).
 
-## What changed on 2026-09-27
+## The plan: complete, then cut
 
-About sixty lanes landed through batches AQ to AW. Each has a record
-under [`evidence/`](evidence/) named `*-2026-09-27.md`. What an operator or a
-reader sees:
+ember, 2026-09-28 20:21Z: "i don't want to defer any of the major work
+we've identified .... complete the work! get it all on dev. get everything
+gucci. *and then* we can cut 6.6.0. it isn't a race :)"
 
-- **One store format, 9: the record log.** A store commits through
-  chained segment files `journal/NNNNNN.log`
-  ([commit-onto-log](evidence/commit-onto-log-2026-09-27.md),
-  [log-2](evidence/log-2-2026-09-27.md)). A format-8 store is refused at the
-  open, `open refused reason=store-format`; a profile of another field
-  width is refused `older-release` / `newer-release`
-  ([fixtures-refresh](evidence/fixtures-refresh-2026-09-27.md)). A format-8
-  history moves by `store export` on the release that made it and
-  `store import` here ([log-recovery](evidence/log-recovery-2026-09-27.md)).
-- **Compaction and reclaim over the log.** `store compact` is a checkpoint
-  with the log rotated, then the covered segments dropped; the owner's
-  automatic checkpoint does the same; `store reclaim` works over the log.
-  A 40,000-article compact went from 2,963 s and 16.4 GB to 40-139 s and
-  4.7 GB (log-recovery). The open streams one log entry at a time: a
-  10,000 x 32 KiB open from 4:38 and 14.1 GB RSS to 55 s and 1.25 GB
-  ([log-open-stream](evidence/log-open-stream-2026-09-27.md)).
-- **Commit cost.** fsyncs per POST at 8 posters from 7.0 to 0.27-0.58
-  (commit-onto-log). Control `status` p50 from 10,320 to 554 ms under the
-  mixed load ([control-quanta](evidence/control-quanta-2026-09-27.md)).
-- **Memory.** The launcher's heap for an empty small store from 824 to 586
-  MB, 88.3 MiB RSS after 1,000 posts
-  ([reservation-after-flip](evidence/reservation-after-flip-2026-09-27.md));
-  a 40,000 x 2 KiB checkpoint open in 13.6 s at 579 MB live
-  ([checkpoint-arena-3](evidence/checkpoint-arena-3-2026-09-27.md)). A
-  capacity-free `init` takes the largest of 64, 32 or 16 MiB of history the
-  machine holds, else 8 MiB ([friend-blockers](evidence/friend-blockers-2026-09-27.md)).
-- **Friends' path.** The systemd unit starts under `ProtectSystem=strict`;
-  `fn redeem` redeems an invitation without openssl; a mission's `init`
-  serves `control.cancel`; a full store answers a peer 436
-  (friend-blockers, [stranger-rehearsal](evidence/stranger-rehearsal-2026-09-27.md)).
-  Consumers: `--json`, reasons on the wire, withdrawal events
-  ([friend-blockers-2](evidence/friend-blockers-2-2026-09-27.md)).
-- **Readers and moderation.** Xref leads the header of ARTICLE and HEAD
-  ([reader-compat](evidence/reader-compat-2026-09-27.md), batch AR);
-  `moderation approve/reject` and `article withdraw`
-  ([moderation-verbs](evidence/moderation-verbs-2026-09-27.md)); peers by
-  name, refused-offer memory, relay date and Path checks.
-- **Served reads.** ACL2 decides the read size per step: 512 octets under a
-  step rate, 4 KiB without ([input-loop-2](evidence/input-loop-2-2026-09-27.md)).
-- **Proof tooling.** `proof_repl.py` gained `send-range`, `forms`, `probe`,
-  `--host`, `--certify-missing`/`--source-deps` and a 20-minute idle stop;
-  `proof_cost` ratchets on prover steps, and D26's seconds are the fastest
-  quiet 2-job measurement ([decisions](decisions.md) D26,
-  [how we work](how-we-work.md)).
+The list is `build/coordinator/COMPLETE-BEFORE-6.6.0.md` (coordinator-owned,
+not tracked; rows A to P, each with its lane). In short:
+
+- **A. Store representation**: records read from the committed page image;
+  exact prefix binding; adversarial swaps; async page faults; readers by
+  access pattern; root lifetime; the tree-codec split; `reclaim --dry-run`.
+- **B. Memory (F8)**: the admission gap; the per-record heap term from the
+  profile; the 100k reopen; credit admission (GPT-6's recommendation, the
+  only option that reaches 256 MiB accountable); chunked bodies.
+- **C. Proof speed**: chain-first scheduling with fewer jobs; targeted
+  fan-in cuts; one image umbrella; the depth debt; the registry merge and
+  the aggregate certification budget.
+- **D-H.** One config edit and the legacy deletions; the writable extracted
+  build and Chicken speed; the adopted F4 time bars; the native reds and
+  the Python host's retirement; paused-peer health and the node redeploy.
+- **I-P** (from the archaeology of 2026-09-28): NNTP, auth/TLS and
+  durability correctness bugs; F2's join discharge and the F1/F3 rulings;
+  the generators (definterface, one profile source, defevent); the Python
+  diet; real peers; online compaction and the operator surface; the records
+  (this page, [decisions](decisions.md), the backlog); ember's time-bound
+  items.
+
+Then, once: the prerelease convergence checklist
+([release-v6.6.0](release-v6.6.0.md) section 2b), a quiet candidate
+qualified, the format word renamed `fn-store-1`, the tag `v6.6.0`
+([D37](decisions.md): the release sequence), and every node redeployed fresh.
+
+## Decided on 2026-09-28 (the register has the words)
+
+- **No migrations** (D38 withdrawn): one store format, no legacy readers or
+  migration code; `store export`/`import` is backup and restore of this
+  format.
+- **Qualify once**: lanes implement and prove, certify their affected roots
+  and run the natives their change exercises; full native sets, the OpenBSD
+  guest, F1-F8, scale and 1M runs happen once at convergence.
+- **Scale by curve**: 1k to 100k, fitted and extrapolated; no 1M runs unless
+  the fit is ambiguous.
+- **F8 split and F4 bars adopted**; **no ACL2 patch** (stock w28 on both
+  boxes); **the source-tree reorganisation not adopted** (chain-first
+  scheduling, fan-in cuts and one image umbrella instead:
+  [architecture-recommendation](architecture-recommendation-2026-09-28.md)).
+- Each is recorded with ember's words and the still-open questions in
+  [decisions](decisions.md), "2026-09-28: decision packets recorded".
+
+## What changed since the last page
+
+- **Format 10**: BLAKE3 as fn's digest everywhere fn chooses (SHA-256 only
+  where an RFC forces it: Cancel-Lock), LZ4 extents, the page-backed arena
+  store (arena-store 1-6), served columns.
+- **Release machinery**: the cut script, `tools/fundamentals.py`, the
+  version sequence (6.6.0 first), the fail-closed extraction gate and a
+  read-only extracted build.
+- **Nodes**: the public node deployed 2026-09-27, node #2 on hbox, both
+  migrated to format 10 and peered; the site as newsgroup FAQ articles in
+  `fn.docs`.
+- **Proof tooling**: one ACL2 toolchain (w28) on both boxes with shared
+  certificates; the laptop is a REPL target (`tools/proof_repl.py --host
+  auto`); defprotocol; the defkeystone pilot.
 
 ## Open, as of this page
 
-- **The release's fundamentals** F1 to F8 ([release-v6.6.0](release-v6.6.0.md)
-  section 2): each is OPEN there until one image carries its evidence; lane
-  fundamentals-scoreboard is gathering it.
-- **No qualified format-9 image** (above), and the live node cannot be
-  upgraded in place.
-- **`health` prints `format=8`** for every valid profile, including format 9
-  (books/native-health.lisp `fn-nh-profile-words` hard-codes it).
-- **Consumers' withdrawal events** are proved and the view is refreshed
-  (flip-L8-2), but no native case observes one at a consumer yet.
+- The rows of COMPLETE-BEFORE-6.6.0.md; the fundamentals F1-F8 stay OPEN in
+  [release-v6.6.0](release-v6.6.0.md) until the convergence run shows them.
+- The backlog [backlog-2026-09-25](backlog-2026-09-25.md): every open line
+  carries a triage mark of 2026-09-28 (done, duplicate, a COMPLETE-BEFORE
+  row, won't with ember's decision, or a question for ember).
 
 ## Lanes
 
-Lanes run on Claude Opus 5.5 in `build/lanes/<name>` on `lane/<name>`; the
-coordinator merges them in batches and names each lane's model in its
-brief. Its running log is `build/coordinator/WAVE-STATE.md` (newest on top,
-not tracked). How lanes work: [how we work](how-we-work.md).
+Lanes run on Claude Opus 5.5 in `build/lanes/<name>` on `lane/<name>`,
+under `build/coordinator/queue/LANE-PREAMBLE.txt` and closeout-common.txt;
+the batch runner merges to dev. The coordinator's log is
+`build/coordinator/WAVE-STATE.md` (newest on top, not tracked). How lanes
+work: [how we work](how-we-work.md).
 
 ## Where to read next
 
