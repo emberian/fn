@@ -62,6 +62,7 @@
   (declare (xargs :mode :program))
   (fn-native-config-store (fn-native-operator-result-config result)))
 
+;; test-only (tools/host_callers.py): tests/acl2/native-operator-host-tests.lisp
 (defun fn-native-operator-host-result-config (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-config result))

@@ -24,6 +24,7 @@
                (fn-bpo-result-value result)
              nil))))
 
+;; test-only (tools/host_callers.py): tests/bp-dtn7/fn_sender_lab.py
 (defun fn-bpo-host-receipt-validp
   (receipt-octets txid generation policy-authorizedp state)
   (declare (xargs :stobjs state :mode :program))
@@ -37,6 +38,7 @@
 ; The Python bridge can obtain each validated text value as an octet list and
 ; construct its fixed FNWF dictionary without parsing a printed Lisp string or
 ; duplicating any receipt-field selection rule.
+;; test-only (tools/host_callers.py): tests/bp-dtn7/fn_sender_lab.py
 (defun fn-bpo-host-receipt-field-octets
   (index receipt-octets txid generation policy-authorizedp state)
   (declare (xargs :stobjs state :mode :program))

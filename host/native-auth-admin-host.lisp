@@ -9,6 +9,7 @@
 (set-state-ok t)
 (program)
 
+;; test-only (tools/host_callers.py): tests/acl2/native-auth-admin-host-tests.lisp
 (defun fn-native-auth-admin-host-parse-argv (argv)
   (fn-native-auth-admin-parse-argv argv))
 (defun fn-native-auth-admin-host-plan-status (result)
