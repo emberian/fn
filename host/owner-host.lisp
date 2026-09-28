@@ -1116,15 +1116,6 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-lzr-config-min (fn-cfg-value (fn-owner-config state)))))
 
-;; Lane time-model (PRF-311): the barrier's deadline from the live
-;; configuration, the `barrier-deadline-ms' limit row read like the batch
-;; bounds (books/owner-log-route.lisp fn-olr-bmax), ACL2's default when the
-;; row is absent (books/owner-time-model.lisp fn-otm-deadline-of-limit).
-(defun fn-owner-barrier-deadline (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-otm-deadline-of-limit
-          (fn-cfg-limit (fn-cfg-value (fn-owner-config state)) "barrier-deadline-ms"))))
-
 ;; Lane time-model-2: the three disk rows, (D H C) as the operator set them
 ;; (`policy set barrier-deadline-ms|barrier-stall-ms|clock-event-ms N'); the
 ;; barrier's :issue event normalizes them (fn-otm-limits: defaults for
