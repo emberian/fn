@@ -1288,13 +1288,32 @@ BLAKE3, algorithm 2, exactly as a format-10 node derives them at acceptance
 (`fn-f9r-article-keeps-every-other-field`); each retention event's obligation
 and subject are rewritten through the map the translated articles define; a
 format-9 identity no earlier article defined is refused by name
-(`reason=record-translation`, `:unknown-identity`), and so is a kind whose
-translation is not written yet (signed composites, verdicts, keyring
-snapshots, topic events: `:untranslatable-kind`, open); consumer events carry
-no identity and pass unchanged. Derived from secrets the node does not keep,
+(`reason=record-translation unknown-identity sequence=N`). Every other kind
+is decided in books/store-format-9-records.lisp (PRF-355): an accepted
+composite (signed, carried or schema 0) keeps its authored source, the
+signatures in its article's payload, its verdict, keyring generation and
+profile, and has its embedded article's identities, its content subject and
+its authored-source identity re-derived as replay derives them
+(`fn-f9r-composite-keeps-what-it-binds`,
+`fn-f9r-composite-identities-are-format-10s`; the D09 signed preimage holds
+no identity, so nothing is re-signed), and is imported only if it binds
+(`fn-f9r-step-of-a-composite`, else `composite-binding`); statement verdicts,
+keyring snapshots (enrollment, succession, revocation: the key half of a key
+statement), consumer events and the topic administrator's install carry no
+content identity and import as their exact octets
+(`fn-f9r-step-carries-identity-free-kinds-verbatim`). Topic anchors and
+admissions cannot be translated faithfully and are refused
+(`signed-format-9-identity`): replay re-prepares them from a signed root or
+report whose FN-Topic field names the controller key set, topic, policy and
+parents by format-9 identities, which format 10 neither parses nor can
+re-sign; a store holding one does not migrate by import. A snapshot keeps
+its principal verbatim: a principal a login derived under SHA-256
+(`fn-acct-local-principal`) is no longer the one that login derives, so such
+a key is enrolled again for the login (or named with `--principal`). Derived from secrets the node does not keep,
 some values cannot migrate by construction (lane blake3-digest): AUTHINFO
 credentials must be re-enrolled (an old verifier fails closed), pending
-invitation codes are void, posting-account pseudonyms change, and a poster
+invitation codes are void, posting-account pseudonyms change (a new
+MAC; the node secret, store/keys/node-secret.key, is not in the archive), and a poster
 cannot cancel a pre-migration article with their own Cancel-Lock (the key
 derivation changed; the lock is in the old article's octets; an operator's
 cancel is unaffected).
@@ -1311,6 +1330,18 @@ the translated records, computed independently of the node (the test's
 job), and every non-identity field of every record is the archive's.
 Format 10 is BLAKE3 now (lane blake3-digest's attachment, merged into this
 lane), so the second reading is the one in force.
+
+The digest streams (lane format10-import, PRF-356): each line's value is
+`fn-sdg-chain` of its canonical octets -- `fn-digest` of them when they are
+at most one 65,536-octet block (`fn-sdg-chain-of-one-block`: the value
+before), else a chain of blocks (the first block's `fn-digest`, then
+`fn-digest` of 66, the running digest and the next block). `store digest`
+pushes each octet into a one-block sink as the canonical encoding would
+produce it (`fn-sdg-canon-rev-sink-is-the-chain-of-the-canon`), so a
+1,000,000-record store digests in 5.9 GB, not past a 32 GB heap. The
+history, pool, files, node, canonical and state lines of a store whose
+stream exceeds a block changed value with this; no reader compares them
+across images.
 
 STO-036: the genesis. Position 0 of the log is `journal/000000.log`: exactly
 one FNLG frame (version 1) of KIND 3, never a record kind the scan reads
@@ -1368,9 +1399,9 @@ Format 10's digest is BLAKE3 everywhere fn chooses (lane blake3-digest,
 merged: frame trailers and the log's chain, content identities of algorithm 2
 `*fn-id-algorithm-blake3*`, the MANIFEST, `store digest`, tombstones, the
 catch-up chain); SHA-256 remains only where RFC 8315 forces it (Cancel-Lock)
-and in the format-9 reader (books/store-format-9.lisp), by name. Open: the
-translation of signed composites, verdicts, keyring snapshots and topic
-events at import (refused by name today).
+and in the format-9 reader (books/store-format-9.lisp), by name. Every
+record kind a format-9 node writes translates at import or is refused by
+name (PRF-355, above); only topic anchors and admissions are refused.
 
 STO-029: `store import` publishes by an explicit program (P-IMPORT,
 books/store-import-publication.lisp): the staged `ROOT.import-XXXX` is

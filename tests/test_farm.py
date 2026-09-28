@@ -1001,6 +1001,23 @@ class FrictionTests(unittest.TestCase):
             farm.refuse_bad_book_names(root, ["books/alpha"],
                                        ["books/beta.lisp", "books/wire"])
 
+    def test_recertify_takes_a_host_book_of_the_closure(self):
+        # batch AY: --recertify-uncited listed host/native-operator-host and
+        # the name check refused it, so the union cite's half never started.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            seed_books(root)
+            (root / "host").mkdir()
+            (root / "host" / "op-host.lisp").write_text("(in-package \"ACL2\")\n")
+            farm.refuse_bad_book_names(root, ["books/alpha"], [],
+                                       ["host/op-host", "books/beta"])
+            with self.assertRaises(farm.FarmError):
+                farm.refuse_bad_book_names(root, ["host/op-host"], [])
+            with self.assertRaises(farm.FarmError):
+                farm.refuse_bad_book_names(root, ["books/alpha"], [], ["../x"])
+            with self.assertRaises(farm.FarmError):
+                farm.refuse_bad_book_names(root, ["books/alpha"], [], ["host/none"])
+
     def test_uncached_list_is_a_count_unless_verbose(self):
         lines = ["publish: 3 books, cache c", "  uncached: books/a",
                  "  uncached: books/b", "  unverified: books/c",

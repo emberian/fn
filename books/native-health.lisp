@@ -130,23 +130,67 @@ profile's."
   (or (not (fn-bs-profile-validp profile))
       (fn-nh-development-profilep profile)))
 
-(defun fn-nh-forward-count (pins)
-  (declare (xargs :guard t))
+; PKT-878 (lane health-truth-status): the retention ledger holds one pin per
+; held article, and these ran as plain recursions on the owner's 1 MiB
+; control-thread stack: a live `health' of a 60,000-article store exhausted
+; it and stopped the owner (`control request fault; owner stopped', hbox).
+; Each keeps its logical definition and executes a loop (`mbe'), as PRF-336's
+; fn-nls-obligation-lines does.
+(defun fn-nh-forward-count-acc (pins acc)
+  (declare (xargs :guard (natp acc)))
   (if (consp pins)
-      (+ (if (and (consp (car pins))
-                  (equal (fn-nh-nth 2 (car pins)) :forward))
-             1 0)
-         (fn-nh-forward-count (cdr pins)))
-    0))
+      (fn-nh-forward-count-acc (cdr pins)
+                               (+ (if (and (consp (car pins))
+                                           (equal (fn-nh-nth 2 (car pins)) :forward))
+                                      1 0)
+                                  acc))
+    acc))
+
+(defun fn-nh-forward-count (pins)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp pins)
+                  (+ (if (and (consp (car pins))
+                              (equal (fn-nh-nth 2 (car pins)) :forward))
+                         1 0)
+                     (fn-nh-forward-count (cdr pins)))
+                0)
+       :exec (fn-nh-forward-count-acc pins 0)))
+
+(local
+ (defthm fn-nh-forward-count-acc-is-count
+   (implies (natp acc)
+            (equal (fn-nh-forward-count-acc pins acc)
+                   (+ acc (fn-nh-forward-count pins))))))
+
+(verify-guards fn-nh-forward-count)
+
+(defun fn-nh-forward-charge-acc (pins acc)
+  (declare (xargs :guard (natp acc)))
+  (if (consp pins)
+      (fn-nh-forward-charge-acc (cdr pins)
+                                (+ (if (and (consp (car pins))
+                                            (equal (fn-nh-nth 2 (car pins)) :forward))
+                                       (fn-nh-nat 4 (car pins)) 0)
+                                   acc))
+    acc))
 
 (defun fn-nh-forward-charge (pins)
-  (declare (xargs :guard t))
-  (if (consp pins)
-      (+ (if (and (consp (car pins))
-                  (equal (fn-nh-nth 2 (car pins)) :forward))
-             (fn-nh-nat 4 (car pins)) 0)
-         (fn-nh-forward-charge (cdr pins)))
-    0))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp pins)
+                  (+ (if (and (consp (car pins))
+                              (equal (fn-nh-nth 2 (car pins)) :forward))
+                         (fn-nh-nat 4 (car pins)) 0)
+                     (fn-nh-forward-charge (cdr pins)))
+                0)
+       :exec (fn-nh-forward-charge-acc pins 0)))
+
+(local
+ (defthm fn-nh-forward-charge-acc-is-charge
+   (implies (natp acc)
+            (equal (fn-nh-forward-charge-acc pins acc)
+                   (+ acc (fn-nh-forward-charge pins))))))
+
+(verify-guards fn-nh-forward-charge)
 
 (defun fn-nh-forward-pins (s)
   (declare (xargs :guard t :verify-guards nil))

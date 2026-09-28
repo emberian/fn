@@ -2124,7 +2124,9 @@
       "proof_targets": [
         "PRF-089",
         "PRF-336",
-        "PRF-345"
+        "PRF-345",
+        "PRF-361",
+        "PRF-352"
       ],
       "verification": [
         "proof",
@@ -2175,7 +2177,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-088"
+        "PRF-088",
+        "PRF-361"
       ],
       "verification": [
         "proof",
@@ -3701,7 +3704,9 @@
         "PRF-264",
         "PRF-273",
         "PRF-268",
-        "PRF-350"
+        "PRF-350",
+        "PRF-355",
+        "PRF-356"
       ],
       "verification": [
         "proof",
@@ -3715,7 +3720,10 @@
         "tests/test_native_store_export.py",
         "tests/test_native_older_release_open.py",
         "planning/evidence/fixtures-refresh-2026-09-27.md",
-        "planning/evidence/log-recovery-2026-09-27.md"
+        "planning/evidence/log-recovery-2026-09-27.md",
+        "books/store-format-9-records.lisp",
+        "tests/acl2/store-format-9-records-tests.lisp",
+        "tests/test_native_format_9_every_kind.py"
       ],
       "implementation_note": "D34. The open refuses a profile frame of another format (:store-format) with the line naming the reinstall and import; store export writes the archive (ACL2's names and MANIFEST), store import builds a new store from it and admits it by the ordinary open. Lane log-recovery (2026-09-27): export of a format-9 store reads the recovered history (the checkpoint's records then the log's); import writes a format-9 store (fn-sxp-log-profile: a format-8 archive migrates) with the records written into journal/000001.log through the log's append and barrier."
     },
