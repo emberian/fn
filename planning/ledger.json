@@ -1079,7 +1079,7 @@
     "tests/acl2/history-columns-relation-tests",
     "tests/acl2/history-columns-tests",
     "books/pagestore-words",
-    "books/pagestore-words-sha",
+    "books/pagestore-words-blake3",
     "books/pagestore",
     "books/pagestore-keystones",
     "books/pagestore-reclaim",
@@ -1361,6 +1361,7 @@
     "tests/acl2/proto-adt-2-tests",
     "books/history-pages",
     "tests/acl2/history-pages-tests",
+    "tests/acl2/history-pages-digest-tests",
     "books/history-pages-words",
     "books/history-pages-exec",
     "books/history-pages-row",
@@ -1374,29 +1375,38 @@
     "books/history-pages-placed",
     "books/history-pages-nest",
     "books/history-pages-placed-write",
-    "tests/acl2/history-pages-placed-tests"
+    "tests/acl2/history-pages-placed-tests",
+    "books/history-pages-grow",
+    "books/history-pages-grow-cap",
+    "books/history-pages-grow-append",
+    "books/history-pages-relocate",
+    "tests/acl2/history-pages-relocate-tests",
+    "books/history-pages-append-grown",
+    "books/history-pages-grow-then-append",
+    "tests/acl2/history-pages-grow-then-append-tests",
+    "tests/acl2/history-pages-grow-five-tests"
   ],
   "totals": {
-    "books": 1403,
-    "books_in_root_closure": 1401,
-    "roots": 1373,
-    "theorems": 22471,
-    "functions": 15208,
-    "assert_events": 20166,
-    "must_fails": 2234,
+    "books": 1412,
+    "books_in_root_closure": 1410,
+    "roots": 1383,
+    "theorems": 22387,
+    "functions": 15194,
+    "assert_events": 20171,
+    "must_fails": 2237,
     "prover_refusals": 0,
-    "encapsulates": 136,
+    "encapsulates": 138,
     "guards": {
-      "verified": 2559,
-      "declared-off": 1784,
-      "default-guarded": 8627,
-      "default-unguarded": 2238
+      "verified": 2561,
+      "declared-off": 1794,
+      "default-guarded": 8608,
+      "default-unguarded": 2231
     },
-    "suspect_theorems": 1099,
-    "export_hygiene_warnings": 273,
+    "suspect_theorems": 1098,
+    "export_hygiene_warnings": 277,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 240,
-    "include_hygiene_warnings": 1917,
+    "include_hygiene_warnings": 1922,
     "host_names_warnings": 1653,
     "hand_written_record_warnings": 18
   },
@@ -10780,6 +10790,34 @@
       "read_error": null
     },
     {
+      "book": "books/history-pages-append-grown.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-pages-grow-append"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/history-pages-arith.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -10839,6 +10877,120 @@
       "read_error": null
     },
     {
+      "book": "books/history-pages-grow-append.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "history-pages-grow-cap"
+      ],
+      "system_includes": [
+        "arithmetic-5/top",
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-pages-grow-cap.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 34,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 3,
+      "encapsulates": 0,
+      "includes": [
+        "history-pages-grow"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-pages-grow-then-append.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 39,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-pages-append-grown",
+        "history-pages-relocate"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-pages-grow.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 36,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 5,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 3,
+      "encapsulates": 0,
+      "includes": [
+        "history-pages-placed-write"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/history-pages-nest.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -10870,7 +11022,7 @@
       "book": "books/history-pages-placed-write.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
+      "theorems": 18,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -10951,6 +11103,34 @@
       "read_error": null
     },
     {
+      "book": "books/history-pages-relocate.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 70,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 7
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 3,
+      "encapsulates": 0,
+      "includes": [
+        "history-pages-grow"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/history-pages-row.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -11003,7 +11183,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "pagestore-words-sha",
+        "pagestore-words-blake3",
         "proto/adt-bytes-lib"
       ],
       "system_includes": [
@@ -11016,12 +11196,12 @@
       "book": "books/history-pages-write-exec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 27,
-      "functions": 14,
+      "theorems": 29,
+      "functions": 15,
       "guards": {
         "verified": 0,
         "declared-off": 2,
-        "default-guarded": 12,
+        "default-guarded": 13,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -11045,13 +11225,13 @@
       "book": "books/history-pages-write-keys.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 40,
-      "functions": 2,
+      "theorems": 52,
+      "functions": 5,
       "guards": {
         "verified": 0,
-        "declared-off": 1,
-        "default-guarded": 1,
-        "default-unguarded": 0
+        "declared-off": 2,
+        "default-guarded": 2,
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -11059,12 +11239,13 @@
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 1,
       "includes": [
         "history-pages-arith",
         "history-pages-write-exec"
       ],
       "system_includes": [
+        "arithmetic-5/top",
         "arithmetic/top"
       ],
       "suspects": [],
@@ -11121,7 +11302,7 @@
       "encapsulates": 2,
       "includes": [
         "history-columns",
-        "pagestore-words-sha",
+        "pagestore-words-blake3",
         "proto/adt-bytes",
         "store-checkpoint-buffer"
       ],
@@ -12555,15 +12736,15 @@
       "book": "books/native-health.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 71,
-      "functions": 88,
+      "theorems": 73,
+      "functions": 90,
       "guards": {
-        "verified": 12,
+        "verified": 14,
         "declared-off": 1,
         "default-guarded": 75,
         "default-unguarded": 0
       },
-      "verify_guards_events": 12,
+      "verify_guards_events": 14,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -16245,16 +16426,16 @@
       "read_error": null
     },
     {
-      "book": "books/pagestore-words-sha.lisp",
+      "book": "books/pagestore-words-blake3.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 180,
-      "functions": 23,
+      "theorems": 25,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 4,
-        "default-unguarded": 19
+        "default-guarded": 3,
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -16267,25 +16448,21 @@
         "pagestore-words"
       ],
       "system_includes": [
-        "arithmetic-5/top",
-        "arithmetic/top",
-        "ihs/quotient-remainder-lemmas"
+        "arithmetic-5/top"
       ],
-      "suspects": [
-        "fn-shs-revx-of-atom"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
       "book": "books/pagestore-words.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 51,
-      "functions": 9,
+      "theorems": 33,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 9,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -16296,7 +16473,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "sha256-stobj"
+        "blake3-stobj"
       ],
       "system_includes": [
         "arithmetic/top",
@@ -19958,37 +20135,6 @@
       "read_error": null
     },
     {
-      "book": "books/sha256-stobj.lisp",
-      "in_root_closure": true,
-      "is_root": false,
-      "theorems": 153,
-      "functions": 40,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 26,
-        "default-unguarded": 14
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 2,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "sha256"
-      ],
-      "system_includes": [
-        "arithmetic/top",
-        "ihs/quotient-remainder-lemmas"
-      ],
-      "suspects": [
-        "fn-shs-revx-of-atom"
-      ],
-      "read_error": null
-    },
-    {
       "book": "books/sha256.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -22762,12 +22908,12 @@
       "book": "books/store-reclaim-holders.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
-      "functions": 22,
+      "theorems": 46,
+      "functions": 23,
       "guards": {
         "verified": 4,
         "declared-off": 3,
-        "default-guarded": 15,
+        "default-guarded": 16,
         "default-unguarded": 0
       },
       "verify_guards_events": 4,
@@ -32035,6 +32181,86 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/history-pages-digest-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-pages",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-pages-grow-five-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-pages-grow-then-append"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-pages-grow-then-append-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 1,
+      "prover_refusals": 0,
+      "defconsts": 7,
+      "defmacros": 4,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-pages-grow-then-append",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/history-pages-placed-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -32054,7 +32280,7 @@
       "defmacros": 8,
       "encapsulates": 0,
       "includes": [
-        "../../books/history-pages-placed-write",
+        "../../books/history-pages-append-grown",
         "must-fail-checked"
       ],
       "system_includes": [],
@@ -32089,22 +32315,49 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/history-pages-tests.lisp",
+      "book": "tests/acl2/history-pages-relocate-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 11,
-      "functions": 3,
+      "theorems": 7,
+      "functions": 1,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 4,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-pages-relocate",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-pages-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
       "assert_events": 0,
-      "must_fails": 6,
+      "must_fails": 4,
       "prover_refusals": 0,
-      "defconsts": 9,
+      "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -32119,7 +32372,7 @@
       "book": "tests/acl2/history-pages-write-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 8,
+      "theorems": 9,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -32131,7 +32384,7 @@
       "assert_events": 1,
       "must_fails": 6,
       "prover_refusals": 0,
-      "defconsts": 11,
+      "defconsts": 12,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -40331,18 +40584,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 5,
+      "functions": 7,
       "guards": {
         "verified": 0,
-        "declared-off": 2,
+        "declared-off": 4,
         "default-guarded": 0,
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 37,
-      "must_fails": 8,
+      "assert_events": 39,
+      "must_fails": 10,
       "prover_refusals": 0,
-      "defconsts": 25,
+      "defconsts": 26,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -46682,7 +46935,7 @@
     {
       "theorem": "fn-rcl-article-alpha-accessors",
       "book": "books/store-reclaim-holders.lisp",
-      "line": 384,
+      "line": 440,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -46690,7 +46943,7 @@
     {
       "theorem": "fn-rcl-class-count-in-of-cons",
       "book": "books/store-reclaim-holders.lisp",
-      "line": 580,
+      "line": 678,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-rcl-class-count-in and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-rcl-class-count-in and the conclusion is that branch's value"
@@ -46708,7 +46961,7 @@
     {
       "theorem": "fn-rcl-held-count-in-of-cons",
       "book": "books/store-reclaim-holders.lisp",
-      "line": 631,
+      "line": 729,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-rcl-held-count-in and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-rcl-held-count-in and the conclusion is that branch's value"
@@ -48282,15 +48535,6 @@
       "line": 185,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
-      ]
-    },
-    {
-      "theorem": "fn-shs-revx-of-atom",
-      "book": "books/pagestore-words-sha.lisp",
-      "line": 721,
-      "reasons": [
-        "arm-of-definition: the hypotheses select one IF/COND arm of fn-sha256-revx and the conclusion is that arm's value",
-        "branch-of-definition: the hypothesis negates a branch test of fn-sha256-revx and the conclusion is that branch's value"
       ]
     },
     {
@@ -51175,6 +51419,24 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-hp-len-rblocks-c",
+        "book": "books/history-pages-grow-cap.lisp",
+        "line": 156,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
+        "theorem": "fn-hp-len-lens-after",
+        "book": "books/history-pages-grow-then-append.lisp",
+        "line": 197,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
+        "theorem": "fn-hp-len-piw",
+        "book": "books/history-pages-grow.lisp",
+        "line": 250,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
         "theorem": "fn-hp-len-wreps",
         "book": "books/history-pages-placed.lisp",
         "line": 109,
@@ -51205,9 +51467,15 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-hp-len-x-add-5",
+        "book": "books/history-pages-write-keys.lisp",
+        "line": 202,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
         "theorem": "fn-hp-len-x-add",
         "book": "books/history-pages-write-keys.lisp",
-        "line": 167,
+        "line": 281,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
@@ -51363,13 +51631,13 @@
       {
         "theorem": "fn-nh-report-exit-of-render",
         "book": "books/native-health.lisp",
-        "line": 968,
+        "line": 1012,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-nh-report-exit-of-render-and-more",
         "book": "books/native-health.lisp",
-        "line": 1199,
+        "line": 1243,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -51667,6 +51935,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "pgs-oct-p-is-octet-listp",
+        "book": "books/pagestore-words.lisp",
+        "line": 273,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-arx-page-copy-len",
         "book": "books/payload-arena-extent.lisp",
         "line": 103,
@@ -51886,12 +52160,6 @@
         "theorem": "fn-served-conn-index-of-fn-served-make-conn",
         "book": "books/served.lisp",
         "line": 509,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-sha256-stobj-is-sha256",
-        "book": "books/sha256-stobj.lisp",
-        "line": 1847,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -56386,10 +56654,38 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/history-pages-append-grown.lisp",
+        "line": 13,
+        "include": "history-pages-grow-append",
+        "included": "books/history-pages-grow-append.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/history-pages-exec.lisp",
         "line": 5,
         "include": "history-pages-words",
         "included": "books/history-pages-words.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-pages-grow-append.lisp",
+        "line": 14,
+        "include": "history-pages-grow-cap",
+        "included": "books/history-pages-grow-cap.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-pages-grow-then-append.lisp",
+        "line": 16,
+        "include": "history-pages-append-grown",
+        "included": "books/history-pages-append-grown.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-pages-grow.lisp",
+        "line": 12,
+        "include": "history-pages-placed-write",
+        "included": "books/history-pages-placed-write.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -56421,13 +56717,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/history-pages-words.lisp",
-        "line": 12,
-        "include": "pagestore-words-sha",
-        "included": "books/pagestore-words-sha.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/history-pages-write-exec.lisp",
         "line": 8,
         "include": "history-pages-arith",
@@ -56436,7 +56725,7 @@
       },
       {
         "book": "books/history-pages-write-keys.lisp",
-        "line": 15,
+        "line": 18,
         "include": "history-pages-arith",
         "included": "books/history-pages-arith.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -56446,13 +56735,6 @@
         "line": 14,
         "include": "history-pages-read",
         "included": "books/history-pages-read.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/history-pages.lisp",
-        "line": 42,
-        "include": "pagestore-words-sha",
-        "included": "books/pagestore-words-sha.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -62840,15 +63122,29 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "tests/acl2/history-pages-placed-tests.lisp",
-        "line": 15,
-        "include": "../../books/history-pages-placed-write",
-        "included": "books/history-pages-placed-write.lisp",
+        "book": "tests/acl2/history-pages-digest-tests.lisp",
+        "line": 16,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/history-pages-grow-then-append-tests.lisp",
+        "line": 24,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/history-pages-placed-tests.lisp",
         "line": 16,
+        "include": "../../books/history-pages-append-grown",
+        "included": "books/history-pages-append-grown.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/history-pages-placed-tests.lisp",
+        "line": 17,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -62868,22 +63164,29 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/history-pages-relocate-tests.lisp",
+        "line": 19,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/history-pages-tests.lisp",
-        "line": 17,
+        "line": 13,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/history-pages-write-tests.lisp",
-        "line": 16,
+        "line": 18,
         "include": "../../books/history-pages-write-keys",
         "included": "books/history-pages-write-keys.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/history-pages-write-tests.lisp",
-        "line": 17,
+        "line": 19,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
