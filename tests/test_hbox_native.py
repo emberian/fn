@@ -18,6 +18,50 @@ def image_lines(out):
 
 
 class HboxNativeDryRunTests(unittest.TestCase):
+    def test_an_image_set_links_prebuilt_images_instead_of_building(self):
+        sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+                             text=True, check=True).stdout.strip()
+        answer = dry("--image-set", sha, "--images", "developer,production", "HEAD",
+                     "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        self.assertEqual(image_lines(answer.stdout),
+                         [f"step image-set python3 $S/bin/image_set.py link {sha} $T "
+                          "developer production"])
+        self.assertNotIn("certify_books", answer.stdout)
+        self.assertIn(f"--source {sha}", answer.stdout)
+        refused = dry("--image-set", sha, "--images", "prof", "HEAD", "tests.test_native_owner")
+        self.assertEqual(refused.returncode, 2)
+        self.assertIn("an image set holds", refused.stderr)
+        self.assertEqual(dry("--image-set", "nope", "HEAD", "tests.test_native_owner")
+                         .returncode, 2)
+
+    def test_no_build_reships_the_tree_but_keeps_its_certificates(self):
+        # A --no-build re-ship deleted the tree's .cert files; REPL sessions
+        # there then refused include-book (2026-09-28).
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "calls"
+            for tool in ("ssh", "rsync"):
+                stub = Path(directory) / tool
+                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncat > /dev/null\nexit 0\n'
+                                % (tool, log))
+                stub.chmod(0o755)
+            env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}"}
+            for rev, keeps in ((".", "--exclude=*.cert"), ("HEAD", "! -name '*.cert'")):
+                log.write_text("")
+                done = subprocess.run(["sh", str(SCRIPT), "--detach", "--no-build", "--name", "t",
+                                       "--label", "l", rev, "tests.test_native_owner"],
+                                      cwd=ROOT, env=env, capture_output=True, text=True,
+                                      timeout=120)
+                self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+                self.assertIn(keeps, log.read_text())
+                log.write_text("")
+                subprocess.run(["sh", str(SCRIPT), "--detach", "--name", "t", "--label", "l",
+                                rev, "tests.test_native_owner"], cwd=ROOT, env=env,
+                               capture_output=True, text=True, timeout=120)
+                self.assertNotIn(".cert", log.read_text())
+
     def test_default_builds_the_developer_image_only(self):
         answer = dry("HEAD", "tests.test_native_owner")
         self.assertEqual(answer.returncode, 0, answer.stderr)
@@ -264,6 +308,7 @@ class IdentityTests(unittest.TestCase):
             head + '\necho "COPY=$FN_HBOX_NATIVE_COPY"\necho "RUNNING=$0"\necho "HERE=$HERE"\n')
         shutil.copy(ROOT / "tools" / "wait_for.sh", tree / "tools" / "wait_for.sh")
         shutil.copy(ROOT / "tools" / "boxes.sh", tree / "tools" / "boxes.sh")
+        shutil.copy(ROOT / "tools" / "image_set.py", tree / "tools" / "image_set.py")
         env = {k: v for k, v in os.environ.items() if not k.startswith("FN_HBOX_NATIVE_")}
         probe = subprocess.run(["sh", str(tree / "tools" / "hbox_native.sh")], cwd=ROOT,
                                capture_output=True, text=True, timeout=30, env=env)
