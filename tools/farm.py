@@ -8,7 +8,8 @@ here, so a farm run is not a separate world: it is the same certification with
 the evidence and the certificate pairs rsynced back and published to the local
 cache.
 
-    python3 tools/farm.py submit persvati --jobs 12 --affected-by books/wire.lisp
+    python3 tools/farm.py submit persvati --affected-by books/wire.lisp
+                            # --jobs auto (the default): tools/chain_schedule.py
     python3 tools/farm.py wait persvati run-20260919T101500Z-4f2a
     python3 tools/farm.py status hbox --remote-root /tank/fn/gates/my-run
 
@@ -80,6 +81,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certs
 from certify_books import BOOK_NAME
+import chain_schedule
 DEPENDENCY_NAME = re.compile(r"[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)+")
 import evidence_manifests
 import native_program_check
@@ -654,7 +656,7 @@ def publishes(script: str) -> bool:
 
 
 def remote_script(host: str, root: Path, identifier: str, books: list[str],
-                  jobs: int, timeout_seconds: int, affected_by: list[str],
+                  jobs: int | str, timeout_seconds: int, affected_by: list[str],
                   closure: bool = False, cache: str | None = None,
                   acl2: str | None = None, no_publish: bool = False,
                   pcert: bool = False, budget_seconds: int | None = None,
@@ -721,7 +723,7 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
     )
 
 
-def submit(host: str, root: Path, books: list[str], jobs: int,
+def submit(host: str, root: Path, books: list[str], jobs: int | str,
            timeout_seconds: int, affected_by: list[str],
            remote: Path | None = None, closure: bool = False,
            cache: str | None = None, acl2: str | None = None,
@@ -837,14 +839,17 @@ def progress_script(root: Path, identifier: str) -> str:
         f"2>/dev/null | wc -l | tr -d ' ')\"; "
         f"printf 'STARTED %s\\n' \"$(ls \"$d\"*.certify.log 2>/dev/null | wc -l "
         f"| tr -d ' ')\"; "
-        f"printf 'TAIL %s\\n' \"$(tail -c 300 {log} 2>/dev/null | tr '\\n' ' ')\""
+        f"printf 'TAIL %s\\n' \"$(tail -c 300 {log} 2>/dev/null | tr '\\n' ' ')\"; "
+        # The runner's plan (certify_books: the critical chain of what it
+        # certifies and the job count it chose), once it has printed it.
+        f"printf 'PLAN %s\\n' \"$(grep -m1 '^Critical chain: ' {log} 2>/dev/null)\""
     )
 
 
 def parse_progress(output: str) -> dict[str, str]:
     fields: dict[str, str] = {}
     for line in output.splitlines():
-        for key in ("STATUS", "MARKERS", "STARTED", "TAIL"):
+        for key in ("STATUS", "MARKERS", "STARTED", "TAIL", "PLAN"):
             if line.startswith(key + " "):
                 fields[key] = line[len(key) + 1:].strip()
     return fields
@@ -877,9 +882,13 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
     # that did not exist there, so it reported the run running forever.
     remote = remote_root(root, identifier, remote)
     cache = cache or run_record(root, identifier).get("cache")
+    planned = False
     while True:
         progress = parse_progress(ssh(host, progress_script(remote, identifier),
                                       check=False).stdout)
+        if progress.get("PLAN") and not planned:
+            print(f"{identifier} on {host}: {progress['PLAN']}", flush=True)
+            planned = True
         state = progress.get("STATUS", "running")
         if state != "running":
             break
@@ -1448,6 +1457,12 @@ def main(argv: list[str] | None = None) -> int:
     elif arguments.host == "auto":
         parser.error(f"{arguments.action} needs the box the run is on (its submit "
                      "printed it); auto picks a box only for submit")
+    if arguments.action == "submit":
+        try:
+            chain_schedule.parse_jobs(arguments.jobs)
+        except ValueError:
+            parser.error(f"--jobs takes a positive count, auto or auto:N, "
+                         f"not {arguments.jobs!r}")
     if arguments.action == "submit" and arguments.recertify_uncited:
         arguments.recertify = sorted(set(arguments.recertify)
                                      | set(uncited_in_selection(
