@@ -93,7 +93,7 @@
                               ,@*fn-proto-token-theory*))))))
 
 (make-event
- `(defthm fn-proto-command-pinned-offers-only-article-framing
+ `(local (defthm fn-proto-command-pinned-offers-only-article-framing-by-rows
     (implies (not (fn-proto-article-framing-p (car tokens) *fn-proto-article-framing*))
              (not (fn-post-offeredp
                    (fn-nntp-result-effects
@@ -107,7 +107,15 @@
                         '(car tokens)))
              :in-theory (disable fn-nntp-command-pinned
                                  fn-auth-fold-command-pinned-offers-only-post
-                                 ,@*fn-proto-token-theory*)))))
+                                 ,@*fn-proto-token-theory*))))))
+
+(defthm fn-proto-command-pinned-offers-only-article-framing
+  (implies (not (fn-proto-article-framing-p (car tokens) *fn-proto-article-framing*))
+           (not (fn-post-offeredp
+                 (fn-nntp-result-effects
+                  (fn-nntp-command-pinned session archive index verdicts
+                                          env tokens fn-arena)))))
+  :hints (("Goal" :by fn-proto-command-pinned-offers-only-article-framing-by-rows)))
 
 ; The table has one :article row, POST, so the keystone is
 ; fn-auth-fold-command-pinned-offers-only-post's statement read off the table.

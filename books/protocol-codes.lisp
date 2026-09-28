@@ -194,8 +194,10 @@
             (fn-proto-row-cases (cdr alist) term))
     nil))
 
+; The case split, generated from the table (local: the ledger reads the
+; keystone below, which a make-event would hide from its non-evaluating reader).
 (make-event
- `(defthm fn-proto-command-pinned-replies-are-in-the-row
+ `(local (defthm fn-proto-command-pinned-replies-are-in-the-row-by-rows
     (fn-proto-within
      (fn-nntp-result-effects
       (fn-nntp-command-pinned session archive index verdicts env tokens fn-arena))
@@ -204,4 +206,11 @@
              :cases ((not (fn-nntp-keyword-tokenp (car tokens)))
                      ,@(fn-proto-row-cases *fn-proto-reader-alist* '(car tokens)))
              :in-theory (disable fn-nntp-command-pinned fn-proto-reader-codes
-                                 ,@*fn-proto-token-theory*)))))
+                                 ,@*fn-proto-token-theory*))))))
+
+(defthm fn-proto-command-pinned-replies-are-in-the-row
+  (fn-proto-within
+   (fn-nntp-result-effects
+    (fn-nntp-command-pinned session archive index verdicts env tokens fn-arena))
+   (fn-proto-reader-codes (car tokens)))
+  :hints (("Goal" :by fn-proto-command-pinned-replies-are-in-the-row-by-rows)))
