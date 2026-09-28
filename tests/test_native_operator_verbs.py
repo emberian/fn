@@ -39,14 +39,21 @@ EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_FAULT, EXIT_USAGE = 0, 1, 3, 4, 5
 
 
 def deployed_stack(env):
-    """PKT-693: the saved image's own launcher passes `--control-stack-size
-    64' (MB), so a test that runs build/fn-host directly gives every thread
-    64 MiB, while the installed launcher (packaging/fn) passes the profile's
-    figure (books/heap-reservation.lisp fn-heap-stack-kib, 1,024 KiB).  With
-    FN_TEST_CONTROL_STACK_KB set, the image runs at that figure instead
-    (SBCL_USER_ARGS comes after the launcher's own option, so it wins)."""
+    """PKT-876: every native test runs at the deployed control stack.  The
+    image's own launcher carries ACL2's figure (tools/build_native_host.sh
+    writes books/heap-reservation.lisp fn-heap-stack-kib, 1,024 KiB, where
+    ACL2's save-exec wrote 64 MiB), the figure the installed launcher
+    (packaging/fn) passes a node.  FN_TEST_CONTROL_STACK_KB runs the image at
+    another figure (SBCL_USER_ARGS comes after the launcher's own option, so
+    it wins), and only with FN_TEST_CONTROL_STACK_REASON naming why: a wider
+    stack hides the deaths the deployed node dies of."""
     kib = os.environ.get("FN_TEST_CONTROL_STACK_KB")
-    if kib and kib.isdigit():
+    if kib:
+        if not kib.isdigit():
+            raise ValueError("FN_TEST_CONTROL_STACK_KB is not a decimal: %r" % kib)
+        if not os.environ.get("FN_TEST_CONTROL_STACK_REASON", "").strip():
+            raise ValueError("FN_TEST_CONTROL_STACK_KB=%s needs FN_TEST_CONTROL_STACK_REASON: "
+                             "the default is the deployed stack" % kib)
         env["SBCL_USER_ARGS"] = "--control-stack-size {}KB".format(kib)
     return env
 

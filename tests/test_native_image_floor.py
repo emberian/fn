@@ -25,7 +25,8 @@ stays at its current value.  These witnesses run the saved images:
   article the small preset accepts (32,000 octets offered, every body line
   empty); 96 KiB, under the 142 KiB floor, does not, so the witness
   measures the stack and not the harness;
-* DeepInputStackTests: a 1 MiB article of empty lines, a 2,000-article
+* DeepInputStackTests: the image's own launcher passes the probe's stack
+  (PKT-876); a 1 MiB article of empty lines, a 2,000-article
   history reopened and fully replayed, and refused POSTs of 16,000 and
   20,000 lines, each at the stack the launcher's probe prints.
 
@@ -249,6 +250,15 @@ class DeepInputStackTests(unittest.TestCase):
         diagnostics = stop_and_diagnostics(owner, timeout=300)
         self.assertNotIn("Control stack exhausted", diagnostics)
         self.assertEqual(owner.returncode, 0, diagnostics)
+
+    def test_the_image_launcher_runs_at_the_decided_stack(self):
+        """PKT-876: the image's own launcher (the one every native test runs)
+        passes the control stack the installed launcher's probe decides for
+        a store, not ACL2's save-exec 64 MiB."""
+        cfg, port, stack = self.store("launcher", ["--profile", "default"],
+                                      FN_INIT_BUDGET_MB="1500")
+        found = re.findall(r"--control-stack-size (\S+) ", IMAGE.read_text(encoding="utf-8"))
+        self.assertEqual(found, ["%dKB" % stack], found)
 
     def test_a_1_mib_article_of_empty_lines_at_its_decided_stack(self):
         """A = 1 MiB (the default mission's article bound): 524,088 lines
