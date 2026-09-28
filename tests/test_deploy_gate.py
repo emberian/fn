@@ -1,21 +1,18 @@
-"""tools/deploy_gate.py against a local fake host: no ssh, no ACL2, no network.
+"""tools/deploy_gate.py against a local fake host: no ssh, no image, no network.
 
 The gate's own logic is what is under test here -- the order of the phases,
-the choice between a host gate's certificates and certifying on the host, the
-port it parses out of the server's first line, a reader held live across
-another connection's POST, the SIGKILL cut and the reread after recovery, the
-three outcomes staying distinct in the exit codes, and the evidence it
-renders.  `--dry-run --home DIR` runs every script the gate would send over
-ssh through bash on this machine with HOME pointed at DIR, and `--overlay`
-puts the fake entry points in `tests/deploy_gate_fake/` over the deployed
-tree.  A green run here says the harness works; it says nothing about fn.
+the port it parses out of the owner's LISTENING line, a reader held live
+across another connection's POST, the SIGKILL cut and the reread after the
+restart, the three outcomes staying distinct in the exit codes, and the
+evidence it renders.  `--dry-run --home DIR` runs every script the gate would
+send over ssh through bash on this machine with HOME pointed at DIR, and the
+native image is the stand-in tests/inn_lab_fake/native/fn-host.  A green run
+here says the harness works; it says nothing about fn.
 """
 import contextlib
 import io
 import json
-import os
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -25,9 +22,6 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import deploy_gate  # noqa: E402
-
-FAKE_ACL2 = "#!/bin/sh\necho 'ACL2 Version 8.7 fake'\ncat > /dev/null\nexit 0\n"
-
 
 class Recorder(deploy_gate.Host):
     """A host that answers nothing and remembers every script it was given."""
@@ -116,28 +110,27 @@ class StepAccountingTests(unittest.TestCase):
         self.assertIn("slrn: not installed", gate.gaps)
 
 
+class UncertainArmTests(unittest.TestCase):
+    def test_without_a_developer_image_the_distinctness_is_not_exercised(self):
+        gate = deploy_gate.DeployGate(Recorder(), ROOT, "a" * 40, "abc1234", "dev",
+                                      native_image="/box/fn-host")
+        gate.three_outcomes()
+        found = [one for one in gate.found if one.key == "outcomes-distinct"]
+        self.assertEqual([one.verdict for one in found], [deploy_gate.NOT_EXERCISED])
+        self.assertIn("NativeOperatorUncertainOutcomeTests", found[0].blocker)
+
+
 class DryRunTests(unittest.TestCase):
-    """The whole gate, end to end, against a fake host in a temporary HOME."""
+    """The whole gate, end to end, against a stand-in image in a temporary HOME."""
 
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory(prefix="fn-deploy-gate-")
         cls.home = Path(cls.temp.name) / "home"
-        acl2 = cls.home / "fn-tools/acl2-8.7"
-        acl2.mkdir(parents=True)
-        (acl2 / "saved_acl2").write_text(FAKE_ACL2)
-        (acl2 / "saved_acl2").chmod(0o755)
-        # This ran from 2026-09-20 with a fixed hexadecimal fallback here, on
-        # the belief that "the fake-host run needs only a revision string".
-        # It needs more than that: `LocalHost.deploy` (tools/deploy_gate.py:135)
-        # ships the tree by piping `git archive <commit>` into tar, so a tree
-        # with no repository cannot be deployed at all, and the fallback turned
-        # that into `CalledProcessError: git archive 0123...01234567 -> 128` in
-        # setUpClass -- an ERROR indistinguishable from a broken gate.  A gate
-        # directory IS such a tree (~/fn-gates/<tree>-<rev> on persvati is a
-        # `git archive` extract), which is where the whole class errored on
-        # 2026-09-21.  Skip loudly instead, on the structural condition rather
-        # than on any failure text, so a real checkout never skips.
+        cls.home.mkdir()
+        # The ship step is `git archive <commit>` (LocalHost.deploy): a tree
+        # with no repository cannot be deployed, so skip on that structural
+        # condition rather than error.
         try:
             commit = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
                                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
@@ -145,31 +138,16 @@ class DryRunTests(unittest.TestCase):
         except (subprocess.CalledProcessError, FileNotFoundError) as error:
             cls.temp.cleanup()
             raise unittest.SkipTest(
-                "the deploy gate dry run needs a git repository at {}: its ship "
-                "step is `git archive <commit>` (tools/deploy_gate.py LocalHost."
-                "deploy), and this tree has no repository ({})".format(ROOT, error))
+                "the deploy gate dry run needs a git repository at {} ({})".format(
+                    ROOT, error))
         cls.rev = commit[:7]
-        # A host gate for exactly this revision, so the certificate branch that
-        # copies pairs is the one the run takes.
-        books = cls.home / "fn-gates/dev-{}/books".format(cls.rev)
-        books.mkdir(parents=True)
-        (books / "acceptance.cert").write_text("(:CERT fake)\n")
-        (books / "acceptance.port").write_text("()\n")
         cls.evidence = Path(cls.temp.name) / "deploy-evidence.md"
-        # The shared fake entry points plus this gate's fake owner: the gate
-        # takes one overlay, and the owner fake is this test's alone (see
-        # tests/deploy_gate_owner_fake/tools/run_owner.py).
-        overlay = Path(cls.temp.name) / "overlay"
-        shutil.copytree(ROOT / "tests/deploy_gate_fake", overlay)
-        shutil.copytree(ROOT / "tests/deploy_gate_owner_fake", overlay, dirs_exist_ok=True)
-        cls.code = deploy_gate.main([
-            commit, "--dry-run", "--home", str(cls.home), "--repo", str(ROOT),
-            "--overlay", str(overlay),
-            "--nntplib-python", "none", "--evidence", str(cls.evidence), "--keep",
-            # The fake ACL2 by name: the farm host's default launcher moved to
-            # a gate toolchain path the fake HOME does not hold, and the
-            # version probe read "unavailable" (harness-repair).
-            "--acl2", str(acl2 / "saved_acl2")])
+        image = str(ROOT / "tests/inn_lab_fake/native/fn-host")
+        with contextlib.redirect_stdout(io.StringIO()):
+            cls.code = deploy_gate.main([
+                commit, "--dry-run", "--home", str(cls.home), "--repo", str(ROOT),
+                "--native-image", image, "--developer-image", image,
+                "--nntplib-python", "none", "--evidence", str(cls.evidence), "--keep"])
         cls.text = cls.evidence.read_text()
 
     @classmethod
@@ -181,19 +159,12 @@ class DryRunTests(unittest.TestCase):
                 if line.startswith("| ") and fragment in line]
 
     def test_the_gate_completed(self):
-        # 0, not "0 or 1": the one violation this run used to carry was the
-        # real owner dying on the fake store CLI's imports (below).
         self.assertEqual(self.code, 0, self.text[-3000:])
         self.assertNotIn("gate error", self.text)
 
-    def test_the_owner_the_gate_claims_is_the_one_that_answered(self):
-        # bin/fn's `run` takes no --store, so the gate drives
-        # tools/run_owner.py; the overlay's fake owner must be what answers,
-        # never a fallback to the reader under the owner's name.
+    def test_the_owner_reached_listening(self):
         rows = self.named("start server (owner, main)")
         self.assertTrue(rows and "| 0 |" in rows[0], rows)
-        self.assertFalse(self.named("start server (reader, main)"))
-        self.assertIn("201 fn-nntp fake owner ready", self.text)
         rows = self.named("entry-point-listening")
         self.assertTrue(rows and "| held |" in rows[0], rows)
 
@@ -201,16 +172,15 @@ class DryRunTests(unittest.TestCase):
         self.assertIn("accepted=0 refused=1 uncertain=3", self.text)
 
     def test_every_phase_ran(self):
-        for phase in ("ship archive", "acquire certificate artifact set", "store init",
-                      "outcome accepted", "outcome refused", "outcome uncertain",
+        for phase in ("ship archive", "operator init", "outcome accepted",
+                      "outcome refused", "outcome uncertain", "the owner fenced itself",
                       "drive transcript", "drive concurrent", "kill -9 mid-session",
-                      "recover after the kill", "reread after recovery"):
+                      "reread after recovery"):
             self.assertTrue(self.named(phase), "{} is missing from the evidence".format(phase))
 
     def test_the_reader_survived_the_post_and_the_reread_found_everything(self):
-        store = self.home / "fn-deploy/dev-{}/gate-run/store/store.json".format(self.rev)
-        state = json.loads(store.read_text())
-        ids = {article["msgid"] for article in state["articles"]}
+        store = self.home / "fn-deploy/dev-{}/node/store/fake-native.json".format(self.rev)
+        ids = set(json.loads(store.read_text())["articles"])
         self.assertIn(deploy_gate.SEED_ID, ids)
         self.assertIn(deploy_gate.POSTED_ID, ids, "the POST over the socket did not commit")
         self.assertNotIn("<interrupted@example.invalid>", ids,
@@ -223,16 +193,14 @@ class DryRunTests(unittest.TestCase):
     def test_the_gaps_are_written_out(self):
         self.assertIn("## What was NOT exercised", self.text)
         self.assertIn("nntplib", self.text)
-        # slrn or tin may be installed on the machine running the dry run; either
-        # the session ran or its absence is written out, never silence.
         self.assertTrue("no news client is installed on the host" in self.text
                         or self.named("scripted slrn session")
                         or self.named("scripted tin session"), self.text[-2000:])
         self.assertIn("not a power loss", self.text)
 
     def test_the_evidence_records_versions_and_commands(self):
-        self.assertIn("ACL2 Version 8.7 fake", self.text)
         self.assertIn("| python3 |", self.text)
+        self.assertIn("| native image |", self.text)
         self.assertIn("### Commands in full", self.text)
 
 
@@ -343,8 +311,7 @@ class RepoRootTests(unittest.TestCase):
     def test_every_harness_anchors_its_evidence_on_the_invoking_tree(self):
         """No harness may reintroduce `--repo default=str(ROOT)`."""
         tools = Path(__file__).resolve().parent.parent / "tools"
-        for name in ("deploy_gate", "twonode_gate", "inn_lab", "scale_gate",
-                     "verdict"):
+        for name in ("deploy_gate", "twonode_gate", "inn_lab", "verdict"):
             text = (tools / f"{name}.py").read_text()
             self.assertNotIn('"--repo", default=str(ROOT)', text, name)
             self.assertIn("if args.repo else repo_root()", text, name)

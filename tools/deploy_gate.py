@@ -3,19 +3,24 @@
 
 `make certify` establishes what the books prove.  This establishes nothing of
 the kind and is the other half of the story: the tree at a named commit,
-unpacked on a machine that is not the laptop, serving a real socket, driven by
-an independent client, SIGKILLed in the middle of a session, reopened through
-the real recovery path, and reread.  Every command is recorded with its exit
+unpacked on a machine that is not the laptop, its native image (`--native-image`,
+a path on the box, built from that commit) serving a real socket through
+`operator CONFIG run`, driven by an independent client, SIGKILLed in the
+middle of a session, restarted (the owner recovers at start), and reread.  Every command is recorded with its exit
 code, the first line it printed and its wall time; the evidence file ends with
 the list of what was *not* exercised and why, because a gate that silently
 skips a phase is worse than no gate.
 
-    python3 tools/deploy_gate.py dev --host persvati
-    python3 tools/deploy_gate.py HEAD --host persvati --evidence planning/evidence/x.md
+    python3 tools/deploy_gate.py HEAD --host hbox \
+        --native-image /tank/fn/scratch/X/build/fn-host \
+        --developer-image /tank/fn/scratch/X/build/fn-host-developer
 
 The three outcomes stay distinct in the recorded exit codes (D13): an accepted
-post exits 0, a refused lookup exits 1, an uncertain publication exits 3.  The
-gate asserts that distinctness rather than assuming it.
+`operator post` exits 0, a refused `store inspect` of an absent Message-ID
+exits 1, and a post whose durable outcome the owner cannot learn (the
+developer image's `postpublish` control cut) exits 3.  The gate asserts that
+distinctness rather than assuming it; without `--developer-image` the
+uncertain arm is not exercised and says so.
 
 The GATE's own exit is a separate scale with the same discipline.  0 means
 every assertion this run stated was decided and held; 1 means one was decided
@@ -26,19 +31,16 @@ the run establishes no release claim; 2 means the gate stopped early.  Before
 promised behaviour fail, write the sentence into `gaps`, and exit 0; see
 `Finding` below and planning/review-2026-09-20-astra-followup.md F1.
 
-Certificates come from one current origin/toolchain set in the host's proof
-artifact cache.  ACL2 actually loads the declared native image roots and the
-deployed owner entry point's roots before the set is accepted; a set that
-reproduces an absolute sub-book-name conflict is rejected.  When no cached set
-loads, the gate certifies only that declared union on the host and load-checks
-it before continuing.
+The Python host this gate first drove (tools/run_store.py, run_owner.py,
+run_reader.py, bin/fn) retired in python-diet T5; `fn()`, `server_command`
+and `certificates` below remain only for tools/twonode_gate.py and
+tools/v0_matrix.py, which subclass this gate and retire with the v0 matrix.
 
 Dry run.  ``--dry-run --home DIR`` runs every one of these scripts through
 bash on this machine with ``HOME`` pointed at DIR and no ssh at all, so the
-sequencing, the certificate choice, the port parsing, the kill/recover cut,
-the exit-code classification and the evidence rendering are exercised by
-tests/test_deploy_gate.py.  ``--overlay DIR`` copies files over the deployed
-tree first; the dry run uses it to stand in for the ACL2-backed entry points.
+sequencing, the port parsing, the kill/restart cut, the exit-code
+classification and the evidence rendering are exercised by
+tests/test_deploy_gate.py against a stand-in image.
 """
 from __future__ import annotations
 
@@ -50,6 +52,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -65,13 +68,18 @@ DEFAULT_HOST = "persvati"
 GATE_ROOT = "$HOME/fn-gates"
 DEPLOY_ROOT = "$HOME/fn-deploy"
 SEED_ID = "<stored@example.invalid>"
-SEED_BODY = b"Message-ID: <stored@example.invalid>\r\n\r\nA stored letter.\r\n"
+SEED_BODY = (b"From: gate@example.invalid\r\nNewsgroups: fn.letters\r\n"
+             b"Subject: stored\r\nMessage-ID: <stored@example.invalid>\r\n\r\n"
+             b"A stored letter.\r\n")
 ABSENT_ID = "<absent@example.invalid>"
 UNCERTAIN_ID = "<uncertain@example.invalid>"
 POSTED_ID = "<posted@example.invalid>"
 GROUPS = ("fn.letters", "fn.test")
 NNTP_CLIENTS = ("slrn", "tin", "nn", "trn")
 from outcome_codes import EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN  # noqa: E402
+# The developer image's control cut that loses a post's durable outcome
+# (tests/test_native_operator_verbs.py NativeOperatorUncertainOutcomeTests).
+UNCERTAIN_CUT = "FN_NATIVE_CONTROL_FAULT=postpublish"
 SERVER_READY_SECONDS = 300
 
 
@@ -547,12 +555,12 @@ class DeployGate:
     # this off rather than shipping two files a reader must reconcile.
     FINDINGS_SIDECAR = True
     PREAMBLE = (
-        "One commit, unpacked on a farm box, served to real clients, SIGKILLed",
-        "mid-session and reopened through the real recovery path. This records what",
-        "ran; it establishes nothing about the books beyond the fact that the",
-        "certificates named below were the ones ACL2 read.")
-    FACT_KEYS = ("os", "kernel", "python3", "acl2version", "certificates", "server",
-                 "three outcomes", "verdict")
+        "One commit, unpacked on a farm box, its native image served to real",
+        "clients, SIGKILLed mid-session and restarted through the owner's recovery",
+        "at start. This records what ran; it establishes nothing about the books",
+        "or about which source the named image was built from.")
+    FACT_KEYS = ("os", "kernel", "python3", "native image", "developer image",
+                 "server", "three outcomes", "verdict")
     # Every assertion this gate can DECIDE, declared before the run.  A key
     # that is never recorded is emitted `not-exercised` at the end rather than
     # vanishing, which is `tools/v0_matrix.py`'s PLAN discipline: a silently
@@ -579,18 +587,17 @@ class DeployGate:
     STANDING_GAPS = (
         "A SIGKILL of the server process is not a power loss: unflushed page cache\n"
         "  is not modeled here, and nothing in this run qualifies storage hardware.",
-        "One kill point (inside an open POST) is exercised. The enumerated cut table\n"
-        "  is `tests/campaign/cuts.py`; this gate does not replace it.",
+        "One kill point (inside an open POST) is exercised. The enumerated cuts are\n"
+        "  tests/campaign/native_operator_campaign.py and native_production_kill.py.",
         "No RFC 3977 conformance audit: the transcript exercises the verbs listed\n"
         "  above and no others, and the assertions are the driver's, not a spec's.",
-        "No concurrent load, no multi-host peering, no BP/DTN transport.",
-        "The certificate artifact set was load-checked here, not re-certified here;\n"
-        "  see the certificate row for its source and toolchain identities.")
+        "No concurrent load, no multi-host peering, no BP/DTN transport.")
 
     def __init__(self, host: Host, repo: Path, commit: str, rev: str, tree: str,
                  overlay: Path | None = None, jobs: int = 16, keep: bool = False,
                  nntplib_python: str = "auto", acl2: str = "acl2",
-                 artifact_profile: str = "default"):
+                 artifact_profile: str = "default", native_image: str = "",
+                 developer_image: str = "", native_openssl_prefix: str = ""):
         self.host = host
         self.repo = repo
         self.commit = commit
@@ -602,6 +609,9 @@ class DeployGate:
         self.nntplib_python = nntplib_python
         self.acl2 = acl2
         self.artifact_profile = artifact_profile
+        self.native_image = native_image
+        self.developer_image = developer_image
+        self.native_openssl_prefix = native_openssl_prefix
         self.steps: list[Step] = []
         self.facts: dict[str, str] = {}
         self.found: list[Finding] = []
@@ -612,6 +622,8 @@ class DeployGate:
         self.run = "{}/gate-run".format(self.deploy)
         self.store = "{}/store".format(self.run)
         self.log = "{}/server.log".format(self.run)
+        self.node_dir = "{}/node".format(self.deploy)
+        self.config = "{}/fn.toml".format(self.node_dir)
         self.server_kind = "none"
         self.port = 0
         self.posted = [SEED_ID]     # what a reread after recovery must find
@@ -937,32 +949,85 @@ fi
             raise GateError("declared certificate artifact closure did not load")
         return loaded
 
-    def init_store(self):
-        groups = " ".join("--group {}".format(g) for g in GROUPS)
-        step = self.sh("store init", self.cd(self.fn(
-            "--store {} init {}".format(self.store, groups))), timeout=900)
-        if step.rc != 0:
-            raise GateError("store init failed: " + step.output[:400])
-        self.sh("store config", self.cd(self.fn("--store {} config".format(self.store))),
-                timeout=900)
-        return step
+    # -- the native node ----------------------------------------------------
+    def native(self, *words, image=None, env="") -> str:
+        """The packaged public entry, from the shipped tree, with the named image.
+
+        `env` in front because the owner is started as `nohup <command> &` and
+        nohup execs its first word."""
+        if self.native_openssl_prefix:
+            env += "FN_OPENSSL_PREFIX={} ".format(shlex.quote(self.native_openssl_prefix))
+        return "env {}FN_NATIVE_HOST={} packaging/fn-native {}".format(
+            env, shlex.quote(image or self.native_image), " ".join(words))
+
+    def operator(self, *words, image=None, env="") -> str:
+        return self.native("operator", self.config, *words, image=image, env=env)
+
+    def native_node(self):
+        """fn.toml (a free loopback port, posting on), then `operator init`."""
+        self.sh("fn.toml", """
+mkdir -p {node}
+port=$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
+cat > {config} <<FN_TOML
+[store]
+path = "{node}/store"
+
+[listener]
+host = "127.0.0.1"
+port = $port
+
+[posting]
+enabled = true
+
+[control]
+path = "{node}/control.sock"
+FN_TOML
+cat {config}
+""".format(node=self.node_dir, config=self.config))
+        init = self.sh("operator init", self.cd(self.operator("init", *GROUPS)),
+                       timeout=900)
+        if init.rc != 0:
+            raise GateError("operator init failed: " + init.output[:400])
 
     def three_outcomes(self):
-        """Accepted 0, refused 1, uncertain 3, from the real entry point."""
+        """Accepted 0, refused 1, uncertain 3, from the image's own entries."""
         payload = "{}/seed.article".format(self.run)
         self.push_file(SEED_BODY, payload)
-        groups = " ".join("--group {}".format(g) for g in GROUPS)
-        accepted = self.sh("outcome accepted", self.cd(self.fn(
-            "--store {} post --message-id '{}' --payload {} {}".format(
-                self.store, SEED_ID, payload, groups))), timeout=900, expect=EXIT_OK)
-        refused = self.sh("outcome refused", self.cd(self.fn(
-            "--store {} inspect --message-id '{}'".format(self.store, ABSENT_ID))),
-            timeout=900, expect=EXIT_REFUSED)
-        uncertain = self.sh("outcome uncertain", self.cd(self.fn(
-            "--store {} post --message-id '{}' --payload {} --group {} "
-            "--inject-fault postpublish".format(
-                self.store, UNCERTAIN_ID, payload, GROUPS[0]))), timeout=900,
-            expect=EXIT_UNCERTAIN)
+        accepted = self.sh("outcome accepted", self.cd(self.operator(
+            "post", "--message-id", "'{}'".format(SEED_ID), "--payload", payload,
+            "--group", GROUPS[0])), timeout=900, expect=EXIT_OK)
+        refused = self.sh("outcome refused", self.cd(self.native(
+            "store", "{}/store".format(self.node_dir), "inspect",
+            "'{}'".format(ABSENT_ID))), timeout=900, expect=EXIT_REFUSED)
+        if not self.developer_image:
+            self.facts["three outcomes"] = "accepted={} refused={} uncertain=not run".format(
+                accepted.rc, refused.rc)
+            self.record("outcomes-distinct", NOT_EXERCISED,
+                        "accepted={} refused={}; the uncertain arm was not run".format(
+                            accepted.rc, refused.rc),
+                        blocker="no --developer-image: the uncertain outcome is a "
+                                "developer-image cut ({}); tests/test_native_operator_"
+                                "verbs.py NativeOperatorUncertainOutcomeTests carries "
+                                "it".format(UNCERTAIN_CUT))
+            return
+        if not self.start_server("owner (developer, postpublish cut)", self.operator(
+                "run", image=self.developer_image, env=UNCERTAIN_CUT + " "), "uncertain"):
+            self.broke("outcome uncertain", "operator run with " + UNCERTAIN_CUT,
+                       "the developer owner did not reach LISTENING: {}".format(
+                           self.server_failure or "no symptom recorded"))
+            return
+        uncertain = self.sh("outcome uncertain", self.cd(self.operator(
+            "post", "--message-id", "'{}'".format(UNCERTAIN_ID), "--payload", payload,
+            "--group", GROUPS[0])), timeout=900, expect=EXIT_UNCERTAIN)
+        # The owner fences itself on the same observation and releases the store.
+        self.sh("the owner fenced itself", """
+pid=$(cat {run}/server.pid)
+for i in $(seq 1 60); do kill -0 $pid 2>/dev/null || {{ echo FENCED; exit 0; }}; sleep 1; done
+echo STILL-RUNNING; exit 1
+""".format(run=self.run), timeout=120)
+        self.stop_server("uncertain")
+        self.sh("recover after the uncertain publication",
+                self.cd(self.operator("recover")), timeout=900)
         observed = (accepted.rc, refused.rc, uncertain.rc)
         expected = (EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN)
         self.facts["three outcomes"] = "accepted={} refused={} uncertain={} (expected {})".format(
@@ -971,11 +1036,11 @@ fi
                    "the three outcomes did not stay distinct in the exit codes: "
                    "observed {}, expected {} (D13)".format(observed, expected),
                    observed="accepted={} refused={} uncertain={}".format(*observed))
-        self.sh("recover after the uncertain publication",
-                self.cd(self.fn("--store {} recover".format(self.store))), timeout=900)
 
     def server_command(self, store=None, run=None) -> tuple[str, str]:
-        """bin/fn when it can be pointed at this store, else the owner, else the reader.
+        """(tools/twonode_gate.py and tools/v0_matrix.py only: their Python-host
+        entry points.)  bin/fn when it can be pointed at this store, else the
+        owner, else the reader.
 
         `store` and `run` default to this gate's single store and run directory;
         a gate that runs more than one node passes one pair per node."""
@@ -1063,9 +1128,9 @@ echo stopped
             timeout=timeout)
 
     def nntplib_probe(self):
-        """tests/interop_store_nntplib.py needs a stdlib nntplib (Python <= 3.12)."""
+        """tests/interop_nntplib.py against the running owner (Python <= 3.12)."""
         if self.nntplib_python == "none":
-            self.skip("nntplib probe", "tests/interop_store_nntplib.py",
+            self.skip("nntplib probe", "tests/interop_nntplib.py",
                       "--nntplib-python none: the operator excluded the stdlib-nntplib probe "
                       "for this run")
             return
@@ -1077,34 +1142,17 @@ echo stopped
              "echo NONE"]))
         match = re.search(r"^USE (\S+)", chooser.output, re.M)
         if match is None:
-            # waiver-ok: environment -- the probe asks each interpreter on the
-            # box whether `import nntplib` works and prints USE or NONE, so it
-            # reads a command's OUTPUT to learn that a dependency is absent
-            # rather than to learn that something failed.  The reason below is
-            # the predicate: no interpreter here has a stdlib nntplib.
-            self.skip("nntplib probe", "tests/interop_store_nntplib.py",
+            # waiver-ok: environment -- the chooser prints USE or NONE; NONE is
+            # the predicate "no interpreter here has a stdlib nntplib".
+            self.skip("nntplib probe", "tests/interop_nntplib.py",
                       "no interpreter on the host has a stdlib nntplib "
                       "(python3 is {}; nntplib was removed in 3.13 by PEP 594 and no "
                       "3.12 or earlier interpreter is installed)".format(
                           self.facts.get("python3", "unknown")))
             return
-        interpreter = match.group(1)
-        # The stored probe asserts POST is not offered, so it runs against a
-        # read-only reader holding the shared lock, before the writer starts.
-        if not self.start_server("reader (read-only)",
-                                 "python3 tools/run_reader.py --store {} --port 0".format(
-                                     self.store), "probe"):
-            # `tools/run_reader.py` is on the tree this gate deployed, so a
-            # reader that does not reach LISTENING is this commit failing to
-            # serve, not a probe dependency the box is missing.
-            self.broke("nntplib probe", "tests/interop_store_nntplib.py",
-                       "the read-only reader did not reach LISTENING: {}".format(
-                           self.server_failure or "no symptom recorded"))
-            return
-        self.sh("nntplib probe", self.cd("{} tests/interop_store_nntplib.py {}".format(
-            interpreter, self.port)), timeout=300,
-            note="independent client: {}".format(interpreter))
-        self.stop_server("probe")
+        self.sh("nntplib probe", self.cd("{} tests/interop_nntplib.py {} --group {}".format(
+            match.group(1), self.port, GROUPS[0])), timeout=300,
+            note="independent client: {}".format(match.group(1)))
 
     def news_client(self):
         present = [c for c in NNTP_CLIENTS if self.clients.get(c, "ABSENT") != "ABSENT"]
@@ -1155,78 +1203,53 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
 
     # -- the whole gate ---------------------------------------------------
     def execute(self):
+        if not self.native_image:
+            raise GateError("the served node is the native image: --native-image "
+                            "(its path on the box) is required")
+        self.facts["native image"] = self.native_image
+        if self.developer_image:
+            self.facts["developer image"] = self.developer_image
         self.preflight()
         self.ship()
-        self.certificates()
-        self.init_store()
+        self.native_node()
         self.three_outcomes()
-        self.nntplib_probe()
-        kind, command = self.server_command()
-        started = self.start_server(kind, command, "main")
+        command = self.operator("run")
+        started = self.start_server("owner", command, "main")
         self.check("entry-point-listening", started,
-                   "the {} entry point did not reach LISTENING on this commit; the gate "
-                   "fell back to tools/run_reader.py --post. The served-read evidence "
-                   "below is the reader's, not the {}'s -- a service that will not start "
-                   "is a failure of this gate, not a narrower scope for it."
-                   .format(kind, kind),
-                   observed="selected={} started={}".format(kind, started))
+                   "the native owner did not reach LISTENING on this commit: {}".format(
+                       self.server_failure or "no symptom recorded"),
+                   observed="started={}".format(started))
         if not started:
-            fallback = "python3 tools/run_reader.py --store {} --port 0 --post".format(self.store)
-            if kind == "reader" or not self.start_server("reader", fallback, "main"):
-                raise GateError("no server entry point reached LISTENING")
+            raise GateError("the native owner did not reach LISTENING")
         transcript = self.drive("transcript", "--group {}".format(GROUPS[0]))
-        if self.post_enabled:
-            self.check("post-capability",
-                       '"post_offered": false' not in transcript.output,
-                       "the server was started with POST enabled and answers POST with "
-                       "340 (see the kill cut below), but its CAPABILITIES block does "
-                       "not list POST. RFC 3977 section 5.2.2 requires the POST "
-                       "capability exactly when posting is permitted, so an independent "
-                       "client that reads capabilities before posting will not offer "
-                       "posting at all.",
-                       observed=transcript.first_line)
-        else:
-            self.record("post-capability", NOT_EXERCISED,
-                        "posting was not enabled on this server, so RFC 3977 5.2.2's "
-                        "capability rule has nothing to be true or false about here.",
-                        blocker="the server was not started with POST enabled")
+        self.check("post-capability", '"post_offered": false' not in transcript.output,
+                   "posting is enabled in fn.toml and the owner answers POST with 340 "
+                   "(see the kill cut below), but its CAPABILITIES block does not list "
+                   "POST (RFC 3977 section 5.2.2).",
+                   observed=transcript.first_line)
         concurrent = self.drive("concurrent", "--group {} --msgid '{}'".format(
             GROUPS[0], POSTED_ID))
         if concurrent.rc == 0:
             self.posted.append(POSTED_ID)
-        else:
-            self.limitation(
-                "concurrent-reader",
-                "a second reader live across another connection's POST was NOT exercised: "
-                "tools/run_reader.py serves one connection at a time (its accept loop "
-                "calls serve_client to completion before accepting again, and it listens "
-                "with a backlog of 1), so the second connection never gets a greeting. "
-                "The concurrent server is tools/run_owner.py, which did not start on this "
-                "commit; nothing below establishes that a reader's pinned snapshot "
-                "survives another connection's post.")
         pid = self.sh("server pid", "cat {}/server.pid".format(self.run)).output.strip()
         self.drive("killcut", "--group {} --msgid '<interrupted@example.invalid>' --pid {}".format(
             GROUPS[0], pid), name="kill -9 mid-session")
         self.sh("server is gone", "kill -0 {} 2>/dev/null && echo ALIVE || echo GONE".format(pid))
-        self.sh("recover after the kill",
-                self.cd(self.fn("--store {} recover".format(self.store))), timeout=1800)
-        self.sh("status after recovery",
-                self.cd(self.fn("--store {} status".format(self.store))), timeout=1800)
-        if self.start_server(kind if kind != "owner" else "reader",
-                             command if kind != "owner" else
-                             "python3 tools/run_reader.py --store {} --port 0 --post".format(
-                                 self.store), "after-recovery"):
+        if self.start_server("owner", command, "after-recovery"):
             self.drive("reread", "--groups {} --msgids '{}'".format(
                 ",".join(GROUPS), ",".join(self.posted)), name="reread after recovery")
+            self.nntplib_probe()
             self.news_client()
             self.stop_server("after-recovery")
         else:
-            # The subject of this gate is "serves, dies and recovers".  A
-            # server that started before the kill and will not start after it
-            # is that subject failing, not a dependency this box lacks.
+            # The subject of this gate is "serves, dies and recovers".  An owner
+            # that started before the kill and will not start after it is that
+            # subject failing, not a dependency this box lacks.
             self.broke("reread after recovery", "drive.py reread",
-                       "the server did not restart after recovery: {}".format(
+                       "the owner did not restart after the kill: {}".format(
                            self.server_failure or "no symptom recorded"))
+        self.sh("status after the run", self.cd(self.operator("status")),
+                timeout=900, expect=None)
         self.sh("server log tail", "tail -15 {}/server-main.log".format(self.run))
         if not self.keep:
             self.sh("remove the deploy tree", "rm -rf {}".format(self.deploy))
@@ -1475,11 +1498,13 @@ def main(argv=None) -> int:
     parser.add_argument("--acl2", default=None,
                         help="the host's ACL2 image; the default is tools/farm.py's "
                              "entry for the host, else `acl2` on its PATH")
-    parser.add_argument("--artifact-profile", choices=("default", "dtn"),
-                        default="default",
-                        help="native image declaration whose exact certificate "
-                             "closure must load (default: deployment image; DTN "
-                             "must be selected explicitly)")
+    parser.add_argument("--native-image", default="",
+                        help="the production image's path on the box (the served node)")
+    parser.add_argument("--developer-image", default="",
+                        help="the developer image's path on the box, for the uncertain "
+                             "outcome's control cut (else that arm is not exercised)")
+    parser.add_argument("--native-openssl-prefix", default="",
+                        help="FN_OPENSSL_PREFIX for the image, when the box needs one")
     parser.add_argument("--nntplib-python", default="auto",
                         help="auto, none, or an interpreter with a stdlib nntplib")
     parser.add_argument("--overlay", default=None,
@@ -1501,7 +1526,8 @@ def main(argv=None) -> int:
             jobs=args.jobs, keep=args.keep,
             nntplib_python=args.nntplib_python,
             acl2=args.acl2 or FARM_HOSTS.get(args.host, {}).get("acl2", "acl2"),
-            artifact_profile=args.artifact_profile)
+            native_image=args.native_image, developer_image=args.developer_image,
+            native_openssl_prefix=args.native_openssl_prefix)
     except ValueError as error:
         parser.error(str(error))
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

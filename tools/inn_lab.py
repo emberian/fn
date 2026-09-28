@@ -889,20 +889,6 @@ class InnLab(deploy_gate.DeployGate):
     def bin(self, name: str) -> str:
         return "{}/bin/{}".format(self.inn_prefix, name)
 
-    def native(self, *words) -> str:
-        """The packaged public entry, from the shipped tree, with the named image.
-
-        `env` in front because the owner is started as `nohup <command> &` and
-        nohup execs its first word (tools/v0_matrix.py `native_command`)."""
-        env = ""
-        if self.native_openssl_prefix:
-            env = "FN_OPENSSL_PREFIX={} ".format(shlex.quote(self.native_openssl_prefix))
-        return "env {}FN_NATIVE_HOST={} packaging/fn-native {}".format(
-            env, shlex.quote(self.native_image), " ".join(words))
-
-    def operator(self, *words) -> str:
-        return self.native("operator", self.config, *words)
-
     def ship(self):
         lock = self.sh("acquire deploy lock", """
 mkdir -p {root}/.locks

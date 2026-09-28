@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""A stand-in for the saved native image, so tools/inn_lab.py is testable here.
+"""A stand-in for the saved native image, so tools/inn_lab.py and
+tools/deploy_gate.py are testable here.
 
 Every reply is this file's.  It says nothing about fn: it exists so the lab's
 sequencing, its relay parsing, its header comparison and its verdicts are
@@ -21,6 +22,11 @@ What it copies from the image, because the lab's assertions are about it
   image did in the agents run of 2026-09-22.
 * The feed offers every article not taken from the peer to each peer with an
   outbound pattern, by IHAVE when the record says streaming `false`.
+
+For the deploy gate: `operator init`, `store ROOT inspect` (1 when absent),
+GROUP / ARTICLE by number / HEAD / OVER / LIST, and the developer control cut
+`FN_NATIVE_CONTROL_FAULT=postpublish` (the next `operator post` exits 3 and
+the owner stops).
 """
 import fcntl, json, os, re, signal, socket, sys, threading, time
 
@@ -93,8 +99,16 @@ class Session:
                 return out
             out += raw[1:] if raw.startswith(b"..") else raw
 
+    def numbered(self, state, group):
+        def groups(msgid):
+            found = re.search(rb"^Newsgroups:(.*)$",
+                              state["articles"][msgid]["octets"].encode("latin-1"), re.M | re.I)
+            return found.group(1).strip().split(b",") if found else []
+        return [m for m in state["order"] if group.encode() in groups(m)]
+
     def run(self):
         self.send("200 fake-native ready")
+        group = None
         while True:
             raw = self.file.readline()
             if not raw:
@@ -143,6 +157,25 @@ class Session:
                     continue
                 store_article(self.store, arg, body, "transit")
                 self.send("239 {}".format(arg))
+            elif verb == "GROUP":
+                group = arg
+                count = len(self.numbered(state, arg))
+                self.send("211 {} {} {} {}".format(count, 1 if count else 0, count, arg))
+            elif verb == "LIST":
+                self.send("215 list follows")
+                for name in state.get("groups", []):
+                    self.send("{} {} 1 y".format(name, len(self.numbered(state, name))))
+                self.send(".")
+            elif verb in ("ARTICLE", "HEAD", "OVER") and arg.isdigit() and group:
+                numbered = self.numbered(state, group)
+                if not 0 < int(arg) <= len(numbered):
+                    self.send("423 no article with that number")
+                    continue
+                msgid = numbered[int(arg) - 1]
+                self.send("{} {} {}".format({"ARTICLE": "220", "HEAD": "221", "OVER": "224"}[verb],
+                                            arg, msgid))
+                self.send("{}\t\t\t\t{}\t\t0\t0".format(arg, msgid) if verb == "OVER" else msgid)
+                self.send(".")
             elif verb == "ARTICLE":
                 held = state["articles"].get(arg)
                 if not held:
@@ -196,6 +229,9 @@ def run(cfg):
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     listener.bind(("127.0.0.1", port))
     listener.listen(16)
+    if os.environ.get("FN_NATIVE_CONTROL_FAULT") == "postpublish":
+        with open(os.path.join(path, "fake-fault"), "w") as marker:
+            marker.write(str(os.getpid()))
     print("LISTENING {}".format(port), flush=True)
     threading.Thread(target=feed, args=(store,), daemon=True).start()
     while True:
@@ -209,6 +245,16 @@ def operator(cfg, words):
     verb = words[0] if words else ""
     if verb == "run":
         return run(cfg)
+    if verb == "init":
+        os.makedirs(path, exist_ok=True)
+        if os.path.exists(store.file):
+            print("refused operator init store-exists")
+            return 1
+        with open(store.file, "w") as handle:
+            json.dump({"articles": {}, "order": [], "peers": {}, "identity": None,
+                       "fed": {}, "groups": words[1:]}, handle)
+        print("accepted operator init")
+        return 0
     if verb == "policy" and words[1:3] == ["set", "path-identity"]:
         store.update(lambda s: s.__setitem__("identity", words[3]))
         print("accepted operator policy")
@@ -233,6 +279,13 @@ def operator(cfg, words):
         msgid = words[words.index("--message-id") + 1]
         octets = open(words[words.index("--payload") + 1], "rb").read()
         store_article(store, msgid, octets, "operator")
+        marker = os.path.join(path, "fake-fault")
+        if os.path.exists(marker):
+            owner = int(open(marker).read())
+            os.remove(marker)
+            os.kill(owner, signal.SIGTERM)
+            print("uncertain operator post", file=sys.stderr)
+            return 3
         print("accepted operator post ACCEPTED")
     else:
         print("usage: fake native image")
@@ -251,6 +304,10 @@ def main(argv):
             open(os.path.join(argv[2], "fake-native.json"), "w"))
         print("initialized {}".format(argv[2]))
         return 0
+    if argv[1:2] == ["store"] and argv[3:4] == ["inspect"]:
+        held = argv[4] in Store(argv[2]).read()["articles"]
+        print("held" if held else "refused: no such article")
+        return 0 if held else 1
     if argv[1:2] == ["operator"]:
         return operator(argv[2], argv[3:])
     return 5
