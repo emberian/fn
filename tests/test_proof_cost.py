@@ -254,6 +254,44 @@ class ProofCostTests(unittest.TestCase):
                          {"books/held", "books/worse", "books/unmeasured"})
         self.assertEqual(verdict.proposed["books/held"]["seconds"], 30.0)
 
+    def test_near_line_adds_quiet_rows_ratchets_their_steps_and_drops_below(self):
+        selected = {}
+        selected.update(self.measurement("books/near", 6.0, steps=1000))
+        selected.update(self.measurement("books/loud", 6.0, steps=1000, load=20.0))
+        selected.update(self.measurement("books/small", 3.0, steps=100))
+        selected.update(self.measurement("books/grew", 7.0, steps=1200))
+        selected.update(self.measurement("books/shrunk", 4.0, steps=500))
+        baseline = {"books/grew": {"seconds": 6.5, "steps": 1000},
+                    "books/shrunk": {"seconds": 6.5, "steps": 900}}
+        books = {"books/near", "books/loud", "books/small", "books/grew", "books/shrunk"}
+        # Without --write-baseline nothing is added, but a near row is ratcheted.
+        verdict = proof_cost.ratchet(selected, books, baseline, 10, near=5.0)
+        self.assertEqual(len(verdict.failing), 1)
+        self.assertIn("FAIL books/grew: steps=1,200 > baseline 1,000", verdict.failing[0])
+        self.assertIn("IMPROVED books/shrunk", "\n".join(verdict.improved))
+        self.assertNotIn("books/near", verdict.proposed)
+        # With it: the quiet 6 s book gets a row; the loaded one and the 3 s do not.
+        verdict = proof_cost.ratchet(selected, books, baseline, 10, near=5.0,
+                                     add_near=True)
+        self.assertIn("books/near", verdict.proposed)
+        self.assertEqual(verdict.proposed["books/near"]["steps"], 1000)
+        self.assertNotIn("books/loud", verdict.proposed)
+        self.assertNotIn("books/small", verdict.proposed)
+        self.assertNotIn("books/shrunk", verdict.proposed)
+        # No near line: the old rule, a row under the threshold is improved.
+        verdict = proof_cost.ratchet(selected, books, baseline, 10)
+        self.assertEqual(verdict.failing, [])
+        self.assertIn("IMPROVED books/grew", "\n".join(verdict.improved))
+
+    def test_near_seconds_round_trips_through_the_baseline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "b.json"
+            proof_cost.write_baseline(path, {"books/a": {"seconds": 6.0, "steps": 5}},
+                                      10.0, 5.0)
+            self.assertEqual(proof_cost.load_near(path), 5.0)
+            proof_cost.write_baseline(path, {}, 10.0)
+            self.assertIsNone(proof_cost.load_near(path))
+
     def test_ratchet_lowers_a_faster_baseline_number(self):
         selected = self.measurement("books/held", 20.0, run="certify-new")
         verdict = proof_cost.ratchet(selected, {"books/held"},

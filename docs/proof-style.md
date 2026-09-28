@@ -375,6 +375,14 @@ never, withdrawn by one book-local `in-theory` after the includes. A lemma
 about ACL2 primitives alone (`butlast`, `nthcdr`, `take`, `len`) is proved in
 `(theory 'ground-zero)`: no book's rule can help it.
 
+The steps ratchet starts at the near line, 5 s at 2 jobs on a quiet box
+(`near_seconds` in `planning/proof-cost-baseline.json`, written by
+`tools/proof_cost.py --write-baseline --near 5`): a book at or over it has a
+row, and its prover steps may not grow more than 10% until it drops back
+under the line; the four books above grew past 10 s without one. Under the
+line growth is free, because a row for every book would make any added
+theorem fail make check.
+
 ### Shape books: what a change costs
 
 A certificate is content-hashed over its book and everything the book
