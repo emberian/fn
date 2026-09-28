@@ -13,9 +13,6 @@
 or syntactically unsupported requests in `fn-native-admin-plan'."
   (mapcar (lambda (argument) (fnn-ascii-octet-list argument)) arguments))
 
-(defun fnn-admin-plan (arguments)
-  (fnn-core 'fn-native-admin-host-plan (fnn-admin-argv-octets arguments)))
-
 (defun fnn-admin-plan-acceptedp (plan)
   (eq (fnn-core 'fn-native-admin-host-status plan) :accepted))
 
