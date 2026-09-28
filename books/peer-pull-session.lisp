@@ -169,8 +169,18 @@
 
 ; The feed-machine events one host event amounts to: EV, then nil (drain the
 ; retained input) while the machine just sent a command, at most FUEL more.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-pull-pre-events-loop (fc ev fuel acc)
+  (declare (xargs :measure (nfix fuel) :guard (and (natp fuel) (true-listp acc)) :verify-guards nil))
+  (let ((r (fn-fc-event-result fc ev)))
+    (if (and (not (zp fuel)) (fn-pull-pre-continuep (fn-fc-kind r)))
+        (fn-pull-pre-events-loop (fn-fc-next-state r) nil (1- fuel) (cons ev acc))
+      (revappend acc (list ev)))))
+
 (defun fn-pull-pre-events (fc ev fuel)
-  (declare (xargs :guard (natp fuel) :measure (nfix fuel)
+  (declare (xargs :verify-guards nil :guard (natp fuel) :measure (nfix fuel)
                   ;; The machine's step is opaque here: its termination and
                   ;; guard proofs do not open it (1,691,836 steps before).
                   :hints (("Goal" :in-theory (disable fn-fc-event-result fn-fc-kind
@@ -178,10 +188,33 @@
                   :guard-hints (("Goal" :in-theory (disable fn-fc-event-result
                                                             fn-fc-kind
                                                             fn-fc-next-state)))))
-  (let ((r (fn-fc-event-result fc ev)))
-    (if (and (not (zp fuel)) (fn-pull-pre-continuep (fn-fc-kind r)))
-        (cons ev (fn-pull-pre-events (fn-fc-next-state r) nil (1- fuel)))
-      (list ev))))
+  (mbe :logic
+       (let ((r (fn-fc-event-result fc ev)))
+         (if (and (not (zp fuel)) (fn-pull-pre-continuep (fn-fc-kind r)))
+             (cons ev (fn-pull-pre-events (fn-fc-next-state r) nil (1- fuel)))
+           (list ev)))
+       :exec (fn-pull-pre-events-loop fc ev fuel nil)))
+
+(local
+ (defthm fn-pull-pre-events-loop-is-revappend
+   (equal (fn-pull-pre-events-loop fc ev fuel acc)
+          (revappend acc (fn-pull-pre-events fc ev fuel)))
+   :hints (("Goal" :induct (fn-pull-pre-events-loop fc ev fuel acc)
+                   :in-theory (union-theories '(fn-pull-pre-events-loop fn-pull-pre-events revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-pull-pre-events-loop
+  :hints (("Goal" :in-theory (disable fn-fc-event-result fn-fc-kind fn-fc-next-state))))
+
+(verify-guards fn-pull-pre-events
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-pull-pre-events)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-pull-pre-events-loop-is-revappend (acc nil))))))
+
 
 ; What the host does for one observation of the machine.  The credential
 ; lines are the feed's own renderings (`fn-fc-auth-user-command',
@@ -195,12 +228,54 @@
         ((equal kind :ready) (list (cons :remote (fn-pull-date-command))))
         (t nil)))
 
-(defun fn-pull-obs-effects (obs fc security)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-pull-obs-effects-loop (obs fc security acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp obs)
-      (append (fn-pull-obs-effect (fn-fc-obs-kind (car obs)) fc security)
-              (fn-pull-obs-effects (cdr obs) fc security))
-    nil))
+      (fn-pull-obs-effects-loop (cdr obs)
+                                fc
+                                security
+                                (fn-ag-rev-onto (fn-pull-obs-effect (fn-fc-obs-kind (car obs))
+                                                                    fc
+                                                                    security)
+                                                acc))
+    (revappend acc nil)))
+
+(defun fn-pull-obs-effects (obs fc security)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp obs)
+           (append (fn-pull-obs-effect (fn-fc-obs-kind (car obs)) fc security)
+                   (fn-pull-obs-effects (cdr obs) fc security))
+         nil)
+       :exec (fn-pull-obs-effects-loop obs fc security nil)))
+
+(local
+ (defthm fn-pull-obs-effects-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-pull-obs-effects-loop-is-revappend
+   (equal (fn-pull-obs-effects-loop obs fc security acc)
+          (revappend acc (fn-pull-obs-effects obs fc security)))
+   :hints (("Goal" :induct (fn-pull-obs-effects-loop obs fc security acc)
+                   :in-theory (union-theories '(fn-pull-obs-effects-loop fn-pull-obs-effects revappend car-cons cdr-cons fn-pull-obs-effects-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-pull-obs-effects-loop)
+
+(verify-guards fn-pull-obs-effects
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-pull-obs-effects)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-pull-obs-effects-loop-is-revappend (acc nil))))))
+
 
 ; Every observation is one the preamble goes on from.
 (defun fn-pull-pre-okp (obs)

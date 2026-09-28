@@ -871,12 +871,43 @@
 ; nibble is 15 (continued by the length less 15 in 255s and a remainder)
 ; unless the length is under 15.
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-lz-length-ext-loop (r acc)
+  (declare (xargs :measure (nfix r) :guard (and (natp r) (true-listp acc)) :verify-guards nil))
+  (if (or (zp r) (< r 255))
+      (revappend acc (list (nfix r)))
+    (fn-lz-length-ext-loop (- r 255) (cons 255 acc))))
+
 (defun fn-lz-length-ext (r)
   ; The extension octets for R = length - 15: 255 while R >= 255, then R.
-  (declare (xargs :guard (natp r) :measure (nfix r)))
-  (if (or (zp r) (< r 255))
-      (list (nfix r))
-    (cons 255 (fn-lz-length-ext (- r 255)))))
+  (declare (xargs :verify-guards nil :guard (natp r) :measure (nfix r)))
+  (mbe :logic
+       (if (or (zp r) (< r 255))
+           (list (nfix r))
+         (cons 255 (fn-lz-length-ext (- r 255))))
+       :exec (fn-lz-length-ext-loop r nil)))
+
+(local
+ (defthm fn-lz-length-ext-loop-is-revappend
+   (equal (fn-lz-length-ext-loop r acc)
+          (revappend acc (fn-lz-length-ext r)))
+   :hints (("Goal" :induct (fn-lz-length-ext-loop r acc)
+                   :in-theory (union-theories '(fn-lz-length-ext-loop fn-lz-length-ext revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-lz-length-ext-loop)
+
+(verify-guards fn-lz-length-ext
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-lz-length-ext)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-lz-length-ext-loop-is-revappend (acc nil))))))
+
 
 (defun fn-lz-literal-block (x)
   (declare (xargs :guard (true-listp x)))

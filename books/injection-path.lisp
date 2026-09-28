@@ -31,10 +31,41 @@
 ; -----------------------------------------------------------------------------
 ; Octet classes
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-inj-take-n-loop (n x acc)
+  (declare (xargs :measure (nfix n) :guard (true-listp acc) :verify-guards nil))
+  (if (or (not (posp n)) (atom x))
+      (revappend acc nil)
+    (fn-inj-take-n-loop (- n 1) (cdr x) (cons (car x) acc))))
+
 (defun fn-inj-take-n (n x)
-  (declare (xargs :guard t :measure (nfix n)))
-  (if (or (not (posp n)) (atom x)) nil
-    (cons (car x) (fn-inj-take-n (- n 1) (cdr x)))))
+  (declare (xargs :verify-guards nil :guard t :measure (nfix n)))
+  (mbe :logic
+       (if (or (not (posp n)) (atom x)) nil
+         (cons (car x) (fn-inj-take-n (- n 1) (cdr x))))
+       :exec (fn-inj-take-n-loop n x nil)))
+
+(local
+ (defthm fn-inj-take-n-loop-is-revappend
+   (equal (fn-inj-take-n-loop n x acc)
+          (revappend acc (fn-inj-take-n n x)))
+   :hints (("Goal" :induct (fn-inj-take-n-loop n x acc)
+                   :in-theory (union-theories '(fn-inj-take-n-loop fn-inj-take-n revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-inj-take-n-loop)
+
+(verify-guards fn-inj-take-n
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-inj-take-n)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-inj-take-n-loop-is-revappend (acc nil))))))
+
 
 (defun fn-inj-drop-n (n x)
   (declare (xargs :guard t :measure (nfix n)))
@@ -97,29 +128,97 @@
   (declare (xargs :guard t))
   (if (consp x) (fn-inj-rev (cdr x) (cons (car x) acc)) acc))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-inj-split-at-loop (sep x cur acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp x)
+      (if (equal (car x) sep)
+          (fn-inj-split-at-loop sep (cdr x) nil (cons (fn-inj-rev cur nil) acc))
+        (fn-inj-split-at-loop sep (cdr x) (cons (car x) cur) acc))
+    (revappend acc (list (fn-inj-rev cur nil)))))
+
 (defun fn-inj-split-at (sep x cur)
   ; The segments of x separated by `sep', in order; `cur' is the current
   ; segment reversed.  One pass.
-  (declare (xargs :guard t))
-  (if (consp x)
-      (if (equal (car x) sep)
-          (cons (fn-inj-rev cur nil) (fn-inj-split-at sep (cdr x) nil))
-        (fn-inj-split-at sep (cdr x) (cons (car x) cur)))
-    (list (fn-inj-rev cur nil))))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp x)
+           (if (equal (car x) sep)
+               (cons (fn-inj-rev cur nil) (fn-inj-split-at sep (cdr x) nil))
+             (fn-inj-split-at sep (cdr x) (cons (car x) cur)))
+         (list (fn-inj-rev cur nil)))
+       :exec (fn-inj-split-at-loop sep x cur nil)))
+
+(local
+ (defthm fn-inj-split-at-loop-is-revappend
+   (equal (fn-inj-split-at-loop sep x cur acc)
+          (revappend acc (fn-inj-split-at sep x cur)))
+   :hints (("Goal" :induct (fn-inj-split-at-loop sep x cur acc)
+                   :in-theory (union-theories '(fn-inj-split-at-loop fn-inj-split-at revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-inj-split-at-loop)
+
+(verify-guards fn-inj-split-at
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-inj-split-at)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-inj-split-at-loop-is-revappend (acc nil))))))
+
 
 (defun fn-inj-drop-wsp (x)
   (declare (xargs :guard t))
   (if (and (consp x) (fn-inj-wspp (car x))) (fn-inj-drop-wsp (cdr x)) x))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-inj-trim-wsp-right-loop (x acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp x)
+      (if (fn-inj-wspp (car x))
+          (if (fn-inj-drop-wsp x)
+              (fn-inj-trim-wsp-right-loop (cdr x) (cons (car x) acc))
+            (revappend acc nil))
+        (fn-inj-trim-wsp-right-loop (cdr x) (cons (car x) acc)))
+    (revappend acc nil)))
+
 (defun fn-inj-trim-wsp-right (x)
   ; x without its trailing WSP; x has no WSP inside a valid element, so the
   ; first WSP starts the trailing run.
-  (declare (xargs :guard t))
-  (if (consp x)
-      (if (fn-inj-wspp (car x))
-          (if (fn-inj-drop-wsp x) (cons (car x) (fn-inj-trim-wsp-right (cdr x))) nil)
-        (cons (car x) (fn-inj-trim-wsp-right (cdr x))))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp x)
+           (if (fn-inj-wspp (car x))
+               (if (fn-inj-drop-wsp x) (cons (car x) (fn-inj-trim-wsp-right (cdr x))) nil)
+             (cons (car x) (fn-inj-trim-wsp-right (cdr x))))
+         nil)
+       :exec (fn-inj-trim-wsp-right-loop x nil)))
+
+(local
+ (defthm fn-inj-trim-wsp-right-loop-is-revappend
+   (equal (fn-inj-trim-wsp-right-loop x acc)
+          (revappend acc (fn-inj-trim-wsp-right x)))
+   :hints (("Goal" :induct (fn-inj-trim-wsp-right-loop x acc)
+                   :in-theory (union-theories '(fn-inj-trim-wsp-right-loop fn-inj-trim-wsp-right revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-inj-trim-wsp-right-loop)
+
+(verify-guards fn-inj-trim-wsp-right
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-inj-trim-wsp-right)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-inj-trim-wsp-right-loop-is-revappend (acc nil))))))
+
 
 ; -----------------------------------------------------------------------------
 ; RFC 5536 section 3.1.5 elements
@@ -206,21 +305,89 @@
   (declare (xargs :guard t))
   (if (consp x) (and (fn-inj-alphap (car x)) (fn-inj-all-alphap (cdr x))) t))
 
-(defun fn-inj-downcase (x)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-inj-downcase-loop (x acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp x)
-      (cons (if (and (integerp (car x)) (<= 65 (car x)) (<= (car x) 90))
-                (+ 32 (car x)) (car x))
-            (fn-inj-downcase (cdr x)))
-    nil))
+      (fn-inj-downcase-loop (cdr x)
+                            (cons (if (and (integerp (car x))
+                                           (<= 65 (car x))
+                                           (<= (car x) 90))
+                                      (+ 32 (car x))
+                                    (car x))
+                                  acc))
+    (revappend acc nil)))
+
+(defun fn-inj-downcase (x)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp x)
+           (cons (if (and (integerp (car x)) (<= 65 (car x)) (<= (car x) 90))
+                     (+ 32 (car x)) (car x))
+                 (fn-inj-downcase (cdr x)))
+         nil)
+       :exec (fn-inj-downcase-loop x nil)))
+
+(local
+ (defthm fn-inj-downcase-loop-is-revappend
+   (equal (fn-inj-downcase-loop x acc)
+          (revappend acc (fn-inj-downcase x)))
+   :hints (("Goal" :induct (fn-inj-downcase-loop x acc)
+                   :in-theory (union-theories '(fn-inj-downcase-loop fn-inj-downcase revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-inj-downcase-loop)
+
+(verify-guards fn-inj-downcase
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-inj-downcase)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-inj-downcase-loop-is-revappend (acc nil))))))
+
 
 ; diag-other without its leading "!": "." diag-keyword [ "." diag-identity ].
 ; The keyword runs to the next "."; the identity is the rest.
-(defun fn-inj-diag-keyword (x)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-inj-diag-keyword-loop (x acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (and (consp x) (not (equal (car x) 46)))
-      (cons (car x) (fn-inj-diag-keyword (cdr x)))
-    nil))
+      (fn-inj-diag-keyword-loop (cdr x) (cons (car x) acc))
+    (revappend acc nil)))
+
+(defun fn-inj-diag-keyword (x)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (and (consp x) (not (equal (car x) 46)))
+           (cons (car x) (fn-inj-diag-keyword (cdr x)))
+         nil)
+       :exec (fn-inj-diag-keyword-loop x nil)))
+
+(local
+ (defthm fn-inj-diag-keyword-loop-is-revappend
+   (equal (fn-inj-diag-keyword-loop x acc)
+          (revappend acc (fn-inj-diag-keyword x)))
+   :hints (("Goal" :induct (fn-inj-diag-keyword-loop x acc)
+                   :in-theory (union-theories '(fn-inj-diag-keyword-loop fn-inj-diag-keyword revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-inj-diag-keyword-loop)
+
+(verify-guards fn-inj-diag-keyword
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-inj-diag-keyword)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-inj-diag-keyword-loop-is-revappend (acc nil))))))
+
 
 (defun fn-inj-after-keyword (x)
   (declare (xargs :guard t))
@@ -273,9 +440,40 @@
               (t nil)))
     t))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-inj-but-last-loop (x acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (and (consp x) (consp (cdr x)))
+      (fn-inj-but-last-loop (cdr x) (cons (car x) acc))
+    (revappend acc nil)))
+
 (defun fn-inj-but-last (x)
-  (declare (xargs :guard t))
-  (if (and (consp x) (consp (cdr x))) (cons (car x) (fn-inj-but-last (cdr x))) nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (and (consp x) (consp (cdr x))) (cons (car x) (fn-inj-but-last (cdr x))) nil)
+       :exec (fn-inj-but-last-loop x nil)))
+
+(local
+ (defthm fn-inj-but-last-loop-is-revappend
+   (equal (fn-inj-but-last-loop x acc)
+          (revappend acc (fn-inj-but-last x)))
+   :hints (("Goal" :induct (fn-inj-but-last-loop x acc)
+                   :in-theory (union-theories '(fn-inj-but-last-loop fn-inj-but-last revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-inj-but-last-loop)
+
+(verify-guards fn-inj-but-last
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-inj-but-last)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-inj-but-last-loop-is-revappend (acc nil))))))
+
 
 (defun fn-inj-path-valuep (value)
   (declare (xargs :guard t))
@@ -312,16 +510,45 @@
 ; The offset of the octet after "Path: " on the first header line that opens
 ; with it, or nil.  `bol' says x is at the start of a line.  A line ends at
 ; CR LF; an empty line (a line opening with CR) ends the header.
-(defun fn-inj-path-scan (x bol)
-  (declare (xargs :guard t :measure (acl2-count x)))
+; Executes by a loop (PKT-877, lane serve-depth): the scan took one control-
+; stack frame per octet of the proto-article before its Path field.  The loop
+; counts the octets passed in N and answers the offset or NIL as it does.
+(defun fn-inj-path-scan-loop (x bol n)
+  (declare (xargs :guard (acl2-numberp n) :measure (acl2-count x) :verify-guards nil))
   (cond ((atom x) nil)
-        ((and bol (fn-inj-path-openp x)) 6)
+        ((and bol (fn-inj-path-openp x)) (+ n 6))
         ((and bol (equal (car x) 13)) nil)
         ((and (equal (car x) 13) (consp (cdr x)) (equal (cadr x) 10))
-         (let ((r (fn-inj-path-scan (cddr x) t)))
-           (if r (+ 2 r) nil)))
-        (t (let ((r (fn-inj-path-scan (cdr x) nil)))
-             (if r (+ 1 r) nil)))))
+         (fn-inj-path-scan-loop (cddr x) t (+ n 2)))
+        (t (fn-inj-path-scan-loop (cdr x) nil (+ n 1)))))
+
+(defun fn-inj-path-scan (x bol)
+  (declare (xargs :guard t :measure (acl2-count x) :verify-guards nil))
+  (mbe :logic
+       (cond ((atom x) nil)
+             ((and bol (fn-inj-path-openp x)) 6)
+             ((and bol (equal (car x) 13)) nil)
+             ((and (equal (car x) 13) (consp (cdr x)) (equal (cadr x) 10))
+              (let ((r (fn-inj-path-scan (cddr x) t)))
+                (if r (+ 2 r) nil)))
+             (t (let ((r (fn-inj-path-scan (cdr x) nil)))
+                  (if r (+ 1 r) nil))))
+       :exec (fn-inj-path-scan-loop x bol 0)))
+
+(local
+ (defthm fn-inj-path-scan-loop-is-plus
+   (implies (acl2-numberp n)
+            (equal (fn-inj-path-scan-loop x bol n)
+                   (let ((r (fn-inj-path-scan x bol)))
+                     (if r (+ n r) nil))))
+   :hints (("Goal" :induct (fn-inj-path-scan-loop x bol n)
+                   :in-theory (disable fn-inj-path-openp)))))
+
+(verify-guards fn-inj-path-scan-loop)
+
+(verify-guards fn-inj-path-scan
+  :hints (("Goal" :in-theory (disable fn-inj-path-scan-loop fn-inj-path-openp)
+                  :use ((:instance fn-inj-path-scan-loop-is-plus (n 0))))))
 
 (defun fn-inj-path-offset (source)
   (declare (xargs :guard t))

@@ -102,12 +102,44 @@
                 nil))
     nil))
 
-(defun fn-mvb-groups-octets (groups)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-mvb-groups-octets-loop (groups acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp groups)
-      (cons (fn-record-string-octets (car groups))
-            (fn-mvb-groups-octets (cdr groups)))
-    nil))
+      (fn-mvb-groups-octets-loop (cdr groups)
+                                 (cons (fn-record-string-octets (car groups)) acc))
+    (revappend acc nil)))
+
+(defun fn-mvb-groups-octets (groups)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp groups)
+           (cons (fn-record-string-octets (car groups))
+                 (fn-mvb-groups-octets (cdr groups)))
+         nil)
+       :exec (fn-mvb-groups-octets-loop groups nil)))
+
+(local
+ (defthm fn-mvb-groups-octets-loop-is-revappend
+   (equal (fn-mvb-groups-octets-loop groups acc)
+          (revappend acc (fn-mvb-groups-octets groups)))
+   :hints (("Goal" :induct (fn-mvb-groups-octets-loop groups acc)
+                   :in-theory (union-theories '(fn-mvb-groups-octets-loop fn-mvb-groups-octets revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-mvb-groups-octets-loop)
+
+(verify-guards fn-mvb-groups-octets
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-mvb-groups-octets)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-mvb-groups-octets-loop-is-revappend (acc nil))))))
+
 
 (defconst *fn-mvb-from* '(70 114 111 109 58 32 111 112 101 114 97 116 111 114 64))
                                                            ; "From: operator@"

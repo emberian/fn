@@ -43,12 +43,48 @@
 
 ; The configuration records the fold takes before an event of txid TXID
 ; (fn-cpr-config-firstp: a record whose txid is at most the event's).
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-sorr-configs-before-loop (rev txid acc)
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
+  (if (consp rev)
+      (fn-sorr-configs-before-loop (cdr rev)
+                                   txid
+                                   (+ (if (<= (nfix (fn-cfg-record-txid (car rev)))
+                                              (nfix txid))
+                                          1
+                                        0)
+                                      acc))
+    acc))
+
 (defun fn-sorr-configs-before (configs txid)
-  (declare (xargs :guard t))
-  (if (consp configs)
-      (+ (if (<= (nfix (fn-cfg-record-txid (car configs))) (nfix txid)) 1 0)
-         (fn-sorr-configs-before (cdr configs) txid))
-    0))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp configs)
+           (+ (if (<= (nfix (fn-cfg-record-txid (car configs))) (nfix txid)) 1 0)
+              (fn-sorr-configs-before (cdr configs) txid))
+         0)
+       :exec (fn-sorr-configs-before-loop (fn-ag-rev-onto configs nil) txid 0)))
+
+(local
+ (defthm fn-sorr-configs-before-loop-of-rev-onto
+   (equal (fn-sorr-configs-before-loop (fn-ag-rev-onto configs zs) txid 0)
+          (fn-sorr-configs-before-loop zs txid (fn-sorr-configs-before configs txid)))
+   :hints (("Goal" :induct (fn-ag-rev-onto configs zs)
+                   :in-theory (union-theories '(fn-sorr-configs-before-loop fn-sorr-configs-before fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-sorr-configs-before-loop)
+
+(verify-guards fn-sorr-configs-before
+  :hints (("Goal" :in-theory (union-theories '(fn-sorr-configs-before fn-sorr-configs-before-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-sorr-configs-before-loop-of-rev-onto (zs nil))))))
+
 
 ; The event of EVENTS (from index I) at which a fold stopping at POSITION
 ; stopped: its sequence I plus the configuration records before it.

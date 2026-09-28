@@ -298,12 +298,46 @@
   :hints (("Goal" :use ((:instance fn-feed-distinct-fast-is-distinctp
                                    (seen nil))))))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-feed-inflight-count-loop (rev acc)
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
+  (if (consp rev)
+      (fn-feed-inflight-count-loop (cdr rev)
+                                   (+ (if (fn-feed-state-inflightp (fn-feed-entry-state (car rev)))
+                                          1
+                                        0)
+                                      acc))
+    acc))
+
 (defun fn-feed-inflight-count (xs)
-  (declare (xargs :guard t))
-  (if (atom xs)
-      0
-      (+ (if (fn-feed-state-inflightp (fn-feed-entry-state (car xs))) 1 0)
-         (fn-feed-inflight-count (cdr xs)))))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (atom xs)
+           0
+           (+ (if (fn-feed-state-inflightp (fn-feed-entry-state (car xs))) 1 0)
+              (fn-feed-inflight-count (cdr xs))))
+       :exec (fn-feed-inflight-count-loop (fn-ag-rev-onto xs nil) 0)))
+
+(local
+ (defthm fn-feed-inflight-count-loop-of-rev-onto
+   (equal (fn-feed-inflight-count-loop (fn-ag-rev-onto xs zs) 0)
+          (fn-feed-inflight-count-loop zs (fn-feed-inflight-count xs)))
+   :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                   :in-theory (union-theories '(fn-feed-inflight-count-loop fn-feed-inflight-count fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-feed-inflight-count-loop)
+
+(verify-guards fn-feed-inflight-count
+  :hints (("Goal" :in-theory (union-theories '(fn-feed-inflight-count fn-feed-inflight-count-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-feed-inflight-count-loop-of-rev-onto (zs nil))))))
+
 
 (defun fn-feed-attempts-belowp (xs n)
   (declare (xargs :guard t))
@@ -323,68 +357,255 @@
           (fn-feed-entry-msgid (car xs))
           (fn-feed-head-queued (cdr xs)))))
 
-(defun fn-feed-queue-set-state (xs msgid st)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-feed-queue-set-state-loop (xs msgid st acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (atom xs)
-      nil
-      (if (equal (fn-feed-entry-msgid (car xs)) msgid)
-          (cons (fn-feed-entry (fn-feed-entry-msgid (car xs)) st
-                               (fn-feed-entry-attempts (car xs))
-                               (fn-feed-entry-tick (car xs)))
-                (cdr xs))
-          (cons (car xs) (fn-feed-queue-set-state (cdr xs) msgid st)))))
+      (revappend acc nil)
+    (if (equal (fn-feed-entry-msgid (car xs)) msgid)
+        (revappend acc
+                   (cons (fn-feed-entry (fn-feed-entry-msgid (car xs))
+                                        st
+                                        (fn-feed-entry-attempts (car xs))
+                                        (fn-feed-entry-tick (car xs)))
+                         (cdr xs)))
+      (fn-feed-queue-set-state-loop (cdr xs) msgid st (cons (car xs) acc)))))
+
+(defun fn-feed-queue-set-state (xs msgid st)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (atom xs)
+           nil
+           (if (equal (fn-feed-entry-msgid (car xs)) msgid)
+               (cons (fn-feed-entry (fn-feed-entry-msgid (car xs)) st
+                                    (fn-feed-entry-attempts (car xs))
+                                    (fn-feed-entry-tick (car xs)))
+                     (cdr xs))
+               (cons (car xs) (fn-feed-queue-set-state (cdr xs) msgid st))))
+       :exec (fn-feed-queue-set-state-loop xs msgid st nil)))
+
+(local
+ (defthm fn-feed-queue-set-state-loop-is-revappend
+   (equal (fn-feed-queue-set-state-loop xs msgid st acc)
+          (revappend acc (fn-feed-queue-set-state xs msgid st)))
+   :hints (("Goal" :induct (fn-feed-queue-set-state-loop xs msgid st acc)
+                   :in-theory (union-theories '(fn-feed-queue-set-state-loop fn-feed-queue-set-state revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-feed-queue-set-state-loop)
+
+(verify-guards fn-feed-queue-set-state
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-feed-queue-set-state)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-feed-queue-set-state-loop-is-revappend (acc nil))))))
+
 
 ; Requeue after a 431/436 or a connection loss: back to :queued, one more
 ; attempt counted, the tick remembered.
-(defun fn-feed-queue-requeue (xs msgid tick)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-feed-queue-requeue-loop (xs msgid tick acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (atom xs)
-      nil
-      (if (equal (fn-feed-entry-msgid (car xs)) msgid)
-          (cons (fn-feed-entry (fn-feed-entry-msgid (car xs)) :queued
-                               (+ 1 (nfix (fn-feed-entry-attempts (car xs))))
-                               (nfix tick))
-                (cdr xs))
-          (cons (car xs) (fn-feed-queue-requeue (cdr xs) msgid tick)))))
+      (revappend acc nil)
+    (if (equal (fn-feed-entry-msgid (car xs)) msgid)
+        (revappend acc
+                   (cons (fn-feed-entry (fn-feed-entry-msgid (car xs))
+                                        :queued
+                                        (+ 1 (nfix (fn-feed-entry-attempts (car xs))))
+                                        (nfix tick))
+                         (cdr xs)))
+      (fn-feed-queue-requeue-loop (cdr xs) msgid tick (cons (car xs) acc)))))
+
+(defun fn-feed-queue-requeue (xs msgid tick)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (atom xs)
+           nil
+           (if (equal (fn-feed-entry-msgid (car xs)) msgid)
+               (cons (fn-feed-entry (fn-feed-entry-msgid (car xs)) :queued
+                                    (+ 1 (nfix (fn-feed-entry-attempts (car xs))))
+                                    (nfix tick))
+                     (cdr xs))
+               (cons (car xs) (fn-feed-queue-requeue (cdr xs) msgid tick))))
+       :exec (fn-feed-queue-requeue-loop xs msgid tick nil)))
+
+(local
+ (defthm fn-feed-queue-requeue-loop-is-revappend
+   (equal (fn-feed-queue-requeue-loop xs msgid tick acc)
+          (revappend acc (fn-feed-queue-requeue xs msgid tick)))
+   :hints (("Goal" :induct (fn-feed-queue-requeue-loop xs msgid tick acc)
+                   :in-theory (union-theories '(fn-feed-queue-requeue-loop fn-feed-queue-requeue revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-feed-queue-requeue-loop)
+
+(verify-guards fn-feed-queue-requeue
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-feed-queue-requeue)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-feed-queue-requeue-loop-is-revappend (acc nil))))))
+
 
 ; Every in-flight entry back to :queued with one more attempt: the 400 / lost
 ; connection case.  Nothing is dropped.
-(defun fn-feed-queue-requeue-inflight (xs tick)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-feed-queue-requeue-inflight-loop (xs tick acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (atom xs)
-      nil
-      (cons (if (fn-feed-state-inflightp (fn-feed-entry-state (car xs)))
-                (fn-feed-entry (fn-feed-entry-msgid (car xs)) :queued
-                               (+ 1 (nfix (fn-feed-entry-attempts (car xs))))
-                               (nfix tick))
-                (car xs))
-            (fn-feed-queue-requeue-inflight (cdr xs) tick))))
+      (revappend acc nil)
+    (fn-feed-queue-requeue-inflight-loop (cdr xs)
+                                         tick
+                                         (cons (if (fn-feed-state-inflightp (fn-feed-entry-state (car xs)))
+                                                   (fn-feed-entry (fn-feed-entry-msgid (car xs))
+                                                                  :queued
+                                                                  (+ 1
+                                                                     (nfix (fn-feed-entry-attempts (car xs))))
+                                                                  (nfix tick))
+                                                 (car xs))
+                                               acc))))
+
+(defun fn-feed-queue-requeue-inflight (xs tick)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (atom xs)
+           nil
+           (cons (if (fn-feed-state-inflightp (fn-feed-entry-state (car xs)))
+                     (fn-feed-entry (fn-feed-entry-msgid (car xs)) :queued
+                                    (+ 1 (nfix (fn-feed-entry-attempts (car xs))))
+                                    (nfix tick))
+                     (car xs))
+                 (fn-feed-queue-requeue-inflight (cdr xs) tick)))
+       :exec (fn-feed-queue-requeue-inflight-loop xs tick nil)))
+
+(local
+ (defthm fn-feed-queue-requeue-inflight-loop-is-revappend
+   (equal (fn-feed-queue-requeue-inflight-loop xs tick acc)
+          (revappend acc (fn-feed-queue-requeue-inflight xs tick)))
+   :hints (("Goal" :induct (fn-feed-queue-requeue-inflight-loop xs tick acc)
+                   :in-theory (union-theories '(fn-feed-queue-requeue-inflight-loop fn-feed-queue-requeue-inflight revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-feed-queue-requeue-inflight-loop)
+
+(verify-guards fn-feed-queue-requeue-inflight
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-feed-queue-requeue-inflight)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-feed-queue-requeue-inflight-loop-is-revappend (acc nil))))))
+
 
 ; `fn-feed-settle' is the RELATION between a live feed and its replay: it maps
 ; (:offered n)/(:sent n) to :queued and forgets the attempt id.  It is not a
 ; second implementation of restart; `fn-feed-restart-is-settle-with-no-conn'
 ; is the equation that says so.
-(defun fn-feed-queue-settle (xs)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-feed-queue-settle-loop (xs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (atom xs)
-      nil
-      (cons (if (fn-feed-state-inflightp (fn-feed-entry-state (car xs)))
-                (fn-feed-entry (fn-feed-entry-msgid (car xs)) :queued
-                               (fn-feed-entry-attempts (car xs))
-                               (fn-feed-entry-tick (car xs)))
-                (car xs))
-            (fn-feed-queue-settle (cdr xs)))))
+      (revappend acc nil)
+    (fn-feed-queue-settle-loop (cdr xs)
+                               (cons (if (fn-feed-state-inflightp (fn-feed-entry-state (car xs)))
+                                         (fn-feed-entry (fn-feed-entry-msgid (car xs))
+                                                        :queued
+                                                        (fn-feed-entry-attempts (car xs))
+                                                        (fn-feed-entry-tick (car xs)))
+                                       (car xs))
+                                     acc))))
+
+(defun fn-feed-queue-settle (xs)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (atom xs)
+           nil
+           (cons (if (fn-feed-state-inflightp (fn-feed-entry-state (car xs)))
+                     (fn-feed-entry (fn-feed-entry-msgid (car xs)) :queued
+                                    (fn-feed-entry-attempts (car xs))
+                                    (fn-feed-entry-tick (car xs)))
+                     (car xs))
+                 (fn-feed-queue-settle (cdr xs))))
+       :exec (fn-feed-queue-settle-loop xs nil)))
+
+(local
+ (defthm fn-feed-queue-settle-loop-is-revappend
+   (equal (fn-feed-queue-settle-loop xs acc)
+          (revappend acc (fn-feed-queue-settle xs)))
+   :hints (("Goal" :induct (fn-feed-queue-settle-loop xs acc)
+                   :in-theory (union-theories '(fn-feed-queue-settle-loop fn-feed-queue-settle revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-feed-queue-settle-loop)
+
+(verify-guards fn-feed-queue-settle
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-feed-queue-settle)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-feed-queue-settle-loop-is-revappend (acc nil))))))
+
 
 ; Retire: the entry for MSGID leaves the queue.  Work is one walk of the
 ; queue, which holds only undelivered entries.  The queue is distinct
 ; (`fn-feed-distinctp'), so the first match is the only one.
-(defun fn-feed-queue-retire (xs msgid)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-feed-queue-retire-loop (xs msgid acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (atom xs)
-      nil
-      (if (equal (fn-feed-entry-msgid (car xs)) msgid)
-          (cdr xs)
-          (cons (car xs) (fn-feed-queue-retire (cdr xs) msgid)))))
+      (revappend acc nil)
+    (if (equal (fn-feed-entry-msgid (car xs)) msgid)
+        (revappend acc (cdr xs))
+      (fn-feed-queue-retire-loop (cdr xs) msgid (cons (car xs) acc)))))
+
+(defun fn-feed-queue-retire (xs msgid)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (atom xs)
+           nil
+           (if (equal (fn-feed-entry-msgid (car xs)) msgid)
+               (cdr xs)
+               (cons (car xs) (fn-feed-queue-retire (cdr xs) msgid))))
+       :exec (fn-feed-queue-retire-loop xs msgid nil)))
+
+(local
+ (defthm fn-feed-queue-retire-loop-is-revappend
+   (equal (fn-feed-queue-retire-loop xs msgid acc)
+          (revappend acc (fn-feed-queue-retire xs msgid)))
+   :hints (("Goal" :induct (fn-feed-queue-retire-loop xs msgid acc)
+                   :in-theory (union-theories '(fn-feed-queue-retire-loop fn-feed-queue-retire revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-feed-queue-retire-loop)
+
+(verify-guards fn-feed-queue-retire
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-feed-queue-retire)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-feed-queue-retire-loop-is-revappend (acc nil))))))
+
 
 ; -----------------------------------------------------------------------------
 ; The per-peer limits, copied from the peer record's outbound half at open

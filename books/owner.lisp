@@ -1213,21 +1213,87 @@
 ; -----------------------------------------------------------------------------
 ; Connections
 
-(defun fn-own-replace-conn (conn conns)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-own-replace-conn-loop (conn conns acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp conns)
       (if (equal (fn-own-conn-id (car conns)) (fn-own-conn-id conn))
-          (cons conn (cdr conns))
-        (cons (car conns) (fn-own-replace-conn conn (cdr conns))))
-    nil))
+          (revappend acc (cons conn (cdr conns)))
+        (fn-own-replace-conn-loop conn (cdr conns) (cons (car conns) acc)))
+    (revappend acc nil)))
 
-(defun fn-own-remove-conn (id conns)
-  (declare (xargs :guard t))
+(defun fn-own-replace-conn (conn conns)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp conns)
+           (if (equal (fn-own-conn-id (car conns)) (fn-own-conn-id conn))
+               (cons conn (cdr conns))
+             (cons (car conns) (fn-own-replace-conn conn (cdr conns))))
+         nil)
+       :exec (fn-own-replace-conn-loop conn conns nil)))
+
+(local
+ (defthm fn-own-replace-conn-loop-is-revappend
+   (equal (fn-own-replace-conn-loop conn conns acc)
+          (revappend acc (fn-own-replace-conn conn conns)))
+   :hints (("Goal" :induct (fn-own-replace-conn-loop conn conns acc)
+                   :in-theory (union-theories '(fn-own-replace-conn-loop fn-own-replace-conn revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-own-replace-conn-loop)
+
+(verify-guards fn-own-replace-conn
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-own-replace-conn)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-own-replace-conn-loop-is-revappend (acc nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-own-remove-conn-loop (id conns acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp conns)
       (if (equal (fn-own-conn-id (car conns)) id)
-          (fn-own-remove-conn id (cdr conns))
-        (cons (car conns) (fn-own-remove-conn id (cdr conns))))
-    nil))
+          (fn-own-remove-conn-loop id (cdr conns) acc)
+        (fn-own-remove-conn-loop id (cdr conns) (cons (car conns) acc)))
+    (revappend acc nil)))
+
+(defun fn-own-remove-conn (id conns)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp conns)
+           (if (equal (fn-own-conn-id (car conns)) id)
+               (fn-own-remove-conn id (cdr conns))
+             (cons (car conns) (fn-own-remove-conn id (cdr conns))))
+         nil)
+       :exec (fn-own-remove-conn-loop id conns nil)))
+
+(local
+ (defthm fn-own-remove-conn-loop-is-revappend
+   (equal (fn-own-remove-conn-loop id conns acc)
+          (revappend acc (fn-own-remove-conn id conns)))
+   :hints (("Goal" :induct (fn-own-remove-conn-loop id conns acc)
+                   :in-theory (union-theories '(fn-own-remove-conn-loop fn-own-remove-conn revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-own-remove-conn-loop)
+
+(verify-guards fn-own-remove-conn
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-own-remove-conn)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-own-remove-conn-loop-is-revappend (acc nil))))))
+
 
 (defun fn-own-find-conn (id conns)
   (declare (xargs :guard t))
@@ -1915,13 +1981,46 @@
   (declare (xargs :guard t))
   (cdr (fn-own-advance-result o id)))
 
-(defun fn-own-remove-subs (id subs)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-own-remove-subs-loop (id subs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp subs)
       (if (equal (fn-own-sub-id (car subs)) id)
-          (fn-own-remove-subs id (cdr subs))
-        (cons (car subs) (fn-own-remove-subs id (cdr subs))))
-    nil))
+          (fn-own-remove-subs-loop id (cdr subs) acc)
+        (fn-own-remove-subs-loop id (cdr subs) (cons (car subs) acc)))
+    (revappend acc nil)))
+
+(defun fn-own-remove-subs (id subs)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp subs)
+           (if (equal (fn-own-sub-id (car subs)) id)
+               (fn-own-remove-subs id (cdr subs))
+             (cons (car subs) (fn-own-remove-subs id (cdr subs))))
+         nil)
+       :exec (fn-own-remove-subs-loop id subs nil)))
+
+(local
+ (defthm fn-own-remove-subs-loop-is-revappend
+   (equal (fn-own-remove-subs-loop id subs acc)
+          (revappend acc (fn-own-remove-subs id subs)))
+   :hints (("Goal" :induct (fn-own-remove-subs-loop id subs acc)
+                   :in-theory (union-theories '(fn-own-remove-subs-loop fn-own-remove-subs revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-own-remove-subs-loop)
+
+(verify-guards fn-own-remove-subs
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-own-remove-subs)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-own-remove-subs-loop-is-revappend (acc nil))))))
+
 
 ; Closing drops the connection, its pending transaction, its queued
 ; submissions and its submission in flight (a durable path already running

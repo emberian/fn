@@ -1238,15 +1238,46 @@ clock observations fit its schema-0 representation."
       (or (equal name (car names)) (fn-native-admin-name-memberp name (cdr names)))
     nil))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-native-admin-append-record-loop (records record acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp records)
+      (fn-native-admin-append-record-loop (cdr records) record (cons (car records) acc))
+    (revappend acc (list record))))
+
 (defun fn-native-admin-append-record (records record)
   "Total, one-record extension for the candidate replay.  The byte decoder
 supplies proper record lists, but this boundary remains executable for a
 malformed logical value and therefore does not make an unproved LISTP claim
 to Common Lisp's guarded APPEND."
-  (declare (xargs :guard t))
-  (if (consp records)
-      (cons (car records) (fn-native-admin-append-record (cdr records) record))
-    (list record)))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp records)
+           (cons (car records) (fn-native-admin-append-record (cdr records) record))
+         (list record))
+       :exec (fn-native-admin-append-record-loop records record nil)))
+
+(local
+ (defthm fn-native-admin-append-record-loop-is-revappend
+   (equal (fn-native-admin-append-record-loop records record acc)
+          (revappend acc (fn-native-admin-append-record records record)))
+   :hints (("Goal" :induct (fn-native-admin-append-record-loop records record acc)
+                   :in-theory (union-theories '(fn-native-admin-append-record-loop fn-native-admin-append-record revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-native-admin-append-record-loop)
+
+(verify-guards fn-native-admin-append-record
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-native-admin-append-record)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-native-admin-append-record-loop-is-revappend (acc nil))))))
+
 
 (defun fn-native-admin-publication-authorize
     (records frontier config-records record lock-owned observed-names

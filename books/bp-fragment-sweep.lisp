@@ -190,11 +190,40 @@
 ; -----------------------------------------------------------------------------
 ; Sorting by offset (a merge sort)
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpfw-evens-loop (xs acc)
+  (declare (xargs :guard (and (true-listp xs) (true-listp acc)) :verify-guards nil))
+  (if (consp xs) (fn-bpfw-evens-loop (cddr xs) (cons (car xs) acc)) (revappend acc nil)))
+
 (defun fn-bpfw-evens (xs)
-  (declare (xargs :guard (true-listp xs)))
-  (if (consp xs)
-      (cons (car xs) (fn-bpfw-evens (cddr xs)))
-    nil))
+  (declare (xargs :verify-guards nil :guard (true-listp xs)))
+  (mbe :logic
+       (if (consp xs)
+           (cons (car xs) (fn-bpfw-evens (cddr xs)))
+         nil)
+       :exec (fn-bpfw-evens-loop xs nil)))
+
+(local
+ (defthm fn-bpfw-evens-loop-is-revappend
+   (equal (fn-bpfw-evens-loop xs acc)
+          (revappend acc (fn-bpfw-evens xs)))
+   :hints (("Goal" :induct (fn-bpfw-evens-loop xs acc)
+                   :in-theory (union-theories '(fn-bpfw-evens-loop fn-bpfw-evens revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpfw-evens-loop)
+
+(verify-guards fn-bpfw-evens
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpfw-evens)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpfw-evens-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-bpfw-len-evens
   (<= (len (fn-bpfw-evens xs)) (len xs))
@@ -206,15 +235,48 @@
   :hints (("Goal" :expand ((fn-bpfw-evens xs))))
   :rule-classes :linear)
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpfw-merge-loop (a b acc)
+  (declare (xargs :measure (+ (acl2-count a) (acl2-count b)) :guard (and (and (fn-bpfw-fragment-listp a) (fn-bpfw-fragment-listp b)) (true-listp acc)) :verify-guards nil))
+  (cond ((atom a) (revappend acc b))
+        ((atom b) (revappend acc a))
+        ((<= (fn-bpf-offset (car a)) (fn-bpf-offset (car b)))
+         (fn-bpfw-merge-loop (cdr a) b (cons (car a) acc)))
+        (t (fn-bpfw-merge-loop a (cdr b) (cons (car b) acc)))))
+
 (defun fn-bpfw-merge (a b)
-  (declare (xargs :guard (and (fn-bpfw-fragment-listp a)
+  (declare (xargs :verify-guards nil :guard (and (fn-bpfw-fragment-listp a)
                               (fn-bpfw-fragment-listp b))
                   :measure (+ (acl2-count a) (acl2-count b))))
-  (cond ((atom a) b)
-        ((atom b) a)
-        ((<= (fn-bpf-offset (car a)) (fn-bpf-offset (car b)))
-         (cons (car a) (fn-bpfw-merge (cdr a) b)))
-        (t (cons (car b) (fn-bpfw-merge a (cdr b))))))
+  (mbe :logic
+       (cond ((atom a) b)
+             ((atom b) a)
+             ((<= (fn-bpf-offset (car a)) (fn-bpf-offset (car b)))
+              (cons (car a) (fn-bpfw-merge (cdr a) b)))
+             (t (cons (car b) (fn-bpfw-merge a (cdr b)))))
+       :exec (fn-bpfw-merge-loop a b nil)))
+
+(local
+ (defthm fn-bpfw-merge-loop-is-revappend
+   (equal (fn-bpfw-merge-loop a b acc)
+          (revappend acc (fn-bpfw-merge a b)))
+   :hints (("Goal" :induct (fn-bpfw-merge-loop a b acc)
+                   :in-theory (union-theories '(fn-bpfw-merge-loop fn-bpfw-merge revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpfw-merge-loop)
+
+(verify-guards fn-bpfw-merge
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpfw-merge)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpfw-merge-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-bpfw-evens-fragment-list
   (implies (fn-bpfw-fragment-listp xs)
@@ -355,13 +417,46 @@
                          (fn-bpfw-head-cell (cdr active)))
     :gap))
 
-(defun fn-bpfw-advance (active)
-  (declare (xargs :guard (true-list-listp active)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpfw-advance-loop (active acc)
+  (declare (xargs :guard (and (true-list-listp active) (true-listp acc)) :verify-guards nil))
   (if (consp active)
       (if (consp (cdr (car active)))
-          (cons (cdr (car active)) (fn-bpfw-advance (cdr active)))
-        (fn-bpfw-advance (cdr active)))
-    nil))
+          (fn-bpfw-advance-loop (cdr active) (cons (cdr (car active)) acc))
+        (fn-bpfw-advance-loop (cdr active) acc))
+    (revappend acc nil)))
+
+(defun fn-bpfw-advance (active)
+  (declare (xargs :verify-guards nil :guard (true-list-listp active)))
+  (mbe :logic
+       (if (consp active)
+           (if (consp (cdr (car active)))
+               (cons (cdr (car active)) (fn-bpfw-advance (cdr active)))
+             (fn-bpfw-advance (cdr active)))
+         nil)
+       :exec (fn-bpfw-advance-loop active nil)))
+
+(local
+ (defthm fn-bpfw-advance-loop-is-revappend
+   (equal (fn-bpfw-advance-loop active acc)
+          (revappend acc (fn-bpfw-advance active)))
+   :hints (("Goal" :induct (fn-bpfw-advance-loop active acc)
+                   :in-theory (union-theories '(fn-bpfw-advance-loop fn-bpfw-advance revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpfw-advance-loop)
+
+(verify-guards fn-bpfw-advance
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpfw-advance)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpfw-advance-loop-is-revappend (acc nil))))))
+
 
 (local
  (defthm fn-bpfw-true-listp-of-nthcdr

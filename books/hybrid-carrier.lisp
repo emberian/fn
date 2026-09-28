@@ -7,6 +7,7 @@
 (include-book "stx-carrier")
 (include-book "injection-shape")
 (include-book "article-fields")
+(include-book "rev-onto") ; the loop twins' step (PKT-877)
 
 (defconst *fn-hc-version* 1)
 ; Carrier v2 carries a source over the v1 length field's 65535 octets.  Its
@@ -229,15 +230,56 @@
 ; the generated/mutable profile fields.  Callers must first establish exactly
 ; one valid FN-Authorship field; malformed/ambiguous input is retained by the
 ; plan below and never passed here as an inferred authored source.
-(defun fn-hc-source-header (fields)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-hc-source-header-loop (fields acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp fields)
       (if (or (not (true-listp (car fields)))
               (fn-hc-reserved-namep (fn-article-field-name (car fields))))
-          (fn-hc-source-header (cdr fields))
-        (append (fn-stx-field-octets (fn-article-field-raw-lines (car fields)))
-                (fn-hc-source-header (cdr fields))))
-    nil))
+          (fn-hc-source-header-loop (cdr fields) acc)
+        (fn-hc-source-header-loop (cdr fields)
+                                  (fn-ag-rev-onto (fn-stx-field-octets (fn-article-field-raw-lines (car fields)))
+                                                  acc)))
+    (revappend acc nil)))
+
+(defun fn-hc-source-header (fields)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp fields)
+           (if (or (not (true-listp (car fields)))
+                   (fn-hc-reserved-namep (fn-article-field-name (car fields))))
+               (fn-hc-source-header (cdr fields))
+             (append (fn-stx-field-octets (fn-article-field-raw-lines (car fields)))
+                     (fn-hc-source-header (cdr fields))))
+         nil)
+       :exec (fn-hc-source-header-loop fields nil)))
+
+(local
+ (defthm fn-hc-source-header-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-hc-source-header-loop-is-revappend
+   (equal (fn-hc-source-header-loop fields acc)
+          (revappend acc (fn-hc-source-header fields)))
+   :hints (("Goal" :induct (fn-hc-source-header-loop fields acc)
+                   :in-theory (union-theories '(fn-hc-source-header-loop fn-hc-source-header revappend car-cons cdr-cons fn-hc-source-header-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-hc-source-header-loop)
+
+(verify-guards fn-hc-source-header
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-hc-source-header)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-hc-source-header-loop-is-revappend (acc nil))))))
+
 
 (defun fn-hc-authored-source (article)
   (declare (xargs :guard t))
@@ -247,13 +289,49 @@
             (if (true-listp (fn-article-body article))
                 (fn-article-body article) nil))))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-hc-count-name-loop (name rev acc)
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
+  (if (consp rev)
+      (fn-hc-count-name-loop name
+                             (cdr rev)
+                             (+ (if (and (true-listp (car rev))
+                                         (equal name (fn-article-field-name (car rev))))
+                                    1
+                                  0)
+                                acc))
+    acc))
+
 (defun fn-hc-count-name (name fields)
-  (declare (xargs :guard t))
-  (if (consp fields)
-      (+ (if (and (true-listp (car fields))
-                  (equal name (fn-article-field-name (car fields)))) 1 0)
-         (fn-hc-count-name name (cdr fields)))
-    0))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp fields)
+           (+ (if (and (true-listp (car fields))
+                       (equal name (fn-article-field-name (car fields)))) 1 0)
+              (fn-hc-count-name name (cdr fields)))
+         0)
+       :exec (fn-hc-count-name-loop name (fn-ag-rev-onto fields nil) 0)))
+
+(local
+ (defthm fn-hc-count-name-loop-of-rev-onto
+   (equal (fn-hc-count-name-loop name (fn-ag-rev-onto fields zs) 0)
+          (fn-hc-count-name-loop name zs (fn-hc-count-name name fields)))
+   :hints (("Goal" :induct (fn-ag-rev-onto fields zs)
+                   :in-theory (union-theories '(fn-hc-count-name-loop fn-hc-count-name fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-hc-count-name-loop)
+
+(verify-guards fn-hc-count-name
+  :hints (("Goal" :in-theory (union-theories '(fn-hc-count-name fn-hc-count-name-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-hc-count-name-loop-of-rev-onto (zs nil))))))
+
 
 (defun fn-hc-no-other-reservedp (fields)
   (declare (xargs :guard t))

@@ -67,17 +67,56 @@
                  (fn-b3x-byte (+ p 2) e prefix lp a fn-octets)
                  (fn-b3x-byte (+ p 3) e prefix lp a fn-octets)))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-b3x-words-loop (k p e prefix lp a fn-octets acc)
+  (declare (type (integer 0 *) p e lp a))
+  (declare (xargs :stobjs fn-octets :measure (nfix k) :guard (and (and (natp k) (true-listp prefix) (= lp (len prefix)) (<= (+ a (- e lp)) (fn-octets-len fn-octets))) (true-listp acc)) :verify-guards nil))
+  (if (zp k)
+      (revappend acc nil)
+    (fn-b3x-words-loop (- k 1)
+                       (+ p 4)
+                       e
+                       prefix
+                       lp
+                       a
+                       fn-octets
+                       (cons (fn-b3x-word p e prefix lp a fn-octets) acc))))
+
 (defun fn-b3x-words (k p e prefix lp a fn-octets)
   ; K words from P, as a list: a chunk's LAST block only.
   (declare (type (integer 0 *) p e lp a)
-           (xargs :stobjs fn-octets
+           (xargs :verify-guards nil :stobjs fn-octets
                   :guard (and (natp k) (true-listp prefix) (= lp (len prefix))
                               (<= (+ a (- e lp)) (fn-octets-len fn-octets)))
                   :measure (nfix k)))
-  (if (zp k)
-      nil
-    (cons (fn-b3x-word p e prefix lp a fn-octets)
-          (fn-b3x-words (- k 1) (+ p 4) e prefix lp a fn-octets))))
+  (mbe :logic
+       (if (zp k)
+           nil
+         (cons (fn-b3x-word p e prefix lp a fn-octets)
+               (fn-b3x-words (- k 1) (+ p 4) e prefix lp a fn-octets)))
+       :exec (fn-b3x-words-loop k p e prefix lp a fn-octets nil)))
+
+(local
+ (defthm fn-b3x-words-loop-is-revappend
+   (equal (fn-b3x-words-loop k p e prefix lp a fn-octets acc)
+          (revappend acc (fn-b3x-words k p e prefix lp a fn-octets)))
+   :hints (("Goal" :induct (fn-b3x-words-loop k p e prefix lp a fn-octets acc)
+                   :in-theory (union-theories '(fn-b3x-words-loop fn-b3x-words revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-b3x-words-loop)
+
+(verify-guards fn-b3x-words
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-b3x-words)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-b3x-words-loop-is-revappend (acc nil))))))
+
 
 ; -----------------------------------------------------------------------------
 ; A chunk: the octets [Q, E), the chaining value in C0..C7.

@@ -59,12 +59,43 @@
       (if (consp (cdr xs)) (fn-path-last-octet (cdr xs)) (car xs))
     nil))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-path-butlast-loop (xs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (and (consp xs) (consp (cdr xs)))
+      (fn-path-butlast-loop (cdr xs) (cons (car xs) acc))
+    (revappend acc nil)))
+
 (defun fn-path-butlast (xs)
   ; Every entry but the <tail-entry>.
-  (declare (xargs :guard t))
-  (if (and (consp xs) (consp (cdr xs)))
-      (cons (car xs) (fn-path-butlast (cdr xs)))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (and (consp xs) (consp (cdr xs)))
+           (cons (car xs) (fn-path-butlast (cdr xs)))
+         nil)
+       :exec (fn-path-butlast-loop xs nil)))
+
+(local
+ (defthm fn-path-butlast-loop-is-revappend
+   (equal (fn-path-butlast-loop xs acc)
+          (revappend acc (fn-path-butlast xs)))
+   :hints (("Goal" :induct (fn-path-butlast-loop xs acc)
+                   :in-theory (union-theories '(fn-path-butlast-loop fn-path-butlast revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-path-butlast-loop)
+
+(verify-guards fn-path-butlast
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-path-butlast)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-path-butlast-loop-is-revappend (acc nil))))))
+
 
 (defun fn-path-strip-prefix (prefix xs)
   ; (:ok rest) when prefix is a prefix of xs, else nil.
