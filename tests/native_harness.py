@@ -44,7 +44,6 @@ import enum
 import os
 from pathlib import Path
 import re
-import select
 import signal
 import socket
 import ssl
@@ -1014,11 +1013,12 @@ def _octets(value):
 
 
 def dot_stuff(article):
-    """ARTICLE with CRLF line ends and leading dots doubled (RFC 3977 3.1.1)."""
+    """ARTICLE, CRLF-terminated, with a dot doubled at the start of every
+    line (RFC 3977 3.1.1); lines are split at CRLF only, never a bare CR or LF."""
     if not article.endswith(b"\r\n"):
         article += b"\r\n"
-    return b"".join(b"." + line if line.startswith(b".") else line
-                    for line in article.splitlines(keepends=True))
+    return b"\r\n".join(b"." + line if line.startswith(b".") else line
+                         for line in article.split(b"\r\n"))
 
 
 def article(message_id, *, groups="fn.test", subject="native test",
