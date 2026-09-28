@@ -158,7 +158,7 @@
 ; The read from OC with ID's posting bit off; a POST is refused 440 at the
 ; command, and a connection that still enters article mode is closed with
 ; 400.
-(defun fn-oas-refused-read (oc views id i end s fn-octets fn-arena fn-cat)
+(defun fn-oas-refused-read (oc views id i end cache s fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets))
@@ -189,7 +189,7 @@
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (let ((r (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)))
     (if (fn-oas-over-p oc (fn-own-tls-result-owner r) id slots)
-        (fn-oas-refused-read oc views id i end s fn-octets fn-arena fn-cat)
+        (fn-oas-refused-read oc views id i end cache s fn-octets fn-arena fn-cat)
       r)))
 
 ; -----------------------------------------------------------------------------
@@ -279,7 +279,7 @@
 (defthm fn-oas-refused-read-is-not-article
   (not (fn-oas-articlep
         (fn-own-tls-result-owner
-         (fn-oas-refused-read oc views id i end s fn-octets fn-arena fn-cat))
+         (fn-oas-refused-read oc views id i end cache s fn-octets fn-arena fn-cat))
         id))
   :hints (("Goal" :in-theory (e/d (fn-oas-refused-read)
                                   (fn-otm-read-span fn-oas-articlep fn-oas-owner-closed
