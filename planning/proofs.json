@@ -12671,6 +12671,32 @@
         "fn-rcl-store-classes-over-every-verdict",
         "fn-rcl-store-counts-is-the-model-over-alpha"
       ]
+    },
+    {
+      "id": "PRF-365",
+      "title": "The served owner's records are the history image's followed by the log suffix: the owner the host installs from a checkpoint holds exactly the checkpoint's records then the suffix, the image of the checkpoint's records answers them through the record view, and the snapshot's append leaves the image of the next checkpoint's records",
+      "statement": "books/history-pages-owner.lisp. KEYSTONES: fn-hpo-installed-records-are-checkpoint-then-suffix (no hypothesis beyond the install's success: with PAIR = (fn-rii-sco-extend-open C CONFIGS SUFFIX FRONTIER) and OC = (fn-ock-install (car (cadr PAIR)) (cadr (cadr PAIR)) MAX-CONNS) not :fault, (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner OC)))) = (append (true-list-fix (fn-sco-records C)) SUFFIX)); fn-hpo-records-at-is-installed-nth (the same OC not :fault, H = (fn-sco-records C) with fn-hp-okp, N = (len H), LENS = (fn-hp-lens H SALT), STARTS placed (fn-hp-starts-okp, adt-placement-ok STARTS LENS NP), the page store's verified pages holding (fn-hp-piw H SALT STARTS NP), I natural: (fn-hp-records-at I N SUFFIX SALT LENS STARTS PGS-MEM) answers (:ok (nth I RECORDS)) whenever its verdict is :ok below (len RECORDS), is :ok or a need-verdict there, and (:refused :seq) at and past it, RECORDS the installed owner's); fn-hpo-records-at-is-nth-of-extension (the same over any R with (fn-sf-prefixp H R) and the suffix (nthcdr (len H) R): the served owner's records only extend, owner-invariants-served fn-own-run-records-prefix); fn-hpo-snapshot-image-is-next-checkpoint (H = (fn-sco-records BASE) imaged as above, R a true list with (fn-ock-prefixp H R), (fn-hp-x-append-all (nthcdr (len H) R) 0 SALT (len H) LENS STARTS NP PGS-MEM) answering :ok => (fn-sco-records (fn-ock-next-checkpoint BASE CONFIGS R)) = R, and the answer's header (N2 LENS2 STARTS2 NP2) and store hold R's image: fn-hp-okp R, N2 = (len R), LENS2 = (fn-hp-lens R SALT), (fn-hp-vhold ... (fn-hp-piw R SALT STARTS2 NP2))). Scope: the image and the checkpoint are two durable writes; that the pair an open reads belongs to one snapshot is the host's to establish and is the hypothesis H = (fn-sco-records C).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-035"
+      ],
+      "depends_on": [
+        "PRF-342"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-pages-owner.lisp",
+        "tests/acl2/history-pages-owner-tests.lisp",
+        "planning/evidence/arena-store-4-2026-09-28.md"
+      ],
+      "progress_note": "The link books/history-pages-view.lisp left open (lane arena-store-5, 2026-09-28). Each subject is host-called: fn-rii-sco-extend-open (host/store-node-host.lisp fn-store-sn-recover-from-checkpoint), fn-ock-install (host/owner-host.lisp fn-owner-recover-from-store-open), fn-hp-records-at and fn-hp-x-append-all (host/native/proto-history-pages.lisp), fn-ock-next-checkpoint (the owner's publication). The served owner does not yet read its records through the image nor write the image at its snapshot: that is the representation change of arena-store-3's P1 (the owner's store holding the image handle and the suffix instead of the whole list).",
+      "events": [
+        "fn-hpo-installed-records-are-checkpoint-then-suffix",
+        "fn-hpo-records-at-is-installed-nth",
+        "fn-hpo-records-at-is-nth-of-extension",
+        "fn-hpo-snapshot-image-is-next-checkpoint"
+      ]
     }
   ]
 }
