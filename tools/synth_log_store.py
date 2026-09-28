@@ -182,7 +182,12 @@ def main():
     seg = os.path.join(a.seed, "journal", "000001.log")
     if os.path.exists(os.path.join(a.seed, "store-checkpoint.fnsc")) or \
        sorted(os.listdir(os.path.join(a.seed, "journal"))) != ["000001.log"]:
-        raise SystemExit("seed: expected one segment and no checkpoint")
+        raise SystemExit("seed: expected one segment (journal/000001.log) and no checkpoint; "
+                         "found journal/ %s%s (a seed whose owner checkpointed has rotated "
+                         "its log: initialize it with --max-open-suffix above its record "
+                         "count)" % (sorted(os.listdir(os.path.join(a.seed, "journal"))),
+                                     " and store-checkpoint.fnsc" if os.path.exists(
+                                         os.path.join(a.seed, "store-checkpoint.fnsc")) else ""))
     raws = read_entries(seg)
     temps = [Template(r) for r in raws]
     for k, t in enumerate(temps):
