@@ -19,10 +19,6 @@
                               (fn-sched-initial-state config next-tx) state)))
     (value :ready))))
 
-(defun fn-sched-host-next-tx (state)
- (declare (xargs :stobjs state :mode :program))
- (value (fn-sched-next-tx (f-get-global 'fn-sched-state state))))
-
 (defun fn-sched-host-retries (state)
  (declare (xargs :stobjs state :mode :program))
  (value (fn-sched-retries (f-get-global 'fn-sched-state state))))
