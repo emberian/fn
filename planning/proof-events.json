@@ -10612,6 +10612,51 @@
           "kind": "theorem",
           "name": "fn-scj-invp-at-identity-finish",
           "note": "KEYSTONE. The same at the identity finish (fn-rix-ocfg-complete); the composite's equations named."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-finish-submission",
+          "note": "KEYSTONE (join-f2). The host's article finish (host/owner-host.lisp fn-owner-finish-submission-synced: fn-apc-own-finish then fn-sca-finish with the token read off the completion) carries fn-sjh-okp (the catalog invariant, the carried side facts, the rows' facts and LINK) from the owner relation and :durable alone; the pending row exists and is cleared. Over fn-ccar-own-finish: fn-sjh-okp-at-host-article-finish. Teeth: pending (the T2 owner fixture of served-catalog-join-pinned-tests evaluates the carried hypotheses; an executable twin of fn-sjh-okp is the open item)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-host-article-finish",
+          "note": "KEYSTONE (join-f2). The finish over fn-ccar-own-finish; every hypothesis of fn-scj-invp-at-host-article-finish-carried derived (fn-sjh-finish-premises-of-okp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-of-ocfg-io",
+          "note": "KEYSTONE (join-f2). The store's io steps (fn-owner-io: fn-rcon-ocfg-io = fn-ocfg-step (:store (:io op result))) keep fn-sjh-okp with the same pending row; the record-directory append moves the staged row into the history as the completing last record. Hypothesis: the view's archive after is a state (the owner relation after carries it)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-prepare-buffer",
+          "note": "KEYSTONE (join-f2). The host's article POST under the service mutex (fn-pout-prepare-article over the row at the arena's count, the buffer's seal, fn-cat-prepare-sealed) from fn-sjh-okp at the reserved store gives fn-sjh-okp with the new pending row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-known-abort",
+          "note": "KEYSTONE (join-f2). fn-owner-known-abort on :aborted clears the pending row (host fix): fn-sjh-okp with none."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-refuse-reservation",
+          "note": "KEYSTONE (join-f2). fn-owner-refuse-reservation on :refused clears the pending row: fn-sjh-okp with none."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-install",
+          "note": "KEYSTONE (join-f2). fn-owner-install-extended's owner and loaded catalog satisfy fn-sjh-okp with no pending row, given the join and the rows' facts."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-recover",
+          "note": "KEYSTONE (join-f2). The checkpoint open and recovery: fn-sjh-okp; the rows' handles/composites/clearness are the checkpoint image's named facts."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-full-open",
+          "note": "KEYSTONE (join-f2). The full open: fn-sjh-okp from the intern alone."
         }
       ]
     },
