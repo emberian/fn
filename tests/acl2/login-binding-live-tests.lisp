@@ -140,12 +140,14 @@
                                       (fn-lb-binding-delta name principal))))
    :hints (("Goal" :in-theory (disable fn-lb-binding-delta)))))
 
-; --- fn-lb-sync-binds-every-login-as-the-file-does ---------------------------
+; --- fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings
+; (the file-login half; the account half is PRF-388's, at the end).
 ; Witness: the file binds ember to Q and says nothing of guest; the
 ; configuration binds ember to P and guest to Q.  The plan re-binds ember and
 ; unbinds guest, and after it the configuration agrees with the file.
 (defconst *lblt-file* (list (cons *lblt-name* *lblt-q*)))
-(defconst *lblt-pairs* (fn-lb-sync-pairs *lblt-file* (fn-lb-value-bindings *lblt-v-p*)))
+(defconst *lblt-pairs* (fn-lb-sync-pairs *lblt-file* (fn-lb-value-bindings *lblt-v-p*)
+                                         (fn-cfg-accounts *lblt-v-p*)))
 (assert-event (equal *lblt-pairs* (list (cons *lblt-name* *lblt-q*)
                                         (cons *lblt-guest* nil))))
 (assert-event (fn-lb-pairs-okp *lblt-pairs*))
@@ -164,7 +166,8 @@
 ; the unbind, so the configuration does not bind the login as the file does.
 (defconst *lblt-bad-file* (list (cons *lblt-name* '(300))))
 (assert-event (not (fn-lb-pairs-okp
-                    (fn-lb-sync-pairs *lblt-bad-file* (fn-lb-value-bindings *lblt-v-p*)))))
+                    (fn-lb-sync-pairs *lblt-bad-file* (fn-lb-value-bindings *lblt-v-p*)
+                                      (fn-cfg-accounts *lblt-v-p*)))))
 (assert-event (equal (fn-lb-sync-plan *lblt-bad-file* *lblt-v-p*)
                      (list :refused :binding-login)))
 (assert-event (not (equal (fn-lb-binding
@@ -174,7 +177,8 @@
                                           (fn-lb-pairs-deltas
                                            (fn-lb-sync-pairs
                                             *lblt-bad-file*
-                                            (fn-lb-value-bindings *lblt-v-p*))))))
+                                            (fn-lb-value-bindings *lblt-v-p*)
+                                            (fn-cfg-accounts *lblt-v-p*))))))
                           (fn-lb-binding *lblt-name* *lblt-bad-file*))))
 (must-fail-checked
  (defthm lblt-sync-without-okp
@@ -182,11 +186,15 @@
            name (fn-lb-value-bindings
                  (fn-cfg-apply v gen stamp
                                (fn-lb-pairs-deltas
-                                (fn-lb-sync-pairs file (fn-lb-value-bindings v))))))
-          (fn-lb-binding name file))
+                                (fn-lb-sync-pairs file (fn-lb-value-bindings v)
+                                                  (fn-cfg-accounts v))))))
+          (if (fn-lb-config-ownsp name file (fn-cfg-accounts v))
+              (fn-lb-binding name (fn-lb-value-bindings v))
+            (fn-lb-binding name file)))
    :hints (("Goal" :do-not '(preprocess)
             :in-theory (disable fn-lb-value-bindings fn-lb-sync-pairs
-                                fn-lb-pairs-deltas)))))
+                                fn-lb-pairs-deltas))))
+ :step-limit 100000)
 
 ; --- the pinned view ----------------------------------------------------------
 ; fn-lb-an-open-session-is-decided-under-its-pinned-table.  Witness (the
@@ -455,3 +463,137 @@
 (assert-event (not (fn-ocfg-staged *lblt-st6*)))
 (assert-event (equal (car (mv-list 2 (fn-ocl-publish *lblt-st6* 2 *lblt-max*)))
                      :refused))
+
+; -----------------------------------------------------------------------------
+; PRF-388 (PKT-560): a redeemed account's login is bound in the configuration.
+;
+; *lblt-v-acct*: *lblt-v-p* (ember bound to P, guest to Q, the policy on)
+; with an invitation redeemed as `robin' (the rows XREDEEM writes: pending
+; mark 0, then redeemed mark 1) and a second redeemed, then deleted, as
+; `wren' (its tombstone, mark 7).
+(defconst *lblt-robin* (fn-record-string-octets "robin"))
+(defconst *lblt-wren* (fn-record-string-octets "wren"))
+(defconst *lblt-nobody* (fn-record-string-octets "nobody"))
+(defconst *lblt-digest-1* (coerce (make-list 64 :initial-element #\a) 'string))
+(defconst *lblt-digest-2* (coerce (make-list 64 :initial-element #\b) 'string))
+(defconst *lblt-verifier* (coerce (make-list 96 :initial-element #\c) 'string))
+(defconst *lblt-v-acct*
+  (fn-cfg-apply *lblt-v-p* 2 0
+                (list (fn-cfg-account-invite *lblt-digest-1* "operator" 100)
+                      (fn-cfg-account-redeem *lblt-digest-1* "robin" *lblt-verifier*)
+                      (fn-cfg-account-invite *lblt-digest-2* "operator" 100)
+                      (fn-cfg-account-redeem *lblt-digest-2* "wren" *lblt-verifier*)
+                      (fn-cfg-account-delete "wren"))))
+(defconst *lblt-p-hex* (fn-id-hex-octets *lblt-p*))
+(assert-event (equal (fn-lb-hex-principal *lblt-p-hex*) *lblt-p*))
+(assert-event (null (fn-lb-hex-principal nil)))
+(assert-event (equal (fn-lb-hex-principal (cdr *lblt-p-hex*)) :bad))
+(defconst *lblt-plan* (fn-lb-account-bind-plan *lblt-robin* *lblt-p-hex* *lblt-v-acct*))
+
+; --- fn-lb-account-bind-plan-admits-exactly-a-held-account-login -------------
+; Witness: robin, a 32-octet principal, a redeemed account: :ok.
+(assert-event (and (fn-lb-bindable-namep *lblt-robin*)
+                   (fn-lb-principalp (fn-lb-hex-principal *lblt-p-hex*))
+                   (fn-lb-account-heldp *lblt-robin* (fn-cfg-accounts *lblt-v-acct*))
+                   (equal (car *lblt-plan*) :ok)))
+; Each conjunct alone fails, the others hold, and the plan refuses by name.
+; A login no account holds (nor the file: that is the verb's first question).
+(assert-event (and (fn-lb-bindable-namep *lblt-nobody*)
+                   (not (fn-lb-account-heldp *lblt-nobody* (fn-cfg-accounts *lblt-v-acct*)))
+                   (equal (fn-lb-account-bind-plan *lblt-nobody* *lblt-p-hex* *lblt-v-acct*)
+                          (list :refused :unknown-login))))
+; A deleted account's tombstone holds no account.
+(assert-event (and (fn-lb-bindable-namep *lblt-wren*)
+                   (not (fn-lb-account-heldp *lblt-wren* (fn-cfg-accounts *lblt-v-acct*)))
+                   (equal (fn-lb-account-bind-plan *lblt-wren* *lblt-p-hex* *lblt-v-acct*)
+                          (list :refused :unknown-login))))
+; A principal of 63 digits.
+(assert-event (and (fn-lb-account-heldp *lblt-robin* (fn-cfg-accounts *lblt-v-acct*))
+                   (not (fn-lb-principalp (fn-lb-hex-principal (cdr *lblt-p-hex*))))
+                   (equal (fn-lb-account-bind-plan *lblt-robin* (cdr *lblt-p-hex*)
+                                                   *lblt-v-acct*)
+                          (list :refused :binding-principal))))
+; A login the configuration cannot spell.
+(assert-event (and (not (fn-lb-bindable-namep '(300)))
+                   (equal (fn-lb-account-bind-plan '(300) *lblt-p-hex* *lblt-v-acct*)
+                          (list :refused :binding-login))))
+; The unbind of an account login is :ok too.
+(assert-event (equal (fn-lb-account-bind-plan *lblt-robin* nil *lblt-v-acct*)
+                     (list :ok (list (fn-lb-binding-delta *lblt-robin* nil)))))
+
+; --- fn-lb-account-bind-plan-binds-exactly-the-account-login -----------------
+(defconst *lblt-v-bound* (fn-cfg-apply *lblt-v-acct* 3 nil (cadr *lblt-plan*)))
+(assert-event (null (fn-cfg-delta-reason *lblt-v-acct* 3 nil 0 512 (car (cadr *lblt-plan*)))))
+(assert-event (equal (fn-lb-binding *lblt-robin* (fn-lb-value-bindings *lblt-v-bound*))
+                     *lblt-p*))
+(assert-event (equal (fn-lb-binding *lblt-name* (fn-lb-value-bindings *lblt-v-bound*))
+                     (fn-lb-binding *lblt-name* (fn-lb-value-bindings *lblt-v-acct*))))
+(assert-event (fn-lb-account-heldp *lblt-robin* (fn-cfg-accounts *lblt-v-bound*)))
+; Without :ok the conclusion fails: the refused plan binds nothing.
+(assert-event
+ (let ((plan (fn-lb-account-bind-plan *lblt-nobody* *lblt-p-hex* *lblt-v-acct*)))
+   (and (not (equal (car plan) :ok))
+        (not (equal (fn-lb-binding *lblt-nobody*
+                                   (fn-lb-value-bindings
+                                    (fn-cfg-apply *lblt-v-acct* 3 nil (cadr plan))))
+                    *lblt-p*)))))
+
+; --- fn-lb-an-account-binding-survives-the-next-start --------------------------
+; Witness: the file binds ember to Q and does not name robin; the plan's
+; pairs are okp; after the start publication robin is still bound to P.
+(defconst *lblt-start-pairs*
+  (fn-lb-sync-pairs *lblt-file* (fn-lb-value-bindings *lblt-v-bound*)
+                    (fn-cfg-accounts *lblt-v-bound*)))
+(assert-event (and (equal (car *lblt-plan*) :ok)
+                   (not (fn-lb-has *lblt-robin* *lblt-file*))
+                   (fn-lb-pairs-okp *lblt-start-pairs*)))
+(assert-event (fn-lb-config-ownsp *lblt-robin* *lblt-file* (fn-cfg-accounts *lblt-v-bound*)))
+(assert-event (equal (fn-lb-binding *lblt-robin*
+                                    (fn-lb-value-bindings
+                                     (fn-cfg-apply *lblt-v-bound* 4 nil
+                                                   (fn-lb-pairs-deltas *lblt-start-pairs*))))
+                     *lblt-p*))
+; The file still decides its own logins in the same publication: guest,
+; bound in the configuration and not an account, is unbound as before.
+(assert-event (null (fn-lb-binding *lblt-guest*
+                                   (fn-lb-value-bindings
+                                    (fn-cfg-apply *lblt-v-bound* 4 nil
+                                                  (fn-lb-pairs-deltas *lblt-start-pairs*))))))
+; Hypothesis removal (the file names robin): the file's binding wins.
+(defconst *lblt-file-robin* (list (cons *lblt-name* *lblt-q*) (cons *lblt-robin* *lblt-q*)))
+(defconst *lblt-start-pairs-robin*
+  (fn-lb-sync-pairs *lblt-file-robin* (fn-lb-value-bindings *lblt-v-bound*)
+                    (fn-cfg-accounts *lblt-v-bound*)))
+(assert-event (and (equal (car *lblt-plan*) :ok)
+                   (fn-lb-has *lblt-robin* *lblt-file-robin*)
+                   (fn-lb-pairs-okp *lblt-start-pairs-robin*)
+                   (equal (fn-lb-binding *lblt-robin*
+                                         (fn-lb-value-bindings
+                                          (fn-cfg-apply *lblt-v-bound* 4 nil
+                                                        (fn-lb-pairs-deltas
+                                                         *lblt-start-pairs-robin*))))
+                          *lblt-q*)))
+; Hypothesis removal (no account, so no :ok plan): a binding row for nobody,
+; written straight into the configuration, is unbound by the next start --
+; the fate of every account-login binding before PKT-560.
+(defconst *lblt-v-raw*
+  (fn-cfg-apply *lblt-v-acct* 3 nil (list (fn-lb-binding-delta *lblt-nobody* *lblt-p*))))
+(defconst *lblt-raw-pairs*
+  (fn-lb-sync-pairs *lblt-file* (fn-lb-value-bindings *lblt-v-raw*)
+                    (fn-cfg-accounts *lblt-v-raw*)))
+(assert-event (and (not (equal (car (fn-lb-account-bind-plan *lblt-nobody* *lblt-p-hex*
+                                                             *lblt-v-acct*))
+                               :ok))
+                   (not (fn-lb-has *lblt-nobody* *lblt-file*))
+                   (fn-lb-pairs-okp *lblt-raw-pairs*)
+                   (equal (fn-lb-binding *lblt-nobody* (fn-lb-value-bindings *lblt-v-raw*))
+                          *lblt-p*)
+                   (null (fn-lb-binding *lblt-nobody*
+                                        (fn-lb-value-bindings
+                                         (fn-cfg-apply *lblt-v-raw* 4 nil
+                                                       (fn-lb-pairs-deltas
+                                                        *lblt-raw-pairs*)))))))
+; (fn-lb-pairs-okp PAIRS) is the start publication's own check, carried from
+; fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings;
+; a file entry that is not bindable fails it without touching robin's row,
+; so no counter-witness separates it here and no weakened theorem is claimed.
