@@ -195,7 +195,6 @@
 (defun fn-bpn-host-receive-outcome (r) (nth 0 r))
 (defun fn-bpn-host-receive-reason (r) (nth 1 r))
 (defun fn-bpn-host-receive-adu (r) (nth 2 r))
-(defun fn-bpn-host-receive-length (r) (nth 3 r))
 
 ; -----------------------------------------------------------------------------
 ; One process result.  The class of a BP verb's run and its exit code are
