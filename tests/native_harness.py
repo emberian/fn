@@ -733,20 +733,32 @@ def deployed_stack(env):
     return env
 
 
-# Variables a test sets for one start only; never inherited from the shell.
-PER_START = ("FN_HOST", "FN_NATIVE_CONTROL_FAULT", "FN_NATIVE_CONTROL_TEST_STOP")
+_SELECTORS = []
+
+
+def developer_selectors():
+    """The developer-image selectors host/native/io.lisp registers
+    (`+fnn-developer-selectors+`): a test sets one for one start only, so
+    `environment` never inherits one from the shell."""
+    if not _SELECTORS:
+        source = (ROOT / "host" / "native" / "io.lisp").read_text(encoding="utf-8")
+        found = re.search(r"\(defparameter \+fnn-developer-selectors\+\s+'\((.*?)\)\)", source, re.S)
+        if not found:
+            raise RuntimeError("host/native/io.lisp: +fnn-developer-selectors+ not found")
+        _SELECTORS.extend(re.findall(r'"(FN_[A-Z0-9_]+)"', found.group(1)))
+    return tuple(_SELECTORS)
 
 
 def environment(extra=None, *, stack=True):
     """The environment a native process gets: the shell's, at the deployed
     control stack (STACK), without the ACL2 customization or system books,
-    without a per-start fault selector, plus EXTRA (a None value removes)."""
+    without FN_HOST or any developer selector, plus EXTRA (a None value
+    removes)."""
     env = dict(os.environ)
     if stack:
         deployed_stack(env)
     env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    for name in PER_START:
+    for name in ("ACL2_SYSTEM_BOOKS", "FN_HOST") + developer_selectors():
         env.pop(name, None)
     for name, value in (extra or {}).items():
         if value is None:
