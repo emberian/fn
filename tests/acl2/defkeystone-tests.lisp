@@ -23,7 +23,7 @@
 
 ; The statement as a source book would state it.
 (defthm fn-dkt-add-adds-source
-  (implies (and (natp x) (< x 10)) (equal (fn-dkt-add x y) (+ x y)))
+  (implies (and (natp x) (< x 10)) (<= (fix y) (fn-dkt-add x y)))
   :hints (("Goal" :in-theory (enable fn-dkt-add))))
 
 ; ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@
 ; corrupted state here only so that the label's text is exercised.
 
 (defkeystone fn-dkt-add-adds
-  (implies (and (natp x) (< x 10)) (equal (fn-dkt-add x y) (+ x y)))
+  (implies (and (natp x) (< x 10)) (<= (fix y) (fn-dkt-add x y)))
   :subject fn-dkt-add
   :id :test
   :restates fn-dkt-add-adds-source
@@ -40,7 +40,7 @@
   :witness ((x 3) (y 4))
   :breaks ((natp ((x -1)))
            (small ((x 10)) :corrupt "a label test, not a claim"))
-  :mutations ((off-by-one (equal (fn-dkt-add x y) (+ 1 x y)) ((x 3))))
+  :mutations ((strict (< (fix y) (fn-dkt-add x y)) ((x 0))))
   :corrupt ((not-a-number ((x 'a))))
   :hints (("Goal" :in-theory (enable fn-dkt-add))))
 
@@ -49,7 +49,7 @@
 
 (defconst *fn-dkt-sample*
   '(defkeystone fn-dkt-add-adds
-     (implies (and (natp x) (< x 10)) (equal (fn-dkt-add x y) (+ x y)))
+     (implies (and (natp x) (< x 10)) (<= (fix y) (fn-dkt-add x y)))
      :subject fn-dkt-add
      :id :test
      :restates fn-dkt-add-adds-source
@@ -57,61 +57,22 @@
      :witness ((x 3) (y 4))
      :breaks ((natp ((x -1)))
               (small ((x 10)) :corrupt "a label test, not a claim"))
-     :mutations ((off-by-one (equal (fn-dkt-add x y) (+ 1 x y)) ((x 3))))
+     :mutations ((strict (< (fix y) (fn-dkt-add x y)) ((x 0))))
      :corrupt ((not-a-number ((x 'a))))
      :hints (("Goal" :in-theory (enable fn-dkt-add)))))
 
 (defconst *fn-dkt-sample-expansion*
   '(progn
-     (defthm fn-dkt-add-adds
-       (implies (and (natp x) (< x 10)) (equal (fn-dkt-add x y) (+ x y)))
-       :hints (("Goal" :in-theory (enable fn-dkt-add))))
-     (assert-event (equal (getpropc 'fn-dkt-add-adds 'theorem nil (w state))
-                          (getpropc 'fn-dkt-add-adds-source 'theorem nil (w state)))
-                   :msg "FN-DKT-ADD-ADDS: restates")
-     (assert-event (and (let* ((x 3) (y 4)) (declare (ignorable x y)) (natp x))
-                        (let* ((x 3) (y 4)) (declare (ignorable x y)) (< x 10))
-                        (let* ((x 3) (y 4)) (declare (ignorable x y))
-                          (equal (fn-dkt-add x y) (+ x y))))
-                   :msg "FN-DKT-ADD-ADDS: witness")
-     (assert-event
-      (with-guard-checking :none
-        (and (let* ((x -1) (y 4)) (declare (ignorable x y)) (< x 10))
-             (not (let* ((x -1) (y 4)) (declare (ignorable x y)) (natp x)))
-             (not (let* ((x -1) (y 4)) (declare (ignorable x y))
-                    (equal (fn-dkt-add x y) (+ x y))))))
-      :msg "FN-DKT-ADD-ADDS: without NATP")
-     (local (must-fail-checked
-             (defthm fn-dkt-add-adds-without-natp
-               (implies (< x 10) (equal (fn-dkt-add x y) (+ x y)))
-               :hints (("Goal" :in-theory (enable fn-dkt-add))))))
-     (assert-event
-      (with-guard-checking :none
-        (and (let* ((x 10) (y 4)) (declare (ignorable x y)) (natp x))
-             (not (let* ((x 10) (y 4)) (declare (ignorable x y)) (< x 10)))
-             (not (let* ((x 10) (y 4)) (declare (ignorable x y))
-                    (equal (fn-dkt-add x y) (+ x y))))))
-      :msg "FN-DKT-ADD-ADDS: without SMALL (corrupted state: a label test, not a claim)")
-     (local (must-fail-checked
-             (defthm fn-dkt-add-adds-without-small
-               (implies (natp x) (equal (fn-dkt-add x y) (+ x y)))
-               :hints (("Goal" :in-theory (enable fn-dkt-add))))))
-     (assert-event
-      (with-guard-checking :none
-        (not (let* ((x 3) (y 4)) (declare (ignorable x y))
-               (equal (fn-dkt-add x y) (+ 1 x y)))))
-      :msg "FN-DKT-ADD-ADDS: mutant OFF-BY-ONE")
-     (local (must-fail-checked
-             (defthm fn-dkt-add-adds-mutant-off-by-one
-               (equal (fn-dkt-add x y) (+ 1 x y))
-               :hints (("Goal" :in-theory (enable fn-dkt-add))))))
-     (assert-event
-      (with-guard-checking :none
-        (and (not (let* ((x 'a) (y 4)) (declare (ignorable x y))
-                    (and (natp x) (< x 10))))
-             (not (let* ((x 'a) (y 4)) (declare (ignorable x y))
-                    (equal (fn-dkt-add x y) (+ x y))))))
-      :msg "FN-DKT-ADD-ADDS: corrupt NOT-A-NUMBER")))
+     (defthm fn-dkt-add-adds (implies (and (natp x) (< x 10)) (<= (fix y) (fn-dkt-add x y))) :hints (("Goal" :in-theory (enable fn-dkt-add))))
+     (assert-event (equal (getpropc 'fn-dkt-add-adds 'theorem nil (w state)) (getpropc 'fn-dkt-add-adds-source 'theorem nil (w state))) :msg "FN-DKT-ADD-ADDS: restates")
+     (assert-event (and (let* ((x 3) (y 4)) (declare (ignorable x y)) (natp x)) (let* ((x 3) (y 4)) (declare (ignorable x y)) (< x 10)) (let* ((x 3) (y 4)) (declare (ignorable x y)) (<= (fix y) (fn-dkt-add x y)))) :msg "FN-DKT-ADD-ADDS: witness")
+     (assert-event (with-guard-checking :none (and (let* ((x -1) (y 4)) (declare (ignorable x y)) (< x 10)) (not (let* ((x -1) (y 4)) (declare (ignorable x y)) (natp x))) (not (let* ((x -1) (y 4)) (declare (ignorable x y)) (<= (fix y) (fn-dkt-add x y)))))) :msg "FN-DKT-ADD-ADDS: without NATP")
+     (local (must-fail-checked (defthm fn-dkt-add-adds-without-natp (implies (< x 10) (<= (fix y) (fn-dkt-add x y))) :hints (("Goal" :in-theory (enable fn-dkt-add))))))
+     (assert-event (with-guard-checking :none (and (let* ((x 10) (y 4)) (declare (ignorable x y)) (natp x)) (not (let* ((x 10) (y 4)) (declare (ignorable x y)) (< x 10))) (not (let* ((x 10) (y 4)) (declare (ignorable x y)) (<= (fix y) (fn-dkt-add x y)))))) :msg "FN-DKT-ADD-ADDS: without SMALL (corrupted state: a label test, not a claim)")
+     (local (must-fail-checked (defthm fn-dkt-add-adds-without-small (implies (natp x) (<= (fix y) (fn-dkt-add x y))) :hints (("Goal" :in-theory (enable fn-dkt-add))))))
+     (assert-event (with-guard-checking :none (not (let* ((x 0) (y 4)) (declare (ignorable x y)) (< (fix y) (fn-dkt-add x y))))) :msg "FN-DKT-ADD-ADDS: mutant STRICT")
+     (local (must-fail-checked (defthm fn-dkt-add-adds-mutant-strict (< (fix y) (fn-dkt-add x y)) :hints (("Goal" :in-theory (enable fn-dkt-add))))))
+     (assert-event (with-guard-checking :none (and (not (let* ((x 'a) (y 4)) (declare (ignorable x y)) (and (natp x) (< x 10)))) (not (let* ((x 'a) (y 4)) (declare (ignorable x y)) (<= (fix y) (fn-dkt-add x y)))))) :msg "FN-DKT-ADD-ADDS: corrupt NOT-A-NUMBER")))
 
 (assert-event (equal (fn-dk-expand *fn-dkt-sample*) *fn-dkt-sample-expansion*))
 
@@ -119,7 +80,7 @@
 ; 3. Refusals, each by name.
 
 (defconst *fn-dkt-term*
-  '(implies (and (natp x) (< x 10)) (equal (fn-dkt-add x y) (+ x y))))
+  '(implies (and (natp x) (< x 10)) (<= (fix y) (fn-dkt-add x y))))
 
 (assert-event
  (equal (fn-dk-refusal 'k *fn-dkt-term*
@@ -179,7 +140,7 @@
 ; The macro refuses a hypothesis with no breaking value, at expansion.
 (must-fail-checked
  (defkeystone fn-dkt-unbroken
-   (implies (and (natp x) (< x 10)) (equal (fn-dkt-add x y) (+ x y)))
+   (implies (and (natp x) (< x 10)) (<= (fix y) (fn-dkt-add x y)))
    :subject fn-dkt-add :hyps (natp small) :witness ((x 3) (y 4))
    :breaks ((natp ((x -1))))
    :hints (("Goal" :in-theory (enable fn-dkt-add))))
@@ -189,7 +150,7 @@
 ; counterexample to the weakened theorem, and its removal witness refuses.
 (must-fail-checked
  (defkeystone fn-dkt-misbroken
-   (implies (and (natp x) (< x 10)) (equal (fn-dkt-add x y) (+ x y)))
+   (implies (and (natp x) (< x 10)) (<= (fix y) (fn-dkt-add x y)))
    :subject fn-dkt-add :hyps (natp small) :witness ((x 3) (y 4))
    :breaks ((natp ((x -1))) (small ((x -10))))
    :hints (("Goal" :in-theory (enable fn-dkt-add))))
@@ -198,7 +159,7 @@
 ; A :restates whose formula differs is refused.
 (must-fail-checked
  (defkeystone fn-dkt-misrestated
-   (implies (and (natp x) (< x 10)) (equal (fn-dkt-add x y) (+ x y)))
+   (implies (and (natp x) (< x 10)) (<= (fix y) (fn-dkt-add x y)))
    :subject fn-dkt-add :restates car-cons
    :hyps (natp small) :witness ((x 3) (y 4))
    :breaks ((natp ((x -1))) (small ((x 10))))

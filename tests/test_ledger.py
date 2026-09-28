@@ -1034,7 +1034,7 @@ class DefkeystoneExpansionTests(unittest.TestCase):
         self.assertEqual(book.paired_must_fails,
                          {"fn-dkt-add-adds-without-natp",
                           "fn-dkt-add-adds-without-small",
-                          "fn-dkt-add-adds-mutant-off-by-one"})
+                          "fn-dkt-add-adds-mutant-strict"})
         # three generated must-fails, three literal ones around refused forms
         self.assertEqual(book.must_fails, 6)
 

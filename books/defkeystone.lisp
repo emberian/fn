@@ -66,22 +66,25 @@
 ; A book that uses `defkeystone' includes "must-fail-checked" (tests/acl2)
 ; itself: the expansion names `must-fail-checked', which this book does not
 ; define, so a keystone's teeth live in a test book.  This book has no
-; `include-book' and leaves no rule: its helpers are `:program' mode.
+; `include-book' and leaves no rule: its helpers are `:program' mode
+; (declared per defun, as books/defrecord.lisp does, so tools/ledger.py's
+; `exports_no_rule' sees a macro book).
 ; What the form cannot express yet, and the plan for each:
 ; planning/evidence/defkeystone-2026-09-27.md.
 
 (in-package "ACL2")
 
-(program)
 
 (defconst *fn-dk-keys*
   '(:subject :id :restates :hyps :witness :breaks :mutations :corrupt
     :hints :rule-classes :otf-flg))
 
 (defun fn-dk-get (key kvs)
+  (declare (xargs :mode :program))
   (cadr (assoc-keyword key kvs)))
 
 (defun fn-dk-hyps (term)
+  (declare (xargs :mode :program))
   ; the hypotheses of (implies (and H1 .. Hn) C) or (implies H C); else none
   (if (and (consp term) (eq (car term) 'implies) (true-listp term)
            (equal (len term) 3))
@@ -92,23 +95,27 @@
     nil))
 
 (defun fn-dk-concl (term)
+  (declare (xargs :mode :program))
   (if (and (consp term) (eq (car term) 'implies) (true-listp term)
            (equal (len term) 3))
       (caddr term)
     term))
 
 (defun fn-dk-default-labels (i n name)
+  (declare (xargs :mode :program))
   (if (zp n)
       nil
     (cons (packn-pos (list 'h i) name)
           (fn-dk-default-labels (1+ i) (1- n) name))))
 
 (defun fn-dk-labels (name hyps kvs)
+  (declare (xargs :mode :program))
   (if (assoc-keyword :hyps kvs)
       (fn-dk-get :hyps kvs)
     (fn-dk-default-labels 1 (len hyps) name)))
 
 (defun fn-dk-bindingsp (x)
+  (declare (xargs :mode :program))
   ; ((VAR VAL) ...) with distinct symbol VARs
   (and (true-listp x)
        (doublet-listp x)
@@ -116,6 +123,7 @@
        (no-duplicatesp-eq (strip-cars x))))
 
 (defun fn-dk-break-entryp (x)
+  (declare (xargs :mode :program))
   ; (LABEL BINDINGS) or (LABEL BINDINGS :corrupt "why")
   (and (true-listp x)
        (symbolp (car x))
@@ -127,12 +135,14 @@
                 (< 0 (length (cadddr x)))))))
 
 (defun fn-dk-break-entriesp (x)
+  (declare (xargs :mode :program))
   (if (atom x)
       (null x)
     (and (fn-dk-break-entryp (car x))
          (fn-dk-break-entriesp (cdr x)))))
 
 (defun fn-dk-mutationsp (x)
+  (declare (xargs :mode :program))
   ; ((LABEL TERM BINDINGS) ...)
   (if (atom x)
       (null x)
@@ -143,6 +153,7 @@
          (fn-dk-mutationsp (cdr x)))))
 
 (defun fn-dk-corruptsp (x)
+  (declare (xargs :mode :program))
   ; ((LABEL BINDINGS) ...)
   (if (atom x)
       (null x)
@@ -153,11 +164,13 @@
          (fn-dk-corruptsp (cdr x)))))
 
 (defun fn-dk-unknown-keys (kvs)
+  (declare (xargs :mode :program))
   (cond ((atom kvs) nil)
         ((member-eq (car kvs) *fn-dk-keys*) (fn-dk-unknown-keys (cddr kvs)))
         (t (cons (car kvs) (fn-dk-unknown-keys (cddr kvs))))))
 
 (defun fn-dk-first-unbroken (labels hyps breaks)
+  (declare (xargs :mode :program))
   ; the first (LABEL HYP) with no :breaks entry, or nil
   (cond ((atom labels) nil)
         ((assoc-eq (car labels) breaks)
@@ -165,6 +178,7 @@
         (t (list (car labels) (car hyps)))))
 
 (defun fn-dk-first-stray (entries labels)
+  (declare (xargs :mode :program))
   ; the first entry label that names no hypothesis, or nil
   (cond ((atom entries) nil)
         ((member-eq (car (car entries)) labels)
@@ -172,6 +186,7 @@
         (t (car (car entries)))))
 
 (defun fn-dk-refusal (name term kvs)
+  (declare (xargs :mode :program))
   ; nil when the form is well-formed; else (REASON . DETAILS), which names
   ; the offending hypothesis, entry or keyword.  tests/acl2/defkeystone-tests
   ; asserts each reason.
@@ -207,6 +222,7 @@
      (t nil))))
 
 (defun fn-dk-override (base over)
+  (declare (xargs :mode :program))
   ; BASE's bindings with OVER's values where OVER binds the same variable,
   ; then OVER's other bindings, in order
   (cond ((atom base) over)
@@ -217,42 +233,51 @@
         (t (cons (car base) (fn-dk-override (cdr base) over)))))
 
 (defun fn-dk-at (bindings term)
+  (declare (xargs :mode :program))
   `(let* ,bindings (declare (ignorable ,@(strip-cars bindings))) ,term))
 
 (defun fn-dk-logical (term)
+  (declare (xargs :mode :program))
   ; a removal, mutant or corrupted-state witness is evaluated for its LOGICAL
   ; value: it may lie outside a guard by design (a corrupted state)
   `(with-guard-checking :none ,term))
 
 (defun fn-dk-all-at (bindings terms)
+  (declare (xargs :mode :program))
   (if (atom terms)
       nil
     (cons (fn-dk-at bindings (car terms))
           (fn-dk-all-at bindings (cdr terms)))))
 
 (defun fn-dk-without (i hyps)
+  (declare (xargs :mode :program))
   ; HYPS less its I-th (0-based) element
   (if (zp i)
       (cdr hyps)
     (cons (car hyps) (fn-dk-without (1- i) (cdr hyps)))))
 
 (defun fn-dk-implies (hyps concl)
+  (declare (xargs :mode :program))
   (cond ((atom hyps) concl)
         ((atom (cdr hyps)) `(implies ,(car hyps) ,concl))
         (t `(implies (and ,@hyps) ,concl))))
 
 (defun fn-dk-conj (terms)
+  (declare (xargs :mode :program))
   (if (and (consp terms) (atom (cdr terms)))
       (car terms)
     `(and ,@terms)))
 
 (defun fn-dk-hint-args (kvs)
+  (declare (xargs :mode :program))
   (if (assoc-keyword :hints kvs) (list :hints (fn-dk-get :hints kvs)) nil))
 
 (defun fn-dk-label-msg (name words)
+  (declare (xargs :mode :program))
   (concatenate 'string (symbol-name name) ": " words))
 
 (defun fn-dk-removals (name i labels hyps concl witness breaks hint-args)
+  (declare (xargs :mode :program))
   ; LABELS is the tail from the I-th hypothesis on; HYPS is all of them
   (if (atom labels)
       nil
@@ -278,6 +303,7 @@
                        breaks hint-args)))))
 
 (defun fn-dk-mutants (name witness mutations hint-args)
+  (declare (xargs :mode :program))
   (if (atom mutations)
       nil
     (let* ((m (car mutations))
@@ -294,6 +320,7 @@
        (fn-dk-mutants name witness (cdr mutations) hint-args)))))
 
 (defun fn-dk-corrupts (name hyps concl witness corrupts)
+  (declare (xargs :mode :program))
   (if (atom corrupts)
       nil
     (let ((b (fn-dk-override witness (cadr (car corrupts)))))
@@ -307,6 +334,7 @@
             (fn-dk-corrupts name hyps concl witness (cdr corrupts))))))
 
 (defun fn-dk-expand (form)
+  (declare (xargs :mode :program))
   ; FORM is the whole (defkeystone NAME TERM . KVS); the events it stands for
   (let* ((name (cadr form))
          (term (caddr form))
@@ -342,6 +370,7 @@
        ,@(fn-dk-corrupts name hyps concl witness (fn-dk-get :corrupt kvs)))))
 
 (defun fn-dk-refusal-text (reason)
+  (declare (xargs :mode :program))
   (case (car reason)
     (:no-breaking-value
      (msg "hypothesis ~x0, ~x1, has no breaking value in :breaks.  A keystone ~
@@ -363,7 +392,6 @@
                            (cdr reason) *fn-dk-keys*))
     (otherwise (msg "malformed form: ~x0." reason))))
 
-(logic)
 
 (defmacro defkeystone (&whole form name term &rest kvs)
   ; A refusal is a SOFT error event, so it fails like any refused event (and
