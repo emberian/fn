@@ -227,10 +227,6 @@
         (list :error :kind)
       (list :ok (fn-store-frame-names-octets names) spec))))
 
-(defun fn-store-frame-receipt-schema (kind)
-  (fn-store-frame-schema kind *fn-frame-receipt-field-names*
-                         *fn-frame-receipt-specs*))
-
 (defun fn-store-frame-workflow-kinds ()
   *fn-frame-workflow-kinds*)
 
