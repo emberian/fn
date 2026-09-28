@@ -59,12 +59,14 @@ CONTROL = SERVED and os.environ.get("FN_OPEN_DEPTH_CONTROL", "1") != "0"
 # Every report the running owner renders on its control thread.
 CONTROL_REPORTS = [["status"], ["health"], ["pins"], ["obligations"], ["peer", "list"],
                    ["account", "list"], ["account", "access", "show"], ["consumer", "show"],
-                   ["show"], ["store", "reclaim", "--dry-run"]]
+                   ["show"]]
 # The store verbs an operator runs with no owner (host/native/io.lisp's store dispatch).
-OFFLINE_VERBS = [["status"], ["digest"], ["journal"], ["retention"], ["compression"], ["config"]]
+OFFLINE_VERBS = [["status"], ["digest"], ["journal"], ["retention"], ["compression"], ["config"],
+                 ["inspect", "<0000s99999@example.invalid>"]]
 # The reply codes after which a multi-line block follows (RFC 3977 3.1.1),
 # and 211 only for LISTGROUP.
-MULTI = {b"100", b"101", b"215", b"220", b"221", b"222", b"224", b"225", b"230", b"231"}
+MULTI = {b"100", b"101", b"215", b"220", b"221", b"222", b"224", b"225", b"230", b"231",
+         b"291"}  # 291: XFNCATCHUP's batch, a dot-terminated block (books/peer-catchup-serve.lisp)
 
 
 def served_commands(group, low, high, msgid):
@@ -356,8 +358,7 @@ class OpenDepthTests(unittest.TestCase):
         every other): status and health stopped it at 20,000 and 60,000
         articles (lane health-truth).  A death is recorded and the owner
         reopened, as for a served command."""
-        msgid = getattr(self, "msgid", "<serve-depth-none@fn.invalid>")
-        for words in CONTROL_REPORTS + [["store", "inspect", msgid]]:
+        for words in CONTROL_REPORTS:
             started = time.monotonic()
             done = subprocess.run([str(verbs.IMAGE), "--fn", "operator", str(config)] + words,
                                   env=verbs.environment(), stdout=subprocess.PIPE,

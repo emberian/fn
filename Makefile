@@ -1561,7 +1561,7 @@ check:
 # execute, mbe :exec branches only) and fails on one tools/depth_baseline.json
 # does not classify: "bounded" names its bound, "debt" (a walk whose depth is
 # an article count, a group's articles, a history, a queue or an octet count)
-# only shrinks.  Source-level, no ACL2; the extractor agreed on 604 of 604 at
+# only shrinks.  Source-level, no ACL2; the extractor agreed (604 of 604, then 383 of 383) at
 # lane serve-depth's head.
 	@$(CHECK_STEP) $(PYTHON) tools/depth_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_depth_check
