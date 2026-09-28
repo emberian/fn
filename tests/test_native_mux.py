@@ -20,21 +20,18 @@ each image (developer and production):
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import re
 import resource
 import socket
 import subprocess
-import tempfile
 import time
 import unittest
 
-from tests.native_harness import wait_for_announcement
+from tests.native_harness import EXIT, Node, native_image, requires
 
-ROOT = Path(__file__).resolve().parent.parent
-PRODUCTION = os.environ.get("FN_NATIVE_HOST")
-DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
+PRODUCTION = native_image("FN_NATIVE_HOST")
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 BUSY = b"400 too many connections; try again later\r\n"
 HOLDS = re.compile(rb"connections holds=(\d+) per-connection=(\d+) KiB")
 REFUSED = re.compile(r"refused connections-exceed-memory capacity=(\d+) holds=(\d+) "
@@ -43,12 +40,6 @@ CAPACITY = re.compile(
     r"^exposure capacity connections=(\d+) capacity=(\d+) per-address=(\d+) trusted=(\S+)$",
     re.M)
 HELD = 300
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def first_line(sock, timeout=30):
@@ -91,68 +82,35 @@ def raise_nofile():
 
 
 class MuxCase:
-    IMAGE: str | None = None
+    """IMAGE's owner with the exposure bound set by policy; the held
+    connections are raw sockets (the subject is how many the owner holds)."""
+    IMAGE: Path
 
     def setUp(self):
-        if not self.IMAGE:
-            self.skipTest("image variable unset")
+        # Before the owner starts: it inherits the raised descriptor limit.
         raise_nofile()
-        self.image = Path(self.IMAGE)
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-mux-")
-        self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.process = None
         self.held = []
-        self.addCleanup(self.stop)
-        store = self.base / "store"
-        self.port = free_port()
-        self.command(["--fn", "store", store, "init", "fn.test"])
-        self.config = self.base / "fn.toml"
-        self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
-                store, self.port, self.base / "control.sock", self.base / "fn.log"),
-            encoding="ascii")
+        self.node = Node(self, self.IMAGE)
+        self.addCleanup(self.close_held)  # runs before the node's stop
+        self.log = self.node.root / "fn.log"
+        self.node.write_config(extra='[log]\npath = "{}"\n'.format(self.log))
+        self.port = self.node.port
+        self.node.store("init", "fn.test", expect=EXIT.OK)
 
-    def command(self, arguments, expected=0):
-        result = subprocess.run([str(self.image)] + list(map(str, arguments)),
-                                cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, timeout=180, check=False)
-        if expected is not None:
-            self.assertEqual(result.returncode, expected, result)
-        return result
-
-    def policy(self, value, expected=0):
-        return self.command(["--fn", "operator", self.config, "policy", "set",
-                             "exposure-connections", value], expected=expected)
-
-    def capacity(self):
-        result = self.command(["--fn", "operator", self.config, "status"], expected=None)
-        found = CAPACITY.findall(result.stdout.decode("ascii", "replace"))
-        self.assertEqual(len(found), 1, result)
-        return int(found[0][0]), int(found[0][1])
-
-    def start(self):
-        err = open(self.base / "stderr.log", "ab")
-        self.addCleanup(err.close)
-        self.process = subprocess.Popen(
-            [str(self.image), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=err,
-            preexec_fn=raise_nofile)
-
-    def stop(self):
+    def close_held(self):
         for sock in self.held:
             sock.close()
         self.held = []
-        if self.process is not None and self.process.poll() is None:
-            self.process.terminate()
-            try:
-                self.process.communicate(timeout=60)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.communicate(timeout=60)
+
+    def policy(self, value, expected=EXIT.OK):
+        return self.node.operator("policy", "set", "exposure-connections", value,
+                                  expect=expected)
+
+    def capacity(self):
+        result = self.node.operator("status")
+        found = CAPACITY.findall(result.stdout.decode("ascii", "replace"))
+        self.assertEqual(len(found), 1, result)
+        return int(found[0][0]), int(found[0][1])
 
     def open_one(self):
         sock = socket.create_connection(("127.0.0.1", self.port), timeout=30)
@@ -160,10 +118,9 @@ class MuxCase:
 
     def test_a_capacity_the_machine_cannot_hold_is_refused_at_start(self):
         self.policy(4000000)
-        self.start()
-        _, _ = self.process.communicate(timeout=300)
-        self.assertEqual(self.process.returncode, 1)
-        stderr = (self.base / "stderr.log").read_text("ascii", "replace")
+        owner = self.node.start(ready=None)
+        self.node.exited(EXIT.REFUSED, timeout=300)
+        stderr = owner.stderr.since(0).decode("ascii", "replace")
         found = REFUSED.search(stderr)
         self.assertIsNotNone(found, stderr[-2000:])
         capacity, holds, per, machine = map(int, found.groups())
@@ -171,20 +128,19 @@ class MuxCase:
         self.assertLess(holds, capacity)
         self.assertGreater(per, 0)
         self.assertGreater(machine, 0)
-        self.assertIn(found.group(0), (self.base / "fn.log").read_text("ascii", "replace"))
+        self.assertIn(found.group(0), self.log.read_text("ascii", "replace"))
         with self.assertRaises(OSError):
             socket.create_connection(("127.0.0.1", self.port), timeout=2).close()
 
     def test_connections_cost_no_thread_and_the_bound_is_kept_live(self):
         self.policy(HELD + 20)
-        self.start()
-        wait_for_announcement(self.process, b"LISTENING ")
-        log = (self.base / "fn.log").read_bytes()
+        owner = self.node.start()
+        log = self.log.read_bytes()
         found = HOLDS.search(log)
         self.assertIsNotNone(found, log[-2000:])
         holds, per = int(found.group(1)), int(found.group(2))
         self.assertGreaterEqual(holds, HELD + 20)
-        pid = self.process.pid
+        pid = owner.pid
         sock, line = self.open_one()
         self.assertTrue(line.startswith(b"20"), line)
         self.held.append(sock)
@@ -231,10 +187,12 @@ class MuxCase:
         self.assertEqual(line, BUSY)
 
 
+@requires(DEVELOPER)
 class DeveloperImageMux(MuxCase, unittest.TestCase):
     IMAGE = DEVELOPER
 
 
+@requires(PRODUCTION)
 class ProductionImageMux(MuxCase, unittest.TestCase):
     IMAGE = PRODUCTION
 

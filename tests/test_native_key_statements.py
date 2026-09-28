@@ -16,19 +16,16 @@ python3 -m unittest -v tests.test_native_key_statements
 
 import os
 import re
-from pathlib import Path
-import socket
 import subprocess
 import sys
-import tempfile
 import time
 import unittest
 
-from tests.native_harness import wait_for_announcement, stop_and_diagnostics
-from tools.wire_stream import whole_stream
+from tests.native_harness import (
+    EXIT, ROOT, Client, Node, environment, executable, free_port, native_image, run,
+    scratch)
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host-developer"))
+IMAGE = native_image("FN_NATIVE_HOST", "build/fn-host-developer")
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 
 P = bytes([85]) * 32
@@ -43,12 +40,6 @@ ED_Q = ("c5aa8df43f9f837bedb7442f31dcb7b166d38535076f094b85ce3a2e0b4458f7",
 POP_TAG = b"fn-key-succession-pop-v1"
 
 
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
-
-
 def hex_lines(name, octets):
     text = octets.hex()
     return b"".join("{}: {}\r\n".format(name, text[i:i + 64]).encode("ascii")
@@ -59,15 +50,12 @@ def witness(*words):
     print("NATIVE-KEY-STATEMENT-WITNESS", *words, flush=True)
 
 
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
+@unittest.skipUnless(executable(IMAGE),
                      "set FN_NATIVE_HOST to a developer launcher")
 class NativeKeyStatementTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="fn-key-statements-")
-        self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
-        self.env = dict(os.environ)
-        self.env.pop("FN_NATIVE_KEY_STATEMENT_FAULT", None)
+        self.root = scratch(self, "fn-key-statements-")
+        self.env = environment()
         self.keys = {}
         for name, (seed, public) in (("old", ED_OLD), ("new", ED_NEW), ("q", ED_Q)):
             self.keys[name] = self.key_set(name, seed, public)
@@ -81,9 +69,7 @@ class NativeKeyStatementTests(unittest.TestCase):
         return path
 
     def run_ok(self, argv, expected=0, env=None, timeout=180):
-        result = subprocess.run([str(a) for a in argv], cwd=ROOT, env=env or self.env,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=timeout, check=False)
+        result = run(argv, env=env or self.env, timeout=timeout)
         self.assertEqual(result.returncode, expected,
                          "{} -> {}\n{}\n{}".format(argv, result.returncode,
                                                    result.stdout.decode("utf-8", "replace"),
@@ -106,34 +92,18 @@ class NativeKeyStatementTests(unittest.TestCase):
                 "ed_raw": bytes.fromhex(public), "ml_private": ml_private,
                 "ml_public": ml_public, "ml_raw": der[-1952:]}
 
-    def node(self, name, groups=("fn.test", "fn.keys")):
-        root = self.root / name
-        root.mkdir()
-        store = root / "store"
-        self.fn("store", store, "init", *groups)
-        node = {"root": root, "store": store, "port": free_port(),
-                "control": root / "control.sock", "log": root / "service.log",
-                "config": root / "fn.toml"}
-        node["config"].write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
-                store, node["port"], node["control"], node["log"]), encoding="ascii")
+    def node(self, name, groups=("fn.test", "fn.keys"), init=True):
+        """A Node under ROOT/NAME logging to service.log; its store made by
+        `store init GROUPS` when INIT."""
+        node = Node(self, IMAGE, root=self.root / name, name=name)
+        node.log = node.root / "service.log"
+        node.write_config(extra='[log]\npath = "{}"\n'.format(node.log))
+        if init:
+            node.store("init", *groups, expect=EXIT.OK)
         return node
 
-    def start(self, node, env=None):
-        proc = subprocess.Popen([str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
-                                cwd=ROOT, env=env or self.env,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        wait_for_announcement(proc, b"LISTENING ")
-        node["process"] = proc
-        return proc
-
-    def stop(self, node):
-        diagnostic = stop_and_diagnostics(node["process"], timeout=60)
-        self.assertEqual(node["process"].returncode, 0, diagnostic)
-
     def log(self, node):
-        return node["log"].read_text("utf-8", "replace") if node["log"].exists() else ""
+        return node.log.read_text("utf-8", "replace") if node.log.exists() else ""
 
     def live_log(self, node, needle, timeout=30):
         """The running owner's log once it holds NEEDLE (or at TIMEOUT).  The
@@ -149,7 +119,7 @@ class NativeKeyStatementTests(unittest.TestCase):
             time.sleep(0.05)
 
     def history(self, node):
-        return self.fn("hybrid-key-history", node["store"]).stdout.decode().splitlines()
+        return self.fn("hybrid-key-history", node.store_path).stdout.decode().splitlines()
 
     # -- articles -------------------------------------------------------------
     def carrier(self, principal_file, keys, source, stem):
@@ -189,41 +159,30 @@ class NativeKeyStatementTests(unittest.TestCase):
         return self.header(msgid, "fn.test", "ordinary") + b"body\r\n"
 
     def post(self, node, article, expect_reply=True):
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=60) as sock:
-            stream = whole_stream(sock)
-            greeting = stream.readline()
-            self.assertTrue(greeting.startswith(b"200 "), greeting)
-            stream.write(b"POST\r\n")
-            self.assertTrue(stream.readline().startswith(b"340 "))
-            for line in article.splitlines(keepends=True):
-                stream.write(b"." + line if line.startswith(b".") else line)
-            stream.write(b".\r\n")
-            reply = stream.readline()
-        if expect_reply:
-            self.assertTrue(reply, "no POST reply")
+        """POST ARTICLE; the reply line (b"" when the owner died before it,
+        unless EXPECT_REPLY)."""
+        with Client(node.port, timeout=60, greeting=(b"200",)) as client:
+            try:
+                first, reply = client.post(article, tolerate_send_error=not expect_reply)
+            except EOFError:
+                if expect_reply:
+                    raise
+                return b""
+            self.assertTrue(first.startswith(b"340 "), first)
         return reply
 
     def ihave(self, node, msgid, article):
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=60) as sock:
-            stream = whole_stream(sock)
-            self.assertTrue(stream.readline().startswith(b"200 "))
-            stream.write(b"IHAVE " + msgid.encode("ascii") + b"\r\n")
-            offered = stream.readline()
+        with Client(node.port, timeout=60, greeting=(b"200",)) as client:
+            offered, reply = client.post(article, verb="IHAVE " + msgid)
             self.assertTrue(offered.startswith(b"335 "), offered)
-            for line in article.splitlines(keepends=True):
-                stream.write(b"." + line if line.startswith(b".") else line)
-            stream.write(b".\r\n")
-            return stream.readline()
+            return reply
 
     def hdr_verified(self, node, msgid):
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=60) as sock:
-            stream = whole_stream(sock)
-            self.assertTrue(stream.readline().startswith(b"200 "))
-            stream.write(b"HDR :fn-verified " + msgid.encode("ascii") + b"\r\n")
-            status = stream.readline()
+        with Client(node.port, timeout=60, greeting=(b"200",)) as client:
+            status = client.command("HDR :fn-verified " + msgid)
             self.assertTrue(status.startswith(b"225 "), status)
-            item = stream.readline()
-            self.assertEqual(stream.readline(), b".\r\n")
+            item = client.line()
+            self.assertEqual(client.line(), b".\r\n")
             return item
 
     def fn_verify(self, node, msgid, keys):
@@ -236,26 +195,26 @@ class NativeKeyStatementTests(unittest.TestCase):
                              ('{"format": "fn-verify-keyring-v1", "principals": [%s]}'
                               % entry.stdout.decode().strip()).encode("ascii"))
         run = subprocess.run([sys.executable, str(ROOT / "tools" / "fn_verify.py"), msgid,
-                              "--node", "127.0.0.1:{}".format(node["port"]), "--plain",
+                              "--node", "127.0.0.1:{}".format(node.port), "--plain",
                               "--keyring", str(keyring)],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180)
         return run.returncode, (run.stdout + run.stderr).decode("utf-8", "replace")
 
     def enrol_and_grant(self, node):
         old = self.keys["old"]
-        self.fn("hybrid-enroll", node["control"], "1", self.principal_file,
+        self.fn("hybrid-enroll", node.control, "1", self.principal_file,
                 old["ed_public"], old["ml_public"])
-        self.fn("operator", node["config"], "control", "grant", P.hex(), "keys", "fn.keys")
+        self.fn("operator", node.config, "control", "grant", P.hex(), "keys", "fn.keys")
 
     # -- cases ----------------------------------------------------------------
     def test_succession_revocation_and_carried_statement(self):
         b = self.node("b")
-        self.fn("operator", b["config"], "peer", "add", "a", "a.example.invalid",
+        self.fn("operator", b.config, "peer", "add", "a", "a.example.invalid",
                 "127.0.0.1", str(free_port()), "fn.*", "-", "source-address", "127.0.0.1",
                 "true", "carries", Q.hex())
         # PRF-099: a carrying boundary carries nothing without a budget.
-        self.fn("operator", b["config"], "peer", "budget", "a", "1048576", "16")
-        self.start(b)
+        self.fn("operator", b.config, "peer", "budget", "a", "1048576", "16")
+        b.start()
         try:
             self.enrol_and_grant(b)
             old, new = self.keys["old"], self.keys["new"]
@@ -323,7 +282,7 @@ class NativeKeyStatementTests(unittest.TestCase):
             self.assertEqual(code, 1, out)
             self.assertIn("the node revoked " + P.hex(), out)
         finally:
-            self.stop(b)
+            b.stop()
         history = self.history(b)
         witness("history", history)
         self.assertEqual(history, [
@@ -335,7 +294,7 @@ class NativeKeyStatementTests(unittest.TestCase):
         # status line (fn-rcl-store-classes-partition-the-articles); the
         # served statements and the signed articles are `signed' (retained
         # with the identity state, never released by article retention).
-        status = self.fn("operator", b["config"], "status").stdout.decode("ascii", "replace")
+        status = self.fn("operator", b.config, "status").stdout.decode("ascii", "replace")
         counts = {k: int(v) for k, v in re.findall(
             r"\b(articles|reclaimable|held|reclaimed|signed|kept)=(\d+)", status)}
         witness("status classes", counts)
@@ -347,14 +306,12 @@ class NativeKeyStatementTests(unittest.TestCase):
 
     def test_kill_at_the_cut_and_recovery_at_open(self):
         c = self.node("c")
-        self.start(c)
+        c.start()
         try:
             self.enrol_and_grant(c)
         finally:
-            self.stop(c)
-        env = dict(self.env)
-        env["FN_NATIVE_KEY_STATEMENT_FAULT"] = "statement-committed:kill"
-        proc = self.start(c, env)
+            c.stop()
+        proc = c.start(env={"FN_NATIVE_KEY_STATEMENT_FAULT": "statement-committed:kill"})
         old, new = self.keys["old"], self.keys["new"]
         statement = self.carrier(self.principal_file, old,
                                  self.succession("<cut@keys.invalid>", P, old, new), "cut")
@@ -368,8 +325,8 @@ class NativeKeyStatementTests(unittest.TestCase):
         witness("history at the cut", cut_history)
         self.assertEqual(cut_history, ["generation=1 state=active principal=" + P.hex()])
         # The open's recovery executes the newest record.
-        self.start(c)
-        self.stop(c)
+        c.start()
+        c.stop()
         lines = [line for line in self.log(c).splitlines() if "key-statement" in line]
         witness("log after recovery", lines)
         self.assertEqual(lines, ["key-statement enrol-successor committed at-open"])
@@ -378,8 +335,8 @@ class NativeKeyStatementTests(unittest.TestCase):
         self.assertEqual(recovered, ["generation=2 state=active principal=" + P.hex(),
                                      "generation=1 state=retired principal=" + P.hex()])
         # A second open: the newest record is the key change; nothing runs.
-        self.start(c)
-        self.stop(c)
+        c.start()
+        c.stop()
         lines = [line for line in self.log(c).splitlines() if "key-statement" in line]
         self.assertEqual(lines, ["key-statement enrol-successor committed at-open"])
         self.assertEqual(self.history(c), recovered)
@@ -397,10 +354,10 @@ class NativeKeyStatementTests(unittest.TestCase):
         tests/acl2/key-statements-tests.lisp)."""
         expect = os.environ.get("FN_KS_REOPEN_EXPECT", "declines")
         d = self.node("d")
-        self.start(d)
+        d.start()
         try:
             old = self.keys["old"]
-            self.fn("hybrid-enroll", d["control"], "1", self.principal_file,
+            self.fn("hybrid-enroll", d.control, "1", self.principal_file,
                     old["ed_public"], old["ml_public"])
             new = self.keys["new"]
             statement = self.carrier(self.principal_file, old,
@@ -415,12 +372,12 @@ class NativeKeyStatementTests(unittest.TestCase):
             self.assertEqual(len(declined), 1)
             self.assertIn("key-statement declined", declined[0])
             # The grant the statement lacked, added live after it.
-            self.fn("operator", d["config"], "control", "grant", P.hex(), "keys", "fn.keys")
+            self.fn("operator", d.config, "control", "grant", P.hex(), "keys", "fn.keys")
         finally:
-            self.stop(d)
+            d.stop()
         self.assertEqual(self.history(d), ["generation=1 state=active principal=" + P.hex()])
-        self.start(d)
-        self.stop(d)
+        d.start()
+        d.stop()
         lines = [line for line in self.log(d).splitlines() if "key-statement" in line]
         history = self.history(d)
         witness("log after the restart", lines)
@@ -435,15 +392,15 @@ class NativeKeyStatementTests(unittest.TestCase):
                             and lines[1].endswith(" at-open"), lines)
             self.assertEqual(history, ["generation=1 state=active principal=" + P.hex()])
             # And again: the disposition is a function of durable records.
-            self.start(d)
-            self.stop(d)
+            d.start()
+            d.stop()
             again = [line for line in self.log(d).splitlines() if "key-statement" in line]
             witness("log after a second restart", again)
             self.assertEqual(again[2:], [lines[1]])
             self.assertEqual(self.history(d), history)
 
     def keys_redecide(self, node, msgid, expected):
-        result = self.fn("operator", node["config"], "keys", "redecide", msgid,
+        result = self.fn("operator", node.config, "keys", "redecide", msgid,
                          expected=expected)
         return result.returncode
 
@@ -459,10 +416,10 @@ class NativeKeyStatementTests(unittest.TestCase):
         (fn-ks-reopen-after-a-redecide)."""
         e = self.node("e")
         msgid = "<redecide@keys.invalid>"
-        self.start(e)
+        e.start()
         try:
             old = self.keys["old"]
-            self.fn("hybrid-enroll", e["control"], "1", self.principal_file,
+            self.fn("hybrid-enroll", e.control, "1", self.principal_file,
                     old["ed_public"], old["ml_public"])
             new = self.keys["new"]
             statement = self.carrier(self.principal_file, old,
@@ -471,7 +428,7 @@ class NativeKeyStatementTests(unittest.TestCase):
             reply = self.post(e, statement)
             witness("statement POST without a grant", reply.strip())
             self.assertTrue(reply.startswith(b"240 "), reply)
-            self.fn("operator", e["config"], "control", "grant", P.hex(), "keys", "fn.keys")
+            self.fn("operator", e.config, "control", "grant", P.hex(), "keys", "fn.keys")
             self.keys_redecide(e, msgid, 0)
             self.keys_redecide(e, msgid, 1)
             self.keys_redecide(e, "<absent@keys.invalid>", 1)
@@ -484,20 +441,17 @@ class NativeKeyStatementTests(unittest.TestCase):
                 "key-statement redecide refused already-acted",
                 "key-statement redecide refused not-a-key-statement"])
         finally:
-            self.stop(e)
+            e.stop()
         history = self.history(e)
         witness("history after the redecide", history)
         self.assertEqual(history, ["generation=2 state=active principal=" + P.hex(),
                                    "generation=1 state=retired principal=" + P.hex()])
-        offline = subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(e["config"]), "keys", "redecide", msgid],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=180, check=False)
+        offline = e.operator("keys", "redecide", msgid)
         witness("offline redecide", offline.returncode,
                 offline.stderr.decode("utf-8", "replace").strip())
         self.assertNotEqual(offline.returncode, 0)
-        self.start(e)
-        self.stop(e)
+        e.start()
+        e.stop()
         after = [line for line in self.log(e).splitlines() if "key-statement" in line]
         witness("log after a restart", after)
         self.assertEqual(len(after), 4, after)
@@ -512,14 +466,12 @@ class NativeKeyStatementTests(unittest.TestCase):
         configuration at the statement's txid (the grant), not today's (no
         grant): `enrol-successor committed at-open'."""
         e = self.node("e")
-        self.start(e)
+        e.start()
         try:
             self.enrol_and_grant(e)
         finally:
-            self.stop(e)
-        env = dict(self.env)
-        env["FN_NATIVE_KEY_STATEMENT_FAULT"] = "statement-committed:kill"
-        proc = self.start(e, env)
+            e.stop()
+        proc = e.start(env={"FN_NATIVE_KEY_STATEMENT_FAULT": "statement-committed:kill"})
         old, new = self.keys["old"], self.keys["new"]
         statement = self.carrier(self.principal_file, old,
                                  self.succession("<admitted@keys.invalid>", P, old, new),
@@ -536,13 +488,13 @@ class NativeKeyStatementTests(unittest.TestCase):
         # operator hands a plan to a socket it finds (refused: nobody
         # listens), so the harness removes the dead owner's socket first
         # (recorded in planning/evidence/key-replay-fixture-2026-09-26.md).
-        self.assertTrue(e["control"].is_socket())
-        e["control"].unlink()
-        self.fn("operator", e["config"], "control", "revoke", P.hex(), "keys", "fn.keys")
-        listing = self.fn("operator", e["config"], "control", "list")
+        self.assertTrue(e.control.is_socket())
+        e.control.unlink()
+        self.fn("operator", e.config, "control", "revoke", P.hex(), "keys", "fn.keys")
+        listing = self.fn("operator", e.config, "control", "list")
         witness("control list after the revoke", listing.stdout.decode("utf-8", "replace").strip())
-        self.start(e)
-        self.stop(e)
+        e.start()
+        e.stop()
         lines = [line for line in self.log(e).splitlines() if "key-statement" in line]
         history = self.history(e)
         witness("log after the restart", lines)
@@ -552,8 +504,8 @@ class NativeKeyStatementTests(unittest.TestCase):
                                    "generation=1 state=retired principal=" + P.hex()])
         # A second open: the change is the newest record; nothing runs, and
         # today's missing grant never undoes or re-decides it.
-        self.start(e)
-        self.stop(e)
+        e.start()
+        e.stop()
         again = [line for line in self.log(e).splitlines() if "key-statement" in line]
         witness("log after a second restart", again)
         self.assertEqual(again, lines)
@@ -561,16 +513,7 @@ class NativeKeyStatementTests(unittest.TestCase):
 
     # -- PKT-473 (PRF-184, SCN-113) --------------------------------------------
     def profiled_node(self, name, max_transactions=None, groups=("fn.test", "fn.keys")):
-        root = self.root / name
-        root.mkdir()
-        store = root / "store"
-        node = {"root": root, "store": store, "port": free_port(),
-                "control": root / "control.sock", "log": root / "service.log",
-                "config": root / "fn.toml"}
-        node["config"].write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
-                store, node["port"], node["control"], node["log"]), encoding="ascii")
+        node = self.node(name, init=False)
         # A named T with the default history bound (1 TiB) reserves ~11.5 TB,
         # which init refuses by name (membership-budget, PRF-315), and a
         # bound large enough for the default record ceiling does not fit the
@@ -582,11 +525,11 @@ class NativeKeyStatementTests(unittest.TestCase):
             "--max-history-octets", str(4 << 20),
             "--max-record-octets", "262144",
             "--max-article-octets", "131072", "--max-groups-per-article", "16"]
-        self.fn("operator", node["config"], "init", *flags, *groups)
+        self.fn("operator", node.config, "init", *flags, *groups)
         return node
 
     def transactions_used(self, node):
-        status = self.fn("operator", node["config"], "status").stdout.decode("ascii", "replace")
+        status = self.fn("operator", node.config, "status").stdout.decode("ascii", "replace")
         for line in status.splitlines():
             if line.startswith("headroom "):
                 fields = dict(w.split("=", 1) for w in line.split()[1:])
@@ -603,11 +546,11 @@ class NativeKeyStatementTests(unittest.TestCase):
         # A probe store measures what enrolment, the grant and one owner start
         # use, so the budget below is exact, not guessed.
         probe = self.profiled_node("probe")
-        self.start(probe)
+        probe.start()
         try:
             self.enrol_and_grant(probe)
         finally:
-            self.stop(probe)
+            probe.stop()
         used = self.transactions_used(probe)
         old, new = self.keys["old"], self.keys["new"]
         statement = self.carrier(self.principal_file, old,
@@ -620,7 +563,7 @@ class NativeKeyStatementTests(unittest.TestCase):
         tried = []
         for extra in range(1, 5):
             d = self.profiled_node("d{}".format(extra), max_transactions=used + extra)
-            self.start(d)
+            d.start()
             try:
                 self.enrol_and_grant(d)
                 reply = self.post(d, statement)
@@ -628,9 +571,9 @@ class NativeKeyStatementTests(unittest.TestCase):
                 if reply.startswith(b"240 "):
                     break
             except BaseException:
-                self.stop(d)
+                d.stop()
                 raise
-            self.stop(d)
+            d.stop()
         witness("key-change-refused POST by budget", tried)
         budget = tried[-1][0]
         try:
@@ -644,7 +587,7 @@ class NativeKeyStatementTests(unittest.TestCase):
             witness("after the budget", later.strip())
             self.assertTrue(later.startswith(b"441 "), later)
         finally:
-            self.stop(d)
+            d.stop()
         # The composite is the one record added; the key change is not
         # (run n4: the budget that admits the composite is USED + 2, and the
         # Store refuses the kind-3 with USED + 1 of it used).

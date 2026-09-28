@@ -44,11 +44,11 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import blake3_ref  # noqa: E402
-from tests.native_harness import wait_for_announcement, stop_and_diagnostics  # noqa: E402
+from tests.native_harness import free_port, wait_for_announcement, stop_and_diagnostics  # noqa: E402
 from tests.test_native_format_9_migration import (  # noqa: E402
     cbor_items, expected_identities, identity, SUBJECT)
 from tests.test_native_key_statements import (  # noqa: E402
-    P, Q, ED_OLD, ED_NEW, ED_Q, POP_TAG, free_port, hex_lines)
+    P, Q, ED_OLD, ED_NEW, ED_Q, POP_TAG, hex_lines)
 from tools.wire_stream import whole_stream  # noqa: E402
 import socket  # noqa: E402
 

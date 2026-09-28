@@ -24,30 +24,17 @@ Run: FN_NATIVE_HOST=<launcher> python3 -m unittest -v tests.test_native_injectio
 
 import json
 import os
-from pathlib import Path
 import re
-import socket
-import subprocess
-import tempfile
 import unittest
 
-from tests.native_harness import wait_for_announcement
-from tools.wire_stream import whole_stream
+from tests.native_harness import EXIT_OK, ROOT, Client, Node, free_port, native_image
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
-IMAGE = (Path(IMAGE_TEXT) if IMAGE_TEXT else
-         next((p for p in (ROOT / "build" / "fn-host-developer", ROOT / "build" / "fn-host")
-               if p.is_file()), None))
-READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
+IMAGE = native_image("FN_NATIVE_HOST", "build/fn-host-developer")
+if not os.environ.get("FN_NATIVE_HOST") and not IMAGE.is_file():
+    IMAGE = ROOT / "build" / "fn-host"
+READY = bool(IMAGE.is_file() and os.access(IMAGE, os.X_OK))
 GROUPS = ["fn.inj.t"]
 HEX = re.compile(rb'posting-account="([0-9a-f]{64})"')
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def article(message_id, extra=None):
@@ -55,11 +42,6 @@ def article(message_id, extra=None):
              "Subject: injection-info " + message_id,
              "Message-ID: " + message_id] + ([extra] if extra else [])
     return ("\r\n".join(lines) + "\r\n\r\nbody\r\n").encode("ascii")
-
-
-def stuffed(octets):
-    return b"".join((b"." + line if line.startswith(b".") else line)
-                    for line in octets.splitlines(keepends=True))
 
 
 def header_lines(octets, name):
@@ -71,133 +53,68 @@ def header_lines(octets, name):
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST (a saved fn image)")
 class NativeInjectionInfoTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-injection-info-")
-        self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.env.pop("FN_HOST", None)
-        self.processes = []
-        self.addCleanup(self.stop_all)
-
-    def command(self, arguments, expected=0, timeout=180):
-        result = subprocess.run(list(map(str, arguments)), cwd=ROOT, env=self.env,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=timeout, check=False)
-        if expected is not None:
-            self.assertEqual(result.returncode, expected, result)
-        return result
+        self.nodes = []
 
     def initialize(self, name, auth):
-        root = self.base / name
-        root.mkdir()
-        store = root / "store"
-        port = free_port()
-        self.command([IMAGE, "--fn", "store", store, "init", *GROUPS])
-        config = root / "fn.toml"
-        text = ('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-                '[control]\npath = "{}"\n'.format(store, port, root / "control.sock"))
+        node = Node(self, IMAGE, name=name)
+        self.nodes.append(node)
+        node.store("init", *GROUPS, expect=EXIT_OK)
         if auth:
-            text += ('[auth]\nrequired = true\nprotected_only = false\npath = "{}"\n'
-                     .format(root / "credentials.toml"))
-        config.write_text(text, encoding="ascii")
-        node = {"name": name, "root": root, "config": config, "port": port,
-                "store": store, "starts": 0}
-        if auth:
+            node.write_config(extra='[auth]\nrequired = true\nprotected_only = false\n'
+                                    'path = "{}"\n'.format(node.root / "credentials.toml"))
             for login in ("alice", "bob"):
-                result = subprocess.run(
-                    [str(IMAGE), "--fn", "operator", str(config), "principal",
-                     "set-password", login, "--posting"],
-                    cwd=ROOT, env=self.env,
-                    input=((login + "-correct-horse-battery\n") * 2).encode(),
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=600,
-                    check=False)
-                self.assertEqual(result.returncode, 0, result)
+                node.operator("principal", "set-password", login, "--posting",
+                              input=((login + "-correct-horse-battery\n") * 2).encode(),
+                              timeout=600, expect=EXIT_OK)
         else:
-            self.command([IMAGE, "--fn", "operator", config, "peer", "add", "source",
-                          "source.example.invalid", "127.0.0.1", str(free_port()),
-                          "fn.*", "-", "127.0.0.1", "true"])
+            node.operator("peer", "add", "source", "source.example.invalid", "127.0.0.1",
+                          str(free_port()), "fn.*", "-", "127.0.0.1", "true", expect=EXIT_OK)
         return node
 
-    def start(self, node):
-        node["starts"] += 1
-        log = open(node["root"] / "node-{}.log".format(node["starts"]), "wb")
-        self.addCleanup(log.close)
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=log)
-        self.processes.append(process)
-        node["process"] = process
-        wait_for_announcement(process, b"LISTENING ")
-
-    def stop_all(self):
-        for process in self.processes:
-            if process.poll() is None:
-                process.terminate()
-                process.communicate(timeout=60)
-
     def connect(self, node, login=None):
-        client = socket.create_connection(("127.0.0.1", node["port"]), timeout=30)
+        client = Client(node.port, timeout=30)
         self.addCleanup(client.close)
-        stream = whole_stream(client)
-        self.assertTrue(stream.readline()[:1] == b"2")
+        self.assertTrue(client.greeting[:1] == b"2")
         if login:
-            stream.write(b"AUTHINFO USER " + login.encode() + b"\r\n")
-            self.assertTrue(stream.readline().startswith(b"381"))
-            stream.write(b"AUTHINFO PASS " + login.encode() + b"-correct-horse-battery\r\n")
-            reply = stream.readline()
+            self.assertTrue(client.command("AUTHINFO USER " + login).startswith(b"381"))
+            reply = client.command("AUTHINFO PASS " + login + "-correct-horse-battery")
             self.assertTrue(reply.startswith(b"281"), reply)
-        return stream
+        return client
 
     def post(self, node, login, payload):
-        stream = self.connect(node, login)
-        stream.write(b"POST\r\n")
-        first = stream.readline()
-        if not first.startswith(b"340"):
-            return first.decode().strip()
-        stream.write(stuffed(payload) + b".\r\n")
-        return stream.readline().decode().strip()
+        first, final = self.connect(node, login).post(payload)
+        return (final if final is not None else first).decode().strip()
 
     def fetch(self, node, message_id, login=None):
-        stream = self.connect(node, login)
-        stream.write(b"ARTICLE " + message_id.encode() + b"\r\n")
-        status = stream.readline()
+        status, body = self.connect(node, login).multiline("ARTICLE " + message_id)
         self.assertTrue(status.startswith(b"220"), (message_id, status))
-        lines = []
-        while True:
-            line = stream.readline()
-            if line in (b".\r\n", b""):
-                break
-            lines.append(line[1:] if line.startswith(b".") else line)
-        return b"".join(lines)
+        return body
 
     def relay(self, octets, destination, message_id):
-        stream = self.connect(destination)
-        stream.write(b"IHAVE " + message_id.encode() + b"\r\n")
-        first = stream.readline().decode().strip()
-        if first.startswith("335"):
-            stream.write(stuffed(octets) + b".\r\n")
-            first += " / " + stream.readline().decode().strip()
-        return first
+        first, final = self.connect(destination).post(octets, verb="IHAVE " + message_id)
+        text = first.decode().strip()
+        if final is not None:
+            text += " / " + final.decode().strip()
+        return text
 
     def operator(self, node, *words, expected=0):
-        return self.command([IMAGE, "--fn", "operator", node["config"], *words],
-                            expected=expected)
+        return node.operator(*words, expect=expected)
 
     def test_injection_info_names_the_account_and_the_complaints_address(self):
         try:
             self.scenario()
         except BaseException:
-            for log in sorted(self.base.glob("*/node-*.log")):
-                print("== {}\n{}".format(log, log.read_bytes()[-3000:].decode(
-                    "utf-8", "replace")))
+            for node in self.nodes:
+                for process in node.processes:
+                    print("== {} {}\n{}".format(node.name, process.pid, process.stderr.since(0)[
+                        -3000:].decode("utf-8", "replace")))
             raise
 
     def scenario(self):
         h = self.initialize("h", True)
         a = self.initialize("a", False)
         for node in (h, a):
-            self.start(node)
+            node.start()
         seen = {}
         refused = self.operator(h, "policy", "set", "complaints-to", "not-an-address",
                                 expected=None)

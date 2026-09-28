@@ -31,28 +31,14 @@ connection sees it) stay.
 """
 import json
 import os
-from pathlib import Path
-import socket
-import subprocess
 import sys
-import tempfile
 import unittest
 
-from tests.native_harness import native_peer_add, stop_and_diagnostics, wait_for_announcement
-from tools.wire_stream import whole_stream
+from tests.native_harness import (
+    EXIT_OK, ROOT, Client, environment, native_image, native_peer_add, run, scratch, start)
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get(
-    "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 GROUP = b"fn.test"
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    return env
 
 
 def article(message_id, subject=b"freshness probe"):
@@ -65,46 +51,18 @@ def article(message_id, subject=b"freshness probe"):
             b"a freshness probe body\r\n")
 
 
-class Conn:
-    def __init__(self, port, source=None):
-        self.sock = socket.create_connection(
-            ("127.0.0.1", port), timeout=30,
-            source_address=(source, 0) if source else None)
-        self.stream = whole_stream(self.sock)
-        self.greeting = self.line()
-
-    def line(self):
-        return self.stream.readline().decode("latin-1").rstrip("\r\n")
-
-    def cmd(self, text, multiline=False):
-        self.stream.write(text.encode("latin-1") + b"\r\n")
-        first = self.line()
-        block = []
-        if multiline and first[:1] in ("1", "2") and first[:3] not in ("205",):
-            while True:
-                line = self.line()
-                if line in (".", ""):
-                    break
-                block.append(line)
-        return first, block
-
-    def close(self):
-        try:
-            self.stream.write(b"QUIT\r\n")
-            self.stream.readline()
-        except OSError:
-            pass
-        self.stream.close()
-        self.sock.close()
+def text(line):
+    return line.decode("latin-1").rstrip("\r\n")
 
 
 def view(conn, message_id):
-    group, _ = conn.cmd("GROUP fn.test")
-    listgroup_line, numbers = conn.cmd("LISTGROUP fn.test", multiline=True)
-    stat, _ = conn.cmd("STAT " + message_id)
-    art, _ = conn.cmd("ARTICLE " + message_id, multiline=True)
-    return {"GROUP": group, "LISTGROUP": listgroup_line, "numbers": numbers,
-            "STAT": stat, "ARTICLE": art}
+    group = text(conn.command("GROUP fn.test"))
+    listgroup_line, numbers = conn.multiline("LISTGROUP fn.test")
+    stat = text(conn.command("STAT " + message_id))
+    art, _ = conn.multiline("ARTICLE " + message_id)
+    return {"GROUP": group, "LISTGROUP": text(listgroup_line),
+            "numbers": numbers.decode("latin-1").split("\r\n")[:-1],
+            "STAT": stat, "ARTICLE": text(art)}
 
 
 def sees(observed):
@@ -120,39 +78,16 @@ class ReaderFreshnessProbe(unittest.TestCase):
                 "(FN_NATIVE_PROFILE=developer tools/build_native_host.sh)".format(IMAGE))
 
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-r1-probe-")
-        self.addCleanup(self.temporary.cleanup)
-        self.store = Path(self.temporary.name) / "store"
-        initialized = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(self.store), "init", "fn.test"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment(), timeout=180, check=False)
-        self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
+        self.store = scratch(self, "fn-r1-probe-") / "store"
+        initialized = run([IMAGE, "--fn", "store", self.store, "init", "fn.test"])
+        self.assertEqual(initialized.returncode, EXIT_OK, initialized.stderr.decode())
 
     def start_owner(self):
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "owner", "run", str(self.store), "0", "0", "8"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment())
-        self.addCleanup(self.stop, process)
-        line = wait_for_announcement(process, b"LISTENING ")
-        if not line.startswith(b"LISTENING "):
-            self.fail("native owner failed: {!r} {}".format(
-                line, stop_and_diagnostics(process)))
-        return int(line.split()[1])
-
-    @staticmethod
-    def stop(process):
-        if process.poll() is None:
-            process.terminate()
-            try:
-                process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=10)
-        for pipe in (process.stdout, process.stderr):
-            if pipe:
-                pipe.close()
+        """`owner run STORE 0 0 8`: the store owner on an ephemeral port."""
+        process = start([IMAGE, "--fn", "owner", "run", self.store, "0", "0", "8"],
+                        cwd=ROOT, env=environment())
+        self.addCleanup(process.stop, 10)
+        return int(process.announcement(b"LISTENING ").split()[1])
 
     def record(self, arrival, long_lived_before, long_lived_after, fresh):
         row = {"arrival": arrival, "long_lived_before": long_lived_before,
@@ -165,16 +100,14 @@ class ReaderFreshnessProbe(unittest.TestCase):
         return row
 
     def probe(self, arrival, port, arrive, message_id, source=None):
-        long_lived = Conn(port, source)
+        long_lived = Client(port, timeout=30, source=source)
         self.addCleanup(long_lived.close)
-        self.assertTrue(long_lived.greeting.startswith(("200 ", "201 ")),
-                        long_lived.greeting)
         before = view(long_lived, message_id)
         self.assertTrue(before["GROUP"].startswith("211 "), before)
         self.assertFalse(sees(before), before)
         arrive()
         after = view(long_lived, message_id)
-        fresh_conn = Conn(port, source)
+        fresh_conn = Client(port, timeout=30, source=source)
         self.addCleanup(fresh_conn.close)
         fresh = view(fresh_conn, message_id)
         row = self.record(arrival, before, after, fresh)
@@ -193,15 +126,10 @@ class ReaderFreshnessProbe(unittest.TestCase):
         message_id = "<r1-post@example.invalid>"
 
         def post():
-            poster = Conn(port)
-            try:
-                first, _ = poster.cmd("POST")
-                self.assertTrue(first.startswith("340 "), first)
-                poster.stream.write(article(message_id.encode()) + b".\r\n")
-                reply = poster.line()
-                self.assertTrue(reply.startswith("240 "), reply)
-            finally:
-                poster.close()
+            with Client(port, timeout=30) as poster:
+                first, reply = poster.post(article(message_id.encode()))
+                self.assertTrue(first.startswith(b"340 "), first)
+                self.assertTrue(reply.startswith(b"240 "), reply)
 
         self.probe("another connection's POST", port, post, message_id)
 
@@ -214,15 +142,11 @@ class ReaderFreshnessProbe(unittest.TestCase):
         message_id = "<r1-ihave@example.invalid>"
 
         def ihave():
-            peer = Conn(port)
-            try:
-                first, _ = peer.cmd("IHAVE " + message_id)
-                self.assertTrue(first.startswith("335 "), first)
-                peer.stream.write(article(message_id.encode(), b"via a peer") + b".\r\n")
-                reply = peer.line()
-                self.assertTrue(reply.startswith("235 "), reply)
-            finally:
-                peer.close()
+            with Client(port, timeout=30) as peer:
+                first, reply = peer.post(article(message_id.encode(), b"via a peer"),
+                                         verb="IHAVE " + message_id)
+                self.assertTrue(first.startswith(b"335 "), first)
+                self.assertTrue(reply.startswith(b"235 "), reply)
 
         # The reader connects from 127.0.0.2, which no peer record names.
         self.probe("a peer's IHAVE", port, ihave, message_id, source="127.0.0.2")
