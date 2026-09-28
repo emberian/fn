@@ -12646,11 +12646,27 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-oah-read-span-keeps-held-within-the-slots"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oah-read-span-leaves-the-others-article-mode"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-oas-read-span-never-blocks-an-admitted-article"
         },
         {
           "kind": "theorem",
-          "name": "fn-oas-refused-read-is-not-article"
+          "name": "fn-oah-admitted-read-keeps-what-it-completed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oas-read-span-held-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oas-refusals-are-not-article"
         },
         {
           "kind": "theorem",
