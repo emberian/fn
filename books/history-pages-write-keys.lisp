@@ -17,8 +17,8 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-scc-encode-is-program)
-                          (:rewrite pgs-x-nfix-when-natp))))
+(local (in-theory (enable (:rewrite pgs-x-nfix-when-natp))))
+
 (local (in-theory (disable floor)))
 
 ; H. The writer's blocks are the model's.

@@ -11,6 +11,7 @@
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-bpnf-find-arrival))))
+
 (set-verify-guards-eagerness 0)
 
 ; Every row of ORDERED other than H is not a forward candidate.

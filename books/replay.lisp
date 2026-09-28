@@ -22,6 +22,7 @@
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:rewrite fn-prov-structured-is-not-a-string))))
+
 ; The codecs cluster withdraws (:d fn-store-event-p) at export (2026-09-19); the
 ; loop's guard proof needs only that a record is a true list.  Interim
 ; local fact applied by the store deputy so its closure certifies; the

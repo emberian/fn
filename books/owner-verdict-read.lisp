@@ -21,7 +21,6 @@
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:rewrite fn-auth-nntp-effects-are-auth-effects))))
 
-
 ;; The HDR :fn-verified reply offers no article and its effects are a list.
 
 (defthm fn-ovr-hdr-msgid-has-no-offer

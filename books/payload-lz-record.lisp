@@ -59,7 +59,6 @@
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-arn-extent-guardp))))
 
-
 ; -----------------------------------------------------------------------------
 ; 1. u32 fields and the frame.
 

@@ -35,6 +35,7 @@
                           (:definition fn-bs-keys-belowp)
                           (:definition fn-bs-op-listp)
                           (:definition fn-bs-opp))))
+
 (defun fn-bs-k0c-ind (k bs ks steps outs g c)
   (declare (xargs :measure (acl2-count steps) :verify-guards nil))
   (if (or (zp k) (atom steps)) (list bs ks outs g c)

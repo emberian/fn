@@ -12,6 +12,12 @@
 (include-book "nov-fields")
 ; The served retrieval's one pass (PRF-334): fn-nntp-article-response runs it.
 (include-book "nntp-article-pass")
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nntp-article-idp)
+                          (:definition fn-nntp-message-id-tokenp))))
+
 ; Closed here and for every book above: its recognizer walks 89 conses,
 ; and opened inside every proof about a retrieval it multiplied
 ; nntp-responses' own proof time thirty-fold (1.7 s to 56.6 s at 2 jobs,
@@ -2681,11 +2687,6 @@
 ; Message-ID retrieval uses it directly; the theorem below relates the
 ; executed response to the canonical article-list scan.
 (include-book "msgid-index")
-
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-article-idp)
-                          (:definition fn-nntp-message-id-tokenp))))
 
 (defthm fn-nntp-octets-chars-character-listp
   (character-listp (fn-nntp-octets-chars bytes))

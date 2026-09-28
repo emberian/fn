@@ -9,7 +9,6 @@
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-scc-octet-listp)
-                          (:rewrite fn-scc-encode-is-program)
                           (:rewrite pgs-x-nfix-when-natp))))
 
 ; -----------------------------------------------------------------------------

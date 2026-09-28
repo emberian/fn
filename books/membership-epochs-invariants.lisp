@@ -27,11 +27,6 @@
 (in-package "ACL2")
 (include-book "membership-epochs")
 
-; cluster-local theory: this book is inside the substrate cluster and opens
-; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
-(local (in-theory (enable fn-me-internals)))
-(local (include-book "arithmetic/top" :dir :system))
-
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-me-commitp)
@@ -39,6 +34,11 @@
                           (:definition fn-me-messagep)
                           (:definition fn-me-messagesp)
                           (:rewrite fn-me-messagesp-implies-true-listp))))
+
+; cluster-local theory: this book is inside the substrate cluster and opens
+; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
+(local (in-theory (enable fn-me-internals)))
+(local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
 ; List plumbing

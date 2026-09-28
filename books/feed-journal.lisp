@@ -10,6 +10,7 @@
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:rewrite fn-frame-len-4-conses)
                           (:rewrite fn-frame-not-consp-when-len-zero))))
+
 (local (in-theory (enable fn-frame-octet-vocabulary)))
 
 (defconst *fn-feed-journal-prefix-size* 4)

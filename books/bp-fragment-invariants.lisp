@@ -24,6 +24,7 @@
                           (:definition fn-bpf-fragmentp)
                           (:rewrite fn-bpf-fragment-listp-car-and-cdr)
                           (:rewrite fn-bpf-fragmentp-fields))))
+
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-cbor-record-vocabulary fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))

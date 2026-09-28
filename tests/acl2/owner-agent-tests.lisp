@@ -24,6 +24,10 @@
 (include-book "../../books/owner-agent")
 (include-book "must-fail-checked")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nov-clean-linep))))
+
 ; -----------------------------------------------------------------------------
 ; The configuration: the default record, then `policy set path-identity'.
 
@@ -78,9 +82,6 @@
                     *oat-post-config*))
 (include-book "arena-lift")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nov-clean-linep))))
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
 (bpr-lift fn-ocfg-read-tls-prefix 3)

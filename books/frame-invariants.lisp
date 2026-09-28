@@ -20,6 +20,14 @@
 (in-package "ACL2")
 (include-book "frame")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-frame-textp)
+                          (:linear fn-frame-at-mostp-bounds-len)
+                          (:rewrite fn-frame-len-2-conses)
+                          (:rewrite fn-frame-len-4-conses)
+                          (:rewrite fn-frame-not-consp-when-len-zero))))
+
 ; This is the frame cluster's proof book: every theorem here is about the
 ; definitions in `frame-octets', `frame-fields', `frame-journal' and `frame',
 ; so it opens them locally, together with the CBOR list vocabulary.  The
@@ -35,14 +43,6 @@
                           (:d fn-frame-split)
                           (:d fn-frame-u64-bytes))))
 (local (include-book "arithmetic/top" :dir :system))
-
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-frame-textp)
-                          (:linear fn-frame-at-mostp-bounds-len)
-                          (:rewrite fn-frame-len-2-conses)
-                          (:rewrite fn-frame-len-4-conses)
-                          (:rewrite fn-frame-not-consp-when-len-zero))))
 
 ; The splitter is reasoned about through its lemmas, never by unrolling it on
 ; a literal length; the big-endian encoders likewise.

@@ -40,7 +40,6 @@
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-bs-apply-op)
-                          (:definition fn-lg-declared-len)
                           (:definition fn-lg-scan)
                           (:rewrite fn-lgc-take-all))))
 

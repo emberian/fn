@@ -45,6 +45,11 @@
 ; P3 (PRF-228): the moderated-group gate.
 (include-book "moderation")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nntp-effectp)
+                          (:definition fn-nntp-effectsp))))
+
 (local (in-theory (enable fn-nntp-syntax-vocabulary
                           fn-nntp-session-vocabulary
                           fn-nntp-projection-vocabulary
@@ -906,11 +911,6 @@
 ; this book.
 
 (local (include-book "injection-invariants"))
-
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-effectp)
-                          (:definition fn-nntp-effectsp))))
 
 ; A definitional restatement, cited by :use and never a registry event: the
 ; submission this step emits for an article body is the injection decision

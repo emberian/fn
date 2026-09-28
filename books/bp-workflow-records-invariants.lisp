@@ -17,6 +17,7 @@
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-bp-journal-recordp))))
+
 (local (in-theory (enable fn-node-statep)))
 
 ; Every workflow definition and every unfolding rule is closed by default;

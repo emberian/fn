@@ -10,6 +10,7 @@
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-record-ascii-octet-listp)
                           (:definition fn-record-ascii-octetp))))
+
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpaj-boundary-rowp (rows name slot value number)

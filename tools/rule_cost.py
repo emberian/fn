@@ -360,12 +360,18 @@ ENABLE_HEAD = ";; Rules withdrawn at their source that this book's proofs use"
 
 
 def after_last_include(text: str) -> int:
-    """The offset just past the book's last top-level include-book form."""
+    """The offset just past the include-book forms that open the book.
+
+    The header's includes, not the last in the file: a book that includes
+    arithmetic/top half-way down (books/store-node-invariants-base) needs
+    the enables for the events above it too."""
     end = 0
     for form, line in ledger.Reader(text).top_level():
         inner = form[1] if (ledger.head(form) == "local" and len(form) > 1) else form
         if ledger.head(inner) == "include-book":
             end = line
+        elif ledger.head(inner) != "in-package" and end:
+            break
     if not end:
         raise RuleCostError("no top-level include-book")
     lines = text.splitlines(keepends=True)
@@ -394,7 +400,49 @@ def enable_in(book: str, runes: list[str], root: Path = ROOT) -> None:
     block = (f"\n{ENABLE_HEAD}\n;; (lane rule-hygiene, tools/rule_cost.py).\n"
              "(local (in-theory (enable " + "\n                          ".join(sorted(runes))
              + ")))\n")
-    path.write_text(text[:at] + block + text[at:], encoding="utf-8")
+    rest = text[at:]
+    if rest and not rest.startswith("\n"):
+        block += "\n"
+    path.write_text(text[:at] + block + rest, encoding="utf-8")
+
+
+def restore(rune: str, root: Path = ROOT) -> list[str]:
+    """Take one rune back out of every withdrawal and enable block.
+
+    For a rune whose withdrawal broke something no enable repairs (a rule
+    whose being enabled kept another pair from looping: the definition of
+    fn-lg-declared-len, 2026-09-28).  Empty blocks are removed whole."""
+    rune = rune.lower()
+    touched = []
+    for path in sorted(list((root / "books").glob("**/*.lisp"))
+                       + list((root / "tests" / "acl2").glob("*.lisp"))):
+        text = path.read_text(encoding="utf-8")
+        if rune not in text or ("lane rule-hygiene" not in text):
+            continue
+        new = text
+        for head, opener, closer in ((WITHDRAW_HEAD, "(in-theory (disable ", "))"),
+                                     (ENABLE_HEAD, "(local (in-theory (enable ", ")))")):
+            if head not in new:
+                continue
+            before, _, rest = new.partition(head)
+            start = rest.index(opener)
+            end = rest.index(closer + "\n", start) + len(closer) + 1
+            runes = re.findall(r"\(:[a-z-]+ [^()]+\)", rest[start:end])
+            if rune not in runes:
+                continue
+            runes.remove(rune)
+            pad = " " * len(opener)
+            if runes:
+                block = opener + ("\n" + pad).join(runes) + closer + "\n"
+                new = before + head + rest[:start] + block + rest[end:]
+            else:
+                new = before.rstrip("\n") + "\n" + rest[end:]
+                if not new.endswith("\n"):
+                    new += "\n"
+        if new != text:
+            path.write_text(new, encoding="utf-8")
+            touched.append(str(path.relative_to(root)))
+    return touched
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -430,8 +478,14 @@ def main(argv: list[str] | None = None) -> int:
                            "was useful (default), or only in those a certify "
                            "manifest (--manifest) did not pass")
     pull.add_argument("--manifest", type=Path)
+    back = sub.add_parser("restore", help="take runes back out of every block")
+    back.add_argument("runes", nargs="+", help="e.g. '(:definition fn-x)'")
     args = parser.parse_args(argv)
     try:
+        if args.action == "restore":
+            for rune in args.runes:
+                print(rune, " ".join(restore(rune)))
+            return 0
         if args.action == "withdraw":
             result = json.loads(args.ranking.read_text(encoding="utf-8"))
             rows = select(result, max_useful_books=args.max_useful_books,

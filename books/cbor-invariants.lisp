@@ -7,6 +7,12 @@
 (include-book "ihs/quotient-remainder-lemmas" :dir :system)
 (include-book "cbor")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-cbor-decode)
+                          (:definition fn-cbor-decode-bounded)
+                          (:definition fn-cbor-decode-prechecked))))
+
 ; This book is the codec's proof book: every theorem below is about the
 ; definitions in `cbor', so it opens them locally.  Results stay opaque; the
 ; record lemmas exported by `cbor' are what close the goals about them.
@@ -208,12 +214,6 @@
 
 ; Local arithmetic normalization supports the inverse base-256 direction.
 (local (include-book "arithmetic/top" :dir :system))
-
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-cbor-decode)
-                          (:definition fn-cbor-decode-bounded)
-                          (:definition fn-cbor-decode-prechecked))))
 
 (defthm fn-cbor-u16-to-from-octets
   (implies (and (fn-cbor-octet-listp xs)

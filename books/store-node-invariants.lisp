@@ -2,6 +2,12 @@
 (in-package "ACL2")
 (include-book "store-node-invariants-base")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-replay-apply-carried-verdict)
+                          (:definition fn-replay-apply-revoked-verdict)
+                          (:definition fn-sn-completion-is-last-p))))
+
 ; Split 2026-09-27 (the 10 s budget): everything before the carried index and
 ; the prefix recoverability section is in books/store-node-invariants-base;
 ; this book carries the index and exports the vocabulary.  The local theory
@@ -56,12 +62,6 @@
 
 
 (local (include-book "arithmetic/top" :dir :system))
-
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-replay-apply-carried-verdict)
-                          (:definition fn-replay-apply-revoked-verdict)
-                          (:definition fn-sn-completion-is-last-p))))
 
 (local (in-theory (disable fn-node-statep fn-sf-statep fn-record-p
                            fn-node-prepare fn-node-complete fn-node-recover

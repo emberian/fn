@@ -65,6 +65,10 @@
 (include-book "outcome-class")
 (include-book "heap-store-figure")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-sccr-scc-octet-listp-is-cbor-octet-listp))))
+
 (defconst *fn-heap-mib* 1048576)
 (defconst *fn-heap-octets-per-list-octet* 16)
 
@@ -153,10 +157,6 @@
   (floor (+ (nfix octets) (1- *fn-heap-mib*)) *fn-heap-mib*))
 
 (local (include-book "arithmetic-5/top" :dir :system))
-
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-sccr-scc-octet-listp-is-cbor-octet-listp))))
 
 (defthm fn-heap-mb-of-covers
   (<= (nfix octets) (* *fn-heap-mib* (fn-heap-mb-of octets)))

@@ -57,6 +57,7 @@
                           (:definition fn-bpf-fragmentp)
                           (:rewrite fn-bpf-fragment-listp-car-and-cdr)
                           (:rewrite fn-bpf-fragmentp-fields))))
+
 (local (in-theory (disable mod-x-y-=-x+y-for-rationals)))
 
 ; -----------------------------------------------------------------------------

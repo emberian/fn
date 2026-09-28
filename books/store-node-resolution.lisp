@@ -8,6 +8,7 @@
 (local (in-theory (enable (:definition fn-sn-completion-is-last-p)
                           (:rewrite fn-sf-member-preserved-by-prefix)
                           (:rewrite fn-sn-new-success-requires-actual-matching-durable-node-completion))))
+
 ; Resolution proofs use the Store's exported selector facts.  Opening the
 ; fourteen-field constructor in every file transition obscures those facts.
 (local (in-theory (disable fn-sn-make-v6)))

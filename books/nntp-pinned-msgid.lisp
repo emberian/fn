@@ -20,6 +20,7 @@
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-nntp-message-id-tokenp))))
+
 ;
 ; A Message-ID token begins with `<' (60), which is not a decimal digit, so
 ; the retrieval arm never reads it as an article number.

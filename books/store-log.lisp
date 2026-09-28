@@ -1244,6 +1244,5 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:definition fn-lg-declared-len)
-                    (:definition fn-lg-entry-okp)
+(in-theory (disable (:definition fn-lg-entry-okp)
                     (:definition fn-lg-scan)))

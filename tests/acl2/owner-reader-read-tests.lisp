@@ -13,6 +13,12 @@
 (include-book "arena-lift")
 (include-book "must-fail-checked")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-scr-catalogp)
+                          (:definition fn-scr-conn-okp)
+                          (:definition fn-scr-fields-catalogp))))
+
 (assert-event
  (equal (list (symbol-class 'fn-orr-read-span (w state))
               (symbol-class 'fn-ocs-publication-class (w state)))
@@ -434,12 +440,6 @@
 ; rows), and fn-orr-read-span -- the host's own call, not the twin -- runs
 ; over it on live stobjs.
 (include-book "../../books/served-catalog-owner")
-
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scr-catalogp)
-                          (:definition fn-scr-conn-okp)
-                          (:definition fn-scr-fields-catalogp))))
 
 (defun g12b-cat-rows (i n fn-cat)
   (declare (xargs :mode :program :stobjs fn-cat))

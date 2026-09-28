@@ -3,13 +3,14 @@
 (include-book "config-owner-advance-invariants-tests")
 (include-book "must-fail-checked")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-midx-branch-get))))
+
 (assert-event (fn-ocri-relation *ocl-t-new-open*))
 (assert-event (fn-ocri-relation *ocla-t-advanced*))
 (include-book "arena-lift")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-midx-branch-get))))
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
 (bpr-lift fn-ocfg-step 2)

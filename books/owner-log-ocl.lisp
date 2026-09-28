@@ -14,6 +14,7 @@
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-midx-put-chars)
                           (:rewrite fn-gidx-refresh-is-build))))
+
 (defthm fn-lgoc-conn-historyp-of-longer-history
   (implies (and (fn-ocl-conn-historyp oc conn)
                 (equal (fn-ocfg-pins oc2) (fn-ocfg-pins oc))

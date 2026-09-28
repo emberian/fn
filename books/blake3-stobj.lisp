@@ -36,6 +36,7 @@
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1))))
+
 (local (in-theory (e/d (fn-shr-win) (floor mod truncate rem unsigned-byte-p mv-nth))))
 
 ; -----------------------------------------------------------------------------

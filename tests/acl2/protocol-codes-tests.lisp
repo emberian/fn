@@ -14,6 +14,11 @@
 (include-book "../../books/protocol-framing")
 (include-book "must-fail-checked")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-nntp-message-id-token-is-response-text)
+                          (:rewrite fn-nntp-response-text-is-octets))))
+
 (defconst *pct-groups* '("fn.test" "fn.other"))
 (defconst *pct-id-1* "<one@fn.invalid>")
 (defconst *pct-id-2* "<two@fn.invalid>")
@@ -55,10 +60,6 @@
 
 (include-book "arena-lift")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-nntp-message-id-token-is-response-text)
-                          (:rewrite fn-nntp-response-text-is-octets))))
 (defconst *sr-arena* (list *pct-payload-1* *pct-payload-2*))
 (bpr-lift fn-nntp-command-pinned 6)
 

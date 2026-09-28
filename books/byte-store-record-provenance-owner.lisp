@@ -2,6 +2,15 @@
 ; includes this book after its byte-store and Store-node parts.
 (in-package "ACL2")
 (include-book "byte-store-record-provenance-node")
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-apply-op)
+                          (:definition fn-bs-dir-idp)
+                          (:definition fn-bs-entry-valuep)
+                          (:definition fn-bs-op-listp)
+                          (:definition fn-bs-opp))))
+
 (local (in-theory (enable fn-bs-k6-created-stage-lookup-without-namep
                            fn-bs-k6-fresh-create-returns-ok
                            fn-bs-k6-write-created-inode-returns-ok-without-namep
@@ -27,14 +36,6 @@
 ; fn-ocfg-step.  Expose the Store-node projection of that called path.
 (include-book "owner-config")
 (include-book "owner-invariants")
-
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bs-apply-op)
-                          (:definition fn-bs-dir-idp)
-                          (:definition fn-bs-entry-valuep)
-                          (:definition fn-bs-op-listp)
-                          (:definition fn-bs-opp))))
 
 (defthm fn-bs-k0-owner-io-store-is-node-io
   (equal (fn-own-store

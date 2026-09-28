@@ -35,6 +35,10 @@
 (in-package "ACL2")
 (include-book "msgid-index")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-midx-put-chars))))
+
 ; -----------------------------------------------------------------------------
 ; The walk by index.
 
@@ -111,10 +115,6 @@
 ; character list, and the walk from I is the list walk from (nthcdr I ...).
 
 (local (include-book "arithmetic/top" :dir :system))
-
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-midx-put-chars))))
 
 (local (defthm fn-mxc-len-coerce-is-length
   (implies (stringp s) (equal (len (coerce s 'list)) (length s)))))

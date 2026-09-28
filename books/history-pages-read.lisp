@@ -24,7 +24,6 @@
                           (:definition fn-scc-program)
                           (:definition fn-scc-string-octets)
                           (:linear fn-cp-id-length-bound)
-                          (:rewrite fn-scc-encode-is-program)
                           (:rewrite fn-scc-octet-listp-facts . 1)
                           (:rewrite fn-sccb-scc-octetp-is-cbor-octetp)
                           (:rewrite pgs-x-nfix-when-natp))))

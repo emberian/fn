@@ -936,7 +936,6 @@
                     (:definition fn-scc-step)
                     (:definition fn-scc-string-octets)
                     (:definition fn-scc-treep)
-                    (:rewrite fn-scc-encode-is-program)
                     (:rewrite fn-scc-octet-listp-facts . 1)
                     (:rewrite fn-scc-octet-listp-facts . 2)
                     (:rewrite fn-scc-octet-listp-true)))
