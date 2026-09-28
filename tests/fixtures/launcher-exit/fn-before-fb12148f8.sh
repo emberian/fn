@@ -85,22 +85,9 @@ unset ACL2_SYSTEM_BOOKS
 if [ -n "$installed" ]; then
     core_octets=$(wc -c < "$image.core" | tr -d ' ')
     boot=$(( (core_octets + 1048575) / 1048576 + 128 ))
-    # The probe prints ACL2's decision on stdout, always: `heap=...' (exit 0)
-    # or `refused REASON ...' (exit 1), printed here on stderr with the
-    # exit code ACL2 gave it.  No line means the probe never reached ACL2:
-    # the runtime stopped first, with its own message on stderr (under a
-    # datasize limit below the image's own mappings, SBCL's `mmap ...
-    # ENOMEM'; lane openbsd-datasize).  That is a fault, exit 4, never
-    # the refusal exit 1 SBCL's own exit code would read as.
     status=0
     figure=$(SBCL_USER_ARGS="--dynamic-space-size $boot" "$image" --fn heap -- "$@") || status=$?
-    case $figure in
-        refused\ *) echo "fn: $figure" >&2; exit "$status" ;;
-    esac
-    if [ "$status" -ne 0 ]; then
-        echo "fn: fault heap-probe-did-not-run exit=$status datasize-kib=$(ulimit -d): the image stopped before it decided its memory (its own message is above); nothing ran" >&2
-        exit 4
-    fi
+    [ "$status" -eq 0 ] || exit "$status"
     mb=${figure#heap=}
     mb=${mb%% *}
     case $figure in

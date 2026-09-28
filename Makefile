@@ -1487,6 +1487,12 @@ check:
 # no ACL2 (lane lane-tools-2, after payload-lz-record was outside the world).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --world
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_world
+# Every launcher path (packaging/'s shell launchers, host/'s process spawns)
+# classifies a child's failure: an unknown one is a fault (4) or uncertain,
+# never forwarded as the refusal code 1 (lane lane-tools-2; openbsd-datasize's
+# SBCL ENOMEM read as "refused", fb12148f8).  Static, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/launcher_exit_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_launcher_exit_check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
