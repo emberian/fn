@@ -241,11 +241,13 @@
 (include-book "books/anchor-replace")
 
 ;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
-;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
-;; fn-sxp-import-plan; fnn-command-store-import follows fn-bs-imp-program's
+;; fnn-command-store-import call fn-sxp-export-head and fn-sxp-export-chunk
+;; (books/store-export-stream: the streamed export IS fn-sxp-entries and
+;; fn-sxp-manifest, fn-sxp-stream-is-the-export) and fn-sxp-import-plan; fnn-command-store-import follows fn-bs-imp-program's
 ;; publication (staged, validated, no-replace rename, parent fenced) and
 ;; classifies a leftover staged directory through fn-bs-imp-classify.
 (include-book "books/store-export")
+(include-book "books/store-export-stream")
 (include-book "books/store-import-publication")
 ;; `operator init` publishes the empty store by the same program (PKT-647):
 ;; fnn-command-init-published asks fn-bs-init-pub-admission.
