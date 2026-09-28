@@ -151,6 +151,7 @@
   (implies (and (fn-ocl-relation oc)
                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+                (fn-scol-okp fn-arena fn-cat)
                 (natp i) (natp end))
            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
@@ -163,6 +164,7 @@
  (defthm scct-read-span-needs-ocl-relation
    (implies (and (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+                 (fn-scol-okp fn-arena fn-cat)
                  (natp i) (natp end))
             (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
@@ -173,6 +175,22 @@
 (must-fail-checked
  (defthm scct-read-span-needs-view-indexedp
    (implies (and (fn-ocl-relation oc)
+                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+                 (fn-scol-okp fn-arena fn-cat)
+                 (natp i) (natp end))
+            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
+                                       (theory 'minimal-theory))))))
+
+;; Without the overview column's premise F (lane served-columns): the
+;; dispatcher's OVER/HDR arms read the rows' columns, so the keystone is not
+;; usable without it.
+(must-fail-checked
+ (defthm scct-read-span-needs-the-overview-column
+   (implies (and (fn-ocl-relation oc)
+                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (natp i) (natp end))
             (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
@@ -185,6 +203,7 @@
  (defthm scct-read-span-needs-the-catalog-relation
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
+                 (fn-scol-okp fn-arena fn-cat)
                  (natp i) (natp end))
             (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
@@ -197,6 +216,7 @@
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+                 (fn-scol-okp fn-arena fn-cat)
                  (natp end))
             (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
@@ -209,6 +229,7 @@
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+                 (fn-scol-okp fn-arena fn-cat)
                  (natp i))
             (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))

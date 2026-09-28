@@ -92,6 +92,10 @@ class SlowDiskSourceTests(unittest.TestCase):
         event = owner[owner.index("(defun fnn-owner-disk-event "):owner.index("(defun fnn-owner-journal-note")]
         self.assertIn("'fn-otm-disk-step", event)
         self.assertIn("(fnn-journal-line entry)", event)
+        # the entry is offered under the mutex that numbered it (batch AY:
+        # offered after the release, entries landed out of sequence)
+        self.assertLess(event.index("(fnn-journal-line entry)"),
+                        event.index("(when line (fnn-log-line line))"))
         # the reading is taken inside the gate mutex, never passed in
         self.assertLess(event.index("(sb-thread:with-mutex ((fnn-owner-gate-mutex gate))"),
                         event.index("(setq reading (fnn-owner-monotonic-ms))"))

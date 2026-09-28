@@ -761,6 +761,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-syntax \
 	books/nntp-session \
 	books/nntp-projection \
+	books/nov-fields \
+	books/nntp-article-pass \
 	books/nntp-responses \
 	books/nntp-article-block \
 	books/nntp-reader-compat \
@@ -858,6 +860,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-entries \
 	books/catalog-refresh \
 	books/catalog-number-index \
+	books/served-columns \
+	tests/acl2/served-columns-tests \
 	books/served-catalog \
 	books/served-catalog-chain \
 	books/served-catalog-owner \
@@ -1160,9 +1164,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-catchup-tests \
 	books/protocol-table \
 	books/protocol-builders \
+	books/protocol-codes-rows \
 	books/protocol-codes \
 	books/protocol-framing \
+	books/protocol-dispatch \
 	tests/acl2/protocol-codes-tests \
+	tests/acl2/protocol-dispatch-tests \
+	tests/acl2/protocol-codes-hra-tests \
+	tests/acl2/protocol-text-tests \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \
@@ -1237,6 +1246,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-journal \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
+	books/web-request \
+	tests/acl2/web-request-tests \
+	books/web-render \
+	books/web-render-keystones \
+	tests/acl2/web-render-tests \
+	books/web-session \
+	books/web-session-keystones \
+	tests/acl2/web-session-tests \
+	books/web-config \
+	tests/acl2/web-config-tests \
 	books/state-digest \
 	tests/acl2/state-digest-tests \
 	books/store-log-route-programs \
@@ -1389,6 +1408,11 @@ check:
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
+# The shape-books table in docs/proof-style.md (books by certification
+# fan-in, the farm's graph).  A WARNING when stale, never a failure: the
+# counts move with every include (lane lane-tools-2, for served-columns).
+	@$(CHECK_STEP) $(PYTHON) tools/shape_books.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_shape_books
 # The website renders the guides' articles (site/build_site.py, stdlib only):
 # every article is well-formed (tools/docs_articles.py: its headers, its
 # Message-ID, 72 columns), every repository path it names exists, and every
@@ -1421,10 +1445,14 @@ check:
 # metric's floor); a regression fails unless planning/throughput-causes.json
 # names the run's revision with a reason.  No run: NOT MEASURED, passes.
 	@$(CHECK_STEP) $(PYTHON) tools/throughput_gate.py check
-# Every host file loaded alone in its own ACL2: the dynamic half of the
-# host-names lint.  Needs FN_ACL2 and installed certificates; without
-# FN_ACL2 it prints that it did not run and exits 0.
+# Both images' ACL2-mode prefixes (every include-book and host `ld`) in
+# their build order: the dynamic half of the host-names lint.  Needs FN_ACL2
+# and installed certificates (make certs-install); without them it is NOT
+# RUN, exit 2, a failed step -- never a pass (lane lane-tools-2: loading each
+# file alone printed SKIPPED and exited 0 without FN_ACL2, and failed 39/80
+# on build order with it).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_modes
 # specs/crash-model-v2.md section 2.3's check, in both directions: every cut
 # the campaign kills at is a :cut of the model program that transcribes its
 # host function, and every :cut of a model program is a host faults.at site.
@@ -1531,6 +1559,24 @@ check:
 # host-lints, after entry-guards-2's owner stop on an unsynchronized table).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --tables
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_tables
+# Every name a raw host/native file hands to fnn-core*/fnn-call is defined in
+# the world of the image that loads it (build.lisp, build-dtn.lisp): static,
+# no ACL2 (lane lane-tools-2, after payload-lz-record was outside the world).
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --world
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_world
+# Every launcher path (packaging/'s shell launchers, host/'s process spawns)
+# classifies a child's failure: an unknown one is a fault (4) or uncertain,
+# never forwarded as the refusal code 1 (lane lane-tools-2; openbsd-datasize's
+# SBCL ENOMEM read as "refused", fb12148f8).  Static, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/launcher_exit_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_launcher_exit_check
+# The repository is public: no 32-hex code, password=, bearer token or
+# Authorization value within five lines of redeem/invite/invitation/
+# credentials in planning/, docs/ or tests/ (lane lane-tools-2, after two lane
+# records nearly committed a live invitation code).  No waivers: a fixture is
+# synthetic by the rule in the tool's header.  Static, about ten seconds.
+	@$(CHECK_STEP) $(PYTHON) tools/secrets_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_secrets_check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
@@ -1662,7 +1708,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
-	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_program_check \
+	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)

@@ -666,6 +666,36 @@ def defrecord_expansion(form: list) -> list:
     return events
 
 
+def defprotocol_expansion(form: list) -> list:
+    """The host-reached macro ``(defprotocol NAME ROWS...)`` defines, as read.
+
+    books/protocol-table.lisp's ``defprotocol`` defines the reader
+    dispatchers' command layer ``fn-nntp-command-dispatch`` (lane
+    defprotocol-2), whose expansion ``fn-proto-command-dispatch-term``
+    computes from the table: the :pinned rows' :arms are in it (today
+    XFNCATCHUP's ``fn-cu-serve-reply``).  A reader that never evaluates sees
+    the macro only here: one ``defmacro`` whose body mentions that function
+    and the :pinned rows' :arms terms, so a mention-graph walk reaches what
+    the expansion calls.
+    """
+    if not (len(form) >= 2 and isinstance(form[1], Sym)):
+        return []
+    pinned: list = []
+    for row in form[2:]:
+        if not (isinstance(row, list) and row):
+            continue
+        items = row[1:]
+        for index in range(0, len(items) - 1, 2):
+            if (isinstance(items[index], Sym) and str(items[index]) == ":arms"
+                    and isinstance(items[index + 1], list) and items[index + 1]
+                    and str(items[index + 1][0]) == ":pinned"):
+                pinned.extend(items[index + 1][1:])
+    return [[Sym("defmacro"), Sym("fn-nntp-command-dispatch"),
+             [Sym("archive-call"), Sym("&key"), Sym("pinned")],
+             [Sym("fn-proto-command-dispatch-term"), Sym("archive-call"), Sym("pinned"),
+              [Sym("quote"), pinned]]]]
+
+
 def defrecord_export_expansion(form: list) -> list:
     """The ``deftheory`` and withdrawal ``(fn-defrecord-export ...)`` generates."""
     if not (len(form) >= 2 and isinstance(form[1], Sym)):
@@ -1042,7 +1072,7 @@ class Tree:
     """The whole readable tree: books, functions, theorems, roots."""
 
     def __init__(self, books: dict[str, Book], roots: list[str],
-                 hosts: "dict[str, HostFile] | None" = None) -> None:
+                 hosts: "dict[str, HostFile] | None" = None, *, eager: bool = True) -> None:
         self.books = books
         self.roots = roots
         # ACL2 `ld` wrappers and explicit raw `load` adapters: see host_names.
@@ -1064,9 +1094,37 @@ class Tree:
             for theorem in book.theorems:
                 self.theorems.setdefault(theorem.name, theorem)
         self.closure = root_closure(books, roots)
-        self.suspects = {name: reasons for name, reasons in
-                         ((theorem.name, self.suspect_reasons(theorem))
-                          for theorem in self.theorems.values()) if reasons}
+        # Every theorem's suspect reasons: most of the analysis (~75 s of
+        # ~82 s on persvati, 2026-09-28).  A per-book caller (`--book')
+        # builds the tree with eager=False and asks `suspects_of' for its
+        # own theorems only; `suspects' computes the whole map on first use.
+        self._suspects: "dict[str, list[str]] | None" = None
+        if eager:
+            self._suspects = self._all_suspects()
+
+    def _all_suspects(self) -> dict[str, list[str]]:
+        return {name: reasons for name, reasons in
+                ((theorem.name, self.suspect_reasons(theorem))
+                 for theorem in self.theorems.values()) if reasons}
+
+    @property
+    def suspects(self) -> dict[str, list[str]]:
+        if self._suspects is None:
+            self._suspects = self._all_suspects()
+        return self._suspects
+
+    def suspects_of(self, theorems: "list[Theorem]") -> dict[str, list[str]]:
+        """The suspect reasons of THEOREMS alone (the whole map when known)."""
+        if self._suspects is not None:
+            return {t.name: self._suspects[t.name] for t in theorems if t.name in self._suspects}
+        found = {}
+        for theorem in theorems:
+            # A name defined twice is judged by its first definition, as the
+            # whole-tree map judges it.
+            reasons = self.suspect_reasons(self.theorems.get(theorem.name, theorem))
+            if reasons:
+                found[theorem.name] = reasons
+        return found
 
     # -- unfolding -------------------------------------------------------
 
@@ -2707,7 +2765,7 @@ _TREE_CACHE: "tuple[str, Tree] | None" = None
 # off; a directory path moves it.
 TREE_CACHE_DIR = Path(__file__).resolve().parents[1] / "build" / "cache" / "ledger-tree"
 TREE_CACHE_ENTRIES = 4
-_TREE_CACHE_FORMAT = b"fn-ledger-tree-cache-1"
+_TREE_CACHE_FORMAT = b"fn-ledger-tree-cache-2"
 
 
 def _tree_cache_dir() -> "Path | None":
@@ -2766,12 +2824,14 @@ def _tree_cache_write(directory: Path, key: str, tree: Tree) -> None:
         entries = sorted(directory.glob("*.pickle"), key=lambda one: one.stat().st_mtime)
         for stale in entries[:-TREE_CACHE_ENTRIES]:
             stale.unlink(missing_ok=True)
-    except OSError:
+    except (OSError, pickle.PicklingError):
         # A cache that cannot be written is a slower run, never a wrong one.
+        # PicklingError: a second module object named `ledger' (a test that
+        # loads tools/ledger.py by path) owns the name the classes pickle as.
         pass
 
 
-def load_tree() -> Tree:
+def load_tree(*, lazy: bool = False) -> Tree:
     """The analysed tree, computed once per content of its inputs.
 
     One `make check` process asked for it up to five times (teeth_check:
@@ -2784,6 +2844,12 @@ def load_tree() -> Tree:
     Across processes the same key names an entry in TREE_CACHE_DIR, with the
     analyser's source, the Python version and the root list added to it.
     Callers read the Tree; none mutates it.
+
+    LAZY (a caller that never reads `suspects', or reads a few books'): a
+    persisted tree is used when there is one; otherwise the tree is built
+    without the whole-tree suspect pass (computed on first use of
+    `suspects') and is kept for this process but never persisted, so no
+    other process reads a partial analysis.
     """
     global _TREE_CACHE
     books = book_paths()
@@ -2805,9 +2871,13 @@ def load_tree() -> Tree:
     if directory is not None:
         shared = hashlib.sha256(_TREE_CACHE_FORMAT + b"\0")
         shared.update(sys.version.encode() + b"\0")
-        # Pickled classes are named by module: `python3 tools/ledger.py`
-        # writes __main__.Tree, which an importer of `ledger` cannot load.
-        shared.update(__name__.encode() + b"\0")
+        # Pickled classes are named by their module.  `python3 tools/ledger.py`
+        # runs its main() from the imported module `ledger' (see the end of
+        # this file), so a script run and every importer (teeth_check,
+        # certified_claims, ...) pickle and read the same ledger.Tree under
+        # one key; before 2026-09-28 the key held __name__ and the two never
+        # shared an entry (defkeystone).
+        shared.update(_PICKLE_MODULE.encode() + b"\0")
         shared.update(Path(__file__).resolve().read_bytes() + b"\0")
         shared.update(key.encode() + b"\0")
         shared.update("\n".join(roots).encode())
@@ -2818,8 +2888,11 @@ def load_tree() -> Tree:
             return tree
     tree = Tree({relative: analyze_book(path, relative) for path, relative in books},
                 roots,
-                {relative: analyze_host(path, relative) for path, relative in hosts})
+                {relative: analyze_host(path, relative) for path, relative in hosts},
+                eager=not lazy)
     _TREE_CACHE = (key, tree)
+    if lazy:
+        return tree
     if directory is not None:
         _tree_cache_write(directory, persistent, tree)
     return tree
@@ -2834,10 +2907,14 @@ GUARD_STATES = ("verified", "declared-off", "default-guarded", "default-unguarde
 
 
 def book_row(book: Book, tree: Tree) -> dict:
+    return book_row_with(book, tree, tree.suspects)
+
+
+def book_row_with(book: Book, tree: Tree, known: dict) -> dict:
     guards = {state: 0 for state in GUARD_STATES}
     for function in book.functions:
         guards[function.guard_status] += 1
-    suspects = sorted(t.name for t in book.theorems if t.name in tree.suspects)
+    suspects = sorted(t.name for t in book.theorems if t.name in known)
     return {
         "book": book.path,
         "in_root_closure": book.path in tree.closure,
@@ -3296,6 +3373,31 @@ def report(tree: Tree) -> None:
             print(f"      {reason}")
 
 
+def book_report(paths: list[str]) -> int:
+    """`--book': each named book's ledger row and its theorems' suspect
+    reasons, as JSON (stable for a before/after diff)."""
+    tree = load_tree(lazy=True)
+    out = []
+    missing = []
+    for given in paths:
+        path = Path(given)
+        relative = (path.resolve().relative_to(ROOT).as_posix() if path.is_absolute()
+                    else resolve(given))
+        book = tree.books.get(relative)
+        if book is None:
+            missing.append(given)
+            continue
+        suspects = tree.suspects_of(book.theorems)
+        row = book_row_with(book, tree, suspects)
+        row["suspect_reasons"] = {name: suspects[name] for name in sorted(suspects)}
+        out.append(row)
+    print(json.dumps(out, indent=1, sort_keys=True))
+    for given in missing:
+        print(f"ledger --book: {given}: not a book this tree reads "
+              "(books/*.lisp, tests/acl2/*.lisp)", file=sys.stderr)
+    return 2 if missing else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--write", action="store_true",
@@ -3305,7 +3407,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--strict", action="store_true",
                         help="with --check, fail on any lint warning: export "
                              "hygiene, teeth form, include hygiene or host names")
+    parser.add_argument("--book", action="append", default=[], metavar="PATH",
+                        help="report only these books (repeatable): their row and the "
+                             "suspect reasons of their own theorems, without the "
+                             "whole-tree suspect pass (a before/after diff of one book)")
     arguments = parser.parse_args(argv)
+    if arguments.book:
+        return book_report(arguments.book)
     if arguments.check:
         tree = load_tree()
         problems = check_problems(tree)
@@ -3334,5 +3442,15 @@ def main(argv: list[str] | None = None) -> int:
 _GENUINE_ANALYSIS = (book_paths, host_paths, makefile_roots, analyze_book, analyze_host, Tree)
 
 
+# The module the pickled tree's classes belong to.  A script run delegates
+# to the imported module below, so this is always "ledger".
+_PICKLE_MODULE = "ledger"
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    # Run as the module `ledger', not `__main__': the tree cache pickles
+    # classes by module name, and one name is what lets a script run and an
+    # importer share an entry.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import ledger as _ledger
+    sys.exit(_ledger.main())

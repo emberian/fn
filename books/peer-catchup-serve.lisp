@@ -64,6 +64,7 @@
 ;   fn-cu-select-stays-within-the-quantum  records after the first fit QUANTUM
 (in-package "ACL2")
 (include-book "nntp-responses")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "control-served")
 (include-book "group-bucket-index")
 (include-book "msgid-index")
@@ -325,7 +326,7 @@
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((request (fn-cu-parse-request args)))
     (if (not request)
-        (fn-nntp-single session "501 syntax error")
+        (fn-nntp-single session (fn-proto-text * :syntax))
       (let* ((articles (fn-cu-list (fn-state-articles archive)))
              (end (len articles))
              (from (nfix (cadr request))))
@@ -333,9 +334,9 @@
          ((<= *fn-cu-u64-limit* end)
           ;; A view of 2^64 entries has no position on the wire: refused by
           ;; name, never rendered short.
-          (fn-nntp-single session "503 catch-up log position out of range"))
+          (fn-nntp-single session (fn-proto-text "XFNCATCHUP" :out-of-range)))
          ((< end from)
-          (fn-nntp-single session "423 catch-up position past the end of the log"))
+          (fn-nntp-single session (fn-proto-text "XFNCATCHUP" :past-end)))
          (t
           (let ((groups (fn-nntp-filter-groups-by-wildmat
                          (car request) (fn-cu-list (fn-state-groups archive))))

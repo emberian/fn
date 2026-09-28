@@ -11789,6 +11789,256 @@
           "name": "fn-proto-offers-only-post-by-table"
         }
       ]
+    },
+    {
+      "id": "PRF-351",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-proto-command-pinned-is-command-pinned"
+        }
+      ]
+    },
+    {
+      "id": "PRF-346",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-reply-cat-is-rcompat-reply",
+          "note": "KEYSTONE. The Xref compatibility reply with ARTICLE/HEAD/HDR Xref reading the catalog equals fn-rcompat-reply. Teeth: tests/acl2/served-catalog-tests.lisp (sct-f2-xref-*)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-retrieval-cat-is-retrieval",
+          "note": "KEYSTONE. ARTICLE/HEAD by number and of the current article: one number-table probe, equal to the archive walk. Teeth: sct-f2-xref-retrieval, -view-hypotheses, -without-view."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-hdr-cat-is-hdr",
+          "note": "KEYSTONE. HDR/XHDR Xref over the catalog's range numbers equals the archive fold."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-number-withdrawn-p-cat-is-archive",
+          "note": "The by-number withdrawn test probes the number table before walking W."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-archive-command-cat-is-pinned",
+          "note": "The -cat dispatcher's boundary theorem, statement unchanged, now over the twins."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scat-group-summary-is-pass",
+          "note": "KEYSTONE (no hypotheses). GROUP's summary from the catalog's live table at the top view equals the probe pass. Teeth: sct-f2-summary-from-table, sct-f2-below-horizon, sct-f2-older-view."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scat-group-low-is-pass",
+          "note": "KEYSTONE (no hypotheses). The group's first live number from the table equals the pass. Teeth: sct-f2-summary-from-table."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-repin-is-served-repin",
+          "note": "KEYSTONE. The re-pin with the group low from the catalog equals fn-served-repin under fn-scr-conn-okp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-dispatch-is-scar-dispatch",
+          "note": "The catalog chain's dispatch, statement unchanged, now re-pinning through fn-scr-repin."
+        }
+      ]
+    },
+    {
+      "id": "PRF-334",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-article-response-is-of-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-response-block-rev-is-the-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-section-rev-is-the-section"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-response-validp-is-framed-section"
+        }
+      ]
+    },
+    {
+      "id": "PRF-333",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-record-p-of-make-is-without-payload"
+        }
+      ]
+    },
+    {
+      "id": "PRF-332",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scol-facts-are-the-bytes-facts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-tombstonep-is-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-overview-of-is-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-hdr-content-is-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-xref-reply-col-is-xref-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-served-lines-numbered-col-is-served"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-seal-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-faithful-reseat"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-intern-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-load-held-rows"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-row-okp-of-intern-row-at"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-sca-finish"
+        }
+      ]
+    },
+    {
+      "id": "PRF-337",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-wrq-scan-work-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wrq-scan-is-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-head-frame-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-route-is-a-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-response-head-crlf-count"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-parse-head-answers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wrq-span-decode-is-urldecode"
+        }
+      ]
+    },
+    {
+      "id": "PRF-338",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-wr-emit-writes-vocabulary-or-escaped"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wr-emit-reads-only-its-spans"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wr-emit-is-seq"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wr-escape-is-safe"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wr-unescape-escape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wr-escape-is-emit-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wr-page-segs-ok"
+        }
+      ]
+    },
+    {
+      "id": "PRF-339",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-web-session-route-needs-its-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-session-sends-only-to-its-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-sessions-bound-by-281"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wss-body-cannot-end-the-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wss-emit-body-is-stuff"
+        }
+      ]
+    },
+    {
+      "id": "PRF-340",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-web-config-plan-answers"
+        }
+      ]
     }
   ]
 }

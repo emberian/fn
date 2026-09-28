@@ -40,9 +40,11 @@
 ; stated under archive = the view's articles.
 (in-package "ACL2")
 (include-book "catalog-number-index")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "nntp")
 (include-book "nntp-range-indexed-invariants")
 (include-book "nntp-list-counts")
+(include-book "served-columns")   ; the overview column: OVER/HDR/XPAT without the bytes
 
 ;;; The finders.
 
@@ -148,14 +150,14 @@
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil))
   (if (not (fn-nntp-message-id-tokenp token))
-      (fn-nntp-single session "501 syntax error")
+      (fn-nntp-single session (fn-proto-text * :syntax))
     (let ((article (fn-scat-msgid-article (fn-nntp-token-string token)
                                           v fn-arena fn-cat)))
       (if (consp article)
           (fn-nntp-article-response
            session article (fn-nntp-msgid-local-number session article)
            kind nil nil fn-arena)
-        (fn-nntp-single session "430 no article with that message-id")))))
+        (fn-nntp-single session (fn-proto-text * :no-msgid))))))
 
 (defun fn-nntp-number-retrieval-cat (session v kind token fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
@@ -163,15 +165,15 @@
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil))
   (if (not (fn-nntp-number-tokenp token))
-      (fn-nntp-single session "501 syntax error")
+      (fn-nntp-single session (fn-proto-text * :syntax))
     (let ((group (fn-nntp-session-group session))
           (number (fn-nntp-decimal-value token)))
       (if (null group)
-          (fn-nntp-single session "412 no newsgroup selected")
+          (fn-nntp-single session (fn-proto-text * :no-group-selected))
         (let ((article (fn-scat-number-article group number v fn-arena fn-cat)))
           (if (consp article)
               (fn-nntp-article-response session article number kind t group fn-arena)
-            (fn-nntp-single session "423 no article with that number")))))))
+            (fn-nntp-single session (fn-proto-text * :no-number))))))))
 
 (verify-guards fn-nntp-msgid-retrieval-cat)
 (verify-guards fn-nntp-number-retrieval-cat)
@@ -503,11 +505,8 @@
 ;; bound, a renderable Message-ID: fn-nntp-article-number's three tests, the
 ;; last read from the row's Message-ID without materializing its payload).
 
-(defun fn-scat-msgid-idp (text)
-  (declare (xargs :guard t))
-  (and (stringp text)
-       (<= (length text) *fn-nntp-max-message-id-octets*)
-       (fn-nntp-message-id-tokenp (fn-nntp-string-octets text))))
+; fn-scat-msgid-idp is books/catalog.lisp's (moved down for the catalog's
+; live summary, lane sca-join-5).
 
 (defthm fn-scat-article-idp-is-msgid-idp
   (equal (fn-nntp-article-idp article)
@@ -612,16 +611,16 @@
   (let ((group (fn-nntp-session-group session))
         (range (fn-nntp-parse-range token)))
     (if (null group)
-        (fn-nntp-single session "412 no newsgroup selected")
+        (fn-nntp-single session (fn-proto-text * :no-group-selected))
       (let* ((numbers (fn-scat-range-numbers
                        group (nfix (fn-nntp-range-low range))
                        (nfix (fn-nntp-range-high range)) v fn-cat))
              (lines (fn-nov-lines-for-numbers-cat group numbers v fn-arena fn-cat)))
         (if (consp lines)
-            (fn-nntp-multi session "224 overview information follows" lines)
+            (fn-nntp-multi session (fn-proto-text * :overview) lines)
           (fn-nntp-single
-           session (if legacyp "420 no article(s) selected"
-                     "423 no articles in that range")))))))
+           session (if legacyp (fn-proto-text * :none-selected)
+                     (fn-proto-text * :empty-range))))))))
 
 (defthm fn-nntp-over-range-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat)
@@ -703,7 +702,7 @@
   :hints (("Goal" :induct (fn-nntp-group-high group articles)
            :in-theory (enable fn-nntp-group-high fn-nntp-group-range-numbers))))
 
-(defun fn-scat-group-summary (archive group v fn-cat)
+(defun fn-scat-group-summary-pass (archive group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
   (let ((l (fn-scat-range-numbers group 1 *fn-nntp-max-article-number* v fn-cat)))
     (if (consp l)
@@ -711,15 +710,207 @@
       (let ((watermark (fn-next-number group (fn-state-nexts archive))))
         (list 0 watermark (if (posp watermark) (- watermark 1) 0))))))
 
+(defthm fn-scat-group-summary-pass-is-archive
+  (implies (and (fn-cnx-freshp fn-cat) group
+                (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
+           (equal (fn-scat-group-summary-pass archive group v fn-cat)
+                  (fn-nntp-group-summary archive group)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-group-summary)
+                           (fn-scat-range-numbers fn-nntp-group-range-numbers
+                            fn-cat-view-articles fn-cnx-freshp fn-next-number)))))
+
+;;; F2 (lane sca-join-5): the summary from the catalog's live table.  The
+;;; pass above probes every number 1 .. the group's high (fn-cnx-view-range)
+;;; and the served GROUP computed it twice per command (the summary and the
+;;; low): 2N to 3N number-table probes at N articles.  The catalog keeps the
+;;; group's live count, least and greatest live number (books/catalog.lisp
+;;; fn-cat-group-live-count/-low/-high, maintained by commit and withdraw);
+;;; a reader at the catalog's count, with no withdrawal at or past it (the
+;;; horizon), sees exactly the live numbers, so the summary is three table
+;;; reads.  Below the horizon, or pinned to an older view, the pass answers.
+;;; KEYSTONES fn-scat-group-summary-is-pass and fn-scat-group-low-is-pass:
+;;; equal to the pass unconditionally; the -is-archive theorems follow.
+
+(defun fn-scat-live-list (group k top c)
+  (declare (xargs :guard (and (natp k) (natp top) (fn-cat-rowsp c))
+                  :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
+  (if (and (natp k) (natp top) (<= k top))
+      (if (fn-cat-live-numberp group k c)
+          (cons k (fn-scat-live-list group (+ 1 k) top c))
+        (fn-scat-live-list group (+ 1 k) top c))
+    nil))
+
+(local
+ (defthm fn-scat-number-seq-binds
+   (implies (and (natp i) (fn-cat-number-seq g n c i))
+            (and (natp (fn-cat-number-seq g n c i))
+                 (<= i (fn-cat-number-seq g n c i))
+                 (< (fn-cat-number-seq g n c i) (+ i (len c)))
+                 (equal (fn-held-number-in g (nth (- (fn-cat-number-seq g n c i) i) c)) n)))
+   :hints (("Goal" :induct (fn-cat-number-seq g n c i)
+            :in-theory (e/d (fn-cat-number-seq) (fn-held-number-in))))))
+
+(local
+ (defthm fn-scat-withdrawn-below-horizon
+   (implies (and (fn-cat-rowsp c) (natp s) (< s (len c))
+                 (fn-held-withdrawn (nth s c)))
+            (< (car (fn-held-withdrawn (nth s c))) (fn-cat-horizon-of c)))
+   :rule-classes :linear
+   :hints (("Goal" :induct (nth s c)
+            :in-theory (e/d (fn-cat-horizon-of fn-held-withdrawnp) (fn-held-withdrawn))
+            :expand ((fn-cat-horizon-of c)))
+           ("Subgoal *1/2" :use ((:instance fn-cat-rowp-fields (h (car c)))))
+           ("Subgoal *1/1" :use ((:instance fn-cat-rowp-fields (h (car c))))))))
+
+;; At the top view below no withdrawal, a number's visible row is its
+;; unwithdrawn row.
+(local
+ (defthm fn-scat-view-seq-at-top
+   (implies (and (fn-cat-rowsp fn-cat) (equal v (len fn-cat))
+                 (<= (fn-cat-horizon-of fn-cat) v))
+            (equal (fn-cnx-view-seq group k v fn-cat)
+                   (let ((s (fn-cat-number-seq group k fn-cat 0)))
+                     (if (and s (null (fn-held-withdrawn (nth s fn-cat)))) s nil))))
+   :hints (("Goal" :in-theory (e/d (fn-cnx-view-seq fn-cat-visiblep) (fn-held-withdrawn))
+            :use ((:instance fn-scat-number-seq-binds (g group) (n k) (c fn-cat) (i 0))
+                  (:instance fn-scat-withdrawn-below-horizon (c fn-cat)
+                             (s (fn-cat-number-seq group k fn-cat 0))))))))
+
+(local
+ (defthm fn-scat-range-keep-aux-is-live-list
+   (implies (and (fn-cat-rowsp fn-cat) (equal v (len fn-cat))
+                 (<= (fn-cat-horizon-of fn-cat) v))
+            (equal (fn-scat-range-keep group (fn-cnx-range-aux group k top v fn-cat) fn-cat)
+                   (fn-scat-live-list group k top fn-cat)))
+   :hints (("Goal" :induct (fn-scat-live-list group k top fn-cat)
+            :in-theory (e/d (fn-cat-live-numberp fn-cat-live-rowp)
+                            (fn-held-withdrawn fn-held-number-in fn-scat-msgid-idp fn-cnx-view-seq)))
+           ("Subgoal *1/2" :use ((:instance fn-scat-number-seq-binds (g group) (n k) (c fn-cat) (i 0))))
+           ("Subgoal *1/1" :use ((:instance fn-scat-number-seq-binds (g group) (n k) (c fn-cat) (i 0)))))))
+
+(defthm fn-scat-live-list-len
+  (equal (len (fn-scat-live-list group k top c))
+         (fn-cat-live-count-from group k top c))
+  :hints (("Goal" :induct (fn-scat-live-list group k top c)
+           :in-theory (disable fn-cat-live-numberp))))
+
+(defthm fn-scat-live-list-consp
+  (iff (consp (fn-scat-live-list group k top c))
+       (posp (fn-cat-live-count-from group k top c)))
+  :hints (("Goal" :induct (fn-scat-live-list group k top c)
+           :in-theory (disable fn-cat-live-numberp))))
+
+(defthm fn-scat-live-list-car
+  (equal (fn-cat-live-first group k top c)
+         (let ((l (fn-scat-live-list group k top c))) (if (consp l) (car l) 0)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-scat-live-list group k top c)
+           :in-theory (disable fn-cat-live-numberp))))
+
+(defthm fn-scat-live-list-empty
+  (implies (< top k)
+           (equal (fn-scat-live-list group k top c) nil)))
+
+(local
+ (defthm fn-scat-live-list-clamp
+   (implies (natp top)
+            (equal (fn-scat-live-list group k (min top *fn-nntp-max-article-number*) c)
+                   (fn-scat-live-list group k top c)))
+   :hints (("Goal" :induct (fn-scat-live-list group k top c)
+            :in-theory (e/d (fn-cat-live-numberp fn-cat-live-rowp)
+                            (fn-held-withdrawn fn-held-number-in fn-scat-msgid-idp))))))
+
+(local
+ (defthm fn-scat-live-list-snoc
+   (implies (and (natp k) (natp top) (<= k top))
+            (equal (fn-scat-live-list group k top c)
+                   (append (fn-scat-live-list group k (- top 1) c)
+                           (if (fn-cat-live-numberp group top c) (list top) nil))))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-scat-live-list group k top c)
+            :expand ((fn-scat-live-list group k top c)
+                     (fn-scat-live-list group k (+ -1 top) c))
+            :in-theory (disable fn-cat-live-numberp)))))
+
+(local
+ (defthm fn-scat-last-number-of-append-one
+   (equal (fn-scat-last-number (append l (list x))) x)
+   :hints (("Goal" :in-theory (enable fn-scat-last-number)))))
+
+(defthm fn-scat-live-list-last
+  (implies (natp top)
+           (equal (fn-cat-live-last group top c)
+                  (fn-scat-last-number (fn-scat-live-list group 1 top c))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-cat-live-last group top c)
+           :in-theory (disable fn-cat-live-numberp))
+          ("Subgoal *1/2" :use ((:instance fn-scat-live-list-snoc (k 1))))
+          ("Subgoal *1/1" :use ((:instance fn-scat-live-list-snoc (k 1))))))
+
+(local
+ (defthm fn-scat-group-high-natp
+   (natp (fn-cat-group-high group c))
+   :rule-classes :type-prescription))
+
+;; The pass at the top view is the live list over 1 .. the group's high.
+(defthm fn-scat-range-numbers-at-top
+  (implies (and (fn-cat-rowsp fn-cat) (equal v (len fn-cat))
+                (<= (fn-cat-horizon-of fn-cat) v))
+           (equal (fn-scat-range-numbers group 1 *fn-nntp-max-article-number* v fn-cat)
+                  (fn-scat-live-list group 1 (fn-cat-group-high group fn-cat) fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cnx-view-range)
+                           (fn-scat-live-list fn-cnx-range-aux fn-scat-range-keep))
+           :use ((:instance fn-scat-live-list-clamp (k 1) (c fn-cat)
+                            (top (fn-cat-group-high group fn-cat)))))))
+
+;; The table answers at V: V is the count and no withdrawal is at or past it.
+(defun fn-scat-top-viewp (v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)))
+  (and (equal v (fn-cat-count fn-cat))
+       (<= (fn-cat-horizon fn-cat) v)))
+
+(defthm fn-scat-top-viewp-gives
+  (implies (fn-scat-top-viewp v fn-cat)
+           (and (fn-cat-rowsp fn-cat) (equal v (len fn-cat))
+                (<= (fn-cat-horizon-of fn-cat) v)))
+  :rule-classes :forward-chaining)
+
+(defun fn-scat-group-summary (archive group v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)))
+  (if (fn-scat-top-viewp v fn-cat)
+      (let ((count (fn-cat-group-live-count group fn-cat)))
+        (if (posp count)
+            (list count (fn-cat-group-live-low group fn-cat)
+                  (fn-cat-group-live-high group fn-cat))
+          (let ((watermark (fn-next-number group (fn-state-nexts archive))))
+            (list 0 watermark (if (posp watermark) (- watermark 1) 0)))))
+    (fn-scat-group-summary-pass archive group v fn-cat)))
+
+;; KEYSTONE: the table's summary is the pass's.
+(defthm fn-scat-group-summary-is-pass
+  (equal (fn-scat-group-summary archive group v fn-cat)
+         (fn-scat-group-summary-pass archive group v fn-cat))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-scat-group-summary-pass)
+                           (fn-scat-top-viewp fn-scat-range-numbers
+                            fn-scat-live-list fn-cat-live-count-from
+                            fn-cat-live-first fn-cat-live-last))
+           :cases ((fn-scat-top-viewp v fn-cat))
+           :use ((:instance fn-scat-live-list-car (k 1) (c fn-cat)
+                            (top (fn-cat-group-high group fn-cat)))
+                 (:instance fn-scat-live-list-last (c fn-cat)
+                            (top (fn-cat-group-high group fn-cat)))))))
+
 (defthm fn-scat-group-summary-is-archive
   (implies (and (fn-cnx-freshp fn-cat) group
                 (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
            (equal (fn-scat-group-summary archive group v fn-cat)
                   (fn-nntp-group-summary archive group)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-nntp-group-summary)
-                           (fn-scat-range-numbers fn-nntp-group-range-numbers
-                            fn-cat-view-articles fn-cnx-freshp fn-next-number)))))
+           :in-theory (disable fn-scat-group-summary fn-scat-group-summary-pass
+                               fn-nntp-group-summary fn-cat-view-articles fn-cnx-freshp))))
 
 (defun fn-scat-group-initial (archive group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
@@ -741,18 +932,46 @@
                            (fn-scat-group-summary fn-nntp-group-summary
                             fn-cat-view-articles fn-cnx-freshp)))))
 
-(defun fn-scat-group-low (group v fn-cat)
+(defun fn-scat-group-low-pass (group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
   (let ((l (fn-scat-range-numbers group 1 *fn-nntp-max-article-number* v fn-cat)))
     (if (consp l) (car l) 0)))
+
+(defthm fn-scat-group-low-pass-is-archive
+  (implies (and (fn-cnx-freshp fn-cat) group)
+           (equal (fn-scat-group-low-pass group v fn-cat)
+                  (fn-nntp-group-low group (fn-cat-view-articles v fn-arena fn-cat))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-scat-range-numbers fn-nntp-group-range-numbers
+                               fn-cat-view-articles fn-cnx-freshp))))
+
+;; The group's first live number from the table at the top view (the
+;; cursor GROUP and LISTGROUP set, and the re-pin's).
+(defun fn-scat-group-low (group v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)))
+  (if (fn-scat-top-viewp v fn-cat)
+      (fn-cat-group-live-low group fn-cat)
+    (fn-scat-group-low-pass group v fn-cat)))
+
+;; KEYSTONE.
+(defthm fn-scat-group-low-is-pass
+  (equal (fn-scat-group-low group v fn-cat)
+         (fn-scat-group-low-pass group v fn-cat))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-scat-group-low-pass)
+                           (fn-scat-top-viewp fn-scat-range-numbers
+                            fn-scat-live-list fn-cat-live-first))
+           :cases ((fn-scat-top-viewp v fn-cat))
+           :use ((:instance fn-scat-live-list-car (k 1) (c fn-cat)
+                            (top (fn-cat-group-high group fn-cat)))))))
 
 (defthm fn-scat-group-low-is-archive
   (implies (and (fn-cnx-freshp fn-cat) group)
            (equal (fn-scat-group-low group v fn-cat)
                   (fn-nntp-group-low group (fn-cat-view-articles v fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-scat-range-numbers fn-nntp-group-range-numbers
-                               fn-cat-view-articles fn-cnx-freshp))))
+           :in-theory (disable fn-scat-group-low fn-scat-group-low-pass
+                               fn-nntp-group-low fn-cat-view-articles fn-cnx-freshp))))
 
 (defun fn-nntp-group-result-cat (session archive group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
@@ -765,7 +984,7 @@
          next-session
          (list (fn-nntp-reply-effect
                 (fn-nntp-crlf (fn-scat-group-initial archive group v fn-cat))))))
-    (fn-nntp-single session "411 no such newsgroup")))
+    (fn-nntp-single session (fn-proto-text * :no-group))))
 
 (defthm fn-nntp-group-result-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat) group
@@ -792,7 +1011,7 @@
                               (append (fn-scat-group-initial archive group v fn-cat)
                                       (fn-nntp-string-octets " list follows"))
                               (fn-nntp-number-lines shown)))
-    (fn-nntp-single session "411 no such newsgroup")))
+    (fn-nntp-single session (fn-proto-text * :no-group))))
 
 (defthm fn-nntp-listgroup-result-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat) group
@@ -814,11 +1033,11 @@
     (if (null args)
         (let ((group (fn-nntp-session-group session)))
           (if (null group)
-              (fn-nntp-single session "412 no newsgroup selected")
+              (fn-nntp-single session (fn-proto-text * :no-group-selected))
             (if (mbe :logic (member-equal group (fn-state-groups archive))
                      :exec (fn-ag-member group (fn-state-groups archive)))
                 (fn-nntp-listgroup-result-cat session archive group all-range v fn-cat)
-              (fn-nntp-single session "412 no newsgroup selected"))))
+              (fn-nntp-single session (fn-proto-text * :no-group-selected)))))
       (if (and (consp args) (null (cdr args))
                (fn-nntp-printable-tokenp (car args)))
           (fn-nntp-listgroup-result-cat session archive
@@ -829,8 +1048,8 @@
               (if (fn-nntp-range-okp range)
                   (fn-nntp-listgroup-result-cat session archive
                                                 (fn-nntp-token-string (car args)) range v fn-cat)
-                (fn-nntp-single session "501 syntax error")))
-          (fn-nntp-single session "501 syntax error"))))))
+                (fn-nntp-single session (fn-proto-text * :syntax))))
+          (fn-nntp-single session (fn-proto-text * :syntax)))))))
 
 (defthm fn-nntp-listgroup-command-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat)
@@ -865,19 +1084,19 @@
 (defun fn-nntp-list-counts-command-cat (session archive args v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
   (if (null args)
-      (fn-nntp-multi session "215 list of newsgroups follows"
+      (fn-nntp-multi session (fn-proto-text "LIST" :newsgroups)
                      (fn-scat-counts-lines archive (fn-state-groups archive) v fn-cat))
     (if (and (consp args) (null (cdr args)))
         (let ((parsed (fn-wildmat-parse (car args))))
           (if (fn-wildmat-result-okp parsed)
-              (fn-nntp-multi session "215 list of newsgroups follows"
+              (fn-nntp-multi session (fn-proto-text "LIST" :newsgroups)
                              (fn-scat-counts-lines
                               archive
                               (fn-nntp-filter-groups-by-wildmat
                                (fn-wildmat-result-value parsed) (fn-state-groups archive))
                               v fn-cat))
-            (fn-nntp-single session "501 syntax error")))
-      (fn-nntp-single session "501 syntax error"))))
+            (fn-nntp-single session (fn-proto-text * :syntax))))
+      (fn-nntp-single session (fn-proto-text * :syntax)))))
 
 (defthm fn-scat-safe-group-list-has-no-nil
   (implies (fn-nntp-safe-group-listp groups)
@@ -916,7 +1135,7 @@
       (let* ((number (car numbers))
              (article (fn-scat-available-article group number v fn-arena fn-cat))
              (content (if (consp article)
-                          (fn-nntp-hdr-content field article fn-arena)
+                          (fn-scol-hdr-content field article fn-arena fn-cat)
                         (list :error))))
         (if (fn-nntp-hdr-okp content)
             (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
@@ -926,7 +1145,7 @@
     nil))
 
 (defthm fn-nntp-hdr-lines-for-numbers-cat-is-archive
-  (implies (and (fn-cnx-freshp fn-cat) group)
+  (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat) group)
            (equal (fn-nntp-hdr-lines-for-numbers-cat field group numbers v fn-arena fn-cat)
                   (fn-nntp-hdr-lines-for-numbers field group numbers
                                                  (fn-cat-view-articles v fn-arena fn-cat) fn-arena)))
@@ -940,31 +1159,31 @@
 (defun fn-nntp-hdr-command-cat (session args v legacyp fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard) :verify-guards nil))
   (if (not (and (consp args) (fn-nntp-hdr-fieldp (car args))))
-        (fn-nntp-single session "501 syntax error")
+        (fn-nntp-single session (fn-proto-text * :syntax))
       (let ((field (car args)) (rest (cdr args))
             (group (fn-nntp-session-group session)))
         (if (null rest)
             (let ((current (fn-nntp-session-current session)))
               (if (null group)
-                  (fn-nntp-single session "412 no newsgroup selected")
+                  (fn-nntp-single session (fn-proto-text * :no-group-selected))
                 (if (null current)
-                    (fn-nntp-single session "420 no current article")
+                    (fn-nntp-single session (fn-proto-text * :no-current))
                   (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
                     (if (not (consp article))
-                        (fn-nntp-single session "420 no current article")
-                      (let ((content (fn-nntp-hdr-content field article fn-arena)))
+                        (fn-nntp-single session (fn-proto-text * :no-current))
+                      (let ((content (fn-scol-hdr-content field article fn-arena fn-cat)))
                         (if (fn-nntp-hdr-okp content)
                             (fn-nntp-multi
                              session (fn-nntp-hdr-initial legacyp)
                              (list (fn-nntp-hdr-line (fn-nntp-decimal-field current)
                                                      (fn-nntp-hdr-octets content))))
                           (fn-nntp-single
-                           session "503 stored article framing unavailable"))))))))
+                           session (fn-proto-text * :no-framing)))))))))
           (if (and (consp rest) (null (cdr rest)))
               (let ((token (car rest)))
                 (if (fn-nntp-range-okp (fn-nntp-parse-range token))
                     (if (null group)
-                        (fn-nntp-single session "412 no newsgroup selected")
+                        (fn-nntp-single session (fn-proto-text * :no-group-selected))
                       (let* ((range (fn-nntp-parse-range token))
                              (numbers (fn-scat-range-numbers
                                        group (nfix (fn-nntp-range-low range))
@@ -974,14 +1193,14 @@
                         (if (consp lines)
                             (fn-nntp-multi session (fn-nntp-hdr-initial legacyp) lines)
                           (if legacyp
-                              (fn-nntp-single session "420 no article(s) selected")
-                            (fn-nntp-single session "423 no articles in that range")))))
+                              (fn-nntp-single session (fn-proto-text * :none-selected))
+                            (fn-nntp-single session (fn-proto-text * :empty-range))))))
                   (if (fn-nntp-message-id-tokenp token)
                       (let ((article (fn-scat-msgid-article (fn-nntp-token-string token)
                                                             v fn-arena fn-cat)))
                         (if (not (consp article))
-                            (fn-nntp-single session "430 no article with that message-id")
-                          (let ((content (fn-nntp-hdr-content field article fn-arena)))
+                            (fn-nntp-single session (fn-proto-text * :no-msgid))
+                          (let ((content (fn-scol-hdr-content field article fn-arena fn-cat)))
                             (if (fn-nntp-hdr-okp content)
                                 (fn-nntp-multi
                                  session (fn-nntp-hdr-initial legacyp)
@@ -989,12 +1208,12 @@
                                                              (fn-nov-scrub token)
                                                            (fn-nntp-decimal-field 0))
                                                          (fn-nntp-hdr-octets content))))
-                              (fn-nntp-single session "503 stored article framing unavailable")))))
-                    (fn-nntp-single session "501 syntax error"))))
-            (fn-nntp-single session "501 syntax error"))))))
+                              (fn-nntp-single session (fn-proto-text * :no-framing))))))
+                    (fn-nntp-single session (fn-proto-text * :syntax)))))
+            (fn-nntp-single session (fn-proto-text * :syntax)))))))
 
 (defthm fn-nntp-hdr-command-cat-is-archive
-  (implies (and (fn-cnx-freshp fn-cat)
+  (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat)
                 (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
            (equal (fn-nntp-hdr-command-cat session args v legacyp fn-arena fn-cat)
                   (fn-nntp-hdr-command session archive args legacyp fn-arena)))
@@ -1023,7 +1242,7 @@
       (let* ((number (car numbers))
              (article (fn-scat-available-article group number v fn-arena fn-cat))
              (content (if (consp article)
-                          (fn-nntp-hdr-content field article fn-arena)
+                          (fn-scol-hdr-content field article fn-arena fn-cat)
                         (list :error))))
         (if (and (fn-nntp-hdr-okp content)
                  (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content)))
@@ -1036,7 +1255,7 @@
     nil))
 
 (defthm fn-nntp-xpat-lines-for-numbers-cat-is-archive
-  (implies (and (fn-cnx-freshp fn-cat) group)
+  (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat) group)
            (equal (fn-nntp-xpat-lines-for-numbers-cat field patterns group numbers v fn-arena fn-cat)
                   (fn-nntp-xpat-lines-for-numbers field patterns group numbers
                                                   (fn-cat-view-articles v fn-arena fn-cat) fn-arena)))
@@ -1053,18 +1272,18 @@
   (if (not (and (consp args) (fn-nntp-hdr-fieldp (car args))
                 (consp (cdr args))
                 (consp (cdr (cdr args)))))
-      (fn-nntp-single session "501 syntax error")
+      (fn-nntp-single session (fn-proto-text * :syntax))
     (let* ((field (car args))
            (token (car (cdr args)))
            (joined (fn-nntp-xpat-join (cdr (cdr args))))
            (parsed (fn-wildmat-parse-text joined)))
       (if (not (fn-wildmat-result-okp parsed))
-          (fn-nntp-single session "501 syntax error")
+          (fn-nntp-single session (fn-proto-text * :syntax))
         (let ((patterns (fn-wildmat-result-value parsed))
               (group (fn-nntp-session-group session)))
           (if (fn-nntp-range-okp (fn-nntp-parse-range token))
               (if (null group)
-                  (fn-nntp-single session "412 no newsgroup selected")
+                  (fn-nntp-single session (fn-proto-text * :no-group-selected))
                 (fn-nntp-multi
                  session (fn-nntp-hdr-initial t)
                  (fn-nntp-xpat-lines-for-numbers-cat
@@ -1077,16 +1296,16 @@
                 (let ((article (fn-scat-msgid-article (fn-nntp-token-string token)
                                                       v fn-arena fn-cat)))
                   (if (not (consp article))
-                      (fn-nntp-single session "430 no article with that message-id")
-                    (if (not (fn-nntp-hdr-okp (fn-nntp-hdr-content field article fn-arena)))
-                        (fn-nntp-single session "503 stored article framing unavailable")
+                      (fn-nntp-single session (fn-proto-text * :no-msgid))
+                    (if (not (fn-nntp-hdr-okp (fn-scol-hdr-content field article fn-arena fn-cat)))
+                        (fn-nntp-single session (fn-proto-text * :no-framing))
                       (fn-nntp-multi session (fn-nntp-hdr-initial t)
                                      (fn-nntp-xpat-msgid-lines field patterns token
                                                                article fn-arena)))))
-              (fn-nntp-single session "501 syntax error"))))))))
+              (fn-nntp-single session (fn-proto-text * :syntax)))))))))
 
 (defthm fn-nntp-xpat-response-cat-is-archive
-  (implies (and (fn-cnx-freshp fn-cat)
+  (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat)
                 (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
            (equal (fn-nntp-xpat-response-cat session args v fn-arena fn-cat)
                   (fn-nntp-xpat-response session archive args fn-arena)))
@@ -1106,6 +1325,269 @@
 
 (in-theory (disable fn-scat-group-low-is-car fn-scat-group-high-is-last))
 
+;;; F2 (lane sca-join-5): the Xref arms read the catalog.  With an Xref
+;;; server configured (every node), fn-rcompat-reply answers ARTICLE and HEAD
+;;; before the -cat retrieval arms, and books/nntp-reader-compat.lisp
+;;; fn-rcompat-retrieval finds the article by number with
+;;; fn-nntp-find-group-number over the pinned archive (one walk of every
+;;; article per request) and the current article with
+;;; fn-nntp-available-article (another walk).  The twin below is that
+;;; retrieval with the two finders replaced by the catalog's
+;;; (fn-scat-number-article: one probe of the number table;
+;;; fn-scat-available-article: the same probe and the served-number tests);
+;;; the Xref rendering (fn-rcompat-article-reply) and the Message-ID arm (the
+;;; pinned trie) are the reference's, text for text.  HDR/XHDR Xref gets
+;;; the same treatment (fn-rcompat-hdr-cat).  The reply wrapper delegates
+;;; every other compatibility arm to fn-rcompat-reply unchanged.
+;;;
+;;; Why this side and not the Xref rendering in the -cat arms: the reference
+;;; the served chain is proved against (fn-nntp-archive-command-pinned) calls
+;;; fn-rcompat-reply, so a twin of it is one equation over the reply
+;;; (fn-rcompat-reply-cat-is-rcompat-reply) and the boundary theorem keeps its
+;;; statement; moving the rendering into fn-nntp-number-retrieval-cat would
+;;; change which arm answers and restate the dispatcher's case split.
+
+(defun fn-rcompat-retrieval-cat (session archive trie kind args server v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp v)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil)
+           (ignorable archive))
+  (if (null args)
+      (let ((group (fn-nntp-session-group session))
+            (current (fn-nntp-session-current session)))
+        (if (null group)
+            (fn-nntp-single session (fn-proto-text * :no-group-selected))
+          (if (null current)
+              (fn-nntp-single session (fn-proto-text * :no-current))
+            (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
+              (if (consp article)
+                  (fn-rcompat-article-reply session article current kind t
+                                            group server fn-arena)
+                (fn-nntp-single session (fn-proto-text * :no-current)))))))
+    (let ((token (and (consp args) (car args))))
+      (if (fn-nntp-number-tokenp token)
+          (let ((group (fn-nntp-session-group session))
+                (number (fn-nntp-decimal-value token)))
+            (if (null group)
+                (fn-nntp-single session (fn-proto-text * :no-group-selected))
+              (let ((article (fn-scat-number-article group number v fn-arena fn-cat)))
+                (if (consp article)
+                    (fn-rcompat-article-reply session article number kind t
+                                              group server fn-arena)
+                  (fn-nntp-single session (fn-proto-text * :no-number))))))
+        (if (not (and (fn-nntp-message-id-tokenp token) (fn-octet-listp token)))
+            (fn-nntp-single session (fn-proto-text * :syntax))
+          (let ((article (fn-midx-lookup (fn-nntp-token-string token) trie)))
+            (if (consp article)
+                (fn-rcompat-article-reply
+                 session article (fn-nntp-msgid-local-number session article)
+                 kind nil nil server fn-arena)
+              (fn-nntp-single session
+                              (fn-proto-text * :no-msgid)))))))))
+
+(defthm fn-rcompat-retrieval-cat-is-retrieval
+  (implies (and (equal (fn-state-articles archive)
+                       (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-cnx-freshp fn-cat))
+           (equal (fn-rcompat-retrieval-cat session archive trie kind args server v
+                                            fn-arena fn-cat)
+                  (fn-rcompat-retrieval session archive trie kind args server fn-arena)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-rcompat-retrieval-cat fn-rcompat-retrieval)
+                           (fn-scat-number-article fn-scat-available-article
+                            fn-nntp-find-group-number fn-nntp-available-article
+                            fn-rcompat-article-reply fn-nntp-single fn-midx-lookup
+                            fn-cat-view-articles fn-nntp-number-tokenp
+                            fn-nntp-decimal-value fn-nntp-session-group
+                            fn-nntp-session-current fn-nntp-message-id-tokenp
+                            fn-nntp-token-string fn-nntp-msgid-local-number
+                            fn-cnx-freshp)))))
+
+;; HDR/XHDR Xref, as fn-rcompat-hdr (books/nntp-reader-compat.lisp) with the
+;; numbers of a range read from the catalog (fn-scat-range-numbers, KEYSTONE
+;; N) and the article at each number by one probe (fn-scat-available-article),
+;; where the reference folds over the archive once for the range and once per
+;; number.
+(defun fn-rcompat-hdr-lines-cat (group numbers server v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp v)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (if (consp numbers)
+      (let ((content (fn-rcompat-xref-content
+                      server (fn-scat-available-article group (car numbers) v fn-arena fn-cat)
+                      fn-arena)))
+        (if (fn-nntp-hdr-okp content)
+            (cons (fn-nntp-hdr-line (fn-nntp-decimal-field (car numbers))
+                                    (fn-nntp-hdr-octets content))
+                  (fn-rcompat-hdr-lines-cat group (cdr numbers) server v fn-arena fn-cat))
+          (fn-rcompat-hdr-lines-cat group (cdr numbers) server v fn-arena fn-cat)))
+    nil))
+
+(defthm fn-rcompat-hdr-lines-cat-is-hdr-lines
+  (implies (and (fn-cnx-freshp fn-cat) group)
+           (equal (fn-rcompat-hdr-lines-cat group numbers server v fn-arena fn-cat)
+                  (fn-rcompat-hdr-lines group numbers (fn-cat-view-articles v fn-arena fn-cat)
+                                        server fn-arena)))
+  :hints (("Goal" :induct (fn-rcompat-hdr-lines-cat group numbers server v fn-arena fn-cat)
+           :in-theory (e/d (fn-rcompat-hdr-lines)
+                           (fn-scat-available-article fn-nntp-available-article
+                            fn-rcompat-xref-content fn-nntp-hdr-okp fn-nntp-hdr-line
+                            fn-nntp-decimal-field fn-nntp-hdr-octets
+                            fn-cat-view-articles fn-cnx-freshp)))))
+
+(defun fn-rcompat-hdr-cat (session archive trie args legacyp server v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp v)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil)
+           (ignorable archive))
+  (let ((rest (and (consp args) (cdr args))))
+    (if (null rest)
+        (let ((group (fn-nntp-session-group session))
+              (current (fn-nntp-session-current session)))
+          (if (null group)
+              (fn-nntp-single session (fn-proto-text * :no-group-selected))
+            (if (null current)
+                (fn-nntp-single session (fn-proto-text * :no-current))
+              (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
+                (if (not (consp article))
+                    (fn-nntp-single session (fn-proto-text * :no-current))
+                  (let ((content (fn-rcompat-xref-content server article fn-arena)))
+                    (if (fn-nntp-hdr-okp content)
+                        (fn-nntp-multi
+                         session (fn-nntp-hdr-initial legacyp)
+                         (list (fn-nntp-hdr-line
+                                (fn-nntp-decimal-field current)
+                                (fn-nntp-hdr-octets content))))
+                      (fn-nntp-single session (fn-proto-text * :reclaimed)))))))))
+      (if (not (and (consp rest) (null (cdr rest))))
+          (fn-nntp-single session (fn-proto-text * :syntax))
+        (let ((token (car rest)))
+          (if (fn-nntp-range-okp (fn-nntp-parse-range token))
+              (let ((group (fn-nntp-session-group session))
+                    (range (fn-nntp-parse-range token)))
+                (if (null group)
+                    (fn-nntp-single session (fn-proto-text * :no-group-selected))
+                  (let ((lines (fn-rcompat-hdr-lines-cat
+                                group
+                                (fn-scat-range-numbers
+                                 group (nfix (fn-nntp-range-low range))
+                                 (nfix (fn-nntp-range-high range)) v fn-cat)
+                                server v fn-arena fn-cat)))
+                    (if (consp lines)
+                        (fn-nntp-multi session (fn-nntp-hdr-initial legacyp)
+                                       lines)
+                      (fn-nntp-single session
+                                      (if legacyp (fn-proto-text * :none-selected)
+                                        (fn-proto-text * :empty-range)))))))
+            (if (not (and (fn-nntp-message-id-tokenp token)
+                          (fn-octet-listp token)))
+                (fn-nntp-single session (fn-proto-text * :syntax))
+              (let* ((article (fn-midx-lookup (fn-nntp-token-string token) trie))
+                     (content (fn-rcompat-xref-content server article fn-arena)))
+                (if (not (consp article))
+                    (fn-nntp-single session (fn-proto-text * :no-msgid))
+                  (if (fn-nntp-hdr-okp content)
+                      (fn-nntp-multi
+                       session (fn-nntp-hdr-initial legacyp)
+                       (list (fn-nntp-hdr-line
+                              (if legacyp (fn-nov-scrub token)
+                                (fn-nntp-decimal-field 0))
+                              (fn-nntp-hdr-octets content))))
+                    (fn-nntp-single session (fn-proto-text * :reclaimed-msgid))))))))))))
+
+(defthm fn-rcompat-hdr-cat-is-hdr
+  (implies (and (equal (fn-state-articles archive)
+                       (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-cnx-freshp fn-cat))
+           (equal (fn-rcompat-hdr-cat session archive trie args legacyp server v fn-arena fn-cat)
+                  (fn-rcompat-hdr session archive trie args legacyp server fn-arena)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-rcompat-hdr-cat fn-rcompat-hdr)
+                           (fn-scat-available-article fn-nntp-available-article
+                            fn-rcompat-hdr-lines-cat fn-rcompat-hdr-lines
+                            fn-scat-range-numbers fn-nntp-group-range-numbers
+                            fn-rcompat-xref-content fn-nntp-hdr-okp fn-nntp-hdr-line
+                            fn-nntp-decimal-field fn-nntp-hdr-octets fn-nntp-multi
+                            fn-nntp-single fn-nntp-hdr-initial fn-midx-lookup
+                            fn-nntp-parse-range fn-nntp-range-okp fn-nov-scrub
+                            fn-nntp-message-id-tokenp fn-nntp-token-string
+                            fn-cat-view-articles fn-cnx-freshp fn-nntp-session-group
+                            fn-nntp-session-current))
+           :use ((:instance fn-nntp-parse-range-ok-has-natural-bounds
+                            (token (car (cdr args))))))))
+
+(defun fn-rcompat-reply-cat (session archive index env keyword args v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp v)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (let ((server (fn-nntp-xref-server env)))
+    (if (and server
+             (or (fn-nntp-keywordp keyword "ARTICLE")
+                 (fn-nntp-keywordp keyword "HEAD"))
+             (fn-gidx-pinp index)
+             (or (null args) (and (consp args) (null (cdr args)))))
+        (fn-rcompat-retrieval-cat session archive (fn-gidx-pin-trie index)
+                                  (fn-rcompat-retrieval-kind keyword) args server
+                                  v fn-arena fn-cat)
+      (if (and server
+               (or (fn-nntp-keywordp keyword "HDR")
+                   (fn-nntp-keywordp keyword "XHDR"))
+               (fn-gidx-pinp index)
+               (consp args)
+               (fn-nntp-keywordp (car args) "XREF"))
+          (fn-rcompat-hdr-cat session archive (fn-gidx-pin-trie index) args
+                              (fn-nntp-keywordp keyword "XHDR") server v fn-arena fn-cat)
+        (fn-rcompat-reply session archive index env keyword args fn-arena)))))
+
+(defthm fn-rcompat-reply-cat-is-rcompat-reply
+  (implies (and (equal (fn-state-articles archive)
+                       (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-cnx-freshp fn-cat))
+           (equal (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
+                  (fn-rcompat-reply session archive index env keyword args fn-arena)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-rcompat-reply-cat fn-rcompat-reply)
+                           (fn-rcompat-retrieval-cat fn-rcompat-retrieval
+                            fn-rcompat-hdr-cat fn-rcompat-hdr
+                            fn-rcompat-newgroups fn-rcompat-active-times
+                            fn-rcompat-subscriptions fn-rcompat-hdr
+                            fn-nntp-xref-server fn-gidx-pinp fn-gidx-pin-trie
+                            fn-rcompat-list-keywordp fn-cat-view-articles fn-cnx-freshp)))))
+
+;; The withdrawn test of a by-number line: the article's absence is read
+;; from the catalog's number table (one probe), not by a walk of the pinned
+;; archive; the pinned withdrawn list W is walked only when the number names
+;; no visible article (the reply is then 423 either way).
+(defun fn-nntp-number-withdrawn-p-cat (session index token v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp v)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (let ((group (fn-nntp-session-group session)))
+    (and group
+         (fn-nntp-number-tokenp token)
+         (let ((number (fn-nntp-decimal-value token)))
+           (and (not (consp (fn-scat-number-article group number v fn-arena fn-cat)))
+                (consp (fn-nntp-find-group-number
+                        group number
+                        (fn-ctl-pin-withdrawn (fn-gidx-pin-control index)))))))))
+
+(defthm fn-nntp-number-withdrawn-p-cat-is-archive
+  (implies (and (equal (fn-state-articles archive)
+                       (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-cnx-freshp fn-cat))
+           (iff (fn-nntp-number-withdrawn-p-cat session index token v fn-arena fn-cat)
+                (fn-nntp-number-withdrawn-p session archive index token)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-number-withdrawn-p-cat fn-nntp-number-withdrawn-p)
+                           (fn-scat-number-article fn-nntp-find-group-number
+                            fn-cat-view-articles fn-nntp-number-tokenp
+                            fn-nntp-decimal-value fn-nntp-session-group fn-cnx-freshp)))))
+
 ;;; The dispatcher: fn-nntp-archive-command-pinned's case split with the two
 ;;; retrieval arms reading the catalog.  Every other arm is the pinned arm
 ;;; (it reads the archive and the pinned index until step 8).  Its guards are
@@ -1118,7 +1600,7 @@
                   :guard (and (natp v)
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil))
-  (let ((xref (fn-nntp-xref-reply session archive index env keyword args fn-arena)))
+  (let ((xref (fn-nntp-xref-reply-col session archive index env keyword args fn-arena fn-cat)))
     (if xref xref
       (cond
        ((and (fn-nntp-keywordp keyword "LIST")
@@ -1132,7 +1614,7 @@
                  (fn-nntp-keywordp keyword "BODY")
                  (fn-nntp-keywordp keyword "STAT"))
              (consp args) (null (cdr args))
-             (fn-nntp-number-withdrawn-p session archive index (car args)))
+             (fn-nntp-number-withdrawn-p-cat session index (car args) v fn-arena fn-cat))
         (fn-nntp-withdrawn-reply session nil))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
@@ -1143,9 +1625,11 @@
              (fn-nntp-msgid-withdrawn-p index (car args)))
         (fn-nntp-withdrawn-reply session t))
        ;; PRF-243: the served compatibility arms, where the pinned dispatcher
-       ;; has them (books/nntp.lisp fn-nntp-archive-command-pinned).
-       ((fn-rcompat-reply session archive index env keyword args fn-arena)
-        (fn-rcompat-reply session archive index env keyword args fn-arena))
+       ;; has them (books/nntp.lisp fn-nntp-archive-command-pinned); ARTICLE
+       ;; and HEAD find the article in the catalog (fn-rcompat-reply-cat).
+       ;; A one-element clause answers with its test's value: the reply is
+       ;; computed once.
+       ((fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
                  (fn-nntp-keywordp keyword "BODY")
@@ -1197,7 +1681,7 @@
        ((fn-nntp-keywordp keyword "GROUP")
         (if (and (consp args) (null (cdr args)) (fn-nntp-printable-tokenp (car args)))
             (fn-nntp-group-result-cat session archive (fn-nntp-token-string (car args)) v fn-cat)
-          (fn-nntp-single session "501 syntax error")))
+          (fn-nntp-single session (fn-proto-text * :syntax))))
        ((fn-nntp-keywordp keyword "HDR")
         (fn-nntp-hdr-command-cat session args v nil fn-arena fn-cat))
        ((fn-nntp-keywordp keyword "XHDR")
@@ -1278,7 +1762,8 @@
                 (fn-gidx-pin-correspondencep index archive)
                 (fn-midx-correspondencep (fn-gidx-pin-trie index)
                                          (fn-state-articles archive))
-                (fn-cnx-freshp fn-cat))
+                (fn-cnx-freshp fn-cat)
+                (fn-scol-okp fn-arena fn-cat))
            (equal (fn-nntp-archive-command-cat
                    session archive index verdicts env keyword args v fn-arena fn-cat)
                   (fn-nntp-archive-command-pinned
@@ -1290,6 +1775,7 @@
                             fn-nntp-over-response fn-nntp-xover-response
                             fn-nntp-retrieval)
                            (fn-rcompat-reply fn-nntp-xref-reply fn-gidx-list-counts-command
+                            fn-rcompat-reply-cat fn-nntp-number-withdrawn-p-cat
                             fn-nntp-number-withdrawn-p fn-nntp-msgid-withdrawn-p
                             fn-nntp-withdrawn-reply fn-gidx-listgroup-command
                             fn-nntp-over-range-indexed fn-nntp-verdict-hdr-response
@@ -1322,4 +1808,9 @@
 ; fn-scr-command calls the dispatcher): the whole -cat path is guard-verified.
 (verify-guards fn-nntp-xpat-lines-for-numbers-cat)
 (verify-guards fn-nntp-xpat-response-cat)
+(verify-guards fn-rcompat-retrieval-cat)
+(verify-guards fn-rcompat-hdr-lines-cat)
+(verify-guards fn-rcompat-hdr-cat)
+(verify-guards fn-rcompat-reply-cat)
+(verify-guards fn-nntp-number-withdrawn-p-cat)
 (verify-guards fn-nntp-archive-command-cat)

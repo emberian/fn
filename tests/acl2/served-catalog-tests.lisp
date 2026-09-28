@@ -349,3 +349,130 @@
    (equal (fn-scat-available-article "fn.test" 1 3 *sct-a* *sct-c-dup*)
           (fn-nntp-available-article "fn.test" 1 (fn-cat-view-articles 3 *sct-a* *sct-c-dup*)))
    :rule-classes nil))
+
+;;; ----------------------------------------------------------------------------
+;;; F2 (lane sca-join-5): GROUP's summary and low from the catalog's live table
+;;; (KEYSTONES fn-scat-group-summary-is-pass, fn-scat-group-low-is-pass: no
+;;; hypotheses, so the teeth are the reachable witnesses that the TABLE
+;;; branch is the one taken, and the two witnesses of why the branch is
+;;; guarded by the top view and the horizon).
+;;;
+;;; The fixture is *sct-c4* above: row 1 (fn.test 2, fn.other 1) withdrawn at
+;;; version 3 by fn-cat$a-withdraw (*sct-cw*), then the fourth article
+;;; (fn.test 4) committed.
+
+;; REACHABLE WITNESS (table branch): at the count 4, past the withdrawal's
+;; horizon 4, the summary is read from the table -- fn.test 1, 3, 4 live,
+;; count 3 -- and equals the pass and the served fold over the view.
+(defthm sct-f2-summary-from-table
+  (and (fn-scat-top-viewp 4 *sct-c4*)
+       (equal (fn-cat-horizon *sct-c4*) 4)
+       (equal (fn-cat-group-live-count "fn.test" *sct-c4*) 3)
+       (equal (fn-cat-group-live-low "fn.test" *sct-c4*) 1)
+       (equal (fn-cat-group-live-high "fn.test" *sct-c4*) 4)
+       (equal (fn-scat-group-summary nil "fn.test" 4 *sct-c4*) '(3 1 4))
+       (equal (fn-scat-group-summary nil "fn.test" 4 *sct-c4*)
+              (fn-scat-group-summary-pass nil "fn.test" 4 *sct-c4*))
+       (equal (fn-scat-group-low "fn.test" 4 *sct-c4*) 1)
+       (equal (fn-scat-group-low "fn.test" 4 *sct-c4*)
+              (fn-scat-group-low-pass "fn.test" 4 *sct-c4*))
+       (equal (fn-scat-group-low "fn.test" 4 *sct-c4*)
+              (fn-nntp-group-low "fn.test" (fn-cat-view-articles 4 *sct-a4* *sct-c4*)))
+       ;; fn.other: its only row is withdrawn; the table says empty, as the pass
+       (equal (fn-cat-group-live-count "fn.other" *sct-c4*) 0)
+       (equal (fn-scat-group-summary nil "fn.other" 4 *sct-c4*)
+              (fn-scat-group-summary-pass nil "fn.other" 4 *sct-c4*)))
+  :rule-classes nil)
+
+;; WHY THE HORIZON: right after the withdrawal (count 3, horizon 4) the
+;; withdrawn row is still visible to a reader at version 3 (RFC 3977 lets a
+;; removed article stay until the reader's view moves): the pass counts
+;; fn.test 1..3, the table 1 and 3.  The top view holds (v = count), the
+;; horizon test fails, the table disagrees -- so the branch takes the pass.
+(defthm sct-f2-below-horizon
+  (and (equal (fn-cat-count *sct-cw*) 3)
+       (equal (fn-cat-horizon *sct-cw*) 4)
+       (not (fn-scat-top-viewp 3 *sct-cw*))
+       (equal (fn-scat-group-summary-pass nil "fn.test" 3 *sct-cw*) '(3 1 3))
+       (equal (fn-cat-group-live-count "fn.test" *sct-cw*) 2)
+       (equal (fn-scat-group-summary nil "fn.test" 3 *sct-cw*) '(3 1 3)))
+  :rule-classes nil)
+
+;; WHY THE TOP VIEW: a reader pinned at version 2 of the four-row catalog
+;; sees fn.test 1, 2 (row 1's withdrawal is at 3); the table, at the top,
+;; says 1, 3, 4.
+(defthm sct-f2-older-view
+  (and (not (fn-scat-top-viewp 2 *sct-c4*))
+       (equal (fn-scat-group-summary-pass nil "fn.test" 2 *sct-c4*) '(2 1 2))
+       (equal (fn-scat-group-summary nil "fn.test" 2 *sct-c4*) '(2 1 2))
+       (not (equal (fn-cat-group-live-count "fn.test" *sct-c4*) 2)))
+  :rule-classes nil)
+
+;;; F2 item 1: the Xref ARTICLE/HEAD arm by number and of the current article
+;;; reads the catalog (fn-rcompat-retrieval-cat, KEYSTONE
+;;; fn-rcompat-retrieval-cat-is-retrieval).  The archive is the view's
+;;; articles at count 3; the session is in fn.test at number 1.
+(defmacro sct-f2-state3 ()
+  '(fn-make-state '("fn.test" "fn.other") (list (cons "fn.test" 4) (cons "fn.other" 2))
+                  (fn-cat-view-articles 3 *sct-a* *sct-c*) 1 nil nil))
+(defmacro sct-f2-session ()
+  '(fn-nntp-set-cursor (fn-nntp-open-session (sct-f2-state3)) "fn.test" 1))
+(defconst *sct-f2-server* (fn-nntp-string-octets "news.example.org"))
+(defconst *sct-f2-args-2* (list (fn-nntp-string-octets "2")))
+(defconst *sct-f2-args-9* (list (fn-nntp-string-octets "9")))
+
+;; REACHABLE WITNESS: every antecedent; number 2 is found (220, the cursor
+;; moves to 2), number 9 is not (423), the current article (1) is found; the
+;; catalog arm and the archive arm answer the same octets and session.
+(defthm sct-f2-xref-retrieval
+  (and (equal (fn-state-articles (sct-f2-state3)) (fn-cat-view-articles 3 *sct-a* *sct-c*))
+       (fn-cnx-freshp *sct-c*)
+       (consp (fn-scat-number-article "fn.test" 2 3 *sct-a* *sct-c*))
+       (equal (fn-nntp-session-current
+               (fn-nntp-result-session
+                (fn-rcompat-retrieval-cat (sct-f2-session) (sct-f2-state3) nil :article *sct-f2-args-2*
+                                          *sct-f2-server* 3 *sct-a* *sct-c*)))
+              2)
+       (equal (fn-rcompat-retrieval-cat (sct-f2-session) (sct-f2-state3) nil :article *sct-f2-args-2*
+                                        *sct-f2-server* 3 *sct-a* *sct-c*)
+              (fn-rcompat-retrieval (sct-f2-session) (sct-f2-state3) nil :article *sct-f2-args-2*
+                                    *sct-f2-server* *sct-a*))
+       (equal (fn-rcompat-retrieval-cat (sct-f2-session) (sct-f2-state3) nil :head *sct-f2-args-9*
+                                        *sct-f2-server* 3 *sct-a* *sct-c*)
+              (fn-nntp-single (sct-f2-session) "423 no article with that number"))
+       (equal (fn-rcompat-retrieval-cat (sct-f2-session) (sct-f2-state3) nil :head *sct-f2-args-9*
+                                        *sct-f2-server* 3 *sct-a* *sct-c*)
+              (fn-rcompat-retrieval (sct-f2-session) (sct-f2-state3) nil :head *sct-f2-args-9*
+                                    *sct-f2-server* *sct-a*))
+       (equal (fn-rcompat-retrieval-cat (sct-f2-session) (sct-f2-state3) nil :head nil
+                                        *sct-f2-server* 3 *sct-a* *sct-c*)
+              (fn-rcompat-retrieval (sct-f2-session) (sct-f2-state3) nil :head nil
+                                    *sct-f2-server* *sct-a*))
+       (not (equal (fn-rcompat-retrieval-cat (sct-f2-session) (sct-f2-state3) nil :head nil
+                                             *sct-f2-server* 3 *sct-a* *sct-c*)
+                   (fn-nntp-single (sct-f2-session) "420 no current article"))))
+  :rule-classes nil)
+
+;; HYPOTHESIS REMOVAL (the archive is the view's articles): an archive with
+;; no articles, freshness kept; the catalog arm finds number 2, the archive
+;; arm does not.
+(defconst *sct-f2-state0*
+  (fn-make-state '("fn.test" "fn.other") (list (cons "fn.test" 4) (cons "fn.other" 2))
+                 nil 1 nil nil))
+
+(defthm sct-f2-xref-retrieval-view-hypotheses
+  (and (fn-cnx-freshp *sct-c*)
+       (not (equal (fn-state-articles *sct-f2-state0*) (fn-cat-view-articles 3 *sct-a* *sct-c*)))
+       (not (equal (fn-rcompat-retrieval-cat (sct-f2-session) *sct-f2-state0* nil :article *sct-f2-args-2*
+                                             *sct-f2-server* 3 *sct-a* *sct-c*)
+                   (fn-rcompat-retrieval (sct-f2-session) *sct-f2-state0* nil :article *sct-f2-args-2*
+                                         *sct-f2-server* *sct-a*))))
+  :rule-classes nil)
+
+(must-fail-checked
+ (defthm sct-f2-xref-retrieval-without-view
+   (equal (fn-rcompat-retrieval-cat (sct-f2-session) *sct-f2-state0* nil :article *sct-f2-args-2*
+                                    *sct-f2-server* 3 *sct-a* *sct-c*)
+          (fn-rcompat-retrieval (sct-f2-session) *sct-f2-state0* nil :article *sct-f2-args-2*
+                                *sct-f2-server* *sct-a*))
+   :rule-classes nil))

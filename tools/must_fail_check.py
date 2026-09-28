@@ -137,11 +137,21 @@ def main(argv=None) -> int:
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--convert", action="store_true",
                         help="rewrite bare must-fails to must-fail-checked")
+    parser.add_argument("--book", action="append", default=[], metavar="PATH",
+                        help="check only these test books (repeatable)")
     args = parser.parse_args(argv)
     root = args.root
+    selected = books(root)
+    if args.book:
+        chosen = [(Path(b) if Path(b).is_absolute() else root / b).resolve() for b in args.book]
+        missing = [str(p) for p in chosen if not p.is_file()]
+        if missing:
+            print("must_fail_check --book: no such file: " + ", ".join(missing), file=sys.stderr)
+            return 2
+        selected = chosen
     if args.convert:
         changed = 0
-        for path in books(root):
+        for path in selected:
             text = path.read_text()
             new = convert_text(text)
             if new != text:
@@ -149,7 +159,7 @@ def main(argv=None) -> int:
                 changed += 1
         print(f"must_fail_check --convert: {changed} book(s) rewritten")
     findings, declared = [], []
-    for path in books(root):
+    for path in selected:
         rel = path.relative_to(root)
         for line, head, ok in bare_sites(path.read_text()):
             (declared if ok else findings).append(f"{rel}:{line}: {head}")
@@ -159,7 +169,7 @@ def main(argv=None) -> int:
         print(f"bare {site}: its body's translation is not checked; use "
               f"must-fail-checked (tools/must_fail_check.py --convert) or "
               f"declare `; must-fail-ok: <reason>`")
-    print(f"must_fail_check: {len(books(root))} test books, "
+    print(f"must_fail_check: {len(selected)} test books, "
           f"{len(findings)} bare must-fail(s), {len(declared)} declared")
     return 1 if findings else 0
 

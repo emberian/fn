@@ -2050,6 +2050,25 @@ lost reply answers `281` again and binds nothing new. `account list` shows
 digest or verifier. Redeemed accounts and auth.toml's credentials together are
 bounded by the profile's `max-credentials`.
 
+## The node's own web face: an in-node reader client
+
+The web face (`[web]`, WEB-005) is an NNTP client that lives inside the
+node, and the way it reaches the owner is the one any in-node client should
+use. A browser session is a LOGICAL READER CONNECTION: the host opens it
+with `fn-owner-exposure-open FAMILY ADDRESS nil` under the owner mutex
+(`fnn-owner-serialized SERVICE nil ... :reader`), exactly as the I/O loop
+admits a socket (`fnn-mux-admit`), so the exposure rules see the browser's
+address; when ACL2 says the browser's channel is protected it calls
+`fn-owner-tls-established` on the id, as a completed handshake does. Each
+command is fed with `fnn-owner-handle-chunk SERVICE CID OCTETS nil :reader`
+(no socket: a submission commits in the same quantum, as the pull feed's
+logical connection does, `host/native/pull-service.lisp`), the reply
+rendered with `fnn-owner-render-next`, and a `:defer` answer waited out and
+fed again. A connection the owner no longer knows is an `fnn-store-error`
+from that call. It is closed as a socket's is: `fn-owner-close`, then
+`fn-owner-exposure-release`. Nothing about authentication, group access,
+posting or pacing is re-implemented: it is the served machine's.
+
 ## The friends' web reader
 
 What ships (docs/web.md is the operator's walk): `clients/` of every release

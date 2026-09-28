@@ -3,6 +3,7 @@
 ; trie.  Neither path traverses the retained article list per output line.
 (in-package "ACL2")
 (include-book "nntp-responses")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "group-bucket-article")
 
 (defun fn-nov-lines-for-numbers-indexed (group numbers entries trie fn-arena)
@@ -64,7 +65,7 @@
   (let ((group (fn-nntp-session-group session))
         (range (fn-nntp-parse-range token)))
     (if (null group)
-        (fn-nntp-single session "412 no newsgroup selected")
+        (fn-nntp-single session (fn-proto-text * :no-group-selected))
       (let* ((entries (fn-gidx-bucket group buckets))
              (numbers (fn-nntp-index-group-range-numbers
                        entries group (fn-nntp-range-low range)
@@ -72,10 +73,10 @@
              (lines (fn-nov-lines-for-numbers-numbered
                      numbers (fn-gidx-bucket-numbers group buckets) trie fn-arena)))
         (if (consp lines)
-            (fn-nntp-multi session "224 overview information follows" lines)
+            (fn-nntp-multi session (fn-proto-text * :overview) lines)
           (fn-nntp-single
-           session (if legacyp "420 no article(s) selected"
-                     "423 no articles in that range")))))))
+           session (if legacyp (fn-proto-text * :none-selected)
+                     (fn-proto-text * :empty-range))))))))
 
 ; The spec: the same renderer with each row found by the bucket walk.
 (defun fn-nntp-over-range-walk (session buckets trie token legacyp fn-arena)
@@ -83,7 +84,7 @@
   (let ((group (fn-nntp-session-group session))
         (range (fn-nntp-parse-range token)))
     (if (null group)
-        (fn-nntp-single session "412 no newsgroup selected")
+        (fn-nntp-single session (fn-proto-text * :no-group-selected))
       (let* ((entries (fn-gidx-bucket group buckets))
              (numbers (fn-nntp-index-group-range-numbers
                        entries group (fn-nntp-range-low range)
@@ -91,10 +92,10 @@
              (lines (fn-nov-lines-for-numbers-indexed
                      group numbers entries trie fn-arena)))
         (if (consp lines)
-            (fn-nntp-multi session "224 overview information follows" lines)
+            (fn-nntp-multi session (fn-proto-text * :overview) lines)
           (fn-nntp-single
-           session (if legacyp "420 no article(s) selected"
-                     "423 no articles in that range")))))))
+           session (if legacyp (fn-proto-text * :none-selected)
+                     (fn-proto-text * :empty-range))))))))
 
 (defthm fn-nntp-over-range-indexed-is-walk
   (implies (fn-gidx-numbers-okp buckets)

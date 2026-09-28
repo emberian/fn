@@ -738,11 +738,12 @@
 ; -----------------------------------------------------------------------------
 ; The host's read entry since owner-time-model: host/owner-host.lisp calls
 ; fn-otm-read-span (books/owner-time-admission.lisp), which is
-; fn-orr-read-span when admitted and, when shed at the gate's value S, the
-; same read with the connection's posting allowance switched off and the
-; disk-slow posture in the owner's refused-offer memory, both undone after
-; (fn-otm-shed-ocfg, fn-otm-unshed-ocfg): a connection field no pin reads and
-; an owner field the invariant does not read.
+; fn-orr-read-span when admitted and, when shed, the same read with the
+; connection's posting allowance switched off and restored -- a field of the
+; connection's configuration, which no pin reads -- and the disk-slow
+; posture's entry pushed on and stripped from the owner's refused-offer
+; memory, which the invariant does not read (batch AY's shape: the gate's
+; value S, fn-otm-admit-post; lane sca-join-5 re-proved it).
 
 (defthm fn-scj-conn-pin-fields-of-update-6
   (implies (< 6 (len c))
@@ -784,23 +785,21 @@
 (defthm fn-scj-invp-of-otm-ocfg-with-refused
   (equal (fn-scj-invp (fn-ocfg-owner (fn-otm-ocfg-with-refused oc mem)) fn-arena fn-cat)
          (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat))
-  :hints (("Goal" :in-theory (e/d (fn-otm-ocfg-with-refused fn-scj-invp fn-scj-vvp)
-                                  (fn-scj-joinp fn-scj-rows-invp fn-scj-live-okp fn-scj-conns-pinp)))))
+  :hints (("Goal" :in-theory (enable fn-otm-ocfg-with-refused fn-scj-invp fn-scj-vvp))))
 
 (defthm fn-scj-invp-of-otm-shed-ocfg
   (implies (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
            (fn-scj-invp (fn-ocfg-owner (fn-otm-shed-ocfg oc id)) fn-arena fn-cat))
-  :hints (("Goal" :in-theory (e/d (fn-otm-shed-ocfg)
-                                  (fn-otm-ocfg-with-refused fn-otm-owner-with-allow fn-scj-invp))
-           :use ((:instance fn-scj-invp-of-otm-owner-with-allow (allow nil))))))
+  :hints (("Goal" :in-theory (union-theories '(fn-otm-shed-ocfg fn-scj-invp-of-otm-ocfg-with-refused
+                                               fn-scj-invp-of-otm-owner-with-allow)
+                                             (theory 'minimal-theory)))))
 
 (defthm fn-scj-invp-of-otm-unshed-ocfg
   (implies (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
            (fn-scj-invp (fn-ocfg-owner (fn-otm-unshed-ocfg oc id allow)) fn-arena fn-cat))
-  :hints (("Goal" :in-theory (e/d (fn-otm-unshed-ocfg)
-                                  (fn-otm-ocfg-with-refused fn-otm-owner-with-allow fn-scj-invp))
-           :use ((:instance fn-scj-invp-of-otm-owner-with-allow
-                            (oc (fn-otm-ocfg-with-refused oc (fn-otm-strip-shed (fn-own-refused (fn-ocfg-owner oc))))))))))
+  :hints (("Goal" :in-theory (union-theories '(fn-otm-unshed-ocfg fn-scj-invp-of-otm-ocfg-with-refused
+                                               fn-scj-invp-of-otm-owner-with-allow)
+                                             (theory 'minimal-theory)))))
 
 (defthm fn-scj-otm-read-span-owner
   (equal (fn-ocfg-owner (fn-own-tls-result-owner
@@ -819,7 +818,8 @@
 
 ; KEYSTONE (the host's read entry keeps the invariant).
 (defthm fn-scj-invp-of-otm-read-span
-  (implies (and (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat)
+                (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (implies (consp views) (fn-scj-live-okp (car views) fn-arena fn-cat)))
            (fn-scj-invp (fn-ocfg-owner (fn-own-tls-result-owner
                                         (fn-otm-read-span oc views id i end s
