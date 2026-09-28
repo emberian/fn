@@ -18,11 +18,6 @@
   (fn-pinv-accept-step sequence txid generation received observed-ml ed ml
                        snapshots))
 
-(defun fn-pinv-host-confirm-plan (received observed-ml ed ml invitations
-                                           snapshots)
-  (declare (xargs :mode :program))
-  (fn-pinv-confirm-plan received observed-ml ed ml invitations snapshots))
-
 (defun fn-pinv-host-confirm-step (sequence txid generation received observed-ml
                                            ed ml invitations snapshots)
   (declare (xargs :mode :program))
