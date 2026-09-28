@@ -675,5 +675,4 @@
 ;; enables it where it is used.
 (in-theory (disable (:definition pgs-entry-p)
                     (:definition pgs-ptab-p)
-                    (:rewrite pgs-ptab-p-true-listp)
-                    (:rewrite pgs-true-list-fix-when-true-listp)))
+                    (:rewrite pgs-ptab-p-true-listp)))

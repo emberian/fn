@@ -35,8 +35,7 @@
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition pgs-entry-p)
                           (:definition pgs-ptab-p)
-                          (:rewrite pgs-ptab-p-true-listp)
-                          (:rewrite pgs-true-list-fix-when-true-listp))))
+                          (:rewrite pgs-ptab-p-true-listp))))
 
 ; -----------------------------------------------------------------------------
 ; Table pages: cutting a flat table and joining it again.
