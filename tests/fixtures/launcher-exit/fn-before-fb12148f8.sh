@@ -1,0 +1,118 @@
+#!/bin/sh
+# fn -- the operator's one installed command: the production saved native host image,
+# found and exec'd.  Installed as PREFIX/bin/fn by
+# packaging/install-native.sh (so NODE/current/bin/fn in a managed node);
+# `packaging/fn-native' is a link to this file for older callers.
+#
+# It locates the image and forwards every argument; it decides nothing.  The
+# native image owns its positional protocol, every outcome and every exit
+# code (ACL2: books/native-operator.lisp and the verbs' own books).  The
+# spike's bash `packaging/fn' (spike/mega f6d947d0) made operator decisions
+# on the host; each is now ACL2's or gone (docs/operator.md, "Install"):
+#   mission table and init        -> `operator CONFIG mission NAME', `init'
+#   doctor, thresholds, alerts    -> `operator CONFIG health' ([alerts])
+#   [alerts]/[ops] stripping      -> the ACL2 configuration grammar admits them
+#   upgrade's format comparison   -> removed (D34: one store format; a deploy
+#                                    is a reinstall plus `store import')
+#   log rotation                  -> SIGHUP, ACL2's reopen decision
+#   profile choice and defaults   -> `init' flags / the mission, in ACL2
+#   release switching, unit files -> removed (D34: stop, remove, install the
+#                                    release, init or import, start); share/fn/
+#   probe, backup, restore        -> removed (tools/node_probe.py; stop, copy)
+# The default image does not expose the raw owner/reader service diagnostics;
+# tests that need those build the explicit `developer` image profile.
+set -eu
+
+# Which image runs is decided by where this file is, never by the caller's
+# environment when it is installed (PKT-481 (a)):
+#   installed  -- PREFIX/bin/fn beside PREFIX/libexec/fn/: always the image of
+#                 its own release, PREFIX/libexec/fn/fn-host.  FN_NATIVE_HOST
+#                 and every other harness variable are ignored, so a shell
+#                 that exported one for the tests cannot turn an old release's
+#                 bin/fn into the candidate's image.  A missing installed
+#                 image is exit 4 naming that path, not a fallback.
+#   developer  -- packaging/fn in a checkout (no libexec/fn beside it):
+#                 FN_NATIVE_HOST when set (the tests' named override), else
+#                 the tree's build/fn-host.
+self=$0
+# A link to bin/fn (say /usr/local/bin/fn) finds the release it points into.
+if [ -L "$self" ] && resolved=$(readlink -f -- "$self" 2>/dev/null); then self=$resolved; fi
+here=$(CDPATH= cd -- "$(dirname -- "$self")" && pwd)
+installed=
+if [ -d "$here/../libexec/fn" ]; then
+    installed=1
+    image=$(CDPATH= cd -- "$here/../libexec/fn" && pwd)/fn-host
+elif [ -n "${FN_NATIVE_HOST:-}" ]; then
+    image=$FN_NATIVE_HOST
+else
+    root=$(CDPATH= cd -- "$here/.." && pwd)
+    image=$root/build/fn-host
+fi
+
+if [ ! -x "$image" ]; then
+    echo "fn: native host image missing: $image (run tools/build_native_host.sh)" >&2
+    exit 4
+fi
+if [ ! -s "$image.core" ]; then
+    echo "fn: native host core missing: $image.core" >&2
+    exit 4
+fi
+
+# A saved ACL2 image must not inherit a user's customization/system-book
+# selection.  This matches tools/build_native_host.sh and does not interpret
+# any operator-supplied value.
+ACL2_CUSTOMIZATION=NONE
+export ACL2_CUSTOMIZATION
+unset ACL2_SYSTEM_BOOKS
+
+# The process heap (PKT-016, HST-013).  SBCL takes the last
+# --dynamic-space-size, and every image launcher splices ${SBCL_USER_ARGS}
+# after its own, so the figure goes there.
+#   installed  -- the figure is the store profile's, decided by ACL2
+#                 (books/heap-figure.lisp fn-heap-decide) in a first run of
+#                 the same image, `heap -- ARGV', which reads the command's
+#                 store profile and this machine's memory and prints
+#                 `heap=MB MB profile=WORD machine=M MB stack=KB KB threads=N'
+#                 (books/heap-reservation.lisp adds the thread stacks); a profile the
+#                 machine cannot hold is refused there by name, exit 1, and
+#                 nothing else runs.  That probe itself runs in the core's
+#                 size plus two 64 MiB collection nurseries: a bound on the
+#                 probe's work (it reads fn.toml and config.json, 16 KiB
+#                 each), not on any data.  The caller's SBCL_USER_ARGS and
+#                 FN_TEST_HEAP_MB are ignored.
+#   developer  -- FN_TEST_HEAP_MB, when set, is the figure (the tests' named
+#                 override); otherwise the image's own launcher figure.
+if [ -n "$installed" ]; then
+    core_octets=$(wc -c < "$image.core" | tr -d ' ')
+    boot=$(( (core_octets + 1048575) / 1048576 + 128 ))
+    status=0
+    figure=$(SBCL_USER_ARGS="--dynamic-space-size $boot" "$image" --fn heap -- "$@") || status=$?
+    [ "$status" -eq 0 ] || exit "$status"
+    mb=${figure#heap=}
+    mb=${mb%% *}
+    case $figure in
+        heap=*) ;;
+        *) mb= ;;
+    esac
+    case $mb in
+        ''|*[!0-9]*) echo "fn: the heap probe printed no figure: $figure" >&2; exit 4 ;;
+    esac
+    # The control stack every thread reserves (books/heap-reservation.lisp,
+    # HST-025): the measured need of the profile's largest article.
+    stack=
+    case $figure in
+        *" stack="*) stack=${figure##* stack=}; stack=${stack%% *} ;;
+    esac
+    case $stack in
+        ''|*[!0-9]*) echo "fn: the heap probe printed no stack figure: $figure" >&2; exit 4 ;;
+    esac
+    SBCL_USER_ARGS="--dynamic-space-size $mb --control-stack-size ${stack}KB"
+    export SBCL_USER_ARGS
+elif [ -n "${FN_TEST_HEAP_MB:-}" ]; then
+    case $FN_TEST_HEAP_MB in
+        *[!0-9]*) echo "fn: FN_TEST_HEAP_MB is not a decimal: $FN_TEST_HEAP_MB" >&2; exit 5 ;;
+    esac
+    SBCL_USER_ARGS="--dynamic-space-size $FN_TEST_HEAP_MB"
+    export SBCL_USER_ARGS
+fi
+exec "$image" --fn "$@"
