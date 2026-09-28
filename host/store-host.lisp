@@ -277,9 +277,6 @@
 (defun fn-store-unframe-split (prefix trailer)
   (fn-store-frame-result (fn-srs-unframe prefix trailer)))
 
-(defun fn-store-frame-workflow-encode (kind values digest)
-  (fn-frame-workflow-encode kind values digest))
-
 (defun fn-store-frame-workflow-decode (octets digest)
   (fn-store-frame-record-result (fn-frame-workflow-decode octets digest)))
 
