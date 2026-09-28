@@ -289,7 +289,7 @@ class FailureTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             with driving(fake, root / "cache"), contextlib.redirect_stderr(errors):
-                code = farm.main(["submit", "persvati", "--root", str(root),
+                code = farm.main(["submit", "persvati", "--all", "--root", str(root),
                                   "--remote-root", "~/fn-lanes/w5"])
             self.assertEqual(code, 2)
             self.assertIn("did not start", errors.getvalue())
@@ -1000,6 +1000,21 @@ class FrictionTests(unittest.TestCase):
             seed_books(root)
             farm.refuse_bad_book_names(root, ["books/alpha"],
                                        ["books/beta.lisp", "books/wire"])
+
+    def test_an_empty_selection_is_refused_without_all(self):
+        calls = []
+        with mock.patch.object(farm, "pick_host", lambda: "hbox"), \
+                mock.patch.object(farm, "submit",
+                                  lambda host, root, books, *a, **k: calls.append(
+                                      (host, books)) or "run-x"), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            for words in (["submit", "hbox"], ["submit", "auto"],
+                          ["submit", "hbox", "--all", "books/x"]):
+                with self.assertRaises(SystemExit):
+                    farm.main(words)
+            self.assertEqual(farm.main(["submit", "hbox", "--all"]), 0)
+        self.assertEqual(calls, [("hbox", [])])
 
     def test_recertify_takes_a_host_book_of_the_closure(self):
         # batch AY: --recertify-uncited listed host/native-operator-host and
