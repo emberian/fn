@@ -76,7 +76,7 @@
 # --jobs N (modules run N at a time against the one image set, default 1:
 # each is its own process, its own MemoryMax scope and its own ports; a
 # group of 20 modules at 4 jobs on hbox takes about a quarter of the serial
-# time), --certify-jobs N (certify, default 8), --no-build (reuse the images already in that
+# time), --certify-jobs N|auto (certify, default auto: tools/chain_schedule.py), --no-build (reuse the images already in that
 # scratch tree), --env NAME=VALUE (repeatable; paths may use $T, the tree),
 # --deadline S (default 5400), --dry-run (print the box script; the refusal
 # and the per-module environment show there).  Options may come before or
@@ -110,7 +110,7 @@ LABEL=
 IMAGES=developer
 MEM=24G
 IMAGE_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k
-JOBS=8
+JOBS=auto
 MODULE_JOBS=1
 BUILD=1
 DETACH=0

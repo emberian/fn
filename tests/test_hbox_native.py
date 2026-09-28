@@ -55,7 +55,7 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertIn("seq 1 2 | xargs -P 3 -n 1 sh $S/module.sh", script)
         self.assertIn("echo $rc > $S/rc/$name", script)
         self.assertIn("for name in test-tests.test_native_owner test-tests.test_native_web ;", script)
-        self.assertIn("--jobs 8", dry("HEAD", "tests.test_native_owner").stdout)
+        self.assertIn("--jobs auto", dry("HEAD", "tests.test_native_owner").stdout)
         serial = dry("HEAD", "tests.test_native_owner")
         self.assertIn("xargs -P 1 ", serial.stdout)
         self.assertIn("--jobs 5 ", dry("--certify-jobs", "5", "HEAD", "tests.test_native_owner").stdout)
