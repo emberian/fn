@@ -29,21 +29,64 @@
 ; trie steps) instead of a walk of the bucket per row.  It renders what
 ; `fn-nov-lines-for-numbers-indexed' renders
 ; (`fn-nov-lines-for-numbers-numbered-of-build' below).
-(defun fn-nov-lines-for-numbers-numbered (numbers nidx trie fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nov-lines-for-numbers-numbered-loop (numbers nidx trie fn-arena acc)
+  (declare (xargs :stobjs fn-arena :guard (true-listp acc) :verify-guards nil))
   (if (consp numbers)
       (let* ((number (car numbers))
              (article (fn-gidx-nidx-number-article number nidx trie))
-             ; D13: a reclaimed article is skipped before the parser.
              (over (if (and (consp article)
                             (not (fn-nntp-article-tombstonep article fn-arena)))
                        (fn-nov-overview article fn-arena)
                      (list :error))))
         (if (fn-nov-okp over)
-            (cons (fn-nov-line number over)
-                  (fn-nov-lines-for-numbers-numbered (cdr numbers) nidx trie fn-arena))
-          (fn-nov-lines-for-numbers-numbered (cdr numbers) nidx trie fn-arena)))
-    nil))
+            (fn-nov-lines-for-numbers-numbered-loop (cdr numbers)
+                                                    nidx
+                                                    trie
+                                                    fn-arena
+                                                    (cons (fn-nov-line number over) acc))
+          (fn-nov-lines-for-numbers-numbered-loop (cdr numbers) nidx trie fn-arena acc)))
+    (revappend acc nil)))
+
+(defun fn-nov-lines-for-numbers-numbered (numbers nidx trie fn-arena)
+  (declare (xargs :verify-guards nil :stobjs fn-arena :guard t))
+  (mbe :logic
+       (if (consp numbers)
+           (let* ((number (car numbers))
+                  (article (fn-gidx-nidx-number-article number nidx trie))
+                  ; D13: a reclaimed article is skipped before the parser.
+                  (over (if (and (consp article)
+                                 (not (fn-nntp-article-tombstonep article fn-arena)))
+                            (fn-nov-overview article fn-arena)
+                          (list :error))))
+             (if (fn-nov-okp over)
+                 (cons (fn-nov-line number over)
+                       (fn-nov-lines-for-numbers-numbered (cdr numbers) nidx trie fn-arena))
+               (fn-nov-lines-for-numbers-numbered (cdr numbers) nidx trie fn-arena)))
+         nil)
+       :exec (fn-nov-lines-for-numbers-numbered-loop numbers nidx trie fn-arena nil)))
+
+(local
+ (defthm fn-nov-lines-for-numbers-numbered-loop-is-revappend
+   (equal (fn-nov-lines-for-numbers-numbered-loop numbers nidx trie fn-arena acc)
+          (revappend acc (fn-nov-lines-for-numbers-numbered numbers nidx trie fn-arena)))
+   :hints (("Goal" :induct (fn-nov-lines-for-numbers-numbered-loop numbers nidx trie fn-arena acc)
+                   :in-theory (union-theories '(fn-nov-lines-for-numbers-numbered-loop fn-nov-lines-for-numbers-numbered revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-nov-lines-for-numbers-numbered-loop)
+
+(verify-guards fn-nov-lines-for-numbers-numbered
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-nov-lines-for-numbers-numbered)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-nov-lines-for-numbers-numbered-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-nov-lines-for-numbers-numbered-of-build
   (equal (fn-nov-lines-for-numbers-numbered

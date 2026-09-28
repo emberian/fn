@@ -327,12 +327,44 @@
         (t event)))
 
 ; The article records of a Store history, one per event, in order.
-(defun fn-bpr-article-records (events)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpr-article-records-loop (events acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp events)
-      (cons (fn-bpr-event-article (car events))
-            (fn-bpr-article-records (cdr events)))
-    nil))
+      (fn-bpr-article-records-loop (cdr events)
+                                   (cons (fn-bpr-event-article (car events)) acc))
+    (revappend acc nil)))
+
+(defun fn-bpr-article-records (events)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp events)
+           (cons (fn-bpr-event-article (car events))
+                 (fn-bpr-article-records (cdr events)))
+         nil)
+       :exec (fn-bpr-article-records-loop events nil)))
+
+(local
+ (defthm fn-bpr-article-records-loop-is-revappend
+   (equal (fn-bpr-article-records-loop events acc)
+          (revappend acc (fn-bpr-article-records events)))
+   :hints (("Goal" :induct (fn-bpr-article-records-loop events acc)
+                   :in-theory (union-theories '(fn-bpr-article-records-loop fn-bpr-article-records revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpr-article-records-loop)
+
+(verify-guards fn-bpr-article-records
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpr-article-records)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpr-article-records-loop-is-revappend (acc nil))))))
+
 
 ;;; The retained row a WIRE record names (records-flip).  The receiver is
 ;;; handed the wire record -- the request journal persists it through the

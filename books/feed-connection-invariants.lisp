@@ -302,15 +302,52 @@
           nil))
     nil))
 
-(defun fn-fc-drive (st events)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-fc-drive-loop (st events acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp events)
       (let ((r (fn-fc-event-result st (car events))))
-        (cons (list (fn-fc-kind r)
-                    (fn-fc-line-code st (car events))
-                    (equal (car events) :tls-up))
-              (fn-fc-drive (fn-fc-next-state r) (cdr events))))
-    nil))
+        (fn-fc-drive-loop (fn-fc-next-state r)
+                          (cdr events)
+                          (cons (list (fn-fc-kind r)
+                                      (fn-fc-line-code st (car events))
+                                      (equal (car events) :tls-up))
+                                acc)))
+    (revappend acc nil)))
+
+(defun fn-fc-drive (st events)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp events)
+           (let ((r (fn-fc-event-result st (car events))))
+             (cons (list (fn-fc-kind r)
+                         (fn-fc-line-code st (car events))
+                         (equal (car events) :tls-up))
+                   (fn-fc-drive (fn-fc-next-state r) (cdr events))))
+         nil)
+       :exec (fn-fc-drive-loop st events nil)))
+
+(local
+ (defthm fn-fc-drive-loop-is-revappend
+   (equal (fn-fc-drive-loop st events acc)
+          (revappend acc (fn-fc-drive st events)))
+   :hints (("Goal" :induct (fn-fc-drive-loop st events acc)
+                   :in-theory (union-theories '(fn-fc-drive-loop fn-fc-drive revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-fc-drive-loop)
+
+(verify-guards fn-fc-drive
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-fc-drive)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-fc-drive-loop-is-revappend (acc nil))))))
+
 
 (defun fn-fc-drive-state (st events)
   (declare (xargs :guard t))

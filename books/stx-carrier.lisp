@@ -44,6 +44,7 @@
 (in-package "ACL2")
 (include-book "statement-invariants")
 (include-book "article")
+(include-book "rev-onto") ; the loop twins' step (PKT-877)
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -433,13 +434,46 @@
 ; -----------------------------------------------------------------------------
 ; The field value: whitespace-stripped base64 of the detached encoding.
 
-(defun fn-stx-strip-wsp (octets)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-stx-strip-wsp-loop (octets acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp octets)
       (if (or (equal (car octets) 32) (equal (car octets) 9))
-          (fn-stx-strip-wsp (cdr octets))
-        (cons (car octets) (fn-stx-strip-wsp (cdr octets))))
-    nil))
+          (fn-stx-strip-wsp-loop (cdr octets) acc)
+        (fn-stx-strip-wsp-loop (cdr octets) (cons (car octets) acc)))
+    (revappend acc nil)))
+
+(defun fn-stx-strip-wsp (octets)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp octets)
+           (if (or (equal (car octets) 32) (equal (car octets) 9))
+               (fn-stx-strip-wsp (cdr octets))
+             (cons (car octets) (fn-stx-strip-wsp (cdr octets))))
+         nil)
+       :exec (fn-stx-strip-wsp-loop octets nil)))
+
+(local
+ (defthm fn-stx-strip-wsp-loop-is-revappend
+   (equal (fn-stx-strip-wsp-loop octets acc)
+          (revappend acc (fn-stx-strip-wsp octets)))
+   :hints (("Goal" :induct (fn-stx-strip-wsp-loop octets acc)
+                   :in-theory (union-theories '(fn-stx-strip-wsp-loop fn-stx-strip-wsp revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-stx-strip-wsp-loop)
+
+(verify-guards fn-stx-strip-wsp
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-stx-strip-wsp)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-stx-strip-wsp-loop-is-revappend (acc nil))))))
+
 
 (defun fn-stx-header-value-parts (header signature)
   (declare (xargs :guard t))
@@ -503,22 +537,95 @@
       (equal name *fn-stx-statement-name*)
       (equal name *fn-stx-policy-name*)))
 
-(defun fn-stx-field-octets (lines)
-  (declare (xargs :guard t))
-  (if (consp lines)
-      (append (if (true-listp (car lines)) (car lines) nil)
-              (append '(13 10) (fn-stx-field-octets (cdr lines))))
-    nil))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-stx-field-octets-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-stx-field-octets-loop (cdr rev)
+                                (append (if (true-listp (car rev)) (car rev) nil)
+                                        (append '(13 10) acc)))
+    acc))
 
-(defun fn-stx-authored-header (fields)
-  (declare (xargs :guard t))
+(defun fn-stx-field-octets (lines)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp lines)
+           (append (if (true-listp (car lines)) (car lines) nil)
+                   (append '(13 10) (fn-stx-field-octets (cdr lines))))
+         nil)
+       :exec (fn-stx-field-octets-loop (fn-ag-rev-onto lines nil) nil)))
+
+(local
+ (defthm fn-stx-field-octets-loop-of-rev-onto
+   (equal (fn-stx-field-octets-loop (fn-ag-rev-onto lines zs) nil)
+          (fn-stx-field-octets-loop zs (fn-stx-field-octets lines)))
+   :hints (("Goal" :induct (fn-ag-rev-onto lines zs)
+                   :in-theory (union-theories '(fn-stx-field-octets-loop fn-stx-field-octets fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-stx-field-octets-loop)
+
+(verify-guards fn-stx-field-octets
+  :hints (("Goal" :in-theory (union-theories '(fn-stx-field-octets fn-stx-field-octets-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-stx-field-octets-loop-of-rev-onto (zs nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-stx-authored-header-loop (fields acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp fields)
       (if (or (not (true-listp (car fields)))
               (fn-stx-injected-namep (fn-article-field-name (car fields))))
-          (fn-stx-authored-header (cdr fields))
-        (append (fn-stx-field-octets (fn-article-field-raw-lines (car fields)))
-                (fn-stx-authored-header (cdr fields))))
-    nil))
+          (fn-stx-authored-header-loop (cdr fields) acc)
+        (fn-stx-authored-header-loop (cdr fields)
+                                     (fn-ag-rev-onto (fn-stx-field-octets (fn-article-field-raw-lines (car fields)))
+                                                     acc)))
+    (revappend acc nil)))
+
+(defun fn-stx-authored-header (fields)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp fields)
+           (if (or (not (true-listp (car fields)))
+                   (fn-stx-injected-namep (fn-article-field-name (car fields))))
+               (fn-stx-authored-header (cdr fields))
+             (append (fn-stx-field-octets (fn-article-field-raw-lines (car fields)))
+                     (fn-stx-authored-header (cdr fields))))
+         nil)
+       :exec (fn-stx-authored-header-loop fields nil)))
+
+(local
+ (defthm fn-stx-authored-header-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-stx-authored-header-loop-is-revappend
+   (equal (fn-stx-authored-header-loop fields acc)
+          (revappend acc (fn-stx-authored-header fields)))
+   :hints (("Goal" :induct (fn-stx-authored-header-loop fields acc)
+                   :in-theory (union-theories '(fn-stx-authored-header-loop fn-stx-authored-header revappend car-cons cdr-cons fn-stx-authored-header-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-stx-authored-header-loop)
+
+(verify-guards fn-stx-authored-header
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-stx-authored-header)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-stx-authored-header-loop-is-revappend (acc nil))))))
+
 
 ; D01 authored source: the received octets with every injected field removed.
 ; A function of the received octets alone -- no peer, no route, no clock.

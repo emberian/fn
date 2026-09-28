@@ -307,18 +307,55 @@
 (in-theory (disable fn-lgb-slice-acc))
 
 ; The records, each sliced once.
-(defun fn-lgb-unpack (i end fn-octets)
-  (declare (xargs :stobjs fn-octets
-                  :guard (and (natp i) (natp end) (<= end (fn-octets-len fn-octets))
-                              (< end (expt 2 59)))
-                  :measure (nfix (- end i))))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-lgb-unpack-loop (i end fn-octets acc)
+  (declare (xargs :stobjs fn-octets :measure (nfix (- end i)) :guard (and (and (natp i) (natp end) (<= end (fn-octets-len fn-octets)) (< end (expt 2 59))) (true-listp acc)) :verify-guards nil))
   (if (and (natp i) (natp end) (< i end) (<= (+ i 4) end))
       (let ((n (fn-lgb-u32-at i fn-octets)))
         (if (and (natp n) (<= (+ i 4 n) end))
-            (cons (fn-lgb-slice-acc (+ i 4) (+ i 4 n) nil fn-octets)
-                  (fn-lgb-unpack (+ i 4 n) end fn-octets))
-          nil))
-    nil))
+            (fn-lgb-unpack-loop (+ i 4 n)
+                                end
+                                fn-octets
+                                (cons (fn-lgb-slice-acc (+ i 4) (+ i 4 n) nil fn-octets)
+                                      acc))
+          (revappend acc nil)))
+    (revappend acc nil)))
+
+(defun fn-lgb-unpack (i end fn-octets)
+  (declare (xargs :verify-guards nil :stobjs fn-octets
+                  :guard (and (natp i) (natp end) (<= end (fn-octets-len fn-octets))
+                              (< end (expt 2 59)))
+                  :measure (nfix (- end i))))
+  (mbe :logic
+       (if (and (natp i) (natp end) (< i end) (<= (+ i 4) end))
+           (let ((n (fn-lgb-u32-at i fn-octets)))
+             (if (and (natp n) (<= (+ i 4 n) end))
+                 (cons (fn-lgb-slice-acc (+ i 4) (+ i 4 n) nil fn-octets)
+                       (fn-lgb-unpack (+ i 4 n) end fn-octets))
+               nil))
+         nil)
+       :exec (fn-lgb-unpack-loop i end fn-octets nil)))
+
+(local
+ (defthm fn-lgb-unpack-loop-is-revappend
+   (equal (fn-lgb-unpack-loop i end fn-octets acc)
+          (revappend acc (fn-lgb-unpack i end fn-octets)))
+   :hints (("Goal" :induct (fn-lgb-unpack-loop i end fn-octets acc)
+                   :in-theory (disable fn-lgb-u32-at fn-lgb-slice-acc)))))
+
+(verify-guards fn-lgb-unpack-loop)
+
+(verify-guards fn-lgb-unpack
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-lgb-unpack)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-lgb-unpack-loop-is-revappend (acc nil))))))
+
 
 ; Each is its list twin over the window [I, END) of the buffer's octets.
 (defthm fn-lgb-exactp-is-unpack-exactp

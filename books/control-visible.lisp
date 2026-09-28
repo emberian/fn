@@ -110,9 +110,40 @@
     (cons a old-visible)))
 
 ; `append' with guard t (the same logical definition).
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-ctl-prepend-loop (xs ys acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp xs)
+      (fn-ctl-prepend-loop (cdr xs) ys (cons (car xs) acc))
+    (revappend acc ys)))
+
 (defun fn-ctl-prepend (xs ys)
-  (declare (xargs :guard t))
-  (if (consp xs) (cons (car xs) (fn-ctl-prepend (cdr xs) ys)) ys))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp xs) (cons (car xs) (fn-ctl-prepend (cdr xs) ys)) ys)
+       :exec (fn-ctl-prepend-loop xs ys nil)))
+
+(local
+ (defthm fn-ctl-prepend-loop-is-revappend
+   (equal (fn-ctl-prepend-loop xs ys acc)
+          (revappend acc (fn-ctl-prepend xs ys)))
+   :hints (("Goal" :induct (fn-ctl-prepend-loop xs ys acc)
+                   :in-theory (union-theories '(fn-ctl-prepend-loop fn-ctl-prepend revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ctl-prepend-loop)
+
+(verify-guards fn-ctl-prepend
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-ctl-prepend)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-ctl-prepend-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-ctl-prepend-is-append
   (equal (fn-ctl-prepend xs ys) (append xs ys)))
@@ -561,15 +592,53 @@
            (equal (cdr new) old)
            (equal (car (car new)) (fn-article-msgid a)))))
 ; The records in WS whose target is M, resolved to LOCKS.
-(defun fn-ctl-set-tlocks (ws m locks)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-ctl-set-tlocks-loop (ws m locks acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp ws)
-      (cons (if (and (fn-ctl-withdrawalp (car ws))
-                     (equal (fn-ctl-w-target (car ws)) m))
-                (fn-ctl-w-with-tlocks (car ws) locks)
-              (car ws))
-            (fn-ctl-set-tlocks (cdr ws) m locks))
-    ws))
+      (fn-ctl-set-tlocks-loop (cdr ws)
+                              m
+                              locks
+                              (cons (if (and (fn-ctl-withdrawalp (car ws))
+                                             (equal (fn-ctl-w-target (car ws)) m))
+                                        (fn-ctl-w-with-tlocks (car ws) locks)
+                                      (car ws))
+                                    acc))
+    (revappend acc ws)))
+
+(defun fn-ctl-set-tlocks (ws m locks)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp ws)
+           (cons (if (and (fn-ctl-withdrawalp (car ws))
+                          (equal (fn-ctl-w-target (car ws)) m))
+                     (fn-ctl-w-with-tlocks (car ws) locks)
+                   (car ws))
+                 (fn-ctl-set-tlocks (cdr ws) m locks))
+         ws)
+       :exec (fn-ctl-set-tlocks-loop ws m locks nil)))
+
+(local
+ (defthm fn-ctl-set-tlocks-loop-is-revappend
+   (equal (fn-ctl-set-tlocks-loop ws m locks acc)
+          (revappend acc (fn-ctl-set-tlocks ws m locks)))
+   :hints (("Goal" :induct (fn-ctl-set-tlocks-loop ws m locks acc)
+                   :in-theory (union-theories '(fn-ctl-set-tlocks-loop fn-ctl-set-tlocks revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ctl-set-tlocks-loop)
+
+(verify-guards fn-ctl-set-tlocks
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-ctl-set-tlocks)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-ctl-set-tlocks-loop-is-revappend (acc nil))))))
+
 
 (defun fn-ctl-targets-p (ws m)
   (declare (xargs :guard t))

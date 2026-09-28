@@ -332,17 +332,65 @@
            (fn-nntp-string-octets
             (fn-nntp-closed-status (fn-nntp-string-octets group) closed))))))
 
-(defun fn-nntp-active-status-lines (archive groups closed)
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nntp-active-status-lines-loop (archive groups closed acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp groups)
-      (cons (fn-nntp-active-status-line archive (car groups) closed)
-            (fn-nntp-active-status-lines archive (cdr groups) closed))
-    nil))
+      (fn-nntp-active-status-lines-loop archive
+                                        (cdr groups)
+                                        closed
+                                        (cons (fn-nntp-active-status-line archive
+                                                                          (car groups)
+                                                                          closed)
+                                              acc))
+    (revappend acc nil)))
+
+(defun fn-nntp-active-status-lines (archive groups closed)
+  (mbe :logic
+       (if (consp groups)
+           (cons (fn-nntp-active-status-line archive (car groups) closed)
+                 (fn-nntp-active-status-lines archive (cdr groups) closed))
+         nil)
+       :exec (fn-nntp-active-status-lines-loop archive groups closed nil)))
+
+(local
+ (defthm fn-nntp-active-status-lines-loop-is-revappend
+   (equal (fn-nntp-active-status-lines-loop archive groups closed acc)
+          (revappend acc (fn-nntp-active-status-lines archive groups closed)))
+   :hints (("Goal" :induct (fn-nntp-active-status-lines-loop archive groups closed acc)
+                   :in-theory (union-theories '(fn-nntp-active-status-lines-loop fn-nntp-active-status-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nntp-active-lines-loop (archive groups acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp groups)
+      (fn-nntp-active-lines-loop archive
+                                 (cdr groups)
+                                 (cons (fn-nntp-active-line archive (car groups)) acc))
+    (revappend acc nil)))
 
 (defun fn-nntp-active-lines (archive groups)
-  (if (consp groups)
-      (cons (fn-nntp-active-line archive (car groups))
-            (fn-nntp-active-lines archive (cdr groups)))
-    nil))
+  (mbe :logic
+       (if (consp groups)
+           (cons (fn-nntp-active-line archive (car groups))
+                 (fn-nntp-active-lines archive (cdr groups)))
+         nil)
+       :exec (fn-nntp-active-lines-loop archive groups nil)))
+
+(local
+ (defthm fn-nntp-active-lines-loop-is-revappend
+   (equal (fn-nntp-active-lines-loop archive groups acc)
+          (revappend acc (fn-nntp-active-lines archive groups)))
+   :hints (("Goal" :induct (fn-nntp-active-lines-loop archive groups acc)
+                   :in-theory (union-theories '(fn-nntp-active-lines-loop fn-nntp-active-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
 
 ; RFC 6048 section 2.2.2: LIST COUNTS answers name, high, low, count and
 ; status, "in the opposite order to the 211 response".  The three numbers are
@@ -363,11 +411,46 @@
 (defun fn-nntp-counts-line (archive group)
   (fn-nntp-counts-summary-line group (fn-nntp-group-summary archive group)))
 
-(defun fn-nntp-counts-lines (archive groups)
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nntp-counts-lines-loop (archive groups acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp groups)
-      (cons (fn-nntp-counts-line archive (car groups))
-            (fn-nntp-counts-lines archive (cdr groups)))
-    nil))
+      (fn-nntp-counts-lines-loop archive
+                                 (cdr groups)
+                                 (cons (fn-nntp-counts-line archive (car groups)) acc))
+    (revappend acc nil)))
+
+(defun fn-nntp-counts-lines (archive groups)
+  (mbe :logic
+       (if (consp groups)
+           (cons (fn-nntp-counts-line archive (car groups))
+                 (fn-nntp-counts-lines archive (cdr groups)))
+         nil)
+       :exec (fn-nntp-counts-lines-loop archive groups nil)))
+
+(local
+ (defthm fn-nntp-counts-lines-loop-is-revappend
+   (equal (fn-nntp-counts-lines-loop archive groups acc)
+          (revappend acc (fn-nntp-counts-lines archive groups)))
+   :hints (("Goal" :induct (fn-nntp-counts-lines-loop archive groups acc)
+                   :in-theory (union-theories '(fn-nntp-counts-lines-loop fn-nntp-counts-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nntp-newsgroup-lines-loop (groups acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp groups)
+      (fn-nntp-newsgroup-lines-loop (cdr groups)
+                                    (cons (fn-nntp-append-pieces (list (fn-nntp-string-octets (car groups))
+                                                                       (list 9)
+                                                                       (fn-nntp-string-octets "(no description)")))
+                                          acc))
+    (revappend acc nil)))
 
 (defun fn-nntp-newsgroup-lines (groups)
   ; RFC 3977 section 7.6.6: the group name, one or more space or TAB (the
@@ -383,12 +466,23 @@
   ; description makes the group VANISH from its descriptions() result rather
   ; than appear with no text (measured against tests/interop_nntplib.py,
   ; 2026-09-20).  See the LIST NEWSGROUPS row of specs/nntp-audit.md.
-  (if (consp groups)
-      (cons (fn-nntp-append-pieces
-             (list (fn-nntp-string-octets (car groups)) (list 9)
-                   (fn-nntp-string-octets "(no description)")))
-            (fn-nntp-newsgroup-lines (cdr groups)))
-    nil))
+  (mbe :logic
+       (if (consp groups)
+           (cons (fn-nntp-append-pieces
+                  (list (fn-nntp-string-octets (car groups)) (list 9)
+                        (fn-nntp-string-octets "(no description)")))
+                 (fn-nntp-newsgroup-lines (cdr groups)))
+         nil)
+       :exec (fn-nntp-newsgroup-lines-loop groups nil)))
+
+(local
+ (defthm fn-nntp-newsgroup-lines-loop-is-revappend
+   (equal (fn-nntp-newsgroup-lines-loop groups acc)
+          (revappend acc (fn-nntp-newsgroup-lines groups)))
+   :hints (("Goal" :induct (fn-nntp-newsgroup-lines-loop groups acc)
+                   :in-theory (union-theories '(fn-nntp-newsgroup-lines-loop fn-nntp-newsgroup-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
 ; `patterns` is an internal successful `fn-wildmat-parse` result, never an
 ; externally supplied representation.  Group names are projection-guarded
 ; printable ASCII and no longer than the local wildmat target cap, so their
@@ -404,13 +498,37 @@
                (fn-wildmat-match-codepoints
                 patterns (fn-wildmat-result-value decoded)))))))
 
-(defun fn-nntp-filter-groups-by-wildmat (patterns groups)
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nntp-filter-groups-by-wildmat-loop (patterns groups acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp groups)
       (if (fn-nntp-group-matches-parsed-wildmatp patterns (car groups))
-          (cons (car groups)
-                (fn-nntp-filter-groups-by-wildmat patterns (cdr groups)))
-        (fn-nntp-filter-groups-by-wildmat patterns (cdr groups)))
-    nil))
+          (fn-nntp-filter-groups-by-wildmat-loop patterns
+                                                 (cdr groups)
+                                                 (cons (car groups) acc))
+        (fn-nntp-filter-groups-by-wildmat-loop patterns (cdr groups) acc))
+    (revappend acc nil)))
+
+(defun fn-nntp-filter-groups-by-wildmat (patterns groups)
+  (mbe :logic
+       (if (consp groups)
+           (if (fn-nntp-group-matches-parsed-wildmatp patterns (car groups))
+               (cons (car groups)
+                     (fn-nntp-filter-groups-by-wildmat patterns (cdr groups)))
+             (fn-nntp-filter-groups-by-wildmat patterns (cdr groups)))
+         nil)
+       :exec (fn-nntp-filter-groups-by-wildmat-loop patterns groups nil)))
+
+(local
+ (defthm fn-nntp-filter-groups-by-wildmat-loop-is-revappend
+   (equal (fn-nntp-filter-groups-by-wildmat-loop patterns groups acc)
+          (revappend acc (fn-nntp-filter-groups-by-wildmat patterns groups)))
+   :hints (("Goal" :induct (fn-nntp-filter-groups-by-wildmat-loop patterns groups acc)
+                   :in-theory (union-theories '(fn-nntp-filter-groups-by-wildmat-loop fn-nntp-filter-groups-by-wildmat revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
 
 (defun fn-nntp-list-active (session archive groups)
   (fn-nntp-multi session (fn-proto-text "LIST" :active)
@@ -1069,21 +1187,64 @@
         (if (posp year) year 0))
     0))
 
-(defun fn-nntp-facts-since (threshold facts)
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nntp-facts-since-loop (threshold facts acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp facts)
-      ; fn-ng-less-equal, not <=: this function has guard t and threshold is
-      ; the caller's parsed value.  fn-ng-less-equal-is-less-equal
-      ; (books/nntp-syntax.lisp) is the equality, so the logic is unchanged.
       (if (and (fn-nntp-group-factp (car facts))
                (fn-ng-less-equal threshold (fn-nntp-fact-created (car facts))))
-          (cons (car facts) (fn-nntp-facts-since threshold (cdr facts)))
-        (fn-nntp-facts-since threshold (cdr facts)))
-    nil))
+          (fn-nntp-facts-since-loop threshold (cdr facts) (cons (car facts) acc))
+        (fn-nntp-facts-since-loop threshold (cdr facts) acc))
+    (revappend acc nil)))
+
+(defun fn-nntp-facts-since (threshold facts)
+  (mbe :logic
+       (if (consp facts)
+           ; fn-ng-less-equal, not <=: this function has guard t and threshold is
+           ; the caller's parsed value.  fn-ng-less-equal-is-less-equal
+           ; (books/nntp-syntax.lisp) is the equality, so the logic is unchanged.
+           (if (and (fn-nntp-group-factp (car facts))
+                    (fn-ng-less-equal threshold (fn-nntp-fact-created (car facts))))
+               (cons (car facts) (fn-nntp-facts-since threshold (cdr facts)))
+             (fn-nntp-facts-since threshold (cdr facts)))
+         nil)
+       :exec (fn-nntp-facts-since-loop threshold facts nil)))
+
+(local
+ (defthm fn-nntp-facts-since-loop-is-revappend
+   (equal (fn-nntp-facts-since-loop threshold facts acc)
+          (revappend acc (fn-nntp-facts-since threshold facts)))
+   :hints (("Goal" :induct (fn-nntp-facts-since-loop threshold facts acc)
+                   :in-theory (union-theories '(fn-nntp-facts-since-loop fn-nntp-facts-since revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nntp-fact-names-loop (facts acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp facts)
+      (fn-nntp-fact-names-loop (cdr facts) (cons (fn-nntp-fact-name (car facts)) acc))
+    (revappend acc nil)))
 
 (defun fn-nntp-fact-names (facts)
-  (if (consp facts)
-      (cons (fn-nntp-fact-name (car facts)) (fn-nntp-fact-names (cdr facts)))
-    nil))
+  (mbe :logic
+       (if (consp facts)
+           (cons (fn-nntp-fact-name (car facts)) (fn-nntp-fact-names (cdr facts)))
+         nil)
+       :exec (fn-nntp-fact-names-loop facts nil)))
+
+(local
+ (defthm fn-nntp-fact-names-loop-is-revappend
+   (equal (fn-nntp-fact-names-loop facts acc)
+          (revappend acc (fn-nntp-fact-names facts)))
+   :hints (("Goal" :induct (fn-nntp-fact-names-loop facts acc)
+                   :in-theory (union-theories '(fn-nntp-fact-names-loop fn-nntp-fact-names revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
 
 (defun fn-nntp-newgroups-response (session archive env args)
   ; NEWGROUPS date time [GMT].  fn's local time zone is UTC, so the GMT token
@@ -1230,25 +1391,57 @@
          (fn-nntp-decimal-field (fn-nov-bytes over)) '(9)
          (fn-nntp-decimal-field (fn-nov-lines over)))))
 
-(defun fn-nov-lines-for-numbers (group numbers articles fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  ; An article whose retained octets cannot be parsed produces no line: RFC
-  ; 3977 section 8.3.2 says the server SHOULD NOT produce output for articles
-  ; it cannot report, and an unprojectable article degrades only itself.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nov-lines-for-numbers-loop (group numbers articles fn-arena acc)
+  (declare (xargs :stobjs fn-arena :guard (true-listp acc) :verify-guards nil))
   (if (consp numbers)
       (let* ((number (car numbers))
              (article (fn-nntp-available-article group number articles))
-             ; D13: a reclaimed article has no overview; it is skipped
-             ; before its tombstone reaches the parser.
              (over (if (and (consp article)
                             (not (fn-nntp-article-tombstonep article fn-arena)))
                        (fn-nov-overview article fn-arena)
                      (list :error))))
         (if (fn-nov-okp over)
-            (cons (fn-nov-line number over)
-                  (fn-nov-lines-for-numbers group (cdr numbers) articles fn-arena))
-          (fn-nov-lines-for-numbers group (cdr numbers) articles fn-arena)))
-    nil))
+            (fn-nov-lines-for-numbers-loop group
+                                           (cdr numbers)
+                                           articles
+                                           fn-arena
+                                           (cons (fn-nov-line number over) acc))
+          (fn-nov-lines-for-numbers-loop group (cdr numbers) articles fn-arena acc)))
+    (revappend acc nil)))
+
+(defun fn-nov-lines-for-numbers (group numbers articles fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  ; An article whose retained octets cannot be parsed produces no line: RFC
+  ; 3977 section 8.3.2 says the server SHOULD NOT produce output for articles
+  ; it cannot report, and an unprojectable article degrades only itself.
+  (mbe :logic
+       (if (consp numbers)
+           (let* ((number (car numbers))
+                  (article (fn-nntp-available-article group number articles))
+                  ; D13: a reclaimed article has no overview; it is skipped
+                  ; before its tombstone reaches the parser.
+                  (over (if (and (consp article)
+                                 (not (fn-nntp-article-tombstonep article fn-arena)))
+                            (fn-nov-overview article fn-arena)
+                          (list :error))))
+             (if (fn-nov-okp over)
+                 (cons (fn-nov-line number over)
+                       (fn-nov-lines-for-numbers group (cdr numbers) articles fn-arena))
+               (fn-nov-lines-for-numbers group (cdr numbers) articles fn-arena)))
+         nil)
+       :exec (fn-nov-lines-for-numbers-loop group numbers articles fn-arena nil)))
+
+(local
+ (defthm fn-nov-lines-for-numbers-loop-is-revappend
+   (equal (fn-nov-lines-for-numbers-loop group numbers articles fn-arena acc)
+          (revappend acc (fn-nov-lines-for-numbers group numbers articles fn-arena)))
+   :hints (("Goal" :induct (fn-nov-lines-for-numbers-loop group numbers articles fn-arena acc)
+                   :in-theory (union-theories '(fn-nov-lines-for-numbers-loop fn-nov-lines-for-numbers revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
 
 
 
@@ -1411,19 +1604,43 @@
 
 (verify-guards fn-nntp-active-line)
 
-(verify-guards fn-nntp-active-lines)
+(verify-guards fn-nntp-active-lines-loop)
+
+(verify-guards fn-nntp-active-lines
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-active-lines)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nntp-active-lines-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-counts-summary-line)
 
 (verify-guards fn-nntp-counts-line)
 
-(verify-guards fn-nntp-counts-lines)
+(verify-guards fn-nntp-counts-lines-loop)
 
-(verify-guards fn-nntp-newsgroup-lines)
+(verify-guards fn-nntp-counts-lines
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-counts-lines)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nntp-counts-lines-loop-is-revappend (acc nil))))))
+
+(verify-guards fn-nntp-newsgroup-lines-loop)
+
+(verify-guards fn-nntp-newsgroup-lines
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-newsgroup-lines)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nntp-newsgroup-lines-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-group-matches-parsed-wildmatp)
 
-(verify-guards fn-nntp-filter-groups-by-wildmat)
+(verify-guards fn-nntp-filter-groups-by-wildmat-loop)
+
+(verify-guards fn-nntp-filter-groups-by-wildmat
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-filter-groups-by-wildmat)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nntp-filter-groups-by-wildmat-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-list-active)
 
@@ -1547,9 +1764,21 @@
 
 (verify-guards fn-nntp-observed-year)
 
-(verify-guards fn-nntp-facts-since)
+(verify-guards fn-nntp-facts-since-loop)
 
-(verify-guards fn-nntp-fact-names)
+(verify-guards fn-nntp-facts-since
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-facts-since)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nntp-facts-since-loop-is-revappend (acc nil))))))
+
+(verify-guards fn-nntp-fact-names-loop)
+
+(verify-guards fn-nntp-fact-names
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-fact-names)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nntp-fact-names-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-newgroups-response)
 
@@ -1584,7 +1813,13 @@
 
 (verify-guards fn-nov-line)
 
-(verify-guards fn-nov-lines-for-numbers)
+(verify-guards fn-nov-lines-for-numbers-loop)
+
+(verify-guards fn-nov-lines-for-numbers
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nov-lines-for-numbers)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nov-lines-for-numbers-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-over-current)
 
@@ -1732,8 +1967,11 @@
   ; the field.
   (fn-nntp-append-pieces (list label '(32) content)))
 
-(defun fn-nntp-hdr-lines-for-numbers (field group numbers articles fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nntp-hdr-lines-for-numbers-loop (field group numbers articles fn-arena acc)
+  (declare (xargs :stobjs fn-arena :guard (true-listp acc) :verify-guards nil))
   (if (consp numbers)
       (let* ((number (car numbers))
              (article (fn-nntp-available-article group number articles))
@@ -1741,12 +1979,48 @@
                           (fn-nntp-hdr-content field article fn-arena)
                         (list :error))))
         (if (fn-nntp-hdr-okp content)
-            (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
-                                    (fn-nntp-hdr-octets content))
-                  (fn-nntp-hdr-lines-for-numbers field group (cdr numbers)
-                                                 articles fn-arena))
-          (fn-nntp-hdr-lines-for-numbers field group (cdr numbers) articles fn-arena)))
-    nil))
+            (fn-nntp-hdr-lines-for-numbers-loop field
+                                                group
+                                                (cdr numbers)
+                                                articles
+                                                fn-arena
+                                                (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
+                                                                        (fn-nntp-hdr-octets content))
+                                                      acc))
+          (fn-nntp-hdr-lines-for-numbers-loop field
+                                              group
+                                              (cdr numbers)
+                                              articles
+                                              fn-arena
+                                              acc)))
+    (revappend acc nil)))
+
+(defun fn-nntp-hdr-lines-for-numbers (field group numbers articles fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mbe :logic
+       (if (consp numbers)
+           (let* ((number (car numbers))
+                  (article (fn-nntp-available-article group number articles))
+                  (content (if (consp article)
+                               (fn-nntp-hdr-content field article fn-arena)
+                             (list :error))))
+             (if (fn-nntp-hdr-okp content)
+                 (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
+                                         (fn-nntp-hdr-octets content))
+                       (fn-nntp-hdr-lines-for-numbers field group (cdr numbers)
+                                                      articles fn-arena))
+               (fn-nntp-hdr-lines-for-numbers field group (cdr numbers) articles fn-arena)))
+         nil)
+       :exec (fn-nntp-hdr-lines-for-numbers-loop field group numbers articles fn-arena nil)))
+
+(local
+ (defthm fn-nntp-hdr-lines-for-numbers-loop-is-revappend
+   (equal (fn-nntp-hdr-lines-for-numbers-loop field group numbers articles fn-arena acc)
+          (revappend acc (fn-nntp-hdr-lines-for-numbers field group numbers articles fn-arena)))
+   :hints (("Goal" :induct (fn-nntp-hdr-lines-for-numbers-loop field group numbers articles fn-arena acc)
+                   :in-theory (union-theories '(fn-nntp-hdr-lines-for-numbers-loop fn-nntp-hdr-lines-for-numbers revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
 
 (defun fn-nntp-hdr-initial (legacyp)
   (if legacyp (fn-proto-text * :header) (fn-proto-text "HDR" :headers)))
@@ -1908,8 +2182,11 @@
                 patterns (fn-wildmat-result-value decoded))))
          t)))
 
-(defun fn-nntp-xpat-lines-for-numbers (field patterns group numbers articles fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nntp-xpat-lines-for-numbers-loop (field patterns group numbers articles fn-arena acc)
+  (declare (xargs :stobjs fn-arena :guard (true-listp acc) :verify-guards nil))
   (if (consp numbers)
       (let* ((number (car numbers))
              (article (fn-nntp-available-article group number articles))
@@ -1918,13 +2195,52 @@
                         (list :error))))
         (if (and (fn-nntp-hdr-okp content)
                  (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content)))
-            (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
-                                    (fn-nntp-hdr-octets content))
-                  (fn-nntp-xpat-lines-for-numbers field patterns group
-                                                  (cdr numbers) articles fn-arena))
-          (fn-nntp-xpat-lines-for-numbers field patterns group (cdr numbers)
-                                          articles fn-arena)))
-    nil))
+            (fn-nntp-xpat-lines-for-numbers-loop field
+                                                 patterns
+                                                 group
+                                                 (cdr numbers)
+                                                 articles
+                                                 fn-arena
+                                                 (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
+                                                                         (fn-nntp-hdr-octets content))
+                                                       acc))
+          (fn-nntp-xpat-lines-for-numbers-loop field
+                                               patterns
+                                               group
+                                               (cdr numbers)
+                                               articles
+                                               fn-arena
+                                               acc)))
+    (revappend acc nil)))
+
+(defun fn-nntp-xpat-lines-for-numbers (field patterns group numbers articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp numbers)
+           (let* ((number (car numbers))
+                  (article (fn-nntp-available-article group number articles))
+                  (content (if (consp article)
+                               (fn-nntp-hdr-content field article fn-arena)
+                             (list :error))))
+             (if (and (fn-nntp-hdr-okp content)
+                      (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content)))
+                 (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
+                                         (fn-nntp-hdr-octets content))
+                       (fn-nntp-xpat-lines-for-numbers field patterns group
+                                                       (cdr numbers) articles fn-arena))
+               (fn-nntp-xpat-lines-for-numbers field patterns group (cdr numbers)
+                                               articles fn-arena)))
+         nil)
+       :exec (fn-nntp-xpat-lines-for-numbers-loop field patterns group numbers articles fn-arena nil)))
+
+(local
+ (defthm fn-nntp-xpat-lines-for-numbers-loop-is-revappend
+   (equal (fn-nntp-xpat-lines-for-numbers-loop field patterns group numbers articles fn-arena acc)
+          (revappend acc (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles fn-arena)))
+   :hints (("Goal" :induct (fn-nntp-xpat-lines-for-numbers-loop field patterns group numbers articles fn-arena acc)
+                   :in-theory (union-theories '(fn-nntp-xpat-lines-for-numbers-loop fn-nntp-xpat-lines-for-numbers revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
 
 (defun fn-nntp-xpat-range (session archive field patterns token fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
@@ -2238,24 +2554,52 @@
         (floor (fn-clock-wall obs) 1000)
       :none)))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per committed article.  The loop carries the horizon
+; forward as the recursion does and collects onto a reversed accumulator.
+(defun fn-nntp-newnews-scan-loop (groups threshold articles horizon fn-arena acc)
+  (declare (xargs :stobjs fn-arena :guard (true-listp acc) :verify-guards nil
+                  :measure (acl2-count articles)))
+  (if (not (consp articles))
+      (revappend acc nil)
+    (let* ((article (fn-ag-car articles))
+           (stamp (fn-article-stamp article)))
+      (fn-nntp-newnews-scan-loop
+       groups threshold (fn-ag-cdr articles) (if (natp stamp) stamp horizon) fn-arena
+       (if (and (fn-nntp-newnews-candidatep groups article)
+                (not (fn-nntp-article-tombstonep article fn-arena))
+                (fn-nntp-newnews-newp threshold stamp horizon))
+           (cons (fn-nntp-string-octets (fn-article-msgid article)) acc)
+         acc)))))
+
 (defun fn-nntp-newnews-scan (groups threshold articles horizon fn-arena)
   ; The committed list is newest first.  Every natural stamp advances the
   ; legacy horizon, even when its article belongs to another group.
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil :measure (acl2-count articles)))
-  (if (not (consp articles))
-      nil
-    (let* ((article (fn-ag-car articles))
-           (stamp (fn-article-stamp article))
-           (rest (fn-nntp-newnews-scan
-                  groups threshold (fn-ag-cdr articles)
-                  (if (natp stamp) stamp horizon) fn-arena)))
-      ; D13: a reclaimed article is not listed.  The test reads at most
-      ; the tombstone's fixed head of the payload, never parses it.
-      (if (and (fn-nntp-newnews-candidatep groups article)
-               (not (fn-nntp-article-tombstonep article fn-arena))
-               (fn-nntp-newnews-newp threshold stamp horizon))
-          (cons (fn-nntp-string-octets (fn-article-msgid article)) rest)
-        rest))))
+  (mbe :logic
+       (if (not (consp articles))
+           nil
+         (let* ((article (fn-ag-car articles))
+                (stamp (fn-article-stamp article))
+                (rest (fn-nntp-newnews-scan
+                       groups threshold (fn-ag-cdr articles)
+                       (if (natp stamp) stamp horizon) fn-arena)))
+           ; D13: a reclaimed article is not listed.  The test reads at most
+           ; the tombstone's fixed head of the payload, never parses it.
+           (if (and (fn-nntp-newnews-candidatep groups article)
+                    (not (fn-nntp-article-tombstonep article fn-arena))
+                    (fn-nntp-newnews-newp threshold stamp horizon))
+               (cons (fn-nntp-string-octets (fn-article-msgid article)) rest)
+             rest)))
+       :exec (fn-nntp-newnews-scan-loop groups threshold articles horizon fn-arena nil)))
+
+(local
+ (defthm fn-nntp-newnews-scan-loop-is-revappend
+   (equal (fn-nntp-newnews-scan-loop groups threshold articles horizon fn-arena acc)
+          (revappend acc (fn-nntp-newnews-scan groups threshold articles horizon fn-arena)))
+   :hints (("Goal" :in-theory (disable fn-nntp-newnews-candidatep fn-nntp-article-tombstonep
+                                       fn-nntp-newnews-newp fn-nntp-string-octets
+                                       fn-article-stamp fn-article-msgid)))))
 
 ; -----------------------------------------------------------------------------
 ; The command
@@ -2331,23 +2675,73 @@
           (fn-nntp-dtn-unix-seconds (fn-nntp-fact-created fact)))
          (fn-nntp-string-octets *fn-nntp-active-times-creator*))))
 
-(defun fn-nntp-active-times-lines (facts)
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nntp-active-times-lines-loop (facts acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp facts)
       (if (fn-nntp-group-factp (car facts))
-          (cons (fn-nntp-active-times-line (car facts))
-                (fn-nntp-active-times-lines (cdr facts)))
-        (fn-nntp-active-times-lines (cdr facts)))
-    nil))
+          (fn-nntp-active-times-lines-loop (cdr facts)
+                                           (cons (fn-nntp-active-times-line (car facts))
+                                                 acc))
+        (fn-nntp-active-times-lines-loop (cdr facts) acc))
+    (revappend acc nil)))
 
-(defun fn-nntp-filter-facts-by-wildmat (patterns facts)
+(defun fn-nntp-active-times-lines (facts)
+  (mbe :logic
+       (if (consp facts)
+           (if (fn-nntp-group-factp (car facts))
+               (cons (fn-nntp-active-times-line (car facts))
+                     (fn-nntp-active-times-lines (cdr facts)))
+             (fn-nntp-active-times-lines (cdr facts)))
+         nil)
+       :exec (fn-nntp-active-times-lines-loop facts nil)))
+
+(local
+ (defthm fn-nntp-active-times-lines-loop-is-revappend
+   (equal (fn-nntp-active-times-lines-loop facts acc)
+          (revappend acc (fn-nntp-active-times-lines facts)))
+   :hints (("Goal" :induct (fn-nntp-active-times-lines-loop facts acc)
+                   :in-theory (union-theories '(fn-nntp-active-times-lines-loop fn-nntp-active-times-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nntp-filter-facts-by-wildmat-loop (patterns facts acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp facts)
       (if (and (fn-nntp-group-factp (car facts))
-               (fn-nntp-group-matches-parsed-wildmatp
-                patterns (fn-nntp-fact-name (car facts))))
-          (cons (car facts)
-                (fn-nntp-filter-facts-by-wildmat patterns (cdr facts)))
-        (fn-nntp-filter-facts-by-wildmat patterns (cdr facts)))
-    nil))
+               (fn-nntp-group-matches-parsed-wildmatp patterns
+                                                      (fn-nntp-fact-name (car facts))))
+          (fn-nntp-filter-facts-by-wildmat-loop patterns
+                                                (cdr facts)
+                                                (cons (car facts) acc))
+        (fn-nntp-filter-facts-by-wildmat-loop patterns (cdr facts) acc))
+    (revappend acc nil)))
+
+(defun fn-nntp-filter-facts-by-wildmat (patterns facts)
+  (mbe :logic
+       (if (consp facts)
+           (if (and (fn-nntp-group-factp (car facts))
+                    (fn-nntp-group-matches-parsed-wildmatp
+                     patterns (fn-nntp-fact-name (car facts))))
+               (cons (car facts)
+                     (fn-nntp-filter-facts-by-wildmat patterns (cdr facts)))
+             (fn-nntp-filter-facts-by-wildmat patterns (cdr facts)))
+         nil)
+       :exec (fn-nntp-filter-facts-by-wildmat-loop patterns facts nil)))
+
+(local
+ (defthm fn-nntp-filter-facts-by-wildmat-loop-is-revappend
+   (equal (fn-nntp-filter-facts-by-wildmat-loop patterns facts acc)
+          (revappend acc (fn-nntp-filter-facts-by-wildmat patterns facts)))
+   :hints (("Goal" :induct (fn-nntp-filter-facts-by-wildmat-loop patterns facts acc)
+                   :in-theory (union-theories '(fn-nntp-filter-facts-by-wildmat-loop fn-nntp-filter-facts-by-wildmat revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
 
 (defun fn-nntp-list-active-times (session env args)
   (if (null args)
@@ -2432,13 +2826,39 @@
         d
       (fn-nntp-string-octets "(no description)"))))
 
-(defun fn-nntp-described-lines (groups descs)
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nntp-described-lines-loop (groups descs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp groups)
-      (cons (fn-nntp-append-pieces
-             (list (fn-nntp-string-octets (car groups)) (list 9)
-                   (fn-nntp-description-field (car groups) descs)))
-            (fn-nntp-described-lines (cdr groups) descs))
-    nil))
+      (fn-nntp-described-lines-loop (cdr groups)
+                                    descs
+                                    (cons (fn-nntp-append-pieces (list (fn-nntp-string-octets (car groups))
+                                                                       (list 9)
+                                                                       (fn-nntp-description-field (car groups)
+                                                                                                  descs)))
+                                          acc))
+    (revappend acc nil)))
+
+(defun fn-nntp-described-lines (groups descs)
+  (mbe :logic
+       (if (consp groups)
+           (cons (fn-nntp-append-pieces
+                  (list (fn-nntp-string-octets (car groups)) (list 9)
+                        (fn-nntp-description-field (car groups) descs)))
+                 (fn-nntp-described-lines (cdr groups) descs))
+         nil)
+       :exec (fn-nntp-described-lines-loop groups descs nil)))
+
+(local
+ (defthm fn-nntp-described-lines-loop-is-revappend
+   (equal (fn-nntp-described-lines-loop groups descs acc)
+          (revappend acc (fn-nntp-described-lines groups descs)))
+   :hints (("Goal" :induct (fn-nntp-described-lines-loop groups descs acc)
+                   :in-theory (union-theories '(fn-nntp-described-lines-loop fn-nntp-described-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
 
 (defun fn-nntp-list-newsgroups-described (session archive descs args)
   ; The argument grammar of LIST NEWSGROUPS [wildmat], parsed once.
@@ -2527,7 +2947,13 @@
   :hints (("Goal" :in-theory (disable fn-article-get-headers
                                       fn-article-syntax-p))))
 (verify-guards fn-nntp-hdr-line)
-(verify-guards fn-nntp-hdr-lines-for-numbers)
+(verify-guards fn-nntp-hdr-lines-for-numbers-loop)
+
+(verify-guards fn-nntp-hdr-lines-for-numbers
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-hdr-lines-for-numbers)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nntp-hdr-lines-for-numbers-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-hdr-initial)
 (verify-guards fn-nntp-hdr-current)
 (verify-guards fn-nntp-hdr-range)
@@ -2540,7 +2966,13 @@
 
 (verify-guards fn-nntp-xpat-matchesp)
 
-(verify-guards fn-nntp-xpat-lines-for-numbers)
+(verify-guards fn-nntp-xpat-lines-for-numbers-loop)
+
+(verify-guards fn-nntp-xpat-lines-for-numbers
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-xpat-lines-for-numbers)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nntp-xpat-lines-for-numbers-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-xpat-range)
 
@@ -2552,14 +2984,38 @@
 
 (verify-guards fn-nntp-dtn-unix-seconds)
 (verify-guards fn-nntp-active-times-line)
-(verify-guards fn-nntp-active-times-lines)
-(verify-guards fn-nntp-filter-facts-by-wildmat)
+(verify-guards fn-nntp-active-times-lines-loop)
+
+(verify-guards fn-nntp-active-times-lines
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-active-times-lines)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nntp-active-times-lines-loop-is-revappend (acc nil))))))
+(verify-guards fn-nntp-filter-facts-by-wildmat-loop)
+
+(verify-guards fn-nntp-filter-facts-by-wildmat
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-filter-facts-by-wildmat)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nntp-filter-facts-by-wildmat-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-list-active-times)
 (verify-guards fn-nntp-active-status-line)
-(verify-guards fn-nntp-active-status-lines)
+(verify-guards fn-nntp-active-status-lines-loop)
+
+(verify-guards fn-nntp-active-status-lines
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-active-status-lines)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nntp-active-status-lines-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-list-active-status)
 (verify-guards fn-nntp-list-status-response)
-(verify-guards fn-nntp-described-lines)
+(verify-guards fn-nntp-described-lines-loop)
+
+(verify-guards fn-nntp-described-lines
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-described-lines)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nntp-described-lines-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-list-newsgroups-described)
 (verify-guards fn-nntp-list-motd)
 (verify-guards fn-nntp-list-command)
@@ -2596,7 +3052,13 @@
   :hints (("Goal" :in-theory (enable fn-clock-observationp
                                      fn-clock-timep))))
 (verify-guards fn-nntp-newnews-candidatep)
-(verify-guards fn-nntp-newnews-scan)
+(verify-guards fn-nntp-newnews-scan-loop)
+
+(verify-guards fn-nntp-newnews-scan
+  :hints (("Goal" :in-theory (disable fn-nntp-newnews-scan-loop fn-nntp-newnews-candidatep
+                                      fn-nntp-article-tombstonep fn-nntp-newnews-newp
+                                      fn-nntp-string-octets fn-article-stamp fn-article-msgid)
+                  :use ((:instance fn-nntp-newnews-scan-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-newnews-response)
 
 ; ---------------------------------------------------------------------------

@@ -154,14 +154,50 @@
         (1- (nfix (fn-th-at 8 anchor))) (fn-th-at 9 anchor)
         (fn-th-at 10 anchor)
         (cons (fn-th-admission event) (fn-th-anchor-reports anchor))))
-(defun fn-th-replace-anchor (topic replacement anchors)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-th-replace-anchor-loop (topic replacement anchors acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp anchors)
       (if (equal topic (fn-th-anchor-topic (car anchors)))
-          (cons replacement (cdr anchors))
-        (cons (car anchors)
-              (fn-th-replace-anchor topic replacement (cdr anchors))))
-    nil))
+          (revappend acc (cons replacement (cdr anchors)))
+        (fn-th-replace-anchor-loop topic
+                                   replacement
+                                   (cdr anchors)
+                                   (cons (car anchors) acc)))
+    (revappend acc nil)))
+
+(defun fn-th-replace-anchor (topic replacement anchors)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp anchors)
+           (if (equal topic (fn-th-anchor-topic (car anchors)))
+               (cons replacement (cdr anchors))
+             (cons (car anchors)
+                   (fn-th-replace-anchor topic replacement (cdr anchors))))
+         nil)
+       :exec (fn-th-replace-anchor-loop topic replacement anchors nil)))
+
+(local
+ (defthm fn-th-replace-anchor-loop-is-revappend
+   (equal (fn-th-replace-anchor-loop topic replacement anchors acc)
+          (revappend acc (fn-th-replace-anchor topic replacement anchors)))
+   :hints (("Goal" :induct (fn-th-replace-anchor-loop topic replacement anchors acc)
+                   :in-theory (union-theories '(fn-th-replace-anchor-loop fn-th-replace-anchor revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-th-replace-anchor-loop)
+
+(verify-guards fn-th-replace-anchor
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-th-replace-anchor)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-th-replace-anchor-loop-is-revappend (acc nil))))))
+
 
 ; Completion/recovery passes the prior accepted T10 event and snapshot. A
 ; forged or stale topic event cannot update the carried projection merely by

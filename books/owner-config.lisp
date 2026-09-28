@@ -127,21 +127,87 @@
   (declare (xargs :guard t))
   (if (fn-ocfg-pin-find id pins) pins (cons (cons id cfg) pins)))
 
-(defun fn-ocfg-pin-set (id cfg pins)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-ocfg-pin-set-loop (id cfg pins acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp pins)
       (if (and (consp (car pins)) (equal (car (car pins)) id))
-          (cons (cons id cfg) (cdr pins))
-        (cons (car pins) (fn-ocfg-pin-set id cfg (cdr pins))))
-    nil))
+          (revappend acc (cons (cons id cfg) (cdr pins)))
+        (fn-ocfg-pin-set-loop id cfg (cdr pins) (cons (car pins) acc)))
+    (revappend acc nil)))
+
+(defun fn-ocfg-pin-set (id cfg pins)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp pins)
+           (if (and (consp (car pins)) (equal (car (car pins)) id))
+               (cons (cons id cfg) (cdr pins))
+             (cons (car pins) (fn-ocfg-pin-set id cfg (cdr pins))))
+         nil)
+       :exec (fn-ocfg-pin-set-loop id cfg pins nil)))
+
+(local
+ (defthm fn-ocfg-pin-set-loop-is-revappend
+   (equal (fn-ocfg-pin-set-loop id cfg pins acc)
+          (revappend acc (fn-ocfg-pin-set id cfg pins)))
+   :hints (("Goal" :induct (fn-ocfg-pin-set-loop id cfg pins acc)
+                   :in-theory (union-theories '(fn-ocfg-pin-set-loop fn-ocfg-pin-set revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ocfg-pin-set-loop)
+
+(verify-guards fn-ocfg-pin-set
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-ocfg-pin-set)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-ocfg-pin-set-loop-is-revappend (acc nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-ocfg-pin-remove-loop (id pins acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp pins)
+      (if (and (consp (car pins)) (equal (car (car pins)) id))
+          (fn-ocfg-pin-remove-loop id (cdr pins) acc)
+        (fn-ocfg-pin-remove-loop id (cdr pins) (cons (car pins) acc)))
+    (revappend acc nil)))
 
 (defun fn-ocfg-pin-remove (id pins)
-  (declare (xargs :guard t))
-  (if (consp pins)
-      (if (and (consp (car pins)) (equal (car (car pins)) id))
-          (fn-ocfg-pin-remove id (cdr pins))
-        (cons (car pins) (fn-ocfg-pin-remove id (cdr pins))))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp pins)
+           (if (and (consp (car pins)) (equal (car (car pins)) id))
+               (fn-ocfg-pin-remove id (cdr pins))
+             (cons (car pins) (fn-ocfg-pin-remove id (cdr pins))))
+         nil)
+       :exec (fn-ocfg-pin-remove-loop id pins nil)))
+
+(local
+ (defthm fn-ocfg-pin-remove-loop-is-revappend
+   (equal (fn-ocfg-pin-remove-loop id pins acc)
+          (revappend acc (fn-ocfg-pin-remove id pins)))
+   :hints (("Goal" :induct (fn-ocfg-pin-remove-loop id pins acc)
+                   :in-theory (union-theories '(fn-ocfg-pin-remove-loop fn-ocfg-pin-remove revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ocfg-pin-remove-loop)
+
+(verify-guards fn-ocfg-pin-remove
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-ocfg-pin-remove)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-ocfg-pin-remove-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-ocfg-pin-find-of-pin-add-other
   (implies (not (equal id other))
