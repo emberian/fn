@@ -153,3 +153,49 @@
  (defthm nsct-answer-without-f
    (equal (fn-nsc-answer-report kind profile oc cache obs min fn-arena fn-cat)
           (fn-nh-answer-report kind profile oc cache obs min fn-arena))))
+
+; -----------------------------------------------------------------------------
+; The client's join (fn-nsc-client-step-is-client-step).  REACHABLE: the
+; owner's pages of a report three chunks long (fn-nls-page over fn-nls-buffer,
+; what fn-native-live-status-host-answer answers), folded from nil and 0 as
+; host/native/control.lisp fnn-control-live-status folds them: every step's
+; view is fn-nls-client-step's over the joined pages, the length it carries
+; is theirs, and the last is (:done REPORT).
+(defconst *nsct-report*
+  (make-list (+ (* 2 *fn-nls-chunk-octets*) 7) :initial-element 65))
+
+(defun nsct-fold (chunks n total digest buffer fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (if (zp fuel)
+      (list :fuel)
+    (let* ((page (fn-nls-page buffer n))
+           (step (fn-nsc-client-step chunks n total digest page))
+           (agree (and (equal (fn-nsc-client-view step)
+                              (fn-nls-client-step (fn-nsc-join chunks) total digest page))
+                       (equal n (len (fn-nsc-join chunks))))))
+      (cond ((not agree) (list :disagree n))
+            ((equal (car step) :next)
+             (nsct-fold (nth 1 step) (nth 2 step) (nth 3 step) (nth 4 step) buffer
+                        (- fuel 1)))
+            (t step)))))
+
+(assert-event
+ (equal (nsct-fold nil 0 nil nil (fn-nls-buffer *nsct-report*) 5)
+        (list :done *nsct-report*)))
+
+; Hypothesis removal (the carried length): a length that is not the pages'
+; asks the wrong offset's words; with 1 in place of 0 before any page the
+; twin restarts where fn-nls-client-step (an empty prefix) takes the page.
+(assert-event
+ (let* ((page (fn-nls-page (fn-nls-buffer *nsct-report*) 0))
+        (bad (fn-nsc-client-step nil 1 :other-total :other-digest page)))
+   (and (not (equal 1 (len (fn-nsc-join nil))))                        ; the hypothesis fails
+        (equal (car (fn-nls-client-step nil :other-total :other-digest page)) :next)
+        (equal bad (list :restart))                                     ; the conclusion fails
+        (not (equal (fn-nsc-client-view bad)
+                    (fn-nls-client-step nil :other-total :other-digest page))))))
+
+(must-fail-checked
+ (defthm nsct-client-step-without-the-length
+   (equal (fn-nsc-client-view (fn-nsc-client-step chunks n total digest reply))
+          (fn-nls-client-step (fn-nsc-join chunks) total digest reply))))

@@ -275,3 +275,112 @@
   :hints (("Goal" :in-theory '(fn-nsc-answer-report fn-nh-answer-report
                                fn-nsc-live-report fn-nls-live-report
                                fn-nsc-report-is-report))))
+
+; -----------------------------------------------------------------------------
+; The client's join of the pages, linear (lane scale-reads).
+;
+; fn-nls-client-step carries the report so far as one octet list and extends
+; it by (append acc chunk) on every page, and the host asks (length acc) for
+; the next offset: O(report^2 / chunk).  `operator CONFIG obligations' of
+; syn100k-2k (24,400,035 octets, 187 pages) took 69.2 s of client steps in a
+; raw Lisp over the production core, against 3.4 s for the owner's pages; the
+; live verb answered uncertain after the control client's 10 s.  The twin
+; carries the pages newest first and their total length, and joins them once
+; at the end.
+
+; The report so far: the pages oldest first.
+(defun fn-nsc-join (chunks)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp chunks)
+      (append (true-list-fix (fn-nsc-join (cdr chunks))) (car chunks))
+    nil))
+
+(defun fn-nsc-join-loop (chunks acc)
+  (declare (xargs :guard (true-listp chunks)))
+  (if (consp chunks)
+      (fn-nsc-join-loop (cdr chunks) (append (true-list-fix (car chunks)) acc))
+    acc))
+
+(local
+ (defthm fn-nsc-append-true-list-fix
+   (equal (append (true-list-fix x) y) (append x y))))
+
+(local
+ (defthm fn-nsc-join-loop-is-join
+   (equal (fn-nsc-join-loop chunks acc)
+          (append (fn-nsc-join chunks) acc))
+   :hints (("Goal" :induct (fn-nsc-join-loop chunks acc)))))
+
+(defun fn-nsc-joined (chunks)
+  "The report the pages CHUNKS (newest first) make."
+  (declare (xargs :guard (true-listp chunks)))
+  (mbe :logic (fn-nsc-join chunks)
+       :exec (if (consp chunks)
+                 (fn-nsc-join-loop (cdr chunks) (car chunks))
+               nil)))
+
+(verify-guards fn-nsc-joined
+  :hints (("Goal" :expand ((fn-nsc-join chunks)))))
+
+(defun fn-nsc-client-step (chunks n total digest reply)
+  "fn-nls-client-step over the pages CHUNKS (newest first) whose joined
+length is N: (:done REPORT), (:next CHUNKS' N' TOTAL DIGEST), or the same
+outcome words."
+  (declare (xargs :guard (true-listp chunks) :verify-guards nil))
+  (let ((d (fn-nls-reply-decode reply)))
+    (cond
+     ((not (and (consp d) (equal (car d) :reply))) (list :transport))
+     ((not (equal (nth 1 d) :accepted))
+      (if (equal (nth 4 d) *fn-nls-refusal-past-the-total-width*)
+          (list :refused :report-past-the-total-width)
+        (list :refused)))
+     ((and (posp n)
+           (not (and (equal (nth 2 d) total) (equal (nth 3 d) digest))))
+      (list :restart))
+     (t (let ((m (+ (nfix n) (len (nth 4 d))))
+              (next (cons (nth 4 d) chunks)))
+          (cond ((not (natp (nth 2 d))) (list :transport))
+                ((< (nth 2 d) m) (list :transport))
+                ((equal m (nth 2 d)) (list :done (fn-nsc-joined next)))
+                ((not (consp (nth 4 d))) (list :transport))
+                (t (list :next next m (nth 2 d) (nth 3 d)))))))))
+
+; What the twin's answer says in fn-nls-client-step's words.
+(defun fn-nsc-client-view (step)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (consp step) (equal (car step) :next))
+      (list :next (fn-nsc-join (nth 1 step)) (nth 3 step) (nth 4 step))
+    step))
+
+(local
+ (defthm fn-nsc-len-of-join
+   (equal (len (fn-nsc-join (cons c chunks)))
+          (+ (len (fn-nsc-join chunks)) (len c)))))
+
+(local
+ (defthm fn-nsc-consp-is-len
+   (iff (consp x) (posp (len x)))))
+
+; KEYSTONE (the client's join).  The subject is fn-nsc-client-step, which
+; host/native/control.lisp fnn-control-live-status calls through
+; host/native-live-status-host.lisp fn-native-live-status-host-client-step-chunks.
+; With N the length of the joined pages, its answer is fn-nls-client-step's
+; over the joined pages (a :next carries the pages, which join to the
+; original's accumulator), so fn-nls-client-step-of-owner-reply and
+; fn-nls-client-step-of-owner-page speak of the words the client prints; and
+; a :next's length is its pages' joined length, so the hypothesis holds at
+; every later page (from nil and 0 at the first).
+(defthm fn-nsc-client-step-is-client-step
+  (implies (equal n (len (fn-nsc-join chunks)))
+           (equal (fn-nsc-client-view (fn-nsc-client-step chunks n total digest reply))
+                  (fn-nls-client-step (fn-nsc-join chunks) total digest reply)))
+  :hints (("Goal" :in-theory (e/d (fn-nsc-client-step fn-nls-client-step fn-nsc-client-view)
+                                  (fn-nls-reply-decode fn-nsc-join))
+           :expand ((fn-nsc-join (cons (nth 4 (fn-nls-reply-decode reply)) chunks))))))
+
+(defthm fn-nsc-client-step-carries-its-length
+  (implies (and (equal n (len (fn-nsc-join chunks)))
+                (equal (car (fn-nsc-client-step chunks n total digest reply)) :next))
+           (equal (nth 2 (fn-nsc-client-step chunks n total digest reply))
+                  (len (fn-nsc-join (nth 1 (fn-nsc-client-step chunks n total digest reply))))))
+  :hints (("Goal" :in-theory (e/d (fn-nsc-client-step) (fn-nls-reply-decode fn-nsc-join)))))

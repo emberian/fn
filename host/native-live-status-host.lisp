@@ -115,9 +115,13 @@
   (declare (xargs :mode :program))
   (fn-cev-any-request-encode kind offset))
 
-(defun fn-native-live-status-host-client-step (acc total digest reply)
+(defun fn-native-live-status-host-client-step-chunks (chunks n total digest reply)
+  ; lane scale-reads: the client's step over the pages so far, newest first,
+  ; and their joined length N (books/native-status-columns.lisp
+  ; fn-nsc-client-step, KEYSTONE fn-nsc-client-step-is-client-step): the join
+  ; is linear in the report, not quadratic.
   (declare (xargs :mode :program))
-  (fn-nls-client-step acc total digest reply))
+  (fn-nsc-client-step chunks n total digest reply))
 
 (defun fn-native-live-status-host-route (socket-present outcome)
   (declare (xargs :mode :program))
