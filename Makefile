@@ -1411,7 +1411,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-pages-owner \
 	tests/acl2/history-pages-owner-tests \
 	books/history-records \
-	tests/acl2/history-records-tests
+	tests/acl2/history-records-tests \
+	books/history-records-disk \
+	books/store-records-field \
+	tests/acl2/history-records-disk-tests
 
 .PHONY: extract-check site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
