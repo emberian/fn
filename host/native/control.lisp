@@ -340,6 +340,33 @@ transition."
        (first answer)))
    :inspect))
 
+(defvar *fnn-live-pages-cache* nil
+  "The owner's paged-report cursors, as ACL2 chose them
+(`fn-native-live-pages-host-answer'); read and replaced under the owner
+mutex only.  A cursor holds the rest of the retention ledger its report
+started from (an applicative value, shared with the Store, not copied).")
+
+(defun fnn-control-live-pages-answer (service request)
+  "The running owner's page of a paged report, under the owner mutex.
+
+ACL2 decodes the request and answers one page of at most
+`*fn-nls-chunk-octets*' octets from the cursor its version names, or starts
+a report (version 0) from the retention the owner holds now, or answers
+version-gone by name (`fn-nlp-answer').  Work and allocation per request are
+one page; the report is never rendered whole.  The host keeps the cursors
+ACL2 returns."
+  (fnn-owner-serialized
+   service nil
+   (lambda ()
+     (let ((answer (fnn-core 'fn-native-live-pages-host-answer request
+                             *fnn-live-pages-cache* *the-live-state*)))
+       (unless (and (consp answer) (consp (cdr answer))
+                    (fnn-octet-list-p (first answer)))
+         (fnn-fault "ACL2 returned a malformed live report page"))
+       (setf *fnn-live-pages-cache* (second answer))
+       (first answer)))
+   :inspect))
+
 (defun fnn-control-handle-client (control socket)
   (let* ((*fnn-owner-measure-label* :control)
          (service (fnn-control-state-service control))
@@ -394,11 +421,21 @@ transition."
                       (live
                         (and (typep frame 'fnn-octets)
                              (fnn-core 'fn-native-live-status-host-requestp
+                                       (fnn-octet-list frame))))
+                      ;; lane obligations-paged: a paged report's request
+                      ;; (FNLS frame kind 4, books/native-live-pages.lisp).
+                      (pages
+                        (and (not live) (typep frame 'fnn-octets)
+                             (fnn-core 'fn-native-live-pages-host-requestp
                                        (fnn-octet-list frame)))))
                  (cond
                    (live
                     (list :live-status-reply
                           (fnn-control-live-status-answer
+                           service (fnn-octet-list frame))))
+                   (pages
+                    (list :live-status-reply
+                          (fnn-control-live-pages-answer
                            service (fnn-octet-list frame))))
                    ((and *fnn-hybrid-control-handler*
                          (funcall *fnn-hybrid-control-handler* service frame)))
@@ -975,14 +1012,13 @@ keyword and its reason word (PKT-453 (a))."
      path reasoned
      (lambda () (apply #'fnn-core 'fn-native-control-host-request-encode fields)))))
 
-(defun fnn-control-live-status-page (path-octets kind offset)
-  "Ask the owner for one page of report KIND from OFFSET.
+(defun fnn-control-live-request-exchange (path-octets request)
+  "Send one sealed live-report REQUEST to the owner and read its reply.
 
 The reply octets, or the stage at which the exchange failed
 (:before-submission, :after-submission), or :refused when the owner answered
 an ordinary refusal (it is stopping)."
-  (let ((request (fnn-core 'fn-native-live-status-host-request-encode kind offset))
-        (socket nil) (stage :before-submission))
+  (let ((socket nil) (stage :before-submission))
     (unless (fnn-octet-list-p request)
       (fnn-fault "ACL2 refused a live status request"))
     (unwind-protect
@@ -1005,11 +1041,55 @@ an ordinary refusal (it is stopping)."
            (error () stage))
       (when socket (fnn-socket-shut socket)))))
 
+(defun fnn-control-live-status-page (path-octets kind offset)
+  "Ask the owner for one page of report KIND from OFFSET (the whole-report
+exchange, FNLS kind 1 or 3)."
+  (fnn-control-live-request-exchange
+   path-octets (fnn-core 'fn-native-live-status-host-request-encode kind offset)))
+
+(defun fnn-control-live-pages (path-octets kind)
+  "Read the owner's paged report KIND page by page (books/native-live-pages.lisp).
+
+(:done-pages VECTORS): the pages in order, each an octet vector, which joined
+are the report of one version (KEYSTONE fn-nlp-pages-join-to-the-report);
+or an outcome keyword for `fn-nls-route'.  A version the owner no longer
+holds is answered version-gone by name: the client restarts from page 0, at
+most `fn-native-live-status-host-max-restarts' times, then answers
+uncertain (:after-submission)."
+  (let ((pages nil) (version 0) (page 0) (restarts 0)
+        (limit (fnn-core 'fn-native-live-status-host-max-restarts)))
+    (loop
+      (let ((reply (fnn-control-live-request-exchange
+                    path-octets
+                    (fnn-core 'fn-native-live-pages-host-request-encode
+                              kind version page))))
+        (when (keywordp reply)
+          (return (if (and (eq reply :before-submission)
+                           (or pages (plusp restarts)))
+                      :after-submission
+                    reply)))
+        (let ((step (fnn-core 'fn-native-live-pages-host-client-step
+                              version page reply)))
+          (case (first step)
+            (:done (push (fnn-octets (second step)) pages)
+             (return (list :done-pages (nreverse pages))))
+            (:next (push (fnn-octets (second step)) pages)
+             (setq version (third step) page (fourth step)))
+            (:restart
+             (when (>= (incf restarts) limit) (return :after-submission))
+             (setq pages nil version 0 page 0))
+            (:refused (return :refused))
+            (t (return :after-submission))))))))
+
 (defun fnn-control-live-status (path-octets kind)
   "Join the owner's pages of report KIND through `fn-nls-client-step'.
 
 (:done OCTETS), or an outcome keyword for `fn-nls-route'.  A page that fails
-after the first was answered is :after-submission: the owner was there."
+after the first was answered is :after-submission: the owner was there.
+A paged kind (`fn-nlp-pagedp') is read by `fnn-control-live-pages' instead:
+(:done-pages VECTORS)."
+  (when (fnn-core 'fn-native-live-pages-host-pagedp kind)
+    (return-from fnn-control-live-status (fnn-control-live-pages path-octets kind)))
   ;; CHUNKS: the pages so far, newest first; N their joined length, which
   ;; ACL2 carries (fn-nsc-client-step-carries-its-length) and the next
   ;; page's offset.

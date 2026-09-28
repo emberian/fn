@@ -13049,6 +13049,43 @@
         "fn-sxp-record-entries-of-append",
         "fn-sxp-manifest-under-of-append"
       ]
+    },
+    {
+      "id": "PRF-371",
+      "title": "The operator's obligations report is sent page by page with a version token: the owner renders one page per request from a cursor, and the pages a client joins at one version are the whole report (lane obligations-paged)",
+      "statement": "Subjects: books/native-live-pages.lisp fn-nlp-answer, which host/native-live-status-host.lisp fn-native-live-pages-host-answer calls under the owner mutex (host/native/control.lisp fnn-control-live-pages-answer, FNLS request frame kind 4) with the owner's retention (fn-nlp-live-retention) and width *fn-nls-chunk-octets*; fn-nlp-client-step, which host/native/control.lisp fnn-control-live-pages folds every reply through (fn-native-live-pages-host-client-step); fn-nlp-offline-start and fn-nlp-offline-step, which host/native/io.lisp fnn-command-live-pages calls with no owner running. The report is fn-nlp-report (the header line and one line per obligation); fn-nlp-live-report-is-the-report: with no hypothesis it is fn-nls-live-report of kind :obligations, the whole report the owner rendered before. fn-nlp-take-cuts-the-stream: a page from a cursor (the unsent rest of a line and the obligations not yet rendered) is the next min(W, |rest|) octets of the rest, and the cursor it leaves is what follows. KEYSTONE fn-nlp-pages-join-to-the-report: for any owner cursors CACHE, retention RET, width W and fuel, if the composition of owner answers and client steps from version 0 page 0 (fn-nlp-run) reaches :done, the joined pages are (fn-nlp-report RET), the ledger the owner held at the first page. fn-nlp-run-joins-the-entry: from a named version's cursor, the rest. KEYSTONE fn-nlp-pages-reach-the-report: with 0 < W <= *fn-nls-chunk-octets* and L <= W * FUEL (L the report's length), the run reaches (:done (fn-nlp-report RET)). KEYSTONE fn-nlp-answer-keeps-other-versions: a request that neither names version V nor starts it leaves V's rest at PAGE unchanged or drops it (:none, answered version-gone, the client restarts). KEYSTONE fn-nlp-offline-pages-join-to-the-report: the offline pages from fn-nlp-offline-start, joined, are the report. Work and allocation per request: one page of at most W octets and at most W obligation lines, plus the ledger's length on the first page; the page and version counters wrap modulo 2^32, so no report length is refused. The whole-report exchange (FNLS kind 1) refuses :obligations by the name report-is-paged (host/native-live-status-host.lisp fn-native-live-status-host-answer).",
+      "milestone": "M4",
+      "requirements": [
+        "HST-006"
+      ],
+      "depends_on": [
+        "PRF-089",
+        "PRF-336",
+        "PRF-368"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/native-live-pages.lisp",
+        "tests/acl2/native-live-pages-tests.lisp",
+        "host/native-live-status-host.lisp",
+        "host/native/control.lisp"
+      ],
+      "progress_note": "Lane obligations-paged (2026-09-28). The frame decoders (fn-nlp-request-decode, fn-nlp-reply-decode, fn-nlp-client-step, fn-nlp-answer) are not guard-verified, like every FNLS decoder (fn-record-read-uint is not); the page path (fn-nlp-header, -fill, -take, -serve, -offline-step) is. The pages are octet lists of at most 128 KiB; their string twin is open. control log and control evidence (books/control-evidence.lisp) still render whole: they grow with withdrawal records, not articles.",
+      "events": [
+        "fn-nlp-report-is-the-obligations-report",
+        "fn-nlp-live-report-is-the-report",
+        "fn-nlp-take-cuts-the-stream",
+        "fn-nlp-request-decode-of-encode",
+        "fn-nlp-reply-decode-of-encode",
+        "fn-nlp-run-joins-the-entry",
+        "fn-nlp-pages-join-to-the-report",
+        "fn-nlp-report-is-octets",
+        "fn-nlp-run-reaches-the-entry",
+        "fn-nlp-pages-reach-the-report",
+        "fn-nlp-answer-keeps-other-versions",
+        "fn-nlp-offline-pages-join-to-the-report"
+      ]
     }
   ]
 }

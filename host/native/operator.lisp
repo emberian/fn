@@ -535,8 +535,12 @@ nothing answers and nothing holds the lock."
       ;; The owner refused by the name ACL2 decided (a report its reply's
       ;; u32 total cannot carry): a refusal, exit 1, with the word.
       (fnn-refuse "live status refused: ~(~a~)" (second answer)))
-    (if (and (consp answer) (eq (first answer) :done))
-        (progn (fnn-write-report (second answer))
+    (if (and (consp answer) (member (first answer) '(:done :done-pages)))
+        (progn (if (eq (first answer) :done-pages)
+                   ;; lane obligations-paged: the pages of one version, in
+                   ;; order (fn-nlp-pages-join-to-the-report).
+                   (fnn-write-report-pages (second answer))
+                 (fnn-write-report (second answer)))
                ;; PRF-212: the certificate the running owner serves, its
                ;; names and notAfter, in ACL2's words.
                (funcall (fnn-olo-status-tail live) control-path kind)
