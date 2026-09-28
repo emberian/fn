@@ -371,12 +371,68 @@
                                    fn-rcl-heldp))
            :expand ((fn-rcl-held-count-in rule now h verdicts articles fn-arena)))))
 
+; PKT-878 (PRF-361, lane health-truth-status).  The Store's verdict list has
+; one (msgid . verdict) entry per acceptance since the open (and the replayed
+; signed ones), and `fn-rcl-verdict-heldp' scans it for an entry of MSGID
+; that is not :absent -- to the END of the list for an unsigned article,
+; whose own entry is :absent.  Asked once per article by the counts below,
+; that made `status' O(articles x acceptances): on a 100k store after
+; 20k live POSTs it passed the operator's 10 s control deadline and `status'
+; exited uncertain (fitness f1, 7 of 8 samples).  Only the entries that are
+; not :absent can make the test true, so the counts ask it of those
+; (`fn-rcl-held-verdicts', one walk per render): O(articles x signed).
+(defun fn-rcl-held-verdicts (verdicts)
+  "The entries of VERDICTS that `fn-rcl-verdict-heldp' can answer true for:
+a (MSGID . VERDICT) pair whose verdict is not :absent."
+  (declare (xargs :guard t))
+  (if (consp verdicts)
+      (if (and (consp (car verdicts))
+               (not (and (consp (cdr (car verdicts)))
+                         (equal (car (cdr (car verdicts))) :absent))))
+          (cons (car verdicts) (fn-rcl-held-verdicts (cdr verdicts)))
+        (fn-rcl-held-verdicts (cdr verdicts)))
+    nil))
+
+(defthm fn-rcl-verdict-heldp-of-held-verdicts
+  (equal (fn-rcl-verdict-heldp msgid (fn-rcl-held-verdicts verdicts))
+         (fn-rcl-verdict-heldp msgid verdicts))
+  :hints (("Goal" :in-theory (enable fn-rcl-verdict-heldp))))
+
+(defthm fn-rcl-standing-verdict-of-held-verdicts
+  (equal (fn-rcl-standing-verdict rule now h (fn-rcl-held-verdicts verdicts) article)
+         (fn-rcl-standing-verdict rule now h verdicts article))
+  :hints (("Goal" :in-theory '(fn-rcl-standing-verdict
+                               fn-rcl-verdict-heldp-of-held-verdicts))))
+
+(defthm fn-rcl-verdict-in-of-held-verdicts
+  (equal (fn-rcl-verdict-in rule now h (fn-rcl-held-verdicts verdicts) a fn-arena)
+         (fn-rcl-verdict-in rule now h verdicts a fn-arena))
+  :hints (("Goal" :in-theory '(fn-rcl-verdict-in
+                               fn-rcl-standing-verdict-of-held-verdicts))))
+
+(defthm fn-rcl-summary-in-of-held-verdicts
+  (equal (fn-rcl-summary-in rule now h (fn-rcl-held-verdicts verdicts) articles fn-arena)
+         (fn-rcl-summary-in rule now h verdicts articles fn-arena))
+  :hints (("Goal" :induct (fn-rcl-summary-in rule now h verdicts articles fn-arena)
+           :in-theory (e/d (fn-rcl-summary-in)
+                           (fn-rcl-verdict-in fn-rcl-held-verdicts
+                            fn-rcl-payload-len fn-rcl-payload-tomb-length)))))
+
+(defthm fn-rcl-held-count-in-of-held-verdicts
+  (equal (fn-rcl-held-count-in rule now h (fn-rcl-held-verdicts verdicts) articles fn-arena)
+         (fn-rcl-held-count-in rule now h verdicts articles fn-arena))
+  :hints (("Goal" :induct (fn-rcl-held-count-in rule now h verdicts articles fn-arena)
+           :in-theory (e/d (fn-rcl-held-count-in)
+                           (fn-rcl-verdict-in fn-rcl-held-verdicts fn-rcl-heldp)))))
+
+(in-theory (disable fn-rcl-held-verdicts))
+
 ; (reclaimable reclaimable-octets reclaimed reclaimed-octets-freed held):
 ; what `status' prints and the reclaim verbs report.
 (defun fn-rcl-store-counts (rule now s fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((h (fn-rcl-store-holders s))
-        (verdicts (fn-sn-verdicts s))
+        (verdicts (fn-rcl-held-verdicts (fn-sn-verdicts s)))
         (articles (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
     (append (fn-rcl-summary-in rule now h verdicts articles fn-arena)
             (list (fn-rcl-held-count-in rule now h verdicts articles fn-arena)))))
@@ -452,8 +508,18 @@
            (append (fn-rcl-summary rule now h verdicts alpha)
                    (list (fn-rcl-held-count rule now h verdicts alpha)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory '(fn-rcl-store-counts fn-rcl-summary-in-is-summary-of-alpha
-                               fn-rcl-held-count-in-is-held-count-of-alpha))))
+  :hints (("Goal" :use ((:instance fn-rcl-summary-in-of-held-verdicts
+                                   (h (fn-rcl-store-holders s))
+                                   (verdicts (fn-sn-verdicts s))
+                                   (articles (fn-state-articles
+                                              (fn-node-acceptance (fn-sn-node s)))))
+                        (:instance fn-rcl-held-count-in-of-held-verdicts
+                                   (h (fn-rcl-store-holders s))
+                                   (verdicts (fn-sn-verdicts s))
+                                   (articles (fn-state-articles
+                                              (fn-node-acceptance (fn-sn-node s))))))
+           :in-theory '(fn-rcl-store-counts fn-rcl-summary-in-is-summary-of-alpha
+                        fn-rcl-held-count-in-is-held-count-of-alpha))))
 
 ; The books above reason about the counts as they did before the flip: the
 ; equalities stay off unless a proof names them.
@@ -563,10 +629,42 @@
 (defun fn-rcl-store-classes (rule now s fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((h (fn-rcl-store-holders s))
-        (verdicts (fn-sn-verdicts s))
+        (verdicts (fn-rcl-held-verdicts (fn-sn-verdicts s)))
         (articles (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
     (list (fn-rcl-class-count-in :signed rule now h verdicts articles fn-arena)
           (fn-rcl-class-count-in :kept rule now h verdicts articles fn-arena))))
+
+;  KEYSTONE (PRF-361, PKT-878).  The classes the host prints (`status',
+; books/native-live-status.lisp fn-nls-reclaim-words) are read over the held
+; verdicts only, and they are the classes over EVERY verdict the Store
+; carries: filtering the :absent entries out changes no article's class.
+; With fn-rcl-store-counts-is-the-model-over-alpha (whose statement names the
+; full verdict list), both halves of the reclaim line are the model's.
+(defthm fn-rcl-class-in-of-held-verdicts
+  (equal (fn-rcl-class-in rule now h (fn-rcl-held-verdicts verdicts) a fn-arena)
+         (fn-rcl-class-in rule now h verdicts a fn-arena))
+  :hints (("Goal" :in-theory '(fn-rcl-class-in fn-rcl-verdict-in-of-held-verdicts
+                               fn-rcl-verdict-heldp-of-held-verdicts))))
+
+(defthm fn-rcl-class-count-in-of-held-verdicts
+  (equal (fn-rcl-class-count-in class rule now h (fn-rcl-held-verdicts verdicts)
+                                articles fn-arena)
+         (fn-rcl-class-count-in class rule now h verdicts articles fn-arena))
+  :hints (("Goal" :induct (fn-rcl-class-count-in class rule now h verdicts articles
+                                                 fn-arena)
+           :in-theory (e/d (fn-rcl-class-count-in)
+                           (fn-rcl-class-in fn-rcl-held-verdicts)))))
+
+(defthm fn-rcl-store-classes-over-every-verdict
+  (let ((h (fn-rcl-store-holders s))
+        (verdicts (fn-sn-verdicts s))
+        (articles (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
+    (equal (fn-rcl-store-classes rule now s fn-arena)
+           (list (fn-rcl-class-count-in :signed rule now h verdicts articles fn-arena)
+                 (fn-rcl-class-count-in :kept rule now h verdicts articles fn-arena))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-rcl-store-classes
+                               fn-rcl-class-count-in-of-held-verdicts))))
 
 ; A signed article is never released by article retention: whatever the
 ; rule, the instant and the holders, its verdict is not :reclaimable (the
@@ -702,7 +800,7 @@
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-rcl-classes-partition-in
                                    (h (fn-rcl-store-holders s))
-                                   (verdicts (fn-sn-verdicts s))
+                                   (verdicts (fn-rcl-held-verdicts (fn-sn-verdicts s)))
                                    (articles (fn-state-articles
                                               (fn-node-acceptance (fn-sn-node s))))))
            :in-theory '(fn-rcl-store-counts fn-rcl-store-classes
