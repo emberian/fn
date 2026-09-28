@@ -289,8 +289,13 @@ inventory row; nothing a live lane's worktree or unmerged branch uses
 | 98055933b | archive tests/perf/native_consumer_poll_cost.py to evidence/native-consumer-poll-cost/ (performance-2026-09-26.md:310 updated) | 105 |
 | 6ceb99459 | archive tools/log_barrier_probe.py to evidence/w6-log-core-2026-09-27/ | 105 |
 
-`make check-lane` on hbox: see the lane's report (baseline at 9fd3e3c36
-and at the T1 head, compared step by step).
+`make check-lane` on hbox (swarm-build, git clones of batch-ay's
+repository with the lane fetched from a bundle): base 9fd3e3c36
+(`/tank/fn/scratch/python-diet/check-base.log`) and the T1 head plus
+this plan, 4c6264472 (`check-lane.log`), each 36 steps, 35 ok. The one
+red in both is `host_check --load` NOT RUN (exit 2, no FN_ACL2 in the
+shell), so the step table is identical before and after.  The lane-head
+timings are longer because hbox was at load 66 to 78 during that run.
 
 ## 5. Tool obstructions other lanes named (rows of this inventory)
 
