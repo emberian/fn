@@ -13204,9 +13204,10 @@
         "tests/acl2/accounts-tests.lisp",
         "host/native-admin-host.lisp",
         "host/native/admin.lisp",
-        "tests/test_native_friends_accounts.py"
+        "tests/test_native_friends_accounts.py",
+        "planning/evidence/manifests/certify-20260928T164119Z-88576.json"
       ],
-      "progress_note": "Lane invite-clock (Opus 5.5, 2026-09-28). REPL-admitted on persvati (books/accounts with clock-unit from source; tests/acl2/accounts-tests all 161 forms). Teeth in tests/acl2/accounts-tests.lisp: reached positive witnesses through fn-native-admin-plan of the host's argv on both paths (exact expiry texts), a redeem-side liveness witness at the owner's clock, a labelled mutation witness (the pre-fix arithmetic is expired at issue), hypothesis-removal witnesses (another verb, a CONSTRUCTED capacity-0 plan since the planner refuses 0, a non-natural wall or error; seconds 0 and a negative instant for the agreement). Native: tests.test_native_friends_accounts test_a_code_invited_while_the_node_is_stopped_redeems.",
+      "progress_note": "Lane invite-clock (Opus 5.5, 2026-09-28). REPL-admitted on persvati (books/accounts with clock-unit from source; tests/acl2/accounts-tests all 161 forms). Teeth in tests/acl2/accounts-tests.lisp: reached positive witnesses through fn-native-admin-plan of the host's argv on both paths (exact expiry texts), a redeem-side liveness witness at the owner's clock, a labelled mutation witness (the pre-fix arithmetic is expired at issue), hypothesis-removal witnesses (another verb, a CONSTRUCTED capacity-0 plan since the planner refuses 0, a non-natural wall or error; seconds 0 and a negative instant for the agreement). Native: tests.test_native_friends_accounts test_a_code_invited_while_the_node_is_stopped_redeems. Native (hbox, 98ddcd3b7, developer+production images): test_native_friends_accounts OK (5 ran) and test_native_operator_verbs OK (24 ran); the same new test at 5de7dda3e (pre-fix) FAILED with XREDEEM PASS -> 482. Certified: persvati run-20260928T163928Z-e70a, affected roots of books/accounts and books/clock-unit, 483 passed, 0 failed.",
       "events": [
         "fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths",
         "fn-acct-invite-expiry-agrees-across-the-running-and-stopped-paths",
