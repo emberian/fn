@@ -536,15 +536,6 @@
       (caddr verdict)
     nil))
 
-;; `log scan SEGMENT ... GENESIS' (host/native/io.lisp fnn-command-log), the
-;; observation rig with no store open: the chain value segment 1 starts from,
-;; read from the genesis record's octets (journal/000000.log); NIL when they
-;; do not decode as a genesis.  The profile and schema checks are the open's
-;; (fn-gen-open); a scan only needs the predecessor the first entry names.
-(defun fn-store-genesis-scan-chain (octets)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (fn-gen-decode octets) (fn-gen-trailer octets)))
-
 ;; The open's verdict, kept for this process: the owner's install reads the
 ;; salt from it (fn-gen-verdict-salt), `store digest' its record.
 (defun fn-store-genesis-install (verdict state)
