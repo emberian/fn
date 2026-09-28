@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Synthesize a large format-9 store by writing its record log directly.
+"""Synthesize a large format-10 store by writing its record log directly.
 
     tools/synth_log_store.py SEED OUT N [--batch B] [--check-only]
 
-SEED is a real format-9 store with no checkpoint whose journal/000001.log holds
+SEED is a real format-10 store with no checkpoint whose journal/000001.log holds
 article records written by the owner (a POSTed fixture: tools/fixtures.py's
 n1k-2k).  OUT (must not exist) gets SEED's files except journal/, and a
 journal/000001.log of N article records made from SEED's records by
@@ -17,7 +17,11 @@ first: the recomputation must reproduce each template's own identities, or the
 tool refuses).  Entries are the log's frames (books/store-log.lisp fn-lg-entry:
 FNLG, version 1, kind 1 for one record or kind 2 for B records packed, the
 previous trailer first in the payload, SHA-256 trailer, zero padding to the
-4096-octet unit), chained from the zero genesis.
+4096-octet unit), chained from the trailer of the seed's genesis
+(journal/000000.log, books/store-genesis.lisp: position 0 of the log, one
+kind-3 frame; copied unchanged, so OUT is the seed's node: its identity,
+history salt and profile digest -- the profile is copied too).  The digest is
+the store's frame digest, BLAKE3 (digest below).
 
 The seed's profile and configuration must hold N: a 2 KiB article is charged
 2 units of the store's capacity (fn-charge-for-payload), and the default
@@ -33,12 +37,22 @@ node's own open verifies every frame, chain link and record (a fixture it
 refuses is refused by name), so a wrong byte here is a refused fixture, never
 an accepted wrong history.  Streams: memory is one batch, whatever N is.
 """
-import argparse, hashlib, os, shutil, struct, sys
+import argparse, os, shutil, struct, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
 UNIT = 4096
 MAGIC = b"FNLG"
 SUBJECT_LABEL = b"fn/subject/v1"
 OBLIGATION_LABEL = b"fn/obligation/v1"
+# The store's digest and the content identities' algorithm octet
+# (books/identity.lisp): BLAKE3 (books/crypto-attach.lisp, through
+# tools/blake3_ref.py) and 2 in format 10.
+IDENTITY_ALGORITHM = 2
+
+
+def digest(octets):
+    return blake3_ref.blake3(octets)
 
 
 def cbor_head(major, n):
@@ -84,25 +98,39 @@ def encode(items):
 
 
 def subject_of(payload):
-    d = hashlib.sha256(SUBJECT_LABEL + b"\x00" + struct.pack(">I", len(payload)) + payload).digest()
-    return SUBJECT_LABEL + b"\x00\x01\x01" + d
+    d = digest(SUBJECT_LABEL + b"\x00" + struct.pack(">I", len(payload)) + payload)
+    return SUBJECT_LABEL + b"\x00\x01" + bytes([IDENTITY_ALGORITHM]) + d
 
 
 def obligation_of(msgid, subject):
-    d = hashlib.sha256(OBLIGATION_LABEL + b"\x00" + struct.pack(">I", len(msgid)) + msgid
-                       + struct.pack(">I", len(subject)) + subject).digest()
-    return OBLIGATION_LABEL + b"\x00\x01\x01" + d
+    d = digest(OBLIGATION_LABEL + b"\x00" + struct.pack(">I", len(msgid)) + msgid
+                       + struct.pack(">I", len(subject)) + subject)
+    return OBLIGATION_LABEL + b"\x00\x01" + bytes([IDENTITY_ALGORITHM]) + d
 
 
-def read_entries(path):
+def genesis_trailer(path):
+    """The chain value segment 1 starts from: the genesis frame's trailer,
+    after checking it is one kind-3 FNLG frame from the zero chain."""
     d = open(path, "rb").read()
-    pos, prev, records = 0, bytes(32), []
+    if d[:4] != MAGIC or d[4] != 1 or d[5] != 3:
+        raise SystemExit("seed genesis: not a kind-3 FNLG frame")
+    n = struct.unpack(">I", d[6:10])[0]
+    if len(d) != 10 + n + 32 or d[10:42] != bytes(32):
+        raise SystemExit("seed genesis: not one frame from the zero chain")
+    if digest(d[:10 + n]) != d[10 + n:]:
+        raise SystemExit("seed genesis: the trailer does not verify")
+    return d[10 + n:]
+
+
+def read_entries(path, genesis):
+    d = open(path, "rb").read()
+    pos, prev, records = 0, genesis, []
     while pos + 10 <= len(d) and d[pos:pos + 4] == MAGIC:
         kind = d[pos + 5]
         n = struct.unpack(">I", d[pos + 6:pos + 10])[0]
         prot = d[pos:pos + 10 + n]
         trailer = d[pos + 10 + n:pos + 42 + n]
-        if hashlib.sha256(prot).digest() != trailer or prot[10:42] != prev:
+        if digest(prot) != trailer or prot[10:42] != prev:
             raise SystemExit("seed log: entry at %d does not verify" % pos)
         body = prot[42:]
         if kind == 1:
@@ -168,7 +196,7 @@ def frame(prev, chunk):
     body = chunk[0] if kind == 1 else b"".join(struct.pack(">I", len(r)) + r for r in chunk)
     payload = prev + body
     prot = MAGIC + bytes([1, kind]) + struct.pack(">I", len(payload)) + payload
-    trailer = hashlib.sha256(prot).digest()
+    trailer = digest(prot)
     f = prot + trailer
     return f + bytes((-len(f)) % UNIT), trailer
 
@@ -180,15 +208,18 @@ def main():
     ap.add_argument("--check-only", action="store_true")
     a = ap.parse_args()
     seg = os.path.join(a.seed, "journal", "000001.log")
+    gen = os.path.join(a.seed, "journal", "000000.log")
     if os.path.exists(os.path.join(a.seed, "store-checkpoint.fnsc")) or \
-       sorted(os.listdir(os.path.join(a.seed, "journal"))) != ["000001.log"]:
-        raise SystemExit("seed: expected one segment (journal/000001.log) and no checkpoint; "
-                         "found journal/ %s%s (a seed whose owner checkpointed has rotated "
-                         "its log: initialize it with --max-open-suffix above its record "
-                         "count)" % (sorted(os.listdir(os.path.join(a.seed, "journal"))),
-                                     " and store-checkpoint.fnsc" if os.path.exists(
-                                         os.path.join(a.seed, "store-checkpoint.fnsc")) else ""))
-    raws = read_entries(seg)
+       sorted(os.listdir(os.path.join(a.seed, "journal"))) != ["000000.log", "000001.log"]:
+        raise SystemExit("seed: expected the genesis and one segment (journal/000000.log, "
+                         "000001.log; format 10) and no checkpoint; found journal/ %s%s (a seed "
+                         "whose owner checkpointed has rotated its log: initialize it with "
+                         "--max-open-suffix above its record count)"
+                         % (sorted(os.listdir(os.path.join(a.seed, "journal"))),
+                            " and store-checkpoint.fnsc" if os.path.exists(
+                                os.path.join(a.seed, "store-checkpoint.fnsc")) else ""))
+    genesis = genesis_trailer(gen)
+    raws = read_entries(seg, genesis)
     temps = [Template(r) for r in raws]
     for k, t in enumerate(temps):
         if (t.seq, t.txid, t.gen) != (k, k + 1, k + 1):
@@ -204,7 +235,8 @@ def main():
         raise SystemExit("out exists")
     shutil.copytree(a.seed, a.out, ignore=shutil.ignore_patterns("journal", "writer.lock"))
     os.mkdir(os.path.join(a.out, "journal"), 0o700)
-    prev, written = bytes(32), 0
+    shutil.copy2(gen, os.path.join(a.out, "journal", "000000.log"))
+    prev, written = genesis, 0
     path = os.path.join(a.out, "journal", "000001.log")
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "wb") as f:

@@ -1,6 +1,10 @@
 /* fn-blake3: BLAKE3 and Bao-style verified streaming over the vendored
- * reference C (third_party/blake3, 1.8.7).  Lane digest-native's prototype
- * for arena-store's page/extent digest decision; no served image loads it.
+ * reference C (third_party/blake3, 1.8.7).  The served images load it as
+ * lib/libfn-blake3 (host/native/digest.lisp: fn_b3_hash and the incremental
+ * hasher replace ACL2's executable BLAKE3 after a start-up check, lane
+ * blake3-digest); the outboard encoding and range verification below are
+ * lane digest-native's prototype for verified partial reads of large
+ * extents (b4, a follow-on lane).
  *
  * The tree.  BLAKE3 hashes 1 KiB chunks into a binary tree whose left
  * subtree always holds the largest power-of-two number of chunks that leaves
@@ -68,6 +72,21 @@ FN_B3_EXPORT void fn_b3_hash(const uint8_t *in, size_t len, uint8_t out[32]) {
   blake3_hasher_init(&h);
   blake3_hasher_update(&h, in, len);
   blake3_hasher_finalize(&h, out, BLAKE3_OUT_LEN);
+}
+
+/* The incremental hasher, for host/native/digest.lisp: a message that is a
+ * list prefix and then an octet buffer is fed in pieces.  The caller owns
+ * the hasher's storage (fn_b3_hasher_size octets, 8-aligned). */
+FN_B3_EXPORT size_t fn_b3_hasher_size(void) { return sizeof(blake3_hasher); }
+
+FN_B3_EXPORT void fn_b3_init(blake3_hasher *h) { blake3_hasher_init(h); }
+
+FN_B3_EXPORT void fn_b3_update(blake3_hasher *h, const uint8_t *in, size_t len) {
+  blake3_hasher_update(h, in, len);
+}
+
+FN_B3_EXPORT void fn_b3_final(const blake3_hasher *h, uint8_t out[32]) {
+  blake3_hasher_finalize(h, out, BLAKE3_OUT_LEN);
 }
 
 /* Node of LEN > GROUP octets: write its pair at *pos, recurse, answer its

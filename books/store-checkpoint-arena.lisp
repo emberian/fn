@@ -545,22 +545,49 @@
 ; is taken one row at a time, so the live store is never materialized as
 ; wire records; the canonical rows and payloads are those of alpha.
 
-(defun fn-scka-canon-rows (rows fn-arena h)
-  (declare (xargs :stobjs fn-arena :guard (natp h) :verify-guards nil))
+; Executes by a loop (PKT-876, lane open-depth): one frame per row of the
+; store, on every checkpoint publication.  The :logic is the recursion,
+; unchanged; the :exec accumulates the rows in reverse and stops at the first
+; :bad, equal by the guard proof.
+(defun fn-scka-canon-rows-rev (rows fn-arena h acc)
+  (declare (xargs :stobjs fn-arena :guard (and (natp h) (true-listp acc)) :verify-guards nil))
   (if (atom rows)
-      nil
+      (revappend acc nil)
     (let* ((w (fn-row-wire-of (car rows) fn-arena))
            (row (fn-scka-intern-one w h)))
       (if (eq row :bad)
           :bad
-        (let ((rest (fn-scka-canon-rows (cdr rows) fn-arena
-                                        (if (fn-scka-sealsp w) (+ 1 h) h))))
-          (if (eq rest :bad)
-              :bad
-            (cons row rest)))))))
+        (fn-scka-canon-rows-rev (cdr rows) fn-arena
+                                (if (fn-scka-sealsp w) (+ 1 h) h)
+                                (cons row acc))))))
+
+(defun fn-scka-canon-rows (rows fn-arena h)
+  (declare (xargs :stobjs fn-arena :guard (natp h) :verify-guards nil))
+  (mbe :logic
+       (if (atom rows)
+           nil
+         (let* ((w (fn-row-wire-of (car rows) fn-arena))
+                (row (fn-scka-intern-one w h)))
+           (if (eq row :bad)
+               :bad
+             (let ((rest (fn-scka-canon-rows (cdr rows) fn-arena
+                                             (if (fn-scka-sealsp w) (+ 1 h) h))))
+               (if (eq rest :bad)
+                   :bad
+                 (cons row rest))))))
+       :exec (fn-scka-canon-rows-rev rows fn-arena h nil)))
 
 (verify-guards fn-scka-intern-at)
-(verify-guards fn-scka-canon-rows)
+(verify-guards fn-scka-canon-rows-rev)
+(encapsulate ()
+  (local
+   (defthm fn-scka-canon-rows-rev-is-revappend
+     (equal (fn-scka-canon-rows-rev rows fn-arena h acc)
+            (let ((r (fn-scka-canon-rows rows fn-arena h)))
+              (if (eq r :bad) :bad (revappend acc r))))
+     :hints (("Goal" :in-theory (disable fn-row-wire-of fn-scka-intern-one fn-scka-sealsp)))))
+  (verify-guards fn-scka-canon-rows
+    :hints (("Goal" :in-theory (disable fn-row-wire-of fn-scka-intern-one fn-scka-sealsp)))))
 
 (defthm fn-scka-canon-rows-is-intern-at-of-alpha
   (equal (fn-scka-canon-rows rows fn-arena h)

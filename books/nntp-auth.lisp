@@ -44,8 +44,8 @@
 ; What the configuration holds is a verifier: books/auth-secret.lisp's
 ; (:fn-authsec-v1 salt digest) over the tagged digest of salt || secret, and
 ; fn-auth-checkp is fn-authsec-checkp on it.  The digest is the crypto
-; seam's, executable since books/crypto-attach.lisp attached the SHA-256 of
-; books/sha256.lisp, so the comparison runs on the served path and Python
+; seam's, executable since books/crypto-attach.lisp attached a realiser (BLAKE3,
+; books/blake3.lisp, since store format 10; SHA-256 before), so the comparison runs on the served path and Python
 ; computes nothing ACL2 compares (AGENTS.md's one-owner rule).  That closes
 ; OB-AUTH-DIGEST; the audit entry is updated, not deleted.
 ;

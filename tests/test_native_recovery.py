@@ -26,6 +26,8 @@ DEVELOPER = Path(os.environ.get(
 sys.path.insert(0, str(ROOT / "tools"))
 import run_store  # noqa: E402
 import frame_bridge  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
 
 def missing_enrollment_fixture():
@@ -314,10 +316,10 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         record = frame_bridge.session().store_unframe(transaction)
         name = "records/00000000000000000000.txn"
         (archive / name).write_bytes(record)
-        # The archive's MANIFEST line for the record (sha256sum's format, the
+        # The archive's MANIFEST line for the record (b3sum's format, the
         # lines fn-sxp-manifest renders), after the configuration lines.
         with open(archive / "MANIFEST", "ab") as manifest:
-            manifest.write(hashlib.sha256(record).hexdigest().encode("ascii")
+            manifest.write(blake3_ref.blake3(record).hex().encode("ascii")
                            + b"  " + name.encode("ascii") + b"\n")
         before = {p.relative_to(archive): p.read_bytes()
                   for p in archive.rglob("*") if p.is_file()}

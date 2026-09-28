@@ -361,20 +361,20 @@
 (assert-event (equal (fn-native-operator-result-archive-path-octets *fn-nop-import*)
                      (fn-record-string-octets "/tmp/a")))
 (assert-event (equal (fn-native-operator-result-import-request *fn-nop-import*)
-                     '(:current ((2 . 1000)))))
+                     '(:current ((1 . 1000)))))
 (assert-event (equal (fn-native-operator-result-import-request
                       (fn-nop-t-store "import" "/tmp/a"))
                      '(:current nil)))
 (assert-event (equal (fn-native-operator-result-import-request
                       (fn-nop-t-store "import" "/tmp/a" "--max-transactions" "100000"
                                       "--max-article-octets" "20000"))
-                     '(:current ((2 . 100000) (5 . 20000)))))
-; D31: the history requirement takes a word, never a decimal.
-(assert-event (equal (fn-native-operator-result-import-request
-                      (fn-nop-t-store "import" "/tmp/a" "--history-marker" "required"))
-                     '(:current ((14 . 1)))))
+                     '(:current ((1 . 100000) (4 . 20000)))))
+; Format 10 has no committed-history marker: the flag names no field.
 (assert-event (equal (fn-native-operator-exit-code
-                      (fn-nop-t-store "import" "/tmp/a" "--history-marker" "1"))
+                      (fn-nop-t-store "import" "/tmp/a" "--history-marker" "required"))
+                     5))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-nop-t-store "import" "/tmp/a" "--history-marker" "0"))
                      5))
 ; --profile is refused (the archive's profile is the base), and so are a
 ; relative directory, a repeated field, a value that is not a decimal frame
@@ -695,7 +695,7 @@
                            '("init" "--max-transactions" "1000"
                              "--max-article-octets" "20000" "fn.letters"))))
 (assert-event (equal (fn-native-operator-result-init-profile *fn-nop-init-fields*)
-                     '(:default ((2 . 1000) (5 . 20000)))))
+                     '(:default ((1 . 1000) (4 . 20000)))))
 (assert-event (equal (fn-native-operator-result-init-group-octets *fn-nop-init-fields*)
                      (list (fn-record-string-octets "fn.letters"))))
 ; A request that breaks a relation is refused at init, by the relation's
@@ -1077,7 +1077,7 @@
 (assert-event
  (equal (fn-nop-developer-init '("--profile" "default" "--max-article-octets" "65536"
                                  "fn.test"))
-        '(:init ("fn.test") (:default ((5 . 65536))))))
+        '(:init ("fn.test") (:default ((4 . 65536))))))
 (assert-event (equal (fn-nop-developer-init nil) '(:init nil (:development nil))))
 (assert-event
  (equal (fn-nop-developer-init '("fn.test" "fn.other"))

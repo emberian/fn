@@ -93,16 +93,18 @@ its host Lisp/runtime, cryptographic primitive implementations, the I/O adapter,
 and stated platform assumptions. Claims grow only as refinement and integration
 evidence appear. See [failures](../specs/failures.md) and [proofs](proofs.md).
 
-**The digest left that boundary on 2026-09-20.** `books/sha256.lisp` defines
-FIPS 180-4 SHA-256 over octet lists as a total, guard-verified ACL2 function,
-and `books/crypto-attach.lisp` attaches it to both digest seams — `fn-digest`
+**The digest left that boundary on 2026-09-20.** `books/blake3.lisp` defines
+BLAKE3 over octet lists as a total, guard-verified ACL2 function (SHA-256's
+`books/sha256.lisp` until 2026-09-28, store format 10; SHA-256 now remains only
+as RFC 8315's Cancel-Lock hash), and `books/crypto-attach.lisp` attaches it
+(through its buffer twin `books/blake3-stobj.lisp`) to both digest seams — `fn-digest`
 (`books/crypto-seam.lisp`) and `fn-frame-digest` (`books/frame-octets.lisp`) —
 after discharging every constraint each `encapsulate` states. So the digest is
-now **computed in logic by a proved-executable definition**: no host SHA-256
+now **computed in logic by a proved-executable definition**: no host digest
 stands behind a content identity, an AUTHINFO verifier or a frame the core
 reasons about, and the identity derivation has one owner. Agreement with the
 standard is by evaluation against the published vectors
-(`tests/acl2/sha256-tests.lisp`), which is evidence, not a proof that the
+(`tests/acl2/blake3-tests.lisp`, the BLAKE3 repository's vectors), which is evidence, not a proof that the
 definition and the document agree on every input.
 
 What remains assumed is unchanged and is stated as before: **collision
@@ -122,8 +124,8 @@ bytes and the declared profile/principal/keyset. The digest proof says nothing
 about either signature primitive or their integration.
 
 **SHA-512 has not left the boundary, and the freshness anchor names what it
-still trusts.** There is no SHA-512 anywhere in `books/`: `books/sha256.lisp`
-is the only hash in logic and Roughtime's Merkle fold is SHA-512. So
+still trusts.** There is no SHA-512 anywhere in `books/`: `books/blake3.lisp` and
+`books/sha256.lisp` are the only hashes in logic and Roughtime's Merkle fold is SHA-512. So
 `fn-anchor-leaf-digest` (`books/anchor.lisp`) is constrained to "64 octets"
 and nothing else; no book attaches a realiser to it. Native
 `fnn-crypto-anchor-leaf` supplies SHA-512 of `0x00 || nonce`; the development
@@ -166,8 +168,9 @@ context of acceptance must be recoverable.
 The first usable site has configured unmoderated groups, a complete planned
 NNTP reader/posting surface, and all accepted visible articles retained. BP-backed disconnected exchange
 proceeds alongside this local service under the same acceptance and retention
-contracts. D17 selects NNTP and command-line clients first; a web reader/composer
-comes later. 9p views, private correspondence and moderation are also later
+contracts. D17 selects NNTP and command-line clients first; the web
+reader/composer is the node's own web face (WEB-005), an HTTP listener inside
+the node whose pages ACL2 renders from its own NNTP replies. 9p views, private correspondence and moderation are also later
 interfaces or policy features. D01 fixes the native source boundary: exact
 authored bytes are signed, with mutable NNTP trace and gateway injection records
 in separate projections. D09 requires both Ed25519 and ML-DSA-65 for native

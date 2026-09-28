@@ -39,8 +39,14 @@ with an export, then an import with --max-transactions.
 *Backups:* Stop, copy the node folder, start. Exports omit keys.
 
 *New releases:* A fresh install; the node folder stays. If the new
-release refuses the store (store-format or older-release), export
-with the old release first, then import with the new:
+release refuses the store (store-format-9, store-format or
+older-release), export with the old release first, then import with
+the new. Format 10 gives the store a new genesis (a new node identity
+and history salt, recorded in the log) and a new digest, BLAKE3: your
+articles and groups are unchanged, but after the import accounts must
+be enrolled again, pending invitations are void, posting-account
+pseudonyms change, and a poster cannot cancel an older article with
+their own Cancel-Lock (an operator cancel still works):
 
     fn operator CONFIG store export /var/lib/fn-export
     fn operator CONFIG store import /var/lib/fn-export

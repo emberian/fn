@@ -225,7 +225,7 @@ and every allocation. `tools/run_store.py` computes none of this: `frame` and
 `fn-frame-store-decode`.
 
 Assumed, as A-CRYPTO: the trailer function. ACL2 constrains `fn-frame-digest`
-to yield 32 octets and knows nothing else about it; SHA-256 is computed by the
+to yield 32 octets and knows nothing else about it; BLAKE3 is computed by the
 host over byte strings it does not interpret, and the theorems that connect the
 host's entry points to the specification name `fn-frame-digest` in their
 hypotheses. An integrity trailer detects the classes of damage covered by that

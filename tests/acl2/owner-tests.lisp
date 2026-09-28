@@ -337,8 +337,8 @@
 (defconst *own-auth-principal* (make-list 32 :initial-element 7))
 (defconst *own-auth-salt* (make-list 16 :initial-element 3))
 (defconst *own-auth-digest*
-  '(60 237 250 71 154 204 168 180 72 224 241 93 232 185 72 59
-    73 5 240 237 54 116 175 93 127 219 39 238 113 83 63 194))
+  '(42 82 187 10 181 221 230 125 199 188 135 91 193 55 205 245
+    177 50 208 139 71 236 67 86 54 24 223 76 55 144 61 51))
 (defconst *own-auth-cred*
   (fn-auth-make-cred
    (fn-nntp-string-octets "reader") *own-auth-principal*
@@ -2356,3 +2356,10 @@
 (assert-event (own-dist-antecedent *own-cancel-queued* "out"))
 (must-fail-checked (assert-event (own-dist-antecedent-q *own-cancel-queued* "out")))
 (must-fail-checked (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-queued*))))
+
+; The walk by a loop (PKT-876, PRF-352): the :exec branch runs here, in
+; order, and over 50,000 elements.
+(assert-event (equal (fn-own-take 3 '(a b c d)) '(a b c)))
+(assert-event (equal (fn-own-take 9 '(a b . c)) '(a b)))
+(assert-event (equal (fn-own-take 0 '(a b)) nil))
+(assert-event (equal (len (fn-own-take 50000 (make-list 60000))) 50000))

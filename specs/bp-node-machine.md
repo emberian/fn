@@ -586,7 +586,7 @@ outcome's `commitment` (§4.1 step 4); the destination and ADU checks of
 §4.4 read `destination` and `adu-id`; retirement reads `expiry-evidence`.
 A commitment comparison concludes equality of digests, and the claim that
 the immutable projections are equal is made only under the collision
-assumption of the digest in use, with its collision figure (SHA-256: about
+assumption of the digest in use, with its collision figure (BLAKE3 since store format 10, SHA-256 before: about
 2^-128 for a chosen pair) quoted beside it; it is never stated as an
 exact-byte theorem. `fn-bpn-machine-statep` requires every live entry with
 a submission to have an outcome whose `commitment` is the digest of that
@@ -1979,7 +1979,7 @@ deploys (D34).
 - A live request is compared with an intent through its reference
   (`fn-bpaj-intent-names-requestp`), and a Store record with an intent
   through the projection's length and digest. Two different byte strings of
-  one length and digest (a SHA-256 collision; for n distinct articles at
+  one length and digest (a BLAKE3 collision; for n distinct articles at
   most n(n-1)/2^257) would be taken for one: the scope, named by
   `fn-bpaj-one-reference-is-one-request-or-a-digest-collision`.
 - KEYSTONES: `fn-bpaj-ref-request-resolves-exactly` and `-to-the-bytes`;

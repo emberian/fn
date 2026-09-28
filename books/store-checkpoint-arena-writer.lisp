@@ -64,11 +64,31 @@
 ; The run's octets, from the payloads' lengths and its segment count: every
 ; segment its header and its trailer, the head chunk (the tag and N), and
 ; each payload its length's octets and its own.
-(defun fn-scka-enc-lens-sum (lens)
-  (declare (xargs :guard (nat-listp lens)))
+; Executes by a loop (PKT-876, lane open-depth): one frame per payload of the
+; checkpoint.  The :logic is the recursion, unchanged; equal by the guard proof.
+(defun fn-scka-enc-lens-sum-acc (lens acc)
+  (declare (xargs :guard (and (nat-listp lens) (acl2-numberp acc))))
   (if (atom lens)
-      0
-    (+ (fn-scka-enc-len (nfix (car lens))) (fn-scka-enc-lens-sum (cdr lens)))))
+      acc
+    (fn-scka-enc-lens-sum-acc (cdr lens) (+ acc (fn-scka-enc-len (nfix (car lens)))))))
+
+(defun fn-scka-enc-lens-sum (lens)
+  (declare (xargs :guard (nat-listp lens) :verify-guards nil))
+  (mbe :logic
+       (if (atom lens)
+           0
+         (+ (fn-scka-enc-len (nfix (car lens))) (fn-scka-enc-lens-sum (cdr lens))))
+       :exec (fn-scka-enc-lens-sum-acc lens 0)))
+
+(encapsulate ()
+  (local
+   (defthm fn-scka-enc-lens-sum-acc-is-plus
+     (implies (acl2-numberp acc)
+              (equal (fn-scka-enc-lens-sum-acc lens acc)
+                     (+ acc (fn-scka-enc-lens-sum lens))))
+     :hints (("Goal" :in-theory (disable fn-scka-enc-len)))))
+  (verify-guards fn-scka-enc-lens-sum
+    :hints (("Goal" :in-theory (disable fn-scka-enc-len)))))
 
 (defun fn-scka-run-octets (lens count)
   (declare (xargs :guard (and (nat-listp lens) (natp count))))

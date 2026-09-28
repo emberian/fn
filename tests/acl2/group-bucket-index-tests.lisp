@@ -123,3 +123,10 @@
            session archive (fn-gidx-build (fn-state-articles archive)) args)
           (fn-nntp-listgroup-command session archive args))
    :hints (("Goal" :do-not-induct t))))
+
+; The walk by a loop (PKT-876, PRF-352): the :exec branch runs here, in
+; order, and over 50,000 elements.
+(assert-event (equal (fn-gidx-build-entries nil) nil))
+(assert-event (equal (fn-gidx-build-entries (fn-index-build (list *gix-a* *gix-b* *gix-c*)))
+                     (fn-gidx-build-entries-loop
+                      (reverse (fn-index-build (list *gix-a* *gix-b* *gix-c*))) nil)))

@@ -174,12 +174,12 @@
                               elen))))))
 
 (defthm pxt-entry-ok-witness
-  (fn-arx-entry-ok (append '(1 2 3) (fn-sha256 '(1 2 3))) 3)
+  (fn-arx-entry-ok (append '(1 2 3) (fn-blake3 '(1 2 3))) 3)
   :rule-classes nil)
 
 ; A torn trailer (zeros) and a short read are refused.
 (assert-event (not (fn-arx-entry-ok (append '(1 2 3) (make-list 32 :initial-element 0)) 3)))
-(assert-event (not (fn-arx-entry-ok (append '(1 2) (fn-sha256 '(1 2 3))) 3)))
+(assert-event (not (fn-arx-entry-ok (append '(1 2) (fn-blake3 '(1 2 3))) 3)))
 
 ;; The places, against the log's OWN encoder: two batches written as
 ;; fn-lg-log writes them (the second chained from the first's last trailer),

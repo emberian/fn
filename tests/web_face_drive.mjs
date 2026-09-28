@@ -1,14 +1,17 @@
-// The friend rehearsal's browser (SCN-185, WEB-004): a friend's first visit
-// to the web reader a release installed beside its node.
+// A friend's first visit to the node's own web face (WEB-005, SCN-187), in a
+// real Chromium: make the account from an invitation code, read, post, see
+// the post, remove it, sign out and in, and the same pages on a phone.
 //
-//   node tests/fn_reader_friend_drive.mjs BASE_URL SECRETS_JSON OUT_DIR
+//   node tests/web_face_drive.mjs BASE_URL SECRETS_JSON OUT_DIR
 //
-// BASE_URL reaches Caddy in front of clients/bin/fn-reader in the rehearsal
-// container (an ssh -L tunnel to hbox; Caddy's own local CA, so HTTPS errors
-// are ignored; FN_DRIVE_RESOLVE below). SECRETS_JSON holds the invitation code, the password the
-// friend chooses, and the subject of the welcome post the operator made;
-// the password is never written to OUT_DIR. Every check records what the
-// page showed; the node decided it.
+// BASE_URL reaches the face of a scratch node that tests/web_face_scratch.sh
+// set up ([web] tls = true, so the cookie is Secure; an ssh -L tunnel to
+// hbox; the node's self-made certificate, so HTTPS errors are ignored;
+// FN_DRIVE_RESOLVE below). SECRETS_JSON holds the invitation code, the
+// password the friend chooses, and the subject and body of the welcome post
+// the operator made; the password is never written to OUT_DIR. Every check
+// records what the page showed; the node decided it. The same 16 checks the
+// Python reader's rehearsal made (planning/evidence/release-web-reader-2026-09-27.md).
 import { chromium } from "/Users/ember/tools/playwright/node_modules/playwright/index.mjs";
 import fs from "node:fs";
 import path from "node:path";
@@ -29,8 +32,8 @@ async function shot(page, name) {
   await page.screenshot({ path: path.join(out, name + ".png"), fullPage: true });
 }
 
-// FN_DRIVE_RESOLVE=NAME:ADDRESS maps the web name to the tunnel's end, so the
-// browser sends the name Caddy serves (Host and Origin) while dialing the tunnel.
+// FN_DRIVE_RESOLVE=NAME:ADDRESS maps a web name to the tunnel's end, so the
+// browser sends that name (Host and Origin) while dialing the tunnel.
 const resolve = process.env.FN_DRIVE_RESOLVE;
 const browser = await chromium.launch(resolve ? {
   args: ["--host-resolver-rules=MAP " + resolve.split(":")[0] + " " + resolve.split(":")[1]] } : {});
@@ -56,7 +59,7 @@ await page.goto(base + "/");
 check("a new visitor is sent to the sign-in page", page.url().includes("/signin"));
 await shot(page, "01-sign-in");
 
-// The invitation: the friend makes the account here (the node's own `fn redeem`).
+// The invitation: the friend makes the account here (the node's own XREDEEM).
 await page.click("a:has-text('Make your account')");
 await shot(page, "02-make-account");
 await page.fill("#code", secrets.code);
@@ -106,7 +109,7 @@ await page.goto(base + "/g?name=local.general");
 check("the post is gone from the group", !(await page.textContent("main")).includes("Hello from carol"));
 await shot(page, "12-group-after");
 
-// The session cookie: HttpOnly and Secure behind the HTTPS proxy.
+// The session cookie: HttpOnly and Secure (the face serves HTTPS itself).
 const cookie = (await context.cookies()).find((c) => c.name === "fnr_session");
 check("the session cookie is HttpOnly and Secure", cookie && cookie.httpOnly && cookie.secure,
       JSON.stringify(cookie && { httpOnly: cookie.httpOnly, secure: cookie.secure, sameSite: cookie.sameSite }));

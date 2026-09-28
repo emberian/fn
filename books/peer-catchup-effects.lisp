@@ -130,12 +130,12 @@
                             (xs (mv-nth 1 (fn-cu-select articles from groups trie
                                                         quantum fn-arena))))))))
 
-(defthm fn-cu-len-sha256-stobj
-  (equal (len (fn-sha256-stobj m)) 32)
-  :hints (("Goal" :use ((:instance fn-sha256-stobj-is-sha256)
-                        (:instance fn-sha256-shape))
-           :in-theory (disable fn-sha256-shape fn-sha256-stobj-is-sha256
-                               fn-sha256-stobj fn-sha256))))
+(defthm fn-cu-len-blake3-stobj
+  (equal (len (fn-blake3-stobj m)) 32)
+  :hints (("Goal" :use ((:instance fn-blake3-stobj-is-blake3)
+                        (:instance fn-blake3-shape))
+           :in-theory (disable fn-blake3-shape fn-blake3-stobj-is-blake3
+                               fn-blake3-stobj fn-blake3))))
 
 (local
  (defthm fn-cu-octet-listp-true-listp
@@ -155,7 +155,7 @@
    (implies (and (true-listp chain) (equal (len chain) 32))
             (equal (len (fn-cu-chain-over chain articles fn-arena)) 32))
    :hints (("Goal" :in-theory (e/d (fn-cu-chain-step fn-cu-list)
-                                   (fn-sha256-stobj fn-nntp-article-bytes))))))
+                                   (fn-blake3-stobj fn-nntp-article-bytes))))))
 
 ; KEYSTONE (PRF-325; books/nntp-pinned-effects.lisp cites it for the
 ; XFNCATCHUP arm of `fn-nntp-command-pinned').

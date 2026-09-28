@@ -14,7 +14,7 @@
 ; history.  Hypothesis-removal witnesses check every retained hypothesis,
 ; the failure of the omitted one and of the conclusion; corrupted-file
 ; (mutation) witnesses are labelled.  (Attachments evaluate in assert-event
-; and defun bodies: the seal is fn-sha256's.)
+; and defun bodies: the seal is fn-blake3's.)
 
 (in-package "ACL2")
 (include-book "std/testing/must-fail" :dir :system)
@@ -721,3 +721,10 @@
             :in-theory (e/d (fn-scka-publication-setup fn-ockp-setup fn-ockp-space fn-ockp-decide)
                             (fn-sct-file-octets fn-sct-table-programs fn-ockp-counts
                              fn-ockp-tables-encodablep))))))
+
+; The walk by a loop (PKT-876, PRF-352): the :exec branch runs here, in
+; order, and over 50,000 elements.
+(assert-event (equal (fn-scka-enc-lens-sum '(1 200 70000))
+                     (+ (fn-scka-enc-len 1) (fn-scka-enc-len 200) (fn-scka-enc-len 70000))))
+(assert-event (equal (fn-scka-enc-lens-sum (make-list 50000 :initial-element 3))
+                     (* 50000 (fn-scka-enc-len 3))))

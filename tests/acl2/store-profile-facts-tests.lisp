@@ -8,14 +8,14 @@
 (defconst *spft-dev* *fn-bs-profile-development*)
 (defconst *spft-scale* *fn-bs-profile-scale*)
 
-; The presets, field by field (T H R A G N K, the five counts, the marker).
-(assert-event (equal (cddr *spft-dev*)
+; The presets, field by field (T H R A G N K, the five counts, the header limits).
+(assert-event (equal (cdr *spft-dev*)
                      (list 128 25165824 17138486 32768 65535 256 128
-                           1048576 1048576 1048576 1048576 1048576 0
+                            1048576 1048576 1048576 1048576 1048576
                            64 256 16384)))
-(assert-event (equal (cddr *spft-scale*)
+(assert-event (equal (cdr *spft-scale*)
                      (list 4096 805306368 17138486 32768 65535 256 4096
-                           1048576 1048576 1048576 1048576 1048576 0
+                            1048576 1048576 1048576 1048576 1048576
                            64 256 16384)))
 (assert-event (fn-bs-profile-validp *spft-dev*))
 (assert-event (fn-bs-profile-validp *spft-scale*))
@@ -28,7 +28,7 @@
 (assert-event (equal (fn-bs-config-decode (fn-bs-config-frame-for-profile :scale))
                      *spft-scale*))
 (defconst *spft-raised*
-  (fn-bs-profile-set-fields *spft-dev* '((2 . 1000) (3 . 1099511627776))))
+  (fn-bs-profile-set-fields *spft-dev* '((1 . 1000) (2 . 1099511627776))))
 (assert-event (fn-bs-profile-validp *spft-raised*))
 (assert-event (equal (fn-bs-config-decode (fn-bs-config-encode *spft-raised*))
                      *spft-raised*))

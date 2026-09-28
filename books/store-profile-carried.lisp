@@ -107,15 +107,15 @@
 
 (defun fn-pvc-budget (v profile kind)
   (declare (xargs :guard t))
-  (if (and v (<= (fn-store-publication-ceiling kind) (fn-pvc-pf v 4 profile)))
-      (fn-pvc-pf v 2 profile)
+  (if (and v (<= (fn-store-publication-ceiling kind) (fn-pvc-pf v *fn-bs-pf-max-record-octets* profile)))
+      (fn-pvc-pf v *fn-bs-pf-max-transactions* profile)
     0))
 
 (defun fn-pvc-history-admissiblep (v profile committed-octets prospective-octets)
   (declare (xargs :guard t))
   (and v
        (natp committed-octets) (natp prospective-octets)
-       (<= (+ committed-octets prospective-octets) (fn-pvc-pf v 3 profile))))
+       (<= (+ committed-octets prospective-octets) (fn-pvc-pf v *fn-bs-pf-max-history-octets* profile))))
 
 (defun fn-pvc-sbud-verdict-at (v profile kind used bytes-used)
   (declare (xargs :guard t))
@@ -178,10 +178,10 @@
   (declare (xargs :guard t))
   (cond ((not (fn-af-message-idp msgid)) :bad-message-id)
         ((or (not (natp payload-length))
-             (< (fn-pvc-pf v 5 profile) payload-length))
+             (< (fn-pvc-pf v *fn-bs-pf-max-article-octets* profile) payload-length))
          :payload-bound)
         ((or (not (posp group-count))
-             (< (fn-pvc-pf v 6 profile) group-count))
+             (< (fn-pvc-pf v *fn-bs-pf-max-groups-per-article* profile) group-count))
          :group-bound)
         ((or (not (posp charge)) (< *fn-cbor-max-uint* charge))
          :charge-bound)

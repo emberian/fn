@@ -1,0 +1,12 @@
+# Caddy in front of the node's own web face (share/fn/caddy/fn-web.caddy).
+# `install.sh --reader' adds a [web] table to the node's fn.toml: the face
+# listens on 127.0.0.1:8920 with `proxied = true'.  Put this block in
+# /etc/caddy/Caddyfile, with the web name your friends will type instead of
+# news.example.org, then: systemctl reload caddy.  Caddy gets the HTTPS
+# certificate for that name by itself (the name must point at this machine,
+# and ports 80 and 443 must reach it).  Caddy keeps the Host header and sets
+# X-Forwarded-For, whose last entry the node reads as the browser's address
+# because the request comes from loopback and the table says proxied.
+news.example.org {
+	reverse_proxy 127.0.0.1:8920
+}

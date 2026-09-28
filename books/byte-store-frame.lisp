@@ -8,13 +8,15 @@
 ; grammar and its ACL2-owned trailer; the host only moves the resulting
 ; octets to and from regular files.
 ;
-; A store has one format (D34, fresh deploys): format 9, the record log.
-; Older metadata (JSON, or a profile frame of any other format word) is
-; refused at open by name (books/store-profile-open.lisp, :store-format); an
-; operator reinstalls from the release and imports.  A format-8 profile
-; still DECODES, for `store import' of an archive the previous release
-; exported (books/store-export.lisp), and no image opens a store under it.
-; This book never interprets or rewrites older metadata.
+; A store has one format (D34, fresh deploys): format 10, the record log with
+; its genesis (books/store-genesis.lisp).  Older metadata (JSON, or a profile
+; frame of any other format word) is refused at open by name
+; (books/store-profile-open.lisp: `:store-format-9' for the release before,
+; `:store-format' otherwise); an operator exports with the release that made
+; the store and imports here.  A format-9 profile DECODES only in the archive
+; reader of `store import' (books/store-export.lisp fn-sxp-config-decode-
+; archive); no image opens a store under it.  This book never interprets or
+; rewrites older metadata.
 
 (in-package "ACL2")
 (include-book "byte-store-scan")
@@ -78,79 +80,76 @@
 ; (`fn-bs-profile-validp') and the codec ceilings no field may pass, so that a
 ; profile the operator can write is one every codec can carry.
 ;
-; Format 8 (`fn-store-8') was the per-file layout (transactions/, the
-; allocation frontier file, packs, the committed-history marker), deleted on
-; 2026-09-27.  Its word stays a valid profile word for one reason: `store
-; import' reads the profile of an archive the previous release exported from
-; a format-8 store.  The open refuses it by name (books/store-profile-open
-; .lisp, :store-format); nothing writes it.
-(defconst *fn-bs-meta-format-8*
-  '(102 110 45 115 116 111 114 101 45 56)) ; fn-store-8
-; Format 9 (`fn-store-9', lane commit-onto-log, planning/design-2026-09-27-
-; storage-log.md section 5.3): the same profile fields; the store commits
-; through the record log (journal/000001.log, books/store-log*.lisp) and holds
-; no allocation frontier, transactions/ directory or committed-history
-; marker.  Format 9 is what `init' writes and the one format an image opens;
-; the commit route of an opened store is `fn-bs-profile-logp' of its profile.
+; Format 9 (`fn-store-9', lane commit-onto-log) was the record log without a
+; genesis, under a profile of two texts (the word and the allocation
+; frontier's format word) and sixteen naturals.  Its word stays a constant for
+; two readers only: the open names a format-9 store in its refusal
+; (books/store-profile-open.lisp, :store-format-9, with the way out), and
+; `store import' reads the profile of an archive the previous release
+; exported (books/store-export.lisp fn-sxp-config-decode-archive).  Nothing
+; writes it and no image opens it (D34).
 (defconst *fn-bs-meta-format-9*
   '(102 110 45 115 116 111 114 101 45 57)) ; fn-store-9
+; Format 10 (`fn-store-10', lane format-bump-10): the record log whose
+; position 0 is the store's GENESIS (journal/000000.log, books/store-
+; genesis.lisp: node identity, format, schema digest, profile digest, the
+; history salt, the created-at reading, the image revision), the stored
+; digests BLAKE3 through the digest seams (books/crypto-seam.lisp
+; `fn-digest', books/frame-octets.lisp `fn-frame-digest'), content
+; identities of algorithm 2, and the profile below without the two fields
+; format 9 carried and never read (the allocation frontier's format word and
+; the committed-history marker).  Format 10 is what `init' and `store import'
+; write and the one format an image opens.
+(defconst *fn-bs-meta-format-10*
+  '(102 110 45 115 116 111 114 101 45 49 48)) ; fn-store-10
 
 (defun fn-bs-meta-formatp (word)
   (declare (xargs :guard t))
-  (or (equal word *fn-bs-meta-format-8*)
-      (equal word *fn-bs-meta-format-9*)))
-(defconst *fn-bs-meta-frontier-format*
-  '(102 110 45 115 116 111 114 101 45 97 108 108 111 99 97 116 105
-    111 110 45 102 114 111 110 116 105 101 114 45 50))
+  (equal word *fn-bs-meta-format-10*))
 
 (defun fn-bs-meta-nth (n values)
   (declare (xargs :guard (natp n) :measure (nfix n)))
   (if (zp n) (if (consp values) (car values) nil)
     (fn-bs-meta-nth (1- n) (if (consp values) (cdr values) nil))))
 
-; The profile's fields (formats 8 and 9 share them): two texts, then sixteen
-; eight-octet frame naturals, in this order.  Field 14 is the per-file
-; layout's committed-history requirement (D31): 0 `unmarked', 1 `required'.
-; A format-9 store has no marker (the log's last complete entry is the
-; committed history, M := D), `init' refuses `required', and
-; books/store-history-required.lisp was deleted 2026-09-27 with the per-file
-; layout (PKT-838): the field is carried, never read for a decision.  Fields
-; 15 to 17 are the header limits (D27, lane header-limits-profile: one
-; format, D34, so the layout grows and fresh installs write it).
+; The profile's fields (format 10): the format word, then fifteen eight-octet
+; frame naturals, in this order.  Fields 13 to 15 are the header limits (D27,
+; lane header-limits-profile).  Per-store codec and policy switches are
+; configuration rows in the log, never profile fields (the coordinator's
+; decision of 2026-09-27: a profile field is a layout event under D34).
 (defconst *fn-bs-meta-profile-spec*
-  '(:text :text :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat
-    :nat :nat :nat))
+  '(:text :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat
+    :nat))
 
-(defconst *fn-bs-pf-max-transactions* 2)        ; T
-(defconst *fn-bs-pf-max-history-octets* 3)      ; H
-(defconst *fn-bs-pf-max-record-octets* 4)       ; R
-(defconst *fn-bs-pf-max-article-octets* 5)      ; A
-(defconst *fn-bs-pf-max-groups-per-article* 6)  ; G
-(defconst *fn-bs-pf-max-group-name-octets* 7)
-(defconst *fn-bs-pf-max-open-suffix* 8)         ; K
-(defconst *fn-bs-pf-max-consumers* 9)
-(defconst *fn-bs-pf-max-bp-rows* 10)
-(defconst *fn-bs-pf-max-config-generations* 11)
-(defconst *fn-bs-pf-max-credentials* 12)
-(defconst *fn-bs-pf-max-policy-members* 13)
-(defconst *fn-bs-pf-history-marker* 14)         ; 0 unmarked, 1 required
+(defconst *fn-bs-pf-max-transactions* 1)        ; T
+(defconst *fn-bs-pf-max-history-octets* 2)      ; H
+(defconst *fn-bs-pf-max-record-octets* 3)       ; R
+(defconst *fn-bs-pf-max-article-octets* 4)      ; A
+(defconst *fn-bs-pf-max-groups-per-article* 5)  ; G
+(defconst *fn-bs-pf-max-group-name-octets* 6)
+(defconst *fn-bs-pf-max-open-suffix* 7)         ; K
+(defconst *fn-bs-pf-max-consumers* 8)
+(defconst *fn-bs-pf-max-bp-rows* 9)
+(defconst *fn-bs-pf-max-config-generations* 10)
+(defconst *fn-bs-pf-max-credentials* 11)
+(defconst *fn-bs-pf-max-policy-members* 12)
 ; The header limits of one article (D27; books/article `fn-article-parse-
 ; under'): fields, physical lines and octets of the header.
-(defconst *fn-bs-pf-max-header-fields* 15)
-(defconst *fn-bs-pf-max-header-lines* 16)
-(defconst *fn-bs-pf-max-header-octets* 17)
+(defconst *fn-bs-pf-max-header-fields* 13)
+(defconst *fn-bs-pf-max-header-lines* 14)
+(defconst *fn-bs-pf-max-header-octets* 15)
 
 ; The fields in order, with the operator's name for each (the `init' and
 ; `store import' flag is `--' followed by the name).
 (defconst *fn-bs-profile-field-names*
-  '((2 . "max-transactions") (3 . "max-history-octets")
-    (4 . "max-record-octets") (5 . "max-article-octets")
-    (6 . "max-groups-per-article") (7 . "max-group-name-octets")
-    (8 . "max-open-suffix") (9 . "max-consumers") (10 . "max-bp-rows")
-    (11 . "max-config-generations") (12 . "max-credentials")
-    (13 . "max-policy-members") (14 . "history-marker")
-    (15 . "max-header-fields") (16 . "max-header-lines")
-    (17 . "max-header-octets")))
+  '((1 . "max-transactions") (2 . "max-history-octets")
+    (3 . "max-record-octets") (4 . "max-article-octets")
+    (5 . "max-groups-per-article") (6 . "max-group-name-octets")
+    (7 . "max-open-suffix") (8 . "max-consumers") (9 . "max-bp-rows")
+    (10 . "max-config-generations") (11 . "max-credentials")
+    (12 . "max-policy-members")
+    (13 . "max-header-fields") (14 . "max-header-lines")
+    (15 . "max-header-octets")))
 
 ; The codec ceilings no field may pass.  Each is the width the codec that
 ; carries the bounded quantity accepts today; packet P2 (codec ceilings) and
@@ -198,16 +197,14 @@
 ; profile (of either format word).  Each is one comparison; the operator verb prints the name.
 (defun fn-bs-profile-invalid-reason (values)
   (declare (xargs :guard t))
-  (let ((tx (fn-bs-pf 2 values)) (h (fn-bs-pf 3 values))
-        (r (fn-bs-pf 4 values)) (a (fn-bs-pf 5 values))
-        (g (fn-bs-pf 6 values)) (n (fn-bs-pf 7 values))
-        (k (fn-bs-pf 8 values)))
+  (let ((tx (fn-bs-pf *fn-bs-pf-max-transactions* values)) (h (fn-bs-pf *fn-bs-pf-max-history-octets* values))
+        (r (fn-bs-pf *fn-bs-pf-max-record-octets* values)) (a (fn-bs-pf *fn-bs-pf-max-article-octets* values))
+        (g (fn-bs-pf *fn-bs-pf-max-groups-per-article* values)) (n (fn-bs-pf *fn-bs-pf-max-group-name-octets* values))
+        (k (fn-bs-pf *fn-bs-pf-max-open-suffix* values)))
     (cond ((not (fn-frame-values-okp *fn-bs-meta-profile-spec* values))
            :layout)
           ((not (fn-bs-meta-formatp (fn-bs-meta-nth 0 values)))
            :format)
-          ((not (equal (fn-bs-meta-nth 1 values) *fn-bs-meta-frontier-format*))
-           :frontier-format)
           ((or (< tx 1) (< *fn-bs-profile-transaction-ceiling* tx))
            :max-transactions-outside-txid-width)
           ((< h r) :max-history-octets-below-max-record-octets)
@@ -231,24 +228,23 @@
           ((< r (fn-record-encoded-octets-ceiling a g))
            :max-record-octets-below-the-article-record)
           ((or (< k 1) (< tx k)) :max-open-suffix-outside-transactions)
-          ((not (and (fn-bs-profile-countp (fn-bs-pf 9 values))
-                     (fn-bs-profile-countp (fn-bs-pf 10 values))
-                     (fn-bs-profile-countp (fn-bs-pf 11 values))
-                     (fn-bs-profile-countp (fn-bs-pf 12 values))
-                     (fn-bs-profile-countp (fn-bs-pf 13 values))))
+          ((not (and (fn-bs-profile-countp (fn-bs-pf *fn-bs-pf-max-consumers* values))
+                     (fn-bs-profile-countp (fn-bs-pf *fn-bs-pf-max-bp-rows* values))
+                     (fn-bs-profile-countp (fn-bs-pf *fn-bs-pf-max-config-generations* values))
+                     (fn-bs-profile-countp (fn-bs-pf *fn-bs-pf-max-credentials* values))
+                     (fn-bs-profile-countp (fn-bs-pf *fn-bs-pf-max-policy-members* values))))
            :namespace-count-outside-width)
-          ((< 1 (fn-bs-pf 14 values)) :history-marker-not-a-word)
           ; The header limits: 1 <= fields <= lines <= octets <= the article
           ; codec's ceiling (a header is part of one article).  The parse
           ; represents any such limits (books/article-header-limits: its work
           ; is linear in the input per line of the line limit, and the
           ; limits are naturals it compares, never allocates).
-          ((or (< (fn-bs-pf 15 values) 1)
-               (< (fn-bs-pf 16 values) (fn-bs-pf 15 values)))
+          ((or (< (fn-bs-pf *fn-bs-pf-max-header-fields* values) 1)
+               (< (fn-bs-pf *fn-bs-pf-max-header-lines* values) (fn-bs-pf *fn-bs-pf-max-header-fields* values)))
            :max-header-fields-outside-lines)
-          ((< (fn-bs-pf 17 values) (fn-bs-pf 16 values))
+          ((< (fn-bs-pf *fn-bs-pf-max-header-octets* values) (fn-bs-pf *fn-bs-pf-max-header-lines* values))
            :max-header-lines-above-octets)
-          ((< *fn-bs-profile-article-ceiling-codec* (fn-bs-pf 17 values))
+          ((< *fn-bs-profile-article-ceiling-codec* (fn-bs-pf *fn-bs-pf-max-header-octets* values))
            :max-header-octets-above-codec)
           (t nil))))
 
@@ -276,7 +272,7 @@
 (defun fn-bs-profile-preset (tx h a)
   (declare (xargs :guard t))
   (let ((h (nfix h)) (tx (nfix tx)) (a (nfix a)))
-    (list *fn-bs-meta-format-9* *fn-bs-meta-frontier-format*
+    (list *fn-bs-meta-format-10*
           tx h
           (max (if (zp tx) 0 (floor h tx))
                (fn-record-encoded-octets-ceiling
@@ -290,7 +286,6 @@
           *fn-bs-profile-default-namespace-count*
           *fn-bs-profile-default-namespace-count*
           *fn-bs-profile-default-namespace-count*
-          0
           *fn-bs-profile-default-header-fields*
           *fn-bs-profile-default-header-lines*
           *fn-bs-profile-default-header-octets*)))
@@ -313,14 +308,11 @@
   (fn-bs-profile-validp (fn-bs-profile-of values)))
 
 ; The commit route of the store a profile opens (lane commit-onto-log): the
-; record log for format 9.  A format-8 profile (the per-file layout) is
-; valid and decodes, for `store import''s migration of an old release's
-; archive (books/store-export.lisp fn-sxp-log-profile), but no image opens it
-; (books/store-profile-open.lisp, :store-format).  A value that is not a
-; profile names no route.
+; record log, for the one format (10).  A value that is not a valid profile
+; names no route.
 (defun fn-bs-profile-logp (values)
   (declare (xargs :guard t))
-  (equal (fn-bs-meta-nth 0 (fn-bs-profile-of values)) *fn-bs-meta-format-9*))
+  (equal (fn-bs-meta-nth 0 (fn-bs-profile-of values)) *fn-bs-meta-format-10*))
 
 ; The named accessors every consumer reads.  Each reads the profile the
 ; store runs under, and a value that is not a valid profile gives 0.
@@ -330,36 +322,34 @@
 
 (defun fn-bs-profile-max-transactions (values)
   (declare (xargs :guard t))
-  (fn-bs-profile-field 2 values))
+  (fn-bs-profile-field *fn-bs-pf-max-transactions* values))
 (defun fn-bs-profile-max-history-octets (values)
   (declare (xargs :guard t))
-  (fn-bs-profile-field 3 values))
+  (fn-bs-profile-field *fn-bs-pf-max-history-octets* values))
 (defun fn-bs-profile-max-record-octets (values)
   (declare (xargs :guard t))
-  (fn-bs-profile-field 4 values))
+  (fn-bs-profile-field *fn-bs-pf-max-record-octets* values))
 ; P2 reads this one: the operator's article bound, which the served POST,
 ; feed, BP ingress and control-socket ceilings are to follow.
 (defun fn-bs-profile-max-article-octets (values)
   (declare (xargs :guard t))
-  (fn-bs-profile-field 5 values))
+  (fn-bs-profile-field *fn-bs-pf-max-article-octets* values))
 (defun fn-bs-profile-max-groups-per-article (values)
   (declare (xargs :guard t))
-  (fn-bs-profile-field 6 values))
+  (fn-bs-profile-field *fn-bs-pf-max-groups-per-article* values))
 (defun fn-bs-profile-max-group-name-octets (values)
   (declare (xargs :guard t))
-  (fn-bs-profile-field 7 values))
+  (fn-bs-profile-field *fn-bs-pf-max-group-name-octets* values))
 (defun fn-bs-profile-max-open-suffix (values)
   (declare (xargs :guard t))
-  (fn-bs-profile-field 8 values))
-; D31: the committed-history requirement of the profile a store runs under.
-; T when absence of the marker is damage (`required'), NIL for `unmarked'.
+  (fn-bs-profile-field *fn-bs-pf-max-open-suffix* values))
 ; The header limits of the profile a store runs under, as the parser takes
 ; them (books/article `fn-article-limits' shape: (FIELDS LINES OCTETS)).
 (defun fn-bs-profile-header-limits (values)
   (declare (xargs :guard t))
-  (list (fn-bs-profile-field 15 values)
-        (fn-bs-profile-field 16 values)
-        (fn-bs-profile-field 17 values)))
+  (list (fn-bs-profile-field *fn-bs-pf-max-header-fields* values)
+        (fn-bs-profile-field *fn-bs-pf-max-header-lines* values)
+        (fn-bs-profile-field *fn-bs-pf-max-header-octets* values)))
 
 ; Kept under its old name: the record ceiling is now field R itself.
 (defun fn-bs-profile-record-ceiling (values)
@@ -393,23 +383,22 @@
   (implies (fn-bs-profile-validp values)
            (and (fn-frame-values-okp *fn-bs-meta-profile-spec* values)
                 (fn-bs-meta-formatp (fn-bs-meta-nth 0 values))
-                (equal (fn-bs-meta-nth 1 values) *fn-bs-meta-frontier-format*)
-                (<= 1 (fn-bs-pf 2 values))
-                (<= (fn-bs-pf 2 values) *fn-bs-profile-transaction-ceiling*)
-                (<= (fn-bs-pf 4 values) (fn-bs-pf 3 values))
-                (<= *fn-bs-profile-min-record-octets* (fn-bs-pf 4 values))
-                (<= (fn-bs-pf 4 values) *fn-bs-profile-record-ceiling-codec*)
-                (<= 1 (fn-bs-pf 5 values))
-                (<= (fn-bs-pf 5 values) *fn-bs-profile-article-ceiling-codec*)
-                (<= 1 (fn-bs-pf 6 values))
-                (<= (fn-bs-pf 6 values) *fn-bs-profile-groups-ceiling-codec*)
-                (<= 1 (fn-bs-pf 7 values))
-                (<= (fn-bs-pf 7 values) *fn-bs-profile-group-name-ceiling-codec*)
-                (<= (fn-record-encoded-octets-ceiling (fn-bs-pf 5 values)
-                                                      (fn-bs-pf 6 values))
-                    (fn-bs-pf 4 values))
-                (<= 1 (fn-bs-pf 8 values))
-                (<= (fn-bs-pf 8 values) (fn-bs-pf 2 values))))
+                (<= 1 (fn-bs-pf *fn-bs-pf-max-transactions* values))
+                (<= (fn-bs-pf *fn-bs-pf-max-transactions* values) *fn-bs-profile-transaction-ceiling*)
+                (<= (fn-bs-pf *fn-bs-pf-max-record-octets* values) (fn-bs-pf *fn-bs-pf-max-history-octets* values))
+                (<= *fn-bs-profile-min-record-octets* (fn-bs-pf *fn-bs-pf-max-record-octets* values))
+                (<= (fn-bs-pf *fn-bs-pf-max-record-octets* values) *fn-bs-profile-record-ceiling-codec*)
+                (<= 1 (fn-bs-pf *fn-bs-pf-max-article-octets* values))
+                (<= (fn-bs-pf *fn-bs-pf-max-article-octets* values) *fn-bs-profile-article-ceiling-codec*)
+                (<= 1 (fn-bs-pf *fn-bs-pf-max-groups-per-article* values))
+                (<= (fn-bs-pf *fn-bs-pf-max-groups-per-article* values) *fn-bs-profile-groups-ceiling-codec*)
+                (<= 1 (fn-bs-pf *fn-bs-pf-max-group-name-octets* values))
+                (<= (fn-bs-pf *fn-bs-pf-max-group-name-octets* values) *fn-bs-profile-group-name-ceiling-codec*)
+                (<= (fn-record-encoded-octets-ceiling (fn-bs-pf *fn-bs-pf-max-article-octets* values)
+                                                      (fn-bs-pf *fn-bs-pf-max-groups-per-article* values))
+                    (fn-bs-pf *fn-bs-pf-max-record-octets* values))
+                (<= 1 (fn-bs-pf *fn-bs-pf-max-open-suffix* values))
+                (<= (fn-bs-pf *fn-bs-pf-max-open-suffix* values) (fn-bs-pf *fn-bs-pf-max-transactions* values))))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (e/d (fn-bs-profile-validp
                                    fn-bs-profile-invalid-reason)
@@ -530,7 +519,7 @@
 (local
  (defthm fn-bs-profile-validp-record-within-the-poll-reply
    (implies (fn-bs-profile-validp values)
-            (<= (fn-bs-pf 4 values) *fn-stxa-max-octets*))
+            (<= (fn-bs-pf *fn-bs-pf-max-record-octets* values) *fn-stxa-max-octets*))
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (e/d (fn-bs-profile-validp
                                     fn-bs-profile-invalid-reason)
@@ -951,23 +940,16 @@
    (implies (fn-bs-profile-validp values)
             (equal (len (fn-frame-fields-octets *fn-bs-meta-profile-spec*
                                                 values))
-                   (+ (len (fn-frame-field-octets :text *fn-bs-meta-format-8*))
-                      (len (fn-frame-field-octets
-                            :text *fn-bs-meta-frontier-format*))
-                      128)))
+                   (+ (len (fn-frame-field-octets :text *fn-bs-meta-format-10*))
+                      120)))
    :hints (("Goal"
             :use ((:instance fn-bs-profile-validp-facts)
                   (:instance fn-bs-all-nat-fields-octets-len
-                             (specs (cddr *fn-bs-meta-profile-spec*))
-                             (values (cddr values))))
+                             (specs (cdr *fn-bs-meta-profile-spec*))
+                             (values (cdr values))))
             :expand ((fn-frame-fields-octets *fn-bs-meta-profile-spec* values)
-                     (fn-frame-fields-octets (cdr *fn-bs-meta-profile-spec*)
-                                             (cdr values))
                      (fn-frame-values-okp *fn-bs-meta-profile-spec* values)
-                     (fn-frame-values-okp (cdr *fn-bs-meta-profile-spec*)
-                                          (cdr values))
-                     (fn-bs-meta-nth 0 values) (fn-bs-meta-nth 1 values)
-                     (fn-bs-meta-nth 0 (cdr values)))
+                     (fn-bs-meta-nth 0 values))
             :in-theory (disable fn-bs-profile-validp-facts
                                 fn-bs-all-nat-fields-octets-len
                                 fn-frame-field-octets
@@ -1056,7 +1038,7 @@
 (defconst *fn-bs-profile-scale*
   (fn-bs-profile-preset 4096 805306368 32768))
 (defconst *fn-bs-profile-defaults*
-  (list *fn-bs-meta-format-9* *fn-bs-meta-frontier-format*
+  (list *fn-bs-meta-format-10*
         *fn-bs-profile-transaction-ceiling*
         1099511627776
         (min 67108864 *fn-bs-profile-record-ceiling-codec*)
@@ -1069,7 +1051,6 @@
         *fn-bs-profile-default-namespace-count*
         *fn-bs-profile-default-namespace-count*
         *fn-bs-profile-default-namespace-count*
-        0
         *fn-bs-profile-default-header-fields*
         *fn-bs-profile-default-header-lines*
         *fn-bs-profile-default-header-octets*))
@@ -1096,7 +1077,7 @@
   (declare (xargs :guard t :measure (len overrides)))
   (if (consp overrides)
       (let ((o (car overrides)))
-        (if (and (consp o) (natp (car o)) (<= 2 (car o))
+        (if (and (consp o) (natp (car o)) (<= 1 (car o))
                  (< (car o) (len *fn-bs-meta-profile-spec*)))
             (fn-bs-profile-set-fields (fn-bs-profile-put (car o) (cdr o) values)
                                       (cdr overrides))
@@ -1132,7 +1113,7 @@
                       ; K follows a lowered T unless the operator named K.
                       (fn-bs-profile-put
                        *fn-bs-pf-max-open-suffix*
-                       (min (fn-bs-pf 8 values) (fn-bs-pf 2 values))
+                       (min (fn-bs-pf *fn-bs-pf-max-open-suffix* values) (fn-bs-pf *fn-bs-pf-max-transactions* values))
                        values))))
       (cond ((equal values :bad) (list :invalid :request))
             ((fn-bs-profile-invalid-reason values)
@@ -1151,12 +1132,6 @@
                                        nil)))
     (cond ((and (consp values) (equal (car values) :invalid))
            (list :refused (if (consp (cdr values)) (cadr values) :request)))
-          ; D31: the requirement becomes durable only over a covering
-          ; marker, and `init' writes no marker, so a store is born
-          ; `unmarked'.  (D34 removed the verb that marked a store later;
-          ; how a store is born `required' is PKT-587.)
-          ((equal (fn-bs-pf 14 values) 1)
-           (list :refused :history-marker-required-before-a-marker))
           (t (list :init (fn-bs-config-encode values))))))
 
 (defun fn-bs-config-frame-for-profile (profile)
@@ -1166,15 +1141,13 @@
     (if (equal (car verdict) :init) (cadr verdict) nil)))
 
 ; The operator's view of the profile a store runs under: the format it is
-; persisted in (9: the open refuses any other) and every field by its
+; persisted in (10: the open refuses any other) and every field by its
 ; operator name, read through `fn-bs-profile-of' (0 for a value that is not
 ; a profile).  `operator status' prints it; the host formats, never computes.
 (defun fn-bs-profile-report-value (i values)
-  "Field I as the operator reads it: the word for the history requirement."
+  "Field I as the operator reads it."
   (declare (xargs :guard (natp i)))
-  (if (equal i 14)
-      (if (equal (fn-bs-profile-field 14 values) 1) "required" "unmarked")
-    (fn-bs-profile-field i values)))
+  (fn-bs-profile-field i values))
 
 (defun fn-bs-profile-report-fields (names values)
   (declare (xargs :guard t))
@@ -1190,13 +1163,13 @@
   (declare (xargs :guard t))
   (cons (cons "format"
               (if (fn-bs-profile-validp values)
-                  (if (fn-bs-profile-logp values) 9 8)
+                  10
                 0))
         (fn-bs-profile-report-fields *fn-bs-profile-field-names* values)))
 
 ; These stay functions rather than defconsts: ACL2 deliberately ignores a
 ; defattach while evaluating a defconst, whereas the serving bridge evaluates
-; these ground calls through the SHA-256 attachment.
+; these ground calls through the digest attachment.
 (defun fn-bs-initial-config-octets ()
   (fn-bs-config-frame-for-profile :development))
 

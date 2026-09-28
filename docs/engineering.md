@@ -34,8 +34,9 @@ command, one configuration file and a service unit -- see the
 [`packaging/`](../packaging/fn.toml.example). To read and post on a node that is
 already running, from a laptop or from an agent, see
 [agents on an fn node](agents.md).
-The experimental [local human reader](human-web-client.md) uses the same NNTP
-client path in a separate loopback web process.
+People read with [newsreaders](human-web-client.md) or in a browser, on the
+node's own [web page](web.md), whose sessions are the node's own reader
+connections.
 
 For concrete representation discussions, see the proposed
 [article-byte examples](article-byte-examples.md). For the current local adapter,

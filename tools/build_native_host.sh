@@ -76,6 +76,14 @@ case $(uname -s) in
   *) FN_LZ4_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-lz4.so ;;
 esac
 export FN_LZ4_LIBRARY
+# BLAKE3 (fn's digest) is the vendored C behind host/native/fn-blake3.c,
+# built beside it; host/native/digest.lisp loads it at build and every start.
+sh tools/build_blake3.sh "$LIBDIR" >&2
+case $(uname -s) in
+  Darwin) FN_BLAKE3_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-blake3.dylib ;;
+  *) FN_BLAKE3_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-blake3.so ;;
+esac
+export FN_BLAKE3_LIBRARY
 openssl_hint() {
     if grep -q -E 'OpenSSL|LibreSSL|TLS library|libcrypto|libssl' "$LOG" 2>/dev/null; then
         echo "build_native_host: the log names the TLS library; the system needs OpenSSL 3.0+ or LibreSSL 3+ (FN_OPENSSL_PREFIX now: ${FN_OPENSSL_PREFIX:-unset})" >&2
@@ -83,8 +91,8 @@ openssl_hint() {
     if grep -q -E 'ML-DSA' "$LOG" 2>/dev/null; then
         echo "build_native_host: the log names ML-DSA-65; the library is $FN_MLDSA_LIBRARY (tools/build_mldsa65.sh)" >&2
     fi
-    if grep -q -E 'LZ4' "$LOG" 2>/dev/null; then
-        echo "build_native_host: the log names LZ4; the library is $FN_LZ4_LIBRARY (tools/build_lz4.sh)" >&2
+    if grep -q -E 'BLAKE3|native digest' "$LOG" 2>/dev/null; then
+        echo "build_native_host: the log names the native digest; the library is $FN_BLAKE3_LIBRARY (tools/build_blake3.sh)" >&2
     fi
 }
 LOG="${FN_NATIVE_LOG:-build/native-host-build.log}"
@@ -141,4 +149,30 @@ sed "s/--tls-limit 16384 /--tls-limit $FN_TLS_LIMIT /" "$IMAGE" > "$IMAGE.tls" &
     echo "build_native_host: could not set the launcher's --tls-limit" >&2; exit 1; }
 grep -q -- "--tls-limit $FN_TLS_LIMIT " "$IMAGE" || {
     echo "build_native_host: the launcher does not run at --tls-limit $FN_TLS_LIMIT" >&2; exit 1; }
+# The control stack (PKT-876).  ACL2's save-exec launcher passes
+# --control-stack-size 64 (MiB) to every thread, while the installed launcher
+# (packaging/fn) passes the profile's figure (books/heap-reservation.lisp
+# fn-heap-stack-kib, 1,024 KiB): every native test that ran this launcher
+# directly ran with 64 times the deployed stack and could not see a stack
+# death the node dies of (thread-stacks: a full-replay open past ~30,000
+# articles).  The build prints ACL2's figure (FN_NATIVE_STACK_KIB, build.lisp
+# and build-dtn.lisp) and the launcher carries it; SBCL_USER_ARGS at run time
+# still overrides it (the installed launcher's per-command figure; a test's
+# named opt-in, tests/test_native_operator_verbs.py deployed_stack).
+STACK_KIB=$(sed -n 's/.*FN_NATIVE_STACK_KIB \([0-9][0-9]*\).*/\1/p' "$LOG" | tail -1)
+if [ -n "$STACK_KIB" ]; then
+    grep -q -- '--control-stack-size 64 ' "$IMAGE" || {
+        echo "build_native_host: the launcher $IMAGE names no --control-stack-size 64; see $LOG" >&2; exit 1; }
+    sed "s/--control-stack-size 64 /--control-stack-size ${STACK_KIB}KB /" "$IMAGE" > "$IMAGE.stack" && \
+        chmod 755 "$IMAGE.stack" && mv "$IMAGE.stack" "$IMAGE" || {
+        echo "build_native_host: could not set the launcher's --control-stack-size" >&2; exit 1; }
+    grep -q -- "--control-stack-size ${STACK_KIB}KB " "$IMAGE" || {
+        echo "build_native_host: the launcher does not run at ${STACK_KIB} KiB of control stack" >&2; exit 1; }
+else
+    case "$BUILD" in
+        host/native/build.lisp|host/native/build-dtn.lisp)
+            echo "build_native_host: FN_NATIVE_STACK_KIB missing from $LOG" >&2; exit 1 ;;
+    esac
+    echo "build_native_host: $BUILD prints no stack figure; the launcher keeps ACL2's 64 MiB (not a served image)" >&2
+fi
 echo "built $IMAGE profile=$PROFILE world=$WORLD ($(du -h "$IMAGE.core" | cut -f1) core)"

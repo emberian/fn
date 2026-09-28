@@ -24,9 +24,9 @@ article's sections are its label lines (`*The details:*`).
    when the committed book is not what the docs say now, so the ACL2
    verdict certified is the verdict for these docs.
 
-2. Python tools.  Every `bin/fn`/`fn --config`, `fn_client.py`,
-   `fn_consumer.py`, `fn_web.py` and `fn_reader.py` invocation (or its
-   release launcher's, `clients/bin/fn-client` ... `fn-reader`) is parsed by
+2. Python tools.  Every `bin/fn`/`fn --config`, `fn_client.py` and
+   `fn_consumer.py` invocation (or its release launcher's,
+   `clients/bin/fn-client`, `fn-consumer`) is parsed by
    that tool's own argparse parser (`build_parser()`), without running it.
 
 3. Reply lines.  Every line a doc presents as fn's output in a code block
@@ -99,11 +99,11 @@ PLACEHOLDERS = {
 OPERATOR = re.compile(
     r"^(?:\$\s+)?(?:\S*/)?(?:fn|fn-native|fn-host)(?:\s+--fn)?\s+operator\s+(\S+)(?:\s+(.*))?$")
 BIN_FN = re.compile(r"^(?:\$\s+)?(?:\S*/)?(?:bin/)?fn\s+(--config\s+\S+.*)$")
-# A client as the source names it (tools/fn_reader.py) or as a release
-# installs it (clients/bin/fn-reader, packaging/fn-client-launcher).
+# A client as the source names it (tools/fn_client.py) or as a release
+# installs it (clients/bin/fn-client, packaging/fn-client-launcher).
 PY_TOOL = re.compile(
     r"^(?:\$\s+)?(?:[A-Z_]+=\S+\s+)*(?:python3\s+)?(?:\S*/)?"
-    r"(?:(fn_client|fn_consumer|fn_web|fn_reader)\.py|(fn-client|fn-consumer|fn-web|fn-reader))"
+    r"(?:(fn_client|fn_consumer)\.py|(fn-client|fn-consumer))"
     r"(?:\s+(.*))?$")
 REPLY = re.compile(
     r"^(?:\$\s+)?((?:accepted|refused|usage|uncertain|fault)\s+operator\s+\S.*"
@@ -434,7 +434,7 @@ def parse_python(found):
     failures = []
     parsers = {}
     for kind, rel, number, line, argv, why in found:
-        if kind not in ("bin/fn", "fn_client", "fn_consumer", "fn_web", "fn_reader") or argv is None:
+        if kind not in ("bin/fn", "fn_client", "fn_consumer") or argv is None:
             continue
         if kind not in parsers:
             parsers[kind] = load_tool(kind).build_parser()

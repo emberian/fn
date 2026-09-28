@@ -84,13 +84,33 @@
 ; Once VISIBLE is exhausted the rest of RAW is withdrawn; it is copied as a
 ; true list (at most the withdrawn list's length) so the result is exactly
 ; the withdrawn list for any RAW.
-(defun fn-ctl-subseq-diff (raw visible)
-  (declare (xargs :guard t))
-  (cond ((not (consp raw)) nil)
-        ((not (consp visible)) (true-list-fix raw))
+; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
+; retained article on the owner's open.  The :logic is the recursion,
+; unchanged; the :exec is a loop, equal by the guard proof.
+(defun fn-ctl-subseq-diff-rev (raw visible acc)
+  (declare (xargs :guard (true-listp acc)))
+  (cond ((not (consp raw)) (revappend acc nil))
+        ((not (consp visible)) (revappend acc (true-list-fix raw)))
         ((equal (car raw) (car visible))
-         (fn-ctl-subseq-diff (cdr raw) (cdr visible)))
-        (t (cons (car raw) (fn-ctl-subseq-diff (cdr raw) visible)))))
+         (fn-ctl-subseq-diff-rev (cdr raw) (cdr visible) acc))
+        (t (fn-ctl-subseq-diff-rev (cdr raw) visible (cons (car raw) acc)))))
+
+(defun fn-ctl-subseq-diff (raw visible)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (cond ((not (consp raw)) nil)
+             ((not (consp visible)) (true-list-fix raw))
+             ((equal (car raw) (car visible))
+              (fn-ctl-subseq-diff (cdr raw) (cdr visible)))
+             (t (cons (car raw) (fn-ctl-subseq-diff (cdr raw) visible))))
+       :exec (fn-ctl-subseq-diff-rev raw visible nil)))
+
+(encapsulate ()
+  (local
+   (defthm fn-ctl-subseq-diff-rev-is-revappend
+     (equal (fn-ctl-subseq-diff-rev raw visible acc)
+            (revappend acc (fn-ctl-subseq-diff raw visible)))))
+  (verify-guards fn-ctl-subseq-diff))
 
 (defun fn-ctl-refresh-withdrawn (raw old-raw visible old-visible old-withdrawn)
   (declare (xargs :guard t))

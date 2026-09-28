@@ -138,10 +138,10 @@ class NativeTopicLocalTest(unittest.TestCase):
     def test_root_and_report_admit_from_historical_signed_sources(self):
         self.assertEqual(
             hashlib.sha256((FIXTURES / "matched-root.source").read_bytes()).hexdigest(),
-            "59411dc69536c4bfb9f39ddd243df9625627d98f91ed2f6c0d5a942672f366dc")
+            "d2c9852f474ac62fcaeb94c65a671d09ed9e8230d3db57ec3329392ffd887a87")
         self.assertEqual(
             hashlib.sha256((FIXTURES / "matched-report.source").read_bytes()).hexdigest(),
-            "aa269729afb6ba7df35f0fcbdb350752dfb921599b0f40b198b8d2aa9d6ef321")
+            "8601816a81ed55e48b790894a2c7b2d1274a7884ff96f28f242e8c6f232dd3be")
         owner = self.start_owner()
         enrolled = self.invoke("hybrid-enroll", self.control, "1",
                                self.principal, self.ed_public, self.ml_public)
@@ -193,7 +193,7 @@ class NativeTopicLocalTest(unittest.TestCase):
         self.assertEqual(self.transactions(), historical)
         self.assertEqual(
             hashlib.sha256((FIXTURES / "matched-second-root.source").read_bytes()).hexdigest(),
-            "b89c2e45cb7dccdf3295109d010c1f8739aad9402f140c7e4ad8d069eb3b530c")
+            "6216689ae3e67837d3b5187617ca6a1adff6179e59249e65e98c5e0024bdcf8f")
         self.author(FIXTURES / "matched-second-root.source", "v2-second-root")
         self.topic("anchor", "6", "1", expected=0)
         mixed = self.transactions()

@@ -7,7 +7,7 @@ checking, stobj and attachment dispatch, LP's start and error reporting read
 stays at its current value.  These witnesses run the saved images:
 
 * a guard violation at the host boundary (the developer verb `guard-probe'
-  calls fn-sha256-of-string on 42 through fnn-call) is the fault it was
+  calls fn-b3-left-chunks on 42 and -1 through fnn-call) is the fault it was
   before the strip: the same stderr line and exit 4
   (planning/evidence/image-floor-2026-09-26.md has the unstripped image's
   line, byte-identical);
@@ -25,7 +25,8 @@ stays at its current value.  These witnesses run the saved images:
   article the small preset accepts (32,000 octets offered, every body line
   empty); 96 KiB, under the 142 KiB floor, does not, so the witness
   measures the stack and not the harness;
-* DeepInputStackTests: a 1 MiB article of empty lines, a 2,000-article
+* DeepInputStackTests: the image's own launcher passes the probe's stack
+  (PKT-876); a 1 MiB article of empty lines, a 2,000-article
   history reopened and fully replayed, and refused POSTs of 16,000 and
   20,000 lines, each at the stack the launcher's probe prints.
 
@@ -51,8 +52,12 @@ DEVELOPER = Path(os.environ.get(
 MEASURE = ROOT / "tools" / "runtime_image" / "node_measure.py"
 
 EXIT_FAULT, EXIT_USAGE = 4, 5
-GUARD_LINE = (b"store: ACL2 error in fn-sha256-of-string: "
-              b"(EV-FNCALL-GUARD-ER FN-SHA256-OF-STRING (42) (STRINGP S) (NIL) NIL)\n")
+# The entry is caught by the host's entry guard (io.lisp fnn-call's
+# host-entry-guard) before ACL2 evaluates it: still one fault line, exit 4.
+# (Until store format 10 the probe called fn-sha256-of-string, which the
+# entry guard did not describe, and the line was ACL2's EV-FNCALL-GUARD-ER.)
+GUARD_LINE = (b"store: host-entry-guard: fn-b3-left-chunks argument 2 (n) must be a "
+              b"natural (natp); the host passed the integer -1\n")
 CORE_CEILING_KIB = 128 * 1024
 SMALL_STACK_KIB = 1024          # fn-heap-stack-kib: the constant (served-line-iterative)
 
@@ -249,6 +254,15 @@ class DeepInputStackTests(unittest.TestCase):
         diagnostics = stop_and_diagnostics(owner, timeout=300)
         self.assertNotIn("Control stack exhausted", diagnostics)
         self.assertEqual(owner.returncode, 0, diagnostics)
+
+    def test_the_image_launcher_runs_at_the_decided_stack(self):
+        """PKT-876: the image's own launcher (the one every native test runs)
+        passes the control stack the installed launcher's probe decides for
+        a store, not ACL2's save-exec 64 MiB."""
+        cfg, port, stack = self.store("launcher", ["--profile", "default"],
+                                      FN_INIT_BUDGET_MB="1500")
+        found = re.findall(r"--control-stack-size (\S+) ", IMAGE.read_text(encoding="utf-8"))
+        self.assertEqual(found, ["%dKB" % stack], found)
 
     def test_a_1_mib_article_of_empty_lines_at_its_decided_stack(self):
         """A = 1 MiB (the default mission's article bound): 524,088 lines

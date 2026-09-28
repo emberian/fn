@@ -1,8 +1,8 @@
 #!/bin/sh
 # A client program of an fn release (clients/bin/NAME), started with Python 3.
-# Installed by packaging/install-clients.sh as clients/bin/fn-reader,
-# fn-web, fn-client, fn-agent, fn-consumer and fn-verify; NAME picks
-# clients/lib/NAME.py with `-' read as `_' (fn-reader -> fn_reader.py).
+# Installed by packaging/install-clients.sh as clients/bin/fn-client,
+# fn-agent, fn-consumer and fn-verify; NAME picks clients/lib/NAME.py with
+# `-' read as `_' (fn-client -> fn_client.py).
 #
 # These are clients of the node, like a newsreader: the node never runs
 # them, and nothing on its path (bin/fn, libexec/fn/, its service) names
@@ -10,8 +10,7 @@
 # 3.9 or newer and nothing else (fn-verify's signature checks also want
 # pyca/cryptography); clients/README.txt says so.  PYTHONDONTWRITEBYTECODE:
 # no bytecode is written beside the sources, by the client or a Python it
-# starts (fn-agent runs fn_client.py, fn-web and fn-consumer run
-# fn_verify.py), so an installed release stays the bytes its SHA256SUMS
+# starts (fn-agent runs fn_client.py, fn-consumer runs fn_verify.py), so an installed release stays the bytes its SHA256SUMS
 # lists and runpath_check's clients rule (no bytecode) holds of it too.
 set -eu
 self=$0

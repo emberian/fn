@@ -27,8 +27,7 @@
 (local
  (defthm fn-native-mission-frame-is-the-encoding
    (implies (and (consp req)
-                 (fn-bs-profile-validp (fn-bs-profile-resolve req nil))
-                 (not (equal (fn-bs-pf 14 (fn-bs-profile-resolve req nil)) 1)))
+                 (fn-bs-profile-validp (fn-bs-profile-resolve req nil)))
             (equal (fn-bs-config-frame-for-profile req)
                    (fn-bs-config-encode (fn-bs-profile-resolve req nil))))
    :hints (("Goal" :in-theory (e/d (fn-bs-config-frame-for-profile

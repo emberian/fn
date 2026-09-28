@@ -360,9 +360,9 @@
  (let ((tomb *srt-tomb-pathed*))
    (and (fn-inj-injectedp (srt-d *srt-pathed* *srt-a*))
         (fn-rcl-tombstonep tomb) (fn-rcl-tomb-sourcep tomb)
-        (equal (fn-rcl-tomb-source-digest tomb) (fn-sha256 *srt-pathed*))
+        (equal (fn-rcl-tomb-source-digest tomb) (fn-blake3 *srt-pathed*))
         (equal (fn-rcl-tomb-agent tomb) *srt-agent*)
-        (equal (fn-rcl-tomb-octets-digest tomb) (fn-sha256 (srt-o *srt-pathed* *srt-a*))))))
+        (equal (fn-rcl-tomb-octets-digest tomb) (fn-blake3 (srt-o *srt-pathed* *srt-a*))))))
 ; Hypothesis removed: a refused decision's tombstone names no source.
 (assert-event
  (let* ((d (srt-d *srt-dateless* *srt-no-wall*))

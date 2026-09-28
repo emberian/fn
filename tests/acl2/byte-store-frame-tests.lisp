@@ -1,6 +1,7 @@
 ; Reachable witnesses and corruption teeth for P4 metadata frames.
 (in-package "ACL2")
 (include-book "../../books/byte-store-frame")
+(include-book "../../books/store-format-9")
 (include-book "../../books/codec-attach")
 (include-book "must-fail-checked")
 
@@ -71,7 +72,7 @@
 (assert-event (equal *fn-bs-profile-record-ceiling-codec* 4294967295))
 (defconst *bsft-free*
   (fn-bs-profile-set-fields *fn-bs-profile-defaults*
-                            '((2 . 1000) (5 . 20000) (8 . 1000))))
+                            '((1 . 1000) (4 . 20000) (7 . 1000))))
 (assert-event (fn-bs-profile-validp *bsft-free*))
 (assert-event (not (member-equal *bsft-free*
                                  (list *fn-bs-profile-development*
@@ -86,12 +87,12 @@
                *bsft-free* (- (fn-bs-profile-max-history-octets *bsft-free*) 10) 10))
 (assert-event (not (fn-bs-history-admissiblep
                     *bsft-free* (- (fn-bs-profile-max-history-octets *bsft-free*) 10) 11)))
-(assert-event (equal (fn-bs-profile-resolve '(:default ((2 . 1000) (5 . 20000)
-                                                       (8 . 1000)))
+(assert-event (equal (fn-bs-profile-resolve '(:default ((1 . 1000) (4 . 20000)
+                                                       (7 . 1000)))
                                             nil)
                      *bsft-free*))
 ; K follows a lowered T when the operator does not name K.
-(assert-event (equal (fn-bs-profile-resolve '(:default ((2 . 1000) (5 . 20000)))
+(assert-event (equal (fn-bs-profile-resolve '(:default ((1 . 1000) (4 . 20000)))
                                             nil)
                      *bsft-free*))
 
@@ -104,46 +105,46 @@
                 ,reason)
          (not (fn-bs-profile-validp
                (fn-bs-profile-set-fields *bsft-free* ',overrides))))))
-(bsft-refuses ((2 . 0)) :max-transactions-outside-txid-width)
-(bsft-refuses ((2 . 4294967296) (8 . 1000)) :max-transactions-outside-txid-width)
-(bsft-refuses ((3 . 196607)) :max-history-octets-below-max-record-octets)
-(bsft-refuses ((4 . 100) (3 . 100)) :max-record-octets-below-an-event-kind)
-(bsft-refuses ((4 . 4294967296) (3 . 4294967296)) :max-record-octets-above-codec)
+(bsft-refuses ((1 . 0)) :max-transactions-outside-txid-width)
+(bsft-refuses ((1 . 4294967296) (7 . 1000)) :max-transactions-outside-txid-width)
+(bsft-refuses ((2 . 196607)) :max-history-octets-below-max-record-octets)
+(bsft-refuses ((3 . 100) (2 . 100)) :max-record-octets-below-an-event-kind)
+(bsft-refuses ((3 . 4294967296) (2 . 4294967296)) :max-record-octets-above-codec)
 ; PKT-467: R above the kind-6 poll reply's report ceiling (the Store frame's
 ; u32 less the reply's 9 header and 346 cursor octets) is refused by its own
 ; name, up to and including the codec's u32; at the ceiling R is valid.
 (assert-event (equal *fn-stxa-max-octets* 4294966940))
-(bsft-refuses ((4 . 4294966941) (3 . 4294966941))
+(bsft-refuses ((3 . 4294966941) (2 . 4294966941))
               :max-record-octets-above-the-poll-reply)
-(bsft-refuses ((4 . 4294967295) (3 . 4294967295))
+(bsft-refuses ((3 . 4294967295) (2 . 4294967295))
               :max-record-octets-above-the-poll-reply)
 (defconst *bsft-poll-top*
-  (fn-bs-profile-set-fields *bsft-free* '((4 . 4294966940) (3 . 4294966940))))
+  (fn-bs-profile-set-fields *bsft-free* '((3 . 4294966940) (2 . 4294966940))))
 (assert-event (fn-bs-profile-validp *bsft-poll-top*))
-(bsft-refuses ((5 . 0)) :max-article-octets-outside-codec)
-(bsft-refuses ((5 . 4261412865)) :max-article-octets-outside-codec)
-(bsft-refuses ((6 . 0)) :max-groups-per-article-outside-codec)
-(bsft-refuses ((6 . 65536)) :max-groups-per-article-outside-codec)
-(bsft-refuses ((7 . 0)) :max-group-name-octets-outside-codec)
-(bsft-refuses ((7 . 257)) :max-group-name-octets-outside-codec)
+(bsft-refuses ((4 . 0)) :max-article-octets-outside-codec)
+(bsft-refuses ((4 . 4261412865)) :max-article-octets-outside-codec)
+(bsft-refuses ((5 . 0)) :max-groups-per-article-outside-codec)
+(bsft-refuses ((5 . 65536)) :max-groups-per-article-outside-codec)
+(bsft-refuses ((6 . 0)) :max-group-name-octets-outside-codec)
+(bsft-refuses ((6 . 257)) :max-group-name-octets-outside-codec)
 ; The article relation: R must hold the worst-case record of an article of A
 ; octets in G groups, `fn-record-encoded-octets-ceiling' 20000 4096 =
 ; 1 090 139.  One octet below it is refused by name; at it the profile is
 ; valid.  A 16 MiB article under 4096 groups needs 17 847 355.
 (assert-event (equal (fn-record-encoded-octets-ceiling 20000 4096) 1090139))
-(bsft-refuses ((4 . 1090138)) :max-record-octets-below-the-article-record)
+(bsft-refuses ((3 . 1090138)) :max-record-octets-below-the-article-record)
 (assert-event (fn-bs-profile-validp
-               (fn-bs-profile-set-fields *bsft-free* '((4 . 1090139)))))
-(bsft-refuses ((4 . 1090139) (5 . 20001)) :max-record-octets-below-the-article-record)
-(bsft-refuses ((4 . 1090139) (6 . 4097)) :max-record-octets-below-the-article-record)
-(bsft-refuses ((8 . 0)) :max-open-suffix-outside-transactions)
-(bsft-refuses ((8 . 1001)) :max-open-suffix-outside-transactions)
-(bsft-refuses ((9 . 0)) :namespace-count-outside-width)
+               (fn-bs-profile-set-fields *bsft-free* '((3 . 1090139)))))
+(bsft-refuses ((3 . 1090139) (4 . 20001)) :max-record-octets-below-the-article-record)
+(bsft-refuses ((3 . 1090139) (5 . 4097)) :max-record-octets-below-the-article-record)
+(bsft-refuses ((7 . 0)) :max-open-suffix-outside-transactions)
+(bsft-refuses ((7 . 1001)) :max-open-suffix-outside-transactions)
+(bsft-refuses ((8 . 0)) :namespace-count-outside-width)
 ; The format word of the retired format (fn-store-experiment-7) is refused.
 (defconst *bsft-format-7-word*
   '(102 110 45 115 116 111 114 101 45 101 120 112 101 114 105 109
     101 110 116 45 55))
-(bsft-refuses ((13 . 4294967296)) :namespace-count-outside-width)
+(bsft-refuses ((12 . 4294967296)) :namespace-count-outside-width)
 (assert-event (equal (fn-bs-profile-invalid-reason
                       (fn-bs-profile-put 0 *bsft-format-7-word* *bsft-free*))
                      :format))
@@ -151,7 +152,7 @@
                      :layout))
 ; A profile whose R is below kind 4's (the article record's) ceiling is refused.
 (assert-event (< 100 (fn-store-publication-ceiling :article)))
-(assert-event (equal (fn-bs-profile-init-verdict '(:default ((4 . 100) (3 . 100))))
+(assert-event (equal (fn-bs-profile-init-verdict '(:default ((3 . 100) (2 . 100))))
                      '(:refused :max-record-octets-below-an-event-kind)))
 
 ;  Teeth for fn-bs-profile-validp-codecs-accept: its guarded half needs the
@@ -183,14 +184,14 @@
  (thm (implies (equal octets 4294966941) (<= octets *fn-stxa-max-octets*))))
 (assert-event
  (not (fn-bs-publication-admissiblep
-       (fn-bs-profile-set-fields *bsft-free* '((4 . 4294966941) (3 . 4294966941)))
+       (fn-bs-profile-set-fields *bsft-free* '((3 . 4294966941) (2 . 4294966941)))
        0 4294966941)))
 
 ;  Teeth for fn-bs-profile-admits-every-article-record.  Non-degenerate: the
 ; free profile's R is exactly the article record of its (A, G), so the bound
 ; is tight at the witness.  Each hypothesis dropped admits a concrete
 ; counterexample, below.
-(defconst *bsft-tight* (fn-bs-profile-set-fields *bsft-free* '((4 . 1090139))))
+(defconst *bsft-tight* (fn-bs-profile-set-fields *bsft-free* '((3 . 1090139))))
 (assert-event (fn-bs-profile-admittedp *bsft-tight*))
 (assert-event (equal (fn-bs-profile-max-record-octets *bsft-tight*)
                      (fn-record-encoded-octets-ceiling
@@ -201,7 +202,7 @@
 ; octet past R (so past A) in one group, and a record at A in six 256-octet groups, each
 ; encode past R.  A record at A in one 256-octet group is within R.
 (defconst *bsft-g1* (fn-bs-profile-set-fields *bsft-free*
-                                              '((4 . 196608) (5 . 195264) (6 . 1))))
+                                              '((3 . 196608) (4 . 195264) (5 . 1))))
 (assert-event (fn-bs-profile-admittedp *bsft-g1*))
 (defun bsft-name (c) (coerce (make-list 256 :initial-element c) 'string))
 (defun bsft-record (payload-octets groups)
@@ -278,44 +279,40 @@
                  (fn-frame-fields-octets '(:text :nat :nat :nat :nat :text) values)))
 (defconst *bsft-format-7-scale*
   (list *bsft-format-7-word* 1048576 32768 805306368 4096
-        *fn-bs-meta-frontier-format*))
+        *fn-f9-frontier-word*))
 (assert-event (fn-bs-config-okp (fn-bs-config-encode *fn-bs-profile-scale*)))
 (assert-event (not (fn-bs-config-decode (bsft-old-format-frame *bsft-format-7-scale*))))
 (assert-event (not (fn-bs-profile-admittedp *bsft-format-7-scale*)))
 (assert-event (null (fn-bs-profile-of *bsft-format-7-scale*)))
 (assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report *bsft-format-7-scale*)))
                      0))
-; The presets are format 9 (lane commit-onto-log: the record log).
+; The presets are format 10 (the record log with its genesis).
 (assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report *fn-bs-profile-scale*)))
-                     9))
+                     10))
+; Under the previous word the same fields are no profile (D34: one format).
 (assert-event (equal (cdr (assoc-equal "format"
                                        (fn-bs-profile-report
-                                        (cons *fn-bs-meta-format-8*
+                                        (cons *fn-bs-meta-format-9*
                                               (cdr *fn-bs-profile-scale*)))))
-                     8))
+                     0))
 (assert-event (equal (fn-bs-profile-report *bsft-free*)
-                     (cons '("format" . 9)
+                     (cons '("format" . 10)
                            (append
                             (pairlis$ (strip-cdrs (take 12 *fn-bs-profile-field-names*))
-                                      (take 12 (nthcdr 2 *bsft-free*)))
-                            '(("history-marker" . "unmarked")
-                              ("max-header-fields" . 64)
+                                      (take 12 (cdr *bsft-free*)))
+                            '(("max-header-fields" . 64)
                               ("max-header-lines" . 256)
                               ("max-header-octets" . 16384))))))
-; D31: the history requirement reads as its word.
-(assert-event (equal (cdr (assoc-equal "history-marker"
-                                       (fn-bs-profile-report
-                                        (fn-bs-profile-put 14 1 *bsft-free*))))
-                     "required"))
-(assert-event (equal (cdr (assoc-equal "history-marker"
-                                       (fn-bs-profile-report *fn-bs-profile-scale*)))
-                     "unmarked"))
+; Format 10 carries neither the committed-history marker nor the frontier
+; word (the two fields format 9 carried and never read).
+(assert-event (not (assoc-equal "history-marker" (fn-bs-profile-report *fn-bs-profile-scale*))))
+(assert-event (equal (len *fn-bs-meta-profile-spec*) 16))
 ; A format-6 tuple (65538-octet records, below the article kind's ceiling) is
 ; not decoded either.
 (defconst *bsft-format-6*
   (list '(102 110 45 115 116 111 114 101 45 101 120 112 101 114 105 109
           101 110 116 45 54)
-        1048576 32768 8388864 128 *fn-bs-meta-frontier-format*))
+        1048576 32768 8388864 128 *fn-f9-frontier-word*))
 (assert-event (not (fn-bs-config-decode (bsft-old-format-frame *bsft-format-6*))))
 (assert-event (not (fn-bs-profile-admittedp *bsft-format-6*)))
 (assert-event (not (fn-bs-publication-admissiblep *bsft-format-6* 0 1)))
@@ -399,20 +396,20 @@
 (assert-event (equal (fn-bs-profile-header-limits *fn-bs-profile-development*)
                      '(64 256 16384)))
 (defconst *bsft-raised-headers*
-  (fn-bs-profile-resolve '(:development ((15 . 1000) (16 . 2000) (17 . 1048576))) nil))
+  (fn-bs-profile-resolve '(:development ((13 . 1000) (14 . 2000) (15 . 1048576))) nil))
 (assert-event (fn-bs-profile-validp *bsft-raised-headers*))
 (assert-event (equal (fn-bs-profile-header-limits *bsft-raised-headers*)
                      '(1000 2000 1048576)))
 (assert-event (equal (fn-bs-config-decode (fn-bs-config-encode *bsft-raised-headers*))
                      *bsft-raised-headers*))
-(assert-event (equal (fn-bs-profile-resolve '(:development ((15 . 0))) nil)
+(assert-event (equal (fn-bs-profile-resolve '(:development ((13 . 0))) nil)
                      '(:invalid :max-header-fields-outside-lines)))
-(assert-event (equal (fn-bs-profile-resolve '(:development ((15 . 300))) nil)
+(assert-event (equal (fn-bs-profile-resolve '(:development ((13 . 300))) nil)
                      '(:invalid :max-header-fields-outside-lines)))
-(assert-event (equal (fn-bs-profile-resolve '(:development ((16 . 20000))) nil)
+(assert-event (equal (fn-bs-profile-resolve '(:development ((14 . 20000))) nil)
                      '(:invalid :max-header-lines-above-octets)))
 (assert-event (equal (fn-bs-profile-resolve
-                      '(:development ((17 . 4261412865))) nil)
+                      '(:development ((15 . 4261412865))) nil)
                      '(:invalid :max-header-octets-above-codec)))
 (assert-event (equal (cdr (assoc-equal "max-header-fields"
                                        (fn-bs-profile-report *bsft-raised-headers*)))

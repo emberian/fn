@@ -105,5 +105,5 @@ pan cancels only a post whose Sender line matches your pan profile.
   certificate to your system's store, or start pan with
   `SSL_CERT_DIR=/etc/ssl/certs`.
 
-The engineers' notes on the web reader's saved posts are in
-[the engineers' reference](client-internals.md#local-human-reader).
+The engineers' notes on these newsreaders, and on the node's own web page,
+are in [the engineers' reference](client-internals.md#other-newsreaders).

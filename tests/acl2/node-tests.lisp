@@ -439,3 +439,16 @@
 ; stops at the atom; no malformed tail is interpreted as an operation.
 (assert-event (equal (fn-node-trace *node-trace-empty* '((:unknown) . bad))
                      *node-trace-empty*))
+
+; The binding walks by loops (PKT-876, PRF-352): in order, and over 50,000.
+(defconst *node-od-bindings*
+  (list (fn-node-make-binding "<a@x>" "subject-a" "archive-a")
+        (fn-node-make-binding "<b@x>" "subject-b" "archive-b")))
+(assert-event (equal (fn-node-binding-msgids *node-od-bindings*) '("<a@x>" "<b@x>")))
+(assert-event (equal (fn-node-binding-ids *node-od-bindings*) '("archive-a" "archive-b")))
+(assert-event (equal (fn-node-binding-ids nil) nil))
+(assert-event (equal (len (fn-node-binding-msgids
+                           (make-list 50000 :initial-element (car *node-od-bindings*))))
+                     50000))
+(assert-event (fn-node-binding-listp *node-od-bindings*))
+(assert-event (not (fn-node-binding-listp (list (car *node-od-bindings*) (car *node-od-bindings*)))))

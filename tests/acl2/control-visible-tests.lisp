@@ -409,3 +409,12 @@
                                         (fn-ctl-row-table (list *cvt-rkc* *cvt-rkt*) nil) nil)
         *cvt-kws1*))
 
+
+; The walk by a loop (PKT-876, PRF-352): the :exec branch runs here, in
+; order, and over 50,000 elements.
+(assert-event (equal (fn-ctl-drop-via '(1 2 3) nil nil nil) '(1 2 3)))
+(assert-event (equal (len (fn-ctl-drop-via (make-list 50000 :initial-element 1) nil nil nil)) 50000))
+(assert-event (equal (fn-ctl-articles-withdrawals-in (make-list 50000 :initial-element 1) nil nil nil)
+                     nil))
+(assert-event (equal (fn-ctl-articles-withdrawals-in (list *cvt-t*) nil nil nil)
+                     (fn-ctl-articles-withdrawals-in-loop (list *cvt-t*) nil nil nil nil)))

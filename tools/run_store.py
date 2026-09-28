@@ -11,7 +11,6 @@ import argparse
 import base64
 import errno
 import fcntl
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -21,6 +20,9 @@ import stat
 import subprocess
 import sys
 import time
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
 ROOT = Path(__file__).resolve().parent.parent
 # This module is imported both as `tools.run_store` and, with `tools/` on the
@@ -986,7 +988,7 @@ class Store:
         if not check_regular(self.anchor_path):
             return (0, None)
         raw = read_regular_bounded(self.anchor_path, ANCHOR_RECORD_BYTES)
-        digest = hashlib.sha256(raw[:-TRAILER_BYTES]).digest() if len(raw) > TRAILER_BYTES else b""
+        digest = blake3_ref.blake3(raw[:-TRAILER_BYTES]) if len(raw) > TRAILER_BYTES else b""
         values = acl2.anchor_decode(raw, digest)
         # The blob fields of the :incarnation spec, by position: key,
         # delegate, delegation-signature, nonce, signature and ROOT.
@@ -1004,7 +1006,7 @@ class Store:
         one and never a truncated frame.
         """
         prefix = acl2.anchor_protected(incarnation, fields)
-        contents = prefix + hashlib.sha256(prefix).digest()
+        contents = prefix + blake3_ref.blake3(prefix)
         stage = self.staging / ".anchor-{}-{}".format(os.getpid(), os.urandom(12).hex())
         fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         try:

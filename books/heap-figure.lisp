@@ -132,7 +132,7 @@
   (* *fn-heap-octets-per-list-octet*
      (+ (* 2 (fn-bs-profile-max-history-octets profile))
         (fn-bs-profile-max-record-octets profile)
-        (* *fn-heap-header-copies* (fn-bs-profile-field 17 profile)))))
+        (* *fn-heap-header-copies* (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile)))))
 
 (defun fn-heap-buffer-octets (profile)
   (declare (xargs :guard t))
@@ -166,7 +166,12 @@
 
 ; The profile's name in the report: a preset's word, else `custom'.
 (defconst *fn-heap-small-request*
-  '(:development ((2 . 16384) (3 . 8388608) (4 . 196608) (6 . 16) (8 . 128))))
+  (list :development
+        (list (cons *fn-bs-pf-max-transactions* 16384)
+              (cons *fn-bs-pf-max-history-octets* 8388608)
+              (cons *fn-bs-pf-max-record-octets* 196608)
+              (cons *fn-bs-pf-max-groups-per-article* 16)
+              (cons *fn-bs-pf-max-open-suffix* 128))))
 
 (defconst *fn-heap-small-profile*
   (fn-bs-profile-resolve *fn-heap-small-request* nil))
@@ -423,7 +428,7 @@
      (+ (* (fn-heap-operation-history-copies action)
            (fn-heap-operation-history-octets action profile observed))
         (fn-bs-profile-max-record-octets profile)
-        (* *fn-heap-header-copies* (fn-bs-profile-field 17 profile)))))
+        (* *fn-heap-header-copies* (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile)))))
 
 ;; The offline verbs' measured list copies over the image's dynamic content,
 ;; and never less than the store figure over the same observation (the verbs
@@ -553,7 +558,7 @@
                          (* 2 *fn-heap-octets-per-list-octet*
                             (+ (* (fn-heap-operation-history-copies action) used)
                                (fn-bs-profile-max-record-octets profile)
-                               (* *fn-heap-header-copies* (fn-bs-profile-field 17 profile))))
+                               (* *fn-heap-header-copies* (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile))))
                          (* 2 (fn-ock-capture-budget profile)))
                       (* *fn-heap-mib* (fn-heap-decision-mb decision)))
                   (<= (* *fn-heap-mib* (fn-heap-decision-mb decision))

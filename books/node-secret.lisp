@@ -26,30 +26,39 @@
 ; first and every older retained one after it, epochs strictly decreasing.
 ; The owner carries the ring (books/owner.lisp fn-own-node-secret).
 ;
-; Every use is a PURPOSE KEY derived from one entry by HKDF-SHA256 (RFC
-; 5869) with the entry's node identity as the salt, the root as the input
-; keying material, and a versioned info label:
+; Every use is a PURPOSE KEY derived from one entry by BLAKE3's derive_key
+; mode (books/blake3.lisp `fn-blake3-derive-key'; lane blake3-digest,
+; 2026-09-28, replacing HKDF-SHA256 of RFC 5869: ember, "BLAKE3 wherever fn
+; chooses the algorithm"), with a versioned info label as the context string
+; and the root followed by the entry's node identity as the key material:
 ;
-;   PRK        = HMAC-SHA256(IDENTITY, ROOT)                (HKDF-Extract)
-;   key(INFO)  = HMAC-SHA256(PRK, INFO || 0x01)             (HKDF-Expand, L = 32)
+;   key(INFO)  = BLAKE3-derive_key(context INFO, material ROOT || IDENTITY)
+;   MAC(K, M)  = BLAKE3-keyed_hash(K, M)                   (K a purpose key)
 ;
-;   INFO "fn/cancel-lock/v1"      the RFC 8315 section 4 secret <sec>;
+;   INFO "fn/cancel-lock/v2"      the RFC 8315 section 4 secret <sec>;
 ;                                 books/cancel-lock.lisp fn-cl-key
-;   INFO "fn/posting-account/v1"  the RFC 5536 section 3.2.8 posting-account
-;                                 value's key (lane usenet-headers-3's
-;                                 fn-pa-mac)
+;   INFO "fn/posting-account/v2"  the RFC 5536 section 3.2.8 posting-account
+;                                 value's key (fn-pa-mac)
+;
+; No foreign party reproduces either derivation: the Cancel-Lock key is
+; checked by others only through SHA-256 of its Base64 form (RFC 8315
+; sections 2.1, 2.2 and 3; section 4 says the MAC's hash need not be the
+; scheme's), and the posting-account value is opaque by design (RFC 5536
+; section 3.2.8).  So both are fn's choice, and both are BLAKE3.  The root
+; is 32 octets, so ROOT || IDENTITY splits back into the two.
 ;
 ; What is proved is the separation of the derivation INPUTS
-; (`fn-ns-expand-input-separates-info'): two distinct info labels never
-; expand the same HMAC input under one entry, so no value derived for one
-; purpose is ever derived for another.  That distinct inputs give unrelated
-; outputs is HMAC-SHA256's pseudorandomness under a key the adversary does
-; not hold: an assumption about the real function, not a theorem, and no
-; theorem here uses it.
+; (`fn-ns-purpose-inputs-separate-by-definition'): two distinct info labels
+; are two distinct derive_key contexts, so no value derived for one purpose
+; is derived from the inputs of another.  That distinct contexts give
+; unrelated outputs is BLAKE3's pseudorandomness as a KDF, and that a keyed
+; hash is unforgeable without its key is its PRF assumption: assumptions
+; about the real function (A-CRYPTO), not theorems, and no theorem here
+; uses them.
 ;
 ; Prefix `fn-ns-' (docs/prefixes.md).
 (in-package "ACL2")
-(include-book "sha256")
+(include-book "blake3")
 (include-book "cbor")
 (local (include-book "cbor-invariants"))
 
@@ -71,62 +80,25 @@
   (equal (fn-ns-append a b) (append a b)))
 
 ; -----------------------------------------------------------------------------
-; HMAC-SHA256, block length 64, over `fn-sha256' (RFC 4231 cases 2 and 6 in
-; tests/acl2/node-secret-tests.lisp).
-
-(defconst *fn-ns-ipad* 54)   ; 0x36
-(defconst *fn-ns-opad* 92)   ; 0x5c
+; The MAC: BLAKE3's keyed_hash under a 32-octet purpose key.
 
 (defun fn-ns-octet (x)
   (declare (xargs :guard t))
   (if (and (natp x) (< x 256)) x 0))
 
-; KEY, zero-padded to N octets, each octet XOR PAD.
-(defun fn-ns-padded (key pad n)
-  (declare (xargs :guard (and (natp n) (natp pad)) :measure (nfix n)))
-  (if (zp n)
-      nil
-    (cons (logxor (fn-ns-octet (if (consp key) (car key) 0)) pad)
-          (fn-ns-padded (if (consp key) (cdr key) nil) pad (1- n)))))
-
-(defun fn-ns-hmac-sha256 (key msg)
+(defun fn-ns-mac (key msg)
   (declare (xargs :guard t))
-  (let ((k (if (< 64 (len key)) (fn-sha256 key) key)))
-    (fn-sha256 (fn-ns-append (fn-ns-padded k *fn-ns-opad* 64)
-                             (fn-sha256 (fn-ns-append
-                                         (fn-ns-padded k *fn-ns-ipad* 64)
-                                         msg))))))
-
-; -----------------------------------------------------------------------------
-; HKDF-SHA256 (RFC 5869) for one 32-octet output block (RFC 5869 test
-; cases 1 and 3 in the teeth).
-
-(defun fn-ns-hkdf-extract (salt ikm)
-  (declare (xargs :guard t))
-  (fn-ns-hmac-sha256 salt ikm))
-
-; T(1) = HMAC(PRK, T(0) || info || 0x01) with T(0) empty.
-(defun fn-ns-expand-input (info)
-  (declare (xargs :guard t))
-  (fn-ns-append info (list 1)))
-
-(defun fn-ns-hkdf-expand-32 (prk info)
-  (declare (xargs :guard t))
-  (fn-ns-hmac-sha256 prk (fn-ns-expand-input info)))
-
-(defun fn-ns-hkdf-sha256-32 (salt ikm info)
-  (declare (xargs :guard t))
-  (fn-ns-hkdf-expand-32 (fn-ns-hkdf-extract salt ikm) info))
+  (fn-blake3-keyed key msg))
 
 ; -----------------------------------------------------------------------------
 ; The info labels (versioned).
 
-; "fn/cancel-lock/v1"
+; "fn/cancel-lock/v2" (v1 was the HKDF-SHA256 derivation, store format 9)
 (defconst *fn-ns-cancel-lock-info*
-  '(102 110 47 99 97 110 99 101 108 45 108 111 99 107 47 118 49))
-; "fn/posting-account/v1"
+  '(102 110 47 99 97 110 99 101 108 45 108 111 99 107 47 118 50))
+; "fn/posting-account/v2"
 (defconst *fn-ns-posting-account-info*
-  '(102 110 47 112 111 115 116 105 110 103 45 97 99 99 111 117 110 116 47 118 49))
+  '(102 110 47 112 111 115 116 105 110 103 45 97 99 99 111 117 110 116 47 118 50))
 
 ; -----------------------------------------------------------------------------
 ; An entry (EPOCH IDENTITY ROOT) and a ring of them.  The bounds are the
@@ -209,9 +181,20 @@
 ; lane usenet-headers-3 (its fn-pa-mac) calls
 ; `fn-ns-posting-account-key' of the ring (its current entry).
 
+; The key material of an entry: its root, then its node identity.
+(defun fn-ns-key-material (entry)
+  (declare (xargs :guard t))
+  (fn-ns-append (fn-ns-entry-root entry) (fn-ns-entry-identity entry)))
+
+; What a purpose key is derived from: the context and the material.
+(defun fn-ns-purpose-input (entry info)
+  (declare (xargs :guard t))
+  (cons info (fn-ns-key-material entry)))
+
 (defun fn-ns-purpose-key (entry info)
   (declare (xargs :guard t))
-  (fn-ns-hkdf-sha256-32 (fn-ns-entry-identity entry) (fn-ns-entry-root entry) info))
+  (let ((in (fn-ns-purpose-input entry info)))
+    (fn-blake3-derive-key (car in) (cdr in))))
 
 (defun fn-ns-cancel-lock-key (entry)
   (declare (xargs :guard t))
@@ -225,66 +208,47 @@
 ; usenet-headers-3's fn-pa-mac, whose argument is the owner's ring).
 (defun fn-ns-posting-account-mac (ring login)
   (declare (xargs :guard t))
-  (fn-ns-hmac-sha256 (fn-ns-posting-account-key ring) login))
+  (fn-ns-mac (fn-ns-posting-account-key ring) login))
 
 ; -----------------------------------------------------------------------------
 ; Separation.
 
-(local
- (defun fn-ns-two (a b)
-   (if (and (consp a) (consp b)) (fn-ns-two (cdr a) (cdr b)) (list a b))))
+; Under one entry, distinct info labels are distinct derive_key contexts:
+; the purpose inputs differ (the context is the input's first component).
+(defthm fn-ns-purpose-inputs-separate-by-definition
+  (implies (not (equal i1 i2))
+           (not (equal (fn-ns-purpose-input entry i1) (fn-ns-purpose-input entry i2)))))
 
-(local
- (defthm fn-ns-append-one-injective
-   (implies (and (true-listp a) (true-listp b)
-                 (equal (append a (list 1)) (append b (list 1))))
-            (equal a b))
-   :rule-classes nil
-   :hints (("Goal" :induct (fn-ns-two a b)))))
+(defthm fn-ns-cancel-lock-and-posting-account-inputs-differ
+  (not (equal (fn-ns-purpose-input entry *fn-ns-cancel-lock-info*)
+              (fn-ns-purpose-input entry *fn-ns-posting-account-info*)))
+  :hints (("Goal" :in-theory (disable fn-ns-purpose-input))))
 
 (local
  (defthm fn-ns-octet-list-true-listp
    (implies (fn-cbor-octet-listp x) (true-listp x))
    :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
 
-; KEYSTONE (the separation).  Under distinct info labels the HKDF-Expand
-; inputs differ, so under one entry (one PRK) no purpose key is computed
-; from the HMAC input of another purpose.
-(defthm fn-ns-expand-input-separates-info
-  (implies (and (true-listp i1) (true-listp i2) (not (equal i1 i2)))
-           (not (equal (fn-ns-expand-input i1) (fn-ns-expand-input i2))))
-  :hints (("Goal" :use ((:instance fn-ns-append-one-injective (a i1) (b i2))))))
-
-(defthm fn-ns-cancel-lock-and-posting-account-inputs-differ
-  (not (equal (fn-ns-expand-input *fn-ns-cancel-lock-info*)
-              (fn-ns-expand-input *fn-ns-posting-account-info*)))
-  :hints (("Goal" :use ((:instance fn-ns-expand-input-separates-info
-                                   (i1 *fn-ns-cancel-lock-info*)
-                                   (i2 *fn-ns-posting-account-info*)))
-           :in-theory (disable fn-ns-expand-input))))
-
 ; Every derived value is 32 octets.
-(defthm fn-ns-hmac-sha256-shape
-  (and (true-listp (fn-ns-hmac-sha256 key msg))
-       (equal (len (fn-ns-hmac-sha256 key msg)) 32)))
-
-(defthm fn-ns-hmac-sha256-octets
-  (fn-sha256-octet-listp (fn-ns-hmac-sha256 key msg)))
+(defthm fn-ns-mac-shape
+  (and (true-listp (fn-ns-mac key msg))
+       (equal (len (fn-ns-mac key msg)) 32)
+       (fn-b3-octet-listp (fn-ns-mac key msg))))
 
 (defthm fn-ns-purpose-key-shape
   (and (true-listp (fn-ns-purpose-key entry info))
        (equal (len (fn-ns-purpose-key entry info)) 32)
-       (fn-sha256-octet-listp (fn-ns-purpose-key entry info))))
+       (fn-b3-octet-listp (fn-ns-purpose-key entry info))))
 
 (defthm fn-ns-posting-account-key-shape
   (and (true-listp (fn-ns-posting-account-key ring))
        (equal (len (fn-ns-posting-account-key ring)) 32)
-       (fn-sha256-octet-listp (fn-ns-posting-account-key ring))))
+       (fn-b3-octet-listp (fn-ns-posting-account-key ring))))
 
 (defthm fn-ns-posting-account-mac-shape
   (and (true-listp (fn-ns-posting-account-mac ring login))
        (equal (len (fn-ns-posting-account-mac ring login)) 32)
-       (fn-sha256-octet-listp (fn-ns-posting-account-mac ring login))))
+       (fn-b3-octet-listp (fn-ns-posting-account-mac ring login))))
 
 ; -----------------------------------------------------------------------------
 ; The key file.
@@ -423,5 +387,5 @@
                                   (fn-cbor-u32-bytes fn-cbor-u16-bytes
                                    fn-ns-u32-from fn-ns-u16-from)))))
 
-(in-theory (disable fn-ns-hmac-sha256 fn-ns-expand-input fn-ns-purpose-key
+(in-theory (disable fn-ns-mac fn-ns-purpose-input fn-ns-purpose-key
                     fn-ns-file-parse fn-ns-file-render))

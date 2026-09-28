@@ -408,9 +408,16 @@
               ; (KEYSTONE fn-hist-load-is-the-history,
               ; books/history-columns.lisp): R is established here, at every
               ; install, and the budget readers below sync it forward
-              ; (fn-hist-sync-after-run-is-the-history).  The salt keys only
-              ; the Message-ID buckets, which no reader here consults yet.
-                (fn-hist (fn-hist-load (fn-sf-records (fn-sn-files store)) 0 fn-hist)))
+              ; (fn-hist-sync-after-run-is-the-history).  The salt is the
+              ; store's recorded one (format 10: the genesis the open read,
+              ; books/store-genesis.lisp fn-gen-verdict-salt, 32 bits by
+              ; fn-gen-verdict-salt-is-32-bits); it keys only the Message-ID
+              ; buckets, which no reader here consults yet.
+                (fn-hist (fn-hist-load (fn-sf-records (fn-sn-files store))
+                                       (fn-gen-verdict-salt
+                                        (and (boundp-global 'fn-store-genesis state)
+                                             (f-get-global 'fn-store-genesis state)))
+                                       fn-hist)))
             (mv nil :recovering fn-arena fn-cat fn-hist state))))))
 
 (defun fn-owner-recover-extended (extended config-records frontier max-conns fn-arena fn-cat fn-hist state)
@@ -2982,7 +2989,7 @@
         (value (if action action :absent))))))
 
 ; The subject identity of the payload in the octet buffer is
-; books/sha256-buffer.lisp fn-shb-subject-id-bounded, which host/native/io.lisp
+; books/subject-id-buffer.lisp fn-sidb-subject-id-bounded, which host/native/io.lisp
 ; fnn-subject-id-buffer calls directly: a guard-verified entry, so no :program
 ; wrapper here reaches the digest's local stobj updaters (qual-e747dbcc A4).
 

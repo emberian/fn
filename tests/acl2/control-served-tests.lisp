@@ -188,3 +188,10 @@
  (assert-event
   (not (equal (fn-article-msgid *csv-u*)
               (fn-ctl-target-octets (fn-article-payload *csv-d*))))))
+
+; The walk by a loop (PKT-876, PRF-352): the :exec branch runs here, in
+; order, and over 50,000 elements.
+(assert-event (equal (fn-ctl-subseq-diff '(1 2 3 4) '(2 4)) '(1 3)))
+(assert-event (equal (fn-ctl-subseq-diff '(1 2 3 . 4) nil) '(1 2 3)))
+(assert-event (equal (fn-ctl-subseq-diff '(1 2 3) '(1 2 3)) nil))
+(assert-event (equal (len (fn-ctl-subseq-diff (make-list 50000 :initial-element 1) '(1))) 49999))

@@ -161,9 +161,9 @@ result line, so `init` with a stray word shows the full `init` grammar.
 
 **Store profile (M5, D27).** The store profile is the operator's: every
 bound on the data a store holds is a field `init` writes into `config.json`
-(format `fn-store-9`, `books/byte-store-frame.lisp`, the one store format:
-D34; a `fn-store-8` profile, the retired per-file layout, is refused at the
-open by name, STO-028) and nothing
+(format `fn-store-10`, `books/byte-store-frame.lisp`, the one store format:
+D34; a `fn-store-9` profile, the release before, is refused at the open by
+name with the way out, STO-028) and nothing
 rewrites in place; a different profile is a reinstall and an
 import. ACL2 fixes the relations between the fields
 (`fn-bs-profile-validp`) and the codec ceilings no field may pass, not the
@@ -317,7 +317,7 @@ configuration records and the Store records (the checkpoint's records, then
 the log's: the history the open recovers), and nothing else: not the node's private state and secrets (the TLS
 keys, credentials, the HKDF and pseudonym roots), not peer journals, not
 consumer or application state held outside the Store, and not the other
-persistence domains (the BP and TCPCL stores). The MANIFEST's SHA-256 per
+persistence domains (the BP and TCPCL stores). The MANIFEST's BLAKE3 digest per
 entry says each file is the one the export wrote; it does not establish that
 the archive is the newest history of that node.
 
@@ -460,7 +460,7 @@ freed-octets=F ...` and one `reclaimed MSGID` line each; `--dry-run` prints
 `dry-run would-reclaim=N ...` and changes nothing; nothing to do is
 `reclaimed=0`. `store checkpoint` publishes the checkpoint alone (the same
 rotate and drop). `store ROOT digest` opens the store read-only (refused while an
-owner runs) and prints ACL2's SHA-256 digests of the state the open folded
+owner runs) and prints ACL2's BLAKE3 digests of the state the open folded
 (`fn-store-sn-replay-digest-report`, host/store-node-host.lisp, over
 books/state-digest.lisp): `history` (the records as wire events, in log
 order), `pool` (the payload arena's logical value), one `field` line per
@@ -527,7 +527,7 @@ books/native-live-status.lisp) whoever answers:
 ```
 $ fn-native operator fn.toml status
 transactions=12 articles=12 staging-orphans=0 unsigned-legacy-experiment
-profile format=9 max-transactions=4294967295 max-history-octets=1099511627776 ... history-marker=unmarked
+profile format=10 max-transactions=4294967295 max-history-octets=1099511627776 ... max-header-octets=16384
 open-cost replay-records=4294967295 list-memory-octets=35184372088832
 headroom transactions-used=12 transactions-budget=4294967295 bytes-used=5321 history-bound=1099511627776 charge-reserved=24 charge-capacity=...
 open=full-replay reason=no-checkpoint
@@ -543,8 +543,7 @@ pins=12 reserved=24 connections=1
 connection id=3 config-generation=4
 ```
 
-Every value prints in full decimal, and `history-marker` prints its word
-(`required` or `unmarked`). `open-cost` is the profile's pessimistic open
+Every value prints in full decimal. `open-cost` is the profile's pessimistic open
 figure (a full replay of up to `max-transactions` records holding the
 payloads as octet lists, 32 × `max-history-octets`), not a measurement.
 `open=` says how this answering process opened the store; `checkpoint-file`
@@ -1453,23 +1452,11 @@ not (an unreachable node exits 3, never 0), 2 for a usage error.
 groups, read what is new since last time, post a reply -- the client is
 `tools/fn_client.py`, described in [agents on an fn node](agents.md).
 
-For a person, the same node in a browser: the one-person web reader logs
-in over the same verified TLS (STARTTLS, or the TLS port with `--tls` or
-563), asks for the password on the terminal (or takes
-`FN_CLIENT_PASSWORD`), and serves pages on `127.0.0.1` only
-([a reader on your own computer](web.md#a-reader-on-your-own-computer); a
-node's friends use [the friends' web reader](#the-friends-web-reader)):
-
-```sh
-mkdir -p ~/.fn ~/.fn-web
-scp hbox:/tank/fn/node/tls/cert.pem ~/.fn/hbox-cert.pem
-python3 tools/fn_web.py --node 192.168.50.39:1119 --tls-cert ~/.fn/hbox-cert.pem \
-  --user ember --outbox ~/.fn-web/outbox-hbox-ember
-# then open http://127.0.0.1:8919/
-```
-
-It exits 1 if the node refuses the login or the certificate does not verify,
-3 if the node cannot be reached, and 2 if no password is available.
+For a person, the same node in a browser: the node's own web face, a
+`[web]` table in `fn.toml` ([Read it in your browser](web.md);
+[its threat model](#the-friends-web-reader)). Each browser session is a
+reader connection of the node, under the same login, `protected_only` and
+exposure rules as an NNTP reader's.
 
 ## Post and read
 
@@ -2071,116 +2058,87 @@ posting or pacing is re-implemented: it is the served machine's.
 
 ## The friends' web reader
 
-What ships (docs/web.md is the operator's walk): `clients/` of every release
-tarball (packaging/install-clients.sh) holds the friends' web reader
-`clients/bin/fn-reader` (tools/fn_reader.py, WEB-003), the one-person reader
-`fn-web` (tools/fn_web.py) and the other clients (`fn-client`, `fn-agent`,
-`fn-consumer`, `fn-verify`), each a `/bin/sh` launcher that execs `python3`
-on `clients/lib/NAME.py`. They need Python 3.9 or newer; the node does not.
-`install.sh --reader` installs the reader as its own service: the account
-`fn-reader` (`_fnreader`), the folder `/var/lib/fn-reader` (`/var/fn-reader`,
-mode 0700) with `reader.conf` (`--settings`, one `name = value` per option)
-and a copy of the node's public certificate, and
-`/etc/systemd/system/fn-reader.service` (`/etc/rc.d/fn_reader`).
-`tools/runpath_check.py --tree` still finds no Python on the node's path:
-its node walk skips `clients/`, its clients rule holds `clients/` to Python
-source, launchers that run only `python3` and file-name tools, and one
-service template starting `PREFIX/clients/bin/fn-reader`; and no script,
-launcher or service of the node's may name `clients/` (the separation the
-release's `share/fn/runpath-check.txt` records).
+The friends' web reader is the node's own web face (WEB-005, the section
+above; docs/web.md is the operator's walk). It runs inside the node
+process: no other account, service, folder or program, and no Python.
+`install.sh --reader` only appends a `[web]` table to `fn.toml`
+(`127.0.0.1:8920`, `proxied = true`); the node reads it when it starts
+(`books/web-config.lisp` `fn-web-config-plan`, which plans the face only on
+a port of its own, at an admitted address, and with `tls` only beside
+`[listener]`'s certificate). The release's `clients/` keeps only the
+command-line clients (`fn-client`, `fn-agent`, `fn-consumer`, `fn-verify`),
+and `tools/runpath_check.py`'s clients rule refuses a service template
+there. The Python readers, `tools/fn_reader.py` as its own service and
+`tools/fn_web.py` on the user's computer, were retired on 2026-09-28.
 
 Where it sits:
 
 ```
-browser --HTTPS--> Caddy (443) --HTTP, 127.0.0.1--> fn-reader (8920)
-fn-reader --NNTP over verified TLS, AUTHINFO as the friend--> the node (563 or 119)
-fn-reader --runs--> PREFIX/bin/fn redeem HOST:PORT CODE LOGIN (XREDEEM over TLS)
+browser --HTTPS--> Caddy (443) --HTTP, 127.0.0.1--> the node's face (8920)
+the face --a logical reader connection, no socket--> the node's served step
 ```
 
-The node reaches the reader never; the reader reaches the node only as an
-NNTP client with a friend's own login, exactly as tin would, on the
-implicit-TLS port (`tls_port`, RFC 8143; port 563 or `tls = yes`) or the
-reader port with STARTTLS (RFC 4642). The certificate is verified before any
-login octet is sent (`--tls-cert`, the copied certificate, or `--system-ca`);
-a certificate that does not verify refuses the sign-in with no password
-sent.
+With `tls = true` the node serves HTTPS itself and there is no Caddy.
 
 ### Threat model
 
 What it protects:
 
-- **The operator's authority.** The reader holds none. It never opens the
-  store, the control socket, `auth.toml`, the node's keys, peer credentials
-  or `fn.toml`: it runs as its own account, which the node folder (owned by
-  the node's account, mode 0750; the control socket 0600) does not admit, and
-  the systemd unit adds `InaccessiblePaths=` for the node folder,
-  `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, `PrivateDevices`,
-  `NoNewPrivileges` and one writable path, its own folder. On OpenBSD the
-  account and the folder's mode are the whole of it (rc.d has no sandbox).
-  The one program of the node's it runs is `bin/fn redeem`, as its own
-  account, which dials the node like any client (ACL2's `fn-redeem-step`
-  decides each step); a verb that needs the node folder fails there on
-  permission.
-- **Every decision.** The node checks every password (AUTHINFO, 281 or
-  481), makes every account (XREDEEM's 281 only once the account is durable),
-  decides which groups a login sees and may post to, accepts, refuses or
-  holds each post, and decides whose cancel withdraws what. The reader has
-  no account table and adds no permission.
-- **Friends' passwords.** Held in the reader's memory for a signed-in
-  session (12 hours idle, dropped at sign-out), to open that friend's NNTP
-  connections; never written to a file, a URL, a page or a log (there is no
-  access log). A redeem passes the new password to `fn redeem` on standard
-  input, never argv, in a new session with no terminal. Submission records
-  in the reader's folder hold the article lines and the node's answers,
-  never a password.
-- **Sessions.** A 256-bit random session cookie (`HttpOnly`,
-  `SameSite=Lax`, `Secure` when `proxied = yes` or `--https-cert`); a
-  per-session form token on every POST, and POSTs refused unless
-  `Sec-Fetch-Site` and `Origin` say this site; a sign-in token against
-  login CSRF; no JavaScript, and `Content-Security-Policy: default-src
-  'none'` with `frame-ancestors 'none'`.
-- **Guessing.** Per browser address, 8 failed sign-ins or codes in 15
-  minutes, then a pause (behind Caddy the address is the last
-  `X-Forwarded-For` entry, believed only from a loopback peer and only with
-  `proxied = yes`). And for everyone together: every friend reaches the
-  node from this machine's one address, and the node closes an address to
-  new connections for the rest of a minute after `exposure-auth-failures`
-  refused logins (10 on a public listener; books/public-exposure.lisp), so
-  the reader carries at most `--node-failures-per-minute` (5) refused logins
-  or codes to the node per minute and turns the rest away itself. A guesser
-  can delay other people's new sign-ins by a minute at a time; signed-in
-  friends keep the node. The node's own limits apply whatever the reader
-  does.
-- **Connections.** One cached NNTP connection per signed-in friend (reused
-  for 90 s, then replaced; the node's idle timer closes one left behind). The node's per-address limit (8 on a public listener)
-  would count them all as one visitor: `policy set exposure-trusted` with
-  this machine's address exempts it from that one rule and no other.
+- **The operator's authority.** The face holds none of its own. Every
+  decision is the served machine's: the node checks every password
+  (AUTHINFO, `281` or `481`), makes every account (XREDEEM's `281` only once
+  the account is durable), decides which groups a login sees and may post
+  to (`account access`), accepts or refuses each post, and decides whose
+  cancel withdraws what. The face keeps no account table and adds no
+  permission; a session exists only after a `281` on its own connection
+  (`fn-web-sessions-bound-by-281`, PRF-339).
+- **What it trusts about the network.** It binds `127.0.0.1` unless the
+  operator names another address. A browser's address is the socket's
+  peer; with `proxied = true` and a loopback peer only, it is the last
+  `X-Forwarded-For` entry, the one the proxy appended. A connection counts
+  as protected (for `protected_only`) only when it is TLS here or its peer
+  is loopback; any other gets `483` to a login on a protected-only node.
+- **Friends' passwords.** Written nowhere. A password is decoded from the
+  sign-in or redeem form into the command octets of that one request and
+  kept in no session, file, URL, page or log.
+- **Sessions.** Held in the node's memory only, so a restart signs
+  everyone out. Each is a 256-bit token from the OS CSPRNG, bound to one
+  owner connection and one login; the cookie is `HttpOnly`,
+  `SameSite=Lax`, and `Secure` (with HSTS) when the face is TLS or proxied
+  from loopback. Every signed-in POST carries the session's form token, and a POST
+  whose `Sec-Fetch-Site` or `Origin` names another site is refused.
+  Sessions idle out after `idle_seconds` (12 hours) and at most
+  `max_sessions` (64) are kept.
+- **Pages.** ACL2 renders every page from the session's own replies
+  (`books/web-render.lisp`); every octet from a reply or a form is escaped
+  (PRF-338). No script, no font, and `Content-Security-Policy: default-src
+  'none'` (styles and images from the face only, `frame-ancestors 'none'`).
+- **Guessing.** The node's own `exposure-auth-failures` pacing, for the
+  browser's address: behind Caddy each browser is its own address, so no
+  `exposure-trusted` entry for the proxy is needed.
 
 What it does not protect against:
 
-- Root on the node's machine, or the reader's own account: either reads the
-  passwords of signed-in friends from memory and the reader's folder.
+- Root on the node's machine, or the node's own account: either can read a
+  password in the node's memory while its request runs.
 - Caddy, which terminates HTTPS and so sees each password in transit: it is
   in the trusted base for friends' passwords. Serve nothing else under the
-  reader's web name (its cookies are `Path=/`).
+  face's web name (its cookies are `Path=/`).
 - Another local user of the machine: 127.0.0.1:8920 is open to them. They
-  can sign in only with a friend's password, and their own
-  `X-Forwarded-For` evades the per-address pause but not the per-minute
-  pacing. Do not run the reader on a shared machine.
+  can sign in only with a friend's password; with `proxied = true` they can
+  choose their own `X-Forwarded-For` and so their address for the pacing.
+  Do not run the face on a shared machine.
 - A friend's own device: whoever holds its session cookie is that friend
-  until it expires or they sign out.
-- The reader's folder: what each friend read and copies of what they sent,
-  private groups included (mode 0700, the reader's account).
+  until it idles out, they sign out, or the node restarts.
+- A slow browser: the face serves one connection at a time and gives each
+  request up to 15 seconds.
 
-The reader is a client, so none of this is an ACL2 obligation: it is the
-same position as tin on the operator's machine. Tests: tests/test_fn_reader.py
-(fake node over TLS: sign-in, implicit TLS, a wrong certificate sends no
-password, proxied addresses, the pacing, redeem's argv and stdin),
-tests/test_fn_web_native.py `NativeReaderImplicitTlsTests` (a native node's
-TLS port: redeem, sign-in, post, read, remove), tests/test_runpath_check.py
-(the clients rule and the separation), tests/test_release_tarball.py (the
-layout), tests/friends_tarball.sh (`install.sh --reader` renders the unit
-and settings from the tarball).
+Proofs: PRF-337 (the request parse, `books/web-request.lisp`), PRF-338 (the
+escaping), PRF-339 (sessions), PRF-340 (the `[web]` plan). Tests:
+tests/test_native_web.py (a native node's face), tests/web_face_drive.mjs
+(a browser against a scratch node), tests/test_runpath_check.py (the
+clients rule), tests/test_release_tarball.py (the layout),
+tests/friends_tarball.sh (`install.sh --reader` renders the `[web]` table).
 
 ## Private groups: which login sees which group
 
@@ -2296,15 +2254,19 @@ a start never creates a secret. A store imported without its key files needs
 `node-secret create`, and the posts its accounts made before then cancel only
 by a signed canceller or the poster's own RFC 8315 key.
 
-The store has one format, `fn-store-9`: its commits go to the record log,
-`journal/NNNNNN.log` segments (six digits, the highest present the active
+The store has one format, `fn-store-10`: its commits go to the record log,
+whose position 0 is the store's genesis `journal/000000.log` (its node
+identity, history salt, creation reading and image revision, recorded at
+`init`; specs/storage.md STO-036), then `journal/NNNNNN.log` segments (six digits, the highest present the active
 one), one fsync per batch of POSTs; a checkpoint names the first segment it
 does not cover and the covered ones are dropped (`store compact` above).
-A store of the per-file layout (`fn-store-8`, every store made before
-2026-09-27) or of any other format is refused at open by name (`open
-refused reason=store-format: reinstall from the release and import`, exit
-1); its archive, exported by the release that made it, imports here as
-format 9 (`fn-sxp-log-profile`). The archive carries the committed records,
+A format-9 store (every store made before format 10) is refused at open
+by name with the way out (`open refused reason=store-format-9: ... export it
+with that release (store ROOT export DIR), then import it here (store
+NEWROOT import DIR)`, exit 1), a store of any older format as another
+format (`reason=store-format`); a format-9 archive, exported by the release
+that made it, imports here as format 10 with a new genesis
+(`fn-sxp-import-of-a-format-9-export`). The archive carries the committed records,
 the configuration records, the profile and the frontier; the store identity
 and consumer state are records, so they travel with them. Feed journals and
 BP spools do not: a reinstalled node re-peers. It is a Store-history

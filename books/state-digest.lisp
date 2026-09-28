@@ -9,7 +9,9 @@
 ; subject: `fn-sdg-canon' writes any ACL2 object as octets, injectively and
 ; independently of how the object happens to be laid out in memory (sharing,
 ; addresses, hash-table order play no part: only the object's value), and
-; `fn-sdg-digest' is SHA-256 of that.  It is a comparison tool, not a codec:
+; `fn-sdg-digest' is the store's digest (`fn-digest', books/crypto-seam.lisp:
+; SHA-256 under books/crypto-attach.lisp until lane blake3-digest's
+; attachment makes it BLAKE3; format 10, lane format-bump-10) of that.  It is a comparison tool, not a codec:
 ; nothing reads these octets back, and no format depends on them.
 ;
 ; The encoding (every octet is a tag or a field of the atom it follows):
@@ -33,7 +35,7 @@
 ; independent of which handle holds which payload.
 
 (in-package "ACL2")
-(include-book "sha256-stobj")
+(include-book "crypto-seam")
 (include-book "store-intern")
 
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
@@ -104,7 +106,7 @@
 
 (defun fn-sdg-digest (x)
   (declare (xargs :guard t))
-  (fn-sha256-stobj (fn-sdg-canon x)))
+  (fn-digest (fn-sdg-canon x)))
 
 ; The arena's payloads H .. N-1, each digested, the digests accumulated
 ; newest first.
@@ -115,15 +117,15 @@
   (if (or (not (natp h)) (not (natp n)) (>= h n))
       acc
     (fn-sdg-arena-loop (1+ h) n
-                       (fn-sdg-rev (fn-sha256-stobj (fn-arena-payload h fn-arena)) acc)
+                       (fn-sdg-rev (fn-digest (fn-arena-payload h fn-arena)) acc)
                        fn-arena)))
 
-; The pool: SHA-256 of the payload count (LEB128) and each payload's
-; SHA-256, oldest first.
+; The pool: the digest of the payload count (LEB128) and each payload's
+; digest, oldest first.
 (defun fn-sdg-arena-pool (fn-arena)
   (declare (xargs :stobjs fn-arena))
   (let ((n (fn-arena-count fn-arena)))
-    (fn-sha256-stobj
+    (fn-digest
      (fn-sdg-rev (fn-sdg-arena-loop 0 n (fn-sdg-leb n nil) fn-arena) nil))))
 
 (defun fn-sdg-rows-loop (rows acc fn-arena)
@@ -134,11 +136,11 @@
                       (fn-sdg-rev (fn-sdg-digest (fn-row-wire-of (car rows) fn-arena)) acc)
                       fn-arena)))
 
-; The history: SHA-256 of the record count and each record's wire event's
+; The history: the digest of the record count and each record's wire event's
 ; digest, in log order.
 (defun fn-sdg-rows-history (rows fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
-  (fn-sha256-stobj
+  (fn-digest
    (fn-sdg-rev (fn-sdg-rows-loop rows (fn-sdg-leb (len rows) nil) fn-arena) nil)))
 
 ; Lowercase hex of an octet list, as characters.

@@ -12,6 +12,8 @@
 
 (in-package "ACL2")
 (include-book "../../books/state-digest")
+; The store's digest executes through its attachment.
+(include-book "../../books/crypto-attach")
 
 (assert-event
  (equal (list (symbol-class 'fn-sdg-digest (w state))

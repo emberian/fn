@@ -106,8 +106,10 @@ WINDOW_FRAME = bytes.fromhex(
     "0000001000000000000000100000000000000010000000000000000000000000"
     "00000000004000000000000001000000000000004000798b663d5cce0214bb58"
     "721d80936087dafdcb98853d2ef91c790fdd0ed2160b")
-LINE = ("open refused reason=max-record-octets-above-the-poll-reply: the profile "
-        "record bound exceeds the poll reply width; reinstall from the release and import")
+# Format 10 (lane format-bump-10): the window refusal went with format 9 (every
+# format-10 profile is written under the relation that carries the arm); this
+# format-8 frame is now refused as another format, by name, at every open.
+LINE = "open refused reason=store-format: reinstall from the release and import"
 
 
 class ProfileOpenRefusalSourceTests(unittest.TestCase):
@@ -115,9 +117,6 @@ class ProfileOpenRefusalSourceTests(unittest.TestCase):
         self.assertEqual(len(WINDOW_FRAME), 214)
         self.assertEqual(WINDOW_FRAME[:4], b"FNSM")
         self.assertEqual(hashlib.sha256(WINDOW_FRAME[:-32]).digest(), WINDOW_FRAME[-32:])
-        book = (ROOT / "tests" / "acl2" / "store-profile-open-tests.lisp").read_text(encoding="ascii")
-        octets = book.split("(defconst *spot-window-octets*", 1)[1].split("))", 1)[0]
-        self.assertEqual(bytes(int(w) for w in octets.replace("'(", " ").split()), WINDOW_FRAME)
 
 
 class ProfileOpenRefusalTests(ControlReplyFitFixture):

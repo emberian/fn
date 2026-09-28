@@ -102,8 +102,8 @@
 (defconst *au-salt* (make-list 16 :initial-element 3))
 (assert-event (fn-authsec-saltp *au-salt*))
 (defconst *au-digest*
-  '(60 237 250 71 154 204 168 180 72 224 241 93 232 185 72 59
-    73 5 240 237 54 116 175 93 127 219 39 238 113 83 63 194))
+  '(42 82 187 10 181 221 230 125 199 188 135 91 193 55 205 245
+    177 50 208 139 71 236 67 86 54 24 223 76 55 144 61 51))
 (defconst *au-verifier* (fn-authsec-verifier *au-salt* *au-digest*))
 (assert-event (equal *au-verifier* (fn-authsec-enrol *au-salt* *au-secret*)))
 (assert-event (fn-authsec-verifierp *au-verifier*))
@@ -124,8 +124,8 @@
 (defconst *au-principal-ro* (make-list 32 :initial-element 9))
 (defconst *au-salt-ro* (make-list 16 :initial-element 5))
 (defconst *au-digest-ro*
-  '(16 253 71 139 166 161 40 4 128 152 222 245 150 31 146 146
-    162 213 89 91 217 56 233 234 208 64 14 230 20 40 189 59))
+  '(157 10 51 45 80 59 232 56 203 127 1 240 240 207 113 96
+    173 125 217 47 2 249 4 17 4 12 204 53 48 56 55 153))
 (defconst *au-verifier-ro* (fn-authsec-verifier *au-salt-ro* *au-digest-ro*))
 (assert-event (equal *au-verifier-ro*
                      (fn-authsec-enrol *au-salt-ro*

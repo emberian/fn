@@ -446,3 +446,19 @@
  (and (eq (symbol-class 'fn-rii-sco-extend-open (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-rii-sco-store-open-resumed (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-rii-sco-cpr-finish-configured (w state)) :common-lisp-compliant)))
+
+; The id tries by loops (PKT-876, PRF-352): each is the nested puts in list
+; order, and a 50,000-pin ledger builds.
+(defconst *rii-t-od-pins*
+  (fn-retain-pins (fn-retain-admit (fn-retain-admit (fn-retain-initial-state 10)
+                                                    "archive-1" "object-a" :archive
+                                                    "operator-release-a" 6)
+                                   "forward-1" "object-a" :forward
+                                   "receipt-from-successor" 4)))
+(assert-event (equal (fn-rii-kbuild-pins *rii-t-od-pins* nil)
+                     (fn-rii-id-put "forward-1" (fn-rii-id-put "archive-1" nil))))
+(assert-event (equal (fn-rii-kbuild-pins *rii-t-od-pins* :base)
+                     (fn-rii-id-put "forward-1" (fn-rii-id-put "archive-1" :base))))
+(assert-event (equal (fn-rii-kbuild-releases nil) nil))
+(assert-event (equal (fn-rii-kbuild-pins (make-list 50000 :initial-element (car *rii-t-od-pins*)) nil)
+                     (fn-rii-id-put "forward-1" nil)))

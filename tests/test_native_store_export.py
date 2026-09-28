@@ -40,6 +40,9 @@ import unittest
 from tests import test_native_operator_verbs as verbs
 from tests.native_profile_fixture import ProfileFixture, ProfileLineMixin
 from tests import older_release_store as older
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
 EXIT_OK, EXIT_REFUSED = verbs.EXIT_OK, verbs.EXIT_REFUSED
 COUNT = int(os.environ.get("FN_EXPORT_ARTICLES", "30"))
@@ -91,10 +94,10 @@ class StoreExportTests(ProfileFixture):
             self.assertNotEqual(path.name, "keys", path)
             if path.is_file():
                 self.assertNotIn(secret[-32:], path.read_bytes(), path)
-        # The MANIFEST is sha256sum's: every line names a file of the archive.
+        # The MANIFEST is b3sum's: every line names a file of the archive.
         for line in (archive / "MANIFEST").read_text(encoding="ascii").splitlines():
             digest, name = line.split("  ", 1)
-            self.assertEqual(hashlib.sha256((archive / name).read_bytes()).hexdigest(), digest)
+            self.assertEqual(blake3_ref.blake3((archive / name).read_bytes()).hex(), digest)
 
         store2 = self.root / "store2"
         config2 = self.second_config(store2)
@@ -165,13 +168,13 @@ class StoreExportTests(ProfileFixture):
         first = sorted((archive / "records").iterdir())[0].name
 
         def reseal(root):
-            # A MANIFEST that matches the damaged files (sha256sum's form),
+            # A MANIFEST that matches the damaged files (b3sum's form),
             # so the refusal is the one after the MANIFEST check.
             lines = []
             for line in (root / "MANIFEST").read_text(encoding="ascii").splitlines():
                 name = line.split("  ", 1)[1]
                 lines.append("{}  {}".format(
-                    hashlib.sha256((root / name).read_bytes()).hexdigest(), name))
+                    blake3_ref.blake3((root / name).read_bytes()).hex(), name))
             (root / "MANIFEST").write_text("\n".join(lines) + "\n", encoding="ascii")
 
         def torn(root):

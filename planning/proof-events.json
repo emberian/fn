@@ -3991,14 +3991,6 @@
         {
           "kind": "theorem",
           "name": "fn-record-impl-encode-narrow-length-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-profile-v1-valid-is-valid"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-profile-v1-valid-stays-valid"
         }
       ]
     },
@@ -4007,11 +3999,11 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-sha256-of-prefixed-buffer-is-sha256"
+          "name": "fn-blake3-of-prefixed-buffer-is-blake3"
         },
         {
           "kind": "theorem",
-          "name": "fn-shb-subject-id-is-id-subject-of-sha256-preimage"
+          "name": "fn-sidb-subject-id-is-id-subject-of-payload"
         }
       ]
     },
@@ -6038,27 +6030,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-profile-v1-valid-stays-valid"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-col-poll-report-of-an-admitted-payload-fits"
         },
         {
           "kind": "theorem",
           "name": "fn-nls-page-refuses-exactly-past-the-total-width"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-config-open-refuses-only-what-the-old-open-rejected"
         }
       ]
     },
@@ -8327,10 +8303,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ns-expand-input-separates-info"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-ns-cancel-lock-and-posting-account-inputs-differ"
         },
         {
@@ -9341,11 +9313,6 @@
           "kind": "theorem",
           "name": "fn-spo-open-of-another-layout-refuses-by-name",
           "note": "KEYSTONE (PKT-705). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (a real pre-AS config.json; one witness per hypothesis)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-config-open-layout-refusal-is-never-a-decoded-frame",
-          "note": "KEYSTONE (the refinement). Host: as above."
         },
         {
           "kind": "theorem",
@@ -11210,7 +11177,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-sha256-of-prefixed-range-is-sha256"
+          "name": "fn-blake3-of-prefixed-range-is-blake3"
         },
         {
           "kind": "theorem",
@@ -11944,6 +11911,254 @@
         {
           "kind": "theorem",
           "name": "fn-web-config-plan-answers"
+        }
+      ]
+    },
+    {
+      "id": "PRF-353",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-w47-decode-without-openers-is-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-w47-decode-octets"
+        }
+      ]
+    },
+    {
+      "id": "PRF-349",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-gen-open-of-octets-for",
+          "note": "KEYSTONE (init, then open, over the host's call). Host: host/native/io.lisp fnn-genesis-open via host/store-host.lisp fn-store-genesis-open (every open); fnn-genesis-octets via fn-store-genesis-octets (init, import). Teeth: tests/acl2/store-genesis-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gen-open-of-the-genesis-init-writes",
+          "note": "KEYSTONE (the record form). Host: host/native/io.lisp fnn-genesis-open via host/store-host.lisp fn-store-genesis-open (every open); fnn-genesis-octets via fn-store-genesis-octets (init, import). Teeth: tests/acl2/store-genesis-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gen-decode-of-frame",
+          "note": "The genesis codec's round trip."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gen-verdict-salt-is-32-bits",
+          "note": "The salt host/owner-host.lisp hands fn-hist-load is a u32."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bsi-log-init-program-establishes-the-empty-log",
+          "note": "KEYSTONE (init's program, now with the genesis durable). Host: host/native/io.lisp fnn-initialize. Teeth: tests/acl2/byte-store-log-initializer-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-350",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-spo-open-of-a-format-9-frame-refuses-by-name",
+          "note": "KEYSTONE (D34, the release before, by name). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (a real format-9 config.json)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-open-of-a-valid-profile-opens-it",
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
+          "note": "KEYSTONE (one format). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9-config-decode-of-a-format-9-frame",
+          "note": "KEYSTONE (D38's witness). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan. Teeth: tests/acl2/store-format-9-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9-format-9-frame-does-not-decode",
+          "note": "The two formats never meet, under any attachment."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-import-of-a-format-9-export",
+          "note": "KEYSTONE (the migration). Host: host/native/io.lisp fnn-command-store-import. Teeth: tests/acl2/store-export-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-article-identities-are-format-10s",
+          "note": "KEYSTONE (identical across the migration: the identities are format 10's). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan. Teeth: tests/acl2/store-export-tests.lisp; native tests/test_native_format_9_migration.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-article-keeps-every-other-field",
+          "note": "KEYSTONE (the translation keeps the article)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-347",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-b3x-hash-is-hash",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-blake3-stobj-is-blake3",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-blake3-of-prefixed-buffer-is-blake3",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-blake3-of-prefixed-range-is-blake3",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-blake3-shape",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-352",
+      "events": [
+        {
+          "kind": "guarded-function",
+          "name": "fn-retain-obligation-ids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-retain-release-ids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-retain-sum"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-retain-remove-id"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-node-binding-msgids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-node-binding-ids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-replay-verdict-pairs"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-stx-index-of-store"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-mxc-build"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-rii-kbuild-releases"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-rii-kbuild-pins"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-ctl-articles-withdrawals-in"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-ctl-drop-via"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-ctl-visible-filter"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-ctl-subseq-diff"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-own-take"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-gidx-build-entries"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-index-build"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-midx-build"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-scka-canon-rows"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-scka-enc-lens-sum"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-sct-payloads"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-sbud-record-octets"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-sbud-stored-octets"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-pgc-obligation-ids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-pgc-release-ids"
+        }
+      ]
+    },
+    {
+      "id": "PRF-354",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-unstaged-start-tells-its-refusals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-kept-member-starts-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-told-at-drain-p-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-unstaged-start-issues-no-sync"
         }
       ]
     }

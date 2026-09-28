@@ -376,7 +376,7 @@ FROM past the end, a 501 a malformed request.
   record is always served, whole, so an article larger than the quantum is
   never cut (`fn-cu-select-stays-within-the-quantum`). Finding FROM walks
   the view (O(END) per batch): slice 1 has no ordinal index (below).
-- **The digest chain**: `c' = SHA-256(c || SHA-256(article) || msgid)` from
+- **The digest chain**: `c' = BLAKE3(c || BLAKE3(article) || msgid)` (SHA-256 up to store format 9) from
   32 zero octets. The peer answers CHAIN' over the batch's records
   continued from the requester's CHAIN; the chain over a whole catch-up is
   the digest of the article set imported, in the peer's log order. It is a

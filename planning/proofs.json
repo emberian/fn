@@ -1564,7 +1564,7 @@
     {
       "id": "PRF-035",
       "title": "The frame integrity trailer has one owner, and the host's framing is the model's",
-      "statement": "fn-frame-trailer (books/frame-trailer.lisp) is the only definition of the 32-octet frame integrity trailer in the tree: it is fn-frame-digest, realised through books/crypto-attach.lisp by fn-sha256-stobj (books/sha256-stobj.lisp, the word-stobj computation), which fn-sha256-stobj-is-sha256 equates to the list model fn-sha256 on every object, and it answers :bad rather than a digest for an argument that is not an octet list. For any magic, version, kind and payload in fn-frame-inputp, the byte string a host builds by asking ACL2 for the protected prefix, asking ACL2 for the trailer over it and concatenating the two is fn-frame-seal of those fields; and handing that byte string back to fn-frame-decode with the trailer re-derived over the frame's own fn-frame-protected-prefix answers fn-frame-ok of the fields that went in. The same two statements hold for the store instance the bridge executes, over fn-frame-store-protected and fn-frame-store-decode. Collision and preimage resistance are A-CRYPTO and are not claimed: the attachment introduces no axiom and the seam's constraints are shape only.",
+      "statement": "fn-frame-trailer (books/frame-trailer.lisp) is the only definition of the 32-octet frame integrity trailer in the tree: it is fn-frame-digest, realised through books/crypto-attach.lisp by fn-blake3-stobj (books/blake3-stobj.lisp, the buffer computation; SHA-256 up to store format 9), which fn-blake3-stobj-is-blake3 equates to the definition fn-blake3 (books/blake3.lisp) on every object, and it answers :bad rather than a digest for an argument that is not an octet list. For any magic, version, kind and payload in fn-frame-inputp, the byte string a host builds by asking ACL2 for the protected prefix, asking ACL2 for the trailer over it and concatenating the two is fn-frame-seal of those fields; and handing that byte string back to fn-frame-decode with the trailer re-derived over the frame's own fn-frame-protected-prefix answers fn-frame-ok of the fields that went in. The same two statements hold for the store instance the bridge executes, over fn-frame-store-protected and fn-frame-store-decode. Collision and preimage resistance are A-CRYPTO and are not claimed: the attachment introduces no axiom and the seam's constraints are shape only.",
       "milestone": "M2",
       "requirements": [
         "ENC-003",
@@ -1593,8 +1593,6 @@
         "planning/evidence/manifests/certify-20260924T224341Z-2081666.json",
         "planning/evidence/manifests/certify-20260925T001652Z-2229194.json",
         "planning/evidence/manifests/certify-20260925T004450Z-2510809.json",
-        "books/sha256-stobj.lisp",
-        "tests/acl2/sha256-stobj-tests.lisp",
         "planning/evidence/rep-sha256-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T054927Z-1178625.json",
         "planning/evidence/manifests/certify-20260925T062846Z-1530323.json",
@@ -1603,7 +1601,9 @@
         "planning/evidence/manifests/certify-20260925T093812Z-3053804.json",
         "planning/evidence/manifests/certify-20260925T103038Z-3156842.json",
         "planning/evidence/manifests/certify-20260925T110203Z-65756.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "books/blake3-stobj.lisp",
+        "tests/acl2/blake3-stobj-tests.lisp"
       ],
       "progress_note": "Both books certified with tools/certify_books.py on the laptop (ACL2 8.7, SBCL 2.6.8), evidence dirs above. The four keystones and the 25 assert-events all pass. What the target does NOT establish: collision or preimage resistance of SHA-256 (A-CRYPTO, unchanged by the attachment); and the old tools/run_feed.py driver has since been deleted. W12 feed-durability owns the remaining FNFD envelope/recovery decisions in tools/feed_wire.py and their host adoption; that extension is separate from these trailer theorems."
     },
@@ -3264,7 +3264,6 @@
         "books/nntp.lisp",
         "tests/acl2/nntp-list-counts-tests.lisp",
         "tests/test_native_reader_index.py",
-        "tests/test_fn_web_native.py",
         "planning/evidence/m6-list-counts-2026-09-24.md",
         "planning/evidence/manifests/certify-20260924T214755Z-939221.json",
         "planning/evidence/manifests/certify-20260924T220328Z-1075905.json",
@@ -4314,17 +4313,15 @@
         "books/records-canonicality.lisp",
         "books/records-invariants.lisp",
         "tests/acl2/records-schema-v1-teeth-tests.lisp",
-        "books/byte-store-profile-v1.lisp",
         "books/byte-store-frame.lisp",
         "books/records-seam.lisp",
-        "tests/acl2/byte-store-profile-v1-tests.lisp",
         "tests/acl2/byte-store-frame-tests.lisp",
         "tests/acl2/records-ceiling-tests.lisp",
         "planning/evidence/bounds-p6-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T010233Z-3422722.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
-      "progress_note": "Certified with teeth; the theorem is over the implementation the seam attaches, not over the constrained seam function; the open corollary over fn-store-sn-recover is by congruence of the program-mode host map and is not an ACL2 event.",
+      "progress_note": "Certified with teeth; the theorem is over the implementation the seam attaches, not over the constrained seam function; the open corollary over fn-store-sn-recover is by congruence of the program-mode host map and is not an ACL2 event. Format 10 (lane format-bump-10, 2026-09-28): books/byte-store-profile-v1.lisp and its tests were deleted with format 9 (D34: every format-10 profile is written by a format-10 init or import under the current relation; the frozen pre-P6 relation and the PKT-467 window describe profiles no format-10 store holds); the events and paths that named them are removed from this row.",
       "events": [
         "fn-record-v1-bytes-decode-identically",
         "fn-record-v1-bytes-are-their-translation",
@@ -4341,8 +4338,8 @@
     },
     {
       "id": "PRF-106",
-      "title": "The subject digest reads the octet buffer in place",
-      "statement": "fn-sha256-of-prefixed-buffer (books/sha256-buffer.lisp) digests (append PREFIX buffer) over the word stobj of books/sha256-stobj.lisp with the buffer read by index: fn-shb-byte is the prefix's octet below the prefix length, the buffer's cell at i - lp below the message length and the padding past it, and the block loader, the compression loop and the digest are the string reader's with the buffer and the prefix in place of the string. fn-sha256-of-prefixed-buffer-is-sha256 (the keystone) says the buffer digest equals fn-sha256 of the appended list on every prefix and every value, with no hypothesis; it is proved as the correspondence of the buffer reader with the list reader on the list's suffix (the byte, the loaded word, the loaded block, the compressed block, the block loop, the digest) and then sha256-stobj's keystone fn-sha256-stobj-is-sha256. fn-sha256-of-prefixed-buffer-is-sha256-of-octets is its instance on an octet prefix and a buffer value (fn-octets-p). fn-shb-subject-id is fn-id-subject-of-payload with the payload in the buffer, and fn-shb-subject-id-is-id-subject-of-sha256-preimage says it is fn-id-subject of fn-sha256 over fn-id-subject-preimage, with no hypothesis: fn-id-subject-of-payload with fn-sha256 in the place of the constrained fn-frame-digest, which is what books/crypto-attach.lisp attaches (fn-sha256-stobj, equal to fn-sha256), so on the host image the two identities are the same octets. Every function is guard-verified. The host calls fn-shb-subject-id through host/owner-host.lisp fn-owner-subject-id-buffer (the list entry's length test, then the buffer identity), reached from host/native/io.lisp fnn-subject-id-buffer under fnn-metadata-buffer, which host/native/owner.lisp fnn-owner-attempt calls for the served POST after fnn-octets-fill: the last per-POST octet list of the payload before the store record is gone.",
+      "title": "The subject identity reads the octet buffer in place, through the digest seam",
+      "statement": "books/subject-id-buffer.lisp: fn-sidb-subject-id is fn-id-subject of fn-frame-digest-buffer over the subject preimage's fixed head (fn-id-subject-prefix of the buffer's length) and the buffer, and fn-sidb-subject-id-is-id-subject-of-payload (the keystone) says it is fn-id-subject-of-payload of the buffer's octets, with no hypothesis: the identity is stated against the constrained digest (A-CRYPTO), not a named algorithm, and books/frame-digest-buffer.lisp attaches the buffer form to fn-blake3-of-prefixed-buffer-any (BLAKE3 since store format 10, lane blake3-digest; SHA-256's books/sha256-buffer.lisp before, now deleted). fn-blake3-of-prefixed-buffer-is-blake3 (books/blake3-stobj.lisp) is the buffer BLAKE3 equal to fn-blake3 of the appended list on every prefix and every value. fn-sidb-subject-id-bounded (guard t, guard-verified, fn-sidb-subject-id-bounded-unfolds) is the entry: host/native/io.lisp fnn-subject-id-buffer calls it under fnn-metadata-buffer, which host/native/owner.lisp fnn-owner-attempt calls for the served POST after fnn-octets-fill, so no octet list of the payload is built for its identity.",
       "milestone": "M5",
       "requirements": [
         "HST-001",
@@ -4361,14 +4358,15 @@
         "fn-shb-subject-id-is-id-subject-of-sha256-preimage"
       ],
       "evidence": [
-        "books/sha256-buffer.lisp",
-        "tests/acl2/sha256-buffer-tests.lisp",
         "planning/evidence/rep-wave-c-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T103038Z-3935155.json",
         "planning/evidence/manifests/certify-20260925T103519Z-3987534.json",
         "planning/evidence/manifests/certify-20260925T184459Z-4147314.json",
         "planning/evidence/manifests/certify-20260925T210036Z-3850666.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "books/subject-id-buffer.lisp",
+        "tests/acl2/subject-id-buffer-tests.lisp",
+        "books/blake3-stobj.lisp"
       ],
       "progress_note": "Lane rep-wave-c (D27 wave C, 2026-09-25). Teeth in tests/acl2/sha256-buffer-tests.lisp: the FIPS 180-4 vectors through the buffer reader on a live local buffer with the prefix/buffer split varied, the padding boundaries and a 3,000-octet buffer (past the array's first 1024 cells) against fn-sha256-stobj, non-degeneracy, and the subject identity equal to fn-id-subject-of-payload under the attachment and to the theorem's right-hand side on a 160-octet article, the empty payload and a 3,000-octet payload; both keystones have no hypothesis, so no must-fail case exists; the octets instance's hypotheses are proof support (as sha256-stobj's instance). NOT done here: the owner's chunk read (fn-owner-chunk) and the accumulated body are still octet lists (the owner state's representation, wave C boundary 10); the record encoder, the frame and the article parser over the buffer (boundaries 7 to 9); the obligation identity and the frame trailer still digest short lists. A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them."
     },
@@ -4831,7 +4829,7 @@
     {
       "id": "PRF-122",
       "title": "The reader's search scope: the served XPAT reply over a range is XHDR's lines for exactly the served, matching numbers in it, and a withdrawn number is never a hit",
-      "statement": "Over fn-nntp-step-pinned (books/nntp.lisp), which the served path reaches for every non-POST reader command (host/native/owner.lisp through host/owner-host.lisp fn-owner-chunk, fn-served-step, fn-served-dispatch, fn-auth-step-pinned, fn-nntp-post-step-pinned): fn-nntp-step-pinned-xpat-range-is-the-scope, for an open, well-formed, projected session with a selected group and a command line within the preflight whose keyword is XPAT, whose field is a header name or metadata item, whose second argument is a range and whose joined pattern parses, the step's result is fn-nntp-multi of the 221 initial line and fn-nntp-hdr-lines-for-numbers of the field over fn-nss-hits of the range's numbers in the served archive. fn-nss-hits-are-the-scope: a number is in that set iff it is positive, within the range's bounds, the group's served archive holds an available article at it, the field renders, and fn-nntp-xpat-matchesp accepts the rendered field. fn-nss-withdrawn-number-is-never-a-hit: a token the pinned step answers 423 withdrawn for (fn-nntp-number-withdrawn-p) never names a hit, for any field, pattern or number list. tools/fn_web.py Backend.search and Backend.thread send exactly these commands and keep no index.",
+      "statement": "Over fn-nntp-step-pinned (books/nntp.lisp), which the served path reaches for every non-POST reader command (host/native/owner.lisp through host/owner-host.lisp fn-owner-chunk, fn-served-step, fn-served-dispatch, fn-auth-step-pinned, fn-nntp-post-step-pinned): fn-nntp-step-pinned-xpat-range-is-the-scope, for an open, well-formed, projected session with a selected group and a command line within the preflight whose keyword is XPAT, whose field is a header name or metadata item, whose second argument is a range and whose joined pattern parses, the step's result is fn-nntp-multi of the 221 initial line and fn-nntp-hdr-lines-for-numbers of the field over fn-nss-hits of the range's numbers in the served archive. fn-nss-hits-are-the-scope: a number is in that set iff it is positive, within the range's bounds, the group's served archive holds an available article at it, the field renders, and fn-nntp-xpat-matchesp accepts the rendered field. fn-nss-withdrawn-number-is-never-a-hit: a token the pinned step answers 423 withdrawn for (fn-nntp-number-withdrawn-p) never names a hit, for any field, pattern or number list.",
       "milestone": "M6",
       "requirements": [
         "NNT-021"
@@ -4849,7 +4847,8 @@
         "planning/evidence/manifests/certify-20260926T004042Z-3226778.json",
         "planning/evidence/manifests/certify-20260926T013116Z-3680360.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
+        "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
+        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json"
       ],
       "progress_note": "Certified on hbox (planning/evidence/reader-daily-2026-09-25.md names the manifest); the native walk and tin session are in the same record.",
       "events": [
@@ -6585,7 +6584,7 @@
     {
       "id": "PRF-178",
       "title": "A control reply that cannot carry its value refuses by name: profile validation refuses a record bound the consumer poll reply cannot carry, and the live-status reply names a report its u32 total cannot say",
-      "statement": "(a) PKT-467, the coordinator's ruling (D27: profile validation, representation and format evolution agree). The subject is fn-bs-profile-validp / fn-bs-profile-admittedp (books/byte-store-frame), which host/native/io.lisp fnn-command-upgrade-profile reaches through fn-hmr-upgrade-verdict / fn-profile-upgrade-verdict and `init` through host/store-host.lisp fn-store-profile-init-verdict (fn-bs-profile-init-verdict); every open through fn-store-profile-admittedp. fn-bs-profile-invalid-reason answers :max-record-octets-above-the-poll-reply when R exceeds *fn-stxa-max-octets* (4,294,966,940: the Store frame's u32 less the kind-6 poll reply's 9 header and 346 cursor octets, the inequality fn-ncl-poll-event-bytesp checks). fn-bs-profile-valid-record-fits-a-poll-reply: for any value, fn-bs-profile-max-record-octets is at most *fn-stxa-max-octets*, and every payload fn-bs-publication-admissiblep admits (the gate host/store-host.lisp fn-store-publication-admissibility asserts for host/native/io.lisp fnn-publish) is within it. fn-col-poll-report-of-an-admitted-payload-fits (books/consumer-owner-local-progress): a page whose event encoding is such an admitted payload is served by fn-col-poll-report (host/owner-host.lisp fn-owner-consumer-local-poll) as that page, not :oversize. fn-bs-profile-v1-valid-stays-valid (books/byte-store-profile-v1) now carries R <= *fn-stxa-max-octets*, and fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name says the window it excludes is refused by the new name: together they characterize which saved profiles still open. (b) The subject is fn-nls-page over fn-nls-buffer (books/native-live-status), which host/native-live-status-host.lisp fn-native-live-status-host-answer answers for host/native/control.lisp fnn-control-live-status-answer, and fn-nls-client-step, which host/native/control.lisp fnn-control-live-status folds pages through. fn-nls-page-refuses-exactly-past-the-total-width: for an octet report and any offset, the client's step on the owner's page is (:refused :report-past-the-total-width) exactly when the report is longer than 2^32-1 octets; the refused reply's existing chunk field carries the word (no layout change). Not claimed: that the served store's events re-encode to at most R (the :oversize arm stays as the named refusal for a store holding an event past its own R; PKT-470); that a live-status report is bounded before it is rendered (the render is whole, octet lists: PKT-470, hot-path-checker's class); a concrete witness of either past-the-ceiling antecedent (each needs 2^32 octets; the hypothesis teeth are proved symbolically). (c) PKT-471, the coordinator's decision (a named refusal at open, never translation-at-open). The subject is fn-spo-config-open (books/store-profile-open), the open host/native/io.lisp fnn-metadata-config-decode calls through host/store-host.lisp fn-store-metadata-config-open on every open (fnn-load-config from fnn-acquire: owner start, store recover, inspect, checkpoint, status, the offline health). fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name: for every profile the format-8 encoder saved under the relation before PKT-467 (fn-bs-profile-v2-validp, frozen; fn-bs-profile-valid-is-v2-valid and fn-bs-profile-v1-valid-is-v2-valid include the current and the pre-P6 saved profiles), the open of its frame (fn-spo-saved-frame) is (:opened VALUES) when R <= *fn-stxa-max-octets* and (:refused :max-record-octets-above-the-poll-reply) otherwise, never (:rejected), the host's fault; the host prints ACL2's line (fn-spo-refusal-text) at exit 1. fn-spo-config-open-refuses-only-what-the-old-open-rejected: a refusal is never a frame fn-bs-config-decode decoded, so every store the open opened before opens the same. The repair is a separate verdict, fn-spo-repair-verdict, which fnn-command-upgrade-profile reaches through fnn-command-repair-profile on that refusal (fn-profile-upgradep is unchanged, so every fn-profile-upgrade-keeps-* theorem is unaffected): fn-spo-repair-admits-exactly-the-lowering-to-the-width: over any saved profile's frame the verdict writes exactly when the saved R exceeds *fn-stxa-max-octets* and the target is (:current ((4 . *fn-stxa-max-octets*))), what `store upgrade-profile --max-record-octets 4294966940` parses to, and the written frame opens as the saved profile with R lowered and every other field kept (fn-spo-repaired-keeps-every-other-field). Not claimed (PKT-486): that the repair's open under the lowered profile names a store holding a committed record above the lowered read bound (it would fault on the read bound; no such record is constructible below 4 GiB); a native crash witness of the repair path (it writes through the upgrade's byte program, fn-bs-profile-program-crash-is-old-or-new).",
+      "statement": "(a) PKT-467, the coordinator's ruling (D27: profile validation, representation and format evolution agree). The subject is fn-bs-profile-validp / fn-bs-profile-admittedp (books/byte-store-frame), which host/native/io.lisp fnn-command-upgrade-profile reaches through fn-hmr-upgrade-verdict / fn-profile-upgrade-verdict and `init` through host/store-host.lisp fn-store-profile-init-verdict (fn-bs-profile-init-verdict); every open through fn-store-profile-admittedp. fn-bs-profile-invalid-reason answers :max-record-octets-above-the-poll-reply when R exceeds *fn-stxa-max-octets* (4,294,966,940: the Store frame's u32 less the kind-6 poll reply's 9 header and 346 cursor octets, the inequality fn-ncl-poll-event-bytesp checks). fn-bs-profile-valid-record-fits-a-poll-reply: for any value, fn-bs-profile-max-record-octets is at most *fn-stxa-max-octets*, and every payload fn-bs-publication-admissiblep admits (the gate host/store-host.lisp fn-store-publication-admissibility asserts for host/native/io.lisp fnn-publish) is within it. fn-col-poll-report-of-an-admitted-payload-fits (books/consumer-owner-local-progress): a page whose event encoding is such an admitted payload is served by fn-col-poll-report (host/owner-host.lisp fn-owner-consumer-local-poll) as that page, not :oversize. fn-bs-profile-v1-valid-stays-valid (books/byte-store-profile-v1) now carries R <= *fn-stxa-max-octets*, and fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name says the window it excludes is refused by the new name: together they characterize which saved profiles still open. (b) The subject is fn-nls-page over fn-nls-buffer (books/native-live-status), which host/native-live-status-host.lisp fn-native-live-status-host-answer answers for host/native/control.lisp fnn-control-live-status-answer, and fn-nls-client-step, which host/native/control.lisp fnn-control-live-status folds pages through. fn-nls-page-refuses-exactly-past-the-total-width: for an octet report and any offset, the client's step on the owner's page is (:refused :report-past-the-total-width) exactly when the report is longer than 2^32-1 octets; the refused reply's existing chunk field carries the word (no layout change). Not claimed: that the served store's events re-encode to at most R (the :oversize arm stays as the named refusal for a store holding an event past its own R; PKT-470); that a live-status report is bounded before it is rendered (the render is whole, octet lists: PKT-470, hot-path-checker's class); a concrete witness of either past-the-ceiling antecedent (each needs 2^32 octets; the hypothesis teeth are proved symbolically). (c) [retired by format 10: the saved-profile window refusal and the repair are gone with format 9; every format-10 profile satisfies the arm at its writing] PKT-471, the coordinator's decision (a named refusal at open, never translation-at-open). The subject is fn-spo-config-open (books/store-profile-open), the open host/native/io.lisp fnn-metadata-config-decode calls through host/store-host.lisp fn-store-metadata-config-open on every open (fnn-load-config from fnn-acquire: owner start, store recover, inspect, checkpoint, status, the offline health). fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name: for every profile the format-8 encoder saved under the relation before PKT-467 (fn-bs-profile-v2-validp, frozen; fn-bs-profile-valid-is-v2-valid and fn-bs-profile-v1-valid-is-v2-valid include the current and the pre-P6 saved profiles), the open of its frame (fn-spo-saved-frame) is (:opened VALUES) when R <= *fn-stxa-max-octets* and (:refused :max-record-octets-above-the-poll-reply) otherwise, never (:rejected), the host's fault; the host prints ACL2's line (fn-spo-refusal-text) at exit 1. fn-spo-config-open-refuses-only-what-the-old-open-rejected: a refusal is never a frame fn-bs-config-decode decoded, so every store the open opened before opens the same. The repair is a separate verdict, fn-spo-repair-verdict, which fnn-command-upgrade-profile reaches through fnn-command-repair-profile on that refusal (fn-profile-upgradep is unchanged, so every fn-profile-upgrade-keeps-* theorem is unaffected): fn-spo-repair-admits-exactly-the-lowering-to-the-width: over any saved profile's frame the verdict writes exactly when the saved R exceeds *fn-stxa-max-octets* and the target is (:current ((4 . *fn-stxa-max-octets*))), what `store upgrade-profile --max-record-octets 4294966940` parses to, and the written frame opens as the saved profile with R lowered and every other field kept (fn-spo-repaired-keeps-every-other-field). Not claimed (PKT-486): that the repair's open under the lowered profile names a store holding a committed record above the lowered read bound (it would fault on the read bound; no such record is constructible below 4 GiB); a native crash witness of the repair path (it writes through the upgrade's byte program, fn-bs-profile-program-crash-is-old-or-new).",
       "milestone": "M5",
       "requirements": [
         "STO-021"
@@ -6598,8 +6597,6 @@
       "evidence": [
         "books/byte-store-frame.lisp",
         "tests/acl2/byte-store-frame-tests.lisp",
-        "books/byte-store-profile-v1.lisp",
-        "tests/acl2/byte-store-profile-v1-tests.lisp",
         "books/consumer-owner-local-progress.lisp",
         "tests/acl2/consumer-owner-local-progress-tests.lisp",
         "books/native-live-status.lisp",
@@ -6616,7 +6613,7 @@
         "host/native/io.lisp",
         "planning/evidence/manifests/certify-20260926T134557Z-2464906.json"
       ],
-      "progress_note": "Lane control-reply-fit (2026-09-26), the coordinator's PKT-467 ruling and the control-reply sweep. Lane profile-open-refusal (2026-09-26): PKT-471, the named refusal at open and the one repair.",
+      "progress_note": "Lane control-reply-fit (2026-09-26), the coordinator's PKT-467 ruling and the control-reply sweep. Lane profile-open-refusal (2026-09-26): PKT-471, the named refusal at open and the one repair. Format 10 (lane format-bump-10, 2026-09-28): books/byte-store-profile-v1.lisp and its tests were deleted with format 9 (D34: every format-10 profile is written by a format-10 init or import under the current relation; the frozen pre-P6 relation and the PKT-467 window describe profiles no format-10 store holds); the events and paths that named them are removed from this row. Part (c)'s keystones (the window refusal) are retired; the open's refusals by name are PRF-350 and PRF-258.",
       "events": [
         "fn-bs-profile-valid-record-fits-a-poll-reply",
         "fn-bs-profile-v1-valid-stays-valid",
@@ -8264,7 +8261,7 @@
     {
       "id": "PRF-231",
       "title": "A peer named by a DNS name: the dial resolves only RFC 1123 names, each attempt, and the TLS check a transport selects is the configured name under a pinned anchor or the system's public roots",
-      "statement": "books/peer-host.lisp over the functions the host calls. fn-peer-dial-target-decides-the-path (no hypothesis; host host/native/io.lisp fnn-peer-connect, called by host/native/feed-service.lisp fnn-feed-dial and host/native/pull-service.lisp fnn-pull-round): the target is exactly one of (:address A) with A the four octets fn-native-config-ipv4-address spells and the host not a name, (:resolve HOST) with HOST exactly the configured text, an RFC 1123 section 2.1 name of at most 253 octets of letters, digits, hyphen and dot and not an IPv4 literal (fn-peer-host-name-is-not-an-ipv4-literal), or (:refused :host-syntax) for anything else. fn-peer-tls-verification-selects-one-check (no hypothesis; host fnn-feed-enable-tls and the pull's (:tls NAME TRUST) effect in fnn-pull-round): the answer is :verify or :refused only; a :verify names exactly the configured server name, which is a host, sends SNI exactly when it is a DNS name (fn-peer-tls-verification-sni-is-never-a-literal, RFC 6066 section 3), and selects the system roots iff the trust is :system-roots and a pinned file iff it is a C string; a string host name with a well-formed trust is always :verify. fn-peer-tls-select-named-default (peer add, books/native-admin-peer.lisp fn-native-admin-peer-plan-base): a named host given `-` `-` is checked against its own name under the system roots; fn-peer-tls-select-numeric-host-needs-a-name-by-definition; fn-peer-tls-select-is-a-check: every selection is one fn-peer-tls-verification accepts, the roots exactly when the anchor word is `-`. The peer record admits (:tls MODE NAME :system-roots) (books/peer-config.lisp fn-cfg-peer-transportp, row n = 1), the pull plan reads it (books/peer-pull.lisp fn-pull-security-of-rows, books/peer-pull-session.lisp fn-pull-tls-securityp), and invitations carry only hosts (books/peer-invite.lisp fn-pinv-hosts-okp). Not claimed: DNS authenticity, the system bundle's trustworthiness, OpenSSL's hostname check, IPv6 peers, inbound source-address peers after renumbering. EXTENSION (lane friend-blockers, 2026-09-27, the stranger rehearsal's stops): Stop 10: `fn redeem HOST[:PORT] CODE LOGIN [--tls] [--cafile PEM]` (host/native/io.lisp fnn-command-redeem) runs XREDEEM for a friend; fn-redeem-step decides each step from the reply code, fn-peer-tls-verification the TLS check, fn-redeem-text every line. KEYSTONE fn-redeem-done-only-on-281-after-the-password. EXTENSION (lane public-node-3, 2026-09-27, the OpenBSD rehearsal's finding 8): a connection that never opens or ends (host fnn-command-redeem: fnn-os-error, fnn-tls-io-error, socket and name-service errors, a close or 30 s silence in fnn-redeem-read-line) is fn-redeem-lost at its stage, and the exit code is fn-outcome-code of fn-redeem-outcome-class. KEYSTONE fn-redeem-lost-is-fenced-and-server-answers-are-not: every lost outcome is :fenced (exit 3), (:uncertain :password) exactly after the password, (:unreachable STAGE) before it; a final step outcome ((:done) or (:refused WORD)) is :accepted exactly on the 281 after the password and :refused otherwise. tools/fn_reader.py counts only exit 1 as a refused code. Not claimed: that the server did not bind the account when the connection ended after the password (it is uncertain, and said so).",
+      "statement": "books/peer-host.lisp over the functions the host calls. fn-peer-dial-target-decides-the-path (no hypothesis; host host/native/io.lisp fnn-peer-connect, called by host/native/feed-service.lisp fnn-feed-dial and host/native/pull-service.lisp fnn-pull-round): the target is exactly one of (:address A) with A the four octets fn-native-config-ipv4-address spells and the host not a name, (:resolve HOST) with HOST exactly the configured text, an RFC 1123 section 2.1 name of at most 253 octets of letters, digits, hyphen and dot and not an IPv4 literal (fn-peer-host-name-is-not-an-ipv4-literal), or (:refused :host-syntax) for anything else. fn-peer-tls-verification-selects-one-check (no hypothesis; host fnn-feed-enable-tls and the pull's (:tls NAME TRUST) effect in fnn-pull-round): the answer is :verify or :refused only; a :verify names exactly the configured server name, which is a host, sends SNI exactly when it is a DNS name (fn-peer-tls-verification-sni-is-never-a-literal, RFC 6066 section 3), and selects the system roots iff the trust is :system-roots and a pinned file iff it is a C string; a string host name with a well-formed trust is always :verify. fn-peer-tls-select-named-default (peer add, books/native-admin-peer.lisp fn-native-admin-peer-plan-base): a named host given `-` `-` is checked against its own name under the system roots; fn-peer-tls-select-numeric-host-needs-a-name-by-definition; fn-peer-tls-select-is-a-check: every selection is one fn-peer-tls-verification accepts, the roots exactly when the anchor word is `-`. The peer record admits (:tls MODE NAME :system-roots) (books/peer-config.lisp fn-cfg-peer-transportp, row n = 1), the pull plan reads it (books/peer-pull.lisp fn-pull-security-of-rows, books/peer-pull-session.lisp fn-pull-tls-securityp), and invitations carry only hosts (books/peer-invite.lisp fn-pinv-hosts-okp). Not claimed: DNS authenticity, the system bundle's trustworthiness, OpenSSL's hostname check, IPv6 peers, inbound source-address peers after renumbering. EXTENSION (lane friend-blockers, 2026-09-27, the stranger rehearsal's stops): Stop 10: `fn redeem HOST[:PORT] CODE LOGIN [--tls] [--cafile PEM]` (host/native/io.lisp fnn-command-redeem) runs XREDEEM for a friend; fn-redeem-step decides each step from the reply code, fn-peer-tls-verification the TLS check, fn-redeem-text every line. KEYSTONE fn-redeem-done-only-on-281-after-the-password. EXTENSION (lane public-node-3, 2026-09-27, the OpenBSD rehearsal's finding 8): a connection that never opens or ends (host fnn-command-redeem: fnn-os-error, fnn-tls-io-error, socket and name-service errors, a close or 30 s silence in fnn-redeem-read-line) is fn-redeem-lost at its stage, and the exit code is fn-outcome-code of fn-redeem-outcome-class. KEYSTONE fn-redeem-lost-is-fenced-and-server-answers-are-not: every lost outcome is :fenced (exit 3), (:uncertain :password) exactly after the password, (:unreachable STAGE) before it; a final step outcome ((:done) or (:refused WORD)) is :accepted exactly on the 281 after the password and :refused otherwise. Not claimed: that the server did not bind the account when the connection ended after the password (it is uncertain, and said so).",
       "milestone": "M3",
       "requirements": [
         "NNT-048"
@@ -8273,7 +8270,7 @@
         "PRF-097"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-host.lisp",
         "tests/acl2/peer-host-tests.lisp",
@@ -8289,7 +8286,8 @@
         "tests/test_native_peer_by_name.py",
         "planning/evidence/peers-by-name-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T013235Z-1440473.json",
-        "planning/evidence/manifests/certify-20260927T012133Z-4014708.json"
+        "planning/evidence/manifests/certify-20260927T012133Z-4014708.json",
+        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json"
       ],
       "progress_note": "Lane peers-by-name 2026-09-27 (PKT-613): books/peer-host REPL-admitted on persvati (session pbn); the changed chain (16 books: peer-config, peer-host, peer-pull, peer-pull-session, native-admin-peer, peer-invite, owner-feed, feed-connection(-invariants), native-admin(-peer-budget) and the test books) certified on persvati at 2 jobs, max 8.2 s (manifest certify-20260927T013235Z-1440473); hbox certified the image's 116 affected books at 8 jobs (certify-20260927T012133Z-4014708). Native: tests.test_native_peer_by_name 4 of 4 OK on the production and the developer image (native-pbn2).",
       "events": [
@@ -8618,7 +8616,7 @@
     {
       "id": "PRF-210",
       "title": "A cancel's authority is exactly a granted signed canceller or the poster: an unsigned cancel or Supersedes withdraws its target exactly when one of its RFC 8315 Cancel-Key entries opens one of the target's sha256 Cancel-Locks; the octets the owner stores for an account's POST carry exactly one Cancel-Lock keyed by that account under an HKDF purpose key, outside the D25 source",
-      "statement": "Withdrawal (unchanged): over fn-ctl-refresh-withdrawals / fn-ctl-journal-withdrawals, the record of a cause withdraws a target exactly when the cause names another target and either a verified principal P signed it or P's grants cover its groups, or no principal is verified and a Cancel-Key K of the cause has Base64(SHA-256(K)) among the target's sha256 Cancel-Locks (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster; fn-ctl-verified-cause-ignores-its-keys). Stored octets: books/owner-served-invariants.lisp fn-own-sub-stored-octets CFG SUB RING (host/owner-host.lisp fn-owner-take; the completion gate compares the same function): for a served submission by account A (fn-own-sub-account, recorded by fn-own-finish-read from the session subject) with a key ring installed (fn-ns-ringp), unsigned and with no poster Cancel-Lock, the stored octets are `Cancel-Lock: sha256:Base64(SHA-256(K))` CRLF, then on a cancel `Cancel-Key:` with one key per retained epoch, then the injected octets unchanged, K = Base64(HMAC-SHA256(key, hex(A) || MSGID)) with key the HKDF-SHA256 purpose key of the current epoch (info fn/cancel-lock/v1, salt the node identity) (fn-own-stored-octets-carry-the-account-lock, fn-cl-served-payload-writes-one-account-lock). D25: the projection fn-cll-skip that books/poster-bytes.lisp reads both compared payloads through gives the injected octets for every ring and account (fn-own-stored-octets-keep-the-injected-octets, fn-cl-served-payload-projects-to-the-injected-octets, fn-cll-skip-of-the-generated-lines), so a same-source retry by any account or key epoch is :duplicate and a different source :conflict at fn-rcl-existing-action (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored, fn-cld-a-changed-source-is-a-conflict-whatever-the-account). Rotation: a cancel's keys open a lock made under any retained epoch (fn-cl-ring-keys-open-every-retained-lock). Exactly the account's key opens its lock up to the stated collision (fn-cl-account-key-opens-exactly-its-lock). Derivation: distinct info labels never expand the same HKDF input (fn-ns-expand-input-separates-info); the key file round-trips (fn-ns-file-parse-of-render). Not theorems: that the written line parses back as the entry (teeth on parsed stored octets); that another account's key opens nothing (a SHA-256 collision of two HMAC outputs under a key the forger does not hold, about 2^128 generic work); HMAC/HKDF pseudorandomness. PKT-575 (PRF-256): the plan's first arm is the node's own authority (fn-ctl-node-authorizesp: a configuration row (CAUSE TARGET REASON 1) the operator wrote), and the keystone's right side is `the node authorizes CAUSE for TARGET, or` the signer/poster condition; the effect answers :node for such a record. RECORDS FLIP (flip-books-residue, 2026-09-27): the held payload is an arena handle; the subject is fn-store-existing-action (books/store-intern.lisp), which the host calls after flip-L6 at fn-owner-existing-action, fn-owner-prepare and host/store-node-host.lisp fn-store-sn-existing-action, and at fn-owner-existing-action-buffer through fn-pidx-existing-action (fn-pidx-existing-action-is-store-existing-action); the held-payload hypothesis reads the bytes under the held handle through the arena the verdict reads (fn-handle-bytes). The pre-flip statements over fn-rcl-existing-action equated a handle with octets and were vacuous on a flipped Store. After the records flip (flip-L8-2) the target's Cancel-Lock entries are its row's control fact, carried by the record as TLOCKS (fn-ctl-w-with-tlocks) and read by fn-ctl-withdrawal-effect's key arm; the keystone is stated over the plan resolved to TLOCKS.",
+      "statement": "Withdrawal (unchanged): over fn-ctl-refresh-withdrawals / fn-ctl-journal-withdrawals, the record of a cause withdraws a target exactly when the cause names another target and either a verified principal P signed it or P's grants cover its groups, or no principal is verified and a Cancel-Key K of the cause has Base64(SHA-256(K)) among the target's sha256 Cancel-Locks (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster; fn-ctl-verified-cause-ignores-its-keys). Stored octets: books/owner-served-invariants.lisp fn-own-sub-stored-octets CFG SUB RING (host/owner-host.lisp fn-owner-take; the completion gate compares the same function): for a served submission by account A (fn-own-sub-account, recorded by fn-own-finish-read from the session subject) with a key ring installed (fn-ns-ringp), unsigned and with no poster Cancel-Lock, the stored octets are `Cancel-Lock: sha256:Base64(SHA-256(K))` CRLF, then on a cancel `Cancel-Key:` with one key per retained epoch, then the injected octets unchanged, K = Base64(keyed-BLAKE3(key, hex(A) || MSGID)) with key the BLAKE3 derive_key purpose key of the current epoch (context fn/cancel-lock/v2, material the root and the node identity; HMAC-SHA256 under HKDF-SHA256 up to store format 9, RFC 8315 section 4 leaving the MAC's hash to the agent) (fn-own-stored-octets-carry-the-account-lock, fn-cl-served-payload-writes-one-account-lock). D25: the projection fn-cll-skip that books/poster-bytes.lisp reads both compared payloads through gives the injected octets for every ring and account (fn-own-stored-octets-keep-the-injected-octets, fn-cl-served-payload-projects-to-the-injected-octets, fn-cll-skip-of-the-generated-lines), so a same-source retry by any account or key epoch is :duplicate and a different source :conflict at fn-rcl-existing-action (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored, fn-cld-a-changed-source-is-a-conflict-whatever-the-account). Rotation: a cancel's keys open a lock made under any retained epoch (fn-cl-ring-keys-open-every-retained-lock). Exactly the account's key opens its lock up to the stated collision (fn-cl-account-key-opens-exactly-its-lock). Derivation: distinct info labels are distinct derive_key contexts (fn-ns-purpose-inputs-separate-by-definition); the key file round-trips (fn-ns-file-parse-of-render). Not theorems: that the written line parses back as the entry (teeth on parsed stored octets); that another account's key opens nothing (a SHA-256 collision of two keyed-BLAKE3 outputs under a key the forger does not hold: about 2^-128 per chosen pair); keyed-BLAKE3 and derive_key pseudorandomness. PKT-575 (PRF-256): the plan's first arm is the node's own authority (fn-ctl-node-authorizesp: a configuration row (CAUSE TARGET REASON 1) the operator wrote), and the keystone's right side is `the node authorizes CAUSE for TARGET, or` the signer/poster condition; the effect answers :node for such a record. RECORDS FLIP (flip-books-residue, 2026-09-27): the held payload is an arena handle; the subject is fn-store-existing-action (books/store-intern.lisp), which the host calls after flip-L6 at fn-owner-existing-action, fn-owner-prepare and host/store-node-host.lisp fn-store-sn-existing-action, and at fn-owner-existing-action-buffer through fn-pidx-existing-action (fn-pidx-existing-action-is-store-existing-action); the held-payload hypothesis reads the bytes under the held handle through the arena the verdict reads (fn-handle-bytes). The pre-flip statements over fn-rcl-existing-action equated a handle with octets and were vacuous on a flipped Store. After the records flip (flip-L8-2) the target's Cancel-Lock entries are its row's control fact, carried by the record as TLOCKS (fn-ctl-w-with-tlocks) and read by fn-ctl-withdrawal-effect's key arm; the keystone is stated over the plan resolved to TLOCKS.",
       "milestone": "M4",
       "requirements": [
         "SEC-006"
@@ -9495,7 +9493,7 @@
     {
       "id": "PRF-258",
       "title": "A store made by another release is refused at open by the name of its profile layout, never the generic fault",
-      "statement": "books/store-profile-open.lisp fn-spo-open-of-another-layout-refuses-by-name: for every natural N other than *fn-spo-release-layout-fields* (16) and every VALUES of the layout fn-spo-layout-spec N (two frame texts, the first the format word fn-store-8, then N u64 fields) whose payload fits a profile frame (600 octets), fn-spo-config-open, the open host/native/io.lisp fnn-metadata-config-decode calls through host/store-host.lisp fn-store-metadata-config-open on every open (fnn-load-config from fnn-acquire: owner start, store recover, status, inspect, checkpoint, the offline health), answers (:refused :profile-layout N) on the frame that layout's encoder writes (fn-spo-layout-frame N VALUES; every store made before batch AS has N = 13); fn-spo-refusal-text renders `open refused reason=older-release: store made by an older release (profile layout N fields, this release expects 16): export it with the release that made it, then import it here` (newer-release above 16), which the host prints at exit 1. fn-spo-config-open-layout-refusal-is-never-a-decoded-frame: the refusal is never a frame fn-bs-config-decode decodes (every frame it decodes has this release's layout, so every store the open opened before opens the same). With fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name (this release's layout) and fn-spo-config-open-store-format-is-exactly-a-foreign-frame (another format word), a sealed profile frame of any layout or format opens or is refused by name; the generic fault remains for octets with this release's layout that the relation refuses or with no layout (fn-spo-config-open-rejected-has-this-layout-or-none-by-definition). Nothing is translated (D34).",
+      "statement": "books/store-profile-open.lisp fn-spo-open-of-another-layout-refuses-by-name (format 10): for every natural N other than *fn-spo-release-layout-fields* (15) and every VALUES of the layout fn-spo-layout-spec N (the format word fn-store-10, then N u64 fields) whose payload fits a profile frame (600 octets), fn-spo-config-open, the open host/native/io.lisp fnn-metadata-config-decode calls through host/store-host.lisp fn-store-metadata-config-open on every open (fnn-load-config from fnn-acquire), answers (:refused :profile-layout N) on the frame that layout's encoder writes (fn-spo-layout-frame N VALUES); fn-spo-refusal-text renders `open refused reason=older-release: store made by an older release (profile layout N fields, this release expects 15): export it with the release that made it, then import it here` (newer-release above 15), which the host prints at exit 1. fn-spo-config-open-of-a-decoded-frame-by-definition: every frame fn-bs-config-decode decodes is opened as its values, so no refusal is ever a decoded frame. Another format word is PRF-350's (:store-format-9 by name, :store-format otherwise); the generic fault remains for octets with this layout that the relation refuses or with no layout (fn-spo-config-open-rejected-has-this-layout-or-none-by-definition). Nothing is translated (D34).",
       "milestone": "M5",
       "requirements": [
         "STO-028"
@@ -9516,7 +9514,7 @@
         "tests/test_native_older_release_open.py",
         "planning/evidence/fixtures-refresh-2026-09-27.md"
       ],
-      "progress_note": "Lane fixtures-refresh 2026-09-27 (PKT-705).",
+      "progress_note": "Lane fixtures-refresh 2026-09-27 (PKT-705). Restated for format 10 (lane format-bump-10): one text before the u64 run, 15 fields.",
       "events": [
         "fn-spo-open-of-another-layout-refuses-by-name",
         "fn-spo-config-open-layout-refusal-is-never-a-decoded-frame",
@@ -9731,7 +9729,7 @@
     {
       "id": "PRF-267",
       "title": "The owner's commit runs in three scheduled steps with its log barrier off the owner: a status or health request waits at most one quantum and never a barrier, and a batch's members are told acceptance or refusal only after its barrier, each as its own outcome",
-      "statement": "fn-ocs-inspect-waits-at-most-one (books/owner-commit-steps.lisp; keystone, no hypothesis on the state or the commit's events): for every scheduler value S and every sequence WS of pick observations, each (W EVENT) with W the six waiting counts (control reader poster transit commit inspect) and EVENT what a :commit quantum picked there reports, if the :inspect class has a waiter at every pick (fn-ocs-inspect-waitsp) then the quanta of other classes picked before the first :inspect pick, fn-ocs-inspect-delay, is at most 1. The barrier is not a quantum: it is the :barrier ACTION fn-ocs-commit-step names after a START, which the committer runs with the owner released. So the wall time an :inspect request waits at the gate is at most the longest single quantum of another class; its bound's hypotheses: the store commits through the record log (format 9; on a format-8 store there is no committer and a served POST's commit is still inside its reader quantum), and no quantum of another class contains a barrier (true of the START and the COMPLETE when no feed peer is configured: a configured peer's intent flush fsyncs per member inside the START, PKT-825). fn-ocs-in-flight-admits-only-inspect-commit-and-reader: while a batch is in flight (phase :staged, :fenced or :failed) the pick is :inspect, :commit, :reader or nil -- no control-socket poster, transit or mutating control quantum runs between a batch's START and its COMPLETE; a reader runs at the reader view (PRF-288), so no read reveals an unfenced record (coordinator decision PKT-828); fn-ocs-in-flight-commit-before-reader: in flight a waiting commit step (START-NEXT, COMPLETE) is picked before any reader. fn-ocs-next-otherwise-is-ocm-next: outside a batch every non-:inspect pick is books/owner-commit-class.lisp fn-ocm-next's pick and state, so PRF-248's control bound (via fn-ocm-next-otherwise-is-osch-next) and fn-ocm-commit-waits-at-most-the-bound hold over the non-:inspect quanta; fn-ocs-inspect-pick-keeps-the-ocm. fn-ocs-complete-only-after-the-barrier: the step machine names :complete (the step that releases the members' replies) only for phase :staged and event :fenced; fn-ocs-barrier-only-from-a-start, fn-ocs-staged-only-by-a-start, fn-ocs-in-flight-until-completed. The keystone's per-pick subjects, each about fn-ocs-next itself: fn-ocs-inspect-first-when-not-last (an :inspect waits and the last pick was not an :inspect: the pick is :inspect), fn-ocs-inspect-waiting-picks-someone (an :inspect waits: the pick is not nil), fn-ocs-other-pick-clears-lasti (a pick that is neither nil nor :inspect clears LASTI). The members' replies (lane scheduler-2-rebase, onto commit-onto-log's per-member uncertain replies): fn-ocs-members-told-only-after-the-barrier (keystone; subjects the host's two calls per batch, fn-ocs-commit-step -- through fn-ocs-commit-event for the committer, directly for the inline commit fnn-owner-commit-queued-locked -- and fn-ocs-member-releases, which host/native/owner.lisp fnn-owner-commit-complete-locked calls over each member's (WORD RENDERABLE)): if the releases for the step's action name any member :rendered (its own rendered completion: the acceptance or refusal its word decided), then the phase was :staged and the event :fenced. fn-ocs-failed-barrier-stops-telling-no-member: a staged batch whose barrier failed gets the :stop (the recovery event: the store fenced, exit 3) and no member :rendered. fn-ocs-member-rendered-only-in-a-complete (iff: :rendered exactly when the action is :complete and the word is not :uncertain), fn-ocs-member-otherwise-uncertain (every other release is :own-uncertain, :uncertain-reply or :close), fn-ocs-member-uncertain-word-told-uncertain. Scope: accepted and refused are the member's own ACL2 word and rendered reply, unchanged by the COMPLETE; after a stop a refused member is answered uncertain too (its refusal can rest on an earlier member whose record the log may not hold). A service stopped by the operator during a barrier answers every member with the close (host, uncertain), outside this theorem.",
+      "statement": "fn-ocs-inspect-waits-at-most-one (books/owner-commit-steps.lisp; keystone, no hypothesis on the state or the commit's events): for every scheduler value S and every sequence WS of pick observations, each (W EVENT) with W the six waiting counts (control reader poster transit commit inspect) and EVENT what a :commit quantum picked there reports, if the :inspect class has a waiter at every pick (fn-ocs-inspect-waitsp) then the quanta of other classes picked before the first :inspect pick, fn-ocs-inspect-delay, is at most 1. The barrier is not a quantum: it is the :barrier ACTION fn-ocs-commit-step names after a START, which the committer runs with the owner released. So the wall time an :inspect request waits at the gate is at most the longest single quantum of another class; its bound's hypotheses: the store commits through the record log (format 9; on a format-8 store there is no committer and a served POST's commit is still inside its reader quantum), and no quantum of another class contains a barrier (true of the START and the COMPLETE when no feed peer is configured: a configured peer's intent flush fsyncs per member inside the START, PKT-825). fn-ocs-in-flight-admits-only-inspect-commit-and-reader: while a batch is in flight (phase :staged, :fenced or :failed) the pick is :inspect, :commit, :reader or nil -- no control-socket poster, transit or mutating control quantum runs between a batch's START and its COMPLETE; a reader runs at the reader view (PRF-288), so no read reveals an unfenced record (coordinator decision PKT-828); fn-ocs-in-flight-commit-before-reader: in flight a waiting commit step (START-NEXT, COMPLETE) is picked before any reader. fn-ocs-next-otherwise-is-ocm-next: outside a batch every non-:inspect pick is books/owner-commit-class.lisp fn-ocm-next's pick and state, so PRF-248's control bound (via fn-ocm-next-otherwise-is-osch-next) and fn-ocm-commit-waits-at-most-the-bound hold over the non-:inspect quanta; fn-ocs-inspect-pick-keeps-the-ocm. fn-ocs-complete-only-after-the-barrier: the step machine names :complete (the step that releases the members' replies) only for phase :staged and event :fenced; fn-ocs-barrier-only-from-a-start, fn-ocs-staged-only-by-a-start, fn-ocs-in-flight-until-completed. The keystone's per-pick subjects, each about fn-ocs-next itself: fn-ocs-inspect-first-when-not-last (an :inspect waits and the last pick was not an :inspect: the pick is :inspect), fn-ocs-inspect-waiting-picks-someone (an :inspect waits: the pick is not nil), fn-ocs-other-pick-clears-lasti (a pick that is neither nil nor :inspect clears LASTI). The members' replies (lane scheduler-2-rebase, onto commit-onto-log's per-member uncertain replies): fn-ocs-members-told-only-after-the-barrier (keystone; subjects the host's two calls per batch, fn-ocs-commit-step -- through fn-ocs-commit-event for the committer, directly for the inline commit fnn-owner-commit-queued-locked -- and fn-ocs-member-releases, which host/native/owner.lisp fnn-owner-commit-complete-locked calls over each member's (WORD RENDERABLE)): if the releases for the step's action name any member :rendered (its own rendered completion: the acceptance or refusal its word decided), then the phase was :staged and the event :fenced. fn-ocs-failed-barrier-stops-telling-no-member: a staged batch whose barrier failed gets the :stop (the recovery event: the store fenced, exit 3) and no member :rendered. fn-ocs-member-rendered-only-in-a-complete (iff: :rendered exactly when the action is :complete and the word is not :uncertain), fn-ocs-member-otherwise-uncertain (every other release is :own-uncertain, :uncertain-reply or :close), fn-ocs-member-uncertain-word-told-uncertain. Scope: accepted and refused are the member's own ACL2 word and rendered reply, unchanged by the COMPLETE; after a stop a refused member of the batch is answered uncertain too (its refusal can rest on an earlier member whose record the log may not hold); a refusal that wrote nothing and names no other record (full store, malformed) is no member of the batch: it is told at its drain (PRF-354). A service stopped by the operator during a barrier answers every member with the close (host, uncertain), outside this theorem.",
       "milestone": "M5",
       "requirements": [
         "HST-023"
@@ -10980,7 +10978,7 @@
     {
       "id": "PRF-295",
       "title": "The frame digest over an octet buffer (P3's obstruction): a buffer digest attached together with fn-frame-digest, and the served read's entry check in the realizer's buffer",
-      "statement": "books/frame-digest-buffer.lisp: fn-frame-digest-buffer PREFIX BUF is constrained to be fn-frame-digest of PREFIX followed by the buffer's octets (KEYSTONE fn-frame-digest-buffer-is-the-frame-digest), and one defattach attaches it together with fn-frame-digest (fn-sha256-stobj, as books/crypto-attach.lisp) to the buffer SHA-256 (fn-sha256-of-prefixed-buffer-any); the attachment's obligation is books/sha256-buffer.lisp's keystone; A-CRYPTO still says only 32 octets. books/payload-extent-read.lisp: the realizer's own buffer fn-octets-rd (congruent to fn-octets) and fn-arx-entry-ok-buffer TRAILER BUF; KEYSTONE fn-arx-entry-ok-buffer-is-the-frame-check: it is (equal (fn-frame-digest BUF) TRAILER), the log's own frame check (fn-lg-frame through fn-frame-seal); fn-arx-entry-ok-buffer-of-durable: a faithful read of an intact entry passes. Host subject: host/native/extent.lisp fnn-extent-entry-ok (called by fnn-extent-entry, the realizer's read) calls fn-arx-entry-ok-buffer over fn-octets-rd. NOT done: the record decode reading the buffer by index (the rest of recover-memory-2's P3); the obstruction it named is removed.",
+      "statement": "books/frame-digest-buffer.lisp: fn-frame-digest-buffer PREFIX BUF is constrained to be fn-frame-digest of PREFIX followed by the buffer's octets (KEYSTONE fn-frame-digest-buffer-is-the-frame-digest), and one defattach attaches it together with fn-frame-digest (fn-blake3-stobj, as books/crypto-attach.lisp) to the buffer BLAKE3 (fn-blake3-of-prefixed-buffer-any; SHA-256 up to store format 9); the attachment's obligation is books/blake3-stobj.lisp's keystone fn-blake3-of-prefixed-buffer-is-blake3; A-CRYPTO still says only 32 octets. books/payload-extent-read.lisp: the realizer's own buffer fn-octets-rd (congruent to fn-octets) and fn-arx-entry-ok-buffer TRAILER BUF; KEYSTONE fn-arx-entry-ok-buffer-is-the-frame-check: it is (equal (fn-frame-digest BUF) TRAILER), the log's own frame check (fn-lg-frame through fn-frame-seal); fn-arx-entry-ok-buffer-of-durable: a faithful read of an intact entry passes. Host subject: host/native/extent.lisp fnn-extent-entry-ok (called by fnn-extent-entry, the realizer's read) calls fn-arx-entry-ok-buffer over fn-octets-rd. NOT done: the record decode reading the buffer by index (the rest of recover-memory-2's P3); the obstruction it named is removed.",
       "milestone": "M5",
       "requirements": [
         "REP-010",
@@ -11459,8 +11457,8 @@
     },
     {
       "id": "PRF-320",
-      "title": "The frame digest over a window of an octet buffer: SHA-256 of a prefix and buffer[a, a+wn) read in place, attached as fn-frame-digest-range, and the checkpoint reader's frame seal over it",
-      "statement": "books/sha256-range.lisp: fn-sha256-of-prefixed-range PREFIX A WN BUF reads the window by index with a base offset (KEYSTONE fn-sha256-of-prefixed-range-is-sha256: it is fn-sha256 of (append PREFIX (fn-shr-win A WN BUF)), no hypothesis; fn-shr-win-is-slice relates the window to fn-oct-slice-list inside the buffer). books/frame-digest-buffer.lisp: the constrained fn-frame-digest-range (KEYSTONE fn-frame-digest-range-is-the-frame-digest), attached together with fn-frame-digest and fn-frame-digest-buffer in one defattach (the obligation is fn-sha256-of-prefixed-range-any-is-sha256). books/store-checkpoint-reader.lisp: fn-sccr-open-frame's seal is an mbe whose exec fn-sccr-window-seal digests the frame's window in place, never slicing it (fn-sccr-window-seal-is-seal: equal to fn-scc-seal over the slice on a live buffer, an in-range window and an octet header). Host subject: host/native/io.lisp fnn-state-checkpoint-load-arena calls fn-store-sco-decode and fn-store-sco-decode-finish (host/store-node-host.lisp), whose reader is fn-sccr-join over fn-sccr-open-frame. NOT done: the log walk's entry check (fn-lgw-decide) still frames and digests the entry as a list.",
+      "title": "The frame digest over a window of an octet buffer: BLAKE3 of a prefix and buffer[a, a+wn) read in place, attached as fn-frame-digest-range, and the checkpoint reader's frame seal over it",
+      "statement": "books/blake3-stobj.lisp: fn-blake3-of-prefixed-range PREFIX A WN BUF reads the window by index with a base offset (KEYSTONE fn-blake3-of-prefixed-range-is-blake3: it is fn-blake3 of (append PREFIX (fn-shr-win A WN BUF)) for a window inside the buffer; the SHA-256 reader of books/sha256-range.lisp it replaces is deleted, store format 10); books/octet-window.lisp: fn-shr-win-is-slice relates the window to fn-oct-slice-list inside the buffer. books/frame-digest-buffer.lisp: the constrained fn-frame-digest-range (KEYSTONE fn-frame-digest-range-is-the-frame-digest), attached together with fn-frame-digest and fn-frame-digest-buffer in one defattach (the obligation is fn-blake3-of-prefixed-range-any-is-blake3). books/store-checkpoint-reader.lisp: fn-sccr-open-frame's seal is an mbe whose exec fn-sccr-window-seal digests the frame's window in place, never slicing it (fn-sccr-window-seal-is-seal: equal to fn-scc-seal over the slice on a live buffer, an in-range window and an octet header). Host subject: host/native/io.lisp fnn-state-checkpoint-load-arena calls fn-store-sco-decode and fn-store-sco-decode-finish (host/store-node-host.lisp), whose reader is fn-sccr-join over fn-sccr-open-frame. NOT done: the log walk's entry check (fn-lgw-decide) still frames and digests the entry as a list.",
       "milestone": "M5",
       "requirements": [
         "REP-010",
@@ -11475,11 +11473,12 @@
       ],
       "status": "uncertified-at-current-digest",
       "evidence": [
-        "books/sha256-range.lisp",
         "books/frame-digest-buffer.lisp",
         "books/store-checkpoint-reader.lisp",
-        "tests/acl2/sha256-range-tests.lisp",
-        "planning/evidence/snapshot-open-2-2026-09-27.md"
+        "planning/evidence/snapshot-open-2-2026-09-27.md",
+        "books/blake3-stobj.lisp",
+        "books/octet-window.lisp",
+        "tests/acl2/blake3-stobj-tests.lisp"
       ],
       "progress_note": "Lane snapshot-open-2 (2026-09-27): the checkpoint open's list hashing.",
       "events": [
@@ -12041,7 +12040,7 @@
         "PRF-343"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-dispatch.lisp",
@@ -12097,7 +12096,7 @@
     {
       "id": "PRF-345",
       "title": "The record's octet/string conversions and the article Message-ID walk execute in constant stack: fn-record-octets-chars, fn-record-string-octets-aux and fn-article-msgids run an accumulator loop equal to their definitions",
-      "statement": "books/records-shape.lisp: fn-record-octets-chars (under fn-record-octets-string) and fn-record-string-octets-aux (under fn-record-string-octets) are each (mbe :logic <the per-octet recursion, unchanged> :exec (reverse (<twin> x nil))) with the twins fn-record-octets-chars-rev and fn-record-string-octets-rev, tail-recursive accumulators; their verify-guards events prove exec = logic on every input satisfying the guard (fn-cbor-octet-listp, character-listp), by the local lemmas fn-record-octets-chars-rev-is-revappend and fn-record-string-octets-rev-is-revappend (the twin is revappend of the definition). The host reaches them through every conversion site, e.g. host/store-host.lisp fn-store-octets->string and fn-store-frame-wire-to-logical-values (fn-record-octets-string), host/native-live-status-host.lisp fn-native-live-status-host-answer (fn-nls-buffer). Before, execution recursed once per octet: on a node thread's 1,024 KB control stack 80,000 octets exhausted it (the 5,000-obligation report stopped the owner). Scope: the octet list stays the representation (D27's concrete twin is PKT-864). books/acceptance.lisp fn-article-msgids is the same shape (twin fn-article-msgids-rev, lemma fn-article-msgids-rev-is-revappend); fn-article-listp's :exec calls it over the whole article list, and on a full-replay open (host/store-node-host.lisp fn-store-sn-recover-rows -> fn-store-sn-open-extended -> fn-sco-cpr-finish's fn-cnode-statep) 100,000 articles exhausted the 1,024 KB main-thread stack at 30,526 frames.",
+      "statement": "books/records-shape.lisp: fn-record-octets-chars (under fn-record-octets-string) and fn-record-string-octets-aux (under fn-record-string-octets) are each (mbe :logic <the per-octet recursion, unchanged> :exec (reverse (<twin> x nil))) with the twins fn-record-octets-chars-rev and fn-record-string-octets-rev, tail-recursive accumulators; their verify-guards events prove exec = logic on every input satisfying the guard (fn-cbor-octet-listp, character-listp), by the local lemmas fn-record-octets-chars-rev-is-revappend and fn-record-string-octets-rev-is-revappend (the twin is revappend of the definition). The host reaches them through every conversion site, e.g. host/store-host.lisp fn-store-octets->string and fn-store-frame-wire-to-logical-values (fn-record-octets-string), host/native-live-status-host.lisp fn-native-live-status-host-answer (fn-nls-buffer). Before, execution recursed once per octet: on a node thread's 1,024 KB control stack 80,000 octets exhausted it (the 5,000-obligation report stopped the owner). Scope: the octet list stays the representation (D27's concrete twin is PKT-864). books/acceptance.lisp fn-article-msgids is the same shape (twin fn-article-msgids-rev, lemma fn-article-msgids-rev-is-revappend); fn-article-listp's :exec calls it over the whole article list, and on a full-replay open (host/store-node-host.lisp fn-store-sn-recover-rows and fn-store-sn-recover-from-checkpoint -> fn-store-sn-open-extended -> fn-sco-cpr-finish's fn-cnode-statep) 100,000 articles exhausted the 1,024 KB main-thread stack at 30,526 frames.",
       "milestone": "M5",
       "requirements": [
         "HST-006"
@@ -12240,7 +12239,9 @@
         "tests/acl2/web-request-tests.lisp",
         "planning/evidence/web-native-2026-09-28.md",
         "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
-        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json",
+        "planning/evidence/manifests/certify-20260928T042412Z-1705234.json",
+        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json"
       ],
       "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
@@ -12263,14 +12264,15 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-render.lisp",
         "books/web-render-keystones.lisp",
         "tests/acl2/web-render-tests.lisp",
         "planning/evidence/web-native-2026-09-28.md",
         "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
-        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json",
+        "planning/evidence/manifests/certify-20260928T043449Z-1806205.json"
       ],
       "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
@@ -12293,14 +12295,15 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-session.lisp",
         "books/web-session-keystones.lisp",
         "tests/acl2/web-session-tests.lisp",
         "planning/evidence/web-native-2026-09-28.md",
         "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
-        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json",
+        "planning/evidence/manifests/certify-20260928T043449Z-1806205.json"
       ],
       "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
@@ -12329,11 +12332,253 @@
         "tests/test_native_web.py",
         "planning/evidence/web-native-2026-09-28.md",
         "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
-        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json",
+        "planning/evidence/manifests/certify-20260928T043449Z-1806205.json"
       ],
       "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
         "fn-web-config-plan-answers"
+      ]
+    },
+    {
+      "id": "PRF-353",
+      "title": "The web face shows an RFC 2047 encoded-word in Subject and From as the text it encodes (B and Q; UTF-8, US-ASCII, ISO-8859-1), anything else as it is, and the decoded text is escaped like any other",
+      "statement": "books/web-2047.lisp. Subject: fn-w47-decode, applied by books/web-render.lisp fn-wr-emit-decoded to the (:w S . E) segment (fn-wr-emit, called by books/web-session.lisp fn-wss-page for every page fn-web-step answers; host/native/web-host.lisp writes the buffer), used for Subject and From on the group page and the article page. KEYSTONES fn-w47-decode-without-openers-is-identity (a field with no \"=?\" decodes to itself: a plain header is shown exactly as it is) and fn-w47-decode-octets (the decoded field is octets); PRF-338's fn-wr-emit-writes-vocabulary-or-escaped, fn-wr-emit-reads-only-its-spans and fn-wr-emit-is-seq re-proved over the new segment, so decoded text is escaped (an encoded < is shown as &lt;). RFC 2047 sections 2 (the word, at most 75 octets), 4.1 (B, books/octet-text.lisp fn-ot-b64-decode), 4.2 (Q), 6.2 (white space between words dropped); RFC 2231 section 5 language suffix dropped. Local policy: a field longer than *fn-w47-max* (4096) octets is shown undecoded (the copy the decoder makes is bounded, never the field). Not claimed: that decoded octets are valid UTF-8 (the browser shows a replacement character).",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/web-2047.lisp",
+        "books/web-render.lisp",
+        "tests/acl2/web-render-tests.lisp",
+        "planning/evidence/web-native-2-2026-09-28.md",
+        "planning/evidence/manifests/certify-20260928T043449Z-1806205.json",
+        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json"
+      ],
+      "progress_note": "Lane web-native-2 (Opus 5.5, 2026-09-28): certified on persvati with tests/acl2/web-render-tests (certify-20260928T043449Z-1806205, 9 passed at 2 jobs; web-render 4.2 s).",
+      "events": [
+        "fn-w47-decode-without-openers-is-identity",
+        "fn-w47-decode-octets"
+      ]
+    },
+    {
+      "id": "PRF-349",
+      "title": "The store's genesis at position 0 of the log opens, at every open, as what init wrote, and every other file is refused by name",
+      "statement": "books/store-genesis.lisp fn-gen-open-of-octets-for: for the host's recorded readings (node identity, 4 salt octets, created-at, revision) and a profile, whenever fn-gen-octets-for writes a file (host/native/io.lisp fnn-initialize / fnn-log-init-genesis and the import's staged file, through host/store-host.lisp fn-store-genesis-octets), fn-gen-open of that file under the same profile (host/native/io.lisp fnn-genesis-open, on every open, through fn-store-genesis-open) is (:genesis G TRAILER) with G the record fn-gen-record-for built and TRAILER the file's last 32 octets, the chain value segment 1 starts from; fn-gen-open-of-the-genesis-init-writes states it for every genesis record of format 10 whose schema digest is the image's and whose profile digest is the profile's. fn-gen-open refuses by name (:genesis-damaged, :genesis-format, :schema-digest, :profile-digest) every other file (teeth: tests/acl2/store-genesis-tests.lisp). fn-gen-verdict-salt-is-32-bits: the salt the owner's install hands fn-hist-load (host/owner-host.lisp) is a u32. books/byte-store-log-initializer.lisp fn-bsi-log-init-program-establishes-the-empty-log now also establishes the genesis durable in journal/ with its octets, and books/store-init-log-publication.lisp's plan holds it (fn-bs-init-log-complete-segment-is-zeros). Not claimed: that the salt is secret (it is recorded); anything about the digest beyond A-CRYPTO.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-036"
+      ],
+      "depends_on": [
+        "PRF-205"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-genesis.lisp",
+        "tests/acl2/store-genesis-tests.lisp",
+        "books/byte-store-log-initializer.lisp",
+        "tests/acl2/byte-store-log-initializer-tests.lisp",
+        "books/store-init-log-publication.lisp",
+        "tests/acl2/store-init-log-publication-tests.lisp",
+        "host/native/io.lisp",
+        "host/store-host.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_replay_determinism.py",
+        "tests/test_native_initializer_fidelity.py"
+      ],
+      "progress_note": "Lane format-bump-10 (2026-09-28). Certified in the persvati runs of PRF-350's note; hbox native-n4: replay_determinism test_g (two genesis records, one history) and test_d over the format-10 fixture OK.",
+      "events": [
+        "fn-gen-open-of-octets-for",
+        "fn-gen-open-of-the-genesis-init-writes",
+        "fn-gen-decode-of-frame",
+        "fn-gen-verdict-salt-is-32-bits",
+        "fn-bsi-log-init-program-establishes-the-empty-log"
+      ]
+    },
+    {
+      "id": "PRF-350",
+      "title": "Format 10: a format-9 store is refused at open by name with the way out, and store import reads the format-9 archive",
+      "statement": "books/store-profile-open.lisp fn-spo-open-of-a-format-9-frame-refuses-by-name: for all octets whose profile frame, opened under the SHA-256 trailer format 9 sealed with (books/store-format-9.lisp fn-f9-saved-format-word), names fn-store-9, fn-spo-config-open (host/native/io.lisp fnn-metadata-config-decode through host/store-host.lisp fn-store-metadata-config-open, every open) is (:refused :store-format-9), whose line names the way out (export with that release, import here), exit 1, whatever the seam's digest (fn-f9-format-9-frame-does-not-decode: such a frame never decodes as format 10). fn-spo-open-of-a-valid-profile-opens-it: every frame init or import seals opens as its values. fn-spo-config-open-store-format-is-exactly-a-foreign-frame: :store-format exactly for a sealed frame of another word. books/store-format-9.lisp fn-f9-config-decode-of-a-format-9-frame (D38's witness): every format-9 profile that translates reads back from its SHA-256-sealed frame as its format-10 translation (word fn-store-10, fields 2-13 and 15-17 in order, the frontier word and the history marker dropped; refusals by name otherwise). books/store-export.lisp fn-sxp-import-of-a-format-9-export: the import plan (host/native/io.lisp fnn-command-store-import) over a format-9 archive with its SHA-256 MANIFEST imports under that translation with the same configuration records and records. books/store-format-9-records.lisp fn-f9r-article-identities-are-format-10s and fn-f9r-article-keeps-every-other-field: the import (fn-sxp-import-plan's fn-f9r-records) re-derives each article record's subject and obligation identity under this format's digest (BLAKE3, algorithm 2) exactly as a format-10 node derives them (the derivation books/hybrid-store.lisp checks at replay) and keeps every other field; retention events are rewritten through the articles' map; an unknown format-9 identity (:unknown-identity) and a kind without a translation yet (:untranslatable-kind: signed composites, verdicts, keyring snapshots, topic events) are refused by name. Native: tests/test_native_format_9_migration.py (hbox native-n4: a batch AY format-9 image exports n1k-2k, this image refuses it by name, imports it, and its re-export holds the same 1,000 records with the identities re-derived, checked independently). Not claimed: the translation of the kinds refused as untranslatable.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028"
+      ],
+      "depends_on": [
+        "PRF-205",
+        "PRF-258"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-profile-open.lisp",
+        "tests/acl2/store-profile-open-tests.lisp",
+        "books/store-format-9.lisp",
+        "tests/acl2/store-format-9-tests.lisp",
+        "books/store-export.lisp",
+        "tests/acl2/store-export-tests.lisp",
+        "host/native/io.lisp",
+        "host/store-host.lisp",
+        "tests/older_release_store.py",
+        "tests/test_native_older_release_open.py",
+        "books/store-format-9-records.lisp",
+        "tests/test_native_format_9_migration.py"
+      ],
+      "progress_note": "Lane format-bump-10 (2026-09-28). persvati certify-20260928T035927Z-1472047 (986 roots, 792 passed at the merge) + certify-20260928T041705Z-1638417 (the 9 fresh) + certify-20260928T043810Z-1835473 (732 passed after the comment-only edits); hbox native-n4 (cfdb53c99): format_9_migration, store_export, older_release_open, replay_determinism, initializer_fidelity OK.",
+      "events": [
+        "fn-spo-open-of-a-format-9-frame-refuses-by-name",
+        "fn-spo-open-of-a-valid-profile-opens-it",
+        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
+        "fn-f9-config-decode-of-a-format-9-frame",
+        "fn-f9-format-9-frame-does-not-decode",
+        "fn-sxp-import-of-a-format-9-export",
+        "fn-f9r-article-identities-are-format-10s",
+        "fn-f9r-article-keeps-every-other-field"
+      ]
+    },
+    {
+      "id": "PRF-347",
+      "title": "BLAKE3 in ACL2: the definition over octet lists and its executable twin over the octet buffer",
+      "statement": "books/blake3.lisp defines BLAKE3 (the compression function over 64-octet blocks with seven rounds as a chain of multiple-value functions over declared 32-bit words, chunks of up to 1024 octets with CHUNK_START and CHUNK_END, the tree whose left subtree holds the largest power-of-two number of whole chunks shorter than the input, parents, and the root's first 32 output octets) in the hash, keyed_hash and derive_key modes, every function guard-verified, with the shape proved (fn-blake3-shape, fn-blake3-keyed-shape, fn-blake3-derive-key-shape: 32 octets for every object). Agreement with BLAKE3 is evidence, not proof: tests/acl2/blake3-tests.lisp evaluates all 35 official vectors (third_party/blake3/test_vectors, tag 1.8.7) in all three modes. books/blake3-stobj.lisp is the executable twin over a list prefix and a window of the octet buffer, conses nothing per block, and is proved equal to the definition level by level: fn-b3x-byte-is-nthx, fn-b3x-words-is-words, fn-b3x-chunk-is-chunk, fn-b3x-node-is-node, and the keystone fn-b3x-hash-is-hash (the buffer hash of PREFIX then the window [A, A+WN) is fn-b3-hash of the octets of their concatenation, for a window inside the buffer); its three entries fn-blake3-stobj (any object, copied once into a local buffer), fn-blake3-of-prefixed-buffer and fn-blake3-of-prefixed-range are equal to fn-blake3 (fn-blake3-stobj-is-blake3, fn-blake3-of-prefixed-buffer-is-blake3, fn-blake3-of-prefixed-range-is-blake3). books/crypto-attach.lisp and books/frame-digest-buffer.lisp attach them to fn-digest, fn-frame-digest, fn-frame-digest-buffer and fn-frame-digest-range. In the saved images host/native/digest.lisp replaces the three entries with the vendored C (lib/libfn-blake3) after checking it against the official vectors and fn-b3x-hash (A-CRYPTO-NATIVE). Collision resistance is A-CRYPTO: about 2^-128 per chosen pair (the birthday bound over 256 bits), not proved.",
+      "milestone": "M5",
+      "requirements": [
+        "ENC-003",
+        "STO-008",
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-087",
+        "PRF-035"
+      ],
+      "assumptions": [
+        "A-CRYPTO",
+        "A-CRYPTO-NATIVE"
+      ],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-b3x-hash-is-hash",
+        "fn-blake3-stobj-is-blake3",
+        "fn-blake3-of-prefixed-buffer-is-blake3",
+        "fn-blake3-of-prefixed-range-is-blake3",
+        "fn-blake3-shape"
+      ],
+      "evidence": [
+        "books/blake3.lisp",
+        "books/blake3-stobj.lisp",
+        "tests/acl2/blake3-tests.lisp",
+        "tests/acl2/blake3-stobj-tests.lisp",
+        "third_party/blake3/test_vectors/test_vectors.json"
+      ],
+      "progress_note": "Lane blake3-digest (2026-09-28): ember, BLAKE3 wherever fn chooses the algorithm; store format 10 with lane format-bump-10."
+    },
+    {
+      "id": "PRF-352",
+      "title": "The open path's per-article walks execute in constant stack: 26 list recursions over the retained articles (store open, owner install, owner start, checkpoint publication) run an accumulator or reversed-fold loop equal to their definitions",
+      "statement": "Each function is (mbe :logic <its recursion, unchanged> :exec <loop>) and its verify-guards event proves exec = logic on every input satisfying the guard. Maps and filters: (reverse (<f>-rev xs ... nil)), lemma <f>-rev-is-revappend: books/retention.lisp fn-retain-obligation-ids, fn-retain-release-ids; books/node.lisp fn-node-binding-msgids, fn-node-binding-ids; books/replay.lisp fn-replay-verdict-pairs; books/control-visible.lisp fn-ctl-drop-via; books/control-authority.lisp fn-ctl-visible-filter; books/store-checkpoint-tables.lisp fn-sct-payloads; books/peer-guard-carried.lisp fn-pgc-obligation-ids, fn-pgc-release-ids. Early exits: fn-retain-remove-id, fn-ctl-subseq-diff (books/control-served.lisp), fn-own-take (books/owner.lisp) and fn-scka-canon-rows (books/store-checkpoint-arena.lisp; a :bad stops it) carry the reversed prefix, lemma <f>-rev-is-revappend ((revappend acc (f ...)), :bad kept). Sums: fn-retain-sum, fn-scka-enc-lens-sum (books/store-checkpoint-arena-writer.lisp), fn-sbud-record-octets (books/store-budget.lisp), fn-sbud-stored-octets (books/store-budget-stored.lisp): an accumulator, lemma <f>-acc-is-plus. Right folds: the reversed list (fn-ag-rev-onto xs nil) folded from the left, lemma <f>-loop-of-rev-onto: books/stx-index.lisp fn-stx-index-of-store, books/msgid-index-concrete.lisp fn-mxc-build, books/msgid-index.lisp fn-midx-build, books/replay-identity-index.lisp fn-rii-kbuild-releases, fn-rii-kbuild-pins, books/control-visible.lisp fn-ctl-articles-withdrawals-in, books/group-bucket-index.lisp fn-gidx-build-entries, books/index.lisp fn-index-build. Host reach: host/store-node-host.lisp fn-store-sn-recover-rows and fn-store-sn-recover-from-checkpoint -> fn-store-sn-open-extended -> fn-rii-sco-store-open -> fn-sco-cpr-finish / fn-sco-cpr-resume (fn-cnode-statep once) and fn-rii-ix-of; host/owner-host.lisp fn-owner-recover-from-store-open -> fn-ock-install -> fn-own-refresh (fn-ctl-*, fn-gidx-*, fn-index-build, fn-midx-build) and fn-owner-install-extended (fn-prc-refresh, fn-sca-load-held-rows, fn-sbud-bytes-used); host/store-node-host.lisp fn-store-sco-publish-setup (fn-scka-canon-rows, fn-sco-capture). Before, each recursed once per retained article: at the installed launcher's 1,024 KiB a full-replay open of 100,000 articles died in 30,527 frames of fn-retain-obligation-ids, a checkpoint open in fn-store-sn-recover-from-checkpoint, then (in turn, as each was fixed) the owner install in 17,447 frames of fn-ctl-articles-withdrawals-in, the checkpoint verb in fn-store-sco-publish-setup and the owner start in fn-sbud-record-octets. Scope: stack depth of the open and the owner's start only. The served reads that walk a group's whole article list per command (LIST ACTIVE, GROUP: fn-nntp-group-low/-high/-count) still recurse (PKT-877); the whole-node recognizer still walks every article once per open (O(R); PKT-876's carried-invariant remainder); fn-retain-statep's intersection-equal stays quadratic in pins x releases.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-006"
+      ],
+      "depends_on": [
+        "PRF-345"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/control-authority.lisp",
+        "books/control-served.lisp",
+        "books/control-visible.lisp",
+        "books/group-bucket-index.lisp",
+        "books/index.lisp",
+        "books/msgid-index-concrete.lisp",
+        "books/msgid-index.lisp",
+        "books/node.lisp",
+        "books/owner.lisp",
+        "books/peer-guard-carried.lisp",
+        "books/replay-identity-index.lisp",
+        "books/replay.lisp",
+        "books/retention.lisp",
+        "books/store-budget-stored.lisp",
+        "books/store-budget.lisp",
+        "books/store-checkpoint-arena-writer.lisp",
+        "books/store-checkpoint-arena.lisp",
+        "books/store-checkpoint-tables.lisp",
+        "books/stx-index.lisp",
+        "planning/evidence/manifests/certify-20260928T045804Z-2021342.json",
+        "planning/evidence/manifests/certify-20260928T045829Z-4075806.json",
+        "planning/evidence/open-depth-2026-09-28.md",
+        "tests/acl2/msgid-index-concrete-tests.lisp",
+        "tests/acl2/node-tests.lisp",
+        "tests/acl2/replay-identity-index-tests.lisp",
+        "tests/acl2/replay-tests.lisp",
+        "tests/acl2/retention-tests.lisp",
+        "tests/acl2/stx-transit-tests.lisp",
+        "tests/test_native_open_depth.py"
+      ],
+      "progress_note": "Certified at the lane head before the last origin/dev merge: persvati certify-20260928T045804Z-2021342 (748 passed) + hbox certify-20260928T045829Z-4075806 (283 passed), 0 failed, the 1,130 affected roots. Native (hbox native-od5, production image at the launcher's 1024KB): syn100k-2k full replay 25.4 s, checkpoint open 11.7 s; syn1m-2k full replay 275.1 s, checkpoint open 143.6 s; each serves DATE and stops cleanly. The served whole-list reads (LIST ACTIVE, GROUP) still die at this stack past ~30k articles: PKT-877.",
+      "events": [
+        "fn-retain-obligation-ids",
+        "fn-retain-release-ids",
+        "fn-retain-sum",
+        "fn-retain-remove-id",
+        "fn-node-binding-msgids",
+        "fn-node-binding-ids",
+        "fn-replay-verdict-pairs",
+        "fn-stx-index-of-store",
+        "fn-mxc-build",
+        "fn-rii-kbuild-releases",
+        "fn-rii-kbuild-pins",
+        "fn-ctl-articles-withdrawals-in",
+        "fn-ctl-drop-via",
+        "fn-ctl-visible-filter",
+        "fn-ctl-subseq-diff",
+        "fn-own-take",
+        "fn-gidx-build-entries",
+        "fn-index-build",
+        "fn-midx-build",
+        "fn-scka-canon-rows",
+        "fn-scka-enc-lens-sum",
+        "fn-sct-payloads",
+        "fn-sbud-record-octets",
+        "fn-sbud-stored-octets",
+        "fn-pgc-obligation-ids",
+        "fn-pgc-release-ids"
+      ]
+    },
+    {
+      "id": "PRF-354",
+      "title": "A POST the store refuses at its drain for capacity or input wrote nothing: it is told its named refusal at once and never waits for, or is told uncertain because of, another member's barrier; a START of only such refusals issues no sync",
+      "statement": "Subjects: fn-ocs-told-at-drain-p (host/native/owner.lisp fnn-owner-commit-start-locked, per drained member of a START, START-NEXT or the inline quantum), fn-ocs-start-event (fnn-owner-commit-start-event), fn-ocs-commit-step (the inline quantum, fnn-owner-commit-queued-locked) and fn-ocp-commit-step (the committer, through fn-otm-commit-event). KEYSTONE fn-ocs-unstaged-start-tells-its-refusals (books/owner-commit-steps.lisp): for every list WORDS of drained members' outcome words observed certain, if every word is told at its drain (fn-ocs-all-told-at-drain-p: :unaffordable, :memberships or :malformed, the refusals whose prepare staged no record) then the batch keeps no member (fn-ocs-kept-count 0), the START's event is :started-none, and the step from an idle owner is :none with the owner idle: no barrier. fn-ocs-kept-member-starts-the-barrier: a START whose first member is not told at its drain names the barrier. fn-ocs-told-at-drain-p-by-definition: a told word is never :durable, :durable-key-change-refused, :uncertain, :duplicate, :conflict or :refused. fn-ocp-unstaged-start-issues-no-sync (books/owner-commit-pipeline.lisp): the committer's step names :none, leaves the phase :idle and opens no next batch. books/owner-ack-after-barrier.lisp: the drain model tells such a member at once with a report naming no record and the batch completes the members it kept; fn-oab-quantum-reports-after-its-barrier and fn-oab-pipeline-reports-after-its-barriers (PRF-267's reply keystones in the ack model) hold unchanged in statement over it. Scope: the words are ACL2's outcome words, which the host takes from the attempt (fnn-owner-attempt: the prepare's refusal after the refused reservation was consumed); that a refusal word means no record was staged is the prepare's property (books/owner-prepare-outcome.lisp), cited, not re-proved here. A capacity refusal reads the capacity unfenced members use: its reason may not hold after a failed barrier, its outcome (nothing stored) does. A refusal that names another record waits for the barrier as before (fn-ocs-member-release).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023",
+        "HST-026"
+      ],
+      "depends_on": [
+        "PRF-267",
+        "PRF-311"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-commit-steps.lisp",
+        "books/owner-commit-pipeline.lisp",
+        "books/owner-ack-after-barrier.lisp",
+        "tests/acl2/owner-commit-steps-tests.lisp",
+        "tests/acl2/owner-ack-after-barrier-tests.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_slow_disk.py"
+      ],
+      "progress_note": "Lane full-vs-uncertain (Opus 5.5, 2026-09-28), coordinator decision after the openbsd-datasize finding (a 441 uncertain at a full store under 2G, not reproduced in over 70 runs). REPL-admitted on persvati: the three books and both test books. Teeth: owner-commit-steps-tests (reached idle state *ocst-s-done*: positive witness with all conjuncts; hypothesis removal with an accepted member: kept 1, :started, :barrier, staged; a duplicate kept; labelled mutations) and owner-ack-after-barrier-tests (a full-store refusal beside an article in a failed batch is reported and the property holds; mutation: a told reply naming a record). Native: tests/test_native_slow_disk.py test_a_full_store_refusal_is_told_while_another_barrier_stalls.",
+      "events": [
+        "fn-ocs-unstaged-start-tells-its-refusals",
+        "fn-ocs-kept-member-starts-the-barrier",
+        "fn-ocs-told-at-drain-p-by-definition",
+        "fn-ocp-unstaged-start-issues-no-sync"
       ]
     }
   ]

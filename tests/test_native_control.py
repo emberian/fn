@@ -12,6 +12,9 @@ import tempfile
 import time
 import unittest
 from tools.wire_stream import whole_stream
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -71,9 +74,9 @@ def admin_payload(words):
 
 def fnct_seal(kind, payload):
     """An FNCT frame: magic, version 1, KIND, u32 length, payload, then the
-    SHA-256 of all of that (books/frame-trailer.lisp)."""
+    BLAKE3 digest of all of that (books/frame-trailer.lisp)."""
     protected = b"FNCT" + bytes([1, kind]) + len(payload).to_bytes(4, "big") + payload
-    return protected + hashlib.sha256(protected).digest()
+    return protected + blake3_ref.blake3(protected)
 
 
 def control_exchange(path, frame):
@@ -798,7 +801,7 @@ class NativeControlTests(unittest.TestCase):
             self.assertEqual((reply[4], reply[5]), (1, 2), reply[:10])
             self.assertEqual(reply[6:10], (1).to_bytes(4, "big"), reply[:10])
             self.assertEqual(reply[10:11], b"\x01", reply)          # :accepted
-            self.assertEqual(reply[11:], hashlib.sha256(reply[:11]).digest())
+            self.assertEqual(reply[11:], blake3_ref.blake3(reply[:11]))
             # The grant is durable: the revoke the new client sends succeeds.
             revoked = self.operator("control", "revoke", "ab" * 32, "keys", "fn.keys")
             self.assertEqual(revoked.returncode, 0, revoked.stderr.decode())
