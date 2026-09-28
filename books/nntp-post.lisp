@@ -53,6 +53,24 @@
 ; books/injection.lisp withdraws its total list primitives at export; the two
 ; record blocks below are stated over them, so they are open here.
 (local (in-theory (enable fn-inj-nth fn-inj-car fn-inj-cdr)))
+;; Rules the vocabularies above bring that this book's proofs try on every
+;; consp, true-listp and response-text goal and never use: over the whole
+;; book (accumulated-persistence, 2026-09-28, lane d26-books) they were most
+;; of its frames, fn-nntp-article-idp-is-consp alone 1.73M, useful never.
+(local (in-theory (disable fn-nntp-article-idp-is-consp
+                           fn-nntp-closed-step-has-no-effects
+                           fn-nntp-response-text-true-listp
+                           fn-nntp-message-id-tail-is-true-listp
+                           fn-nntp-message-id-token-is-response-text
+                           fn-nntp-description-text-is-response-text
+                           fn-nntp-clean-line-is-response-text
+                           fn-nntp-decimal-token-is-response-text
+                           fn-nntp-printable-token-is-response-text
+                           fn-digest-octetsp-implies-octet-listp
+                           fn-record-accepted-input-length
+                           fn-arn-payload-listp-true-listp
+                           fn-ctl-authorize-execute-is-nonempty
+                           fn-oct-bufp-true-listp)))
 
 ; -----------------------------------------------------------------------------
 ; The session, extended opaquely
@@ -1035,12 +1053,22 @@
                  (:instance
                   fn-inj-generated-identity-separates-different-clock-readings
                   (a ca) (b cb)))
-           ; The instances carry the whole argument; what remains is
-           ; propositional and equality reasoning.  In the enabled theory the
-           ; rewriter tried fn-post-without-a-clock-refuses-with-the-clock-line
-           ; on every submission term and opened fn-post-sessionp to relieve
-           ; its hypothesis, uselessly: 1.39M steps, against 8,427 here.
-           :in-theory (theory 'minimal-theory)))
+           ; The rewriter tried the clock-line rule on every submission term
+           ; and opened fn-post-sessionp to relieve its hypothesis, never
+           ; usefully: 1,390,925 steps with it enabled, 10,367 now.
+           :in-theory (disable fn-nntp-post-step fn-inj-decide
+                               fn-inj-injectedp fn-inj-decision-msgid
+                               fn-inj-generated-message-id
+                               fn-inj-generated-identity-is-the-clock-identity
+                               fn-post-submission-is-an-injected-article
+                               fn-mod-envelope-msgid
+                               fn-mod-envelope-msgid-injective
+                               fn-mod-envelope-msgid-is-not-a-generated-id
+                               fn-clock-observationp fn-clock-wall
+                               fn-clock-monotonic fn-article-parse
+                               fn-af-proto-article-check
+                               fn-article-result-article
+                               fn-post-without-a-clock-refuses-with-the-clock-line)))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
