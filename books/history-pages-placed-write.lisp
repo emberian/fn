@@ -1,14 +1,14 @@
-; fn: the history's writer over a placed image (lane arena-store-3,
+; fn: the history's append over a placed image (lane arena-store-3,
 ; 2026-09-28).  Prefix fn-hp-.
 ;
-; KEYSTONE fn-hp-x-append-refines-placed: the writer the host calls
-; (`fn-hp-x-append') over an image whose regions lie wherever the header's
-; starts put them: an append that answers :ok keeps every verified page
-; holding the appended history's image at the same placement, answers its
-; header, keeps the placement valid, and marks dirty only pages of the
-; placed dirty list (`fn-hp-append-pdirty'), each verified.  The model:
-; `fn-hp-piw-of-append1', proved from generic facts about replacements
-; that nest and commute (section A).
+; The model: `fn-hp-piw-of-append1' (no region's cap changes), proved from
+; generic facts about replacements that nest and commute (section A,
+; books/history-pages-nest), and the placed dirty list
+; `fn-hp-append-pdirty' with its size bound.  The writer's keystone over
+; any placement, `fn-hp-x-append-refines-placed', is in
+; books/history-pages-append-grown.lisp (lane arena-store-4): the writer
+; grows a region's cap in place when the new lengths still fit, over the
+; model `fn-hp-piw-of-append1-grown'.
 (in-package "ACL2")
 (include-book "history-pages-nest")
 (local (include-book "arithmetic/top" :dir :system))
@@ -130,30 +130,7 @@
 (local (in-theory (disable fn-hp-consp-when-len-5 fn-scc-encode-is-program)))
 
 ; -----------------------------------------------------------------------------
-; C. The writer over a placed image.
-
-(defthm fn-hp-x-append-plan-is-pblocks
-  (implies (and (fn-hp-okp h salt)
-                (not (mv-nth 0 (fn-hp-x-append-plan ev salt (len h) (fn-hp-lens h salt) starts))))
-           (and (equal (mv-nth 1 (fn-hp-x-append-plan ev salt (len h) (fn-hp-lens h salt) starts))
-                       (fn-hp-pblocks h ev salt starts))
-                (equal (mv-nth 2 (fn-hp-x-append-plan ev salt (len h) (fn-hp-lens h salt) starts))
-                       (fn-hp-lens (append h (list ev)) salt))
-                (fn-hp-deltas-ok (fn-hp-regs h salt) (fn-hp-ds ev salt (fn-hp-pes-len h)))
-                (unsigned-byte-p 64 (+ 1 (len h)))
-                (fn-hp-evp ev)))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hp-pe-def)
-                 (:instance fn-hp-ds-words-of-ds (off (fn-hp-pes-len h))) (:instance fn-hp-u64-pool-len)
-                 (:instance fn-hp-u64-listp-of-x-add (a (adt-lens (fn-hp-regs h salt))) (b (list 8 8 8 8 (len (fn-hp-pe ev)))))
-                 (:instance fn-hp-deltas-ok-from-checks (regs (fn-hp-regs h salt)) (ds (fn-hp-ds ev salt (fn-hp-pes-len h)))))
-           :in-theory (e/d (fn-hp-pblocks fn-hp-lens)
-                           (fn-hp-deltas-ok-from-checks fn-hp-ds-words-of-ds fn-hp-u64-listp-of-x-add fn-hp-regs fn-hp-ds
-                            fn-hp-pe fn-scc-encode fn-scc-program
-                            fn-hp-mkey fn-hp-pad8 fn-hp-x-caps-ok fn-hp-x-aligned adt-cap fn-hp-pack8 floor mod
-                            fn-hp-deltas-ok fn-hp-okp adt-starts adt-lens fn-hp-zapp fn-hp-body-blocks
-                            fn-hp-lens-of-append1 adt-starts-is-starts-l fn-sccb-treep
-                            fn-hp-x-add fn-hp-bb-list fn-hp-ds-words)))))
+; C. Regions whose caps do not change; the placed dirty list.
 
 (defun fn-hp-same-caps (lens lens2)
   (declare (xargs :verify-guards nil))
@@ -216,27 +193,6 @@
                            (fn-hp-bb-pages-in-pdirty fn-hp-regs fn-hp-ds fn-hp-deltas-ok fn-hp-bb-list
                             fn-hp-pdirty-pages fn-hp-zapp adt-starts adt-lens fn-hp-ds-words)))))
 
-(defthm fn-hp-x-append-dirty-placed
-  (implies (and (fn-hp-okp h salt)
-                (equal n (len h)) (equal lens (fn-hp-lens h salt)) (fn-hp-starts-okp starts)
-                (equal (mv-nth 0 (fn-hp-x-append ev salt n lens starts pgs-mem)) :ok)
-                (natp p)
-                (equal (nth p (nth *pgs-di* (mv-nth 3 (fn-hp-x-append ev salt n lens starts pgs-mem)))) 1)
-                (not (equal (nth p (nth *pgs-di* pgs-mem)) 1)))
-           (and (member-equal p (fn-hp-append-pdirty h (list ev) salt starts))
-                (equal (pgs-vi p (mv-nth 3 (fn-hp-x-append ev salt n lens starts pgs-mem))) 2)))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hp-x-append-ok-unfolds)
-                 (:instance fn-hp-x-append-plan-is-pblocks)
-                 (:instance fn-hp-x-append-plan-shape)
-                 (:instance fn-hp-blocks-fit-when-ready (blocks (fn-hp-pblocks h ev salt starts)))
-                 (:instance fn-hp-x-put-blocks-dirty (blocks (fn-hp-pblocks h ev salt starts)))
-                 (:instance fn-hp-x-put-blocks-frame (blocks (fn-hp-pblocks h ev salt starts)))
-                 (:instance fn-hp-blocks-ready-verified (blocks (fn-hp-pblocks h ev salt starts)))
-                 (:instance fn-hp-pblocks-pages-in-pdirty)
-                 (:instance fn-hp-nat-listp-lens) (:instance fn-hp-len-lens))
-           :in-theory (union-theories '(fn-hp-starts-okp pgs-vi) (theory 'minimal-theory)))))
-
 (defthm fn-hp-placement-of-append1
   (implies (fn-hp-deltas-ok (fn-hp-regs h salt) (fn-hp-ds ev salt (fn-hp-pes-len h)))
            (equal (adt-placement-ok starts (fn-hp-lens (append h (list ev)) salt) np)
@@ -244,45 +200,6 @@
   :hints (("Goal" :use ((:instance fn-hp-same-caps-of-zapp (regs (fn-hp-regs h salt)) (ds (fn-hp-ds ev salt (fn-hp-pes-len h)))))
            :in-theory (e/d (fn-hp-lens) (fn-hp-same-caps-of-zapp fn-hp-regs fn-hp-ds fn-hp-deltas-ok adt-placement-ok
                                          fn-hp-zapp adt-lens)))))
-
-; KEYSTONE (the writer over ANY placement): over any page store state whose
-; verified pages hold the history's image placed at STARTS in NP pages, an
-; append that answers :ok leaves every verified page holding the appended
-; history's image at the same placement, answers its header, keeps the
-; placement valid, and marks dirty only pages of the placed dirty list,
-; each verified.  The canonical keystone `fn-hp-x-append-refines' is its
-; instance at the canonical placement (`fn-hp-piw-canonical').
-(defthm fn-hp-x-append-refines-placed
-  (implies (and (fn-hp-okp h salt)
-                (equal n (len h)) (equal lens (fn-hp-lens h salt))
-                (fn-hp-starts-okp starts) (adt-placement-ok starts lens np)
-                (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-piw h salt starts np))
-                (equal (mv-nth 0 (fn-hp-x-append ev salt n lens starts pgs-mem)) :ok))
-           (let ((mem2 (mv-nth 3 (fn-hp-x-append ev salt n lens starts pgs-mem))))
-             (and (fn-hp-okp (append h (list ev)) salt)
-                  (equal (mv-nth 1 (fn-hp-x-append ev salt n lens starts pgs-mem)) (len (append h (list ev))))
-                  (equal (mv-nth 2 (fn-hp-x-append ev salt n lens starts pgs-mem))
-                         (fn-hp-lens (append h (list ev)) salt))
-                  (adt-placement-ok starts (fn-hp-lens (append h (list ev)) salt) np)
-                  (fn-hp-vhold 0 (pgs-v-length mem2) mem2 (fn-hp-piw (append h (list ev)) salt starts np))
-                  (implies (and (natp p) (equal (nth p (nth *pgs-di* mem2)) 1)
-                                (not (equal (nth p (nth *pgs-di* pgs-mem)) 1)))
-                           (and (member-equal p (fn-hp-append-pdirty h (list ev) salt starts))
-                                (equal (pgs-vi p mem2) 2))))))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hp-x-append-ok-unfolds)
-                 (:instance fn-hp-x-append-plan-is-pblocks)
-                 (:instance fn-hp-x-append-plan-shape)
-                 (:instance fn-hp-vhold-after-put-blocks (b (fn-hp-pblocks h ev salt starts))
-                            (iw (fn-hp-piw h salt starts np)))
-                 (:instance fn-hp-piw-of-append1)
-                 (:instance fn-hp-okp-of-append1)
-                 (:instance fn-hp-placement-of-append1)
-                 (:instance fn-hp-x-append-dirty-placed)
-                 (:instance fn-hp-nat-listp-lens) (:instance fn-hp-len-lens)
-                 (:instance fn-hp-len-append1))
-           :in-theory (union-theories '(fn-hp-starts-okp) (theory 'minimal-theory)))))
-
 
 ; The placed dirty list's size: per region at most two partial pages plus
 ; the pages its new octets fill -- the same bound as the canonical

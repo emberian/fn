@@ -8,10 +8,6 @@
 ;   fn-hp-decode-image's two u64 bounds: a counterexample needs an image of
 ;     2^64 octets (not constructible); symbolic, as history-columns-tests'
 ;     length bound.
-;   fn-hp-page-digest-is-leaf's (fn-shs-p fn-shs): inherited from
-;     `pgs-x-words-digest-is-sha256'; the digest re-initializes the state it
-;     reads, so no ground shape violation changes the answer, and a
-;     non-stobj argument does not evaluate.  Kept, not witnessed.
 (in-package "ACL2")
 (include-book "../../books/history-pages")
 (include-book "must-fail-checked")
@@ -23,12 +19,7 @@
 (defconst *hpt-e2* (list :other 7 nil))
 (defconst *hpt-h2* (list *hpt-e1* *hpt-e2*))
 
-(defun hpt-pack (n b)
-  ; the octets B as N little-endian words: what the host's fill leaves
-  (if (zp n) nil (cons (adt-unle 8 b) (hpt-pack (1- n) (nthcdr 8 b)))))
-
 (defconst *hpt-img2* (fn-hp-image *hpt-h2* 0))
-(defconst *hpt-w2* (hpt-pack (floor (len *hpt-img2*) 8) *hpt-img2*))
 
 ; One event whose tree is longer than a page: the pool has two pages, so an
 ; append of a small event leaves the pool's first page alone.
@@ -69,54 +60,6 @@
 (defthm hpt-decode-refuses-mkey
   (equal (fn-hp-decode (update-nth (* 16384 1) 99 *hpt-img2*) 0) (list :refused :mkey))
   :rule-classes nil)
-
-; -----------------------------------------------------------------------------
-; KEYSTONE fn-hp-page-digest-is-leaf.
-
-(defthm hpt-digest-w
-  (let ((mem (update-nth *pgs-wi* *hpt-w2* (create-pgs-mem))))
-    (and (fn-shs-p (create-fn-shs)) (natp 1)
-         (equal (pgs-words-le-octets (take 2048 (nthcdr (* 2048 1) (pgs-x-arr 0 mem))))
-                (fn-hp-page (fn-hp-image *hpt-h2* 0) 1))
-         (equal (mv-nth 0 (pgs-x-page-digest 1 mem (create-fn-shs)))
-                (pgs-octets-be-nat (nth 1 (adt-page-digests *fn-hp-schema* (fn-hp-rows *hpt-h2* 0)))))))
-  :rule-classes nil)
-
-; Removal of the words hypothesis: one word of page 1 changed.
-(defthm hpt-digest-words-removal
-  (let ((mem (update-nth *pgs-wi* (update-nth 2048 7 *hpt-w2*) (create-pgs-mem))))
-    (and (fn-shs-p (create-fn-shs)) (natp 1)
-         (not (equal (pgs-words-le-octets (take 2048 (nthcdr (* 2048 1) (pgs-x-arr 0 mem))))
-                     (fn-hp-page (fn-hp-image *hpt-h2* 0) 1)))
-         (not (equal (mv-nth 0 (pgs-x-page-digest 1 mem (create-fn-shs)))
-                     (pgs-octets-be-nat (nth 1 (adt-page-digests *fn-hp-schema* (fn-hp-rows *hpt-h2* 0))))))))
-  :rule-classes nil)
-(must-fail-checked
- (with-prover-step-limit 30000
- (defthm hpt-false-digest-without-words
-   (implies (and (fn-shs-p fn-shs) (natp k))
-            (equal (mv-nth 0 (pgs-x-page-digest k pgs-mem fn-shs))
-                   (pgs-octets-be-nat (nth k (adt-page-digests *fn-hp-schema* (fn-hp-rows h salt)))))))))
-
-; Removal of (natp k): K = 1/2 reads the words from 1024 (half a page in),
-; which are the image's octets from 8192, while the table's leaf at 1/2 is
-; leaf 0.
-(defthm hpt-digest-natp-removal
-  (let ((mem (update-nth *pgs-wi* *hpt-w2* (create-pgs-mem))))
-    (and (fn-shs-p (create-fn-shs)) (not (natp 1/2))
-         (equal (pgs-words-le-octets (take 2048 (nthcdr (* 2048 1/2) (pgs-x-arr 0 mem))))
-                (fn-hp-page (fn-hp-image *hpt-h2* 0) 1/2))
-         (not (equal (mv-nth 0 (pgs-x-page-digest 1/2 mem (create-fn-shs)))
-                     (pgs-octets-be-nat (nth 1/2 (adt-page-digests *fn-hp-schema* (fn-hp-rows *hpt-h2* 0))))))))
-  :rule-classes nil)
-(must-fail-checked
- (with-prover-step-limit 30000
- (defthm hpt-false-digest-without-natp
-   (implies (and (fn-shs-p fn-shs)
-                 (equal (pgs-words-le-octets (take 2048 (nthcdr (* 2048 k) (pgs-x-arr 0 pgs-mem))))
-                        (fn-hp-page (fn-hp-image h salt) k)))
-            (equal (mv-nth 0 (pgs-x-page-digest k pgs-mem fn-shs))
-                   (pgs-octets-be-nat (nth k (adt-page-digests *fn-hp-schema* (fn-hp-rows h salt)))))))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-hp-append-changes-only-dirty.

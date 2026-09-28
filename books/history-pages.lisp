@@ -39,7 +39,7 @@
 (include-book "proto/adt-bytes")
 (include-book "store-checkpoint-buffer")
 (include-book "history-columns")
-(include-book "pagestore-words-sha")
+(include-book "pagestore-words-blake3")
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; Rules withdrawn at their source that this book's proofs use
@@ -231,18 +231,18 @@
 
 (local
  (defthm fn-hp-page-digest-is-leaf-any
-  (implies (and (fn-shs-p fn-shs) (natp k)
+  (implies (and (natp k)
                 (< k (len (adt-page-digests s a)))
                 (equal (pgs-words-le-octets (take 2048 (nthcdr (* 2048 k) (pgs-x-arr 0 pgs-mem))))
                        (fn-hp-page (adt-ser s a) k)))
-           (equal (mv-nth 0 (pgs-x-page-digest k pgs-mem fn-shs))
+           (equal (mv-nth 0 (pgs-x-page-digest k pgs-mem fn-octets-pg))
                   (pgs-octets-be-nat (nth k (adt-page-digests s a)))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance pgs-x-words-digest-is-sha256 (sel 0) (base (* k 2048)) (nb 256))
+           :use ((:instance pgs-x-words-digest-is-blake3 (sel 0) (base (* k 2048)) (nb 256))
                  (:instance adt-page-digest-nth))
            :in-theory (e/d (pgs-x-page-digest fn-hp-page)
-                           (adt-ser pgs-x-words-digest pgs-x-words-digest-is-sha256 adt-page-digest-nth
-                            adt-page-digests fn-sha256 pgs-words-le-octets pgs-octets-be-nat))))))
+                           (adt-ser pgs-x-words-digest pgs-x-words-digest-is-blake3 adt-page-digest-nth
+                            adt-page-digests fn-blake3 pgs-words-le-octets pgs-octets-be-nat))))))
 
 (local
  (defthm fn-hp-car-le-octets-natp
@@ -273,10 +273,10 @@
 ; past the image's end cannot satisfy the hypothesis: its octets would be
 ; NILs, the words' are naturals.)
 (defthm fn-hp-page-digest-is-leaf
-  (implies (and (fn-shs-p fn-shs) (natp k)
+  (implies (and (natp k)
                 (equal (pgs-words-le-octets (take 2048 (nthcdr (* 2048 k) (pgs-x-arr 0 pgs-mem))))
                        (fn-hp-page (fn-hp-image h salt) k)))
-           (equal (mv-nth 0 (pgs-x-page-digest k pgs-mem fn-shs))
+           (equal (mv-nth 0 (pgs-x-page-digest k pgs-mem fn-octets-pg))
                   (pgs-octets-be-nat (nth k (adt-page-digests *fn-hp-schema* (fn-hp-rows h salt))))))
   :hints (("Goal" :do-not-induct t
            :cases ((< k (len (adt-page-digests *fn-hp-schema* (fn-hp-rows h salt)))))

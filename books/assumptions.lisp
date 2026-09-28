@@ -595,8 +595,11 @@
 ; host last durably wrote there; and the host's fill answers them."
 ;
 ; What is PROVED at this boundary, and so not assumed: the word digest the
-; host calls is SHA-256 of the words' octets (pgs-x-words-digest-is-sha256,
-; books/pagestore-words-sha.lisp); a table page's and the directory
+; host calls is BLAKE3 of the words' little-endian octets, copied into the
+; page store's octet buffer fn-octets-pg and hashed in place
+; (pgs-x-words-digest-is-blake3, books/pagestore-words-blake3.lisp; `fn-blake3'
+; is the value of `fn-digest''s attachment, `fn-blake3-stobj'; SHA-256 until
+; 2026-09-28); a table page's and the directory
 ; run's words are the encodings of the model's table pages and directory,
 ; and decoding them gives those back (pgs-x-table-page-words,
 ; pgs-x-dir-run-words, pgs-decode-encode-table); the open's verdicts over the

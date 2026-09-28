@@ -2,14 +2,14 @@
 ; arena-store-2, 2026-09-28).  Prefix fn-hp-.
 ;
 ; The page store keeps a page as 2048 little-endian u64 words
-; (`pgs-word-le-octets', books/pagestore-words-sha); the FNADTSN2 image is
+; (`pgs-word-le-octets', books/pagestore-words-blake3); the FNADTSN2 image is
 ; octets with little-endian cells (`adt-le', books/proto/adt-bytes-lib).
 ; This book is the bridge: a word's page-store octets are its `adt-le'
 ; octets, and packing octets into words (`fn-hp-pack8') is the inverse of
 ; `pgs-words-le-octets'.  Kept apart so its arithmetic (arithmetic-5) does
 ; not meet the other books' (arithmetic/top).
 (in-package "ACL2")
-(include-book "pagestore-words-sha")
+(include-book "pagestore-words-blake3")
 (include-book "proto/adt-bytes-lib")
 (local (include-book "arithmetic-5/top" :dir :system))
 
@@ -17,7 +17,7 @@
 (defthm fn-hp-word-le-octets-is-le
   (implies (natp x)
            (equal (pgs-word-le-octets x) (adt-le 8 x)))
-  :hints (("Goal" :in-theory (enable fn-sha256-byte)
+  :hints (("Goal" :in-theory (enable pgs-octet)
            :expand ((:free (y) (adt-le 8 y)) (:free (y) (adt-le 7 y)) (:free (y) (adt-le 6 y))
                     (:free (y) (adt-le 5 y)) (:free (y) (adt-le 4 y)) (:free (y) (adt-le 3 y))
                     (:free (y) (adt-le 2 y)) (:free (y) (adt-le 1 y)) (:free (y) (adt-le 0 y))))))

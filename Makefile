@@ -257,6 +257,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-checkpoint-arena-tests \
 	books/heap-store-figure \
 	books/heap-figure \
+	books/heap-open-nursery \
+	tests/acl2/heap-open-nursery-tests \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
 	tests/acl2/heap-figure-tests \
@@ -1082,7 +1084,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-columns-relation-tests \
 	tests/acl2/history-columns-tests \
 	books/pagestore-words \
-	books/pagestore-words-sha \
+	books/pagestore-words-blake3 \
 	books/pagestore \
 	books/pagestore-keystones \
 	books/pagestore-reclaim \
@@ -1364,6 +1366,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/proto-adt-2-tests \
 	books/history-pages \
 	tests/acl2/history-pages-tests \
+	tests/acl2/history-pages-digest-tests \
 	books/history-pages-words \
 	books/history-pages-exec \
 	books/history-pages-row \
@@ -1377,7 +1380,21 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-pages-placed \
 	books/history-pages-nest \
 	books/history-pages-placed-write \
-	tests/acl2/history-pages-placed-tests
+	tests/acl2/history-pages-placed-tests \
+	books/history-pages-grow \
+	books/history-pages-grow-cap \
+	books/history-pages-grow-append \
+	books/history-pages-relocate \
+	tests/acl2/history-pages-relocate-tests \
+	books/history-pages-append-grown \
+	books/history-pages-grow-then-append \
+	tests/acl2/history-pages-grow-then-append-tests \
+	tests/acl2/history-pages-grow-five-tests \
+	books/history-pages-step \
+	books/history-pages-import \
+	books/history-pages-view \
+	tests/acl2/history-pages-step-tests \
+	tests/acl2/history-pages-import-tests
 
 .PHONY: extract-check site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none

@@ -77,7 +77,7 @@
   (or (cdr (assoc name *user-stobj-alist*))
       (error "no live stobj ~a" name)))
 (defmacro fnps-mem () '(fnps-live 'pgs-mem))
-(defmacro fnps-shs () '(fnps-live 'fn-shs))
+(defmacro fnps-oct () '(fnps-live 'fn-octets-pg))   ; the page digest's octet buffer
 (defun fnps-arr (k) (svref (fnps-mem) k))     ; 0 w, 1 m, 2 t, 3 d, 4 v, 5 tv
 (defun fnps-w () (fnps-arr 0))
 (defun fnps-m () (fnps-arr 1))
@@ -247,8 +247,8 @@
     (fnps-io-error (e)
       (unless (fnps-eof-p e) (error e))
       (fill (fnps-m) 0)))
-  (multiple-value-bind (r0 c0) (pgs-x-read-rec 0 (fnps-mem) (fnps-shs))
-    (multiple-value-bind (r1 c1) (pgs-x-read-rec 512 (fnps-mem) (fnps-shs))
+  (multiple-value-bind (r0 c0) (pgs-x-read-rec 0 (fnps-mem) (fnps-oct))
+    (multiple-value-bind (r1 c1) (pgs-x-read-rec 512 (fnps-mem) (fnps-oct))
       (list r0 (pgs-rec-ok r0 c0) r1 (pgs-rec-ok r1 c1)))))
 
 (defun fnps-load-dir (fd rec)
@@ -266,7 +266,7 @@
         (unless (fnps-eof-p e) (error e))
         (push (list :dir (pgs-rec-dir-addr rec)) *fnps-absent*)
         (resize-pgs-m *pgs-x-dir-base* (fnps-mem))))
-    (multiple-value-bind (v shs) (pgs-x-open-dir rec (fnps-mem) (fnps-shs))
+    (multiple-value-bind (v shs) (pgs-x-open-dir rec (fnps-mem) (fnps-oct))
       (declare (ignore shs))
       v)))
 
@@ -280,13 +280,13 @@
 
 (defun fnps-open-table-page (tp rec mode)
   ;; pgs-x-open-table-page's verdict (the stobjs are updated in place).
-  (multiple-value-bind (v mem shs) (pgs-x-open-table-page tp rec mode (fnps-mem) (fnps-shs))
+  (multiple-value-bind (v mem shs) (pgs-x-open-table-page tp rec mode (fnps-mem) (fnps-oct))
     (declare (ignore mem shs))
     v))
 
 (defun fnps-open-page (i txid mode)
   ;; pgs-x-open-page's verdict.
-  (multiple-value-bind (v mem shs) (pgs-x-open-page i txid mode (fnps-mem) (fnps-shs))
+  (multiple-value-bind (v mem shs) (pgs-x-open-page i txid mode (fnps-mem) (fnps-oct))
     (declare (ignore mem shs))
     v))
 
@@ -404,7 +404,7 @@
         (return (values-list vals))))))
 
 (defun fnps-read-word (s i off)
-  (fnps-with-needs s (lambda () (pgs-x-read i off (fnps-mem) (fnps-shs)))))
+  (fnps-with-needs s (lambda () (pgs-x-read i off (fnps-mem) (fnps-oct)))))
 
 (defun fnps-load-all (s)
   ;; Every committed logical page (below the record's table length) resident
@@ -439,7 +439,7 @@
     (loop
       (let ((r (fnps-timed t-plan
                  (multiple-value-bind (r mem shs)
-                     (pgs-x-commit lpages (fnps-n s) txid (fnps-alloc s) slot (fnps-mem) (fnps-shs))
+                     (pgs-x-commit lpages (fnps-n s) txid (fnps-alloc s) slot (fnps-mem) (fnps-oct))
                    (declare (ignore mem shs))
                    r))))
         (cond ((and (consp r) (eq (first r) :need-table))
@@ -540,9 +540,9 @@
              (fnps-io-error (e)
                (unless (fnps-eof-p e) (error e))
                (fill (fnps-m) 0 :end 1024)))
-           (multiple-value-bind (r0 c0 shs0) (pgs-x-read-rec 0 (fnps-mem) (fnps-shs))
+           (multiple-value-bind (r0 c0 shs0) (pgs-x-read-rec 0 (fnps-mem) (fnps-oct))
              (declare (ignore shs0))
-             (multiple-value-bind (r1 c1 shs1) (pgs-x-read-rec 512 (fnps-mem) (fnps-shs))
+             (multiple-value-bind (r1 c1 shs1) (pgs-x-read-rec 512 (fnps-mem) (fnps-oct))
                (declare (ignore shs1))
                (append (and (pgs-rec-ok r0 c0) (list r0))
                        (and (pgs-rec-ok r1 c1) (list r1))))))
@@ -727,7 +727,7 @@
   (let ((bad (fnps-load-all s)))
     (if bad
         (values nil bad)
-      (multiple-value-bind (d shs) (pgs-x-words-digest 0 0 (* (fnps-npages) 256) (fnps-mem) (fnps-shs))
+      (multiple-value-bind (d shs) (pgs-x-words-digest 0 0 (* (fnps-npages) 256) (fnps-mem) (fnps-oct))
         (declare (ignore shs))
         (values d nil)))))
 
@@ -742,15 +742,15 @@
   (setf *fnps-served* 0 *fnps-read-calls* 0)
   (let* ((t-seq 0) (t-mid 0)
          (n (multiple-value-bind (v w) (fnps-timed t-seq
-                                         (fnps-with-needs s (lambda () (pgs-x-rd 1 (fnps-mem) (fnps-shs)))))
+                                         (fnps-with-needs s (lambda () (pgs-x-rd 1 (fnps-mem) (fnps-oct)))))
               (if (eq v :ok) w 1)))
          (seq (fnps-rand (max 1 n))))
     (multiple-value-bind (v bytes)
-        (fnps-timed t-seq (fnps-with-needs s (lambda () (pgs-x-lookup-seq seq (fnps-mem) (fnps-shs)))))
+        (fnps-timed t-seq (fnps-with-needs s (lambda () (pgs-x-lookup-seq seq (fnps-mem) (fnps-oct)))))
       (let ((served-seq *fnps-served*)
             (mid (map 'string #'code-char bytes)))
         (multiple-value-bind (v2 got)
-            (fnps-timed t-mid (fnps-with-needs s (lambda () (pgs-x-lookup-msgid mid (fnps-mem) (fnps-shs)))))
+            (fnps-timed t-mid (fnps-with-needs s (lambda () (pgs-x-lookup-msgid mid (fnps-mem) (fnps-oct)))))
           (list :seq seq :seq-verdict (fnps-refusal-string v) :msgid mid
                 :msgid-verdict (fnps-refusal-string v2) :msgid-seq got
                 :msgid-found (equal got seq)
