@@ -23,7 +23,7 @@
 ;     fails the writer CLOSES the journal for the run: nothing more is
 ;     appended after the torn octets, which stay the file's tail.
 ;   - The next entry written after a loss carries the MARK line first
-;     (`*fn-otm-mark-entry*', OP 6): replay reads it as (:gap N), N the first
+;     (`*fn-otm-mark-entry*', OP 7): replay reads it as (:gap N), N the first
 ;     sequence number missing.  A gap is named where it happened, never
 ;     inferred from a later number that may coincide.
 ;   - At open the file is cut to its last whole line (a process that died

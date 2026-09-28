@@ -34,7 +34,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 DEVELOPER = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
-MARK = [0, 6, 0, 0, 0, 0, 0]
+MARK = [0, 7, 0, 0, 0, 0, 0]
 
 
 def environment():

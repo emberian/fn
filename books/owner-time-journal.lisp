@@ -298,11 +298,11 @@
 ; :agrees, or (:gap SEQ) (SEQ the first sequence number missing: dropped by
 ; the sink or lost to a failed write, PKT-872), (:diverged SEQ) (the
 ; recomputed word differs), or (:malformed SEQ).  A start entry resets S to
-; fn-otm-init.  A MARK entry (OP 6, `*fn-otm-mark-entry*') is the writer's
+; fn-otm-init.  A MARK entry (OP 7, `*fn-otm-mark-entry*') is the writer's
 ; own record that entries were lost before the one after it
 ; (books/owner-time-journal-writer.lisp): it is a gap at the next sequence.
 
-(defconst *fn-otm-mark-entry* '(0 6 0 0 0 0 0))
+(defconst *fn-otm-mark-entry* '(0 7 0 0 0 0 0))
 
 (defun fn-otm-replay (s entries)
   (declare (xargs :guard t :measure (len entries)))
@@ -316,7 +316,7 @@
                    (if (equal seq 0)
                        (fn-otm-replay (fn-otm-init) (cdr entries))
                      (mv (list :malformed seq) s)))
-                  ((equal op 6)
+                  ((equal op 7)
                    (mv (list :gap (+ 1 (fn-otm-jseq s))) s))
                   ((not (equal seq (+ 1 (fn-otm-jseq s))))
                    (mv (list :gap (+ 1 (fn-otm-jseq s))) s))

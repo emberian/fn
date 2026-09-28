@@ -676,7 +676,7 @@ that fails (ENOSPC part-way through a line, any write error) is truncated
 back to that length, and when the truncation itself fails the journal is
 closed for the run, so no line is ever appended after torn octets. The
 first entry written after a lost one (a failed append, or an entry the sink
-dropped at its bound) is preceded by a mark line `0 6 0 0 0 0 0`, which the
+dropped at its bound) is preceded by a mark line `0 7 0 0 0 0 0`, which the
 replay reads as `gap-at-N`, N the first sequence number missing; a gap
 detected by the sequence numbers also names the first one missing. At each
 run's start the file is cut back to its last whole entry (read backwards in
