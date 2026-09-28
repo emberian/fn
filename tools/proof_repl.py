@@ -2250,25 +2250,41 @@ def sync_to(host: str, tree: str, files: list[str]) -> float:
 
 
 def strip_remote_options(argv: list[str]) -> list[str]:
-    """ARGV without --host/--remote-tree/--no-sync, which only this side reads."""
+    """ARGV without --host/--remote-tree/--acl2/--no-sync, which only this side
+    reads (--acl2 goes to the box as its FN_ACL2)."""
     kept, skip = [], False
     for word in argv:
         if skip:
             skip = False
             continue
-        if word in ("--host", "--remote-tree"):
+        if word in ("--host", "--remote-tree", "--acl2"):
             skip = True
             continue
-        if word.startswith(("--host=", "--remote-tree=")) or word == "--no-sync":
+        if word.startswith(("--host=", "--remote-tree=", "--acl2=")) or word == "--no-sync":
             continue
         kept.append(word)
     return kept
 
 
-def remote_script(host: str, tree: str, lane: str | None, argv: list[str]) -> str:
+def remote_acl2(args, environ=os.environ) -> str | None:
+    """The ACL2 a --host command runs with, when not the box's default.
+
+    `--acl2 PATH` wins, then FN_ACL2 from this shell; None keeps the box's
+    own (tools/farm.py HOSTS).  extract-2, 2026-09-27: an image's world plus
+    host files exhausted hbox's default (tls 16384) with "Thread local
+    storage exhausted", and --host offered no way to pick
+    /tank/fn/toolchains/w28/acl2-literal-4g-tls64k.
+    """
+    chosen = getattr(args, "acl2", None) or environ.get("FN_ACL2", "").strip()
+    return chosen or None
+
+
+def remote_script(host: str, tree: str, lane: str | None, argv: list[str],
+                  acl2: str | None = None) -> str:
     settings = box_settings(host)
     import shlex  # noqa: E402
-    exports = [f"FN_ACL2={settings['acl2']}", f"FN_CERT_CACHE={settings['cache']}"]
+    exports = [f"FN_ACL2={shlex.quote(acl2) if acl2 else settings['acl2']}",
+               f"FN_CERT_CACHE={settings['cache']}"]
     if lane:
         exports.append(f"FN_LANE={shlex.quote(lane)}")
     wrap = settings.get("wrap") or ""
@@ -2324,7 +2340,12 @@ def run_remote(args, argv: list[str]) -> int:
     stdin_text = None
     if (command == "send" and args.form == "-") or (command == "probe" and args.form == "-"):
         stdin_text = sys.stdin.read()
-    script = remote_script(host, tree, lane, forwarded)
+    acl2 = remote_acl2(args)
+    if acl2 and command in SERVER_COMMANDS:
+        print(f"proof-repl --host {host}: ACL2 {acl2} (not the box default "
+              f"{box_settings(host)['acl2']}; certificates are keyed by toolchain, so the "
+              "cache may miss)", flush=True)
+    script = remote_script(host, tree, lane, forwarded, acl2)
     if stdin_text is None:
         done = subprocess.run(ssh_command(host, script), stdin=subprocess.DEVNULL)
     else:
@@ -2345,6 +2366,10 @@ def add_remote_options(parser, sync: bool = False) -> None:
     parser.add_argument("--remote-tree", default=None, metavar="PATH",
                         help="with --host: the tree on the box (default: "
                              "<box's gates>/<lane>-repl)")
+    parser.add_argument("--acl2", default=None, metavar="PATH",
+                        help="the ACL2 executable (default FN_ACL2; with --host, else the "
+                             "box's own). On hbox an image world plus host files wants "
+                             "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k")
     if sync:
         parser.add_argument("--no-sync", action="store_true",
                             help="with --host: do not rsync tools/ and the closure first")
@@ -2493,6 +2518,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if getattr(args, "host", None):
         return run_remote(args, argv)
+    if getattr(args, "acl2", None):
+        os.environ["FN_ACL2"] = args.acl2
     apply_box_defaults()
     return args.run(args)
 
