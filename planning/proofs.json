@@ -11903,7 +11903,9 @@
         "fn-hp-decode-image",
         "fn-hp-page-digest-is-leaf",
         "fn-hp-append-changes-only-dirty",
-        "fn-hp-append-dirty-bound"
+        "fn-hp-append-dirty-bound",
+        "fn-hp-x-header-is-image",
+        "fn-hp-x-at-is-nth"
       ]
     },
     {
@@ -11916,7 +11918,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/octet-text.lisp",
         "tests/acl2/octet-text-tests.lisp",
@@ -12028,7 +12030,7 @@
         "PRF-343"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-dispatch.lisp",
@@ -12093,7 +12095,7 @@
         "PRF-014"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/records-shape.lisp",
         "books/acceptance.lisp",
