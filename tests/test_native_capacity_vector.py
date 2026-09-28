@@ -153,8 +153,7 @@ class NativeCapacityVectorTests(_Bp):
         bad = []
         for point in LOG_CUTS:
             copy, ccfg = self.cut_copy(store, "cut-%s-%s" % (verb, point))
-            env = dict(self.env)
-            env["FN_NATIVE_LOG_FAULT"] = point
+            env = {"FN_NATIVE_LOG_FAULT": point}
             first = "exit-%d" % self.verb(ccfg, "store", verb, env=env)[0]
             reopened = self.status(ccfg)
             rerun = self.verb(ccfg, "store", verb)

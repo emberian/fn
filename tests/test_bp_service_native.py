@@ -1,64 +1,44 @@
 """Native outage/restart evidence for the durable BP lifecycle service."""
 
-import os
-from pathlib import Path
 import shutil
-import subprocess
-import tempfile
 import time
 import unittest
 
-from tests.native_harness import AcceptThenClosePeer, refused_port
-
-
-ROOT = Path(__file__).resolve().parent.parent
+from tests.native_harness import (
+    EXIT, ROOT, AcceptThenClosePeer, environment, native_image, refused_port, requires, run,
+    scratch, start)
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
-# connection lost after it existed is exit 6 (connection-local: the job stays
-# and is re-offered; no recovery); a connect that never produced a socket is
-# exit 7; exit 3 stays the fence (a publication whose outcome is unknown).
-LOST = 6
-NOT_CONNECTED = 7
+# connection lost after it existed is EXIT.INTERRUPTED (connection-local:
+# the job stays and is re-offered; no recovery); a connect that never
+# produced a socket is EXIT.NOT_CONNECTED; EXIT.UNCERTAIN stays the fence
+# (a publication whose outcome is unknown).
+LOST, NOT_CONNECTED = EXIT.INTERRUPTED, EXIT.NOT_CONNECTED
+IMAGE = native_image("FN_NATIVE_BP_HOST")
 
 
+def output(process):
+    """What PROCESS wrote so far, stdout then stderr, as text."""
+    return (process.stdout.since(0) + process.stderr.since(0)).decode("utf-8", "replace")
+
+
+@requires(IMAGE)
 class NativeBpServiceTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.image = Path(os.environ.get(
-            "FN_NATIVE_BP_HOST", ROOT / "build" / "fn-host-dtn"))
-        if not os.access(cls.image, os.X_OK):
-            raise unittest.SkipTest(
-                f"DTN native image missing: {cls.image} "
-                "(FN_NATIVE_BUILD=host/native/build-dtn.lisp tools/build_native_host.sh)"
-            )
+    image = IMAGE
 
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="fn-bp-service-"))
+        self.tmp = scratch(self, "fn-bp-service-")
         self.journal = self.tmp / "journal"
         self.adu = self.tmp / "adu"
         self.adu.write_bytes(b"hello lifecycle")
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.env.pop("ACL2_SYSTEM_BOOKS", None)
         # The outage: the peer accepts the connection and closes it before
         # any transfer completes, so every transfer here is :uncertain.
         self.peer = AcceptThenClosePeer()
         self.addCleanup(self.peer.close)
 
-    def tearDown(self):
-        shutil.rmtree(self.tmp)
-
     def invoke(self, *args, env=None):
-        return subprocess.run(
-            [str(self.image), "--fn", "bp-service", *map(str, args)],
-            cwd=ROOT,
-            env=env or self.env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=30,
-            check=False,
-            text=True,
-        )
+        return run([self.image, "--fn", "bp-service", *args], env=environment(env),
+                        timeout=30, text=True)
 
     def run_outage(self, adu=None, env=None):
         return self.invoke(
@@ -160,7 +140,7 @@ class NativeBpServiceTests(unittest.TestCase):
             "resume", self.journal, "dtn://fn-a/", "1500", "2", "32",
             "1048576", "0", "0",
         )
-        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertEqual(resumed.returncode, EXIT.OK, resumed.stderr)
         self.assertIn("BP queue recovered jobs=1", resumed.stdout)
         self.assertIn("status=expired", resumed.stdout)
         self.assertNotIn("release", resumed.stdout.lower())
@@ -179,7 +159,7 @@ class NativeBpServiceTests(unittest.TestCase):
         domain.write_bytes(replacement)
 
         resumed = self.resume()
-        self.assertEqual(resumed.returncode, 3, resumed.stderr)
+        self.assertEqual(resumed.returncode, EXIT.UNCERTAIN, resumed.stderr)
         self.assertIn("clock domain", resumed.stderr.lower())
         self.assertEqual(
             tuple((p.name, p.read_bytes()) for p in self.records()), before,
@@ -193,15 +173,14 @@ class NativeBpServiceTests(unittest.TestCase):
         before = tuple((p.name, p.read_bytes()) for p in self.records())
 
         resumed = self.resume()
-        self.assertEqual(resumed.returncode, 3, resumed.stderr)
+        self.assertEqual(resumed.returncode, EXIT.UNCERTAIN, resumed.stderr)
         self.assertIn("clock domain", resumed.stderr.lower())
         self.assertEqual(tuple((p.name, p.read_bytes()) for p in self.records()), before)
 
     def test_visible_clock_domain_after_barrier_error_recovers_without_work(self):
-        injected = dict(self.env)
-        injected["FN_BP_CLOCK_DOMAIN_TEST_FAIL"] = "namespace"
+        injected = {"FN_BP_CLOCK_DOMAIN_TEST_FAIL": "namespace"}
         cut = self.run_outage(env=injected)
-        self.assertEqual(cut.returncode, 3, cut.stderr)
+        self.assertEqual(cut.returncode, EXIT.UNCERTAIN, cut.stderr)
         self.assertIn("clock domain", cut.stderr.lower())
         domain = self.journal / "clock-domain.fnb"
         visible = domain.read_bytes()
@@ -209,24 +188,20 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertEqual(self.records(), [])
 
         recovered = self.resume()
-        self.assertEqual(recovered.returncode, 0, recovered.stderr)
+        self.assertEqual(recovered.returncode, EXIT.OK, recovered.stderr)
         self.assertIn("BP queue recovered jobs=0", recovered.stdout)
         self.assertEqual(domain.read_bytes(), visible)
         self.assertEqual(self.records(), [])
 
     def test_shared_spool_owner_precedes_lifecycle_mutation(self):
-        owner = subprocess.Popen(
-            [str(self.image), "--fn", "tcpcl", "listen", "0", "1",
-             str(self.journal), "dtn://fn-a/", "-", "4", "1024",
-             "1048576", "-", "-"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, text=True,
-        )
+        owner = start(
+            [self.image, "--fn", "tcpcl", "listen", "0", "1", self.journal, "dtn://fn-a/",
+             "-", "4", "1024", "1048576", "-", "-"], cwd=ROOT, env=environment())
         try:
-            line = owner.stdout.readline()
-            self.assertIn("TCPCL LISTENING", line)
+            line = owner.next_line(60)
+            self.assertIn(b"TCPCL LISTENING", line)
             refused = self.run_outage()
-            self.assertEqual(refused.returncode, 1, refused.stderr)
+            self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stderr)
             self.assertIn("spool is already owned", refused.stderr)
             self.assertFalse((self.journal / "sequence").exists())
             self.assertFalse((self.journal / "lifecycle").exists())
@@ -234,13 +209,12 @@ class NativeBpServiceTests(unittest.TestCase):
         finally:
             owner.kill()
             owner.wait(timeout=10)
-            owner.stdout.close()
+            owner.finish()
 
     def test_visible_final_never_converts_failed_authority_barrier_to_durable(self):
-        injected_env = dict(self.env)
-        injected_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "namespace"
+        injected_env = {"FN_IMMUTABLE_PUBLISH_TEST_FAIL": "namespace"}
         cut = self.run_outage(env=injected_env)
-        self.assertEqual(cut.returncode, 3, cut.stderr)
+        self.assertEqual(cut.returncode, EXIT.UNCERTAIN, cut.stderr)
         self.assertIn("BP queue uncertain reason=persistence", cut.stdout)
         self.assertNotIn("BP queue accepted", cut.stdout)
         self.assertEqual(
@@ -254,8 +228,7 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertNotIn("restart fenced", recovered.stderr)
 
     def test_cleanup_barrier_failure_does_not_retract_durable_record(self):
-        injected_env = dict(self.env)
-        injected_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "cleanup"
+        injected_env = {"FN_IMMUTABLE_PUBLISH_TEST_FAIL": "cleanup"}
         cut = self.run_outage(env=injected_env)
         self.assertEqual(cut.returncode, LOST, cut.stderr)
         self.assertIn("BP queue accepted", cut.stdout)
@@ -268,19 +241,17 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertNotIn("restart fenced", recovered.stderr)
 
     def test_prelink_publication_failure_is_refused(self):
-        injected_env = dict(self.env)
-        injected_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "stage"
+        injected_env = {"FN_IMMUTABLE_PUBLISH_TEST_FAIL": "stage"}
         refused = self.run_outage(env=injected_env)
-        self.assertEqual(refused.returncode, 1, refused.stderr)
+        self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stderr)
         self.assertIn("BP queue refused reason=persistence-refused", refused.stdout)
         self.assertNotIn("BP queue uncertain", refused.stdout)
         self.assertEqual(len(self.records()), 0)
 
     def test_send_core_fault_remains_exit_four(self):
-        fault_env = dict(self.env)
-        fault_env["FN_BP_SERVICE_TEST_SEND_FAULT"] = "1"
+        fault_env = {"FN_BP_SERVICE_TEST_SEND_FAULT": "1"}
         result = self.run_outage(env=fault_env)
-        self.assertEqual(result.returncode, 4, result.stderr)
+        self.assertEqual(result.returncode, EXIT.FAULT, result.stderr)
         self.assertIn("injected send core fault", result.stderr)
         self.assertNotIn("BP forwarding retained reason=uncertain", result.stdout)
         self.assertEqual(
@@ -309,13 +280,12 @@ class NativeBpServiceTests(unittest.TestCase):
                     expected = "do not bind decoded record tokens"
 
                 resumed = self.resume()
-                self.assertEqual(resumed.returncode, 3, resumed.stderr)
+                self.assertEqual(resumed.returncode, EXIT.UNCERTAIN, resumed.stderr)
                 self.assertIn(expected, resumed.stderr)
                 self.assertNotIn("BP queue recovered", resumed.stdout)
 
     def test_append_uses_recovered_frontier_without_namespace_rescan(self):
-        injected_env = dict(self.env)
-        injected_env["FN_BP_SERVICE_TEST_FAIL_SECOND_LIFECYCLE_ENUMERATION"] = "1"
+        injected_env = {"FN_BP_SERVICE_TEST_FAIL_SECOND_LIFECYCLE_ENUMERATION": "1"}
         first = self.run_outage(env=injected_env)
         self.assertEqual(first.returncode, LOST, first.stderr)
         self.assertIn("BP queue accepted", first.stdout)
@@ -341,87 +311,50 @@ class NativeBpServiceTests(unittest.TestCase):
             (lifecycle / f".stage-{number:04d}").touch()
 
         resumed = self.resume()
-        self.assertEqual(resumed.returncode, 3, resumed.stderr)
+        self.assertEqual(resumed.returncode, EXIT.UNCERTAIN, resumed.stderr)
         self.assertIn("lifecycle namespace exceeds its bound", resumed.stderr)
         self.assertNotIn("BP queue recovered", resumed.stdout)
 
     def test_transport_uncertain_dominates_refused_article(self):
         malformed = self.tmp / "malformed.bundle"
         malformed.write_bytes(b"not a BPv7 bundle")
-        listener_log = self.tmp / "listener.log"
-        sender_log = self.tmp / "sender.log"
-        with listener_log.open("wb") as listener_output:
-            listener = subprocess.Popen(
-                [str(self.image), "--fn", "bp", "receive", "0", "1",
-                 str(self.tmp / "bp-journal"), "dtn://fn-b/", "-",
-                 "3600000", "2", "32", "1048576", str(self.adu),
-                 "dtn://fn-a/", "-", "0"],
-                cwd=ROOT, env=self.env, stdout=listener_output,
-                stderr=subprocess.STDOUT,
-            )
-            sender = None
-            try:
-                deadline = time.time() + 15
-                port = None
-                while time.time() < deadline:
-                    text = listener_log.read_text(errors="replace")
-                    for line in text.splitlines():
-                        if line.startswith("BP LISTENING "):
-                            port = int(line.rsplit(" ", 1)[1])
-                            break
-                    if port is not None:
-                        break
-                    if listener.poll() is not None:
-                        self.fail(f"listener exited before listen: {text}")
-                    time.sleep(0.02)
-                self.assertIsNotNone(port, "listener did not publish a port")
+        listener = start(
+            [self.image, "--fn", "bp", "receive", "0", "1", self.tmp / "bp-journal",
+             "dtn://fn-b/", "-", "3600000", "2", "32", "1048576", self.adu,
+             "dtn://fn-a/", "-", "0"], cwd=ROOT, env=environment())
+        self.addCleanup(listener.stop, 10)
+        port = int(listener.announcement(b"BP LISTENING ", timeout=15).rsplit(b" ", 1)[1])
+        sender = start(
+            [self.image, "--fn", "tcpcl", "send", "127.0.0.1", port, malformed,
+             self.tmp / "peer-journal", "dtn://fn-a/", "-", "4", "1024", "1048576", "1",
+             "-"], cwd=ROOT, env=environment({"FN_TCPCL_TEST_PAUSE_AFTER_STAGE_DATA": "1"}))
+        self.addCleanup(sender.stop, 10)
+        deadline = time.time() + 20
+        while time.time() < deadline:
+            refused = "BP refused xfer=" in output(listener)
+            held_ack = "TCPCL TEST STAGE-DATA " in output(sender)
+            if refused and held_ack:
+                break
+            if sender.poll() is not None:
+                break
+            time.sleep(0.02)
+        self.assertIn(
+            "BP refused xfer=", output(listener),
+            "the mixed-outcome cut requires a reachable refused article",
+        )
+        self.assertIn(
+            "TCPCL TEST STAGE-DATA ", output(sender),
+            "the peer must still hold the reply's final ACK",
+        )
+        listener.wait(timeout=30)
+        listener.finish()
+        sender.kill()
+        sender.wait(timeout=10)
 
-                with sender_log.open("wb") as sender_output:
-                    sender_env = dict(self.env)
-                    sender_env["FN_TCPCL_TEST_PAUSE_AFTER_STAGE_DATA"] = "1"
-                    sender = subprocess.Popen(
-                        [str(self.image), "--fn", "tcpcl", "send", "127.0.0.1",
-                         str(port), str(malformed), str(self.tmp / "peer-journal"),
-                         "dtn://fn-a/", "-", "4", "1024", "1048576", "1", "-"],
-                        cwd=ROOT, env=sender_env, stdout=sender_output,
-                        stderr=subprocess.STDOUT,
-                    )
-                    deadline = time.time() + 20
-                    while time.time() < deadline:
-                        refused = "BP refused xfer=" in listener_log.read_text(
-                            errors="replace")
-                        held_ack = "TCPCL TEST STAGE-DATA " in sender_log.read_text(
-                            errors="replace")
-                        if refused and held_ack:
-                            break
-                        if sender.poll() is not None:
-                            break
-                        time.sleep(0.02)
-                    self.assertIn(
-                        "BP refused xfer=", listener_log.read_text(errors="replace"),
-                        "the mixed-outcome cut requires a reachable refused article",
-                    )
-                    self.assertIn(
-                        "TCPCL TEST STAGE-DATA ",
-                        sender_log.read_text(errors="replace"),
-                        "the peer must still hold the reply's final ACK",
-                    )
-                    listener.wait(timeout=30)
-                    sender.kill()
-                    sender.wait(timeout=10)
-
-                output = listener_log.read_text(errors="replace")
-                self.assertIn("BP summary accepted=0 refused=1 uncertain=0", output)
-                self.assertIn("TCPCL passive uncertain", output)
-                self.assertEqual(listener.returncode, LOST, output)
-            finally:
-                if listener.poll() is None:
-                    listener.kill()
-                    listener.wait(timeout=10)
-                if sender is not None and sender.poll() is None:
-                    sender.kill()
-                    sender.wait(timeout=10)
-
+        text = output(listener)
+        self.assertIn("BP summary accepted=0 refused=1 uncertain=0", text)
+        self.assertIn("TCPCL passive uncertain", text)
+        self.assertEqual(listener.returncode, LOST, text)
 
 if __name__ == "__main__":
     unittest.main()

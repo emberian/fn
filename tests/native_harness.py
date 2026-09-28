@@ -787,12 +787,17 @@ def free_port():
         return probe.getsockname()[1]
 
 
-def run(argv, *, env=None, timeout=180, cwd=None, stdin=None, input=None):
-    """ARGV to completion with both streams captured (a CompletedProcess)."""
-    return subprocess.run([str(word) for word in argv], cwd=cwd or ROOT,
-                          env=env or environment(), stdin=stdin, input=input,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          timeout=timeout, check=False)
+def run(argv, *, env=None, timeout=180, cwd=None, stdin=None, input=None, text=False):
+    """ARGV to completion with both streams captured (a CompletedProcess);
+    TEXT decodes both (UTF-8, undecodable octets replaced)."""
+    result = subprocess.run([str(word) for word in argv], cwd=cwd or ROOT,
+                            env=env or environment(), stdin=stdin, input=input,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            timeout=timeout, check=False)
+    if text:
+        result.stdout, result.stderr = (stream.decode("utf-8", "replace")
+                                        for stream in (result.stdout, result.stderr))
+    return result
 
 
 def class_case(cls):
