@@ -78,6 +78,14 @@
   (declare (xargs :guard t))
   (fn-oas-article-conns-onto conns 0))
 
+(defthm fn-oas-article-conns-onto-natp
+  (implies (natp n) (natp (fn-oas-article-conns-onto conns n)))
+  :rule-classes :type-prescription)
+
+(defthm fn-oas-article-conns-natp
+  (natp (fn-oas-article-conns conns))
+  :rule-classes :type-prescription)
+
 (defun fn-oas-held (oc)
   (declare (xargs :guard t))
   (let ((o (fn-ocfg-owner oc)))
