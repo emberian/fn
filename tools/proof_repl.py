@@ -2385,15 +2385,7 @@ SSH_OPTIONS = ("-o", "ControlMaster=auto", "-o", "ControlPersist=600",
 
 
 def farm_hosts() -> dict:
-    """tools/farm.py's HOSTS, read as a literal: importing farm pulls in the
-    native-campaign modules under tests/, which a synced REPL tree lacks."""
-    import ast  # noqa: E402
-    tree = ast.parse((Path(__file__).resolve().parent / "farm.py").read_text(encoding="utf-8"))
-    for node in tree.body:
-        if (isinstance(node, ast.Assign) and len(node.targets) == 1
-                and getattr(node.targets[0], "id", None) == "HOSTS"):
-            return ast.literal_eval(node.value)
-    raise SystemExit("proof-repl: tools/farm.py has no HOSTS table")
+    return acl2_slots.farm_hosts()
 
 
 def box_settings(host: str) -> dict:
@@ -2405,19 +2397,9 @@ def box_settings(host: str) -> dict:
 
 
 def apply_box_defaults(environ=os.environ, hostname: str | None = None) -> str | None:
-    """On a farm box, default FN_ACL2 and FN_CERT_CACHE to that box's own.
-
-    A lane that ssh'd to persvati otherwise meets 'no ACL2 executable at
-    acl2' and then an empty ~/.cache/fn-certs (openbsd-release-fixes).
-    An explicit setting always wins.  Answers the box's name, or None.
-    """
-    host = (hostname or socket.gethostname()).split(".")[0]
-    if host not in REMOTE_TREES or ("FN_ACL2" in environ and "FN_CERT_CACHE" in environ):
-        return None
-    settings = box_settings(host)
-    environ.setdefault("FN_ACL2", os.path.expanduser(settings["acl2"]))
-    environ.setdefault("FN_CERT_CACHE", os.path.expanduser(settings["cache"]))
-    return host
+    """On a farm box, default FN_ACL2 and FN_CERT_CACHE to that box's own
+    (acl2_slots.apply_box_defaults; openbsd-release-fixes)."""
+    return acl2_slots.apply_box_defaults(environ, hostname)
 
 
 # `--host laptop`: this machine, when it is not a farm box.  Only REPL

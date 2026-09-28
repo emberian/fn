@@ -954,6 +954,11 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
+    box = acl2_slots.apply_box_defaults()
+    if box:
+        print(f"certify_books: on {box}: FN_ACL2={os.environ['FN_ACL2']} "
+              f"FN_CERT_CACHE={os.environ['FN_CERT_CACHE']} (farm.py HOSTS; "
+              "set either to override)", file=sys.stderr, flush=True)
     if not args.books:
         try:
             args.books = default_books()
