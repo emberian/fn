@@ -2928,7 +2928,7 @@
     {
       "id": "PRF-066",
       "title": "Experimental root-only topic admission is grounded in historical authorship and finite local policy",
-      "statement": "The experimental root-only Store path selects prior T10-bound exact source and snapshot, checks installed local administrator, roster, same-topic parents and finite quota, and completes only a matching topic event. Fresh version-2 root anchors bind the exact earlier immutable administrator-install event ID and generation; historical version-1 anchors retain ID-only replay semantics and cannot be freshly staged. The owner-called report selector returns :replayed-historical only for selected earlier exact source and retained admission, without another Store event. Topic completion advances the exact Store sequence/transaction and slot-12 projection while preserving article acceptance. Observed reopen separately validates topic replay; deriving that validity for every modeled crash image from a maintained live Store relation remains open. Native v2 migration and physical publication are not yet qualified.",
+      "statement": "The experimental root-only Store path selects prior T10-bound exact source and snapshot, checks installed local administrator, roster, same-topic parents and finite quota, and completes only a matching topic event. Fresh version-2 root anchors bind the exact earlier immutable administrator-install event ID and generation; historical version-1 anchors retain ID-only replay semantics and cannot be freshly staged. The owner-called report selector returns :replayed-historical only for selected earlier exact source and retained admission, without another Store event. Topic completion advances the exact Store sequence/transaction and slot-12 projection while preserving article acceptance. Observed reopen separately validates topic replay; deriving that validity for every modeled crash image from a maintained live Store relation remains open. Physical publication is not yet qualified (no native v1-to-v2 migration: fresh deploys at 6.6.0).",
       "milestone": "M3",
       "requirements": [
         "TOP-002"
@@ -2989,7 +2989,7 @@
         "planning/evidence/manifests/certify-20260924T053944Z-748903.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
-      "progress_note": "Scoped v2 local proposal, Store fresh-v1 refusal, canonical event/prefix and mixed-source vector roots passed at exact bytes. Historical v1 meaning is retained. The dual-image native migration test is prepared but has not run; a v2 saved image and full affected closure remain open. The maintained topic/crash relation is under separate active proof work and is not supplied by the interim BP/byte reopen premise."
+      "progress_note": "Scoped v2 local proposal, Store fresh-v1 refusal, canonical event/prefix and mixed-source vector roots passed at exact bytes. Historical v1 meaning is retained. The dual-image native migration test is retired (no migrations: fresh deploys at 6.6.0, lane config-and-legacy); the full affected closure remains open. The maintained topic/crash relation is under separate active proof work and is not supplied by the interim BP/byte reopen premise."
     },
     {
       "id": "PRF-068",
@@ -6896,7 +6896,12 @@
         "fn-cev-open-of-request-encode",
         "fn-cev-msgid-octets",
         "fn-cev-request-payload-fits"
-      ]
+      ],
+      "keystone_subjects": {
+        "fn-log-sink-drop-counts": "fn-log-sink-offer",
+        "fn-log-sink-offer-preserves-okp": "fn-log-sink-offer",
+        "fn-log-sink-take-preserves-okp": "fn-log-sink-take"
+      }
     },
     {
       "id": "PRF-188",
@@ -7534,7 +7539,9 @@
         "fn-heap-status-decide-is-the-launchers-run-reservation",
         "fn-heap-reserve-full-store-accepted-is-within-the-machine",
         "fn-heap-store-history-holds-payload-and-memberships",
-        "fn-heap-arena-octets-slope"
+        "fn-heap-arena-octets-slope",
+        "fn-heap-records-retained-within-the-terms",
+        "fn-heap-small-profile-run-fits-a-two-gib-machine"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -8334,7 +8341,7 @@
         "PRF-097"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260928T163441Z-33654.json",
         "books/peer-host.lisp",
@@ -9927,7 +9934,7 @@
     {
       "id": "PRF-272",
       "title": "The pipelined group commit: the next batch prepares behind the barrier, and no record is revealed or acknowledged before its own barrier",
-      "statement": "Subjects fn-ocp-commit-event and fn-ocp-committer-wake (books/owner-commit-pipeline.lisp), which host/native/owner.lisp fnn-owner-commit-event and fnn-owner-commit-wake call from the committer (fnn-owner-commit-pipeline), and fn-ocp-next / fn-ocp-observe, which fnn-owner-gate-pick / fnn-owner-gate-leave call at every release of the owner. KEYSTONE fn-ocp-next-open-only-in-flight: after any commit event, a next batch is open only while the commit's ocs phase is in flight, so (fn-ocp-next-is-ocs-next, fn-ocs-in-flight-admits-only-inspect-and-commit, restated over the host's pick as fn-ocp-in-flight-admits-only-inspect-commit-and-reader) no reader, poster, transit or mutating control quantum runs while a prepared record of the batch in flight or of the one behind it is not durable. fn-ocp-commit-event-completes-only-after-the-barrier: COMPLETE (the acknowledgements and the replies of the batch in flight) is named only for a staged batch whose syncer returned :fenced; the next batch's members become the staged batch only through COMPLETE's :sync (fn-ocp-sync-only-when-none-in-flight: a batch is handed to the syncer only from an idle owner after a START or by COMPLETE after the batch in flight was fenced), so appends are in the batches' order and at most one is in flight, as the kernel requires (fn-lgk-append refuses a second). fn-ocp-start-next-only-behind-a-sync: START-NEXT runs only while a batch is staged, its barrier not returned, no next batch open, a member queued. The crash half is PRF (commit-onto-log) fn-olr-crash-reads-a-prefix-of-the-history, whose link (committed ++ in flight ++ open batch) covers the batch prepared behind the barrier; the host's kernel updates are serialized by the log's lock (host/native/io.lisp fnn-log-with-kernel) and the syncer touches only the log struct. Teeth: tests/acl2/owner-commit-pipeline-tests.lisp (the pipeline reached step by step from fn-ocp-init; hypothesis removal for the keystone and the completion rule); native: tests/test_native_commit_log.py test_the_next_batch_prepares_behind_the_barrier (the operator's batch bound 2, the barrier held 700 ms, 16 POSTs from 8 posters: START-NEXT ran, every POST 240 and served after a restart).",
+      "statement": "Subjects fn-ocp-commit-event and fn-ocp-committer-wake (books/owner-commit-pipeline.lisp), which host/native/owner.lisp fnn-owner-commit-event and fnn-owner-commit-wake call from the committer (fnn-owner-commit-pipeline), and fn-ocp-next / fn-ocp-observe, which fnn-owner-gate-pick / fnn-owner-gate-leave call at every release of the owner. KEYSTONE fn-ocp-next-open-only-in-flight: after any commit event, a next batch is open only while the commit's ocs phase is in flight, so (fn-ocp-next-is-ocs-next, fn-ocs-in-flight-admits-only-inspect-and-commit, restated over the host's pick as fn-ocp-in-flight-admits-only-inspect-commit-and-reader) no reader, poster, transit or mutating control quantum runs while a prepared record of the batch in flight or of the one behind it is not durable. fn-ocp-commit-event-completes-only-after-the-barrier: COMPLETE (the acknowledgements and the replies of the batch in flight) is named only for a staged batch whose syncer returned :fenced; the next batch's members become the staged batch only through COMPLETE's :sync (fn-ocp-sync-only-when-none-in-flight: a batch is handed to the syncer only from an idle owner after a START or by COMPLETE after the batch in flight was fenced), so appends are in the batches' order and at most one is in flight, as the kernel requires (fn-lgk-append refuses a second). fn-ocp-start-next-only-behind-a-sync: START-NEXT runs only while a batch is staged, its barrier not returned, no next batch open, a member queued and (lane durability-bugs, PRF-901) no control, poster or transit request waiting past the pass budget. The crash half is PRF (commit-onto-log) fn-olr-crash-reads-a-prefix-of-the-history, whose link (committed ++ in flight ++ open batch) covers the batch prepared behind the barrier; the host's kernel updates are serialized by the log's lock (host/native/io.lisp fnn-log-with-kernel) and the syncer touches only the log struct. Teeth: tests/acl2/owner-commit-pipeline-tests.lisp (the pipeline reached step by step from fn-ocp-init; hypothesis removal for the keystone and the completion rule); native: tests/test_native_commit_log.py test_the_next_batch_prepares_behind_the_barrier (the operator's batch bound 2, the barrier held 700 ms, 16 POSTs from 8 posters: START-NEXT ran, every POST 240 and served after a restart).",
       "milestone": "M5",
       "requirements": [
         "STO-003"
@@ -13267,7 +13274,7 @@
     {
       "id": "PRF-377",
       "title": "The heap figure holds a pool of article credits and every served read admits a connection into article mode only within them, refusing the rest by name, and an admitted upload is never blocked (reserve-to-finish): concurrent large POSTs no longer exhaust the heap",
-      "statement": "Subject: fn-oas-read-span (books/owner-article-slots.lisp), which host/owner-host.lisp fn-owner-chunk-span-at calls for every served read with the slots host/owner-host.lisp fn-owner-connection-budget installs from the store's profile (fn-heap-article-slots; one before any run: fn-owner-article-slots). THE POOL (books/heap-store-figure.lisp): the heap figure's base and need hold fn-heap-articles-octets = max(r, min(32 r, 64 MiB)), r = fn-heap-article-reserve-octets = 2 x 16 x (512 + A + HDR), what one admitted article retains at most (the body as wire lists within the body limit and a line; then its submission, the injected article within A and its groups within HDR, as lists; the collector's copy); fn-heap-article-slots = floor(pool / r) in [1, 32] (fn-heap-article-slots-bounds). KEYSTONE fn-heap-article-slots-are-held: k credits, k <= the slots, are within the pool. fn-heap-articles-octets-monotone: the pool grows with A and HDR (so fn-heap-store-base-octets-grows-with-the-profile and heap-reservation's fn-heap-figure-octets-grows-with-history-and-record gained the A hypothesis; its removal witness is in tests/acl2/heap-reservation-tests.lisp). THE ADMISSION: fn-oas-held counts the owner's connections in article mode, its queued submissions and the batch in flight (the credit moves with the request and is released when the commit answers). KEYSTONE fn-oas-read-span-admits-within-the-slots (no hypothesis): after the host's read, a connection that is in article mode and was not before leaves the owner holding at most the slots. fn-oas-read-span-when-held-unfolds: a read the slots hold is fn-otm-read-span exactly (PRF-323's theorems hold of the host's call). fn-oas-refused-read-is-not-article: past the slots the read is refused -- a POST 440 at the command with the memory reason (the connection's posting bit off for the read and restored, as PRF-323's shed read), an IHAVE/TAKETHIS that still enters article mode answered 400 and closed with its wire dropped. KEYSTONE fn-oas-read-span-never-blocks-an-admitted-article (the completion policy, RESERVE-TO-FINISH): a connection already in article mode reads exactly as before whatever the slots, so an admitted upload completes (or is refused by name past the body limit, 441) without waiting for any other, and partial uploads cannot deadlock on the pool. Not claimed: a frame theorem that one connection's read leaves every other connection's wire mode as it was (the invariant held <= slots between reads needs it beside the per-read keystone); that the octet-list heap of a retained body is 16 octets an octet (a measurement, planning/evidence/rep-wave-d-2026-09-25.md); the queue's growth by the control channel and BP deliveries, which enter no article mode; the body in bounded pooled chunks (the credit's representation step, open).",
+      "statement": "Subject: fn-oas-read-span (books/owner-article-slots.lisp), which host/owner-host.lisp fn-owner-chunk-span-at calls for every served read with the slots host/owner-host.lisp fn-owner-connection-budget installs from the store's profile (fn-heap-article-slots; one before any run: fn-owner-article-slots). THE POOL (books/heap-store-figure.lisp): the heap figure's base and need hold fn-heap-articles-octets = max(r, min(32 r, 64 MiB)), r = fn-heap-article-reserve-octets = 2 x 16 x (512 + A + HDR), what one admitted article retains at most (the body as wire lists within the body limit and a line; then its submission, the injected article within A and its groups within HDR, as lists; the collector's copy); fn-heap-article-slots = floor(pool / r) in [1, 32] (fn-heap-article-slots-bounds). KEYSTONE fn-heap-article-slots-are-held: k credits, k <= the slots, are within the pool. fn-heap-articles-octets-monotone: the pool grows with A and HDR (so fn-heap-store-base-octets-grows-with-the-profile and heap-reservation's fn-heap-figure-octets-grows-with-history-and-record gained the A hypothesis; its removal witness is in tests/acl2/heap-reservation-tests.lisp). THE ADMISSION: fn-oas-held counts the owner's connections in article mode, its queued submissions and the batch in flight (the credit moves with the request and is released when the commit answers). A read is OVER (fn-oas-over-p) when the owner then holds more than the slots and more than before the read, or connection ID entered article mode in it; past the slots the host's call takes the first of three tiers the slots hold (fn-oas-tiers): (a) the read with ID's posting bit off and restored (a POST 440 at the command with the memory reason, as PRF-323's shed read), (b) that read with ID's wire closed, 400 and close (the article it entered dropped, what it completed kept), (c) the whole read refused, 400 and close, nothing taken; an admitted connection skips (a). fn-oas-read-span-held-step: after the host's read the owner holds at most the slots or at most what it held. KEYSTONE fn-oas-read-span-admits-within-the-slots (no hypothesis): a connection that is in article mode after the host's read and was not before leaves the owner holding at most the slots. fn-oas-read-span-when-held-unfolds: a read the slots hold is fn-otm-read-span exactly (PRF-323's theorems hold of the host's call). fn-oas-refusals-are-not-article: tiers (b) and (c) leave ID out of article mode. THE GAP CLOSED (lane admission-gap): the entry test alone let a read that enters article mode AND completes the article (a TAKETHIS, RFC 4644 section 2.5; a pipelined IHAVE or POST; a small article in one socket read) raise what the owner holds past the slots with ID back in command mode. books/owner-article-held.lisp, from the shape of every layer under the host's read (fn-scar-finish-read replaces or removes ID's record and enqueues at most one decision; the view, pin, posting-bit and memory exchanges touch nothing else): KEYSTONE fn-oah-read-span-keeps-held-within-the-slots (held <= slots before the read implies held <= slots after, for a read of any connection carrying anything); KEYSTONE fn-oah-read-span-leaves-the-others-article-mode (the frame: for id2 /= id the read leaves connection id2's record and article mode as they were; fn-oah-read-span-keeps-the-other-records: the connection list less ID is unchanged); KEYSTONE fn-oas-read-span-never-blocks-an-admitted-article (RESERVE-TO-FINISH, restated: a connection in article mode whose read completes its article or only continues it -- ID out of article mode after it, or the queue's length unchanged -- reads exactly as fn-otm-read-span, whatever the slots, so an admitted upload completes, or is refused by name past the body limit, 441, without waiting for any other); fn-oah-admitted-read-keeps-what-it-completed (for an admitted connection the host's call is that read or that read with the article it began closed: the whole-read refusal is unreachable for it). Not claimed: that the octet-list heap of a retained body is 16 octets an octet (a measurement, planning/evidence/rep-wave-d-2026-09-25.md); the queue's growth by the control channel and BP deliveries, which enter no article mode; the body in bounded pooled chunks (the credit's representation step, open); that the served fold yields after one submission (PKT-600) -- the theorems hold without it, and the never-blocks keystone's second hypothesis is therefore stated, not removed.",
       "milestone": "M6",
       "requirements": [
         "HST-024"
@@ -13284,21 +13291,27 @@
         "books/heap-figure.lisp",
         "books/heap-reservation.lisp",
         "books/heap-store-figure.lisp",
+        "books/owner-article-held.lisp",
         "books/owner-article-slots.lisp",
         "host/owner-host.lisp",
         "planning/evidence/manifests/certify-20260928T170547Z-326567.json",
         "planning/evidence/manifests/certify-20260928T173234Z-581479.json",
+        "planning/evidence/manifests/certify-20260928T204358Z-2060786.json",
         "planning/evidence/zero-copy-commit-2026-09-28.md",
         "specs/host.md",
         "tests/acl2/heap-reservation-tests.lisp",
         "tests/acl2/owner-article-slots-tests.lisp",
         "tests/test_native_article_slots.py"
       ],
-      "progress_note": "Lane zero-copy-commit (Opus 5.5, 2026-09-28). REPL-admitted on persvati (books/owner-article-slots 28 forms, tests/acl2/owner-article-slots-tests). Teeth (tests/acl2/owner-article-slots-tests.lisp, prefix oast-, the host's call on live stobjs over owner-reader-read-tests' owner): reachable positive witness for the admission keystone (one slot, a POST offered 340, one held); a CONSTRUCTED state (a queued submission) where the read before this lane offers the POST with two held in one slot (MUTATION: the old host call violates the conclusion) and the host's call answers the memory 440; hypothesis removal (a connection already mid-article with zero slots: held 1 > 0); the never-blocks keystone's witness and its hypothesis removal; the slots at the small preset (32 of 1,589,248) and at A = 4 MiB (1) and 600,000 (3). SCN-193 is the native case. Certified: persvati certify-20260928T170547Z-326567 (11 passed: the affected roots). Record: planning/evidence/zero-copy-commit-2026-09-28.md. Recertified after the loop twins: persvati certify-20260928T173234Z-581479 (owner-article-slots and its tests). Native (hbox native-s1, 0132d90b8, developer and production): tests.test_native_article_slots 2/2 OK (SCN-193), tests.test_native_mux 4/4 OK (SCN-153).",
+      "progress_note": "Lane zero-copy-commit (Opus 5.5, 2026-09-28). REPL-admitted on persvati (books/owner-article-slots 28 forms, tests/acl2/owner-article-slots-tests). Teeth (tests/acl2/owner-article-slots-tests.lisp, prefix oast-, the host's call on live stobjs over owner-reader-read-tests' owner): reachable positive witness for the admission keystone (one slot, a POST offered 340, one held); a CONSTRUCTED state (a queued submission) where the read before this lane offers the POST with two held in one slot (MUTATION: the old host call violates the conclusion) and the host's call answers the memory 440; hypothesis removal (a connection already mid-article with zero slots: held 1 > 0); the never-blocks keystone's witness and its hypothesis removal; the slots at the small preset (32 of 1,589,248) and at A = 4 MiB (1) and 600,000 (3). SCN-193 is the native case. Certified: persvati certify-20260928T170547Z-326567 (11 passed: the affected roots). Record: planning/evidence/zero-copy-commit-2026-09-28.md. Recertified after the loop twins: persvati certify-20260928T173234Z-581479 (owner-article-slots and its tests). Native (hbox native-s1, 0132d90b8, developer and production): tests.test_native_article_slots 2/2 OK (SCN-193), tests.test_native_mux 4/4 OK (SCN-153). Lane admission-gap (Opus 5.5, 2026-09-28): the gap above closed; books/owner-article-held.lisp (new, includes owner-article-slots); teeth in tests/acl2/owner-article-slots-tests.lisp (prefix oahx-): the TAKETHIS in one read on a CONSTRUCTED state (a peer connection opened under a configuration naming it, a queued submission, one slot) where fn-otm-read-span -- the old host call's result for any read not ending newly mid-article -- leaves two held in one slot (MUTATION) and the host's call refuses the whole read 400 and close with one held; the pipelined POST the same (tier a, the memory 440); positive and hypothesis-removal witnesses for the invariant, the frame (taken and refused TAKETHIS beside a connection mid-article; id2 = id) and never-blocks (the read completing an admitted article stops after its submission, PKT-600, and is the old read at zero slots). SCN-193 gains the native TAKETHIS case. Certified: hbox certify-20260928T204358Z-2060786 (3 passed: books/owner-article-slots, books/owner-article-held, tests/acl2/owner-article-slots-tests, the affected roots). Native (hbox native-wt-20260928T204601Z, lane tree 1e85b75fd+dirty, developer and production): tests.test_native_article_slots 3/3 OK (SCN-193 incl. the TAKETHIS in one read: 400 and close, then 235 and the retried 239; rerun on the same images after the test's transit articles gained a Date line), tests.test_native_mux 4/4 OK, tests.test_native_nntp_post_probe 10/10 OK.",
       "events": [
         "fn-oas-read-span-admits-within-the-slots",
+        "fn-oah-read-span-keeps-held-within-the-slots",
+        "fn-oah-read-span-leaves-the-others-article-mode",
         "fn-oas-read-span-never-blocks-an-admitted-article",
-        "fn-oas-refused-read-is-not-article",
+        "fn-oah-admitted-read-keeps-what-it-completed",
+        "fn-oas-read-span-held-step",
+        "fn-oas-refusals-are-not-article",
         "fn-heap-article-slots-are-held",
         "fn-heap-article-slots-bounds",
         "fn-heap-articles-octets-monotone"
@@ -13336,7 +13349,7 @@
         "tests/acl2/config-field-max-tests.lisp",
         "planning/evidence/manifests/certify-20260928T180709Z-903342.json"
       ],
-      "progress_note": "Lane clock-units-2 (Opus 5.5, 2026-09-28). REPL-admitted on persvati. Teeth in tests/acl2/accounts-tests.lisp: the reached path (stopped invite at a 2026 millisecond instant, replayed; the owner's redeem plan a minute later) with a positive witness of every hypothesis and conclusion at the expired stamp and at a stamp with no wall; removal witnesses for the time (a minute later: admitted and replayed), pending (the resume over the redeemed row), row (unknown digest), login, row-shape and digest (CONSTRUCTED configuration) hypotheses and for the kind (the invite record); a labelled mutation witness (the same instant as a seconds stamp is admitted). Certified: persvati run-20260928T174252Z-57eb, affected roots of books/config (743 passed, 0 failed), after the codec widening (fn-cfg-item-encode/-decode, wide CBOR uint; certified vector fn-cfg-millisecond-stamp-record-round-trip). Native (hbox, 0c1eb89a8, developer+production): friends_accounts OK (5), operator_verbs OK (24), replay_determinism OK (7), recovery OK (13). Not natively exercised: an unreadable wall clock (gettimeofday cannot be made to fail from a test); the refusal is proved and witnessed in ACL2. tests/acl2/config-field-max-tests: every record field at its stated maximum (u32 scalars, u64 ms stamp times, 256-octet labels, 64 deltas, 1024 rows, kind code 27) round-trips; one past each is refused; a labelled GAP witness shows fn-cfg-recordp does not bound the encoding (65,538 octets), open.",
+      "progress_note": "Lane clock-units-2 (Opus 5.5, 2026-09-28). REPL-admitted on persvati. Teeth in tests/acl2/accounts-tests.lisp: the reached path (stopped invite at a 2026 millisecond instant, replayed; the owner's redeem plan a minute later) with a positive witness of every hypothesis and conclusion at the expired stamp and at a stamp with no wall; removal witnesses for the time (a minute later: admitted and replayed), pending (the resume over the redeemed row), row (unknown digest), login, row-shape and digest (CONSTRUCTED configuration) hypotheses and for the kind (the invite record); a labelled mutation witness (the same instant as a seconds stamp is admitted). Certified: persvati run-20260928T174252Z-57eb, affected roots of books/config (743 passed, 0 failed), after the codec widening (fn-cfg-item-encode/-decode, wide CBOR uint; certified vector fn-cfg-millisecond-stamp-record-round-trip). Native (hbox, 0c1eb89a8, developer+production): friends_accounts OK (5), operator_verbs OK (24), replay_determinism OK (7), recovery OK (13). Not natively exercised: an unreadable wall clock (gettimeofday cannot be made to fail from a test); the refusal is proved and witnessed in ACL2. tests/acl2/config-field-max-tests: every record field at its stated maximum (u32 scalars, u64 ms stamp times, 256-octet labels, 64 deltas, 1024 rows, kind code 27) round-trips; one past each is refused; a labelled GAP witness shows fn-cfg-recordp does not bound the encoding (65,538 octets); admission now refuses it (PRF-386, lane config-and-legacy).",
       "events": [
         "fn-cfg-record-redeeming-an-expired-code-is-refused-and-faults-replay",
         "fn-cfg-account-livep-fails-at-or-past-the-expiry",
@@ -13385,7 +13398,7 @@
     {
       "id": "PRF-383",
       "title": "`peer list', `control list' and the open's configuration-history observation execute in constant stack over grown operator data: each walk is (mbe :logic <its recursion, unchanged> :exec <a loop>) equal by its guard proof",
-      "statement": "Loop twins in the PRF-362 pattern (local lemmas <f>-loop-is-rev-onto / <f>-loop-of-rev-onto; books/rev-onto.lisp fn-ag-rev-onto): books/native-admin-peer-budget.lisp fn-napb-before-last (the rendered line's octets, ~82 per carried principal), fn-native-admin-peer-budget-report-rows (its loop finds each peer's rows once through fn-napb-rows-with-key-loop, equal to books/config.lisp fn-cfg-rows-with-key by fn-napb-rows-with-key-loop-is-rev-onto), fn-native-admin-peer-budget-report (names through fn-napb-peer-names-loop, equal to fn-cfg-peer-names by fn-napb-peer-names-loop-is-rev-onto); books/native-admin-peer.lisp fn-native-admin-peer-slot-values, fn-native-admin-peer-list-octets; books/native-admin.lisp fn-native-admin-control-report; books/native-config-observation.lisp fn-nco-decode-entries, fn-nco-insert-by-generation, fn-nco-sort-by-generation, fn-nco-output-entries. Host callers: host/native-admin-host.lisp fn-native-admin-host-query-report (host/native/admin.lisp fnn-admin-query), books/native-live-status.lisp fn-nls-report (:peers), host/store-node-host.lisp fn-store-config-observation. Before: tests/test_native_peer_rows_growth.py's `peer list' over 1,100 carried principals exited 4, 'Control stack guard page unprotected', at the deployed 1,024 KiB (batch AZ). tools/depth_check.py now refuses operator data (config tables, profile fields) as a 'bounded' reason (D27): a bounded entry cites a defined *constant*, a number or a structural bound. Scope: control-stack depth only; time is unchanged (the report still scans the peer table once per peer). fn-cfg-rows-with-key and fn-cfg-peer-names themselves remain recursions (depth_baseline debt) for their other callers.",
+      "statement": "Loop twins in the PRF-362 pattern (local lemmas <f>-loop-is-rev-onto / <f>-loop-of-rev-onto; books/rev-onto.lisp fn-ag-rev-onto): books/native-admin-peer-budget.lisp fn-napb-before-last (the rendered line's octets, ~82 per carried principal), fn-native-admin-peer-budget-report-rows (its loop finds each peer's rows once through books/config.lisp fn-cfg-rows-with-key, which executes by fn-cfg-rows-with-key-loop, equal to it by fn-cfg-rows-with-key-loop-is-rev-onto), fn-native-admin-peer-budget-report (names through books/peer-config.lisp fn-cfg-peer-names, which executes by fn-cfg-peer-names-loop, equal to it by fn-cfg-peer-names-loop-is-rev-onto); books/native-admin-peer.lisp fn-native-admin-peer-slot-values, fn-native-admin-peer-list-octets; books/native-admin.lisp fn-native-admin-control-report; books/native-config-observation.lisp fn-nco-decode-entries, fn-nco-insert-by-generation, fn-nco-sort-by-generation, fn-nco-output-entries. Host callers: host/native-admin-host.lisp fn-native-admin-host-query-report (host/native/admin.lisp fnn-admin-query), books/native-live-status.lisp fn-nls-report (:peers), host/store-node-host.lisp fn-store-config-observation. Before: tests/test_native_peer_rows_growth.py's `peer list' over 1,100 carried principals exited 4, 'Control stack guard page unprotected', at the deployed 1,024 KiB (batch AZ). tools/depth_check.py now refuses operator data (config tables, profile fields) as a 'bounded' reason (D27): a bounded entry cites a defined *constant*, a number or a structural bound. Scope: control-stack depth only; time is unchanged (the report still scans the peer table once per peer). Lane config-and-legacy (2026-09-28): fn-cfg-rows-with-key and fn-cfg-peer-names execute by their loops at the source (mbe), so every caller runs in constant stack; the report's twins fn-napb-rows-with-key-loop / fn-napb-peer-names-loop are gone and their depth_baseline debt entries with them.",
       "milestone": "M5",
       "requirements": [
         "HST-006"
@@ -13397,6 +13410,8 @@
       "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-admin-peer-budget.lisp",
+        "books/config.lisp",
+        "books/peer-config.lisp",
         "books/native-admin-peer.lisp",
         "books/native-admin.lisp",
         "books/native-config-observation.lisp",
@@ -13409,8 +13424,8 @@
         "planning/evidence/peer-list-depth-2026-09-28.md"
       ],
       "events": [
-        "fn-napb-rows-with-key-loop-is-rev-onto",
-        "fn-napb-peer-names-loop-is-rev-onto"
+        "fn-cfg-rows-with-key-loop-is-rev-onto",
+        "fn-cfg-peer-names-loop-is-rev-onto"
       ]
     },
     {
@@ -13519,21 +13534,102 @@
     },
     {
       "id": "PRF-380",
-      "title": "Memory admission by credits: an operation acquires its credit (owned U and reserved R) before it allocates, and the ledger M_base + M_cache + sum(U_i + R_i) + E_completion + E_runtime <= B holds across every transition",
-      "statement": "books/memory-credits.lisp: the ledger (BUDGET BASE CACHE COMPLETION RUNTIME DRAWN OPS). fn-mcr-acquire admits a new operation exactly when its whole credit fits (fn-mcr-acquire-refuses-exactly-past-the-budget; refused :memory-budget-exhausted by name, the ledger unchanged); fn-mcr-grow moves reserve to owned and is never refused within the reserve, the total unchanged (fn-mcr-grow-within-the-reserve-is-admitted: reserve to finish); fn-mcr-retain moves the retained octets to the cache and returns the rest (fn-mcr-retain-moves-the-credit); fn-mcr-evict returns cache credit only by the octets actually evicted (fn-mcr-evict-returns-what-was-evicted); fn-mcr-overdraw draws only from the separately funded completion reserve (fn-mcr-overdraw-is-within-the-completion-reserve). KEYSTONE fn-mcr-transitions-keep-funded: from a funded ledger (one entry an operation, total within B, drawn within the completion reserve) every admitted transition's result is funded. The model of GPT-6's review (2026-09-28, 'Memory and zero-copy calls') adopted with ember's F8 split (18:15Z). Its host subjects are the allocation sites; the article slots of lane zero-copy-commit (books/owner-article-slots.lisp fn-oas-read-span, PRF-377) are the first instance (U + R one reserve a slot); wiring the ledger itself to the host is open.",
+      "title": "Memory admission by credits: an operation acquires its credit before it allocates, the credit follows the buffer (connection body, queued submission, the committer's take, the batch in flight), and the ledger M_base + M_cache + sum(credits) + E_completion + E_runtime <= B holds across every transition of the served path; the launcher's reservation is B",
+      "statement": "books/memory-credits.lisp: the ledger (BUDGET BASE CACHE COMPLETION RUNTIME DRAWN OPS) and its transitions; fn-mcr-transitions-keep-funded (acquire, grow, retain, release, evict, overdraw: certified, not cited, since no host line calls those transitions; reach_check) and KEYSTONE fn-mcr-resize-and-move-keep-funded (lane credits, the transitions the host calls): fn-mcr-resize sets an operation's credit, never refused when it shrinks (reserve to finish) and admitted to grow exactly within the budget, refused :memory-budget-exhausted by name with the ledger unchanged (fn-mcr-resize-refuses-exactly-past-the-budget); fn-mcr-move moves credit between operations with the funded total unchanged (fn-mcr-total-of-move). THE SERVED PATH (books/owner-credits.lisp; lane credits, B5): the host keeps one ledger a run (host/owner-host.lisp global fn-owner-credits). Subject: fn-mca-read-span, which host/owner-host.lisp fn-owner-chunk-span-at calls for every served read over fn-oas-read-span (PRF-377): connection ID's credit (key (:conn . ID)) is resized to fn-mca-need, one reserve fn-heap-article-reserve-octets while it is mid-article and one per queued submission of it; past the budget the read is refused by name (a POST 440 at the command by fn-oas-refused-read, else fn-mca-shut-read: 400 and close, the read not run). KEYSTONE fn-mca-read-span-keeps-funded (hypothesis: a funded ledger only): the host's read never over-commits. KEYSTONE fn-mca-read-span-covers-the-connection: if ID's credit covered its buffers before the read it is exactly their need after. fn-mca-read-span-within-the-credit-unfolds / fn-mca-read-span-never-blocks-what-is-held: a read the credit holds, in particular one that needs no more than ID holds (an admitted article read on and completed into its queued submission), is fn-oas-read-span exactly. THE COMMIT: host/owner-host.lisp fn-owner-take calls fn-mca-take (one reserve from (:conn . ID) to :open), fn-owner-shed-outcome fn-mca-untake, and host/native/owner.lisp calls fn-owner-credits-seal after fnn-log-seal-open-batch (fn-mca-seal: :open to :sealed), fn-owner-credits-batch-done in COMPLETE after the barrier (fn-mca-batch-done), fn-owner-credits-settle after a synchronous write or a START that kept no member, fn-owner-credits-stop at the stop. KEYSTONE fn-mca-commit-steps-keep-funded; fn-mca-take-and-seal-keep-the-total (the same credit follows the buffer); fn-mca-seal-and-batch-done-move-the-batch. THE CLOSE: fn-owner-close and fn-owner-fault call fn-mca-close. KEYSTONE fn-mca-close-keeps-what-the-commit-owns: a close (client gone, idle timeout, a stall's uncertain answer, a fault) releases only the connection's own credit; the committer's :open and the batch in flight's :sealed keep theirs until COMPLETE, since the native pipeline feeds each member's outcome before the barrier and the syncer's fdatasync still owns the batch (GPT-6 2026-09-28: a timeout does not release memory a worker or submitted syscall owns). THE BUDGET: host/owner-host.lisp fn-owner-connection-budget installs fn-mca-initial of the store's profile, core and nursery. KEYSTONE fn-mca-initial-funds-exactly-the-articles: the budget is fn-heap-figure-octets (the reservation the launcher sized the dynamic space from), the open's terms are the completion reserve (funded, never admitted against), the collector's room the runtime reserve, and exactly fn-heap-articles-octets is free. Not claimed: that a read of one connection leaves every other connection's buffers as they were (a frame theorem; lane admission-gap), which would make per-connection coverage an invariant of the whole served machine; a served-state witness of the shut-read tier (a peer article completed within one read; needs an owner fixture with a peer connection); M_cache and eviction on the served path (no cache charges yet: a committed article is held by the base's state term at the profile's bounds, fn-heap-store-history-holds-payload-and-memberships; P1/P2 of planning/evidence/f8-reservation-2026-09-28.md); overdraw has no host caller; the accountable-memory figures (measure at convergence).",
       "milestone": "M5",
       "requirements": [
         "HST-013"
       ],
-      "depends_on": [],
+      "depends_on": [
+        "PRF-198",
+        "PRF-377"
+      ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/memory-credits.lisp",
+        "books/owner-credits.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/f8-reservation-2026-09-28.md",
+        "specs/host.md",
         "tests/acl2/memory-credits-tests.lisp",
-        "planning/evidence/f8-reservation-2026-09-28.md"
+        "tests/acl2/owner-credits-tests.lisp",
+        "tests/test_native_credits.py"
       ],
-      "progress_note": "Lane f8-reservation (2026-09-28): books/memory-credits.lisp and its test book are certified (persvati certify-20260928T171227Z-391318, hbox certify-20260928T173440Z-1769341): fn-mcr-transitions-keep-funded, fn-mcr-acquire-refuses-exactly-past-the-budget, fn-mcr-grow-within-the-reserve-is-admitted, fn-mcr-retain-moves-the-credit, fn-mcr-evict-returns-what-was-evicted, fn-mcr-overdraw-is-within-the-completion-reserve. NO EVENTS ARE CITED: no host line calls the ledger yet (reach_check), so the running server exercises none of it. The events are cited when an allocation site calls it; the first is the article slots (lane zero-copy-commit, fn-oas-read-span, PRF-377), U + R one reserve a slot. Teeth: tests/acl2/memory-credits-tests.lisp."
+      "progress_note": "Lane f8-reservation (2026-09-28): books/memory-credits.lisp and its test book are certified (persvati certify-20260928T171227Z-391318, hbox certify-20260928T173440Z-1769341): fn-mcr-transitions-keep-funded, fn-mcr-acquire-refuses-exactly-past-the-budget, fn-mcr-grow-within-the-reserve-is-admitted, fn-mcr-retain-moves-the-credit, fn-mcr-evict-returns-what-was-evicted, fn-mcr-overdraw-is-within-the-completion-reserve. NO EVENTS ARE CITED: no host line calls the ledger yet (reach_check), so the running server exercises none of it. The events are cited when an allocation site calls it; the first is the article slots (lane zero-copy-commit, fn-oas-read-span, PRF-377), U + R one reserve a slot. Teeth: tests/acl2/memory-credits-tests.lisp. Lane credits (Opus 5.5, 2026-09-28, B5): wired to the served path (books/owner-credits.lisp); REPL-admitted on hbox (owner-credits 50 forms; owner-credits-tests 88 forms). Teeth: tests/acl2/owner-credits-tests.lisp (prefix mcat-).",
+      "events": [
+        "fn-mcr-resize-and-move-keep-funded",
+        "fn-mcr-resize-refuses-exactly-past-the-budget",
+        "fn-mcr-total-of-move",
+        "fn-mca-read-span-keeps-funded",
+        "fn-mca-read-span-covers-the-connection",
+        "fn-mca-read-span-within-the-credit-unfolds",
+        "fn-mca-read-span-never-blocks-what-is-held",
+        "fn-mca-close-keeps-what-the-commit-owns",
+        "fn-mca-commit-steps-keep-funded",
+        "fn-mca-take-and-seal-keep-the-total",
+        "fn-mca-seal-and-batch-done-move-the-batch",
+        "fn-mca-initial-funds-exactly-the-articles"
+      ]
+    },
+    {
+      "id": "PRF-386",
+      "title": "Configuration admission refuses a record the codec cannot carry: an accepted record encodes within the decoder's whole-record limits (65,535 items, 65,538 octets)",
+      "statement": "Subject: fn-cfg-record-fitsp inside fn-cfg-record-acceptablep (books/config.lisp) and inside the carried check the replay folds execute, fn-cnode-carried-acceptablep (books/node-config.lisp; PRF-186's fn-cnode-record-acceptablep-is-the-carried-check equates the two under fn-cfgp), host-called through fn-cnode-record-acceptablep (books/node-config.lisp; host/store-node-host.lisp fn-store-cfg-peer-delta-record for the stopped node, books/owner-config.lisp for the live owner) and folded by fn-config-replay-loop. KEYSTONE fn-cfg-record-fitsp-is-the-decoder-limits: fn-cfg-record-fitsp r is exactly (len (fn-cfg-record-items r)) <= *fn-cfg-max-items* and (len (fn-cfg-encode r)) <= *fn-cfg-max-octets*, the two whole-record refusals of fn-cfg-decode-exact (:item-count, :limit), with no hypothesis; so no accepted record is one fn-cfg-decode-exact refuses for size. The check counts item by item (fn-cfg-record-item-count, fn-cfg-record-octet-count: each item encoded alone and only its length kept, every walk a tail loop), never building the record's octets, and each count equals the encoder's by fn-cfg-record-item-count-is-len-of-items and fn-cfg-record-octet-count-is-len-of-encode. The limits are codec widths (STO-021 (iii)), not data caps: fn-cfg-recordp alone admits records up to 64 deltas of 1,024 rows of 256-octet labels, which encode past them. Not claimed: that a record within the limits decodes (fn-cfg-decode-exact's round trip is witnessed on ground records, tests/acl2/config-field-max-tests.lisp, not proved for all records).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-021"
+      ],
+      "depends_on": [
+        "PRF-378"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/config.lisp",
+        "tests/acl2/config-field-max-tests.lisp",
+        "books/node-config.lisp",
+        "planning/evidence/manifests/certify-20260928T212503Z-2718894.json",
+        "planning/evidence/manifests/certify-20260928T214223Z-2884608.json"
+      ],
+      "progress_note": "Lane config-and-legacy (Opus 5.5, 2026-09-28): closes clock-units-2's labelled GAP. REPL-admitted on persvati/hbox. Teeth in tests/acl2/config-field-max-tests.lisp: a :set-peers record over the replayed default configuration at exactly 65,538 octets satisfies every conjunct of acceptance and round-trips (positive witness); the same record one octet longer keeps recordp, generation and admissibility, fails fitsp, is not acceptable, and fn-cfg-decode-exact refuses its octets :limit (removal witness); the former GAP record is now refused at admission. Certified: persvati run-20260928T212321Z-6912 (affected roots of config, peer-config, node-config, peer-feed, feed-journal, owner-feed, checkpoint-codec, native-admin-peer-budget and the changed tests: 751 passed, 0 failed) and run-20260928T214153Z-3a7e (--recertify-uncited, 595 passed, 0 failed).",
+      "events": [
+        "fn-cfg-record-fitsp-is-the-decoder-limits",
+        "fn-cfg-record-octet-count-is-len-of-encode",
+        "fn-cfg-record-item-count-is-len-of-items"
+      ]
+    },
+    {
+      "id": "PRF-901",
+      "title": "The owner's queue is fair under sustained POST load: a waiting control request is admitted within 22 counted quanta and six sealed batches",
+      "statement": "Subjects fn-otm-next (host/native/owner.lisp fnn-owner-gate-pick), fn-otm-commit-event (fnn-owner-commit-event) and fn-otm-committer-wake (fnn-owner-commit-wake, which passes the gate's six waiting counts, and its recheck inside the START-NEXT quantum of fnn-owner-commit-pipeline). The rule: fn-ocp-wake answers :start-next only while no control, poster or transit request waits past the pass budget (*fn-ocp-pass-bound* = 4 :commit quanta in flight, counted by fn-ocp-next while one waits and reset at a pick where none does; fn-ocp-no-start-next-while-a-shut-out-class-waits, fn-ocf-start-next-while-control-waits-is-within-the-budget). KEYSTONE fn-ocf-control-waits-at-most-the-bound: from ANY scheduler value, for every sequence of picks ITEMS (each the gate's waiting counts and, for a :commit pick, the events its quantum reports) satisfying fn-ocf-okp -- a control request waits at every pick, and each :commit quantum takes one of the host's shapes (outside flight a START; in flight a START-NEXT, :next-started only at a :start-next wake with that pick's counts, or a COMPLETE: the barrier's word then :completed) -- before the first control pick or the owner's stop at most 22 quanta run that are not :inspect, not a :reader in flight and not a START-NEXT that took nobody (fn-ocf-delay-at-most-the-potential with fn-ocf-potential-at-most-twenty-two), and at most 6 batches are sealed (fn-ocf-seals-at-most-the-seal-potential, fn-ocf-seal-potential-at-most-six). Proof by a potential: the four classes' distance to the control slot (PRF-248's measure) + 3 x whether a START can still be due + the batches left to complete + 3 x the passes the budget still allows. Not counted and bounded elsewhere: :inspect alternates (PRF-267); readers during a barrier run while the fdatasync runs and a waiting COMPLETE goes first (fn-ocs-in-flight-commit-before-reader); an empty START-NEXT is an owner quantum without I/O. The wall-clock reading takes the disk's barrier time, which books/owner-time-model.lisp bounds by H before the stall answers. Teeth: tests/acl2/owner-commit-fairness-tests.lisp (a reached walk from fn-otm-init: next batch open, control arrives, two COMPLETEs, control admitted, delay 2, seals 1; the starvation counterexample under the pre-lane wake: 12 batches sealed, 24 counted quanta, control never admitted; the budget spent: one START-NEXT allowed, then the wake stops the pipeline and control is admitted; hypothesis removal: no control waiting, a :commit quantum outside the host's shapes). Native: tests/test_native_owner_scheduler.py test_a_control_request_is_admitted_under_sustained_post_load (SCN-195).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-248",
+        "PRF-272"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-commit-fairness.lisp",
+        "books/owner-commit-pipeline.lisp",
+        "tests/acl2/owner-commit-fairness-tests.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_owner_scheduler.py"
+      ],
+      "events": [
+        "fn-ocf-control-waits-at-most-the-bound",
+        "fn-ocf-delay-at-most-the-potential",
+        "fn-ocf-seals-at-most-the-seal-potential",
+        "fn-ocf-potential-at-most-twenty-two",
+        "fn-ocf-seal-potential-at-most-six",
+        "fn-ocf-start-next-while-control-waits-is-within-the-budget",
+        "fn-ocp-no-start-next-while-a-shut-out-class-waits"
+      ]
     }
   ]
 }
