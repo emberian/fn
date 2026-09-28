@@ -121,11 +121,25 @@
 (defun fn-sxp-archive-format-9p (profile)
   (declare (xargs :guard t))
   (and (not (fn-bs-config-decode profile))
-       (or (equal (fn-f9-saved-format-word profile) *fn-bs-meta-format-9*)
-           ; a format-8 archive (the layout before batch AS), below
-           (equal (fn-f9-saved-format-word profile)
-                  '(102 110 45 115 116 111 114 101 45 56)))))
+       (equal (fn-f9-saved-format-word profile) *fn-bs-meta-format-9*)))
 
+; The profile the import reads from an archive's profile frame: this
+; format's, or the format-10 translation of a format-9 one
+; (`fn-f9-config-decode'); NIL when it is neither.
+(defun fn-sxp-config-decode-archive (profile)
+  (declare (xargs :guard t))
+  (if (fn-sxp-archive-format-9p profile)
+      (fn-f9-config-decode profile)
+    (fn-bs-config-decode profile)))
+
+(defthm fn-sxp-config-decode-archive-is-valid
+  (implies (fn-sxp-config-decode-archive profile)
+           (fn-bs-profile-validp (fn-sxp-config-decode-archive profile)))
+  :hints (("Goal" :use ((:instance fn-f9-config-decode-is-valid (octets profile)))
+           :in-theory (e/d (fn-bs-config-decode)
+                           (fn-f9-config-decode-is-valid fn-bs-profile-validp
+                            fn-f9-config-decode fn-frame-open
+                            fn-frame-fields-parse fn-bs-meta-frame-okp)))))
 
 ; The profile the import writes: this format's word over the fields (every
 ; profile the import reads is already format 10; kept so the plan names the
@@ -223,86 +237,19 @@
              (fn-sxp-config-names-increasingp (cdr configs) name)))
     t))
 
-; -----------------------------------------------------------------------------
-; The archive's profile (proposed D38: every layout growth ships a reader for
-; the previous layout's archive, with a witness).
-;
-; header-limits-profile (batch AS) grew the profile from thirteen u64 fields
-; to sixteen, and compression-extents-2 gave the import a reader for the
-; layout before it.  Under format 10 that layout is a format-8 archive (word
-; fn-store-8), sealed, as format 9's, under SHA-256: it reads here as the
-; format-9 values it stands for -- format 9's word, the thirteen fields, the
-; three header limits at the defaults that release parsed under
-; (books/byte-store-frame.lisp *fn-bs-profile-default-header-fields* ...) --
-; and translates as a format-9 profile does (`fn-f9-profile-refusal',
-; `fn-f9-profile-of').  Only the import reads it; the open refuses it by name
-; (D34).  (Batch AY merged format-bump-10's `fn-sxp-config-decode-archive'
-; and compression-extents-2's under one name; this is the one decoder.)
-(defconst *fn-sxp-format-8-word* '(102 110 45 115 116 111 114 101 45 56)) ; fn-store-8
-
-(defconst *fn-sxp-profile-spec-13*
-  '(:text :text :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat))
-
-; The fifteen values of a SHA-256-sealed profile frame of the layout before
-; batch AS, or NIL.
-(defun fn-sxp-pre-as-values (octets)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (not (fn-cbor-octet-listp octets))
-      nil
-    (let ((frame (fn-f9-frame-open octets *fn-bs-meta-max-config-payload*)))
-      (if (not (fn-bs-meta-frame-okp frame *fn-bs-meta-config-kind*
-                                      (fn-frame-result-payload frame)
-                                      *fn-bs-meta-max-config-payload*))
-          nil
-        (let ((parsed (fn-frame-fields-parse *fn-sxp-profile-spec-13*
-                                             (fn-frame-result-payload frame))))
-          (if (and (fn-frame-parse-okp parsed)
-                   (true-listp (fn-frame-parse-value parsed)))
-              (fn-frame-parse-value parsed)
-            nil))))))
-
-; A format-8 archive's values as the eighteen format-9 values they stand for.
-(defun fn-sxp-format-8-values9 (octets)
-  (declare (xargs :guard t :verify-guards nil))
-  (let ((values (fn-sxp-pre-as-values octets)))
-    (if (and (consp values)
-             (equal (car values) *fn-sxp-format-8-word*))
-        (append (list *fn-bs-meta-format-9*)
-                (cdr values)
-                (list *fn-bs-profile-default-header-fields*
-                      *fn-bs-profile-default-header-lines*
-                      *fn-bs-profile-default-header-octets*))
-      nil)))
-
-; The profile the import reads from an archive's profile frame: this
-; format's; the format-10 translation of a format-9 one
-; (`fn-f9-config-decode'); or that of a format-8 one; NIL otherwise.
-(defun fn-sxp-config-decode-archive (octets)
-  (declare (xargs :guard t :verify-guards nil))
-  (cond ((not (fn-sxp-archive-format-9p octets)) (fn-bs-config-decode octets))
-        ((equal (fn-f9-saved-format-word octets) *fn-bs-meta-format-9*)
-         (fn-f9-config-decode octets))
-        (t (let ((values9 (fn-sxp-format-8-values9 octets)))
-             (if (and values9 (null (fn-f9-profile-refusal values9)))
-                 (fn-f9-profile-of values9)
-               nil)))))
-
-; What the import reads is a valid profile, or nothing.
-(defthm fn-sxp-config-decode-archive-is-valid
-  (implies (fn-sxp-config-decode-archive octets)
-           (fn-bs-profile-validp (fn-sxp-config-decode-archive octets)))
-  :hints (("Goal" :use ((:instance fn-f9-config-decode-is-valid))
-           :in-theory (e/d (fn-bs-profile-validp fn-f9-profile-refusal)
-                           (fn-f9-config-decode-is-valid
-                            fn-f9-config-decode fn-sxp-format-8-values9
-                            fn-sxp-archive-format-9p fn-f9-saved-format-word
-                            fn-f9-profile-of fn-bs-profile-invalid-reason)))))
+;; -----------------------------------------------------------------------------
+;; The archive's profile is fn-sxp-config-decode-archive above: this format's,
+;; or the format-10 translation of a format-9 one.  The reader of the layout
+;; before batch AS (thirteen fields, format 8; compression-extents-2's proposed
+;; D38) is retired with format 10: the import reads the previous release's
+;; export only (D34); a format-8 archive imports through a format-9 release
+;; first (batch AY, compression-extents-2 x format-bump-10).
 
 ; The current layout reads as the open's decoder reads it.
 (defthm fn-sxp-config-decode-archive-of-a-current-frame
   (implies (fn-bs-config-decode octets)
            (equal (fn-sxp-config-decode-archive octets) (fn-bs-config-decode octets)))
-  :hints (("Goal" :in-theory (e/d (fn-sxp-archive-format-9p)
+  :hints (("Goal" :in-theory (e/d (fn-sxp-config-decode-archive fn-sxp-archive-format-9p)
                                   (fn-bs-config-decode fn-bs-profile-validp)))))
 
 ; -----------------------------------------------------------------------------
@@ -313,12 +260,9 @@
 ; `:store-format' for a frame of no format this image reads.
 (defun fn-sxp-profile-refusal (profile)
   (declare (xargs :guard t :verify-guards nil))
-  (cond ((not (fn-sxp-archive-format-9p profile)) :store-format)
-        ((equal (fn-f9-saved-format-word profile) *fn-bs-meta-format-9*)
-         (or (fn-f9-profile-refusal (fn-f9-profile-values profile)) :store-format))
-        (t (or (and (fn-sxp-format-8-values9 profile)
-                    (fn-f9-profile-refusal (fn-sxp-format-8-values9 profile)))
-               :store-format))))
+  (if (fn-sxp-archive-format-9p profile)
+      (or (fn-f9-profile-refusal (fn-f9-profile-values profile)) :store-format)
+    :store-format))
 
 ; What `store import' does with an archive it read: MANIFEST, the profile
 ; frame, the FRONTIER frame, CONFIGS and RECORDS as the host read them from the archive's files
@@ -342,7 +286,7 @@
   (let* ((f9p (fn-sxp-archive-format-9p profile))
          (mismatch (fn-sxp-manifest-mismatch
                     f9p (fn-sxp-entries profile frontier configs records) manifest))
-         ; The archive's profile: this layout, or the one before batch AS
+         ; The archive's profile: this format's, or a format-9 one translated
          ; (fn-sxp-config-decode-archive).
          (saved (fn-sxp-config-decode-archive profile))
          ; A format-9 archive's records with their identities re-derived under

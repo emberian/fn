@@ -726,9 +726,47 @@ addresses; reclamation never frees a page a valid record of any root keeps.
 Named: A-PGS-HOST-IO. Scenario: SCN-186. Not yet the owner's path: the owner's state (fn-hist
 first) moves onto these pages in a later step.
 
+The page image format FNADTSN2 (lane arena-store-3; `books/proto/adt-bytes.lisp`;
+coordinator decision 2026-09-28: free region placement, the index as a value).
+Every owner state on these pages is an image of 16 KiB pages (2048
+little-endian u64 words), image page K the page store's logical page K. Page 0
+is the header: magic "FNADTSN2" (the octets, word 0), format version 2, the
+schema digest (words 2-5; a digest of the schema's own octets: another schema
+is refused by name, never rebuilt), N (the record count), R (the region count:
+one per column, then the pool), per region its first page and its length in
+octets, then NPAGES (the image's page count), zeros to the end of the page. A
+region takes the power-of-two number of pages its length needs
+(`adt-cap`), zero-padded; a column holds N little-endian cells, the pool the
+records' variable-length octets. Placement is free: the decoder
+(`adt-decode`) and the history's open check (`fn-hp-w-header`) accept any
+placement where every region lies after page 0, inside NPAGES, and apart from
+every other (`adt-placement-ok`), and refuse any other by name (:placement);
+pages no region holds are not read. The canonical image (`adt-ser`, a function
+of the value alone) places the regions in order after the header. For the
+history (`books/history-pages-placed*.lisp`), the open's header check, the row
+read and the writer are proved over ANY such placement (PRF-342: an image
+whose pool sits on a page past a free one reads and appends as the canonical
+one does; the writer marks dirty only the header and, per region at its
+start, the pages its new octets overlap). A region that outgrows its pages
+is to move to new pages allocated at the image's end, nothing else moving:
+the writer answers the named verdict (:grow R) and the growth step (the move
+and the append into the moved region's new pages) is not yet landed
+(L-HP2-GROWTH). The pages a moved region leaves stay in the image, unread,
+until the page store can drop a logical page (L-HP2-VACATED: they are not yet
+handed to the page store's reclamation). A keyed ADT's image carries its Message-ID
+index as a VALUE: one more region after the pool, an open-addressed table of
+2^k u64 slots (0 empty, else the row's index + 1) under the salted FNV-1a of
+the key, at most half full, read as stored and never rebuilt at the open; the
+history's image does not carry one (no served path looks a history row up by
+Message-ID; the MKEY column holds each row's bucket), so the first keyed image
+on these pages brings it. FNADTSN1 (contiguous placement, no NPAGES word) is
+refused :magic: format 10 stores are fresh (D34). The page digests are the
+page store's table entries (the image has no second digest table) and follow
+the store's digest (fn-digest).
+
 The history's image (PRF-342, lane arena-store-2; `books/history-pages.lisp`).
 The first owner state on these pages is the history (fn-hist). Its snapshot
-is the FNADTSN1 byte form (`books/proto/adt-bytes.lisp`) of one row per
+is the FNADTSN2 byte form (`books/proto/adt-bytes.lisp`) of one row per
 event: MKEY (1 + the salted FNV-1a bucket of the event's key Message-ID, 0
 when none), the length of the event's tree octets (the checkpoint's proved
 tree codec, `fn-scc-encode`), and those octets zero-padded to a multiple of 8
@@ -738,10 +776,10 @@ page-digest leaf: there is no second digest table. Proved: the decoder
 inverts the image; an append changes only the header page and, per region,
 the pages its new octets overlap, at most 11 + (32 K + the new trees'
 octets) / 16384 pages for K events while no region doubles. Limitation
-(L-HP-DOUBLING): FNADTSN1 places regions contiguously, so a region that
-doubles moves every region after it and that commit writes them (amortized
-O(1) per row). The Message-ID bucket heads are not in the image (FNADTSN1's
-keyed form carries the live records, not the index). The open reads the
+(L-HP-DOUBLING): until the growth path lands, a region that doubles is the
+writer's named verdict (:grow R); FNADTSN2's free placement lets it move alone
+(the growth path, open). The Message-ID bucket heads are not in the image
+(see the index as a value above). The open reads the
 image's page 0 only: the header check (magic, version, the schema digest,
 the region count, placement, column sizes, the page count) answers N and the
 regions, and another schema's image is refused by name (:schema), never
@@ -751,8 +789,19 @@ byte primitives, verifies it against its table entry and asks again; the
 first read of a row pays at most its four cells' pages and its pool entry's
 pages. Proved: over any page store state whose verified pages hold the
 image's words, the header check and the row read answer the history.
-Not yet the owner's path: the writer, the host wiring and the snapshot
-commit are the next milestones.
+The writer (lane arena-store-3; `books/history-pages-write*.lisp`) appends
+an event into the page store's words from the header answer the host
+carries (N, the lengths, the starts): six blocks (the header's words 6-17,
+one cell per column, the padded tree in the pool), written only when every
+page they touch is verified (else the need-verdict, nothing written) and
+only while no region changes its cap (else the named verdict (:grow R),
+nothing written). Proved: the appended history's image words are the old
+ones with those blocks in place; over any state whose verified pages hold
+the image, an :ok leaves them holding the appended history's image,
+answers its header, and marks dirty only pages of the proved dirty list
+above, each verified, so the commit writes exactly the new image's pages.
+Not yet the owner's path: the region growth (FNADTSN2), the host wiring and
+the snapshot commit are the next milestones.
 
 ## History classes and lifetimes
 

@@ -291,7 +291,8 @@ def check_load(work: Path, n: int) -> dict:
 
 def recipe_synth(ctx: Context, n: int, flags: tuple) -> None:
     """tools/synth_log_store.py: a seed of 1,000 POSTed 2 KiB articles (the
-    n1k-2k recipe under FLAGS, then capacity 4,000,000), renumbered
+    n1k-2k recipe under FLAGS, then capacity 2 N + 4,000 units: a 2 KiB
+    article is charged 2; lane fitness), renumbered
     to N article records written as the log directly (batch-8 entries, no
     checkpoint): the first open is a full replay of N records
     (planning/evidence/snapshot-open-2-2026-09-27.md section 5)."""
@@ -301,7 +302,7 @@ def recipe_synth(ctx: Context, n: int, flags: tuple) -> None:
              ctx.image, work, 1000], env=env)
     check_load(work, 1000)
     ctx.run([PY, TREE / EVIDENCE / "snapshot-open-3-2026-09-27/capseed.py", ctx.image,
-             work / "store", 4000000])
+             work / "store", 2 * n + 4000])
     # The seed's history is its journal: no checkpoint goes into the copy.
     for path in (work / "store").glob("store-checkpoint*"):
         path.unlink()
@@ -326,8 +327,8 @@ def recipe_synth_lz(ctx: Context, n: int, threshold: int = 64) -> None:
     plain.work.mkdir(parents=True, exist_ok=True)
     plain.log = ctx.log
     # The registered plain fixture when it is present (its bytes are
-    # recipe_synth's; rebuilding the seed needs an init budget for capacity
-    # 4,000,000 that a swarm-build scope refuses on hbox), else the recipe.
+    # recipe_synth's; rebuilding it costs the seed's init and the synthesis
+    # again), else the recipe.
     registered = ROOT / "syn100k-2k" / "store"
     if n == 100000 and (registered / "journal").is_dir():
         plain.dest.mkdir(parents=True)
@@ -416,7 +417,7 @@ REGISTRY = [
             readme="100,000 x 2 KiB article records synthesized as the log (tools/synth_log_store.py "
                    "from a 1,000-article seed initialized with SYNTH_100K: T 131072, H 512 MiB, "
                    "R 196608, A 32768, G 16, K 65536; init reservation 10,078 MB; capacity "
-                   "4,000,000, batch-8 entries, no checkpoint): the open is a full replay "
+                   "204,000, batch-8 entries, no checkpoint): the open is a full replay "
                    "(OWNER-OPEN open=full-replay). Copy store/ and touch writer.lock (mode 600) "
                    "before use; seed-load.json is the seed's init line."),
     Fixture("syn100k-2k-lz", lambda c: recipe_synth_lz(c, 100000), mem="40G",

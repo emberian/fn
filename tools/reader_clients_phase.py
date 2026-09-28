@@ -311,6 +311,29 @@ class Node:
         return self.process.returncode if self.process else None
 
 
+class AttachedNode(Node):
+    """A node already running (tools/fitness.py's soak): its config, its TLS
+    port and the directory holding ca.pem, node.pem and node.key.  start and
+    stop do nothing; the operator verbs go to its control socket."""
+
+    def __init__(self, args, work):                     # noqa: D107  (no super: no new CA)
+        self.work, self.args = work, args
+        self.env = dict(os.environ, FN_NATIVE_HOST=str(Path(args.image).resolve()),
+                        ACL2_CUSTOMIZATION="NONE")
+        self.env.pop("ACL2_SYSTEM_BOOKS", None)
+        self.ca, self.cert, self.key = work / "ca.pem", work / "node.pem", work / "node.key"
+        self.config = Path(args.attach_config)
+        self.tls_port = args.attach_tls_port
+        self.port = 0
+        self.process = None
+
+    def start(self):
+        return None
+
+    def stop(self):
+        return None
+
+
 def prelude(node, wire, login, password, group, client, newsgroups=None, extra=()):
     """Invite, redeem over TLS, log in on a new connection and post a seed.
 
@@ -442,10 +465,10 @@ def run_container(args, work, client, login, secret, wire_log):
                "--port", str(args.relay_port), "--user", login,
                "--password-file", "/work/" + secret.name, "--group", args.group,
                "--wire", "/work/" + wire_log.name, "--out", "/work/" + client]
-    if client == "slrn":
+    if client in ("slrn", "tin"):
         command += ["--second-group", args.second_group]
     version = run([args.docker, "run", "--rm", "--entrypoint", "dpkg-query", image, "-W",
-                   "-f", "${Package} ${Version} ", "slrn", "pan"], timeout=120)
+                   "-f", "${Package} ${Version} ", "slrn", "pan", "tin"], timeout=120)
     step = run(command, timeout=900)
     return step, version.stdout.decode().strip(), built.stdout.decode().strip()
 
@@ -467,20 +490,28 @@ def main(argv=None):
     parser.add_argument("--docker", default="docker")
     parser.add_argument("--thunderbird", default="thunderbird")
     parser.add_argument("--openssl-prefix", default="")
+    parser.add_argument("--attach-config", default="",
+                        help="drive a RUNNING node (its fn.toml) instead of a scratch one; "
+                             "WORK holds its ca.pem, node.pem and node.key (tools/fitness.py)")
+    parser.add_argument("--attach-tls-port", type=int, default=0)
     args = parser.parse_args(argv)
     work = Path(args.work).resolve()
     work.mkdir(parents=True, exist_ok=True)
-    node = Node(args, work)
+    node = AttachedNode(args, work) if args.attach_config else Node(args, work)
     report = {"image": str(args.image), "image_core_sha256": sha256(str(args.image) + ".core"),
               "group": args.group, "tls_port": node.tls_port, "clients": {}}
-    init = node.operator("init", args.group, args.second_group, "control.cancel")
-    report["init"] = [init.returncode, (init.stdout + init.stderr).decode()[-200:]]
+    if not args.attach_config:
+        init = node.operator("init", args.group, args.second_group, "control.cancel")
+        report["init"] = [init.returncode, (init.stdout + init.stderr).decode()[-200:]]
     try:
         node.start()
         for client in [c for c in args.clients.split(",") if c]:
             log = work / "{}-wire.log".format(client)
             wire = Wire(log)
             login, password = "{}-friend".format(client), secrets.token_hex(12)
+            if args.attach_config:
+                # a running node keeps every login a previous session bound
+                login = "{}-{}".format(client, secrets.token_hex(3))
             secret = work / "{}.password".format(client)
             secret.write_text(password + "\n")
             secret.chmod(0o600)
@@ -494,7 +525,7 @@ def main(argv=None):
                 entry["prelude"] = prelude(node, wire, login, password, args.group, client,
                                            newsgroups, extra)
                 wire.out.flush()
-                if client in ("slrn", "pan"):
+                if client in ("slrn", "pan", "tin"):
                     relay = Relay(wire, node.tls_port, node.ca, node.cert, node.key)
                     args.relay_port = relay.port
                     try:

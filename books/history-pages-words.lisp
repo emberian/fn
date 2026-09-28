@@ -2,7 +2,7 @@
 ; arena-store-2, 2026-09-28).  Prefix fn-hp-.
 ;
 ; The page store keeps a page as 2048 little-endian u64 words
-; (`pgs-word-le-octets', books/pagestore-words-sha); the FNADTSN1 image is
+; (`pgs-word-le-octets', books/pagestore-words-sha); the FNADTSN2 image is
 ; octets with little-endian cells (`adt-le', books/proto/adt-bytes-lib).
 ; This book is the bridge: a word's page-store octets are its `adt-le'
 ; octets, and packing octets into words (`fn-hp-pack8') is the inverse of

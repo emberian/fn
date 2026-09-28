@@ -1,16 +1,19 @@
 ; fn prototype (lane proto-adt-2, 2026-09-27): the snapshot BYTES of an ADT
 ; value.  NOT on a served path; no host calls it.
 ;
-; The canonical image of a value (books/proto/adt-lib.lisp `adt-canon')
-; has one byte form, a function of the value alone:
+; FNADTSN2 (lane arena-store-3, 2026-09-28; coordinator decision 4 of
+; 2026-09-28: free region placement).  The canonical image of a value
+; (books/proto/adt-lib.lisp `adt-canon') has one byte form, a function of the
+; value alone:
 ;
 ;   page 0, the header (little-endian u64 words unless noted):
-;     octets 0-7    magic "FNADTSN1"
-;     octets 8-15   format version 1
+;     octets 0-7    magic "FNADTSN2"
+;     octets 8-15   format version 2
 ;     octets 16-47  the schema digest: SHA-256 of `adt-schema-octets'
 ;     octets 48-55  N, the record count
 ;     octets 56-63  R, the region count: one per column, then the pool
 ;     octets 64+16r region r's first page;  72+16r  its length in octets
+;     octets 64+16R NPAGES, the image's page count
 ;     zeros to the end of the page
 ;   then region r at its first page, zero-padded to (adt-cap used) pages:
 ;     a column: N cells, (adt-bwidth kind) octets each, little-endian --
@@ -19,6 +22,14 @@
 ;     the pool: every :octets value, in record order, fields in schema
 ;       order (the canonical image's pool: adt-canon appends in that order,
 ;       so the offset column is the running sum of the lengths before it).
+;
+; The canonical image places the regions in order after the header
+; (`adt-starts-l').  The decoder accepts ANY placement the header states
+; (`adt-placement-ok': every region after page 0, inside NPAGES, apart from
+; every other), so a region that outgrows its pages moves to new pages at
+; the image's end and nothing else moves (books/history-pages-placed.lisp);
+; pages no region holds are not read.  FNADTSN1 (contiguous placement, no
+; NPAGES word) is refused :magic.
 ;
 ; Pages are 16384 octets (2048 little-endian u64 words): the page store's
 ; page (lane proto-pagestore, books/proto/pagestore.lisp *pgs-page-words*),
@@ -81,7 +92,7 @@
   ; a schema with a byte form: every kind representable, the header in a page
   (declare (xargs :guard t))
   (and (adt-schemap s) (adt-bschemap1 s)
-       (<= (+ 64 (* 16 (+ 1 (adt-ncols s)))) *adt-page*)))
+       (<= (+ 72 (* 16 (+ 1 (adt-ncols s)))) *adt-page*)))
 
 (defun adt-col-widths (s)
   (declare (xargs :guard (adt-schemap s)))
@@ -248,8 +259,8 @@
 ; -----------------------------------------------------------------------------
 ; D. The image.
 
-(defconst *adt-magic* '(70 78 65 68 84 83 78 49))   ; "FNADTSN1"
-(defconst *adt-version* 1)
+(defconst *adt-magic* '(70 78 65 68 84 83 78 50))   ; "FNADTSN2"
+(defconst *adt-version* 2)
 
 (defun adt-col-regs (ws cols)
   (declare (xargs :verify-guards nil))
@@ -287,10 +298,12 @@
 (in-theory (disable adt-hdr-const (:executable-counterpart adt-hdr-const)))
 
 (defun adt-header-content (s n regs)
+  ; FNADTSN2: after the region table, the image's page count
   (declare (xargs :verify-guards nil))
   (append (adt-hdr-const) (adt-schema-digest s)
           (adt-le 8 n) (adt-le 8 (len regs))
-          (adt-meta (adt-starts regs 1) (adt-lens regs))))
+          (adt-meta (adt-starts regs 1) (adt-lens regs))
+          (adt-le 8 (adt-end regs 1))))
 
 (defun adt-header (s n regs)
   (declare (xargs :verify-guards nil))
@@ -324,6 +337,28 @@
   (declare (xargs :guard (and (nat-listp lens) (natp start))))
   (if (atom lens) (nfix start)
     (adt-end-l (cdr lens) (+ (nfix start) (adt-cap (nfix (car lens)))))))
+
+; FNADTSN2: a region may lie anywhere after the header, inside the image
+; and apart from every other region.  The canonical image (`adt-ser') places
+; them in order (`adt-starts-l'); an image whose region grew by moving it to
+; new pages places it elsewhere, and the decoder reads it where the header
+; says.
+(defun adt-apart (s c starts lens)
+  ; the region [S, S+C) and every region of STARTS/LENS share no page
+  (declare (xargs :guard (and (natp s) (natp c) (true-listp starts) (nat-listp lens))))
+  (if (or (atom starts) (atom lens)) t
+    (let ((s2 (nfix (car starts))) (c2 (adt-cap (nfix (car lens)))))
+      (and (or (zp c) (zp c2) (<= (+ s c) s2) (<= (+ s2 c2) s))
+           (adt-apart s c (cdr starts) (cdr lens))))))
+
+(defun adt-placement-ok (starts lens np)
+  ; every region after the header page, inside NP pages, apart from the rest
+  (declare (xargs :guard (and (true-listp starts) (nat-listp lens) (natp np))))
+  (if (or (atom starts) (atom lens)) t
+    (let ((s (car starts)) (c (adt-cap (nfix (car lens)))))
+      (and (natp s) (<= 1 s) (<= (+ s c) (nfix np))
+           (adt-apart s c (cdr starts) (cdr lens))
+           (adt-placement-ok (cdr starts) (cdr lens) np)))))
 
 (defun adt-col-sizes-ok (ws n useds)
   (declare (xargs :guard t))
@@ -381,10 +416,11 @@
                   (meta (adt-read-meta nreg (nthcdr 64 b)))
                   (starts (car meta))
                   (useds (cdr meta))
+                  (np (adt-unle 8 (nthcdr (+ 64 (* 16 nreg)) b)))
                   (ws (adt-col-widths s)))
-             (cond ((not (equal starts (adt-starts-l useds 1))) (list :refused :placement))
+             (cond ((not (adt-placement-ok starts useds np)) (list :refused :placement))
                    ((not (adt-col-sizes-ok ws n useds)) (list :refused :column-size))
-                   ((not (equal (len b) (* *adt-page* (adt-end-l useds 1)))) (list :refused :length))
+                   ((not (equal (len b) (* *adt-page* np))) (list :refused :length))
                    (t
                     (let* ((cols (adt-dec-cols ws n starts useds b))
                            (pool (take (nfix (nth m useds)) (nthcdr (* *adt-page* (nfix (nth m starts))) b)))
@@ -513,14 +549,21 @@
   (equal (len (adt-starts regs start)) (len regs)))
 
 (defthm adt-len-header-content
-  (equal (len (adt-header-content s n regs)) (+ 64 (* 16 (len regs))))
+  (equal (len (adt-header-content s n regs)) (+ 72 (* 16 (len regs))))
   :hints (("Goal" :in-theory (enable adt-header-content))))
 
+(local
+ (defthm adt-unle-past-meta
+   (implies (and (true-listp starts) (equal (len lens) (len starts)))
+            (equal (nthcdr (* 16 (len starts)) (append (adt-meta starts lens) rest)) rest))
+   :hints (("Goal" :induct (adt-meta starts lens) :in-theory (enable nthcdr)))))
+
 (defthm adt-header-reads
-  (implies (and (<= (+ 64 (* 16 (len regs))) *adt-page*)
+  (implies (and (<= (+ 72 (* 16 (len regs))) *adt-page*)
                 (natp n) (< n *adt-u64-limit*) (< (len regs) *adt-u64-limit*)
                 (adt-all-below (adt-starts regs 1) *adt-u64-limit*)
-                (adt-all-below (adt-lens regs) *adt-u64-limit*))
+                (adt-all-below (adt-lens regs) *adt-u64-limit*)
+                (< (adt-end regs 1) *adt-u64-limit*))
            (let ((b (append (adt-header s n regs) body)))
              (and (equal (take 8 b) *adt-magic*)
                   (equal (adt-unle 8 (nthcdr 8 b)) *adt-version*)
@@ -529,10 +572,15 @@
                   (equal (adt-unle 8 (nthcdr 56 b)) (len regs))
                   (equal (adt-read-meta (len regs) (nthcdr 64 b))
                          (cons (adt-starts regs 1) (adt-lens regs)))
+                  (equal (adt-unle 8 (nthcdr (+ 64 (* 16 (len regs))) b)) (adt-end regs 1))
                   (equal (len (adt-header s n regs)) *adt-page*))))
-  :hints (("Goal" :in-theory (e/d (adt-header adt-header-content) (adt-starts-is-starts-l))
+  :hints (("Goal" :in-theory (e/d (adt-header adt-header-content) (adt-starts-is-starts-l adt-end-is-end-l))
            :use ((:instance adt-read-meta-meta (starts (adt-starts regs 1)) (lens (adt-lens regs))
-                            (rest (append (adt-zeros (- *adt-page* (+ 64 (* 16 (len regs))))) body)))))))
+                            (rest (append (adt-le 8 (adt-end regs 1))
+                                          (adt-zeros (- *adt-page* (+ 72 (* 16 (len regs))))) body)))
+                 (:instance adt-unle-past-meta (starts (adt-starts regs 1)) (lens (adt-lens regs))
+                            (rest (append (adt-le 8 (adt-end regs 1))
+                                          (adt-zeros (- *adt-page* (+ 72 (* 16 (len regs))))) body)))))))
 
 ; Every first page and every length is below the image's end.
 (defthm adt-end-l-lower
@@ -653,7 +701,7 @@
        (< (len (adt-ser s a)) *adt-u64-limit*)))
 
 (defthm adt-len-header
-  (implies (<= (+ 64 (* 16 (len regs))) *adt-page*)
+  (implies (<= (+ 72 (* 16 (len regs))) *adt-page*)
            (equal (len (adt-header s n regs)) *adt-page*))
   :hints (("Goal" :in-theory (enable adt-header))))
 
@@ -715,7 +763,9 @@
                   (equal (adt-unle 8 (nthcdr 48 b)) (len a))
                   (equal (adt-unle 8 (nthcdr 56 b)) (+ 1 (adt-ncols s)))
                   (equal (adt-read-meta (+ 1 (adt-ncols s)) (nthcdr 64 b))
-                         (cons (adt-starts-l (adt-lens (adt-regs s a)) 1) (adt-lens (adt-regs s a)))))))
+                         (cons (adt-starts-l (adt-lens (adt-regs s a)) 1) (adt-lens (adt-regs s a))))
+                  (equal (adt-unle 8 (nthcdr (+ 80 (* 16 (adt-ncols s))) b))
+                         (adt-end-l (adt-lens (adt-regs s a)) 1)))))
   :hints (("Goal" :in-theory (e/d (adt-bschemap adt-ser-okp) (adt-header-reads adt-ser-okp-bounds adt-ser-is-header-body))
            :use ((:instance adt-ser-okp-bounds)
                  (:instance adt-ser-is-header-body)
@@ -761,6 +811,33 @@
 
 (in-theory (disable adt-ser-okp))
 
+; The canonical placement is a placement.
+(local
+ (defun adt-all-at-least (xs b)
+   (if (atom xs) t (and (<= b (nfix (car xs))) (adt-all-at-least (cdr xs) b)))))
+
+(local
+ (defthm adt-starts-l-at-least
+   (implies (and (natp s) (natp b) (<= b s)) (adt-all-at-least (adt-starts-l lens s) b))
+   :hints (("Goal" :in-theory (disable adt-cap)))))
+
+(local
+ (defthm adt-apart-when-after
+   (implies (and (natp s) (natp c) (adt-all-at-least starts (+ s c)))
+            (adt-apart s c starts lens))
+   :hints (("Goal" :in-theory (disable adt-cap)))))
+
+(defthm adt-placement-ok-of-starts-l
+  (implies (and (natp s) (<= 1 s))
+           (adt-placement-ok (adt-starts-l lens s) lens (adt-end-l lens s)))
+  :hints (("Goal" :induct (adt-end-l lens s) :in-theory (disable adt-cap))
+          ("Subgoal *1/2" :use ((:instance adt-end-l-lower (lens (cdr lens)) (start (+ s (adt-cap (nfix (car lens))))))
+                                (:instance adt-starts-l-at-least (lens (cdr lens)) (s (+ s (adt-cap (nfix (car lens)))))
+                                           (b (+ s (adt-cap (nfix (car lens))))))
+                                (:instance adt-apart-when-after (c (adt-cap (nfix (car lens))))
+                                           (starts (adt-starts-l (cdr lens) (+ s (adt-cap (nfix (car lens))))))
+                                           (lens (cdr lens)))))))
+
 (defthm adt-decode-ser-when-okp
   (implies (adt-ser-okp s a)
            (equal (adt-decode s (adt-ser s a)) (list :ok a)))
@@ -771,6 +848,7 @@
                             adt-starts-l adt-lens adt-col-widths adt-end-l adt-col-sizes-ok
                             adt-untranspose adt-unle adt-schemap adt-bschemap1))
            :use ((:instance adt-ser-okp-bounds)
+                 (:instance adt-placement-ok-of-starts-l (lens (adt-lens (adt-regs s a))) (s 1))
                  (:instance adt-dec-rows-of-cells (pos 0) (pre nil) (post nil))))
           ("Goal'" :in-theory (e/d (adt-bschemap adt-ser-okp)
                                    (adt-starts-is-starts-l adt-dec-rows-of-cells adt-ser adt-regs adt-rows-cells
