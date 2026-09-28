@@ -95,9 +95,15 @@ class StoreExportTests(ProfileFixture):
             if path.is_file():
                 self.assertNotIn(secret[-32:], path.read_bytes(), path)
         # The MANIFEST is b3sum's: every line names a file of the archive.
+        named = set()
         for line in (archive / "MANIFEST").read_text(encoding="ascii").splitlines():
             digest, name = line.split("  ", 1)
             self.assertEqual(blake3_ref.blake3((archive / name).read_bytes()).hex(), digest)
+            named.add(name)
+        # PRF-366: the streamed export's staged MANIFEST was renamed onto
+        # MANIFEST, and every other file of the archive is a named entry.
+        files = {p.relative_to(archive).as_posix() for p in archive.rglob("*") if p.is_file()}
+        self.assertEqual(files, named | {"MANIFEST"})
 
         store2 = self.root / "store2"
         config2 = self.second_config(store2)
