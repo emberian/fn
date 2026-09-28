@@ -640,9 +640,13 @@ def choose_entry(entries: list[tuple[Path, dict]],
     # An origin not on this machine, or a snapshot (a gate directory or a
     # farm run root: one commit, one run, never certified into again).  An
     # entry with no recorded kind predates the rule and counts as a live
-    # worktree.  The newest publication wins, as it does in `install-set`.
+    # worktree.  The newest publication wins, as it does in `install-set`,
+    # among those that carry their compiled file when any does: a pair
+    # without one makes include-book compile the book in core, and an image
+    # built so keeps every definition's source form (image-growth).
     usable = [entry for entry in entries if usable_origin(entry[1], target)]
-    return newest(usable)
+    compiled = [entry for entry in usable if entry[1].get("fasl_sha256")]
+    return newest(compiled or usable)
 
 
 def newest(entries: list[tuple[Path, dict]]) -> tuple[Path, dict] | None:

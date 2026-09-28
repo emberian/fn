@@ -615,6 +615,20 @@ class CompiledFileTests(unittest.TestCase):
             report = self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertEqual((report.fasl_installed, report.fasl_missing), (2, 0))
 
+    def test_an_entry_with_its_compiled_file_is_chosen_over_a_newer_one_without(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            root, manifest = self.source(one, ["books/base", "books/mid"])
+            cache = Path(two) / "cache"
+            certs.publish(root, cache, [manifest], origin=self.FARM, origin_kind="run")
+            bare = dict(manifest, compiled_digests_sha256={})
+            certs.publish(root, cache, [bare], origin="/farm/run-later", origin_kind="run")
+            key, _ = certs.closure_key(root, "books/mid")
+            entries = certs.cached_entries(cache, key)
+            self.assertEqual(len(entries), 2)
+            chosen = certs.choose_entry(entries, str(Path(two) / "target"))
+            self.assertTrue(chosen[1]["fasl_sha256"])
+            self.assertEqual(chosen[1]["origin_root"], self.FARM)
+
     def test_a_compiled_file_the_manifest_did_not_record_is_not_cached(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
             root, manifest = self.source(one, ["books/base", "books/mid"],
