@@ -217,33 +217,172 @@
       :already-reclaimed
     (fn-rcl-standing-verdict rule now h verdicts a)))
 
-(defun fn-rcl-summary-in (rule now h verdicts articles fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
+; PKT-878 (PRF-361): the three per-article counts below run on the owner's
+; control thread, whose stack is 1 MiB; as plain recursions they took one
+; frame per article, and the live `status' of a 20,000-article store
+; exhausted the stack and FAULTED THE OWNER (`control request fault; owner
+; stopped: ... Control stack exhausted' in fn-rcl-summary-in, hbox, lane
+; health-truth-status).  Each keeps its recursive logical definition and
+; executes a loop (`mbe'; the loop's equation is its guard proof), as
+; PRF-336's fn-nls-obligation-lines does.
+(defun fn-rcl-summary-acc (rule now h verdicts articles fn-arena r0 r1 r2 r3)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (natp r0) (natp r1) (natp r2) (natp r3))))
   (if (consp articles)
-      (let* ((rest (fn-rcl-summary-in rule now h verdicts (cdr articles) fn-arena))
-             (a (car articles))
+      (let* ((a (car articles))
              (p (fn-article-payload a))
              (verdict (fn-rcl-verdict-in rule now h verdicts a fn-arena)))
         (cond ((equal verdict :reclaimable)
-               (list (+ 1 (nfix (nth 0 rest)))
-                     (+ (fn-rcl-payload-len p fn-arena) (nfix (nth 1 rest)))
-                     (nfix (nth 2 rest)) (nfix (nth 3 rest))))
+               (fn-rcl-summary-acc rule now h verdicts (cdr articles) fn-arena
+                                   (+ 1 r0) (+ (fn-rcl-payload-len p fn-arena) r1) r2 r3))
               ((equal verdict :already-reclaimed)
-               (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
-                     (+ 1 (nfix (nth 2 rest)))
-                     (+ (nfix (- (fn-rcl-payload-tomb-length p fn-arena)
-                                 (fn-rcl-payload-len p fn-arena)))
-                        (nfix (nth 3 rest)))))
-              (t (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
-                       (nfix (nth 2 rest)) (nfix (nth 3 rest))))))
-    (list 0 0 0 0)))
+               (fn-rcl-summary-acc rule now h verdicts (cdr articles) fn-arena
+                                   r0 r1 (+ 1 r2)
+                                   (+ (nfix (- (fn-rcl-payload-tomb-length p fn-arena)
+                                               (fn-rcl-payload-len p fn-arena)))
+                                      r3)))
+              (t (fn-rcl-summary-acc rule now h verdicts (cdr articles) fn-arena
+                                     r0 r1 r2 r3))))
+    (list r0 r1 r2 r3)))
+
+(defun fn-rcl-summary-in (rule now h verdicts articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp articles)
+           (let* ((rest (fn-rcl-summary-in rule now h verdicts (cdr articles) fn-arena))
+                  (a (car articles))
+                  (p (fn-article-payload a))
+                  (verdict (fn-rcl-verdict-in rule now h verdicts a fn-arena)))
+             (cond ((equal verdict :reclaimable)
+                    (list (+ 1 (nfix (nth 0 rest)))
+                          (+ (fn-rcl-payload-len p fn-arena) (nfix (nth 1 rest)))
+                          (nfix (nth 2 rest)) (nfix (nth 3 rest))))
+                   ((equal verdict :already-reclaimed)
+                    (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
+                          (+ 1 (nfix (nth 2 rest)))
+                          (+ (nfix (- (fn-rcl-payload-tomb-length p fn-arena)
+                                      (fn-rcl-payload-len p fn-arena)))
+                             (nfix (nth 3 rest)))))
+                   (t (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
+                            (nfix (nth 2 rest)) (nfix (nth 3 rest))))))
+         (list 0 0 0 0))
+       :exec (fn-rcl-summary-acc rule now h verdicts articles fn-arena 0 0 0 0)))
+
+(local
+ (defthm fn-rcl-payload-len-natp
+   (natp (fn-rcl-payload-len p fn-arena))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-rcl-payload-len)))))
+(local
+ (defthm fn-rcl-summary-in-nats
+   (let ((s (fn-rcl-summary-in rule now h verdicts articles fn-arena)))
+     (and (integerp (nth 0 s)) (<= 0 (nth 0 s))
+          (integerp (nth 1 s)) (<= 0 (nth 1 s))
+          (integerp (nth 2 s)) (<= 0 (nth 2 s))
+          (integerp (nth 3 s)) (<= 0 (nth 3 s))))
+   :hints (("Goal" :induct (fn-rcl-summary-in rule now h verdicts articles fn-arena)
+            :in-theory (e/d (fn-rcl-summary-in)
+                            (fn-rcl-verdict-in fn-rcl-payload-len
+                             fn-rcl-payload-tomb-length))))))
+(local
+ (defthm fn-rcl-summary-in-nths-of-cons
+   (implies (consp articles)
+            (let ((s (fn-rcl-summary-in rule now h verdicts articles fn-arena))
+                  (rest (fn-rcl-summary-in rule now h verdicts (cdr articles) fn-arena))
+                  (v (fn-rcl-verdict-in rule now h verdicts (car articles) fn-arena))
+                  (p (fn-article-payload (car articles))))
+              (and (equal (nth 0 s) (+ (if (equal v :reclaimable) 1 0) (nth 0 rest)))
+                   (equal (nth 1 s) (+ (if (equal v :reclaimable)
+                                           (fn-rcl-payload-len p fn-arena)
+                                         0)
+                                       (nth 1 rest)))
+                   (equal (nth 2 s) (+ (if (equal v :already-reclaimed) 1 0) (nth 2 rest)))
+                   (equal (nth 3 s) (+ (if (equal v :already-reclaimed)
+                                           (nfix (- (fn-rcl-payload-tomb-length p fn-arena)
+                                                    (fn-rcl-payload-len p fn-arena)))
+                                         0)
+                                       (nth 3 rest))))))
+   :hints (("Goal" :expand ((fn-rcl-summary-in rule now h verdicts articles fn-arena))
+            :use ((:instance fn-rcl-summary-in-nats (articles (cdr articles))))
+            :in-theory (e/d ()
+                            (fn-rcl-summary-in-nats
+                             fn-rcl-summary-in fn-rcl-verdict-in fn-rcl-payload-len
+                             fn-rcl-payload-tomb-length))))))
+(local
+ (defthm fn-rcl-summary-in-of-atom
+   (implies (not (consp articles))
+            (equal (fn-rcl-summary-in rule now h verdicts articles fn-arena)
+                   (list 0 0 0 0)))
+   :hints (("Goal" :expand ((fn-rcl-summary-in rule now h verdicts articles fn-arena))))))
+(local
+ (defthm fn-rcl-summary-acc-is-summary-in
+   (implies (and (natp r0) (natp r1) (natp r2) (natp r3))
+            (equal (fn-rcl-summary-acc rule now h verdicts articles fn-arena r0 r1 r2 r3)
+                   (let ((s (fn-rcl-summary-in rule now h verdicts articles fn-arena)))
+                     (list (+ r0 (nth 0 s)) (+ r1 (nth 1 s))
+                           (+ r2 (nth 2 s)) (+ r3 (nth 3 s))))))
+   :hints (("Goal" :induct (fn-rcl-summary-acc rule now h verdicts articles fn-arena
+                                               r0 r1 r2 r3)
+            :expand ((fn-rcl-summary-acc rule now h verdicts articles fn-arena r0 r1 r2 r3))
+            :in-theory (e/d (fn-rcl-summary-in-nths-of-cons fn-rcl-summary-in-nats
+                             fn-rcl-summary-in-of-atom)
+                            ((:definition fn-rcl-summary-acc)
+                             (:definition fn-rcl-summary-in)
+                             fn-rcl-verdict-in fn-rcl-payload-len
+                             fn-rcl-payload-tomb-length))))))
+
+(local
+ (defthm fn-rcl-summary-in-is-its-nths
+   (let ((s (fn-rcl-summary-in rule now h verdicts articles fn-arena)))
+     (equal (list (nth 0 s) (nth 1 s) (nth 2 s) (nth 3 s)) s))
+   :hints (("Goal" :induct (fn-rcl-summary-in rule now h verdicts articles fn-arena)
+            :in-theory (e/d (fn-rcl-summary-in)
+                            (fn-rcl-verdict-in fn-rcl-payload-len
+                             fn-rcl-payload-tomb-length))))))
+
+(verify-guards fn-rcl-summary-in
+  :hints (("Goal" :use ((:instance fn-rcl-summary-acc-is-summary-in (r0 0) (r1 0) (r2 0) (r3 0))
+                        fn-rcl-summary-in-is-its-nths fn-rcl-summary-in-nats
+                        (:definition fn-rcl-summary-in))
+           :in-theory (union-theories '((:e natp) (:e nth) (:e binary-+) unicity-of-0
+                                        commutativity-of-+ fix)
+                                      (theory 'minimal-theory)))))
+(local (in-theory (disable fn-rcl-summary-in-nths-of-cons fn-rcl-summary-in-of-atom
+                           fn-rcl-summary-acc-is-summary-in fn-rcl-summary-in-is-its-nths)))
+
+
+(defun fn-rcl-held-count-acc (rule now h verdicts articles fn-arena acc)
+  (declare (xargs :stobjs fn-arena :guard (natp acc)))
+  (if (consp articles)
+      (fn-rcl-held-count-acc rule now h verdicts (cdr articles) fn-arena
+                             (+ (if (fn-rcl-heldp (fn-rcl-verdict-in rule now h verdicts
+                                                                     (car articles) fn-arena))
+                                    1 0)
+                                acc))
+    acc))
 
 (defun fn-rcl-held-count-in (rule now h verdicts articles fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (if (consp articles)
-      (+ (if (fn-rcl-heldp (fn-rcl-verdict-in rule now h verdicts (car articles) fn-arena)) 1 0)
-         (fn-rcl-held-count-in rule now h verdicts (cdr articles) fn-arena))
-    0))
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp articles)
+           (+ (if (fn-rcl-heldp (fn-rcl-verdict-in rule now h verdicts (car articles) fn-arena)) 1 0)
+              (fn-rcl-held-count-in rule now h verdicts (cdr articles) fn-arena))
+         0)
+       :exec (fn-rcl-held-count-acc rule now h verdicts articles fn-arena 0)))
+
+(local
+ (defthm fn-rcl-held-count-acc-is-held-count-in
+   (implies (natp acc)
+            (equal (fn-rcl-held-count-acc rule now h verdicts articles fn-arena acc)
+                   (+ acc (fn-rcl-held-count-in rule now h verdicts articles fn-arena))))
+   :hints (("Goal" :induct (fn-rcl-held-count-acc rule now h verdicts articles fn-arena acc)
+            :in-theory (e/d (fn-rcl-held-count-in) (fn-rcl-verdict-in fn-rcl-heldp))))))
+
+(verify-guards fn-rcl-held-count-in
+  :hints (("Goal" :use ((:instance fn-rcl-held-count-acc-is-held-count-in (acc 0))
+                        (:definition fn-rcl-held-count-in))
+           :in-theory (union-theories '((:e natp) (:e binary-+) (:e fix) unicity-of-0 fix)
+                                      (theory 'minimal-theory)))))
 
 ; PKT-878 (PRF-361, lane health-truth-status).  The Store's verdict list has
 ; one (msgid . verdict) entry per acceptance since the open (and the replayed
@@ -446,7 +585,7 @@ a (MSGID . VERDICT) pair whose verdict is not :absent."
 ; the verdict, which no rule overrides.  The classes partition the articles
 ; (`fn-rcl-store-classes-partition-the-articles').
 (defun fn-rcl-class-in (rule now h verdicts a fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((verdict (fn-rcl-verdict-in rule now h verdicts a fn-arena)))
     (cond ((equal verdict :already-reclaimed) :reclaimed)
           ((fn-rcl-verdict-heldp (fn-article-msgid a) verdicts) :signed)
@@ -454,14 +593,44 @@ a (MSGID . VERDICT) pair whose verdict is not :absent."
           ((fn-rcl-heldp verdict) :held)
           (t :kept))))
 
+; A loop, as the counts above (PKT-878).
+(defun fn-rcl-class-count-acc (class rule now h verdicts articles fn-arena acc)
+  (declare (xargs :stobjs fn-arena :guard (natp acc)))
+  (if (consp articles)
+      (fn-rcl-class-count-acc class rule now h verdicts (cdr articles) fn-arena
+                              (+ (if (equal (fn-rcl-class-in rule now h verdicts
+                                                             (car articles) fn-arena)
+                                            class)
+                                     1 0)
+                                 acc))
+    acc))
+
 (defun fn-rcl-class-count-in (class rule now h verdicts articles fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (if (consp articles)
-      (+ (if (equal (fn-rcl-class-in rule now h verdicts (car articles) fn-arena)
-                    class)
-             1 0)
-         (fn-rcl-class-count-in class rule now h verdicts (cdr articles) fn-arena))
-    0))
+  (mbe :logic
+       (if (consp articles)
+           (+ (if (equal (fn-rcl-class-in rule now h verdicts (car articles) fn-arena)
+                         class)
+                  1 0)
+              (fn-rcl-class-count-in class rule now h verdicts (cdr articles) fn-arena))
+         0)
+       :exec (fn-rcl-class-count-acc class rule now h verdicts articles fn-arena 0)))
+
+(local
+ (defthm fn-rcl-class-count-acc-is-class-count-in
+   (implies (natp acc)
+            (equal (fn-rcl-class-count-acc class rule now h verdicts articles fn-arena acc)
+                   (+ acc (fn-rcl-class-count-in class rule now h verdicts articles
+                                                 fn-arena))))
+   :hints (("Goal" :induct (fn-rcl-class-count-acc class rule now h verdicts articles
+                                                   fn-arena acc)
+            :in-theory (e/d (fn-rcl-class-count-in) (fn-rcl-class-in))))))
+
+(verify-guards fn-rcl-class-count-in
+  :hints (("Goal" :use ((:instance fn-rcl-class-count-acc-is-class-count-in (acc 0))
+                        (:definition fn-rcl-class-count-in))
+           :in-theory (union-theories '((:e natp) (:e binary-+) (:e fix) unicity-of-0 fix)
+                                      (theory 'minimal-theory)))))
 
 ; (signed kept): the two classes `status' prints beside the reclaim counts.
 (defun fn-rcl-store-classes (rule now s fn-arena)
@@ -531,10 +700,9 @@ a (MSGID . VERDICT) pair whose verdict is not :absent."
         (equal (len (fn-rcl-summary-in rule now h verdicts articles fn-arena)) 4)
         (natp (nth 0 (fn-rcl-summary-in rule now h verdicts articles fn-arena)))
         (natp (nth 2 (fn-rcl-summary-in rule now h verdicts articles fn-arena))))
-   :hints (("Goal" :induct (fn-rcl-summary-in rule now h verdicts articles fn-arena)
-            :in-theory (e/d (fn-rcl-summary-in) (fn-rcl-verdict-in
-                                                 fn-rcl-payload-len
-                                                 fn-rcl-payload-tomb-length))))))
+   :hints (("Goal" :use (fn-rcl-summary-in-is-its-nths fn-rcl-summary-in-nats)
+            :in-theory (e/d (natp) (fn-rcl-summary-in fn-rcl-summary-in-is-its-nths
+                                    fn-rcl-summary-in-nats))))))
 
 ; A signed article's verdict is never a holder's and never :reclaimable.
 (local
@@ -558,9 +726,8 @@ a (MSGID . VERDICT) pair whose verdict is not :absent."
                           (+ (if (equal v :reclaimable) 1 0) (nth 0 rest)))
                    (equal (nth 2 (fn-rcl-summary-in rule now h verdicts articles fn-arena))
                           (+ (if (equal v :already-reclaimed) 1 0) (nth 2 rest))))))
-   :hints (("Goal" :expand ((fn-rcl-summary-in rule now h verdicts articles fn-arena))
-            :use ((:instance fn-rcl-summary-in-shape (articles (cdr articles))))
-            :in-theory (e/d () (fn-rcl-summary-in fn-rcl-verdict-in
+   :hints (("Goal" :use fn-rcl-summary-in-nths-of-cons
+            :in-theory (e/d () (fn-rcl-summary-in fn-rcl-verdict-in fn-rcl-summary-in-nths-of-cons
                                 fn-rcl-payload-len fn-rcl-payload-tomb-length
                                 fn-rcl-summary-in-shape))))))
 

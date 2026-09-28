@@ -11,16 +11,23 @@ acceptances): 0.03 s at V = 0, 10.8 s at V = 5,000 and 50.6 s at V = 20,000
 over 101,274 articles (hbox, planning/evidence/health-truth-status-2026-09-28.md).
 The counts now ask it of the held verdicts only (`fn-rcl-held-verdicts').
 
-The case, against a copy of a large store (opt-in: FN_STATUS_FIXTURE names a
-store directory to copy, e.g. /tank/fn/scratch/fixtures/syn100k-2k/store on
-hbox; FN_NATIVE_DEVELOPER_HOST or build/fn-host-developer is the image):
+The case (FN_NATIVE_DEVELOPER_HOST or build/fn-host-developer is the image;
+no fixture: format changes do not strand it):
 
-* the owner opens the copy; `status' answers, exit 0, twice (T0 the faster);
-* FN_STATUS_POSTS (default 3,000) articles are POSTed over 8 connections,
-  every one 240;
+* `store init' a fresh store; the owner opens it; `status' answers, exit 0,
+  twice (T0 the faster);
+* FN_STATUS_POSTS (default 20,000) articles are POSTed over 8 connections,
+  every one 240 -- each a live acceptance, so N = V = 20,000, where the old
+  render was ~4 x 10^8 verdict steps (~8 s at hbox's 2.1 x 10^-8 s a step);
 * `status' answers again, exit 0, twice (T1 the faster), its articles=N grown
-  by the POSTs, and T1 - T0 stays under FN_STATUS_SLACK seconds (default 2.0;
-  before the fix the same step added ~6 s at N = 100k).
+  by the POSTs, and T1 - T0 stays under FN_STATUS_SLACK seconds (default 2.0).
+
+Before this lane, on the images after the thread-stacks change, the same
+20,000 articles also exhausted the owner's 1 MiB control-thread stack in the
+per-article count (fn-rcl-summary-in, a frame per article): `status' exited 3
+in 0.15 s and the owner stopped (`control request fault; owner stopped').
+The counts are loops now; the case also asks `health' afterwards, which
+must not be uncertain (the owner is still there).
 
 A difference of two timings on one owner, so the box's load largely cancels;
 it prints one JSON line per observation.
@@ -46,9 +53,9 @@ from tests.native_process import wait_for_announcement  # noqa: E402
 from tools import msgid_measure as m  # noqa: E402
 import native_env  # noqa: E402
 
-FIXTURE = os.environ.get("FN_STATUS_FIXTURE")
 IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
-POSTS = int(os.environ.get("FN_STATUS_POSTS", "3000"))
+POSTS = int(os.environ.get("FN_STATUS_POSTS", "20000"))
+FLAGS = ["--max-transactions", "65536", "--max-history-octets", "64000000"]
 SLACK = float(os.environ.get("FN_STATUS_SLACK", "2.0"))
 CONNECTIONS = 8
 
@@ -60,8 +67,7 @@ def article(i):
             % (i, i)).encode("ascii") + b"status line body\r\n" * 8
 
 
-@unittest.skipUnless(FIXTURE and Path(FIXTURE).is_dir() and os.access(IMAGE, os.X_OK),
-                     "FN_STATUS_FIXTURE (a store to copy) and the developer image")
+@unittest.skipUnless(os.access(IMAGE, os.X_OK), "the developer image")
 class NativeStatusLivePostsTests(unittest.TestCase):
 
     def setUp(self):
@@ -81,7 +87,8 @@ class NativeStatusLivePostsTests(unittest.TestCase):
                 self.owner.wait(timeout=60)
         if self.owner:
             self.owner.stdout.close()
-        shutil.rmtree(self.temp, ignore_errors=True)
+        if not os.environ.get("FN_STATUS_KEEP"):
+            shutil.rmtree(self.temp, ignore_errors=True)
 
     def out(self, **rec):
         print(json.dumps(rec), flush=True)
@@ -95,7 +102,7 @@ class NativeStatusLivePostsTests(unittest.TestCase):
         started = time.monotonic()
         r = self.invoke("operator", cfg, "status", timeout=300)
         seconds = time.monotonic() - started
-        text = r.stdout.decode(errors="replace")
+        text = r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace")
         found = re.search(r"\barticles=(\d+)", text)
         return r.returncode, seconds, int(found.group(1)) if found else None, text
 
@@ -114,12 +121,8 @@ class NativeStatusLivePostsTests(unittest.TestCase):
 
     def test_status_after_live_posts_stays_within_the_slack(self):
         store = self.temp / "store"
-        subprocess.run(["cp", "-a", "--reflink=auto", FIXTURE, str(store)], check=True)
-        lock = store / "writer.lock"
-        lock.touch()
-        lock.chmod(0o600)
-        rebind = self.invoke("store", store, "rebind-filesystem")
-        self.assertEqual(rebind.returncode, 0, rebind.stderr.decode(errors="replace")[-400:])
+        init = self.invoke("store", store, "init", *FLAGS, "fn.test")
+        self.assertEqual(init.returncode, 0, init.stderr.decode(errors="replace")[-400:])
         port = m.free_port()
         cfg = self.temp / "fn.toml"
         cfg.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n'
@@ -127,7 +130,7 @@ class NativeStatusLivePostsTests(unittest.TestCase):
         started = time.monotonic()
         self.owner = subprocess.Popen([str(IMAGE), "--fn", "operator", str(cfg), "run"],
                                       cwd=str(ROOT), env=self.env, stdout=subprocess.PIPE,
-                                      stderr=subprocess.DEVNULL)
+                                      stderr=open(os.environ.get("FN_STATUS_OWNER_LOG", os.devnull), "ab"))
         wait_for_announcement(self.owner, b"LISTENING ", timeout=1200)
         self.out(step="open", seconds=round(time.monotonic() - started, 2))
 
@@ -158,6 +161,11 @@ class NativeStatusLivePostsTests(unittest.TestCase):
             self.out(step="status-after", exit=rc, seconds=round(s, 3), articles=n)
             self.assertEqual(rc, 0, text[-600:])
         t1 = min(s for _, s, _, _ in after)
+        health = self.invoke("operator", cfg, "health", timeout=300)
+        self.out(step="health-after", exit=health.returncode)
+        self.assertNotEqual(health.returncode, 3,
+                            (health.stdout + health.stderr).decode(errors="replace")[-600:])
+        self.assertIsNone(self.owner.poll(), "the owner stopped")
         self.assertEqual(after[-1][2], n0 + POSTS)
         self.out(step="verdict", t0=round(t0, 3), t1=round(t1, 3),
                  growth=round(t1 - t0, 3), slack=SLACK)
