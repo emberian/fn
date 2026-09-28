@@ -143,7 +143,7 @@ case "$BUILD" in
             exit 1
         fi ;;
 esac
-TLS_LINE=$(grep -a -E '^FN_NATIVE_TLS [0-9]+ [0-9]+' "$LOG" | tail -1 || true)
+TLS_LINE=$(grep -a -o -E 'FN_NATIVE_TLS [0-9]+ [0-9]+' "$LOG" | tail -1 || true)
 if [ -n "$TLS_LINE" ]; then
     TLS_USED=$(echo "$TLS_LINE" | cut -d' ' -f2)
     TLS_CAP=$(echo "$TLS_LINE" | cut -d' ' -f3)
