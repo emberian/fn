@@ -280,10 +280,6 @@
   (let ((oc (f-get-global 'fn-owner state)))
     (fn-owner-install-ocfg (fn-ocfg-with-owner oc owner) state)))
 
-(defun fn-owner-state (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-owner-core state)))
-
 ;; SEC-006 (PRF-210): the node's key ring the native host read from
 ;; STORE/keys/ (host/native/owner.lisp fnn-owner-load-node-secret: the
 ;; current entry, then each retained older epoch), installed into the
