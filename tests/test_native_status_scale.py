@@ -70,8 +70,14 @@ class StatusScaleTests(unittest.TestCase):
             print("STATUS-SCALE {} stop-{} exit={} seconds={:.2f}".format(
                 name, what, owner.returncode, seconds), flush=True)
             # What the owner said last (a publication or drain it waited for).
-            for line in err_path.read_text("utf-8", "replace").splitlines()[-12:]:
-                print("STATUS-SCALE {} stop-{} | {}".format(name, what, line[:200]), flush=True)
+            lines = err_path.read_text("utf-8", "replace").splitlines()
+            if owner.returncode != 0:
+                # the fault's own lines, whole (frames shortened to their names)
+                lines = [l.split(" pc=")[-1] if "fp=0x" in l else l for l in lines[-160:]]
+            else:
+                lines = lines[-12:]
+            for line in lines:
+                print("STATUS-SCALE {} stop-{} | {}".format(name, what, line[:240]), flush=True)
         self.assertEqual(owner.returncode, 0, err_path.read_text("utf-8", "replace")[-3000:])
         self.assertLessEqual(seconds, STOP_SECONDS)
 
