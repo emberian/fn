@@ -236,6 +236,18 @@ class NativeProcess:
         line_start = text.rfind(b"\n", 0, len(text) - 1) + 1
         return text[line_start:]
 
+    def next_line(self, timeout=60):
+        """The next stdout line after the cursor (a developer cut's marker),
+        advancing the cursor; on a deadline or an exit, `fail`."""
+        def first(text):
+            at = text.find(b"\n")
+            return None if at < 0 else at + 1
+        text, end = self.stdout.wait_for(first, self.cursor, time.monotonic() + timeout)
+        if end is None:
+            self.fail("no stdout line within {} s".format(timeout))
+        self.cursor = end
+        return text
+
     def output_until(self, marker, timeout=45):
         """Stdout from the cursor through the line containing MARKER,
         advancing the cursor; on a deadline or an exit, `fail`."""
@@ -902,6 +914,24 @@ class Node:
                 self.case.assertEqual(line, "LISTENING {}\n".format(self.port).encode(),
                                       "{} announced {!r}".format(self.name, line))
         return process
+
+    def try_start(self, *, image=None, env=None, timeout=180):
+        """(the owner, None) once it announces LISTENING, or (the exited
+        owner, its stderr) when it refuses to start: for a case whose
+        subject is the refusal."""
+        process = start(self.argv(image, ("operator", self.config, "run")),
+                        cwd=ROOT, env=self.environment(env))
+        self.processes.append(process)
+        self.process = process
+        text, end = process.stdout.wait_for(_line_starting(b"LISTENING "), 0,
+                                            time.monotonic() + timeout)
+        if end is not None:
+            process.cursor = end
+            return process, None
+        if process.poll() is None:
+            process.fail("the owner neither announced nor exited within {} s".format(timeout))
+        process.finish()
+        return process, process.stderr.since(0).decode("utf-8", "replace")
 
     def stop(self, expect=EXIT.OK, process=None, grace=60):
         """SIGTERM the owner and assert it exited EXPECT (None: any)."""

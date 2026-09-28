@@ -1,118 +1,61 @@
 """AUTHINFO through the installed native operator/owner, with no Python server."""
 import os
-from pathlib import Path
-import select
-import socket
 import subprocess
 import sys
-import tempfile
 import unittest
 
-from tests.native_harness import stop_and_diagnostics, wait_for_announcement
-from tools.wire_stream import whole_stream
+from tests.native_harness import (
+    EXIT_OK, EXIT_REFUSED, EXIT_USAGE, ROOT, Client, Node, native_image, requires)
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    return env
+IMAGE = native_image("FN_NATIVE_HOST")
 
 
-def free_loopback_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
-
-
+@requires(IMAGE)
 class NativeAuthTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        if not os.access(IMAGE, os.X_OK):
-            raise unittest.SkipTest(
-                "native host image missing: {} (tools/build_native_host.sh)".format(IMAGE))
-
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-auth-")
-        self.addCleanup(self.temporary.cleanup)
-        root = Path(self.temporary.name)
-        self.store = root / "store"
-        self.auth = root / "credentials.toml"
-        self.config = root / "fn.toml"
-        self.port = free_loopback_port()
-        initialized = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(self.store), "init", "fn.test"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment(), timeout=180, check=False)
+        self.node = Node(self, IMAGE, control=False)
+        self.root, self.store, self.config = self.node.root, self.node.store_path, self.node.config
+        self.port = self.node.port
+        self.auth = self.root / "credentials.toml"
+        initialized = self.node.store("init", "fn.test")
         self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
-        self.config.write_text(
-            '[store]\npath = "{}"\n\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '\n[auth]\nrequired = true\nprotected_only = false\npath = "{}"\n'
-            .format(self.store, self.port, self.auth), encoding="ascii")
+        self.node.write_config(extra='\n[auth]\nrequired = true\nprotected_only = false\n'
+                                     'path = "{}"\n'.format(self.auth))
         enrolled = subprocess.run(
             [sys.executable, "bin/fn", "--config", str(self.config),
              "principal", "set-password", "native-reader",
              "--password", "correct-horse", "--posting"],
             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment(), timeout=600, check=False)
+            env=self.node.environment(), timeout=600, check=False)
         self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
 
     def start(self):
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run", "--once"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment())
-        line = wait_for_announcement(process, b"LISTENING ")
-        if not line.startswith(b"LISTENING "):
-            diagnostic = stop_and_diagnostics(process)
-            process.stdout.close()
-            process.stderr.close()
-            self.fail("native authenticated owner failed: {} {}".format(
-                line, diagnostic))
-        return process
+        """The owner for one connection (`run --once`)."""
+        return self.node.start(verb=("run", "--once"))
+
+    def client(self, greeting=(b"201",)):
+        return Client(self.port, timeout=30, greeting=greeting)
+
+    def expect_line(self, client, octets, status):
+        client.send(octets + b"\r\n")
+        self.assertTrue(client.line().startswith(status), octets)
 
     def test_generated_credential_gates_reader_and_does_not_grant_transit(self):
-        process = self.start()
-        try:
-            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client:
-                stream = whole_stream(client)
-                self.assertTrue(stream.readline().startswith(b"201 "))
-
-                stream.write(b"GROUP fn.test\r\n")
-                self.assertTrue(stream.readline().startswith(b"480 "))
-
-                # Transit authority remains the peer record's.  A reader
-                # login policy neither authorizes nor intercepts IHAVE.
-                stream.write(b"IHAVE <reader-is-not-peer@example.invalid>\r\n")
-                self.assertTrue(stream.readline().startswith(b"502 "))
-
-                stream.write(b"AUTHINFO USER native-reader\r\n")
-                self.assertTrue(stream.readline().startswith(b"381 "))
-                stream.write(b"AUTHINFO PASS wrong\r\n")
-                self.assertTrue(stream.readline().startswith(b"481 "))
-                stream.write(b"GROUP fn.test\r\n")
-                self.assertTrue(stream.readline().startswith(b"480 "))
-
-                stream.write(b"AUTHINFO USER native-reader\r\n")
-                self.assertTrue(stream.readline().startswith(b"381 "))
-                stream.write(b"AUTHINFO PASS correct-horse\r\n")
-                self.assertTrue(stream.readline().startswith(b"281 "))
-                stream.write(b"GROUP fn.test\r\n")
-                self.assertTrue(stream.readline().startswith(b"211 "))
-                stream.write(b"QUIT\r\n")
-                self.assertTrue(stream.readline().startswith(b"205 "))
-            self.assertEqual(process.wait(timeout=60), 0,
-                             process.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                process.wait(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
+        self.start()
+        with self.client() as client:
+            self.expect_line(client, b"GROUP fn.test", b"480 ")
+            # Transit authority remains the peer record's.  A reader
+            # login policy neither authorizes nor intercepts IHAVE.
+            self.expect_line(client, b"IHAVE <reader-is-not-peer@example.invalid>", b"502 ")
+            self.expect_line(client, b"AUTHINFO USER native-reader", b"381 ")
+            self.expect_line(client, b"AUTHINFO PASS wrong", b"481 ")
+            self.expect_line(client, b"GROUP fn.test", b"480 ")
+            self.expect_line(client, b"AUTHINFO USER native-reader", b"381 ")
+            self.expect_line(client, b"AUTHINFO PASS correct-horse", b"281 ")
+            self.expect_line(client, b"GROUP fn.test", b"211 ")
+            self.expect_line(client, b"QUIT", b"205 ")
+            client.close(quit=False)
+        self.node.exited(EXIT_OK)
 
     def test_restricted_command_before_login_is_480_and_leaves_no_article(self):
         # P1 (b) on the image: fn-served-dispatch-of-a-gated-command-is-480-
@@ -135,57 +78,34 @@ class NativeAuthTests(unittest.TestCase):
                     b"",
                     b"P1 gate body."]
 
-        process = self.start()
-        try:
-            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client:
-                stream = whole_stream(client)
-                self.assertTrue(stream.readline().startswith(b"201 "))
-
-                stream.write(b"POST\r\n")
-                self.assertTrue(stream.readline().startswith(b"480 "))
-                # A client that ignores the 480 and sends the article: the wire
-                # never entered article mode, so each non-empty line is a
-                # command, answered on its own and never accepted.
-                for line in article(refused) + [b"."]:
-                    if not line:
-                        continue
-                    stream.write(line + b"\r\n")
-                    reply = stream.readline()
-                    self.assertFalse(reply.startswith((b"240 ", b"340 ")), reply)
-                    self.assertTrue(reply[:1] in (b"4", b"5"), reply)
-                for command in (b"ARTICLE " + refused.encode("ascii"),
-                                b"STAT " + refused.encode("ascii"),
-                                b"GROUP fn.test"):
-                    stream.write(command + b"\r\n")
-                    self.assertTrue(stream.readline().startswith(b"480 "), command)
-
-                stream.write(b"AUTHINFO USER native-reader\r\n")
-                self.assertTrue(stream.readline().startswith(b"381 "))
-                stream.write(b"AUTHINFO PASS correct-horse\r\n")
-                self.assertTrue(stream.readline().startswith(b"281 "))
-                stream.write(b"POST\r\n")
-                self.assertTrue(stream.readline().startswith(b"340 "))
-                for line in article(posted):
-                    stream.write(line + b"\r\n")
-                stream.write(b".\r\n")
-                self.assertTrue(stream.readline().startswith(b"240 "))
-                stream.write(b"QUIT\r\n")
-                self.assertTrue(stream.readline().startswith(b"205 "))
-            self.assertEqual(process.wait(timeout=60), 0,
-                             process.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                process.wait(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
+        self.start()
+        with self.client() as client:
+            self.expect_line(client, b"POST", b"480 ")
+            # A client that ignores the 480 and sends the article: the wire
+            # never entered article mode, so each non-empty line is a
+            # command, answered on its own and never accepted.
+            for line in article(refused) + [b"."]:
+                if not line:
+                    continue
+                client.send(line + b"\r\n")
+                reply = client.line()
+                self.assertFalse(reply.startswith((b"240 ", b"340 ")), reply)
+                self.assertTrue(reply[:1] in (b"4", b"5"), reply)
+            for command in (b"ARTICLE " + refused.encode("ascii"),
+                            b"STAT " + refused.encode("ascii"),
+                            b"GROUP fn.test"):
+                self.expect_line(client, command, b"480 ")
+            self.expect_line(client, b"AUTHINFO USER native-reader", b"381 ")
+            self.expect_line(client, b"AUTHINFO PASS correct-horse", b"281 ")
+            first, final = client.post(b"\r\n".join(article(posted)) + b"\r\n")
+            self.assertTrue(first.startswith(b"340 "), first)
+            self.assertTrue(final.startswith(b"240 "), final)
+            self.expect_line(client, b"QUIT", b"205 ")
+            client.close(quit=False)
+        self.node.exited(EXIT_OK)
 
         def inspect(message_id):
-            return subprocess.run(
-                [str(IMAGE), "--fn", "store", str(self.store), "inspect",
-                 message_id], cwd=ROOT, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, env=environment(), timeout=180,
-                check=False)
+            return self.node.store("inspect", message_id)
 
         held = inspect(posted)
         self.assertEqual(held.returncode, 0, held.stderr.decode())
@@ -194,24 +114,18 @@ class NativeAuthTests(unittest.TestCase):
     def test_protected_only_is_refused_before_listener(self):
         text = self.config.read_text(encoding="ascii").replace(
             "protected_only = false", "protected_only = true")
-        protected = Path(self.temporary.name) / "protected.toml"
+        protected = self.root / "protected.toml"
         protected.write_text(text, encoding="ascii")
-        result = subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(protected), "run", "--once"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment(), timeout=180, check=False)
-        self.assertEqual(result.returncode, 5, result.stderr.decode())
+        result = self.node.invoke("operator", protected, "run", "--once")
+        self.assertEqual(result.returncode, EXIT_USAGE, result.stderr.decode())
         self.assertNotIn(b"LISTENING ", result.stdout)
         self.assertIn(b"unsupported-profile", result.stderr.lower())
 
     def test_legacy_cleartext_registry_is_refused_before_listener(self):
         self.auth.write_text(
             '[login."legacy"]\nsecret = "never-read"\n', encoding="ascii")
-        result = subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run", "--once"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment(), timeout=180, check=False)
-        self.assertEqual(result.returncode, 1, result.stderr.decode())
+        result = self.node.operator("run", "--once")
+        self.assertEqual(result.returncode, EXIT_REFUSED, result.stderr.decode())
         self.assertNotIn(b"LISTENING ", result.stdout)
         self.assertIn(b"cleartext-credential", result.stderr.lower())
 
@@ -231,9 +145,9 @@ class NativeAuthTests(unittest.TestCase):
         the published table, fn-lb-a-connection-opened-after-a-publication-
         is-bound-anew).  The owner process is the same throughout."""
         openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
-        root = Path(self.temporary.name)
+        root = self.root
         control, log = root / "control.sock", root / "fn.log"
-        config = root / "live.toml"
+        config = self.config
         config.write_text(self.config.read_text(encoding="ascii")
                           + '\n[control]\npath = "{}"\n\n[log]\npath = "{}"\n'
                           .format(control, log), encoding="ascii")
@@ -242,7 +156,7 @@ class NativeAuthTests(unittest.TestCase):
 
         def run(arguments, expected=0):
             result = subprocess.run(arguments, cwd=ROOT, stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE, env=environment(),
+                                    stderr=subprocess.PIPE, env=self.node.environment(),
                                     timeout=600, check=False)
             self.assertEqual(result.returncode, expected,
                              (arguments, result.stdout, result.stderr))
@@ -252,11 +166,7 @@ class NativeAuthTests(unittest.TestCase):
         self.assertIn(b"accepted operator principal bind effective-at-next-start",
                       bound.stderr)
         run(operator + ["policy", "set", "posting-policy", "bound-logins"])
-        process = subprocess.Popen(operator + ["run"], cwd=ROOT, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE, env=environment())
-        self.addCleanup(lambda: process.poll() is None and stop_and_diagnostics(process))
-        line = wait_for_announcement(process, b"LISTENING ")
-        self.assertTrue(line.startswith(b"LISTENING "), line)
+        process = self.node.start()
         # P enrolled at generation 1 (the fixed Ed25519 test key, a fresh
         # ML-DSA-65 key), and two articles signed by P.
         principal, ed_public, ed_secret = (root / "p.bin", root / "ed-public.bin",
@@ -285,32 +195,27 @@ class NativeAuthTests(unittest.TestCase):
             articles.append(carried.read_bytes())
 
         def session():
-            client = socket.create_connection(("127.0.0.1", self.port), timeout=60)
-            stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"20"))
-            stream.write(b"AUTHINFO USER native-reader\r\n")
-            self.assertTrue(stream.readline().startswith(b"381"))
-            stream.write(b"AUTHINFO PASS correct-horse\r\n")
-            self.assertTrue(stream.readline().startswith(b"281"))
-            return client, stream
+            client = Client(self.port, timeout=60, greeting=(b"200", b"201"))
+            self.expect_line(client, b"AUTHINFO USER native-reader", b"381")
+            self.expect_line(client, b"AUTHINFO PASS correct-horse", b"281")
+            return client
 
-        def post(stream, article):
-            stream.write(b"POST\r\n")
-            self.assertTrue(stream.readline().startswith(b"340"))
-            body = article if article.endswith(b"\r\n") else article + b"\r\n"
-            stream.write(body + b".\r\n")
-            return stream.readline().decode("ascii", "replace").strip()
+        def post(client, article):
+            first, final = client.post(article)
+            self.assertTrue(first.startswith(b"340"), first)
+            return final.decode("ascii", "replace").strip()
 
-        client_a, stream_a = session()
+        client_a = session()
         rebound = run(operator + ["principal", "bind", "native-reader", q_principal.hex()])
         self.assertIn(b"accepted operator principal bind applied", rebound.stderr)
-        reply_a = post(stream_a, articles[0])
-        client_b, stream_b = session()
-        reply_b = post(stream_b, articles[1])
+        reply_a = post(client_a, articles[0])
+        client_b = session()
+        reply_b = post(client_b, articles[1])
         still_running = process.poll() is None
         for client in (client_a, client_b):
-            client.close()
-        diagnostic = stop_and_diagnostics(process)
+            client.close(quit=False)
+        self.node.stop(expect=None)
+        diagnostic = process.diagnostics()
         text = log.read_text(encoding="ascii", errors="replace")
         print("NATIVE-AUTH-REBIND-WITNESS", reply_a, "|", reply_b)
         self.assertTrue(still_running, diagnostic)

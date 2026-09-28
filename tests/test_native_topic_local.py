@@ -6,17 +6,13 @@ only transports them and the test cryptographic keys through native commands.
 import os
 import hashlib
 from pathlib import Path
-import socket
 import subprocess
-import tempfile
 import unittest
 
-from tests.native_harness import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import ROOT, Node, environment, executable, native_image
 from tests import native_log_observation
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST",
-                            ROOT / "build" / "fn-host-developer"))
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 LEGACY_IMAGE = Path(os.environ.get("FN_NATIVE_TOPIC_V1_HOST", ""))
 FIXTURES = ROOT / "tests" / "fixtures" / "topic-history"
 PRINCIPAL = bytes([85]) * 32
@@ -27,36 +23,17 @@ ED_SECRET = bytes.fromhex(
     "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a")
 
 
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
-
-
 @unittest.skipUnless(os.environ.get("FN_RUN_TOPIC_LOCAL_E2E") == "1"
-                     and IMAGE.is_file() and os.access(IMAGE, os.X_OK),
+                     and executable(IMAGE),
                      "requires a source-matched topic saved image")
 class NativeTopicLocalTest(unittest.TestCase):
     def setUp(self):
         self.image = (LEGACY_IMAGE
                       if self._testMethodName == "test_v1_history_reopens_under_v2"
                       and LEGACY_IMAGE.is_file() else IMAGE)
-        self.temp = tempfile.TemporaryDirectory(prefix="fn-topic-local-")
-        self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
-        self.store = self.root / "store"
-        self.control = self.root / "control.sock"
-        self.config = self.root / "fn.toml"
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.env.pop("ACL2_SYSTEM_BOOKS", None)
-        self.env.pop("FN_HOST", None)
-        self.env.pop("FN_NATIVE_CONTROL_FAULT", None)
-        self.env.pop("FN_NATIVE_CONTROL_TEST_STOP", None)
-        self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-            'port = {}\n[control]\npath = "{}"\n'.format(
-                self.store, free_port(), self.control), encoding="ascii")
+        self.node = Node(self, self.image)
+        self.root, self.store = self.node.root, self.node.store_path
+        self.control, self.config = self.node.control, self.node.config
         self.assertEqual(self.invoke("store", self.store, "init", "fn.test").returncode,
                          0)
         self.principal = self.root / "principal.bin"
@@ -69,31 +46,13 @@ class NativeTopicLocalTest(unittest.TestCase):
         self.ml_private = FIXTURES / "ml-dsa-65-test-private.pem"
 
     def invoke(self, *words):
-        return subprocess.run([str(self.image), "--fn", *map(str, words)],
-                              cwd=ROOT, env=self.env, capture_output=True,
-                              timeout=120, check=False)
+        return self.node.invoke(*words, image=self.image, timeout=120)
 
     def start_owner(self):
-        proc = subprocess.Popen(
-            [str(self.image), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0)
-        self.addCleanup(self.reap, proc)
-        wait_for_announcement(proc, b"LISTENING ", timeout=120)
-        return proc
-
-    @staticmethod
-    def reap(proc):
-        if proc.poll() is None:
-            proc.kill()
-            proc.wait(timeout=10)
-        for stream in (proc.stdout, proc.stderr):
-            if stream and not stream.closed:
-                stream.close()
+        return self.node.start(image=self.image, timeout=120)
 
     def stop_owner(self, proc):
-        diagnostic = stop_and_diagnostics(proc, timeout=60)
-        self.assertEqual(proc.returncode, 0, diagnostic)
+        self.node.stop(process=proc)
 
     def topic(self, operation, *args, expected):
         result = self.invoke("topic", operation, self.control, *args)
@@ -104,7 +63,7 @@ class NativeTopicLocalTest(unittest.TestCase):
     def transactions(self):
         # The committed history (format 9: the record log), read by the image.
         return native_log_observation.committed_history(self.image, self.store,
-                                                        env=self.env, cwd=ROOT)
+                                                        env=environment(), cwd=ROOT)
 
     def author(self, source, name):
         signed = self.invoke("hybrid-sign", self.principal, self.ed_public,
@@ -258,17 +217,11 @@ class NativeTopicLocalTest(unittest.TestCase):
         self.topic("anchor", "1", "1", expected=0)
         self.stop_owner(owner)
 
-        legacy = subprocess.Popen(
-            [str(LEGACY_IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
         try:
-            out, err = legacy.communicate(timeout=40)
+            legacy = self.node.operator("run", image=LEGACY_IMAGE, timeout=40)
         except subprocess.TimeoutExpired:
-            legacy.kill()
-            legacy.communicate(timeout=10)
             self.fail("pre-v2 image unexpectedly opened a v2 topic anchor")
-        self.assertNotEqual(legacy.returncode, 0, out + err)
+        self.assertNotEqual(legacy.returncode, 0, legacy.stdout + legacy.stderr)
 
         reopened = self.start_owner()
         self.topic("anchor", "1", "1", expected=1)

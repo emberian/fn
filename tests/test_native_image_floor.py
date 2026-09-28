@@ -33,25 +33,21 @@ stays at its current value.  These witnesses run the saved images:
 Each witness skips, naming the image, when that image is absent.
 """
 import json
-import os
 from pathlib import Path
 import re
-import socket
 import subprocess
 import sys
 import tempfile
 import unittest
 
-from tests.native_harness import stop_and_diagnostics, wait_for_announcement
+from tests import native_harness
+from tests.native_harness import (
+    EXIT_FAULT, EXIT_USAGE, ROOT, Client, Node, executable, native_image)
 
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
-DEVELOPER = Path(os.environ.get(
-    "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+IMAGE = native_image("FN_NATIVE_HOST")
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 MEASURE = ROOT / "tools" / "runtime_image" / "node_measure.py"
-
-EXIT_FAULT, EXIT_USAGE = 4, 5
 # The entry is caught by the host's entry guard (io.lisp fnn-call's
 # host-entry-guard) before ACL2 evaluates it: still one fault line, exit 4.
 # (Until store format 10 the probe called fn-sha256-of-string, which the
@@ -62,22 +58,18 @@ CORE_CEILING_KIB = 128 * 1024
 SMALL_STACK_KIB = 1024          # fn-heap-stack-kib: the constant (served-line-iterative)
 
 
+# This module measures the control stack, so it names every stack itself:
+# no SBCL_USER_ARGS from the shell or the harness's deployed-stack override.
+NO_STACK = {"SBCL_USER_ARGS": None}
+
+
 def environment(**extra):
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("SBCL_USER_ARGS", None)
-    env.update(extra)
-    return env
-
-
-def executable(image):
-    return image.is_file() and os.access(image, os.X_OK)
+    return native_harness.environment(dict(NO_STACK, **extra), stack=False)
 
 
 def run(image, args, env):
-    return subprocess.run([str(image), "--fn"] + args, env=env, stdin=subprocess.DEVNULL,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300)
+    return native_harness.run([image, "--fn", *args], env=env, stdin=subprocess.DEVNULL,
+                              timeout=300)
 
 
 class GuardViolationTests(unittest.TestCase):
@@ -170,44 +162,15 @@ def cgroup_limit():
     return min(found) if found else None
 
 
-def free_port():
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+def body_lines(client):
+    """The line count of a dot-terminated block (the terminator excluded)."""
+    return client.block().count(b"\r\n")
 
 
-class Nntp:
-    def __init__(self, port, timeout=600):
-        self.conn = socket.create_connection(("127.0.0.1", port), timeout=timeout)
-        self.stream = self.conn.makefile("rwb")
-        self.greeting = self.stream.readline()
-
-    def command(self, text):
-        self.stream.write(text.encode("ascii") + b"\r\n")
-        self.stream.flush()
-        return self.stream.readline()
-
-    def body(self):
-        n = 0
-        while True:
-            line = self.stream.readline()
-            if line in (b".\r\n", b""):
-                return n, line
-            n += 1
-
-    def post(self, headers, lines):
-        first = self.command("POST")
-        if not first.startswith(b"340"):
-            return first
-        self.stream.write(headers.encode("ascii") + b"\r\n" + b"\r\n" * lines + b".\r\n")
-        self.stream.flush()
-        return self.stream.readline()
-
-    def close(self):
-        try:
-            self.command("QUIT")
-        finally:
-            self.conn.close()
+def post(client, head, lines):
+    """POST HEAD, a blank line and LINES empty body lines; the final reply."""
+    first, final = client.post(head.encode("ascii") + b"\r\n" + b"\r\n" * lines)
+    return final if final is not None else first
 
 
 def headers(n, groups="local.test"):
@@ -230,36 +193,27 @@ class DeepInputStackTests(unittest.TestCase):
         self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(self.tmp)]))
 
     def store(self, name, flags, **init_env):
-        port = free_port()
-        cfg = self.tmp / (name + ".toml")
-        cfg.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-                       .format(self.tmp / name, port), encoding="ascii")
-        made = run(IMAGE, ["operator", str(cfg), "init"] + flags + ["local.test"],
-                   environment(**init_env))
+        node = Node(self, IMAGE, root=self.tmp / name, control=False, env=NO_STACK)
+        made = node.operator("init", *flags, "local.test", env=init_env)
         self.assertEqual(made.returncode, 0, made.stderr)
-        probe = run(IMAGE, ["heap", "--", "operator", str(cfg), "run"], environment())
+        probe = node.invoke("heap", "--", "operator", node.config, "run")
         self.assertEqual(probe.returncode, 0, probe.stderr)
         stack = int(re.search(rb"stack=(\d+) KB", probe.stdout).group(1))
-        return cfg, port, stack
+        return node, stack
 
-    def start(self, cfg, stack_kib, heap_mb=2048):
-        env = environment(SBCL_USER_ARGS="--dynamic-space-size %dMB --control-stack-size %dKB"
-                          % (heap_mb, stack_kib))
-        owner = subprocess.Popen([str(IMAGE), "--fn", "operator", str(cfg), "run"], env=env,
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        wait_for_announcement(owner, b"LISTENING ", timeout=900)
-        return owner
+    def start(self, node, stack_kib, heap_mb=2048):
+        return node.start(env={"SBCL_USER_ARGS": "--dynamic-space-size %dMB --control-stack-size %dKB"
+                                                  % (heap_mb, stack_kib)}, timeout=900)
 
-    def stop(self, owner):
-        diagnostics = stop_and_diagnostics(owner, timeout=300)
-        self.assertNotIn("Control stack exhausted", diagnostics)
-        self.assertEqual(owner.returncode, 0, diagnostics)
+    def stop(self, node, owner):
+        node.stop(process=owner, grace=300)
+        self.assertNotIn(b"Control stack exhausted", owner.stderr.since(0))
 
     def test_the_image_launcher_runs_at_the_decided_stack(self):
         """PKT-876: the image's own launcher (the one every native test runs)
         passes the control stack the installed launcher's probe decides for
         a store, not ACL2's save-exec 64 MiB."""
-        cfg, port, stack = self.store("launcher", ["--profile", "default"],
+        _node, stack = self.store("launcher", ["--profile", "default"],
                                       FN_INIT_BUDGET_MB="1500")
         found = re.findall(r"--control-stack-size (\S+) ", IMAGE.read_text(encoding="utf-8"))
         self.assertEqual(found, ["%dKB" % stack], found)
@@ -273,25 +227,24 @@ class DeepInputStackTests(unittest.TestCase):
         if limit is not None and limit < 8 * 1024 ** 3:
             self.skipTest("A = 1 MiB reserves 60 stacks of 21 MB: run without a memory "
                           "limit under 8 GiB (this one is %d MiB)" % (limit >> 20))
-        cfg, port, stack = self.store("big", ["--profile", "development",
+        node, stack = self.store("big", ["--profile", "development",
                                               "--max-article-octets", "1048576",
                                               "--max-groups-per-article", "8"])
         print("NATIVE-DEEP big-article stack={} KB".format(stack))
         self.assertEqual(stack, SMALL_STACK_KIB)
         lines = (1048576 - 400) // 2
         for phase in ("post", "reopen"):
-            owner = self.start(cfg, stack)
+            owner = self.start(node, stack)
             try:
-                c = Nntp(port)
+                c = Client(node.port, timeout=600, greeting=None)
                 if phase == "post":
-                    self.assertTrue(c.post(headers(1), lines).startswith(b"240"))
+                    self.assertTrue(post(c, headers(1), lines).startswith(b"240"))
                 self.assertTrue(c.command("ARTICLE <deep-1@example.invalid>").startswith(b"220"))
-                n, end = c.body()
-                self.assertEqual(end, b".\r\n")
+                n = body_lines(c)  # block() returns only at the ".\r\n" terminator
                 self.assertGreaterEqual(n, lines)
                 c.close()
             finally:
-                self.stop(owner)
+                self.stop(node, owner)
 
     def test_a_long_history_reopens_and_replays_at_the_decided_stack(self):
         """2,000 articles; reopened from the checkpoint, and by full replay
@@ -305,59 +258,59 @@ class DeepInputStackTests(unittest.TestCase):
         # The replay store keeps its whole history in one segment: its open
         # suffix (the automatic checkpoint's period) is above 2,000 records.
         for name, extra in (("long", []), ("long-replay", ["--max-open-suffix", "4096"])):
-            cfg, port, stack = self.store(name, ["--profile", "default"] + extra,
+            node, stack = self.store(name, ["--profile", "default"] + extra,
                                           FN_INIT_BUDGET_MB="1500")
             print("NATIVE-DEEP {} stack={} KB".format(name, stack))
-            owner = self.start(cfg, stack)
+            owner = self.start(node, stack)
             try:
-                c = Nntp(port)
+                c = Client(node.port, timeout=600, greeting=None)
                 for n in range(2000):
-                    self.assertTrue(c.post(headers(n), 3).startswith(b"240"), (name, n))
+                    self.assertTrue(post(c, headers(n), 3).startswith(b"240"), (name, n))
                 c.close()
             finally:
-                self.stop(owner)
+                self.stop(node, owner)
             if name == "long-replay":
                 for p in sorted((self.tmp / name).rglob("*"), reverse=True):
                     if p.is_file() and "checkpoint" in p.name:
                         p.unlink()
-            owner = self.start(cfg, stack)
+            owner = self.start(node, stack)
             try:
-                c = Nntp(port)
+                c = Client(node.port, timeout=600, greeting=None)
                 self.assertTrue(c.command("GROUP local.test").startswith(b"211 2000 "), name)
                 for n in (0, 1999):
                     self.assertTrue(c.command("ARTICLE <deep-%d@example.invalid>" % n)
                                     .startswith(b"220"), (name, n))
-                    c.body()
+                    c.block()
                 c.close()
             finally:
-                self.stop(owner)
+                self.stop(node, owner)
 
     def test_error_paths_at_the_decided_stack(self):
         """At the small presets' stack: a POST without Newsgroups of 16,000
         lines, and one of 20,000 lines over the 32,768-octet bound, are
         refused (441) and the node serves on."""
-        cfg, port, stack = self.store("errors", ["--profile", "default"],
+        node, stack = self.store("errors", ["--profile", "default"],
                                       FN_INIT_BUDGET_MB="1500")
         print("NATIVE-DEEP errors stack={} KB".format(stack))
-        owner = self.start(cfg, stack)
+        owner = self.start(node, stack)
         try:
             # Each refusal on its own connection: an over-size POST may be
             # answered before its terminator arrives.
             no_groups = ("From: deep@example.invalid\r\nSubject: none\r\n"
                          "Message-ID: <deep-none@example.invalid>\r\n")
             for head, lines in ((no_groups, 16000), (headers(2), 20000)):
-                c = Nntp(port)
-                reply = c.post(head, lines)
+                c = Client(node.port, timeout=600, greeting=None)
+                reply = post(c, head, lines)
                 print("NATIVE-DEEP errors {} lines -> {!r}".format(lines, reply[:60]))
                 self.assertTrue(reply.startswith(b"441"), reply)
-                c.conn.close()
-            c = Nntp(port)
-            self.assertTrue(c.post(headers(3), 10).startswith(b"240"))
+                c.close(quit=False)
+            c = Client(node.port, timeout=600, greeting=None)
+            self.assertTrue(post(c, headers(3), 10).startswith(b"240"))
             self.assertTrue(c.command("ARTICLE <deep-3@example.invalid>").startswith(b"220"))
-            c.body()
+            c.block()
             c.close()
         finally:
-            self.stop(owner)
+            self.stop(node, owner)
 
 
 if __name__ == "__main__":
