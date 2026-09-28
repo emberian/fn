@@ -58,8 +58,9 @@ class HboxNativeDryRunTests(unittest.TestCase):
                 "FN_NATIVE_PROFILE=production FN_NATIVE_WORLD=stripped FN_NATIVE_BUILD=host/native/build-dtn.lisp FN_NATIVE_IMAGE=build/fn-host-dtn ",
                 "FN_NATIVE_PROFILE=developer FN_NATIVE_WORLD=full FN_NATIVE_BUILD=host/native/build-dtn.lisp FN_NATIVE_IMAGE=build/fn-host-dtn-developer "):
             self.assertIn(triple, text)
-        # Both DTN images: the tests keep their own default.
-        self.assertNotIn("FN_NATIVE_BP_HOST", answer.stdout)
+        # Both DTN images: test_bp_service_native takes the dtn-developer one
+        # (tools/native_env.py PREFER: its fault-injection cases).
+        self.assertIn("FN_NATIVE_BP_HOST=$T/build/fn-host-dtn-developer", answer.stdout)
 
     def test_a_dtn_image_acquires_and_certifies_the_dtn_profile_first(self):
         answer = dry("--images", "dtn-developer", "HEAD", "tests.test_bp_service_native")
