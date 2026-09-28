@@ -1,7 +1,7 @@
 ; fn: the reader's search scope (lane reader-daily, PRF-122).
 ;
-; The web reader's search (tools/fn_web.py, Backend.search) and its thread
-; view (Backend.replies) send one `XPAT <field> <low>-<high> <pattern>' after
+; A reader's search and thread view (the Python web reader that did this
+; was retired on 2026-09-28) send one `XPAT <field> <low>-<high> <pattern>' after
 ; `GROUP <group>' and show the node's lines as they arrive.  The client keeps
 ; no index and decides nothing about which article is in scope, which one is
 ; visible or which one matches: this book states what the node's answer is.

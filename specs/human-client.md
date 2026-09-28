@@ -1,23 +1,13 @@
 # Separate human client submission contract
 
-WEB-001: The optional local web-client outbox must durably bind one exact
-composed article, Message-ID and NNTP target to a submission identifier before
-its first network attempt. A second request, concurrent handler, or restart
-must never automatically send that identifier again. Accepted, refused and
-uncertain NNTP responses remain distinct; an in-flight record after restart is
-uncertain, and later ARTICLE observations do not rewrite the response. The
-outbox is private, single-instance and bounded without automatic deletion.
-Any ambiguous local persistence failure fences new attempts. The default
-in-memory mode remains available. This is a client evidence contract, not a
-server acceptance or retention guarantee. The operator behavior and current
-filesystem assumptions are in [the client guide](../docs/human-web-client.md).
-
-In durable mode a user may also save incomplete editable draft fields under the
-same local identifier. Saving and restoring a draft never opens NNTP or creates
-a Message-ID. The first later valid Post replaces the draft with immutable
-in-flight intent before network. Drafts share the outbox capacity and are not
-silently evicted. A new outbox leaf directory requires an existing durable
-parent; startup synchronizes that parent before posting.
+WEB-001: Deferred, retired on 2026-09-28 with `tools/fn_web.py`: an optional
+local web-client outbox that durably binds one exact composed article,
+Message-ID and NNTP target to a submission identifier before its first
+network attempt, and never sends that identifier again automatically. On the
+node's own web face (WEB-005) a post is the node's served POST on the
+session's own connection, so the one ambiguity left is a lost HTTP reply,
+which no outbox on the browser's side settles. `tools/fn_client.py`
+`post --draft` / `reconcile` keeps the command-line contract (NNT-019).
 
 ## The daily reader
 
@@ -55,14 +45,15 @@ return to the same identifier and a posted form says so instead of posting
 again. Local HTTP refuses a request its browser marks as coming from another
 site (`Sec-Fetch-Site`) before any NNTP command or local write; reading never
 posts, and the lookup and the re-send are form POSTs with the per-process
-token.
+token. The web reader that did this, `tools/fn_web.py`, was retired on
+2026-09-28; the node's own face (WEB-005) has no conversation or search page
+yet.
 
 ## Reader metadata lines
 
-The node's words a reader parses, specified once here. `tools/fn_web.py`
-(`parse_verdict_hdr`, `parse_enrollment_hdr`) accepts exactly these
-(`tools/fn_verify.py` `parse_hdr_item` reads the `:fn-verified` items, `revoked`
-from PKT-212); a line outside them is the node's
+The node's words a reader parses, specified once here. A reader accepts
+exactly these (`tools/fn_verify.py` `parse_hdr_item` reads the `:fn-verified`
+items, `revoked` from PKT-212); a line outside them is the node's
 non-answer, shown as unavailable, never as a status. Each HDR reply is RFC 3977
 section 8.5's `225` with one line `N ITEM` (N the local number, or `0` for the
 Message-ID form).
@@ -111,15 +102,17 @@ historical verdict, which a later rotation or revocation never changes):
     none no-keyring-view      the connection pins no keyring view
 
 `430` answers a Message-ID the pinned view does not serve and `501` any other
-argument shape. A web page's fifth fact, independent verification here, is
-not a node line: it is `tools/fn_verify.py check-article` run by the reader
-with the reader's own keyring (verified here, failed here with the reason, or
-not performed with why).
+argument shape. Independent verification is not a node line: it is
+`tools/fn_verify.py check-article` run by the reader with the reader's own
+keyring (verified here, failed here with the reason, or not performed with
+why).
 
-WEB-002: The web reader verifies a signed article independently with the
-reader's own keyring, never the node's, says whose keyring it used, and
-shows verified here, failed here with the reason, or not performed with why,
-beside and never merged with the node's historical verdict.
+WEB-002: Deferred, retired on 2026-09-28 with `tools/fn_web.py`: a web reader
+that verifies a signed article independently with the reader's own keyring,
+never the node's, says whose keyring it used, and shows the result beside and
+never merged with the node's historical verdict. A check with the reader's
+own keyring is by definition not the node's, so the node's own face does not
+make it; `tools/fn_verify.py check-article` still does, from the command line.
 
 ## Everyday tools over protection
 
@@ -132,9 +125,7 @@ certificate and key, on a port of its own, and a connection on it is the
 STARTTLS session after its handshake: no STARTTLS label, 502 to STARTTLS,
 AUTHINFO under `protected_only` from the first command (PRF-162,
 `books/served-implicit-tls.lisp`). tin, which speaks only that form, logs
-in, reads, posts, follows up and cancels through it. The web reader's group
-view marks a card whose parent the node answers withdrawn with the same
-answer the conversation shows. `tools/docs_check.py` parses every operator
+in, reads, posts, follows up and cancels through it. `tools/docs_check.py` parses every operator
 command quoted in docs/ with the ACL2 grammar (a generated book) and every
 Python tool invocation with that tool's own parser, and requires every
 quoted reply line to be printable by the code. A client left unresolved
@@ -144,43 +135,27 @@ whose accepted/absent answer is the store node's lookup (PRF-162).
 
 ## The friends' reader
 
-WEB-003: The friends' web reader signs a person in only with the node's own
-answer to their AUTHINFO login over a verified TLS channel, adds no account,
-permission or decision of its own, and keeps accepted, refused, not sent and
-not sure apart on every page.
+WEB-003: The friends' web reader signs in only by the node's AUTHINFO answer
+and decides nothing: it is the node's own web face (WEB-005), whose session
+exists only after the node answers `281` to the AUTHINFO its sign-in sent on
+the session's own reader connection (RFC 4643 section 2.3), bound to that
+connection and login (`fn-web-sessions-bound-by-281`, PRF-339). `481` is
+"name and password don't match". The face adds no account, permission or
+decision of its own.
 
-`tools/fn_reader.py` is a hosted client: one process serves many signed-in
-browsers, each on its own NNTP connection logged in with that person's
-credentials (RFC 4643 section 2.3, after RFC 4642 STARTTLS with the node's
-certificate verified). A `281` is the only way in; `481` is "name and
-password don't match"; a connection or handshake failure is "can't reach
-the server" and never a wrong password. The browser side is HTTPS, or plain
-HTTP bound to loopback behind a TLS proxy; the process refuses anything
-else. The password is held in memory for the session and never written to
-a file, URL, page or log.
+The node decides and the face shows: which groups the login is served (an
+access rule, NNT-046, hides a group exactly as an absent one), whether a post
+is accepted, refused with the node's reason, or not sure (keeping those
+apart on the page), and whether a removal
+withdraws (the node's cancel, SEC-006: after the node's `240` the face asks
+`STAT` of the target and reports `430` as removed, anything else as still
+shown). An account is made by the node's XREDEEM. The password is carried in
+the command octets of its one request and kept nowhere.
 
-The node decides and the reader shows: which groups the login is served
-(LIST ACTIVE, LIST COUNTS, LIST NEWSGROUPS, GROUP; an access rule, NNT-046,
-hides a group exactly as an absent one), whether a post is accepted, held
-for a moderator (the group's LIST ACTIVE status `m`, NNT-047), refused with
-the node's reason, or uncertain (books/nntp-post.lisp's 441 lines), whether
-an approval (the moderator's POST of the envelope's proto-article with
-Approved, RFC 5537 section 3.5.1) is taken, and whether a cancel withdraws
-(the same account, SEC-006: after the node's `240` the reader asks `STAT`
-of the target and reports `430` as removed, anything else as still shown).
-Threading (References, RFC 5536 section 3.2.10), the unread marks and the
-display name are the reader's own and decide nothing. Each submission's
-exact lines and Message-ID are written to the reader's state before the
-POST; a lost answer is settled only by re-sending those lines under the
-same Message-ID (NNT-019), and a failure before any byte of the article
-was sent is "not sent" and may be retried with the same lines.
-
-Local policy, not an RFC requirement: the form token on every POST, the
-Origin and Sec-Fetch-Site checks, a pause after eight failed sign-ins from
-one address in fifteen minutes, and the per-request display bounds (one
-window of 200 numbers per group page, 1,000 per thread page, 80 articles
-per thread) bound this client's work per request and never what the node
-stores (D27).
+Not built on the face: a thread view, search, read marks, drafts or an
+outbox, moderation approval pages and the reader's own signature check. The
+Python friends' reader, `tools/fn_reader.py`, which had these as a separate
+service, was retired on 2026-09-28.
 
 ### The node's own web face
 
@@ -220,19 +195,13 @@ max_sessions`, 64; each holds one owner connection).
 
 ### The reader in the release
 
-WEB-004: The release carries the friends' web reader as its own service
-beside the node, and it reaches the node only as an NNTP client. It is
-`clients/bin/fn-reader` (HST-029), installed by `install.sh --reader` under
-its own account and folder, which the node folder (store, control socket,
-logins, keys) does not admit; the systemd unit also makes the node folder
-inaccessible. It dials the node's implicit-TLS port (`tls_port`, RFC 8143;
-port 563 or `--tls`) or its reader port with STARTTLS (RFC 4642), verifying
-the certificate before any login octet. It listens on loopback behind an
-HTTPS proxy (`--proxied`: the proxy's last `X-Forwarded-For` entry is the
-browser's address, cookies are `Secure`). A friend with an invitation code
-makes the account through the node's own `fn redeem` (ACL2's
-`fn-redeem-step`; the code and login shape-checked so neither is an option,
-the password on standard input), and the reader never sends more than
-`--node-failures-per-minute` refused logins or codes a minute, below the
-node's `exposure-auth-failures`, because every friend shares its address.
-The threat model is docs/operator-internals.md, "The friends' web reader".
+WEB-004: The release turns on the node's own web face with
+`install.sh --reader` (a `[web]` table in `fn.toml`), with no reader service,
+account or Python beside the node. It appends `[web]` with
+`port = 8920`, `host = "127.0.0.1"`, `proxied = true`, `site` and `domain` to
+the node's `fn.toml` once `mission` has written it (a table already there is
+left as it is), and the node reads it when it starts
+(`books/web-config.lisp` `fn-web-config-plan`, PRF-340). HTTPS is Caddy on the
+same machine (`share/fn/caddy/fn-web.caddy`), or the node itself with
+`tls = true`. The release's `clients/` carries no service (HST-029). The
+threat model is docs/operator-internals.md, "The friends' web reader".

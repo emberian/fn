@@ -11930,6 +11930,19 @@
           "name": "fn-web-config-plan-answers"
         }
       ]
+    },
+    {
+      "id": "PRF-353",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-w47-decode-without-openers-is-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-w47-decode-octets"
+        }
+      ]
     }
   ]
 }
