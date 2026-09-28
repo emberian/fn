@@ -10994,112 +10994,6 @@
       ]
     },
     {
-      "id": "PRF-342",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-hp-decode-image"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-page-digest-is-leaf"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-append-changes-only-dirty"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-append-dirty-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-header-is-image"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-at-is-nth"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-append-refines"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-header-is-placed"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-at-is-nth-placed"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-append-refines-placed"
-        }
-      ]
-    },
-    {
-      "id": "PRF-344",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "pgs-open-after-commit"
-        },
-        {
-          "kind": "theorem",
-          "name": "pgs-open-after-crash"
-        },
-        {
-          "kind": "theorem",
-          "name": "pgs-crash-isolates-other-roots"
-        },
-        {
-          "kind": "theorem",
-          "name": "pgs-fork-denotes"
-        },
-        {
-          "kind": "theorem",
-          "name": "pgs-alloc-fresh"
-        },
-        {
-          "kind": "theorem",
-          "name": "pgs-plan-commit-complete"
-        },
-        {
-          "kind": "theorem",
-          "name": "pgs-tables-after-plan"
-        },
-        {
-          "kind": "theorem",
-          "name": "pgs-keeps-after-commit"
-        },
-        {
-          "kind": "theorem",
-          "name": "pgs-alloc-inv-after-commit"
-        },
-        {
-          "kind": "theorem",
-          "name": "pgs-cycle-inv-after-commit"
-        },
-        {
-          "kind": "theorem",
-          "name": "pgs-reclaim-never-frees-live"
-        },
-        {
-          "kind": "theorem",
-          "name": "pgs-x-commit-refines"
-        },
-        {
-          "kind": "theorem",
-          "name": "pgs-g-reclaim-sound"
-        },
-        {
-          "kind": "theorem",
-          "name": "pgs-x-words-digest-is-sha256"
-        }
-      ]
-    },
-    {
       "id": "PRF-315",
       "events": [
         {
@@ -11545,6 +11439,247 @@
       ]
     },
     {
+      "id": "PRF-349",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-gen-open-of-octets-for",
+          "note": "KEYSTONE (init, then open, over the host's call). Host: host/native/io.lisp fnn-genesis-open via host/store-host.lisp fn-store-genesis-open (every open); fnn-genesis-octets via fn-store-genesis-octets (init, import). Teeth: tests/acl2/store-genesis-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gen-open-of-the-genesis-init-writes",
+          "note": "KEYSTONE (the record form). Host: host/native/io.lisp fnn-genesis-open via host/store-host.lisp fn-store-genesis-open (every open); fnn-genesis-octets via fn-store-genesis-octets (init, import). Teeth: tests/acl2/store-genesis-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gen-decode-of-frame",
+          "note": "The genesis codec's round trip."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gen-verdict-salt-is-32-bits",
+          "note": "The salt host/owner-host.lisp hands fn-hist-load is a u32."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bsi-log-init-program-establishes-the-empty-log",
+          "note": "KEYSTONE (init's program, now with the genesis durable). Host: host/native/io.lisp fnn-initialize. Teeth: tests/acl2/byte-store-log-initializer-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-350",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-spo-open-of-a-format-9-frame-refuses-by-name",
+          "note": "KEYSTONE (D34, the release before, by name). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (a real format-9 config.json)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-open-of-a-valid-profile-opens-it",
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
+          "note": "KEYSTONE (one format). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9-config-decode-of-a-format-9-frame",
+          "note": "KEYSTONE (D38's witness). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan. Teeth: tests/acl2/store-format-9-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9-format-9-frame-does-not-decode",
+          "note": "The two formats never meet, under any attachment."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-import-of-a-format-9-export",
+          "note": "KEYSTONE (the migration). Host: host/native/io.lisp fnn-command-store-import. Teeth: tests/acl2/store-export-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-article-identities-are-format-10s",
+          "note": "KEYSTONE (identical across the migration: the identities are format 10's). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan. Teeth: tests/acl2/store-export-tests.lisp; native tests/test_native_format_9_migration.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-article-keeps-every-other-field",
+          "note": "KEYSTONE (the translation keeps the article)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-347",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-b3x-hash-is-hash",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-blake3-stobj-is-blake3",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-blake3-of-prefixed-buffer-is-blake3",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-blake3-of-prefixed-range-is-blake3",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-blake3-shape",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-355",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-composite-keeps-what-it-binds",
+          "note": "KEYSTONE (a composite keeps its signed source, verdict, keyring generation and article). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-composite-identities-are-format-10s",
+          "note": "KEYSTONE (a composite's identities are the ones replay derives). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-step-of-a-composite",
+          "note": "KEYSTONE (a composite imports bound or is refused by name). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-step-carries-identity-free-kinds-verbatim",
+          "note": "KEYSTONE (verdicts, keyring snapshots, consumer events, topic install: verbatim). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-loop-keeps-sequences",
+          "note": "The translated history keeps the archive's sequences in order."
+        }
+      ]
+    },
+    {
+      "id": "PRF-344",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "pgs-open-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-open-after-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-crash-isolates-other-roots"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-fork-denotes"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-alloc-fresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-plan-commit-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-tables-after-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-keeps-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-alloc-inv-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-cycle-inv-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-reclaim-never-frees-live"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-commit-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-g-reclaim-sound"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-words-digest-is-sha256"
+        }
+      ]
+    },
+    {
+      "id": "PRF-342",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hp-decode-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-page-digest-is-leaf"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-append-changes-only-dirty"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-append-dirty-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-header-is-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-at-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-append-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-header-is-placed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-at-is-nth-placed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-append-refines-placed"
+        }
+      ]
+    },
+    {
       "id": "PRF-348",
       "events": [
         {
@@ -11928,111 +12063,6 @@
       ]
     },
     {
-      "id": "PRF-349",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-gen-open-of-octets-for",
-          "note": "KEYSTONE (init, then open, over the host's call). Host: host/native/io.lisp fnn-genesis-open via host/store-host.lisp fn-store-genesis-open (every open); fnn-genesis-octets via fn-store-genesis-octets (init, import). Teeth: tests/acl2/store-genesis-tests.lisp."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-gen-open-of-the-genesis-init-writes",
-          "note": "KEYSTONE (the record form). Host: host/native/io.lisp fnn-genesis-open via host/store-host.lisp fn-store-genesis-open (every open); fnn-genesis-octets via fn-store-genesis-octets (init, import). Teeth: tests/acl2/store-genesis-tests.lisp."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-gen-decode-of-frame",
-          "note": "The genesis codec's round trip."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-gen-verdict-salt-is-32-bits",
-          "note": "The salt host/owner-host.lisp hands fn-hist-load is a u32."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bsi-log-init-program-establishes-the-empty-log",
-          "note": "KEYSTONE (init's program, now with the genesis durable). Host: host/native/io.lisp fnn-initialize. Teeth: tests/acl2/byte-store-log-initializer-tests.lisp."
-        }
-      ]
-    },
-    {
-      "id": "PRF-350",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-spo-open-of-a-format-9-frame-refuses-by-name",
-          "note": "KEYSTONE (D34, the release before, by name). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (a real format-9 config.json)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-open-of-a-valid-profile-opens-it",
-          "note": "KEYSTONE. Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
-          "note": "KEYSTONE (one format). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-f9-config-decode-of-a-format-9-frame",
-          "note": "KEYSTONE (D38's witness). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan. Teeth: tests/acl2/store-format-9-tests.lisp."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-f9-format-9-frame-does-not-decode",
-          "note": "The two formats never meet, under any attachment."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sxp-import-of-a-format-9-export",
-          "note": "KEYSTONE (the migration). Host: host/native/io.lisp fnn-command-store-import. Teeth: tests/acl2/store-export-tests.lisp."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-f9r-article-identities-are-format-10s",
-          "note": "KEYSTONE (identical across the migration: the identities are format 10's). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan. Teeth: tests/acl2/store-export-tests.lisp; native tests/test_native_format_9_migration.py."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-f9r-article-keeps-every-other-field",
-          "note": "KEYSTONE (the translation keeps the article)."
-        }
-      ]
-    },
-    {
-      "id": "PRF-347",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-b3x-hash-is-hash",
-          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-blake3-stobj-is-blake3",
-          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-blake3-of-prefixed-buffer-is-blake3",
-          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-blake3-of-prefixed-range-is-blake3",
-          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-blake3-shape",
-          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
-        }
-      ]
-    },
-    {
       "id": "PRF-352",
       "events": [
         {
@@ -12159,6 +12189,21 @@
         {
           "kind": "theorem",
           "name": "fn-ocp-unstaged-start-issues-no-sync"
+        }
+      ]
+    },
+    {
+      "id": "PRF-356",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sdg-canon-rev-sink-is-the-chain-of-the-canon",
+          "note": "KEYSTONE (the streamed digest is the chain of the canonical octets; D27 boundary). Host: host/native/io.lisp fnn-command-store-digest via host/store-node-host.lisp fn-store-sn-replay-digest-report. Teeth: tests/acl2/state-digest-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sdg-chain-of-one-block",
+          "note": "KEYSTONE (a stream within one block digests as before). Teeth: tests/acl2/state-digest-tests.lisp."
         }
       ]
     }

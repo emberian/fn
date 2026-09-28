@@ -5404,6 +5404,96 @@
       }
     },
     {
+      "id": "SCN-188",
+      "title": "The genesis is read only where it must be: two stores holding one history under two genesis records fold the same state, and a damaged or swapped genesis is refused",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-036"
+      ],
+      "steps": [
+        "Export the mixed store, import the archive twice (each import draws its own genesis), run store digest on both; copy one, flip one octet of journal/000000.log and open it; copy one, put the other's genesis in its place and open it."
+      ],
+      "expected": [
+        "Every digest line of the two imports but digest genesis is equal and digest genesis differs; the damaged copy is refused reason=genesis-damaged, exit 1; the swapped copy is refused and prints no state digest."
+      ],
+      "implementation": {
+        "test": "tests.test_native_replay_determinism",
+        "cases": [
+          "NativeReplayDeterminismTests.test_g_the_genesis_is_read_only_where_it_must_be"
+        ],
+        "native": true,
+        "record": "planning/evidence/format-bump-10-2026-09-28.md",
+        "log": "planning/evidence/format-bump-10-2026-09-28/native-n4-replay_determinism.log"
+      },
+      "evidence": [
+        "tests/test_native_replay_determinism.py",
+        "planning/evidence/format-bump-10-2026-09-28/native-n4-replay_determinism.log",
+        "planning/evidence/format-bump-10-2026-09-28.md"
+      ]
+    },
+    {
+      "id": "SCN-189",
+      "title": "Format 9 to 10 across a reinstall: refused here by name, exported there, imported here with the same records and BLAKE3 identities",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-028"
+      ],
+      "steps": [
+        "Open a format-9 store with this image; export it with the format-9 image; import the archive with this image; export the imported store; compare the two archives record by record."
+      ],
+      "expected": [
+        "The open exits 1 with open refused reason=store-format-9 and the way out, the store unchanged; the import succeeds with a new genesis; the re-export holds the same records in order, each article's two identities the BLAKE3 identities of its Message-ID and payload, every other item equal, every MANIFEST line BLAKE3."
+      ],
+      "implementation": {
+        "test": "tests.test_native_format_9_migration",
+        "cases": [
+          "FormatNineMigrationTest.test_a_format_9_store_exports_there_and_imports_here_with_the_same_history"
+        ],
+        "native": true,
+        "record": "planning/evidence/format-bump-10-2026-09-28.md",
+        "log": "planning/evidence/format-bump-10-2026-09-28/native-n4-format_9_migration.log"
+      },
+      "evidence": [
+        "tests/test_native_format_9_migration.py",
+        "planning/evidence/format-bump-10-2026-09-28/native-n4-format_9_migration.log",
+        "planning/evidence/format-bump-10-2026-09-28.md"
+      ]
+    },
+    {
+      "id": "SCN-190",
+      "title": "Format 9 to 10 for every kind a format-9 node writes: signed composites, key statements, carried and revoked articles, keyring snapshots, consumer events and the topic install import with what they assert; a topic anchor is refused by name",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-028"
+      ],
+      "steps": [
+        "With the format-9 image: enrol a principal, grant it keys, POST a plain article, a succession key statement, an article under the successor keys and a revocation; IHAVE a carried statement and a post-revocation transit article; register a consumer; install the topic administrator; export. Import with this image; compare HDR :fn-verified of each signed article and hybrid-key-history before and after; export again and compare the archives per kind.",
+        "With the format-9 image: enrol, author the format-9 topic root, install, anchor; export; import with this image."
+      ],
+      "expected": [
+        "The import succeeds with no guard-checking line; the served verdicts and the key history are equal; every record is the archive's except the content identities (articles' two, a composite's content subject, embedded article identities and authored-source identity), which are the BLAKE3 identities an independent computation derives; keyring, consumer and topic-install records are byte-identical.",
+        "The import exits 1 with import refused reason=record-translation signed-format-9-identity sequence=N and publishes no store."
+      ],
+      "implementation": {
+        "test": "tests.test_native_format_9_every_kind",
+        "cases": [
+          "FormatNineEveryKindTest.test_every_translatable_kind",
+          "FormatNineEveryKindTest.test_a_topic_anchor_is_refused_by_name"
+        ],
+        "native": true,
+        "record": "planning/evidence/format10-import-2026-09-28.md",
+        "log": "planning/evidence/format10-import-2026-09-28/native-m4-format_9_every_kind.log"
+      },
+      "evidence": [
+        "tests/test_native_format_9_every_kind.py",
+        "planning/evidence/format10-import-2026-09-28/native-m4-format_9_every_kind.log",
+        "planning/evidence/format10-import-2026-09-28.md"
+      ]
+    },
+    {
       "id": "SCN-186",
       "title": "The snapshot page store: a commit writes only fresh pages and one record, a crash at every cut opens on the committed or the previous state, other roots and forks are untouched, allocation answers fresh addresses and reclamation never frees the reserved page or a page a valid record keeps",
       "milestone": "M5",
@@ -5476,64 +5566,6 @@
         "record": "planning/evidence/web-native-2026-09-28.md",
         "log": "planning/evidence/web-native-2026-09-28/native-w4c.log"
       }
-    },
-    {
-      "id": "SCN-188",
-      "title": "The genesis is read only where it must be: two stores holding one history under two genesis records fold the same state, and a damaged or swapped genesis is refused",
-      "milestone": "M5",
-      "status": "implemented",
-      "requirements": [
-        "STO-036"
-      ],
-      "steps": [
-        "Export the mixed store, import the archive twice (each import draws its own genesis), run store digest on both; copy one, flip one octet of journal/000000.log and open it; copy one, put the other's genesis in its place and open it."
-      ],
-      "expected": [
-        "Every digest line of the two imports but digest genesis is equal and digest genesis differs; the damaged copy is refused reason=genesis-damaged, exit 1; the swapped copy is refused and prints no state digest."
-      ],
-      "implementation": {
-        "test": "tests.test_native_replay_determinism",
-        "cases": [
-          "NativeReplayDeterminismTests.test_g_the_genesis_is_read_only_where_it_must_be"
-        ],
-        "native": true,
-        "record": "planning/evidence/format-bump-10-2026-09-28.md",
-        "log": "planning/evidence/format-bump-10-2026-09-28/native-n4-replay_determinism.log"
-      },
-      "evidence": [
-        "tests/test_native_replay_determinism.py",
-        "planning/evidence/format-bump-10-2026-09-28/native-n4-replay_determinism.log",
-        "planning/evidence/format-bump-10-2026-09-28.md"
-      ]
-    },
-    {
-      "id": "SCN-189",
-      "title": "Format 9 to 10 across a reinstall: refused here by name, exported there, imported here with the same records and BLAKE3 identities",
-      "milestone": "M5",
-      "status": "implemented",
-      "requirements": [
-        "STO-028"
-      ],
-      "steps": [
-        "Open a format-9 store with this image; export it with the format-9 image; import the archive with this image; export the imported store; compare the two archives record by record."
-      ],
-      "expected": [
-        "The open exits 1 with open refused reason=store-format-9 and the way out, the store unchanged; the import succeeds with a new genesis; the re-export holds the same records in order, each article's two identities the BLAKE3 identities of its Message-ID and payload, every other item equal, every MANIFEST line BLAKE3."
-      ],
-      "implementation": {
-        "test": "tests.test_native_format_9_migration",
-        "cases": [
-          "FormatNineMigrationTest.test_a_format_9_store_exports_there_and_imports_here_with_the_same_history"
-        ],
-        "native": true,
-        "record": "planning/evidence/format-bump-10-2026-09-28.md",
-        "log": "planning/evidence/format-bump-10-2026-09-28/native-n4-format_9_migration.log"
-      },
-      "evidence": [
-        "tests/test_native_format_9_migration.py",
-        "planning/evidence/format-bump-10-2026-09-28/native-n4-format_9_migration.log",
-        "planning/evidence/format-bump-10-2026-09-28.md"
-      ]
     }
   ]
 }
