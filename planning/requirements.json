@@ -5015,6 +5015,26 @@
         "planning/evidence/health-truth-journal-2026-09-28.md"
       ],
       "implementation_note": "Lane health-truth-journal (PKT-872). ENOSPC mid-line used to leave torn octets the next entry was appended after (fitness f2-full: malformed-at-18416 forever). The writer's rule is ACL2's (books/owner-time-journal-writer.lisp); the host truncates with ftruncate, which needs no free space. A developer selector FN_NATIVE_TEST_JOURNAL_FAIL_FILE injects the failure."
+    },
+    {
+      "id": "NNT-054",
+      "title": "COMPRESS DEFLATE (RFC 8054): a client may compress its session after authentication; the inbound stream is decoded by ACL2, bounded, resumable and bomb-refusing, the outbound by vendored zlib behind the trust boundary",
+      "specification": "specs/nntp.md#compression-compress-nnt-054-nnt-055",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-909",
+        "PRF-910"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/deflate-inflate.lisp",
+        "tests/acl2/deflate-inflate-tests.lisp",
+        "specs/nntp.md"
+      ]
     }
   ]
 }

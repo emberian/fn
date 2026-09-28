@@ -200,12 +200,13 @@
 ;   [320, 336)   literal/length counts per bit length 0..15
 ;   [336, 624)   literal/length symbols (288)
 ;   [624, 640)   distance counts
-;   [640, 670)   distance symbols (30)
-;   [670, 686)   code-length-code counts
-;   [686, 705)   code-length-code symbols (19)
-;   [705, 721)   scratch: the offsets while a table is built
-(defconst *fn-zin-tab-entries* 721)
-(defconst *fn-zin-tab-octets* 1442)
+;   [640, 672)   distance symbols (32: the fixed code has 30 and 31, which
+;                no stream may use, as zlib's does)
+;   [672, 688)   code-length-code counts
+;   [688, 707)   code-length-code symbols (19)
+;   [707, 723)   scratch: the offsets while a table is built
+(defconst *fn-zin-tab-entries* 723)
+(defconst *fn-zin-tab-octets* 1446)
 
 (defun fn-zin-buffer-sizes ()
   ; What the host reserves per connection: the window, the table (fixed
@@ -217,22 +218,22 @@
 ; The three Huffman tables: (COUNT-BASE SYMBOL-BASE SYMBOLS).
 (defun fn-zin-cnt-base (tb)
   (declare (xargs :guard t))
-  (case tb (0 320) (1 624) (otherwise 670)))
+  (case tb (0 320) (1 624) (otherwise 672)))
 (defun fn-zin-sym-base (tb)
   (declare (xargs :guard t))
-  (case tb (0 336) (1 640) (otherwise 686)))
+  (case tb (0 336) (1 640) (otherwise 688)))
 (defun fn-zin-sym-max (tb)
   (declare (xargs :guard t))
-  (case tb (0 288) (1 30) (otherwise 19)))
+  (case tb (0 288) (1 32) (otherwise 19)))
 
 (defthm fn-zin-table-bases
-  (and (natp (fn-zin-cnt-base tb)) (<= (+ 16 (fn-zin-cnt-base tb)) 705)
+  (and (natp (fn-zin-cnt-base tb)) (<= (+ 16 (fn-zin-cnt-base tb)) 707)
        (natp (fn-zin-sym-base tb)) (natp (fn-zin-sym-max tb))
-       (<= (+ (fn-zin-sym-base tb) (fn-zin-sym-max tb)) 705))
+       (<= (+ (fn-zin-sym-base tb) (fn-zin-sym-max tb)) 707))
   :rule-classes ((:linear :corollary
-                  (and (<= 0 (fn-zin-cnt-base tb)) (<= (+ 16 (fn-zin-cnt-base tb)) 705)
+                  (and (<= 0 (fn-zin-cnt-base tb)) (<= (+ 16 (fn-zin-cnt-base tb)) 707)
                        (<= 0 (fn-zin-sym-base tb)) (<= 0 (fn-zin-sym-max tb))
-                       (<= (+ (fn-zin-sym-base tb) (fn-zin-sym-max tb)) 705)))
+                       (<= (+ (fn-zin-sym-base tb) (fn-zin-sym-max tb)) 707)))
                  (:type-prescription :corollary (natp (fn-zin-cnt-base tb)))
                  (:type-prescription :corollary (natp (fn-zin-sym-base tb)))
                  (:type-prescription :corollary (natp (fn-zin-sym-max tb)))))
@@ -472,9 +473,9 @@
 
 (defun fn-zin-zero-counts (k cb fn-zin-tab)
   (declare (xargs :stobjs fn-zin-tab
-                  :guard (and (natp k) (natp cb) (<= (+ cb 16) 705) (fn-zin-tab-okp fn-zin-tab))
+                  :guard (and (natp k) (natp cb) (<= (+ cb 16) 707) (fn-zin-tab-okp fn-zin-tab))
                   :measure (nfix (- 16 (nfix k)))))
-  (if (and (natp k) (< k 16) (natp cb) (<= (+ cb 16) 705))
+  (if (and (natp k) (< k 16) (natp cb) (<= (+ cb 16) 707))
       (let ((fn-zin-tab (fn-zin-tput (+ cb k) 0 fn-zin-tab)))
         (fn-zin-zero-counts (1+ k) cb fn-zin-tab))
     fn-zin-tab))
@@ -506,10 +507,10 @@
 (defun fn-zin-count-lens (s n lb cb fn-zin-tab)
   (declare (xargs :stobjs fn-zin-tab
                   :guard (and (natp s) (natp n) (natp lb) (<= (+ lb n) 320)
-                              (natp cb) (<= (+ cb 16) 705) (fn-zin-tab-okp fn-zin-tab))
+                              (natp cb) (<= (+ cb 16) 707) (fn-zin-tab-okp fn-zin-tab))
                   :measure (nfix (- (nfix n) (nfix s)))))
   (if (and (natp s) (natp n) (< s n) (natp lb) (<= (+ lb n) 320)
-           (natp cb) (<= (+ cb 16) 705))
+           (natp cb) (<= (+ cb 16) 707))
       (let* ((l (fn-zin-len-of (+ lb s) fn-zin-tab))
              (fn-zin-tab (fn-zin-tput (+ cb l) (1+ (fn-zin-tget (+ cb l) fn-zin-tab))
                                       fn-zin-tab)))
@@ -524,10 +525,10 @@
 (defun fn-zin-left (len left cb fn-zin-tab)
   ; Section 3.2.2's check, puff's loop: LEFT codes of length LEN - 1 unused.
   (declare (xargs :stobjs fn-zin-tab
-                  :guard (and (natp len) (integerp left) (natp cb) (<= (+ cb 16) 705)
+                  :guard (and (natp len) (integerp left) (natp cb) (<= (+ cb 16) 707)
                               (fn-zin-tab-okp fn-zin-tab))
                   :measure (nfix (- 16 (nfix len)))))
-  (if (and (natp len) (< len 16) (natp cb) (<= (+ cb 16) 705) (integerp left))
+  (if (and (natp len) (< len 16) (natp cb) (<= (+ cb 16) 707) (integerp left))
       (let ((left (- (* 2 left) (fn-zin-tget (+ cb len) fn-zin-tab))))
         (if (< left 0)
             left
@@ -537,11 +538,11 @@
 (defun fn-zin-offsets (len off cb fn-zin-tab)
   ; The scratch offsets: the first symbol index of each length.
   (declare (xargs :stobjs fn-zin-tab
-                  :guard (and (natp len) (natp off) (natp cb) (<= (+ cb 16) 705)
+                  :guard (and (natp len) (natp off) (natp cb) (<= (+ cb 16) 707)
                               (fn-zin-tab-okp fn-zin-tab))
                   :measure (nfix (- 16 (nfix len)))))
-  (if (and (natp len) (< len 16) (natp cb) (<= (+ cb 16) 705) (natp off))
-      (let ((fn-zin-tab (fn-zin-tput (+ 705 len) off fn-zin-tab)))
+  (if (and (natp len) (< len 16) (natp cb) (<= (+ cb 16) 707) (natp off))
+      (let ((fn-zin-tab (fn-zin-tput (+ 707 len) off fn-zin-tab)))
         (fn-zin-offsets (1+ len) (+ off (fn-zin-tget (+ cb len) fn-zin-tab)) cb fn-zin-tab))
     fn-zin-tab))
 
@@ -553,18 +554,18 @@
 (defun fn-zin-place-syms (s n lb sb smax fn-zin-tab)
   (declare (xargs :stobjs fn-zin-tab
                   :guard (and (natp s) (natp n) (natp lb) (<= (+ lb n) 320)
-                              (natp sb) (natp smax) (<= (+ sb smax) 705)
+                              (natp sb) (natp smax) (<= (+ sb smax) 707)
                               (fn-zin-tab-okp fn-zin-tab))
                   :measure (nfix (- (nfix n) (nfix s)))))
   (if (and (natp s) (natp n) (< s n) (natp lb) (<= (+ lb n) 320)
-           (natp sb) (natp smax) (<= (+ sb smax) 705))
+           (natp sb) (natp smax) (<= (+ sb smax) 707))
       (let ((l (fn-zin-len-of (+ lb s) fn-zin-tab)))
         (if (eql l 0)
             (fn-zin-place-syms (1+ s) n lb sb smax fn-zin-tab)
-          (let ((o (fn-zin-tget (+ 705 l) fn-zin-tab)))
+          (let ((o (fn-zin-tget (+ 707 l) fn-zin-tab)))
             (if (< o smax)
                 (let* ((fn-zin-tab (fn-zin-tput (+ sb o) s fn-zin-tab))
-                       (fn-zin-tab (fn-zin-tput (+ 705 l) (1+ o) fn-zin-tab)))
+                       (fn-zin-tab (fn-zin-tput (+ 707 l) (1+ o) fn-zin-tab)))
                   (fn-zin-place-syms (1+ s) n lb sb smax fn-zin-tab))
               (fn-zin-place-syms (1+ s) n lb sb smax fn-zin-tab)))))
     fn-zin-tab))
@@ -769,16 +770,16 @@
 
 (defun fn-zin-fixed-tables (fn-zin-tab)
   ; RFC 1951 section 3.2.6: literal/length lengths 8 (0-143), 9 (144-255),
-  ; 7 (256-279), 8 (280-287); 30 distance codes of length 5.
+  ; 7 (256-279), 8 (280-287); 32 distance codes of length 5.
   (declare (xargs :stobjs fn-zin-tab :guard (fn-zin-tab-okp fn-zin-tab)))
   (let* ((fn-zin-tab (fn-zin-fill 0 144 8 fn-zin-tab))
          (fn-zin-tab (fn-zin-fill 144 112 9 fn-zin-tab))
          (fn-zin-tab (fn-zin-fill 256 24 7 fn-zin-tab))
          (fn-zin-tab (fn-zin-fill 280 8 8 fn-zin-tab))
-         (fn-zin-tab (fn-zin-fill 288 30 5 fn-zin-tab)))
+         (fn-zin-tab (fn-zin-fill 288 32 5 fn-zin-tab)))
     (mv-let (left fn-zin-tab) (fn-zin-construct 0 0 288 fn-zin-tab)
       (declare (ignore left))
-      (mv-let (left fn-zin-tab) (fn-zin-construct 1 288 30 fn-zin-tab)
+      (mv-let (left fn-zin-tab) (fn-zin-construct 1 288 32 fn-zin-tab)
         (declare (ignore left))
         fn-zin-tab))))
 
@@ -1130,6 +1131,16 @@
       (fn-zin-loop b start end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)
     (mv (list :refused :buffers) b start fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)))
 
+; The host entry is the loop once the buffers are ready: the resumption
+; keystones below are stated over the loop and hold of the entry by this.
+(defthm fn-zin-feed-unfolds
+  (implies (and (equal (len fn-zin-win) *fn-zin-window*)
+                (equal (len fn-zin-tab) *fn-zin-tab-octets*))
+           (equal (fn-zin-feed b fn-zin-st start end lim fn-octets fn-zin-win fn-zin-tab
+                               fn-zin-out)
+                  (fn-zin-loop b start end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
+                               fn-zin-out))))
+
 (defun fn-zin-refusal-text (why)
   ; The service log's line for a refused stream (the connection closes;
   ; RFC 8054 section 2.2.2 sends nothing more).
@@ -1280,15 +1291,15 @@
 (local (in-theory (disable fn-zin-pull fn-zin-need)))
 
 (defthm fn-zin-loop-counts
-  (implies (natp ip)
-           (let ((r (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
-             (and (natp (mv-nth 2 r))
-                  (<= ip (mv-nth 2 r))
-                  (equal (fn-zin-fld 7 (mv-nth 3 r))
-                         (+ (fn-zin-fld 7 fn-zin-st) (- (mv-nth 2 r) ip)))
-                  (equal (fn-zin-fld 6 (mv-nth 3 r))
-                         (+ (fn-zin-fld 6 fn-zin-st) (- (len (mv-nth 6 r)) (len fn-zin-out))))
-                  (implies (fn-zin-bomb-okp fn-zin-st) (fn-zin-bomb-okp (mv-nth 3 r))))))
+  (let ((r (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
+    (and (implies (natp ip)
+                  (and (natp (mv-nth 2 r))
+                       (<= ip (mv-nth 2 r))))
+         (equal (fn-zin-fld 7 (mv-nth 3 r))
+                (+ (fn-zin-fld 7 fn-zin-st) (- (mv-nth 2 r) ip)))
+         (equal (fn-zin-fld 6 (mv-nth 3 r))
+                (+ (fn-zin-fld 6 fn-zin-st) (- (len (mv-nth 6 r)) (len fn-zin-out))))
+         (implies (fn-zin-bomb-okp fn-zin-st) (fn-zin-bomb-okp (mv-nth 3 r)))))
   :hints (("Goal" :induct (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)
            :in-theory (disable fn-zin-bomb-okp))))
 
@@ -1297,7 +1308,7 @@
 ; the real output: the octets appended are what TOTAL-OUT counts, the
 ; octets read what TOTAL-IN counts.
 (defthm fn-zin-feed-bomb-bound
-  (implies (and (fn-zin-bomb-okp fn-zin-st) (natp start))
+  (implies (fn-zin-bomb-okp fn-zin-st)
            (let ((r (fn-zin-feed b fn-zin-st start end lim fn-octets fn-zin-win fn-zin-tab
                                  fn-zin-out)))
              (and (fn-zin-bomb-okp (mv-nth 3 r))

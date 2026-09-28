@@ -1861,6 +1861,51 @@ the wire before the reply to any command after it. Before PKT-600 was
 repaired the second article of a read was never admitted and never
 answered.
 
+## Compression: COMPRESS (NNT-054, NNT-055)
+
+RFC 8054 adds `COMPRESS DEFLATE`: after `206`, every octet in both
+directions is a raw DEFLATE stream (RFC 1951), flushed after each response
+(section 2.2.2). fn serves it and an fn extension, `COMPRESS LZ4`
+(docs/extensions/nntp-compress-lz4.md, NNT-055; the codec is held until the
+compression survey's recommendation lands).
+
+What the RFC requires, and where fn stands:
+
+- **RFC requirement.** The label is `COMPRESS` with the algorithm list, never
+  advertised once a layer is active; a second `COMPRESS`, `STARTTLS` or
+  `AUTHINFO` after `206` is `502`; an unknown algorithm is `503`, a malformed
+  one `501`; the command is not pipelined (section 2.2.2). Invalid compressed
+  data closes the connection.
+- **Stronger fn guarantee: the inbound stream is decoded in ACL2.** The
+  client's stream is untrusted input on the served path, so its decoder is
+  `fn-zin-feed` (books/deflate-inflate.lisp, PRF-909): total and
+  guard-verified, a call bounded by its budget, its input and an output
+  bound LIM that the host sets to one served read (D27: a quantum yields,
+  never truncates). KEYSTONES `fn-zin-loop-split-input`,
+  `fn-zin-loop-split-budget`, `fn-zin-loop-out-free`, `fn-zin-loop-is-run`
+  and `fn-zin-run-append`: calls over whatever reads the network delivered,
+  in whatever quanta, are one run over the concatenated stream.
+  Malformed streams are refused by name (`fn-zin-refusal-text`: block type
+  3, stored LEN/NLEN, code counts, incomplete or over-subscribed codes, an
+  unassigned bit sequence, length code 286/287, distance code 30/31, a
+  distance before the stream's first octet).
+- **Stronger fn guarantee: the bomb is refused by name (PRF-910).** The
+  plaintext a connection's stream produces never exceeds 256 times the
+  compressed octets it read plus 65,536 (KEYSTONE `fn-zin-feed-bomb-bound`,
+  about the octets actually appended); the octet that would pass it is
+  refused (`compress-bomb`) and the connection closes. DEFLATE's own
+  ceiling is about 1032:1; NNTP commands and articles compress 2 to 10
+  times.
+- **Local policy.** A final block (BFINAL) ends the client's layer, which
+  RFC 8054 never ends; fn refuses it by name (`compress-ended`) and closes.
+- **Trust boundary: the outbound stream is zlib's.** The server's own
+  stream is written by vendored zlib 1.3.1 (host/native/fn-deflate.c,
+  `deflateInit2` with negative window bits, `Z_SYNC_FLUSH` after each
+  rendered window, RFC 8054 section 4). libdeflate cannot write it: its
+  streams always end with a final block. A zlib fault can only garble what
+  the server sends; nothing the server reads or stores passes through it,
+  and ACL2 decides every octet before it is compressed.
+
 ## Scope
 
 No moderation, automated control-message execution, private-mail confidentiality,
