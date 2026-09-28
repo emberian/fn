@@ -1488,3 +1488,55 @@
                            (fn-native-operator-run *fn-nop-minimal-config*
                                                    (fn-nop-test-argv '("account" "delete"))))
                           :accepted)))
+
+; PRF-388 (PKT-560): `principal bind|unbind' carries the `account
+; bind|unbind' plan of the same words, which the host dispatches when the
+; credential file does not hold the login.
+(defconst *fn-nop-hex* (coerce (make-list 64 :initial-element #\5) 'string))
+(defconst *fn-nop-principal-bind*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv (list "principal" "bind" "robin" *fn-nop-hex*))))
+(defconst *fn-nop-principal-bind-account*
+  (fn-native-operator-result-principal-account-result *fn-nop-principal-bind*))
+(assert-event
+ (and (equal (fn-native-operator-result-native-action *fn-nop-principal-bind*) :principal)
+      (equal (fn-native-auth-admin-action-kind
+              (fn-native-operator-result-principal-plan *fn-nop-principal-bind*))
+             :bind)
+      (equal (fn-native-operator-result-status *fn-nop-principal-bind-account*) :accepted)
+      (equal (fn-native-operator-result-command *fn-nop-principal-bind-account*) "account")
+      (equal (fn-native-operator-result-native-action *fn-nop-principal-bind-account*)
+             :admin)
+      (equal (fn-native-admin-result-kind
+              (fn-native-operator-result-admin-plan *fn-nop-principal-bind-account*))
+             :account-bind)
+      (equal (fn-native-admin-result-name
+              (fn-native-operator-result-admin-plan *fn-nop-principal-bind-account*))
+             (fn-record-string-octets "robin"))
+      (equal (fn-native-admin-result-value
+              (fn-native-operator-result-admin-plan *fn-nop-principal-bind-account*))
+             (fn-record-string-octets *fn-nop-hex*))
+      (equal (fn-native-operator-result-admin-argv *fn-nop-principal-bind-account*)
+             (fn-nop-test-argv (list "account" "bind" "robin" *fn-nop-hex*)))))
+(assert-event
+ (let ((account (fn-native-operator-result-principal-account-result
+                 (fn-native-operator-run *fn-nop-minimal-config*
+                                         (fn-nop-test-argv '("principal" "unbind" "robin"))))))
+   (and (equal (fn-native-admin-result-kind (fn-native-operator-result-admin-plan account))
+               :account-bind)
+        (null (fn-native-admin-result-value (fn-native-operator-result-admin-plan account)))
+        (equal (fn-native-operator-result-admin-argv account)
+               (fn-nop-test-argv '("account" "unbind" "robin"))))))
+; `principal list' and `set-password' carry none.
+(assert-event (null (fn-native-operator-result-principal-account-result
+                     *fn-nop-principal-list*)))
+; The admin grammar alone: a principal that is not 64 hex digits is refused
+; by name, a login outside the account grammar is refused.
+(assert-event (equal (fn-native-admin-result-reason
+                      (fn-native-admin-plan
+                       (fn-nop-test-argv (list "account" "bind" "robin" "55"))))
+                     :principal))
+(assert-event (equal (fn-native-admin-result-reason
+                      (fn-native-admin-plan
+                       (fn-nop-test-argv (list "account" "unbind" "a b"))))
+                     :account-login))

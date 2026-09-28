@@ -59,11 +59,12 @@
                       *fnn-owner-log-path* log-path)
                 (fnn-operator-log-run-line
                  (fnn-core 'fn-native-health-host-run-started-line)))
-              ;; ACL2 already enforced paired presence.  Only a successfully
-              ;; loaded and key-checked context is passed to auth/owner.
+              ;; ACL2 already enforced paired presence.  Only a pair ACL2
+              ;; accepted (fn-tlsr-start-decide, the decision `tls reload'
+              ;; applies; PRF-387) is passed to auth/owner.
               (when certificate
                 (setq tls-context
-                      (fnn-tls-open-context certificate private-key)))
+                      (fnn-tls-start-context certificate private-key)))
               (let* ((web-plan
                        ;; The node's own web face (PRF-340): ACL2's plan of
                        ;; the profile's [web] table, or NIL for none.
@@ -237,13 +238,22 @@ profile bounds the credentials (max-credentials, D27, PRF-102)."
                           result)))
             (and (fnn-octet-list-p control) (consp control)
                  (fnn-octets-string (fnn-octets control))))))
-    (fnn-native-auth-admin-execute
-     (fnn-core 'fn-native-operator-host-result-principal-plan result)
-     (fnn-octets-string
-      (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
-                result))
-     (fnn-operator-store-max-credentials
-      (fnn-core 'fn-native-operator-host-result-store-root result)))))
+    (let ((code (fnn-native-auth-admin-execute
+                 (fnn-core 'fn-native-operator-host-result-principal-plan result)
+                 (fnn-octets-string
+                  (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
+                            result))
+                 (fnn-operator-store-max-credentials
+                  (fnn-core 'fn-native-operator-host-result-store-root result)))))
+      ;; PRF-388 (PKT-560): ACL2 answered that the credential file does not
+      ;; hold the login of `bind|unbind' (:account); its `account
+      ;; bind|unbind' result is dispatched like any operator result, live to
+      ;; the owner or offline into the store, where fn-lb-account-bind-plan
+      ;; admits it only for a redeemed account.
+      (if (eq code :account)
+          (fnn-operator-dispatch-plan
+           (fnn-core 'fn-native-operator-host-result-principal-account-result result))
+        code))))
 
 ;;; The running owner, as operator.lisp's offline verbs ask it.
 

@@ -34,6 +34,17 @@
                   (fn-native-admin-plan-deltas-over
                    plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))))))
     (cond
+     ;; PRF-388 (PKT-560): `account bind|unbind' is planned over the live
+     ;; owner's configuration (books/login-binding-live.lisp
+     ;; fn-lb-account-bind-plan): its record, or a refusal by name.
+     ((equal (fn-native-admin-result-kind plan) :account-bind)
+      (let ((account-plan (fn-lb-account-bind-plan
+                           (fn-native-admin-result-name plan)
+                           (fn-native-admin-result-value plan)
+                           (fn-cfg-value (fn-owner-config state)))))
+        (if (equal (car account-plan) :ok)
+            (fn-owner-reconfigure-deltas id (cadr account-plan) fn-arena state)
+          (value (fn-ores-config-refused (cadr account-plan))))))
      ;; PKT-709: a bind of a consumer name no registration declared is
      ;; refused by name (books/consumer-owner-local.lisp fn-col-bind-refusal).
      ((and (equal (fn-native-admin-result-kind plan) :consumer-bind)
@@ -55,7 +66,19 @@
   ;; builds carries it unchanged (PRF-378, PRF-379).
   (declare (xargs :stobjs state :mode :program))
   (let ((kind (fn-native-admin-result-kind plan)))
-    (cond ;; PKT-709: offline, a bind of an unregistered consumer name is
+    (cond ;; PRF-388 (PKT-560): offline, `account bind|unbind' over the
+          ;; opened Store's configuration (fn-lb-account-bind-plan).
+          ((equal kind :account-bind)
+           (let ((account-plan (fn-lb-account-bind-plan
+                                (fn-native-admin-result-name plan)
+                                (fn-native-admin-result-value plan)
+                                (fn-cfg-value (f-get-global 'fn-store-cfg state)))))
+             (if (equal (car account-plan) :ok)
+                 (fn-store-cfg-peer-delta-record (cadr account-plan) stamp state)
+               (let ((state (f-put-global 'fn-store-cfg-last-reason
+                                          (cadr account-plan) state)))
+                 (value :refused)))))
+          ;; PKT-709: offline, a bind of an unregistered consumer name is
           ;; refused by name over the opened Store (fn-col-bind-refusal).
           ((and (equal kind :consumer-bind)
                 (fn-col-bind-refusal (fn-sn-consumer (f-get-global 'fn-store-sn state))

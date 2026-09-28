@@ -175,9 +175,11 @@ class NativeStartTlsTests(unittest.TestCase):
         _, wrong_key = self.make_certificate("wrong")
         self.write_config(self.certificate, wrong_key)
         result = self.node.operator("run", "--once")
-        self.assertEqual(result.returncode, EXIT.FAULT, result.stderr.decode())
+        # PRF-387 (PKT-606): ACL2's start decision refuses the pair by name
+        # (exit 1, `refused'), the decision `tls reload' applies.
+        self.assertEqual(result.returncode, EXIT.REFUSED, result.stderr.decode())
         self.assertNotIn(b"LISTENING ", result.stdout)
-        self.assertIn(b"mismatch", result.stderr.lower())
+        self.assertIn(b"refused operator run tls key-mismatch", result.stderr)
 
     def assertClosedAfterFailedHandshake(self, sock: socket.socket) -> None:
         """The server closes after a malformed ClientHello, sending at most one
@@ -208,7 +210,7 @@ class NativeStartTlsTests(unittest.TestCase):
 
     def test_protocol_floor_refuses_tls_1_1(self) -> None:
         """The listener's TLS 1.2 floor (host/native/tls.lisp
-        fnn-tls-open-context, SSL_CTX_ctrl 123) holds under whichever library
+        fnn-tls-server-candidate, SSL_CTX_ctrl 123) holds under whichever library
         the node loaded, OpenSSL 3+ or LibreSSL 3+ (HST-016). Refuted: a
         ServerHello (or any handshake record) answering a TLS 1.1-only
         ClientHello; a non-fatal alert or one other than protocol_version (70);

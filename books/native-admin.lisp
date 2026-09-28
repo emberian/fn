@@ -730,6 +730,30 @@
             (fn-native-admin-result :accepted nil :account-delete (caddr argv)
                                     0 nil nil)
           (fn-native-admin-result :refused :account-login nil nil 0 nil nil)))
+       ; PRF-388 (PKT-560): `account bind LOGIN HEX' and `account unbind
+       ; LOGIN', the vector `principal bind|unbind' sends for a login the
+       ; credential file does not hold (books/native-operator.lisp
+       ; fn-native-operator-result-principal-account-result).  One
+       ; :login-binding record (code 17), offline or live, which
+       ; books/login-binding-live.lisp fn-lb-account-bind-plan admits only
+       ; while LOGIN holds a redeemed account; HEX is the principal's 64
+       ; lowercase hexadecimal digits.
+       ((and (equal (len words) 4)
+             (equal (car words) "account")
+             (equal (cadr words) "bind"))
+        (cond ((not (fn-cfg-account-loginp (caddr words)))
+               (fn-native-admin-result :refused :account-login nil nil 0 nil nil))
+              ((not (fn-cfg-hex-textp (cadddr words) 64))
+               (fn-native-admin-result :refused :principal nil nil 0 nil nil))
+              (t (fn-native-admin-result :accepted nil :account-bind (caddr argv)
+                                         0 nil (cadddr argv)))))
+       ((and (equal (len words) 3)
+             (equal (car words) "account")
+             (equal (cadr words) "unbind"))
+        (if (fn-cfg-account-loginp (caddr words))
+            (fn-native-admin-result :accepted nil :account-bind (caddr argv)
+                                    0 nil nil)
+          (fn-native-admin-result :refused :account-login nil nil 0 nil nil)))
        ((and (consp words) (equal (car words) "account"))
         (fn-native-admin-result :refused :account nil nil 0 nil nil))
        ; PRF-234: consumer bindings (books/consumer-bound.lisp).  `consumer
