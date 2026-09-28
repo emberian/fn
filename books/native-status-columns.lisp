@@ -255,10 +255,10 @@
                    (fn-sbud-bytes-extend cache (fn-sf-records (fn-sn-files s)))
                    (fn-ocfg-config oc) (fn-ocfg-pins oc) obs fn-arena fn-cat)))
 
-(defun fn-nsc-answer-report (kind profile oc cache obs min fn-arena fn-cat)
+(defun fn-nsc-answer-report (kind profile oc cache obs min disk fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :guard t :verify-guards nil))
   (if (equal kind :health)
-      (fn-nh-live-report profile oc cache min)
+      (fn-nh-live-report profile oc cache min disk)
     (fn-nsc-live-report kind profile oc cache obs fn-arena fn-cat)))
 
 ; KEYSTONE (the owner's report is the report).  The subject is
@@ -270,8 +270,8 @@
 ; is about the words the owner sends.
 (defthm fn-nsc-answer-report-is-answer-report
   (implies (fn-scol-okp fn-arena fn-cat)
-           (equal (fn-nsc-answer-report kind profile oc cache obs min fn-arena fn-cat)
-                  (fn-nh-answer-report kind profile oc cache obs min fn-arena)))
+           (equal (fn-nsc-answer-report kind profile oc cache obs min disk fn-arena fn-cat)
+                  (fn-nh-answer-report kind profile oc cache obs min disk fn-arena)))
   :hints (("Goal" :in-theory '(fn-nsc-answer-report fn-nh-answer-report
                                fn-nsc-live-report fn-nls-live-report
                                fn-nsc-report-is-report))))

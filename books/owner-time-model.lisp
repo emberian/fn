@@ -338,6 +338,146 @@
           (fn-osch-text ", try again later")
           (list 13 10)))
 
+;; -----------------------------------------------------------------------------
+;; The disk's free space (lane health-truth, 2026-09-28; PRF-359, PKT-872;
+;; slice 3's `full' mode of planning/design-time-model-2026-09-27.md).
+;;
+;; A full filesystem was found by the append: the batch's write failed
+;; ENOSPC after its members had sent their articles, the barrier failed and
+;; the owner stopped uncertain (a recovery event), or, with the segment
+;; preallocated, nothing refused anything while the journal tore (lane
+;; fitness, f2-full).  Now the free space is an OBSERVATION the host records
+;; like a clock reading: a :space event carries the free octets statvfs
+;; reported for the store's filesystem (host/native/io.lisp
+;; fnn-disk-free-octets; nil when it could not observe) and the NEED ACL2
+;; computed for the live profile (fn-otm-space-need: the maintenance
+;; reserve PRF-129 keeps, plus two batches' octets, plus the operator's
+;; `disk-reserve-octets' row).  Below the need the disk is :full, and
+;; fn-otm-admit-post sheds exactly as it does while :slow: a POST is
+;; refused at its command, 440 with the reason, before any octet of its
+;; article is read (PRF-323's fn-otm-read-span-while-shedding holds of any
+;; :shed); an IHAVE 436, a CHECK 431; nothing is stored.  The next
+;; observation with room recovers: no operator action.
+;;
+;; The observation is recorded in the clock C (the recorded environment,
+;; design section 3.7), as SPACE = (FREE NEED SEEN HAS): HAS 1 when the
+;; host observed, 0 when statvfs failed (unobserved: never :full, and
+;; health says unobserved -- ENOSPC at the append then stays the recovery
+;; event it was); SEEN the recorded time of the observation.
+
+;; The operator's extra reserve when the `disk-reserve-octets' row is unset:
+;; 64 MiB (the decision journal, the service log and a checkpoint's
+;; temporary file live on the same filesystem).
+(defconst *fn-otm-space-extra-default* 67108864)
+
+(defun fn-otm-space-extra-of-limit (n)
+  (declare (xargs :guard t))
+  (if (posp n) n *fn-otm-space-extra-default*))
+
+;; THE NEED (host/owner-host.lisp fn-owner-space-need, from the live
+;; configuration's batch octet bound fn-olr-omax, PRF-129's
+;; fn-smr-reserve-octets and the `disk-reserve-octets' row): the reserve,
+;; two batches (the one in flight and the one a POST admitted now joins),
+;; and the operator's extra.
+(defun fn-otm-space-need (omax reserve extra)
+  (declare (xargs :guard t))
+  (+ (nfix reserve) (* 2 (nfix omax)) (fn-otm-space-extra-of-limit extra)))
+
+;; A :space event's argument, (FREE NEED) from the host or (FREE NEED HAS)
+;; from the journal, as the three naturals the journal keeps.
+(defun fn-otm-space-arg (arg)
+  (declare (xargs :guard t))
+  (let ((free (if (consp arg) (car arg) nil))
+        (need (if (and (consp arg) (consp (cdr arg))) (cadr arg) 0)))
+    (list (nfix free) (nfix need)
+          (if (and (consp arg) (consp (cdr arg)) (consp (cddr arg)))
+              (if (equal (caddr arg) 1) 1 0)
+            (if (natp free) 1 0)))))
+
+(defun fn-otm-space-observe (arg now)
+  (declare (xargs :guard t))
+  (let ((a (fn-otm-space-arg arg)))
+    (list (car a) (cadr a) (nfix now) (caddr a))))
+
+(defun fn-otm-sp-free (sp) (declare (xargs :guard t)) (fn-otm-nth-nat 0 sp))
+(defun fn-otm-sp-need (sp) (declare (xargs :guard t)) (fn-otm-nth-nat 1 sp))
+(defun fn-otm-sp-seen (sp) (declare (xargs :guard t)) (fn-otm-nth-nat 2 sp))
+(defun fn-otm-sp-observedp (sp)
+  (declare (xargs :guard t))
+  (equal (fn-otm-nth-nat 3 sp) 1))
+
+;; :full, :room or :unobserved.
+(defun fn-otm-sp-status (sp)
+  (declare (xargs :guard t))
+  (cond ((not (fn-otm-sp-observedp sp)) :unobserved)
+        ((< (fn-otm-sp-free sp) (fn-otm-sp-need sp)) :full)
+        (t :room)))
+
+;; The word a :space event answers: the change of status it records.
+(defun fn-otm-space-word (sp sp2)
+  (declare (xargs :guard t))
+  (let ((a (fn-otm-sp-status sp)) (b (fn-otm-sp-status sp2)))
+    (cond ((eq a b) :none)
+          ((eq b :full) :became-full)
+          ((eq a :full) (if (eq b :room) :space-recovered :space-unobserved))
+          ((eq b :unobserved) :space-unobserved)
+          (t :none))))
+
+;; The line health and status print for the space, and the reason a POST
+;; refused for it names.
+(defun fn-otm-space-line (sp)
+  (declare (xargs :guard t))
+  (case (fn-otm-sp-status sp)
+    (:full (append (fn-osch-text "disk full:")
+                   (fn-osch-kv "free-octets" (fn-otm-sp-free sp))
+                   (fn-osch-kv "need-octets" (fn-otm-sp-need sp))
+                   (fn-osch-text " posts=try-later")
+                   (list 10)))
+    (:room (append (fn-osch-text "disk space:")
+                   (fn-osch-kv "free-octets" (fn-otm-sp-free sp))
+                   (fn-osch-kv "need-octets" (fn-otm-sp-need sp))
+                   (list 10)))
+    (otherwise (append (fn-osch-text "disk space: unobserved (statvfs gave nothing; an append that finds the disk full is a recovery event)")
+                       (list 10)))))
+
+(defun fn-otm-full-reason (sp)
+  (declare (xargs :guard t))
+  (append (fn-osch-text "the disk is full (")
+          (fn-osch-decimal (fn-otm-sp-free sp))
+          (fn-osch-text " octets free, ")
+          (fn-osch-decimal (fn-otm-sp-need sp))
+          (fn-osch-text " needed)")))
+
+(defun fn-otm-full-shed-line (sp)
+  (declare (xargs :guard t))
+  (append (fn-osch-text "441 posting failed; ")
+          (fn-otm-full-reason sp)
+          (fn-osch-text ": nothing was stored, try again later")
+          (list 13 10)))
+
+(defun fn-otm-full-post-command-line (sp)
+  (declare (xargs :guard t))
+  (append (fn-osch-text "440 posting not permitted now; ")
+          (fn-otm-full-reason sp)
+          (fn-osch-text ", try again later")
+          (list 13 10)))
+
+(defun fn-otm-space-log-line (word sp)
+  (declare (xargs :guard t))
+  (cond ((eq word :became-full)
+         (append (fn-osch-text "disk full: ")
+                 (fn-osch-decimal (fn-otm-sp-free sp))
+                 (fn-osch-text " octets free, ")
+                 (fn-osch-decimal (fn-otm-sp-need sp))
+                 (fn-osch-text " needed; new posts are refused try-later until there is room")))
+        ((eq word :space-recovered)
+         (append (fn-osch-text "disk space recovered: ")
+                 (fn-osch-decimal (fn-otm-sp-free sp))
+                 (fn-osch-text " octets free")))
+        ((eq word :space-unobserved)
+         (fn-osch-text "disk space unobserved: statvfs gave nothing for the store's filesystem"))
+        (t nil)))
+
 ; -----------------------------------------------------------------------------
 ; The scheduler's value: (OCP DISK CLOCK).  CLOCK is the recorded time
 ; (design section 3.7): (NOW REGRESSIONS JSEQ), NOW the largest reading the
@@ -370,6 +510,11 @@
   (declare (xargs :guard t))
   (if (and (consp c) (consp (cdr c)) (consp (cddr c))) (nfix (caddr c)) 0))
 
+;; The recorded space observation (PRF-359): nil until the first :space.
+(defun fn-otm-c-space (c)
+  (declare (xargs :guard t))
+  (if (and (consp c) (consp (cdr c)) (consp (cddr c)) (consp (cdddr c))) (cadddr c) nil))
+
 (defun fn-otm-now (s)
   (declare (xargs :guard t))
   (fn-otm-c-now (fn-otm-clock s)))
@@ -382,13 +527,17 @@
   (declare (xargs :guard t))
   (fn-otm-c-jseq (fn-otm-clock s)))
 
+(defun fn-otm-space (s)
+  (declare (xargs :guard t))
+  (fn-otm-c-space (fn-otm-clock s)))
+
 (defun fn-otm-make (ocp d clock)
   (declare (xargs :guard t))
   (list ocp d clock))
 
 (defun fn-otm-init ()
   (declare (xargs :guard t))
-  (fn-otm-make (fn-ocp-init) (fn-otm-disk-init) (list 0 0 0)))
+  (fn-otm-make (fn-ocp-init) (fn-otm-disk-init) (list 0 0 0 nil)))
 
 ; The host's entries.  The four the gate and the committer already made are
 ; the pipeline's over OCP, the disk and the clock kept.
@@ -427,13 +576,18 @@
          (before (fn-otm-c-now c))
          (regressed (< r before))
          (now (if regressed before r))
+         (sp (fn-otm-c-space c))
+         (sp2 (if (eq kind :space) (fn-otm-space-observe arg now) sp))
          (c2 (list now
                    (if regressed (+ 1 (fn-otm-c-regressions c)) (fn-otm-c-regressions c))
-                   (+ 1 (fn-otm-c-jseq c)))))
+                   (+ 1 (fn-otm-c-jseq c))
+                   sp2)))
     (mv-let (word d2)
       (cond ((or (eq kind :clock) (eq kind :served)) (fn-otm-disk-tick d now))
             ((eq kind :issue) (fn-otm-disk-issue d now arg))
             ((eq kind :return) (fn-otm-disk-return d now))
+            ;; PRF-359: a space observation changes the recorded space only.
+            ((eq kind :space) (mv (fn-otm-space-word sp sp2) d))
             (t (mv :fault d)))
       (mv (if (and (eq word :none) regressed) :clock-regressed word) d2 c2))))
 
@@ -443,13 +597,36 @@
   (mv-let (word d2 c2) (fn-otm-dc-event (fn-otm-disk s) (fn-otm-clock s) kind reading arg)
     (mv word (fn-otm-make (fn-otm-ocp s) d2 c2))))
 
+(defun fn-otm-full-p (s)
+  (declare (xargs :guard t))
+  (eq (fn-otm-sp-status (fn-otm-space s)) :full))
+
+;; PRF-359: a write is shed while the disk is slow or stalled (the time)
+;; or full (the space).
 (defun fn-otm-admit-post (s)
   (declare (xargs :guard t))
-  (fn-otm-disk-admit (fn-otm-disk s) (fn-otm-now s)))
+  (if (fn-otm-full-p s)
+      :shed
+    (fn-otm-disk-admit (fn-otm-disk s) (fn-otm-now s))))
 
+;; The mode: the time's when it is not :ok (a stalled or slow barrier is
+;; the more urgent fact), else :full when the space is below the need.
 (defun fn-otm-mode (s)
   (declare (xargs :guard t))
-  (fn-otm-disk-mode (fn-otm-disk s) (fn-otm-now s)))
+  (let ((m (fn-otm-disk-mode (fn-otm-disk s) (fn-otm-now s))))
+    (if (and (eq m :ok) (fn-otm-full-p s)) :full m)))
+
+;; Whether the host should observe the free space now (before a served
+;; read's admission, host/native/owner.lisp fnn-owner-advance-clock): never
+;; observed, unobserved at the last try, or the last observation a cadence
+;; old.  The committer observes before every barrier's issue and health and
+;; status before every render, whatever this says.
+(defun fn-otm-space-due-p (s)
+  (declare (xargs :guard t))
+  (let ((sp (fn-otm-space s)))
+    (or (not (fn-otm-sp-observedp sp))
+        (<= (+ (fn-otm-sp-seen sp) (fn-otm-disk-cadence (fn-otm-disk s)))
+            (fn-otm-now s)))))
 
 (defun fn-otm-wait-ms (s)
   (declare (xargs :guard t))
@@ -457,21 +634,34 @@
 
 (defun fn-otm-log-line (s word)
   (declare (xargs :guard t))
-  (fn-otm-disk-log-line word (fn-otm-disk s) (fn-otm-now s)))
+  (if (member-eq word '(:became-full :space-recovered :space-unobserved))
+      (fn-otm-space-log-line word (fn-otm-space s))
+    (fn-otm-disk-log-line word (fn-otm-disk s) (fn-otm-now s))))
 
+;; The try-later replies name the time's reason while the barrier is past
+;; its deadline, else the space's.
 (defun fn-otm-shed-reply (s)
   (declare (xargs :guard t))
-  (fn-otm-shed-line (fn-otm-disk s) (fn-otm-now s)))
+  (if (fn-otm-disk-overdue-p (fn-otm-disk s) (fn-otm-now s))
+      (fn-otm-shed-line (fn-otm-disk s) (fn-otm-now s))
+    (if (fn-otm-full-p s)
+        (fn-otm-full-shed-line (fn-otm-space s))
+      (fn-otm-shed-line (fn-otm-disk s) (fn-otm-now s)))))
 
 (defun fn-otm-post-command-reply (s)
   (declare (xargs :guard t))
-  (fn-otm-post-command-line (fn-otm-disk s) (fn-otm-now s)))
+  (if (fn-otm-disk-overdue-p (fn-otm-disk s) (fn-otm-now s))
+      (fn-otm-post-command-line (fn-otm-disk s) (fn-otm-now s))
+    (if (fn-otm-full-p s)
+        (fn-otm-full-post-command-line (fn-otm-space s))
+      (fn-otm-post-command-line (fn-otm-disk s) (fn-otm-now s)))))
 
 ; health's lines and status's, at the recorded time (the host appends a
 ; clock event on demand before the render).
 (defun fn-otm-disk-lines (s)
   (declare (xargs :guard t))
   (append (fn-otm-disk-line (fn-otm-disk s) (fn-otm-now s))
+          (fn-otm-space-line (fn-otm-space s))
           (if (posp (fn-otm-regressions s))
               (append (fn-osch-text "clock regressed:")
                       (fn-osch-kv "readings" (fn-otm-regressions s))
@@ -481,6 +671,34 @@
 (defun fn-otm-health-lines (s)
   (declare (xargs :guard t))
   (append (fn-ocp-health-lines (fn-otm-ocp s)) (fn-otm-disk-lines s)))
+
+;; PRF-358 (PKT-879): health's `disk' state (books/native-health.lisp, the
+;; ninth), as an outcome (:held . WORDS) or (:clear): held in :stalled and
+;; :full, clear in :ok and :slow.  PROVISIONAL (PKT-853 (b), ember's
+;; decision): the design's proposal, a slow barrier (past D, under H) is
+;; the line only -- it recovers by itself and new posts are already refused
+;; try-later with the reason -- while a stalled one (past H: its posters
+;; were told uncertain) or a full disk (nothing is admitted until the
+;; operator frees space) is a held state and a nonzero exit.  :failed has no
+;; live render: a failed barrier stops the owner (exit 3), and health then
+;; answers offline.  The words carry the mode and its figures: the stall's
+;; duration, or the free and needed octets.
+(defun fn-otm-health-disk (s)
+  (declare (xargs :guard t))
+  (let ((m (fn-otm-mode s)) (d (fn-otm-disk s)) (now (fn-otm-now s)))
+    (cond ((eq m :stalled)
+           (cons :held
+                 (append (fn-osch-text " mode=stalled")
+                         (fn-osch-kv "pending-ms" (fn-otm-disk-elapsed d now))
+                         (fn-osch-kv "stall-ms" (fn-otm-disk-stall d))
+                         (fn-osch-text " members=uncertain posts=try-later"))))
+          ((eq m :full)
+           (cons :held
+                 (append (fn-osch-text " mode=full")
+                         (fn-osch-kv "free-octets" (fn-otm-sp-free (fn-otm-space s)))
+                         (fn-osch-kv "need-octets" (fn-otm-sp-need (fn-otm-space s)))
+                         (fn-osch-text " posts=try-later"))))
+          (t (list :clear)))))
 
 ;; =============================================================================
 ;; Theorems.  The disk's record through its accessors, never reopened.
@@ -574,6 +792,16 @@
        (equal (fn-otm-c-regressions (list n r j)) (nfix r))
        (equal (fn-otm-c-jseq (list n r j)) (nfix j))))
 
+(defthm fn-otm-space-of-make
+  (equal (fn-otm-space (fn-otm-make ocp d c)) (fn-otm-c-space c))
+  :hints (("Goal" :in-theory (enable fn-otm-space fn-otm-make fn-otm-clock))))
+
+(defthm fn-otm-c-of-list4
+  (and (equal (fn-otm-c-now (list n r j sp)) (nfix n))
+       (equal (fn-otm-c-regressions (list n r j sp)) (nfix r))
+       (equal (fn-otm-c-jseq (list n r j sp)) (nfix j))
+       (equal (fn-otm-c-space (list n r j sp)) sp)))
+
 (defthm fn-otm-now-natp
   (natp (fn-otm-now s))
   :rule-classes :type-prescription)
@@ -589,7 +817,7 @@
                            fn-otm-disk-stalls fn-otm-stall-of-limit fn-otm-cadence-of-limit
                            fn-otm-make fn-otm-ocp fn-otm-disk fn-otm-clock fn-otm-now
                            fn-otm-regressions fn-otm-jseq fn-otm-c-now fn-otm-c-regressions
-                           fn-otm-c-jseq
+                           fn-otm-c-jseq fn-otm-c-space fn-otm-space
                            fn-ocp-next fn-ocp-commit-event fn-ocp-observe
                            fn-osch-text fn-osch-decimal fn-osch-kv)))
 
@@ -626,8 +854,27 @@
 (defthm fn-otm-disk-event-keeps-the-pipeline
   (equal (fn-otm-ocp (mv-nth 1 (fn-otm-disk-event s kind reading arg)))
          (fn-otm-ocp s))
-  :hints (("Goal" :in-theory (e/d (fn-otm-now fn-otm-regressions fn-otm-jseq)
-                                  (fn-otm-disk-issue fn-otm-disk-tick fn-otm-disk-return)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-otm-disk-event fn-otm-dc-event fn-otm-of-make)
+                                              (theory 'minimal-theory)))))
+
+;; The clock after any event, by name (the case split on the event's kind
+;; never reaches it: it is computed before the kind is read).
+(defthm fn-otm-c-now-natp
+  (natp (fn-otm-c-now c))
+  :rule-classes :type-prescription)
+
+(defthm fn-otm-clock-of-disk-event
+  (equal (fn-otm-clock (mv-nth 1 (fn-otm-disk-event s kind reading arg)))
+         (let* ((c (fn-otm-clock s))
+                (r (nfix reading))
+                (regressed (< r (fn-otm-c-now c)))
+                (now (if regressed (fn-otm-c-now c) r)))
+           (list now
+                 (if regressed (+ 1 (fn-otm-c-regressions c)) (fn-otm-c-regressions c))
+                 (+ 1 (fn-otm-c-jseq c))
+                 (if (eq kind :space) (fn-otm-space-observe arg now) (fn-otm-c-space c)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-otm-disk-event fn-otm-dc-event fn-otm-of-make)
+                                              (theory 'minimal-theory)))))
 
 ;; KEYSTONE (the recorded time never goes backwards).  The recorded time is
 ;; monotone, a reading below it is counted by name and moves nothing back,
@@ -642,8 +889,12 @@
                     (+ 1 (fn-otm-regressions s))
                   (fn-otm-regressions s)))
          (equal (fn-otm-jseq s2) (+ 1 (fn-otm-jseq s)))))
-  :hints (("Goal" :in-theory (e/d (fn-otm-now fn-otm-regressions fn-otm-jseq)
-                                  (fn-otm-disk-issue fn-otm-disk-tick fn-otm-disk-return)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-otm-clock-of-disk-event fn-otm-c-of-list4
+                                                fn-otm-now fn-otm-regressions fn-otm-jseq max
+                                                fn-otm-c-now-natp fn-otm-c-regressions
+                                                fn-otm-c-jseq natp-compound-recognizer nfix
+                                                (:executable-counterpart nfix))
+                                              (theory 'minimal-theory)))))
 
 ;; The disk event at a reading: the core step at the recorded time.
 (defthm fn-otm-disk-event-unfolds
@@ -665,9 +916,41 @@
                               (mv-nth 0 (fn-otm-disk-issue (fn-otm-disk s) (nfix reading) arg)))
                              ((eq kind :return)
                               (mv-nth 0 (fn-otm-disk-return (fn-otm-disk s) (nfix reading))))
+                             ((eq kind :space)
+                              (fn-otm-space-word (fn-otm-space s)
+                                                 (fn-otm-space-observe arg (nfix reading))))
                              (t :fault)))))
-  :hints (("Goal" :in-theory (e/d (fn-otm-now fn-otm-regressions fn-otm-jseq)
+  :hints (("Goal" :in-theory (e/d (fn-otm-now fn-otm-regressions fn-otm-jseq fn-otm-space)
                                   (fn-otm-disk-issue fn-otm-disk-tick fn-otm-disk-return)))))
+
+;; PRF-359: the recorded space moves only at a :space event, to that
+;; event's observation at the recorded time.
+(defthm fn-otm-space-of-event
+  (equal (fn-otm-space (mv-nth 1 (fn-otm-disk-event s kind reading arg)))
+         (if (eq kind :space)
+             (fn-otm-space-observe arg (max (fn-otm-now s) (nfix reading)))
+           (fn-otm-space s)))
+  :hints (("Goal" :in-theory (union-theories '(fn-otm-disk-event fn-otm-dc-event fn-otm-of-make
+                                                fn-otm-space-of-make fn-otm-c-of-list4
+                                                fn-otm-now fn-otm-space max nfix fn-otm-c-now)
+                                              (theory 'minimal-theory)))))
+
+;; So fullness is kept by every other event.
+(defthm fn-otm-full-p-of-other-event
+  (implies (not (eq kind :space))
+           (equal (fn-otm-full-p (mv-nth 1 (fn-otm-disk-event s kind reading arg)))
+                  (fn-otm-full-p s)))
+  :hints (("Goal" :in-theory (e/d (fn-otm-full-p) (fn-otm-disk-event)))))
+
+(local (in-theory (disable fn-otm-full-p)))
+
+;; ... and a :space event leaves the disk's time state as it was: it never
+;; issues, completes or ticks a barrier.
+(defthm fn-otm-space-event-keeps-the-disk
+  (equal (fn-otm-disk (mv-nth 1 (fn-otm-disk-event s :space reading arg)))
+         (fn-otm-disk s))
+  :hints (("Goal" :in-theory (union-theories '(fn-otm-disk-event fn-otm-dc-event fn-otm-of-make)
+                                              (theory 'minimal-theory)))))
 
 ;; -----------------------------------------------------------------------------
 ;; The disk machine.
@@ -699,12 +982,59 @@
 ;; A shed happens only while a barrier is pending past its deadline at the
 ;; recorded time.
 (defthm fn-otm-shed-only-past-the-deadline
-  (implies (equal (fn-otm-admit-post s) :shed)
+  (implies (and (equal (fn-otm-admit-post s) :shed)
+                (not (fn-otm-full-p s)))
            (and (fn-otm-disk-pending (fn-otm-disk s))
                 (<= (fn-otm-disk-deadline (fn-otm-disk s))
                     (- (fn-otm-now s) (fn-otm-disk-since (fn-otm-disk s))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-otm-disk-elapsed))))
+
+;; KEYSTONE (PRF-359: a full disk refuses the write before it is taken).
+;; The subject is fn-otm-admit-post, which host/native/owner.lisp calls in
+;; the served read quantum (fnn-owner-handle-chunk-read, after the read's
+;; :served event and, when fn-otm-space-due-p, a :space event) and
+;; host/owner-host.lisp fn-owner-chunk-span-at feeds to fn-otm-read-span
+;; (PRF-323: a shed read answers the POST command 440 before any article
+;; octet).  Admitted with the space observed, the observed free octets are
+;; at least the need; observed below the need, every write is shed,
+;; whatever the barrier's state.
+(defthm fn-otm-admit-keeps-the-space-need
+  (implies (and (equal (fn-otm-admit-post s) :admit)
+                (fn-otm-sp-observedp (fn-otm-space s)))
+           (<= (fn-otm-sp-need (fn-otm-space s)) (fn-otm-sp-free (fn-otm-space s))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-otm-full-p))))
+
+(defthm fn-otm-full-sheds
+  (implies (and (fn-otm-sp-observedp (fn-otm-space s))
+                (< (fn-otm-sp-free (fn-otm-space s)) (fn-otm-sp-need (fn-otm-space s))))
+           (equal (fn-otm-admit-post s) :shed))
+  :hints (("Goal" :in-theory (enable fn-otm-full-p))))
+
+;; The need covers the two batches a POST admitted now can be appended
+;; behind: with the space observed F >= need, a batch in flight and the
+;; batch the POST joins, each appending at most OMAX octets, leave at least
+;; the reserve and the operator's extra (when nothing else writes to the
+;; filesystem between the observation and the appends: the hypothesis the
+;; host's observation at every barrier's issue keeps short).
+(defthm fn-otm-space-need-covers-two-batches
+  (implies (and (natp f) (<= (fn-otm-space-need omax reserve extra) f)
+                (natp b1) (natp b2) (<= b1 (nfix omax)) (<= b2 (nfix omax)))
+           (<= (+ (nfix reserve) (fn-otm-space-extra-of-limit extra)) (- f (+ b1 b2))))
+  :rule-classes nil)
+
+;; A space observation with room recovers: every write is admitted again
+;; unless the barrier is past its deadline.
+(defthm fn-otm-space-recovers
+  (implies (and (<= (nfix need) free)
+                (not (fn-otm-disk-overdue-p (fn-otm-disk s) (max (fn-otm-now s) (nfix reading)))))
+           (equal (fn-otm-admit-post (mv-nth 1 (fn-otm-disk-event s :space reading
+                                                                  (list free need))))
+                  :admit))
+  :hints (("Goal" :in-theory (e/d (fn-otm-full-p fn-otm-disk-admit fn-otm-sp-status
+                                   fn-otm-space-observe fn-otm-space-arg)
+                                  (fn-otm-disk-event)))))
 
 ;; ... and always then: a pending barrier past its deadline sheds.
 (defthm fn-otm-past-the-deadline-sheds
@@ -717,7 +1047,7 @@
 ;; The admission is the mode's: shed exactly in :slow and :stalled.
 (defthm fn-otm-admit-is-the-mode
   (iff (equal (fn-otm-admit-post s) :shed)
-         (member-equal (fn-otm-mode s) '(:slow :stalled)))
+         (member-equal (fn-otm-mode s) '(:slow :stalled :full)))
   :hints (("Goal" :use ((:instance fn-otm-disk-deadline-at-most-stall (d (fn-otm-disk s)))))))
 
 ;; The backpressure always has its reason on the page: a POST is shed
@@ -783,23 +1113,40 @@
    :rule-classes :linear
    :hints (("Goal" :in-theory (e/d (fn-osch-text) (fn-otm-disk-overdue-p fn-otm-disk-stall-due-p))))))
 
+(defun fn-otm-full-line-p (line)
+  (declare (xargs :guard t))
+  (and (true-listp line)
+       (<= 10 (len line))
+       (equal (take 10 line) (fn-osch-chars-octets (coerce "disk full:" 'list)))))
+
+(local
+ (defthm fn-otm-full-line-iff-full
+   (iff (fn-otm-full-line-p (fn-otm-space-line sp))
+        (equal (fn-otm-sp-status sp) :full))
+   :hints (("Goal" :in-theory (e/d (fn-osch-text) (fn-otm-sp-status))))))
+
 (defthm fn-otm-shed-iff-slow
   (iff (equal (fn-otm-admit-post s) :shed)
-       (fn-otm-slow-line-p (fn-otm-disk-lines s)))
-  :hints (("Goal" :in-theory (disable fn-otm-disk-body fn-otm-disk-tag fn-otm-disk-overdue-p
-                                      fn-otm-disk-stall-due-p fn-osch-chars-octets))))
+       (or (fn-otm-slow-line-p (fn-otm-disk-lines s))
+           (fn-otm-full-line-p (fn-otm-space-line (fn-otm-space s)))))
+  ;; Named, not a rewrite rule: its right side opens the page's lines.
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-otm-full-p) (fn-otm-space-line fn-otm-full-line-p fn-otm-disk-body fn-otm-disk-tag fn-otm-disk-overdue-p
+                                      fn-otm-disk-stall-due-p fn-osch-chars-octets)))))
 
 ;; Recovery needs no operator action: after the completion event the node
 ;; admits every POST, and no later clock event makes the disk slow again
 ;; until the next barrier is issued.
 (defthm fn-otm-return-recovers
-  (implies (fn-otm-disk-pending (fn-otm-disk s))
+  (implies (and (fn-otm-disk-pending (fn-otm-disk s))
+                (not (fn-otm-full-p s)))
            (let ((s2 (mv-nth 1 (fn-otm-disk-event s :return reading arg))))
              (and (equal (fn-otm-admit-post s2) :admit)
                   (not (fn-otm-disk-pending (fn-otm-disk s2)))
                   (not (fn-otm-disk-stalled (fn-otm-disk s2)))
                   (member-equal (mv-nth 0 (fn-otm-disk-event s :return reading arg))
-                                '(:returned :recovered :recovered-from-stall))))))
+                                '(:returned :recovered :recovered-from-stall)))))
+  :hints (("Goal" :use ((:instance fn-otm-full-p-of-other-event (kind :return))))))
 
 ;; The completion after a stall is named: the host's log says the articles
 ;; whose posters were told uncertain are stored.
@@ -808,10 +1155,12 @@
            (equal (mv-nth 0 (fn-otm-disk-event s :return reading arg)) :recovered-from-stall)))
 
 (defthm fn-otm-clock-event-never-issues
-  (implies (not (fn-otm-disk-pending (fn-otm-disk s)))
+  (implies (and (not (fn-otm-disk-pending (fn-otm-disk s)))
+                (not (fn-otm-full-p s)))
            (let ((s2 (mv-nth 1 (fn-otm-disk-event s :clock reading arg))))
              (and (not (fn-otm-disk-pending (fn-otm-disk s2)))
-                  (equal (fn-otm-admit-post s2) :admit)))))
+                  (equal (fn-otm-admit-post s2) :admit))))
+  :hints (("Goal" :use ((:instance fn-otm-full-p-of-other-event (kind :clock))))))
 
 ;; The completion's latency is recorded: the last barrier's latency is the
 ;; recorded completion time's distance from the recorded issue time.
@@ -848,6 +1197,7 @@
 
 (defthm fn-otm-issue-is-pending-and-admits
   (implies (and (not (fn-otm-disk-pending (fn-otm-disk s))) (natp reading)
+                (not (fn-otm-full-p s))
                 (<= (fn-otm-now s) reading))
            (let ((s2 (mv-nth 1 (fn-otm-disk-event s :issue reading arg))))
              (and (fn-otm-disk-pending (fn-otm-disk s2))
@@ -860,7 +1210,7 @@
                   (equal (fn-otm-disk-cadence (fn-otm-disk s2))
                          (caddr (fn-otm-limits arg)))
                   (equal (fn-otm-admit-post s2) :admit))))
-  :hints (("Goal" :in-theory (enable fn-otm-limits fn-otm-deadline-of-limit
+  :hints (("Goal" :use ((:instance fn-otm-full-p-of-other-event (kind :issue))) :in-theory (enable fn-otm-limits fn-otm-deadline-of-limit
                                      fn-otm-stall-of-limit fn-otm-cadence-of-limit))))
 
 ; KEYSTONE (PRF-311): reads and status never wait for the barrier.
@@ -1311,7 +1661,36 @@
            :in-theory (enable fn-otm-stall-reading fn-otm-clock-run fn-otm-clock-run-okp))
           ("Subgoal *1/1" :use ((:instance fn-otm-wait-stays-within-the-stall)))))
 
+;; KEYSTONE (PRF-358, PKT-879: health's disk state is the mode).  The
+;; subject is fn-otm-health-disk, which host/native-live-status-host.lisp
+;; fn-native-live-status-host-answer hands to books/native-health.lisp
+;; fn-nh-answer-report as its ninth state, over the scheduler value
+;; fnn-owner-sched-snapshot took (a :space and a :clock event at the render,
+;; host/native/owner.lisp).  The state is held exactly when the mode is
+;; :stalled or :full (then fn-nh-held-disk-is-never-healthy: exit 20..28,
+;; never 0); in :ok and :slow it is clear (provisional, PKT-853 (b)).
+(defthm fn-otm-health-disk-held-iff-stalled-or-full
+  (and (consp (fn-otm-health-disk s))
+       (true-listp (cdr (fn-otm-health-disk s)))
+       (iff (equal (car (fn-otm-health-disk s)) :held)
+            (member-equal (fn-otm-mode s) '(:stalled :full)))
+       (not (equal (fn-otm-health-disk s) :unobserved)))
+  :hints (("Goal" :in-theory (e/d (fn-otm-health-disk) (fn-otm-mode fn-osch-kv fn-osch-text)))))
+
+;; The stall's duration is on the held line: the words name the pending
+;; milliseconds, which are at least H.
+(defthm fn-otm-health-disk-stalled-names-the-stall
+  (implies (equal (fn-otm-mode s) :stalled)
+           (and (equal (car (fn-otm-health-disk s)) :held)
+                (<= (fn-otm-disk-stall (fn-otm-disk s))
+                    (fn-otm-disk-elapsed (fn-otm-disk s) (fn-otm-now s)))))
+  :hints (("Goal" :in-theory (e/d (fn-otm-health-disk fn-otm-mode fn-otm-disk-mode
+                                   fn-otm-disk-stall-due-p)
+                                  (fn-osch-kv fn-osch-text)))))
+
 (in-theory (disable fn-otm-next fn-otm-observe fn-otm-commit-event fn-otm-committer-wake
                     fn-otm-disk-event fn-otm-admit-post fn-otm-mode fn-otm-wait-ms fn-otm-log-line
                     fn-otm-shed-reply fn-otm-post-command-reply fn-otm-health-lines
-                    fn-otm-disk-lines fn-otm-stall-releases))
+                    fn-otm-disk-lines fn-otm-stall-releases
+                    fn-otm-full-p fn-otm-space-due-p fn-otm-health-disk
+                    fn-otm-space-line fn-otm-full-line-p fn-otm-sp-status))

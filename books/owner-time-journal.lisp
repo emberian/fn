@@ -199,6 +199,19 @@
                                             (ns (car es)) (rest (fn-otm-jlines (cdr es)))
                                             (fields nil)))))))
 
+;; A file that begins with whole lines: the reader takes them and goes on
+;; (books/owner-time-journal-writer.lisp reasons from here).
+(defthm fn-otm-jparse-of-jlines-then
+  (implies (fn-otm-nat-lists-p es)
+           (equal (fn-otm-jparse (append (fn-otm-jlines es) rest) nil nil entries)
+                  (fn-otm-jparse rest nil nil (fn-otm-revonto es entries))))
+  :hints (("Goal" :induct (fn-otm-jlines-ind es entries)
+            :in-theory (disable fn-otm-jparse-of-jline fn-otm-jparse-of-jlines))
+           ("Subgoal *1/1" :use ((:instance fn-otm-jparse-of-jline
+                                            (ns (car es))
+                                            (rest (append (fn-otm-jlines (cdr es)) rest))
+                                            (fields nil))))))
+
 ;; The journal file reads back as the entries written, in order.
 (defthm fn-otm-journal-read-of-jlines
   (implies (fn-otm-nat-lists-p es)
@@ -208,27 +221,30 @@
 ; -----------------------------------------------------------------------------
 ; The entries.  (SEQ OP READING A B C WORD), all naturals:
 ;   SEQ   the value's JSEQ after the event (0 for a start entry)
-;   OP    0 start, 1 :clock, 2 :served, 3 :issue, 4 :return, 5 a note
+;   OP    0 start, 1 :clock, 2 :served, 3 :issue, 4 :return, 5 a note,
+;         6 :space (PRF-359)
 ;   A B C :issue's limits (D H C); :served's wall ms and has-wall (1/0);
+;         :space's free octets, need octets and has-free (1/0);
 ;         a note's two counts; else 0
 ;   WORD  the event's word, by the code below (0 for a start or a note)
 
 (defun fn-otm-op-of-kind (kind)
   (declare (xargs :guard t))
   (cond ((eq kind :clock) 1) ((eq kind :served) 2) ((eq kind :issue) 3)
-        ((eq kind :return) 4) (t 0)))
+        ((eq kind :return) 4) ((eq kind :space) 6) (t 0)))
 
 (defun fn-otm-kind-of-op (op)
   (declare (xargs :guard t))
   (cond ((eql op 1) :clock) ((eql op 2) :served) ((eql op 3) :issue)
-        ((eql op 4) :return) (t nil)))
+        ((eql op 4) :return) ((eql op 6) :space) (t nil)))
 
 (defun fn-otm-word-code (w)
   (declare (xargs :guard t))
   (case w
     (:issued 1) (:returned 2) (:recovered 3) (:recovered-from-stall 4)
     (:became-slow 5) (:became-stalled 6) (:none 7) (:clock-regressed 8)
-    (:fault 9) (otherwise 0)))
+    (:fault 9) (:became-full 10) (:space-recovered 11) (:space-unobserved 12)
+    (otherwise 0)))
 
 (defun fn-otm-event-args (kind arg)
   (declare (xargs :guard t))
@@ -237,6 +253,7 @@
          (list (nfix (if (consp arg) (car arg) 0))
                (if (and (consp arg) (consp (cdr arg)) (cadr arg)) 1 0)
                0))
+        ((eq kind :space) (fn-otm-space-arg arg))
         (t (list 0 0 0))))
 
 (defun fn-otm-journal-entry (s2 kind reading arg word)
@@ -265,7 +282,8 @@
 (defun fn-otm-note (s a b)
   (declare (xargs :guard t))
   (let ((s2 (fn-otm-make (fn-otm-ocp s) (fn-otm-disk s)
-                         (list (fn-otm-now s) (fn-otm-regressions s) (+ 1 (fn-otm-jseq s))))))
+                         (list (fn-otm-now s) (fn-otm-regressions s) (+ 1 (fn-otm-jseq s))
+                               (fn-otm-space s)))))
     (mv s2 (list (fn-otm-jseq s2) 5 (fn-otm-now s) (nfix a) (nfix b) 0 0))))
 
 ; THE HOST'S CALL for a note: (S' JOURNAL-LINE).
@@ -282,9 +300,14 @@
 ; -----------------------------------------------------------------------------
 ; Replay.  From S, apply each entry's event to the value and compare the
 ; recomputed word with the journaled one.  Answers (mv VERDICT S'):
-; :agrees, or (:gap SEQ) (an entry missing before SEQ: dropped by the sink,
-; or the file cut), (:diverged SEQ) (the recomputed word differs), or
-; (:malformed SEQ).  A start entry resets S to fn-otm-init.
+; :agrees, or (:gap SEQ) (SEQ the first sequence number missing: dropped by
+; the sink or lost to a failed write, PKT-872), (:diverged SEQ) (the
+; recomputed word differs), or (:malformed SEQ).  A start entry resets S to
+; fn-otm-init.  A MARK entry (OP 7, `*fn-otm-mark-entry*') is the writer's
+; own record that entries were lost before the one after it
+; (books/owner-time-journal-writer.lisp): it is a gap at the next sequence.
+
+(defconst *fn-otm-mark-entry* '(0 7 0 0 0 0 0))
 
 (defun fn-otm-replay (s entries)
   (declare (xargs :guard t :measure (len entries)))
@@ -298,8 +321,10 @@
                    (if (equal seq 0)
                        (fn-otm-replay (fn-otm-init) (cdr entries))
                      (mv (list :malformed seq) s)))
+                  ((equal op 7)
+                   (mv (list :gap (+ 1 (fn-otm-jseq s))) s))
                   ((not (equal seq (+ 1 (fn-otm-jseq s))))
-                   (mv (list :gap seq) s))
+                   (mv (list :gap (+ 1 (fn-otm-jseq s))) s))
                   ((fn-otm-kind-of-op op)
                    (mv-let (w s2)
                      (fn-otm-disk-event s (fn-otm-kind-of-op op) reading (list a b c))
@@ -346,12 +371,12 @@
               (t (fn-otm-run s (cdr steps)))))
     (mv nil s)))
 
-; The host appends only events of the four kinds.
+; The host appends only events of the five kinds.
 (defun fn-otm-run-okp (steps)
   (declare (xargs :guard t))
   (if (consp steps)
       (and (if (and (true-listp (car steps)) (eq (car (car steps)) :event))
-               (member-eq (nth 1 (car steps)) '(:clock :served :issue :return))
+               (member-eq (nth 1 (car steps)) '(:clock :served :issue :return :space))
              t)
            (fn-otm-run-okp (cdr steps)))
     t))
@@ -391,6 +416,34 @@
    (equal (fn-otm-disk-issue d now (fn-otm-limits arg)) (fn-otm-disk-issue d now arg))
    :hints (("Goal" :in-theory (e/d (fn-otm-disk-issue) (fn-otm-limits))))))
 
+(local
+ (defthm fn-otm-space-arg-nats
+   (and (natp (car (fn-otm-space-arg arg)))
+        (natp (cadr (fn-otm-space-arg arg)))
+        (natp (caddr (fn-otm-space-arg arg))))
+   :rule-classes ((:rewrite)
+                  (:forward-chaining :trigger-terms ((fn-otm-space-arg arg))))
+   :hints (("Goal" :in-theory (enable fn-otm-space-arg)))))
+
+(local
+ (defthm fn-otm-space-arg-of-its-list
+   (let ((a (fn-otm-space-arg arg)))
+     (equal (fn-otm-space-arg (list (car a) (cadr a) (caddr a))) a))
+   :hints (("Goal" :in-theory (enable fn-otm-space-arg)))))
+
+(local
+ (defthm fn-otm-space-arg-of-journal
+   (let ((a (fn-otm-space-arg arg)))
+     (equal (fn-otm-space-arg (list (nfix (car a)) (nfix (cadr a)) (nfix (caddr a)))) a))
+   :hints (("Goal" :in-theory (enable fn-otm-space-arg)))))
+
+(local
+ (defthm fn-otm-space-observe-of-journal
+   (let ((a (fn-otm-space-arg arg)))
+     (equal (fn-otm-space-observe (list (nfix (car a)) (nfix (cadr a)) (nfix (caddr a))) now)
+            (fn-otm-space-observe arg now)))
+   :hints (("Goal" :in-theory (enable fn-otm-space-observe fn-otm-space-arg)))))
+
 ;; The event at the journal's normalized reading and arguments is the
 ;; host's own call.
 (local
@@ -401,12 +454,17 @@
 
 (local
  (defthm fn-otm-disk-event-of-journal-args
-   (implies (member-eq kind '(:clock :served :issue :return))
+   (implies (member-eq kind '(:clock :served :issue :return :space))
             (let ((a (fn-otm-event-args kind arg)))
               (equal (fn-otm-disk-event s kind reading
                                         (list (nfix (car a)) (nfix (cadr a)) (nfix (caddr a))))
                      (fn-otm-disk-event s kind reading arg))))
-   :hints (("Goal" :in-theory (e/d (fn-otm-disk-event fn-otm-dc-event) (fn-otm-limits))
+   :hints (("Goal" :in-theory (e/d (fn-otm-disk-event fn-otm-dc-event)
+                                   (fn-otm-limits fn-otm-space-arg fn-otm-disk-tick
+                                    fn-otm-disk-return fn-otm-space-word fn-otm-space-observe
+                                    fn-otm-disk-issue nfix max fn-otm-c-now fn-otm-c-regressions
+                                    fn-otm-c-jseq fn-otm-c-space))
+            :cases ((eq kind :clock) (eq kind :served) (eq kind :issue) (eq kind :return))
             :use ((:instance fn-otm-limits-of-list3 (l (fn-otm-limits arg))))))))
 
 ;; ... and it is a function of the disk and the clock.
@@ -422,7 +480,7 @@
 (local
  (defthm fn-otm-disk-event-replayed
    (implies (and (fn-otm-same-dc r s)
-                 (member-eq kind '(:clock :served :issue :return)))
+                 (member-eq kind '(:clock :served :issue :return :space)))
             (let ((a (fn-otm-event-args kind arg)))
               (and (equal (mv-nth 0 (fn-otm-disk-event
                                      r kind (nfix reading)
@@ -452,7 +510,7 @@
  (defthm fn-otm-note-replayed
    (implies (fn-otm-same-dc r s)
             (fn-otm-same-dc (mv-nth 0 (fn-otm-note r a b)) (mv-nth 0 (fn-otm-note s a b))))
-   :hints (("Goal" :in-theory (enable fn-otm-now fn-otm-regressions fn-otm-jseq)))))
+   :hints (("Goal" :in-theory (enable fn-otm-now fn-otm-regressions fn-otm-jseq fn-otm-space)))))
 
 (local
  (defthm fn-otm-same-dc-jseq
@@ -482,10 +540,10 @@
    (let ((e (mv-nth 1 (fn-otm-note s a b))))
      (and (nat-listp e) (consp e) (equal (len e) 7)))))
 
-(local
- (defthm fn-otm-run-entries-shape
-   (fn-otm-nat-lists-p (mv-nth 0 (fn-otm-run s steps)))
-   :hints (("Goal" :in-theory (disable fn-otm-journal-entry fn-otm-note)))))
+;; Exported for books/owner-time-journal-writer.lisp.
+(defthm fn-otm-run-entries-shape
+  (fn-otm-nat-lists-p (mv-nth 0 (fn-otm-run s steps)))
+  :hints (("Goal" :in-theory (disable fn-otm-journal-entry fn-otm-note))))
 
 (local
  (defthm fn-otm-note-seq
@@ -515,7 +573,7 @@
 
 (local
  (defthm fn-otm-disk-event-replayed2
-   (implies (and (fn-otm-same-dc r s) (member-eq kind '(:clock :served :issue :return)))
+   (implies (and (fn-otm-same-dc r s) (member-eq kind '(:clock :served :issue :return :space)))
             (and (equal (mv-nth 0 (fn-otm-disk-event r kind (nfix reading)
                                                      (fn-otm-replay-args kind arg)))
                         (mv-nth 0 (fn-otm-disk-event s kind reading arg)))
@@ -563,7 +621,7 @@
 
 (local
  (defthm fn-otm-kind-op-round-trip
-   (implies (member-eq kind '(:clock :served :issue :return))
+   (implies (member-eq kind '(:clock :served :issue :return :space))
             (and (equal (fn-otm-kind-of-op (fn-otm-op-of-kind kind)) kind)
                  (not (equal (fn-otm-op-of-kind kind) 0))))))
 
@@ -577,7 +635,7 @@
 ;; disk and clock.
 (local
  (defthm fn-otm-replay-of-event-entry
-   (implies (and (fn-otm-same-dc r s) (member-eq kind '(:clock :served :issue :return)))
+   (implies (and (fn-otm-same-dc r s) (member-eq kind '(:clock :served :issue :return :space)))
             (equal (fn-otm-replay
                     r (cons (fn-otm-journal-entry (mv-nth 1 (fn-otm-disk-event s kind reading arg))
                                                   kind reading arg
@@ -629,7 +687,7 @@
 
 (local
  (defthm fn-otm-ev-state-same-dc
-   (implies (and (fn-otm-same-dc r s) (member-eq kind '(:clock :served :issue :return)))
+   (implies (and (fn-otm-same-dc r s) (member-eq kind '(:clock :served :issue :return :space)))
             (fn-otm-same-dc (fn-otm-ev-state r kind (nfix reading) (fn-otm-replay-args kind arg))
                             (mv-nth 1 (fn-otm-disk-event s kind reading arg))))
    :hints (("Goal" :use ((:instance fn-otm-disk-event-replayed2))))))
@@ -729,7 +787,7 @@
                               '(fn-otm-admit-post fn-otm-mode fn-otm-wait-ms
                                 fn-otm-shed-reply fn-otm-post-command-reply
                                 fn-otm-disk-lines fn-otm-log-line fn-otm-now
-                                fn-otm-regressions)
+                                fn-otm-regressions fn-otm-full-p fn-otm-space)
                               (theory 'minimal-theory)))))
 
 ;; -----------------------------------------------------------------------------

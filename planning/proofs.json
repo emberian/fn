@@ -2676,7 +2676,8 @@
         "planning/evidence/manifests/certify-20260923T185812Z-4118399.json",
         "books/tcpcl-host-drive.lisp",
         "planning/evidence/manifests/certify-20260923T191855Z-4158317.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
       ],
       "progress_note": "ACL2 8.7 certified the exact host-drive event order, ordered held-list projection and conditional delivery plan. Reachable witnesses cover coalesced prior-transfer partial ACK/refusal, two completed bundles in one read, and missing-held/path-type counterexamples. Native source executes the selected message list; combined-image A2 callback runtime remains pending.",
       "events": [
@@ -9484,7 +9485,8 @@
         "tests/acl2/payload-lz-tests.lisp",
         "planning/evidence/codec-c1-2026-09-27.md",
         "planning/evidence/octets-bulk-2026-09-27.md",
-        "planning/evidence/manifests/certify-20260927T084350Z-1875336.json"
+        "planning/evidence/manifests/certify-20260927T084350Z-1875336.json",
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
       ],
       "progress_note": "Lane codec-c1 (Opus 5.5, 2026-09-27): a prototype book with no host wiring. Teeth: tests/acl2/payload-lz-tests.lisp (a held-out 1993 Usenet article from usenet-20news-19997 and its liblz4-HC 9 blocks with and without a dictionary seal as :lz and denote the article; a corrupted block and a block of other octets seal as :raw and still denote it; literal blocks of 5 and 300 octets; the refusals :truncated, :offset (0 and past dict ++ out), :overflow and :short; the article's block decoded in quanta of seven steps reaches the same octets as one budget; hypothesis removal by must-fail and a ground counterexample for the octet-list and true-list hypotheses). Measured on hbox (i9-12900, one P-core) over the 9,733 held-out articles: see the record.",
       "pending_subject": "No host line calls fn-lz-* yet: lane C2 (arena-compressed) makes the compressed arena attachment whose seal is fn-lz-seal-form and whose reader is fn-lz-decode-buf, after the records flip lands.",
@@ -12016,7 +12018,8 @@
       "evidence": [
         "books/octet-text.lisp",
         "tests/acl2/octet-text-tests.lisp",
-        "planning/evidence/manifests/certify-20260928T025149Z-846867.json"
+        "planning/evidence/manifests/certify-20260928T025149Z-846867.json",
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
       ],
       "pending_subject": "No host function calls these codecs yet (lane shared-books built them as the shared library the wire books re-derived); each wire book that adopts one names its host caller then.",
       "progress_note": "Lane shared-books (Opus 5.5, 2026-09-28), id assigned at the batch AY merge. Certified on persvati: certify-20260928T025149Z-846867 (under 10 s). Teeth: tests/acl2/octet-text-tests.lisp with the RFC 4648 section 10 vectors. Proof-style findings in docs/proof-style.md.",
@@ -12153,7 +12156,7 @@
         "PRF-302"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-rcompat-reply-cat-is-rcompat-reply",
         "fn-rcompat-retrieval-cat-is-retrieval",
@@ -12175,7 +12178,12 @@
         "planning/evidence/sca-join-2026-09-27.md",
         "planning/evidence/manifests/certify-20260928T041204Z-1591020.json",
         "planning/evidence/manifests/certify-20260928T041318Z-3967241.json",
-        "planning/evidence/manifests/certify-20260928T072421Z-3380332.json"
+        "planning/evidence/manifests/certify-20260928T081655Z-3859883.json",
+        "planning/evidence/manifests/certify-20260928T080217Z-3731531.json",
+        "planning/evidence/manifests/certify-20260928T072421Z-3380332.json",
+        "planning/evidence/manifests/certify-20260928T090547Z-104021.json",
+        "planning/evidence/manifests/certify-20260928T110153Z-855887.json",
+        "planning/evidence/manifests/certify-20260928T110205Z-1165109.json"
       ],
       "progress_note": "Lane sca-join-5 (2026-09-28): REPL-admitted and certified on persvati (affected roots of catalog, served-catalog, served-catalog-chain, served-catalog-tests: certify-20260928T003009Z-3659350, 172 passed; served-catalog-join-inv re-proved over batch AY's fn-otm-read-span: certify-20260928T003941Z-3754893). Lookup counts before/after in planning/evidence/sca-join-2026-09-27.md. Native on hbox (709b2824a, /tank/fn/scratch/sca-join-5/native-f2): served_differential OK 7, reader_index OK 7, reader_freshness OK 2; served_cost FAILED 1 (test_owner_calls_fast_span_entry: its static text check expects the pre-batch-AY host call shape; host code not changed by this lane). f2_lookups at 1k/10k/100k: every measured command O(1) + the O(log N) bisection, LISTGROUP/OVER proportional to their output; VERDICT MET."
     },
@@ -12293,7 +12301,8 @@
         "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
         "planning/evidence/manifests/certify-20260928T040154Z-3932533.json",
         "planning/evidence/manifests/certify-20260928T042412Z-1705234.json",
-        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json"
+        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json",
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
       ],
       "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
@@ -12409,7 +12418,8 @@
         "tests/acl2/web-render-tests.lisp",
         "planning/evidence/web-native-2-2026-09-28.md",
         "planning/evidence/manifests/certify-20260928T043449Z-1806205.json",
-        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json"
+        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json",
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
       ],
       "progress_note": "Lane web-native-2 (Opus 5.5, 2026-09-28): certified on persvati with tests/acl2/web-render-tests (certify-20260928T043449Z-1806205, 9 passed at 2 jobs; web-render 4.2 s).",
       "events": [
@@ -12625,7 +12635,7 @@
         "PRF-352"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/nntp-projection.lisp",
         "books/nntp-index-runtime.lisp",
@@ -12710,7 +12720,7 @@
     {
       "id": "PRF-368",
       "title": "The running owner's status reads each article's tombstone flag from the catalog column in one walk, and the status client joins its pages linearly (lane scale-reads: status and obligations at 1,000,000 articles)",
-      "statement": "Subjects: books/native-status-columns.lisp fn-nsc-answer-report, which host/native-live-status-host.lisp fn-native-live-status-host-answer calls for every FNLS report the running owner renders (host/native/control.lisp fnn-control-live-status-answer, with the live catalog fnn-live-cat), and fn-nsc-client-step, which host/native/control.lisp fnn-control-live-status folds pages through (fn-native-live-status-host-client-step-chunks). fn-nsc-verdict-is-verdict-in: under the column relation F (books/served-columns.lisp fn-scol-okp), an article's verdict with its tombstone flag read from the column (fn-scol-tombstonep) is fn-rcl-verdict-in's, which reads the payload through the arena. KEYSTONE fn-nsc-store-tally-is-counts-and-classes: under F, the one walk fn-nsc-store-tally (a guard-verified loop, fn-nsc-tally-loop) is (append (fn-rcl-store-counts rule now s fn-arena) (fn-rcl-store-classes rule now s fn-arena)): the seven reclaim figures of the four walks before. fn-nsc-reclaim-words-is-reclaim-words and fn-nsc-report-is-report lift it; KEYSTONE fn-nsc-answer-report-is-answer-report: under F, (fn-nsc-answer-report kind profile oc cache obs min fn-arena fn-cat) = (fn-nh-answer-report kind profile oc cache obs min fn-arena) for every kind, so PRF-089's, PRF-361's and the health verdict's theorems speak of the words the owner sends. KEYSTONE fn-nsc-client-step-is-client-step: with N the length of the joined pages (fn-nsc-join, pages newest first), (fn-nsc-client-view (fn-nsc-client-step chunks n total digest reply)) = (fn-nls-client-step (fn-nsc-join chunks) total digest reply); fn-nsc-client-step-carries-its-length: a :next's length is its pages' joined length, so the hypothesis holds from (nil, 0) at every page. The cost measured: the reclaim line realized and digest-checked every payload four times under the owner mutex (sb-sprof: 98% under fn-durable-realize-octet); in a raw Lisp over the production core the reclaim words took 66 s at syn100k-2k and 518 s at syn1m-2k; the client's (append acc chunk) per page took 69.2 s to join the 24,400,035-octet obligations report of syn100k-2k against 3.4 s for the owner's pages (planning/evidence/scale-reads-status-2026-09-28.md). F is the served column readers' assumption; its owner-level establishment at the opens is the open obligation sca-join-4.",
+      "statement": "Subjects: books/native-status-columns.lisp fn-nsc-answer-report, which host/native-live-status-host.lisp fn-native-live-status-host-answer calls for every FNLS report the running owner renders (host/native/control.lisp fnn-control-live-status-answer, with the live catalog fnn-live-cat), and fn-nsc-client-step, which host/native/control.lisp fnn-control-live-status folds pages through (fn-native-live-status-host-client-step-chunks). fn-nsc-verdict-is-verdict-in: under the column relation F (books/served-columns.lisp fn-scol-okp), an article's verdict with its tombstone flag read from the column (fn-scol-tombstonep) is fn-rcl-verdict-in's, which reads the payload through the arena. KEYSTONE fn-nsc-store-tally-is-counts-and-classes: under F, the one walk fn-nsc-store-tally (a guard-verified loop, fn-nsc-tally-loop) is (append (fn-rcl-store-counts rule now s fn-arena) (fn-rcl-store-classes rule now s fn-arena)): the seven reclaim figures of the four walks before. fn-nsc-reclaim-words-is-reclaim-words and fn-nsc-report-is-report lift it; KEYSTONE fn-nsc-answer-report-is-answer-report: under F, (fn-nsc-answer-report kind profile oc cache obs min disk fn-arena fn-cat) = (fn-nh-answer-report kind profile oc cache obs min disk fn-arena) for every kind, so PRF-089's, PRF-361's and the health verdict's theorems speak of the words the owner sends. KEYSTONE fn-nsc-client-step-is-client-step: with N the length of the joined pages (fn-nsc-join, pages newest first), (fn-nsc-client-view (fn-nsc-client-step chunks n total digest reply)) = (fn-nls-client-step (fn-nsc-join chunks) total digest reply); fn-nsc-client-step-carries-its-length: a :next's length is its pages' joined length, so the hypothesis holds from (nil, 0) at every page. The cost measured: the reclaim line realized and digest-checked every payload four times under the owner mutex (sb-sprof: 98% under fn-durable-realize-octet); in a raw Lisp over the production core the reclaim words took 66 s at syn100k-2k and 518 s at syn1m-2k; the client's (append acc chunk) per page took 69.2 s to join the 24,400,035-octet obligations report of syn100k-2k against 3.4 s for the owner's pages (planning/evidence/scale-reads-status-2026-09-28.md). F is the served column readers' assumption; its owner-level establishment at the opens is the open obligation sca-join-4.",
       "milestone": "M4",
       "requirements": [
         "HST-006"
@@ -12737,6 +12747,189 @@
         "fn-nsc-answer-report-is-answer-report",
         "fn-nsc-client-step-is-client-step",
         "fn-nsc-client-step-carries-its-length"
+      ]
+    },
+    {
+      "id": "PRF-363",
+      "title": "GROUP, LISTGROUP and LIST ACTIVE at a reader's view below the catalog's count read the live table plus the rows that differ (appended since the view, withdrawn since the view), equal to the probe pass over every number",
+      "statement": "Lane scale-latency (PKT-870). books/served-catalog-view.lisp fn-scv-summary: a group's (count, least, greatest) served number at a reader's view V below the catalog's count, from the catalog's live table (sca-join-5) corrected over X, the numbers of the rows V .. count-1 and of the rows withdrawn at a version from V to the horizon; KEYSTONES fn-scv-count-is-count-p, fn-scv-first-is-first-p, fn-scv-last-is-last-p (hypothesis: the catalog's recognizer fn-cat-p) equate the three answers to the number-wise count, least and greatest of the numbers the probe pass serves at V (fn-scv-keptp, the pass's own test: books/served-catalog.lisp fn-scat-range-keep over fn-cnx-range-aux); the core lemma fn-scv-keptp-is-liveq-outside-x says a number outside X is served at V exactly when the table has it live. books/catalog.lisp: the catalog keeps the withdrawals by version (field fn-cat$c-wbv, per version the rows withdrawn at it, ascending), maintained by the commit (a row committed already withdrawn), the withdrawal (at the count) and the clear (the exec writers fn-cat$c-commit-w, fn-cat$c-withdraw-w, fn-cat$c-clear-w); the defabsstobj export fn-cat-withdrawn-at is one probe (fn-cat-withdrawn-at-is-from: the rows withdrawn at W, ascending), under the extended relation fn-cat$corr-w (the old fn-cat$corr and the table's conjunct). books/served-catalog.lisp fn-scat-group-summary and fn-scat-group-low (called by fn-nntp-group-result-cat, fn-nntp-listgroup-result-cat and fn-scat-counts-lines, the host's served read through fn-owner-chunk-span, host/native/owner.lisp fnn-owner-handle-chunk-read) take the view branch below the top view in place of the probe pass over every number of the group; KEYSTONES fn-scat-group-summary-is-pass and fn-scat-group-low-is-pass (PRF-346) keep their statements, no hypotheses. Work per GROUP: |X| (the rows appended since V -- the batch in flight, books/owner-reader-view.lisp -- and the withdrawals since V) plus the scans from the table's least and greatest past X and past withdrawn numbers at the group's two ends; not bounded by a theorem (a measured property). Local policy; RFC 3977 section 6.1.1's GROUP answer unchanged.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012",
+        "NNT-042"
+      ],
+      "depends_on": [
+        "PRF-346"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/catalog.lisp",
+        "books/served-catalog-view.lisp",
+        "books/served-catalog.lisp",
+        "tests/acl2/catalog-tests.lisp",
+        "tests/acl2/served-catalog-view-tests.lisp",
+        "tests/acl2/served-catalog-tests.lisp",
+        "planning/evidence/manifests/certify-20260928T080217Z-3731531.json",
+        "planning/evidence/manifests/certify-20260928T081655Z-3859883.json",
+        "planning/evidence/manifests/certify-20260928T081023Z-3803492.json",
+        "planning/evidence/manifests/certify-20260928T090547Z-104021.json",
+        "planning/evidence/manifests/certify-20260928T110153Z-855887.json",
+        "planning/evidence/manifests/certify-20260928T110205Z-1165109.json"
+      ],
+      "progress_note": "Lane scale-latency 2026-09-28: REPL-admitted on persvati (catalog, served-catalog-view, served-catalog and the three test books, dependencies from source in encapsulates). Measured cause: syn100k fixture, 8 posters + 8 readers GROUP every 20 reads: fn-scat-range-keep (the pass) 70% of the owner's CPU samples, POST p50 404 ms, GROUP p90 510 ms. Certified on persvati: the affected roots of catalog, served-catalog-view, served-catalog and the two test books (61 roots) certify-20260928T080217Z-3731531, and after the keystone hints were tightened certify-20260928T081655Z-3859883 (35 recertified); at two jobs certify-20260928T081023Z-3803492 (catalog 13.5 s, served-catalog 17.0 s, served-catalog-view 2.6 s; catalog and served-catalog were already past 10 s before this lane in every archived measurement, the fastest 11.2 s and 10.9 s at 12 jobs). At the merge of origin/dev 78dbdea1b (d26-books' local disables): the 61 affected roots passed on persvati, certify-20260928T090547Z-104021. Measured on hbox (production images of 140b09bec and of this lane, both at a 64 MB control stack since the base image's GROUP and live status exhaust the deployed 1 MB stack past ~12k articles): tools/fitness.py soak, 12 min, 8 TLS+AUTHINFO posters (cancels, supersedes, cross-posts) + 8 readers, syn100000: POST p50 733 -> 188 ms, POST p99 (worst 3-min sample) 22.6 -> 4.3 s, GROUP p50 520 -> 51 ms, POSTs accepted 4,076 -> 7,897; at 5k and 10k the two images are within noise (POST p50 180/167 vs 172/140 ms). Plain-TCP driver, 120 s, GROUP every 20 reads, syn100000: POST p50 338 -> 56 ms, GROUP p90 339 -> 21 ms, ARTICLE p99 362 -> 68 ms. Not changed here: the automatic checkpoint publication (O(N) per K/2 records, 41-174 s and about 14 GB consed at 100k), live status (health-truth-status), the stack depth (serve-depth). After the merge of serve-depth (PKT-877) the view book's walks and the bucket insert execute as loop twins (depth_check); the 61 affected roots certified split across hbox (certify-20260928T110153Z-855887, 47 passed) and persvati (certify-20260928T110205Z-1165109, 50 passed).",
+      "events": [
+        "fn-scv-count-is-count-p",
+        "fn-scv-first-is-first-p",
+        "fn-scv-last-is-last-p",
+        "fn-scv-keptp-is-liveq-outside-x",
+        "fn-cat-withdrawn-at-is-from"
+      ]
+    },
+    {
+      "id": "PRF-358",
+      "title": "health's ninth state, the disk: held exactly when the running owner's disk is stalled (a barrier past the stall deadline H, the line naming its duration) or full, so health never reports healthy while posters are told uncertain or every write is refused; a slow disk stays the line only (provisional, PKT-853 (b))",
+      "statement": "Subjects: fn-otm-health-disk (books/owner-time-model.lisp), which host/native-live-status-host.lisp fn-native-live-status-host-answer hands to fn-nh-answer-report as DISK over the scheduler value host/native/owner.lisp fnn-owner-sched-snapshot took (a :space and a :clock event at the render), and fn-nh-verdict / fn-nh-live-report (books/native-health.lisp), whose exit the host returns (fn-native-health-host-exit, fn-nh-report-exit-of-render). KEYSTONE fn-otm-health-disk-held-iff-stalled-or-full: the outcome is (:held . WORDS) exactly when fn-otm-mode is :stalled or :full, else (:clear), never :unobserved; fn-otm-health-disk-stalled-names-the-stall: in :stalled the pending milliseconds on the line are at least H. KEYSTONE fn-nh-held-disk-is-never-healthy: with DISK held the verdict's exit code is in 20..28, and 28 exactly when none of the first eight states is held. The ninth state is appended (*fn-nh-states* ends :disk, code 28) so codes 20..27 keep their meaning; fn-nh-verdict-states, fn-nh-exit-code-cases, fn-nh-exit-code-decodes and fn-nh-report-exit-of-render(-and-more) restated for nine outcomes. Offline (no owner) the state is :unobserved. Scope: :failed has no live render (a failed barrier stops the owner, exit 3); the choice that :slow is clear is PKT-853 (b), provisional.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-007",
+        "HST-026"
+      ],
+      "depends_on": [
+        "PRF-112",
+        "PRF-311"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-time-model.lisp",
+        "tests/acl2/owner-time-space-tests.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/health-truth-2026-09-28.md",
+        "books/native-health.lisp",
+        "tests/acl2/native-health-tests.lisp",
+        "tools/docs_check.py",
+        "docs/operator-internals.md",
+        "planning/evidence/manifests/certify-20260928T063909Z-97938.json",
+        "planning/evidence/manifests/certify-20260928T071502Z-325832.json"
+      ],
+      "progress_note": "Lane health-truth (Opus 5.5, 2026-09-28; PKT-879 from lane fitness). REPL-admitted on persvati: books/owner-time-model (5.4 s ACL2 time), books/native-health, tests/acl2/native-health-tests and tests/acl2/owner-time-model-tests (--ld-local). Teeth: nht-disk-never-healthy-without-held (the clear disk: exit 0), the reached exit 28 and the earlier held state's 26; stalled/slow/ok witnesses of fn-otm-health-disk in the owner-time-model tests. Native: tests.test_native_slow_disk (health rc 0 while slow, 28 with `disk held mode=stalled pending-ms=' while stalled, 0 after). Certified on hbox: run-20260928T063812Z-0804, manifest certify-20260928T063909Z-97938 (23 books recertified, 0 failed). Native tests.test_native_slow_disk OK 6/6 at 137529eca (hbox native-ht2). The split test books certified at 2 jobs, none over 10 s: certify-20260928T071502Z-325832.",
+      "events": [
+        "fn-otm-health-disk-held-iff-stalled-or-full",
+        "fn-otm-health-disk-stalled-names-the-stall",
+        "fn-nh-held-disk-is-never-healthy",
+        "fn-nh-verdict-states",
+        "fn-nh-exit-code-decodes",
+        "fn-nh-report-exit-of-render"
+      ]
+    },
+    {
+      "id": "PRF-359",
+      "title": "The free space is a recorded observation and a write is admitted only above ACL2's need: below it every POST is refused try-later by name before its article (440, or 441 for an article already sent), nothing stored, the owner stays up, and the next observation with room recovers",
+      "statement": "Subjects: fn-otm-admit-post (host/native/owner.lisp fnn-owner-handle-chunk-read after fnn-owner-advance-clock's :served and, when fn-otm-space-due-p, :space event; host/owner-host.lisp fn-owner-chunk-span-at feeds S to fn-otm-read-span, PRF-323), fn-otm-disk-event with kind :space (fnn-owner-space-event: the committer before every barrier's syncer, fnn-owner-sched-snapshot before every health/status render, fnn-owner-space-observe-if-due before a served read's admission; ARG (FREE NEED), FREE the statvfs observation of the store's filesystem or nil), fn-otm-space-need (host/owner-host.lisp fn-owner-space-need: PRF-129's fn-smr-reserve-octets + 2 x fn-olr-omax + the `disk-reserve-octets' row, default 64 MiB), fn-otm-shed-reply / fn-otm-post-command-reply (the reason), fn-otm-disk-step (journal op 6). KEYSTONE fn-otm-admit-keeps-the-space-need: admitted with the space observed, free >= need. fn-otm-full-sheds: observed below the need, every write is shed whatever the barrier. fn-otm-space-need-covers-two-batches: from an observation F >= need, two batches of at most OMAX octets leave the reserve and the extra (hypothesis: nothing else writes to the filesystem between the observation and the appends; the observation at every barrier's issue keeps that window to two batches). fn-otm-space-recovers: an observation with room admits unless the barrier is past D. fn-otm-space-of-event / fn-otm-full-p-of-other-event / fn-otm-space-event-keeps-the-disk: only a :space event moves the space and it moves nothing else (so fn-otm-disk-event-keeps-the-pipeline and the durability keystones hold). fn-otm-admit-is-the-mode: shed exactly in :slow, :stalled, :full. fn-otm-shed-iff-slow restated: shed exactly when the disk line says slow/stalled or the space line says `disk full:'. PRF-311's fn-otm-shed-only-past-the-deadline, fn-otm-return-recovers, fn-otm-clock-event-never-issues and fn-otm-issue-is-pending-and-admits carry the hypothesis (not (fn-otm-full-p s)). fn-otm-journal-determines-the-decisions holds with the fifth kind. Scope: statvfs unobserved is never :full (an append that then meets ENOSPC stays the recovery event it was); the space consumed between observations by another writer is outside the model.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-026"
+      ],
+      "depends_on": [
+        "PRF-311",
+        "PRF-323",
+        "PRF-129",
+        "PRF-322"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-time-model.lisp",
+        "tests/acl2/owner-time-space-tests.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/health-truth-2026-09-28.md",
+        "books/owner-time-journal.lisp",
+        "books/native-admin.lisp",
+        "host/native/io.lisp",
+        "planning/evidence/manifests/certify-20260928T063909Z-97938.json",
+        "planning/evidence/manifests/certify-20260928T071502Z-325832.json"
+      ],
+      "progress_note": "Lane health-truth (Opus 5.5, 2026-09-28; PKT-872 from lane fitness, the admission half; the journal's torn line is lane health-truth-journal's). REPL-admitted on persvati: books/owner-time-model, books/owner-time-journal, tests/acl2/owner-time-model-tests (--ld-local). Teeth (prefix htt-, tests/acl2/owner-time-space-tests.lisp, split from owner-time-model-tests to keep both under 10 s): reached room/full/recovered/unobserved states from fn-otm-init, the full reason on the 440/441 lines and a reached served read's 440 (t2r-host-read), must-fail per hypothesis of fn-otm-admit-keeps-the-space-need, fn-otm-full-sheds, fn-otm-space-recovers (its natp hypothesis removed after the weakened theorem was proved), fn-otm-space-need-covers-two-batches and the four restated PRF-311 theorems. Native: tests.test_native_slow_disk test_a_full_disk_refuses_posts_before_the_write_and_recovers (FN_NATIVE_DISK_FREE=@FILE). Certified on hbox: run-20260928T063812Z-0804, manifest certify-20260928T063909Z-97938 (23 books recertified, 0 failed). Native tests.test_native_slow_disk OK 6/6 at 137529eca (hbox native-ht2). The split test books certified at 2 jobs, none over 10 s: certify-20260928T071502Z-325832.",
+      "events": [
+        "fn-otm-admit-keeps-the-space-need",
+        "fn-otm-full-sheds",
+        "fn-otm-space-need-covers-two-batches",
+        "fn-otm-space-recovers",
+        "fn-otm-space-of-event",
+        "fn-otm-full-p-of-other-event",
+        "fn-otm-space-event-keeps-the-disk",
+        "fn-otm-admit-is-the-mode",
+        "fn-otm-shed-iff-slow"
+      ]
+    },
+    {
+      "id": "PRF-360",
+      "title": "The decision journal never keeps a torn line: a failed append is truncated back to the last whole entry, the next entry after a loss carries a mark the replay reads as a gap naming the first sequence number missing, a run's start cuts a torn tail, and so at every process-death and ENOSPC cut the journal reads whole or torn, never malformed, and replays to agreement or a named gap",
+      "statement": "Subjects (books/owner-time-journal-writer.lisp): fn-otm-jw-init, fn-otm-jw-open-first, fn-otm-jw-open-step and fn-otm-jw-cut-line (host/native/owner.lisp fnn-owner-journal-open, fnn-owner-journal-cut: the file read backwards in chunks of *fn-otm-jw-open-chunk* octets and cut to its last whole entry before the run's start entry); fn-otm-jw-drop, fn-otm-jw-plan, fn-otm-jw-after, fn-otm-jw-truncated and fn-otm-jw-closed-line (host/native/io.lisp fnn-journal-write, called by fnn-log-writer-loop through fnn-log-write-item; a :journal-gap item is the first journal entry queued after the sink dropped one, host/native/io.lisp fnn-log-offer). The writer carries (OFFSET OWE CLOSED); its plan is the entry's line, the mark line (0 7 0 0 0 0 0, *fn-otm-mark-entry*) first when an entry was lost since the last whole one, nil when closed; a non-written outcome asks for a truncation to OFFSET, and a truncation that fails closes the journal for the run. fn-otm-replay (books/owner-time-journal.lisp) reads the mark as (:gap N) and a sequence jump likewise, N one past the last entry replayed. fn-otm-jw-sim composes the host calls over ANY fates of the offered entries (written; dropped by the sink; failed after K octets landed, the truncation holding or not -- a process death mid-append is the last such fate). fn-otm-jw-sim-file: the file is the starting file, the lines of fn-otm-jw-whole, then fn-otm-jw-frag, a fragment with no LF (fn-otm-jw-frag-is-a-fragment). KEYSTONE fn-otm-jw-file-reads-agrees-or-gap: from a file of whole lines E0 that replays to agreement from R, and entries ES that replay to agreement after it, the file the writer leaves reads back with a status other than :malformed, as E0 followed by the entries that landed whole, and replays from R to :agrees when no entry was written after a loss, else to (:gap N), N one past the entries replayed before the first loss. fn-otm-jw-gap-is-the-first-lost: when the first entry lost is not a start entry, N is its sequence number (fn-otm-jw-gap-names-the-first-missing). fn-otm-jw-segment-agrees: a segment as the host offers it (fn-otm-start-line's entry, fn-otm-jw-start-line-is-the-start-entry, then any run of fn-otm-run-okp host calls from fn-otm-init) replays to agreement from any state, so the keystone applies to every segment. fn-otm-jw-open-step-is-the-cut: under the backward read's invariant (the octets after the chunk hold no LF), a :cut is the whole file's cut fn-otm-jw-open-cut and a :more keeps the invariant; fn-otm-jw-open-step-cuts-a-written-file: over a file the writer left (whole lines then a fragment), every :cut under that invariant is the length of the whole lines. Not claimed: that every entry is on the disk (a loss is named, and the tail lost by a death or by a journal closed until the run ends is not marked: the reader's status says torn when octets of it remain); anything about the record log.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-030"
+      ],
+      "depends_on": [
+        "PRF-322"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-time-journal-writer.lisp",
+        "books/owner-time-journal.lisp",
+        "tests/acl2/owner-time-journal-writer-tests.lisp",
+        "tests/acl2/owner-time-model-tests.lisp",
+        "host/native/io.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_journal_torn.py",
+        "planning/evidence/health-truth-journal-2026-09-28.md"
+      ],
+      "events": [
+        "fn-otm-jw-file-reads-agrees-or-gap",
+        "fn-otm-jw-gap-is-the-first-lost",
+        "fn-otm-jw-gap-names-the-first-missing",
+        "fn-otm-jw-segment-agrees",
+        "fn-otm-jw-open-step-is-the-cut",
+        "fn-otm-jw-replay-of-pm",
+        "fn-otm-jw-open-step-cuts-a-written-file"
+      ],
+      "progress_note": "Lane health-truth-journal (Opus 5.5, 2026-09-28; PKT-872's journal half, a fork of lane health-truth). REPL-admitted on persvati from source (the book and its test book, ACL2 time about 3.5 s for the book). Teeth: tests/acl2/owner-time-journal-writer-tests.lisp (prefix otjw-): a reached segment (start entry and five host calls) and an earlier one; every append whole (agrees); ENOSPC mid-line with the truncation holding (gap-at-2, the first lost); the truncation failing (torn, agrees); a death mid-append (the same file); a sink drop (gap-at-3); the mark itself torn; the pre-PKT-872 writer as a mutation witness (neither agreement nor a gap); the open's cut and chunk steps; one removal witness and one must-fail per keystone hypothesis (E0 diverged; the segment diverged) and for the corollary's (a lost start entry names the previous segment's successor). Native SCN-192 tests/test_native_journal_torn.py."
+    },
+    {
+      "id": "PRF-357",
+      "title": "A graceful stop drains the POSTs in flight: the fence comes only when every member was told its reply (240 after a fenced barrier) or, past the drain deadline H, told uncertain by the stall's rule, and the drain ends within H plus the send grace",
+      "statement": "Subject: fn-osd-drain-step (books/owner-stop-drain.lisp), which host/native/owner.lisp fnn-owner-drain-service calls once per observation after a SIGTERM (fnn-owner-run: the drain, then fnn-owner-stop-service), with S0 and S the gate's scheduler values after a clock event (fnn-owner-sched-snapshot) at the drain's start and at the observation, LIMITS the configuration's (D H C) (fn-owner-barrier-limits), AWAITING the connections registered for a completion plus the queued submissions, UNSENT the connections holding a completion's reply not yet written (host/native/mux.lisp fnn-mux-unsent), RELEASED whether its :release was acted on. KEYSTONE fn-osd-stops-only-when-nothing-is-owed: :stop only when fn-osd-quiet-p (no member awaits, no reply unsent, and no batch in flight unless released by this drain or by the stall, fn-otm-disk-stalled) or released and H + 10,000 ms have passed since S0. KEYSTONE fn-osd-releases-only-at-the-deadline: :release only unreleased, at or past H, and not quiet; the committer then answers every member of the batches in flight by fn-otm-stall-releases (fn-otm-stall-tells-no-member-its-outcome: uncertain, never accepted or refused) and sheds the queued POSTs (refused try-later, nothing stored). KEYSTONE fn-osd-drain-ends-by-the-deadline: unreleased, at or past H and not quiet is :release; released and past H + grace is :stop. fn-osd-deadline-is-past-the-slow-deadline: H is at least D. With fn-ocs-members-told-only-after-the-barrier (PRF-267) a member is told 240 only in the COMPLETE after its fenced barrier, which the drain lets run before the fence. Not covered: the fence (fnn-owner-stop-service, a :control quantum) waits for a barrier that does not return; a command read but not yet stepped at the SIGTERM is not answered (nothing stored).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-026"
+      ],
+      "depends_on": [
+        "PRF-267",
+        "PRF-311"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-stop-drain.lisp",
+        "tests/acl2/owner-stop-drain-tests.lisp",
+        "host/native/owner.lisp",
+        "host/native/mux.lisp",
+        "tests/test_native_slow_disk.py"
+      ],
+      "progress_note": "Lane health-truth-stop (Opus 5.5, 2026-09-28; PKT-875 from planning/evidence/fitness-2026-09-28.md f2: 4 of 4 in-flight POSTs closed without a reply at one SIGTERM though committed). REPL-admitted on persvati (book 0.07 s, 16,639 steps; test book with every must-fail). Record planning/evidence/health-truth-stop-2026-09-28.md.",
+      "events": [
+        "fn-osd-stops-only-when-nothing-is-owed",
+        "fn-osd-releases-only-at-the-deadline",
+        "fn-osd-drain-ends-by-the-deadline",
+        "fn-osd-deadline-is-past-the-slow-deadline"
       ]
     }
   ]

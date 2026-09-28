@@ -151,8 +151,8 @@
                   (fn-rcl-store-classes rule now s fn-arena)))))
 (must-fail-checked
  (defthm nsct-answer-without-f
-   (equal (fn-nsc-answer-report kind profile oc cache obs min fn-arena fn-cat)
-          (fn-nh-answer-report kind profile oc cache obs min fn-arena))))
+   (equal (fn-nsc-answer-report kind profile oc cache obs min disk fn-arena fn-cat)
+          (fn-nh-answer-report kind profile oc cache obs min disk fn-arena))))
 
 ; -----------------------------------------------------------------------------
 ; The client's join (fn-nsc-client-step-is-client-step).  REACHABLE: the

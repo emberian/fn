@@ -31,6 +31,12 @@
       (eq (symbol-class 'fn-cat$c-group-number (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-cat$c-msgid-seqs (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-cat$c-clear (w state)) :common-lisp-compliant)
+      ;; lane scale-latency: the writers that keep the withdrawals by version,
+      ;; and its reader
+      (eq (symbol-class 'fn-cat$c-commit-w (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-cat$c-withdraw-w (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-cat$c-clear-w (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-cat$c-withdrawn-at (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-held-p (w state)) :common-lisp-compliant)))
 
 ; -----------------------------------------------------------------------------
@@ -81,11 +87,15 @@
                       (fn-cat-visible-at 0 4 fn-cat)   ; a reader who advanced does not
                       (fn-cat-visible-at 1 4 fn-cat)
                       (fn-cat-visible-at 3 3 fn-cat)   ; the cancel is above version 3
-                      (fn-cat-count fn-cat)))
+                      (fn-cat-count fn-cat)
+                      ; the withdrawals by version (lane scale-latency): row 0 at 3
+                      (fn-cat-withdrawn-at 3 fn-cat)
+                      (fn-cat-withdrawn-at 4 fn-cat)))
          (fn-cat (fn-cat-redecide 1 (fn-hc-make (fn-stx-make-verdict :verified nil 7) nil 7) fn-cat))
          (redecided (fn-hc-generation (fn-held-context (fn-cat-at 1 fn-cat))))
          (fn-cat (fn-cat-clear fn-cat)))
-    (mv (list before after redecided (fn-cat-count fn-cat)) fn-cat)))
+    (mv (list before after redecided (fn-cat-count fn-cat) (fn-cat-withdrawn-at 3 fn-cat))
+        fn-cat)))
 
 (defun cat-exec ()
   (with-local-stobj fn-cat
@@ -95,9 +105,10 @@
  (equal (cat-exec)
         (list (list 3 '(1) nil 0 2 2 nil 4 1 3 1 600
                     '(("fn.test" . 3) ("fn.other" . 1)) t)
-              (list '(3 . 3) t nil t nil 4)
+              (list '(3 . 3) t nil t nil 4 '(0) nil)
               7
-              0)))
+              0
+              nil)))
 
 ; -----------------------------------------------------------------------------
 ; The abstraction on ground values: the two-row catalog the keystone

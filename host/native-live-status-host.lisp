@@ -85,7 +85,13 @@
                                          ;; fnn-store-observation.
                                          (append (take 5 obs)
                                                  (list (fn-owner-sco-deferred state)))
-                                         min fn-arena fn-cat)
+                                         min
+                                         ;; PRF-358 (PKT-879): the ninth
+                                         ;; state, the disk, from the same
+                                         ;; scheduler value the disk lines
+                                         ;; below are rendered from.
+                                         (fn-otm-health-disk sched)
+                                         fn-arena fn-cat)
                     (cond ((equal kind :health)
                            ;; PKT-508 (PRF-187): the log sink's line last;
                            ;; fn-nh-report-exit-of-render-and-more: the exit is

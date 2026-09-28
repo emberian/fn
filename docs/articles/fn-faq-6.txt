@@ -34,6 +34,10 @@ could not check (the peer lines need a running node).
   full (saturated=N: every post is refused feed-queue-full until it
   catches up). Check peer list; ask its operator.
 - 27 receipt-debt: Forwarded articles wait for their receipts.
+- 28 disk: The disk is stalled (a write has waited past its stall
+  deadline; posters were told uncertain) or full (free space below what
+  a write needs). Look at the device; free space. The node recovers by
+  itself. (Provisional: this state and its code wait on a decision.)
 
 *Refusals:* A refused post is answered "441 posting failed;" and one of
 these. The log line starts refused and names the reason.

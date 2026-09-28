@@ -467,6 +467,9 @@
   ;; withdrawal horizon.
   (fn-cat$c-lives :type (hash-table equal))
   (fn-cat$c-hz :type (integer 0 *) :initially 0)
+  ;; The withdrawals by version (lane scale-latency): version -> the rows
+  ;; withdrawn at it, ascending.
+  (fn-cat$c-wbv :type (hash-table equal))
   :inline t)
 
 (local
@@ -1991,7 +1994,7 @@
      fn-cat$c-hz update-fn-cat$c-hz fn-cat$c-group-live-count
      fn-cat$c-group-live-low fn-cat$c-group-live-high fn-cat$c-horizon)))
 
-(defthm create-fn-cat{correspondence}
+(defthm create-fn-cat{correspondence-bl}
   (fn-cat$corr (create-fn-cat$c) (create-fn-cat$a))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-cat$cp create-fn-cat$c))))
@@ -2000,67 +2003,67 @@
   (fn-cat$ap (create-fn-cat$a))
   :rule-classes nil)
 
-(defthm fn-cat-count{correspondence}
+(defthm fn-cat-count{correspondence-bl}
   (implies (fn-cat$corr fn-cat$c fn-cat)
            (equal (fn-cat$c-count fn-cat$c) (fn-cat$a-count fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ctg-open))))
 
-(defthm fn-cat-at{correspondence}
+(defthm fn-cat-at{correspondence-bl}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat))
                 (fn-cat$ap fn-cat))
            (equal (fn-cat$c-at seq fn-cat$c) (fn-cat$a-at seq fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ctg-open))))
 
-(defthm fn-cat-at{guard-thm}
+(defthm fn-cat-at{guard-thm-bl}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat))
                 (fn-cat$ap fn-cat))
            (and (fn-cat$c-wfp fn-cat$c) (natp seq) (< seq (fn-cat$c-count fn-cat$c))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ctg-open))))
 
-(defthm fn-cat-msgid-seqs{correspondence}
+(defthm fn-cat-msgid-seqs{correspondence-bl}
   (implies (fn-cat$corr fn-cat$c fn-cat)
            (equal (fn-cat$c-msgid-seqs msgid fn-cat$c) (fn-cat$a-msgid-seqs msgid fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ctg-open))))
 
-(defthm fn-cat-group-number{correspondence}
+(defthm fn-cat-group-number{correspondence-bl}
   (implies (fn-cat$corr fn-cat$c fn-cat)
            (equal (fn-cat$c-group-number group n fn-cat$c)
                   (fn-cat$a-group-number group n fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ctg-open))))
 
-(defthm fn-cat-group-next{correspondence}
+(defthm fn-cat-group-next{correspondence-bl}
   (implies (fn-cat$corr fn-cat$c fn-cat)
            (equal (fn-cat$c-group-next group fn-cat$c) (fn-cat$a-group-next group fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ctg-open)
            :cases ((consp (cdr (hons-assoc-equal group (nth 4 fn-cat$c))))))))
 
-(defthm fn-cat-group-count{correspondence}
+(defthm fn-cat-group-count{correspondence-bl}
   (implies (fn-cat$corr fn-cat$c fn-cat)
            (equal (fn-cat$c-group-count group fn-cat$c) (fn-cat$a-group-count group fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ctg-open)
            :cases ((consp (cdr (hons-assoc-equal group (nth 4 fn-cat$c))))))))
 
-(defthm fn-cat-total-octets{correspondence}
+(defthm fn-cat-total-octets{correspondence-bl}
   (implies (fn-cat$corr fn-cat$c fn-cat)
            (equal (fn-cat$c-total-octets fn-cat$c) (fn-cat$a-total-octets fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ctg-open))))
 
-(defthm fn-cat-visible-at{correspondence}
+(defthm fn-cat-visible-at{correspondence-bl}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat)) (natp v)
                 (fn-cat$ap fn-cat))
            (equal (fn-cat$c-visible-at seq v fn-cat$c) (fn-cat$a-visible-at seq v fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ctg-open))))
 
-(defthm fn-cat-visible-at{guard-thm}
+(defthm fn-cat-visible-at{guard-thm-bl}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat)) (natp v)
                 (fn-cat$ap fn-cat))
            (and (fn-cat$c-wfp fn-cat$c) (natp seq) (natp v)
@@ -2339,7 +2342,7 @@
                                      (resize-list (nth 0 fn-cat$c) (+ 1 (* 2 (len fn-cat))) nil)))
                              (h (fn-cat-assign h fn-cat))))))))
 
-(defthm fn-cat-commit{guard-thm}
+(defthm fn-cat-commit{guard-thm-bl}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-held-p h) (fn-cat$ap fn-cat))
            (fn-cat$c-wfp fn-cat$c))
   :rule-classes nil
@@ -2420,7 +2423,7 @@
                                    (fn-cat$c-withdraw-base fn-held-with-withdrawn))
             :do-not-induct t))))
 
-(defthm fn-cat-withdraw{guard-thm}
+(defthm fn-cat-withdraw{guard-thm-bl}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp target) (< target (fn-cat$a-count fn-cat))
                 (natp by) (fn-cat$ap fn-cat))
            (and (fn-cat$c-wfp fn-cat$c) (natp target) (natp by)
@@ -2464,7 +2467,7 @@
    :hints (("Goal" :in-theory (disable fn-cat$c-redecide fn-held-with-context)
             :do-not-induct t))))
 
-(defthm fn-cat-redecide{guard-thm}
+(defthm fn-cat-redecide{guard-thm-bl}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat))
                 (fn-hc-p context) (fn-cat$ap fn-cat))
            (and (fn-cat$c-wfp fn-cat$c) (natp seq) (< seq (fn-cat$c-count fn-cat$c))))
@@ -2898,7 +2901,7 @@
                                   (fn-cat$c-commit-base h fn-cat$c))))
                              (a (fn-cat$a-commit h fn-cat))))))))
 
-(defthm fn-cat-commit{correspondence}
+(defthm fn-cat-commit{correspondence-bl}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-held-p h) (fn-cat$ap fn-cat))
            (fn-cat$corr (fn-cat$c-commit h fn-cat$c) (fn-cat$a-commit h fn-cat)))
   :rule-classes nil
@@ -3225,7 +3228,7 @@
                                   (fn-cat$c-withdraw-base target by fn-cat$c))))
                              (a (fn-cat$a-withdraw target by fn-cat))))))))
 
-(defthm fn-cat-withdraw{correspondence}
+(defthm fn-cat-withdraw{correspondence-bl}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp target) (< target (fn-cat$a-count fn-cat))
                 (natp by) (fn-cat$ap fn-cat))
            (fn-cat$corr (fn-cat$c-withdraw target by fn-cat$c)
@@ -3290,7 +3293,7 @@
    :hints (("Goal" :induct (update-nth s x c)
             :in-theory (e/d (update-nth) (fn-held-with-context))))))
 
-(defthm fn-cat-redecide{correspondence}
+(defthm fn-cat-redecide{correspondence-bl}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat))
                 (fn-hc-p context) (fn-cat$ap fn-cat))
            (fn-cat$corr (fn-cat$c-redecide seq context fn-cat$c)
@@ -3306,7 +3309,7 @@
                             (h (fn-held-with-context (nth seq fn-cat) context))
                             (tab (nth 6 fn-cat$c)))))))
 
-(defthm fn-cat-clear{correspondence}
+(defthm fn-cat-clear{correspondence-bl}
   (implies (fn-cat$corr fn-cat$c fn-cat)
            (fn-cat$corr (fn-cat$c-clear fn-cat$c) (fn-cat$a-clear fn-cat)))
   :rule-classes nil
@@ -3320,33 +3323,634 @@
                                                       (fn-cat$c-clear-base fn-cat$c))))
                             (a (fn-cat$a-clear fn-cat)))))))
 
-(defthm fn-cat-group-live-count{correspondence}
+(defthm fn-cat-group-live-count{correspondence-bl}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-cat$ap fn-cat))
            (equal (fn-cat$c-group-live-count group fn-cat$c)
                   (fn-cat$a-group-live-count group fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cat$corr) (fn-cat$corr-base fn-cat$c-group-live-count)))))
 
-(defthm fn-cat-group-live-low{correspondence}
+(defthm fn-cat-group-live-low{correspondence-bl}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-cat$ap fn-cat))
            (equal (fn-cat$c-group-live-low group fn-cat$c)
                   (fn-cat$a-group-live-low group fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cat$corr) (fn-cat$corr-base fn-cat$c-group-live-low)))))
 
-(defthm fn-cat-group-live-high{correspondence}
+(defthm fn-cat-group-live-high{correspondence-bl}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-cat$ap fn-cat))
            (equal (fn-cat$c-group-live-high group fn-cat$c)
                   (fn-cat$a-group-live-high group fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cat$corr) (fn-cat$corr-base fn-cat$c-group-live-high)))))
 
-(defthm fn-cat-horizon{correspondence}
+(defthm fn-cat-horizon{correspondence-bl}
   (implies (fn-cat$corr fn-cat$c fn-cat)
            (equal (fn-cat$c-horizon fn-cat$c) (fn-cat$a-horizon fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cat$corr fn-cat$c-horizon fn-cat$c-hz)
                                   (fn-cat$corr-base)))))
+
+; -----------------------------------------------------------------------------
+; The withdrawals by version (lane scale-latency, PKT-870).  A reader's view V
+; sees a withdrawn row exactly when its withdrawal's version is at least V
+; (fn-cat-visiblep), so what a view below the count sees differs from the
+; top's live summary by the rows appended at or after V and the rows
+; withdrawn at or after V.  The first are the rows V .. count-1; the second
+; the catalog keeps here: per version W, the rows withdrawn at W, ascending
+; (`fn-cat-withdrawn-at', one probe; books/served-catalog-view.lisp reads it
+; for W from V to the horizon).  Maintained by commit (a row committed
+; already withdrawn) and withdraw (at the count); redecide keeps every
+; withdrawal; clear empties it.
+
+; The rows of C from index I withdrawn at version W, ascending.
+(defun fn-cat-withdrawn-at-from (w c i)
+  (declare (xargs :guard (natp i)))
+  (if (consp c)
+      (let ((x (fn-held-withdrawn (car c)))
+            (rest (fn-cat-withdrawn-at-from w (cdr c) (+ 1 i))))
+        (if (and (consp x) (equal (car x) w)) (cons i rest) rest))
+    nil))
+
+(defun fn-cat$a-withdrawn-at (w fn-cat$a)
+  (declare (xargs :guard t))
+  (fn-cat-withdrawn-at-from w fn-cat$a 0))
+
+; S into the ascending list L (executed as a loop: tools/depth_check.py).
+(defun fn-cat-insert-asc-loop (s l acc)
+  (declare (xargs :guard (true-listp acc)))
+  (if (and (consp l) (< (nfix (car l)) (nfix s)))
+      (fn-cat-insert-asc-loop s (cdr l) (cons (car l) acc))
+    (revappend acc (cons s l))))
+
+(defun fn-cat-insert-asc (s l)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (and (consp l) (< (nfix (car l)) (nfix s)))
+                  (cons (car l) (fn-cat-insert-asc s (cdr l)))
+                (cons s l))
+       :exec (fn-cat-insert-asc-loop s l nil)))
+
+(local
+ (defthm fn-cat-insert-asc-loop-is-revappend
+   (equal (fn-cat-insert-asc-loop s l acc)
+          (revappend acc (fn-cat-insert-asc s l)))))
+
+(verify-guards fn-cat-insert-asc)
+
+(defun fn-cat$c-withdrawn-at (w fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c))
+  (fn-cat$c-wbv-get w fn-cat$c))
+
+(defun fn-cat$c-commit-w (h fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
+  (let* ((seq (fn-cat$c-count fn-cat$c))
+         (x (fn-held-withdrawn h))
+         (fn-cat$c (fn-cat$c-commit h fn-cat$c)))
+    (if (consp x)
+        (fn-cat$c-wbv-put (car x) (fn-cat-insert-asc seq (fn-cat$c-wbv-get (car x) fn-cat$c))
+                          fn-cat$c)
+      fn-cat$c)))
+
+(defun fn-cat$c-withdraw-w (target by fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c
+                  :guard (and (fn-cat$c-wfp fn-cat$c) (natp target) (natp by)
+                              (< target (fn-cat$c-count fn-cat$c)))))
+  (if (null (fn-held-withdrawn (fn-cat$c-rowsi target fn-cat$c)))
+      (let* ((v (fn-cat$c-count fn-cat$c))
+             (fn-cat$c (fn-cat$c-withdraw target by fn-cat$c)))
+        (fn-cat$c-wbv-put v (fn-cat-insert-asc target (fn-cat$c-wbv-get v fn-cat$c)) fn-cat$c))
+    fn-cat$c))
+
+(defun fn-cat$c-clear-w (fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c))
+  (let ((fn-cat$c (fn-cat$c-clear fn-cat$c)))
+    (fn-cat$c-wbv-clear fn-cat$c)))
+
+; The table's conjunct: every bound version's entry is its rows; every
+; withdrawn row's version is bound.
+(defun fn-cat-wbv-okp (keys tab c)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp keys)
+      (and (equal (cdr (hons-assoc-equal (car (car keys)) tab))
+                  (fn-cat-withdrawn-at-from (car (car keys)) c 0))
+           (fn-cat-wbv-okp (cdr keys) tab c))
+    t))
+
+(defun fn-cat-wbv-coverp (c tab)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp c)
+      (and (let ((x (fn-held-withdrawn (car c))))
+             (or (not (consp x)) (consp (hons-assoc-equal (car x) tab))))
+           (fn-cat-wbv-coverp (cdr c) tab))
+    t))
+
+(defun-nx fn-cat$corr-wbv (fn-cat$c fn-cat$a)
+  (and (fn-cat-wbv-okp (nth 8 fn-cat$c) (nth 8 fn-cat$c) fn-cat$a)
+       (fn-cat-wbv-coverp fn-cat$a (nth 8 fn-cat$c))))
+
+(defun-nx fn-cat$corr-w (fn-cat$c fn-cat$a)
+  (and (fn-cat$corr fn-cat$c fn-cat$a)
+       (fn-cat$corr-wbv fn-cat$c fn-cat$a)))
+
+; --- the rows' side
+
+(local
+ (defthm fn-ctw-at-from-of-append
+   (implies (natp i)
+            (equal (fn-cat-withdrawn-at-from w (append c (list h)) i)
+                   (if (and (consp (fn-held-withdrawn h)) (equal (car (fn-held-withdrawn h)) w))
+                       (append (fn-cat-withdrawn-at-from w c i) (list (+ i (len c))))
+                     (fn-cat-withdrawn-at-from w c i))))
+   :hints (("Goal" :induct (fn-cat-withdrawn-at-from w c i)))))
+
+(defun fn-ctw-all-below (l s)
+  (declare (xargs :guard t))
+  (if (consp l)
+      (and (< (nfix (car l)) (nfix s)) (fn-ctw-all-below (cdr l) s))
+    t))
+
+(defun fn-ctw-all-above (l s)
+  (declare (xargs :guard t))
+  (if (consp l)
+      (and (< (nfix s) (nfix (car l))) (fn-ctw-all-above (cdr l) s))
+    t))
+
+(local
+ (defthm fn-ctw-at-from-below
+   (implies (and (natp i) (natp s) (<= (+ i (len c)) s))
+            (fn-ctw-all-below (fn-cat-withdrawn-at-from w c i) s))
+   :hints (("Goal" :induct (fn-cat-withdrawn-at-from w c i)))))
+
+(local
+ (defthm fn-ctw-at-from-above
+   (implies (and (natp i) (natp s) (< s i))
+            (fn-ctw-all-above (fn-cat-withdrawn-at-from w c i) s))
+   :hints (("Goal" :induct (fn-cat-withdrawn-at-from w c i)))))
+
+(local
+ (defthm fn-ctw-insert-past-all
+   (implies (and (fn-ctw-all-below l s) (true-listp l))
+            (equal (fn-cat-insert-asc s l) (append l (list s))))))
+
+(local
+ (defthm fn-ctw-at-from-true-listp
+   (true-listp (fn-cat-withdrawn-at-from w c i))
+   :rule-classes (:rewrite :type-prescription)))
+
+(local
+ (defthm fn-ctw-insert-before-all
+   (implies (and (fn-ctw-all-above l s) (natp s))
+            (equal (fn-cat-insert-asc s l) (cons s l)))
+   :hints (("Goal" :expand ((fn-cat-insert-asc s l))))))
+
+(local
+ (defun fn-ctw-ind (c k i)
+   (if (consp c)
+       (fn-ctw-ind (cdr c) (- k 1) (+ 1 i))
+     (list k i))))
+
+; A withdrawal of row K (not withdrawn before) at version V.
+(local
+ (defthm fn-ctw-at-from-of-withdraw
+   (implies (and (natp k) (< k (len c)) (natp i) (null (fn-held-withdrawn (nth k c))))
+            (equal (fn-cat-withdrawn-at-from
+                    w (update-nth k (fn-held-with-withdrawn (nth k c) (cons v by)) c) i)
+                   (if (equal w v)
+                       (fn-cat-insert-asc (+ i k) (fn-cat-withdrawn-at-from w c i))
+                     (fn-cat-withdrawn-at-from w c i))))
+   :hints (("Goal" :induct (fn-ctw-ind c k i)
+            :expand ((fn-cat-withdrawn-at-from
+                      w (update-nth k (fn-held-with-withdrawn (nth k c) (cons v by)) c) i)
+                     (fn-cat-withdrawn-at-from w c i)
+                     (update-nth k (fn-held-with-withdrawn (nth k c) (cons v by)) c))
+            :in-theory (e/d (fn-ctg-withdrawn-of-with-withdrawn) (fn-held-with-withdrawn))))))
+
+(local
+ (defthm fn-ctw-at-from-of-recontext
+   (implies (and (natp k) (< k (len c)))
+            (equal (fn-cat-withdrawn-at-from
+                    w (update-nth k (fn-held-with-context (nth k c) ctx) c) i)
+                   (fn-cat-withdrawn-at-from w c i)))
+   :hints (("Goal" :induct (fn-ctw-ind c k i)
+            :expand ((update-nth k (fn-held-with-context (nth k c) ctx) c))
+            :in-theory (e/d (fn-ctg-withdrawn-of-with-context) (fn-held-with-context))))))
+
+; --- the table's side
+
+(local
+ (defthm fn-ctw-okp-lookup
+   (implies (and (fn-cat-wbv-okp keys tab c) (consp (hons-assoc-equal k keys)))
+            (equal (cdr (hons-assoc-equal k tab)) (fn-cat-withdrawn-at-from k c 0)))
+   :hints (("Goal" :induct (fn-cat-wbv-okp keys tab c)))))
+
+(local
+ (defthm fn-ctw-coverp-unbound
+   (implies (and (fn-cat-wbv-coverp c tab) (not (consp (hons-assoc-equal k tab))))
+            (equal (fn-cat-withdrawn-at-from k c i) nil))
+   :hints (("Goal" :induct (fn-cat-withdrawn-at-from k c i)))))
+
+(local
+ (defthm fn-ctw-lookup
+   (implies (and (fn-cat-wbv-okp tab tab c) (fn-cat-wbv-coverp c tab))
+            (equal (cdr (hons-assoc-equal k tab)) (fn-cat-withdrawn-at-from k c 0)))
+   :hints (("Goal" :cases ((consp (hons-assoc-equal k tab)))))))
+
+; Every version other than K reads the same in C and C2.
+(defun-nx fn-ctw-agree (keys k c c2)
+  (if (consp keys)
+      (and (or (equal (car (car keys)) k)
+               (equal (fn-cat-withdrawn-at-from (car (car keys)) c 0)
+                      (fn-cat-withdrawn-at-from (car (car keys)) c2 0)))
+           (fn-ctw-agree (cdr keys) k c c2))
+    t))
+
+(local
+ (defthm fn-ctw-okp-put
+   (implies (and (fn-cat-wbv-okp keys tab c) (fn-ctw-agree keys k c c2)
+                 (equal val (fn-cat-withdrawn-at-from k c2 0)))
+            (fn-cat-wbv-okp keys (cons (cons k val) tab) c2))
+   :hints (("Goal" :induct (fn-cat-wbv-okp keys tab c)))))
+
+(local
+ (defthm fn-ctw-okp-put-top
+   (implies (and (fn-cat-wbv-okp tab tab c) (fn-ctw-agree tab k c c2)
+                 (equal val (fn-cat-withdrawn-at-from k c2 0)))
+            (fn-cat-wbv-okp (cons (cons k val) tab) (cons (cons k val) tab) c2))
+   :hints (("Goal" :expand ((fn-cat-wbv-okp (cons (cons k val) tab) (cons (cons k val) tab) c2))))))
+
+(local
+ (defthm fn-ctw-agree-of-append-any
+   (fn-ctw-agree keys (car (fn-held-withdrawn h)) c (append c (list h)))
+   :hints (("Goal" :induct (fn-ctw-agree keys (car (fn-held-withdrawn h)) c (append c (list h)))
+            :in-theory (disable fn-cat-withdrawn-at-from)))))
+
+(local
+ (defthm fn-ctw-agree-of-withdraw
+   (implies (and (natp r) (< r (len c)) (null (fn-held-withdrawn (nth r c))))
+            (fn-ctw-agree keys v c
+                          (update-nth r (fn-held-with-withdrawn (nth r c) (cons v by)) c)))
+   :hints (("Goal" :induct (fn-ctw-agree keys v c c)
+            :in-theory (disable fn-cat-withdrawn-at-from fn-held-with-withdrawn)))))
+
+(local
+ (defthm fn-ctw-coverp-extend
+   (implies (fn-cat-wbv-coverp c tab)
+            (fn-cat-wbv-coverp c (cons pair tab)))
+   :hints (("Goal" :induct (fn-cat-wbv-coverp c tab)))))
+
+(local
+ (defthm fn-ctw-coverp-append
+   (implies (and (fn-cat-wbv-coverp c tab)
+                 (or (not (consp (fn-held-withdrawn h)))
+                     (consp (hons-assoc-equal (car (fn-held-withdrawn h)) tab))))
+            (fn-cat-wbv-coverp (append c (list h)) tab))
+   :hints (("Goal" :induct (fn-cat-wbv-coverp c tab)))))
+
+(local
+ (defthm fn-ctw-coverp-withdraw
+   (implies (and (fn-cat-wbv-coverp c tab) (natp r) (< r (len c))
+                 (consp (hons-assoc-equal v tab)))
+            (fn-cat-wbv-coverp
+             (update-nth r (fn-held-with-withdrawn (nth r c) (cons v by)) c) tab))
+   :hints (("Goal" :induct (fn-ctw-ind c r 0)
+            :expand ((update-nth r (fn-held-with-withdrawn (nth r c) (cons v by)) c))
+            :in-theory (e/d (fn-ctg-withdrawn-of-with-withdrawn) (fn-held-with-withdrawn))))))
+
+(local
+ (defthm fn-ctw-coverp-recontext
+   (implies (and (fn-cat-wbv-coverp c tab) (natp r) (< r (len c)))
+            (fn-cat-wbv-coverp
+             (update-nth r (fn-held-with-context (nth r c) ctx) c) tab))
+   :hints (("Goal" :induct (fn-ctw-ind c r 0)
+            :expand ((update-nth r (fn-held-with-context (nth r c) ctx) c))
+            :in-theory (e/d (fn-ctg-withdrawn-of-with-context) (fn-held-with-context))))))
+
+(local
+ (defthm fn-ctw-okp-recontext
+   (implies (and (fn-cat-wbv-okp keys tab c) (natp r) (< r (len c)))
+            (fn-cat-wbv-okp keys tab (update-nth r (fn-held-with-context (nth r c) ctx) c)))
+   :hints (("Goal" :induct (fn-cat-wbv-okp keys tab c)
+            :in-theory (disable fn-cat-withdrawn-at-from fn-held-with-context)))))
+
+; --- the concrete side: the old writers never touch the new field, and the
+; new field's writes never touch the old fields.
+
+(local
+ (defthm fn-ctw-nth-of-wbv-writes
+   (implies (not (equal n 8))
+            (and (equal (nth n (fn-cat$c-wbv-put k v x)) (nth n x))
+                 (equal (nth n (fn-cat$c-wbv-clear x)) (nth n x))))
+   :hints (("Goal" :in-theory (enable fn-cat$c-wbv-put fn-cat$c-wbv-clear)))))
+
+(local
+ (defthm fn-ctw-wbv-fields
+   (and (equal (nth 8 (fn-cat$c-wbv-put k v x)) (cons (cons k v) (nth 8 x)))
+        (equal (nth 8 (fn-cat$c-wbv-clear x)) nil)
+        (equal (fn-cat$c-wbv-get k x) (cdr (hons-assoc-equal k (nth 8 x)))))
+   :hints (("Goal" :in-theory (enable fn-cat$c-wbv-put fn-cat$c-wbv-clear fn-cat$c-wbv-get)))))
+
+(local
+ (defthm fn-ctw-cp-of-wbv-writes
+   (implies (fn-cat$cp x)
+            (and (fn-cat$cp (fn-cat$c-wbv-put k v x))
+                 (fn-cat$cp (fn-cat$c-wbv-clear x))))
+   :hints (("Goal" :in-theory (enable fn-cat$cp fn-cat$c-wbv-put fn-cat$c-wbv-clear)))))
+
+(local
+ (defthm fn-ctw-corr-bl-of-wbv-writes
+   (implies (fn-cat$corr x a)
+            (and (fn-cat$corr (fn-cat$c-wbv-put k v x) a)
+                 (fn-cat$corr (fn-cat$c-wbv-clear x) a)))
+   :hints (("Goal" :in-theory (e/d (fn-cat$corr fn-cat$corr-base fn-cat$corr-live)
+                                   (fn-cat$c-wbv-put fn-cat$c-wbv-clear))))))
+
+(local
+ (defthm fn-ctw-nth8-of-old-writes
+   (and (equal (nth 8 (update-fn-cat$c-rowsi i v x)) (nth 8 x))
+        (equal (nth 8 (resize-fn-cat$c-rows n x)) (nth 8 x))
+        (equal (nth 8 (update-fn-cat$c-count n x)) (nth 8 x))
+        (equal (nth 8 (update-fn-cat$c-octets n x)) (nth 8 x))
+        (equal (nth 8 (update-fn-cat$c-hz n x)) (nth 8 x))
+        (equal (nth 8 (fn-cat$c-msgids-put k v x)) (nth 8 x))
+        (equal (nth 8 (fn-cat$c-numbers-put k v x)) (nth 8 x))
+        (equal (nth 8 (fn-cat$c-groups-put k v x)) (nth 8 x))
+        (equal (nth 8 (fn-cat$c-lives-put k v x)) (nth 8 x))
+        (equal (nth 8 (fn-cat$c-msgids-clear x)) (nth 8 x))
+        (equal (nth 8 (fn-cat$c-numbers-clear x)) (nth 8 x))
+        (equal (nth 8 (fn-cat$c-groups-clear x)) (nth 8 x))
+        (equal (nth 8 (fn-cat$c-lives-clear x)) (nth 8 x)))
+   :hints (("Goal" :in-theory (enable update-fn-cat$c-rowsi resize-fn-cat$c-rows
+                                      update-fn-cat$c-count update-fn-cat$c-octets
+                                      update-fn-cat$c-hz fn-cat$c-msgids-put
+                                      fn-cat$c-numbers-put fn-cat$c-groups-put
+                                      fn-cat$c-lives-put fn-cat$c-msgids-clear
+                                      fn-cat$c-numbers-clear fn-cat$c-groups-clear
+                                      fn-cat$c-lives-clear update-nth-array)))))
+
+(local
+ (defthm fn-ctw-nth8-of-apply-plan
+   (equal (nth 8 (fn-cat$c-apply-plan plan seq x)) (nth 8 x))
+   :hints (("Goal" :in-theory (enable fn-cat$c-apply-plan)))))
+
+(local
+ (defthm fn-ctw-nth8-of-live-apply
+   (equal (nth 8 (fn-cat$c-live-apply plan x)) (nth 8 x))
+   :hints (("Goal" :in-theory (enable fn-cat$c-live-apply)))))
+
+(local
+ (defthm fn-ctw-nth8-of-writers
+   (and (equal (nth 8 (fn-cat$c-commit h x)) (nth 8 x))
+        (equal (nth 8 (fn-cat$c-withdraw r by x)) (nth 8 x))
+        (equal (nth 8 (fn-cat$c-redecide r ctx x)) (nth 8 x)))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-commit fn-cat$c-commit-base fn-cat$c-withdraw
+                                    fn-cat$c-withdraw-base fn-cat$c-redecide)
+                                   (fn-cat$c-live-plan fn-cat$c-drop-plan fn-cat$c-plan
+                                    fn-cat$c-apply-plan fn-cat$c-live-apply))))))
+
+(local
+ (defthm fn-ctw-okp-of-append-unwithdrawn
+   (implies (and (fn-cat-wbv-okp keys tab c) (not (consp (fn-held-withdrawn h))))
+            (fn-cat-wbv-okp keys tab (append c (list h))))
+   :hints (("Goal" :induct (fn-cat-wbv-okp keys tab c)))))
+
+(local
+ (defthm fn-ctw-count-is-len
+   (implies (fn-cat$corr x a)
+            (equal (fn-cat$c-count x) (len a)))
+   :hints (("Goal" :in-theory (enable fn-cat$corr fn-cat$corr-base fn-cat$c-count)))))
+
+(local
+ (defthm fn-ctw-rowsi-is-nth
+   (implies (and (fn-cat$corr x a) (fn-cat$ap a) (natp r) (< r (len a)))
+            (equal (fn-cat$c-rowsi r x) (nth r a)))
+   :hints (("Goal" :use ((:instance fn-cat-at{correspondence-bl}
+                                    (fn-cat$c x) (fn-cat a) (seq r)))
+            :in-theory (e/d (fn-cat$c-at) (fn-cat$corr))))))
+
+(local
+ (defthm fn-ctw-corr-wbv-parts
+   (implies (fn-cat$corr-wbv x a)
+            (and (fn-cat-wbv-okp (nth 8 x) (nth 8 x) a)
+                 (fn-cat-wbv-coverp a (nth 8 x))))
+   :hints (("Goal" :in-theory (enable fn-cat$corr-wbv)))))
+
+(local (in-theory (disable fn-cat-withdrawn-at-from fn-cat-insert-asc fn-cat-wbv-okp
+                           fn-cat-wbv-coverp fn-ctw-agree)))
+
+; --- the obligations over the extended relation
+
+
+(defthm create-fn-cat{correspondence}
+  (fn-cat$corr-w (create-fn-cat$c) (create-fn-cat$a))
+  :rule-classes nil
+  :hints (("Goal" :use create-fn-cat{correspondence-bl}
+           :in-theory (enable fn-cat$corr-w fn-cat$corr-wbv create-fn-cat$c create-fn-cat$a
+                              fn-cat-wbv-okp fn-cat-wbv-coverp))))
+
+(defthm fn-cat-withdrawn-at{correspondence}
+  (implies (fn-cat$corr-w fn-cat$c fn-cat)
+           (equal (fn-cat$c-withdrawn-at w fn-cat$c) (fn-cat$a-withdrawn-at w fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cat$corr-w fn-cat$c-withdrawn-at fn-cat$a-withdrawn-at)
+                                  (fn-cat$corr fn-cat$corr-wbv))
+           :use ((:instance fn-ctw-corr-wbv-parts (x fn-cat$c) (a fn-cat))
+                 (:instance fn-ctw-lookup (k w) (tab (nth 8 fn-cat$c)) (c fn-cat))))))
+
+(defthm fn-cat-commit{correspondence}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (fn-held-p h) (fn-cat$ap fn-cat))
+           (fn-cat$corr-w (fn-cat$c-commit-w h fn-cat$c) (fn-cat$a-commit h fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat$corr-w fn-cat$corr-wbv fn-cat$c-commit-w fn-cat$a-commit
+                            fn-ctg-withdrawn-of-assign)
+                           (fn-cat$corr fn-cat$c-commit fn-cat-assign fn-cat$c-wbv-put
+                            fn-cat$c-wbv-get))
+           :use ((:instance fn-cat-commit{correspondence-bl})
+                 (:instance fn-ctw-corr-wbv-parts (x fn-cat$c) (a fn-cat))
+                 (:instance fn-ctw-lookup (k (car (fn-held-withdrawn h)))
+                            (tab (nth 8 fn-cat$c)) (c fn-cat))
+                 (:instance fn-ctw-at-from-below (w (car (fn-held-withdrawn h))) (c fn-cat)
+                            (i 0) (s (len fn-cat)))
+                 (:instance fn-ctw-count-is-len (x fn-cat$c) (a fn-cat))
+                 (:instance fn-ctw-agree-of-append-any (keys (nth 8 fn-cat$c))
+                            (h (fn-cat-assign h fn-cat)) (c fn-cat))
+                 (:instance fn-ctw-okp-put-top (tab (nth 8 fn-cat$c)) (c fn-cat)
+                            (k (car (fn-held-withdrawn h)))
+                            (c2 (append fn-cat (list (fn-cat-assign h fn-cat))))
+                            (val (append (fn-cat-withdrawn-at-from (car (fn-held-withdrawn h))
+                                                                   fn-cat 0)
+                                         (list (len fn-cat)))))))))
+
+(defthm fn-cat-withdraw{correspondence}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (natp target) (< target (fn-cat$a-count fn-cat))
+                (natp by) (fn-cat$ap fn-cat))
+           (fn-cat$corr-w (fn-cat$c-withdraw-w target by fn-cat$c)
+                        (fn-cat$a-withdraw target by fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat$corr-w fn-cat$corr-wbv fn-cat$c-withdraw-w fn-cat$a-withdraw
+                            fn-cat-mark-withdrawn)
+                           (fn-cat$corr fn-cat$c-withdraw fn-held-with-withdrawn
+                            fn-cat$c-wbv-put fn-cat$c-wbv-get))
+           :use ((:instance fn-cat-withdraw{correspondence-bl})
+                 (:instance fn-ctw-corr-wbv-parts (x fn-cat$c) (a fn-cat))
+                 (:instance fn-ctw-lookup (k (len fn-cat)) (tab (nth 8 fn-cat$c)) (c fn-cat))
+                 (:instance fn-ctw-rowsi-is-nth (x fn-cat$c) (a fn-cat) (r target))
+                 (:instance fn-ctw-count-is-len (x fn-cat$c) (a fn-cat))))))
+
+(defthm fn-cat-redecide{correspondence}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat))
+                (fn-hc-p context) (fn-cat$ap fn-cat))
+           (fn-cat$corr-w (fn-cat$c-redecide seq context fn-cat$c)
+                        (fn-cat$a-redecide seq context fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat$corr-w fn-cat$corr-wbv fn-cat$a-redecide)
+                           (fn-cat$corr fn-cat$c-redecide fn-held-with-context))
+           :use ((:instance fn-cat-redecide{correspondence-bl})
+                 (:instance fn-ctw-corr-wbv-parts (x fn-cat$c) (a fn-cat))))))
+
+(defthm fn-cat-clear{correspondence}
+  (implies (fn-cat$corr-w fn-cat$c fn-cat)
+           (fn-cat$corr-w (fn-cat$c-clear-w fn-cat$c) (fn-cat$a-clear fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat$corr-w fn-cat$corr-wbv fn-cat$c-clear-w fn-cat$a-clear
+                            fn-cat-wbv-okp fn-cat-wbv-coverp)
+                           (fn-cat$corr fn-cat$c-clear fn-cat$c-wbv-clear))
+           :use ((:instance fn-cat-clear{correspondence-bl})))))
+
+(defthm fn-cat-count{correspondence}
+  (implies (fn-cat$corr-w fn-cat$c fn-cat)
+           (equal (fn-cat$c-count fn-cat$c) (fn-cat$a-count fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-count{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-at{correspondence}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat))
+                (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-at seq fn-cat$c) (fn-cat$a-at seq fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-at{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-at{guard-thm}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat))
+                (fn-cat$ap fn-cat))
+           (and (fn-cat$c-wfp fn-cat$c) (natp seq) (< seq (fn-cat$c-count fn-cat$c))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-at{guard-thm-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-msgid-seqs{correspondence}
+  (implies (fn-cat$corr-w fn-cat$c fn-cat)
+           (equal (fn-cat$c-msgid-seqs msgid fn-cat$c) (fn-cat$a-msgid-seqs msgid fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-msgid-seqs{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-group-number{correspondence}
+  (implies (fn-cat$corr-w fn-cat$c fn-cat)
+           (equal (fn-cat$c-group-number group n fn-cat$c)
+                  (fn-cat$a-group-number group n fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-group-number{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-group-next{correspondence}
+  (implies (fn-cat$corr-w fn-cat$c fn-cat)
+           (equal (fn-cat$c-group-next group fn-cat$c) (fn-cat$a-group-next group fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-group-next{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-group-count{correspondence}
+  (implies (fn-cat$corr-w fn-cat$c fn-cat)
+           (equal (fn-cat$c-group-count group fn-cat$c) (fn-cat$a-group-count group fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-group-count{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-total-octets{correspondence}
+  (implies (fn-cat$corr-w fn-cat$c fn-cat)
+           (equal (fn-cat$c-total-octets fn-cat$c) (fn-cat$a-total-octets fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-total-octets{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-visible-at{correspondence}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat)) (natp v)
+                (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-visible-at seq v fn-cat$c) (fn-cat$a-visible-at seq v fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-visible-at{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-visible-at{guard-thm}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat)) (natp v)
+                (fn-cat$ap fn-cat))
+           (and (fn-cat$c-wfp fn-cat$c) (natp seq) (natp v)
+                (< seq (fn-cat$c-count fn-cat$c))
+                (fn-held-withdrawnp (fn-held-withdrawn (fn-cat$c-rowsi seq fn-cat$c)))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-visible-at{guard-thm-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-commit{guard-thm}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (fn-held-p h) (fn-cat$ap fn-cat))
+           (fn-cat$c-wfp fn-cat$c))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-commit{guard-thm-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-withdraw{guard-thm}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (natp target) (< target (fn-cat$a-count fn-cat))
+                (natp by) (fn-cat$ap fn-cat))
+           (and (fn-cat$c-wfp fn-cat$c) (natp target) (natp by)
+                (< target (fn-cat$c-count fn-cat$c))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-withdraw{guard-thm-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-redecide{guard-thm}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat))
+                (fn-hc-p context) (fn-cat$ap fn-cat))
+           (and (fn-cat$c-wfp fn-cat$c) (natp seq) (< seq (fn-cat$c-count fn-cat$c))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-redecide{guard-thm-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-group-live-count{correspondence}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-group-live-count group fn-cat$c)
+                  (fn-cat$a-group-live-count group fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-group-live-count{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-group-live-low{correspondence}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-group-live-low group fn-cat$c)
+                  (fn-cat$a-group-live-low group fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-group-live-low{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-group-live-high{correspondence}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-group-live-high group fn-cat$c)
+                  (fn-cat$a-group-live-high group fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-group-live-high{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-horizon{correspondence}
+  (implies (fn-cat$corr-w fn-cat$c fn-cat)
+           (equal (fn-cat$c-horizon fn-cat$c) (fn-cat$a-horizon fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-horizon{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
 
 ; -----------------------------------------------------------------------------
 ; The catalog.  The exports are stated over the list; `:attachable t' lets
@@ -3356,7 +3960,7 @@
   :foundation fn-cat$c
   :recognizer (fn-cat-p :logic fn-cat$ap :exec fn-cat$cp)
   :creator (create-fn-cat :logic create-fn-cat$a :exec create-fn-cat$c)
-  :corr-fn fn-cat$corr
+  :corr-fn fn-cat$corr-w
   :exports ((fn-cat-count :logic fn-cat$a-count :exec fn-cat$c-count)
             (fn-cat-at :logic fn-cat$a-at :exec fn-cat$c-at)
             (fn-cat-msgid-seqs :logic fn-cat$a-msgid-seqs :exec fn-cat$c-msgid-seqs)
@@ -3371,10 +3975,11 @@
             (fn-cat-group-live-high :logic fn-cat$a-group-live-high
                                     :exec fn-cat$c-group-live-high)
             (fn-cat-horizon :logic fn-cat$a-horizon :exec fn-cat$c-horizon)
-            (fn-cat-commit :logic fn-cat$a-commit :exec fn-cat$c-commit :protect t)
-            (fn-cat-withdraw :logic fn-cat$a-withdraw :exec fn-cat$c-withdraw :protect t)
+            (fn-cat-commit :logic fn-cat$a-commit :exec fn-cat$c-commit-w :protect t)
+            (fn-cat-withdraw :logic fn-cat$a-withdraw :exec fn-cat$c-withdraw-w :protect t)
             (fn-cat-redecide :logic fn-cat$a-redecide :exec fn-cat$c-redecide :protect t)
-            (fn-cat-clear :logic fn-cat$a-clear :exec fn-cat$c-clear :protect t))
+            (fn-cat-clear :logic fn-cat$a-clear :exec fn-cat$c-clear-w :protect t)
+            (fn-cat-withdrawn-at :logic fn-cat$a-withdrawn-at :exec fn-cat$c-withdrawn-at))
   :corr-fn-exists t
   :attachable t)
 
@@ -3442,12 +4047,15 @@
   (equal (fn-cat-horizon fn-cat)
          (if (fn-cat-rowsp fn-cat) (fn-cat-horizon-of fn-cat) (+ 1 (len fn-cat)))))
 
+(defthm fn-cat-withdrawn-at-is-from
+  (equal (fn-cat-withdrawn-at w fn-cat) (fn-cat-withdrawn-at-from w fn-cat 0)))
+
 (in-theory (disable fn-cat-p fn-cat-count fn-cat-at fn-cat-msgid-seqs
                     fn-cat-group-number fn-cat-group-next fn-cat-group-count
                     fn-cat-total-octets fn-cat-visible-at fn-cat-commit
                     fn-cat-withdraw fn-cat-redecide fn-cat-clear
                     fn-cat-group-live-count fn-cat-group-live-low fn-cat-group-live-high
-                    fn-cat-horizon
+                    fn-cat-horizon fn-cat-withdrawn-at
                     fn-cat-p-is-rowsp fn-cat-assign fn-cat-visiblep
                     fn-cat-mark-withdrawn fn-held-with-numbers
                     fn-held-with-withdrawn fn-held-with-context))
