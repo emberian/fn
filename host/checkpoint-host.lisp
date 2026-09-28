@@ -240,13 +240,6 @@
                               final-absentp
                               (fn-store-checkpoint-generation-capacity values)))
 
-; Selection replacement is a separate contract from immutable generation
-; publication.  The native adapter retains this returned phase and asks ACL2
-; for every next action, observation transition, and terminal outcome.
-(defun fn-store-checkpoint-marker-action (phase)
-  (declare (xargs :mode :program))
-  (fn-cpp-marker-driver-action phase))
-
 (defun fn-store-checkpoint-marker-step (phase result)
   (declare (xargs :mode :program))
   (fn-cpp-marker-driver-step phase result))
