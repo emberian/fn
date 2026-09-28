@@ -4,6 +4,8 @@
 ; fn-feed-observe) and the replay of the journal those transitions wrote.
 (in-package "ACL2")
 (include-book "../../books/feed-restart-domain")
+; The live driver's records (the :restart event is fn-feed-restart there).
+(include-book "../../books/feed-events")
 
 (defconst *frd-peer* '(105 110 110))                       ; "inn"
 (defconst *frd-a* '(60 97 64 102 110 62))                  ; "<a@fn>"
