@@ -2130,7 +2130,8 @@
         "PRF-352",
         "PRF-368",
         "PRF-362",
-        "PRF-371"
+        "PRF-371",
+        "PRF-383"
       ],
       "verification": [
         "proof",
@@ -3220,7 +3221,9 @@
       "status": "specified",
       "proof_targets": [
         "PRF-164",
-        "PRF-374"
+        "PRF-374",
+        "PRF-378",
+        "PRF-379"
       ],
       "verification": [
         "proof",
