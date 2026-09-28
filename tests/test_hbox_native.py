@@ -59,6 +59,33 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertEqual(sorted(index, key=index.get),
                          ["roots", "certify", "acquire", "validate", "image", "bp-host", "test"])
 
+    def test_the_prof_image_follows_this_runs_certify(self):
+        # served-columns: a profiling image built in a copied tree lacked
+        # books its world loads; here it follows the run's own certify.
+        answer = dry("--images", "developer,prof", "HEAD", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        lines = answer.stdout.splitlines()
+        certify = next(i for i, line in enumerate(lines) if line.startswith("step certify "))
+        validate = next(i for i, line in enumerate(lines) if line.startswith("step validate "))
+        prof = [i for i, line in enumerate(lines) if line.startswith("step image-prof ")]
+        self.assertEqual(len(prof), 1)
+        self.assertLess(certify, validate)
+        self.assertLess(validate, prof[0])
+        self.assertIn("swarm-build sh tools/profile/build_native_profile.sh build/fn-host-prof",
+                      lines[prof[0]])
+        self.assertIn("FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k", lines[prof[0]])
+
+    def test_run_log_carries_the_boxs_load(self):
+        # feed-queue: one case read 20.9 s and then 2.7 s on a loaded box.
+        answer = dry("HEAD", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        script = answer.stdout
+        self.assertIn('echo "== load at start: $(uptime)"', script)
+        finish = script[script.index("finish() {"):]
+        self.assertIn('echo "== load at end: $(uptime)"', finish.split("}")[0])
+        tstep = script[script.index("tstep() {"):]
+        self.assertIn("/proc/loadavg", tstep.split("\n}")[0])
+
     def test_explicit_env_is_exported_and_wins(self):
         answer = dry("--images", "dtn-developer", "--env", "FN_NATIVE_BP_HOST=/x/y",
                      "--env", "FN_OTHER=1", "HEAD", "tests.test_bp_service_native")

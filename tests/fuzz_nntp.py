@@ -198,6 +198,24 @@ HEADER_NAMES = [b"Subject", b"From", b"Newsgroups", b"Message-ID", b"Path", b"Da
                 b"References", b"Xref", b"Lines", b"Bytes", b"Control", b"Approved",
                 b"Supersedes", b"Distribution", b"Expires", b"Followup-To", b"Organization",
                 b"Injection-Info", b"Injection-Date", b"X-Fuzz", b"Keywords", b"Summary"]
+POOLS = {"groups": GROUPS, "ranges": RANGES, "wildmats": WILDMATS,
+         "header-names": HEADER_NAMES,
+         "header-fields": HEADER_NAMES + [b":bytes", b":lines", b"", b"x" * 600]}
+UNKNOWN_VERBS = [b"FOO", b"XYZZY", b"SLAVE", b"COMPRESS DEFLATE", b"XFEATURE COMPRESS GZIP",
+                 b"XROVER", b"XGTITLE", b"CHECK", b"IHAVE", b"TAKETHIS", b"ARTICLE <"]
+GARBAGE_LINES = [CRLF, b"\n", b" \r\n", b"\x00\r\n", b"\r", b"\xff\xfe\r\n",
+                 b"\x16\x03\x01\x00\x05hello\r\n"]
+QUIT_SPELLINGS = [b"QUIT", b"quit", b"QUIT x"]
+
+sys.path.insert(0, str(ROOT / "tools"))
+import protocol_emit  # noqa: E402  (the table, read without evaluating a book)
+
+PROTOCOL = {row["name"]: row for row in protocol_emit.load()["rows"]}
+# Table rows with a :fuzz production that no step sends (named, not silent).
+UNFUZZED_ROWS = ["XFNCATCHUP"]
+# Rows the fuzzer sends in its own spellings (QUIT_SPELLINGS: lower case, an
+# argument, no mutation), not through the row's grammar.
+RAW_ROWS = ["QUIT"]
 
 
 class Gen:
@@ -329,107 +347,122 @@ class Gen:
                                              b".\r\n.\r\n"])
         return text + end
 
+    # The command words and every command's arguments come from the protocol
+    # table (books/protocol-table.lisp, read by tools/protocol_emit.py): each
+    # row's :fuzz production, interpreted by `words'.  What stays here is the
+    # fuzzer's own policy: the step weights, the pools of adversarial values,
+    # the unknown verbs, the garbage lines and QUIT's spellings.  The
+    # grammar is byte-for-byte the hand-written one it replaced
+    # (tests/test_protocol_fuzz_grammar.py); rows it does not send are named
+    # by UNFUZZED_ROWS.
+
+    def words(self, prods, bound=None):
+        out = []
+        for p in prods:
+            out.extend(self.word(p, bound or {}))
+        return out
+
+    def word(self, p, bound):
+        if isinstance(p, str):
+            return [p.encode("latin-1")]
+        op = p[0]
+        if op == "pool":
+            return [self.choice(POOLS[p[1]])]
+        if op == "choice":
+            return [self.choice([self.word(w, bound)[0] for w in p[1:]])]
+        if op == "opt":
+            return self.words(p[2:], bound) if self.chance(p[1]) else []
+        if op == "msgid":
+            return [self.msgid()]
+        if op == "pool+msgid":
+            return [self.choice(POOLS[p[1]] + [self.msgid()])]
+        if op == "alt":
+            return self.words(self.choice(p[1:]), bound)
+        if op == "split":
+            r = self.rng.random()
+            for arm in p[1:]:
+                if r < arm[0]:
+                    return self.words(arm[1:], bound)
+            return []
+        if op == "bound":
+            return [bound[p[1]][p[2]]]
+        if op == "rep":
+            return [p[1].encode("latin-1") * p[2]]
+        if op == "rep-choice":
+            w = self.choice([self.word(x, bound)[0] for x in p[1]])
+            return [w] * self.rng.randrange(p[2])
+        raise ValueError("unknown :fuzz production %r" % (op,))
+
+    def args(self, name, bound=None):
+        return self.words(PROTOCOL[name]["fuzz"], bound)
+
+    def cmd(self, name, bound=None):
+        return self.command([name.encode()] + self.args(name, bound))
+
+    def family(self, *names):
+        return self.choice(list(names))
+
     def step(self):
         """One or more items for one protocol step."""
         rng = self.rng
         r = rng.random()
-        c = self.command
         if r < 0.04:
-            return [c([b"CAPABILITIES"] + ([self.choice([b"x", b"AUTOUPDATE"])] if self.chance(0.2) else []))]
+            return [self.cmd("CAPABILITIES")]
         if r < 0.08:
-            return [c([b"MODE", self.choice([b"READER", b"STREAM", b"", b"reader", b"POSTER", b"X"])])]
+            return [self.cmd("MODE")]
         if r < 0.16:
-            return [c([b"GROUP", self.choice(GROUPS)] + ([b"x"] if self.chance(0.05) else []))]
+            return [self.cmd("GROUP")]
         if r < 0.20:
-            words = [b"LISTGROUP"]
-            if self.chance(0.8):
-                words.append(self.choice(GROUPS))
-                if self.chance(0.5):
-                    words.append(self.choice(RANGES))
-            return [c(words)]
+            return [self.cmd("LISTGROUP")]
         if r < 0.24:
-            return [c([self.choice([b"LAST", b"NEXT"])])]
+            return [self.cmd(self.family("LAST", "NEXT"))]
         if r < 0.36:
-            verb = self.choice([b"ARTICLE", b"HEAD", b"BODY", b"STAT"])
-            arg = self.rng.random()
-            words = [verb]
-            if arg < 0.4:
-                words.append(self.msgid())
-            elif arg < 0.8:
-                words.append(self.choice(RANGES))
-            return [c(words)]
+            return [self.cmd(self.family("ARTICLE", "HEAD", "BODY", "STAT"))]
         if r < 0.44:
-            kw = self.choice([b"", b"ACTIVE", b"NEWSGROUPS", b"OVERVIEW.FMT", b"HEADERS",
-                              b"ACTIVE.TIMES", b"DISTRIB.PATS", b"MOTD", b"COUNTS", b"SUBSCRIPTIONS",
-                              b"HEADERS MSGID", b"HEADERS RANGE", b"X"])
-            words = [b"LIST"] + ([kw] if kw else [])
-            if kw and self.chance(0.5):
-                words.append(self.choice(WILDMATS))
-            return [c(words)]
+            return [self.cmd("LIST")]
         if r < 0.50:
-            verb = self.choice([b"OVER", b"XOVER"])
-            return [c([verb] + ([self.choice(RANGES + [self.msgid()])] if self.chance(0.8) else []))]
+            return [self.cmd(self.family("OVER", "XOVER"))]
         if r < 0.55:
-            verb = self.choice([b"HDR", b"XHDR"])
-            words = [verb, self.choice(HEADER_NAMES + [b":bytes", b":lines", b"", b"x" * 600])]
-            if self.chance(0.7):
-                words.append(self.choice(RANGES + [self.msgid()]))
-            return [c(words)]
+            return [self.cmd(self.family("HDR", "XHDR"))]
         if r < 0.57:
-            words = [b"XPAT", self.choice(HEADER_NAMES), self.choice(RANGES + [self.msgid()]),
-                     self.choice(WILDMATS)]
-            return [c(words)]
+            return [self.cmd("XPAT")]
         if r < 0.61:
-            d, t = self.choice(DATES)
-            if self.chance(0.5):
-                words = [b"NEWGROUPS", d, t]
-            else:
-                words = [b"NEWNEWS", self.choice(WILDMATS), d, t]
-            if self.chance(0.4):
-                words.append(self.choice([b"GMT", b"UTC", b"gmt", b"X"]))
-            return [c(words)]
+            date = self.choice(DATES)
+            verb = "NEWGROUPS" if self.chance(0.5) else "NEWNEWS"
+            return [self.cmd(verb, {"date": date})]
         if r < 0.63:
-            return [c([self.choice([b"HELP", b"DATE"]) if self.mode != "reader" else b"HELP"])]
+            return [self.cmd(self.family("HELP", "DATE") if self.mode != "reader" else "HELP")]
         if r < 0.70:
-            post = c([b"POST"] + ([b"x"] if self.chance(0.05) else []))
-            items = [post]
+            items = [self.cmd("POST")]
             if self.chance(0.85):
                 items.append(self.article())
             return items
         if r < 0.76:
             mid = self.msgid()
-            items = [c([b"IHAVE", mid])]
+            items = [self.cmd("IHAVE", {"mid": (mid,)})]
             if self.chance(0.8):
                 items.append(self.article(mid if self.chance(0.9) else None, transit=True))
             return items
         if r < 0.80:
-            return [c([b"CHECK", self.msgid()])]
+            return [self.cmd("CHECK")]
         if r < 0.85:
             mid = self.msgid()
-            return [c([b"TAKETHIS", mid]), self.article(mid if self.chance(0.9) else None, transit=True)]
+            return [self.cmd("TAKETHIS", {"mid": (mid,)}),
+                    self.article(mid if self.chance(0.9) else None, transit=True)]
         if r < 0.91:
             kind = self.rng.randrange(6)
-            if kind == 0:
-                return [c([b"AUTHINFO", b"USER", self.choice([b"fuzz", b"nobody", b"", b"u" * 600])]),
-                        c([b"AUTHINFO", b"PASS", self.choice([b"fuzz-password", b"wrong", b"", b"p" * 600])])]
-            if kind == 1:
-                return [c([b"AUTHINFO", b"PASS", b"fuzz-password"])]
-            if kind == 2:
-                return [c([b"AUTHINFO", b"SASL", self.choice([b"PLAIN", b"PLAIN AGZ1enoAZnV6ei1wYXNzd29yZA==", b"X"])])]
-            if kind == 3:
-                return [c([b"AUTHINFO", self.choice([b"GENERIC", b"SIMPLE", b"", b"user"])])]
-            if kind == 4:
-                return [c([b"AUTHINFO", b"USER", b"fuzz"])]
-            return [c([b"XREDEEM"] + [self.choice([b"code", b"", b"x" * 600])] * self.rng.randrange(3))]
+            if kind < 5:
+                cases = PROTOCOL["AUTHINFO"]["fuzz"][0][1:]
+                return [self.command([b"AUTHINFO"] + self.words(words))
+                        for words in cases[kind]]
+            return [self.cmd("XREDEEM")]
         if r < 0.93:
-            return [c([b"STARTTLS"])] if self.mode != "tls" else [c([b"HELP"])]
+            return [self.cmd("STARTTLS")] if self.mode != "tls" else [self.cmd("HELP")]
         if r < 0.96:
-            return [c([self.choice([b"FOO", b"XYZZY", b"SLAVE", b"COMPRESS DEFLATE", b"XFEATURE COMPRESS GZIP",
-                                    b"XROVER", b"XGTITLE", b"CHECK", b"IHAVE", b"TAKETHIS", b"ARTICLE <"])])]
+            return [self.command([self.choice(UNKNOWN_VERBS)])]
         if r < 0.98:
-            return [self.choice([CRLF, b"\n", b" \r\n", b"\x00\r\n", b"\r", b"\xff\xfe\r\n",
-                                 b"\x16\x03\x01\x00\x05hello\r\n"])]
-        return [self.choice([b"QUIT", b"quit", b"QUIT x"]) + self.terminator()]
+            return [self.choice(GARBAGE_LINES)]
+        return [self.choice(QUIT_SPELLINGS) + self.terminator()]
 
     def transcript(self, max_steps=None):
         steps = self.choice([1, 1, 2, 3, 4, 6, 8, 12, 20]) if max_steps is None else max_steps

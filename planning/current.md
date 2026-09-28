@@ -12,26 +12,27 @@ The prose lines are hand-maintained and name their record. The history
 stays in [`evidence/`](evidence/), immutable.
 
 Live node: `fn.fg-goose.online` on the fsn1 anchor `dregg-anchor-fsn1` (floating IP 88.99.126.35; 119 STARTTLS and 563 implicit TLS, Let's Encrypt certificate) on `18a7137a` ([public-node-deploy-2026-09-27](evidence/public-node-deploy-2026-09-27.md)), release `fn-6.7.0-linux-x86_64.tar.gz` (sha256 `54e6a3630e2d1ceff3918dad9e788ecfca94a725715bef099a247a681d7d2b13`), native under systemd with MemoryMax=2G, a fresh store at format 9 (max-transactions 32,768), small-community mission plus the edge exposure policy, logins by invitation only, no peers, DTN profile not deployed; deployed 2026-09-27 21:49Z; its image is a release build of that source, not a qualified image.
-Earlier node: hbox `/tank/fn/node` on `bbf52159` ([node-hbox-bbf52159-2026-09-25](evidence/node-hbox-bbf52159-2026-09-25.md)), fn-node.service inactive when the public node was deployed (checked 2026-09-27 21:45Z and 21:52Z, planning/evidence/public-node-deploy-2026-09-27.md section 6); its store is format 8, which the current release refuses by name (D34).
+Also live: node #2, hbox `/tank/fn/node` (LAN 192.168.50.39 only, behind NAT; 119 STARTTLS and 563 implicit TLS, self-signed hbox.ember.software) on `6702ff8b` ([hbox-node-2026-09-28](evidence/hbox-node-2026-09-28.md)), release `fn-6.6.0-linux-x86_64.tar.gz` (sha256 `14c962e8bf61c00f31d2697026b94a34ca92ff1833a246ac689cdae9cb6e8373`, source `5e064ad83` plus one manifest), system unit fn-node.service with MemoryMax=2G, a fresh store at format 9 (max-transactions 32,768), small-community mission plus the exposure policy, logins by invitation only, no peers (peer add commands ready in the record); deployed 2026-09-28 03:14Z; a release build, not a qualified image.
+Earlier node: hbox `/tank/fn/node-old-format8-20260928` (was `/tank/fn/node`) on `bbf52159` ([node-hbox-bbf52159-2026-09-25](evidence/node-hbox-bbf52159-2026-09-25.md)), found running as a user unit on 2026-09-28 (not inactive, as recorded 2026-09-27), stopped and moved aside at 03:12Z; its store is format 8, which the current release refuses by name (reason=older-release, D34; planning/evidence/hbox-node-2026-09-28.md section 1).
 Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47bdb9a4-2026-09-24.md), [matrix-47bdb9a4-2026-09-24](evidence/matrix-47bdb9a4-2026-09-24.md), [campaign-47bdb9a4-2026-09-24](evidence/campaign-47bdb9a4-2026-09-24.md), [native-subsets-47bdb9a4-2026-09-24](evidence/native-subsets-47bdb9a4-2026-09-24.md), [matrix-6c0626c5-2026-09-24](evidence/matrix-6c0626c5-2026-09-24.md), [campaign-6c0626c5-2026-09-24](evidence/campaign-6c0626c5-2026-09-24.md), [native-subsets-6c0626c5-2026-09-24](evidence/native-subsets-6c0626c5-2026-09-24.md), [native-cut-1a9dd747-2026-09-24](evidence/native-cut-1a9dd747-2026-09-24.md), [matrix-1a9dd747-2026-09-24](evidence/matrix-1a9dd747-2026-09-24.md), [campaign-1a9dd747-2026-09-24](evidence/campaign-1a9dd747-2026-09-24.md), [native-subsets-1a9dd747-2026-09-24](evidence/native-subsets-1a9dd747-2026-09-24.md), [863-native-cut-2026-09-24](evidence/863-native-cut-2026-09-24.md), [final-cut-8a1b31f9-2026-09-24](evidence/final-cut-8a1b31f9-2026-09-24.md).
 
 | capability | keystone | implemented | proved | qualified | deployed |
 | --- | --- | --- | --- | --- | --- |
-| [P1](#p1) protected channel | `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` | yes | yes: `certify-20260927T225252Z-2686142` | no: source changed since 69046a76 | no: dev source not on the node |
-| [P2](#p2) 240 after a consumed completion | `fn-own-240-follows-consumed-completion` | yes | yes: `certify-20260927T225252Z-2686142` | no: source changed since 69046a76 | no: dev source not on the node |
-| [P3](#p3) reading resumes | `fn-own-pinned-view-survives-other-post` | yes | yes: `certify-20260927T225252Z-2686142` | no: source changed since 69046a76 | no: dev source not on the node |
-| [P4](#p4) one owner decides duplicate versus conflict | `fn-pb-same-article-is-answered-already-stored` | yes | yes: `certify-20260927T225252Z-2686142` | no: source changed since 69046a76 | no: dev source not on the node |
-| [P5](#p5) a connection-local fault costs one connection | `fn-ocfg-fault-keeps-every-other-connection` | yes | yes: `certify-20260927T225252Z-2686142` | no: source changed since 69046a76 | no: dev source not on the node |
-| [P6](#p6) live reconfiguration | `fn-ocl-no-reader-observes-a-half-change` | yes | yes: `certify-20260927T225252Z-2686142` | no: source changed since 69046a76 | no: dev source not on the node |
-| [P7](#p7) two nodes exchange both ways | `fn-own-submission-never-targets-a-loop` | yes | yes: `certify-20260927T225252Z-2686142` | no: source changed since 69046a76 | no: dev source not on the node |
-| [P8](#p8) signature verdict visible | `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` | yes | yes: `certify-20260927T230825Z-2857632` | no: source changed since 69046a76 | no: dev source not on the node |
-| [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | yes: `certify-20260927T225252Z-2686142` | no: source changed since 69046a76 | no: dev source not on the node |
-| [P10](#p10) every cut is a model crash point | `fn-bs-recover-program-keeps-relation-at-every-cut` | yes | yes: `certify-20260927T225252Z-2686142` | no: source changed since 69046a76 | no: dev source not on the node |
-| [P11](#p11) bundles across an outage | `fn-bpnp-step-session-offer-is-the-scan-choice` | yes | yes: `certify-20260927T225252Z-2686142` | no: source changed since 69046a76 | no: profile not deployed |
-| [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | yes: `certify-20260927T225252Z-2686142` | no: source changed since 69046a76 | no: profile not deployed |
-| [M5](#m5) maintenance: compaction and reclaim over the record log | `fn-lgr-decide-checkpoints-the-rewrite` | yes | yes: `certify-20260927T230825Z-2857632` | lab only: `10674f330` | no: dev source not on the node |
-| [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | yes: `certify-20260927T230825Z-2857632` | no: source changed since 69046a76 | no: dev source not on the node |
-| [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | yes: `certify-20260927T225252Z-2686142` | no: source changed since 69046a76 | no: dev source not on the node |
+| [P1](#p1) protected channel | `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` | yes | yes: `certify-20260928T025445Z-876835` | no: source changed since 69046a76 | no: dev source not on the node |
+| [P2](#p2) 240 after a consumed completion | `fn-own-240-follows-consumed-completion` | yes | yes: `certify-20260928T025445Z-876835` | no: source changed since 69046a76 | no: dev source not on the node |
+| [P3](#p3) reading resumes | `fn-own-pinned-view-survives-other-post` | yes | yes: `certify-20260928T025445Z-876835` | no: source changed since 69046a76 | no: dev source not on the node |
+| [P4](#p4) one owner decides duplicate versus conflict | `fn-pb-same-article-is-answered-already-stored` | yes | yes: `certify-20260928T025445Z-876835` | no: source changed since 69046a76 | no: dev source not on the node |
+| [P5](#p5) a connection-local fault costs one connection | `fn-ocfg-fault-keeps-every-other-connection` | yes | yes: `certify-20260928T025445Z-876835` | no: source changed since 69046a76 | no: dev source not on the node |
+| [P6](#p6) live reconfiguration | `fn-ocl-no-reader-observes-a-half-change` | yes | yes: `certify-20260928T025445Z-876835` | no: source changed since 69046a76 | no: dev source not on the node |
+| [P7](#p7) two nodes exchange both ways | `fn-own-submission-never-targets-a-loop` | yes | yes: `certify-20260928T025445Z-876835` | no: source changed since 69046a76 | no: dev source not on the node |
+| [P8](#p8) signature verdict visible | `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` | yes | yes: `certify-20260928T025445Z-876835` | no: source changed since 69046a76 | no: dev source not on the node |
+| [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | yes: `certify-20260928T025445Z-876835` | no: source changed since 69046a76 | no: dev source not on the node |
+| [P10](#p10) every cut is a model crash point | `fn-bs-recover-program-keeps-relation-at-every-cut` | yes | yes: `certify-20260928T025445Z-876835` | no: source changed since 69046a76 | no: dev source not on the node |
+| [P11](#p11) bundles across an outage | `fn-bpnp-step-session-offer-is-the-scan-choice` | yes | yes: `certify-20260928T025730Z-3605067` | no: source changed since 69046a76 | no: profile not deployed |
+| [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | yes: `certify-20260928T025445Z-876835` | no: source changed since 69046a76 | no: profile not deployed |
+| [M5](#m5) maintenance: compaction and reclaim over the record log | `fn-lgr-decide-checkpoints-the-rewrite` | yes | yes: `certify-20260928T025730Z-3605067` | lab only: `10674f330` | no: dev source not on the node |
+| [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | yes: `certify-20260928T025445Z-876835` | no: source changed since 69046a76 | no: dev source not on the node |
+| [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | yes: `certify-20260928T025445Z-876835` | no: source changed since 69046a76 | no: dev source not on the node |
 
 ## Records
 
@@ -39,8 +40,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **protected channel.** A gated command before login is answered 480 and changes nothing, AUTHINFO on a clear connection under `protected_only` is 483, and POST needs the principal's posting flag.
 
-- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:3287, equated by `fn-scar-auth-step-pinned-is-auth-step-pinned` (books/served-carried.lisp:183).
-- Keystone: `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` (books/nntp-auth-invariants.lisp:593; PRF-031 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T225252Z-2686142` (earliest archived).
+- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:3297, equated by `fn-scar-auth-step-pinned-is-auth-step-pinned` (books/served-carried.lisp:183).
+- Keystone: `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` (books/nntp-auth-invariants.lisp:593; PRF-031 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025445Z-876835` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native-operator matrix and native modules, production and developer (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/nntp-auth-invariants.lisp`, `books/served-carried.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `18a7137a`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: matrix AUTH-GATED-A/B 480 before login, AUTH-LOGIN 281, AUTH-WRONG 481, every TLS/AUTHINFO transit row; auth 4/4, starttls 2/2, protected_peering 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -51,8 +52,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **240 after a consumed completion.** After the owner consumes an article's completion the POST reply is 240 or uncertain, never a refusal, and each refusal kind stays distinct.
 
-- Host-called subject: `fn-apc-own-finish` at host/owner-host.lisp:1732, equated by `fn-apc-own-finish-is-own-finish` (books/owner-parse-carried.lisp:944).
-- Keystone: `fn-own-240-follows-consumed-completion` (books/owner-served-invariants.lisp:242; PRF-015 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T225252Z-2686142` (earliest archived).
+- Host-called subject: `fn-apc-own-finish` at host/owner-host.lisp:1742, equated by `fn-apc-own-finish-is-own-finish` (books/owner-parse-carried.lisp:944).
+- Keystone: `fn-own-240-follows-consumed-completion` (books/owner-served-invariants.lisp:242; PRF-015 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025445Z-876835` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile developer twin for the cuts, production for the kill run (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); absent from it: `books/owner-parse-carried.lisp`.
 - Deployed: no: node image `18a7137a`; changed since it: `books/owner-parse-carried.lisp`, `host/owner-host.lisp`.
 - Latest positive result: 50/50 cut observations, probe 40/40, served_crash_model 3/3 over 18 cuts, 90 production SIGKILLs with 0 torn, 0 lost 240, 0 reused numbers ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -63,8 +64,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **reading resumes.** A reader's pinned view answers the same across other connections' posts, and a local number naming an article is never reassigned.
 
-- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:3287, equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:226).
-- Keystone: `fn-own-pinned-view-survives-other-post` (books/owner-served-invariants.lisp:437; PRF-002 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T225252Z-2686142` (earliest archived).
+- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:3297, equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:226).
+- Keystone: `fn-own-pinned-view-survives-other-post` (books/owner-served-invariants.lisp:437; PRF-002 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025445Z-876835` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native-operator matrix and native modules (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/owner-served-carried.lisp`, `books/owner-served-invariants.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `18a7137a`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: reader_index 4/4, served_differential 7/7, the matrix reader rows with 0 disagreed ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -75,8 +76,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **one owner decides duplicate versus conflict.** A resubmission with the same poster bytes (the octets without Path, Xref, Injection-Date, Injection-Info and a node-generated Date) is answered already stored; different poster bytes under the same Message-ID are a conflict.
 
-- Host-called subject: `fn-store-existing-action` at host/owner-host.lisp:1169, equated by `fn-store-existing-action-is-the-verdict-over-alpha` (books/store-intern.lisp:1076).
-- Keystone: `fn-pb-same-article-is-answered-already-stored` (books/poster-bytes-invariants.lisp:552; in no registry row); certified at the current source and closure by `certify-20260927T225252Z-2686142` (earliest archived).
+- Host-called subject: `fn-store-existing-action` at host/owner-host.lisp:1179, equated by `fn-store-existing-action-is-the-verdict-over-alpha` (books/store-intern.lisp:1076).
+- Keystone: `fn-pb-same-article-is-answered-already-stored` (books/poster-bytes-invariants.lisp:552; in no registry row); certified at the current source and closure by `certify-20260928T025445Z-876835` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile the matrix postcycle phase against one owner (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); absent from it: `books/store-intern.lisp`.
 - Deployed: no: node image `18a7137a`; changed since it: `books/poster-bytes-invariants.lisp`, `books/store-intern.lisp`, `host/owner-host.lisp`.
 - Latest positive result: a resend at a later second is answered duplicate where the image before D25 answered conflict ([d25-dup-conflict](evidence/d25-dup-conflict-2026-09-24.md)).
@@ -87,8 +88,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **a connection-local fault costs one connection.** A connection-local fault closes that connection and keeps every other, and an open at `max-conns` answers nothing and leaves the owner unchanged; a fault in a shared owner action fail-stops.
 
-- Host-called subject: `fn-ocfg-fault` at host/owner-host.lisp:3393.
-- Keystone: `fn-ocfg-fault-keeps-every-other-connection` (books/owner-served-invariants.lisp:498; PRF-040 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T225252Z-2686142` (earliest archived).
+- Host-called subject: `fn-ocfg-fault` at host/owner-host.lisp:3404.
+- Keystone: `fn-ocfg-fault-keeps-every-other-connection` (books/owner-served-invariants.lisp:498; PRF-040 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025445Z-876835` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native modules, image's own tests (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/owner-served-invariants.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `18a7137a`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: owner 18/18 (local fault, disconnect, reset), control 14/14 with the busy ceiling, POST-CONCURRENT accepted ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -99,8 +100,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **live reconfiguration.** No reader observes a half-applied configuration change, and a crash at any instant recovers the live or the whole published generation.
 
-- Host-called subject: `fn-oclc-publish` at host/owner-host.lisp:1002, equated by `fn-oclc-publish-is-publish` (books/config-owner-carried.lisp:465).
-- Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T225252Z-2686142` (earliest archived).
+- Host-called subject: `fn-oclc-publish` at host/owner-host.lisp:1004, equated by `fn-oclc-publish-is-publish` (books/config-owner-carried.lisp:465).
+- Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025445Z-876835` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native-operator matrix and native modules (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); absent from it: `books/config-owner-carried.lisp`.
 - Deployed: no: node image `18a7137a`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: CFG-LIVE accepted and CFG-LIVE-REFUSE refused; live_reconfiguration 11/11, admin 9/9, operator_verbs 18/18, profile_upgrade 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -111,8 +112,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **two nodes exchange both ways.** An accepted article is offered to every configured peer except the one it came from and those its Path names, and a relayed article keeps the received Path tail.
 
-- Host-called subject: `fn-apc-submission-intent` at host/owner-host.lisp:2334, equated by `fn-own-submission-targets-are-feed-targets` (books/owner-feed-subject.lisp:35).
-- Keystone: `fn-own-submission-never-targets-a-loop` (books/owner-feed-subject.lisp:108; PRF-029 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T225252Z-2686142` (earliest archived).
+- Host-called subject: `fn-apc-submission-intent` at host/owner-host.lisp:2344, equated by `fn-own-submission-targets-are-feed-targets` (books/owner-feed-subject.lisp:35).
+- Keystone: `fn-own-submission-never-targets-a-loop` (books/owner-feed-subject.lisp:108; PRF-029 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025445Z-876835` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile two-node native-operator matrix with INN (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/owner-feed-subject.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `18a7137a`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: all 22 TRANSIT-*-AB/BA rows and INN 33/33; peering 5/5 with the Path-identity transit, protected_peering 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -123,8 +124,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **signature verdict visible.** A reader's `HDR :fn-verified` reports the verdict the completion recorded for the article, and a carried article reads `carried`, never `verified`.
 
-- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:3287, equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:226).
-- Keystone: `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` (books/owner-verdict-read.lisp:411; PRF-026 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T230825Z-2857632` (earliest archived).
+- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:3297, equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:226).
+- Keystone: `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` (books/owner-verdict-read.lisp:411; PRF-026 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025445Z-876835` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native modules, developer and production (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/owner-served-carried.lisp`, `books/owner-verdict-read.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `18a7137a`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: hybrid_author 6/6 including a signed POST over NNTP getting the transit classification; consumer_e2 signed poll 1/1 with a dated source ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -135,8 +136,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **keep until release, refuse the unaffordable.** An article prepare at the store profile's transaction budget is refused `unaffordable` by name, and below it is exactly the owner's prepare.
 
-- Host-called subject: `fn-pout-prepare-article` at host/owner-host.lisp:1226, equated by `fn-pout-prepare-article-is-sbud-prepare-when-served` (books/owner-prepare-outcome.lisp:448).
-- Keystone: `fn-sbud-prepare-refuses-at-budget` (books/owner-store-budget.lisp:37; PRF-004 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T225252Z-2686142` (earliest archived).
+- Host-called subject: `fn-pout-prepare-article` at host/owner-host.lisp:1236, equated by `fn-pout-prepare-article-is-sbud-prepare-when-served` (books/owner-prepare-outcome.lisp:448).
+- Keystone: `fn-sbud-prepare-refuses-at-budget` (books/owner-store-budget.lisp:37; PRF-004 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025445Z-876835` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native-operator matrix, operator verbs, kill run (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); absent from it: `books/owner-prepare-outcome.lisp`.
 - Deployed: no: node image `18a7137a`; changed since it: `books/owner-prepare-outcome.lisp`, `host/owner-host.lisp`.
 - Latest positive result: CAP-REFUSE-A/B refused, CAP-SET accepted; operator_verbs budget cases, bp_obligation 4/4, app_journal 10/10 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -147,8 +148,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **every cut is a model crash point.** Every recovery cut coordinate, from every crash image of a related state, reopens to a kernel related to the recovered model state.
 
-- Host-called subject: `fn-ock-recover-extended` at host/owner-host.lisp:417, equated by `fn-bs-host-reopened-kernel-is-the-recovered-kernel` (books/byte-store-k0-recovery.lisp:567).
-- Keystone: `fn-bs-recover-program-keeps-relation-at-every-cut` (books/byte-store-k0-recovery.lisp:490; PRF-041 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T225252Z-2686142` (earliest archived).
+- Host-called subject: `fn-ock-recover-extended` at host/owner-host.lisp:419, equated by `fn-bs-host-reopened-kernel-is-the-recovered-kernel` (books/byte-store-k0-recovery.lisp:567).
+- Keystone: `fn-bs-recover-program-keeps-relation-at-every-cut` (books/byte-store-k0-recovery.lisp:490; PRF-041 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025445Z-876835` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile developer twin for the cuts, production refuses selectors (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/byte-store-k0-recovery.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `18a7137a`; changed since it: `books/byte-store-k0-recovery.lisp`, `host/owner-host.lisp`.
 - Latest positive result: the committed-history marker is fn-bs-marker-program in the byte crash model between the record and the finish (lane p10-marker-model); the cut table is 30; the differential and the served differential pass at every cut on a branch developer image ([p10-marker-model](evidence/p10-marker-model-2026-09-25.md)). At marker-replaced every crash image of the pending-rename state is a crash image of the rename dropped or landed, both related (fn-bs-k0-marker-replaced-cut-relation, lane k0-marker-replaced). Since owner-checkpoint-open (merge 69fa464a) the owner opens through fn-ock-recover-extended (host/owner-host.lisp fn-owner-recover-extended); fn-ock-finalize-of-extended-capture equates its Store open from the extended capture with fn-cpo-open-observed over the whole history, the open the bridge is stated over, and fn-owner-recover-from-checkpoint-equals-full-recover equates the installed owner.
@@ -160,7 +161,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **bundles across an outage.** After a contact is lost the node re-offers the same held bundle within the retry budget and then holds it stranded, never releasing it without a receipt.
 
 - Host-called subject: `fn-bpnj-step` at host/native/bp-service.lisp:239, equated by `fn-bpnj-step-delegates-every-other-event` (books/bp-node-job-offer.lisp:221).
-- Keystone: `fn-bpnp-step-session-offer-is-the-scan-choice` (books/bp-node-forward-retry.lisp:153; PRF-046 (uncertified-at-current-digest), PRF-103 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T225252Z-2686142` (earliest archived).
+- Keystone: `fn-bpnp-step-session-offer-is-the-scan-choice` (books/bp-node-forward-retry.lisp:153; PRF-046 (uncertified-at-current-digest), PRF-103 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025730Z-3605067` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile dtn developer and production images, frozen (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `host/native/bp-service.lisp`.
 - Deployed: no: the node runs default, this needs dtn.
 - Latest positive result: on the frozen DTN images: bp_node 19/19 (N07, N08, N11), bp_service 16/16, receive_integrity 4/4, bp_app 5/5 and bp_obligation 4/4 on `fn-host-dtn-developer`; on `fn-host-dtn` every failure is a refused developer selector; through dtn7-rs a first hop SIGKILLed mid-transfer leaves A uncertain, resume is accepted, and the carrier-killed interrupted contact delivers once on both DTN images ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).
@@ -172,7 +173,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **disconnected exchange.** A request carried by a relay listed on the receiver's boundary is judged as its author's own direct request; an unlisted carrier is refused.
 
 - Host-called subject: `fn-bpah-request-trustedp` at host/bp-native-app-host.lisp:38.
-- Keystone: `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` (books/bp-transit-join.lisp:180; PRF-075 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T225252Z-2686142` (earliest archived).
+- Keystone: `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` (books/bp-transit-join.lisp:180; PRF-075 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025445Z-876835` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile dtn developer and production images, frozen (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/bp-transit-join.lisp`, `host/bp-native-app-host.lisp`.
 - Deployed: no: the node runs default, this needs dtn.
 - Latest positive result: on frozen c3420013 through dtn7-rs with 0, 1 and 2 relays and four nodes, Python-bridge and native `bp-obligation request` authoring: B's application decides once apart from transport; the receipt releases exactly the requested pin when B is the neighbour or listed `releases-for`, `receipt-refused` and pinned without it; an unlisted carrier is refused `source-not-carried` ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).
@@ -183,20 +184,20 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **maintenance: compaction and reclaim over the record log.** `operator CONFIG store compact` checkpoints the store with the log rotated and drops the segments the checkpoint covers, and `store reclaim` checkpoints exactly the reclaiming pack's rewrite of the committed history (a held article is never touched), both decided in ACL2 over the one store format, 9.
 
-- Host-called subject: `fn-lgr-decide-stream` at host/checkpoint-host.lisp:198, equated by `fn-lgr-decide-stream-is-lgr-decide` (books/store-log-reclaim.lisp:96).
-- Keystone: `fn-lgr-decide-checkpoints-the-rewrite` (books/store-log-reclaim.lisp:46; PRF-271 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T230825Z-2857632` (earliest archived).
+- Host-called subject: `fn-lgr-decide-stream` at host/checkpoint-host.lisp:199, equated by `fn-lgr-decide-stream-is-lgr-decide` (books/store-log-reclaim.lisp:96).
+- Keystone: `fn-lgr-decide-checkpoints-the-rewrite` (books/store-log-reclaim.lisp:46; PRF-271 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025730Z-3605067` (earliest archived).
 - Tested: lane image of `10674f330` ([log-recovery-2026-09-27](evidence/log-recovery-2026-09-27.md)), profile developer and production lane images (s2c): log_compaction 7/7 (rotation and drop kill cuts, reclaim, refusals), store_export 4/4; not a shared qualification.
 - Deployed: no: node image `18a7137a`; changed since it: `books/store-log-reclaim.lisp`, `host/checkpoint-host.lisp`.
 - Latest positive result: log_compaction 7/7 and store_export 4/4 on both lane images; a 40,000-article compact 40-139 s at 4.7 GB, from 2,963 s and 16.4 GB on the per-file layout ([log-recovery](evidence/log-recovery-2026-09-27.md)); the verb's own open streams the log since log-open-stream.
-- Remaining obstruction: the drop's keystone fn-lg-segment-drop-preserves-the-open (PRF-270) is stated over fn-lgs-open-chain-records, which the streamed open (log-open-stream, fn-lgw-run-is-the-open) no longer calls, and no theorem on dev composes fn-lgw-run-is-the-open over segments into that fold: the equation is owed; the power-loss rig's log route over compaction was NOT RUN in the log-recovery record.
+- Remaining obstruction: the power-loss rig's log route over compaction was NOT RUN in the log-recovery record (the drop's keystone is over the streamed open since lane log-leftovers: fn-lgw-segment-drop-preserves-the-open, PRF-270).
 - Next positive gate: the compaction and reclaim cases on one shared qualified format-9 image, and the power-loss rig's log route (compaction, reclaim, export, import) run.
 
 ### M6
 
 **the human client.** LIST COUNTS answers each group's high, low and count from the connection's pinned view, and a numbered Message-ID lookup retrieves the same article, which the web reader renders.
 
-- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:3287, equated by `fn-own-read-is-served-step-on-pinned-prefix` (books/owner-invariants-served.lisp:175).
-- Keystone: `fn-served-step-list-counts-is-the-archive-counts` (books/owner-list-counts-read.lisp:167; PRF-074 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T230825Z-2857632` (earliest archived).
+- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:3297, equated by `fn-own-read-is-served-step-on-pinned-prefix` (books/owner-invariants-served.lisp:175).
+- Keystone: `fn-served-step-list-counts-is-the-archive-counts` (books/owner-list-counts-read.lisp:167; PRF-074 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025445Z-876835` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile developer image of the lane branch (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); absent from it: `books/owner-invariants-served.lisp`.
 - Deployed: no: node image `18a7137a`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: reader_index 5/5 with LIST COUNTS and the numbered lookup; `test_fn_web_native` 4/4 ([m6-list-counts](evidence/m6-list-counts-2026-09-24.md)).
@@ -207,8 +208,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **the Message-ID index on the served path.** A reader's Message-ID retrieval is answered from the connection's pinned trie and equals the archive scan, with no whole-store check per command.
 
-- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:3287, equated by `fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix` (books/owner-tls-prefix.lisp:97).
-- Keystone: `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` (books/nntp-pinned-msgid.lisp:35; PRF-067 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T225252Z-2686142` (earliest archived).
+- Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:3297, equated by `fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix` (books/owner-tls-prefix.lisp:97).
+- Keystone: `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` (books/nntp-pinned-msgid.lisp:35; PRF-067 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260928T025445Z-876835` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native reader and peering modules (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/nntp-pinned-msgid.lisp`, `books/owner-tls-prefix.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `18a7137a`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: reader_index 4/4, served_differential 7/7, the peering duplicate rows ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).

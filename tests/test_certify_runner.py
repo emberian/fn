@@ -177,6 +177,13 @@ if [ "$wave" = complete ]; then
     fi
   done
 fi
+# An event that expects an error and catches it (an `er hard` under
+# must-fail) prints ACL2's error text in a book that then certifies.
+case " ${FAKE_HARD_TEXT:-} " in
+  *" $book "*)
+    echo "HARD ACL2 ERROR in FN-REFUSE:  refused, as the must-fail expects"
+    echo "ACL2 Error in ( DEFTHM MUST-FAIL-INNER ...):  caught" ;;
+esac
 # Real ACL2's shape when certify-book fails: the inner ld returns, the marker
 # form is never reached, no certificate is written -- and the driver's (quit)
 # still exits 0.
@@ -254,7 +261,8 @@ class FakeRepository:
     def certify(self, books: list[str], jobs: int, fail: str = "",
                 slots: int = 16, extra: list[str] | None = None,
                 quiet_fail: str = "", edit_after: str = "",
-                convert_fail: str = "", no_fasl: str = "") -> tuple[int, dict]:
+                convert_fail: str = "", no_fasl: str = "",
+                hard_text: str = "") -> tuple[int, dict]:
         extra = extra or []
         self.runs += 1
         self.events.write_text("")
@@ -267,6 +275,7 @@ class FakeRepository:
             "FAKE_CONVERT_FAIL": convert_fail,
             "FAKE_EDIT_AFTER": edit_after,
             "FAKE_NO_FASL": no_fasl,
+            "FAKE_HARD_TEXT": hard_text,
             "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
             # A private slot pool and a private certificate cache: a unit test
             # must not contend with this machine's real ACL2 runs or publish
@@ -402,6 +411,29 @@ class ParallelScheduleTests(unittest.TestCase):
             self.assertNotIn("books/leaf-b", manifest["certificate_digests_sha256"])
             self.assertNotEqual(manifest["observed_success_markers"],
                                 manifest["expected_success_markers"])
+
+    def test_caught_error_text_in_a_certified_book_is_not_a_failure(self):
+        # defkeystone, 2026-09-27: an `er hard` inside must-fail printed HARD
+        # ACL2 ERROR in a book whose certification succeeded; the old rule read
+        # the text anywhere as failure and the farm round came back red.
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, self.LAYERED)
+            code, manifest = repository.certify(self.ORDER, jobs=4, hard_text="books/leaf-b")
+            self.assertEqual((code, manifest["status"]), (0, "passed"), manifest.get("failure"))
+            self.assertEqual(manifest["book_results"]["books/leaf-b"], "passed")
+            self.assertEqual(manifest["failure_markers"], [])
+            self.assertEqual(manifest["caught_error_text"],
+                             {"books/leaf-b": ["ACL2 Error", "HARD ACL2 ERROR"]})
+        # The same text in a book with no marker still explains its failure.
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, self.LAYERED)
+            code, manifest = repository.certify(self.ORDER, jobs=4, hard_text="books/leaf-b",
+                                                quiet_fail="books/leaf-b")
+            self.assertEqual(code, 1)
+            self.assertEqual(manifest["book_results"]["books/leaf-b"], "failed")
+            self.assertIn("HARD ACL2 ERROR", manifest["failure_markers"])
+            self.assertTrue(any("HARD ACL2 ERROR" in reason for reason in
+                                manifest["book_failures"]["books/leaf-b"]))
 
     def test_a_book_that_fails_while_acl2_exits_zero_is_recorded_failed(self):
         # The shape of the 2026-09-20 farm run: `tests/acl2/tcpcl-tests` failed

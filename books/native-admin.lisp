@@ -588,15 +588,22 @@
        ; books/owner-time-model.lisp fn-otm-limits) and `clock-event-ms N'
        ; (the committer's cadence), each positive milliseconds; a batch in
        ; flight keeps the limits it was issued with, the next one reads the
-       ; new row.
+       ; new row.  Lane compression-extents-2: `policy set
+       ; compress-min-octets N', the compression threshold, rides the same
+       ; row kind; an article record appended after it with a payload span
+       ; of at least N octets is offered to the encoder.
        ((and (equal (len words) 4)
              (equal (car words) "policy")
              (equal (cadr words) "set")
              (member-equal (caddr words) '("log-batch-records" "log-batch-octets"
                                            "barrier-deadline-ms" "barrier-stall-ms"
-                                           "clock-event-ms"))
+                                           "clock-event-ms" "compress-min-octets"))
              (fn-native-admin-decimalp (cadddr words))
-             (posp (fn-native-admin-decimal-value (coerce (cadddr words) 'list)))
+             ; Lane compression-extents-2 (PRF-341): `compress-min-octets'
+             ; (books/payload-lz-append.lisp fn-lzr-config-min) also admits
+             ; 0, which is off, as no row is.
+             (or (posp (fn-native-admin-decimal-value (coerce (cadddr words) 'list)))
+                 (equal (caddr words) "compress-min-octets"))
              (<= (fn-native-admin-decimal-value (coerce (cadddr words) 'list))
                  (fn-cfg-limit-ceiling (caddr words))))
         (fn-native-admin-result :accepted nil :set-transit-limit (caddr argv)

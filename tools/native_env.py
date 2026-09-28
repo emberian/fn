@@ -73,7 +73,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ORDER = ("developer", "production", "dtn", "dtn-developer", "reference",
-         "developer-stripped")
+         "developer-stripped", "prof")
 IMAGE_PATH = {
     "production": "$T/build/fn-host",
     "developer": "$T/build/fn-host-developer",
@@ -83,6 +83,9 @@ IMAGE_PATH = {
     "developer-stripped": "$T/build/fn-host-developer-stripped",
     "dtn": "$T/build/fn-host-dtn",
     "dtn-developer": "$T/build/fn-host-dtn-developer",
+    # The profiling developer image (tools/profile/build_native_profile.sh),
+    # a measurement tool, never a test subject: no variable names it.
+    "prof": "$T/build/fn-host-prof",
 }
 OPENSSL = "$FN_TEST_OPENSSL_BIN"
 
