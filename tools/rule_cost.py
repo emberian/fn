@@ -30,6 +30,15 @@ and runs the drivers `--jobs` at a time, detached, under the box's wrap
 timeout.  `wait` blocks on the run's `status` file (never on a process
 pattern) and fetches the logs to build/rule-cost/<run-id>/.
 
+`withdraw RANKING` appends a non-local `(in-theory (disable ...))` at the
+END of each defining book for the selected rows (`--min-useless`,
+`--max-useful-books`, `--min-useful-books` for a later tranche).  Then
+certify; a book whose proof fails gets a local enable after its header
+includes (`enable_in`).  `restore RUNE` takes a rune back out of every block
+when its withdrawal breaks something an enable does not repair (a rule
+whose being enabled keeps another pair from looping; docs/proof-style.md
+section 8).
+
 `rank` reads those logs.  Each rune's frames are split by ACL2 into useful
 and useless (`[useful]`/`[useless]` under each rune of the `:frames`
 listing).  A rune is attributed to the book whose source defines its name
@@ -156,9 +165,15 @@ def run(host: str, remote: str, books: list[str], jobs: int, timeout: int,
         subprocess.run(["rsync", "-a", f"{scratch}/", f"{host}:{run_dir}/"],
                        check=True)
     executable = acl2 or farm.HOSTS[host]["acl2"]
-    subprocess.run(["ssh", "-n", host,
-                    run_script(host, remote, run_dir, jobs, timeout, executable)],
-                   check=True)
+    print(identifier, flush=True)
+    try:
+        # ssh can hold the channel open until the detached runner ends (it
+        # did on both boxes); the runner is setsid'd, so leaving is safe.
+        subprocess.run(["ssh", "-n", host,
+                        run_script(host, remote, run_dir, jobs, timeout, executable)],
+                       check=True, timeout=60, stdout=subprocess.DEVNULL)
+    except subprocess.TimeoutExpired:
+        pass
     return identifier
 
 
@@ -474,10 +489,13 @@ def main(argv: list[str] | None = None) -> int:
     pull.add_argument("--min-useless", type=int, default=300_000)
     pull.add_argument("--kinds", default="REWRITE,LINEAR,FORWARD-CHAINING,DEFINITION")
     pull.add_argument("--dry-run", action="store_true")
-    pull.add_argument("--enable-in", choices=("none", "useful", "failed"), default="useful",
-                      help="add local enables in the books where a withdrawn rule "
-                           "was useful (default), or only in those a certify "
-                           "manifest (--manifest) did not pass")
+    pull.add_argument("--enable-in", choices=("none", "useful", "failed"), default="none",
+                      help="add local enables: none (default; certify, then enable "
+                           "where a proof fails), in every book where a withdrawn "
+                           "rule was useful (over-enables: 216 of 309 such blocks "
+                           "were not needed, and a book-wide enable can turn on a "
+                           "rule an intermediate book disabled), or in the "
+                           "useful books a certify manifest (--manifest) did not pass")
     pull.add_argument("--manifest", type=Path)
     back = sub.add_parser("restore", help="take runes back out of every block")
     back.add_argument("runes", nargs="+", help="e.g. '(:definition fn-x)'")
@@ -520,7 +538,6 @@ def main(argv: list[str] | None = None) -> int:
             books = [b.removesuffix(".lisp") for b in args.books] or default_books()
             identifier = run(args.host, args.remote_root, books, args.jobs,
                              args.timeout, args.acl2)
-            print(identifier)
             print(f"{identifier}: {len(books)} books on {args.host}; "
                   f"`rule_cost.py wait {args.host} {identifier} --remote-root "
                   f"{args.remote_root}`", file=sys.stderr)

@@ -480,15 +480,22 @@ by the useless frames its includers spent on it, naming the includers where
 it was useful at all. On the whole tree that day, 668M of 1.50G frames were
 useless tries of rules another fn book exported. `rule_cost.py withdraw`
 disables the worst at the END of the defining book (its own proofs keep
-them) and enables each in the includers where it was useful. Two lessons from
-that pass: an enable an includer gets must sit after its header includes,
-not after a mid-book include; and a rule can be never-useful by the profile
-yet load-bearing, because its being enabled keeps another pair of rules from
-looping (enabled, the definition of `fn-lg-declared-len` keeps
-`fn-lgw-slice-is-take` and `fn-lg-slice`'s definition from rewriting each
-other; `fn-scc-encode-is-program` does the same in the history-pages
-books). `rule_cost.py restore`
-takes such a rune back out of every block.
+them); an includer whose proof then fails gets a local enable after its
+header includes, never after a mid-book include. Enable only where
+certification shows the need: the pass first enabled each withdrawn rule
+wherever the profile had seen it useful (309 books), and those blocks were
+not a restoration (a book-wide enable turns on a rule an intermediate book
+had already disabled: served-catalog +144,428 steps); 93 were needed. A rule
+can also be never-useful by the profile yet load-bearing: its being enabled
+keeps a pair of rules from looping (the definition of `fn-lg-declared-len`
+keeps `fn-lgw-slice-is-take` and `fn-lg-slice`'s definition from rewriting
+each other; `fn-scc-encode-is-program` does the same in the history-pages
+books), keeps a clausification small (without
+`fn-bs-txn-natural-digits-rev` a must-fail in
+tests/acl2/store-export-tests split into 8,771 subgoals for 44 s), or
+books written after the profile build on it (the page store's
+`pgs-x-nfix-when-natp` and `pgs-true-list-fix-when-true-listp`).
+`rule_cost.py restore` takes such a rune back out of every block.
 
 ## 9. The first thing to run on a slow form
 
