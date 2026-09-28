@@ -581,10 +581,35 @@
 
 ; (FOUND . BODY-START): the five shown fields' spans (nil where absent)
 ; and where the body begins.
+(defthm fn-wss-field-index-type
+  (implies (natp k)
+           (or (null (fn-wss-field-index name fields k))
+               (natp (fn-wss-field-index name fields k))))
+  :rule-classes :type-prescription)
+
+(defthm fn-wss-content-end-bounds
+  (implies (and (natp j) (natp le))
+           (<= (fn-wss-content-end j le fn-web-in) le))
+  :rule-classes :linear)
+
+(defthm fn-wss-content-end-lower
+  (implies (and (natp j) (natp le) (<= j le))
+           (<= j (fn-wss-content-end j le fn-web-in)))
+  :rule-classes :linear)
+
+(defthm fn-wss-content-end-natp
+  (implies (and (natp j) (natp le))
+           (natp (fn-wss-content-end j le fn-web-in)))
+  :rule-classes :type-prescription)
+
 (defun fn-wss-headers (j be found fn-web-in)
   (declare (xargs :stobjs fn-web-in
                   :guard (and (natp j) (natp be) (<= be (fn-octets-len fn-web-in)))
-                  :measure (nfix (- be j))))
+                  :measure (nfix (- be j))
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (disable fn-wss-content-end fn-wss-colon fn-wss-slice
+                                                            fn-wrq-rev-down fn-wrq-rev fn-wss-field-index
+                                                            fn-wss-put-span fn-wrq-shortp)))))
   (cond ((or (not (natp j)) (not (natp be)) (>= j be) (>= j (fn-octets-len fn-web-in)))
          (cons found (nfix be)))
         ((and (< (1+ j) be) (equal (fn-octets-get j fn-web-in) 13)
@@ -1230,7 +1255,8 @@
       (:redeemed
        (if (equal (fn-wrq-nth 3 data) :bound)
            (mv (list :open (fn-wss-car client) (fn-wss-cdr client) (fn-wss-c-protected ctx)
-                     (fn-wss-flow :redeem :signin ctx (list user password)))
+                     ; DATA keeps its layout (CODE LOGIN PASSWORD ...) through :signin.
+                     (fn-wss-flow :redeem :signin ctx (list code user password)))
                sessions fn-web-out)
          (mv-let (a fn-web-out) (fn-wss-redeem-refused (fn-wrq-nth 3 data) user ctx config
                                                        fn-web-in fn-web-out)
@@ -1246,7 +1272,9 @@
              (mv a sessions fn-web-out)))))
       (:sent
        (if (equal (fn-wss-car event) :reply)
-           (fn-wss-after-authinfo :redeem user (list 47) (fn-wrq-nth 1 data) config sessions ctx
+           ; At this stage DATA is (LOGIN CID).
+           (fn-wss-after-authinfo :redeem (fn-wrq-nth 0 data) (list 47) (fn-wrq-nth 1 data)
+                                  config sessions ctx
                                   fn-web-in fn-web-out)
          (mv-let (a fn-web-out) (fn-wss-signin-refused :other user nil ctx config fn-web-in fn-web-out)
            (mv a sessions fn-web-out))))
@@ -1694,3 +1722,4 @@
       (fn-wss-k-submit sessions flow event config fn-web-in fn-web-out))
      (t (fn-wss-trouble 500 (fn-wrq-oct "Error") (fn-wrq-oct "Something went wrong here.")
                         ctx config sessions fn-web-in fn-web-out)))))
+
