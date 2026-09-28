@@ -3913,7 +3913,6 @@
         "fn-pbb-block-agent-is-pb-block-agent",
         "fn-pbb-path-agent-is-pb-path-agent",
         "fn-pbb-same-articlep-is-pb-same-articlep",
-        "fn-pbb-existing-action-is-pb-existing-action",
         "fn-octets-append-back{correspondence}",
         "fn-octets-get-word{correspondence}",
         "fn-octets-append-word{correspondence}",
@@ -4019,7 +4018,6 @@
         "fn-rcl-config-rule-after-retention-set",
         "fn-nntp-msgid-retrieval-answers-reclaimed",
         "fn-nntp-number-retrieval-answers-reclaimed",
-        "fn-rclb-existing-action-is-rcl-existing-action",
         "fn-nntp-over-by-msgid-answers-reclaimed",
         "fn-nntp-over-current-answers-reclaimed",
         "fn-nov-lines-indexed-skip-a-reclaimed-article",
@@ -4032,7 +4030,8 @@
         "fn-rcl-tombstone-contributes-nothing",
         "fn-rcl-store-counts-is-the-model-over-alpha",
         "fn-rcl-store-classes-partition-the-articles",
-        "fn-rcl-signed-article-is-never-reclaimable"
+        "fn-rcl-signed-article-is-never-reclaimable",
+        "fn-rclb-same-articlep-is-rcl-same-articlep"
       ]
     },
     {
@@ -5239,7 +5238,8 @@
         "fn-smr-admission-is-within-the-profile",
         "fn-smr-roomp-antitone-in-octets",
         "fn-smr-roomp-is-within-the-bound",
-        "fn-smr-admitted-profile-starts-reserved"
+        "fn-smr-admitted-profile-starts-reserved",
+        "fn-scka-publication-setup-plans-within-the-disk"
       ]
     },
     {
@@ -8782,8 +8782,7 @@
       "events": [
         "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
         "fn-bs-imp-classify-by-what-is-known",
-        "fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store",
-        "fn-bs-init-pub-classify-by-what-is-known"
+        "fn-bs-init-pub-admission-proceeds-only-on-nothing"
       ]
     },
     {
@@ -9677,9 +9676,9 @@
       ],
       "progress_note": "Lane log-recovery 2026-09-27: admitted in the persvati REPL with its test book; certification is the batch's. Lane log-leftovers 2026-09-27: T8 restated over the streamed open (log-open-stream's fnn-log-stream-segment): the string-era fold fn-lgs-open-chain-records / -last (fn-lg-open-kernel per segment read as a string), its theorems fn-lg-segment-drop-preserves-the-open, fn-lgs-open-chain-records-of-append, fn-lgs-open-chain-is-the-chain and the string splice classifier fn-lgs-chain-broken-string-p / -at (no host caller since the stream) are deleted; the keystone is fn-lgw-segment-drop-preserves-the-open.",
       "events": [
-        "fn-lg-segment-drop-preserves-the-open",
-        "fn-lgs-open-chain-records-of-append",
-        "fn-lgs-open-chain-is-the-chain",
+        "fn-lgw-segment-drop-preserves-the-open",
+        "fn-lgw-open-chain-is-the-chain",
+        "fn-lgw-segment-is-the-scan",
         "fn-lgs-open-plan-scan-ignores-covered",
         "fn-lgs-rotate-is-the-recovered-kernel",
         "fn-lgs-chain-records-of-append",
@@ -11246,7 +11245,10 @@
         "fn-heap-init-decide-honors-the-operators-request",
         "fn-heap-init-accepted-store-always-reopens",
         "fn-heap-reserve-full-store-accepted-is-within-the-machine",
-        "fn-heap-init-decide-fits-the-budget-and-the-machine"
+        "fn-heap-init-decide-fits-the-budget-and-the-machine",
+        "fn-heap-init-budget-note-names-the-budget-init-sized-for",
+        "fn-heap-init-budget-note-only-when-named-below-machine-by-definition",
+        "fn-heap-init-budget-is-the-named-below-the-machine"
       ]
     },
     {
@@ -11413,7 +11415,9 @@
       "progress_note": "Lane entry-guards (2026-09-27). The two keystones are proved; the host entry guard is host code, witnessed by tests/test_native_entry_guard.py on the developer image (a handle, an octet vector, a wrong count, a handle in the second position: each the named fault; octets reach the entry). Lane entry-guards-2 (2026-09-27): the payload-kind waivers closed (PKT-857 by matrix-reds, PKT-858/2b/3 here, PKT-860 retired); teeth in tests/acl2/records-freeze-tests.lisp, owner-feed-article-tests.lisp and store-reclaim-tests.lisp.",
       "events": [
         "fn-payload-handle-is-not-octets",
-        "fn-payload-octets-are-not-a-handle"
+        "fn-payload-octets-are-not-a-handle",
+        "fn-stx-index-of-store-without-a-keyring",
+        "fn-ofa-feed-article-is-the-owner-step-article"
       ]
     },
     {
@@ -11461,7 +11465,7 @@
         "PRF-288"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-admission.lisp",
         "books/peer-inbound-invariants.lisp",
@@ -11482,7 +11486,12 @@
       "progress_note": "Lane time-model-2 (Opus 5.5, 2026-09-27). REPL-admitted on hbox. Teeth: the posting bit of a real injection configuration set and restored exactly (test book); the 440 reached natively (SCN-182: a POST command during slow and during a stall). The shedding keystone's positive witness over a live ocfg is the native case, not a test-book witness (the ocfg needs the served stobjs). Lane log-leftovers (2026-09-27): REPL-admitted on hbox (books/owner-time-admission, tests/acl2/owner-time-model-tests, books/peer-inbound-invariants, tests/acl2/peer-inbound-tests); certified: hbox certify-20260927T213339Z-2663116, persvati certify-20260927T214735Z-2004671 and certify-20260927T221224Z-2278506; native slow_disk and peering OK at 265431a95 (planning/evidence/log-leftovers-slow-2026-09-27.md).",
       "events": [
         "fn-otm-read-span-while-shedding",
-        "fn-otm-closed-posting-never-awaits-an-article"
+        "fn-otm-closed-posting-never-awaits-an-article",
+        "fn-otm-closed-posting-answers-the-generic-440",
+        "fn-otm-posting-disallowed-refusal-is-the-generic-441",
+        "fn-peer-shed-offer-is-disk-slow",
+        "fn-otm-disk-effects-names-the-disk",
+        "fn-otm-peer-reader-read-only-while-shedding"
       ]
     },
     {
@@ -11748,7 +11757,7 @@
         "A-DURABLE-EXTENT",
         "A-DURABLE-LZ"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/payload-lz-record.lisp",
         "books/payload-lz-replay.lisp",
