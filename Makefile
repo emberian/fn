@@ -853,6 +853,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-prepare-carried \
 	books/records-concrete \
 	books/records-concrete-owner \
+	books/records-exec \
 	books/records-attach-concrete \
 	books/msgid-index-concrete \
 	books/octets-stobj \
