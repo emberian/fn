@@ -794,6 +794,13 @@ class WaitTests(unittest.TestCase):
         self.assertEqual(fields["MARKERS"], "12")
         self.assertEqual(fields["STARTED"], "40")
 
+    def test_progress_carries_the_runners_plan_line(self):
+        script = farm.progress_script(Path("/remote/root"), "run-x")
+        self.assertIn("grep -m1 '^Critical chain: ' build/farm/run-x.log", script)
+        fields = farm.parse_progress(
+            "STATUS running\nPLAN Critical chain: 47 books, 180 s quiet; 12 jobs\n")
+        self.assertEqual(fields["PLAN"], "Critical chain: 47 books, 180 s quiet; 12 jobs")
+
     def test_progress_counts_markers_in_the_run_directory_not_the_farm_log(self):
         # Until 2026-09-22 the script grepped the farm log, which carries no
         # per-book marker, so every progress line read "0 books certified".
