@@ -40,7 +40,6 @@
 
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
 (local (include-book "arithmetic/top" :dir :system))
-(local (include-book "tools/flag" :dir :system))
 (local (include-book "std/lists/revappend" :dir :system))
 (local (include-book "std/lists/append" :dir :system))
 
@@ -268,22 +267,42 @@
 (local (in-theory (disable fn-sdg-leb fn-sdg-string fn-sdg-str fn-sdg-int
                            fn-sdg-rat fn-sdg-atom fn-sdg-sink-push)))
 
+; The induction of the canonical encoding's mutual recursion, by hand (the
+; system's tools/flag has no certificate on the boxes): FLG t is
+; `fn-sdg-canon-rev', nil `fn-sdg-canon-list'.
 (local
- (make-flag fn-sdg-canon-flag fn-sdg-canon-rev
-            :flag-mapping ((fn-sdg-canon-rev rev) (fn-sdg-canon-list list))))
+ (defun fn-sdg-canon-induct (flg x acc)
+   (declare (xargs :measure (if flg (+ 1 (* 2 (acl2-count x))) (* 2 (acl2-count x)))))
+   (if flg
+       (if (consp x) (fn-sdg-canon-induct nil x (cons 76 acc)) acc)
+     (if (consp x)
+         (list (fn-sdg-canon-induct t (car x) acc)
+               (fn-sdg-canon-induct nil (cdr x) (fn-sdg-canon-rev (car x) acc)))
+       acc))))
 
 (local
- (defthm-fn-sdg-canon-flag
-   (defthm fn-sdg-canon-rev-append
-     (equal (fn-sdg-canon-rev x (append acc tail))
-            (append (fn-sdg-canon-rev x acc) tail))
-     :flag rev)
-   (defthm fn-sdg-canon-list-append
+ (defthm fn-sdg-canon-append-flag
+   (if flg
+       (equal (fn-sdg-canon-rev x (append acc tail))
+              (append (fn-sdg-canon-rev x acc) tail))
      (equal (fn-sdg-canon-list x (append acc tail))
-            (append (fn-sdg-canon-list x acc) tail))
-     :flag list)
-   :hints (("Goal" :expand ((fn-sdg-canon-rev x (append acc tail)) (fn-sdg-canon-rev x acc)
-                            (fn-sdg-canon-list x (append acc tail)) (fn-sdg-canon-list x acc))))))
+            (append (fn-sdg-canon-list x acc) tail)))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-sdg-canon-induct flg x acc)
+            :expand ((fn-sdg-canon-rev x (append acc tail)) (fn-sdg-canon-rev x acc)
+                     (fn-sdg-canon-list x (append acc tail)) (fn-sdg-canon-list x acc))))))
+
+(local
+ (defthm fn-sdg-canon-rev-append
+   (equal (fn-sdg-canon-rev x (append acc tail))
+          (append (fn-sdg-canon-rev x acc) tail))
+   :hints (("Goal" :use ((:instance fn-sdg-canon-append-flag (flg t)))))))
+
+(local
+ (defthm fn-sdg-canon-list-append
+   (equal (fn-sdg-canon-list x (append acc tail))
+          (append (fn-sdg-canon-list x acc) tail))
+   :hints (("Goal" :use ((:instance fn-sdg-canon-append-flag (flg nil)))))))
 
 (local
  (defthm fn-sdg-canon-rev-acc
@@ -302,23 +321,34 @@
             :in-theory (disable fn-sdg-canon-list-append)))))
 
 (local
- (make-flag fn-sdg-sink-flag fn-sdg-canon-rev-sink
-            :flag-mapping ((fn-sdg-canon-rev-sink rev) (fn-sdg-canon-list-sink list))))
+ (defun fn-sdg-sink-induct (flg x sink)
+   (declare (xargs :measure (if flg (+ 1 (* 2 (acl2-count x))) (* 2 (acl2-count x)))))
+   (if flg
+       (if (consp x) (fn-sdg-sink-induct nil x (fn-sdg-sink-push 76 sink)) sink)
+     (if (consp x)
+         (list (fn-sdg-sink-induct t (car x) sink)
+               (fn-sdg-sink-induct nil (cdr x) (fn-sdg-canon-rev-sink (car x) sink)))
+       sink))))
 
 (local
- (defthm-fn-sdg-sink-flag
-   (defthm fn-sdg-canon-rev-sink-is-push
-     (equal (fn-sdg-canon-rev-sink x sink)
-            (fn-sdg-push-list (revappend (fn-sdg-canon-rev x nil) nil) sink))
-     :flag rev)
-   (defthm fn-sdg-canon-list-sink-is-push
+ (defthm fn-sdg-canon-sink-flag
+   (if flg
+       (equal (fn-sdg-canon-rev-sink x sink)
+              (fn-sdg-push-list (revappend (fn-sdg-canon-rev x nil) nil) sink))
      (equal (fn-sdg-canon-list-sink x sink)
-            (fn-sdg-push-list (revappend (fn-sdg-canon-list x nil) nil) sink))
-     :flag list)
-   :hints (("Goal" :expand ((fn-sdg-canon-rev-sink x sink)
-                            (fn-sdg-canon-list-sink x sink)
-                            (fn-sdg-canon-rev x nil)
-                            (fn-sdg-canon-list x nil))))))
+            (fn-sdg-push-list (revappend (fn-sdg-canon-list x nil) nil) sink)))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-sdg-sink-induct flg x sink)
+            :expand ((fn-sdg-canon-rev-sink x sink)
+                     (fn-sdg-canon-list-sink x sink)
+                     (fn-sdg-canon-rev x nil)
+                     (fn-sdg-canon-list x nil))))))
+
+(local
+ (defthm fn-sdg-canon-rev-sink-is-push
+   (equal (fn-sdg-canon-rev-sink x sink)
+          (fn-sdg-push-list (revappend (fn-sdg-canon-rev x nil) nil) sink))
+   :hints (("Goal" :use ((:instance fn-sdg-canon-sink-flag (flg t)))))))
 
 ;; KEYSTONE (the D27 boundary: the stream the host runs is the chain of the
 ;; canonical encoding).  `fn-sdg-digest' executes this.
