@@ -60,6 +60,8 @@
 (include-book "books/owner-time-admission")
 ;; Lane zero-copy-commit: fn-oas-read-span (the articles in flight).
 (include-book "books/owner-article-slots")
+;; Lane credits: fn-mca-read-span and the commit's credit steps (PRF-380).
+(include-book "books/owner-credits")
 (include-book "books/owner-open-carried")
 ;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
 (include-book "books/reader-open-carried")

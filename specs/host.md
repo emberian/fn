@@ -1399,6 +1399,29 @@ pooled chunks (one octet a byte) instead of wire lists, which lowers the
 credit about 32-fold; the frame theorem that a read of one connection leaves
 every other connection's wire mode as it was.
 
+Memory credits (lane credits, B5, 2026-09-28; PRF-380, SCN-194). The
+article slots are now one instance of the credit ledger
+(books/memory-credits.lisp): the run's ledger (`fn-owner-credits`, installed
+by `fn-owner-connection-budget` as `fn-mca-initial`) has the launcher's heap
+figure as its budget, the figure's fixed terms as its base, the open's terms
+as a completion reserve that nothing is admitted against, the collector's room
+as the runtime reserve, and exactly the articles' pool free
+(`fn-mca-initial-funds-exactly-the-articles`). Every served read is
+`fn-mca-read-span` (books/owner-credits.lisp) over `fn-oas-read-span`: the
+connection's credit becomes one reserve while it is mid-article plus one per
+queued submission of it; growth past the budget is refused by name (the
+memory 440 at a POST command, else `400 the articles in flight fill the
+memory; try again later` and close, the read not run) and shrinking or
+holding steady never is (reserve to finish). The credit then follows the
+buffer: the committer's take moves it to `:open`, the batch's append to
+`:sealed`, and only the batch's COMPLETE, after its barrier returned,
+releases it. A close, an idle timeout, a stall's uncertain answer or a fault
+releases the connection's own body and queue only
+(`fn-mca-close-keeps-what-the-commit-owns`): the pipeline feeds each member's
+outcome before the barrier, so the owner's queue and in-flight field are empty
+while the syncer's fdatasync still owns the batch. No cache is charged yet: a
+committed article is held by the base's state term at the profile's bounds.
+
 Not claimed: a reply larger than the stated workload's (an OVER or LISTGROUP
 over a large range) is outside the figure until replies are rendered in
 windows (lane owner-scheduler's plans; PKT-644); the measured constants
