@@ -12701,6 +12701,19 @@
           "name": "fn-clock-reading-latest-milliseconds-of-a-record-stamp-reading"
         }
       ]
+    },
+    {
+      "id": "PRF-383",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-napb-rows-with-key-loop-is-rev-onto"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-napb-peer-names-loop-is-rev-onto"
+        }
+      ]
     }
   ]
 }
