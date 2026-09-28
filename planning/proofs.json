@@ -8268,6 +8268,7 @@
       "assumptions": [],
       "status": "certified",
       "evidence": [
+        "planning/evidence/manifests/certify-20260928T163441Z-33654.json",
         "books/peer-host.lisp",
         "tests/acl2/peer-host-tests.lisp",
         "books/peer-config.lisp",
@@ -12241,6 +12242,7 @@
       ],
       "status": "uncertified-at-current-digest",
       "evidence": [
+        "planning/evidence/manifests/certify-20260928T163441Z-33654.json",
         "books/records-exec.lisp",
         "books/records.lisp",
         "books/records-attach-concrete.lisp",
@@ -12802,6 +12804,7 @@
       "assumptions": [],
       "status": "certified",
       "evidence": [
+        "planning/evidence/manifests/certify-20260928T163441Z-33654.json",
         "books/catalog.lisp",
         "books/served-catalog-view.lisp",
         "books/served-catalog.lisp",
