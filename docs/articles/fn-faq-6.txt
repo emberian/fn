@@ -37,7 +37,7 @@ could not check (the peer lines need a running node).
 - 28 disk: The disk is stalled (a write has waited past its stall
   deadline; posters were told uncertain) or full (free space below what
   a write needs). Look at the device; free space. The node recovers by
-  itself.
+  itself. (Provisional: this state and its code wait on a decision.)
 
 *Refusals:* A refused post is answered "441 posting failed;" and one of
 these. The log line starts refused and names the reason.

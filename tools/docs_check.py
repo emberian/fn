@@ -548,7 +548,8 @@ HEALTH_ADVICE = {
     "disk": "The disk is stalled (a write has waited past its stall "
             "deadline; posters were told uncertain) or full (free space "
             "below what a write needs). Look at the device; free space. "
-            "The node recovers by itself.",
+            "The node recovers by itself. (Provisional: this state and "
+            "its code wait on a decision.)",
 }
 
 

@@ -1059,7 +1059,8 @@ HST-007: The operator's health verdict names which of nine things is wrong,
 never one red bit. `operator CONFIG health` prints one line per state in a
 fixed order: fenced, exhausted, unqualified-profile, space-pressure,
 no-route, stranded-transfer, unavailable-peer, receipt-debt, disk (PRF-358:
-the running owner's disk stalled or full, exit 28; appended so 20..27 keep
+the running owner's disk stalled or full, exit 28, both PROVISIONAL until
+ember decides the F4 bars and the health exit; appended so 20..27 keep
 their meaning; a slow disk is the `disk slow` line only, provisional per
 PKT-853 (b)); each line says
 `held` (with the figures that hold it), `clear`, or `unobserved` (the source
