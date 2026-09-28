@@ -69,6 +69,31 @@
 ;; live in proto-pagestore-io.lisp (plain SBCL, testable alone).
 (load (merge-pathnames "proto-pagestore-io.lisp" (or *load-truename* *default-pathname-defaults*)))
 
+;; The page digest's native BLAKE3: the served images' binding, unchanged
+;; (host/native/digest.lisp; A-CRYPTO-NATIVE, specs/failures.md).
+;; `pgs-x-words-digest' (books/pagestore-words-blake3.lisp) hashes the octet
+;; buffer fn-octets-pg (whose live object is the foundation fn-octets$c)
+;; with `fn-blake3-of-prefixed-buffer'; digest.lisp replaces that symbol's
+;; raw definition with the vendored C after its official-vector and
+;; reference check, exactly as in the served image.  The library is
+;; lib/libfn-blake3 beside the core (tools/build_blake3.sh, run by
+;; tools/proto/pagestore_bench.py `build') or FN_BLAKE3_LIBRARY.  The build
+;; checks it and resets to the ACL2 references before the save
+;; (`fnps-digest-build-check'); every command re-checks and re-installs
+;; (`fnps-digest-startup').  A library that is missing or disagrees is the
+;; named condition `fnn-digest-unavailable' / `fnn-digest-fault': the build
+;; exits 3 and a command exits 4 with the condition's text, never a silent
+;; fallback to the reference.
+(load (merge-pathnames "digest.lisp" (or *load-truename* *default-pathname-defaults*)))
+
+(defun fnps-digest-build-check ()
+  ;; At build: load and check the library, then save the ACL2 references.
+  (handler-case (progn (fnn-digest-initialize) (fnn-digest-reset))
+    (error (e)
+      (format t "~&FNPS-BUILD-ERROR ~a~%" e)
+      (finish-output)
+      (sb-ext:exit :code 3 :abort t))))
+
 ;; ---------------------------------------------------------------------------
 ;; The live stobjs and their arrays.
 
@@ -808,12 +833,24 @@
       (fnps-close s))))
 
 (defun fnps-cmd-branch (dir src dst)
+  ;; The fork is ACL2's: `pgs-x-fork' (books/pagestore-refine.lisp) turns
+  ;; pgs-m[0, 1024) -- the slot words the open read -- into the new root's
+  ;; slot page (slot 0 the record the open landed on, every other word
+  ;; zero), the subject of pgs-x-fork-refines (the model's fork over the
+  ;; abstraction).  The host writes exactly those 1024 words.
   (let ((s (fnps-open dir src :lazy :emit nil)) (t-branch 0))
+    (unless s
+      (fnps-emit :event :branch :src src :dst dst :refused "no-open-commit")
+      (sb-ext:exit :code 5 :abort t))
+    (multiple-value-bind (v mem) (pgs-x-fork (fnps-k s) (fnps-mem))
+      (declare (ignore mem))
+      (when v
+        (fnps-emit :event :branch :src src :dst dst :refused (fnps-refusal-string v))
+        (fnps-close s)
+        (sb-ext:exit :code 5 :abort t)))
     (fnps-timed t-branch
-      ;; pgs-m[0, 1024) still holds the slot words read at open.
-      (let* ((base (* 512 (fnps-k s)))
-             (fd (fnps-write-zero-root (fnps-root-path dir dst))))
-        (fnps-write-to-file fd 0 (fnps-m) base 20)
+      (let ((fd (fnps-write-zero-root (fnps-root-path dir dst))))
+        (fnps-write-to-file fd 0 (fnps-m) 0 1024)
         (fnps-fullsync fd)
         (sb-unix:unix-close fd)
         (fnps-sync-dir dir)))
@@ -866,6 +903,18 @@
 
 (defun fnps-kw (s) (intern (string-upcase s) "KEYWORD"))
 
+(defun fnps-digest-startup ()
+  ;; Every command: re-load, re-check and install the native page digest.
+  ;; FN_NATIVE_DIGEST_TEST_OFF=1 keeps the ACL2 references (the matched
+  ;; measurement's reference arm; the served developer image's switch).
+  ;; Emits the arm it runs.
+  (fnn-digest-reset)
+  (unless (equal (sb-ext:posix-getenv "FN_NATIVE_DIGEST_TEST_OFF") "1")
+    (fnn-digest-initialize))
+  (fnps-emit :event :native-digest
+             :state (string-downcase (symbol-name (first (fnn-digest-status))))
+             :library (or (first (second (fnn-digest-status))) "")))
+
 (defun fnps-main (args)
   ;; ARGS: a list of strings.  Seeds from FNPS_SEED.
   (sb-ext:disable-debugger)
@@ -873,6 +922,8 @@
     (when seed (setf *fnps-rng* (sb-ext:seed-random-state (parse-integer seed)))))
   (let ((cmd (first args)) (a (rest args)))
     (handler-case
+        (progn
+          (fnps-digest-startup)
         (cond
           ;; init DIR N [inline]: the inline layout is the only one.
           ((string= cmd "init") (fnps-close (fnps-init (first a) (parse-integer (second a)))))
@@ -895,7 +946,7 @@
           ((string= cmd "damage") (fnps-cmd-damage (first a) (second a) (third a)
                                                    (equal (fourth a) "probe")))
           ((string= cmd "cut-names") (fnps-cmd-cut-names))
-          (t (error "unknown command ~a" cmd)))
+          (t (error "unknown command ~a" cmd))))
       (fnps-io-error (e)
         (fnps-emit :event :io-error :call (fnps-io-error-call e) :errno (fnps-io-error-errno e)
                    :detail (fnps-io-error-detail e))

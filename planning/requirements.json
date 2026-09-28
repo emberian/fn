@@ -4872,7 +4872,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-344",
-        "PRF-342"
+        "PRF-342",
+        "PRF-365"
       ],
       "verification": [
         "proof",
@@ -4893,7 +4894,9 @@
         "books/history-pages-exec.lisp",
         "books/history-pages-read.lisp",
         "tests/acl2/history-pages-read-tests.lisp",
-        "books/history-pages-row.lisp"
+        "books/history-pages-row.lisp",
+        "books/history-pages-owner.lisp",
+        "tests/acl2/history-pages-owner-tests.lisp"
       ],
       "implementation_note": "Lane arena-store (2026-09-27): the model, keystones, reclamation and the executable layer are proved; the host driver host/native/proto-pagestore.lisp runs them on hbox (process death and power loss, 0 violations); page 0 (the owner's root slots) is the model's reserved page, kept by pgs-disk-keeps and marked by pgs-g-start; the scenario is SCN-186. Limitation L-PGS-LAZY-SHAPE (record section 5): the host's lazy open shape-checks only the table pages its own commit wrote, the model's lazy open every table page. The owner does not use it yet (fn-hist on pages is the next step, lane arena-store-2)."
     },
