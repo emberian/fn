@@ -470,7 +470,7 @@
 ; nntp-help, public-exposure, nntp-auth-roles): on a session that keeps an
 ; exchange -- well formed, not handshaking, not authenticated, authentication
 ; required -- each keystone's own line is the exchange's response and is
-; answered 504 (not base64), never the keystone's conclusion (480, 440, 483,
+; answered 504 (not base64) or 481 (base64 that is no client-first message), never the keystone's conclusion (480, 440, 483,
 ; the 101 block, 500, the peer's transit answer, 381).
 (defconst *sa-waiting* *sa-s-wait*)
 (assert-event (fn-auth-sessionp *sa-waiting*))
@@ -482,10 +482,14 @@
   `(assert-event (equal (fn-post-result-effects (sa-send *sa-waiting* ,line))
                         (sa-single "504 base64 encoding error"))))
 (sa-504-for "GROUP fn.letters")          ; the 480 gate
-(sa-504-for "POST")                      ; the POST refusals
+; "POST" and "CAPABILITIES" are canonical base64 (4 and 12 alphabet
+; octets): they decode, fail as a client-first message, and are 481.
+(assert-event (equal (fn-post-result-effects (sa-send *sa-waiting* "POST"))
+                     (sa-single "481 authentication failed")))
 (sa-504-for "AUTHINFO USER reader")      ; 381 / protected-only's 483
 (sa-504-for "AUTHINFO PASS correct-horse") ; the PASS keystones
-(sa-504-for "CAPABILITIES")              ; the capability block
+(assert-event (equal (fn-post-result-effects (sa-send *sa-waiting* "CAPABILITIES"))
+                     (sa-single "481 authentication failed")))
 (sa-504-for "XREDEEM code reader")       ; XREDEEM's 483 and hold
 (sa-504-for "IHAVE <x@example.invalid>") ; the transit delegation
 (sa-504-for "NOSUCHCOMMAND")             ; HELP's 500
