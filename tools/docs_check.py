@@ -537,7 +537,9 @@ HEALTH_ADVICE = {
                          "offering it. Fix the peer.",
     "unavailable-peer": "A peer with articles waiting is not connected, or "
                         "says try later (deferred=N: its store may be "
-                        "full). Check peer list; ask its operator.",
+                        "full), or its queue is full (saturated=N: every "
+                        "post is refused feed-queue-full until it catches "
+                        "up). Check peer list; ask its operator.",
     "receipt-debt": "Forwarded articles wait for their receipts.",
 }
 

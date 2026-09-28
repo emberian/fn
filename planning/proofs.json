@@ -11714,6 +11714,78 @@
         "fn-native-operator-run-store-reclaim-recorded-is-the-reclaim-recorded-action",
         "fn-native-operator-run-reclaim-recorded-action-is-only-store-reclaim-recorded"
       ]
+    },
+    {
+      "id": "PRF-335",
+      "title": "A peer's feed queue holds undelivered obligations, never history: a final answer retires the entry, a full queue is the named refusal feed-queue-full, and health holds it",
+      "statement": "fn-feed-done (fn-feed-observe on 235/239/435/438/437/439, host: fn-owner-feed-octets -> fn-own-feed-reply; replay at open: fn-own-feed-recover -> fn-feed-replay) removes the entry (fn-feed-queue-retire). fn-feed-queue-length-is-undelivered: for a driven journal (fn-feed-drivenp), the queue after fn-feed-replay has length start + enqueue/commit records - final outcome records. fn-feed-final-outcome-retires-for-good: a final outcome for a Message-ID with no later enqueue leaves it out of the queue after the fold. fn-feed-accepted-outcomes-bounded-by-enqueues: accepted outcomes for (peer, Message-ID) are at most the times it was owed; fn-feed-at-most-one-accepted-outcome: at most one when owed once (fn-feedp is implied by fn-feed-drivenp, fn-feed-drivenp-implies-feedp). fn-own-intent-refusal-word (host: host/native/owner.lisp fnn-owner-drain-one) names a :capacity intent :feed-queue-full: its own 441 line (fn-post-store-refusal-text), and 436 for transit (fn-peer-transit-code; fn-peer-full-feed-queue-is-a-retry-code-by-definition). fn-nh-feed-queue-full-intent-is-held: a :capacity intent (fn-own-submission-intent-result, the reference of fn-icar-submission-intent the host calls) holds unavailable-peer in fn-nh-verdict over the same feed table (fn-nh-saturated-peer-is-held, fn-nh-feed-queue-refusal-is-held). fn-feed-distinct-fast-is-distinctp: fn-feed-distinctp (the fn-feedp conjunct every transition and replayed record checks) executes one pass with a fast alist (mbe); 0.2 ms at 1,024 entries on hbox against 19 ms quadratic.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-005",
+        "HST-007"
+      ],
+      "depends_on": [
+        "PRF-112"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/peer-feed.lisp",
+        "books/peer-feed-invariants.lisp",
+        "books/feed-events.lisp",
+        "books/owner.lisp",
+        "books/nntp-post.lisp",
+        "books/peer-inbound.lisp",
+        "books/native-health.lisp",
+        "host/native/owner.lisp",
+        "tests/acl2/peer-feed-tests.lisp",
+        "tests/acl2/native-health-tests.lisp",
+        "tests/acl2/peer-inbound-tests.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/feed-queue-2026-09-27.md"
+      ],
+      "progress_note": "Open: the owner-level theorem keeps fn-own-feed-tablep, which is probably redundant (no violating value found; the weakened theorem is not proved). The power-loss rig has no feeding workload yet; retirement writes no new record (the :feed-outcome record already was a cut), and the keystones hold over every driven prefix. max-queue is still 1024 from `peer add` (an admission limit on undelivered backlog; no operator verb sets it).",
+      "events": [
+        "fn-feed-queue-length-is-undelivered",
+        "fn-feed-final-outcome-retires-for-good",
+        "fn-feed-accepted-outcomes-bounded-by-enqueues",
+        "fn-feed-at-most-one-accepted-outcome",
+        "fn-feed-drivenp-implies-feedp",
+        "fn-nh-saturated-peer-is-held",
+        "fn-nh-feed-queue-refusal-is-held",
+        "fn-nh-feed-queue-full-intent-is-held",
+        "fn-own-intent-refusal-word-is-a-refusal",
+        "fn-feed-drivenp-of-prefix",
+        "fn-feed-distinct-fast-is-distinctp"
+      ]
+    },
+    {
+      "id": "PRF-336",
+      "title": "The running owner's report string and obligation lines are built with constant stack: `obligations` at 5,000 answers and the owner keeps running",
+      "statement": "fn-nls-octets-string-is-record-octets-string: fn-nls-buffer (called by host/native-live-status-host.lisp fn-native-live-status-host-answer) builds the report text with fn-nls-octets-string, a loop, equal to fn-record-octets-string on every value; fn-record-octets-string's non-tail recursion exhausted the 1,024 KB control stack past about 50,000 octets. fn-nls-obligation-lines executes fn-nls-obligation-lines-rev (mbe; the equation is its guard).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-006"
+      ],
+      "depends_on": [
+        "PRF-089"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/native-live-status.lisp",
+        "tests/acl2/native-live-status-tests.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/feed-queue-2026-09-27.md"
+      ],
+      "progress_note": "Open: books/records-shape.lisp fn-record-octets-chars and fn-record-string-octets-aux recurse once per octet (393 call sites); any conversion past about 50,000 octets on a node thread dies the same way. Fixing them at the cause recertifies 1,084 books (a coordinator decision).",
+      "events": [
+        "fn-nls-octets-string-is-record-octets-string"
+      ]
     }
   ]
 }

@@ -81,7 +81,7 @@
  (fn-feed-durable-projection (fn-feed-replay *fn-feed-ct-open* *fn-feed-ct-history*))))
 (assert-event (equal (fn-feed-state-of *fn-feed-ct-a* (fn-feed-queue *fn-feed-ct-final*))
                      (fn-feed-dropped :retry-bound)))
-(assert-event (equal (fn-feed-state-of *fn-feed-ct-b* (fn-feed-queue *fn-feed-ct-final*)) :done))
+(assert-event (not (consp (fn-feed-find *fn-feed-ct-b* (fn-feed-queue *fn-feed-ct-final*)))))
 (assert-event (equal (fn-feed-backoff-until *fn-feed-ct-final*) 6001))
 (assert-event (equal (fn-feed-next-attempt *fn-feed-ct-final*) 5))
 (assert-event (equal (fn-feed-entry-attempts

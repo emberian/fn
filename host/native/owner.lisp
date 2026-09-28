@@ -2226,13 +2226,16 @@ which books/owner-commit-steps.lisp fn-ocs-member-releases reads."
                    cid transit-kind transit-reason :refused)
                   (values cid (fnn-owner-list-global 'fn-owner-output) nil :refused))
               (if (not (eq intent :ready))
-                  (progn
+                  ;; PRF-335: the refusal is named by ACL2 from the intent
+                  ;; (fn-own-intent-refusal-word): a full peer feed queue is
+                  ;; :feed-queue-full, never the unnamed :refused.
+                  (let ((refusal (fnn-core 'fn-own-intent-refusal-word intent)))
                     (if transitp
                         (progn
                           (setq *fnn-owner-transit-detail* :intent)
                           (fnn-owner-transit-complete
-                           cid :want transit-reason :refused))
-                      (progn (fnn-owner-action 'fn-owner-outcome cid :refused)
+                           cid :want transit-reason refusal))
+                      (progn (fnn-owner-action 'fn-owner-outcome cid refusal)
                              (fnn-owner-log)))
                     (values cid (fnn-owner-list-global 'fn-owner-output) nil :refused))
                 (progn

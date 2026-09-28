@@ -589,6 +589,11 @@
 ; decision kind and completion, for both commands.
 (assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :defer :busy) nil) 436))
 (assert-event (equal (fn-peer-transit-code :ihave (fn-peer-decision :defer :capacity) nil) 436))
+;; PRF-335: fn-peer-full-feed-queue-is-a-retry-code-by-definition; a full outbound feed
+;; queue is 436 for both forms, while a named Store refusal stays 437/439.
+(assert-event (equal (fn-peer-transit-code :ihave (fn-peer-decision :accept nil) :feed-queue-full) 436))
+(assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :accept nil) :feed-queue-full) 436))
+(assert-event (equal (fn-peer-transit-code :ihave (fn-peer-decision :accept nil) :duplicate) 437))
 (assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :want nil) :uncertain) 436))
 (assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :want nil) :clock-unusable) 436))
 (assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :refuse :loop) nil) 439))

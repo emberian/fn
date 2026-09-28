@@ -8,6 +8,9 @@
 (include-book "../../books/codec-attach")
 (include-book "must-fail-checked")
 (include-book "held-rows-tests")
+;; PRF-335: the owner-level witness below reuses owner-tests' control
+;; submission with one outbound peer of max-queue 1.
+(include-book "owner-tests")
 
 (defconst *nht-groups* '("fn.letters" "fn.test"))
 (defconst *nht-config*
@@ -69,22 +72,28 @@
 (defconst *nht-cfg* (fn-ocfg-config *nht-oc*))
 (defconst *nht-scale* (fn-bs-config-for-profile :scale))
 
+;; PRF-335: the feeds carry real limits (a peer record's max-queue 1024); a
+;; feed with no limits has no room at all and is saturated.
+(defconst *nht-limits* (fn-feed-limits 1024 1000 3 t))
+
 ; ---------------------------------------------------------------------------
 ; A feed table: peer "down" has a queued article and no connection
 ; (unavailable); peer "gave-up" dropped one at its retry bound (stranded).
 (defconst *nht-feeds*
   (list (fn-own-feed-entry "down" nil
-                           (fn-feed-make '(100 111 119 110) nil
+                           (fn-feed-make '(100 111 119 110) *nht-limits*
                                          (list (fn-feed-entry '(60 97 62) :queued 1 0))
                                          nil 0 nil 0))
         (fn-own-feed-entry "gave-up" nil
-                           (fn-feed-make '(103) nil
+                           (fn-feed-make '(103) *nht-limits*
                                          (list (fn-feed-entry '(60 98 62) '(:dropped :retry-bound) 3 0))
                                          nil 0 7 0))))
 (defconst *nht-idle-feeds*
   (list (fn-own-feed-entry "up" nil
-                           (fn-feed-make '(117 112) nil
-                                         (list (fn-feed-entry '(60 99 62) :done 1 0))
+                           (fn-feed-make '(117 112) *nht-limits*
+                                         ;; PRF-335: its one article was
+                                         ;; delivered and retired.
+                                         nil
                                          nil 0 7 0))))
 
 (defun nht-store (profile)
@@ -119,7 +128,7 @@
 ;; open and one article it deferred (a full Store answered 436): held.
 (defconst *nht-full-feeds*
   (list (fn-own-feed-entry "full" nil
-                           (fn-feed-make '(102) nil
+                           (fn-feed-make '(102) *nht-limits*
                                          (list (fn-feed-entry '(60 102 62) :queued 2 0))
                                          nil 0 7 0))))
 (assert-event (fn-nh-feed-deferredp (fn-own-feed-entry-feed (car *nht-full-feeds*))))
@@ -127,7 +136,7 @@
                                                       *nht-full-feeds*)))
                      :held))
 (assert-event (equal (fn-nh-unavailable-peers *nht-full-feeds*) '("full")))
-;; Without deferredp: the idle feed's entry is done, and it is clear.
+;; Without deferredp: the idle feed's article was delivered, and it is clear.
 (assert-event (not (fn-nh-feed-deferredp (fn-own-feed-entry-feed (car *nht-idle-feeds*)))))
 (assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
                                                       *nht-idle-feeds*)))
@@ -145,6 +154,45 @@
    (implies (fn-nh-feed-deferredp (fn-own-feed-entry-feed e))
             (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds))) :held))
    :hints (("Goal" :do-not-induct t :in-theory (disable fn-nh-verdict)))))
+;; PRF-335: fn-nh-saturated-peer-is-held and fn-nh-feed-queue-refusal-is-held.
+;; Peer "sat" has room for one entry, holds one undelivered article and a
+;; connection open (so neither pending-without-connection nor deferred):
+;; saturated alone holds unavailable-peer.
+(defconst *nht-sat-feeds*
+  (list (fn-own-feed-entry "sat" nil
+                           (fn-feed-make '(115) (fn-feed-limits 1 1000 3 t)
+                                         (list (fn-feed-entry '(60 115 62) :queued 0 0))
+                                         nil 0 7 1))))
+(defconst *nht-sat-feed* (fn-own-feed-entry-feed (car *nht-sat-feeds*)))
+(assert-event (fn-feedp *nht-sat-feed*))
+(assert-event (fn-nh-feed-saturatedp *nht-sat-feed*))
+(assert-event (not (fn-nh-feed-deferredp *nht-sat-feed*)))
+(assert-event (natp (fn-feed-conn *nht-sat-feed*)))
+(assert-event (member-equal (car *nht-sat-feeds*) *nht-sat-feeds*))
+(assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
+                                                      *nht-sat-feeds*)))
+                     :held))
+(assert-event (equal (fn-nh-saturated-total *nht-sat-feeds*) 1))
+;; The table-level refusal: a new Message-ID has no room at "sat".
+(assert-event (fn-nh-names-have-entriesp '("sat") *nht-sat-feeds*))
+(assert-event (not (fn-own-feed-target-capacityp '("sat") *nht-sat-feeds* '(60 110 62))))
+;; Without saturation: the idle feed is a member, unsaturated, and clear.
+(assert-event (not (fn-nh-feed-saturatedp (fn-own-feed-entry-feed (car *nht-idle-feeds*)))))
+(assert-event (member-equal (car *nht-idle-feeds*) *nht-idle-feeds*))
+;; Without the member: the saturated feed outside the (empty) table holds nothing.
+(assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0 nil)))
+                     :clear))
+;; Without fn-nh-names-have-entriesp: a target the table does not hold has no
+;; room either, and the idle table is clear.
+(assert-event (not (fn-nh-names-have-entriesp '("ghost") *nht-idle-feeds*)))
+(assert-event (not (fn-own-feed-target-capacityp '("ghost") *nht-idle-feeds* '(60 110 62))))
+;; Without the refusal: the idle peer has room, and it is clear.
+(assert-event (fn-nh-names-have-entriesp '("up") *nht-idle-feeds*))
+(assert-event (fn-own-feed-target-capacityp '("up") *nht-idle-feeds* '(60 110 62)))
+(assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
+                                                      *nht-idle-feeds*)))
+                     :clear))
+
 ; Forwarding obligations: two :forward pins are debt; with no BP route in the
 ; configuration (this one has none) that is also no route.
 (defconst *nht-pins*
@@ -500,3 +548,34 @@
 ; status's first lines when nothing runs.
 (assert-event (equal (take 11 (fn-nh-not-running-lines *nht-last*))
                      (fn-record-string-octets "not-running")))
+
+;; PRF-335: fn-nh-feed-queue-full-intent-is-held, over the owner.  owner-tests'
+;; control submission targets peer "out" (max-queue 1); with its feed holding
+;; another undelivered article the intent is :capacity, POST answers the
+;; named feed-queue-full, and health holds unavailable-peer.
+(defconst *nht-own-full*
+  (fn-own-with-feeds *own-control-fed-taken*
+                     (fn-own-feed-put "out" *own-out-peer-record* *own-full-feed*
+                                      (fn-own-feeds *own-control-fed-taken*))))
+(assert-event (fn-own-feed-tablep (fn-own-feeds *nht-own-full*)))
+(assert-event (equal (fn-own-submission-intent-result
+                      *nht-own-full* *own-control-evidence* 1 3)
+                     :capacity))
+(assert-event (equal (fn-own-intent-refusal-word :capacity) :feed-queue-full))
+(assert-event (equal (fn-post-store-refusal-line (fn-own-intent-refusal-word :capacity))
+                     "441 posting failed; a peer's outbound feed queue is full, nothing was stored (feed-queue-full); the peer is behind, and the node's operator sees which one in health"))
+(assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
+                                                      (fn-own-feeds *nht-own-full*))))
+                     :held))
+;; Without the :capacity intent: the same owner before the other article,
+;; intent :ready, and its feed table is clear.
+(assert-event (fn-own-feed-tablep (fn-own-feeds *own-control-fed-taken*)))
+(assert-event (equal (fn-own-submission-intent-result
+                      *own-control-fed-taken* *own-control-evidence* 1 3)
+                     :ready))
+(assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
+                                                      (fn-own-feeds *own-control-fed-taken*))))
+                     :clear))
+;; Any other non-ready intent keeps the bare refusal.
+(assert-event (equal (fn-own-intent-refusal-word :refused) :refused))
+(assert-event (equal (fn-own-intent-refusal-word :absent) :refused))

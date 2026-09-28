@@ -968,6 +968,9 @@
           ((equal completion :clock-unusable) 436)
           ((equal completion :unaffordable) 436)
           ((equal completion :memberships) 436)
+          ;; PRF-335: a full outbound feed queue is "not now" too: the peer
+          ;; it waits on drains, and the sender keeps the article.
+          ((equal completion :feed-queue-full) 436)
           ((fn-post-store-refusalp completion) (if (equal kind :ihave) 437 439))
           ((equal dk :defer) 436)
           (t (if (equal kind :ihave) 437 439)))))
@@ -998,7 +1001,7 @@
                        (list (fn-nntp-close-effect))))
               ((equal completion :clock-unusable)
                (fn-peer-single ps "436 retry later; no usable clock reading"))
-              ((or (equal completion :unaffordable) (equal completion :memberships))
+              ((member-equal completion '(:unaffordable :memberships :feed-queue-full))
                (fn-peer-single ps (string-append "436 retry later; "
                                                  (fn-post-store-refusal-text completion))))
               ((fn-post-store-refusalp completion)
@@ -1073,6 +1076,15 @@
 (defthm fn-peer-full-store-is-a-retry-code
   (and (equal (fn-peer-transit-code kind d :unaffordable) 436)
        (not (member-equal (fn-peer-transit-code kind d :unaffordable)
+                          '(437 439)))))
+
+;; PRF-335, by definition.  A transfer the owner refused because a peer's
+;; outbound feed queue is full (books/owner.lisp fn-own-intent-refusal-word)
+;; is 436, IHAVE or TAKETHIS: the sender keeps the article and retries when
+;; the queue has drained; never the drop codes.
+(defthm fn-peer-full-feed-queue-is-a-retry-code-by-definition
+  (and (equal (fn-peer-transit-code kind d :feed-queue-full) 436)
+       (not (member-equal (fn-peer-transit-code kind d :feed-queue-full)
                           '(437 439)))))
 
 ; The host entry after the durable attempt: the connection is unchanged.

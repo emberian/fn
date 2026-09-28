@@ -414,7 +414,7 @@
       "class": "unexpected",
       "packet": "PKT-324 (8)"
     },
-    "fn-nls-obligation-lines recursion N": {
+    "fn-nls-obligation-lines-rev recursion N": {
       "class": "unexpected",
       "packet": "PKT-324 (8)"
     },

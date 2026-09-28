@@ -11325,6 +11325,64 @@
           "name": "fn-native-operator-run-reclaim-recorded-action-is-only-store-reclaim-recorded"
         }
       ]
+    },
+    {
+      "id": "PRF-335",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-feed-queue-length-is-undelivered"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-final-outcome-retires-for-good"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-accepted-outcomes-bounded-by-enqueues"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-at-most-one-accepted-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-drivenp-implies-feedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-saturated-peer-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-feed-queue-refusal-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-feed-queue-full-intent-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-intent-refusal-word-is-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-drivenp-of-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-distinct-fast-is-distinctp"
+        }
+      ]
+    },
+    {
+      "id": "PRF-336",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nls-octets-string-is-record-octets-string"
+        }
+      ]
     }
   ]
 }
