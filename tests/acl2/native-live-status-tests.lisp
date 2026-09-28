@@ -262,11 +262,11 @@ obli")))
  (defthm nlst-nat-digits-without-natp
    (equal (fn-nntp-decimal-value (fn-nls-nat -5)) -5)
    :rule-classes nil))
-; The profile's history requirement is a word.
-(assert-event (equal (fn-nls-field "history-marker" "unmarked")
-                     (fn-record-string-octets " history-marker=unmarked")))
+; A reported word is carried as its octets.
+(assert-event (equal (fn-nls-field "reason" "unmarked")
+                     (fn-record-string-octets " reason=unmarked")))
 (defconst *nlst-big-profile*
-  (update-nth 3 (expt 2 40) (fn-bs-config-for-profile :development)))
+  (update-nth *fn-bs-pf-max-history-octets* (expt 2 40) (fn-bs-config-for-profile :development)))
 (assert-event (equal (fn-bs-profile-max-history-octets *nlst-big-profile*)
                      (expt 2 40)))
 (defun nlst-status (profile obs)
@@ -275,11 +275,9 @@ obli")))
 (assert-event
  (nlst-infixp (fn-record-string-octets " max-history-octets=1099511627776")
               (nlst-status *nlst-big-profile* *nlst-obs*)))
+; Format 10 reports no committed-history marker.
 (assert-event
- (nlst-infixp (fn-record-string-octets " history-marker=")
-              (nlst-status *nlst-profile* *nlst-obs*)))
-(assert-event
- (not (nlst-infixp (fn-record-string-octets " history-marker=0")
+ (not (nlst-infixp (fn-record-string-octets " history-marker=")
                    (nlst-status *nlst-profile* *nlst-obs*))))
 
 ; The checkpoint file the host observed, and its absence.

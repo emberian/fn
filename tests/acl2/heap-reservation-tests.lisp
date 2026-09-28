@@ -187,7 +187,7 @@
 ; never lowered (its small capacity's first run is 1,327 MB since the
 ; figure takes the measured 12 KiB a record: lane reservation-figure).
 (defconst *hrt-bare* '(:default nil))
-(defconst *hrt-mission* '(:default ((5 . 1048576) (6 . 8))))
+(defconst *hrt-mission* '(:default ((4 . 1048576) (5 . 8))))
 (defconst *hrt-gib* (* 1024 *fn-heap-mib*))
 (defconst *hrt-hbox* (* 123 *hrt-gib*))
 (defconst *hrt-largest* '(108 97 114 103 101 115 116))
@@ -199,8 +199,8 @@
 (assert! (equal (fn-heap-small-candidate *hrt-bare*) *fn-heap-small-request*))
 (assert! (equal (fn-heap-os-reserve-octets (* 2 *hrt-gib*)) (* 512 *fn-heap-mib*)))
 (assert! (equal (fn-heap-os-reserve-octets *hrt-hbox*) (floor *hrt-hbox* 4)))
-(defconst *hrt-top* '(:development ((2 . 131072) (3 . 67108864) (4 . 196608)
-                                      (6 . 16) (8 . 128))))
+(defconst *hrt-top* '(:development ((1 . 131072) (2 . 67108864) (3 . 196608)
+                                      (5 . 16) (7 . 128))))
 (assert! (equal (fn-heap-friend-candidate *hrt-bare* 67108864) *hrt-top*))
 (assert! (equal (hrt-init *hrt-bare* *hrt-hbox* nil)
                 (list :init *hrt-top* "custom" 4768 94464 :conservative t)))
@@ -265,16 +265,16 @@
 (assert! (equal (hrt-init '(:scale nil) *hrt-hbox* *hrt-2g* *hrt-target-4g*)
                 '(:refused :init-budget-cannot-hold-profile 10866 2048 "scale"
                            :requested)))
-(assert! (equal (hrt-init '(:development ((2 . 100000))) *hrt-hbox* nil)
-                '(:init (:development ((2 . 100000))) "custom" 5121 94464
+(assert! (equal (hrt-init '(:development ((1 . 100000))) *hrt-hbox* nil)
+                '(:init (:development ((1 . 100000))) "custom" 5121 94464
                   :requested t)))
 ; The gate's profile (scale, T = 2^20, 4 KiB articles): 37,448 MB, held
 ; within hbox's 94,464 MB budget; under 2 GiB refused by name.
-(assert! (equal (car (hrt-init '(:scale ((2 . 1048576) (5 . 4096))) *hrt-hbox* nil))
+(assert! (equal (car (hrt-init '(:scale ((1 . 1048576) (4 . 4096))) *hrt-hbox* nil))
                 :init))
-(assert! (equal (car (hrt-init '(:scale ((2 . 1048576) (5 . 4096))) *hrt-hbox* *hrt-2g*))
+(assert! (equal (car (hrt-init '(:scale ((1 . 1048576) (4 . 4096))) *hrt-hbox* *hrt-2g*))
                 :refused))
-(assert! (equal (car (hrt-init '(:default ((3 . 4096))) *hrt-hbox* nil)) :refused))
+(assert! (equal (car (hrt-init '(:default ((2 . 4096))) *hrt-hbox* nil)) :refused))
 (assert! (equal (fn-heap-init-report-line (hrt-init *hrt-bare* (* 2 *hrt-gib*) nil))
                 "init: profile=small sizing=conservative reservation=1217 MB budget=1536 MB within-budget=yes"))
 (assert! (equal (fn-heap-init-report-line (hrt-init '(:scale nil) *hrt-hbox* *hrt-2g*))
@@ -447,7 +447,7 @@
                                 fn-heap-init-reservation-octets
                                 fn-heap-machine-octets fn-heap-init-observations)))))
 
-; honors-the-operators-request: reachable with '(:development ((2 . 100000)))
+; honors-the-operators-request: reachable with '(:development ((1 . 100000)))
 ; (above, held) and '(:scale nil) under 2 GiB (not held, still written).
 ; Per hypothesis, a counterexample with the others holding:
 ;   machine-sized: the bare request under 2 GiB is written as small, not bare;
@@ -458,9 +458,9 @@
                      *hrt-bare*)))
 (assert! (equal (car (hrt-init '(:scale nil) *hrt-hbox* nil '(120))) :refused))
 (assert! (equal (car (hrt-init '(:scale nil) *hrt-hbox* nil nil '(120))) :refused))
-(assert! (not (fn-heap-machine-sized-requestp '(:default ((3 . 4096))))))
-(assert! (equal (car (fn-bs-profile-resolve '(:default ((3 . 4096))) nil)) :invalid))
-(assert! (equal (car (hrt-init '(:default ((3 . 4096))) *hrt-hbox* nil)) :refused))
+(assert! (not (fn-heap-machine-sized-requestp '(:default ((2 . 4096))))))
+(assert! (equal (car (fn-bs-profile-resolve '(:default ((2 . 4096))) nil)) :invalid))
+(assert! (equal (car (hrt-init '(:default ((2 . 4096))) *hrt-hbox* nil)) :refused))
 (defmacro hrt-honors-without (&rest hyps)
   `(must-fail-checked
     (defthm hrt-honors-without-a-hypothesis
@@ -570,8 +570,8 @@
 ; fell to the small candidate, 8 MiB of history and 16 groups, whose 441
 ; "no capacity" stopped the 3 MiB POSTs.  The candidates now raise R to the
 ; article record and H to at least R.
-(defconst *hrt-a8* '(:default ((5 . 8388608))))
-(defconst *hrt-a4* '(:default ((5 . 4194304))))
+(defconst *hrt-a8* '(:default ((4 . 8388608))))
+(defconst *hrt-a4* '(:default ((4 . 4194304))))
 (defconst *hrt-24g* (list (* 24 *hrt-gib*)))
 (defun hrt-sized-at (d request budget-mb)
   (and (equal (car d) :init)
@@ -584,23 +584,23 @@
 ; history, 131,072 transactions) with R raised to the 8 MiB (4 MiB) article's
 ; record at 16 groups.
 (assert! (hrt-sized-at (hrt-init *hrt-a8* *hrt-hbox* *hrt-24g*)
-                       '(:development ((2 . 131072) (3 . 67108864) (4 . 8393867)
-                                       (6 . 16) (8 . 128) (5 . 8388608)))
+                       '(:development ((1 . 131072) (2 . 67108864) (3 . 8393867)
+                                       (5 . 16) (7 . 128) (4 . 8388608)))
                        24576))
 (assert! (hrt-sized-at (hrt-init *hrt-a4* *hrt-hbox* *hrt-24g*)
-                       '(:development ((2 . 131072) (3 . 67108864) (4 . 4199563)
-                                       (6 . 16) (8 . 128) (5 . 4194304)))
+                       '(:development ((1 . 131072) (2 . 67108864) (3 . 4199563)
+                                       (5 . 16) (7 . 128) (4 . 4194304)))
                        24576))
 ; On hbox without a limit: the same top rung.
 (assert! (equal (fn-heap-init-decision-request (hrt-init *hrt-a8* *hrt-hbox* nil))
-                '(:development ((2 . 131072) (3 . 67108864) (4 . 8393867)
-                                (6 . 16) (8 . 128) (5 . 8388608)))))
+                '(:development ((1 . 131072) (2 . 67108864) (3 . 8393867)
+                                (5 . 16) (7 . 128) (4 . 8388608)))))
 ; Under 3 GiB: the 16 MiB rung, R raised to the article's record (under 2 GiB
 ; even the small candidate's first run, 2,097 MB, is refused by name).
 (assert! (equal (fn-heap-init-decision-request
                  (hrt-init *hrt-a8* *hrt-hbox* (list (* 3 *hrt-gib*))))
-                '(:development ((2 . 32768) (3 . 16777216) (4 . 8393867) (6 . 16)
-                                (8 . 128) (5 . 8388608)))))
+                '(:development ((1 . 32768) (2 . 16777216) (3 . 8393867) (5 . 16)
+                                (7 . 128) (4 . 8388608)))))
 ; Each written profile keeps the request's A and resolves valid.
 (assert! (equal (fn-bs-profile-max-article-octets
                  (fn-bs-profile-resolve
@@ -611,17 +611,17 @@
            (fn-heap-init-decision-request (hrt-init *hrt-a4* *hrt-hbox* *hrt-24g*)) nil)))
 ; Mutation: without the raise (the batch AR candidates) the same request
 ; failed the article relations by name.
-(assert! (equal (fn-bs-profile-resolve '(:development ((5 . 8388608))) nil)
+(assert! (equal (fn-bs-profile-resolve '(:development ((4 . 8388608))) nil)
                 '(:invalid :max-record-octets-below-the-article-record)))
 (assert! (equal (fn-bs-profile-resolve
-                 '(:development ((2 . 16384) (3 . 8388608) (4 . 8393867) (6 . 16)
-                                 (8 . 128) (5 . 8388608))) nil)
+                 '(:development ((1 . 16384) (2 . 8388608) (3 . 8393867) (5 . 16)
+                                 (7 . 128) (4 . 8388608))) nil)
                 '(:invalid :max-history-octets-below-max-record-octets)))
 ; A candidate that already holds its article is returned unchanged (the
 ; bare and mission witnesses above are the same requests as before).
 (assert! (equal (fn-heap-article-held '(:development nil)) '(:development nil)))
-(assert! (equal (fn-heap-article-held '(:development ((5 . 1048576) (6 . 8))))
-                '(:development ((5 . 1048576) (6 . 8)))))
+(assert! (equal (fn-heap-article-held '(:development ((4 . 1048576) (5 . 8))))
+                '(:development ((4 . 1048576) (5 . 8)))))
 
 ; Teeth for fn-heap-article-held-holds-the-article-record.  Positive: the
 ; 8 MiB request, both hypotheses true, every conjunct of the conclusion.
@@ -632,18 +632,18 @@
                                        (cadr request))))
     (and (equal (car q) (car request))
          (not (equal v :bad))
-         (<= (fn-record-encoded-octets-ceiling (fn-bs-pf 5 v) (fn-bs-pf 6 v))
-             (fn-bs-pf 4 v))
-         (<= (fn-bs-pf 4 v) (fn-bs-pf 3 v))
-         (equal (fn-bs-pf 2 v) (fn-bs-pf 2 v0))
+         (<= (fn-record-encoded-octets-ceiling (fn-bs-pf 4 v) (fn-bs-pf 5 v))
+             (fn-bs-pf 3 v))
+         (<= (fn-bs-pf 3 v) (fn-bs-pf 2 v))
+         (equal (fn-bs-pf 1 v) (fn-bs-pf 1 v0))
+         (equal (fn-bs-pf 4 v) (fn-bs-pf 4 v0))
          (equal (fn-bs-pf 5 v) (fn-bs-pf 5 v0))
-         (equal (fn-bs-pf 6 v) (fn-bs-pf 6 v0))
-         (<= (fn-bs-pf 3 v0) (fn-bs-pf 3 v))
-         (<= (fn-bs-pf 4 v0) (fn-bs-pf 4 v)))))
-(defconst *hrt-dev-a8* '(:development ((5 . 8388608))))
+         (<= (fn-bs-pf 2 v0) (fn-bs-pf 2 v))
+         (<= (fn-bs-pf 3 v0) (fn-bs-pf 3 v)))))
+(defconst *hrt-dev-a8* '(:development ((4 . 8388608))))
 (assert! (fn-bs-profile-requestp *hrt-dev-a8*))
 (assert! (not (equal (fn-bs-profile-set-fields
-                      (fn-bs-config-for-profile :development) '((5 . 8388608)))
+                      (fn-bs-config-for-profile :development) '((4 . 8388608)))
                      :bad)))
 (assert! (not (equal (fn-heap-article-held *hrt-dev-a8*) *hrt-dev-a8*)))
 (assert! (hrt-held-conclusion *hrt-dev-a8*))
@@ -680,19 +680,19 @@
 ; witness exists among them.  The unconditional :831 with a case split on the
 ; three hypotheses ran 100 s (17M steps) without a proof and was stopped;
 ; the hypotheses stay, recorded as untoothed (no counterexample known).
-(assert! (and (hrt-held-conclusion '(:development ((5 . 8388608)) extra))
-              (hrt-held-conclusion '(:foo ((5 . 8388608))))
-              (hrt-held-conclusion '(:development ((5 . 8388608)) . x))
-              (hrt-held-conclusion '(:development ((5 . 8388608) . x)))
-              (hrt-held-conclusion '(:current ((5 . 8388608))))))
-(assert! (and (not (fn-bs-profile-requestp '(:development ((5 . 8388608)) extra)))
-              (not (fn-bs-profile-requestp '(:foo ((5 . 8388608)))))))
-(assert! (equal (fn-bs-profile-resolve (fn-heap-article-held '(:current ((5 . 8388608)))) nil)
+(assert! (and (hrt-held-conclusion '(:development ((4 . 8388608)) extra))
+              (hrt-held-conclusion '(:foo ((4 . 8388608))))
+              (hrt-held-conclusion '(:development ((4 . 8388608)) . x))
+              (hrt-held-conclusion '(:development ((4 . 8388608) . x)))
+              (hrt-held-conclusion '(:current ((4 . 8388608))))))
+(assert! (and (not (fn-bs-profile-requestp '(:development ((4 . 8388608)) extra)))
+              (not (fn-bs-profile-requestp '(:foo ((4 . 8388608)))))))
+(assert! (equal (fn-bs-profile-resolve (fn-heap-article-held '(:current ((4 . 8388608)))) nil)
                 '(:invalid :request)))
 (assert! (equal (fn-bs-profile-resolve (fn-heap-article-held '(:development ((1 . 5)))) nil)
                 '(:invalid :request)))
 (assert! (fn-bs-profile-admittedp
-          (fn-bs-profile-resolve (fn-heap-article-held '(:development ((5 . 8388608)) extra)) nil)))
+          (fn-bs-profile-resolve (fn-heap-article-held '(:development ((4 . 8388608)) extra)) nil)))
 
 ; A run's connections: the structural owner bound (PRF-211) is held at the
 ; default 32; a smaller bound is kept.
@@ -1103,7 +1103,7 @@
             (nfix (fn-bs-profile-max-transactions p2)))
         (<= (nfix (fn-bs-profile-max-record-octets p1))
             (nfix (fn-bs-profile-max-record-octets p2)))
-        (<= (nfix (fn-bs-profile-field 17 p1)) (nfix (fn-bs-profile-field 17 p2)))))
+        (<= (nfix (fn-bs-profile-field 15 p1)) (nfix (fn-bs-profile-field 15 p2)))))
 (defun hrt-grow-conclusion (p1 p2)
   (declare (xargs :mode :program))
   (<= (fn-heap-figure-octets p1 *hrt-core* *hrt-nursery*)
@@ -1118,34 +1118,34 @@
 (assert! (hrt-grow-conclusion *fn-heap-small-profile* *fn-bs-profile-defaults*))
 ; Per hypothesis, the small preset with that one field raised against the
 ; small preset: the other three hold, it fails, and the figure shrinks.
-(assert! (equal (hrt-grow-hyps (hrt-small-with '((2 . 32768))) *fn-heap-small-profile*)
+(assert! (equal (hrt-grow-hyps (hrt-small-with '((1 . 32768))) *fn-heap-small-profile*)
                 '(t nil t t)))
-(assert! (not (hrt-grow-conclusion (hrt-small-with '((2 . 32768))) *fn-heap-small-profile*)))
+(assert! (not (hrt-grow-conclusion (hrt-small-with '((1 . 32768))) *fn-heap-small-profile*)))
 ; G is no longer a hypothesis (membership-budget: the figure does not read
 ; it; the memberships are bounded by H): raising it leaves the figure.
-(assert! (equal (fn-heap-figure-octets (hrt-small-with '((6 . 32))) *hrt-core* *hrt-nursery*)
+(assert! (equal (fn-heap-figure-octets (hrt-small-with '((5 . 32))) *hrt-core* *hrt-nursery*)
                 (fn-heap-figure-octets *fn-heap-small-profile* *hrt-core* *hrt-nursery*)))
-(assert! (equal (hrt-grow-hyps (hrt-small-with '((17 . 32768))) *fn-heap-small-profile*)
+(assert! (equal (hrt-grow-hyps (hrt-small-with '((15 . 32768))) *fn-heap-small-profile*)
                 '(t t t nil)))
-(assert! (not (hrt-grow-conclusion (hrt-small-with '((17 . 32768))) *fn-heap-small-profile*)))
+(assert! (not (hrt-grow-conclusion (hrt-small-with '((15 . 32768))) *fn-heap-small-profile*)))
 ; H and R (audit packet G3-3, lane audit-fixes): the capture-budget
 ; hypothesis is gone -- the book proves it from H and R
 ; (fn-heap-capture-budget-grows-with-history-and-record) -- so each now has
 ; its own single-hypothesis counterexample: H raised to 16 MiB, R to 2 MiB.
-(assert! (equal (hrt-grow-hyps (hrt-small-with '((3 . 16777216))) *fn-heap-small-profile*)
+(assert! (equal (hrt-grow-hyps (hrt-small-with '((2 . 16777216))) *fn-heap-small-profile*)
                 '(nil t t t)))
-(assert! (not (hrt-grow-conclusion (hrt-small-with '((3 . 16777216))) *fn-heap-small-profile*)))
-(assert! (equal (hrt-grow-hyps (hrt-small-with '((4 . 2097152))) *fn-heap-small-profile*)
+(assert! (not (hrt-grow-conclusion (hrt-small-with '((2 . 16777216))) *fn-heap-small-profile*)))
+(assert! (equal (hrt-grow-hyps (hrt-small-with '((3 . 2097152))) *fn-heap-small-profile*)
                 '(t t nil t)))
-(assert! (not (hrt-grow-conclusion (hrt-small-with '((4 . 2097152))) *fn-heap-small-profile*)))
+(assert! (not (hrt-grow-conclusion (hrt-small-with '((3 . 2097152))) *fn-heap-small-profile*)))
 ; The budget lemma itself: positive at the small preset against the
 ; defaults; removal of R (H equal, R raised) makes the budget grow the
 ; other way.
 (assert! (<= (fn-ock-capture-budget *fn-heap-small-profile*)
              (fn-ock-capture-budget *fn-bs-profile-defaults*)))
-(assert! (and (equal (fn-bs-profile-max-history-octets (hrt-small-with '((4 . 2097152))))
+(assert! (and (equal (fn-bs-profile-max-history-octets (hrt-small-with '((3 . 2097152))))
                      (fn-bs-profile-max-history-octets *fn-heap-small-profile*))
-              (not (<= (fn-ock-capture-budget (hrt-small-with '((4 . 2097152))))
+              (not (<= (fn-ock-capture-budget (hrt-small-with '((3 . 2097152))))
                        (fn-ock-capture-budget *fn-heap-small-profile*)))))
 ; Lane reservation-figure (2026-09-27).
 ;
@@ -1185,9 +1185,9 @@
 ; so a store holds at most H / 320 of them and the state no longer depends
 ; on G: the same figure at G = 16.
 (defconst *hrt-gate* (fn-bs-profile-resolve
-                      (fn-heap-article-held '(:scale ((2 . 1048576) (5 . 4096)))) nil))
+                      (fn-heap-article-held '(:scale ((1 . 1048576) (4 . 4096)))) nil))
 (defconst *hrt-gate-16* (fn-bs-profile-resolve
-                         (fn-heap-article-held '(:scale ((2 . 1048576) (5 . 4096) (6 . 16))))
+                         (fn-heap-article-held '(:scale ((1 . 1048576) (4 . 4096) (5 . 16))))
                          nil))
 (defun hrt-state (p)
   (fn-heap-store-state-octets p (fn-bs-profile-max-history-octets p)
@@ -1336,9 +1336,9 @@
                 '(t t nil t t t t)))
 (assert! (not (hrt-refuse-conclusion '(:scale nil) *hrt-hbox* *hrt-2g* nil '(120))))
 ; 4. An invalid profile: invalid-init-profile.
-(assert! (equal (hrt-refuse-hyps '(:default ((3 . 4096))) *hrt-hbox* *hrt-2g* nil nil)
+(assert! (equal (hrt-refuse-hyps '(:default ((2 . 4096))) *hrt-hbox* *hrt-2g* nil nil)
                 '(t t t nil t t t)))
-(assert! (not (hrt-refuse-conclusion '(:default ((3 . 4096))) *hrt-hbox* *hrt-2g* nil nil)))
+(assert! (not (hrt-refuse-conclusion '(:default ((2 . 4096))) *hrt-hbox* *hrt-2g* nil nil)))
 ; 5. No memory observed: machine-memory-unobserved.
 (assert! (equal (hrt-refuse-hyps '(:scale nil) nil nil nil nil) '(t t t t nil t t)))
 (assert! (not (hrt-refuse-conclusion '(:scale nil) nil nil nil nil)))

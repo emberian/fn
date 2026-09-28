@@ -448,11 +448,16 @@
 ; harness that runs the image directly still can).  `init' prints the
 ; decision (fn-heap-init-report-line); nothing is resized silently.
 
+; The capacity fields T, H and R.
+(defconst *fn-heap-capacity-fields*
+  (list *fn-bs-pf-max-transactions* *fn-bs-pf-max-history-octets*
+        *fn-bs-pf-max-record-octets*))
+
 (defun fn-heap-capacity-free-fieldsp (fields)
   (declare (xargs :guard t))
   (if (consp fields)
       (and (not (and (consp (car fields))
-                      (member-equal (caar fields) '(2 3 4))))
+                      (member-equal (caar fields) *fn-heap-capacity-fields*)))
            (fn-heap-capacity-free-fieldsp (cdr fields)))
     t))
 
@@ -487,12 +492,12 @@
 (defun fn-heap-friend-candidate (request h)
   (declare (xargs :guard t))
   (let* ((fields (cadr (true-list-fix request)))
-         (a (fn-heap-field-or 5 fields 32768))
-         (g (fn-heap-field-or 6 fields 16))
+         (a (fn-heap-field-or *fn-bs-pf-max-article-octets* fields 32768))
+         (g (fn-heap-field-or *fn-bs-pf-max-groups-per-article* fields 16))
          (r (max 196608 (nfix (fn-record-encoded-octets-ceiling a g)))))
     (list :development
-          (append (list (cons 2 (floor (nfix h) 512)) (cons 3 (max (nfix h) r)) (cons 4 r)
-                        (cons 6 16) (cons 8 128))
+          (append (list (cons *fn-bs-pf-max-transactions* (floor (nfix h) 512)) (cons *fn-bs-pf-max-history-octets* (max (nfix h) r)) (cons *fn-bs-pf-max-record-octets* r)
+                        (cons *fn-bs-pf-max-groups-per-article* 16) (cons *fn-bs-pf-max-open-suffix* 128))
                   (true-list-fix fields)))))
 
 ;; The floor: 8 MiB of history and 16,384 transactions, the `small' profile.
@@ -703,14 +708,14 @@
 ;; article record under an H of at least R (or are :bad).
 (defun fn-heap-article-raise (vals)
   (declare (xargs :guard t))
-  (let* ((r0 (fn-bs-pf 4 vals))
-         (h0 (fn-bs-pf 3 vals))
+  (let* ((r0 (fn-bs-pf *fn-bs-pf-max-record-octets* vals))
+         (h0 (fn-bs-pf *fn-bs-pf-max-history-octets* vals))
          (r (max r0 (nfix (fn-record-encoded-octets-ceiling
-                           (fn-bs-pf 5 vals) (fn-bs-pf 6 vals)))))
+                           (fn-bs-pf *fn-bs-pf-max-article-octets* vals) (fn-bs-pf *fn-bs-pf-max-groups-per-article* vals)))))
          (h (max h0 r)))
     (if (or (equal vals :bad) (and (equal r r0) (equal h h0)))
         nil
-      (list (cons 3 h) (cons 4 r)))))
+      (list (cons *fn-bs-pf-max-history-octets* h) (cons *fn-bs-pf-max-record-octets* r)))))
 
 (defun fn-heap-article-held (request)
   (declare (xargs :guard t))
@@ -756,25 +761,25 @@
   (let ((raise (fn-heap-article-raise v0)))
     (implies (and raise (not (equal v :bad)))
              (equal (fn-bs-profile-set-fields v raise)
-                    (fn-bs-profile-put 4 (cdr (cadr raise))
-                                       (fn-bs-profile-put 3 (cdr (car raise)) v)))))
+                    (fn-bs-profile-put *fn-bs-pf-max-record-octets* (cdr (cadr raise))
+                                       (fn-bs-profile-put *fn-bs-pf-max-history-octets* (cdr (car raise)) v)))))
   :hints (("Goal" :in-theory (disable fn-record-encoded-octets-ceiling fn-bs-pf)))))
 
 (defthm fn-heap-article-raise-holds-the-article-record
   (let ((raise (fn-heap-article-raise v0)))
     (implies (not (equal v0 :bad))
              (let ((v (if raise
-                          (fn-bs-profile-put 4 (cdr (cadr raise))
-                                             (fn-bs-profile-put 3 (cdr (car raise)) v0))
+                          (fn-bs-profile-put *fn-bs-pf-max-record-octets* (cdr (cadr raise))
+                                             (fn-bs-profile-put *fn-bs-pf-max-history-octets* (cdr (car raise)) v0))
                         v0)))
-               (and (<= (fn-record-encoded-octets-ceiling (fn-bs-pf 5 v) (fn-bs-pf 6 v))
-                        (fn-bs-pf 4 v))
-                    (<= (fn-bs-pf 4 v) (fn-bs-pf 3 v))
-                    (equal (fn-bs-pf 2 v) (fn-bs-pf 2 v0))
-                    (equal (fn-bs-pf 5 v) (fn-bs-pf 5 v0))
-                    (equal (fn-bs-pf 6 v) (fn-bs-pf 6 v0))
-                    (<= (fn-bs-pf 3 v0) (fn-bs-pf 3 v))
-                    (<= (fn-bs-pf 4 v0) (fn-bs-pf 4 v))))))
+               (and (<= (fn-record-encoded-octets-ceiling (fn-bs-pf *fn-bs-pf-max-article-octets* v) (fn-bs-pf *fn-bs-pf-max-groups-per-article* v))
+                        (fn-bs-pf *fn-bs-pf-max-record-octets* v))
+                    (<= (fn-bs-pf *fn-bs-pf-max-record-octets* v) (fn-bs-pf *fn-bs-pf-max-history-octets* v))
+                    (equal (fn-bs-pf *fn-bs-pf-max-transactions* v) (fn-bs-pf *fn-bs-pf-max-transactions* v0))
+                    (equal (fn-bs-pf *fn-bs-pf-max-article-octets* v) (fn-bs-pf *fn-bs-pf-max-article-octets* v0))
+                    (equal (fn-bs-pf *fn-bs-pf-max-groups-per-article* v) (fn-bs-pf *fn-bs-pf-max-groups-per-article* v0))
+                    (<= (fn-bs-pf *fn-bs-pf-max-history-octets* v0) (fn-bs-pf *fn-bs-pf-max-history-octets* v))
+                    (<= (fn-bs-pf *fn-bs-pf-max-record-octets* v0) (fn-bs-pf *fn-bs-pf-max-record-octets* v))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-record-encoded-octets-ceiling fn-bs-pf
                                       fn-bs-profile-put))))
@@ -806,8 +811,8 @@
                           (fn-bs-config-for-profile (car (fn-heap-article-held request)))
                           (cadr (fn-heap-article-held request)))
                          (if (fn-heap-article-raise v0)
-                             (fn-bs-profile-put 4 (cdr (cadr (fn-heap-article-raise v0)))
-                                                (fn-bs-profile-put 3 (cdr (car (fn-heap-article-raise v0))) v0))
+                             (fn-bs-profile-put *fn-bs-pf-max-record-octets* (cdr (cadr (fn-heap-article-raise v0)))
+                                                (fn-bs-profile-put *fn-bs-pf-max-history-octets* (cdr (car (fn-heap-article-raise v0))) v0))
                            v0)))))
   :hints (("Goal" :in-theory (disable fn-heap-article-raise fn-bs-profile-set-fields
                                       fn-bs-config-for-profile (:e fn-bs-config-for-profile)
@@ -827,14 +832,14 @@
                   (not (equal v0 :bad)))
              (and (equal (car q) (car request))
                   (not (equal v :bad))
-                  (<= (fn-record-encoded-octets-ceiling (fn-bs-pf 5 v) (fn-bs-pf 6 v))
-                      (fn-bs-pf 4 v))
-                  (<= (fn-bs-pf 4 v) (fn-bs-pf 3 v))
-                  (equal (fn-bs-pf 2 v) (fn-bs-pf 2 v0))
-                  (equal (fn-bs-pf 5 v) (fn-bs-pf 5 v0))
-                  (equal (fn-bs-pf 6 v) (fn-bs-pf 6 v0))
-                  (<= (fn-bs-pf 3 v0) (fn-bs-pf 3 v))
-                  (<= (fn-bs-pf 4 v0) (fn-bs-pf 4 v)))))
+                  (<= (fn-record-encoded-octets-ceiling (fn-bs-pf *fn-bs-pf-max-article-octets* v) (fn-bs-pf *fn-bs-pf-max-groups-per-article* v))
+                      (fn-bs-pf *fn-bs-pf-max-record-octets* v))
+                  (<= (fn-bs-pf *fn-bs-pf-max-record-octets* v) (fn-bs-pf *fn-bs-pf-max-history-octets* v))
+                  (equal (fn-bs-pf *fn-bs-pf-max-transactions* v) (fn-bs-pf *fn-bs-pf-max-transactions* v0))
+                  (equal (fn-bs-pf *fn-bs-pf-max-article-octets* v) (fn-bs-pf *fn-bs-pf-max-article-octets* v0))
+                  (equal (fn-bs-pf *fn-bs-pf-max-groups-per-article* v) (fn-bs-pf *fn-bs-pf-max-groups-per-article* v0))
+                  (<= (fn-bs-pf *fn-bs-pf-max-history-octets* v0) (fn-bs-pf *fn-bs-pf-max-history-octets* v))
+                  (<= (fn-bs-pf *fn-bs-pf-max-record-octets* v0) (fn-bs-pf *fn-bs-pf-max-record-octets* v)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(fn-heap-profile-put-is-not-bad)
                                              (theory 'minimal-theory))
@@ -847,7 +852,7 @@
 (local (defthm fn-heap-invalid-history-below-record-means
   (implies (equal (fn-bs-profile-invalid-reason v)
                   :max-history-octets-below-max-record-octets)
-           (< (fn-bs-pf 3 v) (fn-bs-pf 4 v)))
+           (< (fn-bs-pf *fn-bs-pf-max-history-octets* v) (fn-bs-pf *fn-bs-pf-max-record-octets* v)))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-bs-pf fn-frame-values-okp fn-bs-profile-countp
                                       fn-record-encoded-octets-ceiling)))))
@@ -855,8 +860,8 @@
 (local (defthm fn-heap-invalid-record-below-article-means
   (implies (equal (fn-bs-profile-invalid-reason v)
                   :max-record-octets-below-the-article-record)
-           (< (fn-bs-pf 4 v)
-              (fn-record-encoded-octets-ceiling (fn-bs-pf 5 v) (fn-bs-pf 6 v))))
+           (< (fn-bs-pf *fn-bs-pf-max-record-octets* v)
+              (fn-record-encoded-octets-ceiling (fn-bs-pf *fn-bs-pf-max-article-octets* v) (fn-bs-pf *fn-bs-pf-max-groups-per-article* v))))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-bs-pf fn-frame-values-okp fn-bs-profile-countp
                                       fn-record-encoded-octets-ceiling)))))
@@ -892,10 +897,10 @@
                                 (cadr (fn-heap-article-held request)))))
                  (:instance fn-heap-invalid-history-below-record-means
                             (v (fn-bs-profile-put
-                                8 (min (fn-bs-pf 8 (fn-bs-profile-set-fields
+                                *fn-bs-pf-max-open-suffix* (min (fn-bs-pf *fn-bs-pf-max-open-suffix* (fn-bs-profile-set-fields
                                                     (fn-bs-config-for-profile (car (fn-heap-article-held request)))
                                                     (cadr (fn-heap-article-held request))))
-                                       (fn-bs-pf 2 (fn-bs-profile-set-fields
+                                       (fn-bs-pf *fn-bs-pf-max-transactions* (fn-bs-profile-set-fields
                                                     (fn-bs-config-for-profile (car (fn-heap-article-held request)))
                                                     (cadr (fn-heap-article-held request)))))
                                 (fn-bs-profile-set-fields
@@ -903,10 +908,10 @@
                                  (cadr (fn-heap-article-held request))))))
                  (:instance fn-heap-invalid-record-below-article-means
                             (v (fn-bs-profile-put
-                                8 (min (fn-bs-pf 8 (fn-bs-profile-set-fields
+                                *fn-bs-pf-max-open-suffix* (min (fn-bs-pf *fn-bs-pf-max-open-suffix* (fn-bs-profile-set-fields
                                                     (fn-bs-config-for-profile (car (fn-heap-article-held request)))
                                                     (cadr (fn-heap-article-held request))))
-                                       (fn-bs-pf 2 (fn-bs-profile-set-fields
+                                       (fn-bs-pf *fn-bs-pf-max-transactions* (fn-bs-profile-set-fields
                                                     (fn-bs-config-for-profile (car (fn-heap-article-held request)))
                                                     (cadr (fn-heap-article-held request)))))
                                 (fn-bs-profile-set-fields
@@ -1461,7 +1466,7 @@
 (local
  (defthm fn-heap-field-or-of-capacity-free
    (implies (and (fn-heap-capacity-free-fieldsp f)
-                 (member-equal key '(2 3 4)))
+                 (member-equal key *fn-heap-capacity-fields*))
             (equal (fn-heap-field-or key f d) d))))
 
 (local
@@ -1481,11 +1486,11 @@
 ;; The transaction slots and the history bound a request's field list sets.
 (defun fn-heap-request-transactions (request)
   (declare (xargs :guard t))
-  (fn-heap-field-or 2 (cadr (true-list-fix request)) 0))
+  (fn-heap-field-or *fn-bs-pf-max-transactions* (cadr (true-list-fix request)) 0))
 
 (defun fn-heap-request-history (request)
   (declare (xargs :guard t))
-  (fn-heap-field-or 3 (cadr (true-list-fix request)) 0))
+  (fn-heap-field-or *fn-bs-pf-max-history-octets* (cadr (true-list-fix request)) 0))
 
 (local
  (defthm fn-heap-friend-candidate-sets
@@ -1834,7 +1839,7 @@
                     (nfix (fn-bs-profile-max-transactions p2)))
                 (<= (nfix (fn-bs-profile-max-record-octets p1))
                     (nfix (fn-bs-profile-max-record-octets p2)))
-                (<= (nfix (fn-bs-profile-field 17 p1)) (nfix (fn-bs-profile-field 17 p2)))
+                (<= (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p1)) (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2)))
                 (<= (fn-ock-capture-budget p1) (fn-ock-capture-budget p2)))
            (<= (fn-heap-figure-octets p1 core nursery)
                (fn-heap-figure-octets p2 core nursery)))
@@ -1868,7 +1873,7 @@
                     (nfix (fn-bs-profile-max-transactions p2)))
                 (<= (nfix (fn-bs-profile-max-record-octets p1))
                     (nfix (fn-bs-profile-max-record-octets p2)))
-                (<= (nfix (fn-bs-profile-field 17 p1)) (nfix (fn-bs-profile-field 17 p2))))
+                (<= (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p1)) (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2))))
            (<= (fn-heap-figure-octets p1 core nursery)
                (fn-heap-figure-octets p2 core nursery)))
   :rule-classes nil

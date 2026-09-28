@@ -20,8 +20,8 @@
 ; A 32 768, G 500.  Its article record ceiling is 164 351, within R.
 (defconst *pmt-old*
   (fn-bs-profile-set-fields *fn-bs-profile-defaults*
-                            '((2 . 4) (3 . 250000) (4 . 196608) (5 . 32768)
-                              (6 . 500) (8 . 4))))
+                            '((1 . 4) (2 . 250000) (3 . 196608) (4 . 32768)
+                              (5 . 500) (7 . 4))))
 (assert-event (fn-bs-profile-validp *pmt-old*))
 (assert-event (equal (fn-record-encoded-octets-ceiling 32768 500) 164351))
 
@@ -76,10 +76,10 @@
                *pmt-old* (+ (- 250000 164351) *pmt-len*)))
 ; NEW raises A to 60 000 and nothing else: a valid profile, no field
 ; smaller.  Its article ceiling is 191 583.
-(defconst *pmt-new* (fn-bs-profile-set-fields *pmt-old* '((5 . 60000))))
+(defconst *pmt-new* (fn-bs-profile-set-fields *pmt-old* '((4 . 60000))))
 (assert-event (fn-bs-profile-validp *pmt-new*))
-(assert-event (equal *pmt-new* (fn-bs-profile-put 5 60000 *pmt-old*)))
-(assert-event (< (fn-bs-pf 5 *pmt-old*) (fn-bs-pf 5 *pmt-new*)))
+(assert-event (equal *pmt-new* (fn-bs-profile-put 4 60000 *pmt-old*)))
+(assert-event (< (fn-bs-pf 4 *pmt-old*) (fn-bs-pf 4 *pmt-new*)))
 (assert-event (equal (fn-record-encoded-octets-ceiling 60000 500) 191583))
 ; The counterexample: the old profile admits, the raised one refuses.
 (assert-event (equal (pmt-derived-verdict-at *pmt-old* 1 (- 250000 164351))
@@ -96,8 +96,8 @@
 ; replays under NEW.  Future admissibility: the derived
 ; verdict is kept when H grows by at least the figure's growth; with H
 ; raised by 27 232 (191 583 - 164 351) the same state is admitted again.
-(defconst *pmt-new-h* (fn-bs-profile-set-fields *pmt-new* '((3 . 277232))))
-(assert-event (equal *pmt-new-h* (fn-bs-profile-put 3 277232 *pmt-new*)))
+(defconst *pmt-new-h* (fn-bs-profile-set-fields *pmt-new* '((2 . 277232))))
+(assert-event (equal *pmt-new-h* (fn-bs-profile-put 2 277232 *pmt-new*)))
 (assert-event (fn-bs-profile-validp *pmt-new-h*))
 (assert-event (equal (pmt-derived-verdict-at *pmt-new-h* 1 (- 250000 164351))
                      :admissible))

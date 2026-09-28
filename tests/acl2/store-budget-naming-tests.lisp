@@ -166,14 +166,14 @@
                      :payload-bound))
 ; An operator's profile (`init --max-article-octets 20000'): its A is the
 ; bound, P-1 and P admitted and P+1 refused, whatever the codec could carry.
-(defconst *sbnt-operator* (fn-bs-profile-set-fields *sbnt-dev* '((5 . 20000))))
+(defconst *sbnt-operator* (fn-bs-profile-set-fields *sbnt-dev* '((4 . 20000))))
 (assert-event (fn-bs-profile-validp *sbnt-operator*))
 (assert-event (equal (fn-sbud-post-boundary *sbnt-operator* *sbnt-msgid* 19999 1 9) :ok))
 (assert-event (equal (fn-sbud-post-boundary *sbnt-operator* *sbnt-msgid* 20000 1 9) :ok))
 (assert-event (equal (fn-sbud-post-boundary *sbnt-operator* *sbnt-msgid* 20001 1 9)
                      :payload-bound))
 ; Its G: a profile with 4 groups per article refuses a fifth group.
-(defconst *sbnt-four* (fn-bs-profile-set-fields *sbnt-dev* '((6 . 4))))
+(defconst *sbnt-four* (fn-bs-profile-set-fields *sbnt-dev* '((5 . 4))))
 (assert-event (equal (fn-sbud-post-boundary *sbnt-four* *sbnt-msgid* 10 4 9) :ok))
 (assert-event (equal (fn-sbud-post-boundary *sbnt-four* *sbnt-msgid* 10 5 9)
                      :group-bound))

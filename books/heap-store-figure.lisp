@@ -303,7 +303,7 @@
   (+ (* 2 *fn-heap-list-octets-per-octet*
         (+ (nfix (fn-bs-profile-max-record-octets profile))
            (* *fn-heap-inflight-header-copies*
-              (nfix (fn-bs-profile-field 17 profile)))))
+              (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile)))))
      (* 2 (fn-ock-capture-budget profile))))
 
 ; THE MODEL: what a process needs of its dynamic space at the collector's
@@ -546,8 +546,8 @@
                     (nfix (fn-bs-profile-max-transactions p2)))
                 (<= (nfix (fn-bs-profile-max-record-octets p1))
                     (nfix (fn-bs-profile-max-record-octets p2)))
-                (<= (nfix (fn-bs-profile-field 17 p1))
-                    (nfix (fn-bs-profile-field 17 p2)))
+                (<= (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p1))
+                    (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2)))
                 (<= (fn-ock-capture-budget p1) (fn-ock-capture-budget p2)))
            (<= (fn-heap-store-base-octets p1 core nil)
                (fn-heap-store-base-octets p2 core nil)))

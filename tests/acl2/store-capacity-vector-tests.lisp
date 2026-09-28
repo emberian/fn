@@ -8,8 +8,8 @@
 
 (defconst *cvt-p*
   (fn-bs-profile-set-fields *fn-bs-profile-defaults*
-                            '((2 . 8) (3 . 250000) (4 . 196608) (5 . 32768)
-                              (6 . 500) (8 . 4))))
+                            '((1 . 8) (2 . 250000) (3 . 196608) (4 . 32768)
+                              (5 . 500) (7 . 4))))
 (defconst *cvt-h* 250000)
 (defconst *cvt-r* 4096)
 (assert-event (and (fn-bs-profile-admittedp *cvt-p*)

@@ -148,7 +148,7 @@
                                      fn-nntp-decimal-value-aux fn-nntp-decimal-digitp)))))
 
 (defun fn-nls-value (v)
-  "A reported value: a word (the profile's `history-marker') or a natural."
+  "A reported value: a word or a natural."
   (declare (xargs :guard t))
   (if (stringp v) (fn-nls-text v) (fn-nls-nat v)))
 

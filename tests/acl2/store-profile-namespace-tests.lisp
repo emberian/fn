@@ -14,14 +14,14 @@
 (assert-event (equal (fn-bs-profile-max-consumers *fn-bs-profile-development*)
                      1048576))
 (defconst *spnt-raised*
-  (fn-bs-profile-put 12 129 (fn-bs-profile-put 11 8193 *fn-bs-profile-defaults*)))
+  (fn-bs-profile-put 11 129 (fn-bs-profile-put 10 8193 *fn-bs-profile-defaults*)))
 (assert-event (fn-bs-profile-validp *spnt-raised*))
 (assert-event (equal (fn-bs-profile-max-credentials *spnt-raised*) 129))
 (assert-event (equal (fn-bs-profile-max-config-generations *spnt-raised*) 8193))
 (assert-event (equal (fn-bs-profile-max-policy-members *spnt-raised*) 1048576))
 ; A zero count is refused by name, so no store runs with an empty namespace.
 (assert-event (equal (fn-bs-profile-invalid-reason
-                      (fn-bs-profile-put 12 0 *fn-bs-profile-defaults*))
+                      (fn-bs-profile-put 11 0 *fn-bs-profile-defaults*))
                      :namespace-count-outside-width))
 ; `fn-bs-profile-namespace-counts-within-width' needs its hypothesis: a value
 ; that is no profile reads 0 for every count.

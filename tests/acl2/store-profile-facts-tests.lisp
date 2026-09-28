@@ -28,7 +28,7 @@
 (assert-event (equal (fn-bs-config-decode (fn-bs-config-frame-for-profile :scale))
                      *spft-scale*))
 (defconst *spft-raised*
-  (fn-bs-profile-set-fields *spft-dev* '((2 . 1000) (3 . 1099511627776))))
+  (fn-bs-profile-set-fields *spft-dev* '((1 . 1000) (2 . 1099511627776))))
 (assert-event (fn-bs-profile-validp *spft-raised*))
 (assert-event (equal (fn-bs-config-decode (fn-bs-config-encode *spft-raised*))
                      *spft-raised*))
