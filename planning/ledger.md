@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1438 |
-| Certification roots in the Makefile | 1407 |
-| Books inside the root closure | 1435 |
-| `defthm` and `defthmd` events | 23251 |
-| `defun` events | 15683 |
-| Functions with verified guards | 2966 |
-| Functions declared `:verify-guards nil` and never verified | 1836 |
-| Functions left at the default with an explicit guard | 8584 |
+| Books read | 1440 |
+| Certification roots in the Makefile | 1408 |
+| Books inside the root closure | 1437 |
+| `defthm` and `defthmd` events | 23338 |
+| `defun` events | 15731 |
+| Functions with verified guards | 2973 |
+| Functions declared `:verify-guards nil` and never verified | 1860 |
+| Functions left at the default with an explicit guard | 8601 |
 | Functions left at the default with no guard | 2297 |
-| `assert-event` checks | 20343 |
+| `assert-event` checks | 20395 |
 | `must-fail` checks | 2266 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 139 |
+| `encapsulate` events | 140 |
 | Theorems flagged SUSPECT by shape | 1100 |
 | Export-hygiene warnings | 277 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 246 |
-| Include-hygiene warnings | 1758 |
-| Host-names warnings | 1784 |
+| Include-hygiene warnings | 1759 |
+| Host-names warnings | 1785 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -491,6 +491,7 @@ that `make certify` requests.
 | `books/native-control.lisp` | root | 19 | 35 | 2/0/33/0 | 0 | 0 | 0 |
 | `books/native-health.lisp` | root | 86 | 100 | 32/1/67/0 | 0 | 0 | 0 |
 | `books/native-hybrid-control.lisp` | root | 13 | 19 | 0/0/19/0 | 0 | 0 | 0 |
+| `books/native-live-pages.lisp` | closure | 87 | 33 | 7/9/17/0 | 0 | 0 | 0 |
 | `books/native-live-status.lisp` | root | 73 | 57 | 6/10/41/0 | 0 | 0 | 0 |
 | `books/native-mission.lisp` | root | 15 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/native-operator.lisp` | root | 58 | 129 | 0/0/129/0 | 0 | 0 | 2 |
@@ -1213,6 +1214,7 @@ that `make certify` requests.
 | `tests/acl2/native-control-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 83 | 2 | 0 |
 | `tests/acl2/native-health-tests.lisp` | root | 0 | 6 | 0/6/0/0 | 143 | 19 | 0 |
 | `tests/acl2/native-hybrid-control-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 17 | 2 | 0 |
+| `tests/acl2/native-live-pages-tests.lisp` | root | 0 | 15 | 0/15/0/0 | 52 | 0 | 0 |
 | `tests/acl2/native-live-status-tests.lisp` | root | 1 | 9 | 0/6/2/1 | 76 | 15 | 0 |
 | `tests/acl2/native-mission-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 23 | 5 | 0 |
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
