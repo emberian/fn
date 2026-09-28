@@ -7111,6 +7111,16 @@
         {
           "kind": "theorem",
           "name": "fn-heap-arena-octets-slope"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-records-retained-within-the-terms",
+          "note": "KEYSTONE (lane heap-bounds, B2): the state retained by records admissible under the profile (Message-ID within 250, header within max-header-octets and a part of the payload) is within the figure's record terms: *fn-heap-record-octets* a record and the header term fn-heap-record-headers-octets of min(USED, N x HDR). Per-octet costs named in books/heap-store-figure.lisp from the retained structures; teeth tests/acl2/heap-figure-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-small-profile-run-fits-a-two-gib-machine",
+          "note": "Lane heap-bounds: the small run holds any core up to 512 MiB on 2,048 MiB; on 1,536 MiB only up to 192 MiB (fn-heap-small-profile-run-fits-a-small-machine, restated)."
         }
       ]
     },
@@ -7454,6 +7464,36 @@
         {
           "kind": "theorem",
           "name": "fn-tlsr-decide-carries-the-facts-or-a-named-refusal"
+        }
+      ]
+    },
+    {
+      "id": "PRF-387",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tlsr-start-decide-accepts-exactly-loaded-matching-current-material"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tlsr-decide-is-the-start-decision-unless-names-dropped"
+        }
+      ]
+    },
+    {
+      "id": "PRF-388",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lb-account-bind-plan-admits-exactly-a-held-account-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lb-account-bind-plan-binds-exactly-the-account-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lb-an-account-binding-survives-the-next-start"
         }
       ]
     },
@@ -9315,7 +9355,7 @@
         {
           "kind": "theorem",
           "name": "fn-srs-steps-are-one-step-of-the-concatenation",
-          "note": "KEYSTONE (PKT-823). Host: host/native/io.lisp fnn-bridge-recover makes fn-srs-step's two calls per chunk (fn-store-decode-records = fn-srs-decode, then fn-srs-intern-step). Teeth: tests/acl2/store-recover-stream-tests.lisp (four chunkings of real records; a corrupted record; the dotted-chunk hypothesis removal)."
+          "note": "KEYSTONE (PKT-823). Host: host/native/io.lisp fnn-bridge-recover makes fn-srs-step's two calls per chunk (fn-store-decode-records = fn-srs-decode, then fn-srs-intern-step). Teeth: tests/acl2/store-recover-stream-tests.lisp (four chunkings of real records; a corrupted record; the dotted-chunk hypothesis removal). Also the open over a checkpoint (lane heap-bounds, B3): host/native/io.lisp fnn-recover-suffix-intern decodes and interns the suffix a chunk at a time on top of the loaded arena (fnn-recover-suffix-rows, the log-checkpoint scan in fnn-recover-log)."
         },
         {
           "kind": "theorem",
@@ -12606,11 +12646,27 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-oah-read-span-keeps-held-within-the-slots"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oah-read-span-leaves-the-others-article-mode"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-oas-read-span-never-blocks-an-admitted-article"
         },
         {
           "kind": "theorem",
-          "name": "fn-oas-refused-read-is-not-article"
+          "name": "fn-oah-admitted-read-keeps-what-it-completed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oas-read-span-held-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oas-refusals-are-not-article"
         },
         {
           "kind": "theorem",
@@ -12761,6 +12817,59 @@
       ]
     },
     {
+      "id": "PRF-380",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mcr-resize-and-move-keep-funded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mcr-resize-refuses-exactly-past-the-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mcr-total-of-move"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-read-span-keeps-funded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-read-span-covers-the-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-read-span-within-the-credit-unfolds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-read-span-never-blocks-what-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-close-keeps-what-the-commit-owns"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-commit-steps-keep-funded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-take-and-seal-keep-the-total"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-seal-and-batch-done-move-the-batch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-initial-funds-exactly-the-articles"
+        }
+      ]
+    },
+    {
       "id": "PRF-386",
       "events": [
         {
@@ -12778,32 +12887,35 @@
       ]
     },
     {
-      "id": "PRF-387",
+      "id": "PRF-901",
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-tlsr-start-decide-accepts-exactly-loaded-matching-current-material"
+          "name": "fn-ocf-control-waits-at-most-the-bound"
         },
         {
           "kind": "theorem",
-          "name": "fn-tlsr-decide-is-the-start-decision-unless-names-dropped"
-        }
-      ]
-    },
-    {
-      "id": "PRF-388",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-lb-account-bind-plan-admits-exactly-a-held-account-login"
+          "name": "fn-ocf-delay-at-most-the-potential"
         },
         {
           "kind": "theorem",
-          "name": "fn-lb-account-bind-plan-binds-exactly-the-account-login"
+          "name": "fn-ocf-seals-at-most-the-seal-potential"
         },
         {
           "kind": "theorem",
-          "name": "fn-lb-an-account-binding-survives-the-next-start"
+          "name": "fn-ocf-potential-at-most-twenty-two"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocf-seal-potential-at-most-six"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocf-start-next-while-control-waits-is-within-the-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-no-start-next-while-a-shut-out-class-waits"
         }
       ]
     }

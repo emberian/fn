@@ -28,9 +28,10 @@ name, outside a limit of at most 2 GiB.
 * The refusal: `init --profile development' is the operator's request,
   never resized: under the launcher and run directly, init refuses it by
   name with both numbers (lane
-  membership-budget), and with FN_INIT_BUDGET_MB=4096 writes it for that
-  target (`within-budget=no target-budget=4096 MB'); the launcher refuses
-  its `run' and `status' by name.
+  membership-budget); `init --profile scale' with FN_INIT_BUDGET_MB=16384
+  writes it for that target (`within-budget=no target-budget=16384 MB'),
+  and the launcher refuses its `run' and `status' by name (an empty
+  development store's run fits 2 GiB since lane heap-bounds, B4).
 * FreshInitTests (also without a small limit): conservative sizing,
   FN_INIT_SIZING=largest, FN_INIT_BUDGET_MB (below the machine: init
   warns by name with both figures), and the default mission
@@ -253,8 +254,10 @@ class FreshInitTests(Harness, unittest.TestCase):
     def test_largest_within_the_budget_on_request(self):
         """FN_INIT_SIZING=largest takes the first of scale, development and
         small the budget holds; an operator budget below the machine
-        (FN_INIT_BUDGET_MB=1500) takes small, or the friend rung whose
-        first run it holds (the word is `custom')."""
+        (FN_INIT_BUDGET_MB=2000) takes small, or the friend rung whose
+        first run it holds (the word is `custom').  (1,500 until lane
+        heap-bounds: the small floor's first run is 1,906 MB since the
+        records' term is derived from the profile's limits.)"""
         config, _ = self.config("largest")
         made = self.run_fn("operator", config, "init", "local.test",
                            env={"FN_INIT_SIZING": "largest"})
@@ -267,17 +270,17 @@ class FreshInitTests(Harness, unittest.TestCase):
             self.assertEqual(word, "small")
         config, _ = self.config("budget")
         made = self.run_fn("operator", config, "init", "local.test",
-                           env={"FN_INIT_BUDGET_MB": "1500"})
+                           env={"FN_INIT_BUDGET_MB": "2000"})
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         word, _, _, budget = self.init_line(made)
         self.assertIn(word, ("small", "custom"))
-        self.assertEqual(budget, 1500)
-        # The machine gives more than the named 1,500 MB (under 2 GiB or not):
+        self.assertEqual(budget, 2000)
+        # The machine gives more than the named 2,000 MB (2 GiB or more):
         # init says so by name with both figures, on stderr, and still writes.
         below = INIT_NAMED_BELOW.search(made.stderr.decode())
         self.assertIsNotNone(below, text(made))
-        self.assertEqual(int(below.group(1)), 1500)
-        self.assertGreater(int(below.group(2)), 1500)
+        self.assertEqual(int(below.group(1)), 2000)
+        self.assertGreater(int(below.group(2)), 2000)
         if LIMIT:
             self.assertLessEqual(int(below.group(2)), LIMIT // (1024 * 1024))
         config, _ = self.config("badbudget")
@@ -461,8 +464,8 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         init REFUSES it by name with both numbers and makes nothing (ember,
         2026-09-27: lane membership-budget), unless FN_INIT_BUDGET_MB names a
         target budget that holds it: then it is written for that machine
-        (`within-budget=no target-budget=4096 MB') and the launcher refuses
-        its run and status here by name."""
+        (`within-budget=no target-budget=16384 MB', the scale preset) and
+        the launcher refuses its run and status here by name."""
         config, port = self.config("development")
         refused = self.run_fn("operator", config, "init", "--profile", "development",
                               "local.test")
@@ -484,13 +487,18 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertFalse((self.tmp / "development").exists())
         print("NATIVE-HEAP init refused reservation={} MB budget={} MB".format(
             found.group(3), found.group(4)))
-        made = self.run_fn("operator", config, "init", "--profile", "development",
+        # The store written for a bigger machine: since lane heap-bounds (B4)
+        # an EMPTY development store's run fits 2 GiB (the open's chunk is
+        # bounded by the input, and a run sizes the open by the store on
+        # disk), so the launcher's refusal is shown on the scale preset,
+        # whose state at its bounds alone is past 2 GiB.
+        made = self.run_fn("operator", config, "init", "--profile", "scale",
                            "local.test", command=[IMAGE, "--fn"],
-                           env={"FN_INIT_BUDGET_MB": "4096"})
+                           env={"FN_INIT_BUDGET_MB": "16384"})
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         self.assertRegex(made.stdout.decode(),
-                         r"init: profile=development sizing=requested reservation=\d+ MB "
-                         r"budget=\d+ MB within-budget=no target-budget=4096 MB")
+                         r"init: profile=scale sizing=requested reservation=\d+ MB "
+                         r"budget=\d+ MB within-budget=no target-budget=16384 MB")
         for verb in ("run", "status"):
             result = self.run_fn("operator", config, verb)
             self.assertEqual(result.returncode, EXIT_REFUSED, text(result))

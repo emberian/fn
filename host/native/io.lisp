@@ -2352,24 +2352,56 @@ empties it first (fnn-bridge-recover)."
           (values :ok (second answer))
           (values :refused 0)))))
 
-(defun fnn-recover-suffix-rows (store suffix config-records &optional decoded)
-  "The open from the loaded checkpoint: the suffix decoded
-(fn-store-sn-recover-records; DECODED when the caller decoded SUFFIX with it
-already), interned ON TOP of the arena the load left by
-the guard-verified fn-intern-events (records nil 0: the canonical handles
-continue from the checkpoint's payload count), then the open over the rows
-(fn-store-sn-recover-from-checkpoint).  The three calls are
+(defun fnn-recover-suffix-intern (suffix configs acc)
+  "The suffix over the loaded checkpoint (SUFFIX, the records as octet
+vectors; CONFIGS, the configuration records as ACL2's octet lists) decoded
+and interned ON TOP of the arena the load left, a chunk at a time: the
+chunks `fnn-recover-record-chunks' closes (fn-srs-chunk-fullp), each
+decoded (fn-store-decode-records, which is fn-srs-decode) and interned by
+the guard-verified fn-srs-intern-step, as the full replay's chunks are.
+Answers (values ROWS ACC2): ROWS oldest first (fn-srs-rows), or :bad when
+the configuration history or any chunk does not decode or intern; ACC2 the
+txid fold (fn-store-log-next-txid-of-events) of every decoded event over
+ACC, or ACC when ROWS is :bad.
+
+Lane heap-bounds (row B3): the suffix was converted to octet lists and
+decoded WHOLE (sixteen heap octets an octet and its decode beside it), so a
+checkpoint's long suffix held two list copies of every suffix octet at once
+-- the reopen of a 100,000-post store with a 19,082-record suffix exhausted
+the heap at the launcher's own figure, whose open term is a chunk.  Any
+chunking interns what one step over the whole suffix interns
+(books/store-recover-stream.lisp KEYSTONES
+fn-srs-steps-are-one-step-of-the-concatenation and
+fn-srs-one-step-is-the-intern-of-the-decode, for any arena: here the
+checkpoint's), which is the fn-intern-events of the decode that
+fn-scka-recover-rows makes (books/store-checkpoint-arena.lisp)."
+  (if (eq (fnn-core 'fn-store-sn-recover-records nil configs) :bad)
+      (values :bad acc)
+      (let ((next (fnn-recover-record-chunks suffix)) (rows nil) (fold acc))
+        (loop
+          (let ((decoded (funcall next)))
+            (when (eq decoded :end) (return))
+            (when (eq decoded :bad) (return-from fnn-recover-suffix-intern (values :bad acc)))
+            (setq fold (fnn-core 'fn-store-log-next-txid-of-events decoded fold)
+                  rows (first (fnn-call 'fn-srs-intern-step rows decoded (fnn-live-arena))))
+            (when (eq rows :bad) (return-from fnn-recover-suffix-intern (values :bad acc)))))
+        (values (fnn-core 'fn-srs-rows rows) fold))))
+
+(defun fnn-recover-suffix-rows (store suffix config-records &optional (interned nil internedp))
+  "The open from the loaded checkpoint: the suffix decoded and interned ON
+TOP of the arena the load left, a chunk at a time (fnn-recover-suffix-intern;
+INTERNED, its rows, when the caller interned SUFFIX with it already; the
+canonical handles continue from the checkpoint's payload count), then the
+open over the rows (fn-store-sn-recover-from-checkpoint).  The calls are
 fn-scka-recover-rows over the host's extension (books/store-checkpoint-
-arena.lisp, KEYSTONE fn-scka-recover-from-checkpoint-is-full-recover)."
+arena.lisp, KEYSTONE fn-scka-recover-from-checkpoint-is-full-recover), its
+intern chunked (fnn-recover-suffix-intern's keystones)."
   (let* ((configs (mapcar #'fnn-octet-list config-records))
-         (decoded (or decoded
-                      (fnn-core 'fn-store-sn-recover-records
-                                (mapcar #'fnn-octet-list suffix) configs))))
-    (if (eq decoded :bad)
+         (rows (if internedp interned (values (fnn-recover-suffix-intern suffix configs 0)))))
+    (if (eq rows :bad)
         :fault
-        (let ((rows (first (fnn-call 'fn-intern-events decoded nil 0 (fnn-live-arena)))))
-          (fnn-action (fnn-core-state 'fn-store-sn-recover-from-checkpoint
-                                      rows (fnn-store-frontier store) configs))))))
+        (fnn-action (fnn-core-state 'fn-store-sn-recover-from-checkpoint
+                                    rows (fnn-store-frontier store) configs)))))
 
 
 (defun fnn-open-report (store)
@@ -6593,7 +6625,7 @@ and last trailer must be the kernel's, or the read is a fault."
              (fnn-fault "the active log segment does not read back its committed records")))
       (fnn-close fd))))
 
-(defun fnn-recover-log-from-log-checkpoint (store config-records suffix s &optional decoded)
+(defun fnn-recover-log-from-log-checkpoint (store config-records suffix s &optional (interned nil internedp))
   "The open from a checkpoint whose F row names the log's first suffix
 segment: SUFFIX is the scan from there (T8: with the checkpoint's records it
 is the whole history), replayed over the checkpoint
@@ -6602,7 +6634,9 @@ there is no full replay to fall back to: a checkpoint the open cannot use is
 refused by name."
   (progn
     ;; S: the loaded checkpoint's (fnn-recover-log loaded it once, first).
-    (let ((action (fnn-recover-suffix-rows store suffix config-records decoded)))
+    (let ((action (if internedp
+                      (fnn-recover-suffix-rows store suffix config-records interned)
+                      (fnn-recover-suffix-rows store suffix config-records))))
       (unless (eq action :recovering)
         ;; A replay that stopped names itself (fn-store-open-refusal-text:
         ;; books/store-open-replay-refusal.lisp); else the checkpoint is damaged.
@@ -6715,19 +6749,17 @@ does, and records how the log holds the history (fnn-store-log-history) for
               (when replay
                 (fnn-recover-log-stream-flush replay)
                 (setq acc (fourth replay)))
-              ;; The suffix over a log checkpoint, decoded once (ACL2's
-              ;; fn-store-sn-recover-records): the txid fold reads the decoded
-              ;; events (fn-store-log-next-txid-of-events, as the streamed
-              ;; replay's does), and the replay over the checkpoint takes the
-              ;; same decode (fnn-recover-suffix-rows).  A suffix that does not
-              ;; decode folds nothing here; its replay refuses the open.
+              ;; The suffix over a log checkpoint, decoded and interned once,
+              ;; a chunk at a time (fnn-recover-suffix-intern): the txid fold
+              ;; reads each chunk's decoded events (fn-store-log-next-txid-of-
+              ;; events, as the streamed replay's does), and the replay over
+              ;; the checkpoint opens over the rows (fnn-recover-suffix-rows).
+              ;; A suffix that does not decode folds nothing here; its replay
+              ;; refuses the open.
               (when (and log-position (not replay))
-                (setq kept (nreverse kept)
-                      decoded (fnn-core 'fn-store-sn-recover-records
-                                        (mapcar #'fnn-octet-list kept)
-                                        (mapcar #'fnn-octet-list config-records)))
-                (unless (eq decoded :bad)
-                  (setq acc (fnn-core 'fn-store-log-next-txid-of-events decoded acc))))
+                (setq kept (nreverse kept))
+                (multiple-value-setq (decoded acc)
+                  (fnn-recover-suffix-intern kept (mapcar #'fnn-octet-list config-records) acc)))
               (fnn-log-batch-reset log)
               (setf (fnn-store-log-last store)
                     (and newest (list (fnn-core 'fn-lgc-count (fnn-log-kernel log)) newest)))
@@ -7277,7 +7309,7 @@ observation (the COMPLETE re-signals it under the owner)."
 ;;; dynamic space (1.6 GB at the launcher's 32 GB) and let that much garbage
 ;;; pile up between collections (rep-wave-d baseline, section 1.2).  It bounds
 ;;; dead memory, never data, and decides nothing ACL2 decides.
-(defparameter +fnn-gc-nursery-octets+ (* 64 1024 1024))
+(defparameter +fnn-gc-nursery-octets+ (* (fn-profile-limit :gc-nursery-mib) 1024 1024)) ; books/profile-limits.lisp
 
 ;;; HST-025: the trigger is also bounded by the dynamic space this process
 ;;; reserved.  SBCL's own default is a fixed fraction of it (5%); a copying
