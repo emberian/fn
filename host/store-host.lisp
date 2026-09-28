@@ -265,9 +265,6 @@
                 (fn-store-frame-wire-to-logical-values spec values))))
     answer))
 
-(defun fn-store-frame-store-encode (record digest)
-  (fn-frame-store-encode record digest))
-
 (defun fn-store-frame-store-decode (octets digest)
   (fn-store-frame-result (fn-frame-store-decode octets digest)))
 
