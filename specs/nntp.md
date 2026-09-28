@@ -1526,8 +1526,16 @@ gives them.
   bound auth.toml is loaded under
   (`fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound`); a
   resume adds no row and is never refused by it. Pending rows are bounded by
-  their expiry, in the record clock's unit (books/clock.lisp: wall
-  milliseconds since 2000-01-01).
+  their expiry, in DTN milliseconds (books/clock.lisp: wall milliseconds since
+  2000-01-01), the unit of the owner's clock the redeem plan compares it
+  with: now + expires, where now is the upper end of the issuing reading
+  converted from its own named unit (books/clock-unit.lisp): the running
+  node's owner clock (milliseconds) or the stopped node's configuration
+  record stamp (seconds). PRF-374
+  (`fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths`,
+  `fn-acct-invite-expiry-agrees-across-the-running-and-stopped-paths`):
+  the two paths agree to within the stamp's one-second resolution, never
+  later.
 - **The operator.** `operator CONFIG account invite [--expires SECONDS]`
   (default 604800): the host reads 16 CSPRNG octets, ACL2 renders the code
   (`fn-acct-code-text`) and its digest, and only the digest is sent (to the
