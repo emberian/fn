@@ -297,6 +297,9 @@
 (ld "host/peer-invite-host.lisp" :ld-error-action :error)
 ; `tls reload' and the served certificate line (PRF-212).
 (ld "host/tls-reload-host.lisp" :ld-error-action :error)
+; The node's own web face (PRF-340): the request, the pages, the sessions,
+; the [web] plan (books/web-*.lisp).
+(ld "host/web-host.lisp" :ld-error-action :error)
 (ld "host/topic-history-metadata-host.lisp" :ld-error-action :error)
 ; The differential model side, over the same fn-served-open reader-host uses.
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
@@ -425,6 +428,9 @@
         ; The operator's live surfaces (`run', `post', `principal', the
         ; control-socket arms), installed into operator.lisp; after every
         ; file above whose functions it names.
+        ; The node's own web face: an owner start hook the operator's `run'
+        ; installs when ACL2 planned one from the profile's [web] table.
+        (load "host/native/web-host.lisp")
         (load "host/native/operator-live.lisp")
         (load "host/native/checkpoint.lisp")
         ; The attach-stobj prototype's smoke verb (developer image only).

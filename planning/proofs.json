@@ -12178,6 +12178,119 @@
       "events": [
         "fn-record-p-of-make-is-without-payload"
       ]
+    },
+    {
+      "id": "PRF-337",
+      "title": "The web face's request is read in place, in one pass of at most 2N work for an N-octet head, into a parsed request or a refusal RFC 9112 names; its route is a row of the table for that path and method; no field a caller passes can add a line to a response head",
+      "statement": "books/web-request.lisp. Subjects: fn-web-head-frame and fn-web-parse-head (host/native/web-host.lisp fnn-web-read-request, through host/web-host.lisp fn-web-host-frame / fn-web-host-parse), fn-web-route (fn-wss-begin, called by fn-web-step), fn-web-response-head (fnn-web-respond through fn-web-host-head), fn-web-client-address (fn-wss-ctx). KEYSTONES fn-wrq-scan-work-bound (for natural END, the work counter of the scan of [0, END) is at most 2*END; fn-wrq-scan-is-fold: the in-place scan is the fold of fn-wrq-next over the slice), fn-web-head-frame-bounded, fn-web-route-is-a-row, fn-web-response-head-crlf-count (the head's CR and LF counts are 2 plus the fields it carries, whatever FIELDS), fn-web-client-address-without-proxy-unfolds; fn-web-parse-head-answers, fn-wrq-span-decode-is-urldecode.",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/web-request.lisp",
+        "tests/acl2/web-request-tests.lisp",
+        "planning/evidence/web-native-2026-09-28.md",
+        "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
+      ],
+      "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
+      "events": [
+        "fn-wrq-scan-work-bound",
+        "fn-wrq-scan-is-fold",
+        "fn-web-head-frame-bounded",
+        "fn-web-route-is-a-row",
+        "fn-web-response-head-crlf-count",
+        "fn-web-client-address-without-proxy-unfolds",
+        "fn-web-parse-head-answers",
+        "fn-wrq-span-decode-is-urldecode"
+      ]
+    },
+    {
+      "id": "PRF-338",
+      "title": "Every page of the web face is its segments emitted: the renderer's own markup from a fixed vocabulary, and escaped text in which no <, >, \" or ' appears and every & opens an entity; escaping is faithful, and a page reads its reply only at the spans it names",
+      "statement": "books/web-render.lisp, books/web-render-keystones.lisp. Subject: fn-wr-emit (books/web-session.lisp fn-wss-page, called for every page fn-web-step answers; host/native/web-host.lisp writes the buffer). KEYSTONES fn-wr-emit-writes-vocabulary-or-escaped (for a true-list page buffer and segments fn-wr-segs-okp accepts, the emitter appends the flattening of fn-wr-pieces, and every piece is a member of *fn-wr-vocabulary* or fn-wr-safe-textp: no <, >, \\\" or ', every & an entity; fn-wm refuses at macro expansion any markup not in the vocabulary and fn-wr-page-segs-ok accepts every page), fn-wr-emit-reads-only-its-spans (well-formed segments whose spans end at or below N write the same octets over the first N octets of the reply as over the whole: identical input, identical octets), fn-wr-emit-is-seq, fn-wr-escape-is-safe and fn-wr-unescape-escape (escaping is faithful), tied to the host-run writer by fn-wr-escape-is-emit-list.",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/web-render.lisp",
+        "books/web-render-keystones.lisp",
+        "tests/acl2/web-render-tests.lisp",
+        "planning/evidence/web-native-2026-09-28.md",
+        "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
+      ],
+      "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
+      "events": [
+        "fn-wr-emit-writes-vocabulary-or-escaped",
+        "fn-wr-emit-reads-only-its-spans",
+        "fn-wr-emit-is-seq",
+        "fn-wr-escape-is-safe",
+        "fn-wr-unescape-escape",
+        "fn-wr-escape-is-emit-list",
+        "fn-wr-page-segs-ok"
+      ]
+    },
+    {
+      "id": "PRF-339",
+      "title": "A web session is made only by the node's 281 to the AUTHINFO its sign-in sent, bound to that connection and login; a route that needs a session sends nothing without one; every send of a request goes to its own session's connection; a posted body can never end the article early",
+      "statement": "books/web-session.lisp, books/web-session-keystones.lisp. Subject: fn-web-step (host/web-host.lisp fn-web-host-step, called by host/native/web-host.lisp fnn-web-request for every event). KEYSTONES fn-web-session-route-needs-its-session, fn-web-session-sends-only-to-its-connection (at :begin to the connection of the session the request's token names, later to the flow's session's), fn-web-sessions-bound-by-281 (a session whose token the table did not hold was made by the reply to AUTHINFO whose PASS reply is 281, bound to the flow's connection and login), fn-wss-body-cannot-end-the-article with fn-wss-emit-body-is-stuff. The group access a session meets is the NNTP one by construction: its pages are rendered from the replies to its own connection (books/group-access.lisp).",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/web-session.lisp",
+        "books/web-session-keystones.lisp",
+        "tests/acl2/web-session-tests.lisp",
+        "planning/evidence/web-native-2026-09-28.md",
+        "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
+      ],
+      "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
+      "events": [
+        "fn-web-session-route-needs-its-session",
+        "fn-web-session-sends-only-to-its-connection",
+        "fn-web-sessions-bound-by-281",
+        "fn-wss-body-cannot-end-the-article",
+        "fn-wss-emit-body-is-stuff"
+      ]
+    },
+    {
+      "id": "PRF-340",
+      "title": "The web face is planned from the profile's [web] table only on a port of its own, at an admitted address, with TLS only beside the certificate; the native listener performs the actions fn-web-step answers against the owner's own exposure admission, served step and close",
+      "statement": "books/web-config.lisp, host/web-host.lisp, host/native/web-host.lisp. Subject: fn-web-config-plan (host/native/web-host.lisp fnn-web-run-hooks, from host/native/operator-live.lisp's run). KEYSTONE fn-web-config-plan-answers. The host boundary: fnn-web-open (fn-owner-exposure-open, fn-owner-tls-established when ACL2 says protected), fnn-web-feed (fnn-owner-handle-chunk, class :reader, no socket), fnn-web-close (fn-owner-close, fn-owner-exposure-release); tests/test_native_web.py.",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/web-config.lisp",
+        "host/web-host.lisp",
+        "host/native/web-host.lisp",
+        "tests/test_native_web.py",
+        "planning/evidence/web-native-2026-09-28.md",
+        "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
+      ],
+      "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
+      "events": [
+        "fn-web-config-plan-answers"
+      ]
     }
   ]
 }

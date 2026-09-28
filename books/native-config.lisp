@@ -238,7 +238,7 @@
 (defun fn-ncfg-tablep (name)
   (declare (xargs :guard t))
   (member-equal name '("store" "listener" "auth" "posting" "anchor"
-                       "acl2" "log" "control" "alerts" "ops")))
+                       "acl2" "log" "control" "alerts" "ops" "web")))
 
 (defun fn-ncfg-key-allowedp (table key)
   (declare (xargs :guard t))
@@ -255,6 +255,11 @@
         ((equal table "alerts")
          (member-equal key '("command" "headroom_min_percent"
                              "refusal_rate_per_minute" "cooldown_seconds")))
+        ; The node's own web face (books/web-config.lisp reads this table;
+        ; the owner's configuration record does not carry it).
+        ((equal table "web")
+         (member-equal key '("port" "host" "site" "domain" "proxied" "tls"
+                             "idle_seconds" "max_sessions")))
         ((equal table "ops")
          (member-equal key '("mission" "unit" "scope" "keep_releases"
                              "log_max_bytes" "log_keep" "memory_max")))

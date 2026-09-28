@@ -763,6 +763,10 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
            +fnn-exit-usage+)
           (t (fnn-fault "ACL2 operator returned no native action")))))))
 
+(defvar *fnn-operator-config-octets* nil
+  "The profile octets this operator command loaded (for `run': ACL2's plan
+of the node's web face from the same octets, books/web-config.lisp).")
+
 (defun fnn-command-operator (config-path argv)
   (let* ((max-arguments (fnn-core 'fn-native-operator-host-argv-max-arguments))
          (max-octets (fnn-core 'fn-native-operator-host-argv-max-octets))
@@ -776,7 +780,8 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
          config-path)))
     (if (fnn-core 'fn-native-operator-host-preflight-needs-config-p preflight)
         (let* ((config-bound (fnn-core 'fn-native-config-host-max-octets))
-               (config-octets (fnn-operator-read-config config-path config-bound)))
+               (config-octets (fnn-operator-read-config config-path config-bound))
+               (*fnn-operator-config-octets* config-octets))
           (fnn-operator-dispatch-plan
            (fnn-core 'fn-native-operator-host-run config-octets argv-octets)))
       (fnn-operator-dispatch-plan preflight))))

@@ -1241,6 +1241,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-journal \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
+	books/web-request \
+	tests/acl2/web-request-tests \
+	books/web-render \
+	books/web-render-keystones \
+	tests/acl2/web-render-tests \
+	books/web-session \
+	books/web-session-keystones \
+	tests/acl2/web-session-tests \
+	books/web-config \
+	tests/acl2/web-config-tests \
 	books/state-digest \
 	tests/acl2/state-digest-tests \
 	books/store-log-route-programs \

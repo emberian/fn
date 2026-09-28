@@ -4898,6 +4898,40 @@
         "books/history-pages-row.lisp"
       ],
       "implementation_note": "Lane arena-store (2026-09-27): the model, keystones, reclamation and the executable layer are proved; the host driver host/native/proto-pagestore.lisp runs them on hbox (process death and power loss, 0 violations); page 0 (the owner's root slots) is the model's reserved page, kept by pgs-disk-keeps and marked by pgs-g-start; the scenario is SCN-186. Limitation L-PGS-LAZY-SHAPE (record section 5): the host's lazy open shape-checks only the table pages its own commit wrote, the model's lazy open every table page. The owner does not use it yet (fn-hist on pages is the next step, lane arena-store-2)."
+    },
+    {
+      "id": "WEB-005",
+      "title": "The node serves its own web face: an HTTP/1.1 listener in the native image whose every decision is ACL2's, sessions bound to the node's own authenticated reader connections, pages rendered from their replies with escaping proved",
+      "specification": "specs/human-client.md#the-nodes-own-web-face",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-337",
+        "PRF-338",
+        "PRF-339",
+        "PRF-340"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "books/web-request.lisp",
+        "books/web-render.lisp",
+        "books/web-render-keystones.lisp",
+        "books/web-session.lisp",
+        "books/web-session-keystones.lisp",
+        "books/web-config.lisp",
+        "host/web-host.lisp",
+        "host/native/web-host.lisp",
+        "tests/acl2/web-request-tests.lisp",
+        "tests/acl2/web-render-tests.lisp",
+        "tests/acl2/web-session-tests.lisp",
+        "tests/test_native_web.py",
+        "planning/evidence/web-native-2026-09-28.md"
+      ],
+      "implementation_note": "Replaces tools/fn_reader.py and tools/fn_web.py (a second implementation of the boundary in Python) with the node's own face; the continuation lane packages it (install.sh --reader) and retires the Python readers."
     }
   ]
 }
