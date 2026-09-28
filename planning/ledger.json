@@ -21,6 +21,7 @@
     "books/cbor-invariants",
     "tests/acl2/cbor-tests",
     "tests/acl2/cbor-teeth-tests",
+    "books/utf8",
     "books/wildmat",
     "books/wildmat-utf8-invariants",
     "books/wildmat-parser-invariants",
@@ -1425,9 +1426,9 @@
     "tests/acl2/history-records-tests"
   ],
   "totals": {
-    "books": 1453,
-    "books_in_root_closure": 1450,
-    "roots": 1421,
+    "books": 1454,
+    "books_in_root_closure": 1451,
+    "roots": 1422,
     "theorems": 23523,
     "functions": 15844,
     "assert_events": 20408,
@@ -10285,7 +10286,7 @@
       "encapsulates": 0,
       "includes": [
         "frame-octets",
-        "wildmat"
+        "utf8"
       ],
       "system_includes": [
         "arithmetic/top"
@@ -25183,6 +25184,32 @@
       "read_error": null
     },
     {
+      "book": "books/utf8.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 21,
+      "guards": {
+        "verified": 21,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 21,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "cbor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/visibility-join.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -25528,23 +25555,24 @@
       "book": "books/wildmat.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
-      "functions": 62,
+      "theorems": 17,
+      "functions": 41,
       "guards": {
-        "verified": 62,
+        "verified": 41,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 62,
+      "verify_guards_events": 41,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "cbor"
+        "cbor",
+        "utf8"
       ],
       "system_includes": [],
       "suspects": [],
@@ -54433,8 +54461,8 @@
       },
       {
         "function": "fn-wildmat-result-value",
-        "book": "books/wildmat.lisp",
-        "line": 52,
+        "book": "books/utf8.lisp",
+        "line": 41,
         "stated_in": [
           "books/nntp-search-scope.lisp",
           "books/wildmat-parser-invariants.lisp",
@@ -54444,8 +54472,8 @@
       },
       {
         "function": "fn-wildmat-utf8-rest",
-        "book": "books/wildmat.lisp",
-        "line": 59,
+        "book": "books/utf8.lisp",
+        "line": 48,
         "stated_in": [
           "books/wildmat-utf8-invariants.lisp"
         ],
@@ -54454,7 +54482,7 @@
       {
         "function": "fn-wildmat-pattern-items",
         "book": "books/wildmat.lisp",
-        "line": 273,
+        "line": 128,
         "stated_in": [
           "books/wildmat-work.lisp"
         ],
@@ -54463,7 +54491,7 @@
       {
         "function": "fn-wildmat-scan-items",
         "book": "books/wildmat.lisp",
-        "line": 332,
+        "line": 187,
         "stated_in": [
           "books/wildmat-parser-invariants.lisp",
           "books/wildmat-utf8-invariants.lisp"
@@ -54473,7 +54501,7 @@
       {
         "function": "fn-wildmat-scan-rest",
         "book": "books/wildmat.lisp",
-        "line": 335,
+        "line": 190,
         "stated_in": [
           "books/wildmat-parser-invariants.lisp"
         ],
