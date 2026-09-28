@@ -22,6 +22,8 @@ a suitable correspondence/checking argument exists.
 
 STO-027: The catalog is the served store's executable: the Message-ID binding, the local numbers, a row's visibility to a version and the retained octets are columns of `fn-cat` read in constant time, never rediscovered by a walk of the history (wave 5, D33; lane catalog-slice: the columns exist and are proved, the served path moves to them in the continuation).
 
+`HDR :fn-verified` (PRF-367, lane scale-reads) reads the catalog for its numbers and articles and the RECORDED verdict list for each line's verdict (SUB-006: the acceptance evidence, which a keyring change never rewrites), resolving a whole reply's verdicts in one pass over that list: O(R + V) for R lines and V recorded verdicts, where the reference was O(R x (N + V)). A catalog row's context verdict is NOT that evidence (it is decided under the keyring in force at its intern and a `:redecide` replaces it), so the verdict is not yet a constant-time column; that needs the row-to-evidence equation carried, or a recorded-verdict column.
+
 Proposed on-disk roles, not a frozen directory ABI:
 
 ```text
