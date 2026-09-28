@@ -41,6 +41,12 @@
 (include-book "store-log")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-tear-write)
+                          (:definition fn-lg-entry-okp)
+                          (:definition fn-lg-scan))))
+
 (local (in-theory (enable fn-bs-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------
