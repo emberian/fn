@@ -72,7 +72,6 @@
 (defun fn-anchor-host-frame-limit ()
   (+ *fn-anchor-max-payload* *fn-frame-overhead-octets*))
 
-(defun fn-anchor-host-replace-start () (fn-anchor-rp-start))
 (defun fn-anchor-host-recover-start (presentp)
   (fn-anchor-rp-recover-start presentp))
 (defun fn-anchor-host-replace-action (phase) (fn-anchor-rp-action phase))
