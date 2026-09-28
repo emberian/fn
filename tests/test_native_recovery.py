@@ -27,8 +27,6 @@ def missing_enrollment_fixture():
     """The kind-4 record without its kind-3 enrollment, encoded entirely by
     ACL2 (the developer image's own session, `fn acl2 session`)."""
     with Acl2Session(DEVELOPER) as bridge:
-        bridge.call('(include-book "books/hybrid-store")')
-        bridge.call('(include-book "books/store-node")')
         transaction = acl2_octets(bridge.call(
             "(let* ((msgid \"<missing-keyring@example.invalid>\")"
             " (source '(70 114 111 109 58 32 97 64 98 13 10 78 101 119 115 103 114 111 117 112 115 58 32 102 110 46 116 101 115 116 13 10 83 117 98 106 101 99 116 58 32 120 13 10 77 101 115 115 97 103 101 45 73 68 58 32 60 109 105 115 115 105 110 103 45 107 101 121 114 105 110 103 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 13 10 120 13 10))"
@@ -118,7 +116,6 @@ class StagingSweepDecisionTests(unittest.TestCase):
     def test_sweep_rounds_collect_sixty_five_allocation_orphans(self):
         orphans = [".allocation-4242-{:024x}".format(number) for number in range(65)]
         with Acl2Session(DEVELOPER) as bridge:
-            bridge.call('(include-book "books/store-sweep")')
             ready = "(fn-sn-initial nil 0)"
             rounds = bridge.call("(fn-sn-sweep-rounds {} {} nil (fn-sn-staging-observation-limit))"
                                  .format(ready, self.names(orphans)))

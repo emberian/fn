@@ -49,7 +49,6 @@ def inspect_feed_journal(path, msgid, peer):
         def nat(form):
             return acl2_nat(acl2.call(form))
 
-        acl2.call('(include-book "books/feed-journal")')
         acl2.call("(f-put-global 'fn-owner-feed-safe-offset 0 state)")
         acl2.call("(f-put-global 'fn-test-feed (fn-feed-open '{} (fn-feed-limits 100 1000 3 t) "
                   "(fn-sched-contact \"inn\" 0 1000000) nil) state)".format(acl2.literal(peer)))

@@ -80,9 +80,6 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
             b"Message-ID: " + msgid + b"\r\n\r\nfragmented body\r\n"
         )
         with Acl2Session(IMAGE) as bridge:
-            bridge.call('(include-book "books/bp-adu")')
-            bridge.call('(include-book "books/bp-fragment")')
-            bridge.call('(include-book "books/bp-bundle")')
             fields = [
                 b"work-bp-fragment", bridge.subject(msgid, article), b"dtn://sender/",
                 b"dtn://receiver/", b"native-policy", b"origin-native",
@@ -269,9 +266,6 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         )
         self.large_msgid, self.large_article = msgid, article
         with Acl2Session(IMAGE) as bridge:
-            for book in ("bp-adu", "bp-fragment", "bp-fragment-fast",
-                         "bp-bundle"):
-                bridge.call('(include-book "books/' + book + '")')
             subject = bridge.subject(msgid, article)
 
             def text(value):

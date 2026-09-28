@@ -221,7 +221,7 @@ class NodeOperatorRows(unittest.TestCase):
             self.node.store_path, self.node.root / "nothing.sock"))
         refused = self.node.invoke("operator", offline, "group", "create", "fn.matrix.off",
                                    expect=EXIT.REFUSED)
-        self.assertIn(b"locked", refused.stdout + refused.stderr)
+        self.assertIn(b"store-held", refused.stdout + refused.stderr)
         self.assertIsNone(self.node.process.poll(), "the owner died across the live verb")
 
 

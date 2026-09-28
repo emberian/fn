@@ -70,7 +70,6 @@ class NativeBpNodeTests(unittest.TestCase):
 
     def author_request(self):
         with Acl2Session(IMAGE) as bridge:
-            bridge.call('(include-book "books/bp-adu")')
             fields = [
                 b"work-bp-node", bridge.subject(self.msgid, self.article), b"dtn://sender/",
                 b"dtn://receiver/", b"native-policy", b"origin-native",
@@ -194,8 +193,6 @@ class NativeBpNodeTests(unittest.TestCase):
 
     def deletion_request_bundle(self):
         with Acl2Session(IMAGE) as bridge:
-            bridge.call('(include-book "books/bp-node")')
-            bridge.call('(include-book "books/codec-attach")')
             adu = bridge.literal(self.request_path.read_bytes())
             sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
             receiver = "(cons :dtn '(47 47 114 101 99 101 105 118 101 114 47))"
@@ -225,8 +222,6 @@ class NativeBpNodeTests(unittest.TestCase):
     def unrouted_transit_bundle(self):
         """ACL2 authors the older wire; Python only carries its octets."""
         with Acl2Session(IMAGE) as bridge:
-            bridge.call('(include-book "books/bp-node")')
-            bridge.call('(include-book "books/codec-attach")')
             sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
             unrouted = "(cons :dtn '(47 47 117 110 114 111 117 116 101 100 47))"
             form = (
@@ -273,8 +268,6 @@ class NativeBpNodeTests(unittest.TestCase):
         payload: same bundle ID, different immutable projection.  ACL2 authors
         the wire."""
         with Acl2Session(IMAGE) as bridge:
-            bridge.call('(include-book "books/bp-node")')
-            bridge.call('(include-book "books/codec-attach")')
             sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
             unrouted = "(cons :dtn '(47 47 117 110 114 111 117 116 101 100 47))"
             form = (
@@ -291,8 +284,6 @@ class NativeBpNodeTests(unittest.TestCase):
     def conflict_records(journal):
         """The lifecycle frames ACL2's kind-14 decoder opens, decoded."""
         with Acl2Session(IMAGE) as bridge:
-            bridge.call('(include-book "books/bp-fnbs-conflict-codec")')
-            bridge.call('(include-book "books/codec-attach")')
             rows = []
             for frame in sorted((journal / "lifecycle").glob("*.fnb")):
                 octets = "'" + bridge.literal(frame.read_bytes())
@@ -409,8 +400,6 @@ class NativeBpNodeTests(unittest.TestCase):
     def conflicting_transit_bundle_free(self):
         """A second unrouted transit with its own identity."""
         with Acl2Session(IMAGE) as bridge:
-            bridge.call('(include-book "books/bp-node")')
-            bridge.call('(include-book "books/codec-attach")')
             sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
             unrouted = "(cons :dtn '(47 47 117 110 114 111 117 116 101 100 47))"
             form = (
@@ -570,8 +559,6 @@ class NativeBpNodeTests(unittest.TestCase):
         boot = Path("/proc/sys/kernel/random/boot_id").read_text("ascii").strip()
         other = boot[:-1] + ("0" if boot[-1] != "0" else "1")
         with Acl2Session(IMAGE) as bridge:
-            bridge.call('(include-book "books/bp-clock-domain")')
-            bridge.call('(include-book "books/codec-attach")')
             octets = " ".join(str(b) for b in other.encode("ascii"))
             return acl2_octets(bridge.call(f"(fn-bpcd-frame '({octets}))"))
 
@@ -608,8 +595,6 @@ class NativeBpNodeTests(unittest.TestCase):
     def forward_mru_bundles(self):
         """ACL2 authors the two transit wires; Python only carries octets."""
         with Acl2Session(IMAGE) as bridge:
-            bridge.call('(include-book "books/bp-node")')
-            bridge.call('(include-book "books/codec-attach")')
             sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
             paths = []
             for label, size, octet, serial, no_fragment in (
@@ -742,9 +727,6 @@ class NativeBpNodeTests(unittest.TestCase):
         A frame no decoder here opens counts as 0.
         """
         with Acl2Session(IMAGE) as bridge:
-            for book in ("bp-fnbs-codec", "bp-fnbs-dispatch-codec",
-                         "bp-fnbs-forward-codec"):
-                bridge.call(f'(include-book "books/{book}")')
             kinds = collections.Counter()
             for frame in sorted((journal / "lifecycle").glob("*.fnb")):
                 octets = "'" + bridge.literal(frame.read_bytes())
@@ -902,7 +884,6 @@ class NativeBpNodeTests(unittest.TestCase):
             10: "fn-bpnf-delete-unframe",
         }[kind]
         with Acl2Session(IMAGE) as bridge:
-            bridge.call('(include-book "books/bp-fnbs-deletion-codec")')
             payloads = []
             for frame in sorted((journal / "lifecycle").glob("*.fnb")):
                 octets = bridge.literal(frame.read_bytes())
@@ -1385,7 +1366,6 @@ class NativeBpNodeTests(unittest.TestCase):
         report_payload = report_payloads[0]
         self.assertLessEqual(len(report_payload), 4096)
         with Acl2Session(IMAGE) as bridge:
-            bridge.call('(include-book "books/bp-status-report")')
             literal = bridge.literal(report_payload)
             self.assertEqual(
                 acl2_result(bridge.call(
