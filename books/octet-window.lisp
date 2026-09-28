@@ -1,5 +1,5 @@
 ;; fn: the window of an octet buffer's value, as a list (lane snapshot-open-2's
-;; `fn-shr-win', moved here from books/sha256-range.lisp by lane blake3-digest,
+;; `fn-shr-win', moved here from the deleted SHA-256 range book by lane blake3-digest,
 ;; 2026-09-28, so that the digest seams' window form,
 ;; books/frame-digest-buffer.lisp `fn-frame-digest-range', does not depend on a
 ;; SHA-256 book).  WN octets of L after A; `take' pads past the end, so its

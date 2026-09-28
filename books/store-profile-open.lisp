@@ -29,7 +29,7 @@
 ;
 ; The PKT-467 window refusal (a profile saved before that arm with R in the
 ; 355 octets above the poll reply) and its frozen relations (the v2 relation
-; here and books/byte-store-profile-v1.lisp) are gone with format 9: every
+; here and the pre-P6 relation of the deleted byte-store-profile-v1 book) are gone with format 9: every
 ; format-10 profile was written by a format-10 `init' or `store import' under
 ; the current relation (`fn-bs-profile-invalid-reason', which carries that
 ; arm), so no format-10 store can hold one.

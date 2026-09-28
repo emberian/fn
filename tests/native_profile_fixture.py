@@ -21,7 +21,9 @@ DEVELOPER = verbs.DEVELOPER
 EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = verbs.EXIT_OK, verbs.EXIT_REFUSED, verbs.EXIT_UNCERTAIN
 
 # The two preset frames `init --profile development|scale` writes in format 10
-# (lane format-bump-10: the word fn-store-10 and fifteen u64 fields; measured on
+# (lane format-bump-10: the word fn-store-10, fifteen u64 fields, the BLAKE3
+# trailer of lane blake3-digest; measured on hbox native-n3's developer image;
+# before the digest merge, on
 # hbox native-n2's developer image; format 9's were 226969fe... and d11edbf6...)
 # Before: format 9
 # (lane log-recovery: re-measured on 878a8dbde's images, hbox native-s1b; the
@@ -30,8 +32,8 @@ EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = verbs.EXIT_OK, verbs.EXIT_REFUSED, verbs
 # codec-ceiling G and R = the article record; since header-limits-profile,
 # PRF-230, fields 15 to 17 the header limits: re-measured on batch AS's
 # image, `operator init --profile development|scale`).
-DEVELOPMENT_FRAME = "2e0a82e360b3f8e221140824bd88c57a4b629e7b06204f5cdefefda68fe586b5"
-SCALE_FRAME = "b6dbf9da0023ce82168c989fb4754cf83e3dffa583e1a8d0947e76e44529ee40"
+DEVELOPMENT_FRAME = "1de8f91f4b616ff6004c7342de57d9bbf550e469cb230cf92d670234bbc07de8"
+SCALE_FRAME = "18e505d3a0c2e3acb5b0ba45405b8842936d558199c1bb951349fc46af135696"
 BUDGET = {"old": {128}, "new": {4096}, "either": {128, 4096}}
 FRAME = {128: DEVELOPMENT_FRAME, 4096: SCALE_FRAME}
 

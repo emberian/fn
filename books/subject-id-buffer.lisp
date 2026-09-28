@@ -1,5 +1,5 @@
 ;; fn: the subject identity of the octet buffer, through the digest seam
-;; (lane blake3-digest, 2026-09-28; replaces books/sha256-buffer.lisp's
+;; (lane blake3-digest, 2026-09-28; replaces the deleted SHA-256 buffer book's
 ;; `fn-shb-subject-id', which named SHA-256 directly).  Prefix `fn-sidb-'.
 ;;
 ;; The served POST's payload sits in the octet buffer `fn-octets'
