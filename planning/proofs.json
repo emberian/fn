@@ -13570,7 +13570,7 @@
         "tests/acl2/hmac-sha256-tests.lisp",
         "tests/acl2/scram-tests.lisp"
       ],
-      "progress_note": "Lane sasl increment 1 (2026-09-28): the two books and their test books certify. NO EVENTS ARE CITED: no host line calls SCRAM yet (reach_check); the events are cited with increment 2, when books/nntp-auth.lisp's AUTHINFO SASL arm calls books/sasl.lisp."
+      "progress_note": "Lane sasl increment 1 (2026-09-28): the two books and their test books certify (persvati run-20260928T221347Z-9d5b, certify-20260928T221526Z-3212938: 4 passed, none over 10 s). NO EVENTS ARE CITED: no host line calls SCRAM yet (reach_check); the events are cited with increment 2, when books/nntp-auth.lisp's AUTHINFO SASL arm calls books/sasl.lisp."
     },
     {
       "id": "PRF-386",
