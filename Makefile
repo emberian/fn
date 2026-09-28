@@ -24,6 +24,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/cbor-invariants \
 	tests/acl2/cbor-tests \
 	tests/acl2/cbor-teeth-tests \
+	books/utf8 \
 	books/wildmat \
 	books/wildmat-utf8-invariants \
 	books/wildmat-parser-invariants \
