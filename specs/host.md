@@ -442,6 +442,30 @@ the native case is `tests/test_native_image_floor.py`. The heap a profile
 needs is still heap-from-profile's derivation (HST-013), which the list
 representation of the retained history dominates.
 
+The prover's session state outside the world goes too (lane image-strip,
+`fnn-strip-prover-state`): the global enabled structure (a state global) and
+the compressed arrays of every enabled structure (`ENABLED-ARRAY-n`,
+`ARITHMETIC-ENABLED-ARRAY-n`), and the type-set tables (ACL2's boot constants:
+each value, its `-LIST` source and its compressed array). Their readers in the
+ACL2 8.7 source are event and prover functions only (`ens`, `set-w`,
+`update-wrld-structures`, the enabled-structure installers,
+`with-useless-runes-aux`, `type-set-binary-+`, `type-set-binary-*`,
+`type-set-<`, `type-set-finish-1`, the proof builder's), which the stripped
+world already cannot serve. Each value becomes an `fnn-stripped` instance
+naming it; the arrays lose their `acl2-array` property; the `#n=` reader's
+buffer is reset small (ACL2 grows it on demand) and the memoization tables,
+caches, are cleared. The strip lists what it replaced as the `S` lines of
+`IMAGE.world-deps` (version 2). The qualification check
+(`tools/runtime_image/world-deps-check.lisp`, loaded by
+`tests/test_native_image_differential.py` into every stripped run) proves at
+load that each item holds its trap, traces every reader above (a call is a
+`PROVER-READ`, a failure) and reports at exit whether anything rebuilt an
+item. ACL2's system code is compiled at safety 0, so a prover read of a trap
+is not guaranteed to signal (one faulted at address 0); the trace, not the
+trap, is the check. A use from code compiled with safety signals a type error
+naming the item (the module's witness). The size gained is measured at
+convergence.
+
 The thread stacks are the reservation's second part
 (`books/heap-reservation.lisp` `fn-heap-reserve-decide`, called by
 `host/native/heap.lisp` `fnn-heap-reservation` from the `heap -- ARGV` probe).
