@@ -1054,7 +1054,28 @@ no state. The running owner's report is `fn-nsc-answer-report`
 article's tombstone flag from the catalog column the intern decided and makes
 one walk for all seven figures, never realizing a payload; under the column
 relation it is the offline report's function of the same state
-(`fn-nsc-answer-report-is-answer-report`). The operator guide's
+(`fn-nsc-answer-report-is-answer-report`). The `obligations` report, whose
+size grows with the retention ledger, is never rendered whole (PRF-371,
+books/native-live-pages.lisp): the owner answers FNLS request frame kind 4
+(kind code, VERSION, PAGE) with reply frame kind 5 (status, VERSION, PAGE,
+last-page flag, at most 128 KiB of the report) one page per request, from a
+cursor it keeps under the version it issued on the report's first page
+(`fn-nlp-answer`). Work and allocation per request are one page, plus the
+ledger's length on the first; the page and version counters wrap, so no
+report length is refused. A version the owner no longer holds, or a page
+other than the one its cursor stands at, is answered `version-gone` by name
+and the client restarts, at most eight times, then answers uncertain. The
+pages a client joins at one version are the report of the ledger the owner
+held at the first page, with no hypothesis on the width, the fuel or the
+owner's other cursors (`fn-nlp-pages-join-to-the-report`), and that report is
+the whole report of kind `obligations` (`fn-nlp-live-report-is-the-report`);
+another client's requests leave a version's cursor where it stood or drop it
+(`fn-nlp-answer-keeps-other-versions`); with nothing between its requests a
+client reaches the report in ceiling(L / W) requests
+(`fn-nlp-pages-reach-the-report`). The whole-report exchange (frame kind 1)
+refuses kind `obligations` by the name `report-is-paged`. The offline
+command writes the same report a page at a time
+(`fn-nlp-offline-pages-join-to-the-report`). The operator guide's
 [status section](../docs/operator-internals.md#status-while-the-owner-runs) describes the
 verbs.
 

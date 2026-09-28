@@ -180,6 +180,8 @@
   "fn-nctrl-word-chars-octets": "Walks an ACL2-named reason keyword's chars; a fixed vocabulary word, capped by *fn-nctrl-max-reason-octets* = 512.",
   "fn-ng-take": "n is a small fixed constant (2/4/6/8) in NEWGROUPS date-token parsing",
   "fn-nh-clean-octets": "Walks x up to n octets; called with n = *fn-nh-reason-max-octets* = 480, a fixed constant.",
+  "fn-nlp-drop": "walks the owner's paged-report cursors, at most *fn-nlp-max-versions*=4 (fn-nlp-keep keeps the newest three and the one it serves; books/native-live-pages.lisp), never store data",
+  "fn-nlp-prefix": "walks the owner's paged-report cursors with n = *fn-nlp-max-versions* - 1 = 3 (fn-nlp-keep), never store data",
   "fn-nls-cache-put": "Walks cached, one buffer per report kind; a fixed small enum of status report kinds.",
   "fn-nls-connection-lines": "Walks pins, one per open connection; bounded by the operator's configured max-connections.",
   "fn-nls-names": "Walks names, staging-orphan filenames; the host's sweep stops at a fixed observation bound.",

@@ -4551,6 +4551,29 @@ measured at (books/native-live-status.lisp `fn-nls-reclaim-words')."
     (write-sequence (fnn-octets report) *fnn-stdout*)
     (finish-output *fnn-stdout*)))
 
+(defun fnn-write-report-pages (pages)
+  "Write the pages of one paged report, in order; render nothing."
+  (dolist (page pages)
+    (unless (typep page 'fnn-octets)
+      (fnn-fault "ACL2 returned a malformed report page"))
+    (write-sequence page *fnn-stdout*))
+  (finish-output *fnn-stdout*))
+
+(defun fnn-command-live-pages (store)
+  "Write the paged report of the Store this process replayed, a page at a
+time (books/native-live-pages.lisp `fn-nlp-offline-step'; KEYSTONE
+fn-nlp-offline-pages-join-to-the-report): the report is never held whole."
+  (declare (ignore store))
+  (let ((cursor (fnn-core 'fn-native-live-pages-host-offline-start *the-live-state*)))
+    (loop
+      (let ((step (fnn-core 'fn-native-live-pages-host-offline-step cursor)))
+        (unless (and (consp step) (fnn-octet-list-p (first step)))
+          (fnn-fault "ACL2 returned a malformed report page"))
+        (write-sequence (fnn-octets (first step)) *fnn-stdout*)
+        (when (third step) (return))
+        (setq cursor (second step)))))
+  (finish-output *fnn-stdout*))
+
 (defun fnn-command-live-report (root kind)
   "The status report of KIND over the Store at ROOT, opened read-only.
 
@@ -4562,10 +4585,12 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
     (declare (ignore records))
     (unwind-protect
          (progn
-           (fnn-write-report
-            (fnn-core 'fn-native-live-status-host-offline kind
-                      (fnn-store-config store) (fnn-store-observation store)
-                      (fnn-live-arena) *the-live-state*))
+           (if (fnn-core 'fn-native-live-pages-host-pagedp kind)
+               (fnn-command-live-pages store)
+             (fnn-write-report
+              (fnn-core 'fn-native-live-status-host-offline kind
+                        (fnn-store-config store) (fnn-store-observation store)
+                        (fnn-live-arena) *the-live-state*)))
            +fnn-exit-ok+)
       (fnn-store-close store))))
 

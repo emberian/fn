@@ -12631,6 +12631,51 @@
           "name": "fn-hrs-loop-placement"
         }
       ]
+    },
+    {
+      "id": "PRF-371",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-report-is-the-obligations-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-live-report-is-the-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-take-cuts-the-stream"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-request-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-reply-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-pages-join-to-the-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-report-is-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-pages-reach-the-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-answer-keeps-other-versions"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-offline-pages-join-to-the-report"
+        }
+      ]
     }
   ]
 }
