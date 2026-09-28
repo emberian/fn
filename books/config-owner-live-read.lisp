@@ -4,6 +4,9 @@
 
 (in-package "ACL2")
 (include-book "config-owner-live-open")
+; Withdrawn on export by part 1; this part reasons about them, as it did
+; when the withdrawal was the umbrella book's.
+(local (in-theory (enable fn-ocl-vocabulary)))
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
