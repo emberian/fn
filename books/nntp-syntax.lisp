@@ -181,33 +181,53 @@
             (fn-nntp-upcase-keyword (cdr bytes)))
     nil))
 
+; The two conversions below execute by loops (PKT-877, lane serve-depth): the
+; recursion took one control-stack frame per character or octet of the text.
+(defun fn-nntp-string-octets-aux-loop (chars acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp chars)
+      (fn-nntp-string-octets-aux-loop (fn-ag-cdr chars)
+                                      (cons (fn-ng-char-code (fn-ag-car chars)) acc))
+    (revappend acc nil)))
+
 (defun fn-nntp-string-octets-aux (chars)
   (mbe :logic
        (if (consp chars)
            (cons (char-code (car chars))
                  (fn-nntp-string-octets-aux (cdr chars)))
          nil)
-       :exec
-       (if (consp chars)
-           (cons (fn-ng-char-code (fn-ag-car chars))
-                 (fn-nntp-string-octets-aux (fn-ag-cdr chars)))
-         nil)))
+       :exec (fn-nntp-string-octets-aux-loop chars nil)))
+
+(local
+ (defthm fn-nntp-string-octets-aux-loop-is-revappend
+   (equal (fn-nntp-string-octets-aux-loop chars acc)
+          (revappend acc (fn-nntp-string-octets-aux chars)))
+   :hints (("Goal" :induct (fn-nntp-string-octets-aux-loop chars acc)))))
 
 (defun fn-nntp-string-octets (text)
   (if (stringp text)
       (fn-nntp-string-octets-aux (coerce text 'list))
     nil))
 
+(defun fn-nntp-octets-chars-loop (bytes acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp bytes)
+      (fn-nntp-octets-chars-loop (fn-ag-cdr bytes)
+                                 (cons (fn-ng-code-char (fn-ag-car bytes)) acc))
+    (revappend acc nil)))
+
 (defun fn-nntp-octets-chars (bytes)
   (mbe :logic
        (if (consp bytes)
            (cons (code-char (car bytes)) (fn-nntp-octets-chars (cdr bytes)))
          nil)
-       :exec
-       (if (consp bytes)
-           (cons (fn-ng-code-char (fn-ag-car bytes))
-                 (fn-nntp-octets-chars (fn-ag-cdr bytes)))
-         nil)))
+       :exec (fn-nntp-octets-chars-loop bytes nil)))
+
+(local
+ (defthm fn-nntp-octets-chars-loop-is-revappend
+   (equal (fn-nntp-octets-chars-loop bytes acc)
+          (revappend acc (fn-nntp-octets-chars bytes)))
+   :hints (("Goal" :induct (fn-nntp-octets-chars-loop bytes acc)))))
 
 (defun fn-nntp-token-string (token)
   (if (fn-octet-listp token)
@@ -440,11 +460,17 @@
 
 (verify-guards fn-nntp-upcase-keyword)
 
-(verify-guards fn-nntp-string-octets-aux)
+(verify-guards fn-nntp-string-octets-aux-loop)
+(verify-guards fn-nntp-string-octets-aux
+  :hints (("Goal" :in-theory (disable fn-nntp-string-octets-aux-loop)
+                  :use ((:instance fn-nntp-string-octets-aux-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-string-octets)
 
-(verify-guards fn-nntp-octets-chars)
+(verify-guards fn-nntp-octets-chars-loop)
+(verify-guards fn-nntp-octets-chars
+  :hints (("Goal" :in-theory (disable fn-nntp-octets-chars-loop)
+                  :use ((:instance fn-nntp-octets-chars-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-token-string)
 

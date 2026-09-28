@@ -159,13 +159,46 @@
 ; The logical model: the columns as functions of the list.
 
 ; The sequences of the rows carrying MSGID, ascending, the first row being I.
-(defun fn-cat-seqs-for (msgid c i)
-  (declare (xargs :guard (natp i)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cat-seqs-for-loop (msgid c i acc)
+  (declare (xargs :guard (and (natp i) (true-listp acc)) :verify-guards nil))
   (if (consp c)
       (if (equal msgid (fn-record-msgid (car c)))
-          (cons i (fn-cat-seqs-for msgid (cdr c) (+ 1 i)))
-        (fn-cat-seqs-for msgid (cdr c) (+ 1 i)))
-    nil))
+          (fn-cat-seqs-for-loop msgid (cdr c) (+ 1 i) (cons i acc))
+        (fn-cat-seqs-for-loop msgid (cdr c) (+ 1 i) acc))
+    (revappend acc nil)))
+
+(defun fn-cat-seqs-for (msgid c i)
+  (declare (xargs :verify-guards nil :guard (natp i)))
+  (mbe :logic
+       (if (consp c)
+           (if (equal msgid (fn-record-msgid (car c)))
+               (cons i (fn-cat-seqs-for msgid (cdr c) (+ 1 i)))
+             (fn-cat-seqs-for msgid (cdr c) (+ 1 i)))
+         nil)
+       :exec (fn-cat-seqs-for-loop msgid c i nil)))
+
+(local
+ (defthm fn-cat-seqs-for-loop-is-revappend
+   (equal (fn-cat-seqs-for-loop msgid c i acc)
+          (revappend acc (fn-cat-seqs-for msgid c i)))
+   :hints (("Goal" :induct (fn-cat-seqs-for-loop msgid c i acc)
+                   :in-theory (union-theories '(fn-cat-seqs-for-loop fn-cat-seqs-for revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cat-seqs-for-loop)
+
+(verify-guards fn-cat-seqs-for
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cat-seqs-for)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cat-seqs-for-loop-is-revappend (acc nil))))))
+
 
 ; The first row binding (GROUP . N), or nil; a row outside the group binds
 ; nothing, so no N matches it.

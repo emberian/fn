@@ -359,7 +359,9 @@
  (defthm fn-nntp-active-status-lines-loop-is-revappend
    (equal (fn-nntp-active-status-lines-loop archive groups closed acc)
           (revappend acc (fn-nntp-active-status-lines archive groups closed)))
-   :hints (("Goal" :in-theory (disable fn-nntp-active-status-line)))))
+   :hints (("Goal" :induct (fn-nntp-active-status-lines-loop archive groups closed acc)
+                   :in-theory (union-theories '(fn-nntp-active-status-lines-loop fn-nntp-active-status-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
@@ -385,7 +387,9 @@
  (defthm fn-nntp-active-lines-loop-is-revappend
    (equal (fn-nntp-active-lines-loop archive groups acc)
           (revappend acc (fn-nntp-active-lines archive groups)))
-   :hints (("Goal" :in-theory (disable fn-nntp-active-line)))))
+   :hints (("Goal" :induct (fn-nntp-active-lines-loop archive groups acc)
+                   :in-theory (union-theories '(fn-nntp-active-lines-loop fn-nntp-active-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
 
 ; RFC 6048 section 2.2.2: LIST COUNTS answers name, high, low, count and
@@ -430,7 +434,9 @@
  (defthm fn-nntp-counts-lines-loop-is-revappend
    (equal (fn-nntp-counts-lines-loop archive groups acc)
           (revappend acc (fn-nntp-counts-lines archive groups)))
-   :hints (("Goal" :in-theory (disable fn-nntp-counts-line)))))
+   :hints (("Goal" :induct (fn-nntp-counts-lines-loop archive groups acc)
+                   :in-theory (union-theories '(fn-nntp-counts-lines-loop fn-nntp-counts-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
@@ -473,7 +479,9 @@
  (defthm fn-nntp-newsgroup-lines-loop-is-revappend
    (equal (fn-nntp-newsgroup-lines-loop groups acc)
           (revappend acc (fn-nntp-newsgroup-lines groups)))
-   :hints (("Goal" :in-theory (disable fn-nntp-append-pieces fn-nntp-string-octets)))))
+   :hints (("Goal" :induct (fn-nntp-newsgroup-lines-loop groups acc)
+                   :in-theory (union-theories '(fn-nntp-newsgroup-lines-loop fn-nntp-newsgroup-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
 ; `patterns` is an internal successful `fn-wildmat-parse` result, never an
 ; externally supplied representation.  Group names are projection-guarded
@@ -517,7 +525,9 @@
  (defthm fn-nntp-filter-groups-by-wildmat-loop-is-revappend
    (equal (fn-nntp-filter-groups-by-wildmat-loop patterns groups acc)
           (revappend acc (fn-nntp-filter-groups-by-wildmat patterns groups)))
-   :hints (("Goal" :in-theory (disable fn-nntp-group-matches-parsed-wildmatp)))))
+   :hints (("Goal" :induct (fn-nntp-filter-groups-by-wildmat-loop patterns groups acc)
+                   :in-theory (union-theories '(fn-nntp-filter-groups-by-wildmat-loop fn-nntp-filter-groups-by-wildmat revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
 
 (defun fn-nntp-list-active (session archive groups)
@@ -1206,7 +1216,9 @@
  (defthm fn-nntp-facts-since-loop-is-revappend
    (equal (fn-nntp-facts-since-loop threshold facts acc)
           (revappend acc (fn-nntp-facts-since threshold facts)))
-   :hints (("Goal" :in-theory (disable fn-nntp-group-factp fn-ng-less-equal fn-nntp-fact-created)))))
+   :hints (("Goal" :induct (fn-nntp-facts-since-loop threshold facts acc)
+                   :in-theory (union-theories '(fn-nntp-facts-since-loop fn-nntp-facts-since revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
@@ -1229,7 +1241,9 @@
  (defthm fn-nntp-fact-names-loop-is-revappend
    (equal (fn-nntp-fact-names-loop facts acc)
           (revappend acc (fn-nntp-fact-names facts)))
-   :hints (("Goal" :in-theory (disable fn-nntp-fact-name)))))
+   :hints (("Goal" :induct (fn-nntp-fact-names-loop facts acc)
+                   :in-theory (union-theories '(fn-nntp-fact-names-loop fn-nntp-fact-names revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
 
 (defun fn-nntp-newgroups-response (session archive env args)
@@ -1424,7 +1438,9 @@
  (defthm fn-nov-lines-for-numbers-loop-is-revappend
    (equal (fn-nov-lines-for-numbers-loop group numbers articles fn-arena acc)
           (revappend acc (fn-nov-lines-for-numbers group numbers articles fn-arena)))
-   :hints (("Goal" :in-theory (disable fn-nntp-available-article fn-nov-overview fn-nov-line fn-nntp-article-tombstonep fn-nov-okp)))))
+   :hints (("Goal" :induct (fn-nov-lines-for-numbers-loop group numbers articles fn-arena acc)
+                   :in-theory (union-theories '(fn-nov-lines-for-numbers-loop fn-nov-lines-for-numbers revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
 
 
@@ -1591,7 +1607,9 @@
 (verify-guards fn-nntp-active-lines-loop)
 
 (verify-guards fn-nntp-active-lines
-  :hints (("Goal" :in-theory (disable fn-nntp-active-lines-loop fn-nntp-active-line)
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-active-lines)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-active-lines-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-counts-summary-line)
@@ -1601,13 +1619,17 @@
 (verify-guards fn-nntp-counts-lines-loop)
 
 (verify-guards fn-nntp-counts-lines
-  :hints (("Goal" :in-theory (disable fn-nntp-counts-lines-loop fn-nntp-counts-line)
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-counts-lines)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-counts-lines-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-newsgroup-lines-loop)
 
 (verify-guards fn-nntp-newsgroup-lines
-  :hints (("Goal" :in-theory (disable fn-nntp-newsgroup-lines-loop fn-nntp-append-pieces fn-nntp-string-octets)
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-newsgroup-lines)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-newsgroup-lines-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-group-matches-parsed-wildmatp)
@@ -1615,7 +1637,9 @@
 (verify-guards fn-nntp-filter-groups-by-wildmat-loop)
 
 (verify-guards fn-nntp-filter-groups-by-wildmat
-  :hints (("Goal" :in-theory (disable fn-nntp-filter-groups-by-wildmat-loop fn-nntp-group-matches-parsed-wildmatp)
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-filter-groups-by-wildmat)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-filter-groups-by-wildmat-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-list-active)
@@ -1743,13 +1767,17 @@
 (verify-guards fn-nntp-facts-since-loop)
 
 (verify-guards fn-nntp-facts-since
-  :hints (("Goal" :in-theory (disable fn-nntp-facts-since-loop fn-nntp-group-factp fn-ng-less-equal fn-nntp-fact-created)
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-facts-since)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-facts-since-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-fact-names-loop)
 
 (verify-guards fn-nntp-fact-names
-  :hints (("Goal" :in-theory (disable fn-nntp-fact-names-loop fn-nntp-fact-name)
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-fact-names)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-fact-names-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-newgroups-response)
@@ -1788,7 +1816,9 @@
 (verify-guards fn-nov-lines-for-numbers-loop)
 
 (verify-guards fn-nov-lines-for-numbers
-  :hints (("Goal" :in-theory (disable fn-nov-lines-for-numbers-loop fn-nntp-available-article fn-nov-overview fn-nov-line fn-nntp-article-tombstonep fn-nov-okp)
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nov-lines-for-numbers)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
                   :use ((:instance fn-nov-lines-for-numbers-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-over-current)
@@ -1987,7 +2017,9 @@
  (defthm fn-nntp-hdr-lines-for-numbers-loop-is-revappend
    (equal (fn-nntp-hdr-lines-for-numbers-loop field group numbers articles fn-arena acc)
           (revappend acc (fn-nntp-hdr-lines-for-numbers field group numbers articles fn-arena)))
-   :hints (("Goal" :in-theory (disable fn-nntp-available-article fn-nntp-hdr-content fn-nntp-hdr-line fn-nntp-hdr-okp fn-nntp-hdr-octets fn-nntp-decimal-field)))))
+   :hints (("Goal" :induct (fn-nntp-hdr-lines-for-numbers-loop field group numbers articles fn-arena acc)
+                   :in-theory (union-theories '(fn-nntp-hdr-lines-for-numbers-loop fn-nntp-hdr-lines-for-numbers revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
 
 (defun fn-nntp-hdr-initial (legacyp)
@@ -2205,7 +2237,9 @@
  (defthm fn-nntp-xpat-lines-for-numbers-loop-is-revappend
    (equal (fn-nntp-xpat-lines-for-numbers-loop field patterns group numbers articles fn-arena acc)
           (revappend acc (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles fn-arena)))
-   :hints (("Goal" :in-theory (disable fn-nntp-available-article fn-nntp-hdr-content fn-nntp-hdr-line fn-nntp-hdr-okp fn-nntp-hdr-octets fn-nntp-decimal-field fn-nntp-xpat-matchesp)))))
+   :hints (("Goal" :induct (fn-nntp-xpat-lines-for-numbers-loop field patterns group numbers articles fn-arena acc)
+                   :in-theory (union-theories '(fn-nntp-xpat-lines-for-numbers-loop fn-nntp-xpat-lines-for-numbers revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
 
 (defun fn-nntp-xpat-range (session archive field patterns token fn-arena)
@@ -2668,7 +2702,9 @@
  (defthm fn-nntp-active-times-lines-loop-is-revappend
    (equal (fn-nntp-active-times-lines-loop facts acc)
           (revappend acc (fn-nntp-active-times-lines facts)))
-   :hints (("Goal" :in-theory (disable fn-nntp-group-factp fn-nntp-active-times-line)))))
+   :hints (("Goal" :induct (fn-nntp-active-times-lines-loop facts acc)
+                   :in-theory (union-theories '(fn-nntp-active-times-lines-loop fn-nntp-active-times-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
@@ -2702,7 +2738,9 @@
  (defthm fn-nntp-filter-facts-by-wildmat-loop-is-revappend
    (equal (fn-nntp-filter-facts-by-wildmat-loop patterns facts acc)
           (revappend acc (fn-nntp-filter-facts-by-wildmat patterns facts)))
-   :hints (("Goal" :in-theory (disable fn-nntp-group-factp fn-nntp-group-matches-parsed-wildmatp fn-nntp-fact-name)))))
+   :hints (("Goal" :induct (fn-nntp-filter-facts-by-wildmat-loop patterns facts acc)
+                   :in-theory (union-theories '(fn-nntp-filter-facts-by-wildmat-loop fn-nntp-filter-facts-by-wildmat revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
 
 (defun fn-nntp-list-active-times (session env args)
@@ -2817,7 +2855,9 @@
  (defthm fn-nntp-described-lines-loop-is-revappend
    (equal (fn-nntp-described-lines-loop groups descs acc)
           (revappend acc (fn-nntp-described-lines groups descs)))
-   :hints (("Goal" :in-theory (disable fn-nntp-append-pieces fn-nntp-string-octets fn-nntp-description-field)))))
+   :hints (("Goal" :induct (fn-nntp-described-lines-loop groups descs acc)
+                   :in-theory (union-theories '(fn-nntp-described-lines-loop fn-nntp-described-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
 
 
 (defun fn-nntp-list-newsgroups-described (session archive descs args)
@@ -2910,7 +2950,9 @@
 (verify-guards fn-nntp-hdr-lines-for-numbers-loop)
 
 (verify-guards fn-nntp-hdr-lines-for-numbers
-  :hints (("Goal" :in-theory (disable fn-nntp-hdr-lines-for-numbers-loop fn-nntp-available-article fn-nntp-hdr-content fn-nntp-hdr-line fn-nntp-hdr-okp fn-nntp-hdr-octets fn-nntp-decimal-field)
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-hdr-lines-for-numbers)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-hdr-lines-for-numbers-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-hdr-initial)
 (verify-guards fn-nntp-hdr-current)
@@ -2927,7 +2969,9 @@
 (verify-guards fn-nntp-xpat-lines-for-numbers-loop)
 
 (verify-guards fn-nntp-xpat-lines-for-numbers
-  :hints (("Goal" :in-theory (disable fn-nntp-xpat-lines-for-numbers-loop fn-nntp-available-article fn-nntp-hdr-content fn-nntp-hdr-line fn-nntp-hdr-okp fn-nntp-hdr-octets fn-nntp-decimal-field fn-nntp-xpat-matchesp)
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-xpat-lines-for-numbers)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-xpat-lines-for-numbers-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-xpat-range)
@@ -2943,26 +2987,34 @@
 (verify-guards fn-nntp-active-times-lines-loop)
 
 (verify-guards fn-nntp-active-times-lines
-  :hints (("Goal" :in-theory (disable fn-nntp-active-times-lines-loop fn-nntp-group-factp fn-nntp-active-times-line)
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-active-times-lines)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-active-times-lines-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-filter-facts-by-wildmat-loop)
 
 (verify-guards fn-nntp-filter-facts-by-wildmat
-  :hints (("Goal" :in-theory (disable fn-nntp-filter-facts-by-wildmat-loop fn-nntp-group-factp fn-nntp-group-matches-parsed-wildmatp fn-nntp-fact-name)
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-filter-facts-by-wildmat)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-filter-facts-by-wildmat-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-list-active-times)
 (verify-guards fn-nntp-active-status-line)
 (verify-guards fn-nntp-active-status-lines-loop)
 
 (verify-guards fn-nntp-active-status-lines
-  :hints (("Goal" :in-theory (disable fn-nntp-active-status-lines-loop fn-nntp-active-status-line)
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-active-status-lines)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-active-status-lines-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-list-active-status)
 (verify-guards fn-nntp-list-status-response)
 (verify-guards fn-nntp-described-lines-loop)
 
 (verify-guards fn-nntp-described-lines
-  :hints (("Goal" :in-theory (disable fn-nntp-described-lines-loop fn-nntp-append-pieces fn-nntp-string-octets fn-nntp-description-field)
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-described-lines)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-described-lines-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-list-newsgroups-described)
 (verify-guards fn-nntp-list-motd)
