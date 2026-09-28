@@ -258,23 +258,6 @@
   (declare (xargs :mode :program))
   (fn-store-cfg-decode-records-loop octet-records nil))
 
-(defun fn-store-cfg-candidate-openp (octet-records frontier config-octet-records)
-  "Decode at the existing byte boundary, then ask the logical native-admin
-candidate predicate whether this exact next durable image reopens.  This is
-not a second recovery algorithm: `fn-native-admin-candidate-openp' invokes
-the same configuration replay and observed-node open definitions startup uses."
-  (declare (xargs :mode :program))
-  (let ((records (fn-store-decode-records octet-records))
-        (config-records (fn-store-cfg-decode-records config-octet-records)))
-    (if (or (equal records :bad) (equal config-records :bad)
-            (null config-records))
-        nil
-      ; The replay's domain is the retained rows: the candidate interns the
-      ; decoded history into a LOCAL arena, as the open does into the live one.
-      (let ((rows (fn-store-intern-records-local records)))
-        (and (not (equal rows :bad))
-             (if (fn-native-admin-candidate-openp rows frontier config-records) t nil))))))
-
 (defun fn-store-cfg-native-admin-authorize
     (octet-records frontier config-octet-records record-octets lock-owned observed-name-octets
                    profile)
