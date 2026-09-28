@@ -41,22 +41,16 @@ import json
 import os
 from pathlib import Path
 import re
-import signal
-import socket
 import sqlite3
-import subprocess
 import sys
-import tempfile
 import time
 import unittest
 
-from tests.native_harness import stop_and_diagnostics
+from tests.native_harness import (
+    EXIT_OK, ROOT, Client, Node, environment, native_image, requires, run, scratch, start)
 from tests.test_native_peer_pull import RecordingProxy
-from tools.wire_stream import whole_stream
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST",
-                            ROOT / "build" / "fn-host-developer"))
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 ENABLED = os.environ.get("FN_RUN_CONSUMER_EXCHANGE") == "1"
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 CONSUMER = ROOT / "tools" / "fn_consumer.py"
@@ -65,124 +59,69 @@ APP = "fn-e1"
 PULL_INTERVAL = "2"
 
 
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
-
-
 def sha(octets):
     return hashlib.sha256(octets).hexdigest()
 
 
-@unittest.skipUnless(ENABLED and IMAGE.is_file() and os.access(IMAGE, os.X_OK),
-                     "set FN_RUN_CONSUMER_EXCHANGE=1 and a source-matched "
+@unittest.skipUnless(ENABLED, "set FN_RUN_CONSUMER_EXCHANGE=1 and a source-matched "
                      "FN_NATIVE_DEVELOPER_HOST")
+@requires(IMAGE)
 class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
     def setUp(self):
-        temporary = tempfile.TemporaryDirectory(prefix="fn-consumer-2n-")
-        self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        for name in ("ACL2_SYSTEM_BOOKS", "FN_HOST", "FN_NATIVE_CONTROL_FAULT",
-                     "FN_NATIVE_CONTROL_TEST_STOP", "FN_CONSUMER_CUT"):
-            self.env.pop(name, None)
+        self.root = scratch(self, "fn-consumer-2n-")
+        # The consumers' environment: no cut unless a call names one.
+        self.env = environment({"FN_CONSUMER_CUT": None})
         self.log = []
         self.nodes = {}
         self.principals = {}
-        self.addCleanup(self.stop_all)
 
     # -- native processes -----------------------------------------------------
-    def native(self, *words, expected=0):
-        result = subprocess.run([str(IMAGE), "--fn", *map(str, words)],
-                                cwd=ROOT, env=self.env, capture_output=True,
-                                timeout=300, check=False)
+    def native(self, *words, expected=EXIT_OK):
+        result = run([IMAGE, "--fn", *words], timeout=300)
         if expected is not None:
             self.assertEqual(result.returncode, expected,
                              (result.stdout + result.stderr).decode("utf-8", "replace"))
         return result
 
     def initialize(self, name):
+        """A node (tests/native_harness.py Node) with a service log and its
+        path identity; `store init` makes its store."""
         root = self.root / name
-        root.mkdir()
-        node = {"name": name, "root": root, "store": root / "store",
-                "control": root / "control.sock", "config": root / "fn.toml",
-                "port": free_port(), "log": root / "service.log",
-                "path": "%s.exchange.example.invalid" % name.lower(),
-                "process": None, "starts": 0}
-        node["config"].write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
-                node["store"], node["port"], node["control"], node["log"]),
-            encoding="ascii")
-        self.native("store", node["store"], "init", "fn.test")
-        self.native("operator", node["config"], "policy", "set", "path-identity",
-                    node["path"])
+        node = Node(self, IMAGE, root=root, name=name,
+                    extra='[log]\npath = "{}"\n'.format(root / "service.log"))
+        node.log = root / "service.log"
+        node.path = "%s.exchange.example.invalid" % name.lower()
+        self.native("store", node.store_path, "init", "fn.test")
+        self.native("operator", node.config, "policy", "set", "path-identity", node.path)
         self.nodes[name] = node
         return node
 
     def peer(self, source, target, port=None):
         """SOURCE's record for TARGET: inbound and outbound fn.*, transit from
         127.0.0.1, streaming; PORT (a proxy) in place of TARGET's own."""
-        self.native("operator", source["config"], "peer", "add", target["name"],
-                    target["path"], "127.0.0.1", port or target["port"],
+        self.native("operator", source.config, "peer", "add", target.name,
+                    target.path, "127.0.0.1", port or target.port,
                     "fn.*", "fn.*", "127.0.0.1", "true")
 
     def start(self, node, *, stop_after_submit=False):
-        env = dict(self.env)
-        if stop_after_submit:
-            env["FN_NATIVE_CONTROL_TEST_STOP"] = "after-submit"
-        node["starts"] += 1
-        out = node["root"] / ("owner-%d.stdout" % node["starts"])
-        with open(out, "wb") as stdout, open(node["root"] / "owner.stderr", "ab") as err:
-            node["process"] = subprocess.Popen(
-                [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
-                cwd=ROOT, env=env, stdin=subprocess.DEVNULL, stdout=stdout, stderr=err)
-        node["stdout"] = out
-        self.await_output(node, b"LISTENING %d" % node["port"], 120)
-
-    def await_output(self, node, needle, timeout):
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            if needle in node["stdout"].read_bytes():
-                return
-            if node["process"].poll() is not None:
-                self.fail("%s owner exited %s before %r: %s" % (
-                    node["name"], node["process"].returncode, needle,
-                    (node["root"] / "owner.stderr").read_bytes()[-2000:]))
-            time.sleep(0.1)
-        self.fail("%s owner never printed %r" % (node["name"], needle))
+        node.start(timeout=120, env={"FN_NATIVE_CONTROL_TEST_STOP": "after-submit"}
+                   if stop_after_submit else None)
 
     def stop(self, node):
-        process = node["process"]
-        node["process"] = None
-        diagnostics = stop_and_diagnostics(process, timeout=60)
-        self.assertEqual(process.returncode, 0, diagnostics)
+        node.stop()
 
     def kill(self, node):
-        process = node["process"]
-        node["process"] = None
-        process.send_signal(signal.SIGKILL)
-        process.wait(timeout=30)
-
-    def stop_all(self):
-        for node in self.nodes.values():
-            process = node.get("process")
-            if process is not None and process.poll() is None:
-                process.kill()
-                process.wait(timeout=30)
+        node.process.kill()
+        node.process.wait(timeout=30)
+        node.process.finish()
 
     # -- NNTP observation (the Store's own answers) ----------------------------
     def session(self, node, lines):
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
-            stream = whole_stream(client)
-            greeting = stream.readline()
-            self.assertTrue(greeting[:3] in (b"200", b"201"), greeting)
+        with Client(node.port, timeout=30) as client:
             replies = []
             for line in lines:
-                stream.write(line)
-                replies.append(stream.readline())
+                client.send(line)
+                replies.append(client.line())
             return replies
 
     def stat(self, node, message_id):
@@ -194,22 +133,22 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
             try:
                 if self.stat(node, message_id) == b"223":
                     return
-            except OSError:
+            except (OSError, EOFError):
                 pass
             time.sleep(0.25)
         self.fail("%s never stored %s; log tail %r" % (
-            node["name"], message_id, self.log_tail(node)))
+            node.name, message_id, self.log_tail(node)))
 
     def log_tail(self, node):
         try:
-            return node["log"].read_text(errors="replace")[-2000:]
+            return node.log.read_text(errors="replace")[-2000:]
         except OSError:
             return ""
 
     def pull_rounds(self, node):
         try:
             return sum("round=done" in line for line in
-                       node["log"].read_text(errors="replace").splitlines()
+                       node.log.read_text(errors="replace").splitlines()
                        if line.startswith("pull peer="))
         except OSError:
             return 0
@@ -221,16 +160,16 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
                 return
             time.sleep(0.25)
         self.fail("%s finished no pull round after %d; log %r" % (
-            node["name"], after, self.log_tail(node)))
+            node.name, after, self.log_tail(node)))
 
     def articles(self, node):
-        out = self.native("operator", node["config"], "status").stdout
+        out = self.native("operator", node.config, "status").stdout
         match = re.search(rb"\barticles=(\d+)", out)
         self.assertIsNotNone(match, out)
         return int(match.group(1))
 
     def status(self, node, label):
-        out = self.native("consumer", "status", node["control"], label).stdout
+        out = self.native("consumer", "status", node.control, label).stdout
         match = re.search(rb"committed-ack=(\d+) committed-journal-frontier=(\d+)", out)
         self.assertIsNotNone(match, out)
         return int(match.group(1)), int(match.group(2))
@@ -255,7 +194,7 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
         for args in (["genpkey", "-algorithm", "ML-DSA-65", "-out", keys["ml_private"]],
                      ["pkey", "-in", keys["ml_private"], "-pubout", "-out",
                       keys["ml_public"]]):
-            made = subprocess.run([OPENSSL, *args], capture_output=True, timeout=60)
+            made = run([OPENSSL, *args], timeout=60)
             self.assertEqual(made.returncode, 0, made.stderr)
         return keys, (bytes([principal_byte]) * 32).hex()
 
@@ -265,11 +204,11 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
         keys, principal_hex = self.signer(label, principal_byte)
         self.principals[label] = (keys, principal_hex, generation)
         for each in self.nodes.values():
-            self.native("hybrid-enroll", each["control"], generation, keys["principal"],
+            self.native("hybrid-enroll", each.control, generation, keys["principal"],
                         keys["ed_public"], keys["ml_public"])
         config = self.root / label / "consumer.json"
         config.write_text(json.dumps({
-            "image": str(IMAGE), "control": str(node["control"]),
+            "image": str(IMAGE), "control": str(node.control),
             "consumer": label, "group": "fn.test", "application_id": APP,
             "from": "%s@example.invalid" % label,
             "db": str(self.root / label / "state.db"),
@@ -277,7 +216,7 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
             "principal_hex": principal_hex, "generation": str(generation),
             "keyring": str(self.root / label / "trusted.json"), "claims": []}),
             encoding="utf-8")
-        self.native("consumer", "register", node["control"], label, "fn.test",
+        self.native("consumer", "register", node.control, label, "fn.test",
                     self.root / label / "registered.fncu")
         return config
 
@@ -287,10 +226,9 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
         entries = []
         for label in labels:
             keys, _, generation = self.principals[label]
-            made = subprocess.run(
-                [sys.executable, str(VERIFIER), "keyring-entry", keys["principal"],
-                 keys["ed_public"], keys["ml_public"], "--generation", str(generation)],
-                capture_output=True, timeout=60, check=False)
+            made = run([sys.executable, VERIFIER, "keyring-entry", keys["principal"],
+                        keys["ed_public"], keys["ml_public"], "--generation", generation],
+                       timeout=60)
             self.assertEqual(made.returncode, 0, made.stderr)
             entries.append(json.loads(made.stdout))
         data = json.loads(config.read_text(encoding="utf-8"))
@@ -306,10 +244,10 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
             env["FN_CONSUMER_CUT"] = cut
         argv = [sys.executable, str(CONSUMER), str(config), *words]
         if background:
-            return subprocess.Popen(argv, cwd=ROOT, env=env, stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
-        result = subprocess.run(argv, cwd=ROOT, env=env, capture_output=True,
-                                timeout=900, check=False)
+            proc = start(argv, cwd=ROOT, env=env)
+            self.addCleanup(proc.stop, 10)
+            return proc
+        result = run(argv, env=env, timeout=900)
         self.log.append([config.parent.name, list(words), cut, result.returncode,
                          result.stderr.decode("utf-8", "replace")[-600:]])
         if expected is not None:
@@ -329,7 +267,7 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
         self.stop(node)
         self.start(node, stop_after_submit=True)
         proc = self.consumer(config, *words, background=True)
-        self.await_output(node, b"CONTROL-SUBMITTED", 300)
+        node.process.output_until(b"CONTROL-SUBMITTED", timeout=300)
         self.kill(node)
         stdout, stderr = proc.communicate(timeout=300)
         self.log.append([config.parent.name, list(words), "owner-after-submit",
@@ -354,9 +292,8 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
         for message_id, source, received, disposition, own, node_verdict, seq in rows:
             article = self.root / ("check-%s" % sha(received))
             article.write_bytes(received)
-            check = subprocess.run(
-                [sys.executable, str(VERIFIER), "check-article", str(article), message_id,
-                 "--keyring", data["keyring"]], capture_output=True, timeout=120)
+            check = run([sys.executable, VERIFIER, "check-article", article, message_id,
+                         "--keyring", data["keyring"]], timeout=120)
             verdict = json.loads(check.stdout)
             out.append({"message_id": message_id, "source_sha256": sha(source),
                         "received_sha256": sha(received),
@@ -397,14 +334,14 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
     def two_nodes(self):
         """A and B peered both ways; B also pulls from A through a proxy."""
         a, b = self.initialize("A"), self.initialize("B")
-        proxy = RecordingProxy(a["port"])
+        proxy = RecordingProxy(a.port)
         self.addCleanup(proxy.close)
         self.peer(a, b)
         self.peer(b, a, port=proxy.port)
-        self.native("operator", b["config"], "peer", "pull", "A", PULL_INTERVAL)
+        self.native("operator", b.config, "peer", "pull", "A", PULL_INTERVAL)
         for node in (a, b):
             self.start(node)
-            self.native("consumer", "bootstrap", node["control"])
+            self.native("consumer", "bootstrap", node.control)
         return a, b, proxy
 
     # -- the cases ------------------------------------------------------------
@@ -415,7 +352,7 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
         # A probe consumer on B, registered before R exists: the test's own
         # reader for the restart-mid-poll case (fn's poll and ack, nothing
         # of agent-b's).
-        self.native("consumer", "register", b["control"], "probe", "fn.test",
+        self.native("consumer", "register", b.control, "probe", "fn.test",
                     self.root / "probe-registered.fncu")
         for config in (agent_a, agent_b):
             self.trust(config, ("agent-a", "agent-b"),
@@ -448,17 +385,17 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
         # Node restart mid-poll (the probe): poll, restart B, poll again: the
         # same page; the ack twice: one position.
         probe_cursor, probe_report = self.root / "probe-1.fncu", self.root / "probe-1.fn-e"
-        self.native("consumer", "poll", b["control"], "probe", probe_cursor, probe_report)
+        self.native("consumer", "poll", b.control, "probe", probe_cursor, probe_report)
         self.stop(b)
         self.start(b)
         again_cursor, again_report = self.root / "probe-2.fncu", self.root / "probe-2.fn-e"
-        self.native("consumer", "poll", b["control"], "probe", again_cursor, again_report)
+        self.native("consumer", "poll", b.control, "probe", again_cursor, again_report)
         self.assertEqual(probe_report.read_bytes(), again_report.read_bytes())
         self.assertEqual(probe_cursor.read_bytes(), again_cursor.read_bytes())
         self.assertGreater(len(probe_report.read_bytes()), 0)
-        self.native("consumer", "ack", b["control"], again_cursor)
+        self.native("consumer", "ack", b.control, again_cursor)
         acked = self.status(b, "probe")[0]
-        self.native("consumer", "ack", b["control"], again_cursor)
+        self.native("consumer", "ack", b.control, again_cursor)
         self.assertEqual(self.status(b, "probe")[0], acked)
         restart = {"report_sha256": sha(probe_report.read_bytes()),
                    "cursor_sha256": sha(probe_cursor.read_bytes()), "acked": acked}
@@ -575,7 +512,7 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
         # R was carried to B before the revocation; B consumes it.
         self.await_article(b, after_death["message_id"])
         keys = self.principals["agent-a"][0]
-        self.native("hybrid-revoke-next", a["control"], keys["principal"])
+        self.native("hybrid-revoke-next", a.control, keys["principal"])
         self.consumer(agent_b, "wake")
         self.assertEqual(self.summary(agent_b)["transitions"], [[APP, "r1"]])
         # A's reconciliation resend is refused (revoked) and settles only

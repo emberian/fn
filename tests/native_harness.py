@@ -987,6 +987,29 @@ def _log_digest(log):
     return node_log_digest(log)
 
 
+_DIAGNOSTIC_DIR = "FN_NATIVE_TEST_DIAGNOSTIC_DIR"
+
+
+def keep_diagnostics(case, nodes):
+    """At CASE's end, append each owner's retained stderr to
+    FN_NATIVE_TEST_DIAGNOSTIC_DIR/<test>-<node>.stderr when that is set.
+    Register before the nodes exist: cleanups run last-first, so this runs
+    after the nodes' own cleanup has stopped every owner."""
+    keep = os.environ.get(_DIAGNOSTIC_DIR)
+    if not keep:
+        return
+
+    def write():
+        directory = Path(keep)
+        directory.mkdir(parents=True, exist_ok=True)
+        for node in nodes:
+            path = directory / (case.id().rsplit(".", 1)[-1] + "-" + node.name + ".stderr")
+            with path.open("ab") as out:
+                for process in node.processes:
+                    out.write(process.stderr.since(0))
+    case.addCleanup(write)
+
+
 # --- Clients ----------------------------------------------------------------
 
 def client_context():

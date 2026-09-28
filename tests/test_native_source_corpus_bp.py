@@ -52,28 +52,22 @@ import select
 import signal
 import socket
 import subprocess
-import sys
-import tempfile
 import threading
 import time
 import unittest
-from tools.wire_stream import whole_stream
 
-ROOT = Path(__file__).resolve().parent.parent
+from tests.native_harness import (
+    EXIT_OK, ROOT, Client, Node, environment, free_port, native_image, requires, run, scratch)
+
 CORPUS = ROOT / "tests" / "fixtures" / "source-corpus"
-IMAGE_TEXT = os.environ.get("FN_NATIVE_DTN_HOST")
-IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
-# The DTN image has no NNTP owner and no signing verbs.  The default
-# developer image of the same tree is each node's NNTP owner over the same
+IMAGE = native_image("FN_NATIVE_DTN_HOST")
+# The DTN image has no NNTP owner and no signing verbs.  The image of the
+# same tree FN_NATIVE_HOST names is each node's NNTP owner over the same
 # Store (A's served POST injects; enrollment; the record read back by
 # ARTICLE, which equals `store inspect', NNT-020) and renders the carrier.
-DEV_TEXT = os.environ.get("FN_NATIVE_HOST")
-SIGN_IMAGE = Path(DEV_TEXT) if DEV_TEXT else None
+SIGN_IMAGE = native_image("FN_NATIVE_HOST")
 REPO_TEXT = os.environ.get("FN_DTN7_REPO")
 REPO = Path(REPO_TEXT) if REPO_TEXT else None
-READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK)
-             and SIGN_IMAGE is not None and SIGN_IMAGE.is_file()
-             and REPO is not None and (REPO / "target/release/dtnd").is_file())
 SENDER, RECEIVER = "dtn://sender/", "dtn://receiver/"
 A_ID, B_ID = "sender.bp.gate.invalid", "receiver.bp.gate.invalid"
 DTN_EPOCH_UNIX = 946684800
@@ -85,12 +79,6 @@ ED_SECRET = "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60" +
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def header(article, name):
@@ -283,7 +271,9 @@ class Dtnd:
                 self.proc.wait(timeout=10)
 
 
-@unittest.skipUnless(READY, "set FN_NATIVE_DTN_HOST, FN_NATIVE_HOST and FN_DTN7_REPO")
+@unittest.skipUnless(REPO is not None and (REPO / "target/release/dtnd").is_file(),
+                     "set FN_DTN7_REPO to a built dtn7-rs checkout")
+@requires(IMAGE, SIGN_IMAGE)
 class NativeSourceCorpusBpTests(unittest.TestCase):
     def setUp(self):
         keep = os.environ.get("FN_NATIVE_TEST_DIAGNOSTIC_DIR")
@@ -291,19 +281,14 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
             self.base = Path(keep) / "source-corpus-bp"
             self.base.mkdir(parents=True, exist_ok=False)
         else:
-            self.temporary = tempfile.TemporaryDirectory(prefix="fn-source-corpus-bp-")
-            self.addCleanup(self.temporary.cleanup)
-            self.base = Path(self.temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.env.pop("FN_HOST", None)
+            self.base = scratch(self, "fn-source-corpus-bp-")
+        self.env = environment()
         self.wall = str(int((time.time() - DTN_EPOCH_UNIX) * 1000))
         self.processes, self.relays, self.hold = [], [], None
         self.addCleanup(self.stop_all)
 
     def fn(self, tag, *args, expected=0, timeout=240, image=None):
-        result = subprocess.run([str(image or IMAGE), "--fn", *map(str, args)], cwd=ROOT,
-                                env=self.env, capture_output=True, timeout=timeout)
+        result = run([image or IMAGE, "--fn", *args], env=self.env, timeout=timeout)
         (self.base / (tag + ".log")).write_bytes(
             b"$ fn " + " ".join(map(str, args)).encode() + b"\n" + result.stdout
             + result.stderr + b"\n# rc=%d\n" % result.returncode)
@@ -369,10 +354,10 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
         keys[0].write_bytes(bytes([85]) * 32)
         keys[1].write_bytes(bytes.fromhex(ED_PUBLIC))
         keys[2].write_bytes(bytes.fromhex(ED_SECRET))
-        subprocess.run([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out", str(keys[4])],
-                       check=True, timeout=60)
-        subprocess.run([openssl, "pkey", "-in", str(keys[4]), "-pubout", "-out",
-                        str(keys[3])], check=True, timeout=60)
+        for words in (["genpkey", "-algorithm", "ML-DSA-65", "-out", keys[4]],
+                      ["pkey", "-in", keys[4], "-pubout", "-out", keys[3]]):
+            made = run([openssl, *words], timeout=60)
+            self.assertEqual(made.returncode, EXIT_OK, made.stderr)
         return keys
 
     def signed_carrier(self, keys):
@@ -383,69 +368,50 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
 
     # -- each node's NNTP owner (the default developer image) ----------------
     def owner_config(self, side, store):
-        port, control = free_port(), self.base / (side + "-control.sock")
-        config = self.base / (side + ".toml")
-        config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-                          '[control]\npath = "{}"\n'.format(store, port, control),
-                          encoding="ascii")
-        return {"side": side, "store": store, "config": config, "port": port,
-                "control": control}
+        """SIDE's node over STORE (its config and control socket under the
+        run's base, where the kept diagnostics are)."""
+        node = Node(self, SIGN_IMAGE, root=self.base / side, name=side)
+        node.side, node.store_path = side, store
+        node.write_config()
+        return node
 
     def owner_start(self, node, tag):
-        log = self.base / (tag + ".log")
-        with log.open("wb") as handle:
-            process = subprocess.Popen([str(SIGN_IMAGE), "--fn", "operator",
-                                        str(node["config"]), "run"], cwd=ROOT, env=self.env,
-                                       stdout=handle, stderr=subprocess.STDOUT)
-        self.processes.append(process)
-        self.assertTrue(self.wait_count(log, r"LISTENING ", 1, 120), tag)
-        return process
+        node.tag = tag
+        return node.start(timeout=120)
+
+    def owner_stop(self, node):
+        """SIGTERM the owner; its stdout and stderr go to BASE/TAG.log."""
+        process = node.process
+        status = node.stop(expect=None)
+        (self.base / (node.tag + ".log")).write_bytes(
+            process.stdout.since(0) + process.stderr.since(0))
+        return status
 
     def connect(self, node):
-        client = socket.create_connection(("127.0.0.1", node["port"]), timeout=30)
-        stream = whole_stream(client)
-        self.assertTrue(stream.readline().startswith(b"200 "))
-        return client, stream
-
-    @staticmethod
-    def body(stream):
-        lines = []
-        while True:
-            line = stream.readline()
-            if line in (b".\r\n", b""):
-                return b"".join(lines)
-            lines.append(line[1:] if line.startswith(b"..") else line)
+        return Client(node.port, timeout=30, greeting=(b"200",))
 
     def post(self, node, payload):
-        client, stream = self.connect(node)
-        with client:
-            stream.write(b"POST\r\n")
-            first = stream.readline()
+        with self.connect(node) as client:
+            first, final = client.post(payload)
             self.assertTrue(first.startswith(b"340"), first)
-            for line in payload.split(b"\r\n")[:-1]:
-                stream.write((b"." + line if line.startswith(b".") else line) + b"\r\n")
-            stream.write(b".\r\n")
-            return stream.readline().rstrip(b"\r\n").decode("ascii", "replace")
+            return final.rstrip(b"\r\n").decode("ascii", "replace")
 
     def served(self, node):
         """{Message-ID: octets} for every article a fresh view of fn.test serves."""
-        client, stream = self.connect(node)
         view = {}
-        with client:
-            stream.write(b"LISTGROUP fn.test\r\n")
-            if not stream.readline().startswith(b"211"):
+        with self.connect(node) as client:
+            if not client.command(b"LISTGROUP fn.test").startswith(b"211"):
                 return view
-            for number in [int(x) for x in self.body(stream).split()]:
-                stream.write(b"ARTICLE %d\r\n" % number)
-                if stream.readline().startswith(b"220"):
-                    octets = self.body(stream)
+            for number in [int(x) for x in client.block().split()]:
+                if client.command(b"ARTICLE %d" % number).startswith(b"220"):
+                    octets = client.block()
                     view[header(octets, b"Message-ID")] = octets
         return view
 
     def records(self, node, tag):
-        process = self.owner_start(node, tag)
+        self.owner_start(node, tag)
         view = self.served(node)
-        self.stop(process)
+        self.owner_stop(node)
         return view
 
     def test_corpus_carried_by_bp_through_dtn7(self):
@@ -461,7 +427,7 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
             self.fn("setup-init-" + store.name, "store", store, "init", "fn.test")
         a, b = self.owner_config("a", a_store), self.owner_config("b", b_store)
         for node, identity in ((a, A_ID), (b, B_ID)):
-            self.fn("setup-{}-path".format(node["side"]), "operator", node["config"],
+            self.fn("setup-{}-path".format(node.side), "operator", node.config,
                     "policy", "set", "path-identity", identity)
         keys = self.signing_keys()
         sources = {name: (CORPUS / (name + ".article")).read_bytes()
@@ -470,15 +436,15 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
         # --- the corpus at A: the served POST, the author enrolled at both ---
         facts = {}
         for node in (b, a):
-            owner = self.owner_start(node, "setup-{}-owner".format(node["side"]))
-            self.fn("setup-{}-enroll".format(node["side"]), "hybrid-enroll", node["control"],
+            self.owner_start(node, "setup-{}-owner".format(node.side))
+            self.fn("setup-{}-enroll".format(node.side), "hybrid-enroll", node.control,
                     "1", keys[0], keys[1], keys[3], image=SIGN_IMAGE)
             if node is a:
                 for name in ELEMENTS:
                     facts[name] = {"post": self.post(a, sources[name]),
                                    "source_sha256": sha(sources[name])}
                 view = self.served(a)
-            self.stop(owner)
+            self.owner_stop(node)
         subjects = {header(o, b"Subject"): m for m, o in view.items()}
         for name in ELEMENTS:
             subject = header(sources[name], b"Subject")
@@ -501,14 +467,14 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
                  ("receiver-author", B_ID, RECEIVER), []),
                 (b, "ingress-boundary", "rn.bp.gate.invalid", b_port,
                  ("sender-author", A_ID, SENDER), ["fn.test", "65536", "16"])):
-            side = node["side"]
+            side = node.side
             releases = ["releases-for", far[2]] if side == "a" else []
-            self.fn("setup-{}-boundary".format(side), "operator", node["config"],
+            self.fn("setup-{}-boundary".format(side), "operator", node.config,
                     "bp-boundary", "add", name, remote, "dtn://dtn7-r1/", port, "carries",
                     far[2], *releases, "contact", relay_port)
-            self.fn("setup-{}-route".format(side), "operator", node["config"], "bp-route",
+            self.fn("setup-{}-route".format(side), "operator", node.config, "bp-route",
                     "add", far[2] + "*", name)
-            self.fn("setup-{}-author".format(side), "operator", node["config"],
+            self.fn("setup-{}-author".format(side), "operator", node.config,
                     "bp-boundary", "add", far[0], far[1], far[2], free_port(), *scope)
         # --- the relay and B ---------------------------------------------------
         relay = Dtnd(base, "dtn7-r1", relay_port,
@@ -653,12 +619,12 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
             self.fn("p-init-" + store.name, "store", store, "init", "fn.test")
         a, b = self.owner_config("a", a_store), self.owner_config("b", b_store)
         for node, identity in ((a, A_ID), (b, B_ID)):
-            self.fn("p-{}-path".format(node["side"]), "operator", node["config"],
+            self.fn("p-{}-path".format(node.side), "operator", node.config,
                     "policy", "set", "path-identity", identity)
         # The DTN image omits the served surface and says so by name.
         guard = {}
         for verb in ("run", "post"):
-            words = ["operator", a["config"], verb]
+            words = ["operator", a.config, verb]
             if verb == "post":
                 words += ["--message-id", "<guard@example.invalid>", "--payload",
                           str(CORPUS / "legacy.article"), "--group", "fn.test"]
@@ -669,7 +635,7 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
             self.assertIn("needs the nntp-service surface, which this image omits",
                           " ".join(guard[verb][1]), guard[verb])
         # --- N articles at A, POSTed to its served owner ------------------------
-        owner = self.owner_start(a, "p-a-owner")
+        self.owner_start(a, "p-a-owner")
         ids = []
         for n in range(count):
             msgid = "<partition-{:03d}@sender.example.invalid>".format(n)
@@ -682,7 +648,7 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
             reply = self.post(a, payload)
             self.assertTrue(reply.startswith("240"), (msgid, reply))
             ids.append(msgid)
-        self.stop(owner)
+        self.owner_stop(a)
         self.fn("p-wf-init", "app-journal", "workflow-init", a_store, a_wf, SENDER,
                 RECEIVER, "native-policy", RECEIVER, 3600000, "origin-native", "wire-auth")
         for txid, msgid in enumerate(ids, start=1):
@@ -697,14 +663,14 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
                  ("receiver-author", B_ID, RECEIVER), []),
                 (b, "ingress-boundary", "rn.bp.gate.invalid", b_port,
                  ("sender-author", A_ID, SENDER), ["fn.test", "65536", "16"])):
-            side = node["side"]
+            side = node.side
             releases = ["releases-for", far[2]] if side == "a" else []
-            self.fn("p-{}-boundary".format(side), "operator", node["config"],
+            self.fn("p-{}-boundary".format(side), "operator", node.config,
                     "bp-boundary", "add", name, remote, "dtn://dtn7-r1/", port, "carries",
                     far[2], *releases, "contact", relay_port)
-            self.fn("p-{}-route".format(side), "operator", node["config"], "bp-route",
+            self.fn("p-{}-route".format(side), "operator", node.config, "bp-route",
                     "add", far[2] + "*", name)
-            self.fn("p-{}-author".format(side), "operator", node["config"],
+            self.fn("p-{}-author".format(side), "operator", node.config,
                     "bp-boundary", "add", far[0], far[1], far[2], free_port(), *scope)
         relay = Dtnd(base, "dtn7-r1", relay_port,
                      ["tcp://127.0.0.1:{}/receiver".format(self.hold.port),
