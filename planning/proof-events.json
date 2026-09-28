@@ -11052,6 +11052,10 @@
         {
           "kind": "theorem",
           "name": "fn-hp-x-at-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-append-refines"
         }
       ]
     },
