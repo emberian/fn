@@ -46,6 +46,17 @@
 (include-book "nntp-list-counts")
 (include-book "served-columns")   ; the overview column: OVER/HDR/XPAT without the bytes
 
+; Included rules these proofs try on every string, length and group-number
+; goal and never use (accumulated-persistence over the whole book,
+; 2026-09-28, lane d26-books).  None is cited below.
+(local (in-theory (disable fn-nntp-index-msgid-okp-stringp
+                           fn-cp-id-length-bound
+                           fn-nntp-find-group-number-of-fresh-member
+                           fn-digest-octetsp-implies-octet-listp
+                           fn-wire-next-loop-event-needs-input
+                           fn-wire-next-event-needs-input
+                           fn-ctl-authorize-execute-is-nonempty)))
+
 ;;; The finders.
 
 ;; The newest visible row carrying MSGID at view V, as an article; nil when

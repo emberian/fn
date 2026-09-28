@@ -402,13 +402,15 @@
       "class": "unexpected",
       "packet": "PKT-448 (a)"
     },
-    "fn-nh-forward-charge recursion N": {
+    "fn-nh-forward-charge-acc recursion N": {
       "class": "unexpected",
-      "packet": "PKT-324 (8)"
+      "packet": "PKT-324 (8)",
+      "note": "[batch AZ: health-truth-status: the forward-pin charge runs as an accumulator loop; moved from 'fn-nh-forward-charge recursion N', same traversal, same class]"
     },
-    "fn-nh-forward-count recursion N": {
+    "fn-nh-forward-count-acc recursion N": {
       "class": "unexpected",
-      "packet": "PKT-324 (8)"
+      "packet": "PKT-324 (8)",
+      "note": "[batch AZ: health-truth-status: the forward-pin count runs as an accumulator loop; moved from 'fn-nh-forward-count recursion N', same traversal, same class]"
     },
     "fn-nls-obligation-lines-rev recursion N": {
       "class": "unexpected",
@@ -574,9 +576,10 @@
       "packet": "PKT-324 (8)",
       "note": "audit-fixes (2026-09-27): fn-rcl-summary over the arena (the counts read handle bytes since the flip); the same walk under its arena name. [batch AY: the walk runs as a loop (fn-rcl-summary-loop); moved from 'fn-rcl-summary-in recursion N', same traversal, same class]"
     },
-    "fn-rcl-verdict-heldp recursion N": {
+    "fn-rcl-held-verdicts recursion N": {
       "class": "unexpected",
-      "packet": "PKT-324 (8)"
+      "packet": "PKT-324 (8)",
+      "note": "[batch AZ: health-truth-status (PRF-361): the counts ask the held test of the held verdicts only, one walk of the verdict list per render; moved from 'fn-rcl-verdict-heldp recursion N', same traversal, same class]"
     },
     "fn-replay-identity-loop recursion N": {
       "class": "cold",
