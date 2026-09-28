@@ -13229,15 +13229,7 @@
         "tests/acl2/memory-credits-tests.lisp",
         "planning/evidence/f8-reservation-2026-09-28.md"
       ],
-      "progress_note": "Lane f8-reservation (2026-09-28): REPL-admitted on persvati; teeth: a 256 MiB small-node ledger admitting 47 article credits and refusing the 48th by name, every transition's witness and refusal, the hypothesis-needed witness (an over-budget ledger stays unfunded) with its must-fail, and a mutant unchecked acquire. pending_subject: no host function calls the ledger yet.",
-      "events": [
-        "fn-mcr-transitions-keep-funded",
-        "fn-mcr-acquire-refuses-exactly-past-the-budget",
-        "fn-mcr-grow-within-the-reserve-is-admitted",
-        "fn-mcr-retain-moves-the-credit",
-        "fn-mcr-evict-returns-what-was-evicted",
-        "fn-mcr-overdraw-is-within-the-completion-reserve"
-      ]
+      "progress_note": "Lane f8-reservation (2026-09-28): books/memory-credits.lisp and its test book are certified (persvati certify-20260928T171227Z-391318, hbox certify-20260928T173440Z-1769341): fn-mcr-transitions-keep-funded, fn-mcr-acquire-refuses-exactly-past-the-budget, fn-mcr-grow-within-the-reserve-is-admitted, fn-mcr-retain-moves-the-credit, fn-mcr-evict-returns-what-was-evicted, fn-mcr-overdraw-is-within-the-completion-reserve. NO EVENTS ARE CITED: no host line calls the ledger yet (reach_check), so the running server exercises none of it. The events are cited when an allocation site calls it; the first is the article slots (lane zero-copy-commit, fn-oas-read-span, PRF-377), U + R one reserve a slot. Teeth: tests/acl2/memory-credits-tests.lisp."
     },
     {
       "id": "PRF-374",

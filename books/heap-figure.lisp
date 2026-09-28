@@ -298,6 +298,22 @@
                                             (fn-heap-machine-octets observations))))
   :hints (("Goal" :in-theory (disable fn-heap-storeless-decide fn-bs-profile-admittedp))))
 
+; An accepted decision's megabytes are the figure's, within the machine.
+(local
+ (defthm fn-heap-decide-heap-is-the-figure-within-the-machine
+   (implies (and (fn-bs-profile-admittedp profile)
+                 (equal (car (fn-heap-decide profile core nursery observations)) :heap))
+            (and (equal (fn-heap-decision-mb (fn-heap-decide profile core nursery observations))
+                        (fn-heap-mb-of (fn-heap-figure-octets profile core nursery)))
+                 (<= (* *fn-heap-mib* (fn-heap-decision-mb (fn-heap-decide profile core nursery
+                                                                           observations)))
+                     (fn-heap-machine-octets observations))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-heap-decide)
+                                   (fn-heap-figure-octets fn-heap-mb-of fn-heap-machine-octets
+                                    fn-bs-profile-admittedp fn-heap-profile-word
+                                    fn-heap-storeless-decide))))))
+
 ; KEYSTONE (PRF-198, re-derived by reservation-after-flip).  An accepted
 ; figure holds every store the profile admits: in the dynamic space the
 ; launcher passes (the decision's megabytes), any store of USED payload
@@ -320,16 +336,19 @@
                                           (fn-heap-nursery-trigger d nursery))
                       d)
                   (<= d (fn-heap-machine-octets observations)))))
-  :hints (("Goal" :in-theory (e/d () (fn-heap-profile-word fn-bs-profile-admittedp
-                                      fn-bs-profile-max-history-octets
-                                      fn-bs-profile-max-transactions
-                                      fn-heap-machine-octets fn-heap-storeless-decide))
-           :use ((:instance fn-heap-mb-of-covers
+  :hints (("Goal" :in-theory (e/d (fn-heap-figure-octets)
+                                  (fn-heap-decide fn-heap-store-need fn-heap-nursery-trigger
+                                   fn-heap-mb-of fn-heap-store-figure-octets fn-heap-machine-octets
+                                   fn-heap-decision-mb fn-bs-profile-admittedp
+                                   fn-bs-profile-max-history-octets fn-bs-profile-max-transactions))
+           :use (fn-heap-decide-heap-is-the-figure-within-the-machine
+                 (:instance fn-heap-mb-of-covers
                             (octets (fn-heap-figure-octets profile core nursery)))
                  (:instance fn-heap-store-figure-holds-every-store
                             (observed nil)
                             (d (* *fn-heap-mib*
-                                  (fn-heap-mb-of (fn-heap-figure-octets profile core nursery)))))))))
+                                  (fn-heap-decision-mb
+                                   (fn-heap-decide profile core nursery observations)))))))))
 
 ; The refusal is exact and names both numbers: an admitted profile is refused
 ; exactly when its figure exceeds the observed machine.
