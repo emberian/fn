@@ -72,8 +72,6 @@
 (defun fn-anchor-host-frame-limit ()
   (+ *fn-anchor-max-payload* *fn-frame-overhead-octets*))
 
-(defun fn-anchor-host-replace-outcome (phase) (fn-anchor-rp-outcome phase))
-
 ; Accepting one observation into the node's durable anchor state.
 (defun fn-anchor-host-accept (pinned latest-fields incarnation fields verdict
                               one-nonce)
