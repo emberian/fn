@@ -268,6 +268,14 @@
 (defthm fn-mca-resize-to-nothing-is-admitted
   (equal (car (fn-mcr-resize l id 0)) :ok))
 
+(defthm fn-mca-ok-or-of-resize-keeps-funded
+  (implies (fn-mcr-fundedp l) (fn-mcr-fundedp (fn-mca-ok-or (fn-mcr-resize l id n) l)))
+  :hints (("Goal" :in-theory (e/d (fn-mca-ok-or) (fn-mcr-resize fn-mcr-fundedp)))))
+
+(defthm fn-mca-ok-or-of-move-keeps-funded
+  (implies (fn-mcr-fundedp l) (fn-mcr-fundedp (fn-mca-ok-or (fn-mcr-move l a b x) l)))
+  :hints (("Goal" :in-theory (e/d (fn-mca-ok-or) (fn-mcr-move fn-mcr-fundedp)))))
+
 (in-theory (disable fn-mca-ok-or))
 
 ;; KEYSTONE.  The host's read never over-commits the ledger: from a funded
@@ -277,25 +285,9 @@
            (fn-mcr-fundedp
             (cdr (fn-mca-read-span credits oc views id i end s slots reserve
                                    fn-octets fn-arena fn-cat))))
-  :hints (("Goal" :in-theory (e/d () (fn-oas-read-span fn-oas-refused-read fn-mca-need
-                                      fn-mcr-resize fn-mcr-fundedp fn-mca-shut-read))
-           :use ((:instance fn-mcr-resize-and-move-keep-funded (l credits)
-                            (id (fn-mca-conn-key id))
-                            (n (fn-mca-need (fn-own-tls-result-owner
-                                             (fn-oas-read-span oc views id i end s slots
-                                                               fn-octets fn-arena fn-cat))
-                                            id reserve)))
-                 (:instance fn-mcr-resize-and-move-keep-funded (l credits)
-                            (id (fn-mca-conn-key id))
-                            (n (fn-mca-need (fn-own-tls-result-owner
-                                             (fn-oas-refused-read oc views id i end s
-                                                                  fn-octets fn-arena fn-cat))
-                                            id reserve)))
-                 (:instance fn-mcr-resize-and-move-keep-funded (l credits)
-                            (id (fn-mca-conn-key id))
-                            (n (fn-mca-need (fn-own-tls-result-owner
-                                             (fn-mca-shut-read oc id i end))
-                                            id reserve)))))))
+  :hints (("Goal" :in-theory (union-theories '(fn-mca-read-span fn-mcr-resize-and-move-keep-funded
+                                               car-cons cdr-cons)
+                                             (theory 'minimal-theory)))))
 
 ;; A read the credit holds is the read before this book exactly.
 (defthm fn-mca-read-span-within-the-credit-unfolds
@@ -422,25 +414,11 @@
                 (fn-mcr-fundedp (fn-mca-batch-done credits))
                 (fn-mcr-fundedp (fn-mca-settle credits))
                 (fn-mcr-fundedp (fn-mca-stop credits))))
-  :hints (("Goal" :in-theory (e/d () (fn-mcr-resize fn-mcr-move fn-mcr-fundedp))
-           :use ((:instance fn-mcr-resize-and-move-keep-funded (l credits)
-                            (from (fn-mca-conn-key id)) (to *fn-mca-open*)
-                            (x (min (nfix reserve) (fn-mca-held credits id))))
-                 (:instance fn-mcr-resize-and-move-keep-funded (l credits)
-                            (id *fn-mca-open*)
-                            (n (- (fn-mcr-credit-of *fn-mca-open* (fn-mcr-ops credits))
-                                  (min (fn-mcr-credit-of *fn-mca-open* (fn-mcr-ops credits))
-                                       (nfix reserve)))))
-                 (:instance fn-mcr-resize-and-move-keep-funded (l credits)
-                            (from *fn-mca-open*) (to *fn-mca-sealed*)
-                            (x (fn-mcr-credit-of *fn-mca-open* (fn-mcr-ops credits))))
-                 (:instance fn-mcr-resize-and-move-keep-funded (l credits)
-                            (id *fn-mca-sealed*) (n 0))
-                 (:instance fn-mcr-resize-and-move-keep-funded (l credits)
-                            (id *fn-mca-open*) (n 0))
-                 (:instance fn-mcr-resize-and-move-keep-funded
-                            (l (fn-mca-batch-done credits))
-                            (id *fn-mca-open*) (n 0))))))
+  :hints (("Goal" :in-theory (union-theories '(fn-mca-take fn-mca-untake fn-mca-seal fn-mca-batch-done
+                                               fn-mca-settle fn-mca-stop
+                                               fn-mca-ok-or-of-resize-keeps-funded
+                                               fn-mca-ok-or-of-move-keeps-funded)
+                                             (theory 'minimal-theory)))))
 
 (defthm fn-mca-take-and-seal-keep-the-total
   (implies (fn-mcr-opsp (fn-mcr-ops credits))
@@ -516,6 +494,17 @@
    (natp (fn-heap-articles-octets profile))
    :rule-classes :type-prescription))
 
+;; The ledger's arithmetic, over opaque parts.
+(local
+ (defthm fn-mca-initial-shape
+   (implies (and (natp d) (natp st) (natp o) (natp i) (natp a) (natp fig)
+                 (<= (+ d st o i a) fig))
+            (let ((l (fn-mcr-make fig (- (+ d st o i a) (+ a o)) 0 o (- fig (+ d st o i a)) 0 nil)))
+              (and (fn-mcr-fundedp l) (equal (- (fn-mcr-budget l) (fn-mcr-total l)) a)
+                   (equal (fn-mcr-budget l) fig) (equal (fn-mcr-completion l) o))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-mcr-fundedp fn-mcr-total) (fn-mcr-make))))))
+
 ;; KEYSTONE.  The launcher's reservation is the budget: the ledger a run
 ;; starts from is funded, and what it leaves free for operations is exactly
 ;; the articles' pool the figure holds (so it admits fn-heap-article-slots
@@ -527,17 +516,21 @@
          (equal (- (fn-mcr-budget l) (fn-mcr-total l)) (fn-heap-articles-octets profile))
          (equal (fn-mcr-budget l) (fn-heap-figure-octets profile core nursery))
          (equal (fn-mcr-completion l) (fn-mca-open-octets profile))))
-  :hints (("Goal" :in-theory (e/d (fn-mca-initial fn-mcr-fundedp fn-mcr-total fn-mcr-opsp
-                                   fn-heap-figure-octets fn-heap-store-figure-octets)
-                                  (fn-heap-store-base-octets fn-heap-with-nursery
-                                   fn-heap-core-dynamic fn-heap-store-state-bound
-                                   fn-mca-open-octets fn-heap-store-inflight-octets
-                                   fn-heap-articles-octets fn-mcr-make fn-mcr-budget fn-mcr-base
-                                   fn-mcr-cache fn-mcr-completion fn-mcr-runtime fn-mcr-drawn
-                                   fn-mcr-ops))
-           :use ((:instance fn-heap-with-nursery-covers-base
+  :hints (("Goal" :in-theory (union-theories '(fn-mca-initial fn-heap-figure-octets
+                                               fn-heap-store-figure-octets fn-mca-base-splits
+                                               nfix natp-compound-recognizer)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-mca-initial-shape
+                            (d (fn-heap-core-dynamic core)) (st (fn-heap-store-state-bound profile))
+                            (o (fn-mca-open-octets profile)) (i (fn-heap-store-inflight-octets profile))
+                            (a (fn-heap-articles-octets profile))
+                            (fig (fn-heap-with-nursery (fn-heap-store-base-octets profile core nil)
+                                                       nursery)))
+                 (:instance fn-mca-parts-natp)
+                 (:instance fn-heap-with-nursery-covers-base
                             (base (fn-heap-store-base-octets profile core nil)))
-                 (:instance fn-mca-parts-natp)))))
+                 (:instance fn-heap-with-nursery-natp
+                            (base (fn-heap-store-base-octets profile core nil)))))))
 
 (in-theory (disable fn-mca-read-span fn-mca-shut-read fn-mca-need fn-mca-held fn-mca-close
                     fn-mca-take fn-mca-untake fn-mca-seal fn-mca-batch-done fn-mca-settle

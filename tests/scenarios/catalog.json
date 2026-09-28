@@ -5614,6 +5614,32 @@
         "native": true,
         "record": "planning/evidence/zero-copy-commit-2026-09-28.md"
       }
+    },
+    {
+      "id": "SCN-194",
+      "title": "Memory credits follow the buffer: the batch in flight keeps its article's credit after its poster hangs up, until its barrier returns; many large posters and readers at once never fault the node",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "HST-024"
+      ],
+      "steps": [
+        "Developer image, FN_NATIVE_OWNER_TEST_BARRIER_MS=3000; A = 4 MiB (one credit): the SCN-193 init; `run`; connection A: POST, the whole 4 MiB article, then A hangs up; within the barrier connection B: POST; B asks again until offered, then posts.",
+        "A = 600,000 (three credits): twelve connections post a 600,000-octet article each (asking again while a 440 names the memory) while four readers loop GROUP, LISTGROUP, STAT and HEAD."
+      ],
+      "expected": [
+        "B is answered `440 posting not permitted now; the articles in flight fill the memory, try again later` while A's batch is in flight (before lane credits the slots admitted it: the owner's queue, in-flight field and A's connection were empty); after the barrier B is offered 340 and answered 240; the node never exits and stops cleanly with 2 transactions (A's article durable although A hung up).",
+        "Every POST is offered 340 or refused the memory 440 by name, every offered article is answered 240, every reader's answer is 2xx or 4xx, the node never exits (no 4) and stops cleanly with 12 transactions."
+      ],
+      "implementation": {
+        "test": "tests.test_native_credits",
+        "cases": [
+          "CreditsTests.test_the_batch_in_flight_keeps_its_credit_past_the_close",
+          "CreditsTests.test_many_large_posters_and_readers_never_fault_the_node"
+        ],
+        "native": true,
+        "record": "planning/evidence/credits-2026-09-28.md"
+      }
     }
   ]
 }

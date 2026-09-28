@@ -12627,6 +12627,63 @@
       ]
     },
     {
+      "id": "PRF-380",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mcr-transitions-keep-funded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mcr-resize-and-move-keep-funded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mcr-resize-refuses-exactly-past-the-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mcr-total-of-move"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-read-span-keeps-funded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-read-span-covers-the-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-read-span-within-the-credit-unfolds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-read-span-never-blocks-what-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-close-keeps-what-the-commit-owns"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-commit-steps-keep-funded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-take-and-seal-keep-the-total"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-seal-and-batch-done-move-the-batch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mca-initial-funds-exactly-the-articles"
+        }
+      ]
+    },
+    {
       "id": "PRF-374",
       "events": [
         {

@@ -44,9 +44,11 @@
 ; the-budget, fn-mcr-grow-within-the-reserve-is-admitted and the
 ; conservation theorems (grow, overdraw: the total unchanged; retain: the
 ; retained octets move, the rest returns) they are the credit model's
-; contract; the host's allocation sites are its subjects (the article slots
-; of books/owner-article-slots.lisp are its first instance: U + R = one
-; reserve a slot).
+; contract.  Its host subject is books/owner-credits.lisp (lane credits):
+; the served read, the committer's take and seal, the batch's COMPLETE and
+; the close move the article credits of one ledger a run by fn-mcr-resize
+; and fn-mcr-move (below), whose keystone is
+; fn-mcr-resize-and-move-keep-funded.
 
 (in-package "ACL2")
 
@@ -434,6 +436,7 @@
                 (<= (nfix x) (fn-mcr-credit-of from (fn-mcr-ops l))))
            (equal (car (fn-mcr-move l from to x)) :ok)))
 
+; L1 keeps L's budget, completion reserve and what is drawn of it.
 (defun fn-mcr-same-funding (l l1)
   (declare (xargs :guard t))
   (and (equal (fn-mcr-budget l1) (fn-mcr-budget l))
@@ -451,6 +454,8 @@
                      (implies (fn-mcr-opsp (fn-mcr-ops l))
                               (fn-mcr-opsp (fn-mcr-ops (cadr (fn-mcr-move l from to x)))))))))
 
+;; KEYSTONE (lane credits).  From a funded ledger every admitted resize
+;; and move leaves it funded.
 (defthm fn-mcr-resize-and-move-keep-funded
   (implies (fn-mcr-fundedp l)
            (and (implies (equal (car (fn-mcr-resize l id n)) :ok)
