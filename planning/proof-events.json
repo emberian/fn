@@ -12464,6 +12464,14 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-osd-drain-stops-by-the-deadline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-drain-next-step-unfolds"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-osd-deadline-is-past-the-slow-deadline"
         }
       ]
@@ -12564,6 +12572,63 @@
           "kind": "theorem",
           "name": "fn-sxd-import-verdict-is-incomplete-or-complete",
           "note": "KEYSTONE. Host: host/native/io.lisp fnn-import-pass asks fn-sxd-archive-verdict before reading any entry."
+        }
+      ]
+    },
+    {
+      "id": "PRF-372",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-at-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-read-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-get-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-get-fuel-enough"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-serve-keeps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-fill-keeps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-flush-keeps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-append-appends"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-load-is-events"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-count-is-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrc-at-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrc-flush-one-rel"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrs-loop-placement"
         }
       ]
     }

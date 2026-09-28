@@ -809,3 +809,12 @@
                     (:d fn-cp-register) (:d fn-cp-ack)
                     (:d fn-cp-rebase) (:d fn-cp-unregister)
                     (:d fn-cp-apply) (:d fn-cp-scope-matchp)))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:linear fn-cp-id-length-bound)
+                    (:rewrite fn-cp-find-consumer-idp)
+                    (:rewrite fn-cp-idp-true-listp)))

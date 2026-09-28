@@ -810,6 +810,30 @@ above, each verified, so the commit writes exactly the new image's pages.
 Not yet the owner's path: the region growth (FNADTSN2), the host wiring and
 the snapshot commit are the next milestones.
 
+The owner's records as an abstract stobj (PRF-372, lane arena-store-6;
+`books/history-records.lisp`; coordinator decision 2026-09-28: the owner's
+records become the logical value of an abstract stobj whose executable is
+the history image, not a twin per consumer). `fn-hrecs` holds a history H
+whose executable is H's first N events as the FNADTSN2 image on a nested page
+store, then an in-memory suffix array of the events appended since the
+image's last append; H itself is a ghost (the logic carries it, the
+executable never builds it). The meaning is `fn-hrecs-faithful`: H is the
+image's events then the suffix's, and every verified page holds H's placed
+image; every export keeps it. The exports are pure and a read of a row
+whose page is not verified answers (:need-page P PHYS). The one retry loop
+(`fn-hrecs-read`) serves each need by one fill (the host's byte primitive
+`fn-pgs-fill-realize` at the address the table names for P, then the page
+store's digest check) and asks again. Proved: an :ok answer is record SEQ of
+H (or (:refused :seq) past its end); the loop keeps H, its faithfulness and
+the page file's relation (`fn-hrecs-disk-faithful`: the page file holds the
+image's page for every page not yet verified) and never stops for fuel (each
+fill verifies an open page); the flush (oldest suffix event into the image,
+relocating a region that outgrows its pages) keeps H whatever it answers.
+A-PGS-HOST-IO enters at the fill and nowhere else. Not yet: the Message-ID
+lookup and the store's readers moved onto it (the owner's store still holds
+the record list), the open's adopt of a committed image, the flush's retry
+over pages not yet verified, the commit.
+
 ## History classes and lifetimes
 
 STO-010: every class of durable state the store holds has a stated lifetime,

@@ -434,6 +434,7 @@
 ; rows), and fn-orr-read-span -- the host's own call, not the twin -- runs
 ; over it on live stobjs.
 (include-book "../../books/served-catalog-owner")
+
 (defun g12b-cat-rows (i n fn-cat)
   (declare (xargs :mode :program :stobjs fn-cat))
   (if (and (natp i) (natp n) (< i n))

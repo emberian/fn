@@ -2,6 +2,7 @@
 ; Recovery may scan history; a served path must carry this projection instead.
 (in-package "ACL2")
 (include-book "store-events")
+
 ;
 ; A retained accepted statement (fn-hstxa-p, three wide) is never a topic
 ; event (eight or nine wide, or a six-wide local install): the prefix step's

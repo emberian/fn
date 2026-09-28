@@ -18,6 +18,10 @@
 (include-book "byte-store-programs")
 (local (include-book "byte-store-invariants"))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-apply-op))))
+
 (defconst *fn-bs-state-checkpoint-name* "store-checkpoint.fnsc")
 
 (defun fn-bs-scp-program (stage octets)

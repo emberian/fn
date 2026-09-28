@@ -55,6 +55,9 @@
 (include-book "payload-commit-extent")
 (include-book "records-seam")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-arn-extent-guardp))))
 
 ; -----------------------------------------------------------------------------
 ; 1. u32 fields and the frame.

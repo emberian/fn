@@ -1181,3 +1181,13 @@
                               (theory 'minimal-theory)))))
 
 (in-theory (disable fn-scr-own-read-span fn-scr-ocfg-read-span))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-scr-catalogp)
+                    (:definition fn-scr-conn-okp)
+                    (:definition fn-scr-fields-catalogp)
+                    (:rewrite fn-scr-feed-span-is-scar-feed-span)))

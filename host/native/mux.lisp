@@ -1005,10 +1005,18 @@ stop shuts it down whichever thread holds it."
     loop))
 
 (defun fnn-mux-serve-once (service socket)
-  "`once': serve this one client on a loop and return when it is done."
+  "`once': serve this one client on a loop and return when it is done, or at
+a SIGTERM or the fence.  Since PKT-875 the loops no longer end their
+connections at the SIGTERM (the stop's drain needs them to deliver), so a
+client that holds its descriptor open mid-command never signals DONE: this
+wait returns at the SIGTERM as the accept loops do (fnn-owner-accept), and
+fnn-owner-run's drain (books/owner-stop-drain.lisp) decides, with the client
+still on its loop, what it is owed before the fence closes it."
   (let ((done (sb-thread:make-semaphore :name "fn owner once")))
     (fnn-mux-adopt service socket nil done)
-    (loop until (sb-thread:wait-on-semaphore done :timeout 1))))
+    (loop until (or (sb-thread:wait-on-semaphore done :timeout 1)
+                    *fnn-sigterm-requested*
+                    (fnn-owner-service-stopping service)))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The connection budget (books/connection-budget.lisp): observed here,

@@ -769,3 +769,11 @@
     fn-sf-but-last-is-a-prefix fn-sf-but-last-preserves-record-list
     fn-sf-stable-records-is-a-prefix))
 (in-theory (disable fn-store-files-invariants-vocabulary))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-sf-admissible-image-facts)
+                    (:rewrite fn-sf-recovery-admissible-image-facts)))

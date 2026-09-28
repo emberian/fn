@@ -2678,7 +2678,8 @@
         "books/tcpcl-host-drive.lisp",
         "planning/evidence/manifests/certify-20260923T191855Z-4158317.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json",
+        "planning/evidence/manifests/certify-20260928T124849Z-2149901.json"
       ],
       "progress_note": "ACL2 8.7 certified the exact host-drive event order, ordered held-list projection and conditional delivery plan. Reachable witnesses cover coalesced prior-transfer partial ACK/refusal, two completed bundles in one read, and missing-held/path-type counterexamples. Native source executes the selected message list; combined-image A2 callback runtime remains pending.",
       "events": [
@@ -8282,7 +8283,8 @@
         "planning/evidence/peers-by-name-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T013235Z-1440473.json",
         "planning/evidence/manifests/certify-20260927T012133Z-4014708.json",
-        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json"
+        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json",
+        "planning/evidence/manifests/certify-20260928T124849Z-2149901.json"
       ],
       "progress_note": "Lane peers-by-name 2026-09-27 (PKT-613): books/peer-host REPL-admitted on persvati (session pbn); the changed chain (16 books: peer-config, peer-host, peer-pull, peer-pull-session, native-admin-peer, peer-invite, owner-feed, feed-connection(-invariants), native-admin(-peer-budget) and the test books) certified on persvati at 2 jobs, max 8.2 s (manifest certify-20260927T013235Z-1440473); hbox certified the image's 116 affected books at 8 jobs (certify-20260927T012133Z-4014708). Native: tests.test_native_peer_by_name 4 of 4 OK on the production and the developer image (native-pbn2).",
       "events": [
@@ -9448,7 +9450,8 @@
         "planning/evidence/codec-c1-2026-09-27.md",
         "planning/evidence/octets-bulk-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T084350Z-1875336.json",
-        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json",
+        "planning/evidence/manifests/certify-20260928T124849Z-2149901.json"
       ],
       "progress_note": "Lane codec-c1 (Opus 5.5, 2026-09-27): a prototype book with no host wiring. Teeth: tests/acl2/payload-lz-tests.lisp (a held-out 1993 Usenet article from usenet-20news-19997 and its liblz4-HC 9 blocks with and without a dictionary seal as :lz and denote the article; a corrupted block and a block of other octets seal as :raw and still denote it; literal blocks of 5 and 300 octets; the refusals :truncated, :offset (0 and past dict ++ out), :overflow and :short; the article's block decoded in quanta of seven steps reaches the same octets as one budget; hypothesis removal by must-fail and a ground counterexample for the octet-list and true-list hypotheses). Measured on hbox (i9-12900, one P-core) over the 9,733 held-out articles: see the record.",
       "pending_subject": "No host line calls fn-lz-* yet: lane C2 (arena-compressed) makes the compressed arena attachment whose seal is fn-lz-seal-form and whose reader is fn-lz-decode-buf, after the records flip lands.",
@@ -11947,7 +11950,8 @@
         "books/octet-text.lisp",
         "tests/acl2/octet-text-tests.lisp",
         "planning/evidence/manifests/certify-20260928T025149Z-846867.json",
-        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json",
+        "planning/evidence/manifests/certify-20260928T124849Z-2149901.json"
       ],
       "pending_subject": "No host function calls these codecs yet (lane shared-books built them as the shared library the wire books re-derived); each wire book that adopts one names its host caller then.",
       "progress_note": "Lane shared-books (Opus 5.5, 2026-09-28), id assigned at the batch AY merge. Certified on persvati: certify-20260928T025149Z-846867 (under 10 s). Teeth: tests/acl2/octet-text-tests.lisp with the RFC 4648 section 10 vectors. Proof-style findings in docs/proof-style.md.",
@@ -12264,7 +12268,8 @@
         "planning/evidence/manifests/certify-20260928T040154Z-3932533.json",
         "planning/evidence/manifests/certify-20260928T042412Z-1705234.json",
         "planning/evidence/manifests/certify-20260928T050040Z-4079099.json",
-        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json",
+        "planning/evidence/manifests/certify-20260928T124849Z-2149901.json"
       ],
       "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
@@ -12381,7 +12386,8 @@
         "planning/evidence/web-native-2-2026-09-28.md",
         "planning/evidence/manifests/certify-20260928T043449Z-1806205.json",
         "planning/evidence/manifests/certify-20260928T050040Z-4079099.json",
-        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json",
+        "planning/evidence/manifests/certify-20260928T124849Z-2149901.json"
       ],
       "progress_note": "Lane web-native-2 (Opus 5.5, 2026-09-28): certified on persvati with tests/acl2/web-render-tests (certify-20260928T043449Z-1806205, 9 passed at 2 jobs; web-render 4.2 s).",
       "events": [
@@ -12805,7 +12811,9 @@
         "planning/evidence/manifests/certify-20260928T081023Z-3803492.json",
         "planning/evidence/manifests/certify-20260928T090547Z-104021.json",
         "planning/evidence/manifests/certify-20260928T110153Z-855887.json",
-        "planning/evidence/manifests/certify-20260928T110205Z-1165109.json"
+        "planning/evidence/manifests/certify-20260928T110205Z-1165109.json",
+        "planning/evidence/manifests/certify-20260928T124849Z-2149901.json",
+        "planning/evidence/manifests/certify-20260928T135457Z-1158866.json"
       ],
       "progress_note": "Lane scale-latency 2026-09-28: REPL-admitted on persvati (catalog, served-catalog-view, served-catalog and the three test books, dependencies from source in encapsulates). Measured cause: syn100k fixture, 8 posters + 8 readers GROUP every 20 reads: fn-scat-range-keep (the pass) 70% of the owner's CPU samples, POST p50 404 ms, GROUP p90 510 ms. Certified on persvati: the affected roots of catalog, served-catalog-view, served-catalog and the two test books (61 roots) certify-20260928T080217Z-3731531, and after the keystone hints were tightened certify-20260928T081655Z-3859883 (35 recertified); at two jobs certify-20260928T081023Z-3803492 (catalog 13.5 s, served-catalog 17.0 s, served-catalog-view 2.6 s; catalog and served-catalog were already past 10 s before this lane in every archived measurement, the fastest 11.2 s and 10.9 s at 12 jobs). At the merge of origin/dev 78dbdea1b (d26-books' local disables): the 61 affected roots passed on persvati, certify-20260928T090547Z-104021. Measured on hbox (production images of 140b09bec and of this lane, both at a 64 MB control stack since the base image's GROUP and live status exhaust the deployed 1 MB stack past ~12k articles): tools/fitness.py soak, 12 min, 8 TLS+AUTHINFO posters (cancels, supersedes, cross-posts) + 8 readers, syn100000: POST p50 733 -> 188 ms, POST p99 (worst 3-min sample) 22.6 -> 4.3 s, GROUP p50 520 -> 51 ms, POSTs accepted 4,076 -> 7,897; at 5k and 10k the two images are within noise (POST p50 180/167 vs 172/140 ms). Plain-TCP driver, 120 s, GROUP every 20 reads, syn100000: POST p50 338 -> 56 ms, GROUP p90 339 -> 21 ms, ARTICLE p99 362 -> 68 ms. Not changed here: the automatic checkpoint publication (O(N) per K/2 records, 41-174 s and about 14 GB consed at 100k), live status (health-truth-status), the stack depth (serve-depth). After the merge of serve-depth (PKT-877) the view book's walks and the bucket insert execute as loop twins (depth_check); the 61 affected roots certified split across hbox (certify-20260928T110153Z-855887, 47 passed) and persvati (certify-20260928T110205Z-1165109, 50 passed).",
       "events": [
@@ -12936,7 +12944,7 @@
     {
       "id": "PRF-357",
       "title": "A graceful stop drains the POSTs in flight: the fence comes only when every member was told its reply (240 after a fenced barrier) or, past the drain deadline H, told uncertain by the stall's rule, and the drain ends within H plus the send grace",
-      "statement": "Subject: fn-osd-drain-step (books/owner-stop-drain.lisp), which host/native/owner.lisp fnn-owner-drain-service calls once per observation after a SIGTERM (fnn-owner-run: the drain, then fnn-owner-stop-service), with S0 and S the gate's scheduler values after a clock event (fnn-owner-sched-snapshot) at the drain's start and at the observation, LIMITS the configuration's (D H C) (fn-owner-barrier-limits), AWAITING the connections registered for a completion plus the queued submissions, UNSENT the connections holding a completion's reply not yet written (host/native/mux.lisp fnn-mux-unsent), RELEASED whether its :release was acted on. KEYSTONE fn-osd-stops-only-when-nothing-is-owed: :stop only when fn-osd-quiet-p (no member awaits, no reply unsent, and no batch in flight unless released by this drain or by the stall, fn-otm-disk-stalled) or released and H + 10,000 ms have passed since S0. KEYSTONE fn-osd-releases-only-at-the-deadline: :release only unreleased, at or past H, and not quiet; the committer then answers every member of the batches in flight by fn-otm-stall-releases (fn-otm-stall-tells-no-member-its-outcome: uncertain, never accepted or refused) and sheds the queued POSTs (refused try-later, nothing stored). KEYSTONE fn-osd-drain-ends-by-the-deadline: unreleased, at or past H and not quiet is :release; released and past H + grace is :stop. fn-osd-deadline-is-past-the-slow-deadline: H is at least D. With fn-ocs-members-told-only-after-the-barrier (PRF-267) a member is told 240 only in the COMPLETE after its fenced barrier, which the drain lets run before the fence. Not covered: the fence (fnn-owner-stop-service, a :control quantum) waits for a barrier that does not return; a command read but not yet stepped at the SIGTERM is not answered (nothing stored).",
+      "statement": "Subject: fn-osd-drain-next (books/owner-stop-drain.lisp: the step fn-osd-drain-step, fn-osd-drain-next-step-unfolds, and whether the release was made), which host/native/owner.lisp fnn-owner-drain-service calls once per observation after a SIGTERM (fnn-owner-run: the drain, then fnn-owner-stop-service), with S0 and S the gate's scheduler values after a clock event (fnn-owner-sched-snapshot) at the drain's start and at the observation, LIMITS the configuration's (D H C) (fn-owner-barrier-limits), AWAITING the connections registered for a completion plus the queued submissions, UNSENT the connections holding a completion's reply not yet written (host/native/mux.lisp fnn-mux-unsent), RELEASED whether its :release was acted on. KEYSTONE fn-osd-stops-only-when-nothing-is-owed: :stop only when fn-osd-quiet-p (no member awaits, no reply unsent, and no batch in flight unless released by this drain or by the stall, fn-otm-disk-stalled) or released and H + 10,000 ms have passed since S0. KEYSTONE fn-osd-releases-only-at-the-deadline: :release only unreleased, at or past H, and not quiet; the committer then answers every member of the batches in flight by fn-otm-stall-releases (fn-otm-stall-tells-no-member-its-outcome: uncertain, never accepted or refused) and sheds the queued POSTs (refused try-later, nothing stored). KEYSTONE fn-osd-drain-ends-by-the-deadline: unreleased, at or past H and not quiet is :release; released and past H + grace is :stop. KEYSTONE fn-osd-drain-stops-by-the-deadline (lane sigterm-hang): the host's composition of fn-osd-drain-next over two consecutive observations S1, S2 (the second call takes the RELEASED the first returned) at or past H + grace since S0, with ANY AWAITING and UNSENT at each (any number of connections mid-article, mid-commit or holding an unread reply) and any RELEASED carried in: the first answers :stop or the second does; with the host's 100 ms cadence on a clock that never goes back, the stop comes within H + grace + one poll. A connection mid-article is in neither count and never holds the drain; the fence closes it (nothing stored). The host reaches the drain at the SIGTERM in every accept mode (host/native/mux.lisp fnn-mux-serve-once returns at the SIGTERM; batch AZ's once-mode hang). fn-osd-deadline-is-past-the-slow-deadline: H is at least D. With fn-ocs-members-told-only-after-the-barrier (PRF-267) a member is told 240 only in the COMPLETE after its fenced barrier, which the drain lets run before the fence. Not covered: the fence (fnn-owner-stop-service, a :control quantum) waits for a barrier that does not return; a command read but not yet stepped at the SIGTERM is not answered (nothing stored).",
       "milestone": "M5",
       "requirements": [
         "HST-026"
@@ -12954,7 +12962,7 @@
         "host/native/mux.lisp",
         "tests/test_native_slow_disk.py"
       ],
-      "progress_note": "Lane health-truth-stop (Opus 5.5, 2026-09-28; PKT-875 from planning/evidence/fitness-2026-09-28.md f2: 4 of 4 in-flight POSTs closed without a reply at one SIGTERM though committed). REPL-admitted on persvati (book 0.07 s, 16,639 steps; test book with every must-fail). Record planning/evidence/health-truth-stop-2026-09-28.md.",
+      "progress_note": "Lane health-truth-stop (Opus 5.5, 2026-09-28; PKT-875 from planning/evidence/fitness-2026-09-28.md f2: 4 of 4 in-flight POSTs closed without a reply at one SIGTERM though committed). REPL-admitted on persvati (book 0.07 s, 16,639 steps; test book with every must-fail). Record planning/evidence/health-truth-stop-2026-09-28.md. Lane sigterm-hang (Opus 5.5, 2026-09-28): fn-osd-drain-next (host call) and KEYSTONE fn-osd-drain-stops-by-the-deadline (REPL-admitted on persvati, 699 steps; test book 69 forms with the new teeth and two must-fails); fnn-mux-serve-once returns at the SIGTERM. Record planning/evidence/sigterm-hang-2026-09-28.md.",
       "events": [
         "fn-osd-stops-only-when-nothing-is-owed",
         "fn-osd-releases-only-at-the-deadline",
@@ -13100,6 +13108,44 @@
       "events": [
         "fn-sxd-crash-is-incomplete-or-complete",
         "fn-sxd-import-verdict-is-incomplete-or-complete"
+      ]
+    },
+    {
+      "id": "PRF-372",
+      "title": "The owner's records as an abstract stobj over the history image: the read with its one need-page retry loop answers the history's record, keeps the history, its faithfulness and the page file's relation, and never stops for fuel; append, load and the flush into the image keep the history faithful",
+      "statement": "books/history-records.lisp. The abstract stobj fn-hrecs (defabsstobj: value (H . C), H the history as a ghost, C the concrete: the FNADTSN2 image of H's first N events on a nested page store then a suffix array; correspondence C itself). fn-hrecs-faithful ST: (fn-hrs-rel H C), H the image's events then the suffix's and every verified page of the nested store holding H's placed image (fn-hp-vhold of fn-hp-piw). KEYSTONES: fn-hrecs-at-is-nth ((fn-hrecs-p ST), faithful, SEQ natural: an :ok answer of (fn-hrecs-at SEQ ST) is (:ok (nth SEQ H)) below (len H) and (:refused :seq) past it; any other verdict is a need-verdict and SEQ < (len H)); fn-hrecs-read-is-nth (ST faithful and (fn-hrecs-disk-faithful FILE ST): the page file FILE holds, at the address the table names, the image's page for every page not verified; then (fn-hrecs-read SEQ FILE ST) keeps fn-hrecs-p, H, faithfulness and the page file's relation, answers :ok only with record SEQ as above, and never (:refused :fuel)); fn-hrecs-get-is-nth and fn-hrecs-get-fuel-enough (the loop with any fuel; fuel at least the number of pages not verified suffices); fn-hrecs-serve-keeps (one fill from fn-pgs-fill-realize, A-PGS-HOST-IO, keeps all three, whatever it answers); fn-hrecs-fill-keeps (a fill that writes the image's page when the page is not verified keeps H faithful, whatever it answers); fn-hrecs-flush-keeps (the oldest suffix event into the image, fn-hp-x-append-step, the empty image first: keeps H faithful, whatever it answers; over fn-hrs-loop-placement: a step's answer other than :ok leaves a valid placement); fn-hrecs-append-appends, fn-hrecs-load-is-events, fn-hrecs-count-is-len. Scope: not yet host-called; the store's readers still read the record list (fn-sf-records); the open's adopt of a committed image, the flush's retry over pages not verified and the commit are not stated.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-035"
+      ],
+      "depends_on": [
+        "PRF-342",
+        "PRF-365"
+      ],
+      "assumptions": [
+        "A-PGS-HOST-IO"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-records.lisp",
+        "tests/acl2/history-records-tests.lisp",
+        "planning/evidence/arena-store-6-2026-09-28.md"
+      ],
+      "progress_note": "Lane arena-store-6 milestone (a), 2026-09-28: history-columns' stage 3 as the coordinator decided it (one abstract stobj, not a twin per consumer). Not yet host-called: milestone (b) migrates the served readers of fn-sf-records onto fn-hrecs-read, (c) wires the served open (adopt, no E decode) and the snapshot (commit of the dirty pages). Teeth: ground witnesses for fn-hrc-at-is-nth (positive, and removal of the relation, the shape and (natp seq)), the fill's page-store step (positive; removal of the words hypothesis: a table matching other words is accepted and faithfulness fails), and live executions of load/flush/read (40 events, relocations) and of the need path (need, fill, read; a wrong fill refused :page-damaged and the page asked again). The stobj-level keystones over updating exports have no ground witness: ACL2 does not evaluate stobj-let updaters on ground lists in a proof.",
+      "events": [
+        "fn-hrecs-at-is-nth",
+        "fn-hrecs-read-is-nth",
+        "fn-hrecs-get-is-nth",
+        "fn-hrecs-get-fuel-enough",
+        "fn-hrecs-serve-keeps",
+        "fn-hrecs-fill-keeps",
+        "fn-hrecs-flush-keeps",
+        "fn-hrecs-append-appends",
+        "fn-hrecs-load-is-events",
+        "fn-hrecs-count-is-len",
+        "fn-hrc-at-is-nth",
+        "fn-hrc-flush-one-rel",
+        "fn-hrs-loop-placement"
       ]
     }
   ]

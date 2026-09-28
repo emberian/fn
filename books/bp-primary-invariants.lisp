@@ -17,6 +17,14 @@
 (include-book "bp-primary")
 
 (local (include-book "arithmetic/top" :dir :system))
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bpp-block-value)
+                          (:definition fn-bpp-crc-octets)
+                          (:definition fn-bpp-name-delim-at)
+                          (:definition fn-bpp-vcharp))))
+
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19),
 ; and this book keeps them withdrawn: each theorem that reads a CBOR result
 ; opens `fn-cbor-record-vocabulary` in its own hint, and the CRC field's octet
@@ -621,3 +629,10 @@
 ; (planning/deputies/bp.md, proposal item 4).
 
 (in-theory (disable fn-bpp-identity-vocabulary))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-bpp-vchar-listp-implies-octet-listp)))

@@ -7,6 +7,7 @@
 ; fn-bpnp-attempt-apply, the function ordered FNBS replay also calls.
 (in-package "ACL2")
 (include-book "bp-node-progress")
+
 (set-verify-guards-eagerness 0)
 
 ; Every row of ORDERED other than H is not a forward candidate.

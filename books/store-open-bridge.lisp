@@ -485,3 +485,11 @@
                             (frontier (fn-bs-scan-frontier (fn-bs-scan-store image)))
                             (events (fn-bs-scanned-rows (fn-sn-files s) image arena))))
            :in-theory nil)))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-sob-identity-typedp)
+                    (:rewrite fn-sob-cpo-opens-on-configured-image)))

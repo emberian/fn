@@ -1573,3 +1573,15 @@
     (:d fn-bpp-result-block)))
 
 (in-theory (disable fn-bpp-projection-vocabulary))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-bpp-block-value)
+                    (:definition fn-bpp-crc-octets)
+                    (:definition fn-bpp-name-delim-at)
+                    (:definition fn-bpp-vcharp)
+                    (:rewrite fn-bpp-dtn-sspp-has-a-name-delimiter)
+                    (:rewrite fn-bpp-vchar-listp-implies-true-listp)))

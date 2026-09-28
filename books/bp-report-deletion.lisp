@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "bp-app-handoff-time")
 (include-book "bp-status-report")
+
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpn-report-delete-record (epoch op arrival identity reason)
@@ -250,3 +251,10 @@
                                fn-nntp-response-text-true-listp
                                fn-nntp-clean-line-is-response-text
                                fn-nntp-article-idp-is-consp))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-bpn-report-held-delete-pendingp)))

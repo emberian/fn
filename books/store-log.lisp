@@ -1293,3 +1293,11 @@
 ; records), never by opening the packed body.
 (in-theory (disable fn-lg-frame-body fn-lg-frame-kind fn-lg-pack fn-lg-unpack
                     fn-lg-unpack-exactp))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-lg-entry-okp)
+                    (:definition fn-lg-scan)))

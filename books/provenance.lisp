@@ -528,3 +528,10 @@
          fn-prov-nat-string fn-prov-append3 fn-prov-transit-kind-string
          fn-prov-diagnostic-string fn-prov-diagnostic-match
          fn-prov-diagnostic-mismatch))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-prov-structured-is-not-a-string)))

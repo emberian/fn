@@ -389,3 +389,12 @@
 
 (in-theory (disable fn-ns-mac fn-ns-purpose-input fn-ns-purpose-key
                     fn-ns-file-parse fn-ns-file-render))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-ns-entryp)
+                    (:definition fn-ns-ring-entriesp)
+                    (:definition fn-ns-ringp)))

@@ -41,6 +41,12 @@
 (include-book "store-log")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-tear-write)
+                          (:definition fn-lg-entry-okp)
+                          (:definition fn-lg-scan))))
+
 (local (in-theory (enable fn-bs-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------
@@ -938,3 +944,12 @@
 (in-theory (disable fn-lgc-log-len-of-consp fn-lgc-log-of-prefix
                     fn-lgc-chunk-len-of-prefix fn-lgc-fit-count-of-prefix
                     fn-bs-crash-of-aligned-append fn-lgc-unit-le-multiple))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-lgc-consp-nthcdr)
+                    (:rewrite fn-lgc-octets-true-listp)
+                    (:rewrite fn-lgc-take-all)))

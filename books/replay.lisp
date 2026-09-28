@@ -18,6 +18,7 @@
 (include-book "store-events")
 (include-book "hybrid-store")
 (include-book "records-seam")
+
 ; The codecs cluster withdraws (:d fn-store-event-p) at export (2026-09-19); the
 ; loop's guard proof needs only that a record is a true list.  Interim
 ; local fact applied by the store deputy so its closure certifies; the
@@ -865,3 +866,13 @@
 (in-theory (disable (:d fn-replay-okp) (:d fn-replay-faultp)
                     (:d fn-replay-advance-okp) (:d fn-replay-apply-record)
                     (:d fn-replay-loop) (:d fn-replay)))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-replay-apply-carried-verdict)
+                    (:definition fn-replay-apply-revoked-verdict)
+                    (:definition fn-replay-identity-loop)
+                    (:definition fn-replay-verdict-pairs)))

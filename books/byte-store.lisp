@@ -651,3 +651,18 @@
                     fn-bs-create fn-bs-write fn-bs-fsync-file fn-bs-fsync-dir
                     fn-bs-link fn-bs-rename fn-bs-unlink fn-bs-mkdir
                     fn-bs-read))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-bs-apply-op)
+                    (:definition fn-bs-dir-idp)
+                    (:definition fn-bs-dir-tablep)
+                    (:definition fn-bs-entriesp)
+                    (:definition fn-bs-entry-valuep)
+                    (:definition fn-bs-keys-belowp)
+                    (:definition fn-bs-op-listp)
+                    (:definition fn-bs-opp)
+                    (:definition fn-bs-tear-write)))

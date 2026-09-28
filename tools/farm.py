@@ -87,6 +87,10 @@ import native_program_check
 HOSTS = {
     "persvati": {
         "acl2": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+        # The same launcher at --tls-limit 65536 (batch AZ, 2026-09-28): make
+        # check's host_check loads the production world, which exhausts the
+        # 16384 default; two lanes hit it running check-lane here.
+        "image_acl2": "/home/ember/fn-gates/toolchains/w25/acl2-literal-tls64k",
         "cache": "~/fn-certcache",
         "wrap": "",
     },

@@ -958,3 +958,11 @@
             (fn-arena-bytes-clear :logic fn-arena$a-clear :exec fn-arena$c-clear :protect t)
             (fn-arena-bytes-seal-range :logic fn-arena$a-seal-range :exec fn-arena$c-seal-range
                                        :protect t)))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-arn-payload-listp-nth)
+                    (:rewrite fn-arn-payload-listp-true-listp)))

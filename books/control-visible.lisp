@@ -29,6 +29,14 @@
 ; acceptance composite, decoded as replay decodes it.
 (include-book "replay")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-ctl-visible-articles)
+                          (:definition fn-ctl-visible-filter)
+                          (:definition fn-ctl-withdrawal-effect)
+                          (:definition fn-ctl-withdrawalp)
+                          (:definition fn-ctl-withdrawn-by-p))))
+
 ; Some record in WS whose cause is CAUSE withdraws X.
 (defun fn-ctl-withdrawn-via-p (x ws cause verdicts)
   (declare (xargs :guard t))
@@ -1171,3 +1179,11 @@
                     (:d fn-ctl-rows-only-p) (:d fn-ctl-entries-set-tlocks)
                     (:d fn-ctl-history-grows-by-p)
                     (:d fn-ctl-event-msgid)))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-ctl-refresh-visible-is-visible)
+                    (:rewrite fn-ctl-visible-add-is-visible)))

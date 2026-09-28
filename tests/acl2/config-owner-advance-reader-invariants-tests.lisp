@@ -6,6 +6,7 @@
 (assert-event (fn-ocri-relation *ocl-t-new-open*))
 (assert-event (fn-ocri-relation *ocla-t-advanced*))
 (include-book "arena-lift")
+
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
 (bpr-lift fn-ocfg-step 2)

@@ -49,12 +49,11 @@
 (in-package "ACL2")
 (include-book "catalog-record")
 
-; Rules of the included world that this book's proofs try on every consp,
-; true-listp or nonempty goal and never use (accumulated-persistence over the
-; whole book, 2026-09-28, lane d26-books).  None is cited below.
-(local (in-theory (disable fn-ctl-authorize-execute-is-nonempty
-                           fn-arn-payload-listp-true-listp
-                           fn-oct-bufp-true-listp)))
+; The tau system is off in this book: it is time no prover step counts, and
+; on these goals it was half the proof time (ACL2 time over the book's own
+; forms 9.4 -> 4.9 s at the same 2.33M steps, persvati REPL 2026-09-28,
+; lane d26-books-2).  The one proof that uses it turns it back on.
+(local (in-theory (disable (tau-system))))
 
 ; -----------------------------------------------------------------------------
 ; Held record helpers: a row's number in a group, and the three row updates
@@ -287,7 +286,8 @@
   (declare (xargs :guard (and (natp seq) (natp v) (fn-cat-rowsp c) (< seq (len c)))
                   :guard-hints
                   (("Goal" :in-theory
-                    (enable (:rewrite fn-ctg-withdrawn-present-is-pair))))))
+                    (enable (:rewrite fn-ctg-withdrawn-present-is-pair)
+                            (tau-system))))))
   (and (< seq v)
        (let ((w (fn-held-withdrawn (nth seq c))))
          (or (null w) (<= v (car w))))))
@@ -4115,3 +4115,10 @@
                 (< seq (len fn-cat)))
            (fn-held-listp (fn-cat-redecide seq context fn-cat)))
   :hints (("Goal" :in-theory (enable fn-cat-redecide-is-update-nth))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-scat-msgid-idp)))

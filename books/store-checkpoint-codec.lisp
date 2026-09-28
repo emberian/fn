@@ -981,3 +981,23 @@
 (verify-guards fn-scc-frames)
 (verify-guards fn-scc-segments)
 (verify-guards fn-scc-file-octets)
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-scc-atom-octets)
+                    (:definition fn-scc-atomp)
+                    (:definition fn-scc-frames)
+                    (:definition fn-scc-nat-encodablep)
+                    (:definition fn-scc-nat-octets)
+                    (:definition fn-scc-octet-listp)
+                    (:definition fn-scc-program)
+                    (:definition fn-scc-seal)
+                    (:definition fn-scc-step)
+                    (:definition fn-scc-string-octets)
+                    (:definition fn-scc-treep)
+                    (:rewrite fn-scc-octet-listp-facts . 1)
+                    (:rewrite fn-scc-octet-listp-facts . 2)
+                    (:rewrite fn-scc-octet-listp-true)))
