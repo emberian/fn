@@ -35,8 +35,10 @@ import tempfile
 import time
 import unittest
 
-from tests import test_native_operator_verbs as verbs
 from tests import test_native_open_depth as od
+from tests.native_harness import ROOT, executable, native_image, start
+
+IMAGE = native_image("FN_NATIVE_HOST")
 
 FIXTURES = os.environ.get("FN_STATUS_SCALE_FIXTURES")
 NAMES = [n for n in os.environ.get("FN_STATUS_SCALE_NAMES", "syn100k-2k").replace(":", ",").split(",") if n]
@@ -49,8 +51,8 @@ class StatusScaleTests(unittest.TestCase):
     start_owner = od.OpenDepthTests.start_owner
 
     def setUp(self):
-        if not verbs.executable(verbs.IMAGE):
-            self.skipTest("needs the production image {}".format(verbs.IMAGE))
+        if not executable(IMAGE):
+            self.skipTest("needs the production image {}".format(IMAGE))
         if not FIXTURES or not Path(FIXTURES).is_dir():
             self.skipTest("FN_STATUS_SCALE_FIXTURES names no directory (hbox: /tank/fn/scratch/fixtures)")
         od.FIXTURES = FIXTURES
@@ -58,28 +60,25 @@ class StatusScaleTests(unittest.TestCase):
                                           dir=os.environ.get("FN_OPEN_DEPTH_WORK")))
         self.addCleanup(shutil.rmtree, self.work, True)
 
-    def verb(self, name, config, words, env=None):
+    def verb(self, name, node, words, env=None):
         started = time.monotonic()
-        done = subprocess.run([str(verbs.IMAGE), "--fn", "operator", str(config)] + words,
-                              env=env or verbs.environment(), stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, timeout=3600)
+        done = node.operator(*words, env=env, timeout=3600)
         seconds = time.monotonic() - started
         print("STATUS-SCALE {} {} exit={} bytes={} seconds={:.2f}".format(
             name, " ".join(words), done.returncode, len(done.stdout), seconds), flush=True)
         return done, seconds
 
-    def stop(self, name, owner, err_path, what):
+    def stop(self, name, owner, what):
         started = time.monotonic()
-        if owner.poll() is None:
-            owner.terminate()
         try:
-            owner.wait(3600)
+            owner.stop(grace=3600)
         finally:
             seconds = time.monotonic() - started
             print("STATUS-SCALE {} stop-{} exit={} seconds={:.2f}".format(
                 name, what, owner.returncode, seconds), flush=True)
             # What the owner said last (a publication or drain it waited for).
-            lines = err_path.read_text("utf-8", "replace").splitlines()
+            log = owner.stderr.since(0).decode("utf-8", "replace")
+            lines = log.splitlines()
             if owner.returncode != 0:
                 # the fault's own lines, whole (frames shortened to their names)
                 lines = [l.split(" pc=")[-1] if "fp=0x" in l else l for l in lines[-160:]]
@@ -87,7 +86,7 @@ class StatusScaleTests(unittest.TestCase):
                 lines = lines[-12:]
             for line in lines:
                 print("STATUS-SCALE {} stop-{} | {}".format(name, what, line[:240]), flush=True)
-        self.assertEqual(owner.returncode, 0, err_path.read_text("utf-8", "replace")[-3000:])
+        self.assertEqual(owner.returncode, 0, log[-3000:])
         self.assertLessEqual(seconds, STOP_SECONDS)
 
     def peak_rss_kib(self, pid):
@@ -116,10 +115,9 @@ class StatusScaleTests(unittest.TestCase):
         count = int(lines[0].split(b" ")[0].split(b"=")[1])
         return b"\n".join(lines[:count + 1])
 
-    def obligations(self, name, config, owner):
+    def obligations(self, name, node, owner):
         """`obligations' from the live owner: checked, timed, twice at once."""
-        env = dict(verbs.environment(), FN_REPORT_TIMING="1")
-        done, _ = self.verb(name, config, ["obligations"], env=env)
+        done, _ = self.verb(name, node, ["obligations"], env={"FN_REPORT_TIMING": "1"})
         self.assertEqual(done.returncode, 0, done.stderr[-2000:])
         for line in done.stderr.decode("utf-8", "replace").splitlines():
             if line.startswith("report-pages"):
@@ -132,9 +130,8 @@ class StatusScaleTests(unittest.TestCase):
         # lines follow it.
         self.assertTrue(all(l.startswith(b"obligation id=") for l in lines[1:count + 1]))
         # Two at once: the crash at syn1m-2k was the second whole render.
-        both = [subprocess.Popen([str(verbs.IMAGE), "--fn", "operator", str(config),
-                                  "obligations"], env=verbs.environment(),
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        both = [start([IMAGE, "--fn", "operator", node.config, "obligations"],
+                      cwd=ROOT, env=node.environment())
                 for _ in range(2)]
         outs = [p.communicate(timeout=3600) for p in both]
         for p, (out, err) in zip(both, outs):
@@ -142,7 +139,7 @@ class StatusScaleTests(unittest.TestCase):
             self.assertEqual(self.report_part(out), self.report_part(done.stdout))
         print("STATUS-SCALE {} concurrent-obligations exit={}".format(
             name, [p.returncode for p in both]), flush=True)
-        after, _ = self.verb(name, config, ["status"])
+        after, _ = self.verb(name, node, ["status"])
         self.assertEqual(after.returncode, 0, after.stderr[-2000:])
         print("STATUS-SCALE {} owner-peak-rss-kib={}".format(
             name, self.peak_rss_kib(owner.pid)), flush=True)
@@ -151,40 +148,37 @@ class StatusScaleTests(unittest.TestCase):
     def test_status_and_stop(self):
         for name in NAMES:
             with self.subTest(name=name):
-                root, config, port = self.prepare(name)
-                err_path = root / "owner.err"
-                owner, listening, _ = self.start_owner(name, "scale", root, config, err_path)
-                self.state = {"owner": owner, "err_at": 0}
+                node = self.prepare(name)
+                owner, listening, _ = self.start_owner(node)
                 print("STATUS-SCALE {} open seconds={:.1f}".format(name, listening), flush=True)
                 try:
-                    status, _ = self.verb(name, config, ["status"])
+                    status, _ = self.verb(name, node, ["status"])
                     self.assertEqual(status.returncode, 0, status.stderr[-2000:])
                     self.assertIn(b"reclaim rule=", status.stdout)
-                    self.verb(name, config, ["health"])
-                    live = self.obligations(name, config, owner)
+                    self.verb(name, node, ["health"])
+                    live = self.obligations(name, node, owner)
                 finally:
-                    self.stop(name, owner, err_path, "idle")
+                    self.stop(name, owner, "idle")
                 # The offline words of the same Store, a page at a time.
-                offline, _ = self.verb(name, config, ["obligations"])
+                offline, _ = self.verb(name, node, ["obligations"])
                 self.assertEqual(offline.returncode, 0, offline.stderr[-2000:])
                 self.assertEqual(self.report_part(offline.stdout), self.report_part(live))
                 # Again with a report in flight when the stop comes.
-                owner, listening, _ = self.start_owner(name, "scale-2", root, config, err_path)
-                self.state = {"owner": owner, "err_at": 0}
-                late = subprocess.Popen([str(verbs.IMAGE), "--fn", "operator", str(config),
-                                         "obligations"], env=verbs.environment(),
-                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                owner, listening, _ = self.start_owner(node)
+                late = start([IMAGE, "--fn", "operator", node.config, "obligations"],
+                             cwd=ROOT, env=node.environment())
                 try:
                     time.sleep(1.0)
                 finally:
                     try:
-                        self.stop(name, owner, err_path, "in-flight")
+                        self.stop(name, owner, "in-flight")
                     finally:
                         try:
                             late.wait(60)
                         except subprocess.TimeoutExpired:
                             late.kill()
-
+                            late.wait(60)
+                        late.finish()
 
 if __name__ == "__main__":
     unittest.main()

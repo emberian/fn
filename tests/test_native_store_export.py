@@ -34,17 +34,17 @@ import hashlib
 import os
 from pathlib import Path
 import shutil
-import subprocess
 import unittest
 
-from tests import test_native_operator_verbs as verbs
+from tests.native_harness import (
+    EXIT_OK, EXIT_REFUSED, environment, executable, native_image)
 from tests.native_profile_fixture import ProfileFixture, ProfileLineMixin
 from tests import older_release_store as older
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
-EXIT_OK, EXIT_REFUSED = verbs.EXIT_OK, verbs.EXIT_REFUSED
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 COUNT = int(os.environ.get("FN_EXPORT_ARTICLES", "30"))
 
 
@@ -58,12 +58,12 @@ class StoreExportTests(ProfileFixture):
 
     def served_store(self):
         self.init()
-        owner = self.start_owner(self.image)
+        self.node.start(image=self.image)
         try:
             ids = ["<sx{}@example.invalid>".format(i) for i in range(COUNT)]
-            self.post_many(ids, subject=b"export")
+            self.post_many(ids, subject="export")
         finally:
-            self.stop(owner)
+            self.node.stop()
         return ids
 
     def second_config(self, store):
@@ -72,13 +72,8 @@ class StoreExportTests(ProfileFixture):
             str(self.store), str(store)), encoding="ascii")
         return config
 
-    def operator_with(self, config, *words):
-        saved = self.config
-        try:
-            self.config = config
-            return self.op(*words)
-        finally:
-            self.config = saved
+    def operator_with(self, config, *words, image=None, env=None):
+        return self.node.invoke("operator", config, *words, image=image or self.image, env=env)
 
     def test_export_then_import_serves_the_same_history(self):
         ids = self.served_store()
@@ -223,7 +218,7 @@ class StoreExportTests(ProfileFixture):
         leaves ROOT.import-XXXX and no store at ROOT; the next import is
         refused by name (interrupted-import) until the stage is removed, then
         succeeds."""
-        if not verbs.executable(verbs.DEVELOPER):
+        if not executable(DEVELOPER):
             self.skipTest("the developer image is required (FN_NATIVE_LOG_FAULT)")
         self.served_store()
         archive = self.root / "archive"
@@ -231,14 +226,8 @@ class StoreExportTests(ProfileFixture):
         for cut in ("log-written", "log-fenced"):
             store2 = self.root / ("store-" + cut)
             config2 = self.second_config(store2)
-            env = dict(verbs.environment(), FN_NATIVE_LOG_FAULT=cut)
-            saved = self.config
-            try:
-                self.config = config2
-                killed = self.operator("store", "import", str(archive),
-                                       image=verbs.DEVELOPER, env=env)
-            finally:
-                self.config = saved
+            killed = self.operator_with(config2, "store", "import", str(archive),
+                                        image=DEVELOPER, env={"FN_NATIVE_LOG_FAULT": cut})
             # SIGKILL at the cut (fnn-log-at), nothing else.
             self.assertEqual(killed.returncode, -9, killed.stderr.decode())
             self.assertFalse(store2.exists(), cut)
@@ -263,7 +252,7 @@ class StoreExportTests(ProfileFixture):
         1, no store -- until the MANIFEST is in place, and after that the
         complete archive, which imports.  An OS error at the sync's cut is a
         known failure of the export, and its archive is refused the same way."""
-        if not verbs.executable(verbs.DEVELOPER):
+        if not executable(DEVELOPER):
             self.skipTest("the developer image is required (FN_NATIVE_EXPORT_FAULT)")
         from tests.campaign import native_cuts
         native_cuts.verify_export_cut_map()
@@ -274,10 +263,8 @@ class StoreExportTests(ProfileFixture):
         for name, action, candidate in runs:
             with self.subTest(cut=name, action=action):
                 archive = self.root / ("archive-{}-{}".format(name, action))
-                env = dict(verbs.environment(),
-                           FN_NATIVE_EXPORT_FAULT="{}:{}".format(name, action))
-                died = self.operator("store", "export", str(archive),
-                                     image=verbs.DEVELOPER, env=env)
+                died = self.operator("store", "export", str(archive), image=DEVELOPER,
+                                     env={"FN_NATIVE_EXPORT_FAULT": "{}:{}".format(name, action)})
                 if action == "kill":
                     self.assertEqual(died.returncode, -9, died.stderr.decode())
                 else:
@@ -302,12 +289,10 @@ class StoreExportTests(ProfileFixture):
 
     def refused_by_name(self, kind):
         made, config, _ = older.make_store(kind, self.image, self.root / "older",
-                                           verbs.environment())
+                                           environment())
         before = tree(made)
         for head in (["operator", str(config), "status"], ["store", str(made), "recover"]):
-            got = subprocess.run([str(self.image), "--fn", *head], cwd=verbs.ROOT,
-                                 env=verbs.environment(), stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, timeout=180, check=False)
+            got = self.node.invoke(*head, image=self.image)
             self.assertEqual(got.returncode, EXIT_REFUSED, got.stderr.decode())
             self.assertIn(older.LINES[kind].encode("ascii"), got.stderr + got.stdout)
         self.assertEqual(tree(made), before)

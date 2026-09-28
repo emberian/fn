@@ -853,10 +853,12 @@ class Node:
         words = (["--profile", profile] if profile else []) + list(groups or ("fn.test",))
         return self.operator("init", *words, expect=expect, **options)
 
-    def start(self, *, image=None, env=None, ready=b"LISTENING ", timeout=180, verb=("run",)):
-        """`operator CONFIG run`, drained, returned once READY is on stdout."""
+    def start(self, *, image=None, env=None, ready=b"LISTENING ", timeout=180, verb=("run",),
+              limit=DEFAULT_LIMIT):
+        """`operator CONFIG run`, drained (LIMIT octets kept per stream),
+        returned once READY is on stdout."""
         process = start([image or self.image, "--fn", "operator", self.config, *verb],
-                        cwd=ROOT, env=self.environment(env))
+                        cwd=ROOT, env=self.environment(env), limit=limit)
         self.processes.append(process)
         self.process = process
         if ready:
@@ -986,12 +988,18 @@ class Client:
         status = self.command(text)
         return status, (self.block() if status[:1] in b"12" and status[:3] != b"111" else b"")
 
-    def post(self, article, verb=b"POST"):
-        """POST (or IHAVE <id>: VERB) ARTICLE; (first status, final status or None)."""
+    def post(self, article, verb=b"POST", tolerate_send_error=False):
+        """POST (or IHAVE <id>: VERB) ARTICLE; (first status, final status or None).
+        TOLERATE_SEND_ERROR: a node that answers an oversize article and
+        closes before it has all of it resets the send; read its reply anyway."""
         first = self.command(verb)
         if not first.startswith((b"340", b"335")):
             return first, None
-        self.send(dot_stuff(article) + b".\r\n")
+        try:
+            self.send(dot_stuff(article) + b".\r\n")
+        except OSError:
+            if not tolerate_send_error:
+                raise
         return first, self.line()
 
     def article(self, message_id):

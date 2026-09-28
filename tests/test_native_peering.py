@@ -16,7 +16,7 @@ import tempfile
 import threading
 import time
 
-from tests.test_native_operator_verbs import deployed_stack
+from tests.native_harness import deployed_stack
 import unittest
 
 from tests import native_harness
