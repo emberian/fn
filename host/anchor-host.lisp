@@ -72,7 +72,6 @@
 (defun fn-anchor-host-frame-limit ()
   (+ *fn-anchor-max-payload* *fn-frame-overhead-octets*))
 
-(defun fn-anchor-host-replace-action (phase) (fn-anchor-rp-action phase))
 (defun fn-anchor-host-replace-step (phase event)
   (fn-anchor-rp-step phase event))
 (defun fn-anchor-host-replace-outcome (phase) (fn-anchor-rp-outcome phase))
