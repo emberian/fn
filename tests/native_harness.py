@@ -652,7 +652,7 @@ def acl2_keyword(output):
 
 # --- The image's own ACL2 session ------------------------------------------
 
-ACL2_SESSION_PROMPT = re.compile(rb"ACL2 [a-z]*!?>\s*\Z")
+ACL2_SESSION_PROMPT = re.compile(rb"ACL2 [a-z]*!?>+\s*\Z")
 
 
 class Acl2Session:
@@ -714,7 +714,7 @@ class Acl2Session:
         self.proc.stdin.write(form.encode("utf-8") + b"\n")
         self.proc.stdin.flush()
         output = self._until_prompt(timeout)
-        return re.sub(rb"ACL2 [a-z]*!?>\s*\Z", ACL2_PROMPT, output)
+        return ACL2_SESSION_PROMPT.sub(ACL2_PROMPT, output)
 
     @staticmethod
     def literal(octets):

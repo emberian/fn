@@ -337,6 +337,26 @@ identity or a BP frame; no image verb does it yet (an open registry item,
 not a Python function).  deploy_gate and twonode_gate drive the Python host
 and retire with it.
 
+## 4c. T5, T1b, T2b, executed (lane python-diet-2, 2026-09-28)
+
+Base origin/dev 940bc3104: 183,735 Python lines in 491 files outside
+`planning/evidence/`.  Net lines per tranche from `git diff --numstat`
+(evidence scripts excluded; nothing was moved into evidence):
+
+| tranche | what | net |
+|---|---|---:|
+| T5a | `fn acl2 session` (host/native/acl2-session.lisp, developer images only: ACL2's loop over the image's own world) and `native_harness.Acl2Session`; the six bridge users converted | T5A_NET |
+| T5b | the Python host retired: run_store, run_owner, run_reader, frame_bridge, bridge_image, run_bp_ingress, run_bp_receive, checkpoint, scheduler, workflow_*, receipt_*, bundle_bridge, feed_wire, stx, fn9p, fn_native, auth_secret, media, bpa_dtn7, scale_gate, transcribe_check, bin/fn; their tests; the campaign's Python-host arm; tests/bench; the Python-host BP labs | T5B_NET |
+| T1b | nine one-shot tools deleted by commit (not archived: each is `git show SHA:PATH`) | T1B_NET |
+| T2b | tools/v0_matrix.py and its tests, native_peering_matrix_slice; tests/test_native_conformance.py owns the rows ([owners](evidence/python-diet-2-2026-09-28/v0-row-owners.md)) | T2B_NET |
+| - | tools/verdict.py (superseded by cut_release.sh) and tools/reorg.py (not adopted) | MISC_NET |
+
+Kept on purpose (GPT-6's guardrails): the native dtn7 labs
+(run_fn_bp_interop, run_mission_four_node, ...), the INN lab, tcpcl_lab,
+power_loss, the hostile campaign, fn_verify, interop_nntplib (now against a
+native owner), the fuzzers.  msgid_measure, rep_measure and mux_measure stay
+(fixtures, fundamentals and the throughput gate import them).
+
 ## 5. Tool obstructions other lanes named (rows of this inventory)
 
 Collected from the `## Obstructions and asks` sections present at
