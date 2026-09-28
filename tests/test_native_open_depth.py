@@ -207,7 +207,10 @@ class OpenDepthTests(unittest.TestCase):
     def stop_owner(self, owner, err_path):
         if owner.poll() is None:
             owner.terminate()
-            owner.wait(600)
+            # At 1,000,000 an owner still rendering the reports the control
+            # client gave up on (status, obligations: uncertain after 10 s)
+            # took over 600 s to stop (native-sd5).
+            owner.wait(OPEN_SECONDS)
         if self.deaths:
             return
         text = err_path.read_text("utf-8", "replace")

@@ -12646,10 +12646,10 @@
         "tools/depth_check.py",
         "tools/depth_baseline.json",
         "planning/evidence/serve-depth-2026-09-28.md",
-        "planning/evidence/manifests/certify-20260928T073247Z-369845.json",
-        "planning/evidence/manifests/certify-20260928T073310Z-3466384.json"
+        "planning/evidence/manifests/certify-20260928T093447Z-661680.json",
+        "planning/evidence/manifests/certify-20260928T093526Z-373540.json"
       ],
-      "progress_note": "Certified at the lane head after merging origin/dev (format 10): hbox certify-20260928T073247Z-369845 (577 passed) + persvati certify-20260928T073310Z-3466384 (610 passed), 0 failed, the 1,215 affected roots. Witnesses: tests/acl2/serve-depth-tests.lisp (50,000 articles, 50,000 groups, 100,000 octets)."
+      "progress_note": "Certified at the lane head after merging origin/dev (format 10, batch AZ): certify-20260928T093447Z-661680 + certify-20260928T093526Z-373540 (393 + 380 passed, 0 failed; hbox and persvati), the 1,215 affected roots. Witnesses: tests/acl2/serve-depth-tests.lisp (50,000 articles, 50,000 groups, 100,000 octets). Native (production image, the launcher's 1,024 KiB): native-sd4 serves every command of the protocol table and every live control report against syn100k-2k and syn1m-2k with no stack death (before, native-sd1: 26 commands killed the owner at syn100k-2k); tools/depth_check.py equals the extractor (383 of 383)."
     },
     {
       "id": "PRF-361",
