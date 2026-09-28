@@ -345,17 +345,31 @@ Base origin/dev 940bc3104: 183,735 Python lines in 491 files outside
 
 | tranche | what | net |
 |---|---|---:|
-| T5a | `fn acl2 session` (host/native/acl2-session.lisp, developer images only: ACL2's loop over the image's own world) and `native_harness.Acl2Session`; the six bridge users converted | T5A_NET |
-| T5b | the Python host retired: run_store, run_owner, run_reader, frame_bridge, bridge_image, run_bp_ingress, run_bp_receive, checkpoint, scheduler, workflow_*, receipt_*, bundle_bridge, feed_wire, stx, fn9p, fn_native, auth_secret, media, bpa_dtn7, scale_gate, transcribe_check, bin/fn; their tests; the campaign's Python-host arm; tests/bench; the Python-host BP labs | T5B_NET |
-| T1b | nine one-shot tools deleted by commit (not archived: each is `git show SHA:PATH`) | T1B_NET |
-| T2b | tools/v0_matrix.py and its tests, native_peering_matrix_slice; tests/test_native_conformance.py owns the rows ([owners](evidence/python-diet-2-2026-09-28/v0-row-owners.md)) | T2B_NET |
-| - | tools/verdict.py (superseded by cut_release.sh) and tools/reorg.py (not adopted) | MISC_NET |
+| T5a | `fn acl2 session` (host/native/acl2-session.lisp, developer images only: ACL2's loop over the image's own world) and `native_harness.Acl2Session`; the six bridge users converted | -8 |
+| T5b | the Python host retired: run_store, run_owner, run_reader, frame_bridge, bridge_image, run_bp_ingress, run_bp_receive, checkpoint, scheduler, workflow_*, receipt_*, bundle_bridge, feed_wire, stx, fn9p, fn_native, auth_secret, media, bpa_dtn7, scale_gate, transcribe_check, bin/fn; their tests; the campaign's Python-host arm; tests/bench; the Python-host BP labs | -29,983 |
+| T1b | nine one-shot tools deleted by commit (not archived: each is `git show SHA:PATH`) | -1,378 |
+| T2b | tools/v0_matrix.py and its tests, native_peering_matrix_slice; tests/test_native_conformance.py owns the rows ([owners](evidence/python-diet-2-2026-09-28/v0-row-owners.md)) | -8,806 |
+| - | tools/verdict.py (superseded by cut_release.sh) and tools/reorg.py (not adopted) | -1,435 |
+| T5 gates | deploy_gate on the native image; twonode_gate retired for tests/test_native_peering.py's receiver-kill case (sub-lane python-diet-2-gates) | -3,207 |
+| T4 | synth_log_store writes nothing itself: tools/synth-log-store.lisp in the image's session (byte-identical output); every other T4 lint stays: defkeystone is a pilot (6 forms), definterface (G7) is not on dev, no world dump exists (sub-lane python-diet-2-t4) | -154 |
+| - | follow-ups (native modules enrol logins through the operator, harness guard, cite_check's `retired` class) | -3 |
+| | **total** (183,735 -> 138,761; 24.5%) | **-44,974** |
 
 Kept on purpose (GPT-6's guardrails): the native dtn7 labs
 (run_fn_bp_interop, run_mission_four_node, ...), the INN lab, tcpcl_lab,
 power_loss, the hostile campaign, fn_verify, interop_nntplib (now against a
 native owner), the fuzzers.  msgid_measure, rep_measure and mux_measure stay
 (fixtures, fundamentals and the throughput gate import them).
+
+What the third still needs (about 16,000 lines past this lane), for ember:
+T4 as planned waits on defkeystone beyond its pilot, definterface (G7) and a
+world dump from the image (ledger 3,456, teeth_check 1,682, reach_check 974,
+harness_check 1,918, host_*_check, session_depth and their tests, about
+11,000 lines); the Python-host sections of docs/operator-internals.md and
+packaging/fn.service, net.fn.plist are the retired host's and not Python.
+Two claims lost their only host caller with the Python host and are
+baselined unreachable-in-composition (planning/reach-baseline.json:
+PRF-041, PRF-129); SCN-026 is back to specified.
 
 ## 5. Tool obstructions other lanes named (rows of this inventory)
 
