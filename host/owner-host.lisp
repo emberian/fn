@@ -183,6 +183,10 @@
 (include-book "../books/owner-credits")
 ; lane health-truth-journal (PKT-872, PRF-360): the journal writer never keeps a torn line.
 (include-book "../books/owner-time-journal-writer")
+; lane time-bars (PRF-384): the committer's ledger of the request in flight
+; (its generation, the connections told before its late completion), a
+; read's page-dependency outcome, the restart's clock domain.
+(include-book "../books/owner-time-bars")
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")

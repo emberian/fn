@@ -12931,6 +12931,31 @@
           "name": "fn-tcl-unaccepted-delivery-names-no-progress"
         }
       ]
+    },
+    {
+      "id": "PRF-384",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otb-a-member-is-answered-once"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otb-a-late-completion-is-consumed-once"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otb-a-deadline-keeps-the-io-owned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otb-a-late-page-is-unavailable-never-absent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otb-a-restart-forgets-the-previous-clock-domain"
+        }
+      ]
     }
   ]
 }

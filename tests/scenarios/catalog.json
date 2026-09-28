@@ -5662,6 +5662,33 @@
         "books/owner-commit-fairness.lisp",
         "tests/test_native_owner_scheduler.py"
       ]
+    },
+    {
+      "id": "SCN-202",
+      "title": "The adopted default F4 bars classify an unresolved write: try-later past D, the held poster told uncertain once at H (not at D), the same article re-sent answered try-later during the stall and `already stored here' after it, and a restart a new clock domain",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-031"
+      ],
+      "steps": [
+        "tests/test_native_slow_disk.py on the developer image with FN_NATIVE_TEST_DISK_STALL_FILE and no policy rows (D 5,000 ms, H 30,000 ms, cadence 1,000 ms): a warm POST; the stall file created; one POST (held); health at 2 s and at 7 s; a POST command and the same article's POST command on two other connections; a GROUP; wait for the held poster's answer; health; the stall file removed; the same article re-sent; SIGTERM, restart, `store ROOT journal'."
+      ],
+      "expected": [
+        "health `disk ok' exit 0 under D; `disk slow ... deadline-ms=5000 stall-ms=30000' exit 0 past D; both POST commands `440 posting not permitted now; the disk is slow'; the held poster `441' uncertain (no try-later) after at least 29.5 s, then closed, never answered again; health exit 28 `disk stalled' stall-ms=30000; after recovery the same article `441 posting failed; this article is already stored here'; every start entry of decisions.fnj has reading 0 and usable 1, and `store ROOT journal' exits 0 with `segments=2' and `replay=agrees'."
+      ],
+      "evidence": [
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/time-bars-2026-09-28.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_slow_disk",
+        "cases": [
+          "test_the_adopted_default_bars_classify_an_unresolved_write"
+        ],
+        "native": true,
+        "record": "planning/evidence/time-bars-2026-09-28.md"
+      }
     }
   ]
 }
