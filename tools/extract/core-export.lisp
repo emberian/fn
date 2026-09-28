@@ -34,6 +34,9 @@
        (not (eq (getpropc s 'formals :none w) :none))
        (not (member-eq (cadr (xt-classify s w)) '(:blocker :prim :shim)))))
 
+(defun xt-sym-names (syms)
+  (if (endp syms) nil (cons (symbol-name (car syms)) (xt-sym-names (cdr syms)))))
+
 (defun xt-core-roots (tokens w acc)
   (if (endp tokens) (reverse acc)
     (let ((s (intern-in-package-of-symbol (car tokens) 'xt-core-roots)))
@@ -52,6 +55,38 @@
                               (if (and creator (symbolp creator) (not (member-eq creator acc)))
                                   (cons creator acc)
                                 acc)))))
+
+; The fn macros host/native's raw Lisp calls (a macro is expanded where the
+; host file is compiled: (fn-profile-limit :gc-nursery-mib) in io.lisp): each
+; exported with its lambda list and translated body, which cl.py emits as a
+; Common Lisp macro; the body's callees join the roots.
+(defun xt-core-macros (tokens w acc)
+  (if (endp tokens) (reverse acc)
+    (let* ((s (intern-in-package-of-symbol (car tokens) 'xt-core-roots))
+           (n (symbol-name s))
+           (body (getpropc s 'macro-body nil w)))
+      (xt-core-macros (cdr tokens) w
+                      (if (and body (< 3 (length n)) (equal (subseq n 0 3) "FN-")
+                               (not (assoc-eq s acc)))
+                          (cons (list s (getpropc s 'macro-args nil w) body) acc)
+                        acc)))))
+
+(defun xt-json-macros (macros first channel state)
+  (if (endp macros) state
+    (let* ((m (car macros))
+           (state (if first state (princ$ "," channel state)))
+           (state (princ$ "{\"name\":" channel state))
+           (state (xt-json-sym (car m) channel state))
+           (state (princ$ ",\"args\":" channel state))
+           (state (xt-json-datum (cadr m) channel state))
+           (state (princ$ ",\"body\":" channel state))
+           (state (xt-json-term (caddr m) channel state))
+           (state (princ$ "}" channel state)))
+      (xt-json-macros (cdr macros) nil channel state))))
+
+(defun xt-macro-callees (macros acc)
+  (if (endp macros) acc
+    (xt-macro-callees (cdr macros) (xt-callees (caddr (car macros)) acc))))
 
 (defun xt-core-consts (tokens w acc)
   (if (endp tokens) (reverse acc)
@@ -210,7 +245,9 @@
 
 (defun xt-core-export (tokens json-path lisp-path pkg-path state)
   (let* ((w (w state))
-         (roots (xt-core-roots tokens w nil))
+         (macros (xt-core-macros tokens w nil))
+         (roots (append (xt-core-roots tokens w nil)
+                        (xt-core-roots (xt-sym-names (xt-macro-callees macros nil)) w nil)))
          (consts (xt-core-consts tokens w nil)))
     (mv-let (erp n state) (xt-extract-with roots (xt-core-stobj-creators tokens w nil) json-path state)
       (declare (ignore erp n))
@@ -223,7 +260,9 @@
                    (state (xt-json-packages (known-package-alist state) t channel state))
                    (state (princ$ "],\"types\":{" channel state))
                    (state (xt-json-types entries types t channel state))
-                   (state (princ$ "}}" channel state))
+                   (state (princ$ "},\"macros\":[" channel state))
+                   (state (xt-json-macros macros t channel state))
+                   (state (princ$ "]}" channel state))
                    (state (newline channel state))
                    (state (close-output-channel channel state)))
               (mv-let (channel state) (open-output-channel lisp-path :object state)

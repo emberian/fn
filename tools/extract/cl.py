@@ -150,6 +150,7 @@ class CL(Backend):
         super().__init__(ir)
         self.boundary = {b["name"]: b for b in ir.get("boundary", [])}
         self.types = {}
+        self.macros = []
         self.star1_needed = set()
         self.counter = 0
 
@@ -435,6 +436,12 @@ class CL(Backend):
             inv["star1"] += 1
             pending.extend(sorted(self.star1_needed - before - done))
         inv["star1_names"] = sorted(done)
+        # the fn macros host/native calls (core-export.lisp): each body is a
+        # term over the lambda list's variables, evaluated at expansion
+        for m in self.macros:
+            self.counter = 0
+            out.append("(defmacro %s %s %s)" % (sym(m["name"]), datum(m["args"]), self.emit(m["body"], {}, 1, "logic")))
+        inv["macros"] = [m["name"] for m in self.macros]
         # the live stobjs, made at start (a saved core may hold constants in
         # read-only space): every stobj of the closure by its name, as ACL2's
         # user-stobj-alist holds the live objects
@@ -477,6 +484,7 @@ def main():
     b = CL(ir)
     extra = json.load(open(a.packages)) if a.packages else {"packages": [], "types": {}}
     b.types = extra.get("types", {})
+    b.macros = extra.get("macros", [])
     text_, inv = b.program()
     if a.packages:
         Path(a.packages_out).write_text(b.packages(extra["packages"]), encoding="latin-1")
