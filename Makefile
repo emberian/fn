@@ -1302,6 +1302,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-rotate-spare \
 	books/owner-compact-request \
 	tests/acl2/owner-compact-request-tests \
+	books/bp-carry-frame \
 	books/bp-carry-control \
 	tests/acl2/bp-carry-control-tests \
 	books/owner-open-carried \

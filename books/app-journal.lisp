@@ -8,27 +8,35 @@
 (include-book "journal-publish")
 (include-book "byte-store-txn-name")
 (include-book "frame")
+; PKT-869: the carry control journal's frame (domain :carry).
+(include-book "bp-carry-frame")
 
 (defconst *fn-aj-max-records* 4096)
 (defconst *fn-aj-workflow-max-aggregate* 16777216)
 (defconst *fn-aj-receipt-max-aggregate* 67108864)
+; PKT-869: the carry control journal (books/bp-carry-frame.lisp): its
+; records at their widest, the record namespace's.
+(defconst *fn-aj-carry-max-aggregate*
+  (* *fn-aj-max-records* (+ *fn-frame-overhead-octets* *fn-bpcc-frame-max-payload*)))
 
 (defun fn-aj-domainp (domain)
-  (member-equal domain '(:workflow :receipt)))
+  (member-equal domain '(:workflow :receipt :carry)))
 
 (defun fn-aj-max-record-length (domain)
   (+ *fn-frame-overhead-octets*
-     (if (equal domain :workflow)
-         *fn-frame-max-workflow-payload*
-       *fn-frame-max-receipt-payload*)))
+     (cond ((equal domain :workflow) *fn-frame-max-workflow-payload*)
+           ((equal domain :carry) *fn-bpcc-frame-max-payload*)
+           (t *fn-frame-max-receipt-payload*))))
 
 (defun fn-aj-max-aggregate (domain)
-  (if (equal domain :workflow)
-      *fn-aj-workflow-max-aggregate*
-    *fn-aj-receipt-max-aggregate*))
+  (cond ((equal domain :workflow) *fn-aj-workflow-max-aggregate*)
+        ((equal domain :carry) *fn-aj-carry-max-aggregate*)
+        (t *fn-aj-receipt-max-aggregate*)))
 
 (defun fn-aj-suffix (domain)
-  (if (equal domain :workflow) '(#\. #\w #\f) '(#\. #\r #\j)))
+  (cond ((equal domain :workflow) '(#\. #\w #\f))
+        ((equal domain :carry) '(#\. #\c #\c))
+        (t '(#\. #\r #\j))))
 
 (defun fn-aj-record-name-chars (domain sequence)
   (append (fn-bs-txn-digits sequence) (fn-aj-suffix domain)))

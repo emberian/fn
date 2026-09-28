@@ -61,6 +61,12 @@
 (include-book "books/bp-release")
 (include-book "books/bp-outbound")
 (include-book "books/bp-ion-workflow")
+;; PKT-869 / PKT-868 (lane operations): the carry control, its journal's frame,
+;; and the owner's compaction request (host/workflow-host.lisp,
+;; host/owner-host.lisp include them).
+(include-book "books/bp-carry-frame")
+(include-book "books/bp-carry-control")
+(include-book "books/owner-compact-request")
 (include-book "books/bp-request-plan")
 (include-book "books/journal-publish")
 (include-book "books/app-journal")

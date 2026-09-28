@@ -64,12 +64,7 @@
 
 (defconst *fn-frame-workflow-kinds*
   '(:config :enqueue :attempt :transport :receipt-intent :outcome
-    :retry-request :undertake :release :ion-route :ion-observed
-    ; PKT-869 (lane operations): the operator's carry control
-    ; (books/bp-carry-control.lisp), appended so every earlier code keeps
-    ; its octet.  One kind for the three verbs: each kind multiplies the
-    ; frame codec's proofs' case splits (books/frame).
-    :carry))
+    :retry-request :undertake :release :ion-route :ion-observed))
 
 (defconst *fn-frame-workflow-specs*
   (list
@@ -88,10 +83,7 @@
    (cons :undertake '(:text :nat))
    (cons :release '(:text :text :text :text :text :text :text))
    (cons :ion-route '(:text :text :nat :text :text :text))
-   (cons :ion-observed '(:text :text :nat :text :text :text :nat :nat))
-   ; PKT-869: VERB (pause, resume, drop), WORK (a work id, or "*" for
-   ; every work, pause and resume only), and REASON (a drop's; "-" else).
-   (cons :carry '(:text :text :text))))
+   (cons :ion-observed '(:text :text :nat :text :text :text :nat :nat))))
 
 (defconst *fn-frame-receipt-kinds*
   ; The first four codes are the version-1 FNRJ vocabulary.  Native

@@ -1,9 +1,15 @@
 ;;; Shared-owner native surface for durable forwarding obligations.
 (in-package "ACL2")
 
+;;; PKT-869: the carry control journal (domain :carry) at JOURNAL/carry,
+;;; opened after the workflow journal so its controls replay over that
+;;; image (host/workflow-host.lisp fn-workflow-carry-install); bound here
+;;; while the obligation verbs run.
+(defvar *fnn-bpo-carry-journal* nil)
+
 (defun fnn-bpo-call-with-owner-journal
     (store-root journal-root writable thunk)
-  (let ((service nil) (journal nil))
+  (let ((service nil) (journal nil) (carry nil))
     (unwind-protect
          (progn
            (setq service (fnn-owner-install store-root 1))
@@ -13,10 +19,16 @@
               (setq journal
                     (fnn-app-open (fnn-owner-service-store service)
                                   journal-root :workflow :owner-mode t))
+              (setq carry
+                    (fnn-app-open (fnn-owner-service-store service)
+                                  (fnn-join (fnn-absolute journal-root) "carry") :carry
+                                  :owner-mode t))
               (when (and writable
                          (fnn-store-fenced (fnn-owner-service-store service)))
                 (fnn-indeterminate "BP obligation owner Store is fenced"))
-              (funcall thunk journal service))))
+              (let ((*fnn-bpo-carry-journal* carry))
+                (funcall thunk journal service)))))
+      (when carry (fnn-app-journal-close carry))
       (when journal (fnn-app-journal-close journal))
       (when service
         (fnn-owner-feed-close-all service)
@@ -313,13 +325,18 @@
                     (fnn-bpo-call-with-owner-journal
                      root journal t
                      (lambda (opened service)
-                       (declare (ignore service))
-                       (let ((answer (fnn-core-state 'fn-workflow-carry-record verb work reason)))
+                       (declare (ignore opened service))
+                       (let ((answer (fnn-core-state 'fn-workflow-carry-record verb work reason))
+                             (carry *fnn-bpo-carry-journal*))
                          (unless (and (consp answer) (member (first answer) '(:record :refused)))
                            (fnn-fault "ACL2 returned a malformed carry decision"))
                          (when (eq (first answer) :refused)
                            (fnn-refuse "carry refused reason=~(~a~) work=~a" (second answer) work))
-                         (fnn-app-publish opened (second answer))
+                         ;; The journal's first record is its :config (ACL2's
+                         ;; app-journal admits nothing else first).
+                         (unless (fnn-core 'fn-aj-initializedp (fnn-app-journal-frontier carry))
+                           (fnn-app-publish carry (fnn-core 'fn-bpcc-journal-config)))
+                         (fnn-app-publish carry (second answer))
                          (fnn-out "BP carry durable ~(~a~) work=~a" verb work)
                          +fnn-exit-ok+))))))
             (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "carry")

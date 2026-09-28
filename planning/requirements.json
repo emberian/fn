@@ -5113,15 +5113,16 @@
       ],
       "evidence": [
         "books/bp-carry-control.lisp",
+        "books/bp-carry-frame.lisp",
+        "books/app-journal.lisp",
         "tests/acl2/bp-carry-control-tests.lisp",
-        "books/bp-ion-workflow.lisp",
-        "books/frame-journal.lisp",
         "books/native-operator.lisp",
         "host/workflow-host.lisp",
+        "host/native/workflow.lisp",
         "host/native/bp-obligation.lisp",
         "tests/test_bp_obligation_native.py"
       ],
-      "implementation_note": "Lane operations (PKT-869). `fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK REASON...}' over the FNWF workflow journal, offline beside the store as the other obligation verbs are (a served store refuses). The control records ((:carry VERB WORK REASON), one FNWF kind: frame-journal appends its code; each kind doubles books/frame's fn-frame-workflow-protected guard proof, 476k to 874k steps for this one) ride in the workflow's auxiliary overlay beside the ION evidence and never touch a work record. A drop stops the carrying and keeps the Store pin: books/retention.lisp releases a pin only with the evidence it was undertaken against (the receipt's), so an operator's abandonment of the pin is a new evidence kind, a decision for the register (asked in the lane's report). Open: the verbs act on a stopped BP node; a live `bp-node serve' takes them over its control socket in a later step."
+      "implementation_note": "Lane operations (PKT-869). `fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK REASON...}' over the FNWF workflow journal, offline beside the store as the other obligation verbs are (a served store refuses). The controls are durable records of their own application journal (domain :carry at JOURNAL/carry, frame FNCC: books/bp-carry-frame.lisp), replayed over the workflow image, never FNWF kinds: books/frame-journal.lisp has about 1,100 dependents and each FNWF kind doubled books/frame's fn-frame-workflow-protected guard proof (476k to 874k steps for one). A drop stops the carrying and keeps the Store pin: books/retention.lisp releases a pin only with the evidence it was undertaken against (the receipt's), so an operator's abandonment of the pin is a new evidence kind, a decision for the register. Open: the verbs act on a stopped BP node; the application journals' lifetime namespace (app-journal.lisp *fn-aj-max-records* 4096, 16 MiB for FNWF) is a BP data cap (bounds inventory 1.4)."
     }
   ]
 }

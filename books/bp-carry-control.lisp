@@ -7,10 +7,10 @@
 ; over it (fitness 2026-09-28: workflow-init, workflow-enqueue,
 ; bp-obligation undertake and request per article, none documented).  This
 ; book is the control half: one FNWF record kind, durable operator events
-; the journal replays (books/frame-journal.lisp appends its code; one kind,
-; since each kind doubles the frame codec's guard proof), kept in the
-; workflow's auxiliary overlay beside the ION evidence
-; (books/bp-ion-workflow.lisp fn-bpiw-apply), never in the work records:
+; the carry control journal replays (its own application journal domain,
+; :carry, framed by books/bp-carry-frame.lisp: not FNWF kinds, whose book has
+; some 1,100 dependents), folded over the workflow image the FNWF journal
+; replayed, and never in the work records:
 ;
 ;   (:carry "pause" WORK "-")     no request is formed for WORK ("*": every work)
 ;   (:carry "resume" WORK "-")    the pause ends ("*": every pause)
@@ -146,6 +146,39 @@
     (cond ((equal hold :dropped) (list :refused :carry-dropped))
           ((equal hold :paused) (list :refused :carry-paused))
           (t plan))))
+
+; The carry journal's replay (host/workflow-host.lisp
+; fn-workflow-carry-install): its :config record first, then each control
+; record admitted against the workflow image BP and applied; anything else
+; is a fault, never a skipped record.  (OKP . STATE).
+(defun fn-bpcc-replay-records (bp c records)
+  (declare (xargs :guard t :measure (acl2-count records)
+                  :hints (("Goal" :in-theory (disable fn-bpcc-admissiblep fn-bpcc-apply)))
+                  :guard-hints (("Goal" :in-theory (disable fn-bpcc-admissiblep
+                                                            fn-bpcc-apply)))))
+  (if (consp records)
+      (if (fn-bpcc-admissiblep bp c (car records))
+          (fn-bpcc-replay-records bp (fn-bpcc-apply c (car records)) (cdr records))
+        (cons nil c))
+    (cons t c)))
+
+(defun fn-bpcc-configp (record)
+  (declare (xargs :guard t))
+  (and (true-listp record) (equal (len record) 2) (equal (car record) :config)
+       (fn-bp-journal-textp (cadr record))))
+
+; The carry journal's first record (host/native/bp-obligation.lisp publishes
+; it before the first control).
+(defun fn-bpcc-journal-config ()
+  (declare (xargs :guard t))
+  (list :config "fn-carry-1"))
+
+(defun fn-bpcc-replay (bp records)
+  (declare (xargs :guard t))
+  (cond ((atom records) (cons t (fn-bpcc-initial)))
+        ((fn-bpcc-configp (car records))
+         (fn-bpcc-replay-records bp (fn-bpcc-initial) (cdr records)))
+        (t (cons nil (fn-bpcc-initial)))))
 
 ; KEYSTONE.
 (defthm fn-bpcc-gate-refuses-a-held-work

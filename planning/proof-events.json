@@ -12837,6 +12837,10 @@
         {
           "kind": "theorem",
           "name": "fn-bpcc-admitted-drop-drops"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-frame-decode-of-sealed"
         }
       ]
     }
