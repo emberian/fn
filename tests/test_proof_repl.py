@@ -349,7 +349,10 @@ class LoadLimitTests(unittest.TestCase):
                                         "(defthm slow (equal (f x) x))\n(defthm after t)\n")
         timeout_answer = ("*** Key checkpoint at the top level: ***\n(EQUAL (F X) X)\n"
                           "ACL2 Error [Time-limit] in ( DEFTHM SLOW ...):  Out of time in "
-                          "the rewriter.\nSummary\nForm:  ( DEFTHM SLOW ...)\n")
+                          "the rewriter.\nSummary\nForm:  ( DEFTHM SLOW ...)\n"
+                          # What ACL2 8.7 prints after it (hbox, 2026-09-28).
+                          "\nACL2 Error [Failure] in ( DEFTHM SLOW ...):  See :DOC "
+                          "failure.\n\n******** FAILED ********\n")
         acl2 = self.Recorder(["", "", "", timeout_answer])
         state = {"name": None, "loaded": [], "ld_loaded": {}}
         ok = proof_repl.load_book(acl2, "build/proof-repl-limit-test/b", state, 600.0,
@@ -375,6 +378,143 @@ class LoadLimitTests(unittest.TestCase):
         self.assertTrue(proof_repl.load_book(acl2, "build/proof-repl-limit-test-0/b", state,
                                              600.0, set(), limit=None))
         self.assertEqual(acl2.sent[1][0], "(defun f (x) x)")
+
+
+import contextlib  # noqa: E402
+import io  # noqa: E402
+import re  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+
+class LaneAskTests(unittest.TestCase):
+    """lane-tools-1 (2026-09-28): the asks fourteen lanes wrote in their LANEDUMPs."""
+
+    MUST_FAIL_CAUGHT = ("NIL\nACL2 !>\n\nHARD ACL2 ERROR in FN-X:  boom\n\n\nSummary\n"
+                        "Form:  ( MAKE-EVENT (QUOTE ...) ...)\nRules: NIL\n"
+                        "Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)\n T\n"
+                        "ACL2 !>\n")
+    MUST_FAIL_FAILED = ("NIL\nACL2 !>\nSummary\nForm:  ( MAKE-EVENT (QUOTE ...) ...)\n"
+                        "Rules: NIL\nTime:  0.00 seconds\n\nACL2 Error [Failure] in "
+                        "( MAKE-EVENT (QUOTE ...) ...):  See :DOC failure.\n\n"
+                        "******** FAILED ********\nACL2 !>\n")
+
+    def test_a_must_fail_that_caught_a_hard_error_is_not_refused(self):
+        # defkeystone: must-fail returned T over an er hard and was marked refused.
+        self.assertFalse(proof_repl.errored(self.MUST_FAIL_CAUGHT))
+        self.assertTrue(proof_repl.errored(self.MUST_FAIL_FAILED))
+        self.assertTrue(proof_repl.errored("ACL2 Error in TOP-LEVEL:  The symbol FOO"))
+        self.assertTrue(proof_repl.errored("Summary\nTime: 0.1\n\nHARD ACL2 ERROR in X: y"))
+        self.assertTrue(proof_repl.errored("Summary\nx\nABORTING from raw Lisp"))
+        self.assertFalse(proof_repl.errored("Summary\nForm: (DEFUN F ...)\n F\n"))
+
+    def test_long_time_few_steps_is_named(self):
+        # blake3-digest: 126-180 s at 228 steps, time spent clausifying an mv-let.
+        note = proof_repl.slow_note({"time": 126.0, "steps": 228}, 130.0)
+        self.assertIn("long time, few steps: 130 s for 228 prover steps", note)
+        self.assertEqual(proof_repl.slow_note({"time": 126.0, "steps": 2_000_000}), "")
+        self.assertEqual(proof_repl.slow_note({"time": 3.0, "steps": 12}), "")
+        self.assertIn("long time", proof_repl.slow_note({"time": None, "steps": None}, 40.0))
+
+    def test_character_literals_and_bar_symbols_do_not_unbalance_a_form(self):
+        # compression-extents-2: a one-line send with quotes miscounted parens.
+        text = r'''(defconst *x* '("a \"b\" (" #\( #\")) (list #\) #\; #\Space |a (b|)'''
+        self.assertEqual(proof_repl.forms(text),
+                         [r'''(defconst *x* '("a \"b\" (" #\( #\"))''',
+                          r"(list #\) #\; #\Space |a (b|)"])
+        self.assertEqual(proof_repl.commands("(cw \"~x0 (\" '(a \"b)\" c))"),
+                         ["(cw \"~x0 (\" '(a \"b)\" c))"])
+
+    def book(self, text: str) -> Path:
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, directory, True)
+        path = directory / "b.lisp"
+        path.write_text(text)
+        return path
+
+    def test_send_range_names_what_it_skips_and_counts_local_forms(self):
+        # web-native: a local include later forms needed was absent, silently.
+        path = self.book('(in-package "ACL2")\n(local (include-book "dep"))\n'
+                         '(local (include-book "arithmetic-5/top" :dir :system))\n'
+                         '(local (defthm l1 t))\n(defun f (x) x)\n')
+        dep = str(path.parent.resolve() / "dep")
+        all_forms = proof_repl.forms(path.read_text())
+        items, skipped, local = proof_repl.range_items(path, all_forms, range(0, 5), {dep})
+        self.assertEqual([label for label, _ in items],
+                         ["#1 in-package", "#3 include-book", "#4 defthm l1", "#5 defun f"])
+        self.assertEqual(skipped, ["#2 include-book (loaded from source already)"])
+        self.assertEqual(local, 2)
+        words = proof_repl.range_words("s", "b", range(0, 5), items, skipped, local, False)
+        self.assertIn("2 of them (local ...)", words)
+        self.assertIn("STAY in this session", words)
+        self.assertIn("skipped 1 form(s): #2 include-book (loaded from source already)", words)
+
+    def test_send_range_ld_local_sends_one_encapsulate_after_the_hoisted_includes(self):
+        path = self.book('(include-book "std/lists/top" :dir :system)\n'
+                         '(local (defthm l1 t))\n(defun f (x) x)\n')
+        sent = []
+
+        def fake_send_many(name, items, limit, full, keep_going):
+            sent.extend(items)
+            return 0
+        args = proof_repl.argparse.Namespace(
+            name="s", book=str(path), start=None, until=None, through=None,
+            skip_includes=False, ld_local=True, limit=None, full=False, keep_going=False)
+        with mock.patch.object(proof_repl, "send_many", fake_send_many), \
+                mock.patch.object(proof_repl, "read_state", lambda name: {}), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(proof_repl.send_range(args), 0)
+        self.assertEqual(sent[0][1], '(include-book "std/lists/top" :dir :system)')
+        self.assertTrue(sent[1][1].startswith("(encapsulate ()"))
+        self.assertIn("(local (defthm l1 t))", sent[1][1])
+        self.assertEqual(len(sent), 2)
+        self.assertIn("inside one encapsulate", out.getvalue())
+
+    def test_resync_undoes_what_is_there_and_resends_from_the_first_missing(self):
+        # web-native: :ubt! then send-range --from X left earlier definitions missing.
+        path = self.book("(defun a (x) x)\n(defun b (x) x)\n(defthm c t)\n(defun d (x) x)\n")
+        world = {"a", "c", "d"}  # b was lost; c and d are stale copies
+        calls = []
+
+        def asker(name, request):
+            form = request["form"]
+            calls.append(form)
+            if form.startswith(":ubt! "):
+                order = ["a", "b", "c", "d"]
+                world.difference_update(order[order.index(form.split()[1]):])
+                return {"output": "ok"}
+            names = re.findall(r"logical-namep '([a-z]+)", form)
+            flags = [one in world for one in names]
+            want = form.startswith("(position t")
+            return {"output": "ACL2 !>" + (str(flags.index(want)) if want in flags
+                                           else "NIL") + "\n"}
+        sent = []
+        args = proof_repl.argparse.Namespace(
+            name="s", book=str(path), start="c", until=None, through=None,
+            limit=None, full=False, keep_going=False)
+        with mock.patch.object(proof_repl, "send_many",
+                               lambda name, items, *rest: sent.extend(items) or 0), \
+                mock.patch.object(proof_repl, "read_state", lambda name: {}), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(proof_repl.resync(args, asker), 0)
+        self.assertIn(":ubt! c", calls)
+        self.assertEqual(world, {"a"})
+        self.assertEqual([label for label, _ in sent],
+                         ["#2 defun b", "#3 defthm c", "#4 defun d"])
+        self.assertIn("#2 b (before c) was missing", out.getvalue())
+
+    def test_status_warns_that_a_form_by_form_dependency_leaks_its_local_theory(self):
+        # feed-queue: 6.9M steps over --source-deps against 1.76M certified.
+        sessions = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, sessions, True)
+        (sessions / "w").mkdir()
+        (sessions / "w" / "state.json").write_text(json.dumps({
+            "name": "w", "book": "books/x", "loaded": [], "sends": 0,
+            "ld_loaded": {"books/dep": 12}, "stopped_at": None, "error": None}))
+        with mock.patch.object(proof_repl, "SESSIONS", sessions), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            proof_repl.status(proof_repl.argparse.Namespace(name="w"))
+        self.assertIn("WARNING: 1 from-source book(s) loaded form by form", out.getvalue())
+        self.assertIn("--ld-local", out.getvalue())
 
 
 class RemoteTests(unittest.TestCase):
@@ -408,6 +548,52 @@ class RemoteTests(unittest.TestCase):
             proof_repl.remote_tree("hbox", None)
         with self.assertRaises(SystemExit):
             proof_repl.box_settings("laptop")
+
+    def test_acl2_flag_then_fn_acl2_choose_the_boxs_acl2(self):
+        # extract-2: hbox's default ACL2 (tls 16384) died "Thread local storage
+        # exhausted" under an image world; --host had no way to pick another.
+        import farm
+        argv = ["start", "s", "books/x", "--host", "hbox", "--acl2", "/tank/tls64k"]
+        self.assertEqual(proof_repl.strip_remote_options(argv), ["start", "s", "books/x"])
+        args = proof_repl.argparse.Namespace(acl2="/tank/tls64k")
+        self.assertEqual(proof_repl.remote_acl2(args, {"FN_ACL2": "/other"}), "/tank/tls64k")
+        none = proof_repl.argparse.Namespace(acl2=None)
+        self.assertEqual(proof_repl.remote_acl2(none, {"FN_ACL2": "/other"}), "/other")
+        self.assertIsNone(proof_repl.remote_acl2(none, {}))
+        script = proof_repl.remote_script("hbox", "/t", "l", ["start", "s", "books/x"],
+                                          "/tank/tls64k")
+        self.assertIn("FN_ACL2=/tank/tls64k ", script)
+        self.assertNotIn(farm.HOSTS["hbox"]["acl2"], script)
+
+    def test_no_sync_refuses_when_the_boxs_copy_is_not_this_one(self):
+        # defprotocol: --no-sync read the remote copy, so a local edit after
+        # the last sync silently did not run.
+        relative = "tools/proof_repl.py"
+        here = proof_repl.hashlib.sha256((proof_repl.ROOT / relative).read_bytes()).hexdigest()
+        proof_repl.refuse_stale_remote("hbox", "/t", relative, lambda *_: here)
+        with self.assertRaises(SystemExit) as refused:
+            proof_repl.refuse_stale_remote("hbox", "/t", relative, lambda *_: "0" * 64)
+        self.assertIn("sha256 0000000000000000", str(refused.exception))
+        self.assertIn(f"sha256 {here[:16]}", str(refused.exception))
+        with self.assertRaises(SystemExit) as absent:
+            proof_repl.refuse_stale_remote("hbox", "/t", relative, lambda *_: None)
+        self.assertIn("sha256 absent", str(absent.exception))
+
+    def test_host_auto_follows_the_session_else_picks_the_least_loaded(self):
+        name = "auto-host-test"
+        directory = proof_repl.session_dir(name)
+        directory.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, directory, True)
+        ns = proof_repl.argparse.Namespace
+        start = ns(command="start", name=name)
+        self.assertEqual(proof_repl.resolve_auto_host(start, lambda: "persvati"), "persvati")
+        with self.assertRaises(SystemExit):
+            proof_repl.resolve_auto_host(ns(command="send", name=name), lambda: "hbox")
+        (directory / "remote.json").write_text(json.dumps({"host": "hbox"}))
+        self.assertEqual(proof_repl.resolve_auto_host(ns(command="send", name=name),
+                                                      lambda: "persvati"), "hbox")
+        with self.assertRaises(SystemExit):
+            proof_repl.resolve_auto_host(start, lambda: "")
 
     def test_the_sync_is_tools_and_the_closure_never_planning(self):
         files = proof_repl.sync_files(["books/wildmat"], ["tests/acl2/extra.lisp"])

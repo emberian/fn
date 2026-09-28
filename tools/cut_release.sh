@@ -249,11 +249,13 @@ g_changelog() {
   # the last lane merge, so REV + that file regenerates byte for byte.  The
   # scratch commit below (git commit-tree onto REV, no ref moved, nothing
   # checked out) is that check, made whether or not REV's file is current.
+  # It carries its own identity: a git-archive snapshot or a fresh box has
+  # no user.name, and commit-tree then refuses (openbsd-datasize on hbox).
   "$PY" tools/changelog.py --rev "$REV" > "$OUT/CHANGELOG.expected" || { echo "tools/changelog.py failed"; return 1; }
   "$PY" tools/changelog.py --rev "$REV" | cmp -s - "$OUT/CHANGELOG.expected" || { echo "tools/changelog.py is not deterministic at REV"; return 1; }
   blob=$(git hash-object -w "$OUT/CHANGELOG.expected") &&
   tree=$(git ls-tree "$REV" | awk -v b="$blob" -F'\t' '$2 != "CHANGELOG.md" { print } END { printf "100644 blob %s\tCHANGELOG.md\n", b }' | git mktree) &&
-  scratch=$(echo "changelog stability check" | git commit-tree "$tree" -p "$REV") || { echo "the scratch commit failed"; return 1; }
+  scratch=$(echo "changelog stability check" | GIT_AUTHOR_NAME=cut_release GIT_AUTHOR_EMAIL=cut-release@fn.invalid GIT_COMMITTER_NAME=cut_release GIT_COMMITTER_EMAIL=cut-release@fn.invalid git commit-tree "$tree" -p "$REV") || { echo "the scratch commit failed"; return 1; }
   "$PY" tools/changelog.py --rev "$scratch" > "$OUT/CHANGELOG.after-commit" || { echo "tools/changelog.py failed at the scratch commit"; return 1; }
   if ! cmp -s "$OUT/CHANGELOG.expected" "$OUT/CHANGELOG.after-commit"; then
     diff "$OUT/CHANGELOG.expected" "$OUT/CHANGELOG.after-commit" | head -10
