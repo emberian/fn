@@ -33,13 +33,35 @@ Neither changes the merge or its exit code.
 
 A real conflict leaves ours for that field, names every one on stderr
 (`CONFLICT PRF-212 status: ours 'proved' theirs 'open'`), and exits 1, so git
-marks the file conflicted.  The file stays valid JSON either way.
+marks the file conflicted.  That non-zero exit IS the intended behaviour: git
+then refuses to commit the merge until someone resolves the file.  The file
+stays valid JSON either way -- which is the trap: `git add` of a JSON file
+that parses "resolves" it with OURS for every conflicted field, and the
+stderr lines scroll away (batch AY's obstruction report).  So every conflict
+is also appended, one JSON object per line, to the CONFLICT RECORD
+
+    build/merge-conflicts/registry.jsonl      (FN_REGISTRY_CONFLICTS moves it)
+
+under the repository the merge runs in (git runs a driver at the work tree's
+top level): {"path", "id", "field", "detail", "ours_kept": true, "time"}.
+The batch runner reads it after every merge:
+
+    python3 tools/merge_registry.py --pending   # print them; exit 1 if any
+    python3 tools/merge_registry.py --clear     # after resolving them (moves
+                                                # the record to *.resolved-<time>)
+
+A merge whose record is non-empty is not finished, whatever `git status`
+says.  The driver's own exit stays 1 on any conflict, so a scripted merge
+(build/coordinator/merge_lane.sh) stops too.
 """
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import re
 import sys
+import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -208,14 +230,90 @@ def claim_notes(base, merged, ours, theirs, conflicts: list[str]) -> list[str]:
     return notes
 
 
+CONFLICT_RECORD = Path("build/merge-conflicts/registry.jsonl")
+CONFLICT_LINE = re.compile(r"CONFLICT (.+?): (.*)\Z", re.S)
+
+
+def record_path() -> Path:
+    """The conflict record: FN_REGISTRY_CONFLICTS, else build/merge-conflicts/
+    registry.jsonl under the current directory (git runs a merge driver at
+    the work tree's top level)."""
+    configured = os.environ.get("FN_REGISTRY_CONFLICTS", "")
+    return Path(configured) if configured else Path.cwd() / CONFLICT_RECORD
+
+
+def conflict_records(path: str, conflicts: list[str]) -> list[dict]:
+    """Each CONFLICT line as {path, id, field, detail}: `CONFLICT PRF-212
+    status: ...' is id PRF-212, field status; a row-level conflict (an id
+    collision, a deleted-and-changed row) has field ""."""
+    out = []
+    stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    for line in conflicts:
+        match = CONFLICT_LINE.match(line)
+        where, detail = (match.group(1), match.group(2)) if match else ("?", line)
+        if where.startswith("(top level)"):
+            ident, field = "(top level)", where[len("(top level)"):].strip()
+        else:
+            ident, _, field = where.partition(" ")
+        out.append({"path": path, "id": ident, "field": field.strip(), "detail": detail,
+                    "ours_kept": True, "time": stamp})
+    return out
+
+
+def append_record(records: list[dict]) -> Path | None:
+    """Append RECORDS to the conflict record; None when it cannot be written
+    (then the driver says so, and its exit is still 1)."""
+    target = record_path()
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("a", encoding="utf-8") as handle:
+            for entry in records:
+                handle.write(json.dumps(entry, ensure_ascii=False, sort_keys=True) + "\n")
+    except OSError:
+        return None
+    return target
+
+
+def pending() -> list[dict]:
+    target = record_path()
+    if not target.is_file():
+        return []
+    entries = []
+    for line in target.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            entries.append(json.loads(line))
+    return entries
+
+
+def pending_main(clear: bool) -> int:
+    entries = pending()
+    target = record_path()
+    for entry in entries:
+        field = f" {entry['field']}" if entry.get("field") else ""
+        print(f"UNRESOLVED {entry['path']}: {entry['id']}{field}: {entry['detail']} "
+              f"(ours kept, {entry['time']})")
+    if clear:
+        if entries:
+            stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+            target.rename(target.with_name(target.name + ".resolved-" + stamp))
+        print(f"merge_registry --clear: {len(entries)} conflict(s) marked resolved")
+        return 0
+    print(f"merge_registry --pending: {len(entries)} unresolved registry field "
+          f"conflict(s) in {target}")
+    return 1 if entries else 0
+
+
 def read(path: str):
     text = Path(path).read_text(encoding="utf-8")
     return json.loads(text) if text.strip() else {}
 
 
 def main(argv: list[str]) -> int:
+    if argv in (["--pending"], ["--clear"]):
+        return pending_main(argv == ["--clear"])
     if len(argv) != 4:
-        print("usage: merge_registry.py BASE OURS THEIRS PATH  (git's %O %A %B %P)",
+        print("usage: merge_registry.py BASE OURS THEIRS PATH  (git's %O %A %B %P)\n"
+              "       merge_registry.py --pending | --clear",
               file=sys.stderr)
         return 2
     base_file, ours_file, theirs_file, path = argv
@@ -230,6 +328,12 @@ def main(argv: list[str]) -> int:
                                encoding="utf-8")
     for line in conflicts:
         print(f"merge_registry: {path}: {line}", file=sys.stderr)
+    if conflicts:
+        written = append_record(conflict_records(path, conflicts))
+        print(f"merge_registry: {path}: {len(conflicts)} conflict(s) "
+              + (f"recorded in {written}; `merge_registry.py --pending` lists them"
+                 if written else "NOT recorded (the conflict record is not writable)"),
+              file=sys.stderr)
     for line in claim_notes(base, merged, ours, theirs, conflicts):
         print(f"merge_registry: {path}: {line}", file=sys.stderr)
     rows = merged[rows_key(merged)] if rows_key(merged) else []
