@@ -94,6 +94,20 @@ from the cache is dated no earlier than its source (tools/certs.py
 `date_after_source`), so `certify_books.py --pcert` completes over a closure
 `--certify-missing` or an install put in place.
 
+Round 4 (lane-tools-1, 2026-09-28, the lanes' LANEDUMP asks): `--acl2 PATH`
+(else FN_ACL2) picks the ACL2, also on a --host box (hbox's
+acl2-literal-4g-tls64k when an image world exhausts thread-local storage);
+`send-range --no-sync` refuses when the box's copy is not this tree's;
+send-range names every form it skips and counts the `(local ...)` forms it
+sends at the top level (whose events stay in the session), and its
+`--ld-local` sends the range inside one encapsulate; `resync NAME BOOK --from
+EVENT` undoes the session through what it holds from EVENT on and resends from
+EVENT, or from the first earlier event its world lacks; a refusal is judged by
+the form's own result (a must-fail that caught an `er hard` is not refused);
+a form that took long for few prover steps says so; `status` warns that a
+book loaded form by form from source leaks its local theory; the reader
+knows character literals (#\( #\") and |bar symbols|.
+
 A session holds one slot of the machine's ACL2 pool for its whole life, so
 it belongs to its lane and ends with it (PKT-346: fifteen finished lanes'
 sessions once held fifteen of persvati's sixteen slots).  `start` records
@@ -1628,6 +1642,47 @@ def read_state(name: str) -> dict | None:
         return None
 
 
+def range_items(path: Path, all_forms: list[str], chosen: range, from_source: set[str],
+                skip_includes: bool = False) -> tuple[list[tuple[str, str]], list[str], int]:
+    """(label, form) to send for CHOSEN, the labels of the includes skipped, and
+    how many of the sent forms are top-level `(local ...)`."""
+    items, skipped, local = [], [], 0
+    for index in chosen:
+        form = all_forms[index]
+        target = include_target(form, path.parent)
+        if target is not None and (skip_includes or target in from_source):
+            skipped.append(form_label(index + 1, form)
+                           + (" (loaded from source already)" if target in from_source
+                              else " (--skip-includes)"))
+            continue
+        local += bool(LOCAL_FORM.match(form))
+        items.append((form_label(index + 1, form), form))
+    return items, skipped, local
+
+
+def range_words(name: str, book: str, chosen: range, items: list, skipped: list[str],
+                local: int, ld_local: bool) -> str:
+    """The head line of a send-range: what it sends, what it skips and why.
+
+    web-native, 2026-09-27: a local include a later termination proof needed
+    was absent from the session and nothing said so; every skipped form is
+    now named, and the local forms sent are counted, since at the top level
+    their events stay in the session (a certified include drops them).
+    """
+    words = (f"send-range {name}: forms #{chosen.start + 1}-#{chosen.stop} of {book} "
+             f"({len(items)} to send")
+    if local:
+        words += (f", {local} of them (local ...): " +
+                  ("inside one encapsulate, so they are dropped at its end as an include "
+                   "drops them" if ld_local else
+                   "sent at the top level, so their events STAY in this session "
+                   "(--ld-local drops them at the range's end)"))
+    words += ")"
+    if skipped:
+        words += f"\nskipped {len(skipped)} form(s): " + "; ".join(skipped)
+    return words
+
+
 def send_range(args) -> int:
     """A book's forms from --from to --until/--through into a live session."""
     path = book_path(args.book)
@@ -1635,18 +1690,96 @@ def send_range(args) -> int:
     chosen = select_range(all_forms, args.start, args.until, args.through)
     state = read_state(args.name) or {}
     from_source = set(state.get("ld") or [])
-    items, skipped = [], 0
-    for index in chosen:
-        form = all_forms[index]
-        target = include_target(form, path.parent)
-        if target is not None and (args.skip_includes or target in from_source):
-            skipped += 1
-            continue
-        items.append((form_label(index + 1, form), form))
-    first, last = chosen.start + 1, chosen.stop
-    print(f"send-range {args.name}: forms #{first}-#{last} of {args.book} "
-          f"({len(items)} to send" + (f", {skipped} local includes skipped" if skipped else "")
-          + ")")
+    items, skipped, local = range_items(path, all_forms, chosen, from_source,
+                                        args.skip_includes)
+    ld_local = getattr(args, "ld_local", False)
+    print(range_words(args.name, args.book, chosen, items, skipped, local, ld_local))
+    if not items:
+        return 0
+    if ld_local:
+        hoisted, body = encapsulated("\n".join(form for _, form in items), path.parent,
+                                     set(), None)
+        items = ([(form_label(0, form).split(" ", 1)[1], form) for form in hoisted]
+                 + [(f"#{chosen.start + 1}-#{chosen.stop} (encapsulate)", body)])
+    return send_many(args.name, items, args.limit, args.full, args.keep_going)
+
+
+# Heads whose name argument is an existing name, not one the form introduces.
+NAMELESS_HEADS = ("verify-guards", "defattach", "in-theory", "local")
+
+
+def introduced_name(form: str) -> str | None:
+    head, name = head_and_name(form)
+    return None if head in NAMELESS_HEADS else name
+
+
+def first_index(name: str, names: list[str], want_present: bool,
+                asker=None) -> int | None:
+    """Ask session NAME which of NAMES is (want_present) or is not a logical
+    name in its world; answers the first such position, or None."""
+    if not names:
+        return None
+    asker = asker or ask
+    probes = " ".join(f"(if (logical-namep '{one} (w state)) t nil)" for one in names)
+    form = f"(position {'t' if want_present else 'nil'} (list {probes}))"
+    output = asker(name, {"op": "send", "form": form, "limit": None}).get("output", "")
+    found = re.findall(r"(?:^|>)\s*([0-9]+|NIL)\s*$", output, re.MULTILINE)
+    if not found:
+        raise SystemExit(f"proof-repl: resync could not read the world of {name!r}:\n"
+                         + brief(output))
+    return None if found[-1] == "NIL" else int(found[-1])
+
+
+def resync(args, asker=None) -> int:
+    """Undo the session back to EVENT and resend the book from there, in one command.
+
+    web-native, 2026-09-27: `:ubt! X` then `send-range --from X` sometimes
+    left earlier definitions missing (the undo reached an event the book
+    defines before X, or an earlier form had never been sent), and the
+    redefinition refusals that followed only a fresh `start` cleared.  This
+    asks the session's world which of the book's names it has: it undoes
+    (`:ubt!`) through the first name from EVENT onward that is present,
+    until none is, then resends from the first name before EVENT that is
+    missing, or from EVENT.
+    """
+    asker = asker or ask
+    path = book_path(args.book)
+    all_forms = forms(path.read_text(encoding="utf-8"))
+    begin = locate(all_forms, args.start)
+    tail = [(index, introduced_name(all_forms[index])) for index in
+            select_range(all_forms, args.start, args.until, args.through)]
+    tail = [(index, one) for index, one in tail if one]
+    undone: list[str] = []
+    for _ in range(len(tail) + 1):
+        present = first_index(args.name, [one for _, one in tail], True, asker)
+        if present is None:
+            break
+        target = tail[present][1]
+        answer = asker(args.name, {"op": "send", "form": f":ubt! {target}", "limit": None})
+        undone.append(target)
+        if answer.get("error"):
+            print(f"resync {args.name}: :ubt! {target} was refused:\n"
+                  + brief(answer.get("output", "")))
+            return 1
+    else:
+        print(f"resync {args.name}: the world still holds names from #{begin + 1} on "
+              f"after {len(undone)} undo(s); start the session again")
+        return 1
+    before = [(index, introduced_name(all_forms[index])) for index in range(begin)]
+    before = [(index, one) for index, one in before if one]
+    missing = first_index(args.name, [one for _, one in before], False, asker)
+    start = before[missing][0] if missing is not None else begin
+    print(f"resync {args.name}: "
+          + (f"undid through {', '.join(undone)}" if undone else "nothing from "
+             f"#{begin + 1} on was in the world")
+          + (f"; #{start + 1} {before[missing][1]} (before {args.start}) was missing, so "
+             f"resending from there" if missing is not None else "")
+          + ".", flush=True)
+    chosen = range(start, select_range(all_forms, args.start, args.until,
+                                       args.through).stop)
+    state = read_state(args.name) or {}
+    items, skipped, local = range_items(path, all_forms, chosen, set(state.get("ld") or []))
+    print(range_words(args.name, args.book, chosen, items, skipped, local, False))
     if not items:
         return 0
     return send_many(args.name, items, args.limit, args.full, args.keep_going)
@@ -2412,7 +2545,7 @@ def run_remote(args, argv: list[str]) -> int:
         books += list(args.ld or [])
     elif command in ("list", "reap") and not getattr(args, "no_sync", False):
         extra.append("tools/proof_repl.py")  # sync_files adds the rest of tools/
-    elif command == "send-range":
+    elif command in ("send-range", "resync"):
         path = book_path(args.book)
         try:
             relative = path.relative_to(ROOT.resolve()).as_posix()
@@ -2551,11 +2684,31 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--full", action="store_true", help="every form's whole output")
     p.add_argument("--keep-going", action="store_true",
                    help="report every refusal instead of stopping at the first")
+    p.add_argument("--ld-local", action="store_true",
+                   help="send the range inside one encapsulate (non-local include-book "
+                        "and defpkg first), so its local events are dropped at the end, "
+                        "as a certified include drops them")
     p.add_argument("--skip-includes", action="store_true",
                    help="skip every local include-book form (the session's own "
                         "from-source books are always skipped)")
     add_remote_options(p, sync=True)
     p.set_defaults(run=send_range)
+    p = sub.add_parser("resync", help="undo the session back to EVENT and resend the "
+                                      "book from there (or from the first earlier event "
+                                      "the world lacks)")
+    p.add_argument("name")
+    p.add_argument("book", help="books/NAME (.lisp optional) or any file of forms")
+    p.add_argument("--from", dest="start", required=True, metavar="EVENT",
+                   help="an event name or #N")
+    p.add_argument("--until", default=None, metavar="EVENT", help="stop before this one")
+    p.add_argument("--through", default=None, metavar="EVENT", help="stop after this one")
+    p.add_argument("--limit", type=float, default=None)
+    p.add_argument("--full", action="store_true", help="every form's whole output")
+    p.add_argument("--keep-going", action="store_true",
+                   help="do not stop at the first refused form")
+    add_remote_options(p, sync=True)
+    p.set_defaults(run=resync)
+
     p = sub.add_parser("forms", help="number and name a book's top-level forms (#N)")
     p.add_argument("book")
     p.set_defaults(run=list_forms)
