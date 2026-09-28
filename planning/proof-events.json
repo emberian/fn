@@ -11830,6 +11830,106 @@
           "name": "fn-scol-okp-of-sca-finish"
         }
       ]
+    },
+    {
+      "id": "PRF-337",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-wrq-scan-work-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wrq-scan-is-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-head-frame-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-route-is-a-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-response-head-crlf-count"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-parse-head-answers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wrq-span-decode-is-urldecode"
+        }
+      ]
+    },
+    {
+      "id": "PRF-338",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-wr-emit-writes-vocabulary-or-escaped"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wr-emit-reads-only-its-spans"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wr-emit-is-seq"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wr-escape-is-safe"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wr-unescape-escape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wr-escape-is-emit-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wr-page-segs-ok"
+        }
+      ]
+    },
+    {
+      "id": "PRF-339",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-web-session-route-needs-its-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-session-sends-only-to-its-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-sessions-bound-by-281"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wss-body-cannot-end-the-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wss-emit-body-is-stuff"
+        }
+      ]
+    },
+    {
+      "id": "PRF-340",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-web-config-plan-answers"
+        }
+      ]
     }
   ]
 }
