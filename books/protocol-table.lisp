@@ -39,9 +39,14 @@
 ;              fn-rcompat-reply answers ARTICLE/HEAD before the catalog
 ;              retrievals (sca-join-4's record, "F2 lookup counts").  Subject
 ;              of the equality: fn-nntp-archive-command-cat-is-pinned and
-;              fn-scr-command-is-command-pinned.  sca-join-5 moves the live
-;              arm of ARTICLE/HEAD by number, GROUP and LISTGROUP to the
-;              catalog; its lane updates these values when it lands.
+;              fn-scr-command-is-command-pinned.  Since sca-join-5 the
+;              Xref arms read the catalog (fn-rcompat-retrieval-cat,
+;              fn-rcompat-hdr-cat; fn-rcompat-reply-cat-is-rcompat-reply),
+;              a by-number withdrawn test is one catalog probe
+;              (fn-nntp-number-withdrawn-p-cat), and GROUP/LISTGROUP read the
+;              catalog's maintained group summary (fn-scat-group-summary,
+;              fn-scat-group-low); a FORM whose FUNCTION is a test names the
+;              decision, the next entry the reply it selects.
 ;   :framing   :command, or :article when the reply hands the connection to
 ;              article mode (POST's 340).  A pinned connection may be sent
 ;              only :command replies unsolicited: books/nntp-auth-fold.lisp's
@@ -360,7 +365,7 @@
    :rfc "RFC 3977 6.1.1" :dispatch :archive
    :parser (fn-nntp-printable-tokenp)
    :model (fn-nntp-group-result) :cat (fn-nntp-group-result-cat) :xref nil
-   :live (("name" fn-nntp-group-result-cat))
+   :live (("name" fn-nntp-group-result-cat) ("summary" fn-scat-group-summary) ("low" fn-scat-group-low))
    :framing :command
    :fuzz ((:pool :groups) (:opt 1/20 "x"))
    :replies ((211 :accepted :reader :selected "211 COUNT LOW HIGH GROUP" :computed)
@@ -375,7 +380,7 @@
    :parser (fn-nntp-printable-tokenp fn-nntp-parse-range)
    :model (fn-gidx-listgroup-command fn-nntp-listgroup-command)
    :cat (fn-nntp-listgroup-command-cat) :xref nil
-   :live (("any" fn-nntp-listgroup-command-cat))
+   :live (("any" fn-nntp-listgroup-command-cat) ("summary" fn-scat-group-summary))
    :framing :command
    :fuzz ((:opt 4/5 (:pool :groups) (:opt 1/2 (:pool :ranges))))
    :replies ((211 :accepted :reader :listed "211 COUNT LOW HIGH GROUP list follows" :computed)
@@ -429,7 +434,7 @@
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref (fn-rcompat-retrieval)
-   :live (("withdrawn" fn-nntp-withdrawn-reply) ("any" fn-rcompat-retrieval))
+   :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("any" fn-rcompat-retrieval-cat))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
    :replies ((220 :accepted :reader :sent "220 NUMBER MESSAGE-ID article follows" :computed)
@@ -454,7 +459,7 @@
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref (fn-rcompat-retrieval)
-   :live (("withdrawn" fn-nntp-withdrawn-reply) ("any" fn-rcompat-retrieval))
+   :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("any" fn-rcompat-retrieval-cat))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
    :replies ((221 :accepted :reader :sent "221 NUMBER MESSAGE-ID headers follow" :computed)
@@ -479,7 +484,7 @@
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref nil
-   :live (("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-retrieval))
+   :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-retrieval))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
    :replies ((222 :accepted :reader :sent "222 NUMBER MESSAGE-ID body follows" :computed)
@@ -504,7 +509,7 @@
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref nil
-   :live (("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-retrieval))
+   :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-retrieval))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
    :replies ((223 :accepted :reader :sent "223 NUMBER MESSAGE-ID retrieved" :computed)
@@ -573,7 +578,7 @@
    :model (fn-nntp-hdr-response fn-nntp-verdict-hdr-response
            fn-nntp-control-hdr-response fn-nntp-enrollment-hdr-response)
    :cat (fn-nntp-hdr-command-cat) :xref (fn-nntp-xref-reply fn-rcompat-hdr)
-   :live ((":fn-verified" fn-nntp-verdict-hdr-response) (":fn-control" fn-nntp-control-hdr-response) (":fn-enrollment" fn-nntp-enrollment-hdr-response) ("Xref" fn-rcompat-hdr) ("other" fn-nntp-hdr-command-cat))
+   :live ((":fn-verified" fn-nntp-verdict-hdr-response) (":fn-control" fn-nntp-control-hdr-response) (":fn-enrollment" fn-nntp-enrollment-hdr-response) ("Xref" fn-rcompat-hdr-cat) ("other" fn-nntp-hdr-command-cat))
    :framing :command
    :fuzz ((:pool :header-fields) (:opt 7/10 (:pool+msgid :ranges)))
    :replies ((225 :accepted :reader :headers "225 headers follow")
@@ -596,7 +601,7 @@
    :parser (fn-nntp-parse-range fn-nntp-message-id-tokenp)
    :model (fn-nntp-xhdr-response) :cat (fn-nntp-hdr-command-cat)
    :xref (fn-nntp-xref-reply fn-rcompat-hdr)
-   :live (("Xref" fn-rcompat-hdr) ("other" fn-nntp-hdr-command-cat))
+   :live (("Xref" fn-rcompat-hdr-cat) ("other" fn-nntp-hdr-command-cat))
    :framing :command
    :fuzz ((:pool :header-fields) (:opt 7/10 (:pool+msgid :ranges)))
    :replies ((221 :accepted :reader :header "221 header follows")
