@@ -52,6 +52,10 @@
 ; Another rule is not answered.
 (assert-event (null (fn-gacc-view "fn.*" *gacct-state* *gacct-ctl* *gacct-c1*)))
 
+;; The prefix walk's two values, as a list (for ground evaluation).
+(defun gacct-prefix (new old)
+  (mv-let (found prefix) (fn-gacc-prefix new old nil) (list found prefix)))
+
 ;; Acceptances since the key: the entry grows by them (the prefix is found),
 ;; and is the view of the new key.
 (defconst *gacct-q*
@@ -63,11 +67,9 @@
 (defconst *gacct-state2*
   (fn-make-state *gacct-groups* (list (cons "fn.public" 4) (cons "fn.private.x" 4))
                  (list* *gacct-t* *gacct-q* *gacct-articles*) 5 nil nil))
-(assert-event (mv-nth 0 (fn-gacc-prefix (fn-state-articles *gacct-state2*)
-                                        (fn-state-articles *gacct-state*) nil)))
-(assert-event (equal (mv-nth 1 (fn-gacc-prefix (fn-state-articles *gacct-state2*)
-                                               (fn-state-articles *gacct-state*) nil))
-                     (list *gacct-q* *gacct-t*)))
+(assert-event (equal (gacct-prefix (fn-state-articles *gacct-state2*)
+                                   (fn-state-articles *gacct-state*))
+                     (list t (list *gacct-q* *gacct-t*))))
 (defconst *gacct-c2* (fn-gacc-prepare *gacct-text* *gacct-state2* *gacct-ctl* *gacct-c1*))
 (assert-event (fn-gacc-okp *gacct-c2*))
 (assert-event (equal (fn-gacc-view *gacct-text* *gacct-state2* *gacct-ctl* *gacct-c2*)
@@ -124,12 +126,12 @@
                      (fn-gac-view-entry *gacct-text* *gacct-state2* *gacct-ctl-w*)))
 
 ; Without the prefix: an archive whose articles do not extend the entry's
-; (s withdrawn from the visible list) is not a grown view.
+; (p, a public article, withdrawn from the visible list) is not a grown view.
 (defconst *gacct-state3*
   (fn-make-state *gacct-groups* (list (cons "fn.public" 3) (cons "fn.private.x" 3))
-                 (list *gacct-q* *gacct-c* *gacct-p*) 5 nil nil))
-(assert-event (not (mv-nth 0 (fn-gacc-prefix (fn-state-articles *gacct-state3*)
-                                             (fn-state-articles *gacct-state*) nil))))
+                 (list *gacct-q* *gacct-c* *gacct-s*) 5 nil nil))
+(assert-event (not (car (gacct-prefix (fn-state-articles *gacct-state3*)
+                                      (fn-state-articles *gacct-state*)))))
 (assert-event
  (not (equal (fn-gacc-extend-view *gacct-text* *gacct-state3* (list *gacct-q*)
                                   (fn-gac-view-entry *gacct-text* *gacct-state* *gacct-ctl*))
@@ -152,8 +154,8 @@
 ;; host/owner-host.lisp fn-owner-chunk-span-at through fn-oas-read-span): bob's
 ;; commands answered from the prepared cache are the per-command view's.
 
-(defun gacct-cred (name fill)
-  (fn-auth-make-cred (fn-nntp-string-octets name) (make-list 32 :initial-element fill)
+(defun gacct-cred (name octet)
+  (fn-auth-make-cred (fn-nntp-string-octets name) (make-list 32 :initial-element octet)
                      (fn-authsec-verifier
                       (make-list 16 :initial-element 3)
                       '(42 82 187 10 181 221 230 125 199 188 135 91 193 55 205 245
