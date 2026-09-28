@@ -734,10 +734,12 @@
 (assert-event (equal (at-keystone-concl (at-cfg1m) (at-redeem-at *at-blind-stamp*))
                      '(t t t)))
 ; Removal of the pending hypothesis: over the redeemed configuration the
-; identical redeem, late, is the resume and is admitted.
+; identical redeem, stamped with no wall claim (the time hypothesis's other
+; arm, since a redeemed row holds a verifier, not an expiry), is the resume
+; and is admitted.
 (defmacro at-resume-late ()
   '(fn-cfg-record-make 3 3 3 (list (fn-acct-plan-delta (at-plan1)))
-                       *at-stamp-late*))
+                       *at-blind-stamp*))
 (assert-event (equal (at-keystone-hyps (at-cfg2) (at-resume-late))
                      '(t t t t t t nil t)))
 (assert-event (equal (at-keystone-concl (at-cfg2) (at-resume-late))
