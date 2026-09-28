@@ -2,7 +2,6 @@
 (in-package "ACL2")
 (include-book "../books/bp-receive-evidence")
 
-(defun fn-bpn-host-evidence-max-records () *fn-bpn-evidence-max-records*)
 (defun fn-bpn-host-evidence-max-entries () (fn-bpn-evidence-max-entries))
 (defun fn-bpn-host-evidence-directory-name () *fn-bpn-evidence-directory-name*)
 (defun fn-bpn-host-evidence-recover (entries)
