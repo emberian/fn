@@ -17,17 +17,17 @@ mkdir -p "$OUT"
 rm -f "$OUT/served.json" "$OUT/served.scm" "$OUT/erased.json" "$OUT/inventory.json" \
       "$OUT/fntable.scm" "$OUT/probes.scm" "$OUT/served" "$OUT/csc-served.args" "$OUT/link.args"
 # The boundary: every function the driver calls (host/native/io.lisp calls
-# each through fnn-call).  The reader's served path, its store selection, the
-# durable-extent realizers' ACL2 calls (host/native/extent.lisp), the exit
-# codes, and the probes' entries (tools/extract/probes.py); the writable store
-# verbs' port (host/store-write-host.lisp fn-xw-main, lane extract-writable)
-# and the exit code of the condition that ends one (fnn-exit-code-for).
-ROOTS=${FN_EXTRACT_ROOTS:-"create-fn-arena fn-reader-use-seed fn-reader-set-posting fn-reader-model-octets fn-reader-reset fn-reader-chunk fn-reader-outcome fn-reader-observe-clock fn-outcome-code fn-ns-file-render fn-intern-events fn-arx-entry-ok-buffer fn-arx-read-cache-entries fn-xo-open-store fn-reader-use-store fn-lzr-lz-read fn-xw-main fn-outcome-host-condition-exit-code"}
-# Not boundary functions: the realizer's buffer stobj's creator (the image
-# holds the live fn-octets-rd; the program creates it once) and the
-# references the native digests fall back to (tools/extract/native.scm): the
-# three BLAKE3 entries and the Cancel-Lock hash's SHA-256.
-EXTRA=${FN_EXTRACT_EXTRA:-"create-fn-octets-rd create-fn-octets-lg fn-blake3-stobj fn-blake3-of-prefixed-buffer fn-blake3-of-prefixed-range fn-sha256"}
+# each through fnn-call) -- the reader's served path, its store selection,
+# the durable-extent realizers' ACL2 calls (host/native/extent.lisp), the
+# exit codes, and the probes' entries (tools/extract/probes.py) -- and the
+# EXTRA functions that are not boundary functions (the realizer's buffer
+# stobjs' creators and the references the native digests fall back to,
+# tools/extract/native.scm).  Both are DECLARED (definterface :root, in
+# host/interfaces.lisp and host/interfaces-extract.lisp) and generated into
+# roots.sh by tools/interface_emit.py.
+. "$X/roots.sh"
+ROOTS=${FN_EXTRACT_ROOTS:-$FN_EXTRACT_ROOTS_DECLARED}
+EXTRA=${FN_EXTRACT_EXTRA:-$FN_EXTRACT_EXTRA_DECLARED}
 python3 "$X/world.py" --check
 # The world, loaded once per world digest and saved (world_image.sh).
 WORLD=$(sh "$X/world_image.sh" "$TREE")

@@ -1,6 +1,7 @@
 ; Teeth for books/log-sink (PKT-508, PRF-187): the owner's service-log sink.
 (in-package "ACL2")
 (include-book "../../books/log-sink")
+(include-book "../../books/defkeystone")
 (include-book "must-fail-checked")
 
 (defconst *lst-b* 100)
@@ -35,27 +36,35 @@
 ; ... and a second line behind it is dropped.
 (assert-event (equal (car (fn-log-sink-offer (cadr *lst-big*) 1 *lst-b*)) :drop))
 
-; fn-log-sink-offer-preserves-okp without its hypothesis: a sink whose
-; counts do not add up stays broken after an offer.
+;; The two preservation keystones with their teeth (books/defkeystone.lisp):
+;; the positive witness is the reachable run above; the removal witness of
+;; `okp' is a sink whose counts do not add up (offer) or two lines pending
+;; past the bound (take), which stays broken, so the weakened theorem is
+;; false at it and must fail.
 (defconst *lst-bad* '(0 0 0 0 5))
-(assert-event (not (fn-log-sink-okp *lst-bad* *lst-b*)))
-(assert-event (not (fn-log-sink-okp (cadr (fn-log-sink-offer *lst-bad* 1 *lst-b*)) *lst-b*)))
-(must-fail-checked
- (defthm lst-offer-preserves-without-okp
-   (implies (and (equal s *lst-bad*) (equal len 1) (equal bound *lst-b*))
-            (fn-log-sink-okp (cadr (fn-log-sink-offer s len bound)) bound))
-   :rule-classes nil))
-; fn-log-sink-take-preserves-okp without its hypothesis: two lines pending
-; past the bound stay past it after a take of nothing.
 (defconst *lst-over* '(500 3 0 0 3))
-(assert-event (not (fn-log-sink-okp *lst-over* *lst-b*)))
-(assert-event (not (fn-log-sink-okp (fn-log-sink-take *lst-over* 0 :written) *lst-b*)))
-(must-fail-checked
- (defthm lst-take-preserves-without-okp
-   (implies (and (equal s *lst-over*) (equal len 0) (equal outcome :written)
-                 (equal bound *lst-b*))
-            (fn-log-sink-okp (fn-log-sink-take s len outcome) bound))
-   :rule-classes nil))
+
+(defkeystone lst-offer-preserves
+  (implies (fn-log-sink-okp s bound)
+           (fn-log-sink-okp (cadr (fn-log-sink-offer s len bound)) bound))
+  :subject fn-log-sink-offer
+  :id "PRF-187"
+  :restates fn-log-sink-offer-preserves-okp
+  :hyps (okp)
+  :witness ((s (cadr *lst-o2*)) (len 40) (bound *lst-b*))
+  :breaks ((okp ((s *lst-bad*) (len 1))))
+  :rule-classes nil)
+
+(defkeystone lst-take-preserves
+  (implies (fn-log-sink-okp s bound)
+           (fn-log-sink-okp (fn-log-sink-take s len outcome) bound))
+  :subject fn-log-sink-take
+  :id "PRF-187"
+  :restates fn-log-sink-take-preserves-okp
+  :hyps (okp)
+  :witness ((s (cadr *lst-o3*)) (len 40) (outcome :written) (bound *lst-b*))
+  :breaks ((okp ((s *lst-over*) (len 0))))
+  :rule-classes nil)
 
 ; fn-log-sink-offer-drops-only-past-the-bound (no hypothesis): both sides.
 (assert-event (and (equal (car *lst-o3*) :drop)
@@ -72,15 +81,21 @@
             (equal (car (fn-log-sink-offer s len bound)) :drop))
    :rule-classes nil))
 
-; fn-log-sink-drop-counts: its witness, and without the :drop hypothesis
-; (a queued line leaves the dropped count alone).
-(assert-event (equal (fn-log-sink-dropped (cadr *lst-o3*))
-                     (+ 1 (fn-log-sink-dropped (cadr *lst-o2*)))))
-(assert-event (equal (fn-log-sink-dropped (cadr *lst-o2*))
-                     (fn-log-sink-dropped (cadr *lst-o1*))))
-(must-fail-checked
- (defthm lst-drop-counts-without-drop
-   (implies (and (equal s (cadr *lst-o1*)) (equal len 40) (equal bound *lst-b*))
-            (equal (fn-log-sink-dropped (cadr (fn-log-sink-offer s len bound)))
-                   (+ 1 (fn-log-sink-dropped s))))
-   :rule-classes nil))
+;; fn-log-sink-drop-counts: its witness is the third line's drop, and
+;; without the :drop hypothesis a queued line (the second) leaves the dropped
+;; count alone.
+(defkeystone lst-drop-counts
+  (implies (equal (car (fn-log-sink-offer s len bound)) :drop)
+           (let ((s2 (cadr (fn-log-sink-offer s len bound))))
+             (and (equal (fn-log-sink-dropped s2) (+ 1 (fn-log-sink-dropped s)))
+                  (equal (fn-log-sink-pending-lines s2) (fn-log-sink-pending-lines s))
+                  (equal (fn-log-sink-pending-octets s2) (fn-log-sink-pending-octets s)))))
+  :subject fn-log-sink-offer
+  :id "PRF-187"
+  :restates fn-log-sink-drop-counts
+  :hyps (drop)
+  :witness ((s (cadr *lst-o2*)) (len 40) (bound *lst-b*))
+  :breaks ((drop ((s (cadr *lst-o1*)))))
+  ; the book leaves fn-log-sink-offer disabled; the source keystone is the proof
+  :hints (("Goal" :use fn-log-sink-drop-counts))
+  :rule-classes nil)

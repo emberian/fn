@@ -48,7 +48,7 @@
 
 (in-package "ACL2")
 
-(defconstant +fnn-mux-loops+ 2)
+(defconstant +fnn-mux-loops+ *fn-heap-mux-loops*) ; books/profile-limits.lisp
 (defconstant +fnn-mux-handshakes-per-loop+ 8)
 (defconstant +fnn-mux-queued-per-loop+ 256)
 (defconstant +fnn-mux-send-seconds+ 10)
@@ -59,7 +59,7 @@
 ;;; The node's threads that are not loops or control clients: main (accept),
 ;;; finalizer, log writer, checkpoint publisher, feed and pull workers,
 ;;; control accept, three listeners, two spare (image-floor's count).
-(defconstant +fnn-mux-fixed-threads+ 12)
+(defconstant +fnn-mux-fixed-threads+ *fn-heap-fixed-threads*) ; books/profile-limits.lisp
 
 (defconstant +fnn-mux-pollin+ 1)
 (defconstant +fnn-mux-pollout+ 4)

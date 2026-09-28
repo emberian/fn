@@ -16,22 +16,19 @@
 (defconst *fn-feed-ct-retry*
   (fn-feed-live-next *fn-feed-ct-offered*
     (list :reply (fn-feed-response 431 *fn-feed-ct-a*) nil *fn-feed-ct-obs*)))
-(defconst *fn-feed-ct-old-retry-record*
-  (fn-feed-journal-entry :feed-outcome
-    (list *fn-feed-ct-peer* *fn-feed-ct-a* 1 431)))
-
-; Executable legacy counterexample: normal enqueue -> offer -> 431. The old
-; history lost both the remembered tick and the deadline, not merely conn.
+; Normal enqueue -> offer -> 431: the live run keeps the tick and sets the
+; deadline, and the record it journals is a :feed-retry carrying the tick.
+; A :feed-outcome with a retry code (the pre-6.6.0 shape, which lost both) is
+; no record at all, so a journal carrying one is invalid evidence at the scan.
 (assert-event (fn-feedp *fn-feed-ct-offered*))
 (assert-event (equal (fn-feed-backoff-until *fn-feed-ct-retry*) 1010))
 (assert-event (equal (fn-feed-entry-tick
   (fn-feed-find *fn-feed-ct-a* (fn-feed-queue *fn-feed-ct-retry*))) 10))
-(assert-event (equal (fn-feed-backoff-until
-  (fn-feed-replay *fn-feed-ct-offered* (list *fn-feed-ct-old-retry-record*))) 0))
-(must-fail-checked (assert-event
- (equal (fn-feed-durable-projection *fn-feed-ct-retry*)
-        (fn-feed-durable-projection (fn-feed-replay *fn-feed-ct-offered*
-          (list *fn-feed-ct-old-retry-record*))))))
+(assert-event (equal (fn-feed-journal-kind
+  (car (fn-feed-observe-records *fn-feed-ct-offered*
+         (fn-feed-response 431 *fn-feed-ct-a*) *fn-feed-ct-obs*))) :feed-retry))
+(assert-event (not (fn-feed-record-okp :feed-outcome
+                     (list *fn-feed-ct-peer* *fn-feed-ct-a* 1 431))))
 
 ; A loss with no in-flight entry still changes backoff. The previous emitter
 ; returned no record for this reachable open -> enqueue -> socket-close run.

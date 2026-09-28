@@ -53,7 +53,11 @@ def host_books(hosts):
 
 # The extracted program's own host files, which the image does not load (yet):
 # the read-only store open as ACL2 :program code over the host primitives.
-EXTRA_HOSTS = ["host/store-open-host.lisp", "host/store-write-host.lisp"]
+EXTRA_HOSTS = ["host/store-open-host.lisp",
+               # the writable store verbs (lane extract-writable)
+               "host/store-write-host.lisp",
+               # their extraction roots' declarations (definterface)
+               "host/interfaces-extract.lisp"]
 
 
 def render():

@@ -24,6 +24,7 @@
 (include-book "../../books/owner-time-journal")
 (include-book "../../books/owner-time-admission")
 (include-book "../../books/owner-article-slots")
+(include-book "../../books/owner-credits")
 (include-book "../../books/owner-open-carried")
 (include-book "../../books/reader-open-carried")
 (include-book "../../books/consumer-poll-projection")
@@ -275,3 +276,4 @@
 (include-book "../../books/bp-run-class")
 (include-book "../../books/bp-node-profile")
 (include-book "../../books/bp-node-profile-admission")
+(include-book "../../books/definterface")

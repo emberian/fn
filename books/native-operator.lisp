@@ -675,20 +675,6 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
         (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
 
-(defun fn-nop-parse-principal (argv config)
-  "Compose the existing ACL2 credential plan under the public operator."
-  ; The argv here is the raw host vector `fn-native-operator-run' was handed,
-  ; so this boundary stays total: `fn-ncfg-rest' is the tail of a cons and nil
-  ; of anything else, which is what `cdr' means in the logic and what `cdr'
-  ; cannot be called on under a verified guard (the conjecture asked for
-  ; (implies (not (consp argv)) (not argv))).
-  (declare (xargs :guard t))
-  (let ((plan (fn-native-auth-admin-parse-argv (fn-ncfg-rest argv))))
-    (if (equal (fn-native-auth-admin-plan-status plan) :accepted)
-        (fn-nop-result :accepted :plan "principal" config (list plan))
-      (fn-nop-usage (list :principal (fn-native-auth-admin-plan-reason plan))
-                    "principal" config (fn-ncfg-rest argv)))))
-
 ;; PRF-097: the peering verbs (specs/peering.md section 9).  Their words are
 ;; values and absolute paths; what the documents say, and whether they are
 ;; accepted, is books/peer-invite.lisp's, asked by host/native/peer-invite.lisp.
@@ -775,6 +761,31 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                            command config argv))
           (t (fn-nop-usage (list :administration (fn-native-admin-result-reason plan))
                            command config argv)))))
+
+(defun fn-nop-parse-principal (argv config)
+  "Compose the existing ACL2 credential plan under the public operator."
+  ; The argv here is the raw host vector `fn-native-operator-run' was handed,
+  ; so this boundary stays total: `fn-ncfg-rest' is the tail of a cons and nil
+  ; of anything else, which is what `cdr' means in the logic and what `cdr'
+  ; cannot be called on under a verified guard (the conjecture asked for
+  ; (implies (not (consp argv)) (not argv))).
+  (declare (xargs :guard t))
+  (let ((plan (fn-native-auth-admin-parse-argv (fn-ncfg-rest argv))))
+    (if (equal (fn-native-auth-admin-plan-status plan) :accepted)
+        (fn-nop-result :accepted :plan "principal" config
+                       (list plan
+                             ; PRF-388 (PKT-560): for `bind|unbind', the
+                             ; `account bind|unbind' plan the host runs when
+                             ; the credential file does not hold the login.
+                             (if (equal (fn-native-auth-admin-action-kind plan) :bind)
+                                 (fn-nop-parse-administration
+                                  "account"
+                                  (cons (fn-record-string-octets "account")
+                                        (fn-ncfg-rest argv))
+                                  config)
+                               nil)))
+      (fn-nop-usage (list :principal (fn-native-auth-admin-plan-reason plan))
+                    "principal" config (fn-ncfg-rest argv)))))
 
 ;; PRF-164 (PKT-439): `account invite [--expires SECONDS]'.  The plan names
 ;; the seconds only; the host reads the entropy, and ACL2 renders the code
@@ -1448,6 +1459,16 @@ formed and the operator asked for something the node declined to do."
   (declare (xargs :guard t))
   (if (fn-native-operator-result-principal-planp result)
       (fn-ncfg-first (fn-native-operator-result-arguments result))
+    nil))
+
+; PRF-388 (PKT-560): the operator result the host dispatches when the
+; credential file answered that it does not hold the login of `principal
+; bind|unbind' (books/native-auth-admin.lisp fn-native-auth-admin-bind's
+; :account): the `account bind|unbind' plan of the same words.
+(defun fn-native-operator-result-principal-account-result (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-principal-planp result)
+      (fn-ncfg-second (fn-native-operator-result-arguments result))
     nil))
 
 (defun fn-native-operator-result-principal-auth-path-octets (result)

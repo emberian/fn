@@ -69,6 +69,7 @@ import acl2_cost  # noqa: E402
 import acl2_slots  # noqa: E402
 import acl2_toolchain  # noqa: E402
 import certs  # noqa: E402
+import chain_schedule  # noqa: E402
 import evidence_manifests  # noqa: E402
 import ledger  # noqa: E402
 
@@ -77,7 +78,7 @@ ROOT = Path(__file__).resolve().parent.parent
 READER = Path(ledger.__file__).resolve()
 BUILD_ROOT = ROOT / "build" / "acl2"
 # Archived manifests, read only for the per-book wall times that order a
-# parallel schedule (`archived_walls`).  Nothing about a verdict comes from here.
+# parallel schedule (`chain_schedule.quiet_walls`).  Nothing about a verdict comes from here.
 WALL_HISTORY = ROOT / "planning" / "evidence" / "manifests"
 SUCCESS_PREFIX = "FN_CERTIFY_SUCCESS "
 # A failed certify-book prints this and nothing else can: always a failure.
@@ -674,28 +675,6 @@ def write_activity(path: Path, activity: dict[str, Any]) -> None:
     os.replace(temporary, path)
 
 
-def archived_walls(books: list[str], history: Path | None = None) -> dict[str, float]:
-    """Each book's most recently archived wall time, for the books that have one.
-
-    Archived run ids begin with a UTC stamp, so file-name order is time order
-    and a later run's measurement replaces an earlier one.  A missing or
-    unreadable manifest is skipped: this is a scheduling estimate, and a
-    wrong estimate only costs time, never evidence.
-    """
-    history = WALL_HISTORY if history is None else history
-    wanted = set(books)
-    measured: dict[str, float] = {}
-    for path in sorted(history.glob("certify-*.json")) if history.is_dir() else []:
-        try:
-            walls = json.loads(path.read_text(encoding="utf-8")).get("book_wall_seconds") or {}
-        except (OSError, ValueError, AttributeError):
-            continue
-        for book, seconds in walls.items():
-            if book in wanted and isinstance(seconds, (int, float)) and seconds >= 0:
-                measured[book] = float(seconds)
-    return measured
-
-
 def critical_path_priority(books: list[str], graph: dict[str, set[str]],
                            walls: dict[str, float]) -> dict[str, float]:
     """For each book, its own wall plus the longest chain of dependents above it.
@@ -704,35 +683,16 @@ def critical_path_priority(books: list[str], graph: dict[str, set[str]],
     critical-path list schedule: the chain that bounds the run from below
     starts as early as its dependencies allow instead of waiting behind
     small books that happen to come first in the requested order.  With no
-    edges (the Convert wave) it is longest-book-first.
+    edges (the Convert wave) it is longest-book-first.  The one
+    implementation is `chain_schedule.bottom_levels`, which also plans the
+    job count (`--jobs auto`).
     """
-    dependents: dict[str, list[str]] = {book: [] for book in books}
-    for book in books:
-        for dependency in graph[book]:
-            dependents[dependency].append(book)
-    level: dict[str, float] = {}
-    # Requested order is dependencies-first, so its reverse visits every
-    # dependent before the books it includes.
-    for book in reversed(topological(books, graph)):
-        level[book] = walls.get(book, 1.0) + max(
-            (level[dependent] for dependent in dependents[book]), default=0.0)
-    return level
+    return chain_schedule.bottom_levels(books, graph, walls)
 
 
 def topological(books: list[str], graph: dict[str, set[str]]) -> list[str]:
     """`books` with every book after its requested dependencies, stable."""
-    placed: set[str] = set()
-    ordered: list[str] = []
-    pending = list(books)
-    while pending:
-        rest = [book for book in pending if not graph[book] <= placed]
-        ready = [book for book in pending if graph[book] <= placed]
-        if not ready:
-            raise ValueError("certification schedule has a cycle: " + ", ".join(rest))
-        ordered.extend(ready)
-        placed.update(ready)
-        pending = rest
-    return ordered
+    return chain_schedule.topological(books, graph)
 
 
 def run_schedule(
@@ -898,11 +858,14 @@ def main() -> int:
     )
     parser.add_argument(
         "--jobs",
-        type=int,
-        default=int(os.environ.get("FN_CERTIFY_JOBS", "1")),
+        default=os.environ.get("FN_CERTIFY_JOBS", "1"),
         help=(
             "maximum concurrent ACL2 processes (default: 1, or FN_CERTIFY_JOBS). "
-            "Books still certify in local include-book dependency order"
+            "Books still certify in local include-book dependency order. "
+            "`auto` (or `auto:N`, at most N) plans the count that finishes the "
+            "longest include chain soonest on this box's measured slowdown "
+            "curve (tools/chain_schedule.py), at most "
+            f"{chain_schedule.DEFAULT_CEILING}, the CPUs and the ACL2 slots"
         ),
     )
     parser.add_argument(
@@ -1013,6 +976,17 @@ def main() -> int:
         args.budget_seconds = args.timeout_seconds
     elif args.budget_seconds <= 0:
         parser.error("--budget-seconds must be positive")
+    try:
+        requested_jobs = chain_schedule.parse_jobs(args.jobs)
+    except ValueError:
+        parser.error(f"--jobs takes a positive count, auto or auto:N, not {args.jobs!r}")
+    args.jobs_auto = isinstance(requested_jobs, tuple)
+    if args.jobs_auto:
+        args.jobs_text = str(args.jobs)
+        args.jobs = max(1, min(requested_jobs[1], os.cpu_count() or 1,
+                               acl2_slots.slot_count()))
+    else:
+        args.jobs = requested_jobs
     if args.jobs <= 0:
         parser.error("--jobs must be positive")
     if args.recertify_uncited:
@@ -1109,7 +1083,7 @@ def main() -> int:
         "requested_before_filter": requested_before_filter,
         "acl2_slots": acl2_slots.slot_count(),
         "timeout_seconds": args.timeout_seconds,
-        "jobs": args.jobs,
+        "jobs": args.jobs_text if args.jobs_auto else args.jobs,
         "jobs_effective": effective_jobs,
         "runner_sha256": digest(Path(__file__).resolve()),
         "reader_sha256": digest(READER),
@@ -1394,20 +1368,41 @@ def main() -> int:
                                              exit_codes[book], manifest))
 
     # One job keeps requested order exactly; more than one starts the longest
-    # remaining chain first, by the archived walls of each book.
-    # A book never measured counts one second.
+    # remaining chain first, by each book's predicted quiet wall
+    # (chain_schedule.quiet_walls: its archived wall over the slowdown at
+    # the load it ran under; a book never measured counts the median).
+    # `--jobs auto` then picks the job count (chain_schedule.choose_jobs).
     walls: dict[str, float] | None = None
     priority: dict[str, float] | None = None
     manifest["schedule"] = {"policy": "requested-order"}
     if effective_jobs > 1:
-        measured = archived_walls(args.books)
-        walls = {book: measured.get(book, 1.0) for book in args.books}
+        predicted = chain_schedule.quiet_walls(args.books, WALL_HISTORY)
+        walls = predicted.seconds
         priority = critical_path_priority(args.books, schedule, walls)
+        chain = chain_schedule.critical_chain(args.books, schedule, walls)
         manifest["schedule"] = {
             "policy": "critical-path-first",
-            "books_with_archived_wall": len(measured),
+            "books_with_archived_wall": predicted.measured,
             "predicted_critical_path_seconds": round(max(priority.values(), default=0.0), 3),
+            "critical_chain": chain,
         }
+        if args.jobs_auto:
+            background = load_average() or 0.0
+            plan = chain_schedule.choose_jobs(args.books, schedule, walls, effective_jobs,
+                                              os.cpu_count(), background)
+            effective_jobs = plan.jobs
+            manifest["jobs_effective"] = effective_jobs
+            manifest["schedule"].update(plan.record())
+        print(f"Critical chain: {len(chain)} books, "
+              f"{manifest['schedule']['predicted_critical_path_seconds']:.0f} s quiet "
+              f"({predicted.measured} of {len(args.books)} books measured); "
+              f"{effective_jobs} jobs"
+              + (f" (auto; predicted wall {plan.predicted_seconds:.0f} s, "
+                 f"{plan.predicted_by_jobs[max(plan.predicted_by_jobs)]:.0f} s at "
+                 f"{max(plan.predicted_by_jobs)}; background load {background:.1f})"
+                 if args.jobs_auto else ""), flush=True)
+        for line in chain_schedule.chain_lines(chain, walls):
+            print("  " + line, flush=True)
     certify_started = time.monotonic()
     if args.pcert:
         pcert_wall_seconds = pcert_waves(args.books, schedule, effective_jobs,
