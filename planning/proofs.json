@@ -1434,7 +1434,8 @@
         "fn-served-dispatch-of-authinfo-on-a-clear-connection-is-483-and-changes-nothing",
         "fn-auth-step-pinned-post-by-a-principal-without-the-flag-is-440",
         "fn-auth-step-pinned-post-by-a-principal-with-the-flag-is-delegated",
-        "fn-scar-auth-step-pinned-is-auth-step-pinned"
+        "fn-scar-auth-step-pinned-is-auth-step-pinned",
+        "fn-auth-authinfo-is-advertised-exactly-when-a-login-is-offered-on-any-connection"
       ]
     },
     {
@@ -5248,7 +5249,8 @@
         "fn-smr-admission-is-within-the-profile",
         "fn-smr-roomp-antitone-in-octets",
         "fn-smr-roomp-is-within-the-bound",
-        "fn-smr-admitted-profile-starts-reserved"
+        "fn-smr-admitted-profile-starts-reserved",
+        "fn-scka-publication-setup-plans-within-the-disk"
       ]
     },
     {
@@ -6243,8 +6245,8 @@
       "progress_note": "friends-accounts (2026-09-26): slot, admission, plan, once-only keystones and the credential snapshot. friends-accounts-2 (2026-09-26): the XREDEEM wire keystones over fn-auth-step-pinned, the bounded plan and the word, the host publication before the reply, operator account invite/list.",
       "events": [
         "fn-acct-text-verifier-of-verifier-text",
-        "fn-acct-redeemed-row-stays",
-        "fn-acct-redeemed-row-stays-across-replay",
+        "fn-acct-bound-row-succeeds",
+        "fn-acct-bound-row-succeeds-across-replay",
         "fn-acct-redeemed-refuses-another-redeem",
         "fn-acct-redeem-plan-is-admitted-and-redeems",
         "fn-acct-redeem-plan-after-its-redeem-is-already-redeemed",
@@ -6261,7 +6263,10 @@
         "fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound",
         "fn-acct-redeem-word-is-bound-only-after-a-durable-redeem",
         "fn-acct-redeem-word-of-an-unknown-code-is-refused",
-        "fn-acct-redeem-bounded-plan-after-its-redeem-is-bound"
+        "fn-acct-redeem-bounded-plan-after-its-redeem-is-bound",
+        "fn-acct-delete-is-admitted-exactly-when-held-and-unobligated",
+        "fn-acct-delete-keeps-the-login-taken",
+        "fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential"
       ]
     },
     {
@@ -8294,7 +8299,8 @@
         "fn-peer-tls-select-named-default",
         "fn-peer-tls-select-is-a-check",
         "fn-peer-host-name-is-not-an-ipv4-literal",
-        "fn-redeem-done-only-on-281-after-the-password"
+        "fn-redeem-done-only-on-281-after-the-password",
+        "fn-redeem-lost-is-fenced-and-server-answers-are-not"
       ]
     },
     {
@@ -8791,8 +8797,7 @@
       "events": [
         "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
         "fn-bs-imp-classify-by-what-is-known",
-        "fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store",
-        "fn-bs-init-pub-classify-by-what-is-known"
+        "fn-bs-init-pub-admission-proceeds-only-on-nothing"
       ]
     },
     {
@@ -9686,9 +9691,9 @@
       ],
       "progress_note": "Lane log-recovery 2026-09-27: admitted in the persvati REPL with its test book; certification is the batch's. Lane log-leftovers 2026-09-27: T8 restated over the streamed open (log-open-stream's fnn-log-stream-segment): the string-era fold fn-lgs-open-chain-records / -last (fn-lg-open-kernel per segment read as a string), its theorems fn-lg-segment-drop-preserves-the-open, fn-lgs-open-chain-records-of-append, fn-lgs-open-chain-is-the-chain and the string splice classifier fn-lgs-chain-broken-string-p / -at (no host caller since the stream) are deleted; the keystone is fn-lgw-segment-drop-preserves-the-open.",
       "events": [
-        "fn-lg-segment-drop-preserves-the-open",
-        "fn-lgs-open-chain-records-of-append",
-        "fn-lgs-open-chain-is-the-chain",
+        "fn-lgw-segment-drop-preserves-the-open",
+        "fn-lgw-open-chain-is-the-chain",
+        "fn-lgw-segment-is-the-scan",
         "fn-lgs-open-plan-scan-ignores-covered",
         "fn-lgs-rotate-is-the-recovered-kernel",
         "fn-lgs-chain-records-of-append",
@@ -10753,7 +10758,19 @@
         "fn-scj-join-of-finish-lists",
         "fn-scj-joinp-gives-sca-join",
         "fn-scj-ocl-relation-of-identity-finish",
-        "fn-scj-identity-finish-owner-is-article-finish-owner"
+        "fn-scj-identity-finish-owner-is-article-finish-owner",
+        "fn-scj-ocfg-read-span-is-reference-under-invp",
+        "fn-scj-invp-at-recover",
+        "fn-scj-invp-at-full-open",
+        "fn-scj-invp-of-otm-read-span",
+        "fn-scj-invp-of-orr-read-span",
+        "fn-scj-invp-of-refresh",
+        "fn-scj-identity-finish-keeps-verdicts",
+        "fn-scj-invp-of-ocfg-step-conn-event",
+        "fn-scjs-invp-of-store-frame",
+        "fn-scj-owner-catalogp-at-host-finish",
+        "fn-scj-invp-at-host-article-finish-carried",
+        "fn-scj-invp-at-identity-finish"
       ]
     },
     {
@@ -11528,7 +11545,7 @@
         "PRF-288"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-admission.lisp",
         "books/peer-inbound-invariants.lisp",
@@ -11552,7 +11569,9 @@
         "fn-otm-closed-posting-never-awaits-an-article",
         "fn-otm-closed-posting-answers-the-generic-440",
         "fn-otm-posting-disallowed-refusal-is-the-generic-441",
-        "fn-otm-disk-reply-effects-is-a-map"
+        "fn-peer-shed-offer-is-disk-slow",
+        "fn-otm-disk-effects-names-the-disk",
+        "fn-otm-peer-reader-read-only-while-shedding"
       ]
     },
     {

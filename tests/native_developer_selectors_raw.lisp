@@ -77,6 +77,8 @@
 (defun fnn-group-codes-for (store groups)
   (declare (ignorable store groups))
   (harness-stub-reached 'fnn-group-codes-for "host/native/io.lisp"))
+(defun fnn-install-lookup-counters ()
+  (harness-stub-reached 'fnn-install-lookup-counters "host/native/io.lisp"))
 (defun fnn-metadata (msgid payload)
   (declare (ignorable msgid payload))
   (harness-stub-reached 'fnn-metadata "host/native/io.lisp"))
