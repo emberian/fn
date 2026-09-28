@@ -23,8 +23,6 @@
     nil))
 (defun fn-bpn-host-evidence-operationp (operation)
   (if (fn-bpn-evidence-operationp operation) t nil))
-(defun fn-bpn-host-evidence-operation-identity (operation)
-  (fn-bpn-evidence-operation-identity operation))
 (defun fn-bpn-host-evidence-operation-wire-name (operation)
   (fn-bpn-evidence-operation-wire-name operation))
 (defun fn-bpn-host-evidence-operation-result-name (operation)
