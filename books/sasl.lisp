@@ -517,6 +517,113 @@
                                fn-scram-finish-refuses-another-nonce
                                fn-scram-finish-refuses-another-binding))))
 
+; S5 (SCRAM completeness).  An RFC 5802 client -- a client-first message
+; for the login, the "n" flag and a printable nonce; then the client-final
+; message it computes from the enrolled password over the server-first it
+; received -- is answered 383 and then succeeds, for every seed.
+(local (defthm fn-sasl-consp-of-len-32
+  (implies (equal (len x) 32) (consp x))))
+
+(local (defthm fn-sasl-b64-of-a-cons
+  (implies (consp xs) (consp (fn-ot-b64-encode xs)))
+  :hints (("Goal" :expand ((fn-ot-b64-encode xs))))))
+
+(local (defthm fn-sasl-firstn-of-a-cons
+  (implies (and (posp n) (consp xs)) (consp (fn-sasl-firstn n xs)))
+  :hints (("Goal" :expand ((fn-sasl-firstn n xs))))))
+
+(defthm fn-sasl-server-nonce-is-a-nonce
+  (and (fn-scram-printablep (fn-sasl-server-nonce seed cn))
+       (consp (fn-sasl-server-nonce seed cn)))
+  :hints (("Goal" :in-theory (enable fn-sasl-server-nonce)
+           :use ((:instance fn-blake3-keyed-shape
+                            (key seed)
+                            (m (append *fn-sasl-nonce-tag* (fn-scram-octets cn))))))))
+
+(local (defthm fn-sasl-scram-client-first-answers-server-first
+  (implies (and (consp login) (fn-sha256-octet-listp login) (fn-scram-no-nulp login)
+                (fn-scram-noncep cn) (fn-sasl-seedp seed) (fn-authsec-verifierp v))
+           (equal (fn-sasl-step '(:sasl-scram-first nil)
+                                (append (fn-scram-text "n,,n=")
+                                        (fn-scram-saslname-encode login)
+                                        (fn-scram-text ",r=") cn)
+                                v seed nil)
+                  (list :continue
+                        (fn-scram-server-first cn (fn-sasl-server-nonce seed cn)
+                                               (fn-authsec-ver-salt v) 4096)
+                        (fn-sasl-final-state
+                         nil :n (fn-scram-text "n,,") login
+                         (append cn (fn-sasl-server-nonce seed cn))
+                         (append (fn-scram-text "n=") (fn-scram-saslname-encode login)
+                                 (fn-scram-text ",r=") cn)
+                         (fn-scram-server-first cn (fn-sasl-server-nonce seed cn)
+                                                (fn-authsec-ver-salt v) 4096)))))
+  :hints (("Goal" :in-theory (e/d (fn-sasl-step fn-sasl-scram-first-step fn-sasl-st
+                                   fn-scram-cf-flag fn-scram-cf-authzid
+                                   fn-scram-cf-username fn-scram-cf-cnonce
+                                   fn-scram-cf-gs2 fn-scram-cf-bare
+                                   fn-scram-failp fn-scram-nth fn-scram-octets)
+                                  (fn-scram-parse-client-first fn-sasl-server-nonce
+                                   fn-scram-server-first fn-sasl-final-state
+                                   fn-authsec-verifierp fn-sasl-bindingp fn-sasl-seedp
+                                   fn-sha256-fix-octets fn-scram-saslname-encode
+                                   fn-scram-parse-client-first-of-a-client-message))
+           :use ((:instance fn-scram-parse-client-first-of-a-client-message)
+                 (:instance fn-scram-printable-facts (x cn))
+                 (:instance fn-sha256-fix-octets-is-identity-on-octets (m cn)))))))
+
+(local (defthm fn-sasl-ver-salt-of-enrol
+  (equal (fn-authsec-ver-salt (fn-authsec-enrol salt pw)) (fn-authsec-octets salt))
+  :hints (("Goal" :in-theory (enable fn-authsec-ver-salt fn-authsec-enrol)))))
+
+(defthm fn-sasl-scram-honest-client-completes
+  (implies (and (fn-authsec-saltp salt)
+                (consp login) (fn-sha256-octet-listp login) (fn-scram-no-nulp login)
+                (fn-scram-noncep cn) (fn-sasl-seedp seed))
+           (let* ((v (fn-authsec-enrol salt pw))
+                  (o1 (fn-sasl-step '(:sasl-scram-first nil)
+                                    (append (fn-scram-text "n,,n=")
+                                            (fn-scram-saslname-encode login)
+                                            (fn-scram-text ",r=") cn)
+                                    v seed nil))
+                  (st (fn-scram-nth 2 o1)))
+             (and (equal (fn-sasl-outcome-kind o1) :continue)
+                  (fn-sasl-successp
+                   (fn-sasl-step st
+                                 (fn-scram-client-final pw salt 4096 :n
+                                                        (fn-scram-text "n,,")
+                                                        nil (fn-sasl-st 5 st)
+                                                        (fn-sasl-st 6 st)
+                                                        (fn-scram-nth 1 o1))
+                                 v seed nil)))))
+  :hints (("Goal"
+           :use ((:instance fn-sasl-scram-client-first-answers-server-first
+                            (v (fn-authsec-enrol salt pw)))
+                 (:instance fn-scram-finish-accepts-the-honest-client
+                            (i 4096)
+                            (nonce (append cn (fn-sasl-server-nonce seed cn)))
+                            (bare (append (fn-scram-text "n=")
+                                          (fn-scram-saslname-encode login)
+                                          (fn-scram-text ",r=") cn))
+                            (sf (fn-scram-server-first cn (fn-sasl-server-nonce seed cn)
+                                                       salt 4096)))
+                 (:instance fn-sasl-server-nonce-is-a-nonce)
+                 (:instance fn-authsec-verifierp-of-enrol (secret pw))
+                 (:instance fn-authsec-ver-scram-keys-of-enrol (secret pw))
+                 (:instance fn-authsec-octets-is-identity-on-octets (x salt)))
+           :in-theory (e/d (fn-sasl-step fn-sasl-scram-final-step fn-sasl-final-state
+                            fn-sasl-st fn-scram-nth fn-sasl-outcome-kind fn-sasl-successp
+                            fn-scram-noncep fn-authsec-saltp)
+                           (fn-sasl-scram-client-first-answers-server-first
+                            fn-scram-finish-accepts-the-honest-client
+                            fn-sasl-server-nonce-is-a-nonce fn-sasl-scram-first-step
+                            fn-scram-finish fn-scram-client-final fn-scram-server-first
+                            fn-sasl-server-nonce fn-authsec-enrol fn-authsec-verifierp
+                            fn-authsec-ver-scram-keys-of-enrol
+                            fn-authsec-verifierp-of-enrol fn-scram-keys
+                            fn-scram-saslname-encode fn-scram-printablep
+                            fn-authsec-octets-is-identity-on-octets)))))
+
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2)
 

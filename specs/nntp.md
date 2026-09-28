@@ -1500,7 +1500,10 @@ secret (XREDEEM's login-taken refusal names them).
 **Proved** (PRF-915, PRF-916, PRF-917): HMAC and PBKDF2 execute as their RFC
 text (an `mbe` whose guard proof equates the key-block midstate evaluation
 with the definition); an honest SCRAM client -- one that derived its proof
-from the enrolled password -- is accepted for every AuthMessage; a
+from the enrolled password -- is accepted for every AuthMessage, and over
+the whole exchange an RFC 5802 client and an RFC 4616 PLAIN client with the
+enrolled password both succeed (`fn-sasl-scram-honest-client-completes`,
+`fn-sasl-plain-honest-client-succeeds`); a
 client-final carrying another exchange's nonce, or another binding than the
 exchange fixed, is refused before any key is read; a login without a stored
 key never succeeds; PLAIN succeeds exactly on the check USER/PASS runs. That a

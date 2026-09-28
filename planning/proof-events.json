@@ -12953,6 +12953,11 @@
       "events": [
         {
           "kind": "theorem",
+          "name": "fn-sasl-scram-honest-client-completes",
+          "note": "KEYSTONE (SCRAM completeness over the exchange): an RFC 5802 client's client-first is answered 383 and the client-final it computes from the enrolled password over that server-first succeeds, for every seed. Rests on fn-scram-parse-client-first-of-a-client-message and fn-scram-finish-accepts-the-honest-client. Witness: RFC 7677's exchange (tests/acl2/scram-tests.lisp) and the served 283 (tests/acl2/nntp-auth-sasl-tests.lisp)."
+        },
+        {
+          "kind": "theorem",
           "name": "fn-authsec-enrolled-secret-proves-by-scram",
           "note": "K5 of books/auth-secret.lisp: the enrolled secret authenticates by SCRAM against the stored StoredKey, for every AuthMessage. Enrolment is fn-authsec-enrol, which native-auth-admin's set-password and accounts' redeem plan call."
         },
