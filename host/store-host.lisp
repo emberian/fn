@@ -435,9 +435,6 @@
 (defun fn-store-profile-init-verdict (request)
   (fn-bs-profile-init-verdict request))
 
-(defun fn-store-profile-max-transactions (values)
-  (fn-bs-profile-max-transactions values))
-
 (defun fn-store-profile-max-article-octets (values)
   (fn-bs-profile-max-article-octets values))
 
