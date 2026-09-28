@@ -493,7 +493,12 @@ an interrupted rotation the open completes, holding nothing acknowledged; and a 
 (`fn-lgs-open-plan-scan-ignores-covered`). The history the open replays after
 the drop is the full chain's (T8, `fn-lgw-segment-drop-preserves-the-open`, over the streamed open).
 `store compact` on a `fn-store-9` store is a checkpoint with rotation
-followed by the drop; the owner's automatic checkpoint does the same.
+followed by the drop; the owner's automatic checkpoint does the same. On a
+running owner `store compact` and `store checkpoint` are a request to that
+publication (HST-034, books/owner-compact-request.lisp
+`fn-ock-requested-next`: due at any suffix, never a second in flight, never
+past a deferral), answered by name over the control socket; compaction
+needs no stop.
 The open reads each segment one entry at a time (books/store-log-stream.lisp,
 `fn-lgw-step`, called by `fnn-log-stream-segment`; PRF-297, lane
 log-open-stream 2026-09-27): the header, the entry's length, that entry's

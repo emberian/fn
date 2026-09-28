@@ -870,7 +870,20 @@
         (fn-native-admin-bp-boundary-plan words))
        ((and (consp words) (equal (car words) "bp-route"))
         (fn-bprt-admin-plan words))
+       ; PKT-868: what `store compact' and `store checkpoint' send a running
+       ; owner (host/native/operator.lisp fnn-operator-execute-compaction): a
+       ; request for its publication, no configuration record
+       ; (fn-native-admin-result-owner-requestp; books/owner-compact-request).
+       ((equal words '("compaction" "request"))
+        (fn-native-admin-result :accepted nil :request-compaction nil 0 nil nil))
        (t (fn-native-admin-result :refused :syntax nil nil nil nil nil))))))
+
+; PKT-868: an accepted plan the live owner answers from its own state, not by
+; publishing a configuration record (the compaction request).
+(defun fn-native-admin-result-owner-requestp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-admin-result-status result) :accepted)
+       (equal (fn-native-admin-result-kind result) :request-compaction)))
 
 ; The delta list the LIVE owner stages for an accepted plan.
 ;

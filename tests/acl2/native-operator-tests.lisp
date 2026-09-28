@@ -1501,3 +1501,17 @@
                            (fn-native-operator-run *fn-nop-minimal-config*
                                                    (fn-nop-test-argv '("account" "delete"))))
                           :accepted)))
+
+; PKT-868: `store compact' and `store checkpoint' carry the request vector
+; and the control path; other store plans carry neither.
+(defconst *fn-nop-compact* (fn-native-operator-run *fn-nop-minimal-config*
+                                                   (fn-nop-test-argv '("store" "compact"))))
+(assert-event (fn-native-operator-result-compaction-planp *fn-nop-compact*))
+(assert-event (equal (fn-native-operator-result-compaction-argv *fn-nop-compact*)
+                     (fn-nop-test-argv '("compaction" "request"))))
+(assert-event (fn-native-operator-result-compaction-planp
+               (fn-native-operator-run *fn-nop-minimal-config*
+                                       (fn-nop-test-argv '("store" "checkpoint")))))
+(assert-event (not (fn-native-operator-result-compaction-planp
+                    (fn-native-operator-run *fn-nop-minimal-config*
+                                            (fn-nop-test-argv '("store" "reclaim"))))))

@@ -2346,6 +2346,33 @@ when that store already exists is `fn-native-operator-init-outcome'."
       (fn-ncfg-third (fn-native-operator-result-arguments result))
     nil))
 
+; PKT-868: `store compact' and `store checkpoint' on a running owner are a
+; request for its publication (books/owner-compact-request.lisp), sent as
+; the administrative vector below over its control socket; with no owner
+; they run offline as before.  The route is the administrative one: ACL2's
+; liveness decision (fn-native-control-liveness-decides) over the socket and
+; the store lock, the offline executor only when no owner holds the lock.
+(defun fn-native-operator-result-compaction-planp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-operator-result-status result) :accepted)
+       (equal (fn-native-operator-result-command result) "store")
+       (member-equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                     '(:compact :checkpoint))
+       t))
+
+(defun fn-native-operator-result-compaction-argv (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-compaction-planp result)
+      (list (fn-record-string-octets "compaction") (fn-record-string-octets "request"))
+    nil))
+
+(defun fn-native-operator-result-compaction-control-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-compaction-planp result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
 (defun fn-native-operator-result-status-control-path-octets (result)
   (declare (xargs :guard t))
   (if (or (fn-native-operator-result-status-planp result)

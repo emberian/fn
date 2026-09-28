@@ -18,6 +18,14 @@
   (declare (xargs :mode :program))
   (fn-native-operator-run config-octets argv-octets))
 
+(defun fn-native-operator-host-result-compaction-argv (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-compaction-argv result))
+
+(defun fn-native-operator-host-result-compaction-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-compaction-control-path-octets result))
+
 (defun fn-native-operator-host-result-status (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-status result))

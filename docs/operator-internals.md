@@ -418,8 +418,14 @@ fn operator /path/to/fn.toml store compact
 compacted steps=checkpoint,drop records=N checkpoint sequence=... octets=... steps=... segment=K dropped=D open=...
 ```
 
-It opens the store as `recover` does, so it is refused (1, `store is already
-locked`) while an owner runs. The order: with no batch open, rotate the log
+While an owner runs, the verb (and `store checkpoint`) is a request to it
+(PKT-868, HST-034): the owner answers `requested`, `coalesced` (a
+publication is in flight; the request runs after it), `nothing-to-compact`,
+or refuses `blocked` while a checkpoint deferral stands (`status` names it),
+and runs its own publication at once, off its mutex, in bounded batches,
+while it keeps serving; the owner's log carries `CHECKPOINT auto ...`. The
+request needs the `[control]` socket; with no owner the verb opens the store
+as `recover` does. The order: with no batch open, rotate the log
 (`fnn-log-prepare-spare`: the next segment staged as
 `staging/.stage-segment-NNNNNN`, preallocated and fenced, cuts
 `rotate-created`, `rotate-fenced`; `fnn-log-rotate`: renamed into

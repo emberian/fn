@@ -12793,6 +12793,31 @@
           "name": "fn-lgrs-spare-name-is-swept-and-never-a-segment"
         }
       ]
+    },
+    {
+      "id": "PRF-908",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ock-requested-next-is-due-with-a-suffix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-requested-next-without-request"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-requested-one-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-requested-never-past-a-deferral"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-requested-word-is-the-next-due"
+        }
+      ]
     }
   ]
 }
