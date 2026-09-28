@@ -66,6 +66,10 @@
            :max-header-lines-above-octets)
           ((< *fn-bs-profile-article-ceiling-codec* (fn-bs-pf 17 values))
            :max-header-octets-above-codec)
+          ; The compression threshold (lane compression-extents-2): the
+          ; layout grew field 18 under D34, read as the relation reads it.
+          ((< (fn-bs-pf 5 values) (fn-bs-pf 18 values))
+           :compress-min-octets-above-max-article-octets)
           (t nil))))
 
 ;  The relation's half: the old relation's acceptance is the new one's, for

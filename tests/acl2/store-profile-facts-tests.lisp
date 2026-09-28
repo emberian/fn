@@ -12,11 +12,11 @@
 (assert-event (equal (cddr *spft-dev*)
                      (list 128 25165824 17138486 32768 65535 256 128
                            1048576 1048576 1048576 1048576 1048576 0
-                           64 256 16384)))
+                           64 256 16384 0)))
 (assert-event (equal (cddr *spft-scale*)
                      (list 4096 805306368 17138486 32768 65535 256 4096
                            1048576 1048576 1048576 1048576 1048576 0
-                           64 256 16384)))
+                           64 256 16384 0)))
 (assert-event (fn-bs-profile-validp *spft-dev*))
 (assert-event (fn-bs-profile-validp *spft-scale*))
 (assert-event (equal (fn-bs-profile-of *spft-scale*) *spft-scale*))

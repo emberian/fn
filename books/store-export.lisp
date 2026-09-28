@@ -212,7 +212,10 @@
   (declare (xargs :guard t :verify-guards nil))
   (let ((mismatch (fn-sxp-manifest-mismatch
                    (fn-sxp-entries profile frontier configs records) manifest))
-        (saved (fn-bs-config-decode profile)))
+        ; The archive's profile: this layout, or the previous one read with
+        ; compression off (books/byte-store-frame.lisp
+        ; fn-bs-config-decode-archive; lane compression-extents-2).
+        (saved (fn-bs-config-decode-archive profile)))
     (cond (mismatch (list :refused :manifest-mismatch mismatch))
           ((fn-sxp-out-of-sequence records nil)
            (list :refused :record-out-of-sequence

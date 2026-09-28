@@ -116,10 +116,17 @@
 ; books/store-history-required.lisp was deleted 2026-09-27 with the per-file
 ; layout (PKT-838): the field is carried, never read for a decision.  Fields
 ; 15 to 17 are the header limits (D27, lane header-limits-profile: one
-; format, D34, so the layout grows and fresh installs write it).
+; format, D34, so the layout grows and fresh installs write it).  Field 18 is
+; the compression threshold (lane compression-extents-2): an article record
+; whose payload span has at least this many octets is offered to the LZ4
+; encoder at the append (books/payload-lz-append.lisp fn-lzr-append-plan);
+; 0, the default, is off.  The layout grew from 16 to 17 naturals under D34:
+; a store made before opens nowhere (books/store-profile-open.lisp,
+; :profile-layout, by name) and `store import' reads its archive
+; (`fn-bs-config-decode-archive').
 (defconst *fn-bs-meta-profile-spec*
   '(:text :text :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat
-    :nat :nat :nat))
+    :nat :nat :nat :nat))
 
 (defconst *fn-bs-pf-max-transactions* 2)        ; T
 (defconst *fn-bs-pf-max-history-octets* 3)      ; H
@@ -139,6 +146,8 @@
 (defconst *fn-bs-pf-max-header-fields* 15)
 (defconst *fn-bs-pf-max-header-lines* 16)
 (defconst *fn-bs-pf-max-header-octets* 17)
+; The compression threshold (0 off; books/payload-lz-append.lisp).
+(defconst *fn-bs-pf-compress-min-octets* 18)
 
 ; The fields in order, with the operator's name for each (the `init' and
 ; `store import' flag is `--' followed by the name).
@@ -150,7 +159,7 @@
     (11 . "max-config-generations") (12 . "max-credentials")
     (13 . "max-policy-members") (14 . "history-marker")
     (15 . "max-header-fields") (16 . "max-header-lines")
-    (17 . "max-header-octets")))
+    (17 . "max-header-octets") (18 . "compress-min-octets")))
 
 ; The codec ceilings no field may pass.  Each is the width the codec that
 ; carries the bounded quantity accepts today; packet P2 (codec ceilings) and
@@ -250,6 +259,14 @@
            :max-header-lines-above-octets)
           ((< *fn-bs-profile-article-ceiling-codec* (fn-bs-pf 17 values))
            :max-header-octets-above-codec)
+          ; The compression threshold: 0 (off), or at most the article
+          ; bound (a larger one would never compress: a profile that says
+          ; "on" and means "off" is refused).  Every record a valid profile
+          ; admits has a u32 length (R is within the poll reply's ceiling,
+          ; above), so the frame's u32 fields represent every span
+          ; (`fn-bs-profile-record-is-frameable').
+          ((< (fn-bs-pf 5 values) (fn-bs-pf 18 values))
+           :compress-min-octets-above-max-article-octets)
           (t nil))))
 
 (defun fn-bs-profile-validp (values)
@@ -293,7 +310,8 @@
           0
           *fn-bs-profile-default-header-fields*
           *fn-bs-profile-default-header-lines*
-          *fn-bs-profile-default-header-octets*)))
+          *fn-bs-profile-default-header-octets*
+          0)))
 
 ; The profile a store is run under: a valid profile as it is, anything else
 ; NIL (one format, D34: nothing is translated).
@@ -361,6 +379,14 @@
         (fn-bs-profile-field 16 values)
         (fn-bs-profile-field 17 values)))
 
+; The compression threshold of the profile a store runs under (0: off): the
+; MIN host/native/io.lisp fnn-log-compress hands fn-lzr-append-plan.
+(defun fn-bs-profile-compress-min-octets (values)
+  (declare (xargs :guard t))
+  (fn-bs-profile-field 18 values))
+
+
+
 ; Kept under its old name: the record ceiling is now field R itself.
 (defun fn-bs-profile-record-ceiling (values)
   (declare (xargs :guard t))
@@ -415,6 +441,19 @@
                                    fn-bs-profile-invalid-reason)
                                   (fn-bs-pf fn-frame-values-okp
                                    fn-record-encoded-octets-ceiling)))))
+
+; Representation (D27: profile validation and representation agree): every
+; record a valid profile admits (at most R octets) has a u32 length, so the
+; compressed record frame's u32 fields K, N and |STUB| represent every span
+; of every record (books/payload-lz-record.lisp fn-lzr-seal's u32 arms).
+(defthm fn-bs-profile-record-is-frameable
+  (implies (and (fn-bs-profile-validp values)
+                (<= n (fn-bs-pf 4 values)))
+           (< n 4294967296))
+  :rule-classes nil
+  :hints (("Goal" :use fn-bs-profile-validp-facts
+           :in-theory (disable fn-bs-profile-validp-facts fn-bs-profile-validp fn-bs-pf
+                               fn-frame-values-okp fn-record-encoded-octets-ceiling))))
 
 (defthm fn-bs-profile-of-valid
   (implies (fn-bs-profile-validp values)
@@ -954,7 +993,7 @@
                    (+ (len (fn-frame-field-octets :text *fn-bs-meta-format-8*))
                       (len (fn-frame-field-octets
                             :text *fn-bs-meta-frontier-format*))
-                      128)))
+                      136)))
    :hints (("Goal"
             :use ((:instance fn-bs-profile-validp-facts)
                   (:instance fn-bs-all-nat-fields-octets-len
@@ -1027,6 +1066,44 @@
               (fn-frame-parse-value parsed)
             nil))))))
 
+; The profile of an ARCHIVE `store import' reads: the current layout, or the
+; layout of the release before compression-extents-2 (sixteen naturals, no
+; field 18), whose profile is read with the compression threshold 0 (off:
+; what that release did) and must then be a valid profile.  Only the import
+; reads it; the open refuses the older layout by name
+; (books/store-profile-open.lisp :profile-layout), D34.
+(defconst *fn-bs-meta-profile-spec-16*
+  '(:text :text :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat
+    :nat :nat :nat))
+
+(defun fn-bs-config-decode-archive (octets)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-bs-config-decode
+                                                            fn-bs-profile-validp)))))
+  (or (fn-bs-config-decode octets)
+      (if (not (fn-cbor-octet-listp octets))
+          nil
+        (let ((frame (fn-frame-open octets *fn-bs-meta-max-config-payload*)))
+          (if (not (fn-bs-meta-frame-okp frame *fn-bs-meta-config-kind*
+                                          (fn-frame-result-payload frame)
+                                          *fn-bs-meta-max-config-payload*))
+              nil
+            (let ((parsed (fn-frame-fields-parse
+                           *fn-bs-meta-profile-spec-16*
+                           (fn-frame-result-payload frame))))
+              (if (and (fn-frame-parse-okp parsed)
+                       (true-listp (fn-frame-parse-value parsed))
+                       (fn-bs-profile-validp
+                        (append (fn-frame-parse-value parsed) (list 0))))
+                  (append (fn-frame-parse-value parsed) (list 0))
+                nil)))))))
+
+; What the import reads is a valid profile (or nothing).
+(defthm fn-bs-config-decode-archive-is-valid
+  (implies (fn-bs-config-decode-archive octets)
+           (fn-bs-profile-validp (fn-bs-config-decode-archive octets)))
+  :hints (("Goal" :in-theory (disable fn-bs-profile-validp))))
+
 (defun fn-bs-config-okp-impl (octets)
   (declare (xargs :guard t))
   (if (fn-bs-config-decode octets) t nil))
@@ -1072,7 +1149,8 @@
         0
         *fn-bs-profile-default-header-fields*
         *fn-bs-profile-default-header-lines*
-        *fn-bs-profile-default-header-octets*))
+        *fn-bs-profile-default-header-octets*
+        0))
 
 (defun fn-bs-config-for-profile (profile)
   (declare (xargs :guard t))

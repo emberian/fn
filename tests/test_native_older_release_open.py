@@ -93,6 +93,10 @@ class OlderReleaseOpenTest(unittest.TestCase):
     def test_a_store_of_the_older_layout_is_refused_by_name(self):
         self.assert_every_open_refuses("older-release")
 
+    def test_a_store_before_compression_is_refused_by_name(self):
+        # Sixteen u64 fields: the layout before lane compression-extents-2.
+        self.assert_every_open_refuses("pre-compression")
+
     def test_a_format_7_store_is_refused_by_name(self):
         self.assert_every_open_refuses("format-7")
 

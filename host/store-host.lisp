@@ -20,6 +20,12 @@
 (include-book "../books/payload-commit-extent")
 ; The served read's entry check over the realizer's buffer (PRF-295).
 (include-book "../books/payload-extent-read")
+; Compressed records (PRF-326, PRF-341): the append's plan and decision
+; (fnn-log-compress), the read's expansion (fnn-log-read-record), the
+; replay's compressed extents, the commit's compressed reseat, and the
+; realizer's decode (host/native/extent.lisp fn-durable-realize-lz).
+(include-book "../books/payload-lz-append")
+(include-book "../books/payload-lz-replay")
 (include-book "../books/store-config")
 (include-book "../books/identity")
 (include-book "../books/crypto-attach")
