@@ -509,6 +509,9 @@ def main(argv=None):
             log = work / "{}-wire.log".format(client)
             wire = Wire(log)
             login, password = "{}-friend".format(client), secrets.token_hex(12)
+            if args.attach_config:
+                # a running node keeps every login a previous session bound
+                login = "{}-{}".format(client, secrets.token_hex(3))
             secret = work / "{}.password".format(client)
             secret.write_text(password + "\n")
             secret.chmod(0o600)

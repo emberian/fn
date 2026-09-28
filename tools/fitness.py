@@ -767,6 +767,21 @@ def replay_again(node, creds, keys):
     return out
 
 
+def pipelined_stat(conn, msgids, batch=100):
+    """STAT each Message-ID, BATCH commands written before their replies are
+    read (RFC 3977 section 3.5 pipelining): {msgid: status line}."""
+    out = {}
+    for at in range(0, len(msgids), batch):
+        chunk = msgids[at:at + batch]
+        try:
+            conn.sock.sendall(b"".join(("STAT " + m + "\r\n").encode() for m in chunk))
+        except (OSError, ssl.SSLError) as error:
+            raise Gone(str(error)) from error
+        for m in chunk:
+            out[m] = conn.line()
+    return out
+
+
 def verify_presence(node, creds, ledger: Ledger, events: Events, label, limit=None):
     """Every acknowledged article is there; nothing refused is served."""
     conn = node.session(creds, timeout=120)
@@ -777,17 +792,15 @@ def verify_presence(node, creds, ledger: Ledger, events: Events, label, limit=No
         uncertain = list(ledger.uncertain)
     if limit and len(accepted) > limit:
         accepted = random.Random(label).sample(accepted, limit)
+    stat = pipelined_stat(conn, accepted + refused + uncertain)
     for msgid in accepted:
-        status, _ = conn.cmd("STAT " + msgid)
-        if not status.startswith("223"):
-            missing.append((msgid, status))
+        if not stat[msgid].startswith("223"):
+            missing.append((msgid, stat[msgid]))
     for msgid in refused:
-        status, _ = conn.cmd("STAT " + msgid)
-        if status.startswith("223"):
+        if stat[msgid].startswith("223"):
             served_refused.append(msgid)
     for msgid in uncertain:
-        status, _ = conn.cmd("STAT " + msgid)
-        uncertain_present += status.startswith("223") or status.startswith("430 withdrawn")
+        uncertain_present += stat[msgid].startswith("223") or stat[msgid].startswith("430 withdrawn")
     conn.close()
     row = events.emit("presence", label=label, checked=len(accepted), missing=len(missing),
                       missing_ids=missing[:20], refused_checked=len(refused),
@@ -1211,8 +1224,11 @@ def plan_chaos(args, t0, end, rng):
 
 
 def health_words(node):
+    """(exit, the state line, the disk line and the first held state) of `health'."""
     r = node.op("health", timeout=120)
-    return r.returncode, r.stdout.decode("utf-8", "replace")[-500:]
+    lines = r.stdout.decode("utf-8", "replace").splitlines()
+    keep = [l for l in lines if l.startswith(("health ", "disk ")) or " held" in l]
+    return r.returncode, "\n".join(keep)[-500:]
 
 
 def restart_after(node, load, ledger, events, creds, image, label, window):
@@ -1250,7 +1266,7 @@ def run_chaos(what, node, load, ledger, events, creds, stall, image, work, rng):
         for _ in range(12):
             time.sleep(5)
             rc, words = health_words(node)
-            seen.append((rc, words.splitlines()[0] if words else ""))
+            seen.append((rc, words))
         stall.unlink()
         time.sleep(5)
         ledger.close_window(window)
@@ -1261,7 +1277,13 @@ def run_chaos(what, node, load, ledger, events, creds, stall, image, work, rng):
 
 
 def tear_tail(node, events):
-    """The last entry of the newest segment half-zeroed: log_damage's torn tail."""
+    """A torn PENDING write after the log's tail (log_damage's torn tail, placed
+    where a crash can put it): the first half of the last entry's octets copied
+    into the units after it, as the next entry's write interrupted.  Zeroing
+    the last entry itself (as tests/test_native_log_damage.py does on a store
+    with no clients) destroys an entry the node has fsynced and acknowledged:
+    no power loss produces that, and the first version of this driver did
+    it, and read its own damage as a lost article (lane fitness, 2026-09-28)."""
     segments = sorted((node.store / "journal").glob("*.log"))
     if not segments:
         events.emit("torn", error="no segment")
@@ -1277,10 +1299,15 @@ def tear_tail(node, events):
         end = data.index(b"\x00" * 64, last + 64)
     except ValueError:
         end = len(data)
-    cut = last + (end - last) // 2
-    data[cut:end] = bytes(end - cut)
+    size = end - last
+    at = last + ((size + 4095) // 4096) * 4096        # the next unit
+    debris = bytes(data[last:last + size // 2])
+    if at + len(debris) > len(data):
+        data.extend(bytes(at + len(debris) - len(data)))
+    data[at:at + len(debris)] = debris
     path.write_bytes(bytes(data))
-    events.emit("torn", segment=path.name, entry_at=last, zeroed=[cut, end])
+    events.emit("torn", segment=path.name, last_entry_at=last, debris_at=at,
+                debris_octets=len(debris))
 
 
 def mount_tmpfs(node, megabytes, events):
