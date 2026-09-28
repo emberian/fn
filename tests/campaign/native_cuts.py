@@ -106,12 +106,15 @@ IMPORT_CUTS = tuple(
 PUBLICATION_SUFFIXES = tuple(c.name[len("import-"):] for c in IMPORT_CUTS)
 
 # `operator CONFIG init' (host/native/io.lisp `fnn-command-init-published',
-# PKT-647): books/store-init-publication.lisp fn-bs-init-pub-program, the
-# import's program with init's cut names, selected by FN_NATIVE_INIT_FAULT.
+# PKT-647, format 9 since lane log-2): books/store-init-log-publication.lisp
+# fn-bs-init-log-program, the import's program over the record log's plan with
+# init's cut names (books/store-init-publication.lisp
+# *fn-bs-init-pub-cut-names*), selected by FN_NATIVE_INIT_FAULT.
 INIT_PUB_BOOK = "store-init-publication.lisp"
+INIT_LOG_BOOK = "store-init-log-publication.lisp"
 INIT_PUB_CUTS = tuple(
-    NativeCut("init-" + c.name[len("import-"):], "fn-bs-init-pub-program", c.candidate,
-              book=INIT_PUB_BOOK)
+    NativeCut("init-" + c.name[len("import-"):], "fn-bs-init-log-program", c.candidate,
+              book=INIT_LOG_BOOK)
     for c in IMPORT_CUTS)
 
 # The generation checkpoint's publication and selection cuts (candidate-*,
@@ -424,7 +427,7 @@ def verify_init_publication_cut_map() -> None:
     """`operator init' (fnn-command-init-published) runs the import's
     program with init's cut names: the host's +fnn-init-publication-cuts+ are
     *fn-bs-init-pub-cut-names* applied to fn-bs-imp-program's cuts in order,
-    fn-bs-init-pub-program renames the cuts of fn-bs-imp-program, the host
+    fn-bs-init-log-program renames the cuts of fn-bs-imp-program, the host
     asks ACL2's admission before publishing through fnn-staged-publication,
     and the candidate column is the import's."""
     declared = tuple(c.name for c in INIT_PUB_CUTS)
@@ -433,10 +436,10 @@ def verify_init_publication_cut_map() -> None:
     renamed = init_publication_cut_names()
     if declared != tuple(renamed[c.name] for c in IMPORT_CUTS):
         raise AssertionError("init cuts are not the import program's, renamed")
-    book = (ROOT / "books" / INIT_PUB_BOOK).read_text()
-    program = host_function(book, "fn-bs-init-pub-program")
+    book = (ROOT / "books" / INIT_LOG_BOOK).read_text()
+    program = host_function(book, "fn-bs-init-log-program")
     if "(fn-bs-init-pub-rename-cuts\n   (fn-bs-imp-program " not in program:
-        raise AssertionError("fn-bs-init-pub-program is not fn-bs-imp-program renamed")
+        raise AssertionError("fn-bs-init-log-program is not fn-bs-imp-program renamed")
     if tuple(c.candidate for c in INIT_PUB_CUTS) != tuple(c.candidate for c in IMPORT_CUTS):
         raise AssertionError("init candidates differ from the import program's")
     source = (ROOT / "host/native/io.lisp").read_text()
@@ -700,10 +703,14 @@ def verify_post_log_cut_map() -> None:
     if not (0 <= order[0] < order[1] < order[2]):
         raise AssertionError("the inline commit quantum's order is not START, SYNC, COMPLETE")
     pipeline = host_function(owner, "fnn-owner-commit-pipeline")
-    order = [pipeline.find(x) for x in ("(fnn-owner-start-syncer ",
-                                        "(sb-thread:join-thread syncer",
-                                        "(fnn-owner-commit-complete-locked service :complete members deferred)",
-                                        "(fnn-log-seal-open-batch store)")]
+    # The :complete call's member list is the batch's members less those a
+    # stall already released (lane time-model-2: fnn-owner-unreleased), so
+    # it is found by its phase word, not its argument text.
+    complete_at = re.search(r"\(fnn-owner-commit-complete-locked\s+service\s+:complete\s", pipeline)
+    order = [pipeline.find("(fnn-owner-start-syncer "),
+             pipeline.find("(sb-thread:join-thread syncer"),
+             complete_at.start() if complete_at else -1,
+             pipeline.find("(fnn-log-seal-open-batch store)")]
     if not (0 <= order[0] < order[1] < order[2] < order[3]):
         raise AssertionError("the committer's order is not SYNC, collect, COMPLETE, seal the next batch")
     for cut in POST_LOG_CUTS[3:]:

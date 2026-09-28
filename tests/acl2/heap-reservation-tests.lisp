@@ -287,6 +287,97 @@
                 "refused init-budget-cannot-hold-profile profile=custom sizing=conservative reservation=1308 MB budget=512 MB"))
 (assert! (equal (fn-heap-init-exit-code (hrt-init *hrt-mission* *hrt-hbox* *hrt-half*)) 1))
 (assert! (equal (fn-heap-init-exit-code (hrt-init *hrt-bare* *hrt-hbox* *hrt-2g*)) 0))
+
+; A named budget below the machine init observes (finding R1 of the
+; public-node rehearsal): init writes the store sized for the named budget
+; and the host prints ACL2's warning naming both figures.  The rehearsal's
+; case: init outside the unit's MemoryMax=1536M on hbox's figures with
+; FN_INIT_BUDGET_MB=1536 named, and under MemoryMax=2G with 1500.
+(defconst *hrt-named-1536* '(49 53 51 54))    ; FN_INIT_BUDGET_MB=1536
+(defconst *hrt-named-1500* '(49 53 48 48))    ; FN_INIT_BUDGET_MB=1500
+(defconst *hrt-named-500* '(53 48 48))        ; FN_INIT_BUDGET_MB=500
+(defconst *hrt-1536m* (list (* 1536 *fn-heap-mib*)))
+(defmacro hrt-note (request physical limits budget)
+  `(fn-heap-init-budget-note (hrt-init ,request ,physical ,limits ,budget)
+                             ,physical ,limits ,budget))
+(assert! (equal (hrt-note *hrt-bare* *hrt-hbox* nil *hrt-named-1536*)
+                '(:named-budget-below-machine 1536 94464)))
+(assert! (equal (hrt-note *hrt-bare* *hrt-hbox* *hrt-2g* *hrt-named-1500*)
+                '(:named-budget-below-machine 1500 2048)))
+(assert! (equal (fn-heap-init-budget-note-line
+                 (hrt-note *hrt-bare* *hrt-hbox* nil *hrt-named-1536*))
+                "warning init-budget-below-machine named-budget=1536 MB machine-budget=94464 MB: the store is sized for FN_INIT_BUDGET_MB, not this machine; run init under the service's memory limit, and give the service at least 1536 MB"))
+; As before: no named budget, init under the unit's own limit, the harness's
+; 98,304 MB above hbox's 94,464 MB budget, and a refusal carry no note (and
+; the host prints no line for NIL).
+(assert! (null (hrt-note *hrt-bare* *hrt-hbox* nil nil)))
+(assert! (null (hrt-note *hrt-bare* *hrt-hbox* *hrt-1536m* *hrt-named-1536*)))
+(assert! (null (hrt-note *hrt-bare* *hrt-hbox* nil '(57 56 51 48 52))))
+(assert! (null (hrt-note *hrt-mission* *hrt-hbox* nil *hrt-named-500*)))
+(assert! (null (fn-heap-init-budget-note-line nil)))
+
+; The keystone's teeth.  Hypotheses: the decision accepts, a budget is named,
+; and it is below the machine init observes.
+(defun hrt-note-conclusion (d physical limits budget-octets)
+  (declare (xargs :mode :program))
+  (let ((note (fn-heap-init-budget-note d physical limits budget-octets))
+        (machine-mb (floor (fn-heap-init-machine-octets physical limits) *fn-heap-mib*)))
+    (and (equal (car note) :named-budget-below-machine)
+         (equal (nth 1 note) (nth 4 d))
+         (equal (nth 2 note) machine-mb)
+         (< (nth 4 d) machine-mb))))
+(defun hrt-note-hyps (d physical limits budget-octets)
+  (declare (xargs :mode :program))
+  (let ((named (fn-heap-init-explicit-budget budget-octets)))
+    (list (equal (car d) :init)
+          (posp named)
+          ; (nfix: the logic's floor of NIL is 0; program mode would fault)
+          (< (floor (nfix named) *fn-heap-mib*)
+             (floor (fn-heap-init-machine-octets physical limits) *fn-heap-mib*)))))
+; Reachable: the rehearsal's init outside the unit's limit, every hypothesis
+; and the conclusion (the store sized for 1,536 MB, the machine's 94,464).
+(assert! (let ((d (hrt-init *hrt-bare* *hrt-hbox* nil *hrt-named-1536*)))
+           (and (equal (hrt-note-hyps d *hrt-hbox* nil *hrt-named-1536*) '(t t t))
+                (equal (nth 4 d) 1536)
+                (hrt-note-conclusion d *hrt-hbox* nil *hrt-named-1536*))))
+; Without "accepts": the mission under a named 500 MB is refused; a budget
+; is named below the machine, and there is no note.
+(assert! (let ((d (hrt-init *hrt-mission* *hrt-hbox* nil *hrt-named-500*)))
+           (and (equal (hrt-note-hyps d *hrt-hbox* nil *hrt-named-500*) '(nil t t))
+                (not (hrt-note-conclusion d *hrt-hbox* nil *hrt-named-500*)))))
+; Without "named": the bare init under 2 GiB with FN_INIT_BUDGET_MB unset
+; (the nil budget's 0 is below the machine): as before, no note.
+(assert! (let ((d (hrt-init *hrt-bare* *hrt-hbox* *hrt-2g* nil)))
+           (and (equal (hrt-note-hyps d *hrt-hbox* *hrt-2g* nil) '(t nil t))
+                (not (hrt-note-conclusion d *hrt-hbox* *hrt-2g* nil)))))
+; Without "below": init run under the unit's own 1,536 MiB limit with the
+; same budget named: accepted, named, no note.
+(assert! (let ((d (hrt-init *hrt-bare* *hrt-hbox* *hrt-1536m* *hrt-named-1536*)))
+           (and (equal (hrt-note-hyps d *hrt-hbox* *hrt-1536m* *hrt-named-1536*)
+                       '(t t nil))
+                (not (hrt-note-conclusion d *hrt-hbox* *hrt-1536m* *hrt-named-1536*)))))
+(defmacro hrt-note-without (&rest hyps)
+  `(must-fail-checked
+    (defthm hrt-note-without-a-hypothesis
+      (let* ((d (fn-heap-init-decide request core nursery physical limits
+                                     budget-octets sizing-octets))
+             (named (fn-heap-init-explicit-budget budget-octets))
+             (machine-mb (floor (fn-heap-init-machine-octets physical limits)
+                                *fn-heap-mib*))
+             (note (fn-heap-init-budget-note d physical limits budget-octets)))
+        (declare (ignorable named machine-mb))
+        (implies (and ,@hyps)
+                 (and (equal (car note) :named-budget-below-machine)
+                      (equal (nth 1 note) (nth 4 d))
+                      (equal (nth 2 note) machine-mb)
+                      (< (nth 4 d) machine-mb))))
+      :hints (("Goal" :do-not-induct t
+               :in-theory (disable fn-heap-init-decide fn-heap-init-machine-octets
+                                   fn-heap-init-explicit-budget
+                                   fn-heap-init-observations fn-heap-machine-octets))))))
+(hrt-note-without (posp named) (< (floor named *fn-heap-mib*) machine-mb))
+(hrt-note-without (equal (car d) :init) (< (floor named *fn-heap-mib*) machine-mb))
+(hrt-note-without (equal (car d) :init) (posp named))
 ; The formula: the default preset's figure (T = 2^32 - 1 records: the
 ; per-record term 2 x T x 12 KiB dominates; its memberships are at most
 ; H / 320 since lane membership-budget, where up to 4,096 groups a record

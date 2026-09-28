@@ -149,6 +149,28 @@
                   (fn-arena$l-items fn-arena$l))
    fn-arena$l))
 
+; The compressed seal and reseat over the reference (lane compression-extents,
+; PRF-326): the payload read through the host's compressed realizer
+; (A-DURABLE-LZ: it is fn-lzr-lz-value of the block's durable octets).
+(defun fn-arena$l-seal-lz-extent (file eoff elen poff plen trailer n dict fn-arena$l)
+  (declare (xargs :stobjs fn-arena$l
+                  :guard (and (fn-arena$l-wfp fn-arena$l)
+                              (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))))
+  (update-fn-arena$l-items
+   (fn-oct-snoc (fn-arena$l-items fn-arena$l)
+                (fn-durable-realize-lz file eoff elen poff plen trailer n dict))
+   fn-arena$l))
+
+(defun fn-arena$l-reseat-lz-extent (h file eoff elen poff plen trailer n dict fn-arena$l)
+  (declare (xargs :stobjs fn-arena$l
+                  :guard (and (fn-arena$l-wfp fn-arena$l)
+                              (natp h) (< h (fn-arena$l-count fn-arena$l))
+                              (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))))
+  (update-fn-arena$l-items
+   (fn-oct-update h (fn-durable-realize-lz file eoff elen poff plen trailer n dict)
+                  (fn-arena$l-items fn-arena$l))
+   fn-arena$l))
+
 (defun fn-arena$l-release (h fn-arena$l)
   (declare (xargs :stobjs fn-arena$l :guard (natp h))
            (ignore h))
@@ -353,6 +375,58 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
 
+(defthm fn-arena-seal-lz-extent{correspondence}
+  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
+           (fn-arena$lcorr (fn-arena$l-seal-lz-extent file eoff elen poff plen trailer n dict
+                                                      fn-arena$l)
+                           (fn-arena$a-seal-lz-extent file eoff elen poff plen trailer n dict
+                                                      fn-arena)))
+  :rule-classes nil)
+
+(defthm fn-arena-seal-lz-extent{guard-thm}
+  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
+           (and (fn-arena$l-wfp fn-arena$l)
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict)))
+  :rule-classes nil)
+
+(defthm fn-arena-seal-lz-extent{preserved}
+  (implies (and (fn-arena$ap fn-arena)
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
+           (fn-arena$ap (fn-arena$a-seal-lz-extent file eoff elen poff plen trailer n dict
+                                                   fn-arena)))
+  :rule-classes nil)
+
+(defthm fn-arena-reseat-lz-extent{correspondence}
+  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
+                (natp h) (< h (fn-arena$a-count fn-arena))
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
+           (fn-arena$lcorr (fn-arena$l-reseat-lz-extent h file eoff elen poff plen trailer n dict
+                                                        fn-arena$l)
+                           (fn-arena$a-reseat-lz-extent h file eoff elen poff plen trailer n dict
+                                                        fn-arena)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
+
+(defthm fn-arena-reseat-lz-extent{guard-thm}
+  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
+                (natp h) (< h (fn-arena$a-count fn-arena))
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
+           (and (fn-arena$l-wfp fn-arena$l)
+                (natp h) (< h (fn-arena$l-count fn-arena$l))
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict)))
+  :rule-classes nil)
+
+(defthm fn-arena-reseat-lz-extent{preserved}
+  (implies (and (fn-arena$ap fn-arena)
+                (natp h) (< h (fn-arena$a-count fn-arena))
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
+           (fn-arena$ap (fn-arena$a-reseat-lz-extent h file eoff elen poff plen trailer n dict
+                                                     fn-arena)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
+
 (defthm fn-arena-release{correspondence}
   (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
                 (natp h))
@@ -397,7 +471,11 @@
                                   :protect t)
             (fn-arena-reseat-extent :logic fn-arena$a-reseat-extent
                                     :exec fn-arena$l-reseat-extent :protect t)
-            (fn-arena-release :logic fn-arena$a-release :exec fn-arena$l-release :protect t))
+            (fn-arena-release :logic fn-arena$a-release :exec fn-arena$l-release :protect t)
+            (fn-arena-seal-lz-extent :logic fn-arena$a-seal-lz-extent
+                                     :exec fn-arena$l-seal-lz-extent :protect t)
+            (fn-arena-reseat-lz-extent :logic fn-arena$a-reseat-lz-extent
+                                       :exec fn-arena$l-reseat-lz-extent :protect t))
   :attachable t)
 
 ; -----------------------------------------------------------------------------
@@ -559,6 +637,47 @@
   :hints (("Goal" :in-theory (enable fn-arena-payload fn-arena-reseat-extent fn-arena-count
                                      fn-oct-update-is-update-nth fn-arena-p))))
 
+; KEYSTONE (PRF-326) fn-arena-seal-lz-extent-payload: the compressed seal's
+; new handle is the old count and denotes the value its block decodes to,
+; every older handle keeps its payload, and the count grows by one.
+(defthm fn-arena-seal-lz-extent-payload
+  (and (equal (fn-arena-payload (fn-arena-count fn-arena)
+                                (fn-arena-seal-lz-extent file eoff elen poff plen trailer n dict
+                                                         fn-arena))
+              (fn-lzr-lz-value dict (fn-durable-octets file poff plen) n))
+       (implies (and (natp h) (< h (fn-arena-count fn-arena)))
+                (equal (fn-arena-payload h (fn-arena-seal-lz-extent file eoff elen poff plen
+                                                                    trailer n dict fn-arena))
+                       (fn-arena-payload h fn-arena)))
+       (equal (fn-arena-count (fn-arena-seal-lz-extent file eoff elen poff plen trailer n dict
+                                                       fn-arena))
+              (1+ (fn-arena-count fn-arena))))
+  :hints (("Goal" :in-theory (enable fn-arena-payload fn-arena-seal-lz-extent fn-arena-count))))
+
+; KEYSTONE (PRF-326) fn-arena-reseat-lz-extent-keeps-a-faithful-arena: when
+; the block's durable octets decode to the payload H holds (the commit's
+; check over the octets the log wrote, and the faithful write), the
+; compressed reseat leaves the arena unchanged.
+(defthm fn-arena-reseat-lz-extent-keeps-a-faithful-arena
+  (implies (and (fn-arena-p fn-arena)
+                (natp h) (< h (fn-arena-count fn-arena))
+                (equal (fn-lzr-lz-value dict (fn-durable-octets file poff plen) n)
+                       (fn-arena-payload h fn-arena)))
+           (equal (fn-arena-reseat-lz-extent h file eoff elen poff plen trailer n dict fn-arena)
+                  fn-arena))
+  :hints (("Goal" :in-theory (enable fn-arena-payload fn-arena-reseat-lz-extent fn-arena-count
+                                     fn-oct-update-is-update-nth fn-arena-p))))
+
+; The compressed seal is an append (the view the consumers open).
+(defthm fn-arena-seal-lz-extent-is-append
+  (implies (fn-arena-p fn-arena)
+           (equal (fn-arena-seal-lz-extent file eoff elen poff plen trailer n dict fn-arena)
+                  (append fn-arena (list (fn-lzr-lz-value dict (fn-durable-octets file poff plen)
+                                                          n)))))
+  :hints (("Goal" :in-theory (enable fn-arena-seal-lz-extent fn-arena-p))))
+
+(in-theory (disable fn-arena-seal-lz-extent fn-arena-reseat-lz-extent))
+
 (defthm fn-arena-release-unfolds
   (equal (fn-arena-release h fn-arena) fn-arena)
   :hints (("Goal" :in-theory (enable fn-arena-release))))
@@ -633,6 +752,14 @@
 (defthm fn-arn-payloads-of-append-one
   (equal (fn-arn-payloads-of (append records (list record)))
          (append (fn-arn-payloads-of records) (list (fn-record-payload record)))))
+
+;; The octets at a payload handle, read in place; a handle outside the arena
+;; reads as no bytes.  Only READS the arena (flip-L6-2's rule).
+(defun fn-handle-bytes (h fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (and (natp h) (< h (fn-arena-count fn-arena)))
+      (fn-arena-payload h fn-arena)
+    nil))
 
 ; The relation itself is logical (defun-nx): the arena's value against the
 ; history.  Nothing executes it; a commit and an open establish it by the

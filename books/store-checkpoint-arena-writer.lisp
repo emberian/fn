@@ -441,6 +441,43 @@
       (let ((estimate (+ alen (nfix (fn-sco-at 6 setup)))))
         (update-nth 6 estimate
                     (update-nth 0 (fn-ockp-decide estimate budget free) setup))))))
+;; PRF-129's disk half: the publication's space check.  KEYSTONE: the setup
+; the host calls before it allocates anything (host/owner-host.lisp
+; fn-owner-sco-prepare, the owner's automatic and `store compact' /
+; `store reclaim' checkpoint through host/native/owner.lisp
+; fnn-owner-publish-captured; host/store-node-host.lisp
+; fn-store-sco-publish-setup, the offline writer) answers a plan exactly when
+; the whole file's estimate -- the arena run's ALEN plus the tables' octets,
+; which are the octets the table pipeline writes (fn-ockp-estimate-is-len-
+; file-octets) -- is within the budget and within the observed free octets
+; less the maintenance reservation (fn-ockp-space: free less
+; fn-smr-reserve-octets, PRF-129's reservation); the plan names that
+; estimate.  Otherwise it defers by name (fn-ockp-decide-defers-by-the-
+; estimate) and nothing is written.  Scope: ALEN is the arena run's octets
+; computed from the payload lengths (fn-scka-run-octets); that it is the
+; length of what fn-scka-write-run writes is not proved here.
+(defthm fn-scka-publication-setup-plans-within-the-disk
+  (let* ((setup (fn-scka-publication-setup next frontier revision log seg budget free alen))
+         (estimate (nth 6 setup)))
+    (implies (not (equal (car setup) :unencodable))
+             (and (equal estimate
+                         (+ alen (len (fn-sct-file-octets
+                                       (fn-sct-table-programs (nth 1 setup) (nth 4 setup))
+                                       seg s))))
+                  (iff (equal (car (car setup)) :plan)
+                       (and (<= estimate budget)
+                            (natp free)
+                            (<= estimate (fn-ockp-space free))))
+                  (implies (equal (car (car setup)) :plan)
+                           (equal (car setup) (list :plan estimate))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-scka-publication-setup fn-ockp-setup fn-ockp-space fn-ockp-decide)
+                           (fn-sct-file-octets
+                            fn-sct-table-programs fn-ockp-counts fn-ockp-tables-encodablep))
+           :use ((:instance fn-ockp-estimate-is-len-file-octets
+                            (tables (fn-sct-tables-of-capture next frontier revision log))
+                            (index (fn-sco-event-index next)))))))
+
 (verify-guards fn-scka-append-src
   :hints (("Goal" :use ((:instance fn-scka-src-okp-payload))
            :in-theory (e/d (fn-scc-nat-encodablep)

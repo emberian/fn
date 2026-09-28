@@ -1099,7 +1099,8 @@
         "PRF-081",
         "PRF-214",
         "PRF-215",
-        "PRF-216"
+        "PRF-216",
+        "PRF-335"
       ],
       "verification": [
         "proof",
@@ -2119,7 +2120,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-089"
+        "PRF-089",
+        "PRF-336"
       ],
       "verification": [
         "proof",
@@ -2145,7 +2147,8 @@
       "proof_targets": [
         "PRF-112",
         "PRF-172",
-        "PRF-317"
+        "PRF-317",
+        "PRF-335"
       ],
       "verification": [
         "proof",
@@ -2189,7 +2192,7 @@
         "books/native-live-status.lisp",
         "planning/evidence/reclaim-host-2026-09-25.md"
       ],
-      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL1\", the payload's SHA-256, its D25 source SHA-256 under its own agent, its length, that agent). The host calls fn-rcl-existing-action for D25 at every list site and fn-rclb-existing-action at the buffer sites and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. OVER, XOVER and NEWNEWS drop a reclaimed article; `status` prints the rule and the reclaimable, held and reclaimed counts (books/native-live-status.lisp). Not yet implemented: the host `store reclaim` verb and `--dry-run`, its byte program and cuts, the native N=5,000 scenario; the consumer projection is read conservatively and feed state and FNBS rows are not read; the retention ledger keeps the reclaimed article's charge."
+      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL1\", the payload's SHA-256, its D25 source SHA-256 under its own agent, its length, that agent). The host calls fn-store-existing-action for D25 at every list site and fn-pidx-existing-action at the buffer sites (their pre-flip twins fn-rcl-existing-action and fn-rclb-existing-action were retired, PKT-860) and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. OVER, XOVER and NEWNEWS drop a reclaimed article; `status` prints the rule and the reclaimable, held and reclaimed counts (books/native-live-status.lisp). Not yet implemented: the host `store reclaim` verb and `--dry-run`, its byte program and cuts, the native N=5,000 scenario; the consumer projection is read conservatively and feed state and FNBS rows are not read; the retention ledger keeps the reclaimed article's charge."
     },
     {
       "id": "NNT-012",
@@ -2564,7 +2567,7 @@
         "fn-vj-reclamation-keeps-a-held-message-id-answered",
         "fn-vj-a-held-message-id-is-answered-441"
       ],
-      "implementation_note": "A stronger fn guarantee and a client contract, not an RFC requirement (RFC 3977 6.3.1 allows 441 for any posting failure; the duplicate/conflict answers are D25's). Proved over the host-called decision (fn-rclb-existing-action via host/owner-host.lisp fn-owner-existing-action-buffer from host/native/owner.lisp fnn-owner-attempt; fn-rcl-existing-action via fn-owner-existing-action): a held Message-ID is answered :duplicate or :conflict across every fn-sn-finish (the withdrawing cancel's acceptance is one) and across reclamation, and the in-flight reply is one of the two 441 lines. Clients: fn_client post --draft/reconcile (exit 4 unresolved), fn_web /reconcile; both keep the original outcome and re-send the stored bytes. Native (SCN-060) passes on the developer image. Not covered: a native reclamation (no host verb yet); a poster whose authorization changed is answered by the login gate or posting allowance before the Store and stays unresolved (PKT-164)."
+      "implementation_note": "A stronger fn guarantee and a client contract, not an RFC requirement (RFC 3977 6.3.1 allows 441 for any posting failure; the duplicate/conflict answers are D25's). Proved over the host-called decision (fn-pidx-existing-action via host/owner-host.lisp fn-owner-existing-action-buffer from host/native/owner.lisp fnn-owner-attempt; fn-store-existing-action via fn-owner-existing-action): a held Message-ID is answered :duplicate or :conflict across every fn-sn-finish (the withdrawing cancel's acceptance is one) and across reclamation, and the in-flight reply is one of the two 441 lines. Clients: fn_client post --draft/reconcile (exit 4 unresolved), fn_web /reconcile; both keep the original outcome and re-send the stored bytes. Native (SCN-060) passes on the developer image. Not covered: a native reclamation (no host verb yet); a poster whose authorization changed is answered by the login gate or posting allowance before the Store and stays unresolved (PKT-164)."
     },
     {
       "id": "NNT-020",
@@ -2593,7 +2596,7 @@
         "tests/test_native_source_corpus_bp.py",
         "planning/evidence/source-corpus-2-2026-09-26.md"
       ],
-      "implementation_note": "fn guarantee over RFC 5536 s3.1.3 and RFC 5537 s3.4/s3.5 (D25, D32): on the injecting routes (served POST, operator post, hybrid-author) the verdict is fn-rcl-existing-action on the poster's source; transit and BP admission key on Message-ID (RFC 3977 s6.3.2, RFC 4644). PKT-166 decided and implemented: hybrid-author asks fn-owner-existing-action first; a resend of the same signed carrier is DUPLICATE (exit 0), a changed or re-signed source the refusal (exit 1). PRF-127: the transit projection (NNTP and BP) keeps fn-hc-authored-source. Open: BP carriage of the corpus reaches B (kind-8 attempts, bundle identities) but B refuses every A-injected article, reason not rendered (PKT-246, SCN-073); the tombstone arm is unreachable-in-composition until a program writes tombstones."
+      "implementation_note": "fn guarantee over RFC 5536 s3.1.3 and RFC 5537 s3.4/s3.5 (D25, D32): on the injecting routes (served POST, operator post, hybrid-author) the verdict is fn-store-existing-action (D25's fn-rcl-action-over over alpha) on the poster's source; transit and BP admission key on Message-ID (RFC 3977 s6.3.2, RFC 4644). PKT-166 decided and implemented: hybrid-author asks fn-owner-existing-action first; a resend of the same signed carrier is DUPLICATE (exit 0), a changed or re-signed source the refusal (exit 1). PRF-127: the transit projection (NNTP and BP) keeps fn-hc-authored-source. Open: BP carriage of the corpus reaches B (kind-8 attempts, bundle identities) but B refuses every A-injected article, reason not rendered (PKT-246, SCN-073); the tombstone arm is unreachable-in-composition until a program writes tombstones."
     },
     {
       "id": "REP-009",
@@ -2684,7 +2687,8 @@
       "proof_targets": [
         "PRF-119",
         "PRF-279",
-        "PRF-271"
+        "PRF-271",
+        "PRF-327"
       ],
       "verification": [
         "proof",
@@ -2698,9 +2702,11 @@
         "planning/evidence/reclaim-lifecycle-2026-09-25.md",
         "planning/evidence/reclaim-lifecycle-2-2026-09-26.md",
         "books/store-log-reclaim.lisp",
-        "tests/test_native_log_compaction.py"
+        "tests/test_native_log_compaction.py",
+        "books/reclaim-instant.lisp",
+        "tests/test_native_replay_determinism.py"
       ],
-      "implementation_note": "Lane flip-cleanup (2026-09-27): the reclaiming pack's decision (fn-rclp-decide, PRF-119's pack keystones, PRF-279's streamed decision) was deleted with the pack layer. `store reclaim` is fn-lgr-decide-stream over the fold of fn-rclp-event per record (host/native/checkpoint.lisp fnn-log-reclaim-steps): the rewritten history's state checkpoint with the log rotated, then the drop (PRF-271); the rewrite's theorems are PRF-119's. Before: `operator CONFIG store reclaim [--dry-run]` and `operator CONFIG retention set RULE`. The decision is fn-rclp-decide; the program drops the derived state checkpoint, publishes the reclaiming generation, selects it and retires the older one, reusing the pack publication, selection and retirement cuts and adding five reclaim-* cuts. Lane reclaim-lifecycle-2: the maintenance reservation (PKT-169) is STO-019/PRF-129; a reclaimed article's retention charge falls to the one permanent history unit. Not implemented: a per-article release verb, BP/feed holders, chained packs."
+      "implementation_note": "Lane flip-cleanup (2026-09-27): the reclaiming pack's decision (fn-rclp-decide, PRF-119's pack keystones, PRF-279's streamed decision) was deleted with the pack layer. `store reclaim` is fn-lgr-decide-stream over the fold of fn-rclp-event per record (host/native/checkpoint.lisp fnn-log-reclaim-steps): the rewritten history's state checkpoint with the log rotated, then the drop (PRF-271); the rewrite's theorems are PRF-119's. Before: `operator CONFIG store reclaim [--dry-run]` and `operator CONFIG retention set RULE`. The decision is fn-rclp-decide; the program drops the derived state checkpoint, publishes the reclaiming generation, selects it and retires the older one, reusing the pack publication, selection and retirement cuts and adding five reclaim-* cuts. Lane reclaim-lifecycle-2: the maintenance reservation (PKT-169) is STO-019/PRF-129; a reclaimed article's retention charge falls to the one permanent history unit. Not implemented: a per-article release verb, BP/feed holders, chained packs. Lane log-leftovers (2026-09-27, PKT-857): the reclaim's instant is recorded before the rewrite as the configuration row `retention-reclaim-at` (PRF-327), and `store reclaim --recorded` reclaims at the recorded instant, so a copy of the pre-reclaim store given that record reproduces the reclaim (tests/test_native_replay_determinism.py test f). No store-format change."
     },
     {
       "id": "STO-018",
@@ -2794,7 +2800,8 @@
         "PRF-309",
         "PRF-320",
         "PRF-321",
-        "PRF-330"
+        "PRF-330",
+        "PRF-326"
       ],
       "verification": [
         "proof",
@@ -2901,7 +2908,7 @@
         "planning/evidence/manifests/certify-20260926T062056Z-559151.json",
         "planning/evidence/consumer-e2-2/test_native_consumer_exchange.gate-9900a68f.log"
       ],
-      "implementation_note": "A client contract, not an RFC requirement. The Python consumer is an external client; it decides only its own application meaning (attempt journal, its own verdict, the application's operation claims). The fn side it relies on is D25 at the signed control route: the saved artifact resent is :duplicate (fn-sr-a-signed-retry-is-already-stored, PRF-117) and a re-signed carrier of the same authored source is :conflict (fn-sr-a-re-signed-carrier-is-a-conflict, PRF-137), both over fn-rcl-existing-action, which host/native/hybrid-control.lisp fnn-hybrid-control-author asks through host/owner-host.lisp fn-owner-existing-action before it commits.",
+      "implementation_note": "A client contract, not an RFC requirement. The Python consumer is an external client; it decides only its own application meaning (attempt journal, its own verdict, the application's operation claims). The fn side it relies on is D25 at the signed control route: the saved artifact resent is :duplicate (fn-sr-a-signed-retry-is-already-stored, PRF-117) and a re-signed carrier of the same authored source is :conflict (fn-sr-a-re-signed-carrier-is-a-conflict, PRF-137), both over fn-store-existing-action, which host/native/hybrid-control.lisp fnn-hybrid-control-author asks through host/owner-host.lisp fn-owner-existing-action before it commits.",
       "note": "Local-owner profile. A revoked author's resend is refused before D25 is consulted (the enrolment check precedes it), so such a submission settles only by fn's Store serving the artifact back to a registered consumer (PKT-322). The two-store exchange across the relay network is the next lane."
     },
     {
@@ -4713,19 +4720,22 @@
         "test"
       ],
       "evidence": [
+        "books/owner-time-admission.lisp",
         "books/owner-time-model.lisp",
-        "tests/acl2/owner-time-model-tests.lisp",
+        "books/peer-inbound-invariants.lisp",
+        "books/peer-inbound.lisp",
+        "host/native-live-status-host.lisp",
+        "host/native/control.lisp",
+        "host/native/mux.lisp",
         "host/native/owner.lisp",
         "host/owner-host.lisp",
-        "host/native-live-status-host.lisp",
-        "tests/test_native_slow_disk.py",
         "planning/design-time-model-2026-09-27.md",
+        "planning/evidence/time-model-2-2026-09-27.md",
         "planning/evidence/time-model-2026-09-27.md",
-        "books/owner-time-admission.lisp",
-        "host/native/control.lisp",
-        "planning/evidence/time-model-2-2026-09-27.md"
+        "tests/acl2/owner-time-model-tests.lisp",
+        "tests/test_native_slow_disk.py"
       ],
-      "implementation_note": "Slices 1 and 2 of planning/design-time-model-2026-09-27.md. The limits D, H and the clock-event cadence are the live configuration's barrier-deadline-ms, barrier-stall-ms and clock-event-ms rows (policy set; defaults 5,000 / 30,000 / 1,000 ms). Past D: a POST command is answered 440 with the reason, an article already announced 441 with the reason, a mutating control request BUSY; past H every poster of the batch in flight and of the next is told uncertain and the queued POSTs are refused try-later. Not yet: IHAVE 436 / CHECK 431 during slow (PKT-862: transit is not admitted while a barrier is pending; peers wait), the inline barrier and configuration publication as requests (slice 3), health's exit in stalled (PKT-853 (b))."
+      "implementation_note": "Slices 1 and 2 of planning/design-time-model-2026-09-27.md. The limits D, H and the clock-event cadence are the live configuration's barrier-deadline-ms, barrier-stall-ms and clock-event-ms rows (policy set; defaults 5,000 / 30,000 / 1,000 ms). Past D: a POST command is answered 440 with the reason, an article already announced 441 with the reason, a mutating control request BUSY; past H every poster of the batch in flight and of the next is told uncertain and the queued POSTs are refused try-later. Not yet: IHAVE 436 / CHECK 431 during slow (PKT-862: transit is not admitted while a barrier is pending; peers wait), the inline barrier and configuration publication as requests (slice 3), health's exit in stalled (PKT-853 (b)). Lane log-leftovers (2026-09-27): the 440 at the POST command and the 441 of an article whose POST got 340 before the disk went slow carry ACL2's disk reason (books/owner-time-admission.lisp fn-otm-disk-effects); a peer's IHAVE is answered 436 and CHECK 431 at once while the disk sheds (PKT-858: a reader-class quantum under the disk-slow posture, books/peer-inbound.lisp fn-peer-shed-p)."
     },
     {
       "id": "HST-027",
@@ -4775,7 +4785,7 @@
         "tests/test_native_slow_disk.py",
         "planning/evidence/time-model-2-2026-09-27.md"
       ],
-      "implementation_note": "Lane time-model-2. The journal is STORE/journal/decisions.fnj, one segment per run (a start entry), written by the service-log writer thread under ACL2's sink bound; a dropped entry is a visible gap. What a death with entries unflushed loses: those entries, i.e. the replay of decisions that stored nothing; never durable state. Not yet: a native replay verb (the replay is ACL2's fn-otm-replay; the native case checks the file's sequence and events), the served transcript replay from the :served readings."
+      "implementation_note": "Lane time-model-2. The journal is STORE/decisions/decisions.fnj, one segment per run (a start entry), written by the service-log writer thread under ACL2's sink bound; a dropped entry is a visible gap. What a death with entries unflushed loses: those entries, i.e. the replay of decisions that stored nothing; never durable state. Not yet: a native replay verb (the replay is ACL2's fn-otm-replay; the native case checks the file's sequence and events), the served transcript replay from the :served readings."
     },
     {
       "id": "WEB-004",
@@ -4826,6 +4836,29 @@
         "tests/test_release_tarball.py"
       ],
       "implementation_note": "--tree skips clients/ in the node walk, checks it under clients_check, and fails any node script, launcher or service that names clients/; witnesses in tests/test_runpath_check.py (a node service starting a client, bin/fn naming clients/, object code or a foreign command in clients/, a reader service starting bin/fn)."
+    },
+    {
+      "id": "NNT-053",
+      "title": "A node catches up from a peer by a batched stream of the peer's articles, each batch verified against the peer's digest chain before any record is offered, every record entering through the node's own IHAVE verdict, and a cut resuming at the last journaled batch",
+      "specification": "specs/peering.md#129-catching-up-from-a-peer",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-325"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-catchup-serve.lisp",
+        "books/peer-catchup.lisp",
+        "tests/acl2/peer-catchup-tests.lisp",
+        "tests/test_native_peer_catchup.py",
+        "planning/evidence/peer-catchup-2026-09-27.md",
+        "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
+      ],
+      "implementation_note": "fn guarantee and local policy, not an RFC requirement: XFNCATCHUP is a private extension (RFC 3977 section 3.3.1); its reply is one RFC 3977 section 3.1.1 multi-line response; the local acceptance is RFC 3977 section 6.3.2 IHAVE on the peer's logical transit connection. The 1 MiB serve quantum, the 256 KiB request quantum and the 1 MiB line budget are local policy. `fn operator CONFIG peer catch-up NAME SECONDS` sets the interval row."
     }
   ]
 }

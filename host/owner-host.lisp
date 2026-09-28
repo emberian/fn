@@ -111,7 +111,8 @@
 ;; native images (host/native/build.lisp) and the Python owner bridge
 ;; (tools/bridge_image.py OWNER_FORMS), which boots from this file alone.
 ;; fn-owner-io calls fn-rcon-ocfg-io; fn-owner-prepare-buffer reads the
-;; fn-octets buffer and calls fn-rclb-existing-action (D13, STO-014).
+;; fn-octets buffer and calls fn-pidx-existing-action, whose comparison is
+;; books/store-reclaim-buffer's fn-rclb-same-articlep (D13, STO-014).
 (include-book "../books/records-concrete-owner")
 (include-book "../books/octets-stobj")
 (include-book "../books/store-reclaim-buffer")
@@ -124,6 +125,8 @@
 (include-book "../books/feed-journal")
 (include-book "../books/peer-pull")
 (include-book "../books/peer-pull-session")
+; PRF-325: catching up from a peer (the XFNCATCHUP requester).
+(include-book "../books/peer-catchup")
 (include-book "../books/consumer-owner-local")
 (include-book "../books/consumer-bound")
 (include-book "../books/consumer-wait")
@@ -1284,7 +1287,7 @@
 ; the fn-octet-listp test is discharged by the buffer's recognizer
 ; (fn-pbb-buffer-is-octet-listp); the length is the fill count
 ; (fn-octets-len); the existing-article test reads the buffer by index
-; (fn-pbb-existing-action-is-pb-existing-action).  The record's payload is
+; (fn-pbb-same-articlep-is-pb-same-articlep).  The record's payload is
 ; the buffer's list (fn-octets-list), consed once here: it is the store
 ; record's own field, held for the record's life, until wave C gives the
 ; owner state a concrete representation.  Everything after the record is
@@ -2945,12 +2948,13 @@
 ; (books/octets-stobj.lisp): host/native/owner.lisp fnn-owner-attempt fills
 ; the buffer once from the byte vector the owner handed back and asks this
 ; and fn-owner-prepare-buffer over it, so the payload is not consed into a
-; list for either.  The decision is fn-rclb-existing-action
-; (books/store-reclaim-buffer.lisp), equal to the tombstone-aware
-; fn-rcl-existing-action on the buffer's logical value
-; (fn-rclb-existing-action-is-rcl-existing-action), which is
-; fn-pb-existing-action wherever the held payload is not a tombstone
-; (fn-rcl-existing-action-is-pb-without-a-tombstone);
+; list for either.  The decision is fn-pidx-existing-action
+; (books/post-identity-index.lisp), equal to the Store's entry
+; fn-store-existing-action (fn-pidx-existing-action-is-store-existing-action),
+; which is the tombstone-aware fn-rcl-action-over over ALPHA of the Store's
+; articles (fn-store-existing-action-is-the-verdict-over-alpha), itself
+; fn-pb-action-over wherever the held payload is not a tombstone
+; (fn-rcl-action-over-is-pb-without-a-tombstone);
 ; the list entry's fn-octet-listp test is the buffer's recognizer
 ; (fn-pbb-buffer-is-octet-listp).
 (defun fn-owner-existing-action-buffer (msgid-octets group-codes fn-octets fn-arena state)
@@ -2960,7 +2964,7 @@
                  (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
     (if (not (fn-pfld-lookup-inputsp msgid-octets groups))
         (value :absent)
-      ; PRF-191: fn-rclb-existing-action through the view trie
+      ; PRF-191: D25's buffer verdict through the view trie
       ; (fn-pidx-existing-action-is-store-existing-action).
       (let ((action (fn-pidx-existing-action
                      (fn-store-octets->string msgid-octets) fn-octets groups
@@ -3321,7 +3325,7 @@
 ; are the render plan (books/served-plan.lisp), which the host renders into
 ; the connection's own buffer after the mutex is released.  The owner and
 ; exposure states are installed exactly as fn-owner-chunk installs them.
-(defun fn-owner-chunk-span-at (id start end admit fn-octets fn-arena fn-cat state)
+(defun fn-owner-chunk-span-at (id start end sched fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
@@ -3332,15 +3336,17 @@
         ;; PKT-828: at the reader view while the committer holds a capture,
         ;; the working view put back after it (books/owner-reader-read.lisp
         ;; fn-orr-read-span; with no capture it is fn-scr-ocfg-read-span).
-        ;; Lane time-model-2 (PRF-323): ADMIT is the disk's write admission
-        ;; at this read's recorded time; while it sheds, the read runs with
-        ;; posting not permitted, so a POST command is answered 440 before
-        ;; its article (books/owner-time-admission.lisp fn-otm-read-span;
-        ;; admitted it is fn-orr-read-span, fn-otm-read-span-when-admitted-
-        ;; unfolds).
+        ;; Lane time-model-2 (PRF-323): SCHED is the gate's scheduler value
+        ;; at this read's recorded time; while the disk sheds
+        ;; (fn-otm-admit-post), the read runs with posting not permitted, so
+        ;; a POST command is answered 440 before its article, with the disk's
+        ;; reason (lane log-leftovers), and a peer's offers under the
+        ;; disk-slow posture (PKT-858: 436 / 431) (books/owner-time-
+        ;; admission.lisp fn-otm-read-span; admitted it is fn-orr-read-span,
+        ;; fn-otm-read-span-when-admitted-unfolds).
         (let* ((result (fn-otm-read-span
                         (fn-owner-ocfg state) (fn-owner-reader-views state)
-                        id start end admit fn-octets fn-arena fn-cat))
+                        id start end sched fn-octets fn-arena fn-cat))
                (effects (fn-own-tls-result-effects result))
                (consumed (fn-own-tls-result-consumed result))
                (state (fn-owner-install-ocfg
@@ -3358,9 +3364,9 @@
                   (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
                   (f-get-global 'fn-owner-exposure-close state))))))))
 
-(defun fn-owner-chunk-span (id start end admit fn-octets fn-arena fn-cat state)
+(defun fn-owner-chunk-span (id start end sched fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
-  (fn-owner-chunk-span-at id start end admit fn-octets fn-arena fn-cat state))
+  (fn-owner-chunk-span-at id start end sched fn-octets fn-arena fn-cat state))
 
 (defun fn-owner-close (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
@@ -3922,3 +3928,9 @@ existing port only after fn-fc has made this connection ready."
 (defun fn-owner-pull-plans (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pull-plans (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))
+
+; PRF-325: the peers this node catches up from (books/peer-catchup.lisp
+; `fn-cu-plans'); host/native/pull-service.lisp drives each round.
+(defun fn-owner-catchup-plans (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cu-plans (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))

@@ -150,16 +150,17 @@
 ;; as in build.lisp: fn-owner-prepare-buffer and
 ;; fn-owner-existing-action-buffer (host/owner-host.lisp, which
 ;; host/native-admin-host.lisp `ld`s) take the fn-octets stobj and call
-;; fn-pbb-existing-action.  Without them the DTN image did not build at
+;; fn-pidx-existing-action (its comparison fn-pbb-same-articlep).  Without
+;; them the DTN image did not build at
 ;; 32842f50 (planning/evidence/native-drift-2026-09-25.md, finding 3);
 ;; tools/build_lists_check.py `included` checks this now.
 (include-book "books/octets-stobj")
 (include-book "books/poster-bytes-buffer")
 ;; host/native/io.lisp fnn-subject-id-buffer calls fn-shb-subject-id-bounded, as in build.lisp.
 (include-book "books/sha256-buffer")
-;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
-;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
-;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
+;; D13 (STO-014): the tombstone-aware same-article test over the buffer
+;; (fn-rclb-same-articlep), which fn-pidx-existing-action, the served POST's
+;; duplicate verdict, calls.
 (include-book "books/store-reclaim-buffer")
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
@@ -260,12 +261,21 @@
         ; Select once during construction, before any diagnostic module loads.
         ; A restart-time FN_NATIVE_PROFILE cannot promote this saved image.
         (fnn-select-image-profile)
-        ; The release version (VERSION at the tree root, 6.7.N), serialized
+        ; The release version (VERSION at the tree root, D37), serialized
         ; into the image for `fn --version'; a missing or malformed file
         ; stops the build.
         (fnn-select-release-version)
         (load "host/native/tls.lisp")
         (fnn-tls-initialize)
+        ; Native SHA-256 (lane digest-native, A-CRYPTO-NATIVE): the pinned
+        ; libcrypto's EVP SHA-256 replaces the raw definitions of
+        ; fn-sha256-stobj, fn-sha256-of-string and fn-sha256-of-prefixed-buffer
+        ; after a known-answer and reference check.  Checked here, then reset
+        ; so the saved core holds the ACL2 references; every start re-checks
+        ; and re-installs after the TLS pair is pinned.
+        (load "host/native/digest.lisp")
+        (fnn-digest-initialize)
+        (fnn-digest-reset)
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
         (defun fn-native-entry (st)
@@ -273,6 +283,7 @@
           (fnn-crypto-startup)
           (fnn-tls-reset)
           (fnn-tls-initialize)
+          (fnn-digest-startup)
           (fnn-hsig-reset)
           (fnn-hsig-initialize)
           (fnn-main)

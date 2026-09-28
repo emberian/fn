@@ -337,7 +337,7 @@
       },
       "profile": "default",
       "latest": "log_compaction 7/7 and store_export 4/4 on both lane images; a 40,000-article compact 40-139 s at 4.7 GB, from 2,963 s and 16.4 GB on the per-file layout ([log-recovery](evidence/log-recovery-2026-09-27.md)); the verb's own open streams the log since log-open-stream.",
-      "obstruction": "the drop's keystone fn-lg-segment-drop-preserves-the-open (PRF-270) is stated over fn-lgs-open-chain-records, which the streamed open (log-open-stream, fn-lgw-run-is-the-open) no longer calls, and no theorem on dev composes fn-lgw-run-is-the-open over segments into that fold: the equation is owed; the power-loss rig's log route over compaction was NOT RUN in the log-recovery record.",
+      "obstruction": "the power-loss rig's log route over compaction was NOT RUN in the log-recovery record (the drop's keystone is over the streamed open since lane log-leftovers: fn-lgw-segment-drop-preserves-the-open, PRF-270).",
       "next": "the compaction and reclaim cases on one shared qualified format-9 image, and the power-loss rig's log route (compaction, reclaim, export, import) run.",
       "bridge": "fn-lgr-decide-stream-is-lgr-decide"
     },

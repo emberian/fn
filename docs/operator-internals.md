@@ -14,8 +14,8 @@ makes no availability or flight-readiness claim; see
 [architecture](architecture.md) for the boundaries and
 [failures](../specs/failures.md) for what durability here assumes.
 
-**Installing from a release** (`fn-6.7.N-linux-x86_64.tar.gz` or
-`fn-6.7.N-openbsd-amd64.tar.gz`): read [Installing fn](install.md) first. It
+**Installing from a release** (`fn-VERSION-linux-x86_64.tar.gz` or
+`fn-VERSION-openbsd-amd64.tar.gz`): read [Installing fn](install.md) first. It
 is the whole path from the download to a node others reach over TLS, and it
 names nothing outside the release. This page is the reference for the
 operator's verbs beyond it: status and health in depth, recovery, peering
@@ -100,12 +100,12 @@ locked to find that out. An existing store is adopted by `run` and repaired by
 `init` never builds the store in place (PKT-647). It builds the empty store
 in a new directory `ROOT.init-XXXX` beside the configured store ROOT and
 publishes it by the same program as `store import` (below; `fn-bs-imp-program`
-with init's cut names, `fn-bs-init-pub-program` in
-`books/store-init-publication.lisp`): each file created exclusively, written
+with init's cut names, `fn-bs-init-log-program` in
+`books/store-init-log-publication.lisp`): each file created exclusively, written
 and fenced, the directories fenced, the staged store opened the ordinary way,
 renamed onto ROOT without replacing anything, ROOT's parent fenced. A crash
 at any point leaves no store at ROOT or the complete empty store
-(`fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store`),
+(`fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log`),
 never a partial one. Before writing anything `init` looks for a staged
 directory an earlier `init` left, and ACL2 answers
 (`fn-bs-init-pub-admission` over `fn-bs-imp-classify`):
@@ -267,7 +267,12 @@ resized when the budget holds it; past the budget it is refused
 `init-budget-cannot-hold-profile` with both figures (exit 1,
 `fn-heap-init-decide-refuses-the-operators-request-past-the-budget`),
 unless FN_INIT_BUDGET_MB names a target budget that holds it: then it is
-written with `within-budget=no target-budget=MB MB`. The
+written with `within-budget=no target-budget=MB MB`. A named budget below
+the budget init observes without it (init run outside the service's
+memory limit) is written for the named budget and warned on stderr by name
+with both figures (`fn-heap-init-budget-note`, keystone
+`fn-heap-init-budget-note-names-the-budget-init-sized-for`; finding R1 of
+the public-node rehearsal). The
 small preset has no `--profile` word (PKT-581); name its fields:
 `--max-transactions 16384 --max-history-octets 8388608 --max-record-octets
 196608 --max-article-octets 32768 --max-groups-per-article 16
@@ -422,7 +427,7 @@ running owner's automatic checkpoint does the same under the owner mutex,
 so a node that runs rarely needs the verb. The open reads the checkpoint
 first and scans from the segment its F row names, with the chain carried
 across segments; the drop preserves the history that open replays (KEYSTONE
-`fn-lg-segment-drop-preserves-the-open`, books/store-log-segments.lisp,
+`fn-lgw-segment-drop-preserves-the-open`, books/store-log-stream.lisp,
 PRF-270). A checkpoint ACL2 will not write is refused by name before
 anything is allocated (`checkpoint deferred reason=... estimate=...
 budget=...`, the profile's checkpoint budget and the free space). The open
@@ -646,7 +651,7 @@ accepted operator health
 | 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | a reinstall with a larger field (`store export`, `store import --FIELD N`), `capacity`, or release obligations |
 | 24 | `no-route` | forwarding obligations are held and the configuration has no `bp-route` | `bp-route add PATTERN BOUNDARY` |
 | 25 | `stranded-transfer` | an outbound feed entry was dropped at its retry bound; nothing re-offers it | fix the peer, then re-feed the article |
-| 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection, or it keeps deferring them (`deferred=N`: a full peer answers IHAVE/TAKETHIS `436` with `reason=unaffordable` in its log; planning/evidence/friend-blockers-2026-09-27.md, PKT-711) | check the peer's host and port (`peer list`), its reachability, and ask its operator whether its store is full |
+| 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection, or it keeps deferring them (`deferred=N`: a full peer answers IHAVE/TAKETHIS `436` with `reason=unaffordable` in its log; planning/evidence/friend-blockers-2026-09-27.md, PKT-711), or its outbound feed queue is saturated (`saturated=N`: the queue holds only undelivered articles, and while one of the post's target peers has no room every POST is refused `441 ... (feed-queue-full)` and a relayed article is answered `436`; PRF-335) | check the peer's host and port (`peer list`), its reachability, and ask its operator whether its store is full |
 | 27 | `receipt-debt` | forwarding obligations are held, awaiting the receipt that releases them | `bp-obligation status`; the receipt releases each |
 | 19 | (none held) | some state is `unobserved` | offline, the two feed states need a running owner |
 | 0 | (healthy) | every state is `clear` | |
@@ -703,13 +708,18 @@ default image profile's include closure is green at its digest
 load-checks the certificates from the cache, builds and freezes the
 production image, stages it with `packaging/install-native.sh`, checks that
 no Python is on the deployed path (`tools/runpath_check.py --tree`) and that
-`bin/fn --version` prints `fn 6.7.N (REV12)`, and packs
-`fn-6.7.N-PLATFORM.tar.gz` with a `SHA256SUMS` beside it. The version 6.7.N
+`bin/fn --version` prints `fn VERSION (REV12)`, and packs
+`fn-VERSION-PLATFORM.tar.gz` with a `SHA256SUMS` beside it. VERSION
 is the one line of the file `VERSION` at the root of the tree: the image
 build reads it into the image and the packaging names the tarball by it, and
-the cut tags REV `v6.7.N` (planning/release-v6.7.0.md is the cut's
-checklist; `tools/cut_release.sh` runs its mechanical gates). The `--frozen`
-form packages an already built image as `fn-6.7.N+REV12-PLATFORM.tar.gz`,
+the cut tags REV `vVERSION` (planning/release-v6.6.0.md is the first cut's
+checklist; `tools/cut_release.sh` runs its mechanical gates). Release order
+is D37's sequence (planning/release-sequence.json, decided by
+`tools/release_sequence.py`): 6.6.0 to 6.6.5, the 6.7.x series, then 6.6.6
+and one more `.6` per release after it. No tool compares version numbers;
+the cut's gate 01 requires VERSION to be the sequence's next entry after
+the newest `v*` tag. The `--frozen`
+form packages an already built image as `fn-VERSION+REV12-PLATFORM.tar.gz`,
 which is not a release. The tarball holds one directory `fn/`: `install.sh`,
 `bin/fn`, `libexec/fn/` (the frozen launcher, the production core,
 `source-revision`, the SBCL runtime, libsodium and libfn-mldsa65; the TLS
@@ -732,13 +742,13 @@ image's core.
 
 `fn operator CONFIG help VERB` prints each verb's grammar. `fn` with no
 words prints the operator's usage (it is `fn operator - help`), and `fn
---version` prints `fn 6.7.N (REV12)`: the release version built into the
+--version` prints `fn VERSION (REV12)`: the release version built into the
 image and the first twelve digits of the source revision recorded beside its
 core (`libexec/fn/source-revision`; exit 1 when the image records none).
 
 ### On OpenBSD (amd64, 7.9)
 
-The OpenBSD tarball, fn-6.7.N-openbsd-amd64.tar.gz, is the same layout built on OpenBSD 7.9
+The OpenBSD tarball, fn-VERSION-openbsd-amd64.tar.gz, is the same layout built on OpenBSD 7.9
 (`packaging/release-tarball.sh openbsd-amd64 FROZEN_DIR REVISION OUT_DIR`,
 run in the build VM). It carries the SBCL runtime with its one non-base
 library (`libzstd`), libsodium and the ML-DSA-65 library (vendored PQClean,
@@ -805,8 +815,8 @@ Four OpenBSD rules decide where it lives, how it starts and what keeps its store
 As root, with the tarball and its sum in `/tmp`:
 
 ```sh
-cd /tmp && sha256 -C SHA256SUMS fn-6.7.N-openbsd-amd64.tar.gz
-cd /usr/local && tar xzf /tmp/fn-6.7.N-openbsd-amd64.tar.gz
+cd /tmp && sha256 -C SHA256SUMS fn-VERSION-openbsd-amd64.tar.gz
+cd /usr/local && tar xzf /tmp/fn-VERSION-openbsd-amd64.tar.gz
 cd fn && sha256 -q -c SHA256SUMS                     # every file in it
 F=/usr/local/fn/bin/fn
 C=/var/fn/fn.toml
@@ -854,7 +864,8 @@ the libsodium and TLS candidate lists are chosen at read time, so an
 OpenBSD core carries only OpenBSD's names (PKT-723); `init` and `import`
 draw their stage suffix per process from the OS's entropy, so two runs of a
 saved image no longer stage under the same `ROOT.init-XXXX` (PKT-819). The
-gated OpenBSD 6.7.0 tarball of d663400f3 was built this way.
+gated OpenBSD rehearsal tarball of d663400f3 (VERSION then read 6.7.0,
+before D37 made 6.6.0 the first release) was built this way.
 
 ### Install the native production entry
 
@@ -924,7 +935,7 @@ which answers nothing on a production image.
 | --- | --- | --- |
 | `FN_NATIVE_POST_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-post-model-cuts+`; or `record-prepublish:refuse` | the frontier, record and finish cuts of a post, in `store ROOT post` and in the served owner (`operator CONFIG run`, and the developer `owner run`); `record-prepublish:refuse` is injection only (no process-death cut): every publication (`fnn-publish`, either route) is refused before its first write, which the owner resolves by ACL2's known abort (tests/test_native_known_abort.py) |
 | `FN_NATIVE_RECOVERY_FAULT` | `CUT:eio\|kill`, CUT one of `recover-replayed`, `recover-barrier` (the first of its five sites), `recovery-stage-unlinked` | recovery's cuts, in `store ROOT recover`, `operator CONFIG recover`, `store ROOT post` and the served owner's own recovery at start |
-| `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts (`store ROOT init`), and `operator init`'s publication cuts `+fnn-init-publication-cuts+` (`fn-bs-init-pub-program`, eio or kill) |
+| `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts (`store ROOT init`), and `operator init`'s publication cuts `+fnn-init-publication-cuts+` (`fn-bs-init-log-program`, eio or kill) |
 | `FN_NATIVE_IMPORT_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-import-model-cuts+` (a repeated cut at its first occurrence) | `store import`'s publication cuts (`fn-bs-imp-program`) |
 | `FN_NATIVE_CONTROL_FAULT` | one of `prepublish`, `postpublish`, `frontierbarrier`, `recordbarrier` | the owner's store for exactly one control submission; `postpublish` is the uncertain outcome |
 | `FN_NATIVE_CONTROL_TEST_STOP` | `after-submit` | a SIGSTOP of the owner from the worker that holds the reply, after the owner answered accepted, duplicate or refused and before the reply is sent; the stop is directed at that thread (`pthread_kill`), so the reply cannot leave first |

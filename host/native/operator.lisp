@@ -278,16 +278,22 @@ observation into the outcome and this function only carries it out."
               ;; PKT-582: ACL2 decides what init writes within the budget and
               ;; says so (books/heap-reservation.lisp fn-heap-init-decide);
               ;; a refusal is printed by name and nothing is created.
-              (let* ((request (fnn-core
-                               'fn-native-operator-host-result-init-profile result))
-                     (decision (progn
-                                 (unless (consp request)
-                                   (fnn-fault "ACL2 accepted an init plan with no store profile"))
-                                 (fnn-heap-init-decision request)))
-                     (line (fnn-core 'fn-heap-init-report-line decision))
+              ;; Finding R1 (public-node rehearsal): a named budget below the
+              ;; machine init observes is ACL2's warning here, by name with
+              ;; both figures, not a refusal at the service's first start.
+              (multiple-value-bind (decision note)
+                  (let ((request (fnn-core
+                                  'fn-native-operator-host-result-init-profile result)))
+                    (unless (consp request)
+                      (fnn-fault "ACL2 accepted an init plan with no store profile"))
+                    (fnn-heap-init-decision-noted request))
+              (let* ((line (fnn-core 'fn-heap-init-report-line decision))
+                     (warning (fnn-core 'fn-heap-init-budget-note-line note))
                      (profile (fnn-core 'fn-heap-init-decision-request decision))
                      (code (if (consp profile)
                                (progn (fnn-out "~a" line)
+                                      (when (stringp warning)
+                                        (fnn-err "fn: ~a" warning))
                                       (fnn-command-init-published
                                        root groups profile
                                        ;; PKT-648: the store's durability policy,
@@ -299,7 +305,7 @@ observation into the outcome and this function only carries it out."
                                     (fnn-core 'fn-heap-init-exit-code decision)))))
                 (fnn-operator-emit-status
                  (fnn-operator-status-of-exit-code code) "init")
-                code))))
+                code)))))
       (error (condition)
         (let ((code (fnn-exit-code-for condition)))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
@@ -452,7 +458,7 @@ observation into the outcome and this function only carries it out."
 ; host/native/checkpoint.lisp installs `fnn-command-compact' here after it
 ; loads.  An image built without it (the DTN image) has no compaction.
 (defvar *fnn-compact-callback* nil)
-; And `fnn-command-reclaim' (`store reclaim [--dry-run]', STO-017).
+; And `fnn-command-reclaim' (`store reclaim [--dry-run | --recorded]', STO-017).
 (defvar *fnn-reclaim-callback* nil)
 
 (defun fnn-operator-execute-store-action (result action)
@@ -467,8 +473,9 @@ observation into the outcome and this function only carries it out."
                          (fnn-command-recover root (and (stringp at)
                                                         (list "--repair" "truncate" at)))))
                       (:compact (funcall *fnn-compact-callback* root))
-                      (:reclaim (funcall *fnn-reclaim-callback* root nil))
-                      (:reclaim-dry-run (funcall *fnn-reclaim-callback* root t))
+                      (:reclaim (funcall *fnn-reclaim-callback* root :reclaim))
+                      (:reclaim-dry-run (funcall *fnn-reclaim-callback* root :dry-run))
+                      (:reclaim-recorded (funcall *fnn-reclaim-callback* root :recorded))
                       (:checkpoint (fnn-command-state-checkpoint root))
                       (:rebind-filesystem
                        (fnn-command-rebind-filesystem
@@ -720,7 +727,7 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
                (fnn-core 'fn-native-operator-host-result-exit-code result))
       (let ((action (fnn-core 'fn-native-operator-host-result-native-action result)))
         (let ((surface (fnn-operator-action-surface action)))
-          (when (and (member action '(:reclaim :reclaim-dry-run))
+          (when (and (member action '(:reclaim :reclaim-dry-run :reclaim-recorded))
                      (null *fnn-reclaim-callback*))
             (fnn-operator-emit-status
              :usage "action" "reclaim needs the checkpoint surface, which this image omits")
@@ -745,7 +752,7 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
           (:status (fnn-operator-execute-status result))
           (:health (fnn-operator-execute-health result))
           ((:recover :compact :checkpoint :export :import
-            :reclaim :reclaim-dry-run :rebind-filesystem)
+            :reclaim :reclaim-dry-run :reclaim-recorded :rebind-filesystem)
            (fnn-operator-execute-store-action result action))
           (:inspect (fnn-operator-execute-inspect result))
           (:admin (fnn-operator-execute-admin result))

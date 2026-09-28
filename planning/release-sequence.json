@@ -1,0 +1,28 @@
+{
+  "decision": "D37",
+  "decided": "ember, 2026-09-27 ~22:10 UTC",
+  "note": "Release order is this sequence, never a numeric comparison of versions. tools/release_sequence.py reads this file; segments are walked in order and a version's position is (segment index, index within the segment).",
+  "segments": [
+    {
+      "name": "the 6.6 series",
+      "kind": "list",
+      "versions": ["6.6.0", "6.6.1", "6.6.2", "6.6.3", "6.6.4", "6.6.5"]
+    },
+    {
+      "name": "the 6.7.x series",
+      "kind": "counter",
+      "prefix": "6.7.",
+      "start": 0,
+      "open_ended": true,
+      "rule": "6.7.N is followed by 6.7.N+1, or by the first entry of the next segment (the final release); the series has at least one release, 6.7.0"
+    },
+    {
+      "name": "the final release and after",
+      "kind": "append",
+      "first": "6.6.6",
+      "append": ".6",
+      "open_ended": true,
+      "rule": "6.6.6 is the final release; every release after it appends .6 to the one before (6.6.6.6, 6.6.6.6.6, ...)"
+    }
+  ]
+}

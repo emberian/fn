@@ -2151,7 +2151,8 @@
         "On a copy per cut, stop or kill `store reclaim` at every publication, selection and retirement cut and kill and EIO at each reclaim-* cut; reopen with `status`, rerun `store reclaim`.",
         "Run `store reclaim`; record files, octets and du before and after, and `status` headroom; rerun it.",
         "Serve: GROUP, ARTICLE by Message-ID and number, OVER, STAT, NEWNEWS; re-POST a reclaimed article's original bytes.",
-        "On a store refused for history headroom, run `store compact` and `store reclaim`."
+        "On a store refused for history headroom, run `store compact` and `store reclaim`.",
+        "PKT-857 (tests/test_native_replay_determinism.py test f): `retention set released-by-all-holders` on a copy of the mixed store; `store reclaim` on copy A; copy the one new config/ file A published into copy B and run `store reclaim --recorded` on B; run `store reclaim --recorded` on copy C, which has no recorded instant."
       ],
       "expected": [
         "keep-forever writes nothing (reclaimed=0, exit 0).",
@@ -2159,7 +2160,8 @@
         "Every reopen exits 0 and every rerun exits 0 with the clean run's selected pack bytes.",
         "Files and octets fall by the old generation; bytes-used falls by the freed octets; a rerun reclaims 0.",
         "GROUP is unchanged; ARTICLE answers 430 and 423 article reclaimed; OVER 423; NEWNEWS lists no reclaimed article; the re-POST is 441 (a duplicate).",
-        "Both refuse by name (temporary-space), exit 1, nothing written: the maintenance reservation finding (PKT-169)."
+        "Both refuse by name (temporary-space), exit 1, nothing written: the maintenance reservation finding (PKT-169).",
+        "A's report names its instant record (instant-record=NAME) and it is the one new config/ file; B's report equals A's (reclaimed, freed octets, the Message-IDs) and B's `store digest` equals A's; C is refused by name (no-recorded-instant) and its digest is the pre-reclaim store's."
       ],
       "evidence": [
         "tests/reclaim_lifecycle_native.py",
@@ -5357,11 +5359,13 @@
       ],
       "steps": [
         "tests/test_native_slow_disk.py on the developer image: FN_NATIVE_TEST_DISK_STALL_FILE names a file; a healthy POST first; then the file is created (every barrier waits before its fdatasync while it exists) and POST A is sent; for 30 s: GROUP and ARTICLE on a reader connection, `operator status' every 0.5 s, and after 7 s `operator health' and a new POST B; then the file is removed.",
-        "Slice 2, the first case: `policy set barrier-stall-ms 120000' first; B's POST command answered 340 before the stall and its article sent while slow; a POST command on D while slow. The second case: `policy set barrier-deadline-ms 2000', `barrier-stall-ms 6000', `clock-event-ms 250'; the stall file; POSTs A (in flight), E (0.3 s later, prepared behind it) and F (0.6 s, queued); at 3 s `health' and `policy set clock-event-ms 500'; GROUP every 0.25 s until A, E and F are answered; `health'; a POST command on G; the file removed; `health' until ok; a POST; STAT of each; the journal file read."
+        "Slice 2, the first case: `policy set barrier-stall-ms 120000' first; B's POST command answered 340 before the stall and its article sent while slow; a POST command on D while slow. The second case: `policy set barrier-deadline-ms 2000', `barrier-stall-ms 6000', `clock-event-ms 250'; the stall file; POSTs A (in flight), E (0.3 s later, prepared behind it) and F (0.6 s, queued); at 3 s `health' and `policy set clock-event-ms 500'; GROUP every 0.25 s until A, E and F are answered; `health'; a POST command on G; the file removed; `health' until ok; a POST; STAT of each; the journal file read.",
+        "Lane log-leftovers (PKT-858): `policy set barrier-deadline-ms 2000', `barrier-stall-ms 120000'; `peer add slowpeer ... 127.0.0.2 ... fn.* - 127.0.0.2 true'; a healthy POST W; a peer connection from 127.0.0.2: IHAVE of W and CHECK of a new id; the stall file; POST A; at 3.5 s `health', then IHAVE of a new id, CHECK of another, IHAVE of W; the file removed; A's reply; IHAVE of the new id repeated until not 436, then its article."
       ],
       "expected": [
         "Every read under 2 s and every status under 5 s while the barrier is pending, no growth between the first and last third; health and status print `disk slow: barrier N ms pending'; B answered `441 posting failed; the disk is slow ...' within 2 s and not stored; A unanswered during the stall and answered 240 after the device returns; health then `disk ok' with last-barrier-ms at least the stall and slow-episodes=1; the next POST 240; the service log names the episode entered and left.",
-        "B's article answered `441 posting failed; the disk is slow ...' and D's command `440 posting not permitted now; the disk is slow ...' each within 2 s. In the second case: the control request refused BUSY within 5 s; A and E each answered ACL2's uncertain 441 and closed between 5.5 and 7.5 s after the stall began, F `441 posting failed; the disk is stalled ...'; reads under 2 s; health `disk stalled: ... stalls=1 ... members=uncertain'; G `440 ... the disk is stalled'; after recovery STAT A and E 223 (the documented ambiguity), F 430, health `disk ok' stalls=1, the next POST 240; the log names the stall and the recovery after it; the journal's last segment has sequence 1..n, readings non-decreasing, the issue with limits 2000 6000 250, a :became-stalled, the note (2 members, 1 shed) and :recovered-from-stall."
+        "B's article answered `441 posting failed; the disk is slow ...' and D's command `440 posting not permitted now; the disk is slow ...' each within 2 s. In the second case: the control request refused BUSY within 5 s; A and E each answered ACL2's uncertain 441 and closed between 5.5 and 7.5 s after the stall began, F `441 posting failed; the disk is stalled ...'; reads under 2 s; health `disk stalled: ... stalls=1 ... members=uncertain'; G `440 ... the disk is stalled'; after recovery STAT A and E 223 (the documented ambiguity), F 430, health `disk ok' stalls=1, the next POST 240; the log names the stall and the recovery after it; the journal's last segment has sequence 1..n, readings non-decreasing, the issue with limits 2000 6000 250, a :became-stalled, the note (2 members, 1 shed) and :recovered-from-stall.",
+        "Before the stall IHAVE of W 435 and CHECK 238; while slow IHAVE `436 retry later; the disk is slow', CHECK `431 <id>' and IHAVE of the held W also 436, each within 2 s, A unanswered; after the device returns A 240, the IHAVE 335 and the article 235."
       ],
       "evidence": [
         "tests/test_native_slow_disk.py",
@@ -5424,6 +5428,38 @@
         "native": true,
         "log": "planning/evidence/release-web-reader-2026-09-27/drive.json",
         "record": "planning/evidence/release-web-reader-2026-09-27.md"
+      }
+    },
+    {
+      "id": "SCN-184",
+      "title": "a new node catches up 1,000 articles from a peer in verified batches, and a kill mid catch-up resumes at the last journaled batch",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "NNT-053"
+      ],
+      "steps": [
+        "A holds 1,000 articles in fn.test (about 2 KiB each, several 256 KiB batches). B, new, adds peer A (inbound fn.*, outbound none) and `peer catch-up A 2`.",
+        "A second B is started on the developer image with FN_CATCHUP_TEST_KILL=before-write:3 and dies by SIGKILL after committing the third batch's records and before journaling its cursor; it is restarted."
+      ],
+      "expected": [
+        "B logs a done round at position 1000 whose digest is the chain over A's stored articles; B holds exactly A's Message-IDs in A's order, each article's octets A's apart from Path and Xref.",
+        "The restarted B resumes from the second batch's cursor: the third batch is offered again and drawn 435 (duplicate > 0), and B ends with exactly A's articles, none twice, and the same digest."
+      ],
+      "evidence": [
+        "tests/test_native_peer_catchup.py",
+        "planning/evidence/peer-catchup-2026-09-27.md",
+        "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_catchup",
+        "cases": [
+          "test_catch_up_imports_every_article",
+          "test_kill_mid_catch_up_resumes"
+        ],
+        "native": true,
+        "record": "planning/evidence/peer-catchup-2026-09-27.md",
+        "log": "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
       }
     }
   ]

@@ -656,7 +656,7 @@ class Campaign:
             if not self.mount(rec):
                 violations.append("mount-failed")
             # after an init cut (PKT-647's published init,
-            # fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store):
+            # fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log):
             # ROOT is absent (at most one ROOT.init-*, which the next init
             # names as interrupted-init and after whose removal init
             # succeeds) or the complete empty store (status 0,
@@ -1099,6 +1099,36 @@ def install(a):
     return 0 if ("fn " + m.group(1)) in so else 1
 
 
+def vm_start(a):
+    """Boot a prepared configuration and wait for its ssh (the release cut's
+    OpenBSD build VM, tools/cut_release.sh gate 13).  Refuses when that
+    configuration's container is already running: someone else's VM is
+    never killed to start ours."""
+    base = Path(a.base)
+    cfg_path = base / a.name / "cfg.json"
+    if not cfg_path.is_file():
+        raise SystemExit("no configuration %s (power_loss_openbsd.py prepare %s ...)" % (cfg_path, a.name))
+    vm = VM(base, json.loads(cfg_path.read_text()))
+    if vm.running():
+        raise SystemExit("%s is already running: not started (stop it first if it is yours)" % vm.name)
+    vm.boots = 1000 + int(time.time()) % 100000
+    print("boot %s in %s s; ssh -p %d root@127.0.0.1 (key %s)" % (vm.name, vm.start(), vm.cfg["ssh"], vm.key))
+    return 0
+
+
+def vm_stop(a):
+    """Shut a configuration's VM down cleanly (sync, shutdown -p) and remove
+    its container; a no-op when it is not running."""
+    base = Path(a.base)
+    vm = VM(base, json.loads((base / a.name / "cfg.json").read_text()))
+    if vm.running():
+        vm.shutdown()
+    else:
+        vm.gone()
+    print("stopped %s" % vm.name)
+    return 0
+
+
 def flushprobe(a):
     """Count the flushes the guest sends while N fsyncs run on the store file
     system (the trace records every paio request qemu submits to the host
@@ -1222,6 +1252,10 @@ def main(argv=None):
     p = sub.add_parser("install")
     p.add_argument("name")
     p.add_argument("tarball")
+    p = sub.add_parser("start", help="boot a prepared configuration (refused when already running)")
+    p.add_argument("name")
+    p = sub.add_parser("stop", help="shut a configuration's VM down")
+    p.add_argument("name")
     p = sub.add_parser("flushprobe")
     p.add_argument("name")
     p = sub.add_parser("campaign")
@@ -1256,7 +1290,7 @@ def main(argv=None):
     p = sub.add_parser("summary")
     a = ap.parse_args(argv)
     FN = a.fn
-    return {"prepare": prepare, "install": install, "flushprobe": flushprobe, "campaign": campaign, "initcuts": initcuts, "summary": summary}[a.cmd](a)
+    return {"prepare": prepare, "install": install, "start": vm_start, "stop": vm_stop, "flushprobe": flushprobe, "campaign": campaign, "initcuts": initcuts, "summary": summary}[a.cmd](a)
 
 
 if __name__ == "__main__":

@@ -95,6 +95,19 @@
                             fn-apr-feed-article fn-handle-bytes
                             fn-apr-store-at-restp)))))
 
+;  KEYSTONE (PKT-EG-2b).  The book owner's feed step (books/owner.lisp
+; fn-own-feed-reply, which fn-own-step runs on a :feed-octets event) hands
+; the feed the bytes at fn-own-feed-article's handle; at rest those are the
+; bytes the host entry sends (fn-ofa-feed-article, host/owner-host.lisp
+; fn-owner-feed-octets).  Before the fix the model handed the handle itself.
+(defthm fn-ofa-feed-article-is-the-owner-step-article
+  (implies (and (fn-apr-store-at-restp (fn-own-store o))
+                (fn-hist-of-storep fn-hist (fn-own-store o)))
+           (equal (fn-ofa-feed-article o msgid fn-arena fn-hist)
+                  (fn-handle-bytes (fn-own-feed-article o msgid) fn-arena)))
+  :hints (("Goal" :use ((:instance fn-apr-feed-article-is-own-feed-article))
+           :in-theory '(fn-ofa-feed-article))))
+
 ; The bytes are the payload sealed at the handle: never the handle, and an
 ; octet list whenever the arena is one (fn-arena-p).
 (defthm fn-ofa-feed-article-is-an-octet-list

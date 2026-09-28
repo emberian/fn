@@ -17,7 +17,7 @@ The equality each column means:
   * Message-ID: RFC 5536 s3.1.3 identity; transit (IHAVE/TAKETHIS) decides
     duplicates by it alone (RFC 3977 s6.3.2, RFC 4644).
   * authored source: the poster's octets; on the injecting routes the D25
-    verdict compares it (fn-rcl-existing-action): same source is 441
+    verdict compares it (fn-store-existing-action): same source is 441
     "already stored here", a changed byte 441 "a different article".
   * stored representation: SHA-256 of the record payload (`store inspect`),
     which differs between A and B by exactly B's Path prefix.

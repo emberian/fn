@@ -18,6 +18,7 @@
 
 (in-package "ACL2")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/store-checkpoint-arena-load")
 (include-book "../../books/store-checkpoint-arena-writer")
 
@@ -652,3 +653,71 @@
  (let ((r (sckat-full-both (list *sckat-w4* 'not-an-event))))
    (and (eq (car (car r)) :bad)
         (equal (car r) (cadr r)))))
+
+; -----------------------------------------------------------------------------
+; PRF-129's disk half: fn-scka-publication-setup-plans-within-the-disk (the
+; setup host/owner-host.lisp fn-owner-sco-prepare and host/store-node-host.lisp
+; fn-store-sco-publish-setup call before allocating anything).
+; REACHABLE: a ground capture, an arena run of 100 octets; with the budget the
+; whole estimate and the free octets the estimate plus the reservation the
+; setup plans that estimate, which is 100 plus the tables' file octets; one
+; octet less free (or budget) defers by name.
+(defconst *sckat-pnext* (fn-sco-capture *sckat-configs* nil))
+(defconst *sckat-pest*
+  (nth 6 (fn-scka-publication-setup *sckat-pnext* 9 "rev-test" nil *sckat-seg* 0 0 100)))
+(defconst *sckat-psetup*
+  (fn-scka-publication-setup *sckat-pnext* 9 "rev-test" nil *sckat-seg* *sckat-pest*
+                             (+ *sckat-pest* (fn-smr-reserve-octets)) 100))
+(assert-event
+ (and (not (equal (car *sckat-psetup*) :unencodable))
+      (equal (nth 6 *sckat-psetup*)
+             (+ 100 (len (fn-sct-file-octets (fn-sct-table-programs (nth 1 *sckat-psetup*)
+                                                                    (nth 4 *sckat-psetup*))
+                                             *sckat-seg* 3))))
+      (< 100 *sckat-pest*)
+      (equal (car *sckat-psetup*) (list :plan *sckat-pest*))
+      (<= *sckat-pest* *sckat-pest*)
+      (natp (+ *sckat-pest* (fn-smr-reserve-octets)))
+      (equal (fn-ockp-space (+ *sckat-pest* (fn-smr-reserve-octets))) *sckat-pest*)))
+(assert-event
+ (equal (car (fn-scka-publication-setup *sckat-pnext* 9 "rev-test" nil *sckat-seg* *sckat-pest*
+                                        (+ *sckat-pest* (fn-smr-reserve-octets) -1) 100))
+        (list :deferred :exceeds-space *sckat-pest* (1- *sckat-pest*))))
+(assert-event
+ (equal (car (fn-scka-publication-setup *sckat-pnext* 9 "rev-test" nil *sckat-seg* (1- *sckat-pest*)
+                                        (+ *sckat-pest* (fn-smr-reserve-octets)) 100))
+        (list :deferred :exceeds-budget *sckat-pest* (1- *sckat-pest*))))
+(assert-event
+ (equal (car (car (fn-scka-publication-setup *sckat-pnext* 9 "rev-test" nil *sckat-seg*
+                                             *sckat-pest* nil 100)))
+        :deferred))
+
+; HYPOTHESIS REMOVAL (the one hypothesis): a capture whose row the codec
+; refuses (a natural of 2^2040).  The setup is :unencodable (the hypothesis
+; fails); the plan does not happen although every bound on the right of the
+; iff holds (an estimate of 0 within the budget and the space): the
+; conclusion fails.
+; (car (car SETUP)) of the theorem, total: the car of an atom is NIL.
+(defun sckat-car-car (x)
+  (declare (xargs :guard t))
+  (if (consp x) (if (consp (car x)) (car (car x)) nil) nil))
+(defthm sckat-car-car-is-car-car (equal (sckat-car-car x) (car (car x))))
+(defconst *sckat-bad-next* (fn-sco-capture *sckat-configs* (list (expt 2 2040))))
+(defconst *sckat-bad-psetup*
+  (fn-scka-publication-setup *sckat-bad-next* 9 "rev-test" nil *sckat-seg* 1000 100000 0))
+(assert-event (equal (car *sckat-bad-psetup*) :unencodable))
+(assert-event
+ (not (iff (equal (sckat-car-car *sckat-bad-psetup*) :plan)
+           (and (<= (nth 6 *sckat-bad-psetup*) 1000)
+                (natp 100000)
+                (<= (nth 6 *sckat-bad-psetup*) (fn-ockp-space 100000))))))
+(must-fail-checked
+ (defthm sckat-plans-within-the-disk-without-encodable
+   (let* ((setup (fn-scka-publication-setup next frontier revision log seg budget free alen))
+          (estimate (nth 6 setup)))
+     (iff (equal (car (car setup)) :plan)
+          (and (<= estimate budget) (natp free) (<= estimate (fn-ockp-space free)))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-scka-publication-setup fn-ockp-setup fn-ockp-space fn-ockp-decide)
+                            (fn-sct-file-octets fn-sct-table-programs fn-ockp-counts
+                             fn-ockp-tables-encodablep))))))

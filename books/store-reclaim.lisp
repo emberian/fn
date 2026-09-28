@@ -21,8 +21,9 @@
 ;    say every decision the lifetimes table lists reads the same afterwards:
 ;    the duplicate history (a reclaimed Message-ID is still accepted, so it
 ;    never resurrects), the group numbering, each article's group bindings
-;    and stamp, and -- through `fn-pb-existing-action', which the host
-;    calls -- the duplicate-versus-conflict verdict.  A held article is never
+;    and stamp, and -- through `fn-rcl-action-over', which the host's entry
+;    books/store-intern.lisp `fn-store-existing-action' is over alpha --
+;    the duplicate-versus-conflict verdict.  A held article is never
 ;    touched.
 ;
 ; The durable step is not here: `store reclaim' rewrites the article's
@@ -236,18 +237,23 @@
           (fn-rcl-verdict-heldp msgid (cdr verdicts)))
     nil))
 
-; Why an article stays, or :reclaimable.  VERDICTS is the Store's
-; newest-first (msgid . verdict) list: an article with an authorship
-; verdict other than :absent keeps its payload (above; STO-008).
-(defun fn-rcl-verdict (rule now h verdicts article)
+;; Why an article stays, or :reclaimable, from everything but its payload:
+; the rule, the Store's verdicts and the obligations.  VERDICTS is the
+; Store's newest-first (msgid . verdict) list: an article with an authorship
+; verdict other than :absent keeps its payload (above; STO-008).  It reads
+; no payload, so it is the same over a retained article (whose payload is a
+; HANDLE since the records flip) and over its octet model: the log reclaim's
+; context (books/store-reclaim-pack.lisp fn-rclp-ctx-reclaimable) calls it
+; on the Store's articles and tests the tombstone on the record's own
+; octets; the counts (books/store-reclaim-holders.lisp fn-rcl-verdict-in)
+; test it through the arena.
+(defun fn-rcl-standing-verdict (rule now h verdicts article)
   (declare (xargs :guard t
                   :guard-hints (("Goal" :in-theory (disable fn-rcl-rulep
-                                                            fn-rcl-tombstonep
                                                             fn-rcl-rule-permits)))))
   (let ((msgid (fn-article-msgid article))
         (memberships (fn-article-memberships article)))
-    (cond ((fn-rcl-tombstonep (fn-article-payload article)) :already-reclaimed)
-          ((equal rule '(:keep-forever)) :rule-keeps)
+    (cond ((equal rule '(:keep-forever)) :rule-keeps)
           ((not (fn-rcl-rulep rule)) :rule-refused)
           ((not (fn-rcl-rule-permits rule now (fn-article-stamp article)))
            :too-recent)
@@ -259,9 +265,32 @@
           ((member-equal msgid (true-list-fix (fn-rcl-bp h))) :held-bp-obligation)
           (t :reclaimable))))
 
+; The verdict of the OCTET model: an article whose payload is its octets
+; (a tombstone is :already-reclaimed).  The host never hands it a retained
+; article: the counts it prints are fn-rcl-verdict-in over the arena, whose
+; keystone (fn-rcl-verdict-in-is-verdict-of-alpha) is this verdict of the
+; article's octet model.
+(fn-payload-kind fn-rcl-verdict :wire "the octet model; the host's counts read the arena (fn-rcl-verdict-in-is-verdict-of-alpha)")
+(defun fn-rcl-verdict (rule now h verdicts article)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-rcl-tombstonep
+                                                            fn-rcl-standing-verdict)))))
+  (if (fn-rcl-tombstonep (fn-article-payload article))
+      :already-reclaimed
+    (fn-rcl-standing-verdict rule now h verdicts article)))
+
+; Whether the rule and the obligations let the article go.  Its tombstone
+; test is the caller's, on the octets it holds (a record's own payload, or
+; the arena at the handle).
 (defun fn-rcl-reclaimable (rule now h verdicts article)
   (declare (xargs :guard t))
-  (equal (fn-rcl-verdict rule now h verdicts article) :reclaimable))
+  (equal (fn-rcl-standing-verdict rule now h verdicts article) :reclaimable))
+
+(defthm fn-rcl-verdict-reclaimable-by-definition
+  (equal (equal (fn-rcl-verdict rule now h verdicts article) :reclaimable)
+         (and (not (fn-rcl-tombstonep (fn-article-payload article)))
+              (fn-rcl-reclaimable rule now h verdicts article)))
+  :hints (("Goal" :in-theory '(fn-rcl-verdict fn-rcl-reclaimable))))
 
 ; -----------------------------------------------------------------------------
 ; The keystone: the executable decision is the obligation test.
@@ -300,15 +329,14 @@
         (fn-rcl-unacknowledged-p memberships cursors))))
 
 ;  KEYSTONE (PRF-088, the decision).  An article is reclaimable exactly when
-; it is not already a tombstone, the rule is not keep-forever and permits it
+; the rule is not keep-forever and permits it
 ; by age, it carries no authorship verdict but :absent, and NO obligation in the list the
 ; lifetimes table names -- reader pin, consumer cursor, undelivered feed to a
 ; live peer, BP obligation -- names it.  The executable side reads one fl
 ; per consumer group; the obligation side reads every cursor.
 (defthm fn-rcl-reclaimable-is-no-obligation-names-it
   (equal (fn-rcl-reclaimable rule now h verdicts article)
-         (and (not (fn-rcl-tombstonep (fn-article-payload article)))
-              (not (equal rule '(:keep-forever)))
+         (and (not (equal rule '(:keep-forever)))
               (fn-rcl-rulep rule)
               (fn-rcl-rule-permits rule now (fn-article-stamp article))
               (not (fn-rcl-verdict-heldp (fn-article-msgid article) verdicts))
@@ -529,32 +557,23 @@
         (equal (fn-sha256 (cdr a)) (fn-rcl-tomb-source-digest tomb))
       (equal (fn-sha256 payload) (fn-rcl-tomb-octets-digest tomb)))))
 
-; The Store's decision for an already held Message-ID, over a store that may
-; hold tombstones: `fn-pb-existing-action' (books/poster-bytes) for a live
-; payload, the digest comparison for a tombstone.  The host calls this in
-; place of `fn-pb-existing-action' at every site that called that.
+; The same-article test for an already held Message-ID whose held payload may
+; be a tombstone: `fn-pb-same-articlep' (books/poster-bytes) for a live
+; payload, the digest comparison for a tombstone.  The host's entry
+; (books/store-intern.lisp fn-store-existing-action) applies it to the bytes
+; read through the arena under the held handle.
 (defun fn-rcl-same-articlep (msgid payload held-payload)
   (declare (xargs :guard t))
   (if (fn-rcl-tombstonep held-payload)
       (fn-rcl-same-as-tombstonep msgid payload held-payload)
     (fn-pb-same-articlep msgid payload held-payload)))
 
-(defun fn-rcl-existing-action (msgid payload groups s)
-  (declare (xargs :guard t))
-  (let ((article (fn-find-article
-                  msgid (fn-state-articles
-                         (fn-node-acceptance (fn-sn-node s))))))
-    (if article
-        (if (and (fn-rcl-same-articlep (fn-record-string-octets msgid) payload
-                                       (fn-article-payload article))
-                 (equal groups (fn-article-groups article)))
-            :duplicate
-          :conflict)
-      nil)))
 
 ; -----------------------------------------------------------------------------
-; The duplicate-versus-conflict verdict (D25) the host calls,
-; `fn-pb-existing-action', read over the article list.
+; The duplicate-versus-conflict verdict (D25) over an octet-model article
+; list: the host's entry books/store-intern.lisp fn-store-existing-action is
+; this over ALPHA of the Store's articles
+; (fn-store-existing-action-is-the-verdict-over-alpha).
 
 (fn-payload-kind fn-rcl-action-over :wire "D25's verdict over an article list; applied over fn-articles-wire-of")
 (defun fn-rcl-action-over (msgid payload groups articles)
@@ -568,22 +587,18 @@
           :conflict)
       nil)))
 
-(defthm fn-rcl-existing-action-is-action-over-by-definition
-  (equal (fn-rcl-existing-action msgid payload groups s)
-         (fn-rcl-action-over msgid payload groups
-                             (fn-state-articles
-                              (fn-node-acceptance (fn-sn-node s)))))
-  :hints (("Goal" :in-theory (enable fn-rcl-existing-action))))
-
-; Before any reclamation the host's new call answers exactly as the old one.
-(defthm fn-rcl-existing-action-is-pb-without-a-tombstone
+; Before any reclamation the verdict is D25's list verdict: where the held
+; payload is no tombstone, fn-rcl-action-over is fn-pb-action-over.  (The
+; store-shaped twin fn-rcl-existing-action, which applied this to the live
+; store's handles, was retired, PKT-860; the host's entry is
+; books/store-intern.lisp fn-store-existing-action, KEYSTONE
+; fn-store-existing-action-is-the-verdict-over-alpha.)
+(defthm fn-rcl-action-over-is-pb-without-a-tombstone
   (implies (not (fn-rcl-tombstonep
-                 (fn-article-payload
-                  (fn-find-article msgid (fn-state-articles
-                                          (fn-node-acceptance (fn-sn-node s)))))))
-           (equal (fn-rcl-existing-action msgid payload groups s)
-                  (fn-pb-existing-action msgid payload groups s)))
-  :hints (("Goal" :in-theory (enable fn-pb-existing-action))))
+                 (fn-article-payload (fn-find-article msgid articles))))
+           (equal (fn-rcl-action-over msgid payload groups articles)
+                  (fn-pb-action-over msgid payload groups articles)))
+  :hints (("Goal" :in-theory (enable fn-rcl-action-over fn-pb-action-over))))
 
 ; Two different octet lists with one SHA-256.
 (defun fn-rcl-collisionp (x y)
@@ -689,6 +704,11 @@
 ; injecting agent under which the removed payload still gives back a source.
 ; The collision disjuncts are the stated limit: SHA-256's collision
 ; resistance, about 2^128 work, is the assumption, and it is not proved.
+(local
+ (defthm fn-rcl-found-stays-found
+   (implies (fn-find-article m a)
+            (fn-find-article m (fn-rcl-reclaim-articles a m tomb)))))
+
 (defthm fn-rcl-existing-action-after-reclaim
   (let* ((held (fn-article-payload (fn-find-article m articles)))
          (mo (fn-record-string-octets m))
@@ -705,9 +725,13 @@
                  (fn-rcl-collisionp (cdr a) (cdr b))
                  (and (not (equal agent (fn-pb-path-agent held mo)))
                       (equal (car b) :source)))))
+  ;; The finds stay closed (fn-rcl-reclaim-keeps-every-binding and the
+  ;; lemma above say what the reclaimed list holds): 2.2M prover steps with
+  ;; them open, 13k closed.
   :hints (("Goal" :cases ((equal x m))
-                  :in-theory (e/d (fn-pb-same-articlep)
-                                  (fn-rcl-tombstone-of fn-sha256 fn-pb-subject
+                  :in-theory (e/d (fn-pb-same-articlep fn-rcl-action-over)
+                                  (fn-find-article fn-rcl-reclaim-articles
+                                   fn-rcl-tombstone-of fn-sha256 fn-pb-subject
                                    fn-pb-path-agent fn-rcl-tombstonep
                                    fn-rcl-tomb-sourcep fn-rcl-tomb-agent
                                    fn-rcl-tomb-octets-digest
@@ -726,6 +750,7 @@
     nil))
 
 ; (reclaimable reclaimable-octets reclaimed reclaimed-octets-freed)
+(fn-payload-kind fn-rcl-summary :wire "the octet model; the host's counts are fn-rcl-summary-in over the arena (fn-rcl-summary-in-is-summary-of-alpha)")
 (defun fn-rcl-summary (rule now h verdicts articles)
   (declare (xargs :guard t))
   (if (consp articles)

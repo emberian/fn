@@ -28,12 +28,11 @@ BUFFER_INCLUDES = ('(include-book "books/octets-stobj")\n'
                    ';; host/native/io.lisp fnn-subject-id-buffer calls '
                    'fn-shb-subject-id-bounded, as in build.lisp.\n'
                    '(include-book "books/sha256-buffer")\n'
-                   ';; D13 (STO-014): the duplicate-versus-conflict verdict over a '
-                   'store that may\n'
-                   ';; hold tombstones.  host/owner-host.lisp and '
-                   'host/store-node-host.lisp call\n'
-                   ';; fn-rcl-existing-action (list payload) and '
-                   'fn-rclb-existing-action (buffer).\n'
+                   ';; D13 (STO-014): the tombstone-aware same-article test over '
+                   'the buffer\n'
+                   ';; (fn-rclb-same-articlep), which fn-pidx-existing-action, '
+                   "the served POST's\n"
+                   ';; duplicate verdict, calls.\n'
                    '(include-book "books/store-reclaim-buffer")\n'
                    # post-identity-index (PRF-191): the served POST's calls.
                    ';; PRF-191: fn-owner-existing-action-buffer and '
@@ -121,9 +120,10 @@ BUFFER_FINDINGS = [
 # fn-sccr-file-read-bound, fn-sct-load and fn-ockp-setup on its own and
 # those findings are gone; the build lists keep the explicit includes.
 STORE_NODE_HOST_FINDINGS = []
-# fn-rcl-existing-action is no longer a finding: host/store-node-host.lisp
-# includes books/store-reclaim itself since test-latency (the Python bridge
-# loads that host file alone).
+# The store-node host's duplicate verdict (fn-store-existing-action) is no
+# finding: host/store-node-host.lisp includes books/store-reclaim and
+# books/acceptance-payload-ref itself (the Python bridge loads that host file
+# alone).  fn-rcl-existing-action was retired (PKT-860).
 # host/owner-host.lisp no longer names fn-shb-subject-id: the served POST calls
 # the guard-verified fn-shb-subject-id-bounded from host/native/io.lisp
 # (qual-e747dbcc A4), outside the `ld` closure this check reads.

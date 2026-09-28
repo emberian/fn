@@ -2247,6 +2247,19 @@
            :capacity)
           (t :ready))))
 
+; PRF-335: the word a submission whose intent is not :ready is answered
+; with.  :capacity (a target peer's feed queue has no room) is named
+; :feed-queue-full, which POST renders as its own 441 line and transit as 436
+; (books/nntp-post.lisp fn-post-store-refusal-text, books/peer-inbound.lisp
+; fn-peer-transit-code); anything else is the bare :refused.  Host:
+; host/native/owner.lisp fnn-owner-drain-one.
+(defun fn-own-intent-refusal-word (result)
+  (declare (xargs :guard t))
+  (if (equal result :capacity) :feed-queue-full :refused))
+
+(defthm fn-own-intent-refusal-word-is-a-refusal
+  (fn-post-store-refusalp (fn-own-intent-refusal-word result)))
+
 (defun fn-own-submission-intent-records (o evidence generation txid)
   (declare (xargs :guard t))
   (let ((sub (fn-own-inflight o)))
@@ -2368,8 +2381,12 @@
 ; (fn-own-feed-parse-response), maps it (fn-feed-observe) and renders what
 ; follows; the host frames bytes and takes no decision.  The result is
 ; (effects . owner); an unknown peer or an unreadable line changes nothing.
-(defun fn-own-feed-reply (o peer octets obs)
-  (declare (xargs :guard t))
+;; The article the feed port sends after a 335/238 is the row's BYTES: the
+;; handle fn-own-feed-article returns, read through the arena (only read).
+;; The host entry reads the same bytes (host/owner-host.lisp
+;; fn-owner-feed-octets, books/owner-feed-article.lisp fn-ofa-feed-article).
+(defun fn-own-feed-reply (o peer octets obs fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let* ((tbl (fn-own-feeds o))
          (e (fn-own-feed-entry-of peer tbl)))
     (if (null e)
@@ -2380,7 +2397,9 @@
         (if (null response)
             (cons nil o)
           (mv-let (g effects)
-            (fn-feed-observe f response (fn-own-feed-article o msgid) obs)
+            (fn-feed-observe f response
+                             (fn-handle-bytes (fn-own-feed-article o msgid) fn-arena)
+                             obs)
             (cons (if (null effects) nil (list (cons peer effects)))
                   (fn-own-with-feeds
                    o (fn-own-feed-put peer (fn-own-feed-entry-record e) g
@@ -2570,8 +2589,8 @@
     o))
 
 ; The Store refusal words the host may relay.  Each is the kind an ACL2
-; step decided: :duplicate and :conflict are fn-pb-existing-action's
-; (books/poster-bytes.lisp, the decision the host calls since D25),
+; step decided: :duplicate and :conflict are fn-store-existing-action's
+; (books/store-intern.lisp, the decision the host calls since D25),
 ; :malformed is fn-owner-prepare's :invalid, :unaffordable is the persisted
 ; profile's or the capacity's refusal, :storage-failed is a write that failed
 ; before publication whose reservation fn-owner-known-abort consumed, and
@@ -2953,7 +2972,7 @@
     (:tick (cdr (fn-own-tick o (cadr event))))
     (:tick-peer (cdr (fn-own-tick-peer o (cadr event) (caddr event))))
     (:feed-octets (cdr (fn-own-feed-reply o (cadr event) (caddr event)
-                                          (cadddr event))))
+                                          (cadddr event) fn-arena)))
     (otherwise o)))
 
 (defun fn-own-run (o events fn-arena)

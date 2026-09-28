@@ -610,5 +610,90 @@ class DuplicateDefunTests(unittest.TestCase):
         self.assertGreater(counts["definitions"], 1000)
 
 
+class DerivedStubTests(unittest.TestCase):
+    """test-stubs / test-harness-reach (entry-guards-2): a call an extracted
+    host function makes is stubbed by hand, extracted, or covered by a
+    derived stub whose lambda list is the host's; the derived block is
+    compared with what the host derives today."""
+
+    HOST = textwrap.dedent("""
+        (defun fnn-top (service octets)
+          (fnn-a service octets)
+          (fnn-b service octets 1))
+        (defun fnn-a (service extra) (list service extra))
+        (defun fnn-b (service octets &optional (n 0) &key ((:why reason) nil)
+                      &aux (x 1))
+          (list service octets n reason x))
+        """)
+
+    def scan(self, host: str, harness: str):
+        from tools import ledger
+        forms = ledger.Reader(host).top_level()
+        rawdefs, _ = harness_check.raw_definitions({"host/native/x.lisp": forms})
+        bodies, origins = {}, {}
+        for form, _line in forms:
+            name = str(form[1]).lower()
+            bodies[name] = form
+            origins[name] = (form[2], "host/native/x.lisp")
+        return harness_check.harness_scan("tests/native_x_raw.lisp", harness,
+                                          rawdefs, bodies, origins)
+
+    HARNESS = textwrap.dedent("""
+        (defpackage "ACL2" (:use "CL"))
+        (in-package "ACL2")
+        (defun fnn-a (service) service)
+        ;; extracts fnn-top from host/native/x.lisp
+        """)
+
+    def test_the_host_lambda_list_is_derived_without_defaults(self):
+        from tools import ledger
+        formals = ledger.Reader(
+            "(a b &optional (c 1) &key ((:k v) 2) d &aux (x 1))").top_level()[0][0]
+        self.assertEqual(harness_check.derived_lambda_list(formals),
+                         ("(a b &optional c &key ((:k v)) d)", ["a", "b", "c", "v", "d"]))
+
+    def test_a_stale_hand_stub_and_an_unstubbed_call_are_both_found(self):
+        scan = self.scan(self.HOST, self.HARNESS)
+        self.assertEqual([row["callee"] for row in scan["stale"]], ["fnn-a"])
+        self.assertEqual(sorted(scan["unresolved"]), ["fnn-b"])
+        self.assertIsNone(scan["current"])
+        self.assertIn("(defun fnn-b (service octets &optional n &key ((:why reason)))",
+                      scan["expected"])
+        self.assertIn("(harness-stub-reached 'fnn-b \"host/native/x.lisp\")",
+                      scan["expected"])
+
+    def test_the_written_block_is_current_and_goes_stale_with_the_host(self):
+        first = self.scan(self.HOST, self.HARNESS)
+        written = harness_check.with_stub_block(self.HARNESS, first["expected"])
+        self.assertLess(written.index('(in-package "ACL2")'),
+                        written.index(harness_check.STUB_BEGIN))
+        again = self.scan(self.HOST, written)
+        self.assertEqual(again["current"], again["expected"])
+        # The derived stubs are not hand stubs: the reach is unchanged.
+        self.assertEqual(sorted(again["unresolved"]), ["fnn-b"])
+        # The host's fnn-b grows a formal: the block is stale.
+        changed = self.HOST.replace("(service octets &optional", "(service octets more &optional")
+        drifted = self.scan(changed, written)
+        self.assertNotEqual(drifted["current"], drifted["expected"])
+        # Rewriting replaces the block in place, once.
+        rewritten = harness_check.with_stub_block(written, drifted["expected"])
+        self.assertEqual(rewritten.count(harness_check.STUB_BEGIN), 1)
+        self.assertIn("(service octets more &optional n", rewritten)
+
+    def test_a_hand_stub_takes_the_call_out_of_the_block(self):
+        harness = self.HARNESS + "(defun fnn-b (service octets n) (list service octets n))\n"
+        scan = self.scan(self.HOST, harness)
+        self.assertEqual(scan["unresolved"], {})
+        self.assertIsNone(scan["expected"])
+
+    def test_the_tree_has_no_stale_stub_and_no_unresolved_call(self):
+        findings, counts = harness_check.test_stub_findings(ROOT)
+        self.assertEqual(findings, [])
+        reach, _ = harness_check.test_harness_reach_findings(ROOT)
+        self.assertEqual(reach, [])
+        self.assertGreater(counts["derived_stubs"], 0)
+        self.assertTrue(harness_check.LINTS["test-harness-reach"][1], "reach gates")
+
+
 if __name__ == "__main__":
     unittest.main()

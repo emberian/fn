@@ -33,6 +33,16 @@ class RawScriptTests(unittest.TestCase):
     def test_every_raw_script_has_a_case_here(self):
         self.assertTrue(SCRIPTS, "no tests/test_*_raw.sh found")
 
+    def test_every_raw_harness_has_a_runner(self):
+        # native_peer_authored_accept_raw.lisp had no runner until
+        # entry-guards-2 (2026-09-27) and had drifted from the host.
+        runners = " ".join(path.read_text(encoding="utf-8")
+                           for path in ROOT.glob("tests/test_*")
+                           if path.suffix in (".py", ".sh"))
+        unrun = [path.name for path in sorted(ROOT.glob("tests/native_*_raw.lisp"))
+                 if path.name not in runners]
+        self.assertEqual(unrun, [], "raw harnesses no test runs")
+
     def run_script(self, script: pathlib.Path) -> None:
         sbcl, env = RUNTIME
         env = dict(env, FN_SBCL=sbcl)

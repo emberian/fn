@@ -163,6 +163,13 @@ trust-boundary entries. The production integration must not contaminate book
 certification with arbitrary raw-mode changes or hide trusted code inside a
 claimed proved function. Certify the pure core in a clean environment.
 
+The native SHA-256 (lane digest-native) is such an entry, visible by name:
+`host/native/digest.lisp` replaces, in the saved images only and after a
+start-up check against the ACL2 definitions, the raw bodies of the three
+SHA-256 realisers the digest seams attach to (A-CRYPTO-NATIVE,
+specs/failures.md). The books, their certificates and every theorem are
+unchanged; the ACL2 definitions stay the reference and the fallback.
+
 ## Durability barriers by platform
 
 Native file and directory barriers use `fnn-durable-barrier` in
@@ -599,7 +606,13 @@ limits it was issued with. While the disk sheds (`slow` or `stalled`): a
 served read runs with posting not permitted, so a POST command is answered
 RFC 3977 section 6.3.1's 440 with the reason before any article is sent
 (`fn-otm-read-span-while-shedding`); an article whose POST was answered 340
-before is answered 441 as in slice 1; an operator post, a live
+before is answered 441 with the reason as in slice 1 (both lines are ACL2's,
+`fn-otm-disk-effects`, in place of the served machine's generic texts, only
+when the connection's posting bit was on before the read); a peer's read is
+a reader-class quantum under the disk-slow posture, so IHAVE is answered 436
+"retry later; the disk is slow" (RFC 3977 section 6.3.2) and CHECK 431 (RFC
+4644 section 2.4), at once and whatever the node holds
+(`fn-peer-shed-offer-is-disk-slow`, PKT-858); an operator post, a live
 configuration change or a moderation request on the control socket is
 answered BUSY at once, before it waits for the gate. Past H the disk is
 `stalled`: once per barrier every poster of the batch in flight and of the
@@ -618,9 +631,9 @@ the barrier's issue (its wait never reaches past H), so every POST is
 answered accepted, refused, uncertain or try-later within H + L + one
 quantum of its article's arrival. `health` and `status` print `disk
 stalled: barrier N ms pending ... members=uncertain`; the service log names
-the stall and the recovery after it. Not yet: IHAVE's 436 and CHECK's 431
-during `slow` (PKT-862: a transit read is not admitted while a barrier is
-pending, so a peer waits, as in slice 1), the inline barrier and
+the stall and the recovery after it. Not yet: a transfer during `slow` (an
+IHAVE article after a 335 given before the disk went slow, a TAKETHIS) waits
+for the barrier as in slice 1, the inline barrier and
 configuration publication as requests (slice 3), `health`'s exit in
 `stalled` (PKT-853 (b)).
 
@@ -633,7 +646,7 @@ N3 of lane proto-determinism; the wall reading's validity is ACL2's,
 `fn-otm-wall-reading`) -- and each note (the stall's release: members told,
 queued POSTs refused) is one entry `SEQ OP READING A B C WORD`, rendered by
 ACL2 and offered to the service-log writer thread, which appends it to
-`STORE/journal/decisions.fnj`: never written on the owner and never waited
+`STORE/decisions/decisions.fnj`: never written on the owner and never waited
 on, so a journal on the disk that is stalled costs nothing but queue space,
 bounded by ACL2's sink; an entry the sink drops is counted and is a gap in
 SEQ. Keystone `fn-otm-journal-determines-the-decisions`: the journal of
@@ -887,7 +900,15 @@ are named in the entries' own guards: every host wrapper's byte-carrying
 formal (`tools/harness_check.py` entry-guards, gating), and every
 definition in books/ that reads a retained payload declares whether it
 works in handles or in the octet model (`fn-payload-kind`,
-`tools/payload_kind_check.py`, gating).
+`tools/payload_kind_check.py`, gating). The check has no waivers (lane
+entry-guards-2): each consumer it found reads the arena at the handle
+(control status and HDR :fn-control, reclaim's counts, the book owner's
+feed reply), or is the octet model a proved function over the arena equals
+(`fn-rcl-verdict`, `fn-rcl-summary`: `fn-rcl-store-counts-is-the-model-over-
+alpha`), or no longer reads a payload (`fn-rcl-reclaimable`, the standing
+verdict; the keyring-less opens build the empty statement index,
+`fn-stx-index-of-store-without-a-keyring`), or was retired (the five pre-flip
+duplicate-check twins).
 
 ### Differential evidence and measurements
 

@@ -387,6 +387,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-segments-tests \
 	books/store-log-reclaim \
 	tests/acl2/store-log-reclaim-tests \
+	books/reclaim-instant \
+	tests/acl2/reclaim-instant-tests \
 	books/store-log-route-phases \
 	books/store-log-extend \
 	tests/acl2/store-log-extend-tests \
@@ -400,6 +402,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-log-route-tests \
 	books/payload-lz \
 	tests/acl2/payload-lz-tests \
+	books/payload-lz-value \
+	books/payload-lz-record \
+	books/payload-lz-replay \
+	tests/acl2/payload-lz-record-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
@@ -1126,6 +1132,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-pull-tests \
 	books/peer-pull-session \
 	tests/acl2/peer-pull-session-tests \
+	books/peer-catchup-serve \
+	books/peer-catchup-effects \
+	books/peer-catchup \
+	tests/acl2/peer-catchup-tests \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \
@@ -1304,9 +1314,9 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/checkpoint books/checkpoint-compaction books/checkpoint-publish \
 	books/records-shape books/statement books/statement-invariants
 
-# fn's static website, rendered from README.md, docs/, CONTRIBUTING.md and
-# swarmguide/ into build/site/ (open build/site/index.html); GitHub Pages
-# builds the same thing (.github/workflows/pages.yml).
+# fn's static website: a newsreader over the guides' Usenet articles
+# (docs/articles/*.txt) in build/site/ (open build/site/index.html); GitHub
+# Pages builds the same thing (.github/workflows/pages.yml).
 site:
 	$(PYTHON) site/build_site.py --out build/site
 
@@ -1334,9 +1344,10 @@ check:
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
-# The website renders from the docs (site/build_site.py, stdlib only) and every
-# internal link on every page resolves, anchors included; a doc link to a
-# repository file that does not exist fails by name.
+# The website renders the guides' articles (site/build_site.py, stdlib only):
+# every article is well-formed (tools/docs_articles.py: its headers, its
+# Message-ID, 72 columns), every repository path it names exists, and every
+# internal link on every page resolves.
 	@$(CHECK_STEP) $(PYTHON) site/build_site.py --check --out build/site
 # Every byte of a tracked file under books/ and host/ is ASCII (PKT-379): ACL2,
 # SBCL's compile-file and the Python tests read them with different default
@@ -1470,6 +1481,11 @@ check:
 # nothing defines (lane tooling-leftovers).  No ACL2: NOT RUN, exit 2.
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --load
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_load.ClassifyTests
+# Every global hash table in host/ is :synchronized t, or declared
+# thread-confined or guarded-by a lock the file takes (static, no ACL2; lane
+# host-lints, after entry-guards-2's owner stop on an unsynchronized table).
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --tables
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_tables
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
@@ -1599,9 +1615,9 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
-	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check \
+	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_program_check \
-	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_check_steps tests.test_cert_cache_sync
+	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 

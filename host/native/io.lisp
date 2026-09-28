@@ -316,6 +316,8 @@ return the index the bytes begin at."
 ;;; off the entry's own STOBJS-IN (a property the image keeps: host/native/
 ;;; strip-world.lisp), once per name, so a wrapper never carries a list that
 ;;; could go stale.
+;; Filled lazily from every thread that calls an entry (served, owner,
+;; control), like *fnn-entry-guard-specs* below: synchronized.
 (defvar *fnn-trailing-stobjs* (make-hash-table :test 'eq :synchronized t))
 
 (defun fnn-live-cat ()
@@ -910,7 +912,7 @@ no writer runs."
     *fnn-log-sink*))
 
 (defvar *fnn-journal-fd* nil
-  "The decision journal's descriptor (STORE/journal/decisions.fnj, lane
+  "The decision journal's descriptor (STORE/decisions/decisions.fnj, lane
 time-model-2), written only by the log writer thread while it runs.")
 
 (defun fnn-log-write-item (destination octets)
@@ -1060,13 +1062,12 @@ offered to the writer while the owner runs (PKT-508), else written here."
 ;;; the formal and the kind: the six handle-for-octets defects of 2026-09-27
 ;;; surfaced as silent refusals downstream instead.  The kind decision is
 ;;; ACL2's (the guard and the recognizer); the host only evaluates it.
-;;; Both per-name caches (this one and *fnn-trailing-stobjs*) are filled
-;;; lazily by whichever thread first calls an entry -- the owner, an io
-;;; thread, the checkpoint publisher -- so they are synchronized: an
-;;; unsynchronized EQ table stopped an owner at startup with "Unsafe
-;;; concurrent operations on #<HASH-TABLE :TEST EQ :COUNT 163>" (lane
-;;; served-columns native-n1, 2026-09-27: hybrid_author, reader_index; both
-;;; green on a rerun of the same image).
+;; Filled lazily by whichever thread first calls an entry: the served
+;; threads, the owner and the control workers all do, so the table is
+;; synchronized.  Unsynchronized, two first calls at once stopped the owner:
+;; "Unsafe concurrent operations on #<HASH-TABLE :TEST EQ :COUNT 161>"
+;; (owner core/store fault, exit 4; hbox native-r2, test_native_log_compaction,
+;; 2 of 8 rounds under load).
 (defvar *fnn-entry-guard-specs* (make-hash-table :test 'eq :synchronized t))
 
 (defun fnn-guard-conjuncts (term)
@@ -1728,7 +1729,6 @@ route's point and the record log's, lane commit-onto-log)."
            (error (fnn-store-fault-class store) :message (fnn-store-fault-message store))))))
 
 (defun fnn-config-path (s) (fnn-join (fnn-store-root s) "config.json"))
-(defun fnn-transactions (s) (fnn-join (fnn-store-root s) "transactions"))
 (defun fnn-staging (s) (fnn-join (fnn-store-root s) "staging"))
 (defun fnn-lock-path (s) (fnn-join (fnn-store-root s) "writer.lock"))
 (defvar *fnn-clone-activation* nil)
@@ -1755,7 +1755,6 @@ route's point and the record log's, lane commit-onto-log)."
   (when (and (fnn-lstat (fnn-clone-fence-path s))
              (not *fnn-clone-activation*))
     (fnn-refuse "clone is fenced pending durable incarnation rollover")))
-(defun fnn-frontier-path (s) (fnn-join (fnn-store-root s) "allocation-frontier.json"))
 ;; The record log's directory and its one segment (format 9).  The name is
 ;; ACL2's (books/owner-log-route.lisp fn-olr-segment-name).
 (defun fnn-journal-dir (s) (fnn-join (fnn-store-root s) "journal"))
@@ -2816,7 +2815,7 @@ it covers are dropped (fnn-log-drop; T8)."
                             (fnn-profile-nat 'fn-store-profile-max-record-octets store)
                             +fnn-checkpoint-batch-octets+))
          (budget (fnn-core 'fn-ock-capture-budget profile))
-         (position (and (fnn-store-logp store) (fnn-log-rotate store)))
+         (position (fnn-log-rotate store))
          ;; one walk of the live rows, a bounded number per call: each
          ;; canonical payload's length and source (fn-store-sco-pass-step)
          (walked (progn
@@ -2877,13 +2876,13 @@ them across processes, copies, checkpoint and full replay, and boxes."
 
 (defun fnn-command-store-journal (root)
   "`store ROOT journal' (lane time-model-2, HST-028): read the decision
-journal STORE/journal/decisions.fnj back and print ACL2's one-line replay
+journal STORE/decisions/decisions.fnj back and print ACL2's one-line replay
 (books/owner-time-journal.lisp fn-otm-journal-report: entries, segments,
 whole/torn/malformed, and agrees or the first gap, divergence or malformed
 entry).  It opens no store (a running owner keeps its journal open for
 append; a torn last line is one the writer had not finished).  Exit 0 when
 the replay agrees, 1 otherwise."
-  (let ((path (fnn-join (fnn-join root "journal") "decisions.fnj")))
+  (let ((path (fnn-join (fnn-join root "decisions") "decisions.fnj")))
     (unless (probe-file path)
       (fnn-refuse "no decision journal at ~a" path))
     (let* ((octets (with-open-file (in path :element-type '(unsigned-byte 8))
@@ -3388,7 +3387,7 @@ or refuses by name, saying what to run."
        (lambda (stage) (fnn-record-filesystem-at-init stage profile policy))
        (fnn-core 'fn-bs-init-log-subdir-names))
       ;; SEC-006: the node's key files, as `fnn-command-init' writes them,
-      ;; once the store is published (outside fn-bs-init-pub-program: a
+      ;; once the store is published (outside fn-bs-init-log-program: a
       ;; death between the two leaves the complete store without
       ;; keys/node-secret.key, which `run' refuses by name until
       ;; `store ROOT node-secret create'; PKT-694).
@@ -3644,7 +3643,8 @@ fn-bs-imp-program's cuts."
 
 (defun fnn-pub-at (store kind suffix)
   "The cut KIND-SUFFIX of fn-bs-imp-program (KIND \"import\") or of
-fn-bs-init-pub-program (KIND \"init\": the same program, init's cut names)."
+fn-bs-init-log-program (KIND \"init\": the same program over the log's plan,
+init's cut names)."
   (fnn-at store (intern (string-upcase (fnn-concat kind "-" suffix)) :keyword)))
 
 (defun fnn-import-write-file (store path octets &optional (kind "import"))
@@ -3877,14 +3877,13 @@ presence of the two names is classified by fn-bs-imp-classify."
         +fnn-exit-ok+))))
 
 (defun fnn-staged-publication (kind stage root-path files record-count
-                               &optional record-filesystem
-                                 (subdirs '("transactions" "staging" "config")))
+                               record-filesystem subdirs)
   "Build the store STAGE (at ROOT-PATH.KIND-XXXX) from FILES, a list of
 (PATH . OCTETS) in plan order, admit it through the ordinary open (it must
 replay RECORD-COUNT records), and publish it at ROOT-PATH by a no-replace
 rename, then fence ROOT-PATH's parent: books/store-import-publication.lisp
 fn-bs-imp-program step for step, with its cuts (KIND \"import\") or
-books/store-init-publication.lisp fn-bs-init-pub-program's (KIND \"init\":
+books/store-init-log-publication.lisp fn-bs-init-log-program's (KIND \"init\":
 the same steps, init's cut names).  An OS error before the rename is a known
 failure (exit 1, the staged directory named); at or after it the outcome is
 uncertain (exit 3) and the observed presence of the two names is classified
@@ -4909,21 +4908,32 @@ serialized profile when the saved image later starts."
 (defun fnn-developer-image-p ()
   (eq *fnn-image-profile* :developer))
 
-;;; The release version (VERSION at the tree root: 6.7.N, one line).  Read
+;;; The release version (VERSION at the tree root, one line).  Read
 ;;; once while constructing the saved image, as the profile above is, and
 ;;; serialized into it; the packaging reads the same file for the tarball's
 ;;; name (packaging/release-tarball.sh).  `fn --version' prints it with the
-;;; source revision recorded beside the core.
+;;; source revision recorded beside the core.  The build checks only its
+;;; shape; which versions are releases, and their order, is D37's sequence
+;;; (planning/release-sequence.json), decided by tools/release_sequence.py
+;;; at the cut (tools/cut_release.sh gate 01) and by the packaging.
 (defvar *fnn-release-version* nil)
 
 (defun fnn-release-version-word-p (text)
-  "TEXT is 6.7.N with N a decimal numeral without a leading zero."
+  "TEXT is dotted decimal numerals without leading zeros, any number of
+components (6.6.0, 6.7.12, 6.6.6.6)."
   (and (stringp text)
-       (> (length text) 4)
-       (string= "6.7." text :end2 4)
-       (let ((n (subseq text 4)))
-         (and (every (lambda (c) (find c "0123456789")) n)
-              (or (string= n "0") (char/= (char n 0) #\0))))))
+       (plusp (length text))
+       (let ((start 0))
+         (loop
+           (let* ((dot (position #\. text :start start))
+                  (n (subseq text start (or dot (length text)))))
+             (unless (and (plusp (length n))
+                          (every (lambda (c) (find c "0123456789")) n)
+                          (or (string= n "0") (char/= (char n 0) #\0)))
+               (return nil))
+             (if dot
+                 (setq start (1+ dot))
+                 (return t)))))))
 
 (defun fnn-select-release-version (&optional (path "VERSION"))
   "Build-time: take the release version from PATH (the build runs at the
@@ -4932,7 +4942,7 @@ tree root), or stop the build."
                                        :external-format :latin-1)
                 (and in (read-line in nil nil)))))
     (unless (fnn-release-version-word-p line)
-      (error "~a does not hold a release version 6.7.N (read ~s)" path line))
+      (error "~a does not hold a release version (dotted numerals, read ~s)" path line))
     (setq *fnn-release-version* line)))
 
 (defun fnn-release-version ()
@@ -4959,6 +4969,8 @@ tree root), or stop the build."
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_EXTENT_CACHE_TEST_OFF"
+    ;; host/native/digest.lisp: the matched measurement's reference arm.
+    "FN_NATIVE_DIGEST_TEST_OFF"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
@@ -4989,6 +5001,8 @@ tree root), or stop the build."
     "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"
     "FN_PEER_TEST_STOP_AFTER_CONSUME" "FN_PEER_TEST_STOP_AFTER_CONFIGURE"
     "FN_PULL_TEST_KILL"
+    ;; PRF-325: the catch-up journal's append cuts (host/native/pull-service.lisp).
+    "FN_CATCHUP_TEST_KILL"
     "FN_NATIVE_CHECKPOINT_BATCH_FAULT"
     "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"
     "FN_NATIVE_LOG_FAULT"
@@ -5449,8 +5463,9 @@ entries).  Nothing is placed when ACL2 answers none."
 
 (defvar *fnn-arena-off-mutex-readers* (list 0)
   "The count of threads reading the live arena outside the owner's mutex (a
-checkpoint publication, host/native/owner.lisp fnn-owner-publish-captured);
-a staged page is released only while it is 0.")
+checkpoint publication, host/native/owner.lisp fnn-owner-publish-captured,
+counted under the mutex before its thread starts by fnn-owner-maybe-publish
+and uncounted when it ends); a staged page is released only while it is 0.")
 
 (defun fnn-log-reseat-fenced (log)
   "The COMPLETE's reseat (PRF-309): each fenced staged member's handle is
@@ -5843,9 +5858,9 @@ the next open completes); it is a known failure of the checkpoint."
 the chain carried from each segment's kernel to the next (fn-lgc-last), each
 record handed to SINK in order as it is read (fnn-log-stream-segment: one
 entry's octets at a time).  The closed segments are read only (the fold's step,
-books/store-log-segments.lisp fn-lgs-open-chain-records / -last over one
-segment, T8's subject: its records and last are the recovered kernel's, which
-the stream's are by fn-lgw-run-is-the-open); the active one is recovered (a
+books/store-log-stream.lisp fn-lgw-open-chain-records / -last over one
+segment, T8's subject, fn-lgw-segment-drop-preserves-the-open); the active one
+is recovered (a
 writable open: P-LOG-RECOVER) or read.  Returns the active segment's log.
 With PLACES (the full replay), each segment gets an extent realizer id
 (host/native/extent.lisp fnn-extent-register: a read-only descriptor held for
@@ -5877,9 +5892,9 @@ the process's life) and the stream binds each record's place for SINK
 
 (defun fnn-log-read-closed-segment (store k genesis unit max sink)
   "A closed segment K read only, one entry at a time (fnn-log-stream-segment;
-the fold's step of books/store-log-segments.lisp fn-lgs-open-chain-records /
--last over the one segment, T8's subject, which the stream's records and last
-are by fn-lgw-run-is-the-open), each record to SINK as ACL2's octet list, the
+the fold's step of books/store-log-stream.lisp fn-lgw-open-chain-records /
+-last over the one segment, T8's subject), each record to SINK as ACL2's octet
+list, the
 splice refused by name.  Answers the chain's last trailer, the next segment's
 genesis."
   (let* ((path (fnn-segment-path-at store k))
@@ -6475,7 +6490,7 @@ observation (the COMPLETE re-signals it under the owner)."
       (return-from fnn-dispatch (fnn-dispatch (list "operator" "-" "help"))))
     (when (and (null (rest args))
                (member (first args) '("--version" "version") :test #'string=))
-      ;; `fn 6.7.N (REV12)': the release version built into the image and
+      ;; `fn VERSION (REV12)': the release version built into the image and
       ;; the first twelve digits of the recorded source revision.
       (let ((revision (fnn-source-revision)))
         (fnn-out "fn ~a (~a)" (fnn-release-version) (subseq revision 0 12)))

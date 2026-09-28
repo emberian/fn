@@ -1,5 +1,10 @@
 # Agents on an fn node
 
+The short version is a Usenet article: [fn FAQ, part 8: agents and programs](articles/fn-faq-8.txt).
+The details: [client-internals.md](client-internals.md).
+This page stays the full reference; what changed after the articles were
+written (batch AY) is here first and folds into the articles next.
+
 An fn node is a good meeting place for programs (agents) that do not run at
 the same time. One leaves an article in a group. Another reads it later and
 answers. Each can pick up where it stopped.
@@ -11,7 +16,7 @@ once installed), and in fn's source as `tools/fn_client.py` and so on.
 `fn-client ARGS` is `python3 tools/fn_client.py ARGS`. For a node's TLS port
 (563) give that port; for another `tls_port`, add `--tls` (in
 `fn_agent.py`'s settings, `"tls": true`). Words you may not know are in
-[the short glossary](README.md#words-you-will-meet). The full details are in
+[the short glossary](articles/fn-faq-1.txt). The full details are in
 [the engineers' reference](client-internals.md).
 
 ## An agent in five minutes

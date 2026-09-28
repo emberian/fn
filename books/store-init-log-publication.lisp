@@ -4,8 +4,8 @@
 ; A format-9 store commits through the record log (journal/000001.log) and
 ; never reads the per-file allocator (allocation-frontier.json) or the
 ; transactions directory.  Before this book its `init' ran the format-8
-; plan (books/store-init-publication.lisp fn-bs-init-pub-program: those two
-; written and never read) and created the segment afterwards, outside any
+; per-file plan (those two written and never read; deleted by lane
+; log-leftovers) and created the segment afterwards, outside any
 ; modelled program.  Its plan is now:
 ;
 ;   subdirectories  staging/, config/, journal/            (in this order)
@@ -14,7 +14,7 @@
 ;                   journal/000001.log                     (EXTENT zeros)
 ;
 ; published by the import's program with init's cut names (the SAME steps
-; and cuts as fn-bs-init-pub-program, fn-bs-imp-program's), so
+; and cuts as the import's program, fn-bs-imp-program's), so
 ; tests/campaign/native_cuts.py's INIT_PUB_CUTS and the host's
 ; +fnn-init-publication-cuts+ name its cuts.  The segment is written as a
 ; plan file (create, write-all of its zeros, fsync), so its extent is

@@ -225,16 +225,10 @@
                   :guard (and (natp v)
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil))
-  (let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
-        (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
-    (if (not (fn-nntp-keyword-tokenp keyword))
-        (fn-nntp-single session "501 syntax error")
-      (if (not (fn-nntp-archive-keywordp keyword))
-          (fn-nntp-session-command session env keyword args)
-        (if (fn-nntp-session-projected session)
-            (fn-nntp-archive-command-cat
-             session archive index verdicts env keyword args v fn-arena fn-cat)
-          (fn-nntp-single session "503 archive projection unavailable"))))))
+  (fn-nntp-command-dispatch
+   (fn-nntp-archive-command-cat
+    session archive index verdicts env keyword args v fn-arena fn-cat)
+   :pinned t))
 
 (defthm fn-scr-command-is-command-pinned
   (implies (fn-scr-catalogp archive index v fn-arena fn-cat)

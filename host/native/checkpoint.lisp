@@ -25,6 +25,10 @@
   (when (fnn-store-fenced store)
     (fnn-indeterminate "store is fenced pending recovery")))
 
+;; The four stops are reached only from fnn-checkpoint-command-clone and
+;; fnn-clone-activate, which the `checkpoint' verb calls; the owner that
+;; fnn-clone-activate installs never calls them.
+;; thread-confined: the `checkpoint' verb's command thread
 (defvar *fnn-checkpoint-test-stop-counts* (make-hash-table :test #'equal))
 
 (defun fnn-checkpoint-test-stop-after ()
@@ -49,7 +53,8 @@
 (defun fnn-command-compact (root)
   "`store compact'.  Format 9 (the record log): compaction is the
 checkpoint's rotation and the drop of the segments it covers (design
-2026-09-27 storage-log section 6; T8 fn-lg-segment-drop-preserves-the-open):
+2026-09-27 storage-log section 6; T8 books/store-log-stream.lisp
+fn-lgw-segment-drop-preserves-the-open):
 a state checkpoint is published at the history's end with the log rotated,
 then the covered segments are unlinked.  The open answers the history's
 count and keeps no records (PKT-823); the checkpoint is written from the
@@ -81,20 +86,56 @@ state (D27)."
     (format nil "reclaimable=~d reclaimable-octets=~d held=~d reclaimed=~d freed-octets=~d"
             reclaimable octets held reclaimed freed)))
 
-(defun fnn-log-reclaim-steps (store dry)
+(defun fnn-reclaim-record-instant (store clock)
+  "The reclaim's instant, recorded before anything is rewritten
+(books/reclaim-instant.lisp, PKT-857): ACL2 builds the configuration record
+carrying CLOCK's stamp as the `retention-reclaim-at' row
+(fn-store-reclaim-instant-record) and the administrative path authorizes,
+publishes and reads it back (fnn-admin-publish-record).  A refusal or a
+record that does not read back refuses the reclaim before any rewrite.
+Answers the report line's field."
+  (let* ((stamp (fnn-admin-clock-plan))
+         (status (fnn-core-state 'fn-store-reclaim-instant-record clock
+                                 (fnn-core 'fn-native-admin-host-clock-monotonic stamp)
+                                 (fnn-core 'fn-native-admin-host-clock-wall stamp))))
+    (unless (eq status :ok)
+      (fnn-refuse "reclaim refused: its instant's configuration record: ~(~a~)"
+                  (fnn-core-state 'fn-store-cfg-last-reason)))
+    (let ((record (fnn-core-state 'fn-store-cfg-last-octets)))
+      (unless (fnn-octet-list-p record)
+        (fnn-fault "ACL2 accepted the reclaim instant's record without octets"))
+      (multiple-value-bind (generation name verification) (fnn-admin-publish-record store record)
+        (unless (eq verification :verified)
+          (fnn-refuse "reclaim refused: its instant's configuration record ~a did not read back: ~(~a~)"
+                      name verification))
+        (format nil "instant-record=~a generation=~d" name generation)))))
+
+(defun fnn-log-reclaim-steps (store mode)
   "`store reclaim' on a format-9 store (books/store-log-reclaim.lisp): the
 history streamed one record at a time into ACL2's fold (fn-rcls-step under the
 store's context, compact-arena's books/store-reclaim-stream.lisp) with each
 record's rewrite (fn-rclp-event) kept as an octet vector, then ACL2's decision
 over the fold (fn-lgr-decide-stream; KEYSTONE fn-lgr-decide-stream-is-lgr-
 decide: the whole-history decision, whose rewritten history is those
-rewrites).  On :reclaim the rewritten history is replayed into the store node
-(the chunked replay every open runs, fnn-recover-log-replay) and its state
-checkpoint published with the log rotated, then the segments it covers are
-dropped (fnn-state-checkpoint-publish-steps: T8): the released payloads'
-octets leave the disk with them.  Returns the report line."
-  (let* ((clock (fnn-store-prepare-observation))
-         (ctx (fnn-core-state 'fn-store-reclaim-context clock))
+rewrites).  On :reclaim the instant is recorded first (fnn-reclaim-record-
+instant: the configuration row the context's NOW came from, PKT-857), then the
+rewritten history is replayed into the store node (the chunked replay every
+open runs, fnn-recover-log-replay) and its state checkpoint published with the
+log rotated, then the segments it covers are dropped
+(fnn-state-checkpoint-publish-steps: T8): the released payloads' octets leave
+the disk with them.  MODE :reclaim, :dry-run (nothing written, nothing
+recorded) or :recorded (`--recorded': the context and the decision from the
+configuration's recorded instant, fn-store-reclaim-context-recorded and
+fn-store-log-reclaim-decide-recorded, KEYSTONE fn-rci-recorded-decision-is-
+the-decision; nothing new is recorded: this completes a reclaim whose record
+was published before a process death, or reproduces one on a copy).  Returns
+the report line."
+  (let* ((dry (eq mode :dry-run))
+         (recorded (eq mode :recorded))
+         (clock (and (not recorded) (fnn-store-prepare-observation)))
+         (ctx (if recorded
+                  (fnn-core-state 'fn-store-reclaim-context-recorded)
+                (fnn-core-state 'fn-store-reclaim-context clock)))
          (acc (fnn-core 'fn-store-reclaim-init))
          (count 0)
          (rewritten nil))
@@ -109,8 +150,11 @@ octets leave the disk with them.  Returns the report line."
              (unless (fnn-octet-list-p event)
                (fnn-fault "ACL2 returned a malformed rewritten record"))
              (push (fnn-octets event) rewritten))))))
-    (let ((decision (fnn-core-state 'fn-store-log-reclaim-decide-stream
-                                    (fnn-store-config store) clock acc (if dry t nil))))
+    (let ((decision (if recorded
+                        (fnn-core-state 'fn-store-log-reclaim-decide-recorded
+                                        (fnn-store-config store) acc nil)
+                      (fnn-core-state 'fn-store-log-reclaim-decide-stream
+                                      (fnn-store-config store) clock acc (if dry t nil)))))
       (unless (and (consp decision) (member (first decision) '(:refused :none :dry-run :reclaim)))
         (fnn-fault "ACL2 returned no reclaim decision"))
       (case (first decision)
@@ -130,28 +174,32 @@ octets leave the disk with them.  Returns the report line."
                (fnn-fault "the rewritten history is not the history's length"))
              (setq rewritten nil)
              (fnn-checkpoint-require-mutation-ready store)
-             ;; The store node becomes the rewritten history's (the chunked
-             ;; replay every open runs), and the checkpoint the open will read
-             ;; is its capture.
-             (fnn-core-state 'fn-store-sco-clear)
-             (fnn-bridge-reset)
-             (fnn-recover-log-replay store history (fnn-config-records store))
-             (setf (fnn-store-open-mode store) (list :full-replay :reclaim))
-             (format nil "reclaimed=~d freed-octets=~d ~a~{~%reclaimed ~a~}"
-                     (length msgids) freed
-                     (fnn-state-checkpoint-publish-steps store count)
-                     msgids))))
+             (let ((instant (if recorded
+                                "instant=recorded"
+                              (fnn-reclaim-record-instant store clock))))
+               ;; The store node becomes the rewritten history's (the chunked
+               ;; replay every open runs), and the checkpoint the open will
+               ;; read is its capture.
+               (fnn-core-state 'fn-store-sco-clear)
+               (fnn-bridge-reset)
+               (fnn-recover-log-replay store history (fnn-config-records store))
+               (setf (fnn-store-open-mode store) (list :full-replay :reclaim))
+               (format nil "reclaimed=~d freed-octets=~d ~a ~a~{~%reclaimed ~a~}"
+                       (length msgids) freed
+                       (fnn-state-checkpoint-publish-steps store count)
+                       instant msgids)))))
         (otherwise (fnn-fault "ACL2 returned an unknown reclaim decision"))))))
 
-(defun fnn-command-reclaim (root dry)
-  ;; The open answers the history's count; the reclaim streams the history
-  ;; after it, as the open read it (fnn-log-history-each).
-  (multiple-value-bind (store count) (fnn-open-live-store root (not dry))
+(defun fnn-command-reclaim (root mode)
+  ;; MODE :reclaim, :dry-run or :recorded (host/native/operator.lisp's
+  ;; actions).  The open answers the history's count; the reclaim streams the
+  ;; history after it, as the open read it (fnn-log-history-each).
+  (multiple-value-bind (store count) (fnn-open-live-store root (not (eq mode :dry-run)))
     (declare (ignore count))
     (unwind-protect
          (progn (unless (fnn-store-logp store)
                   (fnn-fault "a store that is not on the record log opened"))
-                (fnn-out "~a" (fnn-log-reclaim-steps store dry))
+                (fnn-out "~a" (fnn-log-reclaim-steps store mode))
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 

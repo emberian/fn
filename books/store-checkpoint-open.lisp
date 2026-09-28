@@ -246,7 +246,7 @@
                                 (fn-cpo-install
                                  (fn-sn-update-replayed
                                   seed files advanced
-                                  (fn-stx-index-of-store (fn-stx-store advanced) nil)
+                                  (fn-stx-index-empty)
                                   identity)
                                  (fn-cnode-make advanced config) configs)
                                 (fn-cp-nth 1 consumer))
@@ -781,7 +781,7 @@
                               (fn-cpo-install
                                (fn-sn-update-replayed
                                 seed files advanced
-                                (fn-stx-index-of-store (fn-stx-store advanced) nil)
+                                (fn-stx-index-empty)
                                 identity)
                                (fn-cnode-make advanced config) configs)
                               (fn-cp-nth 1 consumer))

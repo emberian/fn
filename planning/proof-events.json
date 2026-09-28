@@ -3424,10 +3424,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-pbb-existing-action-is-pb-existing-action"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-octets-append-back{correspondence}"
         },
         {
@@ -3667,10 +3663,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-rclb-existing-action-is-rcl-existing-action"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-nntp-over-by-msgid-answers-reclaimed"
         },
         {
@@ -3720,6 +3712,10 @@
         {
           "kind": "theorem",
           "name": "fn-rcl-signed-article-is-never-reclaimable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclb-same-articlep-is-rcl-same-articlep"
         }
       ]
     },
@@ -4742,6 +4738,11 @@
         {
           "kind": "theorem",
           "name": "fn-smr-admitted-profile-starts-reserved"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-publication-setup-plans-within-the-disk",
+          "note": "KEYSTONE (the disk half). Host: host/owner-host.lisp fn-owner-sco-prepare and host/store-node-host.lisp fn-store-sco-publish-setup call fn-scka-publication-setup before allocating. Teeth: tests/acl2/store-checkpoint-arena-tests.lisp (reachable plan at the boundary, one octet short of space or budget defers by name, the unencodable-capture hypothesis-removal witness)."
         }
       ]
     },
@@ -8505,13 +8506,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store",
-          "note": "KEYSTONE (PKT-647). Host: host/native/io.lisp fnn-command-init-published (operator init, host/native/operator.lisp fnn-operator-execute-init) writes fn-bs-init-pub-program through fnn-staged-publication (native_cuts.verify_init_publication_cut_map). Teeth: tests/acl2/store-init-publication-tests.lisp (reachable run with the transactions directory empty, every verdict at init-published, fresh-transactions-id and honest-outcome hypothesis-removal witnesses)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-init-pub-classify-by-what-is-known",
-          "note": "Host: fnn-command-init-published classifies a leftover ROOT.init-* through fnn-import-classify (fn-bs-imp-classify) and asks fn-bs-init-pub-admission. Teeth: every admission arm in the test book."
+          "name": "fn-bs-init-pub-admission-proceeds-only-on-nothing",
+          "note": "Host: host/native/io.lisp fnn-command-init-published asks fn-bs-init-pub-admission (over fnn-import-classify's fn-bs-imp-classify) before it writes anything. Teeth: every admission arm in tests/acl2/store-init-publication-tests.lisp."
         }
       ]
     },
@@ -9438,18 +9434,18 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-lg-segment-drop-preserves-the-open",
-          "note": "KEYSTONE T8. Host: host/native/io.lisp fnn-log-scan-segments calls fn-lgs-open-chain-records and fn-lgs-open-chain-last per closed segment; fnn-recover-log-from-log-checkpoint replays the checkpoint then that suffix. Teeth: tests/acl2/store-log-segments-tests.lisp."
+          "name": "fn-lgw-segment-drop-preserves-the-open",
+          "note": "KEYSTONE T8 over the streamed open. Host: host/native/io.lisp fnn-log-scan-segments streams each closed segment (fnn-log-stream-segment: fn-lgw-start GENESIS 1, fn-lgw-step per entry) and carries fn-lgc-last of its kernel to the next; fn-lgw-open-chain-records is that fold. fnn-recover-log-from-log-checkpoint replays the checkpoint then that suffix. Teeth: tests/acl2/store-log-segments-tests.lisp."
         },
         {
           "kind": "theorem",
-          "name": "fn-lgs-open-chain-records-of-append",
-          "note": "The host fold splits at any segment boundary."
+          "name": "fn-lgw-open-chain-is-the-chain",
+          "note": "The host's streamed fold is the model chain over the segments' octets."
         },
         {
           "kind": "theorem",
-          "name": "fn-lgs-open-chain-is-the-chain",
-          "note": "The host fold (fn-lg-open-kernel per segment string) is the model chain over the segments octets."
+          "name": "fn-lgw-segment-is-the-scan",
+          "note": "One segment's stream is the model's scan (by fn-lgw-run-is-the-open)."
         },
         {
           "kind": "theorem",
@@ -10967,6 +10963,19 @@
         {
           "kind": "theorem",
           "name": "fn-heap-init-decide-fits-the-budget-and-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-budget-note-names-the-budget-init-sized-for",
+          "note": "KEYSTONE (batch AX fix init-budget, rehearsal finding R1). Host: host/native/operator.lisp init via host/native/heap.lisp fnn-heap-init-decision-noted."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-budget-note-only-when-named-below-machine-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-budget-is-the-named-below-the-machine"
         }
       ]
     },
@@ -11059,6 +11068,14 @@
         {
           "kind": "theorem",
           "name": "fn-payload-octets-are-not-a-handle"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-index-of-store-without-a-keyring"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-feed-article-is-the-owner-step-article"
         }
       ]
     },
@@ -11101,6 +11118,26 @@
         {
           "kind": "theorem",
           "name": "fn-otm-closed-posting-never-awaits-an-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-closed-posting-answers-the-generic-440"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-posting-disallowed-refusal-is-the-generic-441"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-shed-offer-is-disk-slow"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-disk-effects-names-the-disk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-peer-reader-read-only-while-shedding"
         }
       ]
     },
@@ -11260,6 +11297,181 @@
         {
           "kind": "theorem",
           "name": "fn-scol-okp-of-sca-finish"
+        }
+      ]
+    },
+    {
+      "id": "PRF-325",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cu-select-serves-only-retrievable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-select-makes-progress"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-select-stays-within-the-quantum"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-serve-reply-effects-well-formed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-step-keeps-offers-verified"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-on-end-refuses-a-digest-mismatch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-step-installs-only-through-the-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-records-replay-is-the-last-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-resume-asks-from-the-journaled-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-decode-of-encode"
+        }
+      ]
+    },
+    {
+      "id": "PRF-326",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-expand-of-seal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-replay-reads-the-sealed-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-extent-read-denotes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-lz-extent-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-reseat-lz-extent-keeps-a-faithful-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-intern-step-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-commit-reseats-keep-the-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-lz-read-is-the-lz-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-dicts-add-keeps-bindings"
+        }
+      ]
+    },
+    {
+      "id": "PRF-327",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rci-recorded-instant-reads-back"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rci-recorded-context-is-the-decided-context",
+          "note": "KEYSTONE. Host: host/checkpoint-host.lisp fn-store-reclaim-instant-record / fn-store-reclaim-context, called by host/native/checkpoint.lisp fnn-reclaim-record-instant and fnn-log-reclaim-steps. Teeth: tests/acl2/reclaim-instant-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rci-recorded-decision-is-the-decision",
+          "note": "KEYSTONE. Host: host/checkpoint-host.lisp fn-store-log-reclaim-decide-recorded (--recorded) and fn-store-log-reclaim-decide-stream, called by host/native/checkpoint.lisp fnn-log-reclaim-steps. Teeth: tests/acl2/reclaim-instant-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rci-delta-is-a-delta"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-store-reclaim-recorded-is-the-reclaim-recorded-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-reclaim-recorded-action-is-only-store-reclaim-recorded"
+        }
+      ]
+    },
+    {
+      "id": "PRF-335",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-feed-queue-length-is-undelivered"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-final-outcome-retires-for-good"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-accepted-outcomes-bounded-by-enqueues"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-at-most-one-accepted-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-drivenp-implies-feedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-saturated-peer-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-feed-queue-refusal-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-feed-queue-full-intent-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-intent-refusal-word-is-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-drivenp-of-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-distinct-fast-is-distinctp"
+        }
+      ]
+    },
+    {
+      "id": "PRF-336",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nls-octets-string-is-record-octets-string"
         }
       ]
     }
