@@ -338,12 +338,6 @@
       (fn-id-obligation-of msgid subject)
     nil))
 
-(defun fn-store-subject-prefix (length)
-  ; Superseded by fn-store-subject-id-of-payload; retained for compatibility.
-  (if (and (natp length) (<= length *fn-cbor-max-uint*))
-      (fn-id-subject-prefix length)
-    nil))
-
 (defun fn-store-subject-id (digest)
   (if (fn-id-digestp digest) (fn-id-subject digest) nil))
 
