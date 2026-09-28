@@ -93,13 +93,28 @@ def served_commands(group, low, high, msgid):
         ("BODY {}".format(high), None), ("STAT {}".format(high), None),
         ("ARTICLE {}".format(msgid), None), ("HEAD {}".format(msgid), None),
         ("BODY {}".format(msgid), None), ("STAT {}".format(msgid), None),
-        ("XFNCATCHUP * {} 0 {}".format(whole, whole), None),
+        ("XFNCATCHUP * {} {} 1000".format("0" * 16, "0" * 64), None),
         ("XREDEEM code", None), ("AUTHINFO USER nobody", None), ("STARTTLS", None),
         ("CHECK {}".format(msgid), None), ("IHAVE {}".format(msgid), None),
         ("TAKETHIS <serve-depth-takethis@fn.invalid>", None),
         ("POST", group), ("GROUP {}".format(group), None), ("LISTGROUP {}".format(group), None),
         ("XSERVEDEPTHUNKNOWN", None), ("QUIT", None),
     ]
+
+
+def dying_frames(text):
+    """The distinct fn functions of a death's backtrace, innermost first, and
+    the fault line: what the owner printed since it started."""
+    text = text.decode("utf-8", "replace")
+    names = []
+    for word in text.replace("(", " ").replace(")", " ").split():
+        word = word.upper()
+        if word.startswith("ACL2::FN-"):
+            word = word[len("ACL2::"):]
+        if word.startswith("FN-") and word not in names and len(names) < 8:
+            names.append(word)
+    faults = [l.strip() for l in text.splitlines() if "exhausted" in l or l.startswith("fault")]
+    return names + faults[-1:]
 
 
 def post_body(group):
@@ -148,6 +163,8 @@ class OpenDepthTests(unittest.TestCase):
 
     def start_owner(self, name, mode, root, config, err_path):
         """Start the owner; answer (process, seconds to LISTENING, OWNER-OPEN line)."""
+        if hasattr(self, "state"):
+            self.state["err_at"] = err_path.stat().st_size if err_path.exists() else 0
         err = open(err_path, "ab")
         self.addCleanup(err.close)
         started = time.monotonic()
@@ -184,7 +201,7 @@ class OpenDepthTests(unittest.TestCase):
         err_path = root / "owner-{}.err".format(mode)
         self.deaths = []
         owner, listening, opened = self.start_owner(name, mode, root, config, err_path)
-        self.state = {"owner": owner}
+        self.state = {"owner": owner, "err_at": 0}
         print("OPEN-DEPTH {} {} seconds={:.1f} {}".format(
             name, mode, listening, opened or "(no OWNER-OPEN line)"), flush=True)
         try:
@@ -270,9 +287,7 @@ class OpenDepthTests(unittest.TestCase):
                 print("OPEN-DEPTH {} {} SERVED {} (closed) seconds={:.1f}".format(
                     name, mode, text, seconds), flush=True)
             else:
-                tail = err_path.read_bytes()[-6000:].decode("utf-8", "replace")
-                frames = [l.strip() for l in tail.splitlines()
-                          if "FN-" in l.upper() or "exhausted" in l][-8:]
+                frames = dying_frames(err_path.read_bytes()[state["err_at"]:])
                 deaths.append((text, proc.returncode, frames))
                 print("OPEN-DEPTH {} {} SERVED {} OWNER-DIED exit={} seconds={:.1f} {}".format(
                     name, mode, text, proc.returncode, seconds, " | ".join(frames)), flush=True)
