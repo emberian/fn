@@ -32,7 +32,6 @@ Run: FN_NATIVE_HOST=<developer launcher> python3 -m unittest tests.test_native_s
 import hashlib
 import json
 import os
-from pathlib import Path
 import time
 import unittest
 
