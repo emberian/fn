@@ -430,6 +430,7 @@ class Ledger:
         self.lat = {}            # command -> [seconds]
         self.codes = {}          # command -> {code: n}
         self.five = []           # unexpected 5xx rows
+        self.told_uncertain = set()  # the node answered uncertain (not a lost reply)
 
     def note(self, command, seconds, status):
         with self.lock:
@@ -543,7 +544,14 @@ class Load:
             took = now() - started
             status = final or first
             self.ledger.note("POST", took, status)
-            if status.startswith("240"):
+            if "uncertain" in status:
+                # the node's own uncertain answer (a disk stall past H): a
+                # disk event by construction; its presence is checked later
+                with self.ledger.lock:
+                    self.ledger.uncertain[msgid] = (started, status[:120])
+                    self.ledger.told_uncertain.add(msgid)
+                self.events.emit("post-told-uncertain", msgid=msgid, reply=status)
+            elif status.startswith("240"):
                 with self.ledger.lock:
                     self.ledger.accepted[msgid] = (now(), groups)
                     self.post_count += 1
@@ -1011,8 +1019,12 @@ def cmd_soak(args):
         summary["posts_accepted"] = len(ledger.accepted)
         summary["posts_refused"] = len(ledger.refused)
         summary["posts_uncertain"] = len(ledger.uncertain)
+        stalls = disk_lines(node)
+        summary["disk_lines"] = {k: len(v) for k, v in stalls.items()}
+        summary["told_uncertain"] = len(ledger.told_uncertain)
         summary["uncertain_outside_window"] = [
-            m for m, (t, _) in ledger.uncertain.items() if not ledger.in_window(t)]
+            m for m, (t, _) in ledger.uncertain.items()
+            if not ledger.in_window(t) and not (m in ledger.told_uncertain and stalls["stalled"])]
         summary["unexpected_5xx"] = ledger.five[:50]
         summary["codes"] = ledger.codes
         summary["windows"] = ledger.windows
@@ -1049,6 +1061,19 @@ def maintenance(node, load, ledger, events, creds, image):
                 compact_rc=compact.returncode, compact_s=round(compact.seconds, 2),
                 start_s=round(ready, 2), total_s=round(now() - started, 2))
     verify_presence(node, creds[0], ledger, events, "maintenance", limit=3000)
+
+
+def disk_lines(node):
+    """The node's own disk events in its service log: slow, stalled, recovered."""
+    out = {"slow": [], "stalled": [], "recovered": []}
+    try:
+        for line in node.log.read_text(errors="replace").splitlines():
+            for key in out:
+                if line.startswith("disk " + key):
+                    out[key].append(line)
+    except OSError:
+        pass
+    return out
 
 
 def auto_checkpoints(node):
@@ -1298,6 +1323,12 @@ class PairSide:
                 reply = final or first
                 if reply.startswith("240"):
                     self.posted[msgid] = (now(), n)
+                elif "uncertain" in reply:
+                    # told uncertain by the node (a disk stall past H): it
+                    # may still be stored; convergence decides
+                    self.uncertain[msgid] = (n, reply)
+                    events.emit("pair-told-uncertain", side=self.name, n=n, msgid=msgid,
+                                reply=reply)
                 else:
                     self.refused[msgid] = (n, reply)
                     events.emit("pair-refused", side=self.name, n=n, msgid=msgid, reply=reply)
@@ -1377,7 +1408,8 @@ def cmd_pair(args):
         for n in range(phase1):
             for side in (A, B):
                 msgid, reply = side.post(n, groups[rng.randrange(len(groups))], events)
-                if reply and not reply.startswith("240") and side.name not in first_refusal:
+                if reply and not reply.startswith("240") and "uncertain" not in reply \
+                        and side.name not in first_refusal:
                     first_refusal[side.name] = {"n": n, "reply": reply,
                                                 "health": health_words(side.node)}
                     events.emit("finding", what="local POST refused while peering",
