@@ -259,8 +259,6 @@ class NativeConsumerE2Tests(unittest.TestCase):
     @unittest.skipUnless(os.environ.get("FN_RUN_CONSUMER_POLL_E2E") == "1",
                          "requires the ACL2-owned consumer poll command")
     def test_signed_composite_poll_and_lost_positive_ack_reply(self):
-        # The ACL2 bridge session is tools/run_store.py's (its last use here).
-        from tools import run_store
 
         node = self.node("signed-poll")
         owner = self.start_owner(node)
@@ -327,8 +325,7 @@ class NativeConsumerE2Tests(unittest.TestCase):
 
         # ACL2 decodes and checks the returned parent and its exact signed
         # source. Python only transports the returned Store event octets.
-        bridge = run_store.Acl2Store()
-        try:
+        with Acl2Session(IMAGE) as bridge:
             form = ("(let ((decoded (fn-stxa-decode-exact '" +
                     bridge.literal(report) + "))) "
                     "(and (fn-stmt-okp decoded) "
@@ -340,8 +337,6 @@ class NativeConsumerE2Tests(unittest.TestCase):
                     bridge.literal(source) + ") "
                     "(fn-record-result-okp record-result)))))")
             self.assertTrue(acl2_boolean(bridge.call(form)))
-        finally:
-            bridge.close()
 
         # Poll is read-only even when repeated; only an explicit ack commits
         # the returned frontier. Lose the reply after that durable ack.

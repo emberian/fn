@@ -12,10 +12,10 @@ import time
 import unittest
 
 from tests.native_harness import (
+    Acl2Session,
     EXIT, Node, acl2_nat, acl2_octets, acl2_result, environment, free_port, native_image,
     requires, run, scratch, start)
 from tests.test_bp_contact_relay_native import ByteRelay
-from tools import run_bp_ingress, run_store
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
 # connection lost after it existed is EXIT.INTERRUPTED (connection-local:
@@ -69,29 +69,14 @@ class NativeBpNodeTests(unittest.TestCase):
         return run([IMAGE, "--fn", *args], cwd=ROOT, env=environment(env), timeout=timeout)
 
     def author_request(self):
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
+        with Acl2Session(IMAGE) as bridge:
             bridge.call('(include-book "books/bp-adu")')
-            self.assertEqual(bridge.extract_message_id(self.article), self.msgid)
-            _archive, subject, _provenance = run_store.metadata(
-                self.msgid, self.article)
-
-            def text(value):
-                return "(fn-store-octets->string '" + bridge.literal(value) + ")"
-
             fields = [
-                b"work-bp-node", subject, b"dtn://sender/",
+                b"work-bp-node", bridge.subject(self.msgid, self.article), b"dtn://sender/",
                 b"dtn://receiver/", b"native-policy", b"origin-native",
                 b"wire-auth", b"terms-native",
             ]
-            form = (
-                "(fn-bpa-encode (fn-bpa-make-request "
-                + " ".join(text(value) for value in fields)
-                + " '" + bridge.literal(self.article) + "))"
-            )
-            self.request_path.write_bytes(acl2_octets(bridge.call(form)))
-        finally:
-            bridge.close()
+            self.request_path.write_bytes(bridge.bp_request(fields, self.article))
 
     def prepare_sender_obligation(self):
         article_path = self.tmp / "sender-article"
@@ -208,8 +193,7 @@ class NativeBpNodeTests(unittest.TestCase):
                    env=environment({**(env or {}), **(extra_env or {})}), timeout=120)
 
     def deletion_request_bundle(self):
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
+        with Acl2Session(IMAGE) as bridge:
             bridge.call('(include-book "books/bp-node")')
             bridge.call('(include-book "books/codec-attach")')
             adu = bridge.literal(self.request_path.read_bytes())
@@ -230,8 +214,6 @@ class NativeBpNodeTests(unittest.TestCase):
             path = self.tmp / "deletion-request.bundle"
             path.write_bytes(acl2_octets(bridge.call(form)))
             return path
-        finally:
-            bridge.close()
 
     def send_deletion_request(self, port):
         return self.invoke(
@@ -242,8 +224,7 @@ class NativeBpNodeTests(unittest.TestCase):
 
     def unrouted_transit_bundle(self):
         """ACL2 authors the older wire; Python only carries its octets."""
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
+        with Acl2Session(IMAGE) as bridge:
             bridge.call('(include-book "books/bp-node")')
             bridge.call('(include-book "books/codec-attach")')
             sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
@@ -257,8 +238,6 @@ class NativeBpNodeTests(unittest.TestCase):
             path = self.tmp / "unrouted-transit.bundle"
             path.write_bytes(acl2_octets(bridge.call(form)))
             return path
-        finally:
-            bridge.close()
 
     def test_older_unrouted_transit_does_not_block_younger_local_request(self):
         receiver, port = self.start_node(True, once=False)
@@ -293,8 +272,7 @@ class NativeBpNodeTests(unittest.TestCase):
         """The unrouted transit identity (creation 0, sequence 77) with another
         payload: same bundle ID, different immutable projection.  ACL2 authors
         the wire."""
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
+        with Acl2Session(IMAGE) as bridge:
             bridge.call('(include-book "books/bp-node")')
             bridge.call('(include-book "books/codec-attach")')
             sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
@@ -308,14 +286,11 @@ class NativeBpNodeTests(unittest.TestCase):
             path = self.tmp / "conflicting-transit.bundle"
             path.write_bytes(acl2_octets(bridge.call(form)))
             return path
-        finally:
-            bridge.close()
 
     @staticmethod
     def conflict_records(journal):
         """The lifecycle frames ACL2's kind-14 decoder opens, decoded."""
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
+        with Acl2Session(IMAGE) as bridge:
             bridge.call('(include-book "books/bp-fnbs-conflict-codec")')
             bridge.call('(include-book "books/codec-attach")')
             rows = []
@@ -325,8 +300,6 @@ class NativeBpNodeTests(unittest.TestCase):
                 if row.lstrip().upper().startswith(b"(:BPNF-CONFLICT "):
                     rows.append((frame.name, row))
             return rows
-        finally:
-            bridge.close()
 
     def send_transit(self, port, path, spool):
         return self.invoke(
@@ -435,8 +408,7 @@ class NativeBpNodeTests(unittest.TestCase):
 
     def conflicting_transit_bundle_free(self):
         """A second unrouted transit with its own identity."""
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
+        with Acl2Session(IMAGE) as bridge:
             bridge.call('(include-book "books/bp-node")')
             bridge.call('(include-book "books/codec-attach")')
             sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
@@ -450,8 +422,6 @@ class NativeBpNodeTests(unittest.TestCase):
             path = self.tmp / "unrouted-transit-2.bundle"
             path.write_bytes(acl2_octets(bridge.call(form)))
             return path
-        finally:
-            bridge.close()
 
     def test_identity_conflict_is_refused_recorded_and_replayed(self):
         """N11 on the image: a second reception whose identity names a held
@@ -599,14 +569,11 @@ class NativeBpNodeTests(unittest.TestCase):
         """ACL2's clock-domain frame for a boot ID that is not this boot's."""
         boot = Path("/proc/sys/kernel/random/boot_id").read_text("ascii").strip()
         other = boot[:-1] + ("0" if boot[-1] != "0" else "1")
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
+        with Acl2Session(IMAGE) as bridge:
             bridge.call('(include-book "books/bp-clock-domain")')
             bridge.call('(include-book "books/codec-attach")')
             octets = " ".join(str(b) for b in other.encode("ascii"))
             return acl2_octets(bridge.call(f"(fn-bpcd-frame '({octets}))"))
-        finally:
-            bridge.close()
 
     def test_restart_in_another_boot_fences_and_keeps_rows(self):
         """N07 on the image: the durable boot domain names another boot, so
@@ -640,8 +607,7 @@ class NativeBpNodeTests(unittest.TestCase):
 
     def forward_mru_bundles(self):
         """ACL2 authors the two transit wires; Python only carries octets."""
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
+        with Acl2Session(IMAGE) as bridge:
             bridge.call('(include-book "books/bp-node")')
             bridge.call('(include-book "books/codec-attach")')
             sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
@@ -673,8 +639,6 @@ class NativeBpNodeTests(unittest.TestCase):
             self.assertGreater(paths[0].stat().st_size, 32768)
             self.assertLess(paths[1].stat().st_size, 32768)
             return paths
-        finally:
-            bridge.close()
 
     def test_older_mru_wait_allows_younger_forward_and_replays(self):
         receiver, port = self.start_node(True, once=False)
@@ -777,8 +741,7 @@ class NativeBpNodeTests(unittest.TestCase):
         kind, so a frame counts as kind 6 only when it is a dispatch record.
         A frame no decoder here opens counts as 0.
         """
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
+        with Acl2Session(IMAGE) as bridge:
             for book in ("bp-fnbs-codec", "bp-fnbs-dispatch-codec",
                          "bp-fnbs-forward-codec"):
                 bridge.call(f'(include-book "books/{book}")')
@@ -791,8 +754,6 @@ class NativeBpNodeTests(unittest.TestCase):
                     f"((fn-bpnp-attempt-unframe {octets}) 8) "
                     f"((fn-bpnp-result-unframe {octets}) 9) (t 0))"))] += 1
             return kinds
-        finally:
-            bridge.close()
 
     def test_death_after_kind_eight_retries_once_and_peer_holds_one_copy(self):
         """N08 on the image: death after a durable kind 8 whose transfer ran.
@@ -940,8 +901,7 @@ class NativeBpNodeTests(unittest.TestCase):
             5: "fn-bpnf-stored-record-unframe",
             10: "fn-bpnf-delete-unframe",
         }[kind]
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
+        with Acl2Session(IMAGE) as bridge:
             bridge.call('(include-book "books/bp-fnbs-deletion-codec")')
             payloads = []
             for frame in sorted((journal / "lifecycle").glob("*.fnb")):
@@ -961,8 +921,6 @@ class NativeBpNodeTests(unittest.TestCase):
                 if payload:
                     payloads.append(payload)
             return payloads
-        finally:
-            bridge.close()
 
     def sender_status(self):
         return self.invoke(
@@ -1426,8 +1384,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(len(report_payloads), 1)
         report_payload = report_payloads[0]
         self.assertLessEqual(len(report_payload), 4096)
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
+        with Acl2Session(IMAGE) as bridge:
             bridge.call('(include-book "books/bp-status-report")')
             literal = bridge.literal(report_payload)
             self.assertEqual(
@@ -1437,8 +1394,6 @@ class NativeBpNodeTests(unittest.TestCase):
                     "(equal (fn-bpn-report-encode "
                     "(fn-cbor-result-value parsed)) '" + literal + ")))"
                 )), b"T")
-        finally:
-            bridge.close()
 
         restarted = self.dispatch_receiver(reports=True)
         self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
