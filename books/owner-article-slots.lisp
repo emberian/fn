@@ -164,7 +164,7 @@
                               (<= end (fn-octets-len fn-octets))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (let* ((allow (fn-otm-conn-allow oc id))
-         (r (fn-otm-read-span (fn-otm-owner-with-allow oc id nil) views id i end s
+         (r (fn-otm-read-span (fn-otm-owner-with-allow oc id nil) views id i end cache s
                               fn-octets fn-arena fn-cat))
          (oc1 (fn-otm-owner-with-allow (fn-own-tls-result-owner r) id allow))
          (effects (if allow
@@ -182,12 +182,12 @@
                               (fn-own-tls-result-repinned r)))))
 
 ; THE READ THE HOST CALLS (host/owner-host.lisp fn-owner-chunk-span-at).
-(defun fn-oas-read-span (oc views id i end s slots fn-octets fn-arena fn-cat)
+(defun fn-oas-read-span (oc views id i end cache s slots fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
-  (let ((r (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat)))
+  (let ((r (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)))
     (if (fn-oas-over-p oc (fn-own-tls-result-owner r) id slots)
         (fn-oas-refused-read oc views id i end s fn-octets fn-arena fn-cat)
       r)))
@@ -198,11 +198,11 @@
 ;; A read the slots hold is the read before this book.
 (defthm fn-oas-read-span-when-held-unfolds
   (implies (not (fn-oas-over-p oc (fn-own-tls-result-owner
-                                   (fn-otm-read-span oc views id i end s fn-octets
+                                   (fn-otm-read-span oc views id i end cache s fn-octets
                                                      fn-arena fn-cat))
                                id slots))
-           (equal (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat)
-                  (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat)))
+           (equal (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat)
+                  (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)))
   :hints (("Goal" :in-theory (union-theories '(fn-oas-read-span) (theory 'minimal-theory)))))
 
 (local
@@ -290,7 +290,7 @@
 ;; did so with the owner holding at most the slots.
 (defthm fn-oas-read-span-admits-within-the-slots
   (let ((oc1 (fn-own-tls-result-owner
-              (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat))))
+              (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat))))
     (implies (and (not (fn-oas-articlep oc id))
                   (fn-oas-articlep oc1 id))
              (<= (fn-oas-held oc1) (nfix slots))))
@@ -308,8 +308,8 @@
 ;; needs more of it to finish.
 (defthm fn-oas-read-span-never-blocks-an-admitted-article
   (implies (fn-oas-articlep oc id)
-           (equal (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat)
-                  (fn-otm-read-span oc views id i end s fn-octets fn-arena fn-cat)))
+           (equal (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat)
+                  (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-oas-read-span fn-oas-over-p)
                                   (fn-otm-read-span fn-oas-refused-read fn-oas-articlep
                                    fn-oas-held)))))

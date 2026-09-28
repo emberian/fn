@@ -530,7 +530,7 @@ disk space: unobserved (statvfs gave nothing; an append that finds the disk full
          (fn-arena (fn-arn-seal-many payloads fn-arena))
          (fn-cat (fn-sca-load-held-rows rows (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
                                         fn-arena fn-cat)))
-    (mv (fn-otm-read-span oc views id 0 (len octs) s fn-octets fn-arena fn-cat)
+    (mv (fn-otm-read-span oc views id 0 (len octs) nil s fn-octets fn-arena fn-cat)
         fn-octets fn-arena fn-cat)))
 (defun t2r-host-read (oc views id octs s)
   (declare (xargs :mode :program))

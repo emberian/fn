@@ -4187,7 +4187,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-222"
+        "PRF-222",
+        "PRF-913"
       ],
       "verification": [
         "proof",
@@ -4218,7 +4219,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-222"
+        "PRF-222",
+        "PRF-913"
       ],
       "verification": [
         "proof",

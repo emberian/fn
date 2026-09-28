@@ -8418,9 +8418,7 @@
         "fn-auth-view-consistent",
         "fn-auth-view-consistent-back",
         "fn-auth-view-trie-corresponds",
-        "fn-auth-delegate-pinned-preserves-consistentp",
-        "fn-gac-views-find-is-restriction",
-        "fn-gac-access-views-covers-pattern"
+        "fn-auth-delegate-pinned-preserves-consistentp"
       ]
     },
     {
@@ -13515,6 +13513,30 @@
         "tests/acl2/injection-tests.lisp",
         "tests/acl2/owner-log-tests.lisp",
         "tests/test_native_header_lines.py"
+      ]
+    },
+    {
+      "id": "PRF-913",
+      "title": "A read-restricted session's view is prepared once per pin and every command reads it; the reply is the per-command view's",
+      "statement": "PKT-643. books/group-access-cache.lisp: the access cache holds one entry per read rule text, keyed by the archive and control pin it was built for; fn-gacc-okp says every entry's view is fn-gac-view-entry of its key (books/group-access.lisp: the restricted store and its index; fn-gac-view-entry-is-per-command equates it with the per-command restriction of a pinned index). fn-gacc-prepare keeps an entry keyed to the pin, grows one whose articles are a tail of the new archive's under the same control cut by the articles accepted since (fn-gacc-grow: one cut, one trie path copy and its bucket entries per article; fn-gacc-grow-builds: the result is the builds of the longer list), else builds. KEYSTONES fn-gacc-prepare-keeps-okp, fn-gacc-view-of-prepare (the prepared key is answered with the view) and fn-gacc-view-is-the-view-entry (an answer under fn-gacc-okp is the view of the key). The host: host/owner-host.lisp fn-owner-chunk-span-at prepares the connection's entry (books/served-catalog-chain.lisp fn-scr-prepare-access, KEYSTONE fn-scr-prepare-access-keeps-okp; fn-scr-prepare-access-serves-the-pin) from its global fn-owner-access-cache (nil at start, fn-gacc-okp-of-nil; written only there) and passes it to the read (fn-oas-read-span ... cache ...); fn-scr-auth-delegate's restricted arm reads the view (fn-scr-cached-view, fn-scr-cached-view-is-the-view) and builds it per command only when no entry is keyed to the pin. fn-scr-auth-delegate-is-scar-auth-delegate-pinned and the chain up to fn-scr-ocfg-read-span-is-reference-under-ocl-relation carry (fn-gacc-okp cache). Work: a restricted command at a prepared pin builds nothing; a prepare after k acceptances does O(k) cuts and path copies plus the configuration-sized group cut; a build happens at a restart, a withdrawal or a new rule. Supersedes group-access-2's per-pin table (fn-gac-access-views, removed): a table built at every pin for every rule would walk the archive once per rule per commit.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-046",
+        "SEC-007"
+      ],
+      "depends_on": [
+        "PRF-222"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/group-access-cache.lisp",
+        "books/group-access.lisp",
+        "books/served-catalog-chain.lisp",
+        "host/owner-host.lisp",
+        "tests/acl2/group-access-cache-tests.lisp",
+        "tests/acl2/served-catalog-chain-tests.lisp",
+        "tests/test_native_group_access.py"
       ]
     }
   ]

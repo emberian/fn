@@ -8048,14 +8048,6 @@
         {
           "kind": "theorem",
           "name": "fn-auth-delegate-pinned-preserves-consistentp"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-gac-views-find-is-restriction"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-gac-access-views-covers-pattern"
         }
       ]
     },
@@ -12811,6 +12803,51 @@
         {
           "kind": "theorem",
           "name": "fn-article-next-line-limit-is-a-long-line"
+        }
+      ]
+    },
+    {
+      "id": "PRF-913",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scr-auth-delegate-is-scar-auth-delegate-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-cached-view-is-the-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-prepare-access-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-prepare-access-serves-the-pin"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-view-is-the-view-entry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-prepare-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-view-of-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-refresh-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gacc-grow-builds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-view-entry-is-per-command"
         }
       ]
     }

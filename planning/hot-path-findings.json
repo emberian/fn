@@ -365,9 +365,9 @@
       "packet": "PKT-448 (a)"
     },
     "fn-gac-restrict-articles-loop recursion N": {
-      "class": "unexpected",
+      "class": "cold",
       "packet": "PKT-643",
-      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-gac-restrict-articles recursion N', same traversal, same class]"
+      "note": "lane nntp-bugs (PKT-643, PRF-913): a read-restricted session's view is prepared once per pin by host/owner-host.lisp fn-owner-chunk-span-at -> books/served-catalog-chain.lisp fn-scr-prepare-access -> books/group-access-cache.lisp fn-gacc-prepare: kept while the pin holds, grown by the acceptances since (fn-gacc-grow: one cut, one trie path copy and its bucket entries per article), built (this walk) only at a restart, a withdrawal (the control cut moves) or a new rule; every command reads it (fn-scr-cached-view). The per-command build in fn-scr-auth-delegate is the fallback when no prepared entry is keyed to the pin (a GROUP re-pin inside one read). [batch AZ: serve-depth (PRF-362) runs this walk as a loop]"
     },
     "fn-hist-load-events recursion N": {
       "class": "cold",
