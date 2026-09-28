@@ -1323,8 +1323,21 @@ def main(argv: list[str] | None = None) -> int:
                         help="the path to use on the host (default: --root); a "
                              "path that does not exist here makes the resulting "
                              "certificates installable in any local worktree")
+    parser.add_argument("--all", action="store_true",
+                        help="submit: certify every Makefile root (an empty "
+                             "selection is refused without it)")
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
+    if arguments.action == "submit":
+        named = list(arguments.rest) + ([arguments.host] if arguments.host not in HOSTS
+                                        and arguments.host != "auto" else [])
+        if not named and not arguments.affected_by and not arguments.all:
+            # An empty list reached the runner as "every root" (serve-depth,
+            # 2026-09-28: an unset shell variable certified the whole tree).
+            parser.error("submit names no book and no --affected-by: that would certify "
+                         "every root; pass --all if that is what you mean")
+        if arguments.all and (named or arguments.affected_by):
+            parser.error("--all certifies every root; it takes no books or --affected-by")
     if arguments.action == "submit" and arguments.host not in HOSTS:
         if arguments.host != "auto":
             # `farm.py submit books/x`: no box named, so the first word is a book.
