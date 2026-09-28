@@ -12679,6 +12679,10 @@
         {
           "kind": "theorem",
           "name": "fn-heap-articles-octets-monotone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oas-refusal-line-follows-the-disk-unfolds"
         }
       ]
     },
