@@ -557,6 +557,21 @@ recognizer over the same state, export its whole rule set under one
 one can close all of it at once, and keep out of that theory only the bridge
 lemma the includer actually wants.
 
+The same shape with `prove` large and steps few --- a book whose forms
+take tenths of a second for a few thousand steps each --- is the **tau
+system** or a library's `syntaxp`/`bind-free` tests, neither of which
+counts as prover steps or shows as frames, so neither `proof_profile.py`
+nor `rule_cost.py` can name it. Test it directly: load the book's forms in
+a REPL once with `(in-theory (disable (tau-system)))` sent after the
+includes and compare the `send-range` total. On 2026-09-28 (lane
+d26-books-2) that halved the proof time of `served-catalog`, `catalog` and
+`heap-reservation` at unchanged steps; each keeps
+`(local (in-theory (disable (tau-system))))` after its includes and enables
+it in the one guard proof that was shorter with it. `heap-reservation` also
+names `arithmetic-5`'s rules as a local theory (`fn-heap-arithmetic`) and
+closes them past the definitions that need them: a 30,000-step theorem
+took 1.1 s with them enabled and 0.4 s without.
+
 ### 9.2 A probe that aborts on a step limit measures nothing
 
 `(set-prover-step-limit n)` makes a probe cheap and makes a *stopped* probe

@@ -961,7 +961,8 @@
 
 ;; The peer-extend arm, closed: the theorems below that open the plan
 ;; would otherwise open it at every one of its occurrences (404 openings,
-;; 1.0 s of fn-native-admin-plan-group-name-is-a-group-name's 2.3 s).
+;; 1.0 s of fn-native-admin-plan-group-name-is-a-group-name's 2.3 s; 0.65 s
+;; of plan-of-set-bp-boundary's 1.06 s, which reads the kind as its caddr).
 (local (defthm fn-native-admin-peer-extend-plan-neither-create-nor-retire
   (and (not (equal (fn-native-admin-result-kind
                     (fn-native-admin-peer-extend-plan words))
@@ -971,6 +972,8 @@
                    :remove-group))
        (not (equal (fn-native-admin-result-kind
                     (fn-native-admin-peer-extend-plan words))
+                   :set-bp-boundary))
+       (not (equal (caddr (fn-native-admin-peer-extend-plan words))
                    :set-bp-boundary)))
   :hints (("Goal" :in-theory (enable fn-native-admin-result-kind
                                      fn-native-admin-result)))))
@@ -1157,7 +1160,8 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
                                    fn-native-admin-moderate-plan
                                    fn-native-admin-describe-plan
                                    fn-native-admin-motd-plan
-                                   fn-native-admin-access-plan))
+                                   fn-native-admin-access-plan
+                                   fn-native-admin-peer-extend-plan))
            :use ((:instance fn-native-admin-peer-plan-kind
                             (words (fn-native-admin-words argv))))))))
 (local (defthm delta-rows-of-set-bp-boundary
