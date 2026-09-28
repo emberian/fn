@@ -243,16 +243,24 @@
         (fn-nco-result :fault :input nil)
       (fn-nco-observe-initial converted max-generations))))
 
-(defun fn-store-cfg-decode-records (octet-records)
-  ; Each durable configuration record decodes exactly, or the list is :bad.
+; A loop (PKT-877, lane serve-depth): the recursion took one control-stack
+; frame per configuration record, and the configuration history grows with
+; every reconfiguration.  The same answer: :bad at the first record that does
+; not decode (or an improper tail), else the values in order.
+(defun fn-store-cfg-decode-records-loop (octet-records acc)
   (declare (xargs :mode :program))
   (if (consp octet-records)
       (let ((parsed (fn-cfg-decode-exact (car octet-records))))
         (if (not (fn-record-parse-okp parsed))
             :bad
-          (let ((rest (fn-store-cfg-decode-records (cdr octet-records))))
-            (if (equal rest :bad) :bad (cons (fn-record-parse-value parsed) rest)))))
-    (if (null octet-records) nil :bad)))
+          (fn-store-cfg-decode-records-loop (cdr octet-records)
+                                            (cons (fn-record-parse-value parsed) acc))))
+    (if (null octet-records) (revappend acc nil) :bad)))
+
+(defun fn-store-cfg-decode-records (octet-records)
+  ; Each durable configuration record decodes exactly, or the list is :bad.
+  (declare (xargs :mode :program))
+  (fn-store-cfg-decode-records-loop octet-records nil))
 
 (defun fn-store-cfg-candidate-openp (octet-records frontier config-octet-records)
   "Decode at the existing byte boundary, then ask the logical native-admin
@@ -709,47 +717,19 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 ; Each ROW's wire event (alpha, books/store-intern.lisp fn-row-wire-of: the
 ; payload read through the arena), encoded.
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
+; A loop (PKT-877, lane serve-depth): the recursion took one control-stack
+; frame per record.  :program, so no twin: the accumulator reversed once.
 (defun fn-store-sco-encode-records-loop (records fn-arena acc)
-  (declare (xargs :stobjs fn-arena :guard (true-listp acc) :verify-guards nil))
+  (declare (xargs :mode :program :stobjs fn-arena))
   (if (consp records)
-      (fn-store-sco-encode-records-loop (cdr records)
-                                        fn-arena
-                                        (cons (fn-rcon-store-event-encode (fn-row-wire-of (car records)
-                                                                                          fn-arena))
-                                              acc))
+      (fn-store-sco-encode-records-loop
+       (cdr records) fn-arena
+       (cons (fn-rcon-store-event-encode (fn-row-wire-of (car records) fn-arena)) acc))
     (revappend acc nil)))
 
 (defun fn-store-sco-encode-records (records fn-arena)
-  (declare (xargs :verify-guards nil :mode :program :stobjs fn-arena))
-  (mbe :logic
-       (if (consp records)
-           (cons (fn-rcon-store-event-encode (fn-row-wire-of (car records) fn-arena))
-                 (fn-store-sco-encode-records (cdr records) fn-arena))
-         nil)
-       :exec (fn-store-sco-encode-records-loop records fn-arena nil)))
-
-(local
- (defthm fn-store-sco-encode-records-loop-is-revappend
-   (equal (fn-store-sco-encode-records-loop records fn-arena acc)
-          (revappend acc (fn-store-sco-encode-records records fn-arena)))
-   :hints (("Goal" :induct (fn-store-sco-encode-records-loop records fn-arena acc)
-                   :in-theory (union-theories '(fn-store-sco-encode-records-loop fn-store-sco-encode-records revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-store-sco-encode-records-loop)
-
-(verify-guards fn-store-sco-encode-records
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-store-sco-encode-records)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-store-sco-encode-records-loop-is-revappend (acc nil))))))
-
+  (declare (xargs :mode :program :stobjs fn-arena))
+  (fn-store-sco-encode-records-loop records fn-arena nil))
 
 ; The covered prefix's record octets, for the callers of the host's open
 ; that take the whole record list (pack publication, compaction, the
