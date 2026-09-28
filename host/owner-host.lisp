@@ -305,10 +305,6 @@
         (value :installed))
     (value :refused)))
 
-(defun fn-owner-node-secret-width (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value *fn-ns-secret-octets*))
-
 ; The served read's install (fn-owner-chunk, the bridge's list read): every
 ; projection `fn-owner-install-effects' makes EXCEPT the reply octets, which
 ; are never built as a list here: `fn-owner-output' is NIL and the reply is
