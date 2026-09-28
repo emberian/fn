@@ -1376,7 +1376,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-pages-placed \
 	books/history-pages-nest \
 	books/history-pages-placed-write \
-	tests/acl2/history-pages-placed-tests
+	tests/acl2/history-pages-placed-tests \
+	books/history-pages-grow \
+	books/history-pages-grow-cap \
+	books/history-pages-grow-append \
+	books/history-pages-relocate \
+	tests/acl2/history-pages-relocate-tests
 
 .PHONY: extract-check site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
