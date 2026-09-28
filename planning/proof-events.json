@@ -12958,6 +12958,11 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-sasl-plain-honest-client-succeeds",
+          "note": "KEYSTONE (PLAIN completeness): RFC 4616's message for the enrolled login and password succeeds against fn-authsec-enrol's verifier. Witness: 281 in tests/acl2/nntp-auth-sasl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
           "name": "fn-sasl-plain-succeeds-exactly-on-the-stored-check",
           "note": "PLAIN is fn-authsec-checkp (the USER/PASS check), over fn-sasl-step. Witnesses (281, wrong password 481, authzid) in tests/acl2/nntp-auth-sasl-tests.lisp."
         },

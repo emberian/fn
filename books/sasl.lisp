@@ -382,6 +382,72 @@
                                                   response))))))
   :hints (("Goal" :in-theory (disable fn-sasl-plain-parse fn-authsec-checkp))))
 
+; S1' (PLAIN completeness).  A client that sends RFC 4616's message for the
+; enrolled login and password -- no authzid, both 1..255 octets without NUL
+; -- succeeds against the verifier its password was enrolled with.
+(defun fn-sasl-no-nulp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs) (and (not (equal (car xs) 0)) (fn-sasl-no-nulp (cdr xs))) t))
+
+(local (defthm fn-sasl-split-nul-past-a-field
+  (implies (fn-sasl-no-nulp a)
+           (equal (fn-sasl-split-nul (append a (cons 0 b)) f)
+                  (cons (revappend (revappend a f) nil)
+                        (fn-sasl-split-nul b nil))))))
+
+(local (defthm fn-sasl-split-nul-of-a-last-field
+  (implies (fn-sasl-no-nulp a)
+           (equal (fn-sasl-split-nul a f) (list (revappend (revappend a f) nil))))))
+
+(local (defthm fn-sasl-revappend-revappend
+  (equal (revappend (revappend x a) b) (revappend a (append x b)))))
+
+(local (defthm fn-sasl-split-nul-of-a-plain-message
+  (implies (and (true-listp login) (fn-sasl-no-nulp login)
+                (true-listp pw) (fn-sasl-no-nulp pw))
+           (equal (fn-sasl-split-nul (cons 0 (append login (cons 0 pw))) nil)
+                  (list nil login pw)))
+  :hints (("Goal" :expand ((fn-sasl-split-nul (cons 0 (append login (cons 0 pw))) nil))
+           :in-theory (disable fn-sasl-split-nul)))))
+
+(local (defthm fn-sasl-octet-listp-of-append
+  (implies (and (fn-sha256-octet-listp a) (fn-sha256-octet-listp b))
+           (fn-sha256-octet-listp (append a b)))
+  :hints (("Goal" :in-theory (enable fn-sha256-octet-listp)))))
+
+(defthm fn-sasl-plain-parse-of-a-client-message
+  (implies (and (fn-sha256-octet-listp login) (consp login) (<= (len login) 255)
+                (fn-sasl-no-nulp login)
+                (fn-sha256-octet-listp pw) (consp pw) (<= (len pw) 255)
+                (fn-sasl-no-nulp pw))
+           (equal (fn-sasl-plain-parse (fn-sasl-plain-message nil login pw))
+                  (list nil login pw)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-sasl-plain-parse fn-sasl-plain-message fn-scram-octets)
+                           (fn-sasl-split-nul fn-sha256-fix-octets))
+           :use ((:instance fn-sha256-fix-octets-is-identity-on-octets (m login))
+                 (:instance fn-sha256-fix-octets-is-identity-on-octets (m pw))
+                 (:instance fn-sha256-fix-octets-is-identity-on-octets
+                            (m (cons 0 (append login (cons 0 pw)))))
+                 (:instance fn-sha256-octet-listp-implies-true-listp (xs login))
+                 (:instance fn-sha256-octet-listp-implies-true-listp (xs pw))))))
+
+(defthm fn-sasl-plain-honest-client-succeeds
+  (implies (and (fn-authsec-saltp salt)
+                (fn-sha256-octet-listp login) (consp login) (<= (len login) 255)
+                (fn-sasl-no-nulp login)
+                (fn-sha256-octet-listp pw) (consp pw) (<= (len pw) 255)
+                (fn-sasl-no-nulp pw))
+           (fn-sasl-successp
+            (fn-sasl-step (list :sasl-plain) (fn-sasl-plain-message nil login pw)
+                          (fn-authsec-enrol salt pw) seed binding)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-sasl-step fn-sasl-plain-step fn-sasl-successp
+                            fn-sasl-outcome-kind)
+                           (fn-sasl-plain-parse fn-sasl-plain-message
+                            fn-authsec-checkp fn-authsec-enrol))
+           :use ((:instance fn-authsec-enrolled-secret-checks (secret pw))))))
+
 ; S2 (no SCRAM success without a stored key).  A final response for a login
 ; whose verifier the snapshot does not hold never succeeds.
 (defthm fn-sasl-scram-unknown-login-never-succeeds
@@ -460,7 +526,7 @@
     (:d fn-sasl-offers) (:d fn-sasl-statep) (:d fn-sasl-final-state)
     (:d fn-sasl-st) (:d fn-sasl-outcome-kind) (:d fn-sasl-successp)
     (:d fn-sasl-server-nonce) (:d fn-sasl-unknown-salt)
-    (:d fn-sasl-split-nul) (:d fn-sasl-plain-parse)
+    (:d fn-sasl-split-nul) (:d fn-sasl-no-nulp) (:d fn-sasl-plain-parse)
     (:d fn-sasl-plain-message) (:d fn-sasl-plain-step)
     (:d fn-sasl-scram-first-step) (:d fn-sasl-scram-final-step)
     (:d fn-sasl-start) (:d fn-sasl-initial-state)
