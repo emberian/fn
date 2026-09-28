@@ -1438,6 +1438,8 @@
          (digits (if (and (consp cs) (member (car cs) '(#\+ #\-))) (cdr cs) cs))
          (v (and (consp digits) (fn-xw-digit-chars digits 0))))
     (cond ((integerp v) (list :ok (if neg (- v) v)))
+          ((endp cs) (list :internal (concatenate 'string "no non-whitespace characters in string "
+                                                  (fn-xw-quote text) ".")))
           ((endp digits) (list :internal (concatenate 'string "no digits in string " (fn-xw-quote text))))
           (t (list :internal (concatenate 'string "junk in string " (fn-xw-quote text)))))))
 

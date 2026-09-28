@@ -284,7 +284,7 @@ static int fnx_statfs(const char *p, unsigned char *buf) {
 ;;; it; a write, a barrier, a close and an allocation do not).  Read-write
 ;;; handles live in the handle table beside the read-only ones and are closed.
 (import (chicken process-context) (chicken process-context posix) (chicken process signal)
-        (chicken time))
+        (chicken process) (chicken time))
 (foreign-declare "
 #include <stdio.h>
 #include <time.h>
