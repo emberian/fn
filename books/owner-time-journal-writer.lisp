@@ -1013,4 +1013,22 @@
                   (len (fn-otm-jlines xs))))
   :hints (("Goal" :in-theory (disable fn-otm-jlines))))
 
+
+; The host's backward read over a file the writer left cuts exactly its
+; whole lines: every :cut fn-otm-jw-open-step answers under the read's
+; invariant is the length of the whole lines (host/native/owner.lisp
+; fnn-owner-journal-cut calls fn-otm-jw-open-step).
+(defthm fn-otm-jw-open-step-cuts-a-written-file
+  (implies (and (fn-otm-jw-fragp frag nil)
+                (equal (append (fn-otm-jlines xs) frag) (append a (append chunk post)))
+                (equal start (len a))
+                (fn-otm-jw-no-lf-p post)
+                (equal (car (fn-otm-jw-open-step chunk start)) :cut))
+           (equal (cadr (fn-otm-jw-open-step chunk start))
+                  (len (fn-otm-jlines xs))))
+  :hints (("Goal" :use ((:instance fn-otm-jw-open-step-is-the-cut
+                                   (file (append (fn-otm-jlines xs) frag)))
+                        (:instance fn-otm-jw-open-cut-of-a-written-file))
+           :in-theory (disable fn-otm-jw-open-step-is-the-cut fn-otm-jw-open-cut-of-a-written-file
+                               fn-otm-jw-open-step fn-otm-jw-open-cut fn-otm-jlines))))
 (in-theory (disable fn-otm-jw-sim fn-otm-jw-whole fn-otm-jw-frag))

@@ -221,3 +221,20 @@
 ; The segment corollary (fn-otm-jw-segment-agrees): the host's start line is
 ; the start entry's line.
 (assert-event (equal (fn-otm-start-line 9000 1234) (fn-otm-jline (car *otjw-es*))))
+
+; fn-otm-jw-open-step-cuts-a-written-file: the whole file as one chunk (the
+; first chunk of a short file) is cut at its whole lines; teeth for the
+; read's invariant: a chunk whose following octets hold an LF (post not
+; LF-free) answers :cut 0, not the whole lines.
+(defconst *otjw-lines-2* (fn-otm-jlines (append *otjw-e0* (take 2 *otjw-es*))))
+(defconst *otjw-frag-2* (take 5 (fn-otm-jline (nth 2 *otjw-es*))))
+(assert-event (and (fn-otm-jw-fragp *otjw-frag-2* nil)
+                   (equal (append *otjw-lines-2* *otjw-frag-2*) *otjw-f-closed*)
+                   (equal (fn-otm-jw-open-step *otjw-f-closed* 0) (list :cut (len *otjw-lines-2*)))))
+(assert-event (let ((chunk (take 3 *otjw-f-closed*)) (post (nthcdr 3 *otjw-f-closed*)))
+                (and (fn-otm-jw-fragp *otjw-frag-2* nil)
+                     (equal (append nil (append chunk post)) *otjw-f-closed*)
+                     (equal 0 (len nil))
+                     (equal (car (fn-otm-jw-open-step chunk 0)) :cut)
+                     (not (fn-otm-jw-no-lf-p post))
+                     (not (equal (cadr (fn-otm-jw-open-step chunk 0)) (len *otjw-lines-2*))))))
