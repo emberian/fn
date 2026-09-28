@@ -1403,15 +1403,15 @@
     "books": 1425,
     "books_in_root_closure": 1423,
     "roots": 1396,
-    "theorems": 22809,
-    "functions": 15460,
+    "theorems": 22808,
+    "functions": 15461,
     "assert_events": 20212,
     "must_fails": 2243,
     "prover_refusals": 0,
     "encapsulates": 139,
     "guards": {
       "verified": 2956,
-      "declared-off": 1802,
+      "declared-off": 1803,
       "default-guarded": 8459,
       "default-unguarded": 2243
     },
@@ -1419,7 +1419,7 @@
     "export_hygiene_warnings": 277,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 240,
-    "include_hygiene_warnings": 1940,
+    "include_hygiene_warnings": 1941,
     "host_names_warnings": 1778,
     "hand_written_record_warnings": 18
   },
@@ -11094,7 +11094,7 @@
       "book": "books/history-pages-owner.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
+      "theorems": 16,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -11113,7 +11113,8 @@
         "history-pages-import",
         "history-pages-view",
         "owner-checkpoint-open",
-        "replay-identity-index"
+        "replay-identity-index",
+        "store-checkpoint-arena-writer"
       ],
       "system_includes": [],
       "suspects": [],
@@ -32538,10 +32539,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 9,
-      "functions": 0,
+      "functions": 1,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -32549,8 +32550,8 @@
       "assert_events": 0,
       "must_fails": 4,
       "prover_refusals": 0,
-      "defconsts": 11,
-      "defmacros": 3,
+      "defconsts": 17,
+      "defmacros": 4,
       "encapsulates": 0,
       "includes": [
         "../../books/history-pages-owner",
@@ -57099,16 +57100,23 @@
       },
       {
         "book": "books/history-pages-owner.lisp",
-        "line": 34,
+        "line": 35,
         "include": "owner-checkpoint-open",
         "included": "books/owner-checkpoint-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/history-pages-owner.lisp",
-        "line": 36,
+        "line": 37,
         "include": "history-pages-view",
         "included": "books/history-pages-view.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-pages-owner.lisp",
+        "line": 39,
+        "include": "store-checkpoint-arena-writer",
+        "included": "books/store-checkpoint-arena-writer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -63616,14 +63624,14 @@
       },
       {
         "book": "tests/acl2/history-pages-owner-tests.lisp",
-        "line": 23,
+        "line": 25,
         "include": "../../books/history-pages-owner",
         "included": "books/history-pages-owner.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/history-pages-owner-tests.lisp",
-        "line": 24,
+        "line": 26,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
