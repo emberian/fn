@@ -510,16 +510,45 @@
 ; The offset of the octet after "Path: " on the first header line that opens
 ; with it, or nil.  `bol' says x is at the start of a line.  A line ends at
 ; CR LF; an empty line (a line opening with CR) ends the header.
-(defun fn-inj-path-scan (x bol)
-  (declare (xargs :guard t :measure (acl2-count x)))
+; Executes by a loop (PKT-877, lane serve-depth): the scan took one control-
+; stack frame per octet of the proto-article before its Path field.  The loop
+; counts the octets passed in N and answers the offset or NIL as it does.
+(defun fn-inj-path-scan-loop (x bol n)
+  (declare (xargs :guard (acl2-numberp n) :measure (acl2-count x) :verify-guards nil))
   (cond ((atom x) nil)
-        ((and bol (fn-inj-path-openp x)) 6)
+        ((and bol (fn-inj-path-openp x)) (+ n 6))
         ((and bol (equal (car x) 13)) nil)
         ((and (equal (car x) 13) (consp (cdr x)) (equal (cadr x) 10))
-         (let ((r (fn-inj-path-scan (cddr x) t)))
-           (if r (+ 2 r) nil)))
-        (t (let ((r (fn-inj-path-scan (cdr x) nil)))
-             (if r (+ 1 r) nil)))))
+         (fn-inj-path-scan-loop (cddr x) t (+ n 2)))
+        (t (fn-inj-path-scan-loop (cdr x) nil (+ n 1)))))
+
+(defun fn-inj-path-scan (x bol)
+  (declare (xargs :guard t :measure (acl2-count x) :verify-guards nil))
+  (mbe :logic
+       (cond ((atom x) nil)
+             ((and bol (fn-inj-path-openp x)) 6)
+             ((and bol (equal (car x) 13)) nil)
+             ((and (equal (car x) 13) (consp (cdr x)) (equal (cadr x) 10))
+              (let ((r (fn-inj-path-scan (cddr x) t)))
+                (if r (+ 2 r) nil)))
+             (t (let ((r (fn-inj-path-scan (cdr x) nil)))
+                  (if r (+ 1 r) nil))))
+       :exec (fn-inj-path-scan-loop x bol 0)))
+
+(local
+ (defthm fn-inj-path-scan-loop-is-plus
+   (implies (acl2-numberp n)
+            (equal (fn-inj-path-scan-loop x bol n)
+                   (let ((r (fn-inj-path-scan x bol)))
+                     (if r (+ n r) nil))))
+   :hints (("Goal" :induct (fn-inj-path-scan-loop x bol n)
+                   :in-theory (disable fn-inj-path-openp)))))
+
+(verify-guards fn-inj-path-scan-loop)
+
+(verify-guards fn-inj-path-scan
+  :hints (("Goal" :in-theory (disable fn-inj-path-scan-loop fn-inj-path-openp)
+                  :use ((:instance fn-inj-path-scan-loop-is-plus (n 0))))))
 
 (defun fn-inj-path-offset (source)
   (declare (xargs :guard t))

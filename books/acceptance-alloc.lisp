@@ -352,6 +352,19 @@
 
 (verify-guards fn-next-number)
 
+; Executes by a loop (PKT-877, lane serve-depth): NEXTS has one entry per group
+; the history ever created, and the recursion took a frame per entry before
+; GROUP's.  The loop carries that prefix reversed and puts it back.
+(defun fn-bump-number-loop (group nexts acc)
+  (declare (xargs :guard (true-listp acc)))
+  (if (consp nexts)
+      (if (equal group (fn-ag-car (fn-ag-car nexts)))
+          (revappend acc (cons (cons (fn-ag-car (fn-ag-car nexts))
+                                     (1+ (fix (fn-ag-cdr (fn-ag-car nexts)))))
+                               (fn-ag-cdr nexts)))
+        (fn-bump-number-loop group (fn-ag-cdr nexts) (cons (fn-ag-car nexts) acc)))
+    (revappend acc nil)))
+
 (defun fn-bump-number (group nexts)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic
@@ -363,17 +376,17 @@
              (cons (car nexts)
                    (fn-bump-number group (cdr nexts))))
          nil)
-       :exec
-       (if (consp nexts)
-           (if (equal group (fn-ag-car (fn-ag-car nexts)))
-               (cons (cons (fn-ag-car (fn-ag-car nexts))
-                           (1+ (fix (fn-ag-cdr (fn-ag-car nexts)))))
-                     (fn-ag-cdr nexts))
-             (cons (fn-ag-car nexts)
-                   (fn-bump-number group (fn-ag-cdr nexts))))
-         nil)))
+       :exec (fn-bump-number-loop group nexts nil)))
 
-(verify-guards fn-bump-number)
+(local
+ (defthm fn-bump-number-loop-is-revappend
+   (equal (fn-bump-number-loop group nexts acc)
+          (revappend acc (fn-bump-number group nexts)))
+   :hints (("Goal" :induct (fn-bump-number-loop group nexts acc)))))
+
+(verify-guards fn-bump-number
+  :hints (("Goal" :in-theory (disable fn-bump-number-loop)
+                  :use ((:instance fn-bump-number-loop-is-revappend (acc nil))))))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;

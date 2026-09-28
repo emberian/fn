@@ -46,6 +46,7 @@
 
 (in-package "ACL2")
 (include-book "path")
+(include-book "rev-onto") ; the loop twins' step (PKT-877)
 
 (defconst *fn-pu-path-colon* '(112 97 116 104 58)) ; "path:"
 (defconst *fn-pu-xref-colon* '(120 114 101 102 58)) ; "xref:"
@@ -258,23 +259,72 @@
 ; lines go with it.  The header block ends at the blank line (a line that is
 ; exactly CRLF); that line and everything after it are returned as they are.
 
-(defun fn-pu-walk (x id dg dropping)
-  (declare (xargs :guard t :measure (acl2-count x)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per header line of the posted article.  The loop
+; reverses each kept line onto an accumulator (fn-ag-rev-onto) and the rest
+; of the article onto that at the end.
+(defun fn-pu-walk-loop (x id dg dropping acc)
+  (declare (xargs :guard (true-listp acc) :measure (acl2-count x) :verify-guards nil))
   (if (atom x)
-      x
+      (revappend acc x)
     (let ((line (fn-pu-line x))
           (rest (fn-pu-after-line x)))
-      (cond ((equal line '(13 10)) x)
+      (cond ((equal line '(13 10)) (revappend acc x))
             ((fn-pu-wspp (car line))
              (if dropping
-                 (fn-pu-walk rest id dg t)
-               (fn-pu-append line (fn-pu-walk rest id dg nil))))
+                 (fn-pu-walk-loop rest id dg t acc)
+               (fn-pu-walk-loop rest id dg nil (fn-ag-rev-onto line acc))))
             ((fn-pu-named-p line *fn-pu-xref-colon*)
-             (fn-pu-walk rest id dg t))
+             (fn-pu-walk-loop rest id dg t acc))
             ((fn-pu-named-p line *fn-pu-path-colon*)
-             (fn-pu-append (fn-pu-edit-path line id dg)
-                            (fn-pu-walk rest id dg nil)))
-            (t (fn-pu-append line (fn-pu-walk rest id dg nil)))))))
+             (fn-pu-walk-loop rest id dg nil (fn-ag-rev-onto (fn-pu-edit-path line id dg) acc)))
+            (t (fn-pu-walk-loop rest id dg nil (fn-ag-rev-onto line acc)))))))
+
+(defun fn-pu-walk (x id dg dropping)
+  (declare (xargs :guard t :measure (acl2-count x) :verify-guards nil))
+  (mbe :logic
+       (if (atom x)
+           x
+         (let ((line (fn-pu-line x))
+               (rest (fn-pu-after-line x)))
+           (cond ((equal line '(13 10)) x)
+                 ((fn-pu-wspp (car line))
+                  (if dropping
+                      (fn-pu-walk rest id dg t)
+                    (fn-pu-append line (fn-pu-walk rest id dg nil))))
+                 ((fn-pu-named-p line *fn-pu-xref-colon*)
+                  (fn-pu-walk rest id dg t))
+                 ((fn-pu-named-p line *fn-pu-path-colon*)
+                  (fn-pu-append (fn-pu-edit-path line id dg)
+                                (fn-pu-walk rest id dg nil)))
+                 (t (fn-pu-append line (fn-pu-walk rest id dg nil))))))
+       :exec (fn-pu-walk-loop x id dg dropping nil)))
+
+; The lemmas stay inside: fn-pu-append = append would change the proofs below.
+(encapsulate ()
+  (local
+   (defthm fn-pu-walk-append-is-append
+     (equal (fn-pu-append a b) (append a b))))
+
+  (local
+   (defthm fn-pu-walk-revappend-rev-onto
+     (equal (revappend (fn-ag-rev-onto x acc) y)
+            (revappend acc (append x y)))))
+
+  (local
+   (defthm fn-pu-walk-loop-is-revappend
+     (equal (fn-pu-walk-loop x id dg dropping acc)
+            (revappend acc (fn-pu-walk x id dg dropping)))
+     :hints (("Goal" :induct (fn-pu-walk-loop x id dg dropping acc)
+                     :in-theory (disable fn-pu-line fn-pu-after-line fn-pu-wspp fn-pu-named-p
+                                         fn-pu-edit-path)))))
+
+  (verify-guards fn-pu-walk-loop)
+
+  (verify-guards fn-pu-walk
+    :hints (("Goal" :in-theory (disable fn-pu-walk-loop fn-pu-line fn-pu-after-line fn-pu-wspp
+                                        fn-pu-named-p fn-pu-edit-path)
+                    :use ((:instance fn-pu-walk-loop-is-revappend (acc nil)))))))
 
 ; The specification side of "nothing else changed": the article with every
 ; Path and Xref field (and their continuation lines) removed.
