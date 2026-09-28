@@ -754,7 +754,11 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
 ; it and stopped the owner (`operator CONFIG obligations' at about 1,029
 ; obligations, the openbsd-rehearsal record of 2026-09-27, stop 2).
 ; `fn-nls-octets-string' is its twin with constant stack, and
-; `fn-nls-octets-string-is-record-octets-string' is the equation.
+; `fn-nls-octets-string-is-record-octets-string' is the equation.  Since
+; PKT-693 (lane thread-stacks) `fn-record-octets-string' itself executes by a
+; loop (books/records-shape.lisp, an `mbe' in `fn-record-octets-chars'), so
+; `fn-nls-buffer' calls it directly; the twin and its equation stay as the
+; record of the fix and for their tests.
 (defun fn-nls-octets-chars-rev (octets acc)
   (declare (xargs :guard (and (fn-cbor-octet-listp octets) (character-listp acc))))
   (if (consp octets)
@@ -804,7 +808,7 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
 :bad for a report that is not octets."
   (declare (xargs :guard t :verify-guards nil))
   (if (fn-cbor-octet-listp report)
-      (cons (fn-nls-octets-string report) (fn-frame-trailer report))
+      (cons (fn-record-octets-string report) (fn-frame-trailer report))
     :bad))
 
 (defun fn-nls-page (buffer offset)

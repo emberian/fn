@@ -233,6 +233,50 @@ class LargeReplyTests(JoinFixture):
         self.stop_serving(owner)
 
 
+MIB10 = 10 * 1024 * 1024
+# PKT-693 (lane thread-stacks): a 16 MiB article field, few transactions so
+# the launcher's figure stays inside the module's --mem.
+INIT_PROFILE_16M = ("--profile", "development", "--max-transactions", "64",
+                    "--max-history-octets", str(64 << 20),
+                    "--max-record-octets", str((16 << 20) + 65536),
+                    "--max-article-octets", str(16 << 20),
+                    "--max-groups-per-article", "16")
+
+
+class TenMibArticleTests(JoinFixture):
+    """PKT-693: a 10 MiB article through a node thread's 1,024 KB control stack.
+
+    books/records-shape.lisp's two octet conversions recursed once per octet
+    in execution and exhausted a node thread's stack at about 80,000 octets.
+    Here a 10 MiB article is POSTed over NNTP (a connection thread) and
+    submitted by `operator post' (the control thread), each re-read over
+    NNTP identical, and the owner is still serving after both.
+    """
+
+    def test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post(self):
+        created = self.op("init", *INIT_PROFILE_16M, "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        owner = self.start_owner(self.image)
+        try:
+            rows = self.post_and_reread([MIB10])
+            msgid = "<ten-mib-op@example.invalid>"
+            path = self.root / "ten-mib-op"
+            path.write_bytes(article(msgid, MIB10))
+            posted = self.op("post", "--message-id", msgid, "--payload", str(path),
+                             "--group", "fn.test")
+            print("operator post", posted.returncode, posted.stdout.decode().strip(),
+                  posted.stderr.decode().strip(), flush=True)
+            reread = self.reread(msgid, MIB10) if posted.returncode == EXIT_OK else None
+            alive = owner.poll() is None
+        finally:
+            self.stop(owner)
+        self.assertTrue(rows[MIB10][0].startswith("240"), rows)
+        self.assertTrue(rows[MIB10][1], "the 10 MiB NNTP POST did not reread identical")
+        self.assertEqual(posted.returncode, EXIT_OK, posted.stderr.decode())
+        self.assertTrue(reread, "the 10 MiB operator post did not reread identical")
+        self.assertTrue(alive, "the owner stopped serving after the 10 MiB articles")
+
+
 class SpanReferenceTests(JoinFixture):
     """SCN-110: the span read serves what the per-read-list read served.
 
