@@ -156,6 +156,12 @@ class Context:
             os.environ, ACL2_CUSTOMIZATION="NONE",
             FN_NATIVE_DEVELOPER_HOST=str(image), FN_FIXTURE_REV=rev))
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
+        # tools/blake3_ref.py's C backend (GB/s) from the image's tree; without
+        # it the synthesis hashes in pure Python (0.2 MB/s: minutes per 10k
+        # records where the C takes a second; scale-curve 2026-09-28).
+        lib = image.resolve().parent / "lib" / "libfn-blake3.so"
+        if "FN_BLAKE3_LIBRARY" not in self.env and lib.is_file():
+            self.env["FN_BLAKE3_LIBRARY"] = str(lib)
         # The ACL2 bridge the BP recipe's harness starts (as hbox_native.sh
         # exports it).
         for name, value in (("FN_ACL2", "/tank/fn/toolchains/w28/acl2-literal-4g"),
@@ -312,6 +318,43 @@ def recipe_synth(ctx: Context, n: int, flags: tuple) -> None:
     shutil.copy2(work / "load.json", ctx.dest / "seed-load.json")
 
 
+# tools/scale_curve.py's points (ember 2026-09-28: "extrapolate from the curve at
+# 1k 2k 5k 10k 25k 50k 100k").
+CURVE_NS = (1000, 2000, 5000, 10000, 25000, 50000, 100000)
+
+
+def recipe_curve(ctx: Context) -> None:
+    """The scale curve's stores: ONE seed (recipe_synth's: 1,000 POSTed 2 KiB
+    articles under SYNTH_100K, capacity 2 x 100,000 + 100,000: room for the
+    probes' POSTs at 100k, where 204,000 left health at space-pressure (exit 23)
+    and refused the 2,000th POST) and, from it,
+    one synthesized log per N in CURVE_NS (tools/synth_log_store.py, batch-8
+    entries, no checkpoint) at DEST/nN/store; every point shares the seed's
+    node, profile and payloads, so the curve varies N alone.  build.json
+    records each store's synthesis seconds."""
+    work = ctx.work / "seed"
+    env = dict(ctx.env, FN_FIXTURE_INIT_FLAGS=" ".join(SYNTH_100K))
+    started = time.monotonic()
+    ctx.run([PY, TREE / EVIDENCE / "post-identity-index-2026-09-26/postmeasure.py", "load",
+             ctx.image, work, 1000], env=env)
+    check_load(work, 1000)
+    ctx.run([PY, TREE / EVIDENCE / "snapshot-open-3-2026-09-27/capseed.py", ctx.image,
+             work / "store", 2 * max(CURVE_NS) + 100000])
+    for path in (work / "store").glob("store-checkpoint*"):
+        path.unlink()
+    build = {"seed_seconds": round(time.monotonic() - started, 1), "synth_seconds": {},
+             "profile_flags": list(SYNTH_100K), "capacity_units": 2 * max(CURVE_NS) + 100000}
+    ctx.dest.mkdir(parents=True)
+    for n in CURVE_NS:
+        started = time.monotonic()
+        ctx.run([PY, TREE / "tools/synth_log_store.py", work / "store",
+                 ctx.dest / "n{}".format(n) / "store", n, "--batch", 8])
+        (ctx.dest / "n{}".format(n) / "store" / "writer.lock").unlink(missing_ok=True)
+        build["synth_seconds"][str(n)] = round(time.monotonic() - started, 1)
+    shutil.copy2(work / "load.json", ctx.dest / "seed-load.json")
+    (ctx.dest / "build.json").write_text(json.dumps(build, indent=1) + "\n")
+
+
 def recipe_synth_lz(ctx: Context, n: int, threshold: int = 64) -> None:
     """recipe_synth's store with its records COMPRESSED (lane
     compression-extents-2): the synthesized store (built in WORK/plain) is
@@ -430,6 +473,16 @@ REGISTRY = [
                    "initialized with SYNTH_1M: T 1048576, H 2,800,000,000, the same R A G K; its "
                    "init reservation is 57,158 MB, so open a copy under MemoryMax 80G (a 40G or "
                    "24G scope refuses it: machine-cannot-hold-profile)."),
+    Fixture("curve", recipe_curve, mem="24G",
+            stores=tuple("n{}/store".format(n) for n in CURVE_NS),
+            readme="tools/scale_curve.py's points: nN/store for N in 1,000 2,000 5,000 10,000 "
+                   "25,000 50,000 100,000, each N x 2 KiB article records synthesized as the log "
+                   "(tools/synth_log_store.py, batch-8 entries, no checkpoint: the first open is "
+                   "a full replay) from ONE 1,000-article seed initialized with SYNTH_100K (T "
+                   "131072, H 512 MiB, R 196608, A 32768, G 16, K 65536; capacity 300,000), so "
+                   "every point has the same node, profile and payloads. build.json: the seed's "
+                   "and each store's build seconds. Copy a store and touch writer.lock (mode "
+                   "600) before use; scale_curve.py does."),
     Fixture("usenet-20news-19997", static=True,
             readme="The 20 Newsgroups corpus (a corpus, not a store): verified, never rebuilt."),
 ]

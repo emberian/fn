@@ -12611,6 +12611,31 @@
           "note": "KEYSTONE (what init and store import write opens as itself). Host: host/native/io.lisp fnn-metadata-config-decode (every open, from fnn-load-config; and fnn-refuse-another-format) via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (the presets and init's frame; validp removed: H below R is the generic fault)."
         }
       ]
+    },
+    {
+      "id": "PRF-374",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-invite-expiry-agrees-across-the-running-and-stopped-paths"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-invite-delta-is-live-at-its-stamp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clock-reading-latest-milliseconds-of-an-owner-reading"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clock-reading-latest-milliseconds-of-a-record-stamp-reading"
+        }
+      ]
     }
   ]
 }

@@ -1291,6 +1291,7 @@ saved profile stays a fault."
       (fnn-fault "ACL2 returned malformed allocation frontier frame"))
     (fnn-octets value)))
 
+;; test-only (tools/host_callers.py): tests/test_spec_cite_check.py
 (defun fnn-metadata-frontier-decode (octets)
   (let ((value (fnn-core 'fn-store-metadata-frontier-decode
                          (fnn-octet-list octets))))

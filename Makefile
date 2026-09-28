@@ -1260,6 +1260,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-reader-read \
 	tests/acl2/owner-reader-read-tests \
 	books/clock-wall-reading \
+	books/clock-unit \
 	books/owner-time-model \
 	books/owner-time-journal \
 	books/owner-time-admission \
@@ -1636,6 +1637,12 @@ check:
 # no ACL2 (lane lane-tools-2, after payload-lz-record was outside the world).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --world
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_world
+# Every host/ definition some file reaches (a raw file, a book, a bridge, a
+# launcher, a registry row): a new one nothing calls is WARNED, not refused,
+# unless tools/host_callers_baseline.json names why it stays (lane
+# uncalled-host-defuns; a later lane makes it a refusal).  Static, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/host_callers.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_callers
 # Every launcher path (packaging/'s shell launchers, host/'s process spawns)
 # classifies a child's failure: an unknown one is a fault (4) or uncertain,
 # never forwarded as the refusal code 1 (lane lane-tools-2; openbsd-datasize's

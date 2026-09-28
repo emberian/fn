@@ -453,18 +453,6 @@
       (fnn-app-publish journal release))
     receipt-id))
 
-(defun fnn-workflow-accept-receipt-octets
-    (journal octets authorization-profile canonical-release-callback)
-  ;; D09 is open.  Only this explicitly named local trust boundary may supply
-  ;; the policy-authorized observation; arbitrary receipt bytes cannot.
-  (unless (string= authorization-profile "trusted-local-observation-v0")
-    (fnn-refuse "workflow receipt authentication profile is unsupported"))
-  (unless (and (fnn-octet-list-p octets) (<= (length octets) 131072))
-    (fnn-refuse "application receipt exceeds the input bound"))
-  (fnn-workflow-commit-receipt-intent
-   journal (fnn-core-state 'fn-workflow-receipt-auto-record octets t)
-   canonical-release-callback))
-
 (defun fnn-workflow-accept-receipt
     (journal receipt-path txid generation authorization-profile
      &optional canonical-release-callback)

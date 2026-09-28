@@ -2,7 +2,6 @@
 (in-package "ACL2")
 (include-book "../books/bp-receive-evidence")
 
-(defun fn-bpn-host-evidence-max-records () *fn-bpn-evidence-max-records*)
 (defun fn-bpn-host-evidence-max-entries () (fn-bpn-evidence-max-entries))
 (defun fn-bpn-host-evidence-directory-name () *fn-bpn-evidence-directory-name*)
 (defun fn-bpn-host-evidence-recover (entries)
@@ -24,8 +23,6 @@
     nil))
 (defun fn-bpn-host-evidence-operationp (operation)
   (if (fn-bpn-evidence-operationp operation) t nil))
-(defun fn-bpn-host-evidence-operation-identity (operation)
-  (fn-bpn-evidence-operation-identity operation))
 (defun fn-bpn-host-evidence-operation-wire-name (operation)
   (fn-bpn-evidence-operation-wire-name operation))
 (defun fn-bpn-host-evidence-operation-result-name (operation)
