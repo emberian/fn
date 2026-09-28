@@ -31,9 +31,6 @@
 (defun fn-bpn-host-eid (uri)
   (fn-bpaj-raw-announced-eid uri))
 
-(defun fn-bpn-host-eidp (e)
-  (and (fn-bpp-eidp e) t))
-
 (defun fn-bpn-host-node-idp (e)
   (and (fn-bpp-previous-nodep e) t))
 
