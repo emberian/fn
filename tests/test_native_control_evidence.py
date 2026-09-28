@@ -112,8 +112,11 @@ class NativeControlEvidenceTests(filing.NativeControlFilingTests):
         self.assertEqual(target_lines[1], "decision=none")
         self.assertEqual(target_lines[2],
                          "withdrawn-by" + lines[1][len("withdrawal"):] + " effect=author")
-        self.assertEqual(live_absent,
-                         "evidence message-id=<absent@example.invalid> stored=no\n")
+        # The operator's status family ends with the store's heap line
+        # (PKT-016, host/native/operator.lisp fnn-operator-execute-status);
+        # the evidence is every line before it.
+        absent = [line for line in live_absent.splitlines() if not line.startswith("heap=")]
+        self.assertEqual(absent, ["evidence message-id=<absent@example.invalid> stored=no"])
         # Offline (recovery's decision over the replayed Store): the same words.
         self.assertEqual(offline_log, live_log)
         self.assertEqual(offline_cancel, live_cancel)
