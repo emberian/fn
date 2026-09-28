@@ -1162,7 +1162,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/protocol-builders \
 	books/protocol-codes \
 	books/protocol-framing \
+	books/protocol-dispatch \
 	tests/acl2/protocol-codes-tests \
+	tests/acl2/protocol-dispatch-tests \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \

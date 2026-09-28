@@ -83,6 +83,22 @@
 ;   :faq       one line for the operator FAQ's command list.
 ;
 ; LIST's second keyword is a :variants column: (KEYWORD RFC-SECTION).
+;
+;   :arms      the row's arms in the pinned reader dispatcher,
+;              (KIND (TEST TERM) ...), over the dispatcher's formals SESSION
+;              ARCHIVE INDEX VERDICTS ENV FN-ARENA and its bound KEYWORD and
+;              ARGS: what fn-nntp-command-pinned answers when the first token
+;              is this row's command, the clauses in the order it tries them,
+;              the last one's TEST t.  KIND :session answers from the
+;              session; :archive and :pinned first refuse a session without a
+;              projection (RFC 3977 3.2.1's 503).  A row without :arms is not
+;              the reader dispatcher's (it answers the unrecognized 500).
+;              books/protocol-dispatch.lisp generates fn-proto-command-pinned,
+;              one flat cond over these rows, and proves it IS
+;              fn-nntp-command-pinned (fn-proto-command-pinned-is-command-
+;              pinned); the table also generates the macro
+;              fn-nntp-command-dispatch, the command layer the reader
+;              dispatchers expand (below).
 
 (in-package "ACL2")
 
@@ -157,6 +173,23 @@
   (member-equal x '(:session :archive :pinned :auth :peer
                     :syntax :unrecognized :connection)))
 
+; A clause list: each (TEST TERM), the last one's TEST t.
+(defun fn-proto-clausesp (x)
+  (declare (xargs :guard t))
+  (and (consp x)
+       (true-listp (car x))
+       (equal (len (car x)) 2)
+       (if (consp (cdr x))
+           (fn-proto-clausesp (cdr x))
+         (and (null (cdr x)) (equal (car (car x)) t)))))
+
+(defun fn-proto-armsp (x)
+  (declare (xargs :guard t))
+  (or (null x)
+      (and (consp x)
+           (member-equal (car x) '(:session :archive :pinned))
+           (fn-proto-clausesp (cdr x)))))
+
 (defun fn-proto-rowp (row)
   (declare (xargs :guard t))
   (and (consp row)
@@ -174,6 +207,7 @@
               (fn-proto-reply-listp (fn-proto-plist-get :replies plist))
               (no-duplicatesp-equal
                (fn-proto-keys (fn-proto-plist-get :replies plist)))
+              (fn-proto-armsp (fn-proto-plist-get :arms plist))
               (stringp (fn-proto-plist-get :faq plist))))))
 
 (defun fn-proto-names (rows)
@@ -284,6 +318,80 @@
               (t nil)))
     text))
 
+;; -----------------------------------------------------------------------------
+;; The dispatcher text, generated from the :arms column (lane defprotocol-2).
+
+;; A clause list as a term: a single (t TERM) is TERM itself.
+(defun fn-proto-clauses-term (clauses)
+  (declare (xargs :guard t))
+  (if (and (consp clauses) (consp (car clauses)) (consp (cdr (car clauses)))
+           (null (cdr clauses)) (equal (car (car clauses)) t))
+      (cadr (car clauses))
+    (cons 'cond clauses)))
+
+;; RFC 3977 section 3.2.1 assigns 503 to a recognized command the server
+;; cannot carry out because it does not hold the required information.
+(defun fn-proto-projected-term (body)
+  (declare (xargs :guard t))
+  `(if (fn-nntp-session-projected session)
+       ,body
+     (fn-nntp-single session (fn-proto-text * :no-projection))))
+
+(defun fn-proto-arms-term (arms)
+  (declare (xargs :guard t))
+  (let ((body (fn-proto-clauses-term (and (consp arms) (cdr arms)))))
+    (if (and (consp arms) (equal (car arms) :session))
+        body
+      (fn-proto-projected-term body))))
+
+(defun fn-proto-row-arms (row)
+  (declare (xargs :guard t))
+  (and (consp row) (true-listp (cdr row)) (fn-proto-plist-get :arms (cdr row))))
+
+;; One flat clause per row with :arms, in table order:
+;; ((fn-nntp-keywordp keyword NAME) TERM).
+(defun fn-proto-flat-clauses (rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (let ((arms (fn-proto-row-arms (car rows))))
+        (if arms
+            (cons `((fn-nntp-keywordp keyword ,(car (car rows)))
+                    ,(fn-proto-arms-term arms))
+                  (fn-proto-flat-clauses (cdr rows)))
+          (fn-proto-flat-clauses (cdr rows))))
+    nil))
+
+;; The :pinned rows as a nest of ifs around ELSE (the pinned dispatcher tries
+;; them before the session/archive split).
+(defun fn-proto-pinned-nest (rows else)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (let ((arms (fn-proto-row-arms (car rows))))
+        (if (and (consp arms) (equal (car arms) :pinned))
+            `(if (fn-nntp-keywordp keyword ,(car (car rows)))
+                 ,(fn-proto-arms-term arms)
+               ,(fn-proto-pinned-nest (cdr rows) else))
+          (fn-proto-pinned-nest (cdr rows) else)))
+    else))
+
+;; The reader dispatchers' command layer (fn-nntp-command,
+;; fn-nntp-command-pinned, fn-pix-command-pinned, fn-scr-command): the
+;; syntax pseudo-row, then with PINNED the :pinned rows, then the
+;; session/archive split around the caller's ARCHIVE-CALL.  The expansion
+;; names the caller's formals SESSION, ENV and TOKENS (and ARCHIVE, INDEX
+;; and FN-ARENA with PINNED) and binds KEYWORD and ARGS.
+(defun fn-proto-command-dispatch-term (archive-call pinned rows)
+  (declare (xargs :guard t))
+  (let ((archive-arm
+         `(if (not (fn-nntp-archive-keywordp keyword))
+              (fn-nntp-session-command session env keyword args)
+            ,(fn-proto-projected-term archive-call))))
+    `(let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
+           (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
+       (if (not (fn-nntp-keyword-tokenp keyword))
+           (fn-nntp-single session (fn-proto-text "(syntax)" :syntax))
+         ,(if pinned (fn-proto-pinned-nest rows archive-arm) archive-arm)))))
+
 (defmacro defprotocol (name &rest rows)
   `(progn
      (defconst ,name ',rows)
@@ -294,6 +402,8 @@
      (defconst *fn-proto-unrecognized-codes*
        (fn-proto-pseudo-codes :unrecognized ,name))
      (defconst *fn-proto-article-framing* (fn-proto-article-framing-names ,name))
+     (defmacro fn-nntp-command-dispatch (archive-call &key pinned)
+       (fn-proto-command-dispatch-term archive-call pinned ,name))
      (defmacro fn-proto-text (command key)
        (let ((text (if (eq command '*)
                        (fn-proto-shared-text key ,name nil)
@@ -316,6 +426,12 @@
    :parser (fn-nntp-keyword-tokenp)
    :model (fn-nntp-capabilities) :cat nil :xref nil
    :live (("any" fn-nntp-capabilities))
+   :arms (:session
+           ((or (null args)
+                 (and (consp args) (null (cdr args))
+                      (fn-nntp-keyword-tokenp (car args))))
+             (fn-nntp-capabilities session (fn-nntp-env-posting env)))
+           (t (fn-nntp-single session (fn-proto-text "CAPABILITIES" :syntax))))
    :framing :command
    :fuzz ((:opt 1/5 (:choice "x" "AUTOUPDATE")))
    :replies ((101 :accepted :reader :list "101 capability list follows")
@@ -329,6 +445,9 @@
    :parser nil
    :model (fn-nntp-help) :cat nil :xref nil
    :live (("any" fn-nntp-help))
+   :arms (:session
+           ((null args) (fn-nntp-help session))
+           (t (fn-nntp-single session (fn-proto-text "HELP" :syntax))))
    :framing :command
    :fuzz ()
    :replies ((100 :accepted :reader :text "100 help text follows")
@@ -340,6 +459,8 @@
    :parser (fn-nntp-keywordp)
    :model (fn-nntp-mode-response) :cat nil :xref nil
    :live (("any" fn-nntp-mode-response))
+   :arms (:session
+           (t (fn-nntp-mode-response session env args)))
    :framing :command
    :fuzz ((:choice "READER" "STREAM" "" "reader" "POSTER" "X"))
    :replies ((200 :accepted :reader :posting "200 posting allowed")
@@ -355,6 +476,16 @@
    :parser nil
    :model (fn-nntp-session-command) :cat nil :xref nil
    :live (("any" fn-nntp-session-command))
+   :arms (:session
+           ((null args)
+             (fn-nntp-make-result
+              (fn-nntp-make-session nil (fn-nntp-session-group session)
+                                    (fn-nntp-session-current session)
+                                    (fn-nntp-session-projected session))
+              (list (fn-nntp-reply-effect
+                     (fn-nntp-crlf (fn-nntp-string-octets (fn-proto-text "QUIT" :closing))))
+                    (fn-nntp-close-effect))))
+           (t (fn-nntp-single session (fn-proto-text "QUIT" :syntax))))
    :framing :command
    :fuzz ()
    :replies ((205 :accepted :reader :closing "205 closing connection")
@@ -366,6 +497,10 @@
    :parser (fn-nntp-printable-tokenp)
    :model (fn-nntp-group-result) :cat (fn-nntp-group-result-cat) :xref nil
    :live (("name" fn-nntp-group-result-cat) ("summary" fn-scat-group-summary) ("low" fn-scat-group-low))
+   :arms (:archive
+           ((and (consp args) (null (cdr args)) (fn-nntp-printable-tokenp (car args)))
+             (fn-nntp-group-result session archive (fn-nntp-token-string (car args))))
+           (t (fn-nntp-single session (fn-proto-text "GROUP" :syntax))))
    :framing :command
    :fuzz ((:pool :groups) (:opt 1/20 "x"))
    :replies ((211 :accepted :reader :selected "211 COUNT LOW HIGH GROUP" :computed)
@@ -381,6 +516,10 @@
    :model (fn-gidx-listgroup-command fn-nntp-listgroup-command)
    :cat (fn-nntp-listgroup-command-cat) :xref nil
    :live (("any" fn-nntp-listgroup-command-cat) ("summary" fn-scat-group-summary))
+   :arms (:archive
+           ((fn-gidx-pinp index)
+             (fn-gidx-listgroup-command session archive (fn-gidx-pin-buckets index) args))
+           (t (fn-nntp-listgroup-command session archive args)))
    :framing :command
    :fuzz ((:opt 4/5 (:pool :groups) (:opt 1/2 (:pool :ranges))))
    :replies ((211 :accepted :reader :listed "211 COUNT LOW HIGH GROUP list follows" :computed)
@@ -396,6 +535,9 @@
    :parser nil
    :model (fn-nntp-next-or-last) :cat nil :xref nil
    :live (("any" fn-nntp-next-or-last))
+   :arms (:archive
+           ((null args) (fn-nntp-next-or-last session archive :last fn-arena))
+           (t (fn-nntp-single session (fn-proto-text "LAST" :syntax))))
    :framing :command
    :fuzz ()
    :replies ((223 :accepted :reader :moved "223 NUMBER MESSAGE-ID retrieved" :computed)
@@ -415,6 +557,9 @@
    :parser nil
    :model (fn-nntp-next-or-last) :cat nil :xref nil
    :live (("any" fn-nntp-next-or-last))
+   :arms (:archive
+           ((null args) (fn-nntp-next-or-last session archive :next fn-arena))
+           (t (fn-nntp-single session (fn-proto-text "NEXT" :syntax))))
    :framing :command
    :fuzz ()
    :replies ((223 :accepted :reader :moved "223 NUMBER MESSAGE-ID retrieved" :computed)
@@ -435,6 +580,19 @@
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref (fn-rcompat-retrieval)
    :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("any" fn-rcompat-retrieval-cat))
+   :arms (:archive
+           ((and (consp args) (null (cdr args))
+                  (fn-nntp-number-withdrawn-p session archive index (car args)))
+             (fn-nntp-withdrawn-reply session nil))
+           ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args))
+                  (fn-nntp-msgid-withdrawn-p index (car args)))
+             (fn-nntp-withdrawn-reply session t))
+           ((fn-rcompat-reply session archive index env keyword args fn-arena)
+             (fn-rcompat-reply session archive index env keyword args fn-arena))
+           ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
+             (fn-nntp-msgid-retrieval-indexed
+              session archive (fn-gidx-pin-trie index) :article (car args) fn-arena))
+           (t (fn-nntp-retrieval session archive :article args fn-arena)))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
    :replies ((220 :accepted :reader :sent "220 NUMBER MESSAGE-ID article follows" :computed)
@@ -460,6 +618,19 @@
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref (fn-rcompat-retrieval)
    :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("any" fn-rcompat-retrieval-cat))
+   :arms (:archive
+           ((and (consp args) (null (cdr args))
+                  (fn-nntp-number-withdrawn-p session archive index (car args)))
+             (fn-nntp-withdrawn-reply session nil))
+           ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args))
+                  (fn-nntp-msgid-withdrawn-p index (car args)))
+             (fn-nntp-withdrawn-reply session t))
+           ((fn-rcompat-reply session archive index env keyword args fn-arena)
+             (fn-rcompat-reply session archive index env keyword args fn-arena))
+           ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
+             (fn-nntp-msgid-retrieval-indexed
+              session archive (fn-gidx-pin-trie index) :head (car args) fn-arena))
+           (t (fn-nntp-retrieval session archive :head args fn-arena)))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
    :replies ((221 :accepted :reader :sent "221 NUMBER MESSAGE-ID headers follow" :computed)
@@ -485,6 +656,17 @@
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref nil
    :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-retrieval))
+   :arms (:archive
+           ((and (consp args) (null (cdr args))
+                  (fn-nntp-number-withdrawn-p session archive index (car args)))
+             (fn-nntp-withdrawn-reply session nil))
+           ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args))
+                  (fn-nntp-msgid-withdrawn-p index (car args)))
+             (fn-nntp-withdrawn-reply session t))
+           ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
+             (fn-nntp-msgid-retrieval-indexed
+              session archive (fn-gidx-pin-trie index) :body (car args) fn-arena))
+           (t (fn-nntp-retrieval session archive :body args fn-arena)))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
    :replies ((222 :accepted :reader :sent "222 NUMBER MESSAGE-ID body follows" :computed)
@@ -510,6 +692,17 @@
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref nil
    :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-retrieval))
+   :arms (:archive
+           ((and (consp args) (null (cdr args))
+                  (fn-nntp-number-withdrawn-p session archive index (car args)))
+             (fn-nntp-withdrawn-reply session nil))
+           ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args))
+                  (fn-nntp-msgid-withdrawn-p index (car args)))
+             (fn-nntp-withdrawn-reply session t))
+           ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
+             (fn-nntp-msgid-retrieval-indexed
+              session archive (fn-gidx-pin-trie index) :stat (car args) fn-arena))
+           (t (fn-nntp-retrieval session archive :stat args fn-arena)))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
    :replies ((223 :accepted :reader :sent "223 NUMBER MESSAGE-ID retrieved" :computed)
@@ -534,6 +727,15 @@
    :model (fn-nntp-over-response fn-nntp-over-range-indexed)
    :cat (fn-nntp-over-range-cat) :xref (fn-nntp-xref-reply)
    :live (("range" fn-nntp-over-range-served) ("current" fn-nntp-over-current-served) ("msgid" fn-nntp-over-msgid-served))
+   :arms (:archive
+           ((fn-nntp-xref-reply session archive index env keyword args fn-arena)
+             (fn-nntp-xref-reply session archive index env keyword args fn-arena))
+           ((and (fn-gidx-pinp index) (consp args) (null (cdr args))
+                  (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
+             (fn-nntp-over-range-indexed
+              session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
+              (car args) nil fn-arena))
+           (t (fn-nntp-over-response session archive args fn-arena)))
    :framing :command
    :fuzz ((:opt 4/5 (:pool+msgid :ranges)))
    :replies ((224 :accepted :reader :overview "224 overview information follows")
@@ -556,6 +758,15 @@
    :model (fn-nntp-xover-response fn-nntp-over-range-indexed)
    :cat (fn-nntp-over-range-cat) :xref (fn-nntp-xref-reply)
    :live (("range" fn-nntp-over-range-served) ("current" fn-nntp-over-current-served) ("other" fn-nntp-xover-response))
+   :arms (:archive
+           ((fn-nntp-xref-reply session archive index env keyword args fn-arena)
+             (fn-nntp-xref-reply session archive index env keyword args fn-arena))
+           ((and (fn-gidx-pinp index) (consp args) (null (cdr args))
+                  (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
+             (fn-nntp-over-range-indexed
+              session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
+              (car args) t fn-arena))
+           (t (fn-nntp-xover-response session archive args fn-arena)))
    :framing :command
    :fuzz ((:opt 4/5 (:pool+msgid :ranges)))
    :replies ((224 :accepted :reader :overview "224 overview information follows")
@@ -579,6 +790,16 @@
            fn-nntp-control-hdr-response fn-nntp-enrollment-hdr-response)
    :cat (fn-nntp-hdr-command-cat) :xref (fn-nntp-xref-reply fn-rcompat-hdr)
    :live ((":fn-verified" fn-nntp-verdict-hdr-response) (":fn-control" fn-nntp-control-hdr-response) (":fn-enrollment" fn-nntp-enrollment-hdr-response) ("Xref" fn-rcompat-hdr-cat) ("other" fn-nntp-hdr-command-cat))
+   :arms (:archive
+           ((fn-rcompat-reply session archive index env keyword args fn-arena)
+             (fn-rcompat-reply session archive index env keyword args fn-arena))
+           ((and (consp args) (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
+             (fn-nntp-verdict-hdr-response session archive verdicts args))
+           ((and (consp args) (fn-nntp-keywordp (car args) ":FN-CONTROL"))
+             (fn-nntp-control-hdr-response session archive index verdicts args fn-arena))
+           ((and (consp args) (fn-nntp-keywordp (car args) ":FN-ENROLLMENT"))
+             (fn-nntp-enrollment-hdr-response session archive index verdicts args))
+           (t (fn-nntp-hdr-response session archive args fn-arena)))
    :framing :command
    :fuzz ((:pool :header-fields) (:opt 7/10 (:pool+msgid :ranges)))
    :replies ((225 :accepted :reader :headers "225 headers follow")
@@ -602,6 +823,10 @@
    :model (fn-nntp-xhdr-response) :cat (fn-nntp-hdr-command-cat)
    :xref (fn-nntp-xref-reply fn-rcompat-hdr)
    :live (("Xref" fn-rcompat-hdr-cat) ("other" fn-nntp-hdr-command-cat))
+   :arms (:archive
+           ((fn-rcompat-reply session archive index env keyword args fn-arena)
+             (fn-rcompat-reply session archive index env keyword args fn-arena))
+           (t (fn-nntp-xhdr-response session archive args fn-arena)))
    :framing :command
    :fuzz ((:pool :header-fields) (:opt 7/10 (:pool+msgid :ranges)))
    :replies ((221 :accepted :reader :header "221 header follows")
@@ -623,6 +848,8 @@
    :parser (fn-nntp-parse-range fn-nntp-message-id-tokenp fn-wildmat-parse)
    :model (fn-nntp-xpat-response) :cat (fn-nntp-xpat-response-cat) :xref nil
    :live (("any" fn-nntp-xpat-response-cat))
+   :arms (:archive
+           (t (fn-nntp-xpat-response session archive args fn-arena)))
    :framing :command
    :fuzz ((:pool :header-names) (:pool+msgid :ranges) (:pool :wildmats))
    :replies ((221 :accepted :reader :header "221 header follows")
@@ -640,6 +867,17 @@
    :model (fn-nntp-list-command fn-gidx-list-counts-command)
    :cat (fn-nntp-list-counts-command-cat) :xref (fn-nntp-xref-reply fn-rcompat-reply)
    :live (("COUNTS" fn-nntp-list-counts-command-cat) ("OVERVIEW.FMT" fn-nntp-list-overview-fmt-served) ("ACTIVE.TIMES" fn-rcompat-active-times) ("SUBSCRIPTIONS" fn-rcompat-subscriptions) ("other" fn-nntp-list-command))
+   :arms (:archive
+           ((fn-nntp-xref-reply session archive index env keyword args fn-arena)
+             (fn-nntp-xref-reply session archive index env keyword args fn-arena))
+           ((and (fn-gidx-pinp index) (consp args)
+                  (fn-nntp-keyword-tokenp (car args))
+                  (fn-nntp-keywordp (car args) "COUNTS"))
+             (fn-gidx-list-counts-command
+              session archive (fn-gidx-pin-buckets index) (cdr args)))
+           ((fn-rcompat-reply session archive index env keyword args fn-arena)
+             (fn-rcompat-reply session archive index env keyword args fn-arena))
+           (t (fn-nntp-list-command session archive env args)))
    :framing :command
    :fuzz ((:alt ()
                ("ACTIVE" (:opt 1/2 (:pool :wildmats)))
@@ -678,6 +916,10 @@
    :parser (fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse)
    :model (fn-nntp-newgroups-response) :cat nil :xref (fn-rcompat-reply)
    :live (("any" fn-rcompat-newgroups))
+   :arms (:archive
+           ((fn-rcompat-reply session archive index env keyword args fn-arena)
+             (fn-rcompat-reply session archive index env keyword args fn-arena))
+           (t (fn-nntp-newgroups-response session archive env args)))
    :framing :command
    :fuzz ((:bound :date 0) (:bound :date 1) (:opt 2/5 (:choice "GMT" "UTC" "gmt" "X")))
    :replies ((231 :accepted :reader :listed "231 list of new newsgroups follows")
@@ -692,6 +934,8 @@
    :parser (fn-wildmat-parse fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse)
    :model (fn-nntp-newnews-response) :cat nil :xref nil
    :live (("any" fn-nntp-newnews-response))
+   :arms (:archive
+           (t (fn-nntp-newnews-response session archive env args fn-arena)))
    :framing :command
    :fuzz ((:pool :wildmats) (:bound :date 0) (:bound :date 1) (:opt 2/5 (:choice "GMT" "UTC" "gmt" "X")))
    :replies ((230 :accepted :reader :listed "230 list of new articles by message-id follows")
@@ -706,6 +950,9 @@
    :parser nil
    :model (fn-nntp-date-response) :cat nil :xref nil
    :live (("any" fn-nntp-date-response))
+   :arms (:session
+           ((null args) (fn-nntp-date-response session env))
+           (t (fn-nntp-single session (fn-proto-text "DATE" :syntax))))
    :framing :command
    :fuzz ()
    :replies ((111 :accepted :reader :date "111 YYYYMMDDhhmmss" :computed)
@@ -720,6 +967,9 @@
    :parser nil
    :model (fn-nntp-post-offer fn-nntp-post-step) :cat nil :xref nil
    :live (("any" fn-nntp-post-offer))
+   :arms (:session
+           ((null args) (fn-nntp-post-offer session))
+           (t (fn-nntp-single session (fn-proto-text "POST" :syntax))))
    :framing :article
    :fuzz ((:opt 1/20 "x"))
    :replies ((340 :accepted :reader :send "340 send article to be posted")
@@ -744,6 +994,8 @@
    :parser (fn-nntp-message-id-tokenp)
    :model (fn-peer-command) :cat nil :xref nil
    :live (("reader" fn-nntp-session-command) ("peer" fn-peer-command))
+   :arms (:session
+           (t (fn-nntp-single session (fn-proto-text * :transit))))
    :framing :command
    :fuzz ((:bound :mid 0))
    :replies ((502 :refused :reader :transit "502 transit is not permitted on this connection")
@@ -764,6 +1016,8 @@
    :parser (fn-nntp-message-id-tokenp)
    :model (fn-peer-command) :cat nil :xref nil
    :live (("reader" fn-nntp-session-command) ("peer" fn-peer-command))
+   :arms (:session
+           (t (fn-nntp-single session (fn-proto-text * :transit))))
    :framing :command
    :fuzz ((:msgid))
    :replies ((502 :refused :reader :transit "502 transit is not permitted on this connection")
@@ -778,6 +1032,8 @@
    :parser (fn-nntp-message-id-tokenp)
    :model (fn-peer-command) :cat nil :xref nil
    :live (("reader" fn-nntp-session-command) ("peer" fn-peer-command))
+   :arms (:session
+           (t (fn-nntp-single session (fn-proto-text * :transit))))
    :framing :command
    :fuzz ((:bound :mid 0))
    :replies ((502 :refused :reader :transit "502 transit is not permitted on this connection")
@@ -844,6 +1100,8 @@
    :parser (fn-cu-parse-request)
    :model (fn-cu-serve-reply) :cat nil :xref nil
    :live (("any" fn-cu-serve-reply))
+   :arms (:pinned
+           (t (fn-cu-serve-reply session archive index args fn-arena)))
    :framing :command
    :fuzz ((:pool :wildmats) (:pool :ranges) (:choice "0" "x") (:pool :ranges))
    :replies ((291 :accepted :reader :batch "291 NEXT END done|more CHAIN" :computed)

@@ -12009,6 +12009,32 @@
       ]
     },
     {
+      "id": "PRF-351",
+      "title": "The pinned reader dispatcher generated from the protocol table's :arms column is fn-nntp-command-pinned, and the reader dispatchers' command layer is generated from the table",
+      "statement": "books/protocol-table.lisp gives each reader row an :arms column (KIND (TEST TERM) ...): the clauses fn-nntp-command-pinned tries when the first token is that row's command, in order; KIND :session, or :archive/:pinned (refused 503 without a projection). books/protocol-dispatch.lisp generates fn-proto-command-pinned from the rows (one flat cond: the syntax pseudo-row, one clause per row with :arms, the unrecognized pseudo-row). KEYSTONE fn-proto-command-pinned-is-command-pinned, no hypothesis: (equal (fn-proto-command-pinned session archive index verdicts env tokens fn-arena) (fn-nntp-command-pinned session archive index verdicts env tokens fn-arena)). Subject: fn-nntp-command-pinned, the reader dispatcher of the served path (host/native/owner.lisp fnn-owner-handle-chunk-read -> fn-owner-chunk-span -> fn-scr-step -> fn-scr-command, equal to it under fn-scr-command-is-command-pinned). Proof: one generated lemma per row with :arms, one for a keyword token no row names, one for a non-keyword first token, the keystone their generated case split; the Xref prelude stays closed and fn-nntp-xref-reply-only-for-over-and-list / fn-rcompat-reply-only-for-its-commands drop it outside its rows. The command layer fn-nntp-command-dispatch (the macro fn-nntp-command, fn-nntp-command-pinned, fn-pix-command-pinned and fn-scr-command expand) is generated from the table (fn-proto-command-dispatch-term; the :pinned rows' :arms); the hand-written macro is deleted, its expansion reproduced byte for byte (differential in the lane record; the text pinned in tests/acl2/protocol-dispatch-tests.lisp). Teeth: tests/acl2/protocol-dispatch-tests.lisp, both sides agree on 67 lines over the hostile reader archive with and without an Xref server; mutation witnesses (ARTICLE's withdrawn-number arm dropped, GROUP's syntax arm reordered) differ from the host dispatcher on a named line. Not claimed: the -cat dispatcher (fn-nntp-archive-command-cat) generated from the :cat column; the pinned arms macro fn-nntp-archive-pinned-arms stays hand-written (the keystone checks the table against it).",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-002"
+      ],
+      "depends_on": [
+        "PRF-343"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/protocol-table.lisp",
+        "books/protocol-dispatch.lisp",
+        "tests/acl2/protocol-dispatch-tests.lisp"
+      ],
+      "progress_note": "lane defprotocol-2: REPL-admitted on persvati (protocol-dispatch 60,136 prover steps); certification by the batch.",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-proto-command-pinned-is-command-pinned"
+        }
+      ]
+    },
+    {
       "id": "PRF-346",
       "title": "F2: every served lookup the host reaches is constant or logarithmic in the store: the Xref ARTICLE/HEAD/HDR arms, the by-number withdrawn test, GROUP/LISTGROUP's summary and the re-pin read the catalog, equal to the archive walks they replace",
       "statement": "Lane sca-join-5. (1) books/served-catalog.lisp fn-rcompat-reply-cat (called by fn-nntp-archive-command-cat, the -cat dispatcher of the host's served read, books/served-catalog-chain.lisp fn-scr-command) answers ARTICLE/HEAD by number and of the current article with fn-scat-number-article / fn-scat-available-article (one number-table probe) and HDR/XHDR Xref with fn-scat-range-numbers, where books/nntp-reader-compat.lisp fn-rcompat-retrieval and fn-rcompat-hdr walk the pinned archive; KEYSTONES fn-rcompat-reply-cat-is-rcompat-reply, fn-rcompat-retrieval-cat-is-retrieval, fn-rcompat-hdr-cat-is-hdr (hypotheses: the archive is the catalog's view at V, fn-cnx-freshp). fn-nntp-number-withdrawn-p-cat probes the number table before walking the pinned withdrawn list W (fn-nntp-number-withdrawn-p-cat-is-archive). The boundary theorem fn-nntp-archive-command-cat-is-pinned keeps its statement. (2) books/catalog.lisp: the catalog keeps, per group, the live summary (count, least, greatest live number: a number whose row is not withdrawn and is a served number; fn-cat-live-count-from/-first/-last over the number column, no uniqueness needed) and the withdrawal horizon (fn-cat-horizon-of), maintained by commit and withdraw; the defabsstobj exports fn-cat-group-live-count/-low/-high and fn-cat-horizon are one probe each (rules fn-cat-group-live-count-is-count-from, -low-is-first, -high-is-last, fn-cat-horizon-is-horizon-of). fn-scat-group-summary and fn-scat-group-low read them at the top view (V the count, horizon <= V) and the probe pass otherwise: KEYSTONES fn-scat-group-summary-is-pass and fn-scat-group-low-is-pass, with no hypotheses; the -is-archive theorems keep their statements. (3) books/served-catalog-chain.lisp fn-scr-dispatch re-pins through fn-scr-repin (fn-scr-reselect: the group's low from the catalog at the live view, where fn-served-reselect folds fn-nntp-group-low over the live archive): KEYSTONE fn-scr-repin-is-served-repin under fn-scr-conn-okp; fn-scr-dispatch-is-scar-dispatch keeps its statement. Not claimed: that the host always takes the table branch (the lookup counts measure it); the withdrawal scans that maintain low/high are amortized (low only rises) and the downward scan crosses withdrawn numbers at the group's top; LISTGROUP of a range still costs its range.",
