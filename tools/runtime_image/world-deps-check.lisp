@@ -74,15 +74,19 @@
                         (push (cons kind name) *wdc-stripped*))))))))
 
 (defun wdc-use (what)
-  "The trace and the trap together: ens is traced (PROVER-READ) and its
-value is the trap; the check's own code has safety, so the use signals."
+  "The trace and the trap together.  ens is traced (PROVER-READ) and returns
+the trap; the uses below are compiled with safety, so each signals a type
+error naming the item.  (ACL2's own code is compiled at safety 0: the same
+use there gave a memory fault at #x0 on 2026-09-28, loud but unnamed and not
+guaranteed, which is why the trace is the check.)"
   (let ((result
           (handler-case
-              (cond ((equal what "ens")
-                     (access enabled-structure (ens *the-live-state*) :array-name))
-                    ((equal what "type-set-table")
-                     (aref2 'type-set-binary-+-table *type-set-binary-+-table* 0 0))
-                    (t (wdc-die "FN_WORLD_DEPS_USE ~s is neither ens nor type-set-table" what)))
+              (locally (declare (optimize (safety 3)))
+                (cond ((equal what "ens")
+                       (car (the t (ens *the-live-state*))))
+                      ((equal what "type-set-table")
+                       (car (the t (symbol-value '*type-set-binary-+-table*))))
+                      (t (wdc-die "FN_WORLD_DEPS_USE ~s is neither ens nor type-set-table" what))))
             (error (c)
               (wdc-write (substitute #\Space #\Newline
                                      (format nil "TRAPPED ~a: ~a" (type-of c) c)))
@@ -90,32 +94,16 @@ value is the trap; the check's own code has safety, so the use signals."
     (wdc-write (format nil "UNTRAPPED ~s" result))
     (sb-ext:exit :code 72 :abort t)))
 
-(defparameter *wdc-prover-state-readers*
-  '(ens install-global-enabled-structure recompress-global-enabled-structure
-    initial-global-enabled-structure update-wrld-structures set-w
-    with-useless-runes-aux type-set-binary-+ type-set-binary-* type-set-<
-    type-set-finish-1 initialize-pc-acl2 proof-builder-cl-proc-1)
-  "The functions whose ACL2 8.7 source reads the stripped prover state
-(lane image-strip's census; set-w and update-wrld-structures install a world
-and recompute the enabled structure; with-useless-runes-aux is the
-with-useless-runes macro's reader).")
+(defvar *wdc-finished* nil)
 
-(defvar *wdc-prover-reads* (make-hash-table :test 'eq))
-
-(defun wdc-prover-read (fn)
-  (unless (gethash fn *wdc-prover-reads*)
-    (sb-thread:with-recursive-lock (*wdc-lock*)
-      (unless (gethash fn *wdc-prover-reads*)
-        (setf (gethash fn *wdc-prover-reads*) t)
-        (wdc-write (fnn-with-world-key-printing
-                    (format nil "PROVER-READ ~s <- ~a" fn (wdc-caller))))))))
-
-(defun wdc-trace-prover-readers ()
-  (dolist (fn *wdc-prover-state-readers*)
-    (unless (fboundp fn) (wdc-die "the prover-state reader ~s is not defined" fn))
-    (let ((fn fn))
-      (sb-int:encapsulate fn 'world-deps-check-prover
-        (lambda (f &rest args) (wdc-prover-read fn) (apply f args))))))
+(defun wdc-finish ()
+  "The exit reports, once: the host leaves through fnn-exit, an
+(sb-ext:exit :abort t) that runs no exit hook, so the check reports from
+fnn-exit's encapsulation as well as from the exit hooks."
+  (unless *wdc-finished*
+    (setq *wdc-finished* t)
+    (wdc-stripped-report)
+    (wdc-summary)))
 
 (defun wdc-stripped-report ()
   (let ((rebuilt (remove-if (lambda (item) (fnn-stripped-item-trapped-p (car item) (cdr item)))
@@ -230,8 +218,10 @@ with-useless-runes macro's reader).")
   (wdc-trace-prover-readers)
   (let ((use (sb-ext:posix-getenv "FN_WORLD_DEPS_USE")))
     (when (and use (plusp (length use))) (wdc-use use)))
-  (push #'wdc-summary sb-ext:*exit-hooks*)
-  (push #'wdc-stripped-report sb-ext:*exit-hooks*)
+  (push #'wdc-finish sb-ext:*exit-hooks*)
+  (when (fboundp 'fnn-exit)
+    (sb-int:encapsulate 'fnn-exit 'world-deps-check
+      (lambda (f &rest args) (ignore-errors (wdc-finish)) (apply f args))))
   (sb-int:encapsulate 'fgetprop 'world-deps-check
     (lambda (f sym prop &rest more) (wdc-note sym prop) (apply f sym prop more)))
   (sb-int:encapsulate 'sgetprop 'world-deps-check

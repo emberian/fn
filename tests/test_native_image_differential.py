@@ -543,9 +543,9 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
 
     def test_zz_a_prover_read_of_stripped_state_fails_loudly(self):
         """The trace and trap witness (FN_WORLD_DEPS_USE, before start): a
-        call of ens is traced as a PROVER-READ, and its use, like aref2 of a
-        type-set table from code compiled with safety, fails with an error
-        naming the stripped item."""
+        call of ens is traced as a PROVER-READ; a use of what it returns, or
+        of a type-set table's value, from code compiled with safety fails
+        with an error naming the stripped item."""
         for use, name in (("ens", "GLOBAL-ENABLED-STRUCTURE"),
                           ("type-set-table", "*TYPE-SET-BINARY-+-TABLE*")):
             probe = Image(STRIPPED, True, self.tmp / ("trap-" + use))
