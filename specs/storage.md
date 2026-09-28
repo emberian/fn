@@ -1170,8 +1170,25 @@ SHA-256 (format 9's digest), its profile translated
 15 to 17 kept in order, the frontier word and the committed-history marker
 dropped; a set marker or a foreign second text is refused by name,
 `:history-marker-required`, `:frontier-format`), the configuration records
-as they are (unframed CBOR, no digest), and the records replayed
-(`fn-sxp-import-of-a-format-9-export`, `fn-f9-config-decode-of-a-format-9-frame`).
+as they are (unframed CBOR, no digest), and the records TRANSLATED then
+replayed (`fn-sxp-import-of-a-format-9-export`,
+`fn-f9-config-decode-of-a-format-9-frame`; books/store-format-9-records.lisp):
+each article record's two identities are re-derived from its own octets under
+BLAKE3, algorithm 2, exactly as a format-10 node derives them at acceptance
+(`fn-f9r-article-identities-are-format-10s`), every other field kept
+(`fn-f9r-article-keeps-every-other-field`); each retention event's obligation
+and subject are rewritten through the map the translated articles define; a
+format-9 identity no earlier article defined is refused by name
+(`reason=record-translation`, `:unknown-identity`), and so is a kind whose
+translation is not written yet (signed composites, verdicts, keyring
+snapshots, topic events: `:untranslatable-kind`, open); consumer events carry
+no identity and pass unchanged. Derived from secrets the node does not keep,
+some values cannot migrate by construction (lane blake3-digest): AUTHINFO
+credentials must be re-enrolled (an old verifier fails closed), pending
+invitation codes are void, posting-account pseudonyms change, and a poster
+cannot cancel a pre-migration article with their own Cancel-Lock (the key
+derivation changed; the lock is in the old article's octets; an operator's
+cancel is unaffected).
 "Identical" across the migration: the store digest (`store ROOT digest`,
 every line up to and including `digest state`) of the format-10 store is
 the digest, under the format-10 digest function, of the records the import
@@ -1183,6 +1200,8 @@ algorithm 2 (open, below), and "identical" is: the format-10 node's digest
 of its imported history equals the BLAKE3 digest of the canonical octets of
 the translated records, computed independently of the node (the test's
 job), and every non-identity field of every record is the archive's.
+Format 10 is BLAKE3 now (lane blake3-digest's attachment, merged into this
+lane), so the second reading is the one in force.
 
 STO-036: the genesis. Position 0 of the log is `journal/000000.log`: exactly
 one FNLG frame (version 1) of KIND 3, never a record kind the scan reads
@@ -1236,10 +1255,13 @@ hands the trailer to the scan of segment 1 (`fn-gen-open-of-the-genesis-init-wri
 it; tests/test_native_replay_determinism.py test_g opens two imports of one
 export (two genesis records, one history) and finds every other line equal.
 
-Open (format 10): the content-identity algorithm octet 2 (BLAKE3,
-`*fn-id-algorithm-blake3*`) and the record translation at import land with
-lane blake3-digest's attachment; the stored-digest theorem names that say
-`-sha256` become `-fn-digest` with it.
+Format 10's digest is BLAKE3 everywhere fn chooses (lane blake3-digest,
+merged: frame trailers and the log's chain, content identities of algorithm 2
+`*fn-id-algorithm-blake3*`, the MANIFEST, `store digest`, tombstones, the
+catch-up chain); SHA-256 remains only where RFC 8315 forces it (Cancel-Lock)
+and in the format-9 reader (books/store-format-9.lisp), by name. Open: the
+translation of signed composites, verdicts, keyring snapshots and topic
+events at import (refused by name today).
 
 STO-029: `store import` publishes by an explicit program (P-IMPORT,
 books/store-import-publication.lisp): the staged `ROOT.import-XXXX` is

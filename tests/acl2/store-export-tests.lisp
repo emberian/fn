@@ -133,15 +133,47 @@
  `(defconst *sxpt-manifest-9*
     ',(fn-sxp-manifest-under t (fn-sxp-entries *sxpt-profile-9* *sxpt-frontier*
                                                *sxpt-configs* *sxpt-records*))))
+;; The records translated (books/store-format-9-records.lisp): the article's
+;; two identities re-derived under this format's digest, every other field and
+;; every other event kept.
+(make-event `(defconst *sxpt-records-10* ',(fn-f9r-records *sxpt-records*)))
+(assert-event (equal (strip-cars *sxpt-records-10*) (strip-cars *sxpt-records*)))
+(assert-event (equal (cdr *sxpt-records-10*) (cdr *sxpt-records*)))
+(assert-event (not (equal (car *sxpt-records-10*) (car *sxpt-records*))))
+(make-event
+ `(defconst *sxpt-article-10*
+    ',(cadr (fn-store-event-decode-exact (cdar *sxpt-records-10*)))))
+(assert-event (equal (fn-record-msgid *sxpt-article-10*) "<sxpt-0@example.invalid>"))
+(assert-event (equal (fn-record-payload *sxpt-article-10*) '(65)))
+(assert-event (equal (fn-record-release-evidence *sxpt-article-10*) "evidence"))
+(make-event
+ `(defconst *sxpt-subject-10*
+    ',(fn-record-octets-string (fn-id-text (fn-id-subject-of-payload '(65))))))
+(assert-event (equal (fn-record-content-subject *sxpt-article-10*) *sxpt-subject-10*))
 ;; Reachable positive witness: the complete antecedent, then the conclusion.
 (assert-event (null (fn-f9-profile-refusal *sxpt-v9*)))
+(assert-event (not (equal (car *sxpt-records-10*) :refused)))
+(assert-event (fn-sxp-increasingp *sxpt-records-10*))
 (assert-event (equal (fn-f9-profile-of *sxpt-v9*) *fn-bs-profile-development*))
 (assert-event (fn-sxp-archive-format-9p *sxpt-profile-9*))
 (assert-event
  (equal (fn-sxp-import-plan *sxpt-manifest-9* *sxpt-profile-9* *sxpt-frontier*
                             *sxpt-configs* *sxpt-records* '(:current nil))
         (list :import *fn-bs-profile-development* *sxpt-frontier*
-              *sxpt-configs* *sxpt-records*)))
+              *sxpt-configs* *sxpt-records-10*)))
+;; A retention event naming a format-9 identity no article defined is refused
+;; by name (the translation never guesses).
+(make-event
+ `(defconst *sxpt-v1-obligation*
+    ',(fn-record-octets-string
+       (fn-id-hex-octets (append *fn-id-obligation-label* (list 0 1 1)
+                                 (make-list 32 :initial-element 5))))))
+(assert-event (fn-f9r-v1-identity-textp *sxpt-v1-obligation*))
+(defconst *sxpt-orphan*
+  (list (cons 7 (fn-store-event-encode
+                 (fn-store-retention-event-make :undertake 7 8 1 *sxpt-v1-obligation*
+                                                "article-9" "local" 1)))))
+(assert-event (equal (fn-f9r-records *sxpt-orphan*) '(:refused :unknown-identity 7)))
 ;; Hypothesis removed (no refusal): the marker `required' (1).  The retained
 ;; hypotheses hold; the translation is refused by name, so the plan is.
 (defconst *sxpt-v9-marked* (update-nth *fn-f9-history-marker* 1 *sxpt-v9*))
@@ -162,7 +194,8 @@
  (with-prover-step-limit
   20000
   (defthm sxpt-format-9-without-no-refusal
-   (implies (and (fn-sxp-increasingp records)
+   (implies (and (not (equal (car (fn-f9r-records records)) :refused))
+                 (fn-sxp-increasingp (fn-f9r-records records))
                  (fn-sxp-config-names-increasingp configs nil))
             (equal (fn-sxp-import-plan
                     (fn-sxp-manifest-under
@@ -170,7 +203,8 @@
                                        configs records))
                     (fn-f9-config-frame values9) frontier configs records
                     '(:current nil))
-                   (list :import (fn-f9-profile-of values9) frontier configs records)))
+                   (list :import (fn-f9-profile-of values9) frontier configs
+                         (fn-f9r-records records))))
    :hints (("Goal" :do-not-induct t)))))
 
 ;; The written word (fn-sxp-log-profile-is-a-valid-log-profile).

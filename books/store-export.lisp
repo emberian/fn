@@ -48,6 +48,7 @@
 (include-book "crypto-seam")
 (include-book "identity")
 (include-book "store-format-9")
+(include-book "store-format-9-records")
 
 ; -----------------------------------------------------------------------------
 ; Names and entries
@@ -267,8 +268,15 @@
   (let* ((f9p (fn-sxp-archive-format-9p profile))
          (mismatch (fn-sxp-manifest-mismatch
                     f9p (fn-sxp-entries profile frontier configs records) manifest))
-         (saved (fn-sxp-config-decode-archive profile)))
+         (saved (fn-sxp-config-decode-archive profile))
+         ; A format-9 archive's records with their identities re-derived under
+         ; this format's digest (books/store-format-9-records.lisp), after the
+         ; MANIFEST was checked over the archive's own octets.
+         (records (if f9p (fn-f9r-records records) records)))
     (cond (mismatch (list :refused :manifest-mismatch mismatch))
+          ((and f9p (consp records) (equal (car records) :refused))
+           (list :refused :record-translation
+                 (if (consp (cdr records)) (cadr records) nil)))
           ((fn-sxp-out-of-sequence records nil)
            (list :refused :record-out-of-sequence
                  (fn-sxp-out-of-sequence records nil)))
@@ -372,7 +380,10 @@
 ; SHA-256 lines -- with no field raised is: born under the format-10
 ; translation of that profile (every field but the two dropped ones), with
 ; the same configuration records, replaying exactly the same records in the
-; same order.
+; same order, each re-derived under this format's digest
+; (books/store-format-9-records.lisp fn-f9r-records: the translation keeps
+; every field but the identities, which are the ones a format-10 node
+; derives).
 (local
  (defthm fn-sxp-f9-frame-is-not-decoded
    (implies (null (fn-f9-profile-refusal values9))
@@ -388,7 +399,8 @@
 
 (defthm fn-sxp-import-of-a-format-9-export
   (implies (and (null (fn-f9-profile-refusal values9))
-                (fn-sxp-increasingp records)
+                (not (equal (car (fn-f9r-records records)) :refused))
+                (fn-sxp-increasingp (fn-f9r-records records))
                 (fn-sxp-config-names-increasingp configs nil))
            (equal (fn-sxp-import-plan
                    (fn-sxp-manifest-under
@@ -396,7 +408,8 @@
                                       configs records))
                    (fn-f9-config-frame values9) frontier configs records
                    '(:current nil))
-                  (list :import (fn-f9-profile-of values9) frontier configs records)))
+                  (list :import (fn-f9-profile-of values9) frontier configs
+                        (fn-f9r-records records))))
   :hints (("Goal" :use (fn-sxp-f9-frame-is-not-decoded
                         fn-f9-config-decode-of-a-format-9-frame
                         fn-f9-saved-format-word-of-config-frame
@@ -408,7 +421,7 @@
                             fn-f9-config-decode-of-a-format-9-frame
                             fn-f9-saved-format-word-of-config-frame
                             fn-sxp-log-profile-of-valid
-                            fn-sxp-manifest-under fn-sxp-entries
+                            fn-sxp-manifest-under fn-sxp-entries fn-f9r-records
                             fn-f9-config-frame fn-f9-config-decode
                             fn-f9-saved-format-word fn-f9-profile-of
                             fn-bs-config-decode fn-bs-profile-validp
