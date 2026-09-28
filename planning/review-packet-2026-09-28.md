@@ -173,7 +173,10 @@ not yet undertaken.
    than moving them one by one (a generic refinement lemma per access pattern)?
 2. **F8: the admission and reservation model** (RUNNING, f8-reservation: an itemised
    breakdown and a proposal). Today's model sums worst cases (1.2 GB at init vs a 256 MB
-   bar). *Scout:* prior art for provable admission control with measured use and a
+   bar): core file 204 MiB + 30 thread stacks 150 MiB + heap figure ~833 MiB (records
+   384 MiB). Core and stacks are address space, not resident, so the bar's definition is
+   open. Connections are NOT charged at all: one connection mid-article at an 11 MiB limit
+   holds ~383 MB of lists outside the figure (being fixed by zero-copy-commit). *Scout:* prior art for provable admission control with measured use and a
    bounded overdraft (servers, databases, real-time allocators)?
 3. **Zero-copy commit** (RUNNING): one per-connection body buffer through the four
    layers; the buffer becomes the reserve. *Scout:* the right bound when many
