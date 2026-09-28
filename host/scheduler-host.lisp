@@ -19,10 +19,6 @@
                               (fn-sched-initial-state config next-tx) state)))
     (value :ready))))
 
-(defun fn-sched-host-get (state)
- (declare (xargs :stobjs state :mode :program))
- (value (f-get-global 'fn-sched-state state)))
-
 (defun fn-sched-host-generation (state)
  (declare (xargs :stobjs state :mode :program))
  (value (fn-sched-generation (f-get-global 'fn-sched-state state))))
