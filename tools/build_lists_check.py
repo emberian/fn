@@ -63,6 +63,11 @@ DTN_BUILD = "host/native/build-dtn.lisp"
 
 # host file -> (why the DTN image omits it, {referenced name: why unreachable})
 DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
+    "host/interfaces.lisp": (
+        "the host-called entries' declarations (definterface, lane generators G7), "
+        "checked against the default image's world when it is built; several "
+        "declared entries (the extraction roots, the NNTP reader's) are not in the "
+        "DTN world, and the file defines no function any raw file calls", {}),
     "host/anchor-wire-host.lisp": (
         "only host/native/anchor.lisp uses it; the DTN image does not load anchor.lisp", {}),
     "host/anchor-server-host.lisp": (
