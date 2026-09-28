@@ -2,6 +2,7 @@
 ; replacement. All ordinary events delegate to fn-bpnf-step on the same state.
 (in-package "ACL2")
 (include-book "bp-fnbs-family-replay")
+
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpnf-family-issuedp (st)

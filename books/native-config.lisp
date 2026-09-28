@@ -978,3 +978,15 @@ raw owner binds exactly these octets and never resolves a name."
                   (list :refused :bounds-or-encoding))))
 
 (in-theory (disable fn-native-config-load))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-ncfg-ident-octetp)
+                    (:definition fn-ncfg-identp)
+                    (:definition fn-ncfg-identp-tail)
+                    (:definition fn-ncfg-listener-element)
+                    (:definition fn-ncfg-listener-plan)
+                    (:definition fn-ncfg-prefixp)))

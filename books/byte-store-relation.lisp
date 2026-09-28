@@ -5,6 +5,12 @@
 (include-book "byte-store-scan")
 (include-book "byte-store-programs")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-keys-belowp)
+                          (:definition fn-bs-op-listp)
+                          (:definition fn-bs-opp))))
+
 (defun fn-bs-initial-inputp (config frontier)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-cbor-octet-listp config)

@@ -2,6 +2,7 @@
 ; includes this book after its byte-store and Store-node parts.
 (in-package "ACL2")
 (include-book "byte-store-record-provenance-node")
+
 (local (in-theory (enable fn-bs-k6-created-stage-lookup-without-namep
                            fn-bs-k6-fresh-create-returns-ok
                            fn-bs-k6-write-created-inode-returns-ok-without-namep

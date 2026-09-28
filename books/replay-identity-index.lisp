@@ -68,6 +68,11 @@
 (include-book "msgid-index-concrete")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-midx-put-chars)
+                          (:rewrite fn-cpr-config-firstp-has-config))))
+
 ; -----------------------------------------------------------------------------
 ; 1. A trie of ids: the Message-ID trie's nodes, the value t at each id.
 

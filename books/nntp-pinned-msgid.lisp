@@ -16,6 +16,7 @@
 ; nothing evaluates it per command.
 (in-package "ACL2")
 (include-book "nntp")
+
 ;
 ; A Message-ID token begins with `<' (60), which is not a decimal digit, so
 ; the retrieval arm never reads it as an article number.

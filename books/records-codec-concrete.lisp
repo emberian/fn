@@ -33,6 +33,11 @@
 (in-package "ACL2")
 (include-book "records")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-record-ascii-octet-listp)
+                          (:definition fn-record-ascii-octetp))))
+
 ; -----------------------------------------------------------------------------
 ; The string domain, read in place.
 

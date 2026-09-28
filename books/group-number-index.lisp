@@ -92,3 +92,13 @@
                   (if (equal n m) value (fn-gnix-get n node))))
   :hints (("Goal" :induct (fn-gnix-get-set-induct n m node)
            :in-theory (enable fn-gnix-get fn-gnix-set))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-gnix-add)
+                    (:definition fn-gnix-build)
+                    (:definition fn-gnix-key)
+                    (:definition fn-gnix-set)))

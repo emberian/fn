@@ -6,6 +6,15 @@
 (include-book "msgid-index")
 (include-book "group-number-index")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-gnix-add)
+                          (:definition fn-gnix-build)
+                          (:definition fn-gnix-key)
+                          (:definition fn-midx-put-chars)
+                          (:definition fn-nntp-index-entry-available)
+                          (:definition fn-nntp-index-msgid-okp))))
+
 ; A bucket is (group entries . numbers): the group's entries, newest first,
 ; and NUMBERS, the same entries keyed by available number
 ; (books/group-number-index.lisp; over-number-index, PRF-189).  `fn-gidx-put'
@@ -357,3 +366,12 @@
                    (fn-nntp-token-string (car args)) range)
                 (fn-nntp-single session (fn-proto-text * :syntax))))
           (fn-nntp-single session (fn-proto-text * :syntax)))))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-gidx-numbers-okp)
+                    (:definition fn-gidx-put)
+                    (:rewrite fn-gidx-bucket-numbers-under-okp)))

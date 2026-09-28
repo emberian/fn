@@ -41,7 +41,6 @@
 (in-package "ACL2")
 (include-book "records-shape")
 
-
 ; This book is the schema-0 codec over the CBOR primitives, so it opens their
 ; definitions locally.  CBOR results stay opaque: the record lemmas exported
 ; by `cbor' are what close the goals about them.

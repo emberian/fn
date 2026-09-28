@@ -3,6 +3,14 @@
 (include-book "article-work")
 (include-book "article-work-budget")
 (local (include-book "arithmetic/top" :dir :system))
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-article-new-field)
+                          (:definition fn-article-parse-lines)
+                          (:rewrite fn-ap-at-most-is-length-bound)
+                          (:rewrite fn-aw-reverse-value))))
+
 (local (in-theory (disable fn-aw-r fn-aw-v fn-aw-c)))
 (defun fn-aw-current-size (current)
   (+ (len (fn-article-field-raw-lines current))

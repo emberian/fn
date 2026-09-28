@@ -31,6 +31,10 @@
 (include-book "payload-arena-bytes")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-arn-payload-listp-true-listp))))
+
 (defconst *fn-arp-page* 262144)
 
 ; As in books/payload-arena-bytes.lisp: the list reader, the slices and the

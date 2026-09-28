@@ -34,6 +34,13 @@
 (include-book "peer-pull")
 (include-book "feed-connection-invariants")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-pull-advancesp)
+                          (:definition fn-pull-close)
+                          (:definition fn-pull-completep)
+                          (:definition fn-pull-done-p))))
+
 ; -----------------------------------------------------------------------------
 ; The verdict on a plan
 

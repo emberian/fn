@@ -3,6 +3,15 @@
 (in-package "ACL2")
 (include-book "article")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-article-header-bytes-p)
+                          (:definition fn-article-header-rev-add-line)
+                          (:definition fn-article-new-field)
+                          (:definition fn-article-next-line-aux)
+                          (:definition fn-article-parse-lines)
+                          (:rewrite fn-article-header-rev-add-line-recomposes))))
+
 (defthm fn-article-append-associative
   (equal (append (append a b) c) (append a (append b c))))
 
@@ -638,3 +647,12 @@
            :in-theory (e/d (fn-article-parse fn-article-parse-under)
                            (fn-article-parse-lines fn-cbor-at-mostp
                             fn-article-fields-octets)))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-article-extended-header-is-list)
+                    (:rewrite fn-article-finish-fields-is-append)
+                    (:rewrite fn-article-octets-are-proper-list)))

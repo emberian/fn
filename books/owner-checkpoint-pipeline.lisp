@@ -51,6 +51,17 @@
 (include-book "owner-checkpoint-writer")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-scc-atomp)
+                          (:definition fn-scc-frames)
+                          (:definition fn-scc-nat-encodablep)
+                          (:definition fn-scc-seal)
+                          (:definition fn-scc-treep)
+                          (:definition fn-sccb-frame-octets)
+                          (:rewrite fn-sccr-cbor-octet-listp-is-scc-octet-listp)
+                          (:rewrite fn-sccr-scc-octet-listp-is-cbor-octet-listp))))
+
 ; The definitions, the estimate, the decision, the writer's step-level twins
 ; and the cut lemmas are books/owner-checkpoint-writer.lisp (split there by
 ; checkpoint-pipeline-5, D26).  This book composes them into the loop
