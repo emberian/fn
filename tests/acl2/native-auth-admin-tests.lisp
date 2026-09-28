@@ -388,13 +388,21 @@
         (fn-native-auth-admin-public-report
          (list (fn-naa-test-credential))
          (list (cons *fn-naa-test-name* *fn-naa-test-principal*)))))
-; Refusals: an unenrolled login, a malformed principal.
+; A login the file does not enroll is not the file's to bind: the answer
+; routes it to the configuration's account binding (PRF-388, PKT-560), with
+; nothing written; a malformed principal is refused.
 (assert-event
- (equal (fn-native-auth-admin-result-reason
-         (fn-native-auth-admin-bind
-          (fn-native-auth-admin-result-octets (fn-naa-test-set)) t
-          (fn-record-string-octets "nobody") *fn-naa-test-signing-hex* 128))
-        :unknown-login))
+ (equal (fn-native-auth-admin-bind
+         (fn-native-auth-admin-result-octets (fn-naa-test-set)) t
+         (fn-record-string-octets "nobody") *fn-naa-test-signing-hex* 128)
+        (list :account :account-login)))
+(assert-event
+ (equal (fn-native-auth-admin-bind nil nil (fn-record-string-octets "robin")
+                                   *fn-naa-test-signing-hex* 128)
+        (list :account :account-login)))
+(assert-event
+ (equal (fn-native-auth-admin-bind nil nil (fn-record-string-octets "robin") nil 128)
+        (list :account :account-login)))
 (assert-event
  (equal (fn-native-auth-admin-result-reason
          (fn-native-auth-admin-bind

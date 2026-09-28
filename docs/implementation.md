@@ -109,6 +109,34 @@ pass rule are all assembled in requested order. The manifest additionally
 records `jobs`, `jobs_effective`, `start_order`, `book_wall_seconds` and
 `certify_wall_seconds`, and `--jobs 1` keeps the requested order exactly.
 
+With more than one job the runner starts the ready book with the longest
+remaining include chain first (a critical-path list schedule), because a
+recertification's wall time is its longest chain, not its work over the
+cores (planning/architecture-recommendation-2026-09-28.md section 4.2).
+`--jobs auto` (`auto:N`: at most N; the default for `tools/farm.py`,
+`tools/remote_check.sh` and `tools/hbox_native.sh`) also chooses the count:
+`tools/chain_schedule.py` predicts each book's quiet seconds from its recent
+archived walls divided by the slowdown at the load it ran under, simulates
+the schedule at each count on that box's fitted slowdown curve
+`s(L) = 1 + slope * max(0, L - knee)` (L: running ACL2s plus the load already
+on the box, per CPU), and takes the fewest jobs within 3 % of the best
+prediction. The run prints `Critical chain: ...` with the chain and the
+chosen count, and the manifest's `schedule` records the chain and the whole
+predicted curve. `tools/shape_books.py --critical [--affected-by BOOK]` and
+`--chain BOOK` print the same chain without running anything;
+`tools/chain_schedule.py fit` refits the curves from the archived manifests.
+The prediction orders and sizes the run only; no verdict depends on it.
+Measured 2026-09-28 on a reserved, otherwise idle persvati, the 751 books
+`--affected-by books/config.lisp --recertify books/config` recertifies (the
+same set each time, all passed): the previous runner at 8 jobs 308 s
+(work-bound: 2,442 s summed over 8), `--jobs auto` 267 s at the 12 it chose
+(chain-bound: the realised chain 266 s), 16 jobs 278 s (chain-bound, the
+chain slower). Manifests certify-20260928T204026Z-2290548,
+certify-20260928T205549Z-2436707, certify-20260928T210620Z-2538408. The
+ranking was right; the absolute prediction ran high (351 s predicted for
+267 s): the fitted curve overstates the slowdown below a load per core of
+about 0.5.
+
 Measured on 2026-09-19 with ACL2 8.7 on SBCL 2.6.8, 12-core laptop, all 162
 Makefile roots, `FN_ACL2_TIMEOUT_SECONDS=1800 FN_CERTIFY_JOBS=8 make certify`
 (evidence `build/acl2/certify-20260919T154722Z-89314`, load average 12.6 during

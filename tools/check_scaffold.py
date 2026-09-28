@@ -244,7 +244,8 @@ def main() -> int:
             fail(f"{ident}: certification needs actual ACL2 event references")
         reverse = {r for r, value in requirements.items() if ident in value.get("proof_targets", [])}
         if reverse != set(entry.get("requirements", [])):
-            fail(f"{ident}: requirement/proof links are not reciprocal")
+            fail(f"{ident}: requirement/proof links are not reciprocal "
+                 "(python3 tools/merge_registry.py --reciprocate adds the missing side)")
 
     visited, visiting = set(), set()
 

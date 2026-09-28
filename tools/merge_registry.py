@@ -53,6 +53,28 @@ The batch runner reads it after every merge:
 A merge whose record is non-empty is not finished, whatever `git status`
 says.  The driver's own exit stays 1 on any conflict, so a scripted merge
 (build/coordinator/merge_lane.sh) stops too.
+
+RECIPROCITY is the one invariant that spans two of the four files: a proof's
+`requirements` in planning/proofs.json and each requirement's
+`proof_targets` in planning/requirements.json name the same links
+(tools/check_scaffold.py refuses them otherwise).  Git hands a driver one file
+at a time, so no per-file merge can keep it; and the recurring breaks were
+not merge drops at all (PRF-374, 378, 379 and 383, 2026-09-28: each lane
+registered its proof with `requirements` and never added the proof to the
+requirement's `proof_targets`).  After a merge or a registration:
+
+    python3 tools/merge_registry.py --reciprocate           # add missing sides
+    python3 tools/merge_registry.py --reciprocate --check   # exit 1 if any
+
+The repair is a union: a link either side names is written on both, so it
+never drops a link; removing one means removing it from both files.  A link
+to an id the other registry does not have is left for check_scaffold to name.
+
+A clone where the driver is not registered merges these files as TEXT,
+silently.  `--installed` exits 1 and says how to register it when the
+current clone's git config lacks `merge.fn-registry.driver`; `--install`
+registers it with a path relative to the work tree (git runs a driver at the
+top level), so each clone runs its own tree's driver.
 """
 from __future__ import annotations
 
@@ -60,6 +82,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import time
 
@@ -303,6 +326,70 @@ def pending_main(clear: bool) -> int:
     return 1 if entries else 0
 
 
+REQUIREMENTS = Path("planning/requirements.json")
+PROOFS = Path("planning/proofs.json")
+DRIVER_KEY = "merge.fn-registry.driver"
+DRIVER_COMMAND = "python3 tools/merge_registry.py %O %A %B %P"
+
+
+def reciprocate(requirements: dict, proofs: dict) -> list[str]:
+    """Make requirement `proof_targets` and proof `requirements` name the same
+    links by adding each missing side in place; return what was added."""
+    req_rows = {row["id"]: row for row in requirements.get("requirements", [])}
+    proof_rows = {row["id"]: row for row in proofs.get("proofs", [])}
+    added: list[str] = []
+    for ident, proof in proof_rows.items():
+        for target in proof.get("requirements", []):
+            row = req_rows.get(target)
+            if row is not None and ident not in row.get("proof_targets", []):
+                row.setdefault("proof_targets", []).append(ident)
+                added.append(f"{target} proof_targets += {ident}")
+    for ident, row in req_rows.items():
+        for target in row.get("proof_targets", []):
+            proof = proof_rows.get(target)
+            if proof is not None and ident not in proof.get("requirements", []):
+                proof.setdefault("requirements", []).append(ident)
+                added.append(f"{target} requirements += {ident}")
+    return added
+
+
+def reciprocate_main(root: Path, check: bool) -> int:
+    paths = (root / REQUIREMENTS, root / PROOFS)
+    requirements, proofs = (json.loads(path.read_text(encoding="utf-8")) for path in paths)
+    added = reciprocate(requirements, proofs)
+    for line in added:
+        print(("MISSING " if check else "ADDED ") + line)
+    if check:
+        print(f"merge_registry --reciprocate --check: {len(added)} one-way link(s)"
+              + ("; `merge_registry.py --reciprocate` adds the missing sides" if added else ""))
+        return 1 if added else 0
+    if added:
+        for path, document in zip(paths, (requirements, proofs)):
+            path.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n",
+                            encoding="utf-8")
+    print(f"merge_registry --reciprocate: {len(added)} link side(s) added")
+    return 0
+
+
+def git_config(root: Path, *words: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(root), "config", *words], check=False,
+                          capture_output=True, text=True)
+
+
+def installed_main(root: Path, install: bool) -> int:
+    if install:
+        git_config(root, "merge.fn-registry.name", "fn registry rows, id-keyed three-way")
+        git_config(root, DRIVER_KEY, DRIVER_COMMAND)
+    driver = git_config(root, "--get", DRIVER_KEY).stdout.strip()
+    if not driver or "merge_registry.py" not in driver:
+        print(f"merge_registry: NOT REGISTERED in this clone: git merges the registries "
+              f"as text (a one-sided link or a lost row is silent). Register it: "
+              f"python3 tools/merge_registry.py --install")
+        return 1
+    print(f"merge_registry: registered: {DRIVER_KEY} = {driver}")
+    return 0
+
+
 def read(path: str):
     text = Path(path).read_text(encoding="utf-8")
     return json.loads(text) if text.strip() else {}
@@ -311,9 +398,15 @@ def read(path: str):
 def main(argv: list[str]) -> int:
     if argv in (["--pending"], ["--clear"]):
         return pending_main(argv == ["--clear"])
+    if argv in (["--reciprocate"], ["--reciprocate", "--check"]):
+        return reciprocate_main(Path.cwd(), "--check" in argv)
+    if argv in (["--installed"], ["--install"]):
+        return installed_main(Path.cwd(), argv == ["--install"])
     if len(argv) != 4:
         print("usage: merge_registry.py BASE OURS THEIRS PATH  (git's %O %A %B %P)\n"
-              "       merge_registry.py --pending | --clear",
+              "       merge_registry.py --pending | --clear\n"
+              "       merge_registry.py --reciprocate [--check]\n"
+              "       merge_registry.py --installed | --install",
               file=sys.stderr)
         return 2
     base_file, ours_file, theirs_file, path = argv
