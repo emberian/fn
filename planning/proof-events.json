@@ -13001,6 +13001,43 @@
           "name": "fn-sfr-nth-is-nth"
         }
       ]
+    },
+    {
+      "id": "PRF-903",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-replay-extension-keeps-every-number"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-recovery-keeps-every-visible-number"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-prepare-never-allocates-below-the-watermark"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-crash-trace-never-reissues-a-number"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-host-open-node-is-the-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-decode-of-a-scanned-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-cpr-loop-prefix-grows"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ndur-recovery-never-reissues-a-logged-txid"
+        }
+      ]
     }
   ]
 }

@@ -109,7 +109,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-001",
-        "PRF-002"
+        "PRF-002",
+        "PRF-903"
       ],
       "verification": [
         "proof",
@@ -125,7 +126,9 @@
         "fn-allocate-at-watermark",
         "fn-watermark-does-not-conflict",
         "fn-state-has-fresh-local-numbers",
-        "fn-durable-completion-installs-exact-pending-article"
+        "fn-durable-completion-installs-exact-pending-article",
+        "fn-ndur-recovery-keeps-every-visible-number",
+        "fn-ndur-crash-trace-never-reissues-a-number"
       ],
       "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Allocation is at the watermark, conflicts with no installed number, and a durable completion installs exactly the pending article. Open: fn-allocate-at-watermark still carries hypotheses H1/H2 that core's report records as droppable once fn-watermark-bump-other is restated without its membership-list hypothesis."
     },
@@ -494,7 +497,8 @@
         "PRF-254",
         "PRF-255",
         "PRF-280",
-        "PRF-316"
+        "PRF-316",
+        "PRF-903"
       ],
       "verification": [
         "proof",
