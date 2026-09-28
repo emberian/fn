@@ -477,7 +477,7 @@ fn operator /etc/fn/fn.toml policy set exposure-trusted 192.168.1.0/24
 
 In order, these set:
 
-- how many connections at once (31 if unset; each costs memory);
+- how many connections at once (<!--limit:max-connections - 1-->31<!--/limit--> if unset; each costs memory);
 - how many from one address;
 - how fast one address may work (over it, fn slows it down; nothing is
   lost). At the default, 64, one address can send about 32 KB a second, so

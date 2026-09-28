@@ -9,7 +9,7 @@
 # non-parallel on SBCL (SBCL=, default the one on PATH, resolved to its real
 # binary and SBCL_HOME), with the system books fn includes certified by that
 # core.  The launcher it writes, DEST/acl2-literal-4g-tls64k, is a literal
-# `exec sbcl --core` with hbox's flags (--tls-limit 65536,
+# `exec sbcl --core` with hbox's flags (--tls-limit from books/profile-limits.lisp,
 # --dynamic-space-size 4096), which tools/acl2_toolchain.py qualifies.
 #
 # Why not Homebrew's `acl2` (lane laptop-acl2, 2026-09-28): its saved_acl2
@@ -50,11 +50,13 @@ home=$(sed -n "s/^export SBCL_HOME='\([^']*\)'.*/\1/p" acl2-8.7/saved_acl2)
 make -C acl2-8.7/books -j 2 ACL2="$dest/acl2-8.7/saved_acl2" USE_QUICKLISP=0 \
     $(for book in $books; do printf '%s.cert ' "$book"; done)
 launcher=$dest/acl2-literal-4g-tls64k
+# The thread-local storage limit is the runtime profile's (books/profile-limits.lisp).
+tls=$(python3 "$root/tools/profile_limits.py" get tls-limit)
 cat > "$launcher.part" <<LAUNCHER
 #!/bin/sh
 # fn's local ACL2 (tools/build_local_acl2.sh): ACL2 8.7, hbox's acl2-literal-4g-tls64k flags.
 export SBCL_HOME='$home'
-exec "$runtime" --tls-limit 65536 --dynamic-space-size 4096 --control-stack-size 64 --disable-ldb --core "$dest/acl2-8.7/saved_acl2.core" --end-runtime-options --no-userinit --eval '(acl2::sbcl-restart)' "\$@"
+exec "$runtime" --tls-limit $tls --dynamic-space-size 4096 --control-stack-size 64 --disable-ldb --core "$dest/acl2-8.7/saved_acl2.core" --end-runtime-options --no-userinit --eval '(acl2::sbcl-restart)' "\$@"
 LAUNCHER
 chmod +x "$launcher.part" && mv "$launcher.part" "$launcher"
 python3 "$root/tools/acl2_toolchain.py" identity "$launcher"

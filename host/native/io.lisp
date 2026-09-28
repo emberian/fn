@@ -7309,7 +7309,7 @@ observation (the COMPLETE re-signals it under the owner)."
 ;;; dynamic space (1.6 GB at the launcher's 32 GB) and let that much garbage
 ;;; pile up between collections (rep-wave-d baseline, section 1.2).  It bounds
 ;;; dead memory, never data, and decides nothing ACL2 decides.
-(defparameter +fnn-gc-nursery-octets+ (* 64 1024 1024))
+(defparameter +fnn-gc-nursery-octets+ (* (fn-profile-limit :gc-nursery-mib) 1024 1024)) ; books/profile-limits.lisp
 
 ;;; HST-025: the trigger is also bounded by the dynamic space this process
 ;;; reserved.  SBCL's own default is a fixed fraction of it (5%); a copying

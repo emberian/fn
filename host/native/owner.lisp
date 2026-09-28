@@ -997,10 +997,9 @@ Returns (values WORD READING)."
       (setq reading (fnn-owner-monotonic-ms))
       (destructuring-bind (w sched jline lline)
           (fnn-core 'fn-otm-disk-step (fnn-owner-gate-sched gate) kind reading arg)
-        (unless (member w '(:issued :returned :recovered :recovered-from-stall
-                            :became-slow :became-stalled :none :clock-regressed :fault
-                            ;; PRF-359: a :space event's words.
-                            :became-full :space-recovered :space-unobserved))
+        ;; The words are ACL2's table (books/owner-time-journal.lisp, defevent
+        ;; fn-otm-word): its generated recognizer decides, not a host copy.
+        (unless (fnn-core 'fn-otm-wordp w)
           (fnn-fault "owner returned a malformed disk event word ~a" w))
         (when (eq w :fault)
           (fnn-fault "owner refused the disk event ~a" kind))

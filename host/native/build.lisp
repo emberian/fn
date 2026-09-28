@@ -329,6 +329,10 @@
 (ld "host/bp-node-host.lisp" :ld-error-action :error)
 (ld "host/bp-node-machine-host.lisp" :ld-error-action :error)
 (ld "host/bp-receive-evidence-host.lisp" :ld-error-action :error)
+; The host-called entries, declared (books/definterface.lisp): after every
+; ACL2-mode host file, so each declaration is checked against this world
+; (class, the entry guard's kinds, keystones); a refuted one stops the build.
+(ld "host/interfaces.lisp" :ld-error-action :error)
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
@@ -477,6 +481,10 @@
 ;; tools/build_native_host.sh writes it into the saved launcher, so a run of
 ;; the image outside the installed launcher has the deployed stack (PKT-876).
 (value-triple (prog2$ (cw "FN_NATIVE_STACK_KIB ~x0~%" (fn-heap-stack-kib nil)) :stack))
+;; Every thread's thread-local storage, the profile's row
+;; (books/profile-limits.lisp :tls-limit): tools/build_native_host.sh writes it
+;; into the saved launcher as --tls-limit.
+(value-triple (prog2$ (cw "FN_NATIVE_TLS_LIMIT ~x0~%" (fn-profile-limit :tls-limit)) :tls))
 
 :q
 ; The saved world (HST-025, host/native/strip-world.lisp).  FN_NATIVE_WORLD

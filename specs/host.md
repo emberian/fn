@@ -475,11 +475,11 @@ connections reserved about 4 GB beside its heap, and on OpenBSD, where a
 reservation counts against the login class's datasize, the fourteenth thread
 was refused at 1,536 MiB. The figure is the heap-figure heap, plus the
 image's own mappings outside the dynamic space (at most the core file), plus
-THREADS x (STACK + 4 MiB; measured 2.5 MiB on Linux, at most 3 on OpenBSD):
-THREADS the 12 fixed threads, the 2 I/O loops that serve every connection
+THREADS x (STACK + <!--limit:thread-runtime-mib-->4<!--/limit--> MiB; measured 2.5 MiB on Linux, at most 3 on OpenBSD):
+THREADS the <!--limit:fixed-threads-->12<!--/limit--> fixed threads, the <!--limit:mux-loops-->2<!--/limit--> I/O loops that serve every connection
 (a connection is no thread since connection-multiplexing; the reservation
 counted one per `max-connections` until lane reservation-after-flip) and the
-16 control clients: 30; STACK a constant 1,024 KiB, seven times the 142 KiB
+<!--limit:control-clients-->16<!--/limit--> control clients: <!--limit:fixed-threads + mux-loops + control-clients-->30<!--/limit-->; STACK a constant <!--limit:stack-kib,-->1,024<!--/limit--> KiB, seven times the 142 KiB
 the node needs whatever the article since the served path's per-line
 recursions became loops (lane served-line-iterative, PRF-218; before, the
 need grew by 32 octets per line and this figure carried a per-line term). A total the machine cannot hold is refused by name

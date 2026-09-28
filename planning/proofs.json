@@ -6896,7 +6896,12 @@
         "fn-cev-open-of-request-encode",
         "fn-cev-msgid-octets",
         "fn-cev-request-payload-fits"
-      ]
+      ],
+      "keystone_subjects": {
+        "fn-log-sink-drop-counts": "fn-log-sink-offer",
+        "fn-log-sink-offer-preserves-okp": "fn-log-sink-offer",
+        "fn-log-sink-take-preserves-okp": "fn-log-sink-take"
+      }
     },
     {
       "id": "PRF-188",
