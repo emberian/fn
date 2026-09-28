@@ -2238,7 +2238,11 @@
       "events": [
         "fn-fc-offers-and-credentials-wait-for-tls-and-login",
         "fn-fc-starttls-refusal-closes-before-the-credential"
-      ]
+      ],
+      "keystone_subjects": {
+        "fn-fc-offers-and-credentials-wait-for-tls-and-login": "fn-fc-drive",
+        "fn-fc-starttls-refusal-closes-before-the-credential": "fn-fc-step"
+      }
     },
     {
       "id": "PRF-049",
@@ -2394,7 +2398,13 @@
         "fn-fc-auth-user-command-sends-the-configured-name-alone",
         "fn-fc-auth-pass-command-sends-the-configured-secret-alone",
         "fn-fc-decoded-profile-renders-verbatim-in-every-state"
-      ]
+      ],
+      "keystone_subjects": {
+        "fn-fc-auth-pass-command-sends-the-configured-secret-alone": "fn-fc-auth-pass-command",
+        "fn-fc-auth-user-command-sends-the-configured-name-alone": "fn-fc-auth-user-command",
+        "fn-fc-decoded-profile-renders-verbatim-in-every-state": "fn-fap-decode",
+        "fn-fc-refused-login-closes-without-an-offer": "fn-fc-step"
+      }
     },
     {
       "id": "PRF-052",
