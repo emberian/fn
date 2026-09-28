@@ -673,7 +673,12 @@ class Acl2Session:
         self.image = Path(image)
         self.timeout = timeout
         self.proc = subprocess.Popen(
-            [str(self.image), "--fn", "acl2", "session"], cwd=ROOT, env=environment(),
+            # The session is the test's own ACL2, not the node under test: it
+            # runs at ACL2's save-exec stack (64 MiB, what the retired bridge
+            # session had), because printing a 49 KiB bundle's octet list
+            # recurses past the deployed node's 1 MiB control stack.
+            [str(self.image), "--fn", "acl2", "session"], cwd=ROOT,
+            env=environment({"SBCL_USER_ARGS": "--control-stack-size 64MB"}, stack=False),
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         try:
             self._until_prompt()
