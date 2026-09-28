@@ -826,11 +826,28 @@ label; it does not select a policy."
 (defvar *fnn-sighup-count* 0)
 (defvar *fnn-owner-log-mutex* (sb-thread:make-mutex :name "fn service log"))
 
+(defvar *fnn-test-entropy-draws* 0)
+
+(defun fnn-test-entropy (width)
+  "Developer-only FN_NATIVE_TEST_ENTROPY=N (0 to 255): the Kth draw of this
+process (from 0) is octet I = (N + 7K + I) mod 256, recorded instead of read
+(the extraction gate's stateful differential).  NIL when unset."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_TEST_ENTROPY")))
+    (when raw
+      (unless (and (plusp (length raw)) (<= (length raw) 3) (every #'digit-char-p raw)
+                   (< (parse-integer raw) 256))
+        (fnn-fault "invalid FN_NATIVE_TEST_ENTROPY (expected 0 to 255)"))
+      (let ((n (parse-integer raw)) (k *fnn-test-entropy-draws*))
+        (incf *fnn-test-entropy-draws*)
+        (loop for i below width collect (mod (+ n (* 7 k) i) 256))))))
+
 (defun fnn-csprng-octets (width what)
   "Exactly WIDTH octets from the OS CSPRNG as an octet list; short or failed
 entropy is a host fault.  WIDTH is ACL2's."
   (unless (and (integerp width) (< 0 width))
     (fnn-fault "ACL2 returned an invalid ~a width" what))
+  (let ((recorded (fnn-test-entropy width)))
+    (when recorded (return-from fnn-csprng-octets recorded)))
   (let ((fd (fnn-open "/dev/urandom" sb-posix:o-rdonly))
         (answer (fnn-make-octets width))
         (offset 0))
@@ -1491,12 +1508,35 @@ compares nothing."
     (fnn-store-fault (condition) (error condition))
     (error () (values 0 nil))))
 
+(defun fnn-test-clock-readings ()
+  "Developer-only FN_NATIVE_TEST_CLOCK=MONO-MS:SECONDS:MICROSECONDS: the
+readings a prepare's observation is taken from, recorded instead of read (the
+extraction gate's stateful differential gives the image and the extracted
+program the same environment).  NIL when unset."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_TEST_CLOCK")))
+    (when raw
+      (let* ((a (position #\: raw)) (b (and a (position #\: raw :start (1+ a))))
+             (words (and b (list (subseq raw 0 a) (subseq raw (1+ a) b) (subseq raw (1+ b))))))
+        (unless (and words (every (lambda (w) (and (plusp (length w)) (<= (length w) 18)
+                                                   (every #'digit-char-p w)))
+                                  words))
+          (fnn-fault "invalid FN_NATIVE_TEST_CLOCK (expected MONO-MS:SECONDS:MICROSECONDS)"))
+        (mapcar #'parse-integer words)))))
+
 (defun fnn-store-prepare-observation ()
-  (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
-    (fnn-core 'fn-clock-observation
-              (floor (* (get-internal-real-time) 1000)
-                     internal-time-units-per-second)
-              wall +fnn-owner-wall-error-ms+ has-wall)))
+  (let ((recorded (fnn-test-clock-readings)))
+    (if recorded
+        (destructuring-bind (wall has-wall)
+            (fnn-core 'fn-otm-wall-reading (second recorded) (third recorded)
+                      +fnn-owner-unix-dtn-offset-seconds+)
+          (unless (and (integerp wall) (<= 0 wall) (member has-wall '(t nil)))
+            (fnn-fault "ACL2 returned a malformed wall reading"))
+          (fnn-core 'fn-clock-observation (first recorded) wall +fnn-owner-wall-error-ms+ has-wall))
+      (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
+        (fnn-core 'fn-clock-observation
+                  (floor (* (get-internal-real-time) 1000)
+                         internal-time-units-per-second)
+                  wall +fnn-owner-wall-error-ms+ has-wall)))))
 
 (defun fnn-seal-octets (octets)
   "The arena update a prepare names: seal OCTETS (the octet list the core
@@ -5342,6 +5382,10 @@ tree root), or stop the build."
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
+    ;; the extraction gate's stateful differential (tools/extract/stateful.py):
+    ;; a recorded clock observation and a recorded entropy stream, the
+    ;; environment readings the image and the extracted program then share.
+    "FN_NATIVE_TEST_CLOCK" "FN_NATIVE_TEST_ENTROPY"
     "FN_NATIVE_STATE_CHECKPOINT_FAULT" "FN_NATIVE_IMPORT_FAULT" "FN_NATIVE_EXPORT_FAULT"
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST"
     "FN_NATIVE_DISK_FREE"

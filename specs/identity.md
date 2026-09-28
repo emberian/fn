@@ -529,6 +529,15 @@ evidence that the seam carries no collision claim; it rebuilds
 `must-fail` records that digest injectivity and signature unforgeability are
 not theorems.
 
+In the images and the extracted program `fn-sig-verify` evaluates: its
+realizer is pure ML-DSA-65 verification by the image's `lib/libfn-mldsa65`
+(host/native/signatures.lisp; tools/extract/native.scm calls the same file),
+T exactly for a 1952-octet key, a 3309-octet signature, an octet message and
+a verifying signature, NIL for every other shape, a library fault an error.
+That realizer is the trust row A-SIG-NATIVE ([failure model](failures.md)),
+not an attachment: the logic above is unchanged, and `fn-sig-sign` and
+`fn-sig-public-key` stay unattached.
+
 Shapes mirror `~/dev/breadstuffs/metatheory/Dregg2/Authority/BiscuitGraph.lean`
 line 55 (`SigChecker`, an opaque `PubKey -> Block -> Bool` the law only reads)
 and `Dregg2/Crypto/CapabilityChain.lean` line 65 (`SigScheme.verify` inside

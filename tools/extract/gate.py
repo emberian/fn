@@ -15,7 +15,11 @@ marker and zero executed cases each FAIL with a named reason.  Steps:
      compared once each and byte-identical (compare.sh);
   3. probes: the boundary probes through both sides, every probe identical;
   4. store: a copy of a real format-9 store, rebound, read through both;
-  5. functions: the per-function differential (fcheck.py gen -> ACL2 ->
+  5. stateful: the writable verbs (`store ROOT post|recover|node-secret')
+     through IMAGE and the program on twin stores, step for step
+     (stateful.py): outcomes, durable files and subsequent reads identical,
+     every case of its manifest run once, every required class covered;
+  6. functions: the per-function differential (fcheck.py gen -> ACL2 ->
      fcheck.py scheme -> csc -> the fcheck program -> fcheck.py report): every
      vector of the manifest executed once and agreeing; uncovered functions
      are listed, never counted as agreement.
@@ -61,6 +65,9 @@ class Tools:
     ldd: list = field(default_factory=lambda: ["ldd"])
     cc: list = field(default_factory=lambda: ["cc", "--version"])
     store: str = "/tank/fn/scratch/fixtures/n1k-2k/store"
+    # the stateful differential's driver (tools/extract/stateful.py); the
+    # gate's tests substitute a stand-in
+    stateful: list = field(default_factory=lambda: ["python3", str(X / "stateful.py")])
     per: int = 20
     source: str = None
 
@@ -170,7 +177,7 @@ class Gate:
             self.fail("served.json extracts no functions")
         inv = self.load_json(self.e / "inventory.json", "build")
         self.load_json(self.e / "erased.json", "build")
-        for name in ("served.scm", "fntable.scm", "csc-served.args", "lib/libfn-blake3.so"):
+        for name in ("served.scm", "fntable.scm", "csc-served.args", "link.args", "lib/libfn-blake3.so"):
             self.nonempty(self.e / name, "build")
         served = self.e / "served"
         if not (served.is_file() and os.access(served, os.X_OK)):
@@ -275,6 +282,45 @@ class Gate:
                 self.fail("%s DIFFER (%s against %s)" % (t, a, b))
             print("%s over the store: %d bytes IDENTICAL" % (t, a.stat().st_size))
 
+    def stateful(self):
+        """The writable verbs, step for step on twin stores (stateful.py): the
+        outcome, the durable files and the subsequent read of every step
+        identical, every case of its manifest run once, every required class
+        covered."""
+        self.step = "stateful"
+        d = self.c / "stateful"
+        if d.exists():
+            shutil.rmtree(d)
+        log = self.c / "stateful.log"
+        rc = self.run("stateful.py", self.t.stateful + [self.image, self.e / "served", d], stdout=log,
+                      stderr="stdout", env=self.acl2_env)
+        man = self.load_json(d / "manifest.json", "stateful")
+        doc = self.load_json(d / "stateful.json", "stateful")
+        cases = sorted((man.get("cases") or {}))
+        if not cases:
+            self.fail("the stateful manifest lists no cases")
+        results = doc.get("results") or []
+        seen = collections.Counter(r.get("case") for r in results)
+        for c in cases:
+            if seen[c] != 1:
+                self.fail("case %s ran %d times (want once)" % (c, seen[c]))
+        extra = sorted(set(seen) - set(cases))
+        if extra:
+            self.fail("cases %s are not in the manifest" % extra)
+        bad = [r for r in results if r.get("verdict") != "agree"]
+        if bad:
+            self.fail("%s DIFFER at %s: %s" % (bad[0]["case"], bad[0].get("step"), bad[0].get("reason")))
+        if doc.get("missing"):
+            self.fail("classes not covered: %s" % ", ".join(doc["missing"]))
+        if doc.get("steps_run") != doc.get("steps_expected") or not doc.get("steps_run"):
+            self.fail("%s of %s steps ran" % (doc.get("steps_run"), doc.get("steps_expected")))
+        if doc.get("status") != "PASS":
+            self.fail("stateful.json status %r" % doc.get("status"))
+        if rc != 0:
+            self.fail("stateful.py %s" % describe_status(rc))
+        print("stateful: %d cases, %d steps agree; classes %s"
+              % (len(cases), doc["steps_run"], ",".join(doc.get("covered", []))))
+
     def functions(self):
         self.step = "functions"
         c, e = self.c, self.e
@@ -304,8 +350,12 @@ class Gate:
             self.fail("zero vectors")
         shutil.copy(self.x / "fcheck-main.scm", e / "fcheck-main.scm")
         (e / "fcheck").unlink(missing_ok=True)
-        self.fcheck_args = ["-O2", "-d0", "fcheck-main.scm", "-o", "fcheck", "-L", "-lcrypto",
-                            "-L", "-L%s/lib -lfn-blake3 -Wl,-rpath,%s/lib" % (e, e)]
+        # the served program's own link line (build.sh's link.args: BLAKE3,
+        # and the image's ML-DSA-65 library)
+        link = (e / "link.args").read_text().strip() if (e / "link.args").is_file() else ""
+        if not link:
+            self.fail("build/extract/link.args is missing or empty")
+        self.fcheck_args = ["-O2", "-d0", "fcheck-main.scm", "-o", "fcheck", "-L", "-lcrypto", "-L", link]
         env = dict(self.env)
         env["PATH"] = str(Path(self.t.csc).parent) + os.pathsep + env.get("PATH", "")
         self.need("csc fcheck-main", self.t.swarm + [self.t.csc] + self.fcheck_args, cwd=e, env=env,
@@ -357,11 +407,19 @@ class Gate:
             if m:
                 libs[m.group(1)] = m.group(2)
         found = {}
-        for want in ("libfn-blake3", "libcrypto", "libchicken"):
+        for want in ("libfn-blake3", "libfn-mldsa65", "libfn-lz4", "libcrypto", "libchicken"):
             name = next((n for n in libs if n.startswith(want + ".")), None)
             if name is None:
                 self.fail("the program does not resolve %s (%s)" % (want, out))
             found[want] = {"soname": name, "path": libs[name], "sha256": sha256_file(libs[name])}
+        # A-SIG-NATIVE and the LZ4 encoder: the program calls the files beside
+        # the image's core that the image loads (host/native/signatures.lisp,
+        # host/native/lz4.lisp), not a second build of the same source.
+        for want in ("libfn-mldsa65", "libfn-lz4"):
+            image_lib = Path(os.path.realpath(self.image)).parent / "lib" / found[want]["soname"]
+            if os.path.realpath(found[want]["path"]) != os.path.realpath(image_lib):
+                self.fail("the program's %s is %s, not the image's %s"
+                          % (found[want]["soname"], found[want]["path"], image_lib))
         return found
 
     def capture(self, argv):
@@ -429,7 +487,8 @@ class Gate:
         try:
             for name, stepfn in (("1 build", self.build), ("1b manifest", self.manifest),
                                  ("2 transcripts", self.transcripts), ("3 probes", self.probes),
-                                 ("4 store", self.store), ("5 functions", self.functions)):
+                                 ("4 store", self.store), ("5 stateful", self.stateful),
+                                 ("6 functions", self.functions)):
                 print("==", name, flush=True)
                 stepfn()
                 sys.stdout.flush()

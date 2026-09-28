@@ -23,10 +23,44 @@ diagnostic on the side, not the refusal, and is not compared.
   probes.py sbcl OUT.lisp       the probes as --eval forms for the image
   probes.py run-sbcl IMAGE OUT  run them in the developer image IMAGE, output to OUT
   probes.py compare A B         compare the two outputs; exit 1 naming the first difference
+  probes.py sig-vectors LIB OUT the ML-DSA-65 vectors (sig-vectors.json) from the committed carrier
 """
+import json
+import os
 import sys
 
 SECRET = [7] * 32
+
+# A-SIG-NATIVE's vectors (tools/extract/sig-vectors.json, made once by
+# `probes.py sig-vectors LIBRARY OUT' from the committed OpenSSL-3.5-signed
+# carrier tests/fixtures/dregg-e1/signed.eml): an ML-DSA-65 public key, the
+# signed preimage and its signature, which the image's realizer of
+# fn-sig-verify (host/native/signatures.lisp) and the program's
+# (tools/extract/native.scm) must answer alike, with each mutation.
+SIG_VECTORS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sig-vectors.json")
+
+
+def sig_probes():
+    v = json.load(open(SIG_VECTORS))
+    pk, m, sig = (list(bytes.fromhex(v[k])) for k in ("public_key", "message", "signature"))
+    flip = lambda xs, i: xs[:i] + [xs[i] ^ 1] + xs[i + 1:]  # noqa: E731
+    return [
+        ("sig-verifies", "FN-SIG-VERIFY", [pk, m, sig]),
+        ("sig-flipped-signature", "FN-SIG-VERIFY", [pk, m, flip(sig, 1000)]),
+        ("sig-flipped-message", "FN-SIG-VERIFY", [pk, flip(m, len(m) // 2), sig]),
+        ("sig-flipped-key", "FN-SIG-VERIFY", [flip(pk, 5), m, sig]),
+        ("sig-short-signature", "FN-SIG-VERIFY", [pk, m, sig[:-1]]),
+        ("sig-long-key", "FN-SIG-VERIFY", [pk + [0], m, sig]),
+        ("sig-non-octet-key", "FN-SIG-VERIFY", [pk[:-1] + [256], m, sig]),
+        ("sig-non-list-message", "FN-SIG-VERIFY", [pk, 7, sig]),
+        ("sig-empty-message", "FN-SIG-VERIFY", [pk, [], sig]),
+    ]
+
+
+# Probes of a realizer the extracted code calls in place of a function with no
+# ACL2 body: the image's fnn-call of the function against the program's
+# procedure (chicken.py SHIMS), which every call site in served.scm names.
+SHIM_PROBES = {"FN-SIG-VERIFY": "a-native-sig-verify"}
 # (label, entry, args); an arg is an int, a list (nested), ("arena",), ("state",),
 # or ("u8vec", [...]) (the host's own byte vector).
 PROBES = [
@@ -40,12 +74,18 @@ PROBES = [
     ("intern-generation", "FN-INTERN-EVENTS", [[], [], -1, ("arena",)]),
     ("intern-keyring", "FN-INTERN-EVENTS", [[], 7, 0, ("arena",)]),
     ("intern-empty", "FN-INTERN-EVENTS", [[], [], 0, ("arena",)]),
-]
+] + sig_probes()
+
+
+def flat_ints(a):
+    return isinstance(a, list) and a and all(isinstance(x, int) for x in a)
 
 
 def scm_arg(a):
     if isinstance(a, int):
         return str(a)
+    if flat_ints(a):
+        return "'(%s)" % " ".join(map(str, a))
     if isinstance(a, list):
         return "(list %s)" % " ".join(scm_arg(x) for x in a) if a else "'()"
     if a[0] == "arena":
@@ -60,6 +100,8 @@ def scm_arg(a):
 def lisp_arg(a):
     if isinstance(a, int):
         return str(a)
+    if flat_ints(a):
+        return "'(%s)" % " ".join(map(str, a))
     if isinstance(a, list):
         return "(list %s)" % " ".join(lisp_arg(x) for x in a) if a else "nil"
     if a[0] == "arena":
@@ -78,7 +120,8 @@ def scheme(out):
         h.write("(define (boundary-probes arena)\n  (list\n")
         for label, entry, args in PROBES:
             h.write('   (list "%s" "%s" (lambda () (%s %s)))\n' % (
-                label, entry, "|b:ACL2::%s|" % entry, " ".join(scm_arg(a) for a in args)))
+                label, entry, SHIM_PROBES.get(entry, "|b:ACL2::%s|" % entry),
+                " ".join(scm_arg(a) for a in args)))
         h.write("))\n")
 
 
@@ -147,8 +190,32 @@ def compare(a, b):
     return 1 if bad else 0
 
 
+def sig_vectors(library, out):
+    """The committed carrier's ML-DSA-65 (key, preimage, signature) triple that
+    LIBRARY verifies (tests/mldsa65_interop.py's extraction: a wrong parse
+    cannot verify), written to OUT."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    sys.path.insert(0, str(root))
+    from tests.mldsa65_interop import Seam, carrier_candidates  # noqa: E402
+    seam = Seam(library)
+    data = (root / "tests/fixtures/dregg-e1/signed.eml").read_bytes()
+    for found in carrier_candidates(data):
+        for (pk, msg, sig), _ in found:
+            if seam.lib.fn_mldsa65_verify(sig, len(sig), msg, len(msg), pk) == 0:
+                Path(out).write_text(json.dumps({
+                    "about": "an OpenSSL-3.5-made ML-DSA-65 signature over fn's signed preimage, from the "
+                             "committed carrier tests/fixtures/dregg-e1/signed.eml (probes.py sig-vectors)",
+                    "public_key": pk.hex(), "message": msg.hex(), "signature": sig.hex()}, indent=1) + "\n")
+                return 0
+    print("sig-vectors: no carrier triple verifies under %s" % library)
+    return 1
+
+
 if __name__ == "__main__":
     verb = sys.argv[1]
+    if verb == "sig-vectors":
+        sys.exit(sig_vectors(sys.argv[2], sys.argv[3]))
     if verb == "scheme":
         scheme(sys.argv[2])
     elif verb == "sbcl":

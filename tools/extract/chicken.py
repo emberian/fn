@@ -183,7 +183,31 @@ SHIMS = {
     "ACL2::FN-HX-FSYNC-DIR": "a-hx-fsync-dir", "ACL2::FN-HX-STATFS": "a-hx-statfs",
     "ACL2::FN-HX-REALPATH": "a-hx-realpath", "ACL2::FN-HX-OS": "a-hx-os",
     "ACL2::FN-HX-WARN": "a-hx-warn",
+    # host/store-write-host.lisp's (lane extract-writable; tools/extract/hostio.scm)
+    "ACL2::FN-HX-GETENV": "a-hx-getenv", "ACL2::FN-HX-STRERROR": "a-hx-strerror",
+    "ACL2::FN-HX-KILL-SELF": "a-hx-kill-self", "ACL2::FN-HX-OUT": "a-hx-out",
+    "ACL2::FN-HX-LOCK-EXCLUSIVE": "a-hx-lock-exclusive", "ACL2::FN-HX-UNLOCK": "a-hx-unlock",
+    "ACL2::FN-HX-OPEN-RW": "a-hx-open-rw", "ACL2::FN-HX-OPEN-RO": "a-hx-open-ro",
+    "ACL2::FN-HX-CREATE-EXCL": "a-hx-create-excl", "ACL2::FN-HX-CLOSE": "a-hx-close",
+    "ACL2::FN-HX-PWRITE": "a-hx-pwrite", "ACL2::FN-HX-PWRITE-ZEROS": "a-hx-pwrite-zeros",
+    "ACL2::FN-HX-WRITE-ALL": "a-hx-write-all", "ACL2::FN-HX-READ-AT": "a-hx-read-at",
+    "ACL2::FN-HX-FDATASYNC": "a-hx-fdatasync", "ACL2::FN-HX-FSYNC": "a-hx-fsync",
+    "ACL2::FN-HX-PREALLOCATE": "a-hx-preallocate", "ACL2::FN-HX-UNLINK": "a-hx-unlink",
+    "ACL2::FN-HX-MKDIR": "a-hx-mkdir", "ACL2::FN-HX-LINK": "a-hx-link", "ACL2::FN-HX-RENAME": "a-hx-rename",
+    "ACL2::FN-HX-LSTAT-FULL": "a-hx-lstat-full", "ACL2::FN-HX-LIST-WINDOW": "a-hx-list-window",
+    "ACL2::FN-HX-LIST-BOUNDED": "a-hx-list-bounded", "ACL2::FN-HX-READ-FILE": "a-hx-read-file",
+    "ACL2::FN-HX-CLOCK": "a-hx-clock", "ACL2::FN-HX-RANDOM-OCTETS": "a-hx-random-octets",
+    "ACL2::FN-HX-RANDOM-HEX": "a-hx-random-hex", "ACL2::FN-HX-SYNC-DIR": "a-hx-sync-dir",
+    "ACL2::FN-HX-GETPID": "a-hx-getpid", "ACL2::FN-HX-LZ4-CANDIDATE": "a-hx-lz4-candidate",
+    "ACL2::FN-HX-GETCWD": "a-hx-getcwd",
+    # crypto-seam's constrained verifier, bound as the image binds it
+    # (host/native/signatures.lisp; tools/extract/native.scm)
+    "ACL2::FN-SIG-VERIFY": "a-native-sig-verify",
 }
+# The host ports whose calls of ACL2 entries are boundary calls (io.lisp's
+# fnn-call): host/store-write-host.lisp.  store-open-host.lisp (FN-XO-) keeps
+# lane extract-2's interior calls.
+PORT_PREFIX = "ACL2::FN-XW-"
 # The image's native digest (host/native/digest.lisp): calls of these go to
 # tools/extract/native.scm -- BLAKE3 through lib/libfn-blake3 (the images'
 # library), SHA-256 through libcrypto for the Cancel-Lock hash alone; the
@@ -227,10 +251,11 @@ SHIM_CLASS = {
     "ACL2::FN-DURABLE-REALIZE-OCTET": "file primitive (A-DURABLE-EXTENT)",
     "ACL2::FN-DURABLE-REALIZE-OCTETS": "file primitive (A-DURABLE-EXTENT)",
     "ACL2::FN-DURABLE-REALIZE-LZ": "file primitive and ACL2's decoder (A-DURABLE-LZ)",
+    "ACL2::FN-SIG-VERIFY": "ML-DSA-65 verifier, the image's lib/libfn-mldsa65 (A-SIG-NATIVE)",
 }
 for _n in list(SHIMS):
     if _n.startswith("ACL2::FN-HX-"):
-        SHIM_CLASS[_n] = "host primitive (host/store-open-host.lisp; tools/extract/hostio.scm)"
+        SHIM_CLASS[_n] = "host primitive (host/store-open-host.lisp, host/store-write-host.lisp; tools/extract/hostio.scm)"
 # fx forms for arithmetic whose arguments and result are fixnums.
 FX = {
     "ACL2::BINARY-+": "fx+", "ACL2::BINARY-*": "fx*",
@@ -303,7 +328,10 @@ class Backend:
         self.pred_cache = {}
         self.result_cache = {}
         self.cur_star1 = False
+        self.cur = ""
+        self.inline = True
         self.checked_needed = set()
+        self.boundary_names = {b["name"] for b in ir.get("boundary", [])}
         self.native = True
         self._index_stobj_prims()
 
@@ -821,6 +849,10 @@ class Backend:
             head = NATIVE[target]
         elif fn in PRIMS:
             head = None
+        elif self.cur.startswith(PORT_PREFIX) and fn in self.boundary_names and fn != self.cur:
+            # A host port's call of an ACL2 entry is io.lisp's fnn-call of it:
+            # the entry's boundary procedure (front end: xt-port-callees).
+            head = scm_sym("b:" + fn)
         elif self.cur_star1 and fn in self.checked_needed:
             head = scm_sym("c:" + fn)
         else:
@@ -893,7 +925,13 @@ class Backend:
         self.cur = f["name"]
         self.counter = 0
         self.cur_verified = f.get("class") == "common-lisp-compliant"
-        self.cur_star1 = f.get("class") == "program" and f.get("invariant_risk", False)
+        # A host port's function (FN-XW-) is io.lisp's raw host code written in
+        # :program: the image runs no *1* body for it, and each of its calls of
+        # an ACL2 entry is a boundary call (emit_call), which checks that
+        # entry's guard, stobj updaters' included.  ACL2's invariant-risk flag
+        # on it (it reaches stobj updaters) is answered by those checks.
+        self.cur_star1 = (f.get("class") == "program" and f.get("invariant_risk", False)
+                          and not f["name"].startswith(PORT_PREFIX))
         genv = self.guard_env(f)
         env = {v: ("var", genv.get(v)) for v in f["formals"]}
         want = self.nout(f["name"])
@@ -1020,6 +1058,55 @@ class Backend:
                 % (scm_sym("b:" + name), lname, lname, len(formals), " ".join(scm_sym(v) for v in formals),
                    "\n    ".join(body) if body else "#t", lname, call))
 
+    # --- selective inlining (lane extract-writable, E2) -----------------------------------
+    # A guard-verified, single-valued, non-recursive function whose body is at
+    # most INLINE_NODES term nodes and takes no stobj (the record accessors
+    # fn-ag-car/fn-ag-cdr, byte and field predicates) is emitted as CHICKEN's
+    # define-inline: every call site gets the body, the procedure call and its
+    # argument checks go.  The rest stays a procedure (a global -inline run
+    # never finished compiling: lane extract-2).  Its value as a procedure
+    # (fntable.scm, the per-function differential) is the same lambda.
+    INLINE_NODES = 12
+
+    def term_nodes(self, t, limit):
+        if t[0] in ("v", "q"):
+            return 1
+        if t[0] == "l":
+            n = 1 + self.term_nodes(t[2], limit)
+            for a in t[3]:
+                if n > limit:
+                    break
+                n += self.term_nodes(a, limit)
+            return n
+        n = 1
+        for a in t[2]:
+            if n > limit:
+                break
+            n += self.term_nodes(a, limit)
+        return n
+
+    def term_calls(self, t, acc):
+        if t[0] == "c":
+            acc.add(t[1])
+            for a in t[2]:
+                self.term_calls(a, acc)
+        elif t[0] == "l":
+            self.term_calls(t[2], acc)
+            for a in t[3]:
+                self.term_calls(a, acc)
+        return acc
+
+    def inline_ok(self, f):
+        n = f["name"]
+        if (f.get("class") != "common-lisp-compliant" or n in SHIMS or n in INLINE or n in NATIVE
+                or n in self.boundary_names or n.startswith(PORT_PREFIX)
+                or any(f.get("stobjs_in") or []) or len(f.get("stobjs_out") or [None]) > 1
+                or any(x for x in (f.get("stobjs_out") or []))):
+            return False
+        if self.term_nodes(f["body"], self.INLINE_NODES) > self.INLINE_NODES:
+            return False
+        return n not in self.term_calls(f["body"], set())
+
     def program(self):
         out = [";;; generated by tools/extract/chicken.py from %s roots: %s"
                % (len(self.ir["functions"]), " ".join(self.ir["roots"]))]
@@ -1027,6 +1114,7 @@ class Backend:
         defs = []
         prims_out = []
         inventory = {"defun": 0, "stobj-prim": 0, "prim": 0, "alias": 0, "shim": [], "blocker": []}
+        inlines, inline_calls = {}, {}
         for f in self.ir["functions"]:
             k, n = f["kind"], f["name"]
             if n in SHIMS or n in INLINE:
@@ -1035,7 +1123,11 @@ class Backend:
                     else "raw-Lisp built-in (Common Lisp's function)"), "was": k})
                 continue
             if k == "defun":
-                defs.append(self.emit_defun(f))
+                if self.inline and self.inline_ok(f):
+                    inlines[n] = self.emit_defun(f).replace("(define (", "(define-inline (", 1)
+                    inline_calls[n] = self.term_calls(f["body"], set())
+                else:
+                    defs.append(self.emit_defun(f))
                 inventory["defun"] += 1
             elif k == "stobj-prim":
                 # first: define-inline must precede its uses
@@ -1061,8 +1153,23 @@ class Backend:
                                      and f.get("invariant_risk", False)]
         inventory["boundary"] = [b["name"] for b in self.ir.get("boundary", [])]
         inventory["data_model"] = DATA_MODEL
+        # an inline definition precedes every use: callees first
+        ordered, seen = [], set()
+
+        def visit(n):
+            if n in seen:
+                return
+            seen.add(n)
+            for m in sorted(inline_calls[n]):
+                if m in inlines:
+                    visit(m)
+            ordered.append(n)
+        for n in sorted(inlines):
+            visit(n)
+        inventory["inlined"] = ordered
         out.extend(self.const_defs)
         out.extend(prims_out)
+        out.extend(inlines[n] for n in ordered)
         out.extend(defs)
         out.extend(checked)
         out.extend(boundary)
@@ -1076,12 +1183,15 @@ def main():
     p.add_argument("--erased", required=True)
     p.add_argument("--inventory", required=True)
     p.add_argument("--table", help="also write a name -> procedure table (fcheck-main.scm)")
+    p.add_argument("--no-inline", action="store_true",
+                   help="every defun a procedure (the E2 before-build)")
     p.add_argument("--no-native", action="store_true",
                    help="the ACL2 digests everywhere (no native.scm; fcheck-main.scm's build)")
     a = p.parse_args()
     ir = json.load(open(a.ir))
     b = Backend(ir)
     b.native = not a.no_native
+    b.inline = not a.no_inline
     text_, inv = b.program()
     with open(a.out, "w") as h:
         h.write(text_)

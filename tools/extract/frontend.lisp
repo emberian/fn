@@ -178,6 +178,98 @@
        (cons (xt-resolve (car terms) execp) (xt-resolve-list (cdr terms) execp))
      nil)))
 
+; ---------------------------------------------------------------------------
+; Constant folding and theorem-backed specialization (lane extract-writable,
+; E2).  In an executable body, a call of a guard-verified function with no
+; stobjs whose arguments are all constants and satisfy its guard is replaced
+; by its value, computed here by ACL2's own evaluator (ev-fncall-w) -- the
+; value the extracted code would compute at every run (A-EXTRACT), computed
+; once; a value larger than *xt-fold-limit* (acl2-count) is left as the call.
+; An `if' on a constant test is its branch.  A call matching a rewrite of
+; *xt-rewrites* is replaced by the right-hand side of the named theorem first
+; (which must be in the world, of the form (equal (FN V1 ... VN) RHS)), and
+; the result folded: the specialization is a proved equality, not a trusted
+; transformation.
+
+(defconst *xt-fold-limit* 4096)
+
+; (THEOREM FN POSITIONS): a call of FN whose arguments at POSITIONS (from 0)
+; are constants is replaced by THEOREM's right-hand side.
+(defconst *xt-rewrites*
+  ; books/extract-keyword.lisp: the served dispatch's keyword tests against
+  ; a literal text become a non-allocating comparison with folded octets.
+  '((fn-nntp-keywordp-is-octets-equal fn-nntp-keywordp (1))))
+
+(defun xt-all-quotep-at (positions args)
+  (or (endp positions)
+      (and (quotep (nth (car positions) args)) (xt-all-quotep-at (cdr positions) args))))
+
+(defun xt-rewrite-rule (fn args w rules)
+  ; the instance of the first applicable rule's right-hand side, or NIL
+  (if (endp rules) nil
+    (let* ((r (car rules)) (thm (getpropc (car r) 'theorem nil w)))
+      (if (and (eq (cadr r) fn) (xt-all-quotep-at (caddr r) args)
+               (consp thm) (eq (car thm) 'equal)
+               (consp (cadr thm)) (eq (car (cadr thm)) fn)
+               (symbol-listp (cdr (cadr thm))) (no-duplicatesp-eq (cdr (cadr thm)))
+               (equal (len (cdr (cadr thm))) (len args))
+               (subsetp-eq (all-vars (caddr thm)) (cdr (cadr thm))))
+          (sublis-var (pairlis$ (cdr (cadr thm)) args) (caddr thm))
+        (xt-rewrite-rule fn args w (cdr rules))))))
+
+(defun xt-foldable-p (fn w)
+  (and (symbolp fn)
+       (not (member-eq fn '(if return-last)))
+       (not (member-eq fn *xt-shims*))
+       (not (getpropc fn 'constrainedp nil w))
+       (eq (symbol-class fn w) :common-lisp-compliant)
+       (all-nils (stobjs-in fn w))
+       (equal (stobjs-out fn w) '(nil))))
+
+(defun xt-fold-call (fn args w state)
+  ; the folded call, or NIL when it does not fold.  magic-ev-fncall runs FN's
+  ; *1* function, which under the session's guard-checking t refuses
+  ; arguments outside FN's guard: a refused or failed evaluation does not fold.
+  (and (all-quoteps args)
+       (xt-foldable-p fn w)
+       (mv-let (erp val) (magic-ev-fncall fn (strip-cadrs args) state nil t)
+         (and (not erp) (<= (acl2-count val) *xt-fold-limit*)
+              (kwote val)))))
+
+(mutual-recursion
+ (defun xt-fold (term w state)
+   (cond ((or (variablep term) (fquotep term)) term)
+         ((flambda-applicationp term)
+          (fcons-term (make-lambda (lambda-formals (ffn-symb term)) (xt-fold (lambda-body (ffn-symb term)) w state))
+                      (xt-fold-list (fargs term) w state)))
+         ((eq (ffn-symb term) 'if)
+          (let ((test (xt-fold (fargn term 1) w state)))
+            (if (quotep test)
+                (xt-fold (if (unquote test) (fargn term 2) (fargn term 3)) w state)
+              (fcons-term 'if (list test (xt-fold (fargn term 2) w state) (xt-fold (fargn term 3) w state))))))
+         (t (let* ((fn (ffn-symb term))
+                   (args (xt-fold-list (fargs term) w state))
+                   (rewritten (xt-rewrite-rule fn args w *xt-rewrites*)))
+              (if rewritten
+                  (xt-fold rewritten w state)
+                (or (xt-fold-call fn args w state) (fcons-term fn args)))))))
+ (defun xt-fold-list (terms w state)
+   (if (consp terms)
+       (cons (xt-fold (car terms) w state) (xt-fold-list (cdr terms) w state))
+     nil)))
+
+; Each executable entry's body folded (an :ideal function's logic body is
+; left as it is): run once over the walked closure, with state for the
+; evaluator.  A function a fold made unreachable stays in the closure,
+; unused.
+(defun xt-fold-entries (entries w state)
+  (if (endp entries) nil
+    (let ((e (car entries)))
+      (cons (if (and (eq (cadr e) :defun) (not (eq (cadddr e) :ideal)))
+                (list* (car e) :defun (xt-fold (caddr e) w state) (cdddr e))
+              e)
+            (xt-fold-entries (cdr entries) w state)))))
+
 (mutual-recursion
  (defun xt-callees (term acc)
    (cond ((or (variablep term) (fquotep term)) acc)
@@ -571,16 +663,54 @@
           (mv entries stobjs)
         (xt-walk-closed (append seeds new) (1- n) w)))))
 
+; The host ports (lane extract-writable): a function of host/store-write-host.lisp
+; (name FN-XW-...) is io.lisp's raw host code written in :program, and io.lisp
+; calls every ACL2 entry through fnn-call.  So each fn- core function such a
+; port function calls directly is a boundary function too: its guard is
+; checked where the port calls it (tools/extract/chicken.py, port callers).
+(defun xt-prefixp (prefix name)
+  (and (<= (length prefix) (length name))
+       (equal (subseq name 0 (length prefix)) prefix)))
+
+(defun xt-port-fn-p (fn)
+  (xt-prefixp "FN-XW-" (symbol-name fn)))
+
+(defun xt-core-fn-p (fn w)
+  (let ((n (symbol-name fn)))
+    (and (xt-prefixp "FN-" n)
+         (not (xt-prefixp "FN-XW-" n)) (not (xt-prefixp "FN-XO-" n)) (not (xt-prefixp "FN-HX-" n))
+         (getpropc fn 'formals nil w)
+         (not (getpropc fn 'constrainedp nil w)))))
+
+(defun xt-core-callees (fns w acc)
+  (cond ((endp fns) acc)
+        ((or (member-eq (car fns) acc) (not (xt-core-fn-p (car fns) w)))
+         (xt-core-callees (cdr fns) w acc))
+        (t (xt-core-callees (cdr fns) w (cons (car fns) acc)))))
+
+(defun xt-port-callees (entries w acc)
+  (if (endp entries) (reverse acc)
+    (let ((e (car entries)))
+      (xt-port-callees (cdr entries) w
+                       (if (and (eq (cadr e) :defun) (xt-port-fn-p (car e)))
+                           (xt-core-callees (xt-callees (caddr e) nil) w acc)
+                         acc)))))
+
 (defun xt-extract-with (roots extra path state)
   (let ((w (w state)))
-    (mv-let (entries stobjs)
+    (mv-let (entries0 stobjs0)
       (xt-walk-closed (append roots extra (xt-boundary-extra roots w nil)) 4 w)
+      (declare (ignore stobjs0))
+     (let ((boundary (append roots (set-difference-eq (xt-port-callees entries0 w nil) roots))))
+     (mv-let (entries stobjs)
+      (xt-walk-closed (append roots extra (xt-boundary-extra boundary w nil)) 4 w)
+      (let ((entries (xt-fold-entries entries w state)))
       (mv-let (channel state)
         (open-output-channel path :character state)
         (let* ((state (princ$ "{\"roots\":" channel state))
                (state (xt-json-symlist roots channel state))
                (state (princ$ ",\"boundary\":[" channel state))
-               (state (xt-json-boundary roots t channel state))
+               (state (xt-json-boundary boundary t channel state))
                (state (princ$ "],\"functions\":[" channel state))
                (state (xt-json-entries entries t channel state))
                (state (princ$ "],\"stobjs\":[" channel state))
@@ -588,7 +718,7 @@
                (state (princ$ "]}" channel state))
                (state (newline channel state))
                (state (close-output-channel channel state)))
-          (value (len entries)))))))
+          (value (len entries))))))))))
 
 (defun xt-extract (roots path state)
   (xt-extract-with roots nil path state))

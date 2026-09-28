@@ -221,3 +221,41 @@ void fn_b3_final(const void *h, uint8_t out[32]);")
 
 (define (native-drop l k) (if (or (fx= k 0) (not (pair? l))) l (native-drop (cdr l) (fx- k 1))))
 (define (list-head l k) (if (or (fx= k 0) (not (pair? l))) '() (cons (car l) (list-head (cdr l) (fx- k 1)))))
+
+;;; A-SIG-NATIVE (specs/failures.md): crypto-seam's constrained fn-sig-verify
+;;; is host/native/signatures.lisp's realizer in the image, pure ML-DSA-65
+;;; (empty context) through fn_mldsa65_verify of lib/libfn-mldsa65 -- the
+;;; image's own file, which tools/extract/build.sh links (the gate checks the
+;;; resolved library is the one beside the image's core).  Its answer, as the
+;;; image's: #t exactly when PK is a list of 1952 octets, SIG of 3309, M an
+;;; octet list and the library verifies; '() for any other shape; a library
+;;; answer other than 0 or 1 is a fault, never a verdict.
+(foreign-declare "int fn_mldsa65_verify(const uint8_t *sig, size_t siglen,
+                      const uint8_t *m, size_t mlen, const uint8_t *pk);")
+(define %mldsa65-verify
+  (foreign-lambda int "fn_mldsa65_verify" u8vector size_t u8vector size_t u8vector))
+
+;; The list's octets as a u8vector when it is a true list of octets of
+;; length N (N #f: any length), else #f.
+(define (native-octets->u8vector l n)
+  (let count ((x l) (k 0))
+    (cond ((null? x)
+           (and (or (not n) (fx= k n))
+                (let ((v (make-u8vector k 0)))
+                  (let fill ((x l) (i 0))
+                    (if (null? x) v
+                        (begin (u8vector-set! v i (car x)) (fill (cdr x) (fx+ i 1))))))))
+          ((and (pair? x) (let ((o (car x))) (and (fixnum? o) (fx>= o 0) (fx< o 256))))
+           (count (cdr x) (fx+ k 1)))
+          (else #f))))
+
+(define (a-native-sig-verify pk m sig)
+  (let ((k (native-octets->u8vector pk 1952))
+        (s (native-octets->u8vector sig 3309))
+        (msg (native-octets->u8vector m #f)))
+    (if (and k s msg)
+        (let ((code (%mldsa65-verify s 3309 msg (u8vector-length msg) k)))
+          (cond ((eqv? code 0) acl2-t)
+                ((eqv? code 1) '())
+                (else (a-fault 'fault "native hybrid signature: ML-DSA-65 verification failed"))))
+        '())))

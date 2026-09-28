@@ -15,12 +15,14 @@ X=$TREE/tools/extract
 mkdir -p "$OUT"
 # No product of an earlier build survives to stand in for this one's.
 rm -f "$OUT/served.json" "$OUT/served.scm" "$OUT/erased.json" "$OUT/inventory.json" \
-      "$OUT/fntable.scm" "$OUT/probes.scm" "$OUT/served" "$OUT/csc-served.args"
+      "$OUT/fntable.scm" "$OUT/probes.scm" "$OUT/served" "$OUT/csc-served.args" "$OUT/link.args"
 # The boundary: every function the driver calls (host/native/io.lisp calls
 # each through fnn-call).  The reader's served path, its store selection, the
 # durable-extent realizers' ACL2 calls (host/native/extent.lisp), the exit
-# codes, and the probes' entries (tools/extract/probes.py).
-ROOTS=${FN_EXTRACT_ROOTS:-"create-fn-arena fn-reader-use-seed fn-reader-set-posting fn-reader-model-octets fn-reader-reset fn-reader-chunk fn-reader-outcome fn-reader-observe-clock fn-outcome-code fn-ns-file-render fn-intern-events fn-arx-entry-ok-buffer fn-arx-read-cache-entries fn-xo-open-store fn-reader-use-store fn-lzr-lz-read"}
+# codes, and the probes' entries (tools/extract/probes.py); the writable store
+# verbs' port (host/store-write-host.lisp fn-xw-main, lane extract-writable)
+# and the exit code of the condition that ends one (fnn-exit-code-for).
+ROOTS=${FN_EXTRACT_ROOTS:-"create-fn-arena fn-reader-use-seed fn-reader-set-posting fn-reader-model-octets fn-reader-reset fn-reader-chunk fn-reader-outcome fn-reader-observe-clock fn-outcome-code fn-ns-file-render fn-intern-events fn-arx-entry-ok-buffer fn-arx-read-cache-entries fn-xo-open-store fn-reader-use-store fn-lzr-lz-read fn-xw-main fn-outcome-host-condition-exit-code"}
 # Not boundary functions: the realizer's buffer stobj's creator (the image
 # holds the live fn-octets-rd; the program creates it once) and the
 # references the native digests fall back to (tools/extract/native.scm): the
@@ -47,10 +49,24 @@ cp "$X/runtime.scm" "$X/served-main.scm" "$X/native.scm" "$X/hostio.scm" .
 # the run path; libcrypto is for the Cancel-Lock SHA-256.
 sh "$TREE/tools/build_blake3.sh" "$OUT/lib" > blake3.log 2>&1 || {
     echo "extract: tools/build_blake3.sh failed; see $OUT/blake3.log" >&2; exit 1; }
+# The image's own libraries (tools/build_native_host.sh builds them into lib/
+# beside the image's core, where the image loads them): ML-DSA-65 for the
+# signature seam's verifier (A-SIG-NATIVE, native.scm) and the LZ4 block
+# encoder the writable verbs' compressed append asks for candidates
+# (host/native/lz4.lisp; hostio.scm a-hx-lz4-candidate).  Linked from that
+# directory, with it as the run path, so the program calls the very files the
+# image calls (the gate checks the resolved paths and digests).
+IMGLIB=${FN_EXTRACT_IMAGE_LIB:-$TREE/build/lib}
+for lib in libfn-mldsa65.so libfn-lz4.so; do
+    [ -f "$IMGLIB/$lib" ] || {
+        echo "extract: no $IMGLIB/$lib (build the developer image first: tools/build_native_host.sh)" >&2; exit 1; }
+done
+LINK="-L$OUT/lib -lfn-blake3 -Wl,-rpath,$OUT/lib -L$IMGLIB -lfn-mldsa65 -lfn-lz4 -Wl,-rpath,$IMGLIB"
+printf '%s\n' "$LINK" > link.args
 # The compiler options, recorded for the gate's extraction manifest (check.sh).
 CSC_OPTS="-O3 -d0 -block -inline-global -lfa2"
-printf '%s\n' "csc $CSC_OPTS served-main.scm -o served -L -lcrypto -L -L$OUT/lib -lfn-blake3 -Wl,-rpath,$OUT/lib" > csc-served.args
+printf '%s\n' "csc $CSC_OPTS served-main.scm -o served -L -lcrypto -L $LINK" > csc-served.args
 PATH=$CHICKEN/bin:$PATH swarm-build csc $CSC_OPTS \
-    served-main.scm -o served -L -lcrypto -L "-L$OUT/lib -lfn-blake3 -Wl,-rpath,$OUT/lib" > csc.log 2>&1 || {
+    served-main.scm -o served -L -lcrypto -L "$LINK" > csc.log 2>&1 || {
     echo "extract: csc failed; see $OUT/csc.log" >&2; tail -20 csc.log >&2; exit 1; }
 echo "extract: built $OUT/served"
