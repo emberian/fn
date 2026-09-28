@@ -11095,7 +11095,7 @@
         },
         {
           "kind": "theorem",
-          "name": "pgs-x-words-digest-is-sha256"
+          "name": "pgs-x-words-digest-is-blake3"
         }
       ]
     },

@@ -1081,7 +1081,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-columns-relation-tests \
 	tests/acl2/history-columns-tests \
 	books/pagestore-words \
-	books/pagestore-words-sha \
+	books/pagestore-words-blake3 \
 	books/pagestore \
 	books/pagestore-keystones \
 	books/pagestore-reclaim \
@@ -1363,6 +1363,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/proto-adt-2-tests \
 	books/history-pages \
 	tests/acl2/history-pages-tests \
+	tests/acl2/history-pages-digest-tests \
 	books/history-pages-words \
 	books/history-pages-exec \
 	books/history-pages-row \

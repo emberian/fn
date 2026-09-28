@@ -708,7 +708,7 @@ arena-store, 2026-09-27; `books/pagestore*.lisp`; record
 for the owner's root: one barrier per commit; page 0 is the model's reserved
 page, which `pgs-disk-keeps` keeps and the reclamation cycle's start marks,
 so no allocation or sweep ever hands it out) names a directory run whose
-entries (address, writing txid, SHA-256) name table pages of 341 entries,
+entries (address, writing txid, BLAKE3-256 digest) name table pages of 341 entries,
 whose entries name the data pages. A snapshot writes only its dirty data
 pages, the table pages holding them, the directory run and the record, all to
 fresh space, then one fdatasync. The open verifies the record's check, the
@@ -761,8 +761,12 @@ history's image does not carry one (no served path looks a history row up by
 Message-ID; the MKEY column holds each row's bucket), so the first keyed image
 on these pages brings it. FNADTSN1 (contiguous placement, no NPAGES word) is
 refused :magic: format 10 stores are fresh (D34). The page digests are the
-page store's table entries (the image has no second digest table) and follow
-the store's digest (fn-digest).
+page store's table entries (the image has no second digest table) and are
+the store's digest, BLAKE3 (the value of fn-digest's attachment): the word
+digest the host calls is proved to be `fn-blake3` of the page's
+little-endian octets (`pgs-x-words-digest-is-blake3`,
+`books/pagestore-words-blake3.lisp`; SHA-256 until 2026-09-28, no format
+change: FNADTSN2 pages are format-10 structures).
 
 The history's image (PRF-342, lane arena-store-2; `books/history-pages.lisp`).
 The first owner state on these pages is the history (fn-hist). Its snapshot
@@ -772,7 +776,8 @@ when none), the length of the event's tree octets (the checkpoint's proved
 tree codec, `fn-scc-encode`), and those octets zero-padded to a multiple of 8
 (so every append writes whole words). Image page K is the page store's
 logical page K, and the page store's per-page digest is the image's
-page-digest leaf: there is no second digest table. Proved: the decoder
+page-digest leaf (BLAKE3 of the page's octets): there is no second digest
+table. Proved: the decoder
 inverts the image; an append changes only the header page and, per region,
 the pages its new octets overlap, at most 11 + (32 K + the new trees'
 octets) / 16384 pages for K events while no region doubles. Limitation

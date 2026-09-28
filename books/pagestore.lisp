@@ -29,8 +29,9 @@
 ;   little-endian (unsigned-byte 64) words that the host fills and drains
 ;   with exactly two primitives (host/native/proto-pagestore.lisp):
 ;   fill-typed-array-from-file-range and write-typed-array-to-file-range.
-;   The digest is SHA-256 over the page's octets computed HERE, over the
-;   words, with books/sha256-stobj.lisp's compression.  The shared
+;   The digest is BLAKE3 over the page's octets computed HERE: the words
+;   are copied into the page store's octet buffer and hashed in place by
+;   books/blake3-stobj.lisp (books/pagestore-words.lisp).  The shared
 ;   decisions (`pgs-alloc', `pgs-plan-ptab', `pgs-open-order',
 ;   `pgs-entry-verdict', the record fields) are the SAME functions in both
 ;   layers; what differs is only how a digest is observed.
@@ -38,14 +39,16 @@
 ; The boundary, named (prototype; not yet theorems):
 ;   A-PGS-OBSERVE: the words the fill primitive leaves in the stobj are the
 ;     page's content, and `pgs-x-words-digest' of them is `pgs-digest' of
-;     that content (the SHA-256 correspondence books/sha256-buffer.lisp
-;     proves for the octet buffer is not proved here for the word array);
+;     that content (the BLAKE3 part is proved: `pgs-x-words-digest' is
+;     `fn-blake3' of the words' little-endian octets,
+;     `pgs-x-words-digest-is-blake3' in books/pagestore-words-blake3.lisp;
+;     `fn-blake3' is what `fn-digest' is attached to);
 ;     `pgs-x-decode-ptab' of the encoded table is the table.
 ;   A-CRYPTO (books/crypto-seam.lisp, books/assumptions.lisp): the torn-write
 ;     keystone takes, as a HYPOTHESIS, that a stale page at a fresh address
 ;     whose digest equals the intended page's digest IS that page
 ;     (`pgs-writes-faithful'); the test book shows the conclusion fails for a
-;     colliding digest.  SHA-256's pessimistic figure is the collision
+;     colliding digest.  BLAKE3-256's pessimistic figure is the collision
 ;     bound, 2^-128, not the second-preimage one.
 (in-package "ACL2")
 (include-book "pagestore-words")

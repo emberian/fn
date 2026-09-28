@@ -33,9 +33,10 @@
 ;
 ; Pages are 16384 octets (2048 little-endian u64 words): the page store's
 ; page (lane proto-pagestore, books/proto/pagestore.lisp *pgs-page-words*),
-; and `adt-page-digests' is the SHA-256 of each page's octets in order, the
-; page store's per-page digest (its `pgs-digest' over a page's content) and
-; the Merkle tree's leaf level.  A region takes a power-of-two number of
+; and `adt-page-digests' is BLAKE3 (`fn-blake3', the function `fn-digest'
+; is attached to; SHA-256 until 2026-09-28) of each page's octets in order,
+; the page store's per-page digest (its `pgs-digest' over a page's content)
+; and the Merkle tree's leaf level.  A region takes a power-of-two number of
 ; pages, so its pages move only when it doubles.
 ;
 ; Theorems:
@@ -51,6 +52,7 @@
 (include-book "adt-bytes-lib")
 (include-book "adt-key-lib")
 (include-book "../sha256")
+(include-book "../blake3")
 (local (include-book "arithmetic/top" :dir :system))
 
 (local (in-theory (disable nth update-nth nthcdr take)))
@@ -883,10 +885,10 @@
 
 (defun adt-digests (pages)
   (declare (xargs :guard t))
-  (if (atom pages) nil (cons (fn-sha256 (car pages)) (adt-digests (cdr pages)))))
+  (if (atom pages) nil (cons (fn-blake3 (car pages)) (adt-digests (cdr pages)))))
 
 (defun adt-page-digests (s a)
-  ; leaf K is the SHA-256 of page K of the value's snapshot bytes
+  ; leaf K is the BLAKE3 of page K of the value's snapshot bytes
   (declare (xargs :verify-guards nil))
   (adt-digests (adt-pages (adt-ser s a))))
 
@@ -919,7 +921,7 @@
 
 (defthm adt-nth-digests
   (implies (and (natp k) (< k (len pages)))
-           (equal (nth k (adt-digests pages)) (fn-sha256 (nth k pages))))
+           (equal (nth k (adt-digests pages)) (fn-blake3 (nth k pages))))
   :hints (("Goal" :in-theory (enable nth))))
 
 ; Leaf K of the table is the digest of page K of the snapshot bytes; the
@@ -927,7 +929,7 @@
 (defthm adt-page-digest-nth
   (implies (and (natp k) (< k (len (adt-page-digests s a))))
            (equal (nth k (adt-page-digests s a))
-                  (fn-sha256 (take *adt-page* (nthcdr (* *adt-page* k) (adt-ser s a))))))
+                  (fn-blake3 (take *adt-page* (nthcdr (* *adt-page* k) (adt-ser s a))))))
   :hints (("Goal" :in-theory (e/d (adt-page-digests) (adt-ser)))))
 
 (defthm adt-len-page-digests

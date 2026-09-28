@@ -11,7 +11,8 @@ Runs ON hbox (Linux).  From the laptop:
 
 `build` certifies books/pagestore-words, pagestore, pagestore-exec,
 pagestore-keystones, pagestore-reclaim and pagestore-gc in the w28 ACL2 (their
-include closure's sha256 certificates come from the proof REPL tree),
+include closure's digest certificates -- blake3-stobj, blake3, octets-stobj,
+octet-window, cbor -- come from the proof REPL tree),
 includes pagestore-gc, loads
 host/native/proto-pagestore.lisp and saves one image
 (/tank/fn/scratch/arena-store-host/fnps-image.core) under swarm-build.
@@ -64,15 +65,21 @@ def ship(_a):
     print("shipped", LANE, "->", TREE)
 
 
+# The page digest's include closure (books/pagestore-words.lisp includes
+# blake3-stobj), certified in the proof REPL tree.
+DIGEST_CLOSURE = ("cbor", "octets-stobj", "octet-window", "blake3", "blake3-stobj")
+
 BOOKS = ("pagestore-words", "pagestore", "pagestore-exec", "pagestore-keystones",
          "pagestore-reclaim", "pagestore-gc")
 
 
 def build(_a):
     books = TREE / "books"
-    for f in REPL_BOOKS.glob("sha256*"):
-        if f.suffix in (".cert", ".fasl", ".port"):
-            shutil.copy2(f, books / f.name)
+    for stem in DIGEST_CLOSURE:
+        for ext in (".cert", ".fasl", ".port"):
+            f = REPL_BOOKS / (stem + ext)
+            if f.exists():
+                shutil.copy2(f, books / f.name)
     log = ROOT / "build.log"
     out = open(log, "w")
     for b in BOOKS:
