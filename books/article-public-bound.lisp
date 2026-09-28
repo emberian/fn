@@ -3,6 +3,13 @@
 (include-book "article-public-work")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-ap-at-most-is-length-bound)
+                          (:rewrite fn-article-extended-header-is-list)
+                          (:rewrite fn-article-finish-fields-is-append)
+                          (:rewrite fn-aw-reverse-value))))
+
 (local (in-theory (disable fn-aw-r fn-aw-v fn-aw-c fn-aw-charge)))
 (defthm fn-aw-header-add-cost-natural
   (natp (fn-aw-c (fn-aw-header-add header-rev line)))
