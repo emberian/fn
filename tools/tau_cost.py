@@ -25,8 +25,10 @@ the same load:
          (local (in-theory (disable (tau-system))))
          inserted after the header's include-books
 
-`--variant local` instead `ld`s this worktree's text of each book verbatim
-(a book after `apply`: does every form pass?).  The time is `time$`'s
+`--variant applied` pairs the remote's text (as it was) with this worktree's
+(after `apply`): the confirmation, measured again, of what was applied, and
+the forms of it that still fail.  `--variant local` `ld`s this worktree's
+text alone.  The time is `time$`'s
 runtime of the whole `ld` (includes and all; CPU time, which load moves less
 than wall), with the realtime beside it.  `:continue` runs every form, so an
 off log names each form that fails without tau; a failure the on log shares
@@ -194,7 +196,7 @@ def driver(book: str, variant: str) -> str:
 
 
 def run_script(remote: str, run_dir: str, jobs: int, timeout: int, acl2: str,
-               wrap: str) -> str:
+               wrap: str, off_timeout: int | None = None) -> str:
     """Tasks `book variant`, xargs -P jobs; a status file at the end."""
     one = (
         'b="$1"; v="$2"; d=$(dirname "$b"); n=$(basename "$b"); '
@@ -202,10 +204,11 @@ def run_script(remote: str, run_dir: str, jobs: int, timeout: int, acl2: str,
         f'cd {shlex.quote(remote)}/"$d" || exit 0; '
         f'if [ "$v" != on ]; then cp {shlex.quote(run_dir)}/sources/"$f".lisp '
         f'"{OFF_PREFIX}$n.lisp"; fi; '
+        f't={timeout}; if [ "$v" = off ]; then t={off_timeout or timeout}; fi; '
         'l=$(cut -d" " -f1 /proc/loadavg); s=$(date +%s); '
         'ACL2_CUSTOMIZATION=NONE ACL2_BOOK_HASH_ALISTP=NIL '
         'SBCL_USER_ARGS="--dynamic-space-size 8000" '
-        f'timeout {timeout} {shlex.quote(acl2)} < {shlex.quote(run_dir)}/drivers/"$f.$v".lsp '
+        f'timeout "$t" {shlex.quote(acl2)} < {shlex.quote(run_dir)}/drivers/"$f.$v".lsp '
         f'> {shlex.quote(run_dir)}/logs/"$f.$v".log 2>&1; e=$?; '
         f'if [ "$v" != on ]; then rm -f "{OFF_PREFIX}$n".*; fi; '
         f'echo "FN-TAU-COST-WALL $b $v $(( $(date +%s) - s )) $e $l/$(cut -d" " -f1 /proc/loadavg)" '
@@ -221,7 +224,7 @@ def run_script(remote: str, run_dir: str, jobs: int, timeout: int, acl2: str,
 
 
 def run(host: str, remote: str, books: list[str], jobs: int, timeout: int,
-        acl2: str | None, variant: str) -> str:
+        acl2: str | None, variant: str, off_timeout: int | None = None) -> str:
     identifier = ("tau-cost-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
                   + "-" + secrets.token_hex(2))
     run_dir = f"{remote}/build/tau-cost/{identifier}"
@@ -236,6 +239,10 @@ def run(host: str, remote: str, books: list[str], jobs: int, timeout: int,
             text = (ROOT / (book + ".lisp")).read_text(encoding="utf-8")
             if variant == "local":
                 pairs = [("local", text)]
+            elif variant == "applied":
+                # The remote tree holds the book as it was; this worktree's
+                # text (after `apply`) is the off variant, measured beside it.
+                pairs = [("on", None), ("off", text)]
             elif ALREADY.search(text):
                 skipped.append(book)
                 continue
@@ -258,7 +265,7 @@ def run(host: str, remote: str, books: list[str], jobs: int, timeout: int,
     try:
         subprocess.run(["ssh", "-n", host,
                         run_script(remote, run_dir, jobs, timeout, executable,
-                                   farm.HOSTS[host].get("wrap") or "")],
+                                   farm.HOSTS[host].get("wrap") or "", off_timeout)],
                        check=True, timeout=60, stdout=subprocess.DEVNULL)
     except subprocess.TimeoutExpired:
         pass
@@ -423,7 +430,11 @@ def repair(result: dict, ranking: dict, root: Path = ROOT) -> list[str]:
     form that did not fail with tau on too (a must-fail)."""
     expected = {row["book"]: set(row.get("on_errors", [])) for row in ranking["books"]}
     out = []
-    for book, value in result.get("local", {}).items():
+    found_errors = dict(result.get("local", {}))
+    for row in result["books"]:  # an applied run: its off variant is the local text
+        if row["failing"]:
+            found_errors[row["book"]] = {"errors": row["failing"]}
+    for book, value in found_errors.items():
         new = [form for form in value["errors"] if form not in expected.get(book, set())]
         first = [form for form in new[:1] if len(form.split()) > 1]
         if not first:
@@ -445,8 +456,16 @@ def main(argv: list[str] | None = None) -> int:
     start.add_argument("--remote-root", required=True)
     start.add_argument("--jobs", type=int, default=2)
     start.add_argument("--timeout", type=int, default=900)
+    start.add_argument("--off-timeout", type=int, default=120,
+                       help="the off variant's: a book tau off makes this slow is no "
+                            "candidate (bp-app-handoff-time ran 900 s against 1 s on)")
+    start.add_argument("--exclude", type=Path, action="append", default=[],
+                       help="a run's `done` file: skip the books both of whose variants ran")
     start.add_argument("--acl2")
-    start.add_argument("--variant", choices=("pair", "local"), default="pair")
+    start.add_argument("--variant", choices=("pair", "applied", "local"), default="pair",
+                       help="pair: as is against tau off; applied: the remote's text "
+                            "against this worktree's (a confirmation after apply); "
+                            "local: this worktree's text alone")
     start.add_argument("--shard", help="K/N: every Nth book from the Kth (0-based)")
     block = sub.add_parser("wait")
     block.add_argument("host", choices=sorted(farm.HOSTS))
@@ -473,8 +492,15 @@ def main(argv: list[str] | None = None) -> int:
             if args.shard:
                 k, n = (int(x) for x in args.shard.split("/"))
                 books = books[k::n]
+            for done in args.exclude:
+                seen: dict[str, int] = {}
+                for line in done.read_text(encoding="utf-8").splitlines():
+                    if line.split():
+                        seen[line.split()[0]] = seen.get(line.split()[0], 0) + 1
+                books = [book for book in books if seen.get(book, 0) < 2]
             print(run(args.host, args.remote_root, books, args.jobs, args.timeout,
-                      args.acl2, "local" if args.variant == "local" else "pair"))
+                      args.acl2, args.variant,
+                      args.off_timeout))
             return 0
         if args.action == "wait":
             print(wait(args.host, args.remote_root, args.identifier))
