@@ -630,6 +630,28 @@ def cost_words(cost: dict, elapsed: float | None = None) -> str:
     return words + (f"; elapsed {elapsed:.1f} s" if elapsed is not None else "")
 
 
+# "Long time, few steps": a form whose time is not in the prover's counted
+# steps.  blake3-digest, 2026-09-27: fn-b3x-chunk-is-chunk took 126-180 s at
+# 228 steps -- the time went into preprocessing/clausifying a large mv-let
+# term, which steps do not count, so the failure read as cheap.
+SLOW_SECONDS = 20.0
+SLOW_STEPS_PER_SECOND = 1000
+
+
+def slow_note(cost: dict, elapsed: float | None = None) -> str:
+    """A diagnosis line when a form took long for the steps it counted, else ''."""
+    seconds = max(cost.get("time") or 0.0, elapsed or 0.0)
+    steps = cost.get("steps") or 0
+    if seconds < SLOW_SECONDS or cost.get("steps_capped") or steps > seconds * SLOW_STEPS_PER_SECOND:
+        return ""
+    return (f"[long time, few steps: {seconds:.0f} s for {steps:,} prover steps. The time "
+            "is outside what steps count: preprocessing/clausifying a large term (a big "
+            "mv-let, let* or case split before the first simplification), expansion "
+            "the hints ask for, a slow executable counterpart, or a loaded box when ACL2's "
+            "own time is small. Steps do not show it; split the term into named helpers or "
+            "look at :pso's first goals, and do not read the failure as cheap]")
+
+
 class Totals:
     """The costs of a multi-form send, summed over the forms that printed one."""
 
@@ -929,6 +951,9 @@ def note_refusal(state: dict, output: str, limit: float | None) -> None:
             path.write_text("\n".join(output_lines(output)) + "\n", encoding="utf-8")
             where = str(path)
     state["error"] = load_refusal(output, limit, where)
+    note = slow_note(measure(output), limit if TIME_LIMIT_MARK in output else None)
+    if note:
+        state["error"] = state["error"] + "\n" + note
     state["load_time_limited"] = TIME_LIMIT_MARK in output
 
 
@@ -1525,6 +1550,9 @@ def send_one(name: str, form: str, limit: float | None, full: bool) -> int:
         print(f"[{cost_words(cost)}]")
     if "elapsed" in answer:
         print(f"[{answer['elapsed']} s{', timed out' if answer.get('timed_out') else ''}]")
+    note = slow_note(cost, answer.get("elapsed"))
+    if note:
+        print(note)
     return 1 if answer.get("error") else 0
 
 
@@ -1545,6 +1573,9 @@ def send_many(name: str, items: list[tuple[str, str]], limit: float | None,
         totals.add(label, cost, elapsed, refused)
         print(f"{'REFUSED' if refused else 'ok':8}{label}: {cost_words(cost, elapsed)}",
               flush=True)
+        note = slow_note(cost, elapsed)
+        if note:
+            print("        " + note, flush=True)
         if full or wants_full(form):
             print(output)
         elif refused:
