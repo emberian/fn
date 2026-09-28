@@ -141,11 +141,6 @@
  (value (fn-bpaj-request-result
          (f-get-global 'fn-bpaj-state state) request-octets)))
 
-(defun fn-bprj-request-planned-txid (request-octets state)
- (declare (xargs :stobjs state :mode :program))
- (value (fn-bpaj-request-planned-txid
-         (f-get-global 'fn-bpaj-state state) request-octets)))
-
 (defun fn-bprj-request-planned-result (request-octets state)
  (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp request-octets)))
