@@ -1374,8 +1374,8 @@
 (defconst *aut-principal-guest* (make-list 32 :initial-element 9))
 (defconst *aut-salt-guest* (make-list 16 :initial-element 5))
 (defconst *aut-digest-guest*
-  '(16 253 71 139 166 161 40 4 128 152 222 245 150 31 146 146
-    162 213 89 91 217 56 233 234 208 64 14 230 20 40 189 59))
+  '(157 10 51 45 80 59 232 56 203 127 1 240 240 207 113 96
+    173 125 217 47 2 249 4 17 4 12 204 53 48 56 55 153))
 (defconst *aut-cred-guest*
   (fn-auth-make-cred (fn-nntp-string-octets "guest") *aut-principal-guest*
                      (fn-authsec-verifier *aut-salt-guest* *aut-digest-guest*)

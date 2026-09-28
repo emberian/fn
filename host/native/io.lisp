@@ -6552,7 +6552,7 @@ observation (the COMPLETE re-signals it under the owner)."
          (unless (fnn-developer-image-p)
            (error 'fnn-usage-error
                   :message "guard-probe is available only in the developer image"))
-         (fnn-core 'fn-blake3-of-prefixed-range 42 0 0 (fnn-live-octets))
+         (fnn-core 'fn-b3-left-chunks 42 -1)
          +fnn-exit-ok+)
         ((string= verb "redeem")
          (fnn-command-redeem (cdr args)))
