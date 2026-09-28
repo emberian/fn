@@ -112,6 +112,12 @@ def main(argv=None) -> int:
     driver = "\n".join(text(form) for form in forms) + \
         '\n(value-triple (cw "{} ~x0~%" {}))\n(good-bye)\n'.format(OK, loads)
     environment = os.environ.copy()
+    # The image's world is loaded under the image's launcher when the box
+    # names one (FN_IMAGE_ACL2, as packaging/release-tarball.sh and
+    # tools/hbox_native.sh do): at SBCL's default --tls-limit the production
+    # prefix dies "Thread local storage exhausted" (batch AY on hbox).
+    if os.environ.get("FN_IMAGE_ACL2"):
+        environment["FN_ACL2"] = os.environ["FN_IMAGE_ACL2"]
     environment["ACL2_CUSTOMIZATION"] = "NONE"
     environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"
     environment.pop("ACL2_SYSTEM_BOOKS", None)

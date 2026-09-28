@@ -1245,7 +1245,6 @@
     "tests/acl2/owner-time-model-tests",
     "books/web-request",
     "tests/acl2/web-request-tests",
-    "books/web-2047",
     "books/web-render",
     "books/web-render-keystones",
     "tests/acl2/web-render-tests",
@@ -1362,25 +1361,25 @@
     "tests/acl2/history-pages-read-tests"
   ],
   "totals": {
-    "books": 1388,
-    "books_in_root_closure": 1386,
-    "roots": 1358,
-    "theorems": 22072,
-    "functions": 15007,
-    "assert_events": 19971,
-    "must_fails": 2224,
+    "books": 1387,
+    "books_in_root_closure": 1385,
+    "roots": 1357,
+    "theorems": 22038,
+    "functions": 14996,
+    "assert_events": 19952,
+    "must_fails": 2222,
     "prover_refusals": 0,
-    "encapsulates": 112,
+    "encapsulates": 113,
     "guards": {
       "verified": 2521,
       "declared-off": 1749,
-      "default-guarded": 8515,
+      "default-guarded": 8504,
       "default-unguarded": 2222
     },
     "suspect_theorems": 1091,
     "export_hygiene_warnings": 264,
     "enabled_projection_warnings": 49,
-    "teeth_form_warnings": 240,
+    "teeth_form_warnings": 238,
     "include_hygiene_warnings": 1901,
     "host_names_warnings": 1575,
     "hand_written_record_warnings": 18
@@ -24104,32 +24103,6 @@
       "read_error": null
     },
     {
-      "book": "books/web-2047.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 29,
-      "functions": 16,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 16,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 5,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "octet-text"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "books/web-config.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -24160,7 +24133,7 @@
       "book": "books/web-render-keystones.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
+      "theorems": 7,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -24186,12 +24159,12 @@
       "book": "books/web-render.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 60,
-      "functions": 51,
+      "theorems": 52,
+      "functions": 48,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 49,
+        "default-guarded": 46,
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
@@ -24202,7 +24175,6 @@
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
-        "web-2047",
         "web-request"
       ],
       "system_includes": [],
@@ -24217,12 +24189,12 @@
       "book": "books/web-request.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 42,
-      "functions": 106,
+      "theorems": 47,
+      "functions": 115,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 106,
+        "default-guarded": 115,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -24231,12 +24203,13 @@
       "prover_refusals": 0,
       "defconsts": 5,
       "defmacros": 1,
-      "encapsulates": 0,
+      "encapsulates": 1,
       "includes": [
-        "octet-text",
         "octets-stobj"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
       "suspects": [
         "fn-web-client-address-without-proxy-unfolds",
         "fn-wrq-slice-empty"
@@ -41029,18 +41002,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 3,
-      "functions": 3,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 3,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 33,
-      "must_fails": 10,
+      "assert_events": 14,
+      "must_fails": 8,
       "prover_refusals": 0,
-      "defconsts": 8,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -49750,7 +49723,7 @@
     {
       "theorem": "fn-web-client-address-without-proxy-unfolds",
       "book": "books/web-request.lisp",
-      "line": 1252,
+      "line": 1323,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-web-client-address and the conclusion is that arm's value"
       ]
@@ -49977,7 +49950,7 @@
     {
       "theorem": "fn-wr-car-txt",
       "book": "books/web-render.lisp",
-      "line": 882,
+      "line": 828,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -49985,7 +49958,7 @@
     {
       "theorem": "fn-wr-car-url",
       "book": "books/web-render.lisp",
-      "line": 883,
+      "line": 829,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -49993,7 +49966,7 @@
     {
       "theorem": "fn-wr-slice-empty",
       "book": "books/web-render.lisp",
-      "line": 352,
+      "line": 332,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-slice-list and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-oct-slice-list and the conclusion is that branch's value"
@@ -50002,7 +49975,7 @@
     {
       "theorem": "fn-wrq-slice-empty",
       "book": "books/web-request.lisp",
-      "line": 835,
+      "line": 882,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-slice-list and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-oct-slice-list and the conclusion is that branch's value"
@@ -51721,13 +51694,13 @@
       {
         "theorem": "fn-web-in-p-is-octet-listp",
         "book": "books/web-request.lisp",
-        "line": 127,
+        "line": 126,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-web-out-p-is-octet-listp",
         "book": "books/web-request.lisp",
-        "line": 131,
+        "line": 130,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -53771,18 +53744,6 @@
         "check": "wrnt-tooth-spans-need-within",
         "book": "tests/acl2/web-render-tests.lisp",
         "line": 182,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "wrnt-tooth-2047-identity-needs-no-openers",
-        "book": "tests/acl2/web-render-tests.lisp",
-        "line": 222,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "wrnt-tooth-2047-octets-need-octets",
-        "book": "tests/acl2/web-render-tests.lisp",
-        "line": 235,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
