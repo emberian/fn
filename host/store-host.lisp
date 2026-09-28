@@ -490,9 +490,6 @@
 (defun fn-store-profile-replay-within-bound (profile aggregate)
   (fn-srb-replay-within-boundp profile aggregate))
 
-(defun fn-store-publication-kind-ceiling (kind)
-  (fn-store-publication-ceiling kind))
-
 ;; The open's per-file read bound under the persisted PROFILE: one FNST frame
 ;; whose payload is at most the profile's per-record ceiling.  Every committed
 ;; transaction file was published under `fn-bs-publication-admissiblep' (its
