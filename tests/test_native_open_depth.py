@@ -24,6 +24,19 @@ FN_OPEN_DEPTH_NAMES to a comma (or colon) list (default syn100k-2k; syn1m-2k nee
 writes the checkpoint at another stack (with FN_TEST_CONTROL_STACK_REASON),
 to ask whether an image that cannot full-replay-open can open a checkpoint.
 Skips, naming the variable, without them.
+
+PKT-877 (lane serve-depth): after the open, every command of defprotocol's
+table (books/protocol-table.lisp, one row per command) is issued against the
+open store over one connection -- LIST and its variants, GROUP, LISTGROUP,
+OVER/XOVER, HDR/XHDR, XPAT, NEWNEWS, NEWGROUPS, ARTICLE/HEAD/BODY/STAT,
+LAST/NEXT, POST, IHAVE/CHECK/TAKETHIS, AUTHINFO, STARTTLS, XREDEEM,
+XFNCATCHUP, CAPABILITIES, HELP, MODE, DATE, an unrecognized command, QUIT --
+with the group's whole range where a command takes one.  A death does not
+hide the next one: when the owner stops, the command, its exit and the
+owner's last frames are recorded, the owner is reopened and the list goes
+on; the test fails at the end naming every command that killed it.  Each
+command prints `OPEN-DEPTH NAME MODE SERVED <command> <first reply line>
+lines=N seconds=S`.  FN_OPEN_DEPTH_SERVED=0 serves DATE only.
 """
 import os
 from pathlib import Path
@@ -41,6 +54,59 @@ from tests import test_native_operator_verbs as verbs
 FIXTURES = os.environ.get("FN_OPEN_DEPTH_FIXTURES")
 NAMES = [n for n in os.environ.get("FN_OPEN_DEPTH_NAMES", "syn100k-2k").replace(":", ",").split(",") if n]
 OPEN_SECONDS = 3600
+SERVED = os.environ.get("FN_OPEN_DEPTH_SERVED", "1") != "0"
+# The reply codes after which a multi-line block follows (RFC 3977 3.1.1),
+# and 211 only for LISTGROUP.
+MULTI = {b"100", b"101", b"215", b"220", b"221", b"222", b"224", b"225", b"230", b"231"}
+
+
+def served_commands(group, low, high, msgid):
+    """(command, whether it takes a POST body) for every row of the table."""
+    whole = "{}-{}".format(low, high) if high else "{}-".format(low)
+    high = high or low
+    epoch = "19700101 000000 GMT"
+    return [
+        ("CAPABILITIES", None), ("HELP", None), ("MODE READER", None), ("DATE", None),
+        ("LIST", None), ("LIST ACTIVE", None), ("LIST ACTIVE {}".format(group), None),
+        ("LIST ACTIVE *", None), ("LIST NEWSGROUPS", None), ("LIST COUNTS", None),
+        ("LIST COUNTS {}".format(group), None), ("LIST ACTIVE.TIMES", None),
+        ("LIST OVERVIEW.FMT", None), ("LIST HEADERS", None), ("LIST HEADERS MSGID", None),
+        ("LIST HEADERS RANGE", None), ("LIST SUBSCRIPTIONS", None), ("LIST MOTD", None),
+        ("LIST DISTRIB.PATS", None), ("LIST DISTRIBUTIONS", None),
+        ("NEWGROUPS {}".format(epoch), None),
+        ("GROUP {}".format(group), None), ("LISTGROUP {}".format(group), None),
+        ("LISTGROUP {} {}".format(group, whole), None),
+        ("LISTGROUP {} {}-".format(group, low), None),
+        ("OVER {}".format(whole), None), ("OVER {}-".format(low), None),
+        ("XOVER {}".format(whole), None), ("OVER {}".format(msgid), None),
+        ("HDR Subject {}".format(whole), None), ("HDR Message-ID {}-".format(low), None),
+        ("HDR :bytes {}".format(whole), None), ("HDR :lines {}".format(whole), None),
+        ("HDR Xref {}".format(whole), None), ("HDR :fn-verified {}".format(whole), None),
+        ("HDR :fn-control {}".format(whole), None),
+        ("HDR :fn-enrollment {}".format(whole), None), ("HDR Subject {}".format(msgid), None),
+        ("XHDR Subject {}".format(whole), None), ("XHDR Message-ID {}".format(msgid), None),
+        ("XPAT Subject {} *".format(whole), None), ("XPAT Message-ID {} *".format(whole), None),
+        ("NEWNEWS * {}".format(epoch), None), ("NEWNEWS {} {}".format(group, epoch), None),
+        ("GROUP {}".format(group), None),
+        ("STAT", None), ("NEXT", None), ("LAST", None),
+        ("ARTICLE {}".format(high), None), ("HEAD {}".format(low), None),
+        ("BODY {}".format(high), None), ("STAT {}".format(high), None),
+        ("ARTICLE {}".format(msgid), None), ("HEAD {}".format(msgid), None),
+        ("BODY {}".format(msgid), None), ("STAT {}".format(msgid), None),
+        ("XFNCATCHUP * {} 0 {}".format(whole, whole), None),
+        ("XREDEEM code", None), ("AUTHINFO USER nobody", None), ("STARTTLS", None),
+        ("CHECK {}".format(msgid), None), ("IHAVE {}".format(msgid), None),
+        ("TAKETHIS <serve-depth-takethis@fn.invalid>", None),
+        ("POST", group), ("GROUP {}".format(group), None), ("LISTGROUP {}".format(group), None),
+        ("XSERVEDEPTHUNKNOWN", None), ("QUIT", None),
+    ]
+
+
+def post_body(group):
+    return ("From: serve-depth <serve-depth@fn.invalid>\r\nNewsgroups: {}\r\n"
+            "Subject: serve-depth after the whole-range reads\r\n"
+            "Message-ID: <serve-depth-{}@fn.invalid>\r\n\r\nbody\r\n.\r\n").format(
+                group, os.getpid()).encode("ascii")
 
 
 def env_at(kib):
@@ -80,35 +146,51 @@ class OpenDepthTests(unittest.TestCase):
                           encoding="ascii")
         return root, config, port
 
+    def start_owner(self, name, mode, root, config, err_path):
+        """Start the owner; answer (process, seconds to LISTENING, OWNER-OPEN line)."""
+        err = open(err_path, "ab")
+        self.addCleanup(err.close)
+        started = time.monotonic()
+        owner = subprocess.Popen([str(verbs.IMAGE), "--fn", "operator", str(config), "run"],
+                                 env=verbs.environment(), stdout=subprocess.PIPE, stderr=err)
+        while True:
+            ready = select.select([owner.stdout], [], [], OPEN_SECONDS)[0]
+            if not ready:
+                owner.kill()
+                self.fail("no LISTENING in {} s".format(OPEN_SECONDS))
+            line = owner.stdout.readline()
+            if not line:
+                owner.wait(60)
+                self.fail("{} {}: the owner stopped at open (exit {}): {}".format(
+                    name, mode, owner.returncode,
+                    err_path.read_bytes()[-3000:].decode("utf-8", "replace")))
+            if line.startswith(b"LISTENING"):
+                break
+        opened = [l for l in err_path.read_text("utf-8", "replace").splitlines()
+                  if l.startswith("OWNER-OPEN")]
+        return owner, time.monotonic() - started, (opened[-1] if opened else "")
+
+    def stop_owner(self, owner, err_path):
+        if owner.poll() is None:
+            owner.terminate()
+            owner.wait(600)
+        if self.deaths:
+            return
+        text = err_path.read_text("utf-8", "replace")
+        self.assertNotIn("Control stack exhausted", text)
+        self.assertEqual(owner.returncode, 0, text[-3000:])
+
     def open_and_serve(self, name, mode, root, config, port):
         err_path = root / "owner-{}.err".format(mode)
-        with open(err_path, "wb") as err:
-            started = time.monotonic()
-            owner = subprocess.Popen([str(verbs.IMAGE), "--fn", "operator", str(config), "run"],
-                                     env=verbs.environment(), stdout=subprocess.PIPE, stderr=err)
-            try:
-                listening = None
-                while listening is None:
-                    ready = select.select([owner.stdout], [], [], OPEN_SECONDS)[0]
-                    self.assertTrue(ready, "no LISTENING in {} s".format(OPEN_SECONDS))
-                    line = owner.stdout.readline()
-                    if not line:
-                        owner.wait(60)
-                        self.fail("{} {}: the owner stopped at open (exit {}): {}".format(
-                            name, mode, owner.returncode,
-                            err_path.read_bytes()[-3000:].decode("utf-8", "replace")))
-                    if line.startswith(b"LISTENING"):
-                        listening = time.monotonic() - started
-                opened = [l for l in err_path.read_text("utf-8", "replace").splitlines()
-                          if l.startswith("OWNER-OPEN")]
-                print("OPEN-DEPTH {} {} seconds={:.1f} {}".format(
-                    name, mode, listening, opened[-1] if opened else "(no OWNER-OPEN line)"),
-                      flush=True)
-                # One command that reads no article list: the served reads
-                # that walk a group's whole article list (LIST ACTIVE, GROUP:
-                # fn-nntp-group-low/-high/-count) still recurse per article
-                # and die at this stack past ~30,000 (PKT-877, not this
-                # packet's); the open is what this module certifies.
+        self.deaths = []
+        owner, listening, opened = self.start_owner(name, mode, root, config, err_path)
+        self.state = {"owner": owner}
+        print("OPEN-DEPTH {} {} seconds={:.1f} {}".format(
+            name, mode, listening, opened or "(no OWNER-OPEN line)"), flush=True)
+        try:
+            if SERVED:
+                self.serve_every_command(name, mode, root, config, port, err_path)
+            else:
                 with socket.create_connection(("127.0.0.1", port), timeout=600) as conn:
                     f = conn.makefile("rwb")
                     self.assertTrue(f.readline().startswith(b"20"))
@@ -118,16 +200,124 @@ class OpenDepthTests(unittest.TestCase):
                     print("OPEN-DEPTH {} {} {}".format(name, mode, reply.strip().decode("ascii")),
                           flush=True)
                     self.assertTrue(reply.startswith(b"111 "), reply)
-                    f.write(b"QUIT\r\n")
-                    f.flush()
-                return opened[-1] if opened else ""
-            finally:
-                if owner.poll() is None:
-                    owner.terminate()
-                    owner.wait(600)
-                text = err_path.read_text("utf-8", "replace")
-                self.assertNotIn("Control stack exhausted", text)
-                self.assertEqual(owner.returncode, 0, text[-3000:])
+            return opened
+        finally:
+            self.stop_owner(self.state["owner"], err_path)
+
+    def serve_every_command(self, name, mode, root, config, port, err_path):
+        """Every command of the table against the open store; reopen after a death."""
+        deaths = self.deaths
+        state = self.state
+
+        def connect():
+            c = socket.create_connection(("127.0.0.1", port), timeout=1800)
+            h = c.makefile("rwb")
+            greeting = h.readline()
+            self.assertTrue(greeting.startswith(b"20"), greeting)
+            return c, h
+
+        def exchange(h, text, body):
+            h.write(text.encode("ascii") + b"\r\n")
+            h.flush()
+            first = h.readline()
+            if not first:
+                return None, 0
+            code = first[:3]
+            lines = 0
+            if body is not None and code == b"340":
+                h.write(post_body(body))
+                h.flush()
+                first = h.readline()
+                if not first:
+                    return None, 0
+                code = first[:3]
+            if code in MULTI or (code == b"211" and text.startswith("LISTGROUP")):
+                while True:
+                    line = h.readline()
+                    if not line:
+                        return None, lines
+                    if line == b".\r\n":
+                        break
+                    lines += 1
+            return first, lines
+
+        conn, f = connect()
+        group = os.environ.get("FN_OPEN_DEPTH_GROUP", "fn.test")
+
+        def run(text, body):
+            nonlocal conn, f
+            started = time.monotonic()
+            try:
+                first, lines = exchange(f, text, body)
+            except OSError as e:
+                first, lines = None, 0
+                print("OPEN-DEPTH {} {} SERVED {} connection error {}".format(name, mode, text, e),
+                      flush=True)
+            seconds = time.monotonic() - started
+            if first is not None:
+                print("OPEN-DEPTH {} {} SERVED {} {} lines={} seconds={:.1f}".format(
+                    name, mode, text, first.strip().decode("utf-8", "replace")[:80], lines,
+                    seconds), flush=True)
+                return first
+            proc = state["owner"]
+            try:
+                proc.wait(5 if text == "QUIT" else 60)
+            except subprocess.TimeoutExpired:
+                pass
+            conn.close()
+            if proc.poll() is None:
+                # The connection closed and the owner lives (QUIT): reconnect.
+                print("OPEN-DEPTH {} {} SERVED {} (closed) seconds={:.1f}".format(
+                    name, mode, text, seconds), flush=True)
+            else:
+                tail = err_path.read_bytes()[-6000:].decode("utf-8", "replace")
+                frames = [l.strip() for l in tail.splitlines()
+                          if "FN-" in l.upper() or "exhausted" in l][-8:]
+                deaths.append((text, proc.returncode, frames))
+                print("OPEN-DEPTH {} {} SERVED {} OWNER-DIED exit={} seconds={:.1f} {}".format(
+                    name, mode, text, proc.returncode, seconds, " | ".join(frames)), flush=True)
+                state["owner"], _, _ = self.start_owner(name, mode + "-reopen", root, config,
+                                                        err_path)
+            conn, f = connect()
+            if text != "QUIT":
+                exchange(f, "GROUP {}".format(group), None)
+            return None
+
+        # The group with the most articles, when LIST ACTIVE answers: the one
+        # whose whole range is deepest.
+        f.write(b"LIST ACTIVE\r\n")
+        f.flush()
+        head = f.readline()
+        best = None
+        while head.startswith(b"215"):
+            line = f.readline()
+            if not line or line == b".\r\n":
+                break
+            words = line.split()
+            if len(words) >= 3 and words[1].isdigit() and words[2].isdigit():
+                depth = int(words[1]) - int(words[2])
+                if best is None or depth > best[0]:
+                    best = (depth, words[0].decode("ascii"))
+        if best is not None:
+            group = best[1]
+        else:
+            run("LIST ACTIVE", None)
+        low, high = 1, None
+        first = run("GROUP {}".format(group), None)
+        if first and first.startswith(b"211"):
+            low, high = int(first.split()[2]), int(first.split()[3])
+        msgid = "<serve-depth-none@fn.invalid>"
+        first = run("HEAD {}".format(high if high else low), None)
+        if first and first.startswith(b"221") and len(first.split()) > 2:
+            msgid = first.split()[2].decode("ascii")
+        print("OPEN-DEPTH {} {} group={} low={} high={} msgid={}".format(
+            name, mode, group, low, high, msgid), flush=True)
+        for text, body in served_commands(group, low, high, msgid):
+            if run(text, body) is not None and text == "QUIT":
+                break
+        conn.close()
+        self.assertEqual([(t, e) for t, e, _ in deaths], [], "commands that stopped the owner at {} ({}): {}".format(
+            name, mode, "; ".join("{} (exit {})".format(t, e) for t, e, _ in deaths)))
 
     def test_full_replay_open_at_the_deployed_stack(self):
         for name in NAMES:
