@@ -30,34 +30,21 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 import blake3_ref  # noqa: E402
+from tests.native_harness import (  # noqa: E402
+    EXIT, environment, executable, native_image, run as harness_run)
 
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
-DEVELOPER = Path(os.environ.get(
-    "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+IMAGE = native_image("FN_NATIVE_HOST")
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 # The module's default fits the 20 s test budget; the lane's evidence run
 # sets FN_TEST_DIGEST_COUNT=100000 (planning/evidence/digest-native-2026-09-27.md).
 COUNT = int(os.environ.get("FN_TEST_DIGEST_COUNT", "8000"))
-EXIT_USAGE = 5
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("SBCL_USER_ARGS", None)
-    return env
-
-
-def executable(image):
-    return image.is_file() and os.access(image, os.X_OK)
 
 
 def run(image, args, timeout=3000):
-    return subprocess.run([str(image), "--fn"] + args, env=environment(),
-                          stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, timeout=timeout)
+    # The image's own control stack (no SBCL_USER_ARGS), as the bench measures it.
+    return harness_run([image, "--fn", *args], env=environment({"SBCL_USER_ARGS": None}),
+                       stdin=subprocess.DEVNULL, timeout=timeout)
 
 
 class DeveloperDifferentialTests(unittest.TestCase):
@@ -104,7 +91,7 @@ class ProductionTests(unittest.TestCase):
 
     def test_production_refuses_digest_check(self):
         done = run(IMAGE, ["digest-check", "run", "1"], timeout=300)
-        self.assertEqual(done.returncode, EXIT_USAGE, done.stdout + done.stderr)
+        self.assertEqual(done.returncode, EXIT.USAGE, done.stdout + done.stderr)
         self.assertIn(b"digest-check is available only in the developer image",
                       done.stderr + done.stdout)
 
