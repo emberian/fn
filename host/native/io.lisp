@@ -3935,7 +3935,7 @@ presence of the two names is classified by fn-bs-imp-classify."
                                  (let ((octets (fnn-archive-entry
                                                 dir (fnn-join "records" name)
                                                 record-bound)))
-                                   (cons (fnn-core 'fn-store-record-sequence
+                                   (cons (fnn-core 'fn-store-archive-record-sequence
                                                    (fnn-octet-list octets))
                                          (fnn-octet-list octets))))
                                record-names)))
@@ -3944,12 +3944,15 @@ presence of the two names is classified by fn-bs-imp-classify."
     (unless (and (consp plan) (member (first plan) '(:import :refused)))
       (fnn-fault "ACL2 returned a malformed import plan"))
     (when (eq (first plan) :refused)
-      (fnn-refuse "import refused reason=~(~a~)~@[ ~a~]" (second plan)
+      (fnn-refuse "import refused reason=~(~a~)~@[ ~a~]~@[ sequence=~a~]" (second plan)
                   (let ((detail (third plan)))
                     (cond ((null detail) nil)
                           ((fnn-octet-list-p detail) (fnn-octets-string (fnn-octets detail)))
                           ((keywordp detail) (string-downcase (symbol-name detail)))
-                          (t detail)))))
+                          (t detail)))
+                  ;; :record-translation names the archive record's sequence.
+                  (and (eq (second plan) :record-translation)
+                       (natp (fourth plan)) (fourth plan))))
     (destructuring-bind (values frontier configs records) (rest plan)
       (let* ((root-path (string-right-trim "/" root))
              (stage-root (format nil "~a.import-~a" root-path (fnn-random-hex 6)))
