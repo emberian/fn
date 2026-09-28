@@ -11699,9 +11699,11 @@
         "books/native-admin.lisp",
         "tests/acl2/native-admin-tests.lisp",
         "tests/test_native_compression.py",
-        "planning/evidence/compression-extents-2-2026-09-27.md"
+        "planning/evidence/compression-extents-2-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260928T001142Z-3166531.json",
+        "planning/evidence/manifests/certify-20260928T002833Z-3274728.json"
       ],
-      "progress_note": "Lane compression-extents-2 (Opus 5.5, 2026-09-27): REPL-admitted on hbox (books and test books); certification and native results in the record.",
+      "progress_note": "Lane compression-extents-2 (Opus 5.5, 2026-09-27/28). hbox certify-20260928T001142Z-3166531: the affected roots of payload-lz-append (+tests), native-admin and store-export, 160 certified, passed 0 failed; native-n1 at d76980d59 (certify-20260928T002833Z-3274728, both images): test_native_compression, recovery, log_damage, replay_determinism, older_release_open all OK. Teeth: tests/acl2/payload-lz-append-tests.lisp on the real 1993 article and its liblz4-HC blocks. The switch is the configuration row compress-min-octets (default off); measurement in the record.",
       "events": [
         "fn-lzr-append-decide-framed-expands",
         "fn-lzr-append-decide-framed-is-the-seal",

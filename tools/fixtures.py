@@ -299,7 +299,18 @@ def recipe_synth_lz(ctx: Context, n: int, threshold: int = 64) -> None:
     plain = Context(ctx.image, ctx.rev, ctx.work / "plain-work", ctx.work / "plain", ctx.mem)
     plain.work.mkdir(parents=True, exist_ok=True)
     plain.log = ctx.log
-    recipe_synth(plain, n)
+    # The registered plain fixture when it is present (its bytes are
+    # recipe_synth's; rebuilding the seed needs an init budget for capacity
+    # 4,000,000 that a swarm-build scope refuses on hbox), else the recipe.
+    registered = ROOT / "syn100k-2k" / "store"
+    if n == 100000 and (registered / "journal").is_dir():
+        plain.dest.mkdir(parents=True)
+        shutil.copytree(registered, plain.dest / "store", symlinks=True)
+    else:
+        recipe_synth(plain, n)
+    lock = plain.dest / "store" / "writer.lock"
+    lock.touch()
+    os.chmod(lock, 0o600)
     archive = ctx.work / "archive"
     ctx.run([ctx.image, "--fn", "store", plain.dest / "store", "export", archive], env=ctx.env)
     ctx.dest.mkdir(parents=True)
