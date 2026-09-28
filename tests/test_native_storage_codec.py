@@ -9,31 +9,14 @@ sequence, the frontier frame refusals -- are retired with that layout (lane
 log-recovery-mod); the configuration namespace, the profile frame and the
 injected commit outcomes stay."""
 
-import os
-from pathlib import Path
 import shutil
-import subprocess
-import sys
-import tempfile
 import unittest
 
+from tests.native_harness import (
+    EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, assert_outcome, native_image,
+    requires, run, scratch)
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", str(ROOT / "build" / "fn-host-developer")))
-sys.path.insert(0, str(ROOT / "tools"))
-import frame_bridge  # noqa: E402
-import run_store  # noqa: E402
-
-
-def host_env(native):
-    env = dict(os.environ)
-    if native:
-        env["FN_HOST"] = "native"
-        env["FN_NATIVE_HOST"] = str(IMAGE)
-    else:
-        env.pop("FN_HOST", None)
-        env.pop("FN_NATIVE_HOST", None)
-    return env
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 
 class NativeConfigNamespaceSourceTests(unittest.TestCase):
@@ -54,54 +37,31 @@ class NativeConfigNamespaceSourceTests(unittest.TestCase):
         self.assertIn("fn-nco-canonical-contiguousp", model)
 
 
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
-                     "build/fn-host-developer is required for raw Store fixtures")
+@requires(IMAGE)
 class NativeStorageCodecTests(unittest.TestCase):
+    """The raw Store verbs of the developer image (`IMAGE --fn store ROOT
+    VERB ...`); these cases once went through tools/run_store.py with
+    FN_HOST=native, which only re-parsed the words and exec'd the image."""
+
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-metadata-")
-        self.base = Path(self.temporary.name)
+        self.base = scratch(self, "fn-native-metadata-")
         self.payload = self.base / "payload"
         self.payload.write_bytes(b"native metadata")
 
-    def tearDown(self):
-        frame_bridge.close()
-        self.temporary.cleanup()
-
-    def invoke(self, native, store, command, *arguments, expected=0):
-        result = subprocess.run(
-            [sys.executable, "tools/run_store.py", "--store", str(store),
-             command, *map(str, arguments)], cwd=ROOT, env=host_env(native),
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
-        self.assertEqual(
-            result.returncode, expected,
-            "{} host {} returned {}\nstdout={}\nstderr={}".format(
-                "native" if native else "python", command, result.returncode,
-                result.stdout.decode("utf-8", "replace"),
-                result.stderr.decode("utf-8", "replace")))
+    def invoke(self, store, *words, expected=EXIT_OK):
+        """`IMAGE --fn store STORE WORDS...`, asserted to exit EXPECTED."""
+        result = run([IMAGE, "--fn", "store", store, *words], timeout=None)
+        assert_outcome(self, result, expected)
         return result
 
-    @staticmethod
-    def post_arguments(message_id):
-        return ("--message-id", message_id, "--payload", "PAYLOAD",
-                "--group", "fn.letters")
-
-    def post(self, native, store, message_id, expected=0):
-        arguments = list(self.post_arguments(message_id))
-        arguments[3] = self.payload
-        return self.invoke(native, store, "post", *arguments, expected=expected)
-
-    def direct_native_post(self, store, message_id, fault, expected):
-        result = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(store), "post", message_id,
-             str(self.payload), "-", fault, "fn.letters"], cwd=ROOT,
-            env=host_env(True), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            check=False)
-        self.assertEqual(result.returncode, expected, result.stderr.decode("utf-8", "replace"))
-        return result
+    def post(self, store, message_id, fault="-", expected=EXIT_OK):
+        # The image's positional post: MESSAGE-ID PAYLOAD CHARGE FAULT GROUP...
+        return self.invoke(store, "post", message_id, self.payload, "-", fault,
+                           "fn.letters", expected=expected)
 
     def test_native_config_namespace_refuses_mismatched_name_and_symlink(self):
         store = self.base / "config-namespace"
-        self.invoke(True, store, "init")
+        self.invoke(store, "init")
         config_dir = store / "config"
         generation_one = config_dir / "00000001.cfg"
 
@@ -110,18 +70,18 @@ class NativeStorageCodecTests(unittest.TestCase):
         # shorter configuration prefix.
         mismatch = config_dir / "00000002.cfg"
         mismatch.write_bytes(generation_one.read_bytes())
-        self.invoke(True, store, "recover", expected=run_store.EXIT_FAULT)
+        self.invoke(store, "recover", expected=EXIT_FAULT)
         mismatch.unlink()
 
         # A selected canonical-looking name that is a symlink is a physical
         # observation fault before the ACL2 plan receives its bytes.
         alias = config_dir / "00000002.cfg"
         alias.symlink_to(generation_one.name)
-        self.invoke(True, store, "recover", expected=run_store.EXIT_FAULT)
+        self.invoke(store, "recover", expected=EXIT_FAULT)
 
     def test_native_refuses_truncated_or_malformed_metadata(self):
         original = self.base / "original"
-        self.invoke(True, original, "init")
+        self.invoke(original, "init")
         cases = (
             ("config-truncated", "config.json", lambda raw: raw[:-1], b"configuration frame"),
             ("config-kind", "config.json",
@@ -133,46 +93,41 @@ class NativeStorageCodecTests(unittest.TestCase):
                 shutil.copytree(original, store)
                 path = store / relative
                 path.write_bytes(damage(path.read_bytes()))
-                result = self.invoke(True, store, "status", expected=run_store.EXIT_FAULT)
+                result = self.invoke(store, "status", expected=EXIT_FAULT)
                 self.assertIn(diagnostic, result.stderr)
 
     def test_legacy_json_is_retained_and_refused_by_name(self):
         store = self.base / "legacy"
-        self.invoke(True, store, "init")
+        self.invoke(store, "init")
         legacy = b'{"format":"fn-store-experiment-5"}\n'
         path = store / "config.json"
         path.write_bytes(legacy)
         # D34: a JSON profile of an earlier experiment is refused at the open
         # by ACL2's name (host/native/io.lisp fnn-load-config), and kept.
-        result = self.invoke(True, store, "status", expected=run_store.EXIT_REFUSED)
+        result = self.invoke(store, "status", expected=EXIT_REFUSED)
         self.assertIn(b"open refused reason=store-format", result.stderr)
         self.assertEqual(path.read_bytes(), legacy)
 
     def test_native_publication_cut_stays_uncertain_until_recovery(self):
         store = self.base / "uncertain"
-        self.invoke(True, store, "init")
-        result = self.invoke(
-            True, store, "post", "--message-id", "<uncertain@example.invalid>",
-            "--payload", self.payload, "--group", "fn.letters",
-            "--inject-fault", "postpublish", expected=run_store.EXIT_UNCERTAIN)
+        self.invoke(store, "init")
+        result = self.post(store, "<uncertain@example.invalid>", "postpublish",
+                           expected=EXIT_UNCERTAIN)
         self.assertIn(b"indeterminate", result.stderr)
-        recovered = self.invoke(True, store, "recover")
+        recovered = self.invoke(store, "recover")
         self.assertIn(b"transactions=1 articles=1", recovered.stdout)
-        inspected = self.invoke(True, store, "inspect", "--message-id",
-                                "<uncertain@example.invalid>")
+        inspected = self.invoke(store, "inspect", "<uncertain@example.invalid>")
         self.assertEqual(inspected.stdout, self.payload.read_bytes())
 
     def test_injected_record_barrier_failure_replays_visible_publication(self):
         store = self.base / "record-barrier"
-        self.invoke(True, store, "init")
-        failed = self.direct_native_post(
-            store, "<record-barrier@example.invalid>", "recordbarrier",
-            run_store.EXIT_UNCERTAIN)
+        self.invoke(store, "init")
+        failed = self.post(store, "<record-barrier@example.invalid>", "recordbarrier",
+                           expected=EXIT_UNCERTAIN)
         # Format 9: the record's write is P-BATCH's append (the log batch).
         self.assertIn(b"log batch outcome is indeterminate", failed.stderr)
-        self.invoke(True, store, "recover")
-        inspected = self.invoke(True, store, "inspect", "--message-id",
-                                "<record-barrier@example.invalid>")
+        self.invoke(store, "recover")
+        inspected = self.invoke(store, "inspect", "<record-barrier@example.invalid>")
         self.assertEqual(inspected.stdout, self.payload.read_bytes())
 
 

@@ -78,7 +78,6 @@ class NativePackChainTests(unittest.TestCase):
     native_timeout = int(os.environ.get("FN_P5_TIMEOUT", "1800"))
     served_timeout = native_timeout
     setUp = checkpoint.NativeCheckpointTests.setUp
-    tearDown = checkpoint.NativeCheckpointTests.tearDown
     native = checkpoint.NativeCheckpointTests.native
     owner_config = checkpoint.NativeCheckpointTests.owner_config
     run_owner = checkpoint.NativeCheckpointTests.run_owner
