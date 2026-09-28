@@ -39,6 +39,13 @@
 (include-book "store-log-kernel-concrete")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-lg-entry-okp)
+                          (:definition fn-lg-scan)
+                          (:rewrite fn-lgc-consp-nthcdr)
+                          (:rewrite fn-lgc-octets-true-listp))))
+
 ; -----------------------------------------------------------------------------
 ; The stream's state: (:lgw POS PREV COUNT NEXT STOP BROKEN)
 
