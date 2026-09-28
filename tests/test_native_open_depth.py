@@ -88,7 +88,11 @@ def served_commands(group, low, high, msgid):
         ("XOVER {}".format(whole), None), ("OVER {}".format(msgid), None),
         ("HDR Subject {}".format(whole), None), ("HDR Message-ID {}-".format(low), None),
         ("HDR :bytes {}".format(whole), None), ("HDR :lines {}".format(whole), None),
-        ("HDR Xref {}".format(whole), None), ("HDR :fn-verified {}".format(whole), None),
+        ("HDR Xref {}".format(whole), None), ("HDR :fn-verified {}-{}".format(low, low + 999), None),
+        # :fn-verified looks each number up in the whole article list (books/
+        # nntp-verdict.lisp fn-nntp-available-article per number): quadratic,
+        # over 30 minutes at 100,000 (lane serve-depth's finding), so its
+        # range is a thousand numbers.
         ("HDR :fn-control {}".format(whole), None),
         ("HDR :fn-enrollment {}".format(whole), None), ("HDR Subject {}".format(msgid), None),
         ("XHDR Subject {}".format(whole), None), ("XHDR Message-ID {}".format(msgid), None),
