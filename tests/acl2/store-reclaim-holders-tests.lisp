@@ -271,3 +271,13 @@
                 (fn-record-string-octets " reclaimable-octets=")
                 (fn-nls-nat (- 374 (len *rht-bytes*)))
                 (fn-record-string-octets " held=0 reclaimed=0 freed-octets=0 signed=1 kept=0"))))
+
+; The three per-article counts execute by loops (lane format10-import: `store
+; status' over 1,000,000 articles died in 837,983 frames of
+; fn-rcl-summary-in).  Each entry is guard-verified, so the :exec loop runs,
+; and every count above (in-arena-fn-rcl-store-counts, -classes) is the loop's.
+(assert-event
+ (equal (list (symbol-class 'fn-rcl-summary-in (w state))
+              (symbol-class 'fn-rcl-held-count-in (w state))
+              (symbol-class 'fn-rcl-class-count-in (w state)))
+        '(:common-lisp-compliant :common-lisp-compliant :common-lisp-compliant)))

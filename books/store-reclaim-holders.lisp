@@ -217,33 +217,159 @@
       :already-reclaimed
     (fn-rcl-standing-verdict rule now h verdicts a)))
 
-(defun fn-rcl-summary-in (rule now h verdicts articles fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
+;; `store status' over 1,000,000 articles (the format-10 syn1m-2k, lane
+;; format10-import, 2026-09-28) died in 837,983 control-stack frames of
+;; fn-rcl-summary-in (hbox, developer image, FN_NATIVE_FAULT_BACKTRACE): the
+;; three counts below recursed once per article, and `status' runs them over
+;; every article.  Each executes by a forward loop (PKT-693's pattern, lane
+;; thread-stacks): the :logic is the recursion, unchanged, and the guard proof
+;; is the equality (fn-rcl-summary-loop-is-the-summary,
+;; fn-rcl-held-count-loop-is-the-count, fn-rcl-class-count-loop-is-the-count).
+(defun fn-rcl-summary-loop (rule now h verdicts articles c0 c1 c2 c3 fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (natp c0) (natp c1) (natp c2) (natp c3))))
   (if (consp articles)
-      (let* ((rest (fn-rcl-summary-in rule now h verdicts (cdr articles) fn-arena))
-             (a (car articles))
+      (let* ((a (car articles))
              (p (fn-article-payload a))
              (verdict (fn-rcl-verdict-in rule now h verdicts a fn-arena)))
         (cond ((equal verdict :reclaimable)
-               (list (+ 1 (nfix (nth 0 rest)))
-                     (+ (fn-rcl-payload-len p fn-arena) (nfix (nth 1 rest)))
-                     (nfix (nth 2 rest)) (nfix (nth 3 rest))))
+               (fn-rcl-summary-loop rule now h verdicts (cdr articles)
+                                    (+ 1 c0) (+ (fn-rcl-payload-len p fn-arena) c1)
+                                    c2 c3 fn-arena))
               ((equal verdict :already-reclaimed)
-               (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
-                     (+ 1 (nfix (nth 2 rest)))
-                     (+ (nfix (- (fn-rcl-payload-tomb-length p fn-arena)
-                                 (fn-rcl-payload-len p fn-arena)))
-                        (nfix (nth 3 rest)))))
-              (t (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
-                       (nfix (nth 2 rest)) (nfix (nth 3 rest))))))
-    (list 0 0 0 0)))
+               (fn-rcl-summary-loop rule now h verdicts (cdr articles)
+                                    c0 c1 (+ 1 c2)
+                                    (+ (nfix (- (fn-rcl-payload-tomb-length p fn-arena)
+                                                (fn-rcl-payload-len p fn-arena)))
+                                       c3)
+                                    fn-arena))
+              (t (fn-rcl-summary-loop rule now h verdicts (cdr articles)
+                                      c0 c1 c2 c3 fn-arena))))
+    (list c0 c1 c2 c3)))
+
+(defun fn-rcl-summary-in (rule now h verdicts articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (mbe
+   :logic
+   (if (consp articles)
+       (let* ((rest (fn-rcl-summary-in rule now h verdicts (cdr articles) fn-arena))
+              (a (car articles))
+              (p (fn-article-payload a))
+              (verdict (fn-rcl-verdict-in rule now h verdicts a fn-arena)))
+         (cond ((equal verdict :reclaimable)
+                (list (+ 1 (nfix (nth 0 rest)))
+                      (+ (fn-rcl-payload-len p fn-arena) (nfix (nth 1 rest)))
+                      (nfix (nth 2 rest)) (nfix (nth 3 rest))))
+               ((equal verdict :already-reclaimed)
+                (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
+                      (+ 1 (nfix (nth 2 rest)))
+                      (+ (nfix (- (fn-rcl-payload-tomb-length p fn-arena)
+                                  (fn-rcl-payload-len p fn-arena)))
+                         (nfix (nth 3 rest)))))
+               (t (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
+                        (nfix (nth 2 rest)) (nfix (nth 3 rest))))))
+     (list 0 0 0 0))
+   :exec (fn-rcl-summary-loop rule now h verdicts articles 0 0 0 0 fn-arena)))
+
+(local
+ (defthm fn-rcl-payload-len-natp
+   (natp (fn-rcl-payload-len p fn-arena))
+   :rule-classes :type-prescription))
+
+(local
+ (defthm fn-rcl-summary-in-natp-shape
+   (and (true-listp (fn-rcl-summary-in rule now h verdicts articles fn-arena))
+        (equal (len (fn-rcl-summary-in rule now h verdicts articles fn-arena)) 4)
+        (natp (nth 0 (fn-rcl-summary-in rule now h verdicts articles fn-arena)))
+        (natp (nth 1 (fn-rcl-summary-in rule now h verdicts articles fn-arena)))
+        (natp (nth 2 (fn-rcl-summary-in rule now h verdicts articles fn-arena)))
+        (natp (nth 3 (fn-rcl-summary-in rule now h verdicts articles fn-arena))))
+   :hints (("Goal" :induct (fn-rcl-summary-in rule now h verdicts articles fn-arena)
+            :in-theory (e/d (fn-rcl-summary-in) (fn-rcl-verdict-in
+                                                 fn-rcl-payload-len
+                                                 fn-rcl-payload-tomb-length))))))
+
+(local
+ (defthm fn-rcl-summary-loop-is-summary-plus
+   (implies (and (natp c0) (natp c1) (natp c2) (natp c3))
+            (equal (fn-rcl-summary-loop rule now h verdicts articles c0 c1 c2 c3 fn-arena)
+                   (let ((s (fn-rcl-summary-in rule now h verdicts articles fn-arena)))
+                     (list (+ c0 (nth 0 s)) (+ c1 (nth 1 s))
+                           (+ c2 (nth 2 s)) (+ c3 (nth 3 s))))))
+   :hints (("Goal" :induct (fn-rcl-summary-loop rule now h verdicts articles c0 c1 c2 c3 fn-arena)
+            :in-theory (e/d () (fn-rcl-verdict-in fn-rcl-payload-len
+                                fn-rcl-payload-tomb-length fn-rcl-summary-in-natp-shape)))
+           ("Subgoal *1/3" :use ((:instance fn-rcl-summary-in-natp-shape
+                                            (articles (cdr articles)))))
+           ("Subgoal *1/2" :use ((:instance fn-rcl-summary-in-natp-shape
+                                            (articles (cdr articles)))))
+           ("Subgoal *1/1" :use ((:instance fn-rcl-summary-in-natp-shape
+                                            (articles (cdr articles))))))))
+
+(local
+ (defthm fn-rcl-four-list-is-its-elements
+   (implies (and (true-listp x) (equal (len x) 4))
+            (equal (list (car x) (nth 1 x) (nth 2 x) (nth 3 x)) x))
+   :hints (("Goal" :expand ((len x) (len (cdr x)) (len (cddr x)) (len (cdddr x))
+                            (len (cddddr x)))))
+   :rule-classes nil))
+
+; The guard proof of fn-rcl-summary-in: the loop from zero is the summary.
+(defthm fn-rcl-summary-loop-is-the-summary
+  (equal (fn-rcl-summary-loop rule now h verdicts articles 0 0 0 0 fn-arena)
+         (fn-rcl-summary-in rule now h verdicts articles fn-arena))
+  :hints (("Goal" :in-theory (disable fn-rcl-summary-in fn-rcl-summary-loop
+                                      fn-rcl-summary-in-natp-shape)
+           :use ((:instance fn-rcl-summary-in-natp-shape)
+                 (:instance fn-rcl-four-list-is-its-elements
+                            (x (fn-rcl-summary-in rule now h verdicts articles fn-arena)))))))
+
+(verify-guards fn-rcl-summary-in
+  :hints (("Goal" :in-theory (e/d (fn-rcl-summary-loop-is-the-summary)
+                                  (fn-rcl-summary-in fn-rcl-summary-loop fn-rcl-verdict-in
+                                   fn-rcl-payload-len fn-rcl-payload-tomb-length))
+           :expand ((fn-rcl-summary-in rule now h verdicts articles fn-arena)))))
+
+(local (in-theory (disable fn-rcl-summary-in-natp-shape)))
+
+(defun fn-rcl-held-count-loop (rule now h verdicts articles acc fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (natp acc)))
+  (if (consp articles)
+      (fn-rcl-held-count-loop rule now h verdicts (cdr articles)
+                              (if (fn-rcl-heldp (fn-rcl-verdict-in rule now h verdicts
+                                                                   (car articles) fn-arena))
+                                  (+ 1 acc)
+                                acc)
+                              fn-arena)
+    acc))
 
 (defun fn-rcl-held-count-in (rule now h verdicts articles fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (if (consp articles)
-      (+ (if (fn-rcl-heldp (fn-rcl-verdict-in rule now h verdicts (car articles) fn-arena)) 1 0)
-         (fn-rcl-held-count-in rule now h verdicts (cdr articles) fn-arena))
-    0))
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp articles)
+           (+ (if (fn-rcl-heldp (fn-rcl-verdict-in rule now h verdicts (car articles) fn-arena)) 1 0)
+              (fn-rcl-held-count-in rule now h verdicts (cdr articles) fn-arena))
+         0)
+       :exec (fn-rcl-held-count-loop rule now h verdicts articles 0 fn-arena)))
+
+(local
+ (defthm fn-rcl-held-count-loop-is-count-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-rcl-held-count-loop rule now h verdicts articles acc fn-arena)
+                   (+ acc (fn-rcl-held-count-in rule now h verdicts articles fn-arena))))
+   :hints (("Goal" :induct (fn-rcl-held-count-loop rule now h verdicts articles acc fn-arena)
+            :in-theory (disable fn-rcl-verdict-in fn-rcl-heldp)))))
+
+(defthm fn-rcl-held-count-loop-is-the-count
+  (equal (fn-rcl-held-count-loop rule now h verdicts articles 0 fn-arena)
+         (fn-rcl-held-count-in rule now h verdicts articles fn-arena))
+  :hints (("Goal" :in-theory (disable fn-rcl-held-count-in fn-rcl-held-count-loop))))
+
+(verify-guards fn-rcl-held-count-in
+  :hints (("Goal" :in-theory (e/d (fn-rcl-held-count-loop-is-the-count)
+                                  (fn-rcl-held-count-in fn-rcl-held-count-loop fn-rcl-verdict-in
+                                   fn-rcl-heldp))
+           :expand ((fn-rcl-held-count-in rule now h verdicts articles fn-arena)))))
 
 ; (reclaimable reclaimable-octets reclaimed reclaimed-octets-freed held):
 ; what `status' prints and the reclaim verbs report.
@@ -388,14 +514,50 @@
           ((fn-rcl-heldp verdict) :held)
           (t :kept))))
 
+(verify-guards fn-rcl-class-in)
+
+(defun fn-rcl-class-count-loop (class rule now h verdicts articles acc fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (natp acc)))
+  (if (consp articles)
+      (fn-rcl-class-count-loop class rule now h verdicts (cdr articles)
+                               (if (equal (fn-rcl-class-in rule now h verdicts
+                                                           (car articles) fn-arena)
+                                          class)
+                                   (+ 1 acc)
+                                 acc)
+                               fn-arena)
+    acc))
+
 (defun fn-rcl-class-count-in (class rule now h verdicts articles fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (if (consp articles)
-      (+ (if (equal (fn-rcl-class-in rule now h verdicts (car articles) fn-arena)
-                    class)
-             1 0)
-         (fn-rcl-class-count-in class rule now h verdicts (cdr articles) fn-arena))
-    0))
+  (mbe :logic
+       (if (consp articles)
+           (+ (if (equal (fn-rcl-class-in rule now h verdicts (car articles) fn-arena)
+                         class)
+                  1 0)
+              (fn-rcl-class-count-in class rule now h verdicts (cdr articles) fn-arena))
+         0)
+       :exec (fn-rcl-class-count-loop class rule now h verdicts articles 0 fn-arena)))
+
+(local
+ (defthm fn-rcl-class-count-loop-is-count-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-rcl-class-count-loop class rule now h verdicts articles acc fn-arena)
+                   (+ acc (fn-rcl-class-count-in class rule now h verdicts articles
+                                                 fn-arena))))
+   :hints (("Goal" :induct (fn-rcl-class-count-loop class rule now h verdicts articles
+                                                    acc fn-arena)
+            :in-theory (disable fn-rcl-class-in)))))
+
+(defthm fn-rcl-class-count-loop-is-the-count
+  (equal (fn-rcl-class-count-loop class rule now h verdicts articles 0 fn-arena)
+         (fn-rcl-class-count-in class rule now h verdicts articles fn-arena))
+  :hints (("Goal" :in-theory (disable fn-rcl-class-count-in fn-rcl-class-count-loop))))
+
+(verify-guards fn-rcl-class-count-in
+  :hints (("Goal" :in-theory (e/d (fn-rcl-class-count-loop-is-the-count)
+                                  (fn-rcl-class-count-in fn-rcl-class-count-loop fn-rcl-class-in))
+           :expand ((fn-rcl-class-count-in class rule now h verdicts articles fn-arena)))))
 
 ; (signed kept): the two classes `status' prints beside the reclaim counts.
 (defun fn-rcl-store-classes (rule now s fn-arena)

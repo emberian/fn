@@ -133,3 +133,19 @@
  (defthm sbudt-any-record-takes-sequence-used
    (equal (fn-store-event-sequence *sbudt-sequence-one*)
           (fn-sbud-used (sbudt-store 0)))))
+
+;; fn-sbud-record-octets executes by a loop (lane format10-import): `status'
+;; sums every committed record.  The loop from zero is the sum
+;; (fn-sbud-record-octets-loop-is-the-sum), the entry is guard-verified so
+;; the :exec runs, and a 300,000-record list sums without a frame per record.
+(assert-event
+ (equal (symbol-class 'fn-sbud-record-octets (w state)) :common-lisp-compliant))
+(assert-event
+ (equal (fn-sbud-record-octets-loop *sbudt-two-records* 0)
+        (fn-sbud-record-octets *sbudt-two-records*)))
+(assert-event
+ (let ((n (fn-sbud-row-octets (car *sbudt-two-records*))))
+   (and (posp n)
+        (equal (fn-sbud-record-octets
+                (make-list 300000 :initial-element (car *sbudt-two-records*)))
+               (* 300000 n)))))
