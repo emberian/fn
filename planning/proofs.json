@@ -11875,8 +11875,8 @@
     },
     {
       "id": "PRF-342",
-      "title": "The store's history as an FNADTSN1 image on the page store's pages: the decoder inverts it, the page store's page digest is the image's page-digest leaf, an append changes only O(K + columns) pages while no region doubles, and the open's header check and the row read the host calls (need-verdicts) answer the history over verified pages",
-      "statement": "books/history-pages.lisp. The image of a history H (fn-hp-image H SALT) is adt-ser (proto-adt-2's FNADTSN1 bytes) over the schema ((:u64) (:u64) (:octets)): per event MKEY (1 + fn-hist-hash of fn-hist-key-msgid, 0 when none), the length of its fn-scc-encode tree octets, and those octets zero-padded to a multiple of 8. KEYSTONES: fn-hp-decode-image (fn-hp-events-okp H, (len H) and (len (fn-hp-image H SALT)) below 2^64 => (fn-hp-decode (fn-hp-image H SALT) SALT) = (:ok H)); fn-hp-page-digest-is-leaf ((fn-shs-p fn-shs), (natp K), page K's words LE = page K of the image => (pgs-x-page-digest K ...) = the be-nat of leaf K of adt-page-digests: the page store's table-entry digest IS the image's per-page leaf, no second digest table); fn-hp-append-changes-only-dirty ((natp K), K not in (fn-hp-append-dirty H NEW SALT) => page K of (fn-hp-image (append H NEW) SALT) = page K of (fn-hp-image H SALT)); fn-hp-append-dirty-bound ((fn-hp-caps-same ...) => 16384 * |dirty| <= 11 * 16384 + 32 |NEW| + NEW's padded tree octets). Generic lemmas over any in-place region growth: fn-hp-body-page-same, fn-hp-ser-page-same, fn-hp-regs-of-append, fn-hp-body-dirty-in-pages, fn-hp-dirty-pages-bound. Named limit L-HP-DOUBLING: FNADTSN1 v1 places regions contiguously, so a doubling moves every later region. Milestone 2 (books/history-pages-words, -exec, -read): the image as the page store's little-endian words (fn-hp-iw = fn-hp-pack8 of the image; fn-hp-words-le-octets-of-pack8, fn-hp-page-words-of-pack8); its header, cells and pool entries read back (fn-hp-w-header-of-image, fn-hp-w-row-of-image); the host-called reads return need-verdicts and never fill a page. KEYSTONES: fn-hp-x-header-is-image ((fn-hp-okp H SALT), NPAGES = (fn-hp-npages H SALT), (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-iw H SALT)): every verified page holds the image's words, and the header's verdict :ok => (fn-hp-x-header NPAGES pgs-mem) answers (:ok (len H) lens starts); another schema digest is refused :schema); fn-hp-x-at-is-nth ((fn-hp-okp H SALT), (natp SEQ), SEQ < (len H), the same fn-hp-vhold, verdict :ok => (fn-hp-x-at SEQ ...) answers (:ok (nth SEQ H))). The open reads page 0 only; the first read of a row pays at most its four cells' pages and its pool entry's pages.",
+      "title": "The store's history as an FNADTSN2 image on the page store's pages: the decoder inverts it, the page store's page digest is the image's page-digest leaf, an append changes only O(K + columns) pages while no region doubles, and the open's header check and the row read the host calls (need-verdicts) answer the history over verified pages",
+      "statement": "books/history-pages.lisp. The image of a history H (fn-hp-image H SALT) is adt-ser (the FNADTSN2 bytes, books/proto/adt-bytes.lisp) over the schema ((:u64) (:u64) (:octets)): per event MKEY (1 + fn-hist-hash of fn-hist-key-msgid, 0 when none), the length of its fn-scc-encode tree octets, and those octets zero-padded to a multiple of 8. KEYSTONES: fn-hp-decode-image (fn-hp-events-okp H, (len H) and (len (fn-hp-image H SALT)) below 2^64 => (fn-hp-decode (fn-hp-image H SALT) SALT) = (:ok H)); fn-hp-page-digest-is-leaf ((fn-shs-p fn-shs), (natp K), page K's words LE = page K of the image => (pgs-x-page-digest K ...) = the be-nat of leaf K of adt-page-digests: the page store's table-entry digest IS the image's per-page leaf, no second digest table); fn-hp-append-changes-only-dirty ((natp K), K not in (fn-hp-append-dirty H NEW SALT) => page K of (fn-hp-image (append H NEW) SALT) = page K of (fn-hp-image H SALT)); fn-hp-append-dirty-bound ((fn-hp-caps-same ...) => 16384 * |dirty| <= 11 * 16384 + 32 |NEW| + NEW's padded tree octets). Generic lemmas over any in-place region growth: fn-hp-body-page-same, fn-hp-ser-page-same, fn-hp-regs-of-append, fn-hp-body-dirty-in-pages, fn-hp-dirty-pages-bound. Named limit L-HP-DOUBLING: the canonical image places regions contiguously; a region that doubles is the writer's verdict (:grow R). Milestone 2 (books/history-pages-words, -exec, -read): the image as the page store's little-endian words (fn-hp-iw = fn-hp-pack8 of the image; fn-hp-words-le-octets-of-pack8, fn-hp-page-words-of-pack8); its header, cells and pool entries read back (fn-hp-w-header-of-image, fn-hp-w-row-of-image); the host-called reads return need-verdicts and never fill a page. KEYSTONES: fn-hp-x-header-is-image ((fn-hp-okp H SALT), NPAGES = (fn-hp-npages H SALT), (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-iw H SALT)): every verified page holds the image's words, and the header's verdict :ok => (fn-hp-x-header NPAGES pgs-mem) answers (:ok (len H) lens starts); another schema digest is refused :schema); fn-hp-x-at-is-nth ((fn-hp-okp H SALT), (natp SEQ), SEQ < (len H), the same fn-hp-vhold, verdict :ok => (fn-hp-x-at SEQ ...) answers (:ok (nth SEQ H))). The open reads page 0 only; the first read of a row pays at most its four cells' pages and its pool entry's pages. Milestone 3a (lane arena-store-3, books/history-pages-write, -write-exec, -write-keys): the writer the host calls, fn-hp-x-append EV SALT N LENS STARTS pgs-mem -> (mv VERDICT N2 LENS2 pgs-mem): six blocks (header words 6-17, one cell per column, the padded tree's words in the pool) written with fn-hp-x-put (each word's page marked dirty) only after every touched page is verified (fn-hp-x-blocks-ready: else the need-verdict, nothing written) and only while no region changes its cap (else (:grow R), nothing written). Model theorem fn-hp-iw-of-append1: (fn-hp-iw (append H (list EV)) SALT) = (fn-hp-wreps (fn-hp-iw H SALT) (fn-hp-blocks H EV SALT)) when no region's cap changes and the new header fields are u64. KEYSTONE fn-hp-x-append-refines: (fn-hp-okp H SALT), N = (len H), LENS = (fn-hp-lens H SALT), STARTS = (fn-hp-starts H SALT), (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-iw H SALT)) and the verdict :ok => (fn-hp-okp (append H (list EV)) SALT), N2 = (len (append H (list EV))), LENS2 = (fn-hp-lens (append H (list EV)) SALT), the starts do not move, (fn-hp-vhold 0 ... mem2 (fn-hp-iw (append H (list EV)) SALT)), and every page P it marks dirty is in (fn-hp-append-dirty H (list EV) SALT) and verified in mem2. Milestone 3b (arena-store-3): the image format is FNADTSN2 (books/proto/adt-bytes.lisp: magic FNADTSN2, version 2, the image's page count NPAGES after the region table; adt-decode and the history's open check fn-hp-w-header accept any placement adt-placement-ok (every region after page 0, inside NPAGES, apart from every other) and refuse any other :placement; FNADTSN1 is refused :magic; adt-decode-ser keeps the canonical round trip, adt-placement-ok-of-starts-l the canonical placement); every keystone above re-proved over the FNADTSN2 image; the decoder's acceptance of a moved region is witnessed in tests/acl2/proto-adt-2-tests.lisp. The placed image (books/history-pages-placed): fn-hp-piw H SALT STARTS NP, NP pages of zeros with the header page (naming STARTS and NP) and each region's padded words at its start; fn-hp-piw-canonical: at the canonical starts and page count it IS fn-hp-iw. KEYSTONES over ANY placement (adt-placement-ok STARTS (fn-hp-lens H SALT) NP): fn-hp-x-header-is-placed ((fn-hp-okp H SALT), (fn-hp-starts-okp STARTS), the placement, (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-piw H SALT STARTS NP)), verdict :ok => (fn-hp-x-header NP pgs-mem) answers (:ok (len H) (fn-hp-lens H SALT) STARTS)); fn-hp-x-at-is-nth-placed (the same over the placed image, (natp SEQ), SEQ < (len H) => (fn-hp-x-at SEQ ...) answers (:ok (nth SEQ H))); fn-hp-x-append-refines-placed (books/history-pages-placed-write: N = (len H), LENS = (fn-hp-lens H SALT), (fn-hp-starts-okp STARTS), the placement, the vhold over the placed image, verdict :ok => the appended history is an image, N2/LENS2 its header, the placement stays valid, every verified page holds the appended history's placed image, and every newly dirty page is in fn-hp-append-pdirty and verified). Model fn-hp-piw-of-append1 from generic facts: block replacements nest (fn-hp-wreps-nest) and commute (fn-hp-wreps-commute), books/history-pages-nest.",
       "milestone": "M5",
       "requirements": [
         "STO-035"
@@ -11894,10 +11894,20 @@
         "books/history-pages-exec.lisp",
         "books/history-pages-row.lisp",
         "books/history-pages-read.lisp",
-        "tests/acl2/history-pages-read-tests.lisp"
+        "tests/acl2/history-pages-read-tests.lisp",
+        "books/history-pages-write.lisp",
+        "books/history-pages-write-exec.lisp",
+        "books/history-pages-write-keys.lisp",
+        "books/history-pages-arith.lisp",
+        "tests/acl2/history-pages-write-tests.lisp",
+        "planning/evidence/arena-store-3-2026-09-28.md",
+        "books/history-pages-placed.lisp",
+        "books/history-pages-nest.lisp",
+        "books/history-pages-placed-write.lisp",
+        "tests/acl2/history-pages-placed-tests.lisp"
       ],
-      "pending_subject": "No host function calls the image yet: the owner's open and snapshot through the page store (fnps-open / fnps-commit over the fn-hist image, fn-hp-x-header and fn-hp-x-at from the host) are the next milestone of lane arena-store-2.",
-      "progress_note": "Milestone 1: the image, its round trip, the one digest theorem and the region plan. Milestone 2: the words, the open's header check (page 0 only; schema mismatch refused by name) and the row read with need-verdicts over verified pages. Open: the executable writer (append into pgs-w words marking dirty pages), host wiring, FNADTSN2 (free region placement; index as a value; coordinator decision 2026-09-28), the store's E/R records on pages with fn-hist a view (decision (5)), measurement at the store open.",
+      "pending_subject": "No host function calls the image yet: the owner's open and snapshot through the page store (fnps-open / fnps-commit over the fn-hist image; fn-hp-x-header, fn-hp-x-at and fn-hp-x-append from the host) are lane arena-store-3's m4.",
+      "progress_note": "Milestone 1: the image, its round trip, the one digest theorem and the region plan. Milestone 2: the words, the open's header check and the row read with need-verdicts over verified pages. Milestone 3a (arena-store-3): the writer, refining the append into the words, marking only the proved dirty list. Milestone 3b: the FNADTSN2 format (free placement, NPAGES); the header check, the row read and the writer proved over any placement. Open: the growth path (a region that outgrows its pages moves to new pages; the (:grow R) verdict), the store's E/R records on pages with fn-hist a view, host wiring, measurement at the store open.",
       "events": [
         "fn-hp-decode-image",
         "fn-hp-page-digest-is-leaf",
@@ -11993,7 +12003,7 @@
         "PRF-325"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-builders.lisp",
@@ -12066,7 +12076,7 @@
         "PRF-302"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-rcompat-reply-cat-is-rcompat-reply",
         "fn-rcompat-retrieval-cat-is-retrieval",
@@ -12392,7 +12402,7 @@
     {
       "id": "PRF-350",
       "title": "Format 10: a format-9 store is refused at open by name with the way out, and store import reads the format-9 archive",
-      "statement": "books/store-profile-open.lisp fn-spo-open-of-a-format-9-frame-refuses-by-name: for all octets whose profile frame, opened under the SHA-256 trailer format 9 sealed with (books/store-format-9.lisp fn-f9-saved-format-word), names fn-store-9, fn-spo-config-open (host/native/io.lisp fnn-metadata-config-decode through host/store-host.lisp fn-store-metadata-config-open, every open) is (:refused :store-format-9), whose line names the way out (export with that release, import here), exit 1, whatever the seam's digest (fn-f9-format-9-frame-does-not-decode: such a frame never decodes as format 10). fn-spo-open-of-a-valid-profile-opens-it: every frame init or import seals opens as its values. fn-spo-config-open-store-format-is-exactly-a-foreign-frame: :store-format exactly for a sealed frame of another word. books/store-format-9.lisp fn-f9-config-decode-of-a-format-9-frame (D38's witness): every format-9 profile that translates reads back from its SHA-256-sealed frame as its format-10 translation (word fn-store-10, fields 2-13 and 15-17 in order, the frontier word and the history marker dropped; refusals by name otherwise). books/store-export.lisp fn-sxp-import-of-a-format-9-export: the import plan (host/native/io.lisp fnn-command-store-import) over a format-9 archive with its SHA-256 MANIFEST imports under that translation with the same configuration records and records. books/store-format-9-records.lisp fn-f9r-article-identities-are-format-10s and fn-f9r-article-keeps-every-other-field: the import (fn-sxp-import-plan's fn-f9r-records) re-derives each article record's subject and obligation identity under this format's digest (BLAKE3, algorithm 2) exactly as a format-10 node derives them (the derivation books/hybrid-store.lisp checks at replay) and keeps every other field; retention events are rewritten through the articles' map; an unknown format-9 identity (:unknown-identity) and a kind without a translation yet (:untranslatable-kind: signed composites, verdicts, keyring snapshots, topic events) are refused by name. Native: tests/test_native_format_9_migration.py (hbox native-n4: a batch AY format-9 image exports n1k-2k, this image refuses it by name, imports it, and its re-export holds the same 1,000 records with the identities re-derived, checked independently). Not claimed: the translation of the kinds refused as untranslatable.",
+      "statement": "books/store-profile-open.lisp fn-spo-open-of-a-format-9-frame-refuses-by-name: for all octets whose profile frame, opened under the SHA-256 trailer format 9 sealed with (books/store-format-9.lisp fn-f9-saved-format-word), names fn-store-9, fn-spo-config-open (host/native/io.lisp fnn-metadata-config-decode through host/store-host.lisp fn-store-metadata-config-open, every open) is (:refused :store-format-9), whose line names the way out (export with that release, import here), exit 1, whatever the seam's digest (fn-f9-format-9-frame-does-not-decode: such a frame never decodes as format 10). fn-spo-open-of-a-valid-profile-opens-it: every frame init or import seals opens as its values. fn-spo-config-open-store-format-is-exactly-a-foreign-frame: :store-format exactly for a sealed frame of another word. books/store-format-9.lisp fn-f9-config-decode-of-a-format-9-frame (D38's witness): every format-9 profile that translates reads back from its SHA-256-sealed frame as its format-10 translation (word fn-store-10, fields 2-13 and 15-17 in order, the frontier word and the history marker dropped; refusals by name otherwise). books/store-export.lisp fn-sxp-import-of-a-format-9-export: the import plan (host/native/io.lisp fnn-command-store-import) over a format-9 archive with its SHA-256 MANIFEST imports under that translation with the same configuration records and records. books/store-format-9-records.lisp fn-f9r-article-identities-are-format-10s and fn-f9r-article-keeps-every-other-field: the import (fn-sxp-import-plan's fn-f9r-records) re-derives each article record's subject and obligation identity under this format's digest (BLAKE3, algorithm 2) exactly as a format-10 node derives them (the derivation books/hybrid-store.lisp checks at replay) and keeps every other field; retention events are rewritten through the articles' map; an unknown format-9 identity (:unknown-identity) is refused by name; every other kind is PRF-355's. Native: tests/test_native_format_9_migration.py (hbox native-n4: a batch AY format-9 image exports n1k-2k, this image refuses it by name, imports it, and its re-export holds the same 1,000 records with the identities re-derived, checked independently). The other kinds: PRF-355.",
       "milestone": "M5",
       "requirements": [
         "STO-028"
@@ -12569,6 +12579,60 @@
         "fn-rcl-verdict-heldp-of-held-verdicts",
         "fn-rcl-store-classes-over-every-verdict",
         "fn-rcl-store-counts-is-the-model-over-alpha"
+      ]
+    },
+    {
+      "id": "PRF-355",
+      "title": "Format 9 to 10: every record kind a format-9 node writes translates, keeping what it asserts, or is refused by name",
+      "statement": "books/store-format-9-records.lisp, the import's record translation (host/native/io.lisp fnn-command-store-import via books/store-export.lisp fn-sxp-import-plan's fn-f9r-records, a guard-verified loop fn-f9r-loop over fn-f9r-step). Accepted composites (fn-e kind 4: schema 0, schema 1 verified, schema 1 carried): fn-f9r-composite-keeps-what-it-binds -- sequence, txid, generation, keyring generation, profile, schema, the exact verdict bytes and the exact authored source are the archive's and the embedded article is the translated archive article (fn-f9r-article: payload with both signatures, Message-ID, groups, evidence, charge and stamp kept); fn-f9r-composite-identities-are-format-10s -- its content subject is its translated article's and its authored-source identity is fn-hsig-authored-source-id of the carried source (the derivation replay checks; schema 0 keeps none); fn-f9r-step-of-a-composite -- the step admits a composite only as that translation and only when it binds (fn-stxa-bindsp, the check replay runs), otherwise (:refused :composite-binding). No signature is re-made: the D09 signed preimage is the domain tag, principal, keys and source (books/hybrid-signature.lisp fn-hsig-signed-preimage), none of which the translation changes. fn-f9r-step-carries-identity-free-kinds-verbatim: statement verdicts (kind 2), keyring snapshots (kind 3: enrollment, succession, revocation, a key statement's key change), consumer events (fnce) and the topic administrator's install (fnto 2) import as exactly their archive octets. Topic anchors and admissions (fnto 0/1) are refused (:signed-format-9-identity) with their sequence: replay re-prepares them from the root's or report's SIGNED source, which names the controller key set, topic, policy and parents by format-9 identities that format 10 neither parses (fn-id-labelledp requires algorithm 2) nor could re-sign. fn-f9r-loop-keeps-sequences: the translated records are the archive's sequences in order. Teeth: tests/acl2/store-format-9-records-tests.lisp (each kind's format-9 twin translates to the format-10 fixture itself; the verified composite binds the enrolled snapshot again, fn-hsig-article-event-snapshot-bindsp-v1; an unbound composite and a format-9 anchor are refused by name). Native: tests/test_native_format_9_every_kind.py. Not claimed: that a local account's credential, invitation or posting-account value survives (they are derived under the old digest or keyed MAC; specs/storage.md, the migration); that a principal derived from a login under SHA-256 is still that login's (the snapshot keeps the format-9 principal verbatim).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028"
+      ],
+      "depends_on": [
+        "PRF-350"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-format-9-records.lisp",
+        "tests/acl2/store-format-9-records-tests.lisp",
+        "books/store-export.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_format_9_every_kind.py",
+        "planning/evidence/format10-import-2026-09-28.md"
+      ],
+      "progress_note": "Lane format10-import (2026-09-28).",
+      "events": [
+        "fn-f9r-composite-keeps-what-it-binds",
+        "fn-f9r-composite-identities-are-format-10s",
+        "fn-f9r-step-of-a-composite",
+        "fn-f9r-step-carries-identity-free-kinds-verbatim",
+        "fn-f9r-loop-keeps-sequences"
+      ]
+    },
+    {
+      "id": "PRF-356",
+      "title": "store digest streams: the executable digest is the block chain of the canonical octets, one block of memory, and a value within one block is unchanged",
+      "statement": "books/state-digest.lisp fn-sdg-digest (host/native/io.lisp fnn-command-store-digest via host/store-node-host.lisp fn-store-sn-replay-digest-report) is (mbe :logic (fn-sdg-chain (fn-sdg-canon x)) :exec the streamed sink). KEYSTONE fn-sdg-canon-rev-sink-is-the-chain-of-the-canon: the sink the executable pushes every canonical octet into, in the order fn-sdg-canon produces them, finishes as fn-sdg-chain of fn-sdg-canon (the D27 boundary: the served path never materializes the canonical list). KEYSTONE fn-sdg-chain-of-one-block: a true list of at most *fn-sdg-block-octets* (65,536) octets chains to fn-digest of it, the value before this change. fn-sdg-rows-history and fn-sdg-arena-pool stream the same way. And `store status' counts retention classes by loops (books/store-reclaim-holders.lisp fn-rcl-summary-in, fn-rcl-held-count-in, fn-rcl-class-count-in: mbe forward loops, logic unchanged; host fn-native-live-status-host-offline via io.lisp fnn-command-live-report). Measured on hbox (syn1m-2k copy): store status exit 4 (control stack) -> exit 0, 3:11, 7.55 GB; store digest exit 1 (heap exhausted at 32.9 GB) -> exit 0, 7:46, 5.93 GB; syn100k digest 0:43/4.62 GB -> 0:58/1.41 GB. Not claimed: anything of the digest beyond A-CRYPTO; that the lines whose stream exceeds one block keep their pre-change values (they do not; no reader compares them across images).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/state-digest.lisp",
+        "tests/acl2/state-digest-tests.lisp",
+        "books/store-reclaim-holders.lisp",
+        "tests/acl2/store-reclaim-holders-tests.lisp",
+        "planning/evidence/format10-import-2026-09-28.md"
+      ],
+      "progress_note": "Lane format10-import part 2 (2026-09-28): persvati certify-20260928T054315Z-2440500, -055521Z-2553967, -055805Z-2578749; hbox native-scale2 replay_determinism OK (7 ran).",
+      "events": [
+        "fn-sdg-canon-rev-sink-is-the-chain-of-the-canon",
+        "fn-sdg-chain-of-one-block"
       ]
     }
   ]
