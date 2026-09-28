@@ -37,8 +37,8 @@ owner's last frames are recorded, the owner is reopened and the list goes
 on; the test fails at the end naming every command that killed it.  Each
 command prints `OPEN-DEPTH NAME MODE SERVED <command> <first reply line>
 lines=N seconds=S`.  FN_OPEN_DEPTH_SERVED=0 serves DATE only;
-FN_OPEN_DEPTH_ONLY=PREFIX|PREFIX serves only the commands starting with one
-(a measurement of those, not the table's coverage).
+FN_OPEN_DEPTH_ONLY=PREFIX/PREFIX (`_' for a space: GROUP/HDR_:fn-verified) serves
+only the commands starting with one (a measurement, not the table's coverage).
 """
 import os
 from pathlib import Path
@@ -355,7 +355,7 @@ class OpenDepthTests(unittest.TestCase):
         self.msgid = msgid
         print("OPEN-DEPTH {} {} group={} low={} high={} msgid={}".format(
             name, mode, group, low, high, msgid), flush=True)
-        only = [w for w in os.environ.get("FN_OPEN_DEPTH_ONLY", "").split("|") if w]
+        only = [w.replace("_", " ") for w in os.environ.get("FN_OPEN_DEPTH_ONLY", "").split("/") if w]
         for text, body in served_commands(group, low, high, msgid):
             if only and not any(text.startswith(w) for w in only):
                 continue
