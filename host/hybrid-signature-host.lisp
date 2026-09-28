@@ -74,10 +74,6 @@
          (fn-sn-keyring-snapshots (f-get-global 'fn-store-sn state))))
     (value (fn-hl-history-rows snapshots snapshots))))
 
-(defun fn-hsig-host-keyring-snapshot-value (snapshot)
-  (declare (xargs :mode :program))
-  (fn-hsig-keyring-snapshot-value snapshot))
-
 (defun fn-hsig-host-keyring-snapshot-octets (snapshot)
   (declare (xargs :mode :program))
   (if (fn-stxk-p snapshot) (fn-stxk-snapshot snapshot) nil))
