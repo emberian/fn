@@ -11035,6 +11035,30 @@
         {
           "kind": "theorem",
           "name": "fn-hp-x-append-refines-placed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-piw-relocated"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-relocate-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-piw-caps-extend"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-piw-of-append1-grown"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-grow-then-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-grow-then-append-only-r"
         }
       ]
     },
