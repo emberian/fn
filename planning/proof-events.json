@@ -11056,6 +11056,18 @@
         {
           "kind": "theorem",
           "name": "fn-hp-x-append-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-header-is-placed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-at-is-nth-placed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-append-refines-placed"
         }
       ]
     },

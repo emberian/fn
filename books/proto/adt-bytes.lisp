@@ -27,7 +27,7 @@
 ; (`adt-starts-l').  The decoder accepts ANY placement the header states
 ; (`adt-placement-ok': every region after page 0, inside NPAGES, apart from
 ; every other), so a region that outgrows its pages moves to new pages at
-; the image's end and nothing else moves (books/history-pages-grow.lisp);
+; the image's end and nothing else moves (books/history-pages-placed.lisp);
 ; pages no region holds are not read.  FNADTSN1 (contiguous placement, no
 ; NPAGES word) is refused :magic.
 ;

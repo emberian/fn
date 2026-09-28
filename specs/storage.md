@@ -741,11 +741,18 @@ records' variable-length octets. Placement is free: the decoder
 placement where every region lies after page 0, inside NPAGES, and apart from
 every other (`adt-placement-ok`), and refuse any other by name (:placement);
 pages no region holds are not read. The canonical image (`adt-ser`, a function
-of the value alone) places the regions in order after the header. A region
-that outgrows its pages moves to new pages allocated at the image's end and
-nothing else moves; the pages it leaves stay in the image, unread, until the
-page store can drop a logical page (L-HP2-VACATED: they are not yet handed to
-the page store's reclamation). A keyed ADT's image carries its Message-ID
+of the value alone) places the regions in order after the header. For the
+history (`books/history-pages-placed*.lisp`), the open's header check, the row
+read and the writer are proved over ANY such placement (PRF-342: an image
+whose pool sits on a page past a free one reads and appends as the canonical
+one does; the writer marks dirty only the header and, per region at its
+start, the pages its new octets overlap). A region that outgrows its pages
+is to move to new pages allocated at the image's end, nothing else moving:
+the writer answers the named verdict (:grow R) and the growth step (the move
+and the append into the moved region's new pages) is not yet landed
+(L-HP2-GROWTH). The pages a moved region leaves stay in the image, unread,
+until the page store can drop a logical page (L-HP2-VACATED: they are not yet
+handed to the page store's reclamation). A keyed ADT's image carries its Message-ID
 index as a VALUE: one more region after the pool, an open-addressed table of
 2^k u64 slots (0 empty, else the row's index + 1) under the salted FNV-1a of
 the key, at most half full, read as stored and never rebuilt at the open; the

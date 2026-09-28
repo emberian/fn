@@ -172,7 +172,10 @@
     "PRF-348:fn-ot-nat-parse-bounded": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it",
     "PRF-348:fn-ot-nat-parse-of-nat-octets": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it",
     "PRF-235:fn-prof-run-is-sound": "SPEC transit-hygiene (PRF-235): stated over fn-prof-run, the model's fold of the owner's record step fn-peer-refused-record over a run of transfers; the owner step (books/owner.lisp, host-called) runs the step, never the fold (exposed by lane-tools-2's callgraph, batch AY 2026-09-28)",
-    "PRF-342:fn-hp-x-append-refines": "SPEC (arena-store-3 m3a, 2026-09-28): the host-called writer over the page store; no host line calls it until the owner's snapshot over the page store (arena-store-3 m4)"
+    "PRF-342:fn-hp-x-append-refines": "SPEC (arena-store-3 m3a, 2026-09-28): the host-called writer over the page store; no host line calls it until the owner's snapshot over the page store (arena-store-3 m4)",
+    "PRF-342:fn-hp-x-header-is-placed": "SPEC (arena-store-3 m3b, 2026-09-28): the host-called reads and writer over a placed FNADTSN2 image; no host line calls them until the owner's open and snapshot over the page store (arena-store-3 m4)",
+    "PRF-342:fn-hp-x-at-is-nth-placed": "SPEC (arena-store-3 m3b, 2026-09-28): the host-called reads and writer over a placed FNADTSN2 image; no host line calls them until the owner's open and snapshot over the page store (arena-store-3 m4)",
+    "PRF-342:fn-hp-x-append-refines-placed": "SPEC (arena-store-3 m3b, 2026-09-28): the host-called reads and writer over a placed FNADTSN2 image; no host line calls them until the owner's open and snapshot over the page store (arena-store-3 m4)"
   },
   "note": "Registry events whose subject no host line reaches, that the tree accepts for now.  tools/reach_check.py --strict fails on any orphan NOT listed here, so the number can shrink and cannot grow silently.  Remove an entry by hosting the subject, not by editing this file.  Every entry says SPEC (a model kept, and why), or HOST (the packet that will host it); `reach_check.py --strict` refuses the placeholder reason."
 }

@@ -37,3 +37,16 @@
                  (:instance fn-hp-ceiling-ge-quot (x (+ l d)) (y 16384)))
            :in-theory (union-theories '(natp posp (:executable-counterpart posp) (:type-prescription floor) (:type-prescription ceiling)) (theory 'minimal-theory))))
   :rule-classes :linear)
+
+(defthm fn-hp-ceiling-16384-upper
+  (implies (natp l) (< (* 16384 (ceiling l 16384)) (+ l 16384)))
+  :rule-classes :linear)
+
+(defthm fn-hp-floor-16384-lower
+  (implies (natp l) (< l (+ 16384 (* 16384 (floor l 16384)))))
+  :rule-classes :linear)
+
+(defthm fn-hp-floor-le-ceiling-16384
+  (implies (and (natp l1) (natp l2) (<= l1 l2))
+           (<= (floor l1 16384) (ceiling l2 16384)))
+  :rule-classes :linear)
