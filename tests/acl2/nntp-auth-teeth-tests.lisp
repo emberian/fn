@@ -1624,7 +1624,10 @@
     (b2 . (fn-auth-session-peer
            (fn-post-result-session
             (fn-auth-step as archive config observation injection
-                          wire-event fn-arena))))))
+                          wire-event fn-arena))))
+    (b3 . (not (fn-auth-sasl-waitingp as)))
+    (b4 . (not (fn-nntp-keywordp (cadr (fn-nntp-tokenize (cadr wire-event)))
+                                 "SASL")))))
 
 ; The hypothesis list a tooth states, picked by name from a keystone's list,
 ; so every instance below is the keystone's own text with some names left
@@ -1653,7 +1656,7 @@
               fn-auth-step-binds-a-peer-role-only-by-a-principal-login))
 
 ; The keystone's own statement, admitted through the macro first.
-(aut-k8 aut-k8-full (b1 b2))
+(aut-k8 aut-k8-full (b1 b2 b3 b4))
 
 ; The witness: a reader on the one-peer table logs in and becomes
 ; "principal-peer" -- the role the table gives this principal, derived from
@@ -1696,7 +1699,7 @@
 (assert-event (not (fn-nntp-keywordp
                     (car (fn-nntp-tokenize (fn-nntp-string-octets "CAPABILITIES")))
                     "AUTHINFO")))
-(local (must-fail-checked (aut-k8 aut-k8-without-b1 (b2))))
+(local (must-fail-checked (aut-k8 aut-k8-without-b1 (b2 b3 b4))))
 
 ; B2 dropped.  A reader that stays a reader: a GROUP on the unauthenticated
 ; connection is not an AUTHINFO line either.
@@ -1704,7 +1707,15 @@
 (assert-event (not (fn-nntp-keywordp
                     (car (fn-nntp-tokenize (fn-nntp-string-octets "GROUP fn.letters")))
                     "AUTHINFO")))
-(local (must-fail-checked (aut-k8 aut-k8-without-b2 (b1))))
+(local (must-fail-checked (aut-k8 aut-k8-without-b2 (b1 b3 b4))))
+
+; B3 and B4 dropped: the SASL ways in.  A kept SCRAM exchange completed by
+; its response line, and a one-step AUTHINFO SASL PLAIN, bind the role with
+; no AUTHINFO PASS line (witnesses: tests/acl2/nntp-auth-sasl-tests.lisp,
+; "The SASL way to a peer role"; the SASL keystone is
+; fn-auth-step-binds-a-peer-role-by-sasl-only-to-a-found-credential).
+(local (must-fail-checked (aut-k8 aut-k8-without-b3 (b1 b2 b4))))
+(local (must-fail-checked (aut-k8 aut-k8-without-b4 (b1 b2 b3))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE 9: fn-auth-step-principal-login-binds-exactly-the-unique-match
@@ -1744,7 +1755,8 @@
     (p11 . (fn-auth-checkp
             (fn-auth-find-cred (fn-auth-session-pending as)
                                (fn-auth-config-creds (fn-auth-session-config as)))
-            (caddr (fn-nntp-tokenize line))))))
+            (caddr (fn-nntp-tokenize line))))
+    (p12 . (not (fn-auth-sasl-waitingp as)))))
 (defconst *aut-k9-conclusion*
   '(and (equal (fn-post-result-effects
                 (fn-auth-step as archive config observation injection
@@ -1772,7 +1784,7 @@
   `(aut-tooth ,name ,keys ,*aut-k9-hyps* ,*aut-k9-conclusion*
               fn-auth-step-principal-login-binds-exactly-the-unique-match))
 
-(aut-k9 aut-k9-full (p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11))
+(aut-k9 aut-k9-full (p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12))
 
 ; The witnesses are the four logins above: on the one-peer table the role is
 ; the match, "principal-peer"; on the duplicate, mismatch and shadow tables
@@ -1785,7 +1797,7 @@
 ; A session with chosen fields over a real base, for the values no command
 ; sequence reaches.
 (defun aut-mk (base acfg pending subject tlsp handshaking)
-  (fn-auth-make-session base acfg pending subject tlsp handshaking))
+  (fn-auth-make-session base acfg pending subject tlsp handshaking nil))
 (defconst *aut-reader-base* (fn-auth-session-base *aut-r-one*))
 (defconst *aut-src-base* (fn-auth-session-base *aut-src*))
 (defconst *aut-pass* "AUTHINFO PASS correct-horse")
@@ -1799,13 +1811,13 @@
 (assert-event (not (fn-auth-sessionp *aut-forged-role*)))
 (assert-event (null (fn-auth-session-peer *aut-forged-role*)))
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-forged-role* *aut-pass*) nil))
-(local (must-fail-checked (aut-k9 aut-k9-without-p1 (p2 p3 p4 p5 p6 p7 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p1 (p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12))))
 
 ; P2 dropped: handshaking, with a cached name.  Nothing is answered.
 (defconst *aut-hs-role* (aut-mk *aut-reader-base* *aut-role-policy* *aut-name* nil nil t))
 (assert-event (fn-auth-sessionp *aut-hs-role*))
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-hs-role* *aut-pass*) nil))
-(local (must-fail-checked (aut-k9 aut-k9-without-p2 (p1 p3 p4 p5 p6 p7 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p2 (p1 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12))))
 
 ; P3 dropped: a source-address peer with a cached name logs in; 281 and the
 ; subject, but the role is still "transit" and not the match.
@@ -1816,7 +1828,7 @@
                      "transit"))
 (assert-event (equal (fn-auth-principal-match *aut-principal* *aut-cfg-one*)
                      "principal-peer"))
-(local (must-fail-checked (aut-k9 aut-k9-without-p3 (p1 p2 p4 p5 p6 p7 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p3 (p1 p2 p4 p5 p6 p7 p8 p9 p10 p11 p12))))
 
 ; P4 dropped: already authenticated is 502.
 (defconst *aut-authed-user*
@@ -1824,13 +1836,13 @@
 (assert-event (fn-auth-sessionp *aut-authed-user*))
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-authed-user* *aut-pass*)
                      (aut-single "502 already authenticated")))
-(local (must-fail-checked (aut-k9 aut-k9-without-p4 (p1 p2 p3 p5 p6 p7 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p4 (p1 p2 p3 p5 p6 p7 p8 p9 p10 p11 p12))))
 
 ; P5 dropped: protected-only without TLS is 483, even with a cached name.
 (defconst *aut-prot-user* (aut-mk *aut-reader-base* *aut-role-protected* *aut-name* nil nil nil))
 (assert-event (fn-auth-sessionp *aut-prot-user*))
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-prot-user* *aut-pass*) (aut-single *aut-483*)))
-(local (must-fail-checked (aut-k9 aut-k9-without-p5 (p1 p2 p3 p4 p6 p7 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p5 (p1 p2 p3 p4 p6 p7 p8 p9 p10 p11 p12))))
 
 ; P6 dropped: the same three tokens on a line past the 510-octet command
 ; bound.  The preflight refuses it and the reader answers; no 281.
@@ -1843,33 +1855,37 @@
 (assert-event (not (equal (fn-post-result-effects
                            (in-arena-fn-auth-step *aut-arena* *aut-r-one-user* *aut-node-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-long-pass*)))
                           *aut-281*)))
-(local (must-fail-checked (aut-k9 aut-k9-without-p6 (p1 p2 p3 p4 p5 p7 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p6 (p1 p2 p3 p4 p5 p7 p8 p9 p10 p11 p12))))
 
 ; P7 dropped: another keyword with the same arguments is not a login.
 (assert-event (not (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "XAUTHINFO PASS correct-horse")
                           *aut-281*)))
-(local (must-fail-checked (aut-k9 aut-k9-without-p7 (p1 p2 p3 p4 p5 p6 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p7 (p1 p2 p3 p4 p5 p6 p8 p9 p10 p11 p12))))
 
 ; P8 dropped: USER with the secret as its argument caches a name, 381.
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "AUTHINFO USER correct-horse")
                      (aut-single "381 password required")))
-(local (must-fail-checked (aut-k9 aut-k9-without-p8 (p1 p2 p3 p4 p5 p6 p7 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p8 (p1 p2 p3 p4 p5 p6 p7 p9 p10 p11 p12))))
 
 ; P9 dropped: PASS with the secret and one more token is 501.
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "AUTHINFO PASS correct-horse extra")
                      (aut-single "501 syntax error")))
-(local (must-fail-checked (aut-k9 aut-k9-without-p9 (p1 p2 p3 p4 p5 p6 p7 p8 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p9 (p1 p2 p3 p4 p5 p6 p7 p8 p10 p11 p12))))
 
 ; P10 dropped: PASS before USER is 482.
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one* *aut-pass*)
                      (aut-single "482 authentication commands issued out of sequence")))
-(local (must-fail-checked (aut-k9 aut-k9-without-p10 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p10 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p11 p12))))
 
 ; P11 dropped: a secret that does not check is 481, under the real digest (BLAKE3).
 (assert-event (not (fn-auth-checkp *aut-cred* (fn-nntp-string-octets "wrong-horse"))))
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "AUTHINFO PASS wrong-horse")
                      (aut-single "481 authentication failed")))
-(local (must-fail-checked (aut-k9 aut-k9-without-p11 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p10))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p11 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p12))))
+
+; P12 dropped: while a SASL exchange is kept, the PASS line is the
+; exchange's response (504: it is not base64), not a login.
+(local (must-fail-checked (aut-k9 aut-k9-without-p12 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE 10: fn-auth-step-starttls-clears-a-principal-role
