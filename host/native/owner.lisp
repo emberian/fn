@@ -1388,7 +1388,9 @@ here: its budget is part of its prepare (fn-owner-prepare)."
 ;; :refused.
 (defun fnn-owner-prepare-refusal-word (prepared)
   (case prepared
-    ((:duplicate :conflict :clock-unusable :refused :unaffordable :memberships) prepared)
+    ((:duplicate :conflict :clock-unusable :refused :unaffordable :memberships
+      :article-numbers-exhausted)
+     prepared)
     (:invalid :malformed)
     (t (fnn-fault "owner prepare returned ~a" prepared))))
 
@@ -1918,7 +1920,10 @@ reason before any Store call.  An ordinary article's groups are unchanged."
         (unless (eq prepared :prepared)
           (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation) :refused)
             (fnn-indeterminate "owner could not consume refused identity reservation"))
-          (fnn-refuse "canonical Store refused identity event")))
+          ;; The word names the refusal (:refused, or RFC 3977 section 6's
+          ;; :article-numbers-exhausted, books/owner-prepare-served.lisp
+          ;; fn-psrv-identity-refusal-kind).
+          (fnn-refuse "canonical Store refused identity event (~(~a~))" prepared)))
       (fnn-owner-publish-prepared service "identity"))))
 
 (defun fnn-owner-consumer-commit (service event)
@@ -2990,7 +2995,7 @@ owner's recovery fence."
                 (fnn-store-fault (condition) (error condition))
                 (fnn-store-error () :refused))))
     (unless (member word '(:durable :duplicate :conflict :malformed :unaffordable
-                           :memberships
+                           :memberships :article-numbers-exhausted
                            :storage-failed :refused :clock-unusable :uncertain))
       (fnn-fault "owner bound commit returned ~a" word))
     word))

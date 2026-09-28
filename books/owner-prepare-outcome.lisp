@@ -119,6 +119,25 @@
           (fn-psrv-refusal-kind oc record budget))
         next)))
 
+; The identity prepare's refusal word over the row interned at handle H:
+; :article-numbers-exhausted when the row's groups are served but their
+; numbers would pass RFC 3977 section 6's bound, else :refused
+; (books/owner-prepare-served.lisp fn-psrv-identity-refusal-kind).
+(defun fn-pout-identity-refusal-kind (oc w h)
+  (declare (xargs :guard (natp h) :verify-guards nil))
+  (let ((s (fn-sbud-oc-store oc)))
+    (fn-psrv-identity-refusal-kind
+     oc (fn-oii-identity-row w (fn-sn-keyring s) (fn-sn-keyring-generation s) h))))
+
+(defthm fn-pout-identity-refusal-kind-is-a-refusal
+  (and (not (equal (fn-pout-identity-refusal-kind oc w h) :prepared))
+       (member-equal (fn-pout-identity-refusal-kind oc w h)
+                     '(:refused :article-numbers-exhausted)))
+  :hints (("Goal" :in-theory '(fn-pout-identity-refusal-kind fn-psrv-identity-refusal-kind
+                               member-equal (:executable-counterpart equal)))))
+
+(in-theory (disable fn-pout-identity-refusal-kind))
+
 ; host/owner-host.lisp fn-owner-prepare-identity: the identity prepare
 ; (fn-oiis-prepare-identity over the row interned at handle H).
 (defun fn-pout-prepare-identity (oc w h)
@@ -127,7 +146,7 @@
   (let ((next (fn-oiis-prepare-identity oc w h)))
     (mv (if (fn-pout-stagedp (fn-sbud-oc-store oc) (fn-sbud-oc-store next))
             :prepared
-          :refused)
+          (fn-pout-identity-refusal-kind oc w h))
         next)))
 
 ; host/owner-host.lisp fn-owner-prepare-topic.
@@ -244,7 +263,7 @@
     (and (equal (mv-nth 1 r) (fn-oiis-prepare-identity oc w h))
          (equal (mv-nth 0 r)
                 (if (equal (fn-sbud-oc-store (mv-nth 1 r)) (fn-sbud-oc-store oc))
-                    :refused
+                    (fn-pout-identity-refusal-kind oc w h)
                   :prepared))))
   :hints (("Goal"
            :use (fn-pout-store-of-oiis-prepare-identity
@@ -447,6 +466,7 @@
 ; value NEXT is, with fn-sbud-prepare under the carried indexes).
 (defthm fn-pout-prepare-article-is-sbud-prepare-when-served
   (implies (and (fn-psrv-event-servedp (fn-ocfg-config oc) record)
+                (fn-psrv-event-numberedp oc record)
                 (fn-prc-carryp carry)
                 (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))
                 (fn-scar-view-indexedp (fn-ocfg-owner oc)))
