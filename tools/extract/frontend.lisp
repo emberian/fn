@@ -414,8 +414,16 @@
                   (:alias
                    (let* ((state (princ$ ",\"guard\":" channel state))
                           (state (xt-json-term (xt-resolve (guard fn nil w) t) channel state))
-                          (state (princ$ ",\"target\":" channel state)))
-                     (xt-json-sym (caddr entry) channel state)))
+                          (state (princ$ ",\"target\":" channel state))
+                          (state (xt-json-sym (caddr entry) channel state))
+                          ; how it was resolved: an abstract stobj's :exec
+                          ; (the stobj named) or a defattach attachment
+                          (state (princ$ ",\"via\":" channel state)))
+                     (if (cadddr entry)
+                         (let ((state (princ$ "{\"absstobj\":" channel state)))
+                           (let ((state (xt-json-sym (cadddr entry) channel state)))
+                             (princ$ "}" channel state)))
+                       (princ$ "\"attachment\"" channel state))))
                   (:stobj-prim
                    (let* ((state (princ$ ",\"stobj\":" channel state)))
                      (xt-json-sym (caddr entry) channel state)))
