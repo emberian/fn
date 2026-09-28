@@ -166,8 +166,9 @@ The owner/control source calls the ACL2 proposal dispatcher and Store
 publication gate. The fresh Store prepare gate refuses a v1 anchor, preventing
 a current submission from downgrading to historical ID-only binding; observed
 reopen still accepts valid old v1 bytes. The version-2 codec and called
-proposal path have scoped ACL2 evidence, while their affected reverse closure,
-dual-image migration and source-matched native execution remain open. The
+proposal path have scoped ACL2 evidence, while their affected reverse closure
+and source-matched native execution remain open (no dual-image migration: no
+store of another release is opened; fresh deploys at 6.6.0). The
 separate maintained topic/crash relation must still derive topic-valid
 observed images from actual Store traces before a universal reopen claim.
 Historical administrator installation

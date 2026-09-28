@@ -501,9 +501,6 @@ books/owner-feed-article.lisp fn-ofa-feed-article).  It seals nothing."
                   (:next (incf (fnn-owner-feed-journal-replayed journal)))
                   (:invalid
                    (fnn-fault "invalid complete FNFD evidence: ~a" path))
-                  (:migration-required
-                   (fnn-fault "FNFD migration required before legacy timing outcome: ~a"
-                              path))
                   ((:end :repair)
                    (fnn-owner-feed-phase journal status)
                    (when (eq status :repair)

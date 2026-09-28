@@ -6,14 +6,12 @@ only transports them and the test cryptographic keys through native commands.
 import os
 import hashlib
 from pathlib import Path
-import subprocess
 import unittest
 
 from tests.native_harness import ROOT, Node, environment, executable, native_image
 from tests import native_log_observation
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
-LEGACY_IMAGE = Path(os.environ.get("FN_NATIVE_TOPIC_V1_HOST", ""))
 FIXTURES = ROOT / "tests" / "fixtures" / "topic-history"
 PRINCIPAL = bytes([85]) * 32
 ED_PUBLIC = bytes.fromhex(
@@ -28,9 +26,7 @@ ED_SECRET = bytes.fromhex(
                      "requires a source-matched topic saved image")
 class NativeTopicLocalTest(unittest.TestCase):
     def setUp(self):
-        self.image = (LEGACY_IMAGE
-                      if self._testMethodName == "test_v1_history_reopens_under_v2"
-                      and LEGACY_IMAGE.is_file() else IMAGE)
+        self.image = IMAGE
         self.node = Node(self, self.image)
         self.root, self.store = self.node.root, self.node.store_path
         self.control, self.config = self.node.control, self.node.config
@@ -128,22 +124,21 @@ class NativeTopicLocalTest(unittest.TestCase):
         self.assertEqual(self.transactions(), admitted_files)
         self.stop_owner(reopened)
 
-    def test_v1_history_reopens_under_v2(self):
-        if not LEGACY_IMAGE.is_file() or not os.access(LEGACY_IMAGE, os.X_OK):
-            self.skipTest("requires exact pre-v2 topic image")
+    def test_history_reopens_and_survives_compaction(self):
+        # One image throughout: no store made by another release is opened
+        # (no migrations: fresh deploys at 6.6.0).
         owner = self.start_owner()
         enrolled = self.invoke("hybrid-enroll", self.control, "1",
                                self.principal, self.ed_public, self.ml_public)
         self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
-        self.author(FIXTURES / "matched-root.source", "legacy-root")
+        self.author(FIXTURES / "matched-root.source", "first-root")
         self.topic("install", expected=0)
         self.topic("anchor", "1", "1", expected=0)
-        self.author(FIXTURES / "matched-report.source", "legacy-report")
+        self.author(FIXTURES / "matched-report.source", "first-report")
         self.topic("report", "4", expected=0)
         historical = self.transactions()
         self.stop_owner(owner)
 
-        self.image = IMAGE
         reopened = self.start_owner()
         self.assertIn(b"replayed-historical",
                       self.topic("report", "4", expected=0).stdout)
@@ -153,7 +148,7 @@ class NativeTopicLocalTest(unittest.TestCase):
         self.assertEqual(
             hashlib.sha256((FIXTURES / "matched-second-root.source").read_bytes()).hexdigest(),
             "6216689ae3e67837d3b5187617ca6a1adff6179e59249e65e98c5e0024bdcf8f")
-        self.author(FIXTURES / "matched-second-root.source", "v2-second-root")
+        self.author(FIXTURES / "matched-second-root.source", "second-root")
         self.topic("anchor", "6", "1", expected=0)
         mixed = self.transactions()
         self.assertGreater(len(mixed), len(historical))
@@ -204,28 +199,6 @@ class NativeTopicLocalTest(unittest.TestCase):
                       self.topic("report", "4", expected=0).stdout)
         self.assertEqual(self.transactions(), compacted)
         self.stop_owner(final)
-
-    def test_fresh_v2_anchor_refuses_legacy_reopen(self):
-        if not LEGACY_IMAGE.is_file() or not os.access(LEGACY_IMAGE, os.X_OK):
-            self.skipTest("requires exact pre-v2 topic image")
-        owner = self.start_owner()
-        enrolled = self.invoke("hybrid-enroll", self.control, "1",
-                               self.principal, self.ed_public, self.ml_public)
-        self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
-        self.author(FIXTURES / "matched-root.source", "v2-root")
-        self.topic("install", expected=0)
-        self.topic("anchor", "1", "1", expected=0)
-        self.stop_owner(owner)
-
-        try:
-            legacy = self.node.operator("run", image=LEGACY_IMAGE, timeout=40)
-        except subprocess.TimeoutExpired:
-            self.fail("pre-v2 image unexpectedly opened a v2 topic anchor")
-        self.assertNotEqual(legacy.returncode, 0, legacy.stdout + legacy.stderr)
-
-        reopened = self.start_owner()
-        self.topic("anchor", "1", "1", expected=1)
-        self.stop_owner(reopened)
 
 
 if __name__ == "__main__":
