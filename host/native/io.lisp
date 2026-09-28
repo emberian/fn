@@ -5493,6 +5493,9 @@ with its depth, and the rows under it name the path that called it."
     ;; the catalog's tables (books/catalog.lisp exports, :exec side)
     fn-cat$c-group-number fn-cat$c-msgid-seqs fn-cat$c-at fn-cat$c-visible-at
     fn-cat$c-group-next fn-cat$c-group-count
+    ;; the maintained group summary and withdrawal horizon (one cell each)
+    fn-cat$c-group-live-count fn-cat$c-group-live-low fn-cat$c-group-live-high
+    fn-cat$c-horizon
     ;; the catalog finders over them
     fn-cnx-view-seq fn-cnx-view-range fn-scat-range-numbers
     (fn-cat-view-last-visible . 0) fn-cat-row-article

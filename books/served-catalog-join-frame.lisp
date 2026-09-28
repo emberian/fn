@@ -99,7 +99,7 @@
                 (fn-scar-view-indexedp o)
                 (<= (nfix (fn-own-view-version (fn-own-view o)))
                     (len (fn-sf-records (fn-sn-files (fn-own-store o)))))
-                (fn-nntp-projectionp (fn-own-view-archive (fn-own-view (fn-own-refresh o)))))
+                (fn-statep (fn-own-view-archive (fn-own-view (fn-own-refresh o)))))
            (fn-scj-live-okp (fn-own-view (fn-own-refresh o)) fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-scj-live-okp fn-scr-live-catalogp fn-scr-fields-catalogp
                                    fn-scr-catalogp fn-scj-joinp fn-gidx-refresh
@@ -107,7 +107,7 @@
                                   (fn-own-refresh fn-own-store-idlep fn-scr-view-of
                                    fn-cat-view-articles fn-ctl-visible-state-of
                                    fn-own-view-make-visible fn-midx-correspondencep
-                                   fn-nntp-projectionp fn-gidx-build fn-cnx-freshp))
+                                   fn-statep fn-gidx-build fn-cnx-freshp))
            :use ((:instance fn-scj-view-of-when-seqs-below
                             (version (fn-own-view-version (fn-own-view o))))
                  (:instance fn-scj-view-of-when-seqs-below
@@ -138,7 +138,7 @@
                   (natp version)
                   (<= version (len records))
                   (fn-scj-no-rowsp (nthcdr version records))
-                  (fn-nntp-projectionp (fn-own-view-archive (fn-own-view (fn-own-refresh o)))))
+                  (fn-statep (fn-own-view-archive (fn-own-view (fn-own-refresh o)))))
              (fn-scj-invp (fn-own-refresh o) fn-arena fn-cat)))
   :hints (("Goal" :cases ((fn-own-store-idlep (fn-own-store o))))
           ("Subgoal 1" :in-theory (e/d (fn-scj-invp fn-scj-joinp)
