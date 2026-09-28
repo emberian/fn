@@ -71,16 +71,15 @@
         "books/store-node-existing-invariants.lisp",
         "tests/acl2/store-node-existing-tests.lisp"
       ],
-      "execution_scope": "Validated for abstract atomic acceptance and now a real CLI cross-post/reopen path: one article, two local numbers, one charged pin. Full signed/network POST service remains outside this scenario evidence. The ACL2 Store decision is exercised on a reachable committed state with duplicate, each conflict factor, and missing binding; the actual host prepare/query wrappers call that decision. A newly built combined native image is still required to remeasure the changed host path.",
+      "execution_scope": "Validated for abstract atomic acceptance; the native path is one article posted to two groups through the operator, one local number in each group across a restart, an identical resubmission accepted as the duplicate and a changed source under the held Message-ID refused without replacing the stored octets (tests/test_native_conformance.py). The charged pin is not observed by that case. The Python-host implementation (tests/test_store.py) retired with the Python host.",
       "implementation": {
-        "test": "tests.test_store",
+        "test": "tests.test_native_conformance",
         "cases": [
-          "test_two_group_post_replays_both_allocations_and_one_pin",
-          "test_duplicate_retry_and_conflicting_id_do_not_overwrite"
+          "test_a_crosspost_is_one_article_and_a_resubmission_overwrites_nothing"
         ],
-        "native": false,
-        "log": "planning/evidence/harness-repair-2026-09-25/laptop-after.txt",
-        "record": "planning/evidence/harness-repair-2026-09-25.md"
+        "native": true,
+        "log": "planning/evidence/python-diet-2-2026-09-28/native-conformance-bec5cefcd.log",
+        "record": "planning/evidence/python-diet-2-2026-09-28/native-runs.md"
       }
     },
     {
@@ -120,14 +119,12 @@
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/store-files-invariants.lisp",
-        "tests/test_store.py",
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
         "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
-        "tests/test_store_corruption.py",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "tests/acl2/byte-store-initializer-tests.lisp",
@@ -285,7 +282,6 @@
         "tests/evidence/2026-09-18-bp-workflow.md",
         "tests/evidence/2026-09-18-bp-exchange.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
-        "tests/test_bp_receive_process_crash.py",
         "tests/acl2/bp-receiver-invariants-tests.lisp",
         "planning/evidence/native-bp-app-2026-09-21.md",
         "tests/test_bp_app_native.py"
@@ -482,7 +478,6 @@
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/nntp-invariants.lisp",
         "books/nntp-effects.lisp",
-        "tests/test_reader_partitions.py",
         "books/served.lisp",
         "tests/acl2/served-tests.lisp",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
@@ -535,7 +530,6 @@
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/store-files-invariants.lisp",
-        "tests/test_store.py",
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
@@ -702,7 +696,6 @@
         "A Message-ID the node does not hold is a refusal (exit 1), distinct from uncertainty (exit 3) and a fault (exit 4)."
       ],
       "evidence": [
-        "tests/test_provenance.py",
         "tests/acl2/provenance-tests.lisp"
       ],
       "note": "The transit path is NOT covered: it still stores fn-peer-evidence's rendering. See planning/lanes/HANDOFF-w10-provenance.md."
@@ -736,7 +729,7 @@
         "A stopped service releases the writer lock, and the store reopens without recovery."
       ],
       "evidence": [],
-      "execution_scope": "Specified. `tools/v0_matrix.py` drives every step between two nodes on one host over loopback; the row verdicts and their blockers are in planning/v0-matrix.json. Nothing here exercises two machines, a real network, or an operator's own configuration."
+      "execution_scope": "Specified. The v0 rows (planning/v0-matrix.json, last run b6759850) are owned by tests/test_native_conformance.py on one node and by tests/test_native_peering.py and tests/test_native_protected_peering.py between two nodes on one host over loopback (planning/evidence/python-diet-2-2026-09-28/v0-row-owners.md). Nothing here exercises two machines, a real network, or an operator's own configuration."
     },
     {
       "id": "SCN-022",
@@ -879,7 +872,7 @@
       "id": "SCN-026",
       "title": "A host fault on one connection, with another connection open across it",
       "milestone": "M3",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "HST-005",
         "NNT-002",
@@ -900,17 +893,7 @@
       "evidence": [
         "planning/evidence/owner-survival-2026-09-21.md"
       ],
-      "execution_scope": "Implemented as tests/test_owner.py OwnerSurvivesAFaultTests, two cases, one owner process each. The fault is injected, not provoked by a peer: the two real crashes it stands for are fixed, and a regression that provokes one from the wire needs two nodes (tools/v0_matrix.py's transit rows). This remains Python-host evidence. Native attributable-fault survival is pending and is not replaced by the separate shared-state global-fence scenario SCN-015.",
-      "implementation": {
-        "test": "tests.test_owner",
-        "cases": [
-          "OwnerSurvivesAFaultTests.test_a_fault_in_a_served_read_costs_that_connection_and_nothing_else",
-          "OwnerSurvivesAFaultTests.test_a_fault_carrying_a_submission_leaves_the_post_path_open"
-        ],
-        "native": false,
-        "log": "planning/evidence/harness-repair-2026-09-25/laptop-after.txt",
-        "record": "planning/evidence/owner-survival-2026-09-21.md"
-      }
+      "execution_scope": "Specified. Its implementation was tests/test_owner.py OwnerSurvivesAFaultTests over the retired Python host (python-diet T5 removed both; recoverable at 940bc3104). Native attributable-fault survival is pending and is not replaced by the separate shared-state global-fence scenario SCN-015."
     },
     {
       "id": "SCN-027",

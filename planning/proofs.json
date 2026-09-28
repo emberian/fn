@@ -424,7 +424,6 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "books/replay-invariants.lisp",
-        "tools/run_store.py",
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/store-files.lisp",
@@ -435,8 +434,6 @@
         "books/store-files-traces.lisp",
         "books/store-node-invariants.lisp",
         "tests/acl2/store-files-exploration-tests.lisp",
-        "tests/test_store_fault_matrix.py",
-        "tests/test_store_process_crash.py",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
         "books/store-node-resolution.lisp",
@@ -445,7 +442,6 @@
         "tests/evidence/2026-09-18-composed-store.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.json",
-        "tests/test_bp_receive_process_crash.py",
         "books/bp-receiver-trace-invariants.lisp",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
@@ -897,7 +893,6 @@
         "books/wildmat.lisp",
         "books/nntp-invariants.lisp",
         "books/nntp-effects.lisp",
-        "tests/test_reader_partitions.py",
         "tests/evidence/2026-09-18-reader-checkpoint-index.md",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "books/owner-commit-carried.lisp",
@@ -8962,8 +8957,7 @@
         "planning/evidence/adapter-retirement-2026-09-26.md",
         "tests/acl2/owner-results-tests.lisp",
         "tests/native_bp_transit_identity_raw.lisp",
-        "tests/native_owner_bound_commit_raw.lisp",
-        "tools/run_owner.py"
+        "tests/native_owner_bound_commit_raw.lisp"
       ],
       "progress_note": "Lanes adapter-retirement and adapter-retirement-2 (2026-09-26/27). Every event admitted fresh in the persvati REPL (toolchain w25, 97 forms) and every form of the test book run there; certification: the farm manifest cited in planning/evidence/adapter-retirement-2026-09-26.md section 'Continuation'. Teeth: per keystone a reachable witness (the operator post's owner with in-flight id :control; a served id 3; no submission), per hypothesis a witness with the others holding, the omitted one failing and the conclusion failing, and a must-fail; the take's SubmissionTaken witnessed for a control and a served submission and refused for a malformed id or octets.",
       "events": [
@@ -13345,7 +13339,6 @@
         "host/store-node-host.lisp",
         "host/native/admin.lisp",
         "tests/acl2/nntp-reader-compat-tests.lisp",
-        "tools/run_store.py",
         "planning/evidence/manifests/certify-20260928T174337Z-686306.json",
         "tests/acl2/config-field-max-tests.lisp",
         "planning/evidence/manifests/certify-20260928T180709Z-903342.json"

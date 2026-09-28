@@ -26,7 +26,7 @@ vertical paths, with failures that stop the corresponding release claim.
 
 ### F1 — High: the two-node gate downgrades exercised failures to gaps
 
-In [scenario_feed_peer_cut](../tools/twonode_gate.py), lines 1400–1433,
+In scenario_feed_peer_cut, lines 1400–1433,
 failure to serve the article after the connection cut, repeated accepted
 transfers, and an incorrect final group count only append to `self.gaps`.
 The arrival probe uses `expect=None`. `Step.failed` in
@@ -56,7 +56,7 @@ against the real nodes before claiming loss-reply recovery.
 
 ### F2 — High: socket loss does not invoke the feed's retry transition
 
-[Owner.feed_drop](../tools/run_owner.py), line 926, closes the socket and calls
+Owner.feed_drop, line 926, closes the socket and calls
 `feed_connect(peer, None)`. The bridge reaches
 [`fn-own-feed-connect`](../books/owner.lisp), line 1161, which only uses
 `fn-feed-with-conn`. That function preserves the queue, including an in-flight
@@ -85,7 +85,7 @@ retention obligation must survive a crash during that retry transition.
 
 ### F3 — Medium: the peer path discards the listener's authentication policy
 
-[Owner.accept_nntp](../tools/run_owner.py) selects `open_peer`
+Owner.accept_nntp selects `open_peer`
 (the review read it as `accept_nntp_step`, line 635; `w11/owner-survival`
 folded that wrapper back into `accept_nntp` when the host-fault boundary
 became one function, and the finding is unchanged)

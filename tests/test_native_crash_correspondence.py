@@ -77,10 +77,9 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
             self.assertIn(reader, entry)
 
     def test_recovery_cuts_run_in_program_order_and_sweep_after_the_barriers(self):
-        from tests.campaign import model_images, native_cuts
+        from tests.campaign import native_cuts
         native_cuts.verify_recovery_order()
-        indices = [model_images.cut_index(cut.program, cut.model_name,
-                                          cut.occurrence, cut.book)
+        indices = [native_cuts.cut_step_index(cut)
                    for cut in native_cuts.RECOVERY_CUTS
                    if cut.model_name == "recover-barrier"]
         self.assertEqual(len(indices), 3)  # *fn-sf-recovery-barrier-count*

@@ -1564,15 +1564,9 @@ check:
 # on build order with it).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_modes
-# specs/crash-model-v2.md section 2.3's check, in both directions: every cut
-# the campaign kills at is a :cut of the model program that transcribes its
-# host function, and every :cut of a model program is a host faults.at site.
-# It is mechanical and needs no ACL2, so it belongs in `check`.  It fails on a
-# fidelity defect; missing host cuts and syscall drift are reported and do not
-# fail (--strict fails on those too).
-	@$(CHECK_STEP) $(PYTHON) tools/transcribe_check.py
-# The same transcription check for the native host, which transcribe_check
-# does not read: for each program tests/campaign/native_cuts.py names, the
+# specs/crash-model-v2.md section 2.3's transcription check for the native
+# host (the Python host and its transcribe_check retired, python-diet T5):
+# for each program tests/campaign/native_cuts.py names, the
 # host function's success-path syscalls, file-kernel observations and fnn-at
 # cuts in source order equal the program's steps (kind and directory), and
 # every error-arm observation is one of the program's error constants.  A
@@ -1854,7 +1848,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_fixture_init_refusal \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_rule_cost tests.test_tau_cost tests.test_proof_repl tests.test_native_raw_scripts \
-	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
+	    tests.test_test_budget tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \
 	    tests.test_extract_gate
@@ -1867,7 +1861,7 @@ tooling-test:
 # named, and either fails the target (exit 2; test failures exit 1).
 # `--order reverse` runs each module's tests last to first, which is how a
 # test that relies on an earlier one's leftovers is found (harness-repair).  tests/test_budgets.json may lower a module's budget,
-# never raise it.  `make test-modules MODULES="tests.test_store ..."` runs a
+# never raise it.  `make test-modules MODULES="tests.test_native_owner ..."` runs a
 # chosen set the same way.  A module whose every test skipped is reported
 # SKIPPED (N of N) with its reasons and exits 4 (PKT-437 (2)); --discover
 # includes the native modules, which skip on a machine without their image,

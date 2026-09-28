@@ -395,25 +395,14 @@ class Lab:
 
 
 def author_request(article):
-    from tools import run_bp_ingress, run_store
-    bridge = run_bp_ingress.Acl2BpIngress()
-    try:
-        bridge.call('(include-book "books/bp-adu")')
-        if bridge.extract_message_id(article) != MSGID:
-            raise SystemExit("ACL2 extracted another Message-ID")
-        _archive, subject, _prov = run_store.metadata(MSGID, article)
-
-        def text(value):
-            return "(fn-store-octets->string '" + bridge.literal(value) + ")"
-
-        fields = [WORK.encode(), subject, SENDER.encode(), RECEIVER.encode(),
-                  b"native-policy", b"origin-native", b"wire-auth", b"terms-native"]
-        form = ("(fn-bpa-encode (fn-bpa-make-request "
-                + " ".join(text(v) for v in fields)
-                + " '" + bridge.literal(article) + "))")
-        return run_store.acl2_octets(bridge.call(form))
-    finally:
-        bridge.close()
+    """ACL2 authors the request: a developer image's own session
+    (tests/native_harness.Acl2Session; FN_NATIVE_DEVELOPER_HOST names it)."""
+    from tests.native_harness import Acl2Session
+    with Acl2Session() as acl2:
+        fields = [WORK.encode(), acl2.subject(MSGID, article), SENDER.encode(),
+                  RECEIVER.encode(), b"native-policy", b"origin-native",
+                  b"wire-auth", b"terms-native"]
+        return acl2.bp_request(fields, article)
 
 
 def main(argv=None):

@@ -357,6 +357,8 @@
         ; `bp-node serve' (specs/bp-node-machine.md).  `bp send' and `bp
         ; receive' above stay as the lab's transport tools.
         (load "host/native/bp-node.lisp")
+        ; `acl2 session': developer images only (the test fixtures' ACL2).
+        (load "host/native/acl2-session.lisp")
         ; What this image leaves out of the owner and operator it loaded:
         ; the NNTP service (TLS, auth, the feed service, the listener), the
         ; credential store and the control socket.  It does not load

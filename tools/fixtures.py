@@ -156,9 +156,9 @@ class Context:
             os.environ, ACL2_CUSTOMIZATION="NONE",
             FN_NATIVE_DEVELOPER_HOST=str(image), FN_FIXTURE_REV=rev))
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
-        # tools/blake3_ref.py's C backend (GB/s) from the image's tree; without
-        # it the synthesis hashes in pure Python (0.2 MB/s: minutes per 10k
-        # records where the C takes a second; scale-curve 2026-09-28).
+        # tools/blake3_ref.py's C backend (GB/s) from the image's tree, for the
+        # recipes' Python digests (pure Python is 0.2 MB/s).  The synthesized
+        # logs hash nothing here: tools/synth_log_store.py asks the image.
         lib = image.resolve().parent / "lib" / "libfn-blake3.so"
         if "FN_BLAKE3_LIBRARY" not in self.env and lib.is_file():
             self.env["FN_BLAKE3_LIBRARY"] = str(lib)
