@@ -65,7 +65,36 @@ class WaitForTests(unittest.TestCase):
             done = wait_for("--deadline", "5", "--file", str(path))
         self.assertEqual(done.returncode, 0, done.stderr)
 
+    def test_options_may_follow_the_condition(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "there"
+            path.write_text("x")
+            done = subprocess.run(["sh", str(WAIT), "--file", str(path), "--deadline", "5",
+                                   "--interval", "1"],
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                  text=True, timeout=30)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            late = wait_for("--file", str(Path(directory) / "never"), "--deadline", "1")
+        self.assertEqual(late.returncode, 124, late.stderr)
+        self.assertIn("deadline 1s passed", late.stderr)
+
+    def test_an_unobservable_host_is_4_and_quotes_ssh(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fake = Path(directory) / "ssh"
+            fake.write_text("#!/bin/sh\necho 'kex_exchange_identification: "
+                            "Connection closed by remote host' >&2\nexit 255\n")
+            fake.chmod(0o755)
+            env = dict(os.environ, PATH=f"{directory}:{os.environ['PATH']}",
+                       FN_WAIT_FOR_UNOBSERVED_S="0")
+            done = subprocess.run(["sh", str(WAIT), "--host", "nowhere", "--interval", "1",
+                                   "--deadline", "60", "--file", "/x"],
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                  text=True, timeout=60, env=env)
+        self.assertEqual(done.returncode, 4, done.stderr)
+        self.assertIn("Connection closed by remote host", done.stderr)
+
     def test_usage_errors_are_2(self):
+        self.assertEqual(wait_for("--file", "/", "--pid", "1").returncode, 2)
         self.assertEqual(wait_for("--pid", "abc").returncode, 2)
         self.assertEqual(wait_for("--deadline", "x", "--file", "/").returncode, 2)
         self.assertEqual(wait_for().returncode, 2)

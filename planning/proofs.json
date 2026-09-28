@@ -11897,6 +11897,80 @@
         "fn-hp-append-changes-only-dirty",
         "fn-hp-append-dirty-bound"
       ]
+    },
+    {
+      "id": "PRF-348",
+      "title": "Octet text codecs over the octet buffer: decimal and hexadecimal naturals, hex strings and RFC 4648 base64 round-trip, base64 accepts only canonical text and refuses by name, case-insensitive equality is equality of case folds, and the bounded token split loses nothing",
+      "statement": "books/octet-text.lisp. Each codec is a list model over octet lists with an in-place twin over the octet buffer (fn-octets, books/octets-stobj.lisp) and a boundary theorem equating the twin with the model on the buffer's slice; every executable function is guard-verified. fn-ot-nat-parse-of-nat-octets: parsing the printed natural (radix 2..16) under the caller's bound MAX gives it back; fn-ot-nat-parse-bounded: an accepted natural is at most MAX. fn-ot-hex-decode-of-encode and fn-ot-b64-decode-of-encode: decode of encode is the identity (RFC 4648 section 4 for base64). fn-ot-b64-accepted-is-canonical: an accepted base64 text is the encoding of what it decodes to (padding bits zero, the pad only in the last quantum); fn-ot-b64-refuses-outside-alphabet and the refusal kinds :b64-quantum, :b64-alphabet, :b64-padding-bits are named. fn-ot-ci-equal-is-downcase-equal: ASCII case-insensitive equality is equality of the case folds. fn-ot-split-wsp-loses-nothing: the tokens are the input's non-whitespace octets in order, at most LIMIT of them; more is the refusal :too-many-tokens, never a truncation. No function caps data: bounds are the caller's (D27).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/octet-text.lisp",
+        "tests/acl2/octet-text-tests.lisp",
+        "planning/evidence/manifests/certify-20260928T025149Z-846867.json"
+      ],
+      "pending_subject": "No host function calls these codecs yet (lane shared-books built them as the shared library the wire books re-derived); each wire book that adopts one names its host caller then.",
+      "progress_note": "Lane shared-books (Opus 5.5, 2026-09-28), id assigned at the batch AY merge. Certified on persvati: certify-20260928T025149Z-846867 (under 10 s). Teeth: tests/acl2/octet-text-tests.lisp with the RFC 4648 section 10 vectors. Proof-style findings in docs/proof-style.md.",
+      "events": [
+        "fn-ot-nat-parse-of-nat-octets",
+        "fn-ot-nat-parse-bounded",
+        "fn-ot-hex-decode-of-encode",
+        "fn-ot-b64-decode-of-encode",
+        "fn-ot-b64-accepted-is-canonical",
+        "fn-ot-b64-refuses-outside-alphabet",
+        "fn-ot-ci-equal-is-downcase-equal",
+        "fn-ot-split-wsp-loses-nothing"
+      ]
+    },
+    {
+      "id": "PRF-341",
+      "title": "The compressed append: ACL2 plans the payload span, decides the frame over the untrusted LZ4 candidate with named outcomes, and every record the log hands out is read back through the proved decoder; the switch is a configuration row",
+      "statement": "books/payload-lz-append.lisp (lane compression-extents-2, the host wiring of C2 over PRF-326). fn-lzr-append-plan MIN R: the payload span (K . N) of the article record R (the codec decodes R; the payload's place checked) when MIN (the `compress-min-octets' :set-limit configuration row, fn-lzr-config-min; no row is 0, off: fn-lzr-config-min-without-a-row-is-off, fn-lzr-append-plan-off) wants it and N is within the encoder's LZ4_MAX_INPUT_SIZE. fn-lzr-append-decide DICT DICT-ID MIN R K N CANDIDATE runs the proved decoder over the host's candidate (liblz4-HC 1.10.0, vendored, untrusted) and answers (:framed Z), (:kept :lz-no-gain) (the named policy: no block within the cap, or the frame not shorter), (:kept :lz-span), or (:refused :lz-candidate). KEYSTONE fn-lzr-append-decide-framed-expands: a framed decision's octets expand, under any table binding DICT-ID to DICT, to R; fn-lzr-append-decide-framed-is-the-seal; fn-lzr-append-decide-refuses-exactly-a-bad-candidate (iff the candidate does not decode to the span); fn-lzr-append-decide-keeps-only-without-gain; fn-lzr-append-decide-framed-is-shorter (the frame fits every bound R fits); fn-lzr-record-is-not-a-frame (a record passes the read unchanged); fn-lzr-append-replay-reads-the-record (the octets the log takes, whatever the decision, read back as R and decode as R decodes: the digests stay over the original octets, D25). Host subjects: host/native/io.lisp fnn-log-compress (from fnn-log-publish, before the fence; and fnn-log-write-history under a developer selector) calls fn-lzr-append-plan, fn-lzr-candidate-cap and fn-lzr-append-decide; fnn-log-read-record (from fnn-log-stream-segment, the one place records leave the log) calls fn-lzr-read-step (fn-lzr-read-step-expands-by-definition: its record is fn-lzr-expand's); the replay calls fn-lzr-intern-step for a chunk holding frames; fnn-log-reseat-fenced calls fn-lzr-commit-reseats once the log has taken a frame; host/owner-host.lisp fn-owner-compress-min-octets and host/store-host.lisp fn-store-compress-min-octets read the row. The archive reader (proposed D38): books/store-export.lisp fn-sxp-config-decode-archive reads the profile layout before batch AS (thirteen u64 fields) with that release's header limits (fn-sxp-config-decode-archive-is-valid, -of-a-current-frame).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010"
+      ],
+      "depends_on": [
+        "PRF-326",
+        "PRF-257",
+        "PRF-205"
+      ],
+      "assumptions": [
+        "A-DURABLE-EXTENT",
+        "A-DURABLE-LZ"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/payload-lz-append.lisp",
+        "tests/acl2/payload-lz-append-tests.lisp",
+        "books/store-export.lisp",
+        "tests/acl2/store-export-tests.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "tests/test_native_compression.py",
+        "planning/evidence/compression-extents-2-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260928T001142Z-3166531.json",
+        "planning/evidence/manifests/certify-20260928T002833Z-3274728.json"
+      ],
+      "progress_note": "Lane compression-extents-2 (Opus 5.5, 2026-09-27/28). hbox certify-20260928T001142Z-3166531: the affected roots of payload-lz-append (+tests), native-admin and store-export, 160 certified, passed 0 failed; native-n1 at d76980d59 (certify-20260928T002833Z-3274728, both images): test_native_compression, recovery, log_damage, replay_determinism, older_release_open all OK. Teeth: tests/acl2/payload-lz-append-tests.lisp on the real 1993 article and its liblz4-HC blocks. The switch is the configuration row compress-min-octets (default off); measurement in the record.",
+      "events": [
+        "fn-lzr-append-decide-framed-expands",
+        "fn-lzr-append-decide-framed-is-the-seal",
+        "fn-lzr-append-decide-refuses-exactly-a-bad-candidate",
+        "fn-lzr-append-decide-keeps-only-without-gain",
+        "fn-lzr-append-decide-framed-is-shorter",
+        "fn-lzr-record-is-not-a-frame",
+        "fn-lzr-append-replay-reads-the-record",
+        "fn-lzr-append-plan-off",
+        "fn-lzr-config-min-without-a-row-is-off",
+        "fn-sxp-config-decode-archive-is-valid",
+        "fn-sxp-config-decode-archive-of-a-current-frame"
+      ]
     }
   ]
 }

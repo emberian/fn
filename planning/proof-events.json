@@ -11552,6 +11552,92 @@
           "name": "fn-hp-append-dirty-bound"
         }
       ]
+    },
+    {
+      "id": "PRF-348",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ot-nat-parse-of-nat-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-nat-parse-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-hex-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-b64-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-b64-accepted-is-canonical"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-b64-refuses-outside-alphabet"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-ci-equal-is-downcase-equal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-split-wsp-loses-nothing"
+        }
+      ]
+    },
+    {
+      "id": "PRF-341",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-framed-expands"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-framed-is-the-seal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-refuses-exactly-a-bad-candidate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-keeps-only-without-gain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-framed-is-shorter"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-record-is-not-a-frame"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-replay-reads-the-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-plan-off"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-config-min-without-a-row-is-off"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-config-decode-archive-is-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-config-decode-archive-of-a-current-frame"
+        }
+      ]
     }
   ]
 }

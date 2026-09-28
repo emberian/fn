@@ -3,6 +3,8 @@
 #
 #   tools/wait_for.sh [--host HOST] [--deadline S] [--interval S] CONDITION
 #
+# The options may come before or after the CONDITION.
+#
 # CONDITION is one of
 #   --log FILE REGEX         a line of FILE matches REGEX (grep -E); prints it
 #   --file PATH              PATH exists and is non-empty
@@ -15,7 +17,14 @@
 # With --host the check runs there over ssh (hbox, persvati); without it,
 # here.  Exit: 0 the condition holds (--farm: the run's code); 124 the
 # deadline passed first (uncertain: the thing may still happen); 4 the check
-# could not observe (ssh failed five times running); 2 usage.
+# could not observe (ssh failed five times running and for at least two
+# minutes, FN_WAIT_FOR_UNOBSERVED_S; the message quotes ssh's last error);
+# 2 usage.
+#
+# The polls share one ssh connection (ControlMaster, persisting 10 minutes):
+# a fresh handshake every interval from many lanes meets sshd's MaxStartups
+# (10:30:100 on hbox) under load and is dropped, which read as "could not
+# observe" while an interactive ssh worked (feed-queue, 2026-09-27).
 #
 # Why (planning/review-2026-09-26-lane-friction.md section 8): 1,073 hand
 # written wait loops, 214 foreground commands killed at 600 s, and 45 loops of
@@ -24,7 +33,7 @@
 set -u
 
 usage() {
-    sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//' >&2
+    sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//' >&2
     exit 2
 }
 
@@ -37,11 +46,11 @@ while [ $# -gt 0 ]; do
         --host) [ $# -ge 2 ] || usage; HOST=$2; shift 2 ;;
         --deadline) [ $# -ge 2 ] || usage; DEADLINE=$2; shift 2 ;;
         --interval) [ $# -ge 2 ] || usage; INTERVAL=$2; shift 2 ;;
-        --log) [ $# -eq 3 ] || usage; KIND=log; A=$2; B=$3; shift 3 ;;
-        --file) [ $# -eq 2 ] || usage; KIND=file; A=$2; B=; shift 2 ;;
-        --pid) [ $# -eq 2 ] || usage; KIND=pid; A=$2; B=; shift 2 ;;
-        --unit) [ $# -eq 2 ] || usage; KIND=unit; A=$2; B=; shift 2 ;;
-        --farm) [ $# -eq 3 ] || usage; KIND=farm; A=$2; B=$3; shift 3 ;;
+        --log) [ $# -ge 3 ] && [ -z "$KIND" ] || usage; KIND=log; A=$2; B=$3; shift 3 ;;
+        --file) [ $# -ge 2 ] && [ -z "$KIND" ] || usage; KIND=file; A=$2; B=; shift 2 ;;
+        --pid) [ $# -ge 2 ] && [ -z "$KIND" ] || usage; KIND=pid; A=$2; B=; shift 2 ;;
+        --unit) [ $# -ge 2 ] && [ -z "$KIND" ] || usage; KIND=unit; A=$2; B=; shift 2 ;;
+        --farm) [ $# -ge 3 ] && [ -z "$KIND" ] || usage; KIND=farm; A=$2; B=$3; shift 3 ;;
         -h|--help) usage ;;
         *) echo "wait_for: unknown argument: $1" >&2; usage ;;
     esac
@@ -66,9 +75,16 @@ case $KIND in
     farm) SNIPPET="f=$(q "$B")/build/farm/$(q "$A").status; [ -s \"\$f\" ] || exit 1; cat \"\$f\"" ;;
 esac
 
+# ssh's stderr for the last poll, so an exit 4 can say why.
+ERR=$(mktemp "${TMPDIR:-/tmp}/wait_for.XXXXXX") || exit 4
+trap 'rm -f "$ERR"' EXIT
+trap 'exit 130' INT TERM
+
 check() {
     if [ -n "$HOST" ]; then
-        ssh -n -o ConnectTimeout=20 -o BatchMode=yes "$HOST" "$SNIPPET"
+        ssh -n -o ConnectTimeout=30 -o BatchMode=yes -o ServerAliveInterval=30 \
+            -o ControlMaster=auto -o ControlPersist=600 \
+            -o "ControlPath=$HOME/.ssh/fn-wait-for-%r@%h:%p" "$HOST" "$SNIPPET"
     else
         sh -c "$SNIPPET"
     fi
@@ -76,8 +92,9 @@ check() {
 
 start=$(date +%s)
 unobserved=0
+first_unobserved=
 while :; do
-    out=$(check 2>/dev/null)
+    out=$(check 2>"$ERR")
     rc=$?
     if [ $rc -eq 0 ]; then
         [ -n "$out" ] && printf '%s\n' "$out"
@@ -89,19 +106,26 @@ while :; do
         fi
         exit 0
     fi
+    now=$(date +%s)
     if [ -n "$HOST" ] && [ $rc -eq 255 ]; then
         unobserved=$((unobserved + 1))
-        if [ $unobserved -ge 5 ]; then
-            echo "wait_for: ssh to $HOST failed 5 times running; cannot observe $KIND $A" >&2
+        [ -n "$first_unobserved" ] || first_unobserved=$now
+        if [ $unobserved -ge 5 ] && [ $((now - first_unobserved)) -ge "${FN_WAIT_FOR_UNOBSERVED_S:-120}" ]; then
+            echo "wait_for: ssh to $HOST failed $unobserved times running over $((now - first_unobserved))s; cannot observe $KIND $A" >&2
+            echo "wait_for: ssh's last error: $(tail -n 3 "$ERR" | tr '\n' ' ')" >&2
             exit 4
         fi
     else
         unobserved=0
+        first_unobserved=
     fi
-    now=$(date +%s)
     if [ $((now - start)) -ge "$DEADLINE" ]; then
         echo "wait_for: deadline ${DEADLINE}s passed; $KIND $A${B:+ $B} not yet${HOST:+ on $HOST}" >&2
         exit 124
     fi
-    sleep "$INTERVAL"
+    if [ $unobserved -gt 0 ] && [ "$INTERVAL" -gt 10 ]; then
+        sleep 10
+    else
+        sleep "$INTERVAL"
+    fi
 done

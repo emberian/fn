@@ -174,7 +174,15 @@
     "PRF-326:fn-lzr-replay-reads-the-sealed-record": "HOST compression-extents (PRF-326; planning/evidence/compression-extents-2026-09-27.md section 4): the ACL2 foundation of C2 landed ahead of its host wiring; it is hosted by the replay's fn-lzr-expand-chunk before fn-store-decode-records (fnn-recover-log-stream-flush), and this entry goes then.",
     "PRF-342:fn-hp-decode-image": "SPEC (arena-store-2 m1, 2026-09-28): the history's FNADTSN1 image; no host calls it until m3 (the owner's open and snapshot over the page store, fnps-open/fnps-commit), which hosts the image's reader and writer",
     "PRF-342:fn-hp-append-changes-only-dirty": "SPEC (arena-store-2 m1, 2026-09-28): the history's FNADTSN1 image; no host calls it until m3 (the owner's open and snapshot over the page store, fnps-open/fnps-commit), which hosts the image's reader and writer",
-    "PRF-342:fn-hp-append-dirty-bound": "SPEC (arena-store-2 m1, 2026-09-28): the history's FNADTSN1 image; no host calls it until m3 (the owner's open and snapshot over the page store, fnps-open/fnps-commit), which hosts the image's reader and writer"
+    "PRF-342:fn-hp-append-dirty-bound": "SPEC (arena-store-2 m1, 2026-09-28): the history's FNADTSN1 image; no host calls it until m3 (the owner's open and snapshot over the page store, fnps-open/fnps-commit), which hosts the image's reader and writer",
+    "PRF-348:fn-ot-nat-parse-of-nat-octets": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it",
+    "PRF-348:fn-ot-nat-parse-bounded": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it",
+    "PRF-348:fn-ot-hex-decode-of-encode": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it",
+    "PRF-348:fn-ot-b64-decode-of-encode": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it",
+    "PRF-348:fn-ot-b64-accepted-is-canonical": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it",
+    "PRF-348:fn-ot-b64-refuses-outside-alphabet": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it",
+    "PRF-348:fn-ot-ci-equal-is-downcase-equal": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it",
+    "PRF-348:fn-ot-split-wsp-loses-nothing": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it"
   },
   "note": "Registry events whose subject no host line reaches, that the tree accepts for now.  tools/reach_check.py --strict fails on any orphan NOT listed here, so the number can shrink and cannot grow silently.  Remove an entry by hosting the subject, not by editing this file.  Every entry says SPEC (a model kept, and why), or HOST (the packet that will host it); `reach_check.py --strict` refuses the placeholder reason."
 }

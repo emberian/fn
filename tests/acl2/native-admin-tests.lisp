@@ -1428,6 +1428,20 @@
 (assert-event (equal (fn-native-admin-result-status
                       (fn-native-admin-plan (fn-na-test-argv '("account" "delete" "a" "b"))))
                      :refused))
+; Lane compression-extents-2 (PRF-341): `policy set compress-min-octets N',
+; one `:set-limit' row keyed (SLOT, "") that books/payload-lz-append.lisp
+; fn-lzr-config-min reads; 0 (off) is admitted, a non-decimal is refused.
+(defconst *fn-na-lz*
+  (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "compress-min-octets" "512"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-lz*) :accepted))
+(assert-event (equal (fn-native-admin-plan-deltas *fn-na-lz*)
+                     (list (fn-cfg-set-limit "compress-min-octets" 512))))
+(assert-event (equal (fn-native-admin-plan-deltas
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "compress-min-octets" "0"))))
+                     (list (fn-cfg-set-limit "compress-min-octets" 0))))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "compress-min-octets" "x"))))
+                     :refused))
 
 ; Lane time-model-2 (PRF-311): the disk's profile fields, each one
 ; `:set-limit' row read by host/owner-host.lisp fn-owner-barrier-limits

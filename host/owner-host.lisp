@@ -28,6 +28,8 @@
 ; tools/run_owner.py can abandon ONE connection, and before it existed an
 ; exception in the serve loop ended the process for every connection.
 (include-book "../books/owner-config")
+; The compression threshold (fn-owner-compress-min-octets; PRF-341).
+(include-book "../books/payload-lz-append")
 ; P3 owner open and publication (fn-ock-).
 (include-book "../books/owner-checkpoint-open")
 ; The publication through the octet buffer, decided before it is encoded
@@ -1093,6 +1095,14 @@
 (defun fn-owner-log-bounds (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-olr-bounds (fn-owner-config state))))
+
+;; Lane compression-extents-2 (PRF-341): the compression threshold from the
+;; live configuration, the `compress-min-octets' limit row
+;; (books/payload-lz-append.lisp fn-lzr-config-min; no row is 0, off): the
+;; MIN host/native/io.lisp fnn-log-compress hands fn-lzr-append-plan.
+(defun fn-owner-compress-min-octets (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-lzr-config-min (fn-cfg-value (fn-owner-config state)))))
 
 ;; Lane time-model (PRF-311): the barrier's deadline from the live
 ;; configuration, the `barrier-deadline-ms' limit row read like the batch
