@@ -5635,7 +5635,9 @@
           "AutoCheckpointTests.test_a_death_at_each_rotation_cut_of_the_owner_loses_nothing_acknowledged",
           "AutoCheckpointSourceTests.test_no_statvfs_runs_under_the_owner_mutex"
         ],
-        "native": true
+        "native": true,
+        "record": "planning/evidence/operations-2026-09-28.md",
+        "log": "planning/evidence/operations-2026-09-28/native-i4c-checkpoint_auto.log"
       }
     },
     {
@@ -5657,7 +5659,9 @@
         "cases": [
           "AutoCheckpointTests.test_store_compact_on_the_running_owner_is_a_request_it_answers_by_name"
         ],
-        "native": true
+        "native": true,
+        "record": "planning/evidence/operations-2026-09-28.md",
+        "log": "planning/evidence/operations-2026-09-28/native-i4c-checkpoint_auto.log"
       }
     }
   ]

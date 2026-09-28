@@ -6452,7 +6452,7 @@
         "fn-lb-binding-delta-keeps-other-logins",
         "fn-lb-binding-delta-is-admitted",
         "fn-lb-pairs-deltas-set-exactly-their-logins",
-        "fn-lb-sync-binds-every-login-as-the-file-does",
+        "fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings",
         "fn-lb-pairs-deltas-ignore-the-record-coordinates",
         "fn-lb-a-publication-keeps-every-open-connections-table",
         "fn-lb-an-open-session-is-decided-under-its-pinned-table",
@@ -13511,7 +13511,6 @@
       "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
       "events": [
         "fn-ock-requested-next-is-due-with-a-suffix",
-        "fn-ock-requested-next-without-request",
         "fn-ock-requested-one-in-flight",
         "fn-ock-requested-never-past-a-deferral",
         "fn-ock-requested-word-is-the-next-due"

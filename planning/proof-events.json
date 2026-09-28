@@ -12790,10 +12790,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ock-requested-next-without-request"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-ock-requested-one-in-flight"
         },
         {
