@@ -286,11 +286,41 @@
   (if (and (consp line) (equal (car line) 46)) (cdr line) line))
 
 ; The article a record's lines denote: each line then CRLF.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-cu-join-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-cu-join-loop (cdr rev) (append (fn-cu-list (car rev)) (list 13 10) acc))
+    acc))
+
 (defun fn-cu-join (lines)
-  (declare (xargs :guard t))
-  (if (consp lines)
-      (append (fn-cu-list (car lines)) (list 13 10) (fn-cu-join (cdr lines)))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp lines)
+           (append (fn-cu-list (car lines)) (list 13 10) (fn-cu-join (cdr lines)))
+         nil)
+       :exec (fn-cu-join-loop (fn-ag-rev-onto lines nil) nil)))
+
+(local
+ (defthm fn-cu-join-loop-of-rev-onto
+   (equal (fn-cu-join-loop (fn-ag-rev-onto lines zs) nil)
+          (fn-cu-join-loop zs (fn-cu-join lines)))
+   :hints (("Goal" :induct (fn-ag-rev-onto lines zs)
+                   :in-theory (union-theories '(fn-cu-join-loop fn-cu-join fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cu-join-loop)
+
+(verify-guards fn-cu-join
+  :hints (("Goal" :in-theory (union-theories '(fn-cu-join fn-cu-join-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-cu-join-loop-of-rev-onto (zs nil))))))
+
 
 ; The IHAVE body of a record: its lines dot-stuffed, then ".".
 (defun fn-cu-body (lines)
@@ -574,12 +604,56 @@
         ((equal kind :ready) (list (cons :remote (fn-cu-request round))))
         (t nil)))
 
-(defun fn-cu-obs-effects (obs fc security round)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cu-obs-effects-loop (obs fc security round acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp obs)
-      (append (fn-cu-obs-effect (fn-fc-obs-kind (car obs)) fc security round)
-              (fn-cu-obs-effects (cdr obs) fc security round))
-    nil))
+      (fn-cu-obs-effects-loop (cdr obs)
+                              fc
+                              security
+                              round
+                              (fn-ag-rev-onto (fn-cu-obs-effect (fn-fc-obs-kind (car obs))
+                                                                fc
+                                                                security
+                                                                round)
+                                              acc))
+    (revappend acc nil)))
+
+(defun fn-cu-obs-effects (obs fc security round)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp obs)
+           (append (fn-cu-obs-effect (fn-fc-obs-kind (car obs)) fc security round)
+                   (fn-cu-obs-effects (cdr obs) fc security round))
+         nil)
+       :exec (fn-cu-obs-effects-loop obs fc security round nil)))
+
+(local
+ (defthm fn-cu-obs-effects-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-cu-obs-effects-loop-is-revappend
+   (equal (fn-cu-obs-effects-loop obs fc security round acc)
+          (revappend acc (fn-cu-obs-effects obs fc security round)))
+   :hints (("Goal" :induct (fn-cu-obs-effects-loop obs fc security round acc)
+                   :in-theory (union-theories '(fn-cu-obs-effects-loop fn-cu-obs-effects revappend car-cons cdr-cons fn-cu-obs-effects-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cu-obs-effects-loop)
+
+(verify-guards fn-cu-obs-effects
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cu-obs-effects)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cu-obs-effects-loop-is-revappend (acc nil))))))
+
 
 (defun fn-cu-session-readyp (s)
   (declare (xargs :guard t))

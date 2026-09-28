@@ -201,19 +201,61 @@
 ; The sublist of the article's Newsgroups names that match the peer's
 ; accept-groups and are live at the current generation: those, and only
 ; those, become the local memberships.  Strings, as fn-node-prepare takes.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-peer-scope-groups-loop (rev record cfg acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp rev)
+      (fn-peer-scope-groups-loop (cdr rev)
+                                 record
+                                 cfg
+                                 (let ((name (fn-record-octets-string (car rev)))
+                                       (rest acc))
+                                   (if (and (fn-peer-wildmat-matchp (fn-cfg-peer-inbound-groups record)
+                                                                    (car rev))
+                                            (fn-cfg-group-livep (fn-cfg-value cfg)
+                                                                (fn-cfg-generation cfg)
+                                                                name)
+                                            (not (member-equal name rest)))
+                                       (cons name rest)
+                                     rest)))
+    acc))
+
 (defun fn-peer-scope-groups (groups record cfg)
-  (declare (xargs :guard t))
-  (if (consp groups)
-      (let ((name (fn-record-octets-string (car groups)))
-            (rest (fn-peer-scope-groups (cdr groups) record cfg)))
-        (if (and (fn-peer-wildmat-matchp (fn-cfg-peer-inbound-groups record)
-                                         (car groups))
-                 (fn-cfg-group-livep (fn-cfg-value cfg) (fn-cfg-generation cfg)
-                                     name)
-                 (not (member-equal name rest)))
-            (cons name rest)
-          rest))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp groups)
+           (let ((name (fn-record-octets-string (car groups)))
+                 (rest (fn-peer-scope-groups (cdr groups) record cfg)))
+             (if (and (fn-peer-wildmat-matchp (fn-cfg-peer-inbound-groups record)
+                                              (car groups))
+                      (fn-cfg-group-livep (fn-cfg-value cfg) (fn-cfg-generation cfg)
+                                          name)
+                      (not (member-equal name rest)))
+                 (cons name rest)
+               rest))
+         nil)
+       :exec (fn-peer-scope-groups-loop (fn-ag-rev-onto groups nil) record cfg nil)))
+
+(local
+ (defthm fn-peer-scope-groups-loop-of-rev-onto
+   (equal (fn-peer-scope-groups-loop (fn-ag-rev-onto groups zs) record cfg nil)
+          (fn-peer-scope-groups-loop zs record cfg (fn-peer-scope-groups groups record cfg)))
+   :hints (("Goal" :induct (fn-ag-rev-onto groups zs)
+                   :in-theory (union-theories '(fn-peer-scope-groups-loop fn-peer-scope-groups fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-peer-scope-groups-loop)
+
+(verify-guards fn-peer-scope-groups
+  :hints (("Goal" :in-theory (union-theories '(fn-peer-scope-groups fn-peer-scope-groups-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-peer-scope-groups-loop-of-rev-onto (zs nil))))))
+
 
 ;; Moderated groups (P3, PRF-228).  RFC 5537 section 3.6 item 6 (a relaying
 ;; agent "MAY reject any article without an Approved header field posted to

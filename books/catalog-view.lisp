@@ -64,21 +64,57 @@
            :use ((:instance fn-cat-handles-inp-at (n (fn-cat-count fn-cat)) (seq seq))))))
 
 ; The rows below I visible at V, newest first (the archive's order).
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cat-view-below-loop (i v fn-arena fn-cat acc)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (and (natp i) (natp v) (<= i (fn-cat-count fn-cat)) (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)) (true-listp acc)) :verify-guards nil))
+  (if (zp i)
+      (revappend acc nil)
+    (let ((seq (- i 1)))
+      (if (fn-cat-visible-at seq v fn-cat)
+          (fn-cat-view-below-loop seq
+                                  v
+                                  fn-arena
+                                  fn-cat
+                                  (cons (fn-cat-row-article seq fn-arena fn-cat) acc))
+        (fn-cat-view-below-loop seq v fn-arena fn-cat acc)))))
+
 (defun fn-cat-view-below (i v fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (and (natp i) (natp v) (<= i (fn-cat-count fn-cat))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil))
-  (if (zp i)
-      nil
-    (let ((seq (- i 1)))
-      (if (fn-cat-visible-at seq v fn-cat)
-          (cons (fn-cat-row-article seq fn-arena fn-cat)
-                (fn-cat-view-below seq v fn-arena fn-cat))
-        (fn-cat-view-below seq v fn-arena fn-cat)))))
+  (mbe :logic
+       (if (zp i)
+           nil
+         (let ((seq (- i 1)))
+           (if (fn-cat-visible-at seq v fn-cat)
+               (cons (fn-cat-row-article seq fn-arena fn-cat)
+                     (fn-cat-view-below seq v fn-arena fn-cat))
+             (fn-cat-view-below seq v fn-arena fn-cat))))
+       :exec (fn-cat-view-below-loop i v fn-arena fn-cat nil)))
+
+(local
+ (defthm fn-cat-view-below-loop-is-revappend
+   (equal (fn-cat-view-below-loop i v fn-arena fn-cat acc)
+          (revappend acc (fn-cat-view-below i v fn-arena fn-cat)))
+   :hints (("Goal" :induct (fn-cat-view-below-loop i v fn-arena fn-cat acc)
+                   :in-theory (union-theories '(fn-cat-view-below-loop fn-cat-view-below revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+
+(verify-guards fn-cat-view-below-loop
+  :hints (("Goal"
+           :in-theory
+           (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth))))
 
 (verify-guards fn-cat-view-below
-  :hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth))))
+  :hints (("Goal"
+           :in-theory
+           (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth)
+           :use
+           ((:instance fn-cat-view-below-loop-is-revappend (acc nil))))))
 
 (defun fn-cat-view-articles (v fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
@@ -262,18 +298,62 @@
 ; for its newest visible seq, never the rows.
 
 ; The newest visible seq of an ascending list of seqs, or nil.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-cat-view-last-visible-loop (rev v fn-cat acc)
+  (declare (xargs :stobjs fn-cat :guard (natp v) :verify-guards nil))
+  (if (consp rev)
+      (fn-cat-view-last-visible-loop (cdr rev)
+                                     v
+                                     fn-cat
+                                     (let ((rest acc))
+                                       (if rest
+                                           rest
+                                         (let ((seq (car rev)))
+                                           (if (and (natp seq)
+                                                    (< seq (fn-cat-count fn-cat))
+                                                    (fn-cat-visible-at seq v fn-cat))
+                                               seq
+                                             nil)))))
+    acc))
+
 (defun fn-cat-view-last-visible (seqs v fn-cat)
-  (declare (xargs :stobjs fn-cat :guard (natp v)
+  (declare (xargs :verify-guards nil :stobjs fn-cat :guard (natp v)
                   :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth)))))
-  (if (consp seqs)
-      (let ((rest (fn-cat-view-last-visible (cdr seqs) v fn-cat)))
-        (if rest
-            rest
-          (let ((seq (car seqs)))
-            (if (and (natp seq) (< seq (fn-cat-count fn-cat)) (fn-cat-visible-at seq v fn-cat))
-                seq
-              nil))))
-    nil))
+  (mbe :logic
+       (if (consp seqs)
+           (let ((rest (fn-cat-view-last-visible (cdr seqs) v fn-cat)))
+             (if rest
+                 rest
+               (let ((seq (car seqs)))
+                 (if (and (natp seq) (< seq (fn-cat-count fn-cat)) (fn-cat-visible-at seq v fn-cat))
+                     seq
+                   nil))))
+         nil)
+       :exec (fn-cat-view-last-visible-loop (fn-ag-rev-onto seqs nil) v fn-cat nil)))
+
+(local
+ (defthm fn-cat-view-last-visible-loop-of-rev-onto
+   (equal (fn-cat-view-last-visible-loop (fn-ag-rev-onto seqs zs) v fn-cat nil)
+          (fn-cat-view-last-visible-loop zs v fn-cat (fn-cat-view-last-visible seqs v fn-cat)))
+   :hints (("Goal" :induct (fn-ag-rev-onto seqs zs)
+                   :in-theory (union-theories '(fn-cat-view-last-visible-loop fn-cat-view-last-visible fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cat-view-last-visible-loop
+  :hints (("Goal"
+           :in-theory
+           (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth))))
+
+(verify-guards fn-cat-view-last-visible
+  :hints (("Goal" :in-theory (union-theories '(fn-cat-view-last-visible fn-cat-view-last-visible-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-cat-view-last-visible-loop-of-rev-onto (zs nil))))))
+
 
 (defthm fn-cat-view-last-visible-of-append
   (equal (fn-cat-view-last-visible (append a b) v fn-cat)

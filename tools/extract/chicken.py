@@ -169,14 +169,15 @@ SHIMS = {
     "ACL2::FN-HX-REALPATH": "a-hx-realpath", "ACL2::FN-HX-OS": "a-hx-os",
     "ACL2::FN-HX-WARN": "a-hx-warn",
 }
-# The image's native digest (host/native/digest.lisp, lane digest-native):
-# calls of these go to tools/extract/native.scm's libcrypto SHA-256; the
+# The image's native digest (host/native/digest.lisp): calls of these go to
+# tools/extract/native.scm -- BLAKE3 through lib/libfn-blake3 (the images'
+# library), SHA-256 through libcrypto for the Cancel-Lock hash alone; the
 # extracted definitions stay as the fallback and the self-check's reference.
 NATIVE = {
-    "ACL2::FN-SHA256-STOBJ": "a-native-sha256-list",
-    "ACL2::FN-SHA256-OF-STRING": "a-native-sha256-string",
-    "ACL2::FN-SHA256-OF-PREFIXED-BUFFER": "a-native-sha256-prefixed-buffer",
-    "ACL2::FN-SHA256-OF-PREFIXED-RANGE": "a-native-sha256-prefixed-range",
+    "ACL2::FN-BLAKE3-STOBJ": "a-native-blake3-list",
+    "ACL2::FN-BLAKE3-OF-PREFIXED-BUFFER": "a-native-blake3-prefixed-buffer",
+    "ACL2::FN-BLAKE3-OF-PREFIXED-RANGE": "a-native-blake3-prefixed-range",
+    "ACL2::FN-SHA256": "a-native-sha256-list",
 }
 # Common Lisp and ACL2 built-ins that raw Lisp compiles inline (NOT, EQ,
 # ZP ...): the Scheme form for a test position, and for a value position.
@@ -1060,7 +1061,7 @@ def main():
     p.add_argument("--inventory", required=True)
     p.add_argument("--table", help="also write a name -> procedure table (fcheck-main.scm)")
     p.add_argument("--no-native", action="store_true",
-                   help="the ACL2 SHA-256 everywhere (no native.scm; fcheck-main.scm's build)")
+                   help="the ACL2 digests everywhere (no native.scm; fcheck-main.scm's build)")
     a = p.parse_args()
     ir = json.load(open(a.ir))
     b = Backend(ir)

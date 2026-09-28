@@ -2793,6 +2793,18 @@ def main(argv: list[str] | None = None) -> int:
     add_remote_options(p, sync=True)
     p.set_defaults(run=reap)
     argv = list(sys.argv[1:] if argv is None else argv)
+    # The remote options belong to the subcommand, but closeout-common writes
+    # `proof_repl.py --host auto start ...` (the farm's and remote_check's
+    # order): options before the subcommand move after it (f1-bisect,
+    # 2026-09-28: "invalid choice: 'auto'").
+    lead = []
+    while argv and argv[0] in ("--host", "--remote-tree", "--acl2") and len(argv) > 1:
+        lead += argv[:2]
+        argv = argv[2:]
+    if lead and argv:
+        argv = argv[:1] + lead + argv[1:]
+    elif lead:
+        argv = lead
     args = parser.parse_args(argv)
     if getattr(args, "host", None) == "auto":
         args.host = resolve_auto_host(args)

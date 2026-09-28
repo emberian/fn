@@ -87,17 +87,51 @@
 ; Materialization follows the source article order, then each article's
 ; configured membership order.  A number is local to its group: the key always
 ; contains both fields and is never merged into a global number namespace.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-index-membership-entries-loop (msgid memberships acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp memberships)
+      (fn-index-membership-entries-loop msgid
+                                        (fn-ag-cdr memberships)
+                                        (cons (fn-index-entry (fn-ag-car (fn-ag-car memberships))
+                                                              (fn-ag-cdr (fn-ag-car memberships))
+                                                              msgid)
+                                              acc))
+    (revappend acc nil)))
+
 (defun fn-index-membership-entries (msgid memberships)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp memberships)
-      (cons (fn-index-entry
-             (fn-ag-car (fn-ag-car memberships))
-             (fn-ag-cdr (fn-ag-car memberships))
-             msgid)
-            (fn-index-membership-entries msgid
-                                         (fn-ag-cdr memberships)))
-    nil))
-(verify-guards fn-index-membership-entries)
+  (mbe :logic
+       (if (consp memberships)
+           (cons (fn-index-entry
+                  (fn-ag-car (fn-ag-car memberships))
+                  (fn-ag-cdr (fn-ag-car memberships))
+                  msgid)
+                 (fn-index-membership-entries msgid
+                                              (fn-ag-cdr memberships)))
+         nil)
+       :exec (fn-index-membership-entries-loop msgid memberships nil)))
+
+(local
+ (defthm fn-index-membership-entries-loop-is-revappend
+   (equal (fn-index-membership-entries-loop msgid memberships acc)
+          (revappend acc (fn-index-membership-entries msgid memberships)))
+   :hints (("Goal" :induct (fn-index-membership-entries-loop msgid memberships acc)
+                   :in-theory (union-theories '(fn-index-membership-entries-loop fn-index-membership-entries revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-index-membership-entries-loop)
+
+(verify-guards fn-index-membership-entries
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-index-membership-entries)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-index-membership-entries-loop-is-revappend (acc nil))))))
 
 (defun fn-index-article-entries (article)
   (declare (xargs :guard t :verify-guards nil))
@@ -149,15 +183,50 @@
        (not (fn-ag-less high (fn-index-entry-number entry)))))
 (verify-guards fn-index-entry-in-range-p)
 
-(defun fn-index-range-query-raw (index group low high)
-  (declare (xargs :guard t :verify-guards nil))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-index-range-query-raw-loop (index group low high acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp index)
       (if (fn-index-entry-in-range-p group low high (car index))
-          (cons (car index)
-                (fn-index-range-query-raw (cdr index) group low high))
-        (fn-index-range-query-raw (cdr index) group low high))
-    nil))
-(verify-guards fn-index-range-query-raw)
+          (fn-index-range-query-raw-loop (cdr index)
+                                         group
+                                         low
+                                         high
+                                         (cons (car index) acc))
+        (fn-index-range-query-raw-loop (cdr index) group low high acc))
+    (revappend acc nil)))
+
+(defun fn-index-range-query-raw (index group low high)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp index)
+           (if (fn-index-entry-in-range-p group low high (car index))
+               (cons (car index)
+                     (fn-index-range-query-raw (cdr index) group low high))
+             (fn-index-range-query-raw (cdr index) group low high))
+         nil)
+       :exec (fn-index-range-query-raw-loop index group low high nil)))
+
+(local
+ (defthm fn-index-range-query-raw-loop-is-revappend
+   (equal (fn-index-range-query-raw-loop index group low high acc)
+          (revappend acc (fn-index-range-query-raw index group low high)))
+   :hints (("Goal" :induct (fn-index-range-query-raw-loop index group low high acc)
+                   :in-theory (union-theories '(fn-index-range-query-raw-loop fn-index-range-query-raw revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-index-range-query-raw-loop)
+
+(verify-guards fn-index-range-query-raw
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-index-range-query-raw)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-index-range-query-raw-loop-is-revappend (acc nil))))))
 
 (defun fn-index-query-range (index group low high)
   (declare (xargs :guard t :verify-guards nil))

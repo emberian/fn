@@ -12697,6 +12697,71 @@
         "fn-hpo-records-at-is-nth-of-extension",
         "fn-hpo-snapshot-image-is-next-checkpoint"
       ]
+    },
+    {
+      "id": "PRF-362",
+      "title": "The served reads and the classified per-article, history, queue and octet walks execute in constant stack: each is (mbe :logic <its recursion, unchanged> :exec <a loop>) equal by its guard proof, and tools/depth_check.py keeps new ones out",
+      "statement": "Every function below is (mbe :logic <its recursion, unchanged> :exec <loop>) and its verify-guards event proves exec = logic on every input satisfying the guard, by a local lemma with the per-element functions closed (the minimal theory, or disabled): maps, filters and early exits <f>-loop-is-revappend ((revappend acc (f ...))), right folds <f>-loop-of-rev-onto (the reversed list, books/rev-onto.lisp fn-ag-rev-onto, folded from the left), sums <f>-loop-is-plus. The served reads (PKT-877): books/nntp-projection.lisp fn-nntp-group-count, -low, -high, -next-number, -last-number, -range-numbers, fn-nntp-insert-number, fn-nntp-number-lines; books/nntp-index-runtime.lisp fn-nntp-index-numbers, fn-nntp-numbers-count, -min, -max, -min-above, -max-below, -sort; books/nntp-responses.lisp fn-nov-lines-for-numbers, fn-nntp-hdr-lines-for-numbers, fn-nntp-xpat-lines-for-numbers, fn-nntp-newnews-scan, fn-nntp-active-lines, -active-status-lines, -counts-lines, -newsgroup-lines, -described-lines, -active-times-lines, fn-nntp-facts-since, -fact-names, fn-nntp-filter-groups-by-wildmat, -filter-facts-by-wildmat; books/served-catalog.lisp fn-scat-range-keep, fn-nov-lines-for-numbers-cat, fn-nntp-hdr-lines-for-numbers-cat, fn-nntp-xpat-lines-for-numbers-cat, fn-rcompat-hdr-lines-cat, fn-scat-counts-lines; books/nntp-reader-compat.lisp fn-rcompat-hdr-lines, -names-held, -name-lines, -facts-held; books/nntp-xref.lisp fn-nov-served-lines-numbered; books/nntp-range-indexed.lisp fn-nov-lines-for-numbers-numbered; books/served-columns.lisp fn-nov-served-lines-numbered-col; books/nntp-verdict.lisp fn-nntp-verdict-hdr-lines; books/nntp.lisp fn-gidx-counts-lines; books/index.lisp fn-index-range-query-raw; books/nntp-syntax.lisp fn-nntp-string-octets-aux, fn-nntp-octets-chars; books/nntp-session.lisp fn-nntp-append-pieces. The host reaches them through host/owner-host.lisp fn-owner-chunk-span (host/native/owner.lisp fnn-owner-handle-chunk-read). Beyond the served reads, about 250 more walks the classification names as article-, history-, queue- or octet-depth (the owner's connection and feed tables, the peer and pull queues, the log's commit and recovery walks in books/store-log*.lisp, the export's entries in books/store-export.lisp, the checkpoint's counts, the web reader's octet walks, the BP queues of the guard-verified books) are the same shape; tools/depth_baseline.json lists what stays (bounded, each with its bound; debt, which only shrinks). Before: at the deployed 1,024 KiB, with syn100k-2k (100,000 articles in one group) open, 26 of the table's commands stopped the owner (native-sd1). Scope: control-stack depth only; the reads' time is unchanged (fn-nntp-group-low and friends still scan the whole article list per call).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-006"
+      ],
+      "depends_on": [
+        "PRF-352"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/nntp-projection.lisp",
+        "books/nntp-index-runtime.lisp",
+        "books/nntp-responses.lisp",
+        "books/served-catalog.lisp",
+        "books/nntp-reader-compat.lisp",
+        "books/nntp-xref.lisp",
+        "books/nntp-range-indexed.lisp",
+        "books/served-columns.lisp",
+        "books/nntp-verdict.lisp",
+        "books/nntp.lisp",
+        "books/index.lisp",
+        "books/nntp-syntax.lisp",
+        "books/nntp-session.lisp",
+        "books/rev-onto.lisp",
+        "books/store-export.lisp",
+        "tests/acl2/serve-depth-tests.lisp",
+        "tests/test_native_open_depth.py",
+        "tools/depth_check.py",
+        "tools/depth_baseline.json",
+        "planning/evidence/serve-depth-2026-09-28.md",
+        "planning/evidence/manifests/certify-20260928T093447Z-661680.json",
+        "planning/evidence/manifests/certify-20260928T093526Z-373540.json"
+      ],
+      "progress_note": "Certified at the lane head after merging origin/dev (format 10, batch AZ): certify-20260928T093447Z-661680 + certify-20260928T093526Z-373540 (393 + 380 passed, 0 failed; hbox and persvati), the 1,215 affected roots. Witnesses: tests/acl2/serve-depth-tests.lisp (50,000 articles, 50,000 groups, 100,000 octets). Native (production image, the launcher's 1,024 KiB): native-sd4 serves every command of the protocol table and every live control report against syn100k-2k and syn1m-2k with no stack death (before, native-sd1: 26 commands killed the owner at syn100k-2k); tools/depth_check.py equals the extractor (383 of 383)."
+    },
+    {
+      "id": "PRF-364",
+      "title": "The collector's trigger while a store opens is sized to the history it reads: at least 8 MiB, at most 4 x the history on disk, never more than the figure's trigger, and the figure holds every store at it",
+      "statement": "Subject: fn-heap-open-nursery-trigger (books/heap-open-nursery.lisp), which host/native/io.lisp fnn-open-nursery calls at the start of every open (fnn-recover: the owner's recovery and every offline verb that opens), over the launcher's own history observation (host/native/heap.lisp fnn-heap-history-octets: the log's segments, checkpoints/ and the state checkpoint; NIL when unreadable). KEYSTONE fn-heap-open-nursery-trigger-bounds: for every D, NURSERY and HISTORY, 8 MiB <= trigger <= (fn-heap-nursery-trigger D NURSERY), and for a natural HISTORY trigger <= max(8 MiB, 4 x HISTORY). fn-heap-store-figure-holds-every-store-at-the-open-trigger: under PRF-198's keystone's hypotheses the store's need at this trigger is within D (the figure's keystone at the figure's trigger, and fn-heap-store-need monotone in the trigger). Why (F1, lane f1-bisect): an open conses in proportion to its history (81.5 MB for a 1,000 x 2 KiB store of 4,388,380 octets on d5ab87aec, two thirds in the checkpoint's decode), so at the figure's trigger (a sixteenth of the dynamic space, 48.75 MiB at the small profile's 780 MB) the open's garbage reached the whole trigger before the first collection: the reopen's peak was the live heap plus the profile's trigger, whatever the store's size.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-025"
+      ],
+      "depends_on": [
+        "PRF-198"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-heap-open-nursery-trigger-bounds",
+        "fn-heap-store-figure-holds-every-store-at-the-open-trigger",
+        "fn-heap-open-nursery-trigger-natp"
+      ],
+      "evidence": [
+        "books/heap-open-nursery.lisp",
+        "tests/acl2/heap-open-nursery-tests.lisp",
+        "host/native/io.lisp",
+        "planning/evidence/manifests/certify-20260928T095103Z-512720.json"
+      ],
+      "progress_note": "Lane f1-bisect (2026-09-28): both books certified on persvati (certify-20260928T095103Z-512720, 2 passed, none over 10 s). Teeth: positive witnesses at the F1 store (17,553,520), past the cap, unobserved and fresh; the hypothesis-removal witness for NATP HISTORY; one must-fail. F1 before/after on hbox in the lane's LANEDUMP."
     }
   ]
 }

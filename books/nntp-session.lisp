@@ -227,16 +227,34 @@
                   (fn-nntp-stuff-lines lines)
                   '(46 13 10))))))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per piece, and a reply's lines are pieces.  The loop
+; reverses each piece onto one accumulator (fn-ag-rev-onto) and reverses that
+; once.
+(defun fn-nntp-append-pieces-loop (pieces acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp pieces)
+      (fn-nntp-append-pieces-loop (fn-ag-cdr pieces)
+                                  (fn-ag-rev-onto (fn-ag-car pieces) acc))
+    (revappend acc nil)))
+
 (defun fn-nntp-append-pieces (pieces)
   (mbe :logic
        (if (consp pieces)
            (append (car pieces) (fn-nntp-append-pieces (cdr pieces)))
          nil)
-       :exec
-       (if (consp pieces)
-           (fn-ag-append (fn-ag-car pieces)
-                         (fn-nntp-append-pieces (fn-ag-cdr pieces)))
-         nil)))
+       :exec (fn-nntp-append-pieces-loop pieces nil)))
+
+(local
+ (defthm fn-nntp-append-pieces-revappend-rev-onto
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-nntp-append-pieces-loop-is-revappend
+   (equal (fn-nntp-append-pieces-loop pieces acc)
+          (revappend acc (fn-nntp-append-pieces pieces)))
+   :hints (("Goal" :induct (fn-nntp-append-pieces-loop pieces acc)))))
 ; Return (:ok lines) only when every stored line is complete CRLF-framed and
 ; carries none of the octets RFC 3977 section 3.1.1 forbids in a multi-line
 ; block: NUL, a bare LF, or a CR that does not begin a CRLF pair.
@@ -440,7 +458,10 @@
 
 (verify-guards fn-nntp-multi-octets)
 
-(verify-guards fn-nntp-append-pieces)
+(verify-guards fn-nntp-append-pieces-loop)
+(verify-guards fn-nntp-append-pieces
+  :hints (("Goal" :in-theory (disable fn-nntp-append-pieces-loop)
+                  :use ((:instance fn-nntp-append-pieces-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-crlf-lines-aux)
 

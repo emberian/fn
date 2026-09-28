@@ -46,6 +46,7 @@
 
 (in-package "ACL2")
 (include-book "path")
+(include-book "rev-onto") ; the loop twins' step (PKT-877)
 
 (defconst *fn-pu-path-colon* '(112 97 116 104 58)) ; "path:"
 (defconst *fn-pu-xref-colon* '(120 114 101 102 58)) ; "xref:"
@@ -54,9 +55,38 @@
 ; -----------------------------------------------------------------------------
 ; Total list vocabulary
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-pu-append-loop (a b acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp a) (fn-pu-append-loop (cdr a) b (cons (car a) acc)) (revappend acc b)))
+
 (defun fn-pu-append (a b)
-  (declare (xargs :guard t))
-  (if (consp a) (cons (car a) (fn-pu-append (cdr a) b)) b))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp a) (cons (car a) (fn-pu-append (cdr a) b)) b)
+       :exec (fn-pu-append-loop a b nil)))
+
+(local
+ (defthm fn-pu-append-loop-is-revappend
+   (equal (fn-pu-append-loop a b acc)
+          (revappend acc (fn-pu-append a b)))
+   :hints (("Goal" :induct (fn-pu-append-loop a b acc)
+                   :in-theory (union-theories '(fn-pu-append-loop fn-pu-append revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-pu-append-loop)
+
+(verify-guards fn-pu-append
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-pu-append)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-pu-append-loop-is-revappend (acc nil))))))
+
 
 (defun fn-pu-take (n x)
   (declare (xargs :guard t :measure (nfix n)))
@@ -74,11 +104,42 @@
   (declare (xargs :guard t))
   (or (equal c 32) (equal c 9)))
 
-(defun fn-pu-take-wsp (x)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-pu-take-wsp-loop (x acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (and (consp x) (fn-pu-wspp (car x)))
-      (cons (car x) (fn-pu-take-wsp (cdr x)))
-    nil))
+      (fn-pu-take-wsp-loop (cdr x) (cons (car x) acc))
+    (revappend acc nil)))
+
+(defun fn-pu-take-wsp (x)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (and (consp x) (fn-pu-wspp (car x)))
+           (cons (car x) (fn-pu-take-wsp (cdr x)))
+         nil)
+       :exec (fn-pu-take-wsp-loop x nil)))
+
+(local
+ (defthm fn-pu-take-wsp-loop-is-revappend
+   (equal (fn-pu-take-wsp-loop x acc)
+          (revappend acc (fn-pu-take-wsp x)))
+   :hints (("Goal" :induct (fn-pu-take-wsp-loop x acc)
+                   :in-theory (union-theories '(fn-pu-take-wsp-loop fn-pu-take-wsp revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-pu-take-wsp-loop)
+
+(verify-guards fn-pu-take-wsp
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-pu-take-wsp)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-pu-take-wsp-loop-is-revappend (acc nil))))))
+
 
 (defun fn-pu-skip-wsp (x)
   (declare (xargs :guard t))
@@ -121,11 +182,42 @@
   (declare (xargs :guard t))
   (and (consp x) (equal (car x) 13) (consp (cdr x)) (equal (cadr x) 10)))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-pu-line-loop (x acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (cond ((atom x) (revappend acc nil))
+        ((fn-pu-crlf-atp x) (revappend acc (list 13 10)))
+        (t (fn-pu-line-loop (cdr x) (cons (car x) acc)))))
+
 (defun fn-pu-line (x)
-  (declare (xargs :guard t))
-  (cond ((atom x) nil)
-        ((fn-pu-crlf-atp x) (list 13 10))
-        (t (cons (car x) (fn-pu-line (cdr x))))))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (cond ((atom x) nil)
+             ((fn-pu-crlf-atp x) (list 13 10))
+             (t (cons (car x) (fn-pu-line (cdr x)))))
+       :exec (fn-pu-line-loop x nil)))
+
+(local
+ (defthm fn-pu-line-loop-is-revappend
+   (equal (fn-pu-line-loop x acc)
+          (revappend acc (fn-pu-line x)))
+   :hints (("Goal" :induct (fn-pu-line-loop x acc)
+                   :in-theory (union-theories '(fn-pu-line-loop fn-pu-line revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-pu-line-loop)
+
+(verify-guards fn-pu-line
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-pu-line)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-pu-line-loop-is-revappend (acc nil))))))
+
 
 (defun fn-pu-after-line (x)
   (declare (xargs :guard t))
@@ -167,23 +259,72 @@
 ; lines go with it.  The header block ends at the blank line (a line that is
 ; exactly CRLF); that line and everything after it are returned as they are.
 
-(defun fn-pu-walk (x id dg dropping)
-  (declare (xargs :guard t :measure (acl2-count x)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per header line of the posted article.  The loop
+; reverses each kept line onto an accumulator (fn-ag-rev-onto) and the rest
+; of the article onto that at the end.
+(defun fn-pu-walk-loop (x id dg dropping acc)
+  (declare (xargs :guard (true-listp acc) :measure (acl2-count x) :verify-guards nil))
   (if (atom x)
-      x
+      (revappend acc x)
     (let ((line (fn-pu-line x))
           (rest (fn-pu-after-line x)))
-      (cond ((equal line '(13 10)) x)
+      (cond ((equal line '(13 10)) (revappend acc x))
             ((fn-pu-wspp (car line))
              (if dropping
-                 (fn-pu-walk rest id dg t)
-               (fn-pu-append line (fn-pu-walk rest id dg nil))))
+                 (fn-pu-walk-loop rest id dg t acc)
+               (fn-pu-walk-loop rest id dg nil (fn-ag-rev-onto line acc))))
             ((fn-pu-named-p line *fn-pu-xref-colon*)
-             (fn-pu-walk rest id dg t))
+             (fn-pu-walk-loop rest id dg t acc))
             ((fn-pu-named-p line *fn-pu-path-colon*)
-             (fn-pu-append (fn-pu-edit-path line id dg)
-                            (fn-pu-walk rest id dg nil)))
-            (t (fn-pu-append line (fn-pu-walk rest id dg nil)))))))
+             (fn-pu-walk-loop rest id dg nil (fn-ag-rev-onto (fn-pu-edit-path line id dg) acc)))
+            (t (fn-pu-walk-loop rest id dg nil (fn-ag-rev-onto line acc)))))))
+
+(defun fn-pu-walk (x id dg dropping)
+  (declare (xargs :guard t :measure (acl2-count x) :verify-guards nil))
+  (mbe :logic
+       (if (atom x)
+           x
+         (let ((line (fn-pu-line x))
+               (rest (fn-pu-after-line x)))
+           (cond ((equal line '(13 10)) x)
+                 ((fn-pu-wspp (car line))
+                  (if dropping
+                      (fn-pu-walk rest id dg t)
+                    (fn-pu-append line (fn-pu-walk rest id dg nil))))
+                 ((fn-pu-named-p line *fn-pu-xref-colon*)
+                  (fn-pu-walk rest id dg t))
+                 ((fn-pu-named-p line *fn-pu-path-colon*)
+                  (fn-pu-append (fn-pu-edit-path line id dg)
+                                (fn-pu-walk rest id dg nil)))
+                 (t (fn-pu-append line (fn-pu-walk rest id dg nil))))))
+       :exec (fn-pu-walk-loop x id dg dropping nil)))
+
+; The lemmas stay inside: fn-pu-append = append would change the proofs below.
+(encapsulate ()
+  (local
+   (defthm fn-pu-walk-append-is-append
+     (equal (fn-pu-append a b) (append a b))))
+
+  (local
+   (defthm fn-pu-walk-revappend-rev-onto
+     (equal (revappend (fn-ag-rev-onto x acc) y)
+            (revappend acc (append x y)))))
+
+  (local
+   (defthm fn-pu-walk-loop-is-revappend
+     (equal (fn-pu-walk-loop x id dg dropping acc)
+            (revappend acc (fn-pu-walk x id dg dropping)))
+     :hints (("Goal" :induct (fn-pu-walk-loop x id dg dropping acc)
+                     :in-theory (disable fn-pu-line fn-pu-after-line fn-pu-wspp fn-pu-named-p
+                                         fn-pu-edit-path)))))
+
+  (verify-guards fn-pu-walk-loop)
+
+  (verify-guards fn-pu-walk
+    :hints (("Goal" :in-theory (disable fn-pu-walk-loop fn-pu-line fn-pu-after-line fn-pu-wspp
+                                        fn-pu-named-p fn-pu-edit-path)
+                    :use ((:instance fn-pu-walk-loop-is-revappend (acc nil)))))))
 
 ; The specification side of "nothing else changed": the article with every
 ; Path and Xref field (and their continuation lines) removed.

@@ -29,6 +29,7 @@
 
 (in-package "ACL2")
 (include-book "records-invariants")
+(include-book "rev-onto") ; the loop twins' step (PKT-877)
 (include-book "clock")
 
 ; Nothing in this book opens the CBOR or record codec: every definition here
@@ -350,11 +351,42 @@
       (and (fn-cfg-group-entryp (car es)) (fn-cfg-group-listp (cdr es)))
     (null es)))
 
-(defun fn-cfg-group-all-names (es)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cfg-group-all-names-loop (es acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp es)
-      (cons (fn-cfg-group-name (car es)) (fn-cfg-group-all-names (cdr es)))
-    nil))
+      (fn-cfg-group-all-names-loop (cdr es) (cons (fn-cfg-group-name (car es)) acc))
+    (revappend acc nil)))
+
+(defun fn-cfg-group-all-names (es)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp es)
+           (cons (fn-cfg-group-name (car es)) (fn-cfg-group-all-names (cdr es)))
+         nil)
+       :exec (fn-cfg-group-all-names-loop es nil)))
+
+(local
+ (defthm fn-cfg-group-all-names-loop-is-revappend
+   (equal (fn-cfg-group-all-names-loop es acc)
+          (revappend acc (fn-cfg-group-all-names es)))
+   :hints (("Goal" :induct (fn-cfg-group-all-names-loop es acc)
+                   :in-theory (union-theories '(fn-cfg-group-all-names-loop fn-cfg-group-all-names revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cfg-group-all-names-loop)
+
+(verify-guards fn-cfg-group-all-names
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cfg-group-all-names)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cfg-group-all-names-loop-is-revappend (acc nil))))))
+
 
 (defun fn-cfg-group-find (es name)
   (declare (xargs :guard t))
@@ -375,13 +407,46 @@
            (and (natp (fn-cfg-group-retired-gen e))
                 (< gen (fn-cfg-group-retired-gen e))))))
 
-(defun fn-cfg-live-names (es gen)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cfg-live-names-loop (es gen acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp es)
       (if (fn-cfg-entry-livep (car es) gen)
-          (cons (fn-cfg-group-name (car es)) (fn-cfg-live-names (cdr es) gen))
-        (fn-cfg-live-names (cdr es) gen))
-    nil))
+          (fn-cfg-live-names-loop (cdr es) gen (cons (fn-cfg-group-name (car es)) acc))
+        (fn-cfg-live-names-loop (cdr es) gen acc))
+    (revappend acc nil)))
+
+(defun fn-cfg-live-names (es gen)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp es)
+           (if (fn-cfg-entry-livep (car es) gen)
+               (cons (fn-cfg-group-name (car es)) (fn-cfg-live-names (cdr es) gen))
+             (fn-cfg-live-names (cdr es) gen))
+         nil)
+       :exec (fn-cfg-live-names-loop es gen nil)))
+
+(local
+ (defthm fn-cfg-live-names-loop-is-revappend
+   (equal (fn-cfg-live-names-loop es gen acc)
+          (revappend acc (fn-cfg-live-names es gen)))
+   :hints (("Goal" :induct (fn-cfg-live-names-loop es gen acc)
+                   :in-theory (union-theories '(fn-cfg-live-names-loop fn-cfg-live-names revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cfg-live-names-loop)
+
+(verify-guards fn-cfg-live-names
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cfg-live-names)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cfg-live-names-loop-is-revappend (acc nil))))))
+
 
 ; -----------------------------------------------------------------------------
 ; The configuration value
@@ -1872,44 +1937,164 @@
 ; -----------------------------------------------------------------------------
 ; Applying a delta.  Total, and never a deletion.
 
-(defun fn-cfg-groups-create (es gen stamp name policy)
-  ; Append, or revive in place keeping the retained watermark.
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cfg-groups-create-loop (es gen stamp name policy acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp es)
       (if (equal (fn-cfg-group-name (car es)) name)
-          (cons (fn-cfg-group-make name gen stamp nil policy
-                                   (fn-cfg-group-next (car es)))
-                (cdr es))
-        (cons (car es) (fn-cfg-groups-create (cdr es) gen stamp name policy)))
-    (list (fn-cfg-group-make name gen stamp nil policy 0))))
+          (revappend acc
+                     (cons (fn-cfg-group-make name
+                                              gen
+                                              stamp
+                                              nil
+                                              policy
+                                              (fn-cfg-group-next (car es)))
+                           (cdr es)))
+        (fn-cfg-groups-create-loop (cdr es) gen stamp name policy (cons (car es) acc)))
+    (revappend acc (list (fn-cfg-group-make name gen stamp nil policy 0)))))
+
+(defun fn-cfg-groups-create (es gen stamp name policy)
+  ; Append, or revive in place keeping the retained watermark.
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp es)
+           (if (equal (fn-cfg-group-name (car es)) name)
+               (cons (fn-cfg-group-make name gen stamp nil policy
+                                        (fn-cfg-group-next (car es)))
+                     (cdr es))
+             (cons (car es) (fn-cfg-groups-create (cdr es) gen stamp name policy)))
+         (list (fn-cfg-group-make name gen stamp nil policy 0)))
+       :exec (fn-cfg-groups-create-loop es gen stamp name policy nil)))
+
+(local
+ (defthm fn-cfg-groups-create-loop-is-revappend
+   (equal (fn-cfg-groups-create-loop es gen stamp name policy acc)
+          (revappend acc (fn-cfg-groups-create es gen stamp name policy)))
+   :hints (("Goal" :induct (fn-cfg-groups-create-loop es gen stamp name policy acc)
+                   :in-theory (union-theories '(fn-cfg-groups-create-loop fn-cfg-groups-create revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cfg-groups-create-loop)
+
+(verify-guards fn-cfg-groups-create
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cfg-groups-create)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cfg-groups-create-loop-is-revappend (acc nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cfg-groups-retire-loop (es gen name acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp es)
+      (if (equal (fn-cfg-group-name (car es)) name)
+          (revappend acc
+                     (cons (fn-cfg-group-make name
+                                              (fn-cfg-group-created-gen (car es))
+                                              (fn-cfg-group-created-stamp (car es))
+                                              gen
+                                              (fn-cfg-group-policy-id (car es))
+                                              (fn-cfg-group-next (car es)))
+                           (cdr es)))
+        (fn-cfg-groups-retire-loop (cdr es) gen name (cons (car es) acc)))
+    (revappend acc nil)))
 
 (defun fn-cfg-groups-retire (es gen name)
   ; Set retired-gen.  The entry, its creation stamp and its watermark stay.
-  (declare (xargs :guard t))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp es)
+           (if (equal (fn-cfg-group-name (car es)) name)
+               (cons (fn-cfg-group-make name (fn-cfg-group-created-gen (car es))
+                                        (fn-cfg-group-created-stamp (car es))
+                                        gen (fn-cfg-group-policy-id (car es))
+                                        (fn-cfg-group-next (car es)))
+                     (cdr es))
+             (cons (car es) (fn-cfg-groups-retire (cdr es) gen name)))
+         nil)
+       :exec (fn-cfg-groups-retire-loop es gen name nil)))
+
+(local
+ (defthm fn-cfg-groups-retire-loop-is-revappend
+   (equal (fn-cfg-groups-retire-loop es gen name acc)
+          (revappend acc (fn-cfg-groups-retire es gen name)))
+   :hints (("Goal" :induct (fn-cfg-groups-retire-loop es gen name acc)
+                   :in-theory (union-theories '(fn-cfg-groups-retire-loop fn-cfg-groups-retire revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cfg-groups-retire-loop)
+
+(verify-guards fn-cfg-groups-retire
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cfg-groups-retire)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cfg-groups-retire-loop-is-revappend (acc nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cfg-groups-set-policy-loop (es name policy acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp es)
       (if (equal (fn-cfg-group-name (car es)) name)
-          (cons (fn-cfg-group-make name (fn-cfg-group-created-gen (car es))
-                                   (fn-cfg-group-created-stamp (car es))
-                                   gen (fn-cfg-group-policy-id (car es))
-                                   (fn-cfg-group-next (car es)))
-                (cdr es))
-        (cons (car es) (fn-cfg-groups-retire (cdr es) gen name)))
-    nil))
+          (revappend acc
+                     (cons (fn-cfg-group-make name
+                                              (fn-cfg-group-created-gen (car es))
+                                              (fn-cfg-group-created-stamp (car es))
+                                              (fn-cfg-group-retired-gen (car es))
+                                              policy
+                                              (fn-cfg-group-next (car es)))
+                           (cdr es)))
+        (fn-cfg-groups-set-policy-loop (cdr es) name policy (cons (car es) acc)))
+    (revappend acc nil)))
 
 (defun fn-cfg-groups-set-policy (es name policy)
   ; Rewrite the first entry named NAME's policy identifier.  Creation,
   ; retirement and the watermark stay.
-  (declare (xargs :guard t))
-  (if (consp es)
-      (if (equal (fn-cfg-group-name (car es)) name)
-          (cons (fn-cfg-group-make name (fn-cfg-group-created-gen (car es))
-                                   (fn-cfg-group-created-stamp (car es))
-                                   (fn-cfg-group-retired-gen (car es))
-                                   policy
-                                   (fn-cfg-group-next (car es)))
-                (cdr es))
-        (cons (car es) (fn-cfg-groups-set-policy (cdr es) name policy)))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp es)
+           (if (equal (fn-cfg-group-name (car es)) name)
+               (cons (fn-cfg-group-make name (fn-cfg-group-created-gen (car es))
+                                        (fn-cfg-group-created-stamp (car es))
+                                        (fn-cfg-group-retired-gen (car es))
+                                        policy
+                                        (fn-cfg-group-next (car es)))
+                     (cdr es))
+             (cons (car es) (fn-cfg-groups-set-policy (cdr es) name policy)))
+         nil)
+       :exec (fn-cfg-groups-set-policy-loop es name policy nil)))
+
+(local
+ (defthm fn-cfg-groups-set-policy-loop-is-revappend
+   (equal (fn-cfg-groups-set-policy-loop es name policy acc)
+          (revappend acc (fn-cfg-groups-set-policy es name policy)))
+   :hints (("Goal" :induct (fn-cfg-groups-set-policy-loop es name policy acc)
+                   :in-theory (union-theories '(fn-cfg-groups-set-policy-loop fn-cfg-groups-set-policy revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cfg-groups-set-policy-loop)
+
+(verify-guards fn-cfg-groups-set-policy
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cfg-groups-set-policy)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cfg-groups-set-policy-loop-is-revappend (acc nil))))))
+
 
 (defun fn-cfg-set-groups (v es)
   (declare (xargs :guard t))
@@ -2522,12 +2707,49 @@
                   (cons (fn-cfg-uitem (len (fn-cfg-record-change r)))
                         (fn-cfg-deltas-items (fn-cfg-record-change r))))))
 
-(defun fn-cfg-item-octets (items)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cfg-item-octets-loop (items acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp items)
-      (append (fn-cbor-encode (car items))
-              (fn-cfg-item-octets (cdr items)))
-    nil))
+      (fn-cfg-item-octets-loop (cdr items)
+                               (fn-ag-rev-onto (fn-cbor-encode (car items)) acc))
+    (revappend acc nil)))
+
+(defun fn-cfg-item-octets (items)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp items)
+           (append (fn-cbor-encode (car items))
+                   (fn-cfg-item-octets (cdr items)))
+         nil)
+       :exec (fn-cfg-item-octets-loop items nil)))
+
+(local
+ (defthm fn-cfg-item-octets-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-cfg-item-octets-loop-is-revappend
+   (equal (fn-cfg-item-octets-loop items acc)
+          (revappend acc (fn-cfg-item-octets items)))
+   :hints (("Goal" :induct (fn-cfg-item-octets-loop items acc)
+                   :in-theory (union-theories '(fn-cfg-item-octets-loop fn-cfg-item-octets revappend car-cons cdr-cons fn-cfg-item-octets-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cfg-item-octets-loop)
+
+(verify-guards fn-cfg-item-octets
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cfg-item-octets)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cfg-item-octets-loop-is-revappend (acc nil))))))
+
 
 (defun fn-cfg-encode (r)
   (declare (xargs :guard t))

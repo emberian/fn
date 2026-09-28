@@ -2947,6 +2947,7 @@ are not kept (PKT-823): a caller that needs their octets reads them with
         (fnn-store-open-mode store) '(:full-replay :absent))
   (unless (fnn-store-logp store)
     (fnn-fault "a store that is not on the record log opened"))
+  (fnn-open-nursery store)
   (fnn-recover-log store))
 
 (defun fnn-require-writer (store)
@@ -6970,6 +6971,26 @@ observation (the COMPLETE re-signals it under the owner)."
 ;;; dynamic space it reserved (fn-heap-with-nursery-holds-the-trigger).
 (defun fnn-gc-nursery-octets ()
   (fnn-core 'fn-heap-nursery-trigger (sb-ext:dynamic-space-size) +fnn-gc-nursery-octets+))
+
+;;; The trigger while a store opens (lane f1-bisect, F1).  The open allocates
+;;; in proportion to the history it reads, so at the figure's trigger its
+;;; garbage piles up to the whole trigger (48.75 MiB at the small profile's
+;;; 780 MB) before the first collection, whatever the store's size.  ACL2
+;;; sizes it to the history on disk (books/heap-open-nursery.lisp
+;;; fn-heap-open-nursery-trigger: at most 4 x the history, at least 8 MiB,
+;;; never more than the figure's trigger; KEYSTONE
+;;; fn-heap-open-nursery-trigger-bounds).  The history is the launcher's own
+;;; observation (host/native/heap.lisp fnn-heap-history-octets: the log's
+;;; segments, checkpoints/ and the state checkpoint), NIL when it cannot be
+;;; read (the figure's trigger).  The owner sets the service trigger when the
+;;; open is done (fnn-owner-service-nursery).
+(defun fnn-open-nursery (store)
+  (let ((profile (fnn-store-config store)))
+    (setf (sb-ext:bytes-consed-between-gcs)
+          (fnn-core 'fn-heap-open-nursery-trigger (sb-ext:dynamic-space-size)
+                    +fnn-gc-nursery-octets+
+                    (and profile
+                         (fnn-heap-history-octets (fnn-store-root store) profile))))))
 
 ;;; `fn redeem HOST[:PORT] CODE LOGIN [--tls] [--cafile PEM]': a friend
 ;;; redeems an invitation code (the stranger rehearsal's stop 10).  The host
