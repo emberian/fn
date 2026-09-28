@@ -35,7 +35,8 @@
 ;
 ; What is not proved, and stays A-CRYPTO: that either function is collision
 ; resistant.  Agreement with the standard is evidence by evaluation
-; (tests/acl2/sha256-stobj-tests.lisp runs the FIPS vectors through both).
+; (the FIPS vectors ran through both in the retired sha256-stobj-tests; the
+; page store's tests exercise it now).
 ;
 ; The attachment (books/crypto-attach.lisp) binds `fn-digest' and
 ; `fn-frame-digest' to `fn-sha256-stobj' under the equality above; it

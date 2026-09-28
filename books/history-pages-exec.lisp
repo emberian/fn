@@ -1,4 +1,4 @@
-; fn: the history's FNADTSN1 image read through the page store's words
+; fn: the history's FNADTSN2 image read through the page store's words
 ; (lane arena-store-2, 2026-09-28).  Prefix fn-hp-.
 (in-package "ACL2")
 (include-book "history-pages")
@@ -297,7 +297,8 @@
   (implies (fn-hp-okp h salt)
            (let ((b (fn-hp-image h salt)))
              (and (equal (adt-unle 8 b) *fn-hp-magic-word*)
-                  (equal (adt-unle 8 (nthcdr 8 b)) 1)
+                  (equal (adt-unle 8 (nthcdr 8 b)) *adt-version*)
+                  (equal (adt-unle 8 (nthcdr 144 b)) (fn-hp-npages h salt))
                   (equal (list (adt-unle 8 (nthcdr 16 b)) (adt-unle 8 (nthcdr 24 b))
                                (adt-unle 8 (nthcdr 32 b)) (adt-unle 8 (nthcdr 40 b)))
                          *fn-hp-schema-words*)
@@ -311,9 +312,10 @@
                  (:instance fn-hp-unle-via-take (k 8) (m 32) (x (nthcdr 16 (adt-ser *fn-hp-schema* (fn-hp-rows h salt)))))
                  (:instance fn-hp-unle-via-take (k 16) (m 32) (x (nthcdr 16 (adt-ser *fn-hp-schema* (fn-hp-rows h salt)))))
                  (:instance fn-hp-unle-via-take (k 24) (m 32) (x (nthcdr 16 (adt-ser *fn-hp-schema* (fn-hp-rows h salt))))))
-           :in-theory (disable adt-ser-header-reads fn-hp-ser-okp fn-hp-unle-take fn-hp-unle-via-take adt-ser adt-regs
-                               adt-starts-l adt-lens adt-read-meta adt-unle fn-hp-okp fn-hp-rows adt-ser-okp
-                               adt-schema-digest))))
+           :in-theory (e/d (fn-hp-npages fn-hp-regs)
+                           (adt-ser-header-reads fn-hp-ser-okp fn-hp-unle-take fn-hp-unle-via-take adt-ser adt-regs
+                            adt-starts-l adt-lens adt-read-meta adt-unle fn-hp-okp fn-hp-rows adt-ser-okp
+                            adt-schema-digest)))))
 
 ; -----------------------------------------------------------------------------
 ; B. The image as words, and the open's header check over them.
@@ -335,22 +337,25 @@
 
 (defun fn-hp-w-header (w npages)
   ; the open's header check over the image's words W, the page store
-  ; holding NPAGES logical pages: (:ok N LENS STARTS) or (:refused REASON)
+  ; holding NPAGES logical pages: (:ok N LENS STARTS) or (:refused REASON).
+  ; FNADTSN2: the regions may lie anywhere the header says
+  ; (`adt-placement-ok' against word 18, the image's page count).
   (declare (xargs :guard (true-listp w) :verify-guards nil))
   (let ((n (nth 6 w))
         (lens (list (nth 9 w) (nth 11 w) (nth 13 w) (nth 15 w) (nth 17 w)))
-        (starts (list (nth 8 w) (nth 10 w) (nth 12 w) (nth 14 w) (nth 16 w))))
+        (starts (list (nth 8 w) (nth 10 w) (nth 12 w) (nth 14 w) (nth 16 w)))
+        (np (nth 18 w)))
     (cond ((not (equal (nth 0 w) *fn-hp-magic-word*)) (list :refused :magic))
-          ((not (equal (nth 1 w) 1)) (list :refused :version))
+          ((not (equal (nth 1 w) *adt-version*)) (list :refused :version))
           ((not (equal (list (nth 2 w) (nth 3 w) (nth 4 w) (nth 5 w)) *fn-hp-schema-words*))
            (list :refused :schema))
           ((not (equal (nth 7 w) 5)) (list :refused :regions))
-          ((not (and (natp n) (nat-listp lens))) (list :refused :fields))
-          ((not (equal starts (adt-starts-l lens 1))) (list :refused :placement))
+          ((not (and (natp n) (nat-listp lens) (natp np))) (list :refused :fields))
+          ((not (adt-placement-ok starts lens np)) (list :refused :placement))
           ((not (and (equal (nth 0 lens) (* 8 n)) (equal (nth 1 lens) (* 8 n))
                      (equal (nth 2 lens) (* 8 n)) (equal (nth 3 lens) (* 8 n))))
            (list :refused :column-size))
-          ((not (equal (adt-end-l lens 1) npages)) (list :refused :length))
+          ((not (equal np npages)) (list :refused :length))
           (t (list :ok n lens starts)))))
 
 (defthm fn-hp-len-lens
@@ -398,6 +403,13 @@
   (equal (fn-hp-lens h salt) (adt-lens (adt-regs *fn-hp-schema* (fn-hp-rows h salt)))))
 
 
+(defthm fn-hp-placement-ok-of-image
+  (adt-placement-ok (fn-hp-starts h salt) (fn-hp-lens h salt) (fn-hp-npages h salt))
+  :hints (("Goal" :use ((:instance adt-placement-ok-of-starts-l (lens (fn-hp-lens h salt)) (s 1)))
+           :in-theory (e/d (fn-hp-starts fn-hp-npages fn-hp-lens fn-hp-regs)
+                           (adt-placement-ok-of-starts-l adt-placement-ok adt-regs fn-hp-rows adt-starts-l adt-end-l
+                            adt-lens)))))
+
 ; The open's header check accepts the image and answers its N and regions.
 (defthm fn-hp-w-header-of-image
   (implies (fn-hp-okp h salt)
@@ -405,6 +417,7 @@
                   (list :ok (len h) (fn-hp-lens h salt) (fn-hp-starts h salt))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-hp-header-fixed-octets)
+                 (:instance fn-hp-placement-ok-of-image)
                  (:instance fn-hp-header-meta-octets (r 0)) (:instance fn-hp-header-meta-octets (r 1))
                  (:instance fn-hp-header-meta-octets (r 2)) (:instance fn-hp-header-meta-octets (r 3))
                  (:instance fn-hp-header-meta-octets (r 4))
@@ -415,5 +428,5 @@
            :in-theory (e/d (fn-hp-npages fn-hp-regs)
                            (fn-hp-header-fixed-octets fn-hp-header-meta-octets fn-hp-lens-col-sizes fn-hp-list5
                             fn-hp-iw fn-hp-image fn-hp-okp adt-unle adt-regs fn-hp-rows adt-starts-l adt-end-l
-                            adt-lens fn-hp-lens fn-hp-starts)))))
+                            adt-lens fn-hp-lens fn-hp-starts adt-placement-ok fn-hp-placement-ok-of-image)))))
 

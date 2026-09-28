@@ -49,6 +49,13 @@
 (in-package "ACL2")
 (include-book "catalog-record")
 
+; Rules of the included world that this book's proofs try on every consp,
+; true-listp or nonempty goal and never use (accumulated-persistence over the
+; whole book, 2026-09-28, lane d26-books).  None is cited below.
+(local (in-theory (disable fn-ctl-authorize-execute-is-nonempty
+                           fn-arn-payload-listp-true-listp
+                           fn-oct-bufp-true-listp)))
+
 ; -----------------------------------------------------------------------------
 ; Held record helpers: a row's number in a group, and the three row updates
 ; that keep its keys (Message-ID, numbers, facts).
@@ -137,6 +144,10 @@
 
 (defthm fn-held-listp-implies-cat-rowsp
   (implies (fn-held-listp xs) (fn-cat-rowsp xs)))
+
+; For includers.  In this book it fires on every row-list goal and never helps
+; (86,238 frames, none useful; 2026-09-28).
+(local (in-theory (disable fn-held-listp-implies-cat-rowsp)))
 
 (defthm fn-cat-rowsp-forward-true-listp
   (implies (fn-cat-rowsp xs) (true-listp xs))
@@ -227,6 +238,11 @@
    :rule-classes (:rewrite :forward-chaining)
    :hints (("Goal" :in-theory (enable fn-held-withdrawnp)))))
 
+; Its rewrite form fires on every consp and natp goal and relieves the
+; recognizer each time (283,311 frames, 51 useful); the forward-chaining form
+; supplies the same facts from the hypothesis once per goal.
+(local (in-theory (disable (:rewrite fn-ctg-withdrawn-present-is-pair))))
+
 ; And the withdrawal a cancel writes, (at . by), is one.
 (local
  (defthm fn-ctg-withdrawnp-of-pair
@@ -235,7 +251,10 @@
    :hints (("Goal" :in-theory (enable fn-held-withdrawnp)))))
 
 (defun fn-cat-visiblep (seq v c)
-  (declare (xargs :guard (and (natp seq) (natp v) (fn-cat-rowsp c) (< seq (len c)))))
+  (declare (xargs :guard (and (natp seq) (natp v) (fn-cat-rowsp c) (< seq (len c)))
+                  :guard-hints
+                  (("Goal" :in-theory
+                    (enable (:rewrite fn-ctg-withdrawn-present-is-pair))))))
   (and (< seq v)
        (let ((w (fn-held-withdrawn (nth seq c))))
          (or (null w) (<= v (car w))))))

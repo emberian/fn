@@ -71,6 +71,15 @@
                           fn-nntp-vocabulary
                           fn-nntp-post-vocabulary
                           fn-peer-vocabulary)))
+;; Included rules these proofs try on every true-listp, octet-list and
+;; nonempty goal and never use (accumulated-persistence over the whole book,
+;; 2026-09-28, lane d26-books).  None is cited below.
+(local (in-theory (disable fn-arn-payload-listp-true-listp
+                           fn-cp-idp-true-listp
+                           fn-digest-octetsp-implies-octet-listp
+                           fn-oct-bufp-true-listp
+                           fn-nntp-message-id-tail-is-true-listp
+                           fn-ctl-authorize-execute-is-nonempty)))
 ; The record accessors below are fn-inj-nth applications, as
 ; books/peer-inbound.lisp's are; the accessor-of-constructor lemmas cannot
 ; close without it.  Local, so no includer inherits the opening.

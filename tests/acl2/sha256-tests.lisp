@@ -130,3 +130,13 @@
 ; and the coercion is the identity on octets, so the non-octet case above is
 ; the digest of the coerced octets and of nothing else.
 (assert-event (equal (fn-sha256 '(300 -1)) (fn-sha256 '(44 255))))
+
+; The padding and the coercion execute by loops (lane format10-import): both
+; are guard-verified, so their :exec runs, and a 300,000-octet message -- far
+; past the depth a 1,024 KiB control stack held one frame per octet -- digests
+; to 32 octets, its padding the logical append.
+(assert-event (equal (symbol-class 'fn-sha256-appx (w state)) :common-lisp-compliant))
+(assert-event (equal (symbol-class 'fn-sha256-fix-octets (w state)) :common-lisp-compliant))
+(assert-event (equal (len (fn-sha256 (make-list 300000 :initial-element 97))) 32))
+(assert-event (equal (fn-sha256-appx '(1 2 3) '(4 5)) '(1 2 3 4 5)))
+(assert-event (equal (fn-sha256-fix-octets '(300 -1 7 . 8)) '(44 255 7)))

@@ -219,7 +219,7 @@
 
 ; -----------------------------------------------------------------------------
 ; The fn-shs facts this section needs (sha256-stobj keeps its own local;
-; restated as books/sha256-buffer.lisp restates them).
+; restated here, as the retired sha256-buffer book restated them).
 
 (local (in-theory (disable floor mod truncate rem ash)))
 

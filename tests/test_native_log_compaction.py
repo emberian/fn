@@ -42,11 +42,21 @@ ROTATION_CUTS = ("rotate-created", "rotate-fenced", "rotate-durable",
                  "drop-unlinked", "drop-durable")
 
 
+GENESIS = "000000.log"
+
+
 def segments(store: Path):
-    """The log's segments in journal/ (NNNNNN.log).  journal/ also holds the
-    owner's decision journal decisions.fnj (lane time-model-2, HST-028),
-    which is not a segment."""
-    return sorted(p.name for p in (store / "journal").iterdir() if p.name.endswith(".log"))
+    """The history's segments in journal/ (NNNNNN.log).  Format 10's genesis,
+    journal/000000.log (books/store-genesis.lisp), is position 0 of the log
+    and never rotated or dropped, so it is not listed; `genesis_kept' checks
+    it.  journal/ held the owner's decision journal until batch AX moved it
+    to decisions/."""
+    return sorted(p.name for p in (store / "journal").iterdir()
+                  if p.name.endswith(".log") and p.name != GENESIS)
+
+
+def genesis_kept(store: Path) -> bool:
+    return (store / "journal" / GENESIS).is_file()
 
 
 
@@ -220,6 +230,8 @@ class DeveloperLogCompactionTests(LogCompactionMixin, unittest.TestCase):
                 self.assertEqual(recovered.returncode, 0, (cut, recovered.stderr[-800:]))
                 self.assertEqual(self.inspect_all(node, range(8)), before, cut)
                 present = segments(node.store)
+                # the genesis survives every rotation and drop cut
+                self.assertTrue(genesis_kept(node.store), cut)
                 if cut.startswith("drop"):
                     # the checkpoint was installed: the recover finished the drop
                     self.assertEqual(present, ["000002.log"], cut)

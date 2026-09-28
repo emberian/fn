@@ -64,6 +64,31 @@
 (include-book "owner-offer-indexed")
 (include-book "served-catalog-join-pinned")
 
+; The included world carries recognizer rules whose hypotheses open recursive
+; predicates on every candidate term (true-listp, stringp, a length bound).
+; accumulated-persistence over this whole book (2026-09-28, lane d26-books)
+; found each of these tried thousands of times and useful never: together
+; more than half the book's frames.  None is cited below.
+(local (in-theory (disable fn-nntp-article-idp-is-consp
+                           fn-scat-article-idp-is-msgid-idp
+                           fn-cp-id-length-bound
+                           fn-nntp-index-msgid-okp-stringp
+                           fn-digest-octetsp-implies-octet-listp
+                           fn-nntp-response-text-true-listp
+                           fn-scat-car-le-last
+                           fn-oct-bufp-true-listp
+                           fn-nntp-clean-line-is-response-text
+                           fn-stxa-is-no-other-wire-event
+                           fn-bs-stxa-is-no-other-wire-event
+                           fn-scc-octet-listp-true
+                           fn-scc-octet-listp-facts
+                           fn-arn-payload-listp-true-listp
+                           fn-record-accepted-input-length
+                           fn-bs-natural-head-is-no-other-wire-event
+                           fn-cp-take-append-prefix
+                           fn-hf-split-index-bound
+                           fn-cp-idp-true-listp)))
+
 (defthm fn-scjs-invp-of-same-fields
   (implies (and (equal (fn-own-store o2) (fn-own-store o))
                 (equal (fn-own-view o2) (fn-own-view o))
@@ -224,8 +249,13 @@
                                    fn-sf-record-dir-result fn-sf-recovery-barrier)
                                   (fn-sf-statep)))))
 
+;; Generic list facts are proved in ACL2's ground-zero theory: in this
+;; book's world the rewriter otherwise tries every recognizer-implies-true-listp
+;; rule of the included books on each true-listp subgoal (butlast-of-snoc:
+;; 122,928 steps there, 1,988 here).
 (defthm fn-scjs-butlast-of-snoc
-  (equal (butlast (append r (list c)) 1) (true-list-fix r)))
+  (equal (butlast (append r (list c)) 1) (true-list-fix r))
+  :hints (("Goal" :in-theory (theory 'ground-zero))))
 
 (defthm fn-scjs-snoc-is-not-self
   (and (not (equal (append x (list c)) x))
@@ -237,12 +267,13 @@
  (defthm fn-scjs-no-rowsp-of-list-fix
    (equal (fn-scj-no-rowsp (true-list-fix x)) (fn-scj-no-rowsp x))
    :hints (("Goal" :induct (fn-scj-no-rowsp x)
-            :in-theory (e/d (true-list-fix) (fn-scj-load-h))))))
+            :in-theory (union-theories '(fn-scj-no-rowsp)
+                                       (theory 'ground-zero))))))
 
 (local
  (defthm fn-scjs-nthcdr-of-list-fix
    (equal (nthcdr v (true-list-fix r)) (true-list-fix (nthcdr v r)))
-   :hints (("Goal" :induct (nthcdr v r) :in-theory (enable true-list-fix)))))
+   :hints (("Goal" :induct (nthcdr v r) :in-theory (theory 'ground-zero)))))
 
 (defthm fn-scjs-no-rowsp-nthcdr-of-list-fix
   (equal (fn-scj-no-rowsp (nthcdr v (true-list-fix r)))
@@ -507,7 +538,8 @@
 
 (defthm fn-scjs-len-butlast-le
   (<= (len (butlast x n)) (len x))
-  :rule-classes :linear)
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (theory 'ground-zero))))
 
 (defthm fn-scjs-no-row-finish-framep
   (implies (and (fn-sn-completion-enabledp s)
@@ -1173,7 +1205,8 @@
 
 (local
  (defthm fn-scjs-len-of-take
-   (equal (len (take n l)) (nfix n))))
+   (equal (len (take n l)) (nfix n))
+   :hints (("Goal" :in-theory (theory 'ground-zero)))))
 
 (local
  (defthm fn-scjs-own-take-of-short

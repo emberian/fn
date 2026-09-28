@@ -237,57 +237,20 @@
              (fn-sxp-config-names-increasingp (cdr configs) name)))
     t))
 
-; -----------------------------------------------------------------------------
-; The archive's profile (proposed D38: every layout growth ships a reader for
-; the previous layout's archive, with a witness).
-;
-; header-limits-profile (batch AS) grew the profile from thirteen u64 fields
-; to sixteen under D34, and the import decoded an archive with the current
-; layout only: the previous release's export, the named way out of the
-; open's `older-release' refusal, did not import.  `fn-sxp-config-decode-
-; archive' reads the current layout, or the layout before batch AS with the
-; three header limits at the defaults that release parsed under
-; (books/byte-store-frame.lisp *fn-bs-profile-default-header-fields* ...:
-; its constants), when the result is a valid profile.  Only the import reads
-; it; the open still refuses the older layout by name (D34).
-(defconst *fn-sxp-profile-spec-13*
-  '(:text :text :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat))
-
-(defun fn-sxp-config-decode-archive (octets)
-  (declare (xargs :guard t
-                  :guard-hints (("Goal" :in-theory (disable fn-bs-config-decode
-                                                            fn-bs-profile-validp)))))
-  (or (fn-bs-config-decode octets)
-      (if (not (fn-cbor-octet-listp octets))
-          nil
-        (let ((frame (fn-frame-open octets *fn-bs-meta-max-config-payload*)))
-          (if (not (fn-bs-meta-frame-okp frame *fn-bs-meta-config-kind*
-                                          (fn-frame-result-payload frame)
-                                          *fn-bs-meta-max-config-payload*))
-              nil
-            (let ((parsed (fn-frame-fields-parse
-                           *fn-sxp-profile-spec-13*
-                           (fn-frame-result-payload frame))))
-              (if (and (fn-frame-parse-okp parsed)
-                       (true-listp (fn-frame-parse-value parsed)))
-                  (let ((values (append (fn-frame-parse-value parsed)
-                                        (list *fn-bs-profile-default-header-fields*
-                                              *fn-bs-profile-default-header-lines*
-                                              *fn-bs-profile-default-header-octets*))))
-                    (if (fn-bs-profile-validp values) values nil))
-                nil)))))))
-
-; What the import reads is a valid profile, or nothing.
-(defthm fn-sxp-config-decode-archive-is-valid
-  (implies (fn-sxp-config-decode-archive octets)
-           (fn-bs-profile-validp (fn-sxp-config-decode-archive octets)))
-  :hints (("Goal" :in-theory (disable fn-bs-profile-validp))))
+;; -----------------------------------------------------------------------------
+;; The archive's profile is fn-sxp-config-decode-archive above: this format's,
+;; or the format-10 translation of a format-9 one.  The reader of the layout
+;; before batch AS (thirteen fields, format 8; compression-extents-2's proposed
+;; D38) is retired with format 10: the import reads the previous release's
+;; export only (D34); a format-8 archive imports through a format-9 release
+;; first (batch AY, compression-extents-2 x format-bump-10).
 
 ; The current layout reads as the open's decoder reads it.
 (defthm fn-sxp-config-decode-archive-of-a-current-frame
   (implies (fn-bs-config-decode octets)
            (equal (fn-sxp-config-decode-archive octets) (fn-bs-config-decode octets)))
-  :hints (("Goal" :in-theory (disable fn-bs-config-decode fn-bs-profile-validp))))
+  :hints (("Goal" :in-theory (e/d (fn-sxp-config-decode-archive fn-sxp-archive-format-9p)
+                                  (fn-bs-config-decode fn-bs-profile-validp)))))
 
 ; -----------------------------------------------------------------------------
 ; The import's plan
@@ -310,6 +273,9 @@
 ;                                      FRONTIER, CONFIGS and RECORDS
 ;   (:refused :manifest-mismatch NAME) an entry the MANIFEST does not carry
 ;                                      under the archive's digest
+;   (:refused :record-translation REASON SEQUENCE)
+;                                      a format-9 record the translation
+;                                      refuses (books/store-format-9-records)
 ;   (:refused :record-out-of-sequence N)
 ;   (:refused :config-out-of-sequence)
 ;   (:refused :profile REASON)         a profile the codec cannot represent
@@ -320,7 +286,7 @@
   (let* ((f9p (fn-sxp-archive-format-9p profile))
          (mismatch (fn-sxp-manifest-mismatch
                     f9p (fn-sxp-entries profile frontier configs records) manifest))
-         ; The archive's profile: this layout, or the one before batch AS
+         ; The archive's profile: this format's, or a format-9 one translated
          ; (fn-sxp-config-decode-archive).
          (saved (fn-sxp-config-decode-archive profile))
          ; A format-9 archive's records with their identities re-derived under
@@ -330,7 +296,8 @@
     (cond (mismatch (list :refused :manifest-mismatch mismatch))
           ((and f9p (consp records) (equal (car records) :refused))
            (list :refused :record-translation
-                 (if (consp (cdr records)) (cadr records) nil)))
+                 (if (consp (cdr records)) (cadr records) nil)
+                 (if (consp (cdr records)) (caddr records) nil)))
           ((fn-sxp-out-of-sequence records nil)
            (list :refused :record-out-of-sequence
                  (fn-sxp-out-of-sequence records nil)))
