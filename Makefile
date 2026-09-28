@@ -1516,6 +1516,13 @@ check:
 # host-lints, after entry-guards-2's owner stop on an unsynchronized table).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --tables
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_tables
+# The repository is public: no 32-hex code, password=, bearer token or
+# Authorization value within five lines of redeem/invite/invitation/
+# credentials in planning/, docs/ or tests/ (lane lane-tools-2, after two lane
+# records nearly committed a live invitation code).  No waivers: a fixture is
+# synthetic by the rule in the tool's header.  Static, about ten seconds.
+	@$(CHECK_STEP) $(PYTHON) tools/secrets_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_secrets_check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
