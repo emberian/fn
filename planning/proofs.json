@@ -2928,7 +2928,7 @@
     {
       "id": "PRF-066",
       "title": "Experimental root-only topic admission is grounded in historical authorship and finite local policy",
-      "statement": "The experimental root-only Store path selects prior T10-bound exact source and snapshot, checks installed local administrator, roster, same-topic parents and finite quota, and completes only a matching topic event. Fresh version-2 root anchors bind the exact earlier immutable administrator-install event ID and generation; historical version-1 anchors retain ID-only replay semantics and cannot be freshly staged. The owner-called report selector returns :replayed-historical only for selected earlier exact source and retained admission, without another Store event. Topic completion advances the exact Store sequence/transaction and slot-12 projection while preserving article acceptance. Observed reopen separately validates topic replay; deriving that validity for every modeled crash image from a maintained live Store relation remains open. Native v2 migration and physical publication are not yet qualified.",
+      "statement": "The experimental root-only Store path selects prior T10-bound exact source and snapshot, checks installed local administrator, roster, same-topic parents and finite quota, and completes only a matching topic event. Fresh version-2 root anchors bind the exact earlier immutable administrator-install event ID and generation; historical version-1 anchors retain ID-only replay semantics and cannot be freshly staged. The owner-called report selector returns :replayed-historical only for selected earlier exact source and retained admission, without another Store event. Topic completion advances the exact Store sequence/transaction and slot-12 projection while preserving article acceptance. Observed reopen separately validates topic replay; deriving that validity for every modeled crash image from a maintained live Store relation remains open. Physical publication is not yet qualified (no native v1-to-v2 migration: fresh deploys at 6.6.0).",
       "milestone": "M3",
       "requirements": [
         "TOP-002"
@@ -2989,7 +2989,7 @@
         "planning/evidence/manifests/certify-20260924T053944Z-748903.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
-      "progress_note": "Scoped v2 local proposal, Store fresh-v1 refusal, canonical event/prefix and mixed-source vector roots passed at exact bytes. Historical v1 meaning is retained. The dual-image native migration test is prepared but has not run; a v2 saved image and full affected closure remain open. The maintained topic/crash relation is under separate active proof work and is not supplied by the interim BP/byte reopen premise."
+      "progress_note": "Scoped v2 local proposal, Store fresh-v1 refusal, canonical event/prefix and mixed-source vector roots passed at exact bytes. Historical v1 meaning is retained. The dual-image native migration test is retired (no migrations: fresh deploys at 6.6.0, lane config-and-legacy); the full affected closure remains open. The maintained topic/crash relation is under separate active proof work and is not supplied by the interim BP/byte reopen premise."
     },
     {
       "id": "PRF-068",
