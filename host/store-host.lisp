@@ -454,9 +454,6 @@
 (defun fn-store-profile-max-consumers (values)
   (fn-bs-profile-max-consumers values))
 
-(defun fn-store-profile-max-config-generations (values)
-  (fn-bs-profile-max-config-generations values))
-
 (defun fn-store-profile-max-credentials (values)
   (fn-bs-profile-max-credentials values))
 
