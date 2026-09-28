@@ -64,19 +64,32 @@
               (when certificate
                 (setq tls-context
                       (fnn-tls-open-context certificate private-key)))
-              (let* ((*fnn-owner-startup-hooks*
+              (let* ((web-plan
+                       ;; The node's own web face (PRF-340): ACL2's plan of
+                       ;; the profile's [web] table, or NIL for none.
+                       (fnn-web-run-hooks
+                        (fnn-core 'fn-native-operator-host-result-run-listener-port result)
+                        (and tls-context
+                             (fnn-core 'fn-native-operator-host-result-run-implicit-tls-port
+                                       result))
+                        (and tls-context t)))
+                     (*fnn-owner-startup-hooks*
                        (list (fnn-native-auth-startup-hook
                               auth-path auth-required auth-protected)))
                      ;; The NEWNEWS pull feed (PRF-100) is a sibling lifecycle
                      ;; extension: host/native/pull-service.lisp.
                      (*fnn-owner-start-hooks*
-                       (list* #'fnn-feed-service-start #'fnn-pull-service-start
-                              *fnn-owner-start-hooks*))
+                       (append (list* #'fnn-feed-service-start #'fnn-pull-service-start
+                                      *fnn-owner-start-hooks*)
+                               (and web-plan
+                                    (list (lambda (service)
+                                            (fnn-web-start service web-plan tls-context))))))
                      (*fnn-owner-stop-hooks*
                        (list* #'fnn-feed-service-wake #'fnn-pull-service-wake
                               *fnn-owner-stop-hooks*))
                      (*fnn-owner-close-hooks*
                        (list* #'fnn-feed-service-close #'fnn-pull-service-close
+                              #'fnn-web-close-face
                               *fnn-owner-close-hooks*))
                      (code
                        (fnn-control-owner-run-normalized

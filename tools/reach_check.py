@@ -51,6 +51,10 @@ is the function the host calls"):
 * a hosted subject counts only where it is applied to arguments no MODEL
   computed: under `(let ((m (model-run evs))) (host-f (views m)))' host-f is
   applied to the model's state, and the event is about the model;
+* a row's generated `keystone_subjects' map (tools/keystone_emit.py, lane
+  defkeystone: {"<registry keystone>": "<subject function>"}) DECLARES the
+  subject: the event is hosted exactly when a host line reaches that
+  function, and the conclusion is not read;
 * `NAME{correspondence}' and `NAME{preserved}' are about the export NAME;
 * failing that, a NAMED equality in books/ ties an unhosted subject U to a
   hosted H: a conclusion `(equal (U ..) (H x ..))' whose H side applies H to
@@ -82,6 +86,9 @@ import json
 import pathlib
 import re
 import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import callgraph  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE = ROOT / "planning" / "reach-baseline.json"
@@ -317,9 +324,14 @@ class Graph:
         self.bridges = [p for p in sorted(ROOT.glob("tools/*.py"))
                         if p.name != pathlib.Path(__file__).name]
 
+        # Definitions and their bodies come from tools/callgraph.py (the
+        # ledger's reader: nested definitions and macro bodies included);
+        # the generated record recognizers, stobj exports and attachments
+        # are this checker's own additions.
+        self.unreadable = {}
         self.book_defs = {**record_definitions(self.books),
-                          **definitions(self.books)}
-        host_defs = definitions(self.hosts)
+                          **self.read_definitions(self.books)}
+        host_defs = self.read_definitions(self.hosts)
         attached = attachments(self.books)
         # Abstract stobjs: each export is a callable book function whose body
         # is its :logic and :exec functions; an attached implementation's
@@ -354,6 +366,9 @@ class Graph:
         # or a Python bridge names.  A bridge naming `fn-own-read` in a form
         # it builds as text IS a host line; that is how the owner is driven.
         seen = set(host_defs)
+        # name -> what reached it: the calling definition, or the host file
+        # or bridge that names it (`--explain' prints the chain).
+        self.via = {name: host_defs[name][0] for name in host_defs}
         self.seeds = collections.Counter()
         for path in self.hosts + self.bridges:
             label = "host" if path.suffix == ".lisp" else "bridge"
@@ -361,12 +376,15 @@ class Graph:
             for symbol in self.symbols(text) & set(self.book_defs):
                 if symbol not in seen:
                     seen.add(symbol)
+                    self.via[symbol] = str(path.relative_to(ROOT))
                     self.seeds[label] += 1
         work = list(seen)
         while work:
-            for nxt in self.edges.get(work.pop(), ()):
+            name = work.pop()
+            for nxt in self.edges.get(name, ()):
                 if nxt not in seen:
                     seen.add(nxt)
+                    self.via[nxt] = name
                     work.append(nxt)
         # A live stobj is created and recognized by ACL2 itself, never by a
         # host line: its creator and recognizer run whenever an export does.
@@ -376,32 +394,69 @@ class Graph:
                 for e in exports[:2]:
                     if e not in seen:
                         seen.add(e)
+                        self.via[e] = f"stobj {sname}"
                         work = [e]
                         while work:
-                            for nxt in self.edges.get(work.pop(), ()):
+                            name = work.pop()
+                            for nxt in self.edges.get(name, ()):
                                 if nxt not in seen:
                                     seen.add(nxt)
+                                    self.via[nxt] = name
                                     work.append(nxt)
         self.reachable = seen & set(self.book_defs)
+
+    def host_chain(self, name: str) -> list[str]:
+        """How a host line reaches NAME: the host file (or bridge, or stobj)
+        first, then each definition down to NAME.  Empty when unreached."""
+        if name not in self.via:
+            return []
+        chain = [name]
+        while chain[-1] in self.via and len(chain) < 200:
+            parent = self.via[chain[-1]]
+            chain.append(parent)
+            if parent not in self.via or parent == chain[-2]:
+                break
+        return list(reversed(chain))
+
+    def read_definitions(self, paths) -> dict:
+        """name -> (file, form) for every definition callgraph reads in
+        PATHS; a later file's definition of a name replaces an earlier's."""
+        found = {}
+        callgraph.prune_cache()
+        for path in paths:
+            relative = str(path.relative_to(ROOT))
+            definitions, error = callgraph.read_file(path, relative, records=False)
+            if error is not None:
+                self.unreadable[relative] = error
+            for definition in definitions:
+                found[definition.name] = (relative, definition.form)
+        return found
 
     @staticmethod
     def symbols(text: str) -> set[str]:
         return {s.lower() for s in SYMBOL.findall(text)}
 
-    def mentions(self, form: str, own: str) -> set[str]:
-        return self.symbols(form) & self.known - {own}
+    def mentions(self, form, own: str) -> set[str]:
+        """What a definition names: callgraph's edge for a read form, the
+        symbols of the text this checker synthesises for the rest."""
+        found = (self.symbols(form) if isinstance(form, str)
+                 else callgraph.symbols(form[2:]))
+        return found & self.known - {own}
 
 
 class Finding:
-    def __init__(self, proof_id, event, book, subjects):
+    def __init__(self, proof_id, event, book, subjects, declared=False):
         self.proof_id, self.event = proof_id, event
         self.book, self.subjects = book, subjects
+        self.declared = declared
 
     def key(self) -> str:
         return f"{self.proof_id}:{self.event}"
 
     def render(self) -> str:
         named = ", ".join(self.subjects[:4]) or "nothing this reader resolved"
+        if self.declared:
+            named = "its declared subject " + named
         return (f"{self.book}: {self.event} ({self.proof_id}): no host line "
                 f"reaches any function it is about ({named}), so the running "
                 f"server does not exercise what this event claims")
@@ -650,18 +705,47 @@ def equality_bridges(graph: "Graph", theorems: dict) -> dict[str, list]:
     return bridges
 
 
-def audit(graph: Graph):
-    theorems = theorem_forms(graph.books)
-    bridges = equality_bridges(graph, theorems)
+def load_rows() -> list:
     registry = json.loads((ROOT / "planning" / "proofs.json").read_text())
-    rows = registry["proofs"] if isinstance(registry, dict) else registry
+    return registry["proofs"] if isinstance(registry, dict) else registry
+
+
+def audit(graph: Graph, books: "set[str] | None" = None):
+    """(findings, hosted, unresolved) over the registry's events; with BOOKS,
+    only the events whose theorem one of those books defines (`--book')."""
+    theorems = theorem_forms(graph.books)
+    if books is not None:
+        theorems = {name: entry for name, entry in theorems.items() if entry[0] in books}
+    bridges = equality_bridges(graph, theorems)
+    rows = load_rows()
 
     findings, hosted, unresolved = [], 0, []
     graph.bridged = []
+    graph.declared = []
     for row in rows:
+        declared = {str(k).lower(): str(v).lower()
+                    for k, v in (row.get("keystone_subjects") or {}).items()}
         for event in row.get("events", []):
             name = str(event).lower()
             entry = theorems.get(name)
+            if books is not None and entry is None:
+                continue
+            if name in declared:
+                # A defkeystone names its subject (tools/keystone_emit.py's
+                # generated `keystone_subjects'): that function's host
+                # caller is checked, never a subject inferred from the
+                # conclusion.
+                function = declared[name]
+                book = entry[0] if entry else "planning/proofs.json"
+                if function not in graph.book_defs:
+                    unresolved.append((row["id"], name,
+                                       f"declared subject {function} is not a book definition"))
+                elif function in graph.reachable:
+                    hosted += 1
+                    graph.declared.append((row["id"], name, function))
+                else:
+                    findings.append(Finding(row["id"], name, book, [function], declared=True))
+                continue
             subject = Subject(graph, name, entry[1] if entry else None)
             if not entry and subject.via != "export":
                 unresolved.append((row["id"], name, "no such defthm here"))
@@ -684,6 +768,10 @@ def audit(graph: Graph):
                 continue
             findings.append(Finding(row["id"], name, book, subjects))
     return findings, hosted, unresolved
+
+
+def theorem_names_of(graph: "Graph", books: set[str]) -> set[str]:
+    return {name for name, (book, _) in theorem_forms(graph.books).items() if book in books}
 
 
 def load_baseline() -> dict:
@@ -732,15 +820,32 @@ def main(argv=None) -> int:
                         help="exit non-zero on an orphan not in the baseline")
     parser.add_argument("--baseline", action="store_true",
                         help="rewrite planning/reach-baseline.json from this run")
+    parser.add_argument("--book", action="append", default=[], metavar="PATH",
+                        help="with --summary or the listing: only the registry events "
+                             "these books define (the graph is still the whole tree's)")
     parser.add_argument("--explain", metavar="EVENT",
                         help="print what this reader takes EVENT's subject to be and why it is or is not hosted")
     arguments = parser.parse_args(argv)
 
     graph = Graph()
+    for relative, error in sorted(graph.unreadable.items()):
+        print(f"reach_check: {relative} unreadable, its definitions are missing: {error}")
     if arguments.explain:
         name = arguments.explain.lower()
         theorems = theorem_forms(graph.books)
         entry = theorems.get(name)
+        for row in load_rows():
+            declared = {str(k).lower(): str(v).lower()
+                        for k, v in (row.get("keystone_subjects") or {}).items()}
+            if name in declared:
+                function = declared[name]
+                print(f"{name}: declared subject {function} ({row['id']} keystone_subjects)")
+                chain = graph.host_chain(function)
+                if chain:
+                    print("hosted: " + " -> ".join(chain))
+                    return 0
+                print("NOT hosted: no host line reaches the declared subject")
+                return 0
         subject = Subject(graph, name, entry[1] if entry else None)
         print(f"{name}: {'defined in ' + entry[0] if entry else 'no defthm here'}")
         print("subject: " + (", ".join(
@@ -748,6 +853,9 @@ def main(argv=None) -> int:
             or "nothing resolvable"))
         if subject.hosted(graph):
             print("hosted: a reached subject is applied to arguments no model computed")
+            for f in subject.functions:
+                if graph.host_chain(f):
+                    print("  " + " -> ".join(graph.host_chain(f)))
             return 0
         bridges = equality_bridges(graph, theorems)
         for s in subject.functions:
@@ -762,7 +870,14 @@ def main(argv=None) -> int:
         else:
             print("NOT hosted: no reached subject, and no named equality to a reached function")
         return 0
-    findings, hosted, unresolved = audit(graph)
+    chosen = ({str((pathlib.Path(b) if pathlib.Path(b).is_absolute() else ROOT / b)
+                   .resolve().relative_to(ROOT)) for b in arguments.book}
+              if arguments.book else None)
+    if chosen is not None and arguments.baseline:
+        print("reach_check: --baseline rewrites the whole baseline; not with --book",
+              file=sys.stderr)
+        return 2
+    findings, hosted, unresolved = audit(graph, chosen)
 
     if arguments.baseline:
         write_baseline(findings)
@@ -773,6 +888,13 @@ def main(argv=None) -> int:
     accepted = load_baseline().get("accepted", {})
     fresh = [f for f in findings if f.key() not in accepted]
     stale = sorted(set(accepted) - {f.key() for f in findings})
+    if chosen is not None:
+        # Only this book's events were judged: a baselined orphan elsewhere
+        # is not "now hosted", it was not looked at.
+        names = theorem_names_of(graph, chosen)
+        judged = {key for key in accepted if key.split(":", 1)[-1] in names}
+        stale = [key for key in stale if key in judged]
+        accepted = {key: accepted[key] for key in judged}
 
     if arguments.summary:
         print(f"reach_check: {hosted + len(findings)} registry events over "

@@ -104,6 +104,10 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
         "installs both), so it refuses `tls` and `status` asks no owner", {}),
     "host/native-hybrid-control-host.lisp": (
         "hybrid authoring control; used by control.lisp and hybrid-control.lisp, not loaded", {}),
+    "host/web-host.lisp": (
+        "the node's own web face (PRF-340); used only by host/native/web-host.lisp, which "
+        "build-dtn.lisp does not load: the web face is an owner start hook of the operator's "
+        "`run' (host/native/operator-live.lisp), and the DTN image has no live owner", {}),
     "host/topic-history-metadata-host.lisp": (
         "includes books/topic-history-authorship for topic-local.lisp, not loaded; defines nothing", {}),
 }

@@ -154,3 +154,122 @@
                      (fn-rcompat-article-reply *nabt-session* a 7 :article nil "fn.two"
                                                *nabt-server* bad)))))
   :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; PRF-334 (lane served-columns-body): HEAD and BODY from one split, and the
+; retrieval's one read (fn-nntp-article-response's exec is the of-bytes
+; reply over one fn-nntp-article-bytes).
+
+(defconst *nabt-head-block*
+  (append (fn-nabt-octets "Message-ID: <nabt-a@example.invalid>") '(13 10)
+          (fn-nabt-octets "Subject: A") '(13 10 46 13 10)))
+(defconst *nabt-body-block*
+  (append (fn-nabt-octets "..hidden") '(13 10 13 10)
+          (fn-nabt-octets "body") '(13 10 46 13 10)))
+
+; fn-nntp-section-rev-is-the-section, reachable for HEAD and BODY: the
+; hypothesis (kind is not :article) holds, the pass is not :error, the
+; specification's reply is framed with a section, and the reversed pass is
+; its block, byte for byte the expected one.
+(assert-event
+ (and (let* ((kind :head)
+               (acc (fn-nntp-section-rev *nabt-payload* kind))
+               (section (fn-nntp-section-of-bytes *nabt-payload* kind)))
+          (and (not (equal kind :article))
+               (not (equal acc :error))
+               (fn-nntp-framed-of-bytes *nabt-payload*)
+               (equal (car section) :ok)
+               (equal (revappend acc '(46 13 10))
+                      (append (fn-nntp-stuff-lines (car (cdr section))) '(46 13 10)))
+               (equal (revappend acc '(46 13 10)) *nabt-head-block*)))
+        (let* ((kind :body)
+               (acc (fn-nntp-section-rev *nabt-payload* kind))
+               (section (fn-nntp-section-of-bytes *nabt-payload* kind)))
+          (and (not (equal acc :error))
+               (fn-nntp-framed-of-bytes *nabt-payload*)
+               (equal (car section) :ok)
+               (equal (revappend acc '(46 13 10))
+                      (append (fn-nntp-stuff-lines (car (cdr section))) '(46 13 10)))
+               (equal (revappend acc '(46 13 10)) *nabt-body-block*)))))
+
+; ... its :error arm: no separator (framed lines, no CRLFCRLF), and a bare LF.
+(defconst *nabt-no-separator* (append (fn-nabt-octets "Subject: A") '(13 10)))
+(assert-event
+ (and (equal (fn-nntp-section-rev *nabt-no-separator* :head) :error)
+      (not (fn-nntp-framed-of-bytes *nabt-no-separator*))
+      (equal (fn-nntp-section-rev *nabt-bare-lf* :body) :error)
+      (not (fn-nntp-framed-of-bytes *nabt-bare-lf*))))
+
+; The hypothesis (kind is not :article) is needed: for :article the
+; specification's section is the whole payload, the one-split pass is the
+; body's block, so the equation fails (the pass is not :error and its block
+; is not the article's).
+(assert-event
+ (let* ((acc (fn-nntp-section-rev *nabt-payload* :article))
+        (section (fn-nntp-section-of-bytes *nabt-payload* :article)))
+   (and (not (equal acc :error))
+        (equal (car section) :ok)
+        (not (equal (revappend acc '(46 13 10))
+                    (append (fn-nntp-stuff-lines (car (cdr section))) '(46 13 10)))))))
+
+; fn-nntp-response-validp-is-framed-section (no hypothesis), both values,
+; every kind.
+(assert-event
+ (and (fn-nntp-response-validp *nabt-payload* :article)
+      (fn-nntp-response-validp *nabt-payload* :head)
+      (fn-nntp-response-validp *nabt-payload* :body)
+      (fn-nntp-framed-of-bytes *nabt-payload*)
+      (not (fn-nntp-response-validp *nabt-no-separator* :head))
+      (not (fn-nntp-response-validp *nabt-no-separator* :article))
+      (not (fn-nntp-framed-of-bytes *nabt-no-separator*))
+      (not (fn-nntp-response-validp *nabt-bare-lf* :body))))
+
+; fn-nntp-response-block-rev-is-the-block (no hypothesis), every kind.
+(assert-event
+ (and (equal (revappend (fn-nntp-response-block-rev *nabt-payload* :article) '(46 13 10))
+             *nabt-stuffed-block*)
+      (equal (revappend (fn-nntp-response-block-rev *nabt-payload* :head) '(46 13 10))
+             *nabt-head-block*)
+      (equal (revappend (fn-nntp-response-block-rev *nabt-payload* :body) '(46 13 10))
+             *nabt-body-block*)
+      (true-listp (fn-nntp-response-block-rev *nabt-payload* :body))
+      (equal (fn-nntp-response-block-rev *nabt-bare-lf* :article) :error)
+      (equal (fn-nntp-response-block-rev *nabt-not-octets* :head) :error)))
+
+; fn-nntp-article-response-is-of-bytes through the arena for HEAD and BODY
+; (the host's BODY arm, books/served-catalog.lisp fn-nntp-number-retrieval-cat,
+; calls it): the reply the exec builds from one read is the specification's.
+(assert-event
+ (let ((h (in-arena-fn-nntp-article-response *nabt-arena* *nabt-session* *nabt-a*
+                                             7 :head t "fn.two"))
+       (b (in-arena-fn-nntp-article-response *nabt-arena* *nabt-session* *nabt-a*
+                                             7 :body t "fn.two")))
+   (and (equal h (fn-nntp-article-response-of-bytes *nabt-session* *nabt-a* *nabt-payload*
+                                                    7 :head t "fn.two"))
+        (equal (fn-nntp-result-effects h)
+               (list (fn-nntp-reply-effect
+                      (append (fn-nabt-octets "221 7 <nabt-a@example.invalid> headers follow")
+                              '(13 10) *nabt-head-block*))))
+        (equal (fn-nntp-result-effects b)
+               (list (fn-nntp-reply-effect
+                      (append (fn-nabt-octets "222 7 <nabt-a@example.invalid> body follows")
+                              '(13 10) *nabt-body-block*))))
+        (equal (fn-nntp-result-session b)
+               (fn-nntp-set-cursor *nabt-session* "fn.two" 7)))))
+
+; ... a reclaimed article (a tombstone at the handle): 423, session unchanged.
+(defconst *nabt-tombstone* (append *fn-rcl-magic* (make-list 81 :initial-element 0)))
+(assert-event
+ (let ((r (in-arena-fn-nntp-article-response (list *nabt-tombstone*) *nabt-session* *nabt-a*
+                                             7 :body t "fn.two")))
+   (and (fn-rcl-tombstonep *nabt-tombstone*)
+        (equal r (fn-nntp-single *nabt-session* "423 article reclaimed")))))
+
+; ... a malformed payload (a bare LF): 503 for HEAD and BODY, session unchanged.
+(assert-event
+ (let ((h (in-arena-fn-nntp-article-response (list *nabt-bare-lf*) *nabt-session* *nabt-a*
+                                             7 :head t "fn.two"))
+       (b (in-arena-fn-nntp-article-response (list *nabt-no-separator*) *nabt-session* *nabt-a*
+                                             7 :body t "fn.two")))
+   (and (equal h (fn-nntp-single *nabt-session* "503 stored article framing unavailable"))
+        (equal b (fn-nntp-single *nabt-session* "503 stored article framing unavailable")))))

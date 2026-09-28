@@ -188,7 +188,7 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         self.assertEqual(len(codes), 1, text(result))
         return codes[0].decode("ascii")
 
-    def fn_redeem(self, *words, password="correct-horse"):
+    def fn_redeem(self, *words, password="correct-horse"):  # FAKE-SECRET: a test fixture's password
         # `fn redeem` (the stranger rehearsal's stop 10): no openssl, no
         # hand-typed XREDEEM.  The password comes on standard input.
         return subprocess.run([*self.image, "redeem", *words], cwd=ROOT,
