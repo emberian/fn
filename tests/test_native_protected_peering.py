@@ -293,9 +293,13 @@ class NativeProtectedPeeringTests(unittest.TestCase):
             before = bridge.inspect_file(journal, message_id)
         finally:
             bridge.close()
-        self.assertEqual(before["state_before_restart"], "done", before)
-        self.assertEqual(before["state_after_restart"], "done", before)
-        self.assertEqual(before["queue_length"], 1, before)
+        # The acknowledged entry is RETIRED by its outcome record (fn-feed-done:
+        # it leaves the queue, the outcome record keeps which it was), before
+        # and after the restart fold: nothing is left to offer.
+        self.assertEqual(before["state_before_restart"], "nil", before)
+        self.assertEqual(before["state_after_restart"], "nil", before)
+        self.assertEqual(before["queue_length"], 0, before)
+        self.assertGreaterEqual(before["records"].get("feed-commit", 0), 1, before)
         self.assertGreaterEqual(before["records"].get("feed-outcome", 0), 1, before)
 
         self.start(a)
@@ -310,7 +314,8 @@ class NativeProtectedPeeringTests(unittest.TestCase):
             after = bridge.inspect_file(journal, message_id)
         finally:
             bridge.close()
-        self.assertEqual(after["state_after_restart"], "done", after)
+        self.assertEqual(after["state_after_restart"], "nil", after)
+        self.assertEqual(after["queue_length"], 0, after)
         self.assertEqual(after["records"].get("feed-offer", 0),
                          before["records"].get("feed-offer", 0), (before, after))
         self.assertEqual(after["records"].get("feed-sent", 0),
@@ -387,7 +392,9 @@ class NativeProtectedPeeringTests(unittest.TestCase):
             settled = bridge.inspect_file(journal, message_id)
         finally:
             bridge.close()
-        self.assertEqual(settled["state_after_restart"], "done", settled)
+        self.assertEqual(settled["state_after_restart"], "nil", settled)
+        self.assertEqual(settled["queue_length"], 0, settled)
+        self.assertGreaterEqual(settled["records"].get("feed-outcome", 0), 1, settled)
         self.assertGreater(settled["records"].get("feed-offer", 0),
                            interrupted["records"].get("feed-offer", 0))
         status = b.operator("status", expect=EXIT_OK)

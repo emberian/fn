@@ -313,6 +313,9 @@ BOX
 if [ -x "$identity_image" ]; then
     eval "\$(python3 tools/native_env.py identity --image "$identity_image" --source $SOURCE_ID --export)"
 fi
+if [ -x build/fn-host-developer ]; then
+    eval "\$(python3 tools/native_env.py identity --image build/fn-host-developer --prefix FN_NATIVE_DEVELOPER_ --export)"
+fi
 BOX
     for assignment in $ENVS; do
         echo "export $assignment"

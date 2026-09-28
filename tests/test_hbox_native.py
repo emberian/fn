@@ -62,6 +62,25 @@ class HboxNativeDryRunTests(unittest.TestCase):
         for bad in ("0", "x", ""):
             self.assertEqual(dry("--jobs", bad, "HEAD", "tests.test_native_owner").returncode, 2)
 
+    def test_the_developer_images_identity_is_exported_when_built(self):
+        answer = dry("HEAD", "tests.test_native_owner")
+        self.assertIn("if [ -x build/fn-host-developer ]; then", answer.stdout)
+        self.assertIn("identity --image build/fn-host-developer --prefix FN_NATIVE_DEVELOPER_ --export",
+                      answer.stdout)
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp:
+            image = Path(temp) / "fn-host-developer"
+            image.write_text("#!/bin/sh\n")
+            Path(str(image) + ".core").write_bytes(b"core")
+            out = subprocess.run(
+                ["python3", str(ROOT / "tools" / "native_env.py"), "identity", "--image", str(image),
+                 "--prefix", "FN_NATIVE_DEVELOPER_", "--export"],
+                capture_output=True, text=True, timeout=30)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        names = [line.split("=")[0] for line in out.stdout.splitlines()]
+        self.assertEqual(names, ["export FN_NATIVE_DEVELOPER_LAUNCHER_SHA256",
+                                 "export FN_NATIVE_DEVELOPER_CORE_SHA256"])
+
     def test_each_image_gets_the_runbooks_triple(self):
         answer = dry("--images", "production,developer,dtn,dtn-developer",
                      "HEAD", "tests.test_bp_service_native")

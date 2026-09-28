@@ -108,13 +108,19 @@ class BookBridge(Acl2Owner):
                   "(fn-feed-restart (@ fn-test-feed)) state)")
         after = self._symbol_any(
             "(fn-feed-state-of '{} (fn-feed-queue (@ fn-test-feed)))".format(mid))
+        # An entry whose outcome was recorded is RETIRED: it leaves the queue
+        # (books/peer-feed.lisp fn-feed-done), its state reads nil and it has
+        # no attempt count (None here).
+        present = self._symbol_any(
+            "(consp (fn-feed-find '{} (fn-feed-queue (@ fn-test-feed))))".format(mid)) == "t"
         return {"records": counts, "state_before_restart": before,
                 "sent_before_restart": sent_before,
                 "state_after_restart": after,
                 "queue_length": self._nat("(len (fn-feed-queue (@ fn-test-feed)))"),
                 "attempts": self._nat(
                     "(fn-feed-entry-attempts "
-                    "(fn-feed-find '{} (fn-feed-queue (@ fn-test-feed))))".format(mid)),
+                    "(fn-feed-find '{} (fn-feed-queue (@ fn-test-feed))))".format(mid))
+                if present else None,
                 "next_attempt": self._nat("(fn-feed-next-attempt (@ fn-test-feed))"),
                 "inflight": self._symbol_any(
                     "(fn-feed-inflightp '{} (@ fn-test-feed))".format(mid))}
