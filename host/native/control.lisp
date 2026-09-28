@@ -1056,7 +1056,8 @@ or an outcome keyword for `fn-nls-route'.  A version the owner no longer
 holds is answered version-gone by name: the client restarts from page 0, at
 most `fn-native-live-status-host-max-restarts' times, then answers
 uncertain (:after-submission)."
-  (let ((pages nil) (version 0) (page 0) (restarts 0)
+  (let ((pages nil) (version 0) (page 0) (restarts 0) (count 0)
+        (started (get-internal-real-time)) (first-page nil)
         (limit (fnn-core 'fn-native-live-status-host-max-restarts)))
     (loop
       (let ((reply (fnn-control-live-request-exchange
@@ -1068,10 +1069,21 @@ uncertain (:after-submission)."
                            (or pages (plusp restarts)))
                       :after-submission
                     reply)))
+        (incf count)
+        (unless first-page (setq first-page (get-internal-real-time)))
         (let ((step (fnn-core 'fn-native-live-pages-host-client-step
                               version page reply)))
           (case (first step)
             (:done (push (fnn-octets (second step)) pages)
+             ;; A measurement line on request (FN_REPORT_TIMING), never a
+             ;; value the report carries.
+             (when (sb-posix:getenv "FN_REPORT_TIMING")
+               (format *error-output* "report-pages requests=~d restarts=~d first-page-seconds=~,3f seconds=~,3f~%"
+                       count restarts
+                       (/ (- first-page started) internal-time-units-per-second)
+                       (/ (- (get-internal-real-time) started)
+                          internal-time-units-per-second))
+               (finish-output *error-output*))
              (return (list :done-pages (nreverse pages))))
             (:next (push (fnn-octets (second step)) pages)
              (setq version (third step) page (fourth step)))

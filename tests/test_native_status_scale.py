@@ -17,6 +17,15 @@ after an `obligations' request: each stop is asserted to end, exit 0,
 within FN_STATUS_SCALE_STOP_SECONDS (default 120).  Prints
 `STATUS-SCALE NAME VERB exit=E bytes=B seconds=S' and
 `STATUS-SCALE NAME stop-idle|stop-in-flight exit=E seconds=S'.
+
+Lane obligations-paged: `obligations' is sent page by page
+(books/native-live-pages.lisp).  Asserted: exit 0, the report's header
+count equals its obligation lines, two concurrent requests both answer the
+same report and the owner still answers `status' after them (at syn1m-2k the
+whole-report render exhausted the heap and killed the owner), and the
+offline report of the stopped owner's Store is the same octets.  Printed:
+`STATUS-SCALE NAME report-pages ...' (the client's requests, first-page and
+total seconds) and `STATUS-SCALE NAME owner-peak-rss-kib=K'.
 """
 import os
 from pathlib import Path
@@ -49,10 +58,10 @@ class StatusScaleTests(unittest.TestCase):
                                           dir=os.environ.get("FN_OPEN_DEPTH_WORK")))
         self.addCleanup(shutil.rmtree, self.work, True)
 
-    def verb(self, name, config, words):
+    def verb(self, name, config, words, env=None):
         started = time.monotonic()
         done = subprocess.run([str(verbs.IMAGE), "--fn", "operator", str(config)] + words,
-                              env=verbs.environment(), stdout=subprocess.PIPE,
+                              env=env or verbs.environment(), stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, timeout=3600)
         seconds = time.monotonic() - started
         print("STATUS-SCALE {} {} exit={} bytes={} seconds={:.2f}".format(
@@ -81,6 +90,55 @@ class StatusScaleTests(unittest.TestCase):
         self.assertEqual(owner.returncode, 0, err_path.read_text("utf-8", "replace")[-3000:])
         self.assertLessEqual(seconds, STOP_SECONDS)
 
+    def peak_rss_kib(self, pid):
+        """The owner's high-water resident set (VmHWM), itself and its children."""
+        total = 0
+        pids = [pid]
+        try:
+            children = subprocess.run(["ps", "-o", "pid=", "--ppid", str(pid)],
+                                      stdout=subprocess.PIPE, text=True).stdout.split()
+            pids += [int(c) for c in children]
+        except (OSError, ValueError):
+            pass
+        for p in pids:
+            try:
+                for line in Path("/proc/{}/status".format(p)).read_text().splitlines():
+                    if line.startswith("VmHWM:"):
+                        total += int(line.split()[1])
+            except OSError:
+                pass
+        return total
+
+    def obligations(self, name, config, owner):
+        """`obligations' from the live owner: checked, timed, twice at once."""
+        env = dict(verbs.environment(), FN_REPORT_TIMING="1")
+        done, _ = self.verb(name, config, ["obligations"], env=env)
+        self.assertEqual(done.returncode, 0, done.stderr[-2000:])
+        for line in done.stderr.decode("utf-8", "replace").splitlines():
+            if line.startswith("report-pages"):
+                print("STATUS-SCALE {} {}".format(name, line), flush=True)
+        lines = done.stdout.split(b"\n")
+        self.assertTrue(lines[0].startswith(b"obligations="), lines[0][:200])
+        count = int(lines[0].split(b" ")[0].split(b"=")[1])
+        self.assertEqual(len([l for l in lines[1:] if l.startswith(b"obligation id=")]), count)
+        self.assertEqual(done.stdout.count(b"\n"), count + 1)
+        # Two at once: the crash at syn1m-2k was the second whole render.
+        both = [subprocess.Popen([str(verbs.IMAGE), "--fn", "operator", str(config),
+                                  "obligations"], env=verbs.environment(),
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                for _ in range(2)]
+        outs = [p.communicate(timeout=3600) for p in both]
+        for p, (out, err) in zip(both, outs):
+            self.assertEqual(p.returncode, 0, err[-2000:])
+            self.assertEqual(out, done.stdout)
+        print("STATUS-SCALE {} concurrent-obligations exit={}".format(
+            name, [p.returncode for p in both]), flush=True)
+        after, _ = self.verb(name, config, ["status"])
+        self.assertEqual(after.returncode, 0, after.stderr[-2000:])
+        print("STATUS-SCALE {} owner-peak-rss-kib={}".format(
+            name, self.peak_rss_kib(owner.pid)), flush=True)
+        return done.stdout
+
     def test_status_and_stop(self):
         for name in NAMES:
             with self.subTest(name=name):
@@ -94,9 +152,13 @@ class StatusScaleTests(unittest.TestCase):
                     self.assertEqual(status.returncode, 0, status.stderr[-2000:])
                     self.assertIn(b"reclaim rule=", status.stdout)
                     self.verb(name, config, ["health"])
-                    self.verb(name, config, ["obligations"])
+                    live = self.obligations(name, config, owner)
                 finally:
                     self.stop(name, owner, err_path, "idle")
+                # The offline words of the same Store, a page at a time.
+                offline, _ = self.verb(name, config, ["obligations"])
+                self.assertEqual(offline.returncode, 0, offline.stderr[-2000:])
+                self.assertEqual(offline.stdout, live)
                 # Again with a report in flight when the stop comes.
                 owner, listening, _ = self.start_owner(name, "scale-2", root, config, err_path)
                 self.state = {"owner": owner, "err_at": 0}
