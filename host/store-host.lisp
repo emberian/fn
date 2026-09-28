@@ -219,14 +219,6 @@
             (fn-store-frame-names-octets (cdr names)))
     nil))
 
-(defun fn-store-frame-schema (kind names-table spec-table)
-  ; (:ok (field-name-octets ...) (field-specification ...)) or (:error :kind).
-  (let ((names (fn-frame-spec-for kind names-table))
-        (spec (fn-frame-spec-for kind spec-table)))
-    (if (or (equal names :none) (equal spec :none))
-        (list :error :kind)
-      (list :ok (fn-store-frame-names-octets names) spec))))
-
 (defun fn-store-frame-workflow-kinds ()
   *fn-frame-workflow-kinds*)
 
