@@ -103,6 +103,23 @@
 ; -----------------------------------------------------------------------------
 ; The cut: consecutive extents of CHUNK octets (the last shorter).
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpfs-cut-loop (bundle payload offset chunk acc)
+  (declare (xargs :measure (len payload) :guard (and (and (fn-bpb-bundlep bundle) (fn-bpfs-cuttablep bundle) (fn-cbor-octet-listp payload) (natp offset) (equal (+ offset (len payload)) (len (fn-bpb-payload bundle))) (natp chunk)) (true-listp acc)) :verify-guards nil))
+  (if (or (atom payload) (zp chunk))
+      (revappend acc nil)
+    (let ((n (min chunk (len payload))))
+      (fn-bpfs-cut-loop bundle
+                        (nthcdr n payload)
+                        (+ offset n)
+                        chunk
+                        (cons (fn-bpb-encode (fn-bpfs-fragment bundle
+                                                               offset
+                                                               (take n payload)))
+                              acc)))))
+
 (defun fn-bpfs-cut (bundle payload offset chunk)
   (declare (xargs :guard (and (fn-bpb-bundlep bundle) (fn-bpfs-cuttablep bundle)
                               (fn-cbor-octet-listp payload) (natp offset)
@@ -111,11 +128,22 @@
                               (natp chunk))
                   :verify-guards nil
                   :measure (len payload)))
-  (if (or (atom payload) (zp chunk))
-      nil
-    (let ((n (min chunk (len payload))))
-      (cons (fn-bpb-encode (fn-bpfs-fragment bundle offset (take n payload)))
-            (fn-bpfs-cut bundle (nthcdr n payload) (+ offset n) chunk)))))
+  (mbe :logic
+       (if (or (atom payload) (zp chunk))
+           nil
+         (let ((n (min chunk (len payload))))
+           (cons (fn-bpb-encode (fn-bpfs-fragment bundle offset (take n payload)))
+                 (fn-bpfs-cut bundle (nthcdr n payload) (+ offset n) chunk))))
+       :exec (fn-bpfs-cut-loop bundle payload offset chunk nil)))
+
+(local
+ (defthm fn-bpfs-cut-loop-is-revappend
+   (equal (fn-bpfs-cut-loop bundle payload offset chunk acc)
+          (revappend acc (fn-bpfs-cut bundle payload offset chunk)))
+   :hints (("Goal" :induct (fn-bpfs-cut-loop bundle payload offset chunk acc)
+                   :in-theory (union-theories '(fn-bpfs-cut-loop fn-bpfs-cut revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
 
 (defun fn-bpfs-plan (wire mru)
   (declare (xargs :guard t :verify-guards nil))
@@ -1207,12 +1235,30 @@
 (verify-guards fn-bpfs-payload-block)
 (verify-guards fn-bpfs-fragment
   :hints (("Goal" :in-theory (enable fn-bpfs-bundle-parts))))
-(verify-guards fn-bpfs-cuttablep
-  :hints (("Goal" :use ((:instance fn-bpfs-bundle-parts (b bundle))
-                        (:instance fn-bpfs-primary-numeric-fields
-                                   (p (fn-bpb-bundle-primary bundle))))
-           :in-theory (disable fn-bpfs-bundle-parts fn-bpfs-primary-numeric-fields
-                               fn-bpb-bundlep fn-bpp-blockp))))
+(verify-guards fn-bpfs-cut-loop
+  :hints (("Goal"
+           :use
+           ((:instance fn-bpfs-bundle-parts (b bundle))
+            (:instance fn-bpfs-primary-numeric-fields
+                       (p (fn-bpb-bundle-primary bundle))))
+           :in-theory
+           (disable fn-bpfs-bundle-parts
+                    fn-bpfs-primary-numeric-fields
+                    fn-bpb-bundlep
+                    fn-bpp-blockp))))
+
+(verify-guards fn-bpfs-cut
+  :hints (("Goal"
+           :use
+           ((:instance fn-bpfs-cut-loop-is-revappend (acc nil))
+            (:instance fn-bpfs-bundle-parts (b bundle))
+            (:instance fn-bpfs-primary-numeric-fields
+                       (p (fn-bpb-bundle-primary bundle))))
+           :in-theory
+           (disable fn-bpfs-bundle-parts
+                    fn-bpfs-primary-numeric-fields
+                    fn-bpb-bundlep
+                    fn-bpp-blockp))))
 
 (verify-guards fn-bpfs-overhead
   :hints (("Goal" :use ((:instance fn-bpfs-fragment-is-a-bundle

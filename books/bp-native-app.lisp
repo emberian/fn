@@ -170,19 +170,56 @@
 ; binds as a plain one does (PKT-247).  Cost: every composite before the end
 ; of RECORDS is decoded once per lookup (its article record's octets); an
 ; index from Message-ID to event beside the Message-ID trie is owed (PKT-291).
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-bpaj-record-for-msgid-loop (msgid rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-bpaj-record-for-msgid-loop msgid
+                                     (cdr rev)
+                                     (let ((rest acc)
+                                           (record (fn-bpr-event-article (car rev))))
+                                       (if (and (fn-held-p record)
+                                                (equal msgid (fn-record-msgid record)))
+                                           (cons record rest)
+                                         rest)))
+    acc))
+
 (defun fn-bpaj-record-for-msgid (msgid records)
-  (declare (xargs :guard t :measure (acl2-count records)))
-  (if (consp records)
-      (let ((rest (fn-bpaj-record-for-msgid msgid (cdr records)))
-            (record (fn-bpr-event-article (car records))))
-        ; A history's articles are held rows after the records flip
-        ; (books/held-record.lisp): the walk is the index's fold
-        ; (fn-cei-article-records-for, books/consumer-event-index.lisp).
-        (if (and (fn-held-p record)
-                 (equal msgid (fn-record-msgid record)))
-            (cons record rest)
-          rest))
-    nil))
+  (declare (xargs :verify-guards nil :guard t :measure (acl2-count records)))
+  (mbe :logic
+       (if (consp records)
+           (let ((rest (fn-bpaj-record-for-msgid msgid (cdr records)))
+                 (record (fn-bpr-event-article (car records))))
+             ; A history's articles are held rows after the records flip
+             ; (books/held-record.lisp): the walk is the index's fold
+             ; (fn-cei-article-records-for, books/consumer-event-index.lisp).
+             (if (and (fn-held-p record)
+                      (equal msgid (fn-record-msgid record)))
+                 (cons record rest)
+               rest))
+         nil)
+       :exec (fn-bpaj-record-for-msgid-loop msgid (fn-ag-rev-onto records nil) nil)))
+
+(local
+ (defthm fn-bpaj-record-for-msgid-loop-of-rev-onto
+   (equal (fn-bpaj-record-for-msgid-loop msgid (fn-ag-rev-onto records zs) nil)
+          (fn-bpaj-record-for-msgid-loop msgid zs (fn-bpaj-record-for-msgid msgid records)))
+   :hints (("Goal" :induct (fn-ag-rev-onto records zs)
+                   :in-theory (union-theories '(fn-bpaj-record-for-msgid-loop fn-bpaj-record-for-msgid fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpaj-record-for-msgid-loop)
+
+(verify-guards fn-bpaj-record-for-msgid
+  :hints (("Goal" :in-theory (union-theories '(fn-bpaj-record-for-msgid fn-bpaj-record-for-msgid-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-bpaj-record-for-msgid-loop-of-rev-onto (zs nil))))))
+
 
 ; The Store record a context names: the one article record with its
 ; Message-ID, with its txid and generation; nil otherwise.  Every read of a

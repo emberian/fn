@@ -29,6 +29,7 @@
 
 (in-package "ACL2")
 (include-book "records-invariants")
+(include-book "rev-onto") ; the loop twins' step (PKT-877)
 (include-book "clock")
 
 ; Nothing in this book opens the CBOR or record codec: every definition here

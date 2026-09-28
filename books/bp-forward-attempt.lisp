@@ -157,15 +157,50 @@
             (fn-bpn-nth 13 h) (fn-bpn-nth 1 record) (fn-bpn-nth 5 record)))
        (null (fn-bpn-nth 14 h))))
 
-(defun fn-bpnp-attempt-replace (arrival record held)
-  (declare (xargs :guard t :measure (acl2-count held)))
-  (if (atom held) nil
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpnp-attempt-replace-loop (arrival record held acc)
+  (declare (xargs :measure (acl2-count held) :guard (true-listp acc) :verify-guards nil))
+  (if (atom held)
+      (revappend acc nil)
     (if (equal arrival (fn-bpn-nth 3 (car held)))
         (if (true-listp (car held))
-            (cons (fn-bpnp-attempted-held (car held) record) (cdr held))
-          nil)
-      (cons (car held)
-            (fn-bpnp-attempt-replace arrival record (cdr held))))))
+            (revappend acc (cons (fn-bpnp-attempted-held (car held) record) (cdr held)))
+          (revappend acc nil))
+      (fn-bpnp-attempt-replace-loop arrival record (cdr held) (cons (car held) acc)))))
+
+(defun fn-bpnp-attempt-replace (arrival record held)
+  (declare (xargs :verify-guards nil :guard t :measure (acl2-count held)))
+  (mbe :logic
+       (if (atom held) nil
+         (if (equal arrival (fn-bpn-nth 3 (car held)))
+             (if (true-listp (car held))
+                 (cons (fn-bpnp-attempted-held (car held) record) (cdr held))
+               nil)
+           (cons (car held)
+                 (fn-bpnp-attempt-replace arrival record (cdr held)))))
+       :exec (fn-bpnp-attempt-replace-loop arrival record held nil)))
+
+(local
+ (defthm fn-bpnp-attempt-replace-loop-is-revappend
+   (equal (fn-bpnp-attempt-replace-loop arrival record held acc)
+          (revappend acc (fn-bpnp-attempt-replace arrival record held)))
+   :hints (("Goal" :induct (fn-bpnp-attempt-replace-loop arrival record held acc)
+                   :in-theory (union-theories '(fn-bpnp-attempt-replace-loop fn-bpnp-attempt-replace revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpnp-attempt-replace-loop)
+
+(verify-guards fn-bpnp-attempt-replace
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpnp-attempt-replace)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpnp-attempt-replace-loop-is-revappend (acc nil))))))
+
 
 (defun fn-bpnp-attempt-apply (record held)
   (declare (xargs :guard t))
@@ -275,15 +310,55 @@
           (fn-bpn-nth 11 h) (fn-bpn-nth 7 record)))
        (null (fn-bpn-nth 14 h))))
 
-(defun fn-bpnp-forward-result-replace (arrival outcome held)
-  (declare (xargs :guard t :measure (acl2-count held)))
-  (if (atom held) nil
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpnp-forward-result-replace-loop (arrival outcome held acc)
+  (declare (xargs :measure (acl2-count held) :guard (true-listp acc) :verify-guards nil))
+  (if (atom held)
+      (revappend acc nil)
     (if (equal arrival (fn-bpn-nth 3 (car held)))
         (if (true-listp (car held))
-            (cons (fn-bpnp-forward-result-held (car held) outcome) (cdr held))
-          nil)
-      (cons (car held)
-            (fn-bpnp-forward-result-replace arrival outcome (cdr held))))))
+            (revappend acc
+                       (cons (fn-bpnp-forward-result-held (car held) outcome)
+                             (cdr held)))
+          (revappend acc nil))
+      (fn-bpnp-forward-result-replace-loop arrival
+                                           outcome
+                                           (cdr held)
+                                           (cons (car held) acc)))))
+
+(defun fn-bpnp-forward-result-replace (arrival outcome held)
+  (declare (xargs :verify-guards nil :guard t :measure (acl2-count held)))
+  (mbe :logic
+       (if (atom held) nil
+         (if (equal arrival (fn-bpn-nth 3 (car held)))
+             (if (true-listp (car held))
+                 (cons (fn-bpnp-forward-result-held (car held) outcome) (cdr held))
+               nil)
+           (cons (car held)
+                 (fn-bpnp-forward-result-replace arrival outcome (cdr held)))))
+       :exec (fn-bpnp-forward-result-replace-loop arrival outcome held nil)))
+
+(local
+ (defthm fn-bpnp-forward-result-replace-loop-is-revappend
+   (equal (fn-bpnp-forward-result-replace-loop arrival outcome held acc)
+          (revappend acc (fn-bpnp-forward-result-replace arrival outcome held)))
+   :hints (("Goal" :induct (fn-bpnp-forward-result-replace-loop arrival outcome held acc)
+                   :in-theory (union-theories '(fn-bpnp-forward-result-replace-loop fn-bpnp-forward-result-replace revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpnp-forward-result-replace-loop)
+
+(verify-guards fn-bpnp-forward-result-replace
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpnp-forward-result-replace)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpnp-forward-result-replace-loop-is-revappend (acc nil))))))
+
 
 (defun fn-bpnp-forward-result-apply (record held)
   (declare (xargs :guard t))
@@ -349,15 +424,50 @@
          (or (equal new (1+ old))
              (and (equal new 0) (< 0 old))))))
 
-(defun fn-bpnp-deferral-replace (arrival count held)
-  (declare (xargs :guard t :measure (acl2-count held)))
-  (if (atom held) nil
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpnp-deferral-replace-loop (arrival count held acc)
+  (declare (xargs :measure (acl2-count held) :guard (true-listp acc) :verify-guards nil))
+  (if (atom held)
+      (revappend acc nil)
     (if (equal arrival (fn-bpn-nth 3 (car held)))
         (if (true-listp (car held))
-            (cons (fn-bpnp-deferred-held (car held) count) (cdr held))
-          nil)
-      (cons (car held)
-            (fn-bpnp-deferral-replace arrival count (cdr held))))))
+            (revappend acc (cons (fn-bpnp-deferred-held (car held) count) (cdr held)))
+          (revappend acc nil))
+      (fn-bpnp-deferral-replace-loop arrival count (cdr held) (cons (car held) acc)))))
+
+(defun fn-bpnp-deferral-replace (arrival count held)
+  (declare (xargs :verify-guards nil :guard t :measure (acl2-count held)))
+  (mbe :logic
+       (if (atom held) nil
+         (if (equal arrival (fn-bpn-nth 3 (car held)))
+             (if (true-listp (car held))
+                 (cons (fn-bpnp-deferred-held (car held) count) (cdr held))
+               nil)
+           (cons (car held)
+                 (fn-bpnp-deferral-replace arrival count (cdr held)))))
+       :exec (fn-bpnp-deferral-replace-loop arrival count held nil)))
+
+(local
+ (defthm fn-bpnp-deferral-replace-loop-is-revappend
+   (equal (fn-bpnp-deferral-replace-loop arrival count held acc)
+          (revappend acc (fn-bpnp-deferral-replace arrival count held)))
+   :hints (("Goal" :induct (fn-bpnp-deferral-replace-loop arrival count held acc)
+                   :in-theory (union-theories '(fn-bpnp-deferral-replace-loop fn-bpnp-deferral-replace revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpnp-deferral-replace-loop)
+
+(verify-guards fn-bpnp-deferral-replace
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpnp-deferral-replace)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpnp-deferral-replace-loop-is-revappend (acc nil))))))
+
 
 (defun fn-bpnp-deferral-apply (record held)
   (declare (xargs :guard t))

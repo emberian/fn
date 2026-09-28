@@ -116,12 +116,41 @@
         (car held)
       (fn-bpnf-find-held key (cdr held)))))
 
-(defun fn-bpnf-held-octets (held)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-bpnf-held-octets-loop (held acc)
+  (declare (xargs :guard (acl2-numberp acc) :verify-guards nil))
   (if (atom held)
-      0
-    (+ (len (fn-bpnf-held-wire (car held)))
-       (fn-bpnf-held-octets (cdr held)))))
+      (+ acc 0)
+    (fn-bpnf-held-octets-loop (cdr held) (+ (len (fn-bpnf-held-wire (car held))) acc))))
+
+(defun fn-bpnf-held-octets (held)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (atom held)
+           0
+         (+ (len (fn-bpnf-held-wire (car held)))
+            (fn-bpnf-held-octets (cdr held))))
+       :exec (fn-bpnf-held-octets-loop held 0)))
+
+(local
+ (defthm fn-bpnf-held-octets-loop-is-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-bpnf-held-octets-loop held acc)
+                   (+ acc (fn-bpnf-held-octets held))))
+   :hints (("Goal" :induct (fn-bpnf-held-octets-loop held acc)
+                   :in-theory (disable fn-bpnf-held-wire)))))
+
+(verify-guards fn-bpnf-held-octets-loop)
+
+(verify-guards fn-bpnf-held-octets
+  :hints (("Goal"
+           :in-theory
+           (disable fn-bpnf-held-octets-loop fn-bpnf-held-wire)
+           :use
+           ((:instance fn-bpnf-held-octets-loop-is-plus (acc 0))))))
+
 
 (defun fn-bpnf-receive-decision (held ingress bundle)
   (declare (xargs :guard (fn-bpb-bundlep bundle)))
@@ -343,12 +372,43 @@
 ; slots.  Next-op is allocated here, never supplied by a caller.  The host is
 ; not yet a caller: A2 must prove the FNBS publisher and replay relation
 ; before replacing the outbound-only host path.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-bpnf-held-arrival-frontier-loop (rev acc)
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
+  (if (consp rev)
+      (fn-bpnf-held-arrival-frontier-loop (cdr rev)
+                                          (max (1+ (nfix (fn-bpn-nth 3 (car rev)))) acc))
+    acc))
+
 (defun fn-bpnf-held-arrival-frontier (held)
-  (declare (xargs :guard t :measure (acl2-count held)))
-  (if (consp held)
-      (max (1+ (nfix (fn-bpn-nth 3 (car held))))
-           (fn-bpnf-held-arrival-frontier (cdr held)))
-    0))
+  (declare (xargs :verify-guards nil :guard t :measure (acl2-count held)))
+  (mbe :logic
+       (if (consp held)
+           (max (1+ (nfix (fn-bpn-nth 3 (car held))))
+                (fn-bpnf-held-arrival-frontier (cdr held)))
+         0)
+       :exec (fn-bpnf-held-arrival-frontier-loop (fn-ag-rev-onto held nil) 0)))
+
+(local
+ (defthm fn-bpnf-held-arrival-frontier-loop-of-rev-onto
+   (equal (fn-bpnf-held-arrival-frontier-loop (fn-ag-rev-onto held zs) 0)
+          (fn-bpnf-held-arrival-frontier-loop zs (fn-bpnf-held-arrival-frontier held)))
+   :hints (("Goal" :induct (fn-ag-rev-onto held zs)
+                   :in-theory (union-theories '(fn-bpnf-held-arrival-frontier-loop fn-bpnf-held-arrival-frontier fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpnf-held-arrival-frontier-loop)
+
+(verify-guards fn-bpnf-held-arrival-frontier
+  :hints (("Goal" :in-theory (union-theories '(fn-bpnf-held-arrival-frontier fn-bpnf-held-arrival-frontier-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-bpnf-held-arrival-frontier-loop-of-rev-onto (zs nil))))))
+
 
 (defun fn-bpnf-state-with-arrival
   (base held outcomes handoffs correlation issued waits epoch next-op next-arrival)

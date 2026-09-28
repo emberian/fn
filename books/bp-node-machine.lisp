@@ -12,6 +12,7 @@
 
 (in-package "ACL2")
 (include-book "bp-node")
+(include-book "rev-onto") ; the loop twins' step (PKT-877)
 (include-book "defrecord")
 (include-book "frame-fields")
 

@@ -312,7 +312,7 @@
     (revappend acc nil)))
 
 (defun fn-bp-work-ids (works)
- (declare (xargs :verify-guards nil :guard t :verify-guards t))
+ (declare (xargs :verify-guards nil :guard t))
  (mbe :logic
        (if (consp works)
            (cons (fn-bp-work-id (car works)) (fn-bp-work-ids (cdr works)))
