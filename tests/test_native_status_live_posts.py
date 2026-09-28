@@ -16,9 +16,9 @@ no fixture: format changes do not strand it):
 
 * `store init' a fresh store; the owner opens it; `status' answers, exit 0,
   twice (T0 the faster);
-* FN_STATUS_POSTS (default 20,000) articles are POSTed over 8 connections,
-  every one 240 -- each a live acceptance, so N = V = 20,000, where the old
-  render was ~4 x 10^8 verdict steps (~8 s at hbox's 2.1 x 10^-8 s a step);
+* FN_STATUS_POSTS (default 60,000) articles are POSTed over 8 connections,
+  every one 240 -- each a live acceptance, so N = V, where the old render was
+  N x V verdict steps (9.3 s more at 20,000 on hbox);
 * `status' answers again, exit 0, twice (T1 the faster), its articles=N grown
   by the POSTs, and T1 - T0 stays under FN_STATUS_SLACK seconds (default 2.0).
 
@@ -26,8 +26,10 @@ Before this lane, on the images after the thread-stacks change, the same
 20,000 articles also exhausted the owner's 1 MiB control-thread stack in the
 per-article count (fn-rcl-summary-in, a frame per article): `status' exited 3
 in 0.15 s and the owner stopped (`control request fault; owner stopped').
-The counts are loops now; the case also asks `health' afterwards, which
-must not be uncertain (the owner is still there).
+At 60,000 `health' did the same in books/native-health.lisp
+fn-nh-forward-count (one frame per retention pin).  The counts are loops
+now; the case asks `health' afterwards (never uncertain) and `status' once
+more (exit 0: the owner is still there).
 
 A difference of two timings on one owner, so the box's load largely cancels;
 it prints one JSON line per observation.
@@ -54,8 +56,8 @@ from tools import msgid_measure as m  # noqa: E402
 import native_env  # noqa: E402
 
 IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
-POSTS = int(os.environ.get("FN_STATUS_POSTS", "20000"))
-FLAGS = ["--max-transactions", "65536", "--max-history-octets", "64000000"]
+POSTS = int(os.environ.get("FN_STATUS_POSTS", "60000"))
+FLAGS = ["--max-transactions", "131072", "--max-history-octets", "128000000"]
 SLACK = float(os.environ.get("FN_STATUS_SLACK", "2.0"))
 CONNECTIONS = 8
 
@@ -162,9 +164,14 @@ class NativeStatusLivePostsTests(unittest.TestCase):
             self.assertEqual(rc, 0, text[-600:])
         t1 = min(s for _, s, _, _ in after)
         health = self.invoke("operator", cfg, "health", timeout=300)
-        self.out(step="health-after", exit=health.returncode)
+        self.out(step="health-after", exit=health.returncode,
+                 head=health.stdout.decode(errors="replace").splitlines()[:1],
+                 err=health.stderr.decode(errors="replace")[-300:])
         self.assertNotEqual(health.returncode, 3,
                             (health.stdout + health.stderr).decode(errors="replace")[-600:])
+        again = self.status(cfg)
+        self.out(step="status-after-health", exit=again[0], seconds=round(again[1], 3))
+        self.assertEqual(again[0], 0, again[3][-600:])
         self.assertIsNone(self.owner.poll(), "the owner stopped")
         self.assertEqual(after[-1][2], n0 + POSTS)
         self.out(step="verdict", t0=round(t0, 3), t1=round(t1, 3),
