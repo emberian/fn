@@ -28,6 +28,15 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertNotIn("--profile dtn", answer.stdout)
         self.assertNotIn("FN_NATIVE_BP_HOST", answer.stdout)
 
+    def test_bp_service_native_takes_the_dtn_developer_image(self):
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from tools import native_env
+        lines, _refused, _notes = native_env.plan(
+            ["developer", "production", "dtn", "dtn-developer"], {},
+            ["tests.test_bp_service_native"])
+        self.assertIn("FN_NATIVE_BP_HOST=$T/build/fn-host-dtn-developer", " ".join(lines))
+
     def test_a_big_memory_scope_waits_on_the_box_wide_lock(self):
         big = dry("--mem", "80G", "HEAD", "tests.test_native_owner")
         self.assertEqual(big.returncode, 0, big.stderr)

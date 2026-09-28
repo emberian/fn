@@ -102,6 +102,13 @@ IMAGES = {
     "FN_NATIVE_DTN_HOST": ("dtn",),
     "FN_NATIVE_DTN_DEVELOPER_HOST": ("dtn-developer",),
 }
+# A module that needs a different first choice for a variable (module stem,
+# variable) -> images in order: 7 of test_bp_service_native's 17 cases need
+# fault-injection switches the non-developer DTN image refuses (image-strip,
+# 2026-09-28), so it takes the dtn-developer image when that is built.
+PREFER = {
+    ("test_bp_service_native", "FN_NATIVE_BP_HOST"): ("dtn-developer", "dtn"),
+}
 # The modules reading these default to exactly the first image's path in
 # their own tree ($T), so when that image is built nothing is exported and
 # the module keeps its default; a fallback image is exported.
@@ -289,7 +296,8 @@ def plan(images: list[str], given: dict[str, str], modules: list[str]
                                  and name not in TOOLS):
                 continue  # a helper's opt-ins stay the helper's own modules'
             if name in IMAGES:
-                image = next((i for i in IMAGES[name] if i in images), None)
+                choices = PREFER.get((stem, name), IMAGES[name])
+                image = next((i for i in choices if i in images), None)
                 if (stem, name) in FALLBACK:
                     continue
                 if image is not None:

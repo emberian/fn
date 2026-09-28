@@ -36,6 +36,11 @@ def log(book, variant, runtime, summaries, errors=(), wall=3, code=0):
 
 
 class TauCostTests(unittest.TestCase):
+    def test_an_empty_book_list_is_refused_without_all(self):
+        import contextlib, io
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            tau_cost.main(["run", "hbox", "--remote-root", "/nowhere"])
+
     def test_tau_off_goes_after_the_header_includes_once(self):
         text = tau_cost.tau_off(BOOK)
         self.assertLess(text.index('(include-book "b")'),
