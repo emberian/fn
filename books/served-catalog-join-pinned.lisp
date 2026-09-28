@@ -590,7 +590,7 @@
   (let ((view (fn-own-view o)))
     (implies (and (fn-scj-joinp view fn-arena fn-cat)
                   (fn-cnx-freshp fn-cat)
-                  (fn-nntp-projectionp (fn-own-view-archive view))
+                  (fn-statep (fn-own-view-archive view))
                   (fn-own-view-okp view groups capacity records))
              (fn-scj-live-okp view fn-arena fn-cat)))
   :hints (("Goal" :do-not-induct t
@@ -598,7 +598,7 @@
                             fn-served-pinned-version fn-served-pinned-make fn-scr-catalogp
                             fn-gidx-pin-correspondencep fn-own-view-okp)
                            (fn-scr-view-of fn-own-view-live fn-cat-view-articles fn-cnx-freshp
-                            fn-nntp-projectionp fn-midx-build fn-gidx-build fn-gidx-pinp
+                            fn-statep fn-midx-build fn-gidx-build fn-gidx-pinp
                             fn-scj-seqs-below-is-nats-below fn-own-prefix-archive
                             fn-ctl-visible-state fn-ctl-subseq-diff fn-own-view-control))
            :use ((:instance fn-scj-view-of-when-seqs-below
@@ -609,8 +609,8 @@
 ; fresh before, every connection pinned over it at or below the view's
 ; version, the finished owner's view in fn-own-view-okp (fn-own-relation's
 ; view conjunct: its index and group index are the visible archive's) and its
-; archive a projection (NAMED: no owner predicate found that carries
-; fn-nntp-projectionp of the view's archive), the catalog the host's finish leaves carries the live view,
+; archive a state (fn-statep, which fn-ocl-relation carries:
+; fn-acar-ocl-relation-carries-view-statep), the catalog the host's finish leaves carries the live view,
 ; every pinned connection and sortedness: fn-scr-owner-catalogp at every
 ; connection identifier.
 (defthm fn-scj-owner-catalogp-at-host-finish
@@ -658,7 +658,7 @@
                   (fn-scj-conns-versions-atmostp (fn-own-conns o) (fn-own-view-version view))
                   (fn-own-view-okp view2 (fn-sn-groups s2) (fn-sn-capacity s2)
                                    (fn-sf-records (fn-sn-files s2)))
-                  (fn-nntp-projectionp (fn-own-view-archive view2)))
+                  (fn-statep (fn-own-view-archive view2)))
              (and (fn-scr-owner-catalogp o2 id fn-arena c2)
                   (fn-scj-conns-pinp (fn-own-conns o2) fn-arena c2)
                   (fn-scj-live-okp view2 fn-arena c2)

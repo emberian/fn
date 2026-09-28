@@ -1412,13 +1412,36 @@
                            (fn-nntp-group-matches-parsed-wildmatp
                             fn-nntp-safe-group-namep)))))
 
+;; The group names of a state are strings (fn-statep), and the wildmat filter
+;; keeps a subset of them: what LIST COUNTS needs of the archive, where it
+;; used to ask fn-nntp-projectionp's safe names (lane join-f2: the catalog
+;; premise no longer asks the projection recognizer, whose article-count
+;; conjunct no store fact gives).
+(local
+ (defthm fn-scat-filter-keeps-strings
+   (implies (fn-string-listp groups)
+            (fn-string-listp (fn-nntp-filter-groups-by-wildmat patterns groups)))
+   :hints (("Goal" :induct (fn-nntp-filter-groups-by-wildmat patterns groups)
+            :in-theory (e/d (fn-nntp-filter-groups-by-wildmat fn-string-listp)
+                            (fn-nntp-group-matches-parsed-wildmatp))))))
+
+(local
+ (defthm fn-scat-string-list-has-no-nil
+   (implies (fn-string-listp groups) (not (member-equal nil groups)))
+   :hints (("Goal" :in-theory (enable fn-string-listp)))))
+
+(local
+ (defthm fn-scat-state-groups-are-strings
+   (implies (fn-statep archive) (fn-string-listp (fn-state-groups archive)))
+   :hints (("Goal" :in-theory (enable fn-statep)))))
+
 (defthm fn-nntp-list-counts-command-cat-is-archive
-  (implies (and (fn-cnx-freshp fn-cat) (fn-nntp-projectionp archive)
+  (implies (and (fn-cnx-freshp fn-cat) (fn-statep archive)
                 (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
            (equal (fn-nntp-list-counts-command-cat session archive args v fn-cat)
                   (fn-nntp-list-counts-command session archive args)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-nntp-list-counts-command fn-nntp-list-counts fn-nntp-projectionp)
+           :in-theory (e/d (fn-nntp-list-counts-command fn-nntp-list-counts)
                            (fn-scat-counts-lines fn-nntp-counts-lines
                             fn-cat-view-articles fn-cnx-freshp fn-statep
                             fn-wildmat-parse fn-nntp-filter-groups-by-wildmat
@@ -2449,26 +2472,67 @@
    (fn-midx-correspondencep (fn-midx-build articles) articles)
    :hints (("Goal" :in-theory (enable fn-midx-correspondencep)))))
 
-(local
- (defthm fn-scat-projection-is-state
-   (implies (fn-nntp-projectionp archive) (fn-statep archive))
-   :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory (enable fn-nntp-projectionp)))))
-
+;; The pinned bucket arms of LISTGROUP and LIST COUNTS are the archive folds
+;; for every state (books/group-bucket-invariants.lisp and
+;; books/nntp-list-counts.lisp state them under fn-nntp-projectionp, of which
+;; their proofs read only fn-statep and string group names).
 (local
  (defthm fn-scat-built-listgroup-is-fold
-   (implies (fn-nntp-projectionp archive)
+   (implies (fn-statep archive)
             (equal (fn-gidx-listgroup-command
                     session archive (fn-gidx-build (fn-state-articles archive)) args)
                    (fn-nntp-listgroup-command session archive args)))
-   :hints (("Goal" :use ((:instance fn-gidx-listgroup-command-of-build))
-            :in-theory (disable fn-gidx-listgroup-command fn-nntp-listgroup-command
-                                fn-gidx-build fn-nntp-projectionp)))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-gidx-listgroup-result-of-build
+                             (group (fn-nntp-session-group session))
+                             (range (list :ok 1 2147483647)))
+                  (:instance fn-gidx-listgroup-result-of-build
+                             (group (fn-nntp-token-string (car args)))
+                             (range (list :ok 1 2147483647)))
+                  (:instance fn-gidx-listgroup-result-of-build
+                             (group (fn-nntp-token-string (car args)))
+                             (range (fn-nntp-parse-range (cadr args))))
+                  (:instance fn-gidx-parse-range-natp
+                             (token (cadr args))))
+            :in-theory
+            (e/d (fn-gidx-listgroup-command fn-nntp-listgroup-command
+                   fn-nntp-token-string)
+                 (fn-gidx-listgroup-result fn-nntp-listgroup-result
+                  fn-nntp-parse-range fn-nntp-printable-tokenp))))))
+
+(local
+ (defthm fn-scat-gidx-counts-lines-of-build
+   (implies (and (fn-statep archive)
+                 (fn-string-listp groups))
+            (equal (fn-gidx-counts-lines
+                    archive (fn-gidx-build (fn-state-articles archive)) groups)
+                   (fn-nntp-counts-lines archive groups)))
+   :hints (("Goal" :induct (fn-nntp-counts-lines archive groups)
+            :in-theory (e/d (fn-gidx-counts-lines fn-nntp-counts-lines
+                             fn-gidx-counts-line fn-nntp-counts-line fn-string-listp)
+                            (fn-gidx-build fn-statep fn-gidx-group-summary
+                             fn-nntp-group-summary fn-nntp-counts-summary-line)))
+           ("Subgoal *1/1" :use ((:instance fn-gidx-group-summary-of-build
+                                  (group (car groups))))))))
+
+(local
+ (defthm fn-scat-gidx-list-counts-is-fold
+   (implies (and (fn-statep archive)
+                 (equal buckets (fn-gidx-build (fn-state-articles archive))))
+            (equal (fn-gidx-list-counts-command session archive buckets args)
+                   (fn-nntp-list-counts-command session archive args)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-gidx-list-counts-command
+                             fn-nntp-list-counts-command fn-nntp-list-counts)
+                            (fn-gidx-build fn-statep
+                             fn-gidx-counts-lines fn-nntp-counts-lines
+                             fn-nntp-filter-groups-by-wildmat
+                             fn-wildmat-parse fn-nntp-multi fn-nntp-single))))))
 
 (defthm fn-nntp-archive-command-cat-is-pinned
   (implies (and (equal (fn-state-articles archive)
                        (fn-cat-view-articles v fn-arena fn-cat))
-                (fn-nntp-projectionp archive)
+                (fn-statep archive)
                 (fn-gidx-pin-correspondencep index archive)
                 (fn-midx-correspondencep (fn-gidx-pin-trie index)
                                          (fn-state-articles archive))
@@ -2501,7 +2565,7 @@
                             fn-nntp-msgid-retrieval-indexed
                             fn-nntp-msgid-retrieval fn-nntp-number-retrieval
                             fn-cat-view-articles fn-midx-correspondencep
-                            fn-nntp-projectionp fn-gidx-pin-correspondencep
+                            fn-gidx-pin-correspondencep
                             fn-nntp-list-counts-command-cat fn-nntp-list-counts-command
                             fn-nntp-listgroup-command-cat fn-nntp-listgroup-command
                             fn-nntp-over-range-cat fn-nntp-over-range fn-nntp-xover-range
