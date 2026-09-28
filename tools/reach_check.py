@@ -51,6 +51,10 @@ is the function the host calls"):
 * a hosted subject counts only where it is applied to arguments no MODEL
   computed: under `(let ((m (model-run evs))) (host-f (views m)))' host-f is
   applied to the model's state, and the event is about the model;
+* a row's generated `keystone_subjects' map (tools/keystone_emit.py, lane
+  defkeystone: {"<registry keystone>": "<subject function>"}) DECLARES the
+  subject: the event is hosted exactly when a host line reaches that
+  function, and the conclusion is not read;
 * `NAME{correspondence}' and `NAME{preserved}' are about the export NAME;
 * failing that, a NAMED equality in books/ ties an unhosted subject U to a
   hosted H: a conclusion `(equal (U ..) (H x ..))' whose H side applies H to
@@ -440,15 +444,18 @@ class Graph:
 
 
 class Finding:
-    def __init__(self, proof_id, event, book, subjects):
+    def __init__(self, proof_id, event, book, subjects, declared=False):
         self.proof_id, self.event = proof_id, event
         self.book, self.subjects = book, subjects
+        self.declared = declared
 
     def key(self) -> str:
         return f"{self.proof_id}:{self.event}"
 
     def render(self) -> str:
         named = ", ".join(self.subjects[:4]) or "nothing this reader resolved"
+        if self.declared:
+            named = "its declared subject " + named
         return (f"{self.book}: {self.event} ({self.proof_id}): no host line "
                 f"reaches any function it is about ({named}), so the running "
                 f"server does not exercise what this event claims")
@@ -709,10 +716,29 @@ def audit(graph: Graph):
 
     findings, hosted, unresolved = [], 0, []
     graph.bridged = []
+    graph.declared = []
     for row in rows:
+        declared = {str(k).lower(): str(v).lower()
+                    for k, v in (row.get("keystone_subjects") or {}).items()}
         for event in row.get("events", []):
             name = str(event).lower()
             entry = theorems.get(name)
+            if name in declared:
+                # A defkeystone names its subject (tools/keystone_emit.py's
+                # generated `keystone_subjects'): that function's host
+                # caller is checked, never a subject inferred from the
+                # conclusion.
+                function = declared[name]
+                book = entry[0] if entry else "planning/proofs.json"
+                if function not in graph.book_defs:
+                    unresolved.append((row["id"], name,
+                                       f"declared subject {function} is not a book definition"))
+                elif function in graph.reachable:
+                    hosted += 1
+                    graph.declared.append((row["id"], name, function))
+                else:
+                    findings.append(Finding(row["id"], name, book, [function], declared=True))
+                continue
             subject = Subject(graph, name, entry[1] if entry else None)
             if not entry and subject.via != "export":
                 unresolved.append((row["id"], name, "no such defthm here"))
@@ -794,6 +820,18 @@ def main(argv=None) -> int:
         name = arguments.explain.lower()
         theorems = theorem_forms(graph.books)
         entry = theorems.get(name)
+        for row in load_rows():
+            declared = {str(k).lower(): str(v).lower()
+                        for k, v in (row.get("keystone_subjects") or {}).items()}
+            if name in declared:
+                function = declared[name]
+                print(f"{name}: declared subject {function} ({row['id']} keystone_subjects)")
+                chain = graph.host_chain(function)
+                if chain:
+                    print("hosted: " + " -> ".join(chain))
+                    return 0
+                print("NOT hosted: no host line reaches the declared subject")
+                return 0
         subject = Subject(graph, name, entry[1] if entry else None)
         print(f"{name}: {'defined in ' + entry[0] if entry else 'no defthm here'}")
         print("subject: " + (", ".join(

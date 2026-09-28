@@ -228,6 +228,54 @@ class SharedGraphTests(unittest.TestCase):
         self.assertEqual(self.graph.host_chain("fn-nntp-run-session"), [])
 
 
+class DeclaredSubjectTests(unittest.TestCase):
+    """A row's generated `keystone_subjects' (tools/keystone_emit.py, lane
+    defkeystone) is the subject; the conclusion is not read."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.graph = reach_check.Graph()
+
+    def audit_rows(self, rows):
+        saved = reach_check.load_rows
+        reach_check.load_rows = lambda: rows
+        try:
+            return reach_check.audit(self.graph)
+        finally:
+            reach_check.load_rows = saved
+
+    def test_a_declared_hosted_subject_hosts_whatever_the_conclusion_says(self):
+        # The conclusion is about the unhosted trace model; the declared
+        # subject is the hosted step, and it is what is checked.
+        findings, hosted, unresolved = self.audit_rows([{
+            "id": "PRF-T1", "events": ["fn-nntp-finite-trace-preserves-consistent-session"],
+            "keystone_subjects": {"fn-nntp-finite-trace-preserves-consistent-session":
+                                  "fn-nntp-session-command"}}])
+        self.assertEqual((findings, hosted, unresolved), ([], 1, []))
+
+    def test_a_declared_unhosted_subject_is_an_orphan(self):
+        # fn-own-read-preserves-relation is hosted by inference; declaring the
+        # model run its subject makes it an orphan naming that subject.
+        findings, hosted, unresolved = self.audit_rows([{
+            "id": "PRF-T2", "events": ["fn-own-read-preserves-relation"],
+            "keystone_subjects": {"fn-own-read-preserves-relation": "fn-nntp-run-session"}}])
+        self.assertEqual(hosted, 0)
+        self.assertEqual([f.subjects for f in findings], [["fn-nntp-run-session"]])
+        self.assertIn("declared subject", findings[0].render())
+
+    def test_a_declared_subject_that_is_not_a_definition_is_unresolved(self):
+        findings, hosted, unresolved = self.audit_rows([{
+            "id": "PRF-T3", "events": ["fn-own-read-preserves-relation"],
+            "keystone_subjects": {"fn-own-read-preserves-relation": "fn-no-such-function"}}])
+        self.assertEqual((findings, hosted), ([], 0))
+        self.assertEqual(unresolved[0][0], "PRF-T3")
+
+    def test_a_row_without_the_map_is_inferred_as_before(self):
+        findings, hosted, _ = self.audit_rows([{
+            "id": "PRF-T4", "events": ["fn-own-read-preserves-relation"]}])
+        self.assertEqual((findings, hosted), ([], 1))
+
+
 class RatchetTests(unittest.TestCase):
     """The baseline may shrink and may not grow silently."""
 
