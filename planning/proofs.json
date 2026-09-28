@@ -13482,7 +13482,7 @@
         "PRF-002"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/number-durability.lisp",
         "tests/acl2/number-durability-tests.lisp",
