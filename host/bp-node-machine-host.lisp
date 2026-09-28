@@ -4,9 +4,6 @@
 
 (in-package "ACL2")
 
-(defun fn-bpn-host-answer-effects (answer)
-  (fn-bpn-answer-effects answer))
-
 (defun fn-bpn-host-ready-peers (st)
   ; fnn-bps-open checks the initial invariant once.  Its only later state
   ; writes are fn-bpn-step answers, whose transition preserves it.
