@@ -9,6 +9,17 @@
 (in-package "ACL2")
 (include-book "web-session")
 
+; Octet-list and parser rules of the included world that these proofs try on
+; every true-listp, octet and cdr goal and never use (accumulated-persistence
+; over the whole book, 2026-09-28, lane d26-books).  None is cited below.
+(local (in-theory (disable fn-cbor-octet-listp-implies-true-listp
+                           fn-oct-bufp-true-listp
+                           fn-w47-octets-of-cdr
+                           fn-ot-nat-parse-accepts-only-digits
+                           fn-oct-octetp-is-unsigned-byte-p
+                           fn-oct-bufp-cell-is-octet
+                           fn-oct-nth-of-octet-listp-is-octet)))
+
 ; -----------------------------------------------------------------------------
 ; THE KEYSTONES (PRF-339).
 

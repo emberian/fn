@@ -1035,18 +1035,12 @@
                  (:instance
                   fn-inj-generated-identity-separates-different-clock-readings
                   (a ca) (b cb)))
-           :in-theory (disable fn-nntp-post-step fn-inj-decide
-                               fn-inj-injectedp fn-inj-decision-msgid
-                               fn-inj-generated-message-id
-                               fn-inj-generated-identity-is-the-clock-identity
-                               fn-post-submission-is-an-injected-article
-                               fn-mod-envelope-msgid
-                               fn-mod-envelope-msgid-injective
-                               fn-mod-envelope-msgid-is-not-a-generated-id
-                               fn-clock-observationp fn-clock-wall
-                               fn-clock-monotonic fn-article-parse
-                               fn-af-proto-article-check
-                               fn-article-result-article)))
+           ; The instances carry the whole argument; what remains is
+           ; propositional and equality reasoning.  In the enabled theory the
+           ; rewriter tried fn-post-without-a-clock-refuses-with-the-clock-line
+           ; on every submission term and opened fn-post-sessionp to relieve
+           ; its hypothesis, uselessly: 1.39M steps, against 8,427 here.
+           :in-theory (theory 'minimal-theory)))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
