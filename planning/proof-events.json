@@ -12885,6 +12885,39 @@
           "name": "fn-cfg-record-item-count-is-len-of-items"
         }
       ]
+    },
+    {
+      "id": "PRF-901",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocf-control-waits-at-most-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocf-delay-at-most-the-potential"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocf-seals-at-most-the-seal-potential"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocf-potential-at-most-twenty-two"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocf-seal-potential-at-most-six"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocf-start-next-while-control-waits-is-within-the-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-no-start-next-while-a-shut-out-class-waits"
+        }
+      ]
     }
   ]
 }
