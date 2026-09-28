@@ -38,6 +38,10 @@
 (include-book "poster-bytes")
 (include-book "blake3")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-rcl-u64-octets-aux))))
+
 (defun fn-rcl-car (x) (declare (xargs :guard t)) (if (consp x) (car x) nil))
 (defun fn-rcl-cdr (x) (declare (xargs :guard t)) (if (consp x) (cdr x) nil))
 (defun fn-rcl-nth (n x)

@@ -45,6 +45,10 @@
 (include-book "byte-store-invariants")
 (include-book "payload-lz-value")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-tear-write))))
+
 ; -----------------------------------------------------------------------------
 ; A-DURABILITY.  "A completed platform barrier preserves the named bytes and
 ; necessary namespace updates across a modeled crash."

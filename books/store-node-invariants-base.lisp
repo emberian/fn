@@ -8,6 +8,13 @@
 (include-book "records-seam")
 (include-book "topic-history-identity-disjoint")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-replay-apply-carried-verdict)
+                          (:definition fn-replay-apply-revoked-verdict)
+                          (:definition fn-replay-identity-loop)
+                          (:definition fn-replay-verdict-pairs))))
+
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-record-p and the record accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
