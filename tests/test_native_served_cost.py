@@ -54,7 +54,12 @@ class NativeServedCostTests(unittest.TestCase):
         # Since zero-copy-commit (PRF-377) the host calls fn-oas-read-span
         # (books/owner-article-slots.lisp), which is fn-otm-read-span within
         # the connection's article slots (fn-oas-read-span-when-held-unfolds).
-        self.assertIn("(fn-oas-read-span", definition(host, "fn-owner-chunk-span-at"))
+        # Since credits (PRF-380) through fn-mca-read-span
+        # (books/owner-credits.lisp), fn-oas-read-span within the credit.
+        self.assertIn("(fn-mca-read-span", definition(host, "fn-owner-chunk-span-at"))
+        credits = definition((ROOT / "books/owner-credits.lisp").read_text(),
+                             "fn-mca-read-span")
+        self.assertIn("(fn-oas-read-span", credits)
         slots = definition((ROOT / "books/owner-article-slots.lisp").read_text(),
                            "fn-oas-read-span")
         self.assertIn("(fn-otm-read-span", slots)

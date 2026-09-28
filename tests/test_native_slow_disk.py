@@ -111,7 +111,10 @@ class SlowDiskSourceTests(unittest.TestCase):
         # The host's read is fn-oas-read-span since zero-copy-commit, which
         # is fn-otm-read-span within the article slots
         # (books/owner-article-slots.lisp fn-oas-read-span-when-held-unfolds).
-        self.assertIn("(fn-oas-read-span\n", wrapper)
+        # Since credits (PRF-380) fn-mca-read-span wraps it
+        # (books/owner-credits.lisp, fn-oas-read-span within the credit).
+        self.assertIn("(fn-mca-read-span\n", wrapper)
+        self.assertIn("(fn-oas-read-span", (ROOT / "books" / "owner-credits.lisp").read_text())
         self.assertIn("(fn-otm-read-span", (ROOT / "books" / "owner-article-slots.lisp").read_text())
         self.assertIn("(fn-otm-shed-reply s)", wrapper)
         self.assertIn("(fn-owner-outcome id :refused state)", wrapper)
