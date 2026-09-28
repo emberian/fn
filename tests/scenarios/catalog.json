@@ -5534,6 +5534,36 @@
         "planning/evidence/format-bump-10-2026-09-28/native-n4-format_9_migration.log",
         "planning/evidence/format-bump-10-2026-09-28.md"
       ]
+    },
+    {
+      "id": "SCN-191",
+      "title": "health's disk state and a full disk: health exits 0 while the disk is slow, 28 (`disk held mode=stalled pending-ms=N') while a barrier is stalled past H, 0 after; with the store's filesystem observed below the need a POST command is answered 440 and a sent article 441 with `the disk is full', nothing stored, health 28 `mode=full'; room again: the next POST 240, health 0; the owner never stops",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-007",
+        "HST-026"
+      ],
+      "steps": [
+        "tests/test_native_slow_disk.py test_a_stall_past_h_tells_the_posters_uncertain_and_the_articles_land: `health' at 3 s (slow) and after the posters were answered (stalled), and after recovery.",
+        "test_a_full_disk_refuses_posts_before_the_write_and_recovers: the owner started with FN_NATIVE_DISK_FREE=@FILE (FILE 10^12: room); a POST; `health'; B's POST command 340; FILE set to 1000; `health', `status'; 1.2 s; a POST command on W; B's article; FILE 10^12; 1.2 s; a POST; `health'; STAT of both."
+      ],
+      "expected": [
+        "health rc 0 with `disk clear' while slow; rc 28, first line `health exit=28 state=disk', `disk held mode=stalled pending-ms=P stall-ms=H ...' with P >= H while stalled; rc 0 after recovery.",
+        "health rc 0 with `disk space: free-octets=N need-octets=M' at room; rc 28 `disk held mode=full free-octets=1000 need-octets=M posts=try-later' when full, status rc 0 with `disk full: free-octets=1000'; W's command `440 posting not permitted now; the disk is full (1000 octets free, M needed), try again later' within 2 s; B's article `441 posting failed; the disk is full (...): nothing was stored, try again later', STAT 430; after room the POST 240 (STAT 223), health rc 0; the log names `disk full:' and `disk space recovered:'; the owner is running and no recovery event is logged."
+      ],
+      "evidence": [
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/health-truth-2026-09-28.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_slow_disk",
+        "cases": [
+          "SlowDiskNativeTests"
+        ],
+        "native": true,
+        "record": "planning/evidence/health-truth-2026-09-28.md"
+      }
     }
   ]
 }
