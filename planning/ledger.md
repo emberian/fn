@@ -10,9 +10,9 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1453 |
-| Certification roots in the Makefile | 1421 |
-| Books inside the root closure | 1450 |
+| Books read | 1454 |
+| Certification roots in the Makefile | 1422 |
+| Books inside the root closure | 1451 |
 | `defthm` and `defthmd` events | 23523 |
 | `defun` events | 15844 |
 | Functions with verified guards | 2990 |
@@ -897,6 +897,7 @@ that `make certify` requests.
 | `books/transfer.lisp` | root | 14 | 67 | 58/0/9/0 | 0 | 0 | 0 |
 | `books/transit-bound.lisp` | root | 25 | 1 | 0/0/1/0 | 0 | 0 | 2 |
 | `books/transit-header-limits.lisp` | root | 8 | 1 | 0/0/1/0 | 0 | 0 | 1 |
+| `books/utf8.lisp` | root | 5 | 21 | 21/0/0/0 | 0 | 0 | 0 |
 | `books/visibility-join.lisp` | root | 10 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/web-2047.lisp` | root | 29 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/web-config.lisp` | root | 2 | 9 | 0/0/9/0 | 0 | 0 | 0 |
@@ -909,7 +910,7 @@ that `make certify` requests.
 | `books/wildmat-parser-invariants.lisp` | root | 18 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/wildmat-utf8-invariants.lisp` | root | 31 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/wildmat-work.lisp` | root | 52 | 17 | 0/0/0/17 | 0 | 0 | 4 |
-| `books/wildmat.lisp` | root | 22 | 62 | 62/0/0/0 | 0 | 0 | 0 |
+| `books/wildmat.lisp` | root | 17 | 41 | 41/0/0/0 | 0 | 0 | 0 |
 | `books/wire-invariants.lisp` | root | 53 | 5 | 1/1/1/2 | 0 | 0 | 8 |
 | `books/wire-outbound-invariants.lisp` | root | 66 | 6 | 0/2/4/0 | 0 | 0 | 0 |
 | `books/wire-scan.lisp` | root | 28 | 9 | 1/1/7/0 | 0 | 0 | 2 |

@@ -688,7 +688,7 @@ manifest records its digest, which is how a book that every run installs and
 no archived manifest certifies gets evidence `certified_claims.py` accepts.
 The invocation for a lane is
 
-    python3 tools/farm.py submit persvati --jobs 12 \
+    python3 tools/farm.py submit persvati \
         --remote-root /home/ember/fn-lanes/<lane> \
         --affected-by books/article.lisp
 
