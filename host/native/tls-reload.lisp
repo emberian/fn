@@ -30,16 +30,39 @@ observation ACL2 compares with the validity window)."
     (fnn-core 'fn-tlsr-host-facts (and chain t) (and key t) (and match t)
               not-before not-after san (fnn-tls-unix-now))))
 
+(defun fnn-tls-start-context (certificate-path private-key-path)
+  "PRF-387 (PKT-606): the server context `run' serves from.  The candidate is
+built and observed exactly as a reload's (fnn-tls-server-candidate,
+fnn-tls-facts-of), and ACL2 decides it (fn-tlsr-start-decide, the reload's
+decision against no served material).  On :accept the context records those
+facts as the material it serves, which establishes the relation
+fnn-tls-context-swap preserves; on a refusal the candidate is freed and the
+start is refused (exit 1) by ACL2's word, the library's text after it."
+  (multiple-value-bind (pointer chain key match detail)
+      (fnn-tls-server-candidate certificate-path private-key-path)
+    (let* ((facts (fnn-tls-facts-of pointer chain key match))
+           (decision (fnn-core 'fn-tlsr-host-start-decide facts)))
+      (if (fnn-core 'fn-tlsr-host-acceptp decision)
+          (fnn-tls-context-make :pointer pointer
+                                :certificate-path certificate-path
+                                :private-key-path private-key-path
+                                :served facts)
+        (progn
+          (when pointer (fnn-%ssl-ctx-free pointer))
+          (error 'fnn-store-error
+                 :message (format nil "~a~@[ (~a)~]"
+                                  (fnn-octets-string
+                                   (fnn-octets
+                                    (fnn-core 'fn-tlsr-host-start-refusal-line
+                                              decision)))
+                                  detail)))))))
+
 (defun fnn-tls-served-facts (context)
-  "The facts of the material CONTEXT serves.  The context `run' opened has
-none recorded until first asked; its leaf is read from the served pointer
-under the context's lock."
+  "The facts of the material CONTEXT serves: recorded by fnn-tls-start-context
+when `run' opened it and replaced only by fnn-tls-context-swap, both under
+the context's lock."
   (sb-thread:with-mutex ((fnn-tls-context-lock context))
-    (or (fnn-tls-context-served context)
-        (let ((pointer (fnn-tls-context-pointer context)))
-          (when pointer
-            (setf (fnn-tls-context-served context)
-                  (fnn-tls-facts-of pointer t t t)))))))
+    (fnn-tls-context-served context)))
 
 (defun fnn-tls-owner-reload (service)
   (let ((context (fnn-owner-service-tls-context service)))

@@ -73,7 +73,7 @@
 # served image's load exhausted SBCL's thread-local storage at 16384 on
 # 2026-09-27 (batch AV's native-av-bb1a and recover-memory-2); give the
 # toolchain's own path to build at 16384),
-# --jobs N (certify, default 8), --no-build (reuse the images already in that
+# --jobs N|auto (certify, default auto: tools/chain_schedule.py), --no-build (reuse the images already in that
 # scratch tree), --env NAME=VALUE (repeatable; paths may use $T, the tree),
 # --deadline S (default 5400), --dry-run (print the box script; the refusal
 # and the per-module environment show there).  Options may come before or
@@ -107,7 +107,7 @@ LABEL=
 IMAGES=developer
 MEM=24G
 IMAGE_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k
-JOBS=8
+JOBS=auto
 BUILD=1
 DETACH=0
 DRY=0
