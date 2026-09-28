@@ -12318,6 +12318,155 @@
           "name": "fn-heap-open-nursery-trigger-natp"
         }
       ]
+    },
+    {
+      "id": "PRF-363",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scv-count-is-count-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scv-first-is-first-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scv-last-is-last-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scv-keptp-is-liveq-outside-x"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-withdrawn-at-is-from"
+        }
+      ]
+    },
+    {
+      "id": "PRF-358",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otm-health-disk-held-iff-stalled-or-full"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-health-disk-stalled-names-the-stall"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-held-disk-is-never-healthy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-verdict-states"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-exit-code-decodes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-report-exit-of-render"
+        }
+      ]
+    },
+    {
+      "id": "PRF-359",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otm-admit-keeps-the-space-need"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-full-sheds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-space-need-covers-two-batches"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-space-recovers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-space-of-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-full-p-of-other-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-space-event-keeps-the-disk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-admit-is-the-mode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-shed-iff-slow"
+        }
+      ]
+    },
+    {
+      "id": "PRF-360",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-file-reads-agrees-or-gap"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-gap-is-the-first-lost"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-gap-names-the-first-missing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-segment-agrees"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-open-step-is-the-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-replay-of-pm"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-open-step-cuts-a-written-file"
+        }
+      ]
+    },
+    {
+      "id": "PRF-357",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osd-stops-only-when-nothing-is-owed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-releases-only-at-the-deadline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-drain-ends-by-the-deadline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-deadline-is-past-the-slow-deadline"
+        }
+      ]
     }
   ]
 }

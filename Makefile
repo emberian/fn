@@ -871,6 +871,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-entries \
 	books/catalog-refresh \
 	books/catalog-number-index \
+	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
 	books/served-catalog \
@@ -921,6 +922,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
+	tests/acl2/served-catalog-view-tests \
 	tests/acl2/served-catalog-chain-tests \
 	tests/acl2/served-catalog-scan-tests \
 	tests/acl2/served-catalog-owner-tests \
@@ -1258,6 +1260,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-journal \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
+	books/owner-time-journal-writer \
+	tests/acl2/owner-time-journal-writer-tests \
+	books/owner-stop-drain \
+	tests/acl2/owner-stop-drain-tests \
 	books/web-request \
 	tests/acl2/web-request-tests \
 	books/web-2047 \

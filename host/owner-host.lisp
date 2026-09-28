@@ -166,7 +166,12 @@
 ; PRF-322) and the 440 at the POST command (books/owner-time-admission.lisp,
 ; PRF-323).
 (include-book "../books/owner-time-journal")
+;; PKT-875 (PRF-357): a graceful stop's drain (fn-osd-drain-step), which
+;; host/native/owner.lisp fnn-owner-drain-service calls in every image.
+(include-book "../books/owner-stop-drain")
 (include-book "../books/owner-time-admission")
+; lane health-truth-journal (PKT-872, PRF-360): the journal writer never keeps a torn line.
+(include-book "../books/owner-time-journal-writer")
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
@@ -1130,6 +1135,17 @@
     (value (fn-otm-limits (list (fn-cfg-limit v "barrier-deadline-ms")
                                 (fn-cfg-limit v "barrier-stall-ms")
                                 (fn-cfg-limit v "clock-event-ms"))))))
+
+;; PRF-359 (PKT-872): the free octets a write needs admitted
+;; (books/owner-time-model.lisp fn-otm-space-need): PRF-129's maintenance
+;; reserve, two batches at the live batch octet bound
+;; (books/owner-log-route.lisp fn-olr-omax) and the operator's
+;; `disk-reserve-octets' row (ACL2's default when unset).
+(defun fn-owner-space-need (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((v (fn-cfg-value (fn-owner-config state))))
+    (value (fn-otm-space-need (fn-olr-omax v) (fn-smr-reserve-octets)
+                              (fn-cfg-limit v "disk-reserve-octets")))))
 
 ;; Whether the oldest queued submission is a served POST's (not a control
 ;; submission, not a peer transit): the only kind a slow disk sheds.

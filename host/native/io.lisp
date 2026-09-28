@@ -870,6 +870,9 @@ entropy is a host fault.  WIDTH is ACL2's."
 ;; when no writer runs.
 (defvar *fnn-log-sink* nil)
 (defvar *fnn-log-writer* nil)
+;; PKT-872: the sink dropped a journal entry and no journal entry has been
+;; queued since.  Read and written under the queue mutex only.
+(defvar *fnn-journal-dropped* nil)
 
 (defun fnn-log-queue-push (item)
   "Append ITEM; the caller holds the queue mutex."
@@ -896,8 +899,17 @@ otherwise T, the line queued or dropped as ACL2 decided."
         (unless (and (consp answer) (member (first answer) '(:queue :drop)))
           (fnn-fault "ACL2 returned a malformed log sink decision"))
         (fnn-log-sink-accept (second answer) "an offer")
-        (when (eq (first answer) :queue)
-          (fnn-log-queue-push (cons destination octets)))
+        (if (eq (first answer) :queue)
+            ;; PKT-872: the first journal entry queued after a dropped one
+            ;; tells the writer, which records the loss by name (ACL2's
+            ;; fn-otm-jw-drop, then the mark line before it).
+            (fnn-log-queue-push
+             (cons (if (and (eq destination :journal) *fnn-journal-dropped*)
+                       (progn (setq *fnn-journal-dropped* nil) :journal-gap)
+                     destination)
+                   octets))
+          (when (eq destination :journal)
+            (setq *fnn-journal-dropped* t)))
         t))))
 
 (defun fnn-log-sink-snapshot ()
@@ -910,12 +922,64 @@ no writer runs."
   "The decision journal's descriptor (STORE/decisions/decisions.fnj, lane
 time-model-2), written only by the log writer thread while it runs.")
 
+(defvar *fnn-journal-w* nil
+  "ACL2's journal writer state (books/owner-time-journal-writer.lisp: OFFSET
+OWE CLOSED), set by fnn-owner-journal-open before its first entry is offered
+and then read and written only by the log writer thread.")
+
+(defun fnn-journal-test-fail-p ()
+  "A developer image's injected ENOSPC: while FN_NATIVE_TEST_JOURNAL_FAIL_FILE
+names a file that exists, every journal append writes half its octets and
+fails (the fitness f2-full shape, without filling a filesystem)."
+  (let ((path (fnn-developer-selector "FN_NATIVE_TEST_JOURNAL_FAIL_FILE")))
+    (and path (probe-file path) t)))
+
+(defun fnn-journal-write (octets after-drop)
+  "PKT-872 (PRF-360): append one journal entry by ACL2's writer rule
+(books/owner-time-journal-writer.lisp).  The octets are ACL2's plan (the
+mark line first when an entry was lost since the last whole one; nil when
+the journal is closed); a failed append is truncated back to the last whole
+entry, and a truncation that fails closes the journal for the run, so no
+line is ever appended after a torn one.  :written or :failed (the sink
+counts it dropped)."
+  (let* ((w (if after-drop (fnn-core 'fn-otm-jw-drop *fnn-journal-w*) *fnn-journal-w*))
+         (planned (fnn-core 'fn-otm-jw-plan w (fnn-octet-list octets))))
+    (unless (listp planned)
+      (fnn-fault "ACL2 returned a malformed journal plan"))
+    (if (null planned)
+        (progn (setq *fnn-journal-w* w) :failed)
+      (let* ((data (fnn-octets planned))
+             (outcome (handler-case
+                          (progn
+                            (if (fnn-journal-test-fail-p)
+                                (progn (fnn-write-all *fnn-journal-fd*
+                                                      (subseq data 0 (floor (length data) 2)))
+                                       (error "injected journal append failure"))
+                              (fnn-write-all *fnn-journal-fd* data))
+                            :written)
+                        (error () :failed))))
+        (destructuring-bind (w2 action)
+            (fnn-core 'fn-otm-jw-after w (length data) outcome)
+          (when (consp action)
+            (unless (and (eq (first action) :truncate) (integerp (second action))
+                         (<= 0 (second action)))
+              (fnn-fault "ACL2 returned a malformed journal action ~a" action))
+            (let ((ok (handler-case
+                          (progn (fnn-posix () (sb-posix:ftruncate *fnn-journal-fd* (second action)))
+                                 t)
+                        (error () nil))))
+              (setq w2 (fnn-core 'fn-otm-jw-truncated w2 ok))
+              (unless ok
+                (fnn-log-line (fnn-core 'fn-otm-jw-closed-line (second action))))))
+          (setq *fnn-journal-w* w2)
+          outcome)))))
+
 (defun fnn-log-write-item (destination octets)
   "Write one whole line: :written, or :failed (ACL2 counts it dropped)."
   (handler-case
-      (cond ((eq destination :journal)
-             (if *fnn-journal-fd*
-                 (progn (fnn-write-all *fnn-journal-fd* octets) :written)
+      (cond ((member destination '(:journal :journal-gap))
+             (if (and *fnn-journal-fd* *fnn-journal-w*)
+                 (fnn-journal-write octets (eq destination :journal-gap))
                :failed))
             ((and (eq destination :log) *fnn-owner-log-fd*)
              (fnn-write-all *fnn-owner-log-fd* octets)
@@ -2450,9 +2514,21 @@ handed to fnn-state-checkpoint-write."
              nil))
       (sb-alien:free-alien buffer))))
 
+(defun fnn-disk-free-cap-text (cap)
+  "The developer cap's text: CAP itself, or with a leading @ the first line
+of the file it names, read at every observation (lane health-truth, PRF-359:
+the native case fills and frees the disk while the owner runs; a missing
+file is no cap)."
+  (if (and (plusp (length cap)) (char= (char cap 0) #\@))
+      (ignore-errors
+       (with-open-file (in (subseq cap 1) :direction :input :if-does-not-exist nil)
+         (and in (string-trim '(#\Space #\Newline #\Return #\Tab) (or (read-line in nil) "")))))
+    cap))
+
 (defun fnn-disk-free-octets (store)
-  (let ((free (fnn-statvfs-free-octets (fnn-store-root store)))
-        (cap (fnn-developer-selector "FN_NATIVE_DISK_FREE")))
+  (let* ((free (fnn-statvfs-free-octets (fnn-store-root store)))
+         (raw (fnn-developer-selector "FN_NATIVE_DISK_FREE"))
+         (cap (and raw (fnn-disk-free-cap-text raw))))
     (if (and free cap)
         (let ((n (ignore-errors (parse-integer cap))))
           (unless (and (integerp n) (>= n 0))
@@ -5038,7 +5114,7 @@ tree root), or stop the build."
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
-    "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN" "FN_NATIVE_OWNER_TEST_BARRIER_MS" "FN_NATIVE_TEST_DISK_STALL_FILE" "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE" "FN_NATIVE_FAULT_BACKTRACE"
+    "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN" "FN_NATIVE_OWNER_TEST_BARRIER_MS" "FN_NATIVE_TEST_DISK_STALL_FILE" "FN_NATIVE_TEST_JOURNAL_FAIL_FILE" "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE" "FN_NATIVE_FAULT_BACKTRACE"
     "FN_NATIVE_COUNT_LOOKUPS"
     "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"
     "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER" "FN_BP_TEST_DELIVER_FAULT"
