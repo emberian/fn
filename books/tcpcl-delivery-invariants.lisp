@@ -256,8 +256,10 @@
 ; fnn-tcl-act on every completed inbound transfer.  If the messages the plan
 ; releases carry the transfer's final END ACK, the callback's result was
 ; (:accepted PATH) -- durable custody -- and the plan names the progress
-; point, so the node runs that custody's delivery before the session reads
-; again.  No acknowledged custody waits for its session to close.
+; point, so the node runs that custody's delivery at the session's first
+; quiet read timeout (or, if the peer ends the session first, in the
+; between-sessions pass).  No acknowledged custody waits for its session to
+; close.
 (defthm fn-tcl-acknowledged-custody-is-progressed-in-its-turn
   (let ((plan (fn-tcl-delivery-plan messages xfer-id result)))
     (implies (fn-tcl-output-has-final-ackp (fn-tcl-delivery-plan-messages plan) xfer-id)

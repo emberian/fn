@@ -3808,11 +3808,14 @@ at the next start (PKT-464).
   exists; the loop continues with the queued progress events after it.
 - **Progress in the same turn (PKT-873, PRF-906, lane durability-bugs
   2026-09-28).** "The loop continues with the queued progress events" is
-  now the session's own turn, not the end of the session: when the plan
+  now bounded inside the session, not deferred to its end: when the plan
   names the progress point (`fn-tcl-delivery-plan-progress-p`, exactly the
-  `:accepted` plans), `fnn-tcl-session` calls `*fnn-tcl-progress*` after
-  flushing the plan's messages and before it reads again, and `bp-node
-  serve` binds it to the delivery pass (`fnn-bpnode-dispatch-pending`,
+  `:accepted` plans), `fnn-tcl-session` marks the custody and, at its first
+  quiet read timeout after it (at most max(1, keepalive/4) s,
+  `fnn-tcl-read-timeout`), calls `*fnn-tcl-progress*`; a peer that ends the
+  session first (`bp send`, `bp-service run`) is delivered by the
+  between-sessions pass as before. `bp-node serve` binds the hook to the
+  delivery pass (`fnn-bpnode-dispatch-pending`,
   after the kind-5 durable-cut marker). Keystone
   `fn-tcl-acknowledged-custody-is-progressed-in-its-turn`: a plan whose
   messages carry the transfer's final END ACK came from an `(:accepted

@@ -99,10 +99,11 @@
 ;;; failure is not a refusal: it is uncertain, and the caller never acks.
 
 (defvar *fnn-tcl-progress* nil
-  "When non-nil, a function (conn) the session calls after a turn in which it
+  "When non-nil, a function (conn) the session calls at the first quiet read
+timeout (at most max(1, keepalive/4) seconds, fnn-tcl-read-timeout) after it
 released the final ACK of an accepted transfer (ACL2's
-fn-tcl-delivery-plan-progress-p), before it reads its next input: the
-receiving node's delivery of the custody it just acknowledged (PKT-873,
+fn-tcl-delivery-plan-progress-p) while the peer keeps the session open: the
+receiving node's delivery of the custody it acknowledged (PKT-873,
 books/tcpcl-delivery-invariants.lisp fn-tcl-acknowledged-custody-is-
 progressed-in-its-turn).  Before it, a node delivered only after the session
 ended, and a peer that keeps its session open with keepalives held the
@@ -410,7 +411,16 @@ failure rather than a refusal."
              (wake (fnn-tcl-now)))
         (cond
           ((eq incoming :timeout)
-           (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake)))
+           (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake))
+           ;; PKT-873: the peer kept the session open and quiet for a whole
+           ;; read timeout after an acknowledged custody: that custody goes to
+           ;; progress now, inside the session.  A peer that ends the session
+           ;; after the ACK (bp send, bp-service run) never reaches here and
+           ;; the node's between-sessions pass delivers it as before.
+           (when (and (fnn-tclc-progress conn) *fnn-tcl-progress*
+                      (not (fnn-tclc-closing conn)))
+             (setf (fnn-tclc-progress conn) nil)
+             (funcall *fnn-tcl-progress* conn)))
           ((zerop (length incoming))
            (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tcp-closed (fnn-tclc-session conn)))
            (return))
@@ -422,12 +432,6 @@ failure rather than a refusal."
                (setf (fnn-tclc-carry conn) (third triple))
                (fnn-tcl-apply conn triple "event")))
            (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake))))
-        ;; PKT-873: the custody this turn acknowledged goes to progress
-        ;; now, while the session stays open.
-        (when (and (fnn-tclc-progress conn) *fnn-tcl-progress*
-                   (not (fnn-tclc-closing conn)))
-          (setf (fnn-tclc-progress conn) nil)
-          (funcall *fnn-tcl-progress* conn))
         (when (and on-ready (not ready-called)
                    (eq (fnn-core 'fn-tcl-host-phase
                                  (fnn-tclc-session conn)) :established))
