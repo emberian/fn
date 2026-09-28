@@ -107,7 +107,11 @@ class SlowDiskSourceTests(unittest.TestCase):
         shed = owner[owner.index("(defun fnn-owner-shed-queued-locked "):]
         self.assertIn("'fn-owner-shed-outcome", shed[:2000])
         wrapper = (ROOT / "host" / "owner-host.lisp").read_text()
-        self.assertIn("(fn-otm-read-span\n", wrapper)
+        # The host's read is fn-oas-read-span since zero-copy-commit, which
+        # is fn-otm-read-span within the article slots
+        # (books/owner-article-slots.lisp fn-oas-read-span-when-held-unfolds).
+        self.assertIn("(fn-oas-read-span\n", wrapper)
+        self.assertIn("(fn-otm-read-span", (ROOT / "books" / "owner-article-slots.lisp").read_text())
         self.assertIn("(fn-otm-shed-reply s)", wrapper)
         self.assertIn("(fn-owner-outcome id :refused state)", wrapper)
         live = (ROOT / "host" / "native-live-status-host.lisp").read_text()

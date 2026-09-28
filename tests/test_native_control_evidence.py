@@ -42,13 +42,13 @@ class NativeControlEvidenceTests(filing.NativeControlFilingTests):
     test_two_node_withdrawal = None
 
     def operator(self, node, *words, expected=0):
-        return self.command([IMAGE, "--fn", "operator", node["config"], *words],
+        return self.command([IMAGE, "--fn", "operator", node.config, *words],
                             expected=expected).stdout.decode("ascii")
 
     def test_log_and_evidence_live_and_offline(self):
         openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
         node = self.initialize("evidence", ["fn.test", "control.cancel"])
-        root = node["root"]
+        root = node.root
         principal, ed_public, ed_secret = (root / "principal.bin",
                                            root / "ed-public.bin", root / "ed-secret.bin")
         principal.write_bytes(bytes([85]) * 32)
@@ -60,8 +60,8 @@ class NativeControlEvidenceTests(filing.NativeControlFilingTests):
         ml_private, ml_public = root / "ml-private.pem", root / "ml-public.pem"
         self.command([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out", ml_private])
         self.command([openssl, "pkey", "-in", ml_private, "-pubout", "-out", ml_public])
-        control = root / "control.sock"
-        self.start(node)
+        control = node.control
+        node.start()
 
         def author(stem, message_id, control_field):
             source = root / (stem + ".eml")
@@ -85,7 +85,7 @@ class NativeControlEvidenceTests(filing.NativeControlFilingTests):
         live_cancel = self.operator(node, "control", "evidence", CANCEL)
         live_target = self.operator(node, "control", "evidence", TARGET)
         live_absent = self.operator(node, "control", "evidence", "<absent@example.invalid>")
-        usage = self.command([IMAGE, "--fn", "operator", node["config"], "control",
+        usage = self.command([IMAGE, "--fn", "operator", node.config, "control",
                               "evidence", "not-a-message-id"], expected=5)
         self.stop(node)
         offline_log = self.operator(node, "control", "log")
