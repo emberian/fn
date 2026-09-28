@@ -257,6 +257,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-checkpoint-arena-tests \
 	books/heap-store-figure \
 	books/heap-figure \
+	books/heap-open-nursery \
+	tests/acl2/heap-open-nursery-tests \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
 	tests/acl2/heap-figure-tests \

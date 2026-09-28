@@ -239,6 +239,9 @@
 ; which the operator loaded below calls.  After every `ld': no host wrapper
 ; above uses it, and it would otherwise serve their books transitively.
 (include-book "books/heap-figure")
+;; host/native/io.lisp fnn-open-nursery calls fn-heap-open-nursery-trigger,
+;; as in build.lisp.
+(include-book "books/heap-open-nursery")
 (include-book "books/heap-reservation")
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
