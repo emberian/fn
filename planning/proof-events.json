@@ -12814,6 +12814,15 @@
           "name": "fn-lb-an-account-binding-survives-the-next-start"
         }
       ]
+    },
+    {
+      "id": "PRF-385",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-feed-restart-forgets-the-previous-clock-domain"
+        }
+      ]
     }
   ]
 }

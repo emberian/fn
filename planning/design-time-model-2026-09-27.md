@@ -380,8 +380,8 @@ Nothing a new run decides reads a reading of an earlier run:
   replay of the feed journal (:feed-retry and :feed-lost carry the old
   run's readings) and kept by fn-feed-restart, so a peer that was backing
   off before a restart was not fed for about the previous run's uptime.
-  the fix (fn-feed-restart forgets it; PRF-385) follows on
-  lane/time-bars-feed, a wide book waiting for its token; the retry count, the
+  fn-feed-restart now forgets it (PRF-385,
+  fn-feed-restart-forgets-the-previous-clock-domain); the retry count, the
   semantic observation, is kept and sets the next back-off.
 
 ## 5. What carries over (proofs)
