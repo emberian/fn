@@ -64,6 +64,10 @@
 (include-book "accounts")
 (include-book "auth-secret")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nntp-effectsp))))
+
 (local (in-theory (enable fn-nntp-syntax-vocabulary
                           fn-nntp-session-vocabulary
                           fn-nntp-projection-vocabulary
@@ -3885,3 +3889,10 @@
                             fn-auth-redeem-outcome fn-auth-redeem-eventp)
                            (fn-auth-delegate-pinned fn-auth-single
                             fn-auth-sessionp)))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-auth-nntp-effects-are-auth-effects)))

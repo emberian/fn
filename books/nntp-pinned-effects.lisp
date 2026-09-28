@@ -8,6 +8,13 @@
 ; (`fn-cu-serve-reply-effects-well-formed').
 (include-book "peer-catchup-effects")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nntp-response-octetp)
+                          (:definition fn-nntp-response-textp)
+                          (:definition fn-nov-clean-linep)
+                          (:definition fn-nov-line-octetp))))
+
 (local (defthm fn-pinned-effects-projection-is-state
          (implies (fn-nntp-projectionp archive) (fn-statep archive))
          :hints (("Goal" :in-theory (enable fn-nntp-projectionp)))))

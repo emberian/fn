@@ -11,7 +11,11 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-article-octets-are-proper-list))))
+(local (in-theory (enable (:definition fn-article-header-rev-add-line)
+                          (:definition fn-article-next-line-aux)
+                          (:rewrite fn-article-extended-header-is-list)
+                          (:rewrite fn-article-finish-fields-is-append)
+                          (:rewrite fn-article-octets-are-proper-list))))
 
 ; -----------------------------------------------------------------------------
 ; Field construction preserves the article view recognizers.
@@ -495,3 +499,10 @@
           fn-article-successful-parse-header-bound
           fn-article-successful-parse-body-bound
           fn-article-successful-parse-field-count-bound))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-article-successful-parse-input-octets)))

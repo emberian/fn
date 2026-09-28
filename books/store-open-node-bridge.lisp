@@ -36,6 +36,11 @@
 (include-book "store-open-bridge")
 (include-book "config-store-traces")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-csi-full-relationp)
+                          (:rewrite fn-sf-admissible-image-facts))))
+
 ; Every configuration record names transaction 0, and the journal is a true
 ; list.  A configuration at the same txid precedes the event
 ; (fn-cpr-config-firstp), so these records are all replayed before any event.

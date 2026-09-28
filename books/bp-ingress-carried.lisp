@@ -22,6 +22,10 @@
 (include-book "store-prepare-carried")
 (local (include-book "article-properties"))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-article-successful-parse-input-octets))))
+
 ; The policy test without the whole-store recognizer: fn-bpi-policy-appliesp
 ; begins with (fn-sn-statep store), a walk of the whole durable history per
 ; ADU.  The carried prepare's guard is that recognizer, and the relation its

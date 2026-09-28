@@ -24,6 +24,10 @@
 (in-package "ACL2")
 (include-book "byte-store-k0")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-bs-k8-name-absent-from-list-has-no-entry))))
+
 ;; byte-store-k0's local list helpers, restated (they are local there).
 (local
  (defthm fn-bs-k0t-pending-entry-targets-of-append

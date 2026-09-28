@@ -19,6 +19,12 @@
 (include-book "store-files-traces")
 (include-book "owner-time-admission")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-midx-branch-get)
+                          (:definition fn-scr-catalogp)
+                          (:rewrite fn-sn-new-success-requires-actual-matching-durable-node-completion))))
+
 (local (in-theory (disable fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
                            fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp
                            fn-nntp-index-msgid-okp fn-cp-id-length-bound)))

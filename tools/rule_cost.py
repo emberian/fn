@@ -301,11 +301,11 @@ WITHDRAW_HEAD = ";; Withdrawn from includers (lane rule-hygiene, tools/rule_cost
 
 
 def select(result: dict, *, max_useful_books: int, min_useless: int,
-           kinds: tuple[str, ...]) -> list[dict]:
+           kinds: tuple[str, ...], min_useful_books: int = 0) -> list[dict]:
     """The rows to withdraw: costly, useful in at most `max_useful_books`."""
     return [row for row in result["runes"]
             if row["useless"] >= min_useless
-            and row["books_useful"] <= max_useful_books
+            and min_useful_books <= row["books_useful"] <= max_useful_books
             and row["rune"].split()[0][1:] in kinds
             and row["definer"].startswith("books/")]
 
@@ -412,6 +412,8 @@ def main(argv: list[str] | None = None) -> int:
     pull = sub.add_parser("withdraw", help="append the disable blocks to the definers")
     pull.add_argument("ranking", type=Path, help="a `rank --json` file")
     pull.add_argument("--max-useful-books", type=int, default=1)
+    pull.add_argument("--min-useful-books", type=int, default=0,
+                      help="a later tranche: leave the rows an earlier one withdrew")
     pull.add_argument("--min-useless", type=int, default=300_000)
     pull.add_argument("--kinds", default="REWRITE,LINEAR,FORWARD-CHAINING,DEFINITION")
     pull.add_argument("--dry-run", action="store_true")
@@ -426,6 +428,7 @@ def main(argv: list[str] | None = None) -> int:
             result = json.loads(args.ranking.read_text(encoding="utf-8"))
             rows = select(result, max_useful_books=args.max_useful_books,
                           min_useless=args.min_useless,
+                          min_useful_books=args.min_useful_books,
                           kinds=tuple(":" + kind for kind in args.kinds.split(",")))
             for row in rows:
                 print(f"{row['useless']:>12,} {row['books_useful']:>3} {row['rune']} "

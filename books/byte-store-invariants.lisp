@@ -49,6 +49,10 @@
 (include-book "frame")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-entriesp))))
+
 (local (in-theory (enable fn-bs-statep fn-bs-view fn-bs-lookup fn-bs-content
                           fn-bs-names fn-bs-durable-content fn-bs-durable-entry
                           fn-bs-fence-file fn-bs-fence-dir fn-bs-fencedp
@@ -844,4 +848,5 @@
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
 (in-theory (disable (:rewrite fn-bs-inode-tablep-keys-are-inos)
+                    (:rewrite fn-bs-keys-belowp-excludes-bound)
                     (:rewrite fn-bs-op-listp-implies-true-listp)))

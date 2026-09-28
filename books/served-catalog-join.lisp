@@ -52,6 +52,10 @@
 (include-book "served-catalog-join-step")
 (include-book "owner-refresh-indexed")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-col-poll-nth-past-end-is-nil))))
+
 ; The rules below never reason about a Message-ID's syntax.
 (local (in-theory (disable fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
                            fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp

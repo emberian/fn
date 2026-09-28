@@ -63,6 +63,20 @@
 (include-book "store-checkpoint-codec")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-scc-atom-octets)
+                          (:definition fn-scc-atomp)
+                          (:definition fn-scc-frames)
+                          (:definition fn-scc-le-digits)
+                          (:definition fn-scc-nat-encodablep)
+                          (:definition fn-scc-program)
+                          (:definition fn-scc-step)
+                          (:definition fn-scc-string-octets)
+                          (:definition fn-scc-treep)
+                          (:rewrite fn-scc-octet-listp-facts . 1)
+                          (:rewrite fn-scc-octet-listp-facts . 2))))
+
 (defconst *fn-sct-schema* 3)
 (assert-event (equal *fn-sct-schema* *fn-scc-schema*))
 ; The one op added to the tree codec's 0..7.

@@ -40,6 +40,12 @@
 (include-book "pagestore-exec")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition pgs-entry-p)
+                          (:definition pgs-ptab-p)
+                          (:rewrite pgs-true-list-fix-when-true-listp))))
+
 (defstobj pgs-gc
   (pgs-gm :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t)
   (pgs-gf :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t)

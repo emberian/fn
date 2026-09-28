@@ -964,4 +964,5 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-arn-payload-listp-nth)))
+(in-theory (disable (:rewrite fn-arn-payload-listp-nth)
+                    (:rewrite fn-arn-payload-listp-true-listp)))

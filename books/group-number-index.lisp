@@ -98,4 +98,7 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:definition fn-gnix-set)))
+(in-theory (disable (:definition fn-gnix-add)
+                    (:definition fn-gnix-build)
+                    (:definition fn-gnix-key)
+                    (:definition fn-gnix-set)))

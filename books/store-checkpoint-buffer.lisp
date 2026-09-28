@@ -47,6 +47,17 @@
 (include-book "octets-stobj")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-scc-atom-octets)
+                          (:definition fn-scc-atomp)
+                          (:definition fn-scc-le-digits)
+                          (:definition fn-scc-nat-encodablep)
+                          (:definition fn-scc-program)
+                          (:definition fn-scc-string-octets)
+                          (:definition fn-scc-treep)
+                          (:rewrite fn-scc-octet-listp-facts . 2))))
+
 ; -----------------------------------------------------------------------------
 ; List facts the correspondences rest on.
 
@@ -332,5 +343,7 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:definition fn-sccb-treep)
-                    (:rewrite fn-sccb-cons-ops-is-append-repeat)))
+(in-theory (disable (:definition fn-sccb-frame-octets)
+                    (:definition fn-sccb-treep)
+                    (:rewrite fn-sccb-cons-ops-is-append-repeat)
+                    (:rewrite fn-sccb-scc-octetp-is-cbor-octetp)))

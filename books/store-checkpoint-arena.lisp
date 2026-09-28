@@ -42,6 +42,10 @@
 ; fn-rii-sco-extend, the extension the host calls (section 4's twin).
 (include-book "replay-identity-index")
 (local (include-book "arithmetic/top" :dir :system))
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-scc-frames))))
 ;; The reader's two octet-list rules rewrite into each other, and the
 ;; parameter-record identity lemmas fire on every list: off everywhere here.
 (local (in-theory (disable fn-cp-idp fn-cp-idp-true-listp
@@ -649,3 +653,10 @@
 
 (defthm fn-scka-len-lens
   (equal (len (fn-scka-lens ps)) (len ps)))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-scc-le-digits)))

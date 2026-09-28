@@ -34,6 +34,10 @@
 (include-book "records-canonicality")
 (include-book "frame-invariants")
 (local (include-book "arithmetic/top" :dir :system))
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-cp-idp-true-listp))))
 ; The codecs cluster withdrew its vocabulary at export (2026-09-19).  These
 ; proofs induct with the CBOR u16/u32 byte facts, so the book re-enables
 ; that one bundle.  It does NOT re-enable fn-record-record-vocabulary or

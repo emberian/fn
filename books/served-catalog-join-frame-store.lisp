@@ -64,6 +64,10 @@
 (include-book "owner-offer-indexed")
 (include-book "served-catalog-join-pinned")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-sn-new-success-requires-actual-matching-durable-node-completion))))
+
 ; The included world carries recognizer rules whose hypotheses open recursive
 ; predicates on every candidate term (true-listp, stringp, a length bound).
 ; accumulated-persistence over this whole book (2026-09-28, lane d26-books)

@@ -4,6 +4,11 @@
 (include-book "nntp-effects")
 (include-book "nntp-verdict")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nntp-response-octetp)
+                          (:definition fn-nntp-response-textp))))
+
 (defthm fn-stx-printable-is-nntp-clean-field
   (implies (fn-stx-printablep bytes)
            (fn-nov-clean-fieldp bytes))

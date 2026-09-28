@@ -16,6 +16,13 @@
 (in-package "ACL2")
 (include-book "statement-items")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-cbor-decode)
+                          (:definition fn-cbor-decode-bounded)
+                          (:definition fn-cbor-decode-prechecked)
+                          (:rewrite fn-record-cbor-octet-list-true-listp))))
+
 
 
 ;; Convergence: the codecs cluster withdraws its proof vocabulary on export;

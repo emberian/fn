@@ -9,6 +9,10 @@
 (in-package "ACL2")
 (include-book "web-session")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-wr-pct-encode))))
+
 ; Octet-list and parser rules of the included world that these proofs try on
 ; every true-listp, octet and cdr goal and never use (accumulated-persistence
 ; over the whole book, 2026-09-28, lane d26-books).  None is cited below.

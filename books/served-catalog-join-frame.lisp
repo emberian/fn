@@ -25,6 +25,10 @@
 
 (include-book "served-catalog-join-conns")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-scr-catalogp))))
+
 ; -----------------------------------------------------------------------------
 ; An identity completion that is not a signed composite adds no verdict.
 

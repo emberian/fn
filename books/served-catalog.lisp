@@ -48,7 +48,8 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scat-msgid-idp))))
+(local (in-theory (enable (:definition fn-scat-msgid-idp)
+                          (:rewrite fn-nntp-article-idp-is-consp))))
 
 ; Included rules these proofs try on every string, length and group-number
 ; goal and never use (accumulated-persistence over the whole book,

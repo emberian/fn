@@ -322,3 +322,10 @@
   (implies (fn-midx-string-article-listp articles)
            (fn-midx-unique-branchesp (fn-midx-build articles)))
   :hints (("Goal" :induct (fn-midx-build articles))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-midx-branch-get)))

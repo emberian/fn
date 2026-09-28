@@ -61,6 +61,10 @@
 (include-book "post-identity-index")
 (include-book "replay-identity-index")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-midx-branch-get))))
+
 ; -----------------------------------------------------------------------------
 ; 1. The id trie: path-compressed, leaves are the ledger's own id strings.
 ;

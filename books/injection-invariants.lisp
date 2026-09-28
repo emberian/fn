@@ -1136,3 +1136,11 @@
                                    fn-inj-instant-of
                                    fn-inj-absentp fn-af-proto-article-check
                                    fn-article-parse fn-article-result-article)))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-inj-generated-identity-is-the-clock-identity)
+                    (:rewrite fn-inj-supplied-message-id-is-retained-exactly)))

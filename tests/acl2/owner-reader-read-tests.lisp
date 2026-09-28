@@ -434,6 +434,11 @@
 ; rows), and fn-orr-read-span -- the host's own call, not the twin -- runs
 ; over it on live stobjs.
 (include-book "../../books/served-catalog-owner")
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-scr-catalogp)
+                          (:definition fn-scr-conn-okp))))
 (defun g12b-cat-rows (i n fn-cat)
   (declare (xargs :mode :program :stobjs fn-cat))
   (if (and (natp i) (natp n) (< i n))

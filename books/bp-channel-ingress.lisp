@@ -9,6 +9,11 @@
 (in-package "ACL2")
 (include-book "bp-session-admission")
 (include-book "bp-node-receive-boundary")
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bpp-name-delim-at)
+                          (:definition fn-bpp-vcharp))))
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpaj-raw-announced-eid (uri)

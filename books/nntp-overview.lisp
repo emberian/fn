@@ -215,3 +215,11 @@
     fn-nov-decimal-token-is-clean fn-nov-decimal-field-is-clean
     fn-nov-append-pieces-of-cons))
 (in-theory (disable fn-nov-overviewp fn-nov-vocabulary))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-nov-clean-linep)
+                    (:definition fn-nov-line-octetp)))

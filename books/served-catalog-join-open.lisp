@@ -14,6 +14,10 @@
 
 (include-book "served-catalog-join-number")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-bs-natural-head-is-no-other-wire-event))))
+
 (local (in-theory (disable fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
                            fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp
                            fn-nntp-index-msgid-okp fn-cp-id-length-bound)))

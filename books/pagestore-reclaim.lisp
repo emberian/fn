@@ -25,6 +25,13 @@
 (include-book "pagestore-keystones")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition pgs-entry-p)
+                          (:definition pgs-ptab-p)
+                          (:rewrite pgs-ptab-p-true-listp)
+                          (:rewrite pgs-true-list-fix-when-true-listp))))
+
 ; -----------------------------------------------------------------------------
 ; Subsets.
 

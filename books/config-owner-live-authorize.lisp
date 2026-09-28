@@ -23,6 +23,10 @@
 (include-book "config-owner-carried")
 (include-book "config-carried-open")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-sf-admissible-image-facts))))
+
 ; The Store history's own reopen conditions, the ones the candidate open asks
 ; of the records alone (store-open-bridge fn-cpo-open-observed-succeeds-
 ; exactly, without the configured replay and the observed-history shape):

@@ -664,3 +664,13 @@
     (:dir-written (cons (pgs-prefix-keep nwrites nwrites) :old))
     (:record-torn (cons (pgs-prefix-keep nwrites nwrites) :torn))
     (otherwise (cons (pgs-prefix-keep nwrites nwrites) :new))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition pgs-entry-p)
+                    (:definition pgs-ptab-p)
+                    (:rewrite pgs-ptab-p-true-listp)
+                    (:rewrite pgs-true-list-fix-when-true-listp)))

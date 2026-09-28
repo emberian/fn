@@ -65,6 +65,10 @@
 (include-book "store-intern")
 (include-book "history-fold-refinement")   ; fn-row-composite-okp: what the intern makes of a row
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-col-poll-nth-past-end-is-nil))))
+
 ; The row and view lemmas below never reason about a Message-ID's syntax;
 ; these rules fired uselessly through every Message-ID term (815 k prover
 ; steps in fn-sca-withdraw-targets-hides alone; catalog-columns, 2026-09-27).

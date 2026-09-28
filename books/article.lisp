@@ -677,4 +677,6 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-article-header-rev-add-line-recomposes)))
+(in-theory (disable (:definition fn-article-header-rev-add-line)
+                    (:definition fn-article-next-line-aux)
+                    (:rewrite fn-article-header-rev-add-line-recomposes)))

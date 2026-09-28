@@ -37,6 +37,10 @@
 (in-package "ACL2")
 (include-book "nntp-xpat")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-nntp-article-idp-is-consp))))
+
 ; The numbers of the scope the node's XPAT renders a line for: the same
 ; recursion as fn-nntp-xpat-lines-for-numbers, returning the number instead
 ; of the line.

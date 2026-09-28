@@ -34,7 +34,9 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-me-messagep)
+(local (in-theory (enable (:definition fn-me-commitp)
+                          (:definition fn-me-commitsp)
+                          (:definition fn-me-messagep)
                           (:definition fn-me-messagesp)
                           (:rewrite fn-me-messagesp-implies-true-listp))))
 

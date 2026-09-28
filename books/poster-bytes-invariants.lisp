@@ -12,6 +12,13 @@
 (include-book "injection-invariants")
 (include-book "owner")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-af-atextp)
+                          (:definition fn-af-dot-atom-text-aux)
+                          (:rewrite fn-inj-generated-identity-is-the-clock-identity)
+                          (:rewrite fn-inj-supplied-message-id-is-retained-exactly))))
+
 (local
  (defthm fn-pb-inj-append-is-append
    (equal (fn-inj-append a b) (append a b))

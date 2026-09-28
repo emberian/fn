@@ -6,6 +6,10 @@
 (include-book "bp-adu")
 (include-book "bp-native-app")
 (include-book "bp-session-admission")
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nntp-response-textp))))
 (verify-guards fn-bpaj-eid-text)
 
 (defun fn-bpah-local-pendingp (held node)

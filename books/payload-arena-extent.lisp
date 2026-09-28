@@ -42,7 +42,10 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-arn-lz-extentp))))
+(local (in-theory (enable (:definition fn-arn-extentp)
+                          (:definition fn-arn-lz-extentp)
+                          (:definition fn-arn-lz-guardp)
+                          (:rewrite fn-arn-payload-listp-true-listp))))
 
 (defstobj fn-arena$x
   (fn-arena$x-inner :type fn-arena-paged)

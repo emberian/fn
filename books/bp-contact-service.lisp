@@ -7,6 +7,11 @@
 (include-book "bp-node-machine")
 (include-book "clock")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bpp-name-delim-at)
+                          (:definition fn-bpp-vcharp))))
+
 (defun fn-bpsc-windowp (x)
   (declare (xargs :guard t))
   (and (true-listp x) (equal (len x) 4)

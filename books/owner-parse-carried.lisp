@@ -47,6 +47,11 @@
 (include-book "peer-carriage")
 (include-book "owner-advance-carried")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-ctl-classify-octets)
+                          (:definition fn-pa-carrier-kind))))
+
 ; -----------------------------------------------------------------------------
 ; The carry.
 

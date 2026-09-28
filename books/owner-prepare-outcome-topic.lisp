@@ -32,6 +32,10 @@
 (in-package "ACL2")
 (include-book "owner-prepare-outcome")
 (include-book "consumer-store-invariants")
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-snt-consumerp))))
 (local
  (defthm fn-pout-consumer-frontier-of-replay
    (implies (and (equal (fn-cpe-projection-replay nil records 0) (list :ok c)) c)

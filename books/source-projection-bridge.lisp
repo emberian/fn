@@ -10,6 +10,10 @@
 (in-package "ACL2")
 (include-book "hybrid-carrier")
 (include-book "injection-invariants")
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-article-next-line-aux))))
 ;
 ; THE RELATION.  For a stored record `stored' that is this agent's injection
 ; of `source' with neither the Message-ID nor the Date generated (which

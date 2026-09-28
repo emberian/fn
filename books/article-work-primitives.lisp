@@ -150,3 +150,10 @@
 (defthm fn-aw-body-cost-bound
   (<= (fn-aw-c (fn-aw-body xs)) (1+ (len xs)))
   :hints (("Goal" :induct (fn-aw-body xs))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-aw-reverse-value)))

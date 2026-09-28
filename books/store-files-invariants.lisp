@@ -775,4 +775,5 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-sf-recovery-admissible-image-facts)))
+(in-theory (disable (:rewrite fn-sf-admissible-image-facts)
+                    (:rewrite fn-sf-recovery-admissible-image-facts)))

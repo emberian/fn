@@ -12,6 +12,10 @@
 (include-book "../../books/catalog-record")   ; fn-held-facts-of: the rows' facts
 (include-book "must-fail-checked")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-ctl-withdrawal-effect))))
+
 (defun clt-octets (s) (fn-record-string-octets s))
 (defun clt-crlf-join (lines)
   (if (consp lines)

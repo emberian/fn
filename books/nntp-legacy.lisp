@@ -18,6 +18,11 @@
 (in-package "ACL2")
 (include-book "nntp-overview")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nov-clean-linep)
+                          (:definition fn-nov-line-octetp))))
+
 ; The five books of the nntp cluster and books/nntp-overview.lisp withdraw
 ; their definitions at their export events; this book reasons about the
 ; renderers themselves, so it re-enables exactly them, locally.  No includer

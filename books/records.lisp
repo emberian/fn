@@ -555,6 +555,13 @@
 ; The wide uint's domain and rest facts are cbor-invariants' (packet P6).
 (local (include-book "cbor-invariants"))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-cbor-decode)
+                          (:definition fn-cbor-decode-bounded)
+                          (:definition fn-cbor-decode-prechecked)
+                          (:rewrite fn-record-cbor-octet-list-true-listp))))
+
 (defthm fn-record-read-uint-success-domain
   (implies
    (and (fn-cbor-octet-listp octets)

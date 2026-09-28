@@ -154,6 +154,10 @@
 
 (local (include-book "arithmetic-5/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-sccr-scc-octet-listp-is-cbor-octet-listp))))
+
 (defthm fn-heap-mb-of-covers
   (<= (nfix octets) (* *fn-heap-mib* (fn-heap-mb-of octets)))
   :rule-classes :linear)

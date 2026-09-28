@@ -28,6 +28,10 @@
 (include-book "peer-carriage-rows")
 (include-book "history-wire")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-pa-carrier-kind))))
+
 ; =============================================================================
 ; 1a. What one committed Store event contributes
 

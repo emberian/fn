@@ -14,6 +14,11 @@
 (include-book "nntp-newnews")
 (include-book "nntp-overview")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nov-clean-linep)
+                          (:definition fn-nov-line-octetp))))
+
 ; The five books of the nntp cluster withdraw their definitions at their
 ; export events (2026-09-19 split of books/nntp.lisp); this book reasons
 ; about the transitions, so it re-enables exactly them, locally.
@@ -1557,7 +1562,11 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-nntp-clean-line-is-response-text)
+(in-theory (disable (:definition fn-nntp-effectsp)
+                    (:definition fn-nntp-response-octetp)
+                    (:definition fn-nntp-response-textp)
+                    (:rewrite fn-nntp-clean-line-is-response-text)
                     (:rewrite fn-nntp-decimal-token-is-response-text)
                     (:rewrite fn-nntp-description-text-is-response-text)
-                    (:rewrite fn-nntp-printable-token-is-response-text)))
+                    (:rewrite fn-nntp-printable-token-is-response-text)
+                    (:rewrite fn-nntp-response-text-true-listp)))

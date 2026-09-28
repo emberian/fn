@@ -1579,4 +1579,9 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-bpp-vchar-listp-implies-true-listp)))
+(in-theory (disable (:definition fn-bpp-block-value)
+                    (:definition fn-bpp-crc-octets)
+                    (:definition fn-bpp-name-delim-at)
+                    (:definition fn-bpp-vcharp)
+                    (:rewrite fn-bpp-dtn-sspp-has-a-name-delimiter)
+                    (:rewrite fn-bpp-vchar-listp-implies-true-listp)))

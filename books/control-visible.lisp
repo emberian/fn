@@ -29,6 +29,11 @@
 ; acceptance composite, decoded as replay decodes it.
 (include-book "replay")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-ctl-withdrawal-effect)
+                          (:definition fn-ctl-withdrawn-by-p))))
+
 ; Some record in WS whose cause is CAUSE withdraws X.
 (defun fn-ctl-withdrawn-via-p (x ws cause verdicts)
   (declare (xargs :guard t))

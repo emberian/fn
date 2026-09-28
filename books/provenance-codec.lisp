@@ -52,6 +52,10 @@
 (include-book "records-canonicality")
 (include-book "identity-invariants")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-prov-structured-is-not-a-string))))
+
 (local (in-theory (enable fn-cbor-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------

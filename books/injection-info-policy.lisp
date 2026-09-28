@@ -16,6 +16,11 @@
 (include-book "posting-account")
 (include-book "article-fields")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-af-atextp)
+                          (:definition fn-af-dot-atom-text-aux))))
+
 ; The octets of a text, a string's character codes or an octet list as is.
 (defun fn-ipp-codes (chars)
   (declare (xargs :guard (character-listp chars)))
@@ -111,5 +116,6 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:definition fn-ipp-split-at)
+(in-theory (disable (:definition fn-ipp-addr-specp)
+                    (:definition fn-ipp-split-at)
                     (:rewrite fn-ipp-addr-spec-has-no-quote-or-line-break)))

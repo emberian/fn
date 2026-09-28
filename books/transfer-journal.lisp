@@ -38,6 +38,10 @@
 (include-book "transfer")
 (include-book "frame")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-frame-len-2-conses))))
+
 ; The codecs cluster withdraws the frame vocabulary at its export theory
 ; (BOARD, 2026-09-19 codecs).  This book opens it only where a guard proof
 ; needs it, in that event's own hint, never book-wide: `fn-frame-octet-

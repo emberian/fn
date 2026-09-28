@@ -1319,4 +1319,6 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:definition fn-ot-nat-digits)))
+(in-theory (disable (:definition fn-ot-hex-decode)
+                    (:definition fn-ot-nat-digits)
+                    (:rewrite fn-ot-hex-decode-length)))

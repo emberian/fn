@@ -29,6 +29,10 @@
 (in-package "ACL2")
 (include-book "store-intern")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-sn-completion-is-last-p))))
+
 (local (in-theory (enable fn-sn-row-delta)))
 (local (in-theory (disable fn-arena-payload-is-nth fn-arena-count-is-len
                            fn-arena-seal-list-is-append fn-arena-p-is-payload-listp

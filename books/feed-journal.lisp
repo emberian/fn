@@ -5,6 +5,11 @@
 (include-book "peer-feed")
 (include-book "frame-trailer")
 (local (include-book "arithmetic/top" :dir :system))
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-frame-len-4-conses)
+                          (:rewrite fn-frame-not-consp-when-len-zero))))
 (local (in-theory (enable fn-frame-octet-vocabulary)))
 
 (defconst *fn-feed-journal-prefix-size* 4)

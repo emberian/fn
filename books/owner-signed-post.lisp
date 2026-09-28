@@ -30,6 +30,11 @@
 (include-book "peer-authored-accept")
 (include-book "hybrid-lifecycle-store-invariants")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-ctl-withdrawal-effect)
+                          (:definition fn-pa-carrier-kind))))
+
 ; -----------------------------------------------------------------------------
 ; The kind-4 event ACL2 constructs names the POST's Message-ID and the
 ; enrollment generation the plan selected.

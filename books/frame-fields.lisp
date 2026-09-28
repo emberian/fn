@@ -9,6 +9,11 @@
 (include-book "wildmat")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-frame-len-2-conses)
+                          (:rewrite fn-frame-len-4-conses))))
+
 (local (in-theory (enable fn-cbor-invariants-vocabulary)))
 (local (in-theory (enable fn-frame-octet-vocabulary)))
 
@@ -591,3 +596,10 @@
              fn-frame-field-octets-are-octets
              fn-frame-fields-octets-are-octets fn-frame-head-fields-shape
              fn-frame-decode-payload-octets))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-frame-textp)))

@@ -12,7 +12,8 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpnp-first-busy-stranded))))
+(local (in-theory (enable (:definition fn-bpnp-busy-strandedp)
+                          (:definition fn-bpnp-first-busy-stranded))))
 
 (local
  (defthm bpbusy-step-is-busy-step

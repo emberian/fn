@@ -672,3 +672,10 @@
                     fn-sf-eventp fn-sf-event-listp fn-sf-tracep
                     fn-sf-dispatch fn-sf-run-events fn-sf-run-trace
                     fn-sf-ghost-covers-emittedp))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-sf-member-preserved-by-prefix)))

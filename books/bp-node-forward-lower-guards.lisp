@@ -4,6 +4,11 @@
 (include-book "bp-fnbs-dispatch-codec")
 (include-book "bp-forward-attempt")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bpb-block-listp)
+                          (:rewrite fn-bpp-dtn-sspp-has-a-name-delimiter))))
+
 (verify-guards fn-bpnp-dispatch-record)
 (verify-guards fn-bpnp-dispatch-recordp)
 (verify-guards fn-bpn-peer-octets)

@@ -23,6 +23,10 @@
 ; at open only.
 (in-package "ACL2")
 (include-book "config-observed")
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-replay-identity-loop))))
 (local (in-theory (disable fn-sn-make-v6)))
 
 ; A total nth: the checkpoint is decoded from bytes, so its accessors take

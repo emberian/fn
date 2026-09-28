@@ -59,6 +59,11 @@
 (include-book "nntp-auth")
 (include-book "group-bucket-index")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nntp-effectsp)
+                          (:rewrite fn-auth-nntp-effects-are-auth-effects))))
+
 ; -----------------------------------------------------------------------------
 ; The pin identity and the live view (NNT-042; D33: a reader's view is a
 ; VERSION that advances between commands, never within one).

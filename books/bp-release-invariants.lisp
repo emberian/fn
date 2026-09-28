@@ -21,6 +21,10 @@
 (include-book "bp-release")
 (include-book "bp-workflow-binding-core")
 (include-book "retention-invariants")
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bp-journal-recordp))))
 ; retention proof vocabulary is withdrawn at that book's export (core, 2026-09-19); open it here.
 (local (in-theory (enable fn-retention-invariants-vocabulary)))
 (local (in-theory (enable fn-retain-statep fn-retain-admissiblep fn-retain-admit fn-retain-release

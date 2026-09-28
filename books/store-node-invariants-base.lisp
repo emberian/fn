@@ -1024,6 +1024,11 @@
 ; Mixed-trace semantic preparation and frontier foundation.
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-replay-identity-loop)
+                          (:definition fn-replay-verdict-pairs))))
+
 (local (in-theory (disable fn-node-statep fn-sf-statep fn-record-p
                            fn-node-prepare fn-node-complete fn-node-recover
                            fn-replay-advance-txid fn-replay fn-replay-loop
@@ -2059,3 +2064,10 @@
                             (suffix (last records)))
                  (:instance fn-snt-but-last-append-last-total (xs records)))
            :in-theory (disable fn-sf-history-recoverablep fn-sf-but-last))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-sn-new-success-requires-actual-matching-durable-node-completion)))

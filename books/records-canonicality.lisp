@@ -6,6 +6,10 @@
 (in-package "ACL2")
 (include-book "records-invariants")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-cbor-decode-prechecked))))
+
 ; The reverse direction is about the codec's definitions, so they are opened
 ; locally here.  Records and both results stay opaque: the record lemmas from
 ; `records' close the goals about them.

@@ -4,6 +4,10 @@
 (in-package "ACL2")
 (include-book "nntp-auth-invariants")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-nntp-article-idp-is-consp))))
+
 (local
  (defthm fn-auth-fold-authinfo-keeps-the-config
    (equal (fn-auth-session-config

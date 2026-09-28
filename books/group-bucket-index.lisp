@@ -6,6 +6,12 @@
 (include-book "msgid-index")
 (include-book "group-number-index")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-gnix-add)
+                          (:definition fn-gnix-build)
+                          (:definition fn-gnix-key))))
+
 ; A bucket is (group entries . numbers): the group's entries, newest first,
 ; and NUMBERS, the same entries keyed by available number
 ; (books/group-number-index.lisp; over-number-index, PRF-189).  `fn-gidx-put'
@@ -364,4 +370,5 @@
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
 (in-theory (disable (:definition fn-gidx-numbers-okp)
-                    (:definition fn-gidx-put)))
+                    (:definition fn-gidx-put)
+                    (:rewrite fn-gidx-bucket-numbers-under-okp)))

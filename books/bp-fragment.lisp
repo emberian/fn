@@ -465,4 +465,10 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-bpf-fragment-listp-is-a-true-list)))
+(in-theory (disable (:definition fn-bpf-canvas)
+                    (:definition fn-bpf-cell-at)
+                    (:definition fn-bpf-fragment-listp)
+                    (:definition fn-bpf-fragmentp)
+                    (:rewrite fn-bpf-fragment-listp-car-and-cdr)
+                    (:rewrite fn-bpf-fragment-listp-is-a-true-list)
+                    (:rewrite fn-bpf-fragmentp-fields)))

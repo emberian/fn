@@ -57,6 +57,10 @@
 
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-sn-completion-is-last-p))))
+
 (local (in-theory (disable fn-node-statep fn-sf-statep fn-record-p
                            fn-node-prepare fn-node-complete fn-node-recover
                            fn-replay-advance-txid fn-replay fn-replay-loop

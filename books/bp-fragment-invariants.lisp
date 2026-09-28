@@ -15,6 +15,15 @@
 (include-book "bp-fragment")
 
 (local (include-book "arithmetic/top" :dir :system))
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bpf-canvas)
+                          (:definition fn-bpf-cell-at)
+                          (:definition fn-bpf-fragment-listp)
+                          (:definition fn-bpf-fragmentp)
+                          (:rewrite fn-bpf-fragment-listp-car-and-cdr)
+                          (:rewrite fn-bpf-fragmentp-fields))))
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-cbor-record-vocabulary fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))

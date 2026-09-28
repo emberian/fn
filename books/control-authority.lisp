@@ -1121,4 +1121,6 @@
 (in-theory (disable (:definition fn-ctl-covers-every-p)
                     (:definition fn-ctl-pattern-covers-p)
                     (:definition fn-ctl-some-pattern-covers-p)
+                    (:definition fn-ctl-withdrawal-effect)
+                    (:definition fn-ctl-withdrawn-by-p)
                     (:rewrite fn-ctl-authorize-execute-is-nonempty)))

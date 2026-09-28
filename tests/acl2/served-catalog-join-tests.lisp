@@ -29,6 +29,10 @@
 (include-book "../../books/served-catalog-join")
 (include-book "std/testing/must-fail" :dir :system)
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-col-poll-nth-past-end-is-nil))))
+
 (defconst *scjt-o1* *ocr-t-first*)
 (defconst *scjt-o2* *ocr-after*)
 (defconst *scjt-view1* (fn-own-view *scjt-o1*))

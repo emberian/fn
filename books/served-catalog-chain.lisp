@@ -1187,4 +1187,6 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-scr-feed-span-is-scar-feed-span)))
+(in-theory (disable (:definition fn-scr-catalogp)
+                    (:definition fn-scr-conn-okp)
+                    (:rewrite fn-scr-feed-span-is-scar-feed-span)))

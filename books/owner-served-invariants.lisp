@@ -33,7 +33,11 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-ipp-injected-octets-without-parameters))))
+(local (in-theory (enable (:definition fn-ipp-accountp)
+                          (:definition fn-ns-entryp)
+                          (:definition fn-ns-ring-entriesp)
+                          (:definition fn-ns-ringp)
+                          (:rewrite fn-ipp-injected-octets-without-parameters))))
 
 ; -----------------------------------------------------------------------------
 ; P2.  The 240 names this submission's record.

@@ -20,6 +20,10 @@
 (include-book "nntp-list-counts")
 (include-book "nntp-pinned-msgid")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-nntp-article-idp-is-consp))))
+
 (defun fn-olc-buckets-okp (conn)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-midx-correspondencep

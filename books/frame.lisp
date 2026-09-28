@@ -36,6 +36,12 @@
 (include-book "frame-journal")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-frame-textp)
+                          (:rewrite fn-frame-len-2-conses)
+                          (:rewrite fn-frame-len-4-conses))))
+
 (local (in-theory (enable fn-cbor-invariants-vocabulary
                           fn-frame-octet-vocabulary
                           fn-frame-fields-vocabulary

@@ -15,6 +15,10 @@
 (include-book "defrecord")
 (include-book "frame-fields")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-frame-textp))))
+
 (defconst *fn-bpn-machine-max-jobs* 64)
 (defconst *fn-bpn-machine-max-octets* 16777216)
 (defconst *fn-bpn-machine-max-job-octets* *fn-frame-max-blob*)

@@ -7,6 +7,10 @@
 (in-package "ACL2")
 (include-book "web-render")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-wr-pct-encode))))
+
 ; -----------------------------------------------------------------------------
 ; The keystones over the function the host runs (fn-wr-emit, called by
 ; books/web-session.lisp fn-wss-page for every page).

@@ -7,6 +7,10 @@
 (include-book "nntp-overview")
 (include-book "nntp-xref")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nov-clean-linep))))
+
 (local (in-theory (enable fn-nov-vocabulary
     fn-nntp-xref-server fn-nntp-listing-server fn-xref-serverp fn-xref-wordp
     fn-xref-pairs fn-xref-field fn-nov-served-line fn-nov-served-lines-numbered

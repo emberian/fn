@@ -5,6 +5,12 @@
 (include-book "store-identity-sequence-invariants")
 (include-book "store-observed")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-snt-consumerp)
+                          (:rewrite fn-sf-admissible-image-facts)
+                          (:rewrite fn-sn-new-success-requires-actual-matching-durable-node-completion))))
+
 (defun fn-csi-completed-prefixp (s)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((n (fn-sn-identity-next s))
@@ -1490,4 +1496,5 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-csi-normal-full-relation-implies-live)))
+(in-theory (disable (:definition fn-csi-full-relationp)
+                    (:rewrite fn-csi-normal-full-relation-implies-live)))

@@ -5,7 +5,9 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-article-header-rev-add-line-recomposes))))
+(local (in-theory (enable (:definition fn-article-header-rev-add-line)
+                          (:definition fn-article-next-line-aux)
+                          (:rewrite fn-article-header-rev-add-line-recomposes))))
 
 (defthm fn-article-append-associative
   (equal (append (append a b) c) (append a (append b c))))
@@ -648,4 +650,6 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-article-octets-are-proper-list)))
+(in-theory (disable (:rewrite fn-article-extended-header-is-list)
+                    (:rewrite fn-article-finish-fields-is-append)
+                    (:rewrite fn-article-octets-are-proper-list)))

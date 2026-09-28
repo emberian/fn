@@ -71,6 +71,11 @@
 (in-package "ACL2")
 (include-book "web-render")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-ot-hex-decode)
+                          (:rewrite fn-ot-hex-decode-length))))
+
 ; -----------------------------------------------------------------------------
 ; Base64 (RFC 4648 4 and 5): tokens use the URL alphabet unpadded; the
 ; RFC 2047 encoded-word the standard one.

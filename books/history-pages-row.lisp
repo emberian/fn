@@ -6,6 +6,13 @@
 (include-book "history-pages-exec")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-scc-octet-listp-facts . 1)
+                          (:rewrite fn-scc-octet-listp-facts . 2)
+                          (:rewrite fn-scc-octet-listp-true)
+                          (:rewrite fn-sccb-scc-octetp-is-cbor-octetp))))
+
 (local
  (defun fn-hp-tt-ind (n l y)
    (if (or (zp n) (zp l)) (list n l y) (fn-hp-tt-ind (1- n) (1- l) (cdr y)))))

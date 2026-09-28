@@ -36,6 +36,13 @@
                           (:d fn-frame-u64-bytes))))
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-frame-textp)
+                          (:rewrite fn-frame-len-2-conses)
+                          (:rewrite fn-frame-len-4-conses)
+                          (:rewrite fn-frame-not-consp-when-len-zero))))
+
 ; The splitter is reasoned about through its lemmas, never by unrolling it on
 ; a literal length; the big-endian encoders likewise.
 (local (in-theory (disable fn-frame-split)))

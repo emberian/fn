@@ -146,4 +146,5 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-ipp-injected-octets-without-parameters)))
+(in-theory (disable (:definition fn-ipp-accountp)
+                    (:rewrite fn-ipp-injected-octets-without-parameters)))

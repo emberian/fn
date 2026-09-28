@@ -6,6 +6,10 @@
 (include-book "bp-node-debt")
 (include-book "bp-node-progress")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bpnf-find-arrival))))
+
 (local
  (defthm fn-bpnd-nth-is-nth
    (implies (natp n)

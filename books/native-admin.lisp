@@ -38,7 +38,8 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-native-admin-words))))
+(local (in-theory (enable (:definition fn-ipp-addr-specp)
+                          (:definition fn-native-admin-words))))
 
 ;; RFC 5536 s3.1.4 reserved names, a rule about CREATING a group (the
 ;; RFC requirement): "Groups whose first (or only) <component> is
