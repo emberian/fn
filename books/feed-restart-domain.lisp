@@ -37,4 +37,6 @@
                 (<= (nfix (fn-feed-backoff-until (fn-feed-restart f)))
                     (nfix (fn-clock-monotonic obs)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-feed-restart fn-feedp fn-feed-shapep))))
+  :hints (("Goal" :in-theory (enable fn-feed-restart fn-feedp fn-feed-shapep
+                                     fn-feed-without-backoff fn-feed-with-conn
+                                     fn-feed-with-queue))))

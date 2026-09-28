@@ -82,7 +82,10 @@
 (assert-event (equal (fn-feed-state-of *fn-feed-ct-a* (fn-feed-queue *fn-feed-ct-final*))
                      (fn-feed-dropped :retry-bound)))
 (assert-event (not (consp (fn-feed-find *fn-feed-ct-b* (fn-feed-queue *fn-feed-ct-final*)))))
-(assert-event (equal (fn-feed-backoff-until *fn-feed-ct-final*) 6001))
+; The loss at 5001 set the deadline to 6001 in the first run's clock; the
+; :restart forgets it (lane time-bars, PRF-385: a new process's clock), and
+; nothing after it backed off.
+(assert-event (equal (fn-feed-backoff-until *fn-feed-ct-final*) 0))
 (assert-event (equal (fn-feed-next-attempt *fn-feed-ct-final*) 5))
 (assert-event (equal (fn-feed-entry-attempts
   (fn-feed-find *fn-feed-ct-a* (fn-feed-queue *fn-feed-ct-final*))) 2))
