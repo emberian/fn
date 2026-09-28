@@ -825,7 +825,7 @@ Limits: `--max-transactions`, `--max-history-octets`,
 `--max-credentials`. `--profile scale|development|default` names a starting
 set. When this machine's memory cannot hold the limits you name, `init`
 refuses and makes nothing:
-`fn: refused init-budget-cannot-hold-profile profile=scale sizing=requested reservation=10866 MB budget=2048 MB`
+`fn: refused init-budget-cannot-hold-profile profile=scale sizing=requested reservation=10097 MB budget=2048 MB`
 (exit code 1). The first number is what the store would need at its
 limits, the second what this machine can give. Choose smaller limits, or,
 to make a store for a bigger machine, name that machine's memory with

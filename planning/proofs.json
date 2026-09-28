@@ -7534,7 +7534,9 @@
         "fn-heap-operation-decide-holds-the-store",
         "fn-heap-storeless-decide-is-small-and-fits",
         "fn-heap-status-decide-is-the-launchers-run-reservation",
-        "fn-heap-reserve-full-store-accepted-is-within-the-machine"
+        "fn-heap-reserve-full-store-accepted-is-within-the-machine",
+        "fn-heap-store-history-holds-payload-and-memberships",
+        "fn-heap-arena-octets-slope"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -11240,8 +11242,7 @@
         "fn-intern-events-budget-octets-are-the-stored-octets",
         "fn-cvec-article-refusal-word-names-the-memberships",
         "fn-cvec-record-keeps-the-vector",
-        "fn-heap-membership-bound-holds-the-charged-memberships",
-        "fn-heap-membership-term-is-at-most-twice-h",
+        "fn-heap-store-history-holds-payload-and-memberships",
         "fn-heap-store-figure-holds-every-store",
         "fn-cvec-statement-admission-keeps-the-vector",
         "fn-cvec-statement-row-within-its-figure",
@@ -13206,7 +13207,11 @@
         "tools/f8_breakdown.py",
         "planning/evidence/f8-reservation-2026-09-28.md"
       ],
-      "progress_note": "Lane f8-reservation (2026-09-28): REPL-admitted on persvati; teeth: the small preset's alist on the d5ab87aec core, the hypothesis-needed witness (:compact) and its must-fail, a mutation dropping the collector's room."
+      "progress_note": "Lane f8-reservation (2026-09-28): REPL-admitted on persvati; teeth: the small preset's alist on the d5ab87aec core, the hypothesis-needed witness (:compact) and its must-fail, a mutation dropping the collector's room.",
+      "events": [
+        "fn-heap-breakdown-sums-to-the-reservation",
+        "fn-heap-breakdown-is-inits-reservation"
+      ]
     },
     {
       "id": "PRF-380",
@@ -13224,7 +13229,15 @@
         "tests/acl2/memory-credits-tests.lisp",
         "planning/evidence/f8-reservation-2026-09-28.md"
       ],
-      "progress_note": "Lane f8-reservation (2026-09-28): REPL-admitted on persvati; teeth: a 256 MiB small-node ledger admitting 47 article credits and refusing the 48th by name, every transition's witness and refusal, the hypothesis-needed witness (an over-budget ledger stays unfunded) with its must-fail, and a mutant unchecked acquire. pending_subject: no host function calls the ledger yet."
+      "progress_note": "Lane f8-reservation (2026-09-28): REPL-admitted on persvati; teeth: a 256 MiB small-node ledger admitting 47 article credits and refusing the 48th by name, every transition's witness and refusal, the hypothesis-needed witness (an over-budget ledger stays unfunded) with its must-fail, and a mutant unchecked acquire. pending_subject: no host function calls the ledger yet.",
+      "events": [
+        "fn-mcr-transitions-keep-funded",
+        "fn-mcr-acquire-refuses-exactly-past-the-budget",
+        "fn-mcr-grow-within-the-reserve-is-admitted",
+        "fn-mcr-retain-moves-the-credit",
+        "fn-mcr-evict-returns-what-was-evicted",
+        "fn-mcr-overdraw-is-within-the-completion-reserve"
+      ]
     },
     {
       "id": "PRF-374",
