@@ -42,11 +42,6 @@
                                      (f-get-global 'fn-workflow-state state))))
   (value (if (consp selected) (fn-sched-item-work-id selected) :none))))
 
-(defun fn-sched-host-reason (state)
- (declare (xargs :stobjs state :mode :program))
- (value (fn-sched-selection-reason (f-get-global 'fn-sched-state state)
-                                   (f-get-global 'fn-workflow-state state))))
-
 (defun fn-sched-host-passes (work-id state)
  (declare (xargs :stobjs state :mode :program))
  (let ((item (fn-sched-find work-id
