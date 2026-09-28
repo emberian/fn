@@ -135,17 +135,23 @@ class SubjectRuleTests(unittest.TestCase):
                          "the host loads with fn-sca-load-held-rows (G5-1)")
 
     def test_a_hypothesis_recognizer_does_not_host(self):
-        """G3-1: the LZ codec passed on `(fn-cbor-octet-listp x)'."""
-        s = self.subject("fn-lz-lits-words-is-append")
-        self.assertNotIn("fn-cbor-octet-listp", s.functions)
+        """G3-1: the LZ codec passed on `(fn-cbor-octet-listp x)'.  The LZ
+        codec is hosted now (compressed extents), so the witness is the
+        NNTP trace model: its hypothesis `fn-nntp-session-consistentp' is
+        hosted, its subject `fn-nntp-run-session' is not."""
+        self.assertIn("fn-nntp-session-consistentp", self.graph.reachable)
+        self.assertNotIn("fn-nntp-run-session", self.graph.reachable)
+        s = self.subject("fn-nntp-finite-trace-preserves-consistent-session")
+        self.assertNotIn("fn-nntp-session-consistentp", s.functions)
+        self.assertIn("fn-nntp-run-session", s.functions)
         self.assertFalse(s.hosted(self.graph))
 
     def test_hints_do_not_host(self):
-        form = ("(defthm t1 (equal (fn-lz-lits-words a b k fn-octets) c) "
+        form = ("(defthm t1 (equal (fn-nntp-run-session s evs) c) "
                 ":hints ((\"Goal\" :use ((:instance fn-own-read-preserves-relation)) "
                 ":in-theory (enable fn-own-read))))")
         s = reach_check.Subject(self.graph, "t1", form)
-        self.assertEqual(s.functions, ["fn-lz-lits-words"])
+        self.assertEqual(s.functions, ["fn-nntp-run-session"])
         self.assertFalse(s.hosted(self.graph))
 
     def test_a_hosted_function_over_a_models_state_is_the_model(self):
@@ -193,6 +199,33 @@ class SubjectRuleTests(unittest.TestCase):
         for unhosted, other, form in cases:
             bridges = reach_check.equality_bridges(graph, {"t": ("f", form)})
             self.assertNotIn(other, [o for o, _ in bridges.get(unhosted, [])], form)
+
+
+class SharedGraphTests(unittest.TestCase):
+    """reach_check reads definitions with tools/callgraph.py (the ledger's
+    reader), so a comment or a docstring is never an edge."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.graph = reach_check.Graph()
+
+    def test_a_comment_is_not_a_call(self):
+        """fn-feed-apply-record's comment names fn-feed-drivenp; before
+        2026-09-28 that comment hosted PRF-335's prefix lemma."""
+        self.assertIn("fn-feed-apply-record", self.graph.reachable)
+        self.assertNotIn("fn-feed-drivenp", self.graph.edges["fn-feed-apply-record"])
+
+    def test_a_macro_body_is_followed(self):
+        """fn-nntp-command's arms are named only by the dispatcher macro."""
+        self.assertIn("fn-nntp-command-dispatch", self.graph.edges["fn-nntp-command"])
+        self.assertIn("fn-nntp-session-command", self.graph.edges["fn-nntp-command-dispatch"])
+
+    def test_the_host_chain_starts_at_a_host_line(self):
+        chain = self.graph.host_chain("fn-nntp-session-command")
+        self.assertTrue(chain)
+        self.assertTrue(chain[0].startswith(("host/", "tools/", "stobj ")), chain)
+        self.assertEqual(chain[-1], "fn-nntp-session-command")
+        self.assertEqual(self.graph.host_chain("fn-nntp-run-session"), [])
 
 
 class RatchetTests(unittest.TestCase):

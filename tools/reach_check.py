@@ -83,6 +83,9 @@ import pathlib
 import re
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import callgraph  # noqa: E402
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE = ROOT / "planning" / "reach-baseline.json"
 
@@ -317,9 +320,14 @@ class Graph:
         self.bridges = [p for p in sorted(ROOT.glob("tools/*.py"))
                         if p.name != pathlib.Path(__file__).name]
 
+        # Definitions and their bodies come from tools/callgraph.py (the
+        # ledger's reader: nested definitions and macro bodies included);
+        # the generated record recognizers, stobj exports and attachments
+        # are this checker's own additions.
+        self.unreadable = {}
         self.book_defs = {**record_definitions(self.books),
-                          **definitions(self.books)}
-        host_defs = definitions(self.hosts)
+                          **self.read_definitions(self.books)}
+        host_defs = self.read_definitions(self.hosts)
         attached = attachments(self.books)
         # Abstract stobjs: each export is a callable book function whose body
         # is its :logic and :exec functions; an attached implementation's
@@ -354,6 +362,9 @@ class Graph:
         # or a Python bridge names.  A bridge naming `fn-own-read` in a form
         # it builds as text IS a host line; that is how the owner is driven.
         seen = set(host_defs)
+        # name -> what reached it: the calling definition, or the host file
+        # or bridge that names it (`--explain' prints the chain).
+        self.via = {name: host_defs[name][0] for name in host_defs}
         self.seeds = collections.Counter()
         for path in self.hosts + self.bridges:
             label = "host" if path.suffix == ".lisp" else "bridge"
@@ -361,12 +372,15 @@ class Graph:
             for symbol in self.symbols(text) & set(self.book_defs):
                 if symbol not in seen:
                     seen.add(symbol)
+                    self.via[symbol] = str(path.relative_to(ROOT))
                     self.seeds[label] += 1
         work = list(seen)
         while work:
-            for nxt in self.edges.get(work.pop(), ()):
+            name = work.pop()
+            for nxt in self.edges.get(name, ()):
                 if nxt not in seen:
                     seen.add(nxt)
+                    self.via[nxt] = name
                     work.append(nxt)
         # A live stobj is created and recognized by ACL2 itself, never by a
         # host line: its creator and recognizer run whenever an export does.
@@ -376,20 +390,53 @@ class Graph:
                 for e in exports[:2]:
                     if e not in seen:
                         seen.add(e)
+                        self.via[e] = f"stobj {sname}"
                         work = [e]
                         while work:
-                            for nxt in self.edges.get(work.pop(), ()):
+                            name = work.pop()
+                            for nxt in self.edges.get(name, ()):
                                 if nxt not in seen:
                                     seen.add(nxt)
+                                    self.via[nxt] = name
                                     work.append(nxt)
         self.reachable = seen & set(self.book_defs)
+
+    def host_chain(self, name: str) -> list[str]:
+        """How a host line reaches NAME: the host file (or bridge, or stobj)
+        first, then each definition down to NAME.  Empty when unreached."""
+        if name not in self.via:
+            return []
+        chain = [name]
+        while chain[-1] in self.via and len(chain) < 200:
+            parent = self.via[chain[-1]]
+            chain.append(parent)
+            if parent not in self.via or parent == chain[-2]:
+                break
+        return list(reversed(chain))
+
+    def read_definitions(self, paths) -> dict:
+        """name -> (file, form) for every definition callgraph reads in
+        PATHS; a later file's definition of a name replaces an earlier's."""
+        found = {}
+        for path in paths:
+            relative = str(path.relative_to(ROOT))
+            definitions, error = callgraph.read_file(path, relative, records=False)
+            if error is not None:
+                self.unreadable[relative] = error
+            for definition in definitions:
+                found[definition.name] = (relative, definition.form)
+        return found
 
     @staticmethod
     def symbols(text: str) -> set[str]:
         return {s.lower() for s in SYMBOL.findall(text)}
 
-    def mentions(self, form: str, own: str) -> set[str]:
-        return self.symbols(form) & self.known - {own}
+    def mentions(self, form, own: str) -> set[str]:
+        """What a definition names: callgraph's edge for a read form, the
+        symbols of the text this checker synthesises for the rest."""
+        found = (self.symbols(form) if isinstance(form, str)
+                 else callgraph.symbols(form[2:]))
+        return found & self.known - {own}
 
 
 class Finding:
@@ -650,11 +697,15 @@ def equality_bridges(graph: "Graph", theorems: dict) -> dict[str, list]:
     return bridges
 
 
+def load_rows() -> list:
+    registry = json.loads((ROOT / "planning" / "proofs.json").read_text())
+    return registry["proofs"] if isinstance(registry, dict) else registry
+
+
 def audit(graph: Graph):
     theorems = theorem_forms(graph.books)
     bridges = equality_bridges(graph, theorems)
-    registry = json.loads((ROOT / "planning" / "proofs.json").read_text())
-    rows = registry["proofs"] if isinstance(registry, dict) else registry
+    rows = load_rows()
 
     findings, hosted, unresolved = [], 0, []
     graph.bridged = []
@@ -737,6 +788,8 @@ def main(argv=None) -> int:
     arguments = parser.parse_args(argv)
 
     graph = Graph()
+    for relative, error in sorted(graph.unreadable.items()):
+        print(f"reach_check: {relative} unreadable, its definitions are missing: {error}")
     if arguments.explain:
         name = arguments.explain.lower()
         theorems = theorem_forms(graph.books)
@@ -748,6 +801,9 @@ def main(argv=None) -> int:
             or "nothing resolvable"))
         if subject.hosted(graph):
             print("hosted: a reached subject is applied to arguments no model computed")
+            for f in subject.functions:
+                if graph.host_chain(f):
+                    print("  " + " -> ".join(graph.host_chain(f)))
             return 0
         bridges = equality_bridges(graph, theorems)
         for s in subject.functions:
