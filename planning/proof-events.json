@@ -12697,6 +12697,23 @@
           "name": "fn-flb-delay-is-bounded"
         }
       ]
+    },
+    {
+      "id": "PRF-381",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-fps-deltas-set-the-pause"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fps-live-names-are-the-unpaused-feeds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fps-deltas-of-an-absent-peer"
+        }
+      ]
     }
   ]
 }
