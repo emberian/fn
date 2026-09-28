@@ -613,9 +613,30 @@ def backfill(args) -> int:
     return 0
 
 
+class StaleHintParser(argparse.ArgumentParser):
+    """An unknown subcommand is a loud usage error that names the likely cause.
+
+    The first tool read no arguments at all, so on a lane base predating
+    `claim`, `next_id.py claim PRF` printed the listing, exited 0 and claimed
+    nothing (arena-store-2, 2026-09-27).  Every copy from now on refuses.
+    """
+
+    def error(self, message: str):
+        if "invalid choice" in message:
+            main_tree = None
+            with contextlib.suppress(Exception):
+                main_tree = main_checkout()
+            where = (f" The main checkout's copy is {main_tree / 'tools' / 'next_id.py'};"
+                     if main_tree and main_tree.resolve() != ROOT.resolve() else "")
+            message += ("\n  (an unknown subcommand: this tree's tools/next_id.py may predate "
+                        f"the one a brief names.{where} run that one, it reads the same "
+                        "shared ledger.)")
+        super().error(message)
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = StaleHintParser(description=__doc__,
+                             formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--days", type=float, default=DEFAULT_DAYS,
                         help="branches and worktrees touched in this many days count")
     parser.add_argument("--local", action="store_true",

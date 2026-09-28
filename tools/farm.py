@@ -434,6 +434,26 @@ def refuse_bad_book_names(root: Path, books: list[str], affected_by: list[str],
         raise FarmError("no farm run started: " + "; ".join(problems))
 
 
+def refuse_unselectable(root: Path, books: list[str], affected_by: list[str],
+                        closure: bool) -> None:
+    """Refuse, before any rsync, a selection the box's runner would refuse.
+
+    The box runs exactly `selection_words` as its preflight (exit 13), but
+    only after the whole mirror: shared-books lost a sync to a book in no
+    Makefile root's closure.  The same command here, in this tree, refuses
+    first.
+    """
+    words = selection_words(books, affected_by, closure)
+    if not (root / words[1]).is_file():
+        return  # no runner in this tree: the box's preflight says so (exit 10)
+    done = subprocess.run([sys.executable, *words[1:]], cwd=root, capture_output=True,
+                          text=True, check=False)
+    if done.returncode != 0:
+        raise FarmError("no farm run started: the runner refuses this selection here, "
+                        "before any sync: "
+                        + (done.stderr.strip() or done.stdout.strip())[-600:])
+
+
 def refuse_unbalanced_sources(root: Path) -> None:
     """Refuse, before any rsync or ssh, a tree with an unbalanced form.
 
@@ -652,6 +672,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
                         "install; --closure and --require-origin do not make one")
     refuse_unmerged_source(root)
     refuse_bad_book_names(root, books, affected_by, list(recertify))
+    refuse_unselectable(root, books, affected_by, closure)
     refuse_unbalanced_sources(root)
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
@@ -1030,6 +1051,23 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
                 slow.append((seconds, book, jobs))
         lines.append(f"  manifest {directory / 'manifest.json'}: "
                      f"status {manifest.get('status', 'unknown')}")
+    # Judged here, where the committed archive is (the box's tree has no git).
+    installed_books = sorted({book for _, manifest in manifests
+                              for book, value in (manifest.get("book_provenance")
+                                                  or {}).items()
+                              if value == "installed"})
+    uncited: list[str] = []
+    if installed_books:
+        import certified_claims  # noqa: E402
+        try:
+            uncited = certified_claims.uncited_books(root, installed_books)
+        except Exception as error:  # a report line, never the verdict
+            lines.append(f"  (could not judge the installed books' citations: {error})")
+    if uncited:
+        lines.append(f"  installed-without-cited-manifest: {len(uncited)}: "
+                     + ", ".join(uncited[:20]) + (" ..." if len(uncited) > 20 else ""))
+        lines.append("    green_check and certified_claims owe these until a committed "
+                     "manifest certifies them: submit again with --recertify-uncited")
     lines.append(f"  certified here: passed {passed}, failed {len(failing) // 2}"
                  + (f", killed {len(killed) // 2}" if killed else "")
                  + f"; installed from the cache {installed}")
@@ -1182,6 +1220,32 @@ def status(host: str, remote: Path, local_root: Path | None = None) -> int:
     return 0
 
 
+def uncited_in_selection(root: Path, books: list[str], affected_by: list[str]) -> list[str]:
+    """The closure books of this selection no committed manifest certified at
+    their current digest (`certified_claims.uncited_books`)."""
+    import certify_books  # noqa: E402
+    import certified_claims  # noqa: E402
+    import ledger  # noqa: E402
+    roots = books or ledger.makefile_roots()
+    if affected_by:
+        roots = certify_books.affected_roots(roots, affected_by)
+    return certified_claims.uncited_books(root, certify_books.with_dependencies(roots))
+
+
+def pick_host(runner=subprocess.run) -> str:
+    """The build box with the lowest load per core now (tools/boxes.sh --pick).
+
+    It prints both loads and the choice on stderr; `submit` names the box in
+    the run id's line, so `wait` can be told it.
+    """
+    done = runner(["sh", str(Path(__file__).resolve().parent / "boxes.sh"), "--pick"],
+                  stdout=subprocess.PIPE, text=True, check=False)
+    host = (done.stdout or "").strip()
+    if done.returncode != 0 or host not in HOSTS:
+        raise FarmError("no farm run started: no build box answered (tools/boxes.sh)")
+    return host
+
+
 def cache_summary(record: dict) -> str:
     """What `submit` installed for a run, from its local record, in one word.
 
@@ -1200,7 +1264,8 @@ def cache_summary(record: dict) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=("submit", "wait", "status"))
-    parser.add_argument("host")
+    parser.add_argument("host", help="hbox or persvati; submit: 'auto' (or no box at "
+                                     "all) picks the one with the lowest load per core")
     parser.add_argument("rest", nargs="*",
                         help="submit: book roots; wait: the run id")
     parser.add_argument("--jobs", type=int,
@@ -1222,6 +1287,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="certify this book of the closure afresh instead of "
                              "installing its cached pair (repeatable; passed to "
                              "the cache preflight and the runner)")
+    parser.add_argument("--recertify-uncited", action="store_true",
+                        help="add to --recertify every book of the closure no "
+                             "committed manifest certified at its current digest "
+                             "(the books a run would otherwise install uncited)")
     parser.add_argument("--timeout-seconds", type=int, default=1800,
                         help="per-ACL2-invocation timeout on the host")
     parser.add_argument("--wait-seconds", type=int, default=DEFAULT_WAIT_SECONDS,
@@ -1243,6 +1312,21 @@ def main(argv: list[str] | None = None) -> int:
                              "certificates installable in any local worktree")
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
+    if arguments.action == "submit" and arguments.host not in HOSTS:
+        if arguments.host != "auto":
+            # `farm.py submit books/x`: no box named, so the first word is a book.
+            arguments.rest.insert(0, arguments.host)
+        arguments.host = pick_host()
+    elif arguments.host == "auto":
+        parser.error(f"{arguments.action} needs the box the run is on (its submit "
+                     "printed it); auto picks a box only for submit")
+    if arguments.action == "submit" and arguments.recertify_uncited:
+        arguments.recertify = sorted(set(arguments.recertify)
+                                     | set(uncited_in_selection(
+                                         root, list(arguments.rest),
+                                         list(arguments.affected_by))))
+        print(f"--recertify-uncited: recertifying {len(arguments.recertify)} book(s)",
+              file=sys.stderr)
     try:
         if arguments.action == "submit":
             identifier = submit(arguments.host, root, list(arguments.rest),
@@ -1255,6 +1339,8 @@ def main(argv: list[str] | None = None) -> int:
                                 require_origin=arguments.require_origin,
                                 recertify=list(arguments.recertify))
             print(identifier)
+            print(f"{identifier}: on {arguments.host}; wait with `farm.py wait "
+                  f"{arguments.host} {identifier}`", file=sys.stderr)
             return 0
         if arguments.action == "wait":
             if len(arguments.rest) != 1:

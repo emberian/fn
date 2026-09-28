@@ -297,6 +297,9 @@
 (ld "host/peer-invite-host.lisp" :ld-error-action :error)
 ; `tls reload' and the served certificate line (PRF-212).
 (ld "host/tls-reload-host.lisp" :ld-error-action :error)
+; The node's own web face (PRF-340): the request, the pages, the sessions,
+; the [web] plan (books/web-*.lisp).
+(ld "host/web-host.lisp" :ld-error-action :error)
 (ld "host/topic-history-metadata-host.lisp" :ld-error-action :error)
 ; The differential model side, over the same fn-served-open reader-host uses.
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
@@ -329,6 +332,9 @@
         (load "host/native/io.lisp")
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
+        ; The LZ4 block encoder of the compressed append (lib/libfn-lz4;
+        ; untrusted: ACL2's proved decoder checks every candidate).
+        (load "host/native/lz4.lisp")
         ; Build-time entry profile.  tools/build_native_host.sh always supplies
         ; one of these two values.  It is serialized into the image: the
         ; restarted process cannot expose diagnostics by changing its
@@ -360,6 +366,7 @@
         ; start re-loads and re-checks all three for that process.
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
+        (fnn-lz4-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
           ; A refused start exits 5 with its reason (io.lisp).
@@ -369,7 +376,9 @@
                                 (fnn-tls-initialize)
                                 (fnn-digest-startup)
                                 (fnn-hsig-reset)
-                                (fnn-hsig-initialize)))
+                                (fnn-hsig-initialize)
+                                (fnn-lz4-reset)
+                                (fnn-lz4-initialize)))
           (fnn-main)
           (values nil :exited *the-live-state*))
         ; Bounded raw file read only; parsing, defaults and availability are
@@ -419,6 +428,9 @@
         ; The operator's live surfaces (`run', `post', `principal', the
         ; control-socket arms), installed into operator.lisp; after every
         ; file above whose functions it names.
+        ; The node's own web face: an owner start hook the operator's `run'
+        ; installs when ACL2 planned one from the profile's [web] table.
+        (load "host/native/web-host.lisp")
         (load "host/native/operator-live.lisp")
         (load "host/native/checkpoint.lisp")
         ; The attach-stobj prototype's smoke verb (developer image only).

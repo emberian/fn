@@ -692,7 +692,8 @@
 ; The function the host calls under the catalog (fn-scr-own-read-span), at
 ; an owner carrying the invariant.
 (defthm fn-scj-versions-atmost-of-scr-own-read-span
-  (implies (and (fn-scj-invp o fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat)
+                (fn-scj-invp o fn-arena fn-cat)
                 (fn-scj-versions-okp o))
            (fn-scj-versions-okp (fn-own-tls-result-owner
                                  (fn-scr-own-read-span o id i end fn-octets fn-arena fn-cat))))
@@ -711,7 +712,8 @@
 ; keystone fn-scj-invp-of-orr-read-span asks) and at or below the working
 ; view's version (a capture is a view the owner held).
 (defthm fn-scj-versions-atmost-of-orr-read-span
-  (implies (and (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat)
+                (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (fn-scj-versions-okp (fn-ocfg-owner oc))
                 (implies (consp views)
                          (and (fn-scj-live-okp (car views) fn-arena fn-cat)

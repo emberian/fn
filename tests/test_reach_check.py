@@ -143,7 +143,7 @@ class SubjectRuleTests(unittest.TestCase):
         self.assertFalse(s.hosted(self.graph))
 
     def test_hints_do_not_host(self):
-        form = ("(defthm t1 (equal (fn-bs-write a b k) c) "
+        form = ("(defthm t1 (equal (fn-bs-write s ino off octets outcome) c) "
                 ":hints ((\"Goal\" :use ((:instance fn-own-read-preserves-relation)) "
                 ":in-theory (enable fn-own-read))))")
         s = reach_check.Subject(self.graph, "t1", form)
@@ -195,6 +195,81 @@ class SubjectRuleTests(unittest.TestCase):
         for unhosted, other, form in cases:
             bridges = reach_check.equality_bridges(graph, {"t": ("f", form)})
             self.assertNotIn(other, [o for o, _ in bridges.get(unhosted, [])], form)
+
+
+class SharedGraphTests(unittest.TestCase):
+    """reach_check reads definitions with tools/callgraph.py (the ledger's
+    reader), so a comment or a docstring is never an edge."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.graph = reach_check.Graph()
+
+    def test_a_comment_is_not_a_call(self):
+        """fn-feed-apply-record's comment names fn-feed-drivenp; before
+        2026-09-28 that comment hosted PRF-335's prefix lemma."""
+        self.assertIn("fn-feed-apply-record", self.graph.reachable)
+        self.assertNotIn("fn-feed-drivenp", self.graph.edges["fn-feed-apply-record"])
+
+    def test_a_macro_body_is_followed(self):
+        """fn-nntp-command's arms are named only by the dispatcher macro."""
+        self.assertIn("fn-nntp-command-dispatch", self.graph.edges["fn-nntp-command"])
+        self.assertIn("fn-nntp-session-command", self.graph.edges["fn-nntp-command-dispatch"])
+
+    def test_the_host_chain_starts_at_a_host_line(self):
+        chain = self.graph.host_chain("fn-nntp-session-command")
+        self.assertTrue(chain)
+        self.assertTrue(chain[0].startswith(("host/", "tools/", "stobj ")), chain)
+        self.assertEqual(chain[-1], "fn-nntp-session-command")
+        self.assertEqual(self.graph.host_chain("fn-nntp-run-session"), [])
+
+
+class DeclaredSubjectTests(unittest.TestCase):
+    """A row's generated `keystone_subjects' (tools/keystone_emit.py, lane
+    defkeystone) is the subject; the conclusion is not read."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.graph = reach_check.Graph()
+
+    def audit_rows(self, rows):
+        saved = reach_check.load_rows
+        reach_check.load_rows = lambda: rows
+        try:
+            return reach_check.audit(self.graph)
+        finally:
+            reach_check.load_rows = saved
+
+    def test_a_declared_hosted_subject_hosts_whatever_the_conclusion_says(self):
+        # The conclusion is about the unhosted trace model; the declared
+        # subject is the hosted step, and it is what is checked.
+        findings, hosted, unresolved = self.audit_rows([{
+            "id": "PRF-T1", "events": ["fn-nntp-finite-trace-preserves-consistent-session"],
+            "keystone_subjects": {"fn-nntp-finite-trace-preserves-consistent-session":
+                                  "fn-nntp-session-command"}}])
+        self.assertEqual((findings, hosted, unresolved), ([], 1, []))
+
+    def test_a_declared_unhosted_subject_is_an_orphan(self):
+        # fn-own-read-preserves-relation is hosted by inference; declaring the
+        # model run its subject makes it an orphan naming that subject.
+        findings, hosted, unresolved = self.audit_rows([{
+            "id": "PRF-T2", "events": ["fn-own-read-preserves-relation"],
+            "keystone_subjects": {"fn-own-read-preserves-relation": "fn-nntp-run-session"}}])
+        self.assertEqual(hosted, 0)
+        self.assertEqual([f.subjects for f in findings], [["fn-nntp-run-session"]])
+        self.assertIn("declared subject", findings[0].render())
+
+    def test_a_declared_subject_that_is_not_a_definition_is_unresolved(self):
+        findings, hosted, unresolved = self.audit_rows([{
+            "id": "PRF-T3", "events": ["fn-own-read-preserves-relation"],
+            "keystone_subjects": {"fn-own-read-preserves-relation": "fn-no-such-function"}}])
+        self.assertEqual((findings, hosted), ([], 0))
+        self.assertEqual(unresolved[0][0], "PRF-T3")
+
+    def test_a_row_without_the_map_is_inferred_as_before(self):
+        findings, hosted, _ = self.audit_rows([{
+            "id": "PRF-T4", "events": ["fn-own-read-preserves-relation"]}])
+        self.assertEqual((findings, hosted), ([], 1))
 
 
 class RatchetTests(unittest.TestCase):

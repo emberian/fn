@@ -182,6 +182,42 @@ window of 200 numbers per group page, 1,000 per thread page, 80 articles
 per thread) bound this client's work per request and never what the node
 stores (D27).
 
+### The node's own web face
+
+WEB-005: The node serves its own web face: an HTTP/1.1 listener in the
+native image (`[web] port`, loopback by default; HTTPS itself with
+`[listener]`'s certificate when `[web] tls = true`, or behind a TLS proxy on
+the same machine with `[web] proxied = true`), in which every decision is
+ACL2's and no Python or other process stands between the browser and the
+node. The request is framed and parsed in place from a byte buffer
+(`books/web-request.lisp`: RFC 9112 grammar, one pass, at most 2N work for
+an N-octet head; the operator's head limit, 431 past it; the body limit the
+owner's article limit implies, 413 past it; chunked transfer coding is 501,
+a stated local policy because the face accepts only its own HTML forms).
+A browser session is bound to a logical reader connection of the owner,
+opened through the owner's own exposure admission for the browser's address
+(the socket peer, or with `proxied` the proxy's last `X-Forwarded-For`
+entry); sign-in is the node's AUTHINFO on that connection (RFC 4643), so the
+login pacing is the owner's `exposure-auth-failures` rule; an account is
+made by the node's XREDEEM; every page is rendered by ACL2 from the replies
+the node gave the session's own connection, so a session reads exactly what
+its login reads over NNTP (`account access` included); a post is the
+authored article (D25) through the served POST path; a removal is the
+cancel control article through the same path, checked with STAT (430).
+Pages escape every octet that came from a reply or a form
+(`books/web-render.lisp`: no `<`, `>`, `"` or `'` and every `&` an entity,
+outside the renderer's own vocabulary of markup), carry
+`Content-Security-Policy: default-src 'none'`, no script and no font from
+anywhere, and the static newsreader's look (`site/style.css`). The session
+table (a token drawn from the OS CSPRNG, the connection, the login, a CSRF
+token, the last use) is node-local and never logged; no password is kept.
+
+Local policy, not an RFC requirement: one request per connection
+(`Connection: close`), one connection served at a time by the face's
+thread, a request completed within 15 seconds, the idle life of a session
+(`[web] idle_seconds`, 12 hours) and the number kept (`[web]
+max_sessions`, 64; each holds one owner connection).
+
 ### The reader in the release
 
 WEB-004: The release carries the friends' web reader as its own service

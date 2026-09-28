@@ -1,5 +1,26 @@
 #!/usr/bin/env python3
-"""Load each host file alone, in its own ACL2, and require it to succeed.
+"""The host files load, in the order and world each image loads them.
+
+    python3 tools/host_check.py                 # both images' ld prefixes, build order
+    python3 tools/host_check.py --load          # the raw files, build order, bare ACL2
+    python3 tools/host_check.py --tables        # static: global hash tables
+    python3 tools/host_check.py --world         # static: counterparts in the image world
+    python3 tools/host_check.py --alone FILE... # one file alone (a diagnosis, not a gate)
+
+THE DEFAULT (lane lane-tools-2, 2026-09-28) is the ACL2-mode prefix of
+host/native/build.lisp and of host/native/build-dtn.lisp -- every
+include-book and host `ld`, in the script's order -- translated by
+tools/host_translate_check.py, one ACL2 per image.  It replaced loading each
+host file ALONE, which was vacuous twice over: without FN_ACL2 it printed
+SKIPPED and exited 0 (every `make check' until batch AY), and with ACL2 it
+failed 39 of 80 files in a certified tree, because a host file may use what
+an earlier `ld` in the build defined -- the order the image really loads is
+the one that decides.  No ACL2, or a book the prefix includes without an
+installed certificate, is NOT RUN, exit 2, and `make check' counts it as a
+failed step: evidence that did not run is not a pass.  `--alone FILE...`
+keeps the old per-file load as a diagnosis tool.
+
+What follows describes `--alone`, then the other modes.
 
 The host files are never certified: they are `ld`ed by the Python bridges
 (tools/run_store.py and its siblings) and `load`ed, in raw mode, by
@@ -54,7 +75,11 @@ and its siblings are build.lisp's calls, not the files'), and translate
 errors in the ACL2-mode host files (tools/host_translate_check.py).  Exit 0
 clean, 1 with each finding named, 2 NOT RUN (no ACL2).
 
-    python3 tools/host_check.py --load [--build host/native/build-dtn.lisp] [FILE ...]
+    FN_ACL2=/path/to/acl2 python3 tools/host_check.py --load [--build host/native/build-dtn.lisp] [FILE ...]
+
+FN_ACL2 is REQUIRED (an `acl2` on PATH is the fallback): without an ACL2 the
+check prints NOT RUN and exits 2, which `make check' reports as a failed
+step, never a pass (host-lints' check-lane skipped it for lack of FN_ACL2).
 
 with FILEs, the order is loaded through the last of them.
 
@@ -596,6 +621,273 @@ def tables_main(names: list[str]) -> int:
     return 1 if refused else 0
 
 
+# --world (lane lane-tools-2, 2026-09-28): the names a raw file hands to the
+# image's executable counterparts must be defined in that image's world.
+WORLD_BUILDS = ("host/native/build.lisp", "host/native/build-dtn.lisp")
+WORLD_CALLERS = {"fnn-call", "fnn-counterpart"}  # and every fnn-core*
+
+
+def world_caller(name: object) -> bool:
+    return isinstance(name, str) and (name in WORLD_CALLERS or name.startswith("fnn-core"))
+
+
+def world_resolve(root: Path, base: Path, reference: str) -> Path:
+    """REFERENCE (an include-book or ld string) as a file under ROOT, relative
+    to BASE, the directory ACL2's connected book directory is at."""
+    target = base / reference
+    if target.suffix != ".lisp":
+        target = target.with_name(target.name + ".lisp")
+    return Path(os.path.normpath(target))
+
+
+def world_of(build: str, root: Path = ROOT) -> tuple[set[str], list[str], list[str]]:
+    """(defined names, raw files loaded, problems) of BUILD's image.
+
+    The world is every book BUILD includes and everything those books include
+    NON-locally, plus each `ld` host file's own definitions and includes
+    (resolved from that file's directory, as `ld' binds the connected book
+    directory).  A book's local definitions and local includes are not in an
+    includer's world and are not counted."""
+    import ledger
+    defined: set[str] = set()
+    problems: list[str] = []
+    raw: list[str] = []
+    books: list[Path] = []
+    seen_books: set[Path] = set()
+    seen_lds: set[Path] = set()
+
+    def rel(path: Path) -> str:
+        try:
+            return path.relative_to(root).as_posix()
+        except ValueError:
+            return path.as_posix()
+
+    def text(item) -> bool:  # a Lisp string literal, not a symbol
+        return isinstance(item, str) and not isinstance(item, ledger.Sym)
+
+    def walk(form, base: Path, where: str) -> None:
+        if not isinstance(form, list) or not form:
+            return
+        head = form[0]
+        if head in ("quote", "quasiquote"):
+            return
+        if head == "include-book" and len(form) >= 2 and text(form[1]):
+            if ":dir" not in [str(x) for x in form[2:]]:
+                books.append(world_resolve(root, base, form[1]))
+            return
+        if head == "ld" and len(form) >= 2 and text(form[1]):
+            path = world_resolve(root, base, form[1])
+            if path in seen_lds:
+                return
+            seen_lds.add(path)
+            if not path.is_file():
+                problems.append(f"{where}: ld of {form[1]}, which does not exist")
+                return
+            host = ledger.analyze_host(path, rel(path))
+            if host.read_error:
+                problems.append(f"{rel(path)}: unreadable: {host.read_error}")
+            defined.update(host.defines)
+            for inner, _ in host.forms:
+                walk(inner, path.parent, rel(path))
+            return
+        if head == "load" and len(form) >= 2 and text(form[1]):
+            if (root / form[1]).is_file() and form[1] not in raw:
+                raw.append(form[1])
+            return
+        if head in ("defun", "defmacro", "defund"):
+            return
+        for item in form[1:]:
+            walk(item, base, where)
+
+    script = root / build
+    for form, _ in ledger.Reader(script.read_text(encoding="utf-8")).top_level():
+        walk(form, root, build)
+    while books:
+        path = books.pop()
+        if path in seen_books:
+            continue
+        seen_books.add(path)
+        if not path.is_file():
+            problems.append(f"{build}: includes {rel(path)}, which does not exist")
+            continue
+        book = ledger.analyze_book(path, rel(path))
+        if book.read_error:
+            problems.append(f"{rel(path)}: unreadable: {book.read_error}")
+        local = {f.name for f in book.functions if f.local}
+        defined.update(book.definitions - local)
+        defined.update(stobj_names(path))
+        for _, reference in book.nonlocal_includes:
+            books.append(world_resolve(root, path.parent, reference))
+    return defined, raw, problems
+
+
+def stobj_names(path: Path) -> set[str]:
+    """The callable names a `defstobj' / `defabsstobj' introduces that the
+    ledger does not record: the exports, creator and recognizer, and a
+    concrete stobj's field accessors and updaters (by ACL2's naming)."""
+    import ledger
+    found: set[str] = set()
+    try:
+        forms = ledger.Reader(path.read_text(encoding="utf-8")).top_level()
+    except ledger.ReadError:
+        return found
+
+    def visit(form) -> None:
+        if not isinstance(form, list) or not form:
+            return
+        head = form[0]
+        if head in ("defstobj", "defabsstobj") and len(form) >= 2 and isinstance(form[1], str):
+            name = str(form[1])
+            found.update({name + "p", "create-" + name})
+            rest = form[2:]
+            for i, item in enumerate(rest):
+                if isinstance(item, str) and item.startswith(":"):
+                    value = rest[i + 1] if i + 1 < len(rest) else None
+                    if item in (":recognizer", ":creator") and isinstance(value, list) and value:
+                        found.add(str(value[0]))
+                    elif item == ":exports" and isinstance(value, list):
+                        for spec in value:
+                            if isinstance(spec, list) and spec:
+                                found.add(str(spec[0]))
+                            elif isinstance(spec, str):
+                                found.add(spec)
+                    elif item == ":renaming" and isinstance(value, list):
+                        for pair in value:
+                            if isinstance(pair, list) and len(pair) == 2:
+                                found.add(str(pair[1]))
+                elif isinstance(item, list) and item and head == "defstobj":
+                    field = str(item[0])
+                    found.update({field, "update-" + field, field + "p",
+                                  field + "-length", "resize-" + field,
+                                  field + "i", "update-" + field + "i"})
+            return
+        if head in ("local",):
+            return
+        for item in form[1:]:
+            visit(item)
+
+    for form, _ in forms:
+        visit(form)
+    return found
+
+
+def world_sites(path: Path) -> tuple[list[tuple[int, str]], int]:
+    """([(line, name)], dynamic): every quoted name a `fnn-core*'/`fnn-call'
+    form in PATH passes as the counterpart to run, and the number of calls
+    whose name is computed (a variable: not checkable here).  The wrappers
+    themselves (a definition of a caller) are skipped."""
+    import ledger
+    text = path.read_text(encoding="utf-8")
+    lines = text.split("\n")
+    sites: list[tuple[int, str]] = []
+    dynamic = 0
+
+    def quoted(form) -> list[str]:
+        if isinstance(form, list) and len(form) == 2 and form[0] == "quote" \
+                and isinstance(form[1], str) and not isinstance(form[1], list):
+            return [str(form[1])] if isinstance(form[1], ledger.Sym) else []
+        if isinstance(form, list):
+            out: list[str] = []
+            for item in form:
+                out += quoted(item)
+            return out
+        return []
+
+    def locate(name: str, start: int) -> int:
+        pattern = re.compile(r"'" + re.escape(name) + r"(?![\w*+$<>=/-])", re.IGNORECASE)
+        for number in range(start, len(lines)):
+            if pattern.search(lines[number]):
+                return number + 1
+        return start + 1
+
+    def visit(form, line: int) -> None:
+        nonlocal dynamic
+        if not isinstance(form, list) or not form:
+            return
+        head = form[0]
+        if head == "quote":
+            return
+        if head in ("defun", "defmacro") and len(form) >= 2 and world_caller(form[1]):
+            return
+        if world_caller(head) and len(form) >= 2:
+            names = quoted(form[1])
+            if not names:
+                dynamic += 1
+            for name in names:
+                sites.append((locate(name, line - 1), name))
+        for item in form[1:]:
+            visit(item, line)
+
+    for form, line in ledger.Reader(text).top_level():
+        visit(form, line)
+    return sites, dynamic
+
+
+def world_check(builds=WORLD_BUILDS, root: Path = ROOT) -> tuple[list[str], list[str]]:
+    """(refusals, notes): each counterpart name a raw file of BUILD passes to
+    `fnn-core'/`fnn-call' that BUILD's world does not define, by file:line."""
+    import build_lists_check
+    # The DTN image omits host files by declaration, each name it cannot
+    # reach with its reason (tools/build_lists_check.py DTN_OMITTED, which
+    # `make check' holds to "still omitted, still reached"); that register is
+    # read here, not a second list kept.
+    dtn_excused = {name: reason for _, (_, names) in build_lists_check.DTN_OMITTED.items()
+                   for name, reason in names.items()}
+    refused: list[str] = []
+    notes: list[str] = []
+    for build in builds:
+        defined, raw, problems = world_of(build, root)
+        refused += [f"{build}: {problem}" for problem in problems]
+        excused = dtn_excused if build == build_lists_check.DTN_BUILD else {}
+        checked = dynamic = waived = 0
+        for name in raw:
+            sites, computed = world_sites(root / name)
+            dynamic += computed
+            for line, symbol in sites:
+                checked += 1
+                if symbol not in defined and symbol in excused:
+                    waived += 1
+                elif symbol not in defined:
+                    refused.append(f"{name}:{line} {symbol}: {build}'s image world does not "
+                                   "define it (no book the build includes, no ld host file); "
+                                   "the counterpart is missing at run time")
+        notes.append(f"{build}: {len(raw)} raw file(s), {checked} named counterpart(s) "
+                     f"checked against {len(defined)} world name(s); {dynamic} computed "
+                     "name(s) not checkable statically"
+                     + (f"; {waived} unreachable in this image by build_lists_check's "
+                        "DTN_OMITTED" if waived else ""))
+    return refused, notes
+
+
+def world_main(builds: list[str]) -> int:
+    refused, notes = world_check(tuple(builds) or WORLD_BUILDS)
+    for note in notes:
+        print(f"host_check --world: {note}")
+    for line in refused:
+        print(f"FAIL {line}")
+    print(f"host_check --world: {len(refused)} refused")
+    return 1 if refused else 0
+
+
+def build_order_main(timeout: int) -> int:
+    """Each image's ACL2-mode prefix in its build order (host_translate_check):
+    0 all translated, 1 an ACL2 error in any, else 2 NOT RUN."""
+    codes = []
+    for build in WORLD_BUILDS:
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "tools/host_translate_check.py"), "--build", build,
+             "--timeout", str(timeout),
+             "--log", f"build/host-translate/{Path(build).stem}.log"],
+            cwd=ROOT)
+        codes.append(result.returncode)
+        verdict = {0: "ok", 1: "FAIL", 2: "NOT RUN"}.get(result.returncode,
+                                                         f"exit {result.returncode}")
+        print(f"host_check: {verdict} {build} (its include-books and host lds, in order)")
+    if any(code == 1 for code in codes):
+        return 1
+    return 0 if all(code == 0 for code in codes) else 2
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -607,17 +899,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--load", action="store_true",
                         help="load the raw host/native files in the build's order into one "
                              "bare ACL2 and report errors, arity, macro order and names "
-                             "nothing defines (seconds; no image build)")
+                             "nothing defines (seconds; no image build).  Requires FN_ACL2 "
+                             "(or acl2 on PATH): exit 2 NOT RUN without it")
     parser.add_argument("--tables", action="store_true",
                         help="static: refuse a global make-hash-table in host/ that is "
                              "neither :synchronized t nor declared thread-confined or "
                              "guarded-by a lock (no ACL2)")
+    parser.add_argument("--alone", action="store_true",
+                        help="load each FILE (default: every host file) alone in its own "
+                             "ACL2: a diagnosis, not the gate (build order is the gate)")
+    parser.add_argument("--world", action="store_true",
+                        help="static: every name a raw host/native file passes to fnn-core* "
+                             "or fnn-call is defined in the world of the image that loads it "
+                             "(build.lisp, build-dtn.lisp; FILEs name other build scripts)")
     parser.add_argument("--build", default=BUILD_SCRIPT,
                         help="with --load: the build script whose raw load order to use")
     args = parser.parse_args(argv)
 
     if args.tables:
         return tables_main(args.files)
+    if args.world:
+        return world_main(args.files)
     acl2 = executable()
     if args.load:
         if acl2 is None:
@@ -625,7 +927,9 @@ def main(argv: list[str] | None = None) -> int:
             acl2 = Path(found).resolve() if found else None
         if acl2 is None:
             print("host_check --load: NOT RUN -- no ACL2 (FN_ACL2 unset and no acl2 on "
-                  "PATH)", file=sys.stderr)
+                  "PATH).  Set FN_ACL2 to the ACL2 executable (on persvati "
+                  "/home/ember/fn-gates/toolchains/w25/acl2-literal); make check "
+                  "counts this as a failed step", file=sys.stderr)
             return 2
         order = raw_load_order(args.build)
         unknown = [name for name in args.files if name not in order]
@@ -641,12 +945,16 @@ def main(argv: list[str] | None = None) -> int:
         if log_dir is not None:
             log_dir.mkdir(parents=True, exist_ok=True)
         return load_check(acl2, files, args.timeout_seconds, log_dir)
+    if not args.alone:
+        if args.files:
+            print("host_check: FILEs without a mode: use --alone FILE... (a diagnosis) "
+                  "or --load FILE... (build order)", file=sys.stderr)
+            return 2
+        return build_order_main(args.timeout_seconds)
     if acl2 is None:
-        # Loudly, not silently: an unset FN_ACL2 is a check that did not run.
-        print("host_check: SKIPPED -- FN_ACL2 is unset or does not name an "
-              "executable, so no host file was loaded.  This check is not "
-              "evidence until it runs with a real ACL2.", file=sys.stderr)
-        return 0
+        print("host_check --alone: NOT RUN -- FN_ACL2 is unset or does not name an "
+              "executable, so no host file was loaded.", file=sys.stderr)
+        return 2
 
     raw = raw_files()
     targets = args.files or host_files()

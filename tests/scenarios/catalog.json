@@ -5498,6 +5498,40 @@
         "record": "planning/evidence/arena-store-2026-09-27.md"
       },
       "note": "Lane arena-store (2026-09-27): the ACL2 witnesses of tests/acl2/pagestore-tests.lisp and books/pagestore-gc.lisp are the executable evidence; the host driver host/native/proto-pagestore.lisp ran the process-death (210 cuts) and power-loss (220 cuts) campaigns on hbox with 0 violations (record section 4), outside the native test modules. No native module exercises it: the owner does not call the page store until fn-hist moves onto it (lane arena-store-2)."
+    },
+    {
+      "id": "SCN-187",
+      "title": "The node's own web face: a friend makes an account from an invitation code, signs in, reads, posts, sees the post, removes it, signs out and in again, over plain HTTP from loopback and over the face's own HTTPS",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "WEB-005"
+      ],
+      "steps": [
+        "A scratch store with [auth] required and protected_only and a [web] table; `operator CONFIG run' announces LISTENING-WEB; `account invite' makes a code.",
+        "tests/test_native_web.py drives the face over HTTP and HTTPS: make the account, read the groups, post (a body with a '.' line and markup), read the group and the article, remove the post, sign out, a wrong password, sign in again; malformed requests; a second use of the code."
+      ],
+      "expected": [
+        "Every outcome is the node's: 303 to / after XREDEEM and AUTHINFO 281; the post accepted, listed, read back escaped; removed (STAT 430) and gone from the group; 401 'don't match' for the wrong password; 505/501/400/411 for the malformed requests; 403 for the second use of the code; no page carries the password; every page has CSP default-src 'none'; the session cookie is HttpOnly, SameSite=Lax, and Secure over HTTPS."
+      ],
+      "evidence": [
+        "tests/test_native_web.py"
+      ],
+      "implementation": {
+        "test": "tests.test_native_web",
+        "cases": [
+          "NativeWebFaceTests.test_1_a_friend_makes_an_account_reads_posts_and_removes",
+          "NativeWebFaceTests.test_2_refusals",
+          "NativeWebFaceTests.test_3_the_code_works_once",
+          "NativeWebFaceTests.test_4_fuzzed_requests_are_answered_or_closed",
+          "NativeWebFaceTlsTests.test_1_a_friend_makes_an_account_reads_posts_and_removes",
+          "NativeWebFaceTlsTests.test_2_refusals",
+          "NativeWebFaceTlsTests.test_3_the_code_works_once"
+        ],
+        "native": true,
+        "record": "planning/evidence/web-native-2026-09-28.md",
+        "log": "planning/evidence/web-native-2026-09-28/native-w4c.log"
+      }
     }
   ]
 }

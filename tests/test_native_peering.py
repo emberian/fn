@@ -15,9 +15,11 @@ import subprocess
 import tempfile
 import threading
 import time
+
+from tests.test_native_operator_verbs import deployed_stack
 import unittest
 
-from tests.native_process import wait_for_announcement
+from tests import native_harness
 from tools.wire_stream import whole_stream
 
 
@@ -160,7 +162,7 @@ class NativePeeringTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-peering-")
         self.addCleanup(self.temporary.cleanup)
         self.base = Path(self.temporary.name)
-        self.env = dict(os.environ)
+        self.env = deployed_stack(dict(os.environ))
         self.env["ACL2_CUSTOMIZATION"] = "NONE"
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
         self.env.pop("FN_HOST", None)
@@ -226,12 +228,11 @@ class NativePeeringTests(unittest.TestCase):
         ])
 
     def start(self, node):
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = native_harness.start(
+            [IMAGE, "--fn", "operator", node["config"], "run"], cwd=ROOT, env=self.env)
         self.processes.append(process)
         node["process"] = process
-        line = wait_for_announcement(process, b"LISTENING ")
+        line = process.announcement(b"LISTENING ")
         self.assertEqual(line, "LISTENING {}\n".format(node["port"]).encode(),
                          "{} emitted an unexpected readiness line: {!r}".format(
                              node["name"], line))
@@ -240,15 +241,9 @@ class NativePeeringTests(unittest.TestCase):
 
     def stop_all(self):
         for process in self.processes:
-            if process.poll() is None:
-                process.terminate()
+            process.terminate()
         for process in self.processes:
-            if process.poll() is None:
-                process.wait(timeout=30)
-            if process.stdout:
-                process.stdout.close()
-            if process.stderr:
-                process.stderr.close()
+            process.stop()
         self.processes = []
 
     @staticmethod
@@ -274,7 +269,7 @@ class NativePeeringTests(unittest.TestCase):
             process = node.get("process")
             if process is not None and process.poll() is not None:
                 self.fail("{} exited while awaiting article: {}".format(
-                    node["name"], process.stderr.read().decode("utf-8", "replace")))
+                    node["name"], process.stderr.tail().decode("utf-8", "replace")))
             return None
         with client:
             stream = whole_stream(client)
@@ -456,8 +451,7 @@ class NativePeeringTests(unittest.TestCase):
         source = self.processes.pop(0)
         source.kill()
         source.wait(timeout=30)
-        source.stdout.close()
-        source.stderr.close()
+        source.finish()
 
         self.start(b)
         self.start(a)
@@ -1091,19 +1085,9 @@ class NativePeeringTests(unittest.TestCase):
                           str(down_port), "-", "fn.*", "127.0.0.2", "true"])
         return node
 
-    def start_drained(self, node):
-        """start, then read the node's stdout and stderr on threads: 1,000
-        transits log 1,000 lines, and an unread pipe blocks the node."""
-        self.start(node)
-        node["log"] = []
-        for pipe in (node["process"].stdout, node["process"].stderr):
-            threading.Thread(target=lambda p=pipe: [node["log"].append(l) for l in p],
-                             daemon=True).start()
-
     def stop_timed(self, node):
         started = time.monotonic()
-        node["process"].terminate()
-        node["process"].wait(timeout=300)
+        node["process"].stop(grace=300)
         return round(time.monotonic() - started, 2)
 
     def inject(self, node, ids):
@@ -1144,7 +1128,7 @@ class NativePeeringTests(unittest.TestCase):
         peer = ScriptedTransitPeer("203 streaming permitted")
         self.addCleanup(peer.close)
         node = self.fill_node("past-bound", peer.port)
-        self.start_drained(node)
+        self.start(node)
         ids = ["<past-{}@example.invalid>".format(n) for n in range(1100)]
         # In batches the feed can drain: a batch past the peer's undelivered
         # bound would be deferred (436), which is the saturated test's case.
@@ -1167,7 +1151,7 @@ class NativePeeringTests(unittest.TestCase):
         self.assertIn(b"unavailable-peer clear", health.stdout, health.stdout)
         stopped = self.stop_timed(node)
         started = time.monotonic()
-        self.start_drained(node)
+        self.start(node)
         opened = time.monotonic() - started
         reply = self.nntp_post(node, "<past-after-restart@example.invalid>")
         self.assertTrue(reply.startswith(b"240"), reply)
@@ -1188,7 +1172,7 @@ class NativePeeringTests(unittest.TestCase):
         saturated=1."""
         closed = free_port()
         node = self.fill_node("saturated", closed)
-        self.start_drained(node)
+        self.start(node)
         ids = ["<sat-{}@example.invalid>".format(n) for n in range(1026)]
         replies = self.inject(node, ids)
         codes = [r[:3] for r in replies]
@@ -1208,7 +1192,7 @@ class NativePeeringTests(unittest.TestCase):
         # re-checked per replayed record).
         stopped = self.stop_timed(node)
         started = time.monotonic()
-        self.start_drained(node)
+        self.start(node)
         opened = time.monotonic() - started
         again = self.nntp_post(node, "<sat-local-2@example.invalid>")
         self.assertIn(b"(feed-queue-full)", again)
@@ -1227,7 +1211,7 @@ class NativePeeringTests(unittest.TestCase):
         the report answers, the owner keeps running, and `status' still
         answers after it."""
         node = self.fill_node("obligations")
-        self.start_drained(node)
+        self.start(node)
         ids = ["<obl-{}@example.invalid>".format(n) for n in range(5000)]
         # No outbound peer: nothing is fed, every article is held (keep-forever).
         replies = self.inject(node, ids)

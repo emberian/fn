@@ -35,7 +35,7 @@ class NativeServedCostTests(unittest.TestCase):
         # Since scheduler-3 (1b3160bce) fnn-owner-handle-chunk runs the read
         # through fnn-owner-handle-chunk-read and the XREDEEM publication in
         # its own quantum; the fill and the span call are the read's.
-        self.assertIn("(fnn-owner-handle-chunk-read service cid incoming socket class)",
+        self.assertIn("(fnn-owner-handle-chunk-read service cid incoming socket class peerp)",
                       definition(native, "fnn-owner-handle-chunk"))
         handoff = definition(native, "fnn-owner-handle-chunk-read")
         self.assertIn("(fnn-octets-fill incoming)", handoff)

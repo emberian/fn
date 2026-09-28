@@ -94,6 +94,20 @@ from the cache is dated no earlier than its source (tools/certs.py
 `date_after_source`), so `certify_books.py --pcert` completes over a closure
 `--certify-missing` or an install put in place.
 
+Round 4 (lane-tools-1, 2026-09-28, the lanes' LANEDUMP asks): `--acl2 PATH`
+(else FN_ACL2) picks the ACL2, also on a --host box (hbox's
+acl2-literal-4g-tls64k when an image world exhausts thread-local storage);
+`send-range --no-sync` refuses when the box's copy is not this tree's;
+send-range names every form it skips and counts the `(local ...)` forms it
+sends at the top level (whose events stay in the session), and its
+`--ld-local` sends the range inside one encapsulate; `resync NAME BOOK --from
+EVENT` undoes the session through what it holds from EVENT on and resends from
+EVENT, or from the first earlier event its world lacks; a refusal is judged by
+the form's own result (a must-fail that caught an `er hard` is not refused);
+a form that took long for few prover steps says so; `status` warns that a
+book loaded form by form from source leaks its local theory; the reader
+knows character literals (#\\( #\\") and |bar symbols|.
+
 A session holds one slot of the machine's ACL2 pool for its whole life, so
 it belongs to its lane and ends with it (PKT-346: fifteen finished lanes'
 sessions once held fifteen of persvati's sixteen slots).  `start` records
@@ -562,8 +576,31 @@ class Acl2:
                 raise
 
 
+FAILED_BANNER = "******** FAILED ********"
+SUMMARY_LINE = re.compile(r"^Summary\s*$", re.MULTILINE)
+
+
 def errored(output: str) -> bool:
-    return any(mark in output for mark in ERROR_MARKS + CRASH_MARKS)
+    """Did ACL2 refuse the form -- judged by the form's own result, not by
+    error text anywhere in its output.
+
+    An event that expects an error and catches it (`must-fail` over an `er
+    hard`) prints "HARD ACL2 ERROR" and then succeeds: its summary comes
+    after the error and no FAILED banner follows (defkeystone, 2026-09-27:
+    such a must-fail returned T and was marked refused).  So error text that
+    lies wholly before the form's final Summary, with no FAILED banner, is a
+    caught error.  A crash, ACL2 Halted, a FAILED banner, or error text with
+    no summary after it (a query, a translation error) is a refusal.
+    """
+    if any(mark in output for mark in CRASH_MARKS) or "ACL2 Halted" in output:
+        return True
+    if FAILED_BANNER in output:
+        return True
+    last_error = max((output.rfind(mark) for mark in ERROR_MARKS), default=-1)
+    if last_error < 0:
+        return False
+    summaries = [match.start() for match in SUMMARY_LINE.finditer(output)]
+    return not summaries or last_error > summaries[-1]
 
 
 def crashed(output: str) -> bool:
@@ -605,6 +642,28 @@ def cost_words(cost: dict, elapsed: float | None = None) -> str:
         steps_word = (">" if cost.get("steps_capped") else "") + f"{cost['steps']:,}"
     words = f"ACL2 time {time_word}; prover steps {steps_word}"
     return words + (f"; elapsed {elapsed:.1f} s" if elapsed is not None else "")
+
+
+# "Long time, few steps": a form whose time is not in the prover's counted
+# steps.  blake3-digest, 2026-09-27: fn-b3x-chunk-is-chunk took 126-180 s at
+# 228 steps -- the time went into preprocessing/clausifying a large mv-let
+# term, which steps do not count, so the failure read as cheap.
+SLOW_SECONDS = 20.0
+SLOW_STEPS_PER_SECOND = 1000
+
+
+def slow_note(cost: dict, elapsed: float | None = None) -> str:
+    """A diagnosis line when a form took long for the steps it counted, else ''."""
+    seconds = max(cost.get("time") or 0.0, elapsed or 0.0)
+    steps = cost.get("steps") or 0
+    if seconds < SLOW_SECONDS or cost.get("steps_capped") or steps > seconds * SLOW_STEPS_PER_SECOND:
+        return ""
+    return (f"[long time, few steps: {seconds:.0f} s for {steps:,} prover steps. The time "
+            "is outside what steps count: preprocessing/clausifying a large term (a big "
+            "mv-let, let* or case split before the first simplification), expansion "
+            "the hints ask for, a slow executable counterpart, or a loaded box when ACL2's "
+            "own time is small. Steps do not show it; split the term into named helpers or "
+            "look at :pso's first goals, and do not read the failure as cheap]")
 
 
 class Totals:
@@ -906,6 +965,9 @@ def note_refusal(state: dict, output: str, limit: float | None) -> None:
             path.write_text("\n".join(output_lines(output)) + "\n", encoding="utf-8")
             where = str(path)
     state["error"] = load_refusal(output, limit, where)
+    note = slow_note(measure(output), limit if TIME_LIMIT_MARK in output else None)
+    if note:
+        state["error"] = state["error"] + "\n" + note
     state["load_time_limited"] = TIME_LIMIT_MARK in output
 
 
@@ -1128,7 +1190,9 @@ def handle(request: dict, acl2: Acl2, state: dict, default_limit: float) -> dict
     try:
         count = len(commands(form))
     except ValueError as error:
-        return {"error": True, "output": f"not one complete form: {error}"}
+        return {"error": True, "output": f"not one complete form: {error} (a form with "
+                "quotes, strings or character literals is safest in a file: "
+                "`proof_repl.py send-range NAME FILE`, or `send NAME -` from stdin)"}
     if count != 1:
         return {"error": True, "output": f"send exactly one form, not {count}"}
     limit = request.get("limit") or default_limit
@@ -1450,6 +1514,16 @@ def status(args) -> int:
         print(f"  from source (not certified): {book}, "
               + ("in one encapsulate (its local events stay local)" if count == "encapsulated"
                  else f"{count} forms (its local events are in the session)"))
+    leaking = [book for book, count in (state.get("ld_loaded") or {}).items()
+               if count != "encapsulated"]
+    if leaking:
+        print(f"  WARNING: {len(leaking)} from-source book(s) loaded form by form, so their "
+              "LOCAL lemmas and theory are rules in this session that a certified include "
+              "would not give: a proof here may pass, fail or cost differently than under "
+              "certification (feed-queue, 2026-09-27: 6.9M steps here, 1.76M over the "
+              "certified dependency). Start with --ld-local to load each inside one "
+              "encapsulate (its non-local include-book and defpkg forms first), or "
+              "--certify-missing to include certificates.")
     if state["stopped_at"]:
         print(f"  stopped at {state['stopped_at']}:")
         print("  " + (state["error"] or "").replace("\n", "\n  "))
@@ -1502,6 +1576,9 @@ def send_one(name: str, form: str, limit: float | None, full: bool) -> int:
         print(f"[{cost_words(cost)}]")
     if "elapsed" in answer:
         print(f"[{answer['elapsed']} s{', timed out' if answer.get('timed_out') else ''}]")
+    note = slow_note(cost, answer.get("elapsed"))
+    if note:
+        print(note)
     return 1 if answer.get("error") else 0
 
 
@@ -1522,6 +1599,9 @@ def send_many(name: str, items: list[tuple[str, str]], limit: float | None,
         totals.add(label, cost, elapsed, refused)
         print(f"{'REFUSED' if refused else 'ok':8}{label}: {cost_words(cost, elapsed)}",
               flush=True)
+        note = slow_note(cost, elapsed)
+        if note:
+            print("        " + note, flush=True)
         if full or wants_full(form):
             print(output)
         elif refused:
@@ -1562,6 +1642,47 @@ def read_state(name: str) -> dict | None:
         return None
 
 
+def range_items(path: Path, all_forms: list[str], chosen: range, from_source: set[str],
+                skip_includes: bool = False) -> tuple[list[tuple[str, str]], list[str], int]:
+    """(label, form) to send for CHOSEN, the labels of the includes skipped, and
+    how many of the sent forms are top-level `(local ...)`."""
+    items, skipped, local = [], [], 0
+    for index in chosen:
+        form = all_forms[index]
+        target = include_target(form, path.parent)
+        if target is not None and (skip_includes or target in from_source):
+            skipped.append(form_label(index + 1, form)
+                           + (" (loaded from source already)" if target in from_source
+                              else " (--skip-includes)"))
+            continue
+        local += bool(LOCAL_FORM.match(form))
+        items.append((form_label(index + 1, form), form))
+    return items, skipped, local
+
+
+def range_words(name: str, book: str, chosen: range, items: list, skipped: list[str],
+                local: int, ld_local: bool) -> str:
+    """The head line of a send-range: what it sends, what it skips and why.
+
+    web-native, 2026-09-27: a local include a later termination proof needed
+    was absent from the session and nothing said so; every skipped form is
+    now named, and the local forms sent are counted, since at the top level
+    their events stay in the session (a certified include drops them).
+    """
+    words = (f"send-range {name}: forms #{chosen.start + 1}-#{chosen.stop} of {book} "
+             f"({len(items)} to send")
+    if local:
+        words += (f", {local} of them (local ...): " +
+                  ("inside one encapsulate, so they are dropped at its end as an include "
+                   "drops them" if ld_local else
+                   "sent at the top level, so their events STAY in this session "
+                   "(--ld-local drops them at the range's end)"))
+    words += ")"
+    if skipped:
+        words += f"\nskipped {len(skipped)} form(s): " + "; ".join(skipped)
+    return words
+
+
 def send_range(args) -> int:
     """A book's forms from --from to --until/--through into a live session."""
     path = book_path(args.book)
@@ -1569,18 +1690,96 @@ def send_range(args) -> int:
     chosen = select_range(all_forms, args.start, args.until, args.through)
     state = read_state(args.name) or {}
     from_source = set(state.get("ld") or [])
-    items, skipped = [], 0
-    for index in chosen:
-        form = all_forms[index]
-        target = include_target(form, path.parent)
-        if target is not None and (args.skip_includes or target in from_source):
-            skipped += 1
-            continue
-        items.append((form_label(index + 1, form), form))
-    first, last = chosen.start + 1, chosen.stop
-    print(f"send-range {args.name}: forms #{first}-#{last} of {args.book} "
-          f"({len(items)} to send" + (f", {skipped} local includes skipped" if skipped else "")
-          + ")")
+    items, skipped, local = range_items(path, all_forms, chosen, from_source,
+                                        args.skip_includes)
+    ld_local = getattr(args, "ld_local", False)
+    print(range_words(args.name, args.book, chosen, items, skipped, local, ld_local))
+    if not items:
+        return 0
+    if ld_local:
+        hoisted, body = encapsulated("\n".join(form for _, form in items), path.parent,
+                                     set(), None)
+        items = ([(form_label(0, form).split(" ", 1)[1], form) for form in hoisted]
+                 + [(f"#{chosen.start + 1}-#{chosen.stop} (encapsulate)", body)])
+    return send_many(args.name, items, args.limit, args.full, args.keep_going)
+
+
+# Heads whose name argument is an existing name, not one the form introduces.
+NAMELESS_HEADS = ("verify-guards", "defattach", "in-theory", "local")
+
+
+def introduced_name(form: str) -> str | None:
+    head, name = head_and_name(form)
+    return None if head in NAMELESS_HEADS else name
+
+
+def first_index(name: str, names: list[str], want_present: bool,
+                asker=None) -> int | None:
+    """Ask session NAME which of NAMES is (want_present) or is not a logical
+    name in its world; answers the first such position, or None."""
+    if not names:
+        return None
+    asker = asker or ask
+    probes = " ".join(f"(if (logical-namep '{one} (w state)) t nil)" for one in names)
+    form = f"(position {'t' if want_present else 'nil'} (list {probes}))"
+    output = asker(name, {"op": "send", "form": form, "limit": None}).get("output", "")
+    found = re.findall(r"(?:^|>)\s*([0-9]+|NIL)\s*$", output, re.MULTILINE)
+    if not found:
+        raise SystemExit(f"proof-repl: resync could not read the world of {name!r}:\n"
+                         + brief(output))
+    return None if found[-1] == "NIL" else int(found[-1])
+
+
+def resync(args, asker=None) -> int:
+    """Undo the session back to EVENT and resend the book from there, in one command.
+
+    web-native, 2026-09-27: `:ubt! X` then `send-range --from X` sometimes
+    left earlier definitions missing (the undo reached an event the book
+    defines before X, or an earlier form had never been sent), and the
+    redefinition refusals that followed only a fresh `start` cleared.  This
+    asks the session's world which of the book's names it has: it undoes
+    (`:ubt!`) through the first name from EVENT onward that is present,
+    until none is, then resends from the first name before EVENT that is
+    missing, or from EVENT.
+    """
+    asker = asker or ask
+    path = book_path(args.book)
+    all_forms = forms(path.read_text(encoding="utf-8"))
+    begin = locate(all_forms, args.start)
+    tail = [(index, introduced_name(all_forms[index])) for index in
+            select_range(all_forms, args.start, args.until, args.through)]
+    tail = [(index, one) for index, one in tail if one]
+    undone: list[str] = []
+    for _ in range(len(tail) + 1):
+        present = first_index(args.name, [one for _, one in tail], True, asker)
+        if present is None:
+            break
+        target = tail[present][1]
+        answer = asker(args.name, {"op": "send", "form": f":ubt! {target}", "limit": None})
+        undone.append(target)
+        if answer.get("error"):
+            print(f"resync {args.name}: :ubt! {target} was refused:\n"
+                  + brief(answer.get("output", "")))
+            return 1
+    else:
+        print(f"resync {args.name}: the world still holds names from #{begin + 1} on "
+              f"after {len(undone)} undo(s); start the session again")
+        return 1
+    before = [(index, introduced_name(all_forms[index])) for index in range(begin)]
+    before = [(index, one) for index, one in before if one]
+    missing = first_index(args.name, [one for _, one in before], False, asker)
+    start = before[missing][0] if missing is not None else begin
+    print(f"resync {args.name}: "
+          + (f"undid through {', '.join(undone)}" if undone else "nothing from "
+             f"#{begin + 1} on was in the world")
+          + (f"; #{start + 1} {before[missing][1]} (before {args.start}) was missing, so "
+             f"resending from there" if missing is not None else "")
+          + ".", flush=True)
+    chosen = range(start, select_range(all_forms, args.start, args.until,
+                                       args.through).stop)
+    state = read_state(args.name) or {}
+    items, skipped, local = range_items(path, all_forms, chosen, set(state.get("ld") or []))
+    print(range_words(args.name, args.book, chosen, items, skipped, local, False))
     if not items:
         return 0
     return send_many(args.name, items, args.limit, args.full, args.keep_going)
@@ -2250,25 +2449,41 @@ def sync_to(host: str, tree: str, files: list[str]) -> float:
 
 
 def strip_remote_options(argv: list[str]) -> list[str]:
-    """ARGV without --host/--remote-tree/--no-sync, which only this side reads."""
+    """ARGV without --host/--remote-tree/--acl2/--no-sync, which only this side
+    reads (--acl2 goes to the box as its FN_ACL2)."""
     kept, skip = [], False
     for word in argv:
         if skip:
             skip = False
             continue
-        if word in ("--host", "--remote-tree"):
+        if word in ("--host", "--remote-tree", "--acl2"):
             skip = True
             continue
-        if word.startswith(("--host=", "--remote-tree=")) or word == "--no-sync":
+        if word.startswith(("--host=", "--remote-tree=", "--acl2=")) or word == "--no-sync":
             continue
         kept.append(word)
     return kept
 
 
-def remote_script(host: str, tree: str, lane: str | None, argv: list[str]) -> str:
+def remote_acl2(args, environ=os.environ) -> str | None:
+    """The ACL2 a --host command runs with, when not the box's default.
+
+    `--acl2 PATH` wins, then FN_ACL2 from this shell; None keeps the box's
+    own (tools/farm.py HOSTS).  extract-2, 2026-09-27: an image's world plus
+    host files exhausted hbox's default (tls 16384) with "Thread local
+    storage exhausted", and --host offered no way to pick
+    /tank/fn/toolchains/w28/acl2-literal-4g-tls64k.
+    """
+    chosen = getattr(args, "acl2", None) or environ.get("FN_ACL2", "").strip()
+    return chosen or None
+
+
+def remote_script(host: str, tree: str, lane: str | None, argv: list[str],
+                  acl2: str | None = None) -> str:
     settings = box_settings(host)
     import shlex  # noqa: E402
-    exports = [f"FN_ACL2={settings['acl2']}", f"FN_CERT_CACHE={settings['cache']}"]
+    exports = [f"FN_ACL2={shlex.quote(acl2) if acl2 else settings['acl2']}",
+               f"FN_CERT_CACHE={settings['cache']}"]
     if lane:
         exports.append(f"FN_LANE={shlex.quote(lane)}")
     wrap = settings.get("wrap") or ""
@@ -2276,6 +2491,34 @@ def remote_script(host: str, tree: str, lane: str | None, argv: list[str]) -> st
     if wrap and argv and argv[0] in SERVER_COMMANDS:
         command = f"{wrap} {command}"
     return f"cd {tree} && export {' '.join(exports)} && {command}"
+
+
+def remote_digest(host: str, tree: str, relative: str) -> str | None:
+    """The SHA-256 of TREE/RELATIVE on HOST, or None when it is not there."""
+    import shlex  # noqa: E402
+    script = (f"cd {tree} && python3 -c 'import hashlib,sys; "
+              "print(hashlib.sha256(open(sys.argv[1],\"rb\").read()).hexdigest())' "
+              f"{shlex.quote(relative)}")
+    done = subprocess.run(ssh_command(host, script), capture_output=True, text=True,
+                          stdin=subprocess.DEVNULL)
+    text = done.stdout.strip()
+    return text if done.returncode == 0 and re.fullmatch(r"[0-9a-f]{64}", text) else None
+
+
+def refuse_stale_remote(host: str, tree: str, relative: str,
+                        digest_of=remote_digest) -> None:
+    """--no-sync runs the box's copy: refuse when it is not this one.
+
+    defprotocol, 2026-09-27: an edit made after the last sync silently did
+    not run, and the refusal it caused read like a proof problem.
+    """
+    local = hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
+    remote = digest_of(host, tree, relative)
+    if remote != local:
+        raise SystemExit(
+            f"proof-repl: --no-sync would run {host}:{tree}/{relative} "
+            f"(sha256 {remote[:16] if remote else 'absent'}), which is not this tree's "
+            f"{relative} (sha256 {local[:16]}); drop --no-sync to sync it first")
 
 
 def run_remote(args, argv: list[str]) -> int:
@@ -2302,7 +2545,7 @@ def run_remote(args, argv: list[str]) -> int:
         books += list(args.ld or [])
     elif command in ("list", "reap") and not getattr(args, "no_sync", False):
         extra.append("tools/proof_repl.py")  # sync_files adds the rest of tools/
-    elif command == "send-range":
+    elif command in ("send-range", "resync"):
         path = book_path(args.book)
         try:
             relative = path.relative_to(ROOT.resolve()).as_posix()
@@ -2316,6 +2559,8 @@ def run_remote(args, argv: list[str]) -> int:
             relative = staged.relative_to(ROOT).as_posix()
         extra.append(relative)
         forwarded = [relative if word == args.book else word for word in forwarded]
+        if getattr(args, "no_sync", False):
+            refuse_stale_remote(host, tree, relative)
     if (books or extra) and not getattr(args, "no_sync", False):
         files = sync_files(books, extra)
         seconds = sync_to(host, tree, files)
@@ -2324,7 +2569,12 @@ def run_remote(args, argv: list[str]) -> int:
     stdin_text = None
     if (command == "send" and args.form == "-") or (command == "probe" and args.form == "-"):
         stdin_text = sys.stdin.read()
-    script = remote_script(host, tree, lane, forwarded)
+    acl2 = remote_acl2(args)
+    if acl2 and command in SERVER_COMMANDS:
+        print(f"proof-repl --host {host}: ACL2 {acl2} (not the box default "
+              f"{box_settings(host)['acl2']}; certificates are keyed by toolchain, so the "
+              "cache may miss)", flush=True)
+    script = remote_script(host, tree, lane, forwarded, acl2)
     if stdin_text is None:
         done = subprocess.run(ssh_command(host, script), stdin=subprocess.DEVNULL)
     else:
@@ -2338,13 +2588,46 @@ def run_remote(args, argv: list[str]) -> int:
     return done.returncode
 
 
+def resolve_auto_host(args, picker=None) -> str:
+    """`--host auto`: a session's own box, else the least loaded one now.
+
+    A command about an existing session (send, send-range, resync, status,
+    stop, and probe beside it) goes where that session was started
+    (remote.json); `start` and the machine-wide `list`/`reap` pick the box
+    with the lowest load per core (tools/boxes.sh --pick prints both).
+    """
+    name = getattr(args, "name", None)
+    if args.command != "start" and name:
+        with contextlib.suppress(OSError, KeyError, json.JSONDecodeError):
+            host = json.loads((session_dir(name) / "remote.json").read_text())["host"]
+            print(f"proof-repl --host auto: session {name!r} is on {host}", flush=True)
+            return host
+        if args.command != "probe":
+            raise SystemExit(f"proof-repl: --host auto: no record here of session {name!r}'s "
+                             "box; name it (--host hbox|persvati)")
+    if picker is None:
+        def picker():
+            done = subprocess.run(["sh", str(ROOT / "tools" / "boxes.sh"), "--pick"],
+                                  stdout=subprocess.PIPE, text=True, check=False)
+            return done.stdout.strip() if done.returncode == 0 else ""
+    host = picker()
+    if host not in REMOTE_TREES:
+        raise SystemExit("proof-repl: --host auto: no build box answered (tools/boxes.sh)")
+    return host
+
+
 def add_remote_options(parser, sync: bool = False) -> None:
     parser.add_argument("--host", default=None, metavar="BOX",
-                        help="run this on BOX (hbox, persvati) in the lane's tree there, "
+                        help="run this on BOX (hbox, persvati, or auto: a session's own "
+                             "box, else the lower load per core) in the lane's tree there, "
                              "with that box's ACL2 and certificate cache")
     parser.add_argument("--remote-tree", default=None, metavar="PATH",
                         help="with --host: the tree on the box (default: "
                              "<box's gates>/<lane>-repl)")
+    parser.add_argument("--acl2", default=None, metavar="PATH",
+                        help="the ACL2 executable (default FN_ACL2; with --host, else the "
+                             "box's own). On hbox an image world plus host files wants "
+                             "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k")
     if sync:
         parser.add_argument("--no-sync", action="store_true",
                             help="with --host: do not rsync tools/ and the closure first")
@@ -2430,11 +2713,31 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--full", action="store_true", help="every form's whole output")
     p.add_argument("--keep-going", action="store_true",
                    help="report every refusal instead of stopping at the first")
+    p.add_argument("--ld-local", action="store_true",
+                   help="send the range inside one encapsulate (non-local include-book "
+                        "and defpkg first), so its local events are dropped at the end, "
+                        "as a certified include drops them")
     p.add_argument("--skip-includes", action="store_true",
                    help="skip every local include-book form (the session's own "
                         "from-source books are always skipped)")
     add_remote_options(p, sync=True)
     p.set_defaults(run=send_range)
+    p = sub.add_parser("resync", help="undo the session back to EVENT and resend the "
+                                      "book from there (or from the first earlier event "
+                                      "the world lacks)")
+    p.add_argument("name")
+    p.add_argument("book", help="books/NAME (.lisp optional) or any file of forms")
+    p.add_argument("--from", dest="start", required=True, metavar="EVENT",
+                   help="an event name or #N")
+    p.add_argument("--until", default=None, metavar="EVENT", help="stop before this one")
+    p.add_argument("--through", default=None, metavar="EVENT", help="stop after this one")
+    p.add_argument("--limit", type=float, default=None)
+    p.add_argument("--full", action="store_true", help="every form's whole output")
+    p.add_argument("--keep-going", action="store_true",
+                   help="do not stop at the first refused form")
+    add_remote_options(p, sync=True)
+    p.set_defaults(run=resync)
+
     p = sub.add_parser("forms", help="number and name a book's top-level forms (#N)")
     p.add_argument("book")
     p.set_defaults(run=list_forms)
@@ -2491,8 +2794,13 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(run=reap)
     argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
+    if getattr(args, "host", None) == "auto":
+        args.host = resolve_auto_host(args)
+        argv = [args.host if word == "auto" else word for word in argv]
     if getattr(args, "host", None):
         return run_remote(args, argv)
+    if getattr(args, "acl2", None):
+        os.environ["FN_ACL2"] = args.acl2
     apply_box_defaults()
     return args.run(args)
 

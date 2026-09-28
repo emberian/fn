@@ -936,7 +936,7 @@ class NativeReaderImplicitTlsTests(unittest.TestCase):
         _, _, page = self.http(server, "GET", "/redeem")
         pre = re.search(r"name='pre' value='([^']+)'", page).group(1)
         status, _, page = self.http(server, "POST", "/redeem", {
-            "pre": pre, "code": code, "user": "wren2", "password": "x-secret",
+            "pre": pre, "code": code, "user": "wren2", "password": "x-secret",  # FAKE-SECRET: a test fixture's password
             "again": "x-secret"})
         self.assertEqual(status, 403, page)
         self.assertIn("refused redeem code", page)
@@ -944,7 +944,7 @@ class NativeReaderImplicitTlsTests(unittest.TestCase):
         _, _, page = self.http(server, "GET", "/signin")
         pre = re.search(r"name='pre' value='([^']+)'", page).group(1)
         status, where, page = self.http(server, "POST", "/signin", {
-            "pre": pre, "next": "/", "user": "wren", "password": "wren-wrong"})
+            "pre": pre, "next": "/", "user": "wren", "password": "wren-wrong"})  # FAKE-SECRET: a test fixture's password
         self.assertEqual(status, 401, page)
         status, where, page = self.http(server, "POST", "/signin", {
             "pre": pre, "next": "/", "user": "wren", "password": "wren-secret-9"})

@@ -228,7 +228,7 @@
    :pinned t))
 
 (defthm fn-scr-command-is-command-pinned
-  (implies (fn-scr-catalogp archive index v fn-arena fn-cat)
+  (implies (and (fn-scr-catalogp archive index v fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-command session archive index verdicts env tokens v fn-arena fn-cat)
                   (fn-nntp-command-pinned session archive index verdicts env tokens fn-arena)))
   :hints (("Goal" :in-theory (union-theories
@@ -262,7 +262,7 @@
       (fn-nntp-single session "501 syntax error"))))
 
 (defthm fn-scr-step-is-step-pinned
-  (implies (fn-scr-catalogp archive index v fn-arena fn-cat)
+  (implies (and (fn-scr-catalogp archive index v fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-step session archive index verdicts env wire-event v fn-arena fn-cat)
                   (fn-nntp-step-pinned session archive index verdicts env wire-event fn-arena)))
   :hints (("Goal" :in-theory (union-theories
@@ -297,7 +297,7 @@
          (fn-nntp-result-effects r) nil)))))
 
 (defthm fn-scr-post-step-is-post-step-pinned
-  (implies (fn-scr-catalogp archive index v fn-arena fn-cat)
+  (implies (and (fn-scr-catalogp archive index v fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-post-step ps archive index verdicts config observation injection
                                     wire-event v fn-arena fn-cat)
                   (fn-nntp-post-step-pinned ps archive index verdicts config observation
@@ -323,7 +323,7 @@
                          (fn-post-result-submission r))))
 
 (defthm fn-scr-peer-delegate-is-peer-delegate-pinned
-  (implies (fn-scr-catalogp archive index v fn-arena fn-cat)
+  (implies (and (fn-scr-catalogp archive index v fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-peer-delegate ps archive index verdicts config observation injection
                                         wire-event v fn-arena fn-cat)
                   (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
@@ -355,7 +355,7 @@
                        observation injection wire-event fn-arena))))
 
 (defthm fn-scr-peer-step-is-scar-peer-step-pinned
-  (implies (fn-scr-catalogp archive index v fn-arena fn-cat)
+  (implies (and (fn-scr-catalogp archive index v fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-peer-step ps live trie arts archive index verdicts config
                                     observation injection wire-event v fn-arena fn-cat)
                   (fn-scar-peer-step-pinned ps live trie arts archive index verdicts config
@@ -401,7 +401,7 @@
                            (fn-post-result-submission r)))))
 
 (defthm fn-scr-auth-delegate-is-scar-auth-delegate-pinned
-  (implies (fn-scr-catalogp archive index v fn-arena fn-cat)
+  (implies (and (fn-scr-catalogp archive index v fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-auth-delegate as live trie arts archive index verdicts config
                                         observation injection wire-event v fn-arena fn-cat)
                   (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config
@@ -447,7 +447,7 @@
                             injection wire-event v fn-arena fn-cat))))
 
 (defthm fn-scr-auth-step-is-scar-auth-step-pinned
-  (implies (fn-scr-catalogp archive index v fn-arena fn-cat)
+  (implies (and (fn-scr-catalogp archive index v fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-auth-step as live trie arts archive index verdicts config
                                     observation injection wire-event v fn-arena fn-cat)
                   (fn-scar-auth-step-pinned as live trie arts archive index verdicts config
@@ -502,7 +502,7 @@
                                 nil))))))
 
 (defthm fn-scr-dispatch-core-is-scar-dispatch-core
-  (implies (fn-scr-conn-catalogp conn fn-arena fn-cat)
+  (implies (and (fn-scr-conn-catalogp conn fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-dispatch-core conn event live trie arts fn-arena fn-cat)
                   (fn-scar-dispatch-core conn event live trie arts fn-arena)))
   :hints (("Goal" :in-theory (union-theories
@@ -524,12 +524,94 @@
                                 fn-served-conn-fields-of-make-conn-live)
                               (theory 'minimal-theory)))))
 
+;; F2 (lane sca-join-5): the re-pin reads the catalog.  GROUP and LISTGROUP
+;; re-pin the connection to the live view before they answer
+;; (books/served.lisp fn-served-repin), and the reference's re-selection
+;; fn-served-reselect computes the selected group's first article with
+;; fn-nntp-group-low over EVERY article of the live archive.  The twin reads
+;; it from the catalog at the live view (fn-scat-group-low: the live table
+;; at the top view, the probe pass otherwise); KEYSTONE
+;; fn-scr-repin-is-served-repin equates the two under the live view's
+;; catalog hypothesis, which fn-scr-conn-okp carries.
+(defun fn-scr-reselect (inner archive v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)))
+  (let* ((group (fn-nntp-session-group inner))
+         (group2 (if (and group
+                          (fn-ag-member group (fn-state-groups archive)))
+                     group
+                   nil))
+         (low (if group2 (fn-scat-group-low group2 v fn-cat) nil))
+         (current (if (posp low) low nil)))
+    (fn-nntp-set-cursor inner group2 current)))
+
+(defthm fn-scr-reselect-is-served-reselect
+  (implies (and (equal (fn-state-articles archive)
+                       (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-cnx-freshp fn-cat))
+           (equal (fn-scr-reselect inner archive v fn-cat)
+                  (fn-served-reselect inner archive)))
+  :hints (("Goal" :in-theory (e/d (fn-scr-reselect fn-served-reselect)
+                                  (fn-scat-group-low fn-nntp-group-low fn-cat-view-articles
+                                   fn-cnx-freshp fn-nntp-set-cursor
+                                   fn-scat-group-low-is-pass fn-scat-group-low-pass)))))
+
+(defun fn-scr-repin-session (as archive v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)))
+  (let* ((pold (fn-auth-session-base as))
+         (told (fn-peer-session-base pold)))
+    (fn-auth-with-base
+     as
+     (fn-peer-with-base
+      pold
+      (fn-post-make-session (fn-scr-reselect (fn-post-session-base told) archive v fn-cat)
+                            (fn-post-session-awaiting told))))))
+
+(defun fn-scr-repin (conn fn-cat)
+  (declare (xargs :stobjs fn-cat :guard t))
+  (let ((live (fn-served-conn-live conn)))
+    (if (not live)
+        conn
+      (fn-served-make-conn-live
+       (fn-served-conn-wire conn)
+       (fn-scr-repin-session (fn-served-conn-session conn)
+                             (fn-served-live-archive live)
+                             (fn-scr-view-of (fn-served-live-version live) fn-cat)
+                             fn-cat)
+       (fn-served-live-archive live)
+       (fn-served-conn-config conn)
+       (fn-served-conn-observation conn)
+       (fn-served-conn-injection conn)
+       (fn-served-live-verdicts live)
+       (fn-served-live-index live)
+       (fn-served-live-buckets live)
+       (fn-served-live-control live)
+       (fn-served-pinned-make (fn-served-live-version live)
+                              (fn-served-live-frontier live) t)
+       live))))
+
+(defthm fn-scr-repin-is-served-repin
+  (implies (fn-scr-conn-okp conn fn-arena fn-cat)
+           (equal (fn-scr-repin conn fn-cat)
+                  (fn-served-repin conn)))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-scr-repin fn-served-repin fn-scr-repin-session
+                                fn-served-repin-session fn-scr-conn-okp fn-scr-live-catalogp
+                                fn-scr-fields-catalogp fn-scr-catalogp fn-served-pinned-fields)
+                              (theory 'minimal-theory))
+           :use ((:instance fn-scr-reselect-is-served-reselect
+                            (inner (fn-post-session-base
+                                    (fn-peer-session-base
+                                     (fn-auth-session-base (fn-served-conn-session conn)))))
+                            (archive (fn-served-live-archive (fn-served-conn-live conn)))
+                            (v (fn-scr-view-of (fn-served-live-version (fn-served-conn-live conn))
+                                               fn-cat)))))))
+
 (defun fn-scr-dispatch (conn event live trie arts fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
                   :verify-guards nil))
   (if (fn-served-advance-eventp event)
-      (let ((r (fn-scr-dispatch-core (fn-served-repin conn) event live trie arts fn-arena fn-cat)))
+      (let ((r (fn-scr-dispatch-core (fn-scr-repin conn fn-cat) event live trie arts fn-arena fn-cat)))
         (if (fn-served-selectedp (fn-served-result-effects r))
             r
           (fn-served-make-result
@@ -538,14 +620,15 @@
     (fn-scr-dispatch-core conn event live trie arts fn-arena fn-cat)))
 
 (defthm fn-scr-dispatch-is-scar-dispatch
-  (implies (fn-scr-conn-okp conn fn-arena fn-cat)
+  (implies (and (fn-scr-conn-okp conn fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-dispatch conn event live trie arts fn-arena fn-cat)
                   (fn-scar-dispatch conn event live trie arts fn-arena)))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-scr-dispatch fn-scar-dispatch fn-scr-conn-okp
                                 fn-scr-dispatch-core-is-scar-dispatch-core
                                 fn-scr-conn-catalogp-of-repin)
-                              (theory 'minimal-theory)))))
+                              (theory 'minimal-theory))
+           :use ((:instance fn-scr-repin-is-served-repin)))))
 
 (verify-guards fn-scr-dispatch)
 
@@ -576,7 +659,7 @@
     (fn-served-make-result conn nil)))
 
 (defthm fn-scr-dispatch-events-is-scar-dispatch-events
-  (implies (fn-scr-conn-okp conn fn-arena fn-cat)
+  (implies (and (fn-scr-conn-okp conn fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-dispatch-events conn events live trie arts fn-arena fn-cat)
                   (fn-scar-dispatch-events conn events live trie arts fn-arena)))
   :hints (("Goal" :induct (fn-scr-dispatch-events conn events live trie arts fn-arena fn-cat)
@@ -609,7 +692,7 @@
      (fn-wire-result-events fed) live trie arts fn-arena fn-cat)))
 
 (defthm fn-scr-feed-byte-is-scar-feed-byte
-  (implies (fn-scr-conn-okp conn fn-arena fn-cat)
+  (implies (and (fn-scr-conn-okp conn fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-feed-byte conn byte live trie arts fn-arena fn-cat)
                   (fn-scar-feed-byte conn byte live trie arts fn-arena)))
   :hints (("Goal" :in-theory (union-theories
@@ -664,7 +747,7 @@
                                      (fn-served-result-effects result))))))))))
 
 (defthm fn-scr-feed-span-is-scar-feed-span
-  (implies (fn-scr-conn-okp conn fn-arena fn-cat)
+  (implies (and (fn-scr-conn-okp conn fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat)
                   (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena)))
   :hints (("Goal" :induct (fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat)
@@ -675,6 +758,11 @@
 
 ; The wire stays fast through the catalog chain, unconditionally (the guards
 ; of the folds need it without the catalog hypothesis).
+(defthm fn-scr-repin-keeps-wire
+  (equal (fn-served-conn-wire (fn-scr-repin conn fn-cat))
+         (fn-served-conn-wire conn))
+  :hints (("Goal" :in-theory (e/d (fn-scr-repin) (fn-scr-repin-session)))))
+
 (defthm fn-scr-dispatch-preserves-fast-statep
   (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
            (fn-wire-fast-statep
@@ -684,7 +772,7 @@
            :in-theory (disable fn-wire-fast-statep
                                fn-wire-begin-article-with-line-limit
                                fn-wire-article-line-limit
-                               fn-scr-auth-step fn-post-offeredp
+                               fn-scr-auth-step fn-post-offeredp fn-scr-repin
                                fn-wire-begin-article-with-line-limit-preserves-fast-statep
                                ;; the -is- equations open fn-scr-catalogp on
                                ;; every auth arm (4.6 s -> 0.1 s without them)
@@ -989,7 +1077,7 @@
               nil)))))))
 
 (defthm fn-scr-step-span-core-is-scar-step-span-core
-  (implies (fn-scr-conn-okp conn fn-arena fn-cat)
+  (implies (and (fn-scr-conn-okp conn fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-step-span-core conn i end live trie arts fn-octets fn-arena fn-cat)
                   (fn-scar-step-span-core conn i end live trie arts fn-octets fn-arena)))
   :hints (("Goal" :in-theory (union-theories
@@ -1007,7 +1095,7 @@
     (fn-scr-step-span-core conn i end live trie arts fn-octets fn-arena fn-cat)))
 
 (defthm fn-scr-step-span-fast-is-scar-step-span-fast
-  (implies (fn-scr-conn-okp conn fn-arena fn-cat)
+  (implies (and (fn-scr-conn-okp conn fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-step-span-fast conn i end live trie arts fn-octets fn-arena fn-cat)
                   (fn-scar-step-span-fast conn i end live trie arts fn-octets fn-arena)))
   :hints (("Goal" :in-theory (union-theories
@@ -1045,7 +1133,7 @@
       (fn-own-tls-make-result (nfix (- end i)) nil o nil))))
 
 (defthm fn-scr-own-read-span-is-scar-own-read-span
-  (implies (fn-scr-owner-catalogp o id fn-arena fn-cat)
+  (implies (and (fn-scr-owner-catalogp o id fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-own-read-span o id i end fn-octets fn-arena fn-cat)
                   (fn-scar-own-read-span o id i end fn-octets fn-arena)))
   :hints (("Goal" :in-theory (union-theories
@@ -1067,7 +1155,7 @@
      (fn-own-tls-result-repinned result))))
 
 (defthm fn-scr-ocfg-read-span-is-scar-ocfg-read-span
-  (implies (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+  (implies (and (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
                   (fn-scar-ocfg-read-span oc id i end fn-octets fn-arena)))
   :hints (("Goal" :in-theory (union-theories
@@ -1082,6 +1170,7 @@
   (implies (and (fn-ocl-relation oc)
                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+                (fn-scol-okp fn-arena fn-cat)
                 (natp i) (natp end))
            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))

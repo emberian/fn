@@ -341,7 +341,7 @@ class NativeVisibilityJoinTests(unittest.TestCase):
 
     def test_lost_reply_then_authorization_change_is_unresolved(self):
         node = self.initialize("authorization", protected=True)
-        user, secret = "vj-poster", "visibility-join-secret-3"
+        user, secret = "vj-poster", "visibility-join-secret-3"  # FAKE-SECRET: a test fixture's password
         credentials = node["root"] / "login"
         credentials.write_text("%s %s\n" % (user, secret))
         credentials.chmod(0o600)
@@ -396,7 +396,7 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         """
         import fn_client  # noqa: E402  (tools/ is on sys.path above)
         node = self.initialize("rebinding", protected=True)
-        user, secret = "vj-bound", "visibility-join-secret-4"
+        user, secret = "vj-bound", "visibility-join-secret-4"  # FAKE-SECRET: a test fixture's password
         credentials = node["root"] / "login"
         credentials.write_text("%s %s\n" % (user, secret))
         credentials.chmod(0o600)

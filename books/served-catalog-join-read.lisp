@@ -136,7 +136,8 @@
                                         (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))))))
 
 (defthm fn-scj-scr-own-read-span-keeps
-  (implies (and (fn-scj-conns-pinp (fn-own-conns o) fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat)
+                (fn-scj-conns-pinp (fn-own-conns o) fn-arena fn-cat)
                 (fn-scj-live-okp (fn-own-view o) fn-arena fn-cat))
            (let ((o2 (fn-own-tls-result-owner (fn-scr-own-read-span o id i end fn-octets fn-arena fn-cat))))
              (and (fn-scj-conns-pinp (fn-own-conns o2) fn-arena fn-cat)
@@ -159,7 +160,7 @@
 ; fn-scr-own-read-span leaves satisfies fn-scj-invp whenever the owner it
 ; read satisfied it.
 (defthm fn-scj-invp-of-scr-own-read-span
-  (implies (fn-scj-invp o fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-scj-invp o fn-arena fn-cat))
            (fn-scj-invp (fn-own-tls-result-owner
                          (fn-scr-own-read-span o id i end fn-octets fn-arena fn-cat))
                         fn-arena fn-cat))
@@ -207,7 +208,8 @@
 ; A read at any view V the pins and V are live over keeps the pins, V and
 ; the store (the captured owner's store is the working owner's).
 (defthm fn-scj-read-at-view-keeps
-  (implies (and (fn-scj-conns-pinp (fn-own-conns (fn-ocfg-owner oc)) fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat)
+                (fn-scj-conns-pinp (fn-own-conns (fn-ocfg-owner oc)) fn-arena fn-cat)
                 (fn-scj-live-okp v fn-arena fn-cat))
            (let ((o2 (fn-ocfg-owner
                       (fn-ocfg-with-view
@@ -235,7 +237,8 @@
 ; pinned view is (a capture is a view the owner held, pinned like a
 ; connection).
 (defthm fn-scj-invp-of-orr-read-span
-  (implies (and (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat)
+                (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (implies (consp views) (fn-scj-live-okp (car views) fn-arena fn-cat)))
            (fn-scj-invp (fn-ocfg-owner (fn-own-tls-result-owner
                                         (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)))
@@ -262,7 +265,8 @@
 ; fn-scj-invp, which the owner's entries establish and its steps keep
 ; (this book's read keystones; books/served-catalog-join-frame*.lisp).
 (defthm fn-scj-ocfg-read-span-is-reference-under-invp
-  (implies (and (fn-ocl-relation oc)
+  (implies (and (fn-scol-okp fn-arena fn-cat)
+                (fn-ocl-relation oc)
                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (natp i) (natp end))
