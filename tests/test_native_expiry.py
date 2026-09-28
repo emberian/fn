@@ -166,7 +166,7 @@ class ExpiryMixin:
         self.assertEqual(listed, {msgid("s0"), msgid("s1")}, dry.stdout)
 
 
-@requires(DEVELOPER, "FN_NATIVE_DEVELOPER_HOST")
+@requires(DEVELOPER)
 class DeveloperExpiryTests(ExpiryMixin, unittest.TestCase):
     image = DEVELOPER
 
@@ -198,7 +198,7 @@ class DeveloperExpiryTests(ExpiryMixin, unittest.TestCase):
                 self.assertTrue(replies[3].startswith(b"223"), (point, replies))
 
 
-@requires(PRODUCTION, "FN_NATIVE_HOST")
+@requires(PRODUCTION)
 class ProductionExpiryTests(ExpiryMixin, unittest.TestCase):
     image = PRODUCTION
 
