@@ -12145,6 +12145,23 @@
           "name": "fn-ocp-unstaged-start-issues-no-sync"
         }
       ]
+    },
+    {
+      "id": "PRF-361",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-verdict-heldp-of-held-verdicts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-store-classes-over-every-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-store-counts-is-the-model-over-alpha"
+        }
+      ]
     }
   ]
 }
