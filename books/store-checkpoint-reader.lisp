@@ -57,6 +57,16 @@
 (include-book "frame-digest-buffer")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-scc-octet-listp)
+                          (:definition fn-scc-seal)
+                          (:definition fn-scc-step)
+                          (:definition fn-sccb-frame-octets)
+                          (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1)
+                          (:rewrite fn-scc-octet-listp-true)
+                          (:rewrite fn-sccb-scc-octetp-is-cbor-octetp))))
+
 ; -----------------------------------------------------------------------------
 ; List facts, local.
 
@@ -879,3 +889,12 @@
 (in-theory (disable fn-sccr-framep fn-sccr-planp fn-sccr-plan-segments
                     fn-sccr-open-frame fn-sccr-join
                     fn-sccr-admit-segment fn-sccr-file-read-bound))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-sccr-plan-segments)
+                    (:rewrite fn-sccr-cbor-octet-listp-is-scc-octet-listp)
+                    (:rewrite fn-sccr-scc-octet-listp-is-cbor-octet-listp)))

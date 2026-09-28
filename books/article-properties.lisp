@@ -9,6 +9,17 @@
 (include-book "article")
 (include-book "article-invariants")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-article-header-bytes-p)
+                          (:definition fn-article-header-rev-add-line)
+                          (:definition fn-article-new-field)
+                          (:definition fn-article-next-line-aux)
+                          (:definition fn-article-parse-lines)
+                          (:rewrite fn-article-extended-header-is-list)
+                          (:rewrite fn-article-finish-fields-is-append)
+                          (:rewrite fn-article-octets-are-proper-list))))
+
 ; -----------------------------------------------------------------------------
 ; Field construction preserves the article view recognizers.
 
@@ -491,3 +502,11 @@
           fn-article-successful-parse-header-bound
           fn-article-successful-parse-body-bound
           fn-article-successful-parse-field-count-bound))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-ap-at-most-is-length-bound)
+                    (:rewrite fn-article-successful-parse-input-octets)))

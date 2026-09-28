@@ -22,6 +22,7 @@
 (in-package "ACL2")
 (include-book "store-node-resolution")
 (include-book "records-seam")
+
 ; The observed-open proofs use Store selector equations.  Expanding the
 ; rebuildable index's fourteen-field constructor in every recovery goal
 ; obscures the unchanged file and node projections.

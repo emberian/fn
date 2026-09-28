@@ -17,6 +17,12 @@
 (local (include-book "std/lists/append" :dir :system))
 (local (include-book "std/lists/revappend" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-ncfg-ident-octetp)
+                          (:definition fn-ncfg-identp)
+                          (:definition fn-ncfg-identp-tail))))
+
 ; -----------------------------------------------------------------------------
 ; Values
 

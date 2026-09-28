@@ -3,6 +3,15 @@
 (include-book "records")
 (include-book "cbor-invariants")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-cbor-decode)
+                          (:definition fn-cbor-decode-bounded)
+                          (:definition fn-cbor-decode-prechecked)
+                          (:definition fn-record-ascii-octet-listp)
+                          (:definition fn-record-ascii-octetp)
+                          (:rewrite fn-record-cbor-octet-list-true-listp))))
+
 ; This book proves the codec's round trip, so it opens the codec and the
 ; arithmetic vocabulary locally.  Records and results stay opaque.
 (local (in-theory (enable fn-cbor-codec-vocabulary
@@ -500,3 +509,10 @@
    (union-theories (theory 'fn-cbor-invariants-vocabulary)
                    (theory 'fn-record-invariants-vocabulary))
    '((:d fn-cbor-valuep) (:d fn-record-p))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-record-ascii-implies-octets)))

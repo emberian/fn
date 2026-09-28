@@ -29,6 +29,7 @@
 (include-book "replay")
 (include-book "records-seam")
 (include-book "snoc-list")
+
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-store-event-p and the record accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))

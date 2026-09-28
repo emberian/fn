@@ -17,7 +17,6 @@
 (include-book "owner")
 (include-book "nntp-auth-fold")
 
-
 ;; The HDR :fn-verified reply offers no article and its effects are a list.
 
 (defthm fn-ovr-hdr-msgid-has-no-offer

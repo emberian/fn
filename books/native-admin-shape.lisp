@@ -154,3 +154,10 @@
 
 (defthm fn-native-admin-config-name-refuses-overflow
   (equal (fn-native-admin-config-name *fn-native-admin-config-name-limit*) nil))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-native-admin-words)))

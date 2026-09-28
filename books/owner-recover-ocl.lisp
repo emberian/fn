@@ -13,6 +13,7 @@
 
 (in-package "ACL2")
 (include-book "owner-offer-indexed")
+
 ;
 ; The hypotheses are exactly two of the host's checks before it installs:
 ; (natp max-conns) at owner-host.lisp:184 and the open's kind :ok at :192.

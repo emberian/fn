@@ -70,6 +70,12 @@
 (include-book "store-log-stream")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-lg-entry-okp)
+                          (:rewrite fn-lgc-consp-nthcdr)
+                          (:rewrite fn-lgw-slice-when-not-declared))))
+
 ; -----------------------------------------------------------------------------
 ; Vocabulary.
 

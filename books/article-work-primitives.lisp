@@ -3,6 +3,11 @@
 (include-book "article-properties")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-article-header-bytes-p)
+                          (:rewrite fn-ap-at-most-is-length-bound))))
+
 ; Cost units count list-walk visits and fixed-size scalar/control blocks.
 ; Fixed-tag comparisons never compare two arbitrary trees in this call graph.
 ; Big-integer bit costs, compiler/runtime bookkeeping and GC are not counted.
@@ -150,3 +155,10 @@
 (defthm fn-aw-body-cost-bound
   (<= (fn-aw-c (fn-aw-body xs)) (1+ (len xs)))
   :hints (("Goal" :induct (fn-aw-body xs))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-aw-reverse-value)))

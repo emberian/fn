@@ -54,6 +54,7 @@
 (defconst *pct-snp* (fn-nntp-make-session t nil nil nil))
 
 (include-book "arena-lift")
+
 (defconst *sr-arena* (list *pct-payload-1* *pct-payload-2*))
 (bpr-lift fn-nntp-command-pinned 6)
 

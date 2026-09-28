@@ -77,6 +77,7 @@
                                   4)
                     *oat-post-config*))
 (include-book "arena-lift")
+
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
 (bpr-lift fn-ocfg-read-tls-prefix 3)

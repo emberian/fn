@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "store-node-traces")
 (include-book "records-seam")
+
 ; Resolution proofs use the Store's exported selector facts.  Opening the
 ; fourteen-field constructor in every file transition obscures those facts.
 (local (in-theory (disable fn-sn-make-v6)))
@@ -793,3 +794,10 @@
                     fn-sn-refuse-reservation-enabledp fn-sn-refuse-reservation
                     fn-sn-known-abort-enabledp fn-sn-known-abort-file-start
                     fn-sn-known-abort-files fn-sn-known-abort fn-snrt-step))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-snrt-new-success-is-actual-matching-durable-completion)))

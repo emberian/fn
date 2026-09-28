@@ -17,6 +17,7 @@
 (include-book "history-pages-write-exec")
 (include-book "history-pages-arith")
 (local (include-book "arithmetic/top" :dir :system))
+
 (local (in-theory (disable floor)))
 
 ; H. The writer's blocks are the model's.

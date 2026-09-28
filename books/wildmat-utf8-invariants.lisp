@@ -13,6 +13,14 @@
 (include-book "wildmat")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-wildmat-decode-aux)
+                          (:definition fn-wildmat-utf8-3-value)
+                          (:definition fn-wildmat-utf8-4-tailsp)
+                          (:definition fn-wildmat-utf8-4-value)
+                          (:definition fn-wildmat-utf8-next))))
+
 ; A Unicode scalar value excludes the surrogate interval even though the
 ; parser's historical `fn-wildmat-codepointp` recognizer only records the
 ; numeric code-point range.

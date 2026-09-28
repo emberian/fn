@@ -35,6 +35,20 @@
 (include-book "store-files-invariants")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-dir-idp)
+                          (:definition fn-bs-dir-tablep)
+                          (:definition fn-bs-entriesp)
+                          (:definition fn-bs-entry-valuep)
+                          (:definition fn-bs-keys-belowp)
+                          (:definition fn-bs-op-listp)
+                          (:definition fn-bs-opp)
+                          (:definition fn-bs-tear-write)
+                          (:definition fn-th-exact-octets-p)
+                          (:definition fn-th-source-id-p)
+                          (:rewrite fn-bs-keys-belowp-excludes-bound))))
+
 ; The readers only.  fn-bs-invariants-vocabulary is seventy rules over alists,
 ; octets, tears and selections; enabling it book-wide made the name-list
 ; induction of section 2 exhaust a 2,000,000 step limit re-deriving table
@@ -3184,3 +3198,11 @@
                     fn-bs-txn-prefix-agreesp
                     fn-bs-rows-wire fn-bs-alpha-crash-imagep
                     fn-bs-alpha-recovery-crash-imagep fn-bs-kernel-image-records))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-bs-natural-head-is-no-other-wire-event)
+                    (:rewrite fn-bs-stxa-is-no-other-wire-event)))

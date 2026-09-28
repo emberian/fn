@@ -6,6 +6,10 @@
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "group-bucket-article")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-gidx-bucket-numbers-under-okp))))
+
 (defun fn-nov-lines-for-numbers-indexed (group numbers entries trie fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (if (consp numbers)

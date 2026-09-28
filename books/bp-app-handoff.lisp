@@ -6,6 +6,7 @@
 (include-book "bp-adu")
 (include-book "bp-native-app")
 (include-book "bp-session-admission")
+
 (verify-guards fn-bpaj-eid-text)
 
 (defun fn-bpah-local-pendingp (held node)
