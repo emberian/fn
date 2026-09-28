@@ -108,6 +108,19 @@ a form that took long for few prover steps says so; `status` warns that a
 book loaded form by form from source leaks its local theory; the reader
 knows character literals (#\\( #\\") and |bar symbols|.
 
+Round 5 (lane laptop-acl2, 2026-09-28): the laptop is a REPL target.  Its
+Homebrew `saved_acl2` splices `${SBCL_USER_ARGS}` (unqualified, and
+--tls-limit 16384); the machine file ~/.config/fn/acl2 names a literal
+launcher with the boxes' flags over an ACL2 8.7 built from the boxes'
+tarball, and a session run here without --host uses it
+(`acl2_slots.configured_acl2`).  `--host laptop` runs here; `--host auto`
+starts here when that launcher qualifies, one of this machine's pool slots
+is free, and this machine's load per core is below the chosen box's
+(FN_REPL_LAPTOP=0 never picks it).  Only REPL sessions: the farm,
+remote_check and `boxes.sh --pick` never pick the laptop, and a laptop
+`start --certify-missing` certifies the closure into this machine's cache
+under its own toolchain identity (box certificates are keyed by theirs).
+
 A session holds one slot of the machine's ACL2 pool for its whole life, so
 it belongs to its lane and ends with it (PKT-346: fifteen finished lanes'
 sessions once held fifteen of persvati's sixteen slots).  `start` records
@@ -2399,6 +2412,49 @@ def apply_box_defaults(environ=os.environ, hostname: str | None = None) -> str |
     return host
 
 
+# `--host laptop`: this machine, when it is not a farm box.  Only REPL
+# sessions run here; the farm and remote_check never name it.
+LOCAL_HOST = "laptop"
+
+
+def apply_local_defaults(environ=os.environ) -> str | None:
+    """Off the farm boxes, default FN_ACL2 to this machine's launcher file.
+
+    ~/.config/fn/acl2 (acl2_slots.configured_acl2) names the qualified
+    launcher; without it FN_ACL2 stays unset and `acl2` on PATH is used, as
+    before.  Only the local path calls this: `--host BOX` forwards this
+    shell's FN_ACL2 to the box, and a laptop path there would be wrong.
+    """
+    if "FN_ACL2" in environ:
+        return None
+    chosen = acl2_slots.configured_acl2(environ)
+    if chosen == "acl2":
+        return None
+    environ["FN_ACL2"] = chosen
+    return chosen
+
+
+def laptop_offer(environ=os.environ) -> tuple[float, int] | None:
+    """(load per core, free pool slots) when this machine may take a session.
+
+    None when it is a farm box, FN_REPL_LAPTOP=0, its configured ACL2 is not
+    a qualified launcher (the proof_repl cache refuses one), or every slot
+    of its pool is held.
+    """
+    if environ.get("FN_REPL_LAPTOP", "1").strip() == "0":
+        return None
+    if socket.gethostname().split(".")[0] in REMOTE_TREES:
+        return None
+    configured = acl2_slots.configured_acl2(environ)
+    found = configured if "/" in configured else shutil.which(configured)
+    if not found or not acl2_toolchain.fingerprint(Path(found)).qualified:
+        return None
+    free = acl2_slots.slot_count() - len(acl2_slots.holders())
+    if free <= 0:
+        return None
+    return os.getloadavg()[0] / (os.cpu_count() or 1), free
+
+
 def remote_tree(host: str, lane: str | None, override: str | None = None) -> str:
     if override:
         return override
@@ -2594,29 +2650,51 @@ def run_remote(args, argv: list[str]) -> int:
     return done.returncode
 
 
-def resolve_auto_host(args, picker=None) -> str:
-    """`--host auto`: a session's own box, else the least loaded one now.
+def resolve_auto_host(args, picker=None, offer=None) -> str:
+    """`--host auto`: a session's own machine, else the least loaded one now.
 
     A command about an existing session (send, send-range, resync, status,
     stop, and probe beside it) goes where that session was started
-    (remote.json); `start` and the machine-wide `list`/`reap` pick the box
-    with the lowest load per core (tools/boxes.sh --pick prints both).
+    (remote.json; a session directory here without one is this machine's);
+    `start` and the machine-wide `list`/`reap` pick the box with the lowest
+    load per core (tools/boxes.sh --pick prints both).  `start` takes this
+    machine instead when `laptop_offer` does and its load per core is below
+    the picked box's: at most its pool's slots, sessions only.
     """
     name = getattr(args, "name", None)
     if args.command != "start" and name:
+        directory = session_dir(name)
         with contextlib.suppress(OSError, KeyError, json.JSONDecodeError):
-            host = json.loads((session_dir(name) / "remote.json").read_text())["host"]
+            host = json.loads((directory / "remote.json").read_text())["host"]
             print(f"proof-repl --host auto: session {name!r} is on {host}", flush=True)
             return host
+        if directory.is_dir() and args.command != "probe":
+            print(f"proof-repl --host auto: session {name!r} is on this machine", flush=True)
+            return LOCAL_HOST
         if args.command != "probe":
             raise SystemExit(f"proof-repl: --host auto: no record here of session {name!r}'s "
-                             "box; name it (--host hbox|persvati)")
+                             "box; name it (--host hbox|persvati|laptop)")
     if picker is None:
         def picker():
             done = subprocess.run(["sh", str(ROOT / "tools" / "boxes.sh"), "--pick"],
-                                  stdout=subprocess.PIPE, text=True, check=False)
-            return done.stdout.strip() if done.returncode == 0 else ""
-    host = picker()
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                  text=True, check=False)
+            sys.stderr.write(done.stderr)
+            host = done.stdout.strip() if done.returncode == 0 else ""
+            load = re.search(rf"^boxes: {re.escape(host)} ([0-9.]+) load per core$",
+                             done.stderr, re.MULTILINE) if host else None
+            return host, (float(load.group(1)) if load else None)
+    picked = picker()
+    host, box_load = (picked, None) if isinstance(picked, str) else picked
+    if args.command == "start":
+        local = (offer or laptop_offer)()
+        if local is not None:
+            load, free = local
+            if host not in REMOTE_TREES or box_load is None or load < box_load:
+                print(f"proof-repl --host auto: this machine ({load:.2f} load per core, "
+                      f"{free} free slot(s)) over {host or 'no box'}"
+                      + (f" ({box_load:.2f})" if box_load is not None else ""), flush=True)
+                return LOCAL_HOST
     if host not in REMOTE_TREES:
         raise SystemExit("proof-repl: --host auto: no build box answered (tools/boxes.sh)")
     return host
@@ -2624,8 +2702,9 @@ def resolve_auto_host(args, picker=None) -> str:
 
 def add_remote_options(parser, sync: bool = False) -> None:
     parser.add_argument("--host", default=None, metavar="BOX",
-                        help="run this on BOX (hbox, persvati, or auto: a session's own "
-                             "box, else the lower load per core) in the lane's tree there, "
+                        help="run this on BOX (hbox, persvati, laptop = this machine, or "
+                             "auto: a session's own machine, else the lower load per core, "
+                             "the laptop included for start) in the lane's tree there, "
                              "with that box's ACL2 and certificate cache")
     parser.add_argument("--remote-tree", default=None, metavar="PATH",
                         help="with --host: the tree on the box (default: "
@@ -2815,11 +2894,16 @@ def main(argv: list[str] | None = None) -> int:
     if getattr(args, "host", None) == "auto":
         args.host = resolve_auto_host(args)
         argv = [args.host if word == "auto" else word for word in argv]
+    if getattr(args, "host", None) == LOCAL_HOST:
+        if socket.gethostname().split(".")[0] in REMOTE_TREES:
+            raise SystemExit("proof-repl: --host laptop: this is a farm box")
+        args.host = None
     if getattr(args, "host", None):
         return run_remote(args, argv)
     if getattr(args, "acl2", None):
         os.environ["FN_ACL2"] = args.acl2
-    apply_box_defaults()
+    if apply_box_defaults() is None:
+        apply_local_defaults()
     return args.run(args)
 
 

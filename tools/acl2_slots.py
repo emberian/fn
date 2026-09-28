@@ -157,6 +157,29 @@ def slot_count() -> int:
     return configured if configured > 0 else default
 
 
+def configured_acl2(environ=None) -> str:
+    """The ACL2 this machine runs: FN_ACL2, else its local launcher file, else `acl2`.
+
+    The local file (``FN_ACL2_FILE``, default ~/.config/fn/acl2) names one
+    launcher path.  The laptop's Homebrew `saved_acl2` splices
+    `${SBCL_USER_ARGS}` and so is unqualified (tools/acl2_toolchain.py), and
+    its --tls-limit 16384 is the one an image world exhausts; the file names
+    a literal launcher over the same Homebrew core with the boxes' flags
+    (--tls-limit 65536 --dynamic-space-size 4096), which qualifies.  A path
+    of this machine lives in a file of this machine, never in the tree.
+    """
+    environ = os.environ if environ is None else environ
+    named = environ.get("FN_ACL2", "").strip()
+    if named:
+        return named
+    local = Path(environ.get("FN_ACL2_FILE", "~/.config/fn/acl2")).expanduser()
+    try:
+        text = local.read_text().strip()
+    except OSError:
+        text = ""
+    return os.path.expanduser(text) if text else "acl2"
+
+
 def slot_directory() -> Path:
     return Path(os.environ.get("FN_ACL2_SLOT_DIR", DEFAULT_SLOT_DIR)).expanduser()
 

@@ -277,5 +277,18 @@ class SlotTests(unittest.TestCase):
             self.assertEqual(harness.free_slots(), 2)
 
 
+class LocalLauncherTests(unittest.TestCase):
+    def test_fn_acl2_else_the_machine_file_else_acl2(self):
+        with tempfile.TemporaryDirectory() as directory:
+            named = Path(directory) / "acl2"
+            named.write_text("~/tools/acl2-literal\n")
+            self.assertEqual(slots.configured_acl2(
+                {"FN_ACL2": "/mine", "FN_ACL2_FILE": str(named)}), "/mine")
+            self.assertEqual(slots.configured_acl2({"FN_ACL2_FILE": str(named)}),
+                             os.path.expanduser("~/tools/acl2-literal"))
+            self.assertEqual(slots.configured_acl2(
+                {"FN_ACL2_FILE": str(named) + ".absent"}), "acl2")
+
+
 if __name__ == "__main__":
     unittest.main()

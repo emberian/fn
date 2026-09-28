@@ -124,6 +124,7 @@ from __future__ import annotations
 
 import argparse
 import cert_alists
+import contextlib
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 import datetime as dt
@@ -1497,6 +1498,108 @@ def remote_target(remote: str) -> str:
     return f"{remote}:{path}"
 
 
+@dataclass
+class PruneReport:
+    cache: Path
+    keep: tuple[str, ...]
+    dry_run: bool
+    kept: int = 0
+    kept_bytes: int = 0
+    removed: int = 0
+    removed_bytes: int = 0
+    removed_by_toolchain: dict[str, int] = field(default_factory=dict)
+    unreadable: list[str] = field(default_factory=list)
+    unreadable_bytes: int = 0
+    listed: int = 20
+
+    def lines(self) -> list[str]:
+        verb = "would remove" if self.dry_run else "removed"
+        gib = 1024 ** 3
+        lines = [f"prune: cache {self.cache}, keeping toolchain(s) "
+                 + ", ".join(self.keep),
+                 f"  {verb} {self.removed} entries ({self.removed_bytes / gib:.2f} GiB); "
+                 f"kept {self.kept} ({self.kept_bytes / gib:.2f} GiB); "
+                 f"left alone (no readable toolchain identity): {len(self.unreadable)} "
+                 f"({self.unreadable_bytes / gib:.2f} GiB)"]
+        for identity, count in sorted(self.removed_by_toolchain.items(),
+                                      key=lambda item: -item[1]):
+            lines.append(f"  {verb} toolchain {identity[:16]}: {count}")
+        lines.extend(f"  left alone: {path}" for path in self.unreadable[:self.listed])
+        if len(self.unreadable) > self.listed:
+            lines.append(f"  left alone: ... {len(self.unreadable) - self.listed} more "
+                         "(--list-all prints every one)")
+        return lines
+
+
+def entry_bytes(directory: Path) -> int:
+    total = 0
+    for path in directory.rglob("*"):
+        with contextlib.suppress(OSError):
+            if path.is_file():
+                total += path.stat().st_size
+    return total
+
+
+def prune(cache: Path, keep: Iterable[str], dry_run: bool = False) -> PruneReport:
+    """Remove every cache entry whose recorded toolchain identity is not in KEEP.
+
+    A machine's cache collects entries of other toolchains (the laptop's held
+    19 GB of hbox and persvati pairs it can never install: an entry is usable
+    only under the identity that wrote it).  An entry whose meta.json cannot
+    be read, or records no toolchain identity, is never touched: it is listed.
+    Removal takes the entry's exclusive lock, so no install reads it midway.
+    """
+    keep = tuple(keep)
+    report = PruneReport(cache=cache, keep=keep, dry_run=dry_run)
+    if not keep:
+        raise ValueError("prune needs at least one toolchain identity to keep")
+    if not cache.is_dir():
+        return report
+    for key in sorted(cache.iterdir()):
+        if not key.is_dir():
+            continue
+        for directory in sorted(key.iterdir()):
+            if not directory.is_dir():
+                continue
+            try:
+                meta = json.loads((directory / "meta.json").read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                meta = None
+            identity = meta.get("toolchain_identity") if isinstance(meta, dict) else None
+            if not isinstance(identity, str) or not identity:
+                # Unreadable metadata, or an entry published before toolchain
+                # identities were recorded: which prover wrote it is unknown.
+                report.unreadable.append(str(directory))
+                report.unreadable_bytes += entry_bytes(directory)
+                continue
+            size = entry_bytes(directory)
+            if identity in keep:
+                report.kept += 1
+                report.kept_bytes += size
+                continue
+            report.removed += 1
+            report.removed_bytes += size
+            report.removed_by_toolchain[identity] = (
+                report.removed_by_toolchain.get(identity, 0) + 1)
+            if dry_run:
+                continue
+            with entry_lock(directory, exclusive=True):
+                for path in sorted(directory.iterdir()):
+                    if path.name == ".entry.lock":
+                        continue
+                    if path.is_dir() and not path.is_symlink():
+                        shutil.rmtree(path)
+                    else:
+                        path.unlink()
+            with contextlib.suppress(OSError):
+                (directory / ".entry.lock").unlink()
+                directory.rmdir()
+        if not dry_run:
+            with contextlib.suppress(OSError):
+                key.rmdir()  # only when empty
+    return report
+
+
 def mirror(cache: Path, remote: str,
            run=subprocess.run) -> subprocess.CompletedProcess:
     """rsync the cache to a farm box.  Entries are immutable, so no --delete."""
@@ -1509,7 +1612,7 @@ def mirror(cache: Path, remote: str,
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=("publish", "install", "install-set",
-                                           "install-partial", "status"))
+                                           "install-partial", "status", "prune"))
     parser.add_argument("books", nargs="*", default=None,
                         help="repository-relative book names without .lisp "
                              "(default: every book under books/ and tests/acl2/)")
@@ -1542,6 +1645,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dependencies-only", action="store_true",
                         help="for install-set, install the requested roots' local "
                              "dependencies but not roots that this run will author")
+    parser.add_argument("--keep-toolchain", default=None, metavar="ID[,ID...]",
+                        help="for prune: the toolchain identities whose entries stay "
+                             "(tools/acl2_toolchain.py identity LAUNCHER)")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="for prune: report what would be removed")
+    parser.add_argument("--list-all", action="store_true",
+                        help="for prune: list every entry left alone, not the first 20")
     parser.add_argument("--recertify", action="append", default=[], metavar="BOOK",
                         help="for install-partial, install nothing for this book of "
                              "the closure (repeatable), so the runner certifies it")
@@ -1584,6 +1694,14 @@ def main(argv: list[str] | None = None) -> int:
                                                 else name for name in arguments.recertify])
         except ValueError as error:
             parser.error(str(error))
+    elif arguments.action == "prune":
+        keep = [one.strip() for one in (arguments.keep_toolchain or "").split(",")
+                if one.strip()]
+        if not keep:
+            parser.error("prune needs --keep-toolchain ID[,ID...]")
+        report = prune(cache, keep, dry_run=arguments.dry_run)
+        if arguments.list_all:
+            report.listed = len(report.unreadable)
     else:
         report = status(root, cache)
     for line in report.lines():
