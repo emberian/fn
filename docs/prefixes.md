@@ -51,7 +51,6 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-shr-win`, `fn-ow-` | `octet-window` | The window of an octet buffer's value as a list (the range digest seam's list model) |
 | `fn-sxp-` | `store-export`, `tests/acl2/store-export-tests` | D34 `store export` / `store import`: the archive's names, MANIFEST and import plan |
 | `fn-gen-` | `store-genesis`, `tests/acl2/store-genesis-tests` | Format 10: the store's genesis at position 0 of the log (journal/000000.log), its codec, the open's refusals by name |
-| `fn-f9-` | `store-format-9`, `tests/acl2/store-format-9-tests` | The previous format's reader: format-9 frames under SHA-256 by name, the profile's translation to format 10 |
 | `fn-profile-` | `store-profile-facts`, `tests/acl2/store-profile-facts-tests` | the profile's open gates (`fn-profile-txn-observation`, `fn-profile-replay-within-boundp`); the upgrade relation was removed by D34 |
 | `fn-snrt-` | `store-node-retention`, `tests/acl2/store-node-retention-tests` | P9 over the host-called store functions: refusal of an unaffordable obligation by `fn-spc-prepare`/`fn-node-prepare`, and `fn-sn-finish` keeping accepted articles and releasing an obligation only by its matching release |
 | `fn-snrt-` | `store-node-resolution` (folded from `store-node-resolution-traces`, 2026-09-19) | Trace preservation including refusal and abort resolution |

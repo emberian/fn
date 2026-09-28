@@ -1,7 +1,6 @@
 ; Reachable witnesses and corruption teeth for P4 metadata frames.
 (in-package "ACL2")
 (include-book "../../books/byte-store-frame")
-(include-book "../../books/store-format-9")
 (include-book "../../books/codec-attach")
 (include-book "must-fail-checked")
 
@@ -270,30 +269,23 @@
            (len (fn-record-encode r))))))
 
 ; -----------------------------------------------------------------------------
-; One format (D34): a format-7 or format-6 frame is not decoded, and its
-; tuple is not a profile
+; One format (D34): this build's fields under another word are no profile,
+; and a frame of them is not decoded.
 
-(defun bsft-old-format-frame (values)
-  (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
-                 *fn-bs-meta-config-kind*
-                 (fn-frame-fields-octets '(:text :nat :nat :nat :nat :text) values)))
-(defconst *bsft-format-7-scale*
-  (list *bsft-format-7-word* 1048576 32768 805306368 4096
-        *fn-f9-frontier-word*))
+(defconst *bsft-other-word* '(102 110 45 115 116 111 114 101 45 57)) ; fn-store-9
+(defconst *bsft-other* (cons *bsft-other-word* (cdr *fn-bs-profile-scale*)))
 (assert-event (fn-bs-config-okp (fn-bs-config-encode *fn-bs-profile-scale*)))
-(assert-event (not (fn-bs-config-decode (bsft-old-format-frame *bsft-format-7-scale*))))
-(assert-event (not (fn-bs-profile-admittedp *bsft-format-7-scale*)))
-(assert-event (null (fn-bs-profile-of *bsft-format-7-scale*)))
-(assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report *bsft-format-7-scale*)))
-                     0))
+(assert-event (not (fn-bs-profile-admittedp *bsft-other*)))
+(assert-event (null (fn-bs-profile-of *bsft-other*)))
+(assert-event (not (fn-bs-publication-admissiblep *bsft-other* 0 1)))
+(assert-event
+ (not (fn-bs-config-decode
+       (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version* *fn-bs-meta-config-kind*
+                      (fn-frame-fields-octets *fn-bs-meta-profile-spec* *bsft-other*)))))
 ; The presets are format 10 (the record log with its genesis).
 (assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report *fn-bs-profile-scale*)))
                      10))
-; Under the previous word the same fields are no profile (D34: one format).
-(assert-event (equal (cdr (assoc-equal "format"
-                                       (fn-bs-profile-report
-                                        (cons *fn-bs-meta-format-9*
-                                              (cdr *fn-bs-profile-scale*)))))
+(assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report *bsft-other*)))
                      0))
 (assert-event (equal (fn-bs-profile-report *bsft-free*)
                      (cons '("format" . 10)
@@ -303,19 +295,7 @@
                             '(("max-header-fields" . 64)
                               ("max-header-lines" . 256)
                               ("max-header-octets" . 16384))))))
-; Format 10 carries neither the committed-history marker nor the frontier
-; word (the two fields format 9 carried and never read).
-(assert-event (not (assoc-equal "history-marker" (fn-bs-profile-report *fn-bs-profile-scale*))))
 (assert-event (equal (len *fn-bs-meta-profile-spec*) 16))
-; A format-6 tuple (65538-octet records, below the article kind's ceiling) is
-; not decoded either.
-(defconst *bsft-format-6*
-  (list '(102 110 45 115 116 111 114 101 45 101 120 112 101 114 105 109
-          101 110 116 45 54)
-        1048576 32768 8388864 128 *fn-f9-frontier-word*))
-(assert-event (not (fn-bs-config-decode (bsft-old-format-frame *bsft-format-6*))))
-(assert-event (not (fn-bs-profile-admittedp *bsft-format-6*)))
-(assert-event (not (fn-bs-publication-admissiblep *bsft-format-6* 0 1)))
 
 ; A truncated authentic frame must not become a frontier.  The visible value
 ; is not merely a wrong integer: decoding reports no value at all.
