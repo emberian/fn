@@ -1729,7 +1729,6 @@ route's point and the record log's, lane commit-onto-log)."
            (error (fnn-store-fault-class store) :message (fnn-store-fault-message store))))))
 
 (defun fnn-config-path (s) (fnn-join (fnn-store-root s) "config.json"))
-(defun fnn-transactions (s) (fnn-join (fnn-store-root s) "transactions"))
 (defun fnn-staging (s) (fnn-join (fnn-store-root s) "staging"))
 (defun fnn-lock-path (s) (fnn-join (fnn-store-root s) "writer.lock"))
 (defvar *fnn-clone-activation* nil)
@@ -1756,7 +1755,6 @@ route's point and the record log's, lane commit-onto-log)."
   (when (and (fnn-lstat (fnn-clone-fence-path s))
              (not *fnn-clone-activation*))
     (fnn-refuse "clone is fenced pending durable incarnation rollover")))
-(defun fnn-frontier-path (s) (fnn-join (fnn-store-root s) "allocation-frontier.json"))
 ;; The record log's directory and its one segment (format 9).  The name is
 ;; ACL2's (books/owner-log-route.lisp fn-olr-segment-name).
 (defun fnn-journal-dir (s) (fnn-join (fnn-store-root s) "journal"))
@@ -2817,7 +2815,7 @@ it covers are dropped (fnn-log-drop; T8)."
                             (fnn-profile-nat 'fn-store-profile-max-record-octets store)
                             +fnn-checkpoint-batch-octets+))
          (budget (fnn-core 'fn-ock-capture-budget profile))
-         (position (and (fnn-store-logp store) (fnn-log-rotate store)))
+         (position (fnn-log-rotate store))
          ;; one walk of the live rows, a bounded number per call: each
          ;; canonical payload's length and source (fn-store-sco-pass-step)
          (walked (progn
@@ -3389,7 +3387,7 @@ or refuses by name, saying what to run."
        (lambda (stage) (fnn-record-filesystem-at-init stage profile policy))
        (fnn-core 'fn-bs-init-log-subdir-names))
       ;; SEC-006: the node's key files, as `fnn-command-init' writes them,
-      ;; once the store is published (outside fn-bs-init-pub-program: a
+      ;; once the store is published (outside fn-bs-init-log-program: a
       ;; death between the two leaves the complete store without
       ;; keys/node-secret.key, which `run' refuses by name until
       ;; `store ROOT node-secret create'; PKT-694).
@@ -3645,7 +3643,8 @@ fn-bs-imp-program's cuts."
 
 (defun fnn-pub-at (store kind suffix)
   "The cut KIND-SUFFIX of fn-bs-imp-program (KIND \"import\") or of
-fn-bs-init-pub-program (KIND \"init\": the same program, init's cut names)."
+fn-bs-init-log-program (KIND \"init\": the same program over the log's plan,
+init's cut names)."
   (fnn-at store (intern (string-upcase (fnn-concat kind "-" suffix)) :keyword)))
 
 (defun fnn-import-write-file (store path octets &optional (kind "import"))
@@ -3878,14 +3877,13 @@ presence of the two names is classified by fn-bs-imp-classify."
         +fnn-exit-ok+))))
 
 (defun fnn-staged-publication (kind stage root-path files record-count
-                               &optional record-filesystem
-                                 (subdirs '("transactions" "staging" "config")))
+                               record-filesystem subdirs)
   "Build the store STAGE (at ROOT-PATH.KIND-XXXX) from FILES, a list of
 (PATH . OCTETS) in plan order, admit it through the ordinary open (it must
 replay RECORD-COUNT records), and publish it at ROOT-PATH by a no-replace
 rename, then fence ROOT-PATH's parent: books/store-import-publication.lisp
 fn-bs-imp-program step for step, with its cuts (KIND \"import\") or
-books/store-init-publication.lisp fn-bs-init-pub-program's (KIND \"init\":
+books/store-init-log-publication.lisp fn-bs-init-log-program's (KIND \"init\":
 the same steps, init's cut names).  An OS error before the rename is a known
 failure (exit 1, the staged directory named); at or after it the outcome is
 uncertain (exit 3) and the observed presence of the two names is classified
@@ -4971,10 +4969,13 @@ tree root), or stop the build."
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_EXTENT_CACHE_TEST_OFF"
+    ;; host/native/digest.lisp: the matched measurement's reference arm.
+    "FN_NATIVE_DIGEST_TEST_OFF"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
     "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN" "FN_NATIVE_OWNER_TEST_BARRIER_MS" "FN_NATIVE_TEST_DISK_STALL_FILE" "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE" "FN_NATIVE_FAULT_BACKTRACE"
+    "FN_NATIVE_COUNT_LOOKUPS"
     "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"
     "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER" "FN_BP_TEST_DELIVER_FAULT"
     "FN_BP_TEST_PROFILE"
@@ -5060,6 +5061,107 @@ with its depth, and the rows under it name the path that called it."
      (finish-output *error-output*)))
   (funcall next))
 
+;;; FN_NATIVE_COUNT_LOOKUPS (release row F2's lookup count; lane sca-join-4):
+;;; a diagnostic, not a fault.  Each function below is one catalog or index
+;;; lookup, or the entry of a walk; each is wrapped with a counter
+;;; (sb-int:encapsulate, as FN_NATIVE_FAULT_BACKTRACE wraps the stack signal),
+;;; and every served read (fn-owner-chunk-span through fnn-core-buffer-state)
+;;; first prints the counts since the previous one to stderr and clears them:
+;;; `lookups window K: NAME=N ...' is the work of the read before it, its
+;;; render included.  The wrappers return the wrapped function's values, so no
+;;; outcome changes; a production image never reads the selector.  Only
+;;; entries are counted (SBCL compiles a function's self-calls as local calls,
+;;; which no wrapper sees): a self-recursive walk counts once per walk, so the
+;;; bisection is counted at fn-scr-mid (one call per probe) and a walk over a
+;;; list is given as (NAME . I), which also adds the length of its Ith
+;;; argument to `NAME/len', the size of what it walks.  The exports of the
+;;; fn-cat abstract stobj are counted at their :exec functions (fn-cat$c-*),
+;;; the functions a served call reaches.
+(defparameter +fnn-lookup-functions+
+  '(;; the pinned view: fn-scr-view-of's bisection, one fn-scr-mid per probe
+    fn-scr-view-of fn-scr-mid
+    ;; the catalog's tables (books/catalog.lisp exports, :exec side)
+    fn-cat$c-group-number fn-cat$c-msgid-seqs fn-cat$c-at fn-cat$c-visible-at
+    fn-cat$c-group-next fn-cat$c-group-count
+    ;; the catalog finders over them
+    fn-cnx-view-seq fn-cnx-view-range fn-scat-range-numbers
+    (fn-cat-view-last-visible . 0) fn-cat-row-article
+    ;; the Message-ID trie
+    fn-midx-lookup
+    ;; archive and catalog-list walks (their entries and the length walked;
+    ;; none belongs on the served path)
+    (fn-find-article . 1) (fn-nntp-find-group-number . 2)
+    (fn-nntp-available-article . 2) (fn-nntp-group-range-numbers . 3)
+    (fn-nntp-group-count . 1) (fn-nntp-group-low . 1) (fn-nntp-group-high . 1)
+    fn-cat-view-below fn-cat-view-articles fn-cat-view-find
+    fn-cat-view-number-find fn-cat-number-seq fn-cat-seqs-for fn-cnx-walk-range
+    fn-nntp-archive-command fn-nntp-over-range fn-nntp-group-result))
+
+(defvar *fnn-lookup-counts* nil)
+(defvar *fnn-lookup-names* nil)
+(defvar *fnn-lookup-window* 0)
+
+(defun fnn-lookup-window-close ()
+  "Print the counts since the previous served read, then clear them."
+  (let ((counts *fnn-lookup-counts*))
+    (format *error-output* "~&lookups window ~d:" *fnn-lookup-window*)
+    (dotimes (i (length counts))
+      (let ((n (aref counts i)))
+        (when (> n 0)
+          (format *error-output* " ~(~a~)=~d" (aref *fnn-lookup-names* i) n)
+          (setf (aref counts i) 0))))
+    (terpri *error-output*)
+    (finish-output *error-output*)
+    (incf *fnn-lookup-window*)))
+
+(defun fnn-lookup-counter (i)
+  (lambda (next &rest args)
+    (sb-ext:atomic-incf (aref (the (simple-array sb-ext:word (*)) *fnn-lookup-counts*) i))
+    (apply next args)))
+
+(defun fnn-lookup-walk-counter (i len-i arg)
+  (lambda (next &rest args)
+    (let ((counts (the (simple-array sb-ext:word (*)) *fnn-lookup-counts*)))
+      (sb-ext:atomic-incf (aref counts i))
+      (let ((walked (nth arg args)))
+        (when (listp walked)
+          (sb-ext:atomic-incf (aref counts len-i) (length walked)))))
+    (apply next args)))
+
+(defun fnn-install-lookup-counters ()
+  (unless *fnn-lookup-counts*
+    (let* ((specs (remove-if-not (lambda (spec)
+                                   (let ((s (if (consp spec) (car spec) spec)))
+                                     (and (fboundp s) (not (macro-function s)))))
+                                 +fnn-lookup-functions+))
+           (missing (set-difference +fnn-lookup-functions+ specs :test #'equal))
+           (names nil))
+      ;; One column per function, one more (NAME/len) per walk.
+      (dolist (spec specs)
+        (if (consp spec)
+            (progn (push (car spec) names)
+                   (push (intern (format nil "~a/LEN" (car spec)) "ACL2") names))
+            (push spec names)))
+      (setq names (nreverse names)
+            *fnn-lookup-names* (coerce names 'simple-vector)
+            *fnn-lookup-counts* (make-array (length names) :element-type 'sb-ext:word
+                                                           :initial-element 0))
+      (dolist (spec specs)
+        (if (consp spec)
+            (let ((i (position (car spec) names)))
+              (sb-int:encapsulate (car spec) 'fnn-lookup-count
+                                  (fnn-lookup-walk-counter i (1+ i) (cdr spec))))
+            (sb-int:encapsulate spec 'fnn-lookup-count
+                                (fnn-lookup-counter (position spec names)))))
+      (sb-int:encapsulate
+       'fnn-core-buffer-state 'fnn-lookup-count
+       (lambda (next name &rest args)
+         (when (eq name 'fn-owner-chunk-span) (fnn-lookup-window-close))
+         (apply next name args)))
+      (format *error-output* "~&lookups counted:~{ ~(~a~)~}~%lookups not counted (unbound or a macro):~{ ~(~a~)~}~%"
+              names missing)
+      (finish-output *error-output*))))
+
 (defun fnn-developer-selector-gate (argv)
   "Refuse, before any store is opened, a production start that names a cut."
   ;; A stack exhaustion is signalled inside fnn-core's handlers, which unwind
@@ -5071,6 +5173,8 @@ with its depth, and the rows under it name the path that called it."
       (sb-int:encapsulate 'sb-kernel::control-stack-exhausted-error
                           'fnn-stack-exhaustion-report
                           #'fnn-stack-exhaustion-report)))
+  (when (fnn-developer-selector "FN_NATIVE_COUNT_LOOKUPS")
+    (fnn-install-lookup-counters))
   (let ((found (fnn-developer-selector-refusal argv)))
     (when found
       (error 'fnn-usage-error
@@ -5463,8 +5567,9 @@ entries).  Nothing is placed when ACL2 answers none."
 
 (defvar *fnn-arena-off-mutex-readers* (list 0)
   "The count of threads reading the live arena outside the owner's mutex (a
-checkpoint publication, host/native/owner.lisp fnn-owner-publish-captured);
-a staged page is released only while it is 0.")
+checkpoint publication, host/native/owner.lisp fnn-owner-publish-captured,
+counted under the mutex before its thread starts by fnn-owner-maybe-publish
+and uncounted when it ends); a staged page is released only while it is 0.")
 
 (defun fnn-log-reseat-fenced (log)
   "The COMPLETE's reseat (PRF-309): each fenced staged member's handle is
@@ -5857,9 +5962,9 @@ the next open completes); it is a known failure of the checkpoint."
 the chain carried from each segment's kernel to the next (fn-lgc-last), each
 record handed to SINK in order as it is read (fnn-log-stream-segment: one
 entry's octets at a time).  The closed segments are read only (the fold's step,
-books/store-log-segments.lisp fn-lgs-open-chain-records / -last over one
-segment, T8's subject: its records and last are the recovered kernel's, which
-the stream's are by fn-lgw-run-is-the-open); the active one is recovered (a
+books/store-log-stream.lisp fn-lgw-open-chain-records / -last over one
+segment, T8's subject, fn-lgw-segment-drop-preserves-the-open); the active one
+is recovered (a
 writable open: P-LOG-RECOVER) or read.  Returns the active segment's log.
 With PLACES (the full replay), each segment gets an extent realizer id
 (host/native/extent.lisp fnn-extent-register: a read-only descriptor held for
@@ -5891,9 +5996,9 @@ the process's life) and the stream binds each record's place for SINK
 
 (defun fnn-log-read-closed-segment (store k genesis unit max sink)
   "A closed segment K read only, one entry at a time (fnn-log-stream-segment;
-the fold's step of books/store-log-segments.lisp fn-lgs-open-chain-records /
--last over the one segment, T8's subject, which the stream's records and last
-are by fn-lgw-run-is-the-open), each record to SINK as ACL2's octet list, the
+the fold's step of books/store-log-stream.lisp fn-lgw-open-chain-records /
+-last over the one segment, T8's subject), each record to SINK as ACL2's octet
+list, the
 splice refused by name.  Answers the chain's last trailer, the next segment's
 genesis."
   (let* ((path (fnn-segment-path-at store k))
@@ -6610,11 +6715,15 @@ observation (the COMPLETE re-signals it under the owner)."
 ;;; check uses (fn-peer-tls-verification: the typed HOST, SNI for a DNS name
 ;;; only, the PEM file given or the system roots), and every line printed
 ;;; (fn-redeem-text).  The password is read from the terminal without echo,
-;;; else from standard input; it never enters argv.
+;;; else from standard input; it never enters argv.  A connection that ends
+;;; or never opens is ACL2's fn-redeem-lost at the stage it ended in, and the
+;;; exit code is fn-outcome-code of fn-redeem-outcome-class: uncertain, never
+;;; refused (the OpenBSD rehearsal's finding 8: the web reader counted an
+;;; unreachable node as a refused code).
 (defun fnn-redeem-read-line (read-chunk pending)
   "One reply line (without CRLF) and the octets after it, reading chunks with
 READ-CHUNK until an LF; at most 4096 octets (RFC 3977 s3.1: 512 is the
-largest reply line)."
+largest reply line).  :LOST when the server closed or did not answer."
   (let ((buffer pending))
     (loop
       (let ((lf (position 10 buffer)))
@@ -6627,7 +6736,7 @@ largest reply line)."
         (fnn-refuse "refused redeem reply: the server's line exceeds 4096 octets"))
       (let ((chunk (funcall read-chunk)))
         (when (or (eq chunk :timeout) (zerop (length chunk)))
-          (fnn-refuse "refused redeem connection: the server closed or did not answer"))
+          (return (values :lost buffer)))
         (setq buffer (concatenate 'fnn-octets buffer chunk))))))
 
 (defun fnn-redeem-read-password ()
@@ -6641,8 +6750,11 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
          (attributes nil) (old-flags nil))
     (unwind-protect
          (progn
-           (format *error-output* "Password for the new account: ")
-           (finish-output *error-output*)
+           ;; The prompt only to a terminal: a caller feeding standard
+           ;; input (the web reader) reads fn's last line as its answer.
+           (when tty
+             (format *error-output* "Password for the new account: ")
+             (finish-output *error-output*))
            (when tty
              (let ((fd (sb-sys:fd-stream-fd tty)))
                (setq attributes (sb-posix:tcgetattr fd)
@@ -6688,7 +6800,7 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                                      (or cafile :system-roots)))
              (password (fnn-redeem-read-password))
              (socket nil) (context nil) (channel nil) (pending (fnn-make-octets 0))
-             (last nil))
+             (last nil) (stage :connect))
         (unless (eq (first verification) :verify)
           (fnn-refuse "refused redeem ~a: ~a"
                       (if (eq (second verification) :trust) "trust" "host")
@@ -6711,22 +6823,28 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                    line))
                (finish (outcome)
                  (let ((text (fnn-octets-string
-                              (fnn-octets (fnn-core 'fn-redeem-text outcome login last)))))
-                   (if (equal outcome '(:done))
-                       (progn (fnn-out "~a" text) +fnn-exit-ok+)
-                     (progn (fnn-err "~a" text) +fnn-exit-refused+)))))
+                              (fnn-octets (fnn-core 'fn-redeem-text outcome login last))))
+                       (class (fnn-core 'fn-redeem-outcome-class outcome)))
+                   (if (eq class :accepted)
+                       (fnn-out "~a" text)
+                     (fnn-err "~a" text))
+                   (fnn-core 'fn-outcome-code class))))
           (unwind-protect
                (handler-case
                (progn
                  (setq socket (fnn-connect host port :timeout 30))
-                 (let ((stage (if tls :greeting-tls :greeting-starttls)))
+                 (setq stage (if tls :greeting-tls :greeting-starttls))
+                 (progn
                    (when tls
                      (setq context (fnn-tls-open-client-context (fourth verification))
                            channel (fnn-tls-connect context (fnn-socket-fd socket)
                                                     (second verification) 30
                                                     :sni (third verification))))
                    (loop
-                     (let ((step (fnn-core 'fn-redeem-step stage (reply))))
+                     (let* ((line (reply))
+                            (step (if (eq line :lost)
+                                      (fnn-core 'fn-redeem-lost stage)
+                                    (fnn-core 'fn-redeem-step stage line))))
                        (case (first step)
                          (:starttls (send "STARTTLS") (setq stage :starttls))
                          (:handshake
@@ -6744,8 +6862,14 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                           (send (format nil "XREDEEM PASS ~a"
                                         (map 'string #'code-char password)))
                           (setq stage :password))
+                         ((:uncertain :unreachable) (return (finish step)))
                          (t (ignore-errors (send "QUIT"))
                             (return (finish step))))))))
+                 ;; The node could not be reached, or the connection failed
+                 ;; under the exchange: ACL2's lost outcome at this stage.
+                 ((or fnn-os-error fnn-tls-io-error
+                      sb-bsd-sockets:socket-error sb-bsd-sockets:name-service-error) ()
+                   (finish (fnn-core 'fn-redeem-lost stage)))
                  ;; A certificate the given trust does not verify, a name
                  ;; that does not match, or a failed handshake: refused by
                  ;; name, never an unchecked session.

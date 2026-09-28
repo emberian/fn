@@ -542,7 +542,11 @@
                        :control-not-filed :control-malformed
                        ;; A bound login refused by the posting policy
                        ;; (books/login-binding.lisp fn-lb-gate).
-                       :login-not-bound :login-unsigned))
+                       :login-not-bound :login-unsigned
+                       ;; PRF-335: a peer's outbound feed queue has no room
+                       ;; for the article's feed obligation
+                       ;; (books/owner.lisp fn-own-intent-refusal-word).
+                       :feed-queue-full))
        t))
 
 ; The reason text of a Store refusal, one per kind: the one table.  POST's
@@ -586,6 +590,8 @@
     "the login is not bound to this signing principal")
    ((equal kind :login-unsigned)
     "this login posts only articles signed by its bound principal")
+   ((equal kind :feed-queue-full)
+    "a peer's outbound feed queue is full, nothing was stored (feed-queue-full); the peer is behind, and the node's operator sees which one in health")
    (t "the article was refused")))
 
 (defun fn-post-store-refusal-line (kind)

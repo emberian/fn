@@ -100,12 +100,12 @@ locked to find that out. An existing store is adopted by `run` and repaired by
 `init` never builds the store in place (PKT-647). It builds the empty store
 in a new directory `ROOT.init-XXXX` beside the configured store ROOT and
 publishes it by the same program as `store import` (below; `fn-bs-imp-program`
-with init's cut names, `fn-bs-init-pub-program` in
-`books/store-init-publication.lisp`): each file created exclusively, written
+with init's cut names, `fn-bs-init-log-program` in
+`books/store-init-log-publication.lisp`): each file created exclusively, written
 and fenced, the directories fenced, the staged store opened the ordinary way,
 renamed onto ROOT without replacing anything, ROOT's parent fenced. A crash
 at any point leaves no store at ROOT or the complete empty store
-(`fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store`),
+(`fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log`),
 never a partial one. Before writing anything `init` looks for a staged
 directory an earlier `init` left, and ACL2 answers
 (`fn-bs-init-pub-admission` over `fn-bs-imp-classify`):
@@ -427,7 +427,7 @@ running owner's automatic checkpoint does the same under the owner mutex,
 so a node that runs rarely needs the verb. The open reads the checkpoint
 first and scans from the segment its F row names, with the chain carried
 across segments; the drop preserves the history that open replays (KEYSTONE
-`fn-lg-segment-drop-preserves-the-open`, books/store-log-segments.lisp,
+`fn-lgw-segment-drop-preserves-the-open`, books/store-log-stream.lisp,
 PRF-270). A checkpoint ACL2 will not write is refused by name before
 anything is allocated (`checkpoint deferred reason=... estimate=...
 budget=...`, the profile's checkpoint budget and the free space). The open
@@ -651,7 +651,7 @@ accepted operator health
 | 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | a reinstall with a larger field (`store export`, `store import --FIELD N`), `capacity`, or release obligations |
 | 24 | `no-route` | forwarding obligations are held and the configuration has no `bp-route` | `bp-route add PATTERN BOUNDARY` |
 | 25 | `stranded-transfer` | an outbound feed entry was dropped at its retry bound; nothing re-offers it | fix the peer, then re-feed the article |
-| 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection, or it keeps deferring them (`deferred=N`: a full peer answers IHAVE/TAKETHIS `436` with `reason=unaffordable` in its log; planning/evidence/friend-blockers-2026-09-27.md, PKT-711) | check the peer's host and port (`peer list`), its reachability, and ask its operator whether its store is full |
+| 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection, or it keeps deferring them (`deferred=N`: a full peer answers IHAVE/TAKETHIS `436` with `reason=unaffordable` in its log; planning/evidence/friend-blockers-2026-09-27.md, PKT-711), or its outbound feed queue is saturated (`saturated=N`: the queue holds only undelivered articles, and while one of the post's target peers has no room every POST is refused `441 ... (feed-queue-full)` and a relayed article is answered `436`; PRF-335) | check the peer's host and port (`peer list`), its reachability, and ask its operator whether its store is full |
 | 27 | `receipt-debt` | forwarding obligations are held, awaiting the receipt that releases them | `bp-obligation status`; the receipt releases each |
 | 19 | (none held) | some state is `unobserved` | offline, the two feed states need a running owner |
 | 0 | (healthy) | every state is `clear` | |
@@ -935,7 +935,7 @@ which answers nothing on a production image.
 | --- | --- | --- |
 | `FN_NATIVE_POST_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-post-model-cuts+`; or `record-prepublish:refuse` | the frontier, record and finish cuts of a post, in `store ROOT post` and in the served owner (`operator CONFIG run`, and the developer `owner run`); `record-prepublish:refuse` is injection only (no process-death cut): every publication (`fnn-publish`, either route) is refused before its first write, which the owner resolves by ACL2's known abort (tests/test_native_known_abort.py) |
 | `FN_NATIVE_RECOVERY_FAULT` | `CUT:eio\|kill`, CUT one of `recover-replayed`, `recover-barrier` (the first of its five sites), `recovery-stage-unlinked` | recovery's cuts, in `store ROOT recover`, `operator CONFIG recover`, `store ROOT post` and the served owner's own recovery at start |
-| `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts (`store ROOT init`), and `operator init`'s publication cuts `+fnn-init-publication-cuts+` (`fn-bs-init-pub-program`, eio or kill) |
+| `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts (`store ROOT init`), and `operator init`'s publication cuts `+fnn-init-publication-cuts+` (`fn-bs-init-log-program`, eio or kill) |
 | `FN_NATIVE_IMPORT_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-import-model-cuts+` (a repeated cut at its first occurrence) | `store import`'s publication cuts (`fn-bs-imp-program`) |
 | `FN_NATIVE_CONTROL_FAULT` | one of `prepublish`, `postpublish`, `frontierbarrier`, `recordbarrier` | the owner's store for exactly one control submission; `postpublish` is the uncertain outcome |
 | `FN_NATIVE_CONTROL_TEST_STOP` | `after-submit` | a SIGSTOP of the owner from the worker that holds the reply, after the owner answered accepted, duplicate or refused and before the reply is sent; the stop is directed at that thread (`pthread_kill`), so the reply cannot leave first |
@@ -948,6 +948,7 @@ which answers nothing on a production image.
 | `FN_NATIVE_TEST_DISK_STALL_FILE` | a path | while the file exists each batch's barrier waits before its fdatasync (`fnn-owner-commit-sync`): a stalled device for the slow-disk native case; removing the file is the device coming back |
 | `FN_NATIVE_OWNER_TEST_PIPELINE_TRACE` | any value | one stderr line per START (`start: seal=S bmax=N members=K`) and per batch prepared behind a barrier (`pipeline: K members prepared behind the barrier`) |
 | `FN_NATIVE_FAULT_BACKTRACE` | any value | a diagnostic, not a fault: a serious condition other than a store error inside an owner action (`fnn-owner-shared-action-locked`) prints `fault backtrace: CONDITION` and 80 frames to stderr where it is signalled, before the handler unwinds it into exit 4; a control-stack exhaustion on any thread prints `fault backtrace (thread NAME): control stack exhausted` and every frame as run-length rows `frames FUNCTION xDEPTH`, innermost first (a per-line recursion is one deep row; the rows under it are its callers) |
+| `FN_NATIVE_COUNT_LOOKUPS` | any value | a diagnostic, not a fault (release row F2): the catalog and index lookup functions of `+fnn-lookup-functions+` (host/native/io.lisp: the pinned view's bisection probes `fn-scr-mid`, the catalog tables `fn-cat$c-*`, the finders `fn-cnx-view-seq` and `fn-cat-view-last-visible`, the trie `fn-midx-lookup`, and the entries of every archive walk) are wrapped with counters at startup, and each served read (`fn-owner-chunk-span`) first prints `lookups window K: NAME=N ...` to stderr, the counts of the read before it; `planning/evidence/fundamentals-2026-09-27/harness/f2_lookups.py` reads them per command |
 | `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |
 
 `FN_NATIVE_FAULT_BACKTRACE` changes no outcome: the fence, the exit code and

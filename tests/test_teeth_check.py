@@ -379,13 +379,35 @@ class MacroTeeth(unittest.TestCase):
         self.assertEqual([t.theorem for t in witnesses], ["wobble-full"])
 
     def test_the_real_feed_connection_book_counts_sixteen(self):
+        # Since 2026-09-27 the book is the defkeystone pilot: six forms of the
+        # macro from books/defkeystone.lisp, no book-local defmacro.
         path = ROOT / "tests/acl2/feed-connection-teeth-tests.lisp"
         teeth, macros = teeth_check.macro_teeth_for_book(path)
         must_fails = [t for t in teeth if t.kind == "must-fail"]
+        witnesses = [t for t in teeth if t.kind == "witness"]
         self.assertEqual(len(must_fails), 16)
-        self.assertEqual({"fct-gate-thm", "fct-closes-quietly-thm",
-                          "fct-render-thm", "fct-custody-thm"},
-                         set(macros))
+        self.assertEqual(len(witnesses), 6)
+        self.assertEqual({t.macro for t in teeth}, {"defkeystone"})
+        self.assertEqual(macros, {})
+        self.assertIn("fct-gate-without-protected-profile",
+                      {t.theorem for t in must_fails})
+
+    def test_defkeystone_teeth_and_witnesses_are_read_from_the_expansion(self):
+        source = '''(in-package "ACL2")
+(defkeystone k (implies (and (p x) (q x)) (r x)) :subject r
+  :hyps (p q) :witness ((x 1)) :breaks ((p ((x 2))) (q ((x 3)) :corrupt "why"))
+  :mutations ((m (r (+ 1 x)) ((x 4)))))
+'''
+        teeth, macros = self.teeth(source)
+        self.assertEqual({(t.kind, t.theorem) for t in teeth},
+                         {("witness", "k"), ("must-fail", "k-without-p"),
+                          ("must-fail", "k-without-q"), ("must-fail", "k-mutant-m")})
+        path = _Fake(ROOT / "tests/acl2/k-tests.lisp", source)
+        assertions, _constants, error = teeth_check.read_book(path)
+        self.assertIsNone(error)
+        # positive, two removals, one mutant; each a conjunction of claims
+        self.assertEqual(len(assertions), 4)
+        self.assertEqual([len(a.claims) for a in assertions], [3, 3, 3, 1])
 
     def test_the_summary_reports_the_macro_teeth_line(self):
         # `--summary` is what `make check` runs; the macro-teeth line must
@@ -395,7 +417,7 @@ class MacroTeeth(unittest.TestCase):
              teeth_check.macro_teeth_for_book(
                  ROOT / "tests/acl2/feed-connection-teeth-tests.lisp")[0]})
         self.assertEqual(totals["must_fails"], 16)
-        self.assertEqual(totals["macros"], 4)
+        self.assertEqual(totals["macros"], 1)
 
 
 class Acl2Errors(unittest.TestCase):

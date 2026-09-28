@@ -1415,6 +1415,7 @@ ENTRY_KIND_EXEMPT = {
     # decoder's own refusal, which the host names.
     ("fn-ns-file-parse", "octets"): "total parser; NIL is refused by fnn-node-secret-read-entry",
     ("fn-pull-journal-scan", "frame"): "total journal scan (guard t)",
+    ("fn-cu-journal-scan", "frame"): "total journal scan (guard t; peer-catchup's FNCU twin of fn-pull-journal-scan)",
     ("fn-bpnf-inspect-adu", "frame"): "total unframe (fn-bpnf-stored-recordp gates it)",
     ("fn-bpnpf-node-profile-write-octets", "octets"): "a count (the octets limit), gated by fn-bpnpf-profile-upgradep (bp-rotation: the format-3 writer the host dispatches)",
     ("fn-heap-limit-of-octets", "octets"): "total parser of a limit file (true-listp tested)",

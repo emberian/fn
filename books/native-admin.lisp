@@ -673,6 +673,18 @@
              (equal (car words) "account")
              (equal (cadr words) "access"))
         (fn-native-admin-access-plan (cddr words) (cddr argv)))
+       ; public-node-2: `account delete LOGIN' stages one :account-delete
+       ; record (code 27), offline or live; the configuration admits it
+       ; only while LOGIN holds an account and no obligation
+       ; (books/accounts.lisp
+       ; fn-acct-delete-is-admitted-exactly-when-held-and-unobligated).
+       ((and (equal (len words) 3)
+             (equal (car words) "account")
+             (equal (cadr words) "delete"))
+        (if (fn-cfg-account-loginp (caddr words))
+            (fn-native-admin-result :accepted nil :account-delete (caddr argv)
+                                    0 nil nil)
+          (fn-native-admin-result :refused :account-login nil nil 0 nil nil)))
        ((and (consp words) (equal (car words) "account"))
         (fn-native-admin-result :refused :account nil nil 0 nil nil))
        ; PRF-234: consumer bindings (books/consumer-bound.lisp).  `consumer
@@ -768,6 +780,8 @@
              (list (fn-cfg-consumer-bind
                     name
                     (fn-record-octets-string (fn-native-admin-result-value plan)))))
+            ((equal kind :account-delete)
+             (list (fn-cfg-account-delete name)))
             ((equal kind :account-access)
              (list (fn-cfg-account-access
                     name
@@ -841,6 +855,18 @@
   (implies (not (equal (fn-native-admin-result-kind plan) :extend-peer))
            (equal (fn-native-admin-plan-deltas-over plan peers)
                   (fn-native-admin-plan-deltas plan))))
+
+; public-node-2: the record an accepted `account delete LOGIN' stages, live
+; (through fn-native-admin-plan-deltas-over) or offline, is exactly the
+; configuration's deletion of the login the plan admitted.  An unfold.
+(defthm fn-native-admin-plan-deltas-of-account-delete-unfolds
+  (implies (and (equal (fn-native-admin-result-status plan) :accepted)
+                (equal (fn-native-admin-result-kind plan) :account-delete))
+           (equal (fn-native-admin-plan-deltas-over plan peers)
+                  (list (fn-cfg-account-delete
+                         (fn-record-octets-string
+                          (fn-native-admin-result-name plan))))))
+  :hints (("Goal" :in-theory (enable fn-native-admin-plan-deltas))))
 
 ; The sub-plans, closed (D26): none plans a group creation or retirement,
 ; so the plan theorems below need not open them (merged with group-access's

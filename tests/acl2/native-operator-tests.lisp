@@ -537,6 +537,36 @@
           (equal (fn-nop-argument-texts (fn-nop-test-argv '("store" "reclaim")))
                  '("store" "reclaim" "--dry-run")))))
 
+;; `store reclaim --recorded' (PKT-857, books/reclaim-instant.lisp): the
+;; reclaim at the configuration's recorded instant.  Reachable: the argv is
+;; accepted as the :reclaim-recorded action.  Teeth for its is-the-action
+;; keystone (another accepted store plan is another action) and its is-only
+;; keystone (another argv is not the command).
+(defconst *fn-nop-reclaim-recorded*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("store" "reclaim" "--recorded"))))
+(assert-event (and (equal (fn-nop-argument-texts (fn-nop-test-argv '("store" "reclaim" "--recorded")))
+                          '("store" "reclaim" "--recorded"))
+                   (equal (fn-native-operator-result-status *fn-nop-reclaim-recorded*) :accepted)
+                   (equal (fn-native-operator-result-native-action *fn-nop-reclaim-recorded*)
+                          :reclaim-recorded)))
+(local (must-fail-checked
+        (defthm fn-nop-reclaim-recorded-action-without-argv
+          (equal (fn-native-operator-result-native-action *fn-nop-reclaim-dry*)
+                 :reclaim-recorded))))
+(defconst *fn-nop-reclaim-recorded-bad-config*
+  (fn-native-operator-run (fn-nop-test-lines '("[store]" "path = 7"))
+                          (fn-nop-test-argv '("store" "reclaim" "--recorded"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-reclaim-recorded-bad-config*) :usage))
+(local (must-fail-checked
+        (defthm fn-nop-reclaim-recorded-action-without-acceptance
+          (equal (fn-native-operator-result-native-action *fn-nop-reclaim-recorded-bad-config*)
+                 :reclaim-recorded))))
+(local (must-fail-checked
+        (defthm fn-nop-reclaim-recorded-argv-without-action
+          (equal (fn-nop-argument-texts (fn-nop-test-argv '("store" "reclaim" "--dry-run")))
+                 '("store" "reclaim" "--recorded")))))
+
 ;; `retention set RULE' reaches the administrative plan (D13): it was in
 ;; the admin grammar (books/native-admin.lisp) but no operator command routed
 ;; to it.
@@ -1443,3 +1473,18 @@
               (member-equal "control.cancel" (cadr (nth 4 result)))))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
+
+; public-node-2: `account delete LOGIN' is an administration plan, and a
+; malformed login is a usage error (exit 2) rather than a refusal.
+(defconst *fn-nop-account-delete*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("account" "delete" "probe"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-account-delete*) :accepted))
+(assert-event (equal (fn-native-operator-result-command *fn-nop-account-delete*) "account"))
+(assert-event (equal (fn-native-admin-result-kind
+                      (car (fn-native-operator-result-arguments *fn-nop-account-delete*)))
+                     :account-delete))
+(assert-event (not (equal (fn-native-operator-result-status
+                           (fn-native-operator-run *fn-nop-minimal-config*
+                                                   (fn-nop-test-argv '("account" "delete"))))
+                          :accepted)))

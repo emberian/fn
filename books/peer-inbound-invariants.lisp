@@ -237,14 +237,18 @@
 ; K3 (this wave). Duplicate suppression: a Message-ID in the history is
 ; never accepted, at offer and at transfer.
 
+; Outside the disk-slow posture (PKT-858, fn-peer-shed-p: the refused-offer
+; memory of a read the disk sheds; under it the offer is :defer :disk-slow,
+; fn-peer-shed-offer-is-disk-slow below).
 (defthm fn-peer-history-is-refused-at-offer
-  (implies (fn-peer-history-hasp (fn-record-octets-string msgid) node)
+  (implies (and (fn-peer-history-hasp (fn-record-octets-string msgid) node)
+                (not (fn-peer-shed-p session)))
            (member-equal (fn-peer-decision-kind
                           (fn-peer-decide-offer node cfg peer session msgid clock
                                                 inflight))
                          '(:refuse :have)))
   :hints (("Goal" :in-theory (e/d (fn-peer-decide-offer)
-                                  (fn-peer-history-hasp fn-cfg-peer-find
+                                  (fn-peer-shed-p fn-peer-history-hasp fn-cfg-peer-find
                                    fn-cfg-peer-inbound fn-af-message-idp
                                    fn-record-octets-string)))))
 
@@ -255,11 +259,33 @@
                 (fn-cfg-peer-inbound
                  (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))
                 (fn-af-message-idp msgid)
+                (not (fn-peer-shed-p session))
                 (fn-peer-history-hasp (fn-record-octets-string msgid) node))
            (equal (fn-peer-decide-offer node cfg peer session msgid clock inflight)
                   (fn-peer-decision :have :history)))
   :hints (("Goal" :in-theory (e/d (fn-peer-decide-offer)
-                                  (fn-peer-history-hasp fn-cfg-peer-find
+                                  (fn-peer-shed-p fn-peer-history-hasp fn-cfg-peer-find
+                                   fn-cfg-peer-inbound fn-af-message-idp
+                                   fn-record-octets-string)))))
+
+;; KEYSTONE (PKT-858).  Under the disk-slow posture every offer from an
+;; inbound peer with a well-formed Message-ID is :defer :disk-slow, whatever
+;; the node holds: never :want (nothing enters article mode, nothing is
+;; stored inline), never a drop code, and nothing about the batch in flight
+;; (the history, the stage) is revealed.  IHAVE answers 436, CHECK 431
+;; (fn-peer-not-now-is-a-retry-code).  The host puts the posture in the
+;; session for a read the disk sheds only (books/owner-time-admission.lisp
+;; fn-otm-read-span, called by host/owner-host.lisp fn-owner-chunk-span-at).
+(defthm fn-peer-shed-offer-is-disk-slow
+  (implies (and (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))
+                (fn-cfg-peer-inbound
+                 (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))
+                (fn-af-message-idp msgid)
+                (fn-peer-shed-p session))
+           (equal (fn-peer-decide-offer node cfg peer session msgid clock inflight)
+                  (fn-peer-decision :defer :disk-slow)))
+  :hints (("Goal" :in-theory (e/d (fn-peer-decide-offer)
+                                  (fn-peer-shed-p fn-peer-history-hasp fn-cfg-peer-find
                                    fn-cfg-peer-inbound fn-af-message-idp
                                    fn-record-octets-string)))))
 
@@ -334,6 +360,7 @@
                 (fn-cfg-peer-inbound
                  (fn-cfg-peer-find (fn-peer-session-peer ps)
                                    (fn-cfg-peers (fn-cfg-value (fn-peer-session-cfg ps)))))
+                (not (fn-peer-shed-p ps))
                 (fn-peer-history-hasp (fn-record-octets-string (car args))
                                       (fn-peer-session-node ps)))
            (and (equal (fn-post-result-effects (fn-peer-command ps keyword args))
@@ -343,7 +370,7 @@
                        (fn-peer-session-transfer ps))))
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-command) (:d fn-peer-msgid-argp)
                                    (:d fn-peer-ihave-offer-line))
-                                  ((:d fn-peer-decide-offer) (:d fn-peer-single)
+                                  ((:d fn-peer-decide-offer) (:d fn-peer-shed-p) (:d fn-peer-single)
                                    (:d fn-peer-echo-reply)
                                    (:d fn-peer-history-hasp) (:d fn-cfg-peer-find)
                                    (:d fn-cfg-peer-inbound)
@@ -370,6 +397,7 @@
                 (fn-cfg-peer-inbound
                  (fn-cfg-peer-find (fn-peer-session-peer ps)
                                    (fn-cfg-peers (fn-cfg-value (fn-peer-session-cfg ps)))))
+                (not (fn-peer-shed-p ps))
                 (fn-peer-history-hasp (fn-record-octets-string (car args))
                                       (fn-peer-session-node ps)))
            (and (equal (fn-post-result-effects (fn-peer-command ps keyword args))
@@ -378,7 +406,7 @@
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-command) (:d fn-peer-msgid-argp)
                                    (:d fn-peer-check-code) (:d fn-nntp-keywordp)
                                    (:d fn-nntp-string-octets))
-                                  ((:d fn-peer-decide-offer) (:d fn-peer-single)
+                                  ((:d fn-peer-decide-offer) (:d fn-peer-shed-p) (:d fn-peer-single)
                                    (:d fn-peer-echo-reply)
                                    (:d fn-peer-history-hasp) (:d fn-cfg-peer-find)
                                    (:d fn-cfg-peer-inbound)

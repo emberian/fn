@@ -25,15 +25,18 @@
 
 ; The fold of the fixture's history is the whole-history quantities: the
 ; count, the rewritten Message-IDs (at least one: the fixture's released
-; article), the freed octets and the rewritten history.
+; article) and the freed octets (positive: the payload became its tombstone).
 (assert-event (let ((acc (rst-acc (rst-events))))
-                (and (equal (nth 0 acc) (len (rst-events)))
+                (and (true-listp (rst-events))
+                     (equal (nth 0 acc) (len (rst-events)))
                      (consp (nth 1 acc))
                      (equal (rev (nth 1 acc)) (fn-rclp-rewritten-msgids (rst-events) *rst-ctx*))
                      (equal (nth 2 acc) (fn-rclp-freed (rst-events) *rst-ctx*))
-                     (not (nth 5 acc))
-                     (equal (rev (nth 3 acc)) (fn-rclp-events (rst-events) *rst-ctx*)))))
+                     (< 0 (nth 2 acc)))))
 
-; The fold keeps no rewritten history past one unit: the long history's
-; fold records SPANS and has dropped NEW.
-(assert-event (and (nth 5 (rst-acc (rst-long))) (null (nth 3 (rst-acc (rst-long))))))
+; The fold carries three quantities and no history: a long history's fold
+; is three elements, and its count is the long history's length.
+(assert-event (let ((acc (rst-acc (rst-long))))
+                (and (equal (len acc) 3)
+                     (equal (nth 0 acc) (len (rst-long)))
+                     (equal (rev (nth 1 acc)) (fn-rclp-rewritten-msgids (rst-events) *rst-ctx*)))))

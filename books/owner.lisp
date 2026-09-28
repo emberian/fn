@@ -2247,6 +2247,19 @@
            :capacity)
           (t :ready))))
 
+; PRF-335: the word a submission whose intent is not :ready is answered
+; with.  :capacity (a target peer's feed queue has no room) is named
+; :feed-queue-full, which POST renders as its own 441 line and transit as 436
+; (books/nntp-post.lisp fn-post-store-refusal-text, books/peer-inbound.lisp
+; fn-peer-transit-code); anything else is the bare :refused.  Host:
+; host/native/owner.lisp fnn-owner-drain-one.
+(defun fn-own-intent-refusal-word (result)
+  (declare (xargs :guard t))
+  (if (equal result :capacity) :feed-queue-full :refused))
+
+(defthm fn-own-intent-refusal-word-is-a-refusal
+  (fn-post-store-refusalp (fn-own-intent-refusal-word result)))
+
 (defun fn-own-submission-intent-records (o evidence generation txid)
   (declare (xargs :guard t))
   (let ((sub (fn-own-inflight o)))

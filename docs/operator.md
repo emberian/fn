@@ -12,7 +12,7 @@ written (batch AY) is here first and folds into the articles next.
 
 This page is for the person who looks after an fn node. It assumes you set
 the node up with [Installing fn](install.md). Words you may not know are in
-[the short glossary](README.md#words-you-will-meet). The exact details, and
+[the short glossary](articles/fn-faq-1.txt). The exact details, and
 material for developers, are in [the engineers' reference](operator-internals.md).
 
 In the commands, `CONFIG` is your settings file, for example
@@ -320,6 +320,26 @@ fn operator CONFIG account list
 4. From then on they log in normally. No restart is needed.
 
 `account list` shows accounts and unused codes, never passwords or codes.
+
+To end an account, for example a test login:
+
+```
+fn operator CONFIG account delete probe
+```
+
+- From then on nobody can log in as `probe` (the password is refused). A
+  session that is already logged in keeps going until it disconnects.
+- Nothing is withdrawn: the posts `probe` made stay.
+- The name `probe` is never given out again, so a later friend cannot post
+  under the same `posting-account` value. `account list` shows it as
+  `deleted probe`.
+- It is refused while something still depends on the login: a signing
+  binding (`principal unbind LOGIN`), a moderator role (`group moderate`
+  without it) or a consumer bound to it (`consumer unbind NAME`). Remove
+  those first. Its group access rule does not block it.
+- It works on a running node, and on a stopped one.
+- It removes accounts made with invitation codes. A login in `auth.toml`
+  is removed by editing that file.
 
 ### Private groups
 

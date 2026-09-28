@@ -30,8 +30,9 @@ could not check (the peer lines need a running node).
 - 25 stranded-transfer: A peer kept refusing an article, and fn stopped
   offering it. Fix the peer.
 - 26 unavailable-peer: A peer with articles waiting is not connected, or
-  says try later (deferred=N: its store may be full). Check peer list;
-  ask its operator.
+  says try later (deferred=N: its store may be full), or its queue is
+  full (saturated=N: every post is refused feed-queue-full until it
+  catches up). Check peer list; ask its operator.
 - 27 receipt-debt: Forwarded articles wait for their receipts.
 
 *Refusals:* A refused post is answered "441 posting failed;" and one of

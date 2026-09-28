@@ -414,7 +414,7 @@
       "class": "unexpected",
       "packet": "PKT-324 (8)"
     },
-    "fn-nls-obligation-lines recursion N": {
+    "fn-nls-obligation-lines-rev recursion N": {
       "class": "unexpected",
       "packet": "PKT-324 (8)"
     },
@@ -798,11 +798,6 @@
       "class": "unexpected",
       "packet": "PKT-324 (8)",
       "note": "bp-retention-leftovers (PKT-844, 2026-09-27): the signed and kept classes status prints beside the reclaim counts (fn-rcl-store-classes); the same per-article walk as fn-rcl-summary-in, on the offline/operator status report only, never per request."
-    },
-    "fn-cei-build-aux recursion N": {
-      "class": "cold",
-      "packet": "PKT-448 (d)",
-      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
     },
     "fn-stx-index-of-store recursion N": {
       "class": "unexpected",
