@@ -144,6 +144,17 @@
            (and (equal (car p) :sasl-scram-final)
                 (equal (len p) 8) (booleanp (cadr p))))))
 
+; EXPORTED, forward-chaining: a kept exchange is one of the three states,
+; so no other pending value (a cached USER name, an XREDEEM state) is
+; mistaken for one when the recognizer is closed.
+(defthm fn-sasl-statep-forward
+  (implies (fn-sasl-statep p)
+           (and (consp p)
+                (or (equal (car p) :sasl-plain)
+                    (equal (car p) :sasl-scram-first)
+                    (equal (car p) :sasl-scram-final))))
+  :rule-classes :forward-chaining)
+
 (defun fn-sasl-final-state (plusp flag gs2 login nonce bare server-first)
   (declare (xargs :guard t))
   (list :sasl-scram-final (and plusp t) flag gs2 login nonce bare server-first))
@@ -311,6 +322,9 @@
   ; would have entered.
   (declare (xargs :guard t))
   (car (cddr (fn-sasl-start mech))))
+
+(defthm fn-sasl-statep-of-initial-state
+  (fn-sasl-statep (fn-sasl-initial-state mech)))
 
 (defun fn-sasl-response-login (st response)
   ; Phase one: the login this response names, or nil.  A parse only.

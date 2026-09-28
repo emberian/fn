@@ -72,19 +72,31 @@
   (fn-acct-hex-text (fn-acct-code-digest code)))
 
 (defun fn-acct-verifier-text (ver)
-  ; 96 hexadecimal characters: the verifier's 16-octet salt, then its
-  ; 32-octet digest.  The tag is not stored; `fn-acct-text-verifier' rebuilds
-  ; the verifier through `fn-authsec-verifier', the one reassembly.
+  ; 224 hexadecimal characters: the verifier's 16-octet salt, its 32-octet
+  ; digest, then SCRAM's 32-octet StoredKey and 32-octet ServerKey
+  ; (books/auth-secret.lisp, verifier v2).  The tag is not stored;
+  ; `fn-acct-text-verifier' rebuilds the verifier through
+  ; `fn-authsec-verifier', the one reassembly.
   (declare (xargs :guard t))
   (fn-acct-hex-text (append (fn-authsec-octets (fn-authsec-ver-salt ver))
-                            (fn-authsec-octets (fn-authsec-ver-digest ver)))))
+                            (fn-authsec-octets (fn-authsec-ver-digest ver))
+                            (fn-authsec-octets (fn-authsec-ver-stored-key ver))
+                            (fn-authsec-octets (fn-authsec-ver-server-key ver)))))
+
+(defun fn-acct-slice (start n o)
+  ; Octets START .. START+N-1 of O, as many as there are.
+  (declare (xargs :guard (and (natp start) (natp n))))
+  (let ((rest (nthcdr start (fn-authsec-octets o))))
+    (take (min n (len rest)) rest)))
 
 (defun fn-acct-text-verifier (text)
   (declare (xargs :guard t))
   (let ((hex (fn-record-string-octets text)))
     (if (and (stringp text) (fn-id-hex-listp hex) (evenp (len hex)))
         (let ((o (fn-id-unhex hex)))
-          (fn-authsec-verifier (take (min 16 (len o)) o) (nthcdr 16 o)))
+          (fn-authsec-verifier (fn-acct-slice 0 16 o) (fn-acct-slice 16 32 o)
+                               (fn-acct-slice 48 32 o)
+                               (nthcdr 80 (fn-authsec-octets o))))
       nil)))
 
 (defun fn-acct-local-principal (name)
@@ -137,19 +149,50 @@
 
 (local (defthm fn-acct-verifier-decomposes
   (implies (fn-authsec-verifierp ver)
-           (equal (list :fn-authsec-v1 (cadr ver) (caddr ver)) ver))
+           (equal (list :fn-authsec-v2 (cadr ver) (caddr ver) (cadddr ver)
+                        (car (cddddr ver)))
+                  ver))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-authsec-verifierp)
-                                  (fn-authsec-saltp fn-cbor-octet-listp))
-           :use ((:instance fn-acct-len-one-true-list (x (cddr ver))))))))
+                                  (fn-authsec-saltp fn-cbor-octet-listp
+                                   fn-authsec-32p))
+           :use ((:instance fn-acct-len-one-true-list (x (cddddr ver))))))))
+
+(local (defthm fn-acct-nthcdr-of-append-assoc
+  (implies (and (true-listp a) (equal (len a) n))
+           (equal (nthcdr n (append a b)) b))))
+
+(local (defun fn-acct-nthcdr-induct (a k)
+  (if (and (consp a) (posp k))
+      (fn-acct-nthcdr-induct (cdr a) (- k 1))
+    (list a k))))
+
+(local (defthm fn-acct-nthcdr-past-append-head
+  (implies (and (true-listp a) (natp k) (<= (len a) k))
+           (equal (nthcdr k (append a b)) (nthcdr (- k (len a)) b)))
+  :hints (("Goal" :induct (fn-acct-nthcdr-induct a k)))))
+
+(local (defthm fn-acct-slice-of-append
+  (implies (and (fn-cbor-octet-listp a) (equal (len a) n)
+                (fn-cbor-octet-listp b) (natp m) (<= m (len b)))
+           (equal (fn-acct-slice n m (append a b))
+                  (take m b)))
+  :hints (("Goal" :in-theory (e/d (fn-acct-slice) (fn-authsec-octets))))))
+
+(local (defthm fn-acct-take-all
+  (implies (and (true-listp x) (equal (len x) n))
+           (equal (take n x) x))))
 
 (defthm fn-acct-text-verifier-of-verifier-text
   (implies (fn-authsec-verifierp ver)
            (equal (fn-acct-text-verifier (fn-acct-verifier-text ver)) ver))
   :hints (("Goal" :in-theory (e/d (fn-authsec-verifierp fn-authsec-saltp
+                                   fn-authsec-32p
                                    fn-record-string-octets-of-octets-string
                                    fn-authsec-verifier
-                                   fn-authsec-ver-salt fn-authsec-ver-digest)
+                                   fn-authsec-ver-salt fn-authsec-ver-digest
+                                   fn-authsec-ver-stored-key
+                                   fn-authsec-ver-server-key fn-acct-slice)
                                   (fn-record-string-octets
                                    fn-record-octets-string fn-id-hex-octets
                                    fn-id-unhex fn-id-hex-listp evenp
