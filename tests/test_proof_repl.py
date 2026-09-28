@@ -409,6 +409,36 @@ class RemoteTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             proof_repl.box_settings("laptop")
 
+    def test_acl2_flag_then_fn_acl2_choose_the_boxs_acl2(self):
+        # extract-2: hbox's default ACL2 (tls 16384) died "Thread local storage
+        # exhausted" under an image world; --host had no way to pick another.
+        import farm
+        argv = ["start", "s", "books/x", "--host", "hbox", "--acl2", "/tank/tls64k"]
+        self.assertEqual(proof_repl.strip_remote_options(argv), ["start", "s", "books/x"])
+        args = proof_repl.argparse.Namespace(acl2="/tank/tls64k")
+        self.assertEqual(proof_repl.remote_acl2(args, {"FN_ACL2": "/other"}), "/tank/tls64k")
+        none = proof_repl.argparse.Namespace(acl2=None)
+        self.assertEqual(proof_repl.remote_acl2(none, {"FN_ACL2": "/other"}), "/other")
+        self.assertIsNone(proof_repl.remote_acl2(none, {}))
+        script = proof_repl.remote_script("hbox", "/t", "l", ["start", "s", "books/x"],
+                                          "/tank/tls64k")
+        self.assertIn("FN_ACL2=/tank/tls64k ", script)
+        self.assertNotIn(farm.HOSTS["hbox"]["acl2"], script)
+
+    def test_no_sync_refuses_when_the_boxs_copy_is_not_this_one(self):
+        # defprotocol: --no-sync read the remote copy, so a local edit after
+        # the last sync silently did not run.
+        relative = "tools/proof_repl.py"
+        here = proof_repl.hashlib.sha256((proof_repl.ROOT / relative).read_bytes()).hexdigest()
+        proof_repl.refuse_stale_remote("hbox", "/t", relative, lambda *_: here)
+        with self.assertRaises(SystemExit) as refused:
+            proof_repl.refuse_stale_remote("hbox", "/t", relative, lambda *_: "0" * 64)
+        self.assertIn("sha256 0000000000000000", str(refused.exception))
+        self.assertIn(f"sha256 {here[:16]}", str(refused.exception))
+        with self.assertRaises(SystemExit) as absent:
+            proof_repl.refuse_stale_remote("hbox", "/t", relative, lambda *_: None)
+        self.assertIn("sha256 absent", str(absent.exception))
+
     def test_the_sync_is_tools_and_the_closure_never_planning(self):
         files = proof_repl.sync_files(["books/wildmat"], ["tests/acl2/extra.lisp"])
         self.assertIn("tools/proof_repl.py", files)

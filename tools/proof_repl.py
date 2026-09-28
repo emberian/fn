@@ -2294,6 +2294,34 @@ def remote_script(host: str, tree: str, lane: str | None, argv: list[str],
     return f"cd {tree} && export {' '.join(exports)} && {command}"
 
 
+def remote_digest(host: str, tree: str, relative: str) -> str | None:
+    """The SHA-256 of TREE/RELATIVE on HOST, or None when it is not there."""
+    import shlex  # noqa: E402
+    script = (f"cd {tree} && python3 -c 'import hashlib,sys; "
+              "print(hashlib.sha256(open(sys.argv[1],\"rb\").read()).hexdigest())' "
+              f"{shlex.quote(relative)}")
+    done = subprocess.run(ssh_command(host, script), capture_output=True, text=True,
+                          stdin=subprocess.DEVNULL)
+    text = done.stdout.strip()
+    return text if done.returncode == 0 and re.fullmatch(r"[0-9a-f]{64}", text) else None
+
+
+def refuse_stale_remote(host: str, tree: str, relative: str,
+                        digest_of=remote_digest) -> None:
+    """--no-sync runs the box's copy: refuse when it is not this one.
+
+    defprotocol, 2026-09-27: an edit made after the last sync silently did
+    not run, and the refusal it caused read like a proof problem.
+    """
+    local = hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
+    remote = digest_of(host, tree, relative)
+    if remote != local:
+        raise SystemExit(
+            f"proof-repl: --no-sync would run {host}:{tree}/{relative} "
+            f"(sha256 {remote[:16] if remote else 'absent'}), which is not this tree's "
+            f"{relative} (sha256 {local[:16]}); drop --no-sync to sync it first")
+
+
 def run_remote(args, argv: list[str]) -> int:
     """This command, on args.host, in the lane's tree there, after syncing what it reads."""
     host = args.host
@@ -2332,6 +2360,8 @@ def run_remote(args, argv: list[str]) -> int:
             relative = staged.relative_to(ROOT).as_posix()
         extra.append(relative)
         forwarded = [relative if word == args.book else word for word in forwarded]
+        if getattr(args, "no_sync", False):
+            refuse_stale_remote(host, tree, relative)
     if (books or extra) and not getattr(args, "no_sync", False):
         files = sync_files(books, extra)
         seconds = sync_to(host, tree, files)
