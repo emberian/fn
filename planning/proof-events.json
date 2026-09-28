@@ -7984,10 +7984,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cbud-launch-decide-keeps-the-store-figure"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cbud-step-read-octets-is-bounded"
         },
         {
@@ -12674,6 +12670,39 @@
         {
           "kind": "theorem",
           "name": "fn-nlp-offline-pages-join-to-the-report"
+        }
+      ]
+    },
+    {
+      "id": "PRF-377",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-oas-read-span-admits-within-the-slots"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oas-read-span-never-blocks-an-admitted-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oas-read-span-when-held-unfolds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oas-refused-read-is-not-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-article-slots-are-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-article-slots-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-articles-octets-monotone"
         }
       ]
     }
