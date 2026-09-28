@@ -819,7 +819,8 @@
 
 ; KEYSTONE (the host's read entry keeps the invariant).
 (defthm fn-scj-invp-of-otm-read-span
-  (implies (and (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+  (implies (and (fn-scol-okp fn-arena fn-cat)
+                (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (implies (consp views) (fn-scj-live-okp (car views) fn-arena fn-cat)))
            (fn-scj-invp (fn-ocfg-owner (fn-own-tls-result-owner
                                         (fn-otm-read-span oc views id i end s
