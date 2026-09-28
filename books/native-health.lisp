@@ -130,23 +130,93 @@ profile's."
   (or (not (fn-bs-profile-validp profile))
       (fn-nh-development-profilep profile)))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-nh-forward-count-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-nh-forward-count-loop (cdr rev)
+                                (+ (if (and (consp (car rev))
+                                            (equal (fn-nh-nth 2 (car rev)) :forward))
+                                       1
+                                     0)
+                                   acc))
+    acc))
+
 (defun fn-nh-forward-count (pins)
-  (declare (xargs :guard t))
-  (if (consp pins)
-      (+ (if (and (consp (car pins))
-                  (equal (fn-nh-nth 2 (car pins)) :forward))
-             1 0)
-         (fn-nh-forward-count (cdr pins)))
-    0))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp pins)
+           (+ (if (and (consp (car pins))
+                       (equal (fn-nh-nth 2 (car pins)) :forward))
+                  1 0)
+              (fn-nh-forward-count (cdr pins)))
+         0)
+       :exec (fn-nh-forward-count-loop (fn-ag-rev-onto pins nil) 0)))
+
+(local
+ (defthm fn-nh-forward-count-loop-of-rev-onto
+   (equal (fn-nh-forward-count-loop (fn-ag-rev-onto pins zs) 0)
+          (fn-nh-forward-count-loop zs (fn-nh-forward-count pins)))
+   :hints (("Goal" :induct (fn-ag-rev-onto pins zs)
+                   :in-theory (union-theories '(fn-nh-forward-count-loop fn-nh-forward-count fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-nh-forward-count-loop)
+
+(verify-guards fn-nh-forward-count
+  :hints (("Goal" :in-theory (union-theories '(fn-nh-forward-count fn-nh-forward-count-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nh-forward-count-loop-of-rev-onto (zs nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-nh-forward-charge-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-nh-forward-charge-loop (cdr rev)
+                                 (+ (if (and (consp (car rev))
+                                             (equal (fn-nh-nth 2 (car rev)) :forward))
+                                        (fn-nh-nat 4 (car rev))
+                                      0)
+                                    acc))
+    acc))
 
 (defun fn-nh-forward-charge (pins)
-  (declare (xargs :guard t))
-  (if (consp pins)
-      (+ (if (and (consp (car pins))
-                  (equal (fn-nh-nth 2 (car pins)) :forward))
-             (fn-nh-nat 4 (car pins)) 0)
-         (fn-nh-forward-charge (cdr pins)))
-    0))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp pins)
+           (+ (if (and (consp (car pins))
+                       (equal (fn-nh-nth 2 (car pins)) :forward))
+                  (fn-nh-nat 4 (car pins)) 0)
+              (fn-nh-forward-charge (cdr pins)))
+         0)
+       :exec (fn-nh-forward-charge-loop (fn-ag-rev-onto pins nil) 0)))
+
+(local
+ (defthm fn-nh-forward-charge-loop-of-rev-onto
+   (equal (fn-nh-forward-charge-loop (fn-ag-rev-onto pins zs) 0)
+          (fn-nh-forward-charge-loop zs (fn-nh-forward-charge pins)))
+   :hints (("Goal" :induct (fn-ag-rev-onto pins zs)
+                   :in-theory (union-theories '(fn-nh-forward-charge-loop fn-nh-forward-charge fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-nh-forward-charge-loop)
+
+(verify-guards fn-nh-forward-charge
+  :hints (("Goal" :in-theory (union-theories '(fn-nh-forward-charge fn-nh-forward-charge-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nh-forward-charge-loop-of-rev-onto (zs nil))))))
+
 
 (defun fn-nh-forward-pins (s)
   (declare (xargs :guard t :verify-guards nil))
@@ -157,13 +227,48 @@ profile's."
 ;
 ; TBL is `fn-own-feeds': entries (NAME RECORD FEED), books/owner-feed.lisp.
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-nh-dropped-count-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-nh-dropped-count-loop (cdr rev)
+                                (+ (if (equal (fn-feed-entry-state (car rev))
+                                              '(:dropped :retry-bound))
+                                       1
+                                     0)
+                                   acc))
+    acc))
+
 (defun fn-nh-dropped-count (xs)
   "Entries dropped at their retry bound (`fn-feed-give-up' :retry-bound)."
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (+ (if (equal (fn-feed-entry-state (car xs)) '(:dropped :retry-bound)) 1 0)
-         (fn-nh-dropped-count (cdr xs)))
-    0))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp xs)
+           (+ (if (equal (fn-feed-entry-state (car xs)) '(:dropped :retry-bound)) 1 0)
+              (fn-nh-dropped-count (cdr xs)))
+         0)
+       :exec (fn-nh-dropped-count-loop (fn-ag-rev-onto xs nil) 0)))
+
+(local
+ (defthm fn-nh-dropped-count-loop-of-rev-onto
+   (equal (fn-nh-dropped-count-loop (fn-ag-rev-onto xs zs) 0)
+          (fn-nh-dropped-count-loop zs (fn-nh-dropped-count xs)))
+   :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                   :in-theory (union-theories '(fn-nh-dropped-count-loop fn-nh-dropped-count fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-nh-dropped-count-loop)
+
+(verify-guards fn-nh-dropped-count
+  :hints (("Goal" :in-theory (union-theories '(fn-nh-dropped-count fn-nh-dropped-count-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nh-dropped-count-loop-of-rev-onto (zs nil))))))
+
 
 (defun fn-nh-feed-pendingp (f)
   (declare (xargs :guard t))
@@ -175,14 +280,50 @@ profile's."
 ;; fenced peer) or that a lost connection returned: queued again with an
 ;; attempt counted.  While any is there the peer is not taking this node's
 ;; articles, even with a connection open.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-nh-deferred-count-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-nh-deferred-count-loop (cdr rev)
+                                 (+ (if (and (equal (fn-feed-entry-state (car rev))
+                                                    :queued)
+                                             (posp (fn-feed-entry-attempts (car rev))))
+                                        1
+                                      0)
+                                    acc))
+    acc))
+
 (defun fn-nh-deferred-count (xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (+ (if (and (equal (fn-feed-entry-state (car xs)) :queued)
-                  (posp (fn-feed-entry-attempts (car xs))))
-             1 0)
-         (fn-nh-deferred-count (cdr xs)))
-    0))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp xs)
+           (+ (if (and (equal (fn-feed-entry-state (car xs)) :queued)
+                       (posp (fn-feed-entry-attempts (car xs))))
+                  1 0)
+              (fn-nh-deferred-count (cdr xs)))
+         0)
+       :exec (fn-nh-deferred-count-loop (fn-ag-rev-onto xs nil) 0)))
+
+(local
+ (defthm fn-nh-deferred-count-loop-of-rev-onto
+   (equal (fn-nh-deferred-count-loop (fn-ag-rev-onto xs zs) 0)
+          (fn-nh-deferred-count-loop zs (fn-nh-deferred-count xs)))
+   :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                   :in-theory (union-theories '(fn-nh-deferred-count-loop fn-nh-deferred-count fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-nh-deferred-count-loop)
+
+(verify-guards fn-nh-deferred-count
+  :hints (("Goal" :in-theory (union-theories '(fn-nh-deferred-count fn-nh-deferred-count-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nh-deferred-count-loop-of-rev-onto (zs nil))))))
+
 
 (defun fn-nh-feed-deferredp (f)
   (declare (xargs :guard t))

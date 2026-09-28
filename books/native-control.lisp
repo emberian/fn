@@ -118,12 +118,44 @@
       (append control-path *fn-nctrl-lease-suffix*)
     :bad))
 
-(defun fn-nctrl-group-strings (groups)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nctrl-group-strings-loop (groups acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp groups)
-      (cons (fn-record-octets-string (car groups))
-            (fn-nctrl-group-strings (cdr groups)))
-    nil))
+      (fn-nctrl-group-strings-loop (cdr groups)
+                                   (cons (fn-record-octets-string (car groups)) acc))
+    (revappend acc nil)))
+
+(defun fn-nctrl-group-strings (groups)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp groups)
+           (cons (fn-record-octets-string (car groups))
+                 (fn-nctrl-group-strings (cdr groups)))
+         nil)
+       :exec (fn-nctrl-group-strings-loop groups nil)))
+
+(local
+ (defthm fn-nctrl-group-strings-loop-is-revappend
+   (equal (fn-nctrl-group-strings-loop groups acc)
+          (revappend acc (fn-nctrl-group-strings groups)))
+   :hints (("Goal" :induct (fn-nctrl-group-strings-loop groups acc)
+                   :in-theory (union-theories '(fn-nctrl-group-strings-loop fn-nctrl-group-strings revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-nctrl-group-strings-loop)
+
+(verify-guards fn-nctrl-group-strings
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-nctrl-group-strings)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-nctrl-group-strings-loop-is-revappend (acc nil))))))
+
 
 (defun fn-nctrl-group-octets (groups)
   (declare (xargs :guard t))

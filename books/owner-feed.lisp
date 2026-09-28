@@ -863,13 +863,47 @@
        (fn-own-feed-dist-alnump (car bytes))
        (fn-own-feed-dist-restp (cdr bytes))))
 
-(defun fn-own-feed-fold (bytes)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-own-feed-fold-loop (bytes acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp bytes)
-      (cons (let ((b (car bytes)))
-              (if (and (natp b) (<= 65 b) (<= b 90)) (+ b 32) b))
-            (fn-own-feed-fold (cdr bytes)))
-    nil))
+      (fn-own-feed-fold-loop (cdr bytes)
+                             (cons (let ((b (car bytes)))
+                                     (if (and (natp b) (<= 65 b) (<= b 90)) (+ b 32) b))
+                                   acc))
+    (revappend acc nil)))
+
+(defun fn-own-feed-fold (bytes)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp bytes)
+           (cons (let ((b (car bytes)))
+                   (if (and (natp b) (<= 65 b) (<= b 90)) (+ b 32) b))
+                 (fn-own-feed-fold (cdr bytes)))
+         nil)
+       :exec (fn-own-feed-fold-loop bytes nil)))
+
+(local
+ (defthm fn-own-feed-fold-loop-is-revappend
+   (equal (fn-own-feed-fold-loop bytes acc)
+          (revappend acc (fn-own-feed-fold bytes)))
+   :hints (("Goal" :induct (fn-own-feed-fold-loop bytes acc)
+                   :in-theory (union-theories '(fn-own-feed-fold-loop fn-own-feed-fold revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-own-feed-fold-loop)
+
+(verify-guards fn-own-feed-fold
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-own-feed-fold)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-own-feed-fold-loop-is-revappend (acc nil))))))
+
 
 ;; The comma-separated pieces, each reversed back into order.
 (defun fn-own-feed-dist-split (bytes cur acc)
@@ -881,15 +915,51 @@
         (fn-own-feed-dist-split (cdr bytes) (cons (car bytes) cur) acc))
     (fn-path-reverse (cons (fn-path-reverse cur) acc))))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-own-feed-dist-names-of-pieces-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-own-feed-dist-names-of-pieces-loop (cdr rev)
+                                             (let ((name (fn-path-trim (car rev)))
+                                                   (rest acc))
+                                               (if (and (fn-own-feed-dist-namep name)
+                                                        (not (equal rest :malformed)))
+                                                   (cons (fn-own-feed-fold name) rest)
+                                                 :malformed)))
+    acc))
+
 (defun fn-own-feed-dist-names-of-pieces (pieces)
-  (declare (xargs :guard t))
-  (if (consp pieces)
-      (let ((name (fn-path-trim (car pieces)))
-            (rest (fn-own-feed-dist-names-of-pieces (cdr pieces))))
-        (if (and (fn-own-feed-dist-namep name) (not (equal rest :malformed)))
-            (cons (fn-own-feed-fold name) rest)
-          :malformed))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp pieces)
+           (let ((name (fn-path-trim (car pieces)))
+                 (rest (fn-own-feed-dist-names-of-pieces (cdr pieces))))
+             (if (and (fn-own-feed-dist-namep name) (not (equal rest :malformed)))
+                 (cons (fn-own-feed-fold name) rest)
+               :malformed))
+         nil)
+       :exec (fn-own-feed-dist-names-of-pieces-loop (fn-ag-rev-onto pieces nil) nil)))
+
+(local
+ (defthm fn-own-feed-dist-names-of-pieces-loop-of-rev-onto
+   (equal (fn-own-feed-dist-names-of-pieces-loop (fn-ag-rev-onto pieces zs) nil)
+          (fn-own-feed-dist-names-of-pieces-loop zs (fn-own-feed-dist-names-of-pieces pieces)))
+   :hints (("Goal" :induct (fn-ag-rev-onto pieces zs)
+                   :in-theory (union-theories '(fn-own-feed-dist-names-of-pieces-loop fn-own-feed-dist-names-of-pieces fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-own-feed-dist-names-of-pieces-loop)
+
+(verify-guards fn-own-feed-dist-names-of-pieces
+  :hints (("Goal" :in-theory (union-theories '(fn-own-feed-dist-names-of-pieces fn-own-feed-dist-names-of-pieces-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-own-feed-dist-names-of-pieces-loop-of-rev-onto (zs nil))))))
+
 
 (defun fn-own-feed-dist-list (value)
   (declare (xargs :guard t))
@@ -1387,13 +1457,46 @@
         (fn-frame-item 4 values) (fn-frame-item 5 values)
         (fn-frame-item 6 values)))
 
-(defun fn-own-feed-intent-remove (key intents)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-own-feed-intent-remove-loop (key intents acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp intents)
       (if (equal key (car intents))
-          (fn-own-feed-intent-remove key (cdr intents))
-        (cons (car intents) (fn-own-feed-intent-remove key (cdr intents))))
-    nil))
+          (fn-own-feed-intent-remove-loop key (cdr intents) acc)
+        (fn-own-feed-intent-remove-loop key (cdr intents) (cons (car intents) acc)))
+    (revappend acc nil)))
+
+(defun fn-own-feed-intent-remove (key intents)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp intents)
+           (if (equal key (car intents))
+               (fn-own-feed-intent-remove key (cdr intents))
+             (cons (car intents) (fn-own-feed-intent-remove key (cdr intents))))
+         nil)
+       :exec (fn-own-feed-intent-remove-loop key intents nil)))
+
+(local
+ (defthm fn-own-feed-intent-remove-loop-is-revappend
+   (equal (fn-own-feed-intent-remove-loop key intents acc)
+          (revappend acc (fn-own-feed-intent-remove key intents)))
+   :hints (("Goal" :induct (fn-own-feed-intent-remove-loop key intents acc)
+                   :in-theory (union-theories '(fn-own-feed-intent-remove-loop fn-own-feed-intent-remove revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-own-feed-intent-remove-loop)
+
+(verify-guards fn-own-feed-intent-remove
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-own-feed-intent-remove)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-own-feed-intent-remove-loop-is-revappend (acc nil))))))
+
 
 (defun fn-own-feed-intent-memberp (key intents)
   (declare (xargs :guard t))

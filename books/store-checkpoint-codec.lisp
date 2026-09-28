@@ -177,17 +177,79 @@
 ; -----------------------------------------------------------------------------
 ; Strings and symbols
 
-(defun fn-scc-chars-octets (chars)
-  (declare (xargs :guard (character-listp chars)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-scc-chars-octets-loop (chars acc)
+  (declare (xargs :guard (and (character-listp chars) (true-listp acc)) :verify-guards nil))
   (if (consp chars)
-      (cons (char-code (car chars)) (fn-scc-chars-octets (cdr chars)))
-    nil))
+      (fn-scc-chars-octets-loop (cdr chars) (cons (char-code (car chars)) acc))
+    (revappend acc nil)))
+
+(defun fn-scc-chars-octets (chars)
+  (declare (xargs :verify-guards nil :guard (character-listp chars)))
+  (mbe :logic
+       (if (consp chars)
+           (cons (char-code (car chars)) (fn-scc-chars-octets (cdr chars)))
+         nil)
+       :exec (fn-scc-chars-octets-loop chars nil)))
+
+(local
+ (defthm fn-scc-chars-octets-loop-is-revappend
+   (equal (fn-scc-chars-octets-loop chars acc)
+          (revappend acc (fn-scc-chars-octets chars)))
+   :hints (("Goal" :induct (fn-scc-chars-octets-loop chars acc)
+                   :in-theory (union-theories '(fn-scc-chars-octets-loop fn-scc-chars-octets revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-scc-chars-octets-loop)
+
+(verify-guards fn-scc-chars-octets
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-scc-chars-octets)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-scc-chars-octets-loop-is-revappend (acc nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-scc-octets-chars-loop (xs acc)
+  (declare (xargs :guard (and (fn-scc-octet-listp xs) (true-listp acc)) :verify-guards nil))
+  (if (consp xs)
+      (fn-scc-octets-chars-loop (cdr xs) (cons (code-char (car xs)) acc))
+    (revappend acc nil)))
 
 (defun fn-scc-octets-chars (xs)
-  (declare (xargs :guard (fn-scc-octet-listp xs)))
-  (if (consp xs)
-      (cons (code-char (car xs)) (fn-scc-octets-chars (cdr xs)))
-    nil))
+  (declare (xargs :verify-guards nil :guard (fn-scc-octet-listp xs)))
+  (mbe :logic
+       (if (consp xs)
+           (cons (code-char (car xs)) (fn-scc-octets-chars (cdr xs)))
+         nil)
+       :exec (fn-scc-octets-chars-loop xs nil)))
+
+(local
+ (defthm fn-scc-octets-chars-loop-is-revappend
+   (equal (fn-scc-octets-chars-loop xs acc)
+          (revappend acc (fn-scc-octets-chars xs)))
+   :hints (("Goal" :induct (fn-scc-octets-chars-loop xs acc)
+                   :in-theory (union-theories '(fn-scc-octets-chars-loop fn-scc-octets-chars revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-scc-octets-chars-loop)
+
+(verify-guards fn-scc-octets-chars
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-scc-octets-chars)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-scc-octets-chars-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-scc-octets-chars-character-listp
   (character-listp (fn-scc-octets-chars xs)))

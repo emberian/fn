@@ -1947,22 +1947,67 @@
 ; :program-mode host Lisp; concatenating a reply stream is a decision, and
 ; ACL2 owns it.  The third is the submission the host owes a durable attempt.
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-served-reply-octets-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-served-reply-octets-loop (cdr rev)
+                                   (mbe :logic
+                                        (append (if (and (consp (car rev))
+                                                         (equal (car (car rev)) :reply)
+                                                         (consp (cdr (car rev))))
+                                                    (car (cdr (car rev)))
+                                                  nil)
+                                                acc)
+                                        :exec
+                                        (fn-ag-append (if (and (consp (car rev))
+                                                               (equal (car (car rev))
+                                                                      :reply)
+                                                               (consp (cdr (car rev))))
+                                                          (car (cdr (car rev)))
+                                                        nil)
+                                                      acc)))
+    acc))
+
 (defun fn-served-reply-octets (effects)
-  (declare (xargs :guard t))
-  (if (consp effects)
-      (mbe :logic (append (if (and (consp (car effects))
-                                   (equal (car (car effects)) :reply)
-                                   (consp (cdr (car effects))))
-                              (car (cdr (car effects)))
-                            nil)
-                          (fn-served-reply-octets (cdr effects)))
-           :exec (fn-ag-append (if (and (consp (car effects))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp effects)
+           (mbe :logic (append (if (and (consp (car effects))
                                         (equal (car (car effects)) :reply)
                                         (consp (cdr (car effects))))
                                    (car (cdr (car effects)))
                                  nil)
-                               (fn-served-reply-octets (cdr effects))))
-    nil))
+                               (fn-served-reply-octets (cdr effects)))
+                :exec (fn-ag-append (if (and (consp (car effects))
+                                             (equal (car (car effects)) :reply)
+                                             (consp (cdr (car effects))))
+                                        (car (cdr (car effects)))
+                                      nil)
+                                    (fn-served-reply-octets (cdr effects))))
+         nil)
+       :exec (fn-served-reply-octets-loop (fn-ag-rev-onto effects nil) nil)))
+
+(local
+ (defthm fn-served-reply-octets-loop-of-rev-onto
+   (equal (fn-served-reply-octets-loop (fn-ag-rev-onto effects zs) nil)
+          (fn-served-reply-octets-loop zs (fn-served-reply-octets effects)))
+   :hints (("Goal" :induct (fn-ag-rev-onto effects zs)
+                   :in-theory (union-theories '(fn-served-reply-octets-loop fn-served-reply-octets fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-served-reply-octets-loop)
+
+(verify-guards fn-served-reply-octets
+  :hints (("Goal" :in-theory (union-theories '(fn-served-reply-octets fn-served-reply-octets-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-served-reply-octets-loop-of-rev-onto (zs nil))))))
+
 
 (defun fn-served-closingp (effects)
   (declare (xargs :guard t))

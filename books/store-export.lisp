@@ -133,12 +133,49 @@
             (fn-sxp-octets-or-nil name)
             (list 10))))
 
-(defun fn-sxp-manifest (entries)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-sxp-manifest-loop (entries acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp entries)
-      (append (fn-sxp-manifest-line (car entries))
-              (fn-sxp-manifest (cdr entries)))
-    nil))
+      (fn-sxp-manifest-loop (cdr entries)
+                            (fn-ag-rev-onto (fn-sxp-manifest-line (car entries)) acc))
+    (revappend acc nil)))
+
+(defun fn-sxp-manifest (entries)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp entries)
+           (append (fn-sxp-manifest-line (car entries))
+                   (fn-sxp-manifest (cdr entries)))
+         nil)
+       :exec (fn-sxp-manifest-loop entries nil)))
+
+(local
+ (defthm fn-sxp-manifest-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-sxp-manifest-loop-is-revappend
+   (equal (fn-sxp-manifest-loop entries acc)
+          (revappend acc (fn-sxp-manifest entries)))
+   :hints (("Goal" :induct (fn-sxp-manifest-loop entries acc)
+                   :in-theory (union-theories '(fn-sxp-manifest-loop fn-sxp-manifest revappend car-cons cdr-cons fn-sxp-manifest-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-sxp-manifest-loop)
+
+(verify-guards fn-sxp-manifest
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-sxp-manifest)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-sxp-manifest-loop-is-revappend (acc nil))))))
+
 
 ; The name of the first entry whose line the MANIFEST octets do not carry at
 ; its place, or the MANIFEST's own name when every line matched and octets

@@ -709,12 +709,47 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 ; Each ROW's wire event (alpha, books/store-intern.lisp fn-row-wire-of: the
 ; payload read through the arena), encoded.
-(defun fn-store-sco-encode-records (records fn-arena)
-  (declare (xargs :mode :program :stobjs fn-arena))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-store-sco-encode-records-loop (records fn-arena acc)
+  (declare (xargs :stobjs fn-arena :guard (true-listp acc) :verify-guards nil))
   (if (consp records)
-      (cons (fn-rcon-store-event-encode (fn-row-wire-of (car records) fn-arena))
-            (fn-store-sco-encode-records (cdr records) fn-arena))
-    nil))
+      (fn-store-sco-encode-records-loop (cdr records)
+                                        fn-arena
+                                        (cons (fn-rcon-store-event-encode (fn-row-wire-of (car records)
+                                                                                          fn-arena))
+                                              acc))
+    (revappend acc nil)))
+
+(defun fn-store-sco-encode-records (records fn-arena)
+  (declare (xargs :verify-guards nil :mode :program :stobjs fn-arena))
+  (mbe :logic
+       (if (consp records)
+           (cons (fn-rcon-store-event-encode (fn-row-wire-of (car records) fn-arena))
+                 (fn-store-sco-encode-records (cdr records) fn-arena))
+         nil)
+       :exec (fn-store-sco-encode-records-loop records fn-arena nil)))
+
+(local
+ (defthm fn-store-sco-encode-records-loop-is-revappend
+   (equal (fn-store-sco-encode-records-loop records fn-arena acc)
+          (revappend acc (fn-store-sco-encode-records records fn-arena)))
+   :hints (("Goal" :induct (fn-store-sco-encode-records-loop records fn-arena acc)
+                   :in-theory (union-theories '(fn-store-sco-encode-records-loop fn-store-sco-encode-records revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-store-sco-encode-records-loop)
+
+(verify-guards fn-store-sco-encode-records
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-store-sco-encode-records)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-store-sco-encode-records-loop-is-revappend (acc nil))))))
+
 
 ; The covered prefix's record octets, for the callers of the host's open
 ; that take the whole record list (pack publication, compaction, the

@@ -39,13 +39,46 @@
 ; at the front of x; nil when x does not open with such a line.
 (defconst *fn-pb-path-tail-length* 15)   ; "!not-for-mail" CRLF
 
-(defun fn-pb-line (x)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-pb-line-loop (x acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp x)
       (if (equal (car x) 10)
-          (list 10)
-        (cons (car x) (fn-pb-line (cdr x))))
-    nil))
+          (revappend acc (list 10))
+        (fn-pb-line-loop (cdr x) (cons (car x) acc)))
+    (revappend acc nil)))
+
+(defun fn-pb-line (x)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp x)
+           (if (equal (car x) 10)
+               (list 10)
+             (cons (car x) (fn-pb-line (cdr x))))
+         nil)
+       :exec (fn-pb-line-loop x nil)))
+
+(local
+ (defthm fn-pb-line-loop-is-revappend
+   (equal (fn-pb-line-loop x acc)
+          (revappend acc (fn-pb-line x)))
+   :hints (("Goal" :induct (fn-pb-line-loop x acc)
+                   :in-theory (union-theories '(fn-pb-line-loop fn-pb-line revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-pb-line-loop)
+
+(verify-guards fn-pb-line
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-pb-line)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-pb-line-loop-is-revappend (acc nil))))))
+
 
 (defun fn-pb-path-line-agent (x)
   (declare (xargs :guard t))
@@ -69,14 +102,48 @@
   (not (equal (fn-inj-strip field x) :no)))
 
 ; The octets of r before its first ";", or :no when it has none.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-pb-upto-semicolon-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-pb-upto-semicolon-loop (cdr rev)
+                                 (if (equal (car rev) 59)
+                                     nil
+                                   (let ((rest acc))
+                                     (if (equal rest :no) :no (cons (car rev) rest)))))
+    acc))
+
 (defun fn-pb-upto-semicolon (r)
-  (declare (xargs :guard t))
-  (if (consp r)
-      (if (equal (car r) 59)
-          nil
-        (let ((rest (fn-pb-upto-semicolon (cdr r))))
-          (if (equal rest :no) :no (cons (car r) rest))))
-    :no))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp r)
+           (if (equal (car r) 59)
+               nil
+             (let ((rest (fn-pb-upto-semicolon (cdr r))))
+               (if (equal rest :no) :no (cons (car r) rest))))
+         :no)
+       :exec (fn-pb-upto-semicolon-loop (fn-ag-rev-onto r nil) :no)))
+
+(local
+ (defthm fn-pb-upto-semicolon-loop-of-rev-onto
+   (equal (fn-pb-upto-semicolon-loop (fn-ag-rev-onto r zs) :no)
+          (fn-pb-upto-semicolon-loop zs (fn-pb-upto-semicolon r)))
+   :hints (("Goal" :induct (fn-ag-rev-onto r zs)
+                   :in-theory (union-theories '(fn-pb-upto-semicolon-loop fn-pb-upto-semicolon fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-pb-upto-semicolon-loop)
+
+(verify-guards fn-pb-upto-semicolon
+  :hints (("Goal" :in-theory (union-theories '(fn-pb-upto-semicolon fn-pb-upto-semicolon-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-pb-upto-semicolon-loop-of-rev-onto (zs nil))))))
+
 
 ; The agent an Injection-Info LINE with parameters names (PKT-597,
 ; books/injection-info-params.lisp): the octets before the first ";", when

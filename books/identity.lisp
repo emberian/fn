@@ -82,16 +82,48 @@
            (fn-id-hex-listp (cdr octets)))
     (null octets)))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-id-unhex-loop (octets acc)
+  (declare (xargs :guard (and (fn-id-hex-listp octets) (true-listp acc)) :verify-guards nil))
+  (if (and (consp octets) (consp (cdr octets)))
+      (fn-id-unhex-loop (cdr (cdr octets))
+                        (cons (+ (* 16 (fn-id-hex-value (car octets)))
+                                 (fn-id-hex-value (car (cdr octets))))
+                              acc))
+    (revappend acc nil)))
+
 (defun fn-id-unhex (octets)
   ; Inverse of `fn-id-hex-octets` on an even-length lowercase hex list.
   (declare (xargs :guard (fn-id-hex-listp octets) :verify-guards nil))
-  (if (and (consp octets) (consp (cdr octets)))
-      (cons (+ (* 16 (fn-id-hex-value (car octets)))
-               (fn-id-hex-value (car (cdr octets))))
-            (fn-id-unhex (cdr (cdr octets))))
-    nil))
+  (mbe :logic
+       (if (and (consp octets) (consp (cdr octets)))
+           (cons (+ (* 16 (fn-id-hex-value (car octets)))
+                    (fn-id-hex-value (car (cdr octets))))
+                 (fn-id-unhex (cdr (cdr octets))))
+         nil)
+       :exec (fn-id-unhex-loop octets nil)))
 
-(verify-guards fn-id-unhex)
+(local
+ (defthm fn-id-unhex-loop-is-revappend
+   (equal (fn-id-unhex-loop octets acc)
+          (revappend acc (fn-id-unhex octets)))
+   :hints (("Goal" :induct (fn-id-unhex-loop octets acc)
+                   :in-theory (union-theories '(fn-id-unhex-loop fn-id-unhex revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+
+(verify-guards fn-id-unhex-loop)
+
+(verify-guards fn-id-unhex
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-id-unhex)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-id-unhex-loop-is-revappend (acc nil))))))
 
 ; -----------------------------------------------------------------------------
 ; The v1 profile: labels, version, algorithm

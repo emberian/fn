@@ -67,10 +67,43 @@
       (if (consp (cdr chunk)) (fn-lg-pack-len chunk) (len (car chunk)))
     0))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-lgc-first-loop (n xs acc)
+  (declare (xargs :guard (and (natp n) (true-listp acc)) :verify-guards nil))
+  (if (zp n)
+      (revappend acc nil)
+    (fn-lgc-first-loop (1- n)
+                       (if (consp xs) (cdr xs) nil)
+                       (cons (if (consp xs) (car xs) 0) acc))))
+
 (defun fn-lgc-first (n xs)
-  (declare (xargs :guard (natp n)))
-  (if (zp n) nil
-    (cons (if (consp xs) (car xs) 0) (fn-lgc-first (1- n) (if (consp xs) (cdr xs) nil)))))
+  (declare (xargs :verify-guards nil :guard (natp n)))
+  (mbe :logic
+       (if (zp n) nil
+         (cons (if (consp xs) (car xs) 0) (fn-lgc-first (1- n) (if (consp xs) (cdr xs) nil))))
+       :exec (fn-lgc-first-loop n xs nil)))
+
+(local
+ (defthm fn-lgc-first-loop-is-revappend
+   (equal (fn-lgc-first-loop n xs acc)
+          (revappend acc (fn-lgc-first n xs)))
+   :hints (("Goal" :induct (fn-lgc-first-loop n xs acc)
+                   :in-theory (union-theories '(fn-lgc-first-loop fn-lgc-first revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-lgc-first-loop)
+
+(verify-guards fn-lgc-first
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-lgc-first)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-lgc-first-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-lgc-first-is-take
   (equal (fn-lgc-first n xs) (fn-bs-take n xs)))

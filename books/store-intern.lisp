@@ -61,20 +61,65 @@
 
 ; The events in order; :bad if any is refused (a composite whose article does
 ; not decode, or a value the codec does not produce).
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-intern-events-loop (rev keyring generation fn-arena acc)
+  (declare (xargs :stobjs fn-arena :guard (and (fn-prin-keyringp keyring) (natp generation)) :verify-guards nil))
+  (if (consp rev)
+      (fn-intern-events-loop (cdr rev)
+                             keyring
+                             generation
+                             fn-arena
+                             (mv-let (row fn-arena)
+                                     (fn-intern-event (car rev)
+                                                      keyring
+                                                      generation
+                                                      fn-arena)
+                                     (if (eq row :bad)
+                                         (mv :bad fn-arena)
+                                       (mv-let (rest fn-arena)
+                                               acc
+                                               (if (eq rest :bad)
+                                                   (mv :bad fn-arena)
+                                                 (mv (cons row rest) fn-arena))))))
+    acc))
+
 (defun fn-intern-events (ws keyring generation fn-arena)
-  (declare (xargs :stobjs fn-arena
+  (declare (xargs :verify-guards nil :stobjs fn-arena
                   :guard (and (fn-prin-keyringp keyring) (natp generation))))
-  (if (atom ws)
-      (mv nil fn-arena)
-    (mv-let (row fn-arena)
-      (fn-intern-event (car ws) keyring generation fn-arena)
-      (if (eq row :bad)
-          (mv :bad fn-arena)
-        (mv-let (rest fn-arena)
-          (fn-intern-events (cdr ws) keyring generation fn-arena)
-          (if (eq rest :bad)
-              (mv :bad fn-arena)
-            (mv (cons row rest) fn-arena)))))))
+  (mbe :logic
+       (if (atom ws)
+           (mv nil fn-arena)
+         (mv-let (row fn-arena)
+           (fn-intern-event (car ws) keyring generation fn-arena)
+           (if (eq row :bad)
+               (mv :bad fn-arena)
+             (mv-let (rest fn-arena)
+               (fn-intern-events (cdr ws) keyring generation fn-arena)
+               (if (eq rest :bad)
+                   (mv :bad fn-arena)
+                 (mv (cons row rest) fn-arena))))))
+       :exec (fn-intern-events-loop (fn-ag-rev-onto ws nil) keyring generation fn-arena (mv nil fn-arena))))
+
+(local
+ (defthm fn-intern-events-loop-of-rev-onto
+   (equal (fn-intern-events-loop (fn-ag-rev-onto ws zs) keyring generation fn-arena (mv nil fn-arena))
+          (fn-intern-events-loop zs keyring generation fn-arena (fn-intern-events ws keyring generation fn-arena)))
+   :hints (("Goal" :induct (fn-ag-rev-onto ws zs)
+                   :in-theory (union-theories '(fn-intern-events-loop fn-intern-events fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-intern-events-loop)
+
+(verify-guards fn-intern-events
+  :hints (("Goal" :in-theory (union-theories '(fn-intern-events fn-intern-events-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-intern-events-loop-of-rev-onto (zs nil))))))
+
 
 ; -----------------------------------------------------------------------------
 ; 2. ALPHA.  A row's bytes (total: a handle outside the arena reads as no

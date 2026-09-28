@@ -25,11 +25,42 @@
                (fn-tcl-xfer-ack-flags (car messages)))
               (equal (fn-tcl-xfer-ack-xfer-id (car messages)) xfer-id)))))
 
-(defun fn-tcl-held-prior-messages (messages)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-tcl-held-prior-messages-loop (messages acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (and (consp messages) (consp (cdr messages)))
-      (cons (car messages) (fn-tcl-held-prior-messages (cdr messages)))
-    nil))
+      (fn-tcl-held-prior-messages-loop (cdr messages) (cons (car messages) acc))
+    (revappend acc nil)))
+
+(defun fn-tcl-held-prior-messages (messages)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (and (consp messages) (consp (cdr messages)))
+           (cons (car messages) (fn-tcl-held-prior-messages (cdr messages)))
+         nil)
+       :exec (fn-tcl-held-prior-messages-loop messages nil)))
+
+(local
+ (defthm fn-tcl-held-prior-messages-loop-is-revappend
+   (equal (fn-tcl-held-prior-messages-loop messages acc)
+          (revappend acc (fn-tcl-held-prior-messages messages)))
+   :hints (("Goal" :induct (fn-tcl-held-prior-messages-loop messages acc)
+                   :in-theory (union-theories '(fn-tcl-held-prior-messages-loop fn-tcl-held-prior-messages revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-tcl-held-prior-messages-loop)
+
+(verify-guards fn-tcl-held-prior-messages
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-tcl-held-prior-messages)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-tcl-held-prior-messages-loop-is-revappend (acc nil))))))
+
 
 (defun fn-tcl-output-has-final-ackp (messages xfer-id)
   (declare (xargs :guard t))

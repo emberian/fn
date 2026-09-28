@@ -217,33 +217,139 @@
       :already-reclaimed
     (fn-rcl-standing-verdict rule now h verdicts a)))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-rcl-summary-in-loop (rule now h verdicts rev fn-arena acc)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-rcl-summary-in-loop rule
+                              now
+                              h
+                              verdicts
+                              (cdr rev)
+                              fn-arena
+                              (let* ((rest acc)
+                                     (a (car rev))
+                                     (p (fn-article-payload a))
+                                     (verdict (fn-rcl-verdict-in rule
+                                                                 now
+                                                                 h
+                                                                 verdicts
+                                                                 a
+                                                                 fn-arena)))
+                                (cond ((equal verdict :reclaimable)
+                                       (list (+ 1 (nfix (nth 0 rest)))
+                                             (+ (fn-rcl-payload-len p fn-arena)
+                                                (nfix (nth 1 rest)))
+                                             (nfix (nth 2 rest))
+                                             (nfix (nth 3 rest))))
+                                      ((equal verdict :already-reclaimed)
+                                       (list (nfix (nth 0 rest))
+                                             (nfix (nth 1 rest))
+                                             (+ 1 (nfix (nth 2 rest)))
+                                             (+ (nfix (- (fn-rcl-payload-tomb-length p
+                                                                                     fn-arena)
+                                                         (fn-rcl-payload-len p fn-arena)))
+                                                (nfix (nth 3 rest)))))
+                                      (t (list (nfix (nth 0 rest))
+                                               (nfix (nth 1 rest))
+                                               (nfix (nth 2 rest))
+                                               (nfix (nth 3 rest)))))))
+    acc))
+
 (defun fn-rcl-summary-in (rule now h verdicts articles fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (if (consp articles)
-      (let* ((rest (fn-rcl-summary-in rule now h verdicts (cdr articles) fn-arena))
-             (a (car articles))
-             (p (fn-article-payload a))
-             (verdict (fn-rcl-verdict-in rule now h verdicts a fn-arena)))
-        (cond ((equal verdict :reclaimable)
-               (list (+ 1 (nfix (nth 0 rest)))
-                     (+ (fn-rcl-payload-len p fn-arena) (nfix (nth 1 rest)))
-                     (nfix (nth 2 rest)) (nfix (nth 3 rest))))
-              ((equal verdict :already-reclaimed)
-               (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
-                     (+ 1 (nfix (nth 2 rest)))
-                     (+ (nfix (- (fn-rcl-payload-tomb-length p fn-arena)
-                                 (fn-rcl-payload-len p fn-arena)))
-                        (nfix (nth 3 rest)))))
-              (t (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
-                       (nfix (nth 2 rest)) (nfix (nth 3 rest))))))
-    (list 0 0 0 0)))
+  (declare (xargs :verify-guards nil :stobjs fn-arena :guard t))
+  (mbe :logic
+       (if (consp articles)
+           (let* ((rest (fn-rcl-summary-in rule now h verdicts (cdr articles) fn-arena))
+                  (a (car articles))
+                  (p (fn-article-payload a))
+                  (verdict (fn-rcl-verdict-in rule now h verdicts a fn-arena)))
+             (cond ((equal verdict :reclaimable)
+                    (list (+ 1 (nfix (nth 0 rest)))
+                          (+ (fn-rcl-payload-len p fn-arena) (nfix (nth 1 rest)))
+                          (nfix (nth 2 rest)) (nfix (nth 3 rest))))
+                   ((equal verdict :already-reclaimed)
+                    (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
+                          (+ 1 (nfix (nth 2 rest)))
+                          (+ (nfix (- (fn-rcl-payload-tomb-length p fn-arena)
+                                      (fn-rcl-payload-len p fn-arena)))
+                             (nfix (nth 3 rest)))))
+                   (t (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
+                            (nfix (nth 2 rest)) (nfix (nth 3 rest))))))
+         (list 0 0 0 0))
+       :exec (fn-rcl-summary-in-loop rule now h verdicts (fn-ag-rev-onto articles nil) fn-arena (list 0 0 0 0))))
+
+(local
+ (defthm fn-rcl-summary-in-loop-of-rev-onto
+   (equal (fn-rcl-summary-in-loop rule now h verdicts (fn-ag-rev-onto articles zs) fn-arena (list 0 0 0 0))
+          (fn-rcl-summary-in-loop rule now h verdicts zs fn-arena (fn-rcl-summary-in rule now h verdicts articles fn-arena)))
+   :hints (("Goal" :induct (fn-ag-rev-onto articles zs)
+                   :in-theory (union-theories '(fn-rcl-summary-in-loop fn-rcl-summary-in fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-rcl-summary-in-loop)
+
+(verify-guards fn-rcl-summary-in
+  :hints (("Goal" :in-theory (union-theories '(fn-rcl-summary-in fn-rcl-summary-in-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-rcl-summary-in-loop-of-rev-onto (zs nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-rcl-held-count-in-loop (rule now h verdicts rev fn-arena acc)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-rcl-held-count-in-loop rule
+                                 now
+                                 h
+                                 verdicts
+                                 (cdr rev)
+                                 fn-arena
+                                 (+ (if (fn-rcl-heldp (fn-rcl-verdict-in rule
+                                                                         now
+                                                                         h
+                                                                         verdicts
+                                                                         (car rev)
+                                                                         fn-arena))
+                                        1
+                                      0)
+                                    acc))
+    acc))
 
 (defun fn-rcl-held-count-in (rule now h verdicts articles fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (if (consp articles)
-      (+ (if (fn-rcl-heldp (fn-rcl-verdict-in rule now h verdicts (car articles) fn-arena)) 1 0)
-         (fn-rcl-held-count-in rule now h verdicts (cdr articles) fn-arena))
-    0))
+  (declare (xargs :verify-guards nil :stobjs fn-arena :guard t))
+  (mbe :logic
+       (if (consp articles)
+           (+ (if (fn-rcl-heldp (fn-rcl-verdict-in rule now h verdicts (car articles) fn-arena)) 1 0)
+              (fn-rcl-held-count-in rule now h verdicts (cdr articles) fn-arena))
+         0)
+       :exec (fn-rcl-held-count-in-loop rule now h verdicts (fn-ag-rev-onto articles nil) fn-arena 0)))
+
+(local
+ (defthm fn-rcl-held-count-in-loop-of-rev-onto
+   (equal (fn-rcl-held-count-in-loop rule now h verdicts (fn-ag-rev-onto articles zs) fn-arena 0)
+          (fn-rcl-held-count-in-loop rule now h verdicts zs fn-arena (fn-rcl-held-count-in rule now h verdicts articles fn-arena)))
+   :hints (("Goal" :induct (fn-ag-rev-onto articles zs)
+                   :in-theory (union-theories '(fn-rcl-held-count-in-loop fn-rcl-held-count-in fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-rcl-held-count-in-loop)
+
+(verify-guards fn-rcl-held-count-in
+  :hints (("Goal" :in-theory (union-theories '(fn-rcl-held-count-in fn-rcl-held-count-in-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-rcl-held-count-in-loop-of-rev-onto (zs nil))))))
+
 
 ; (reclaimable reclaimable-octets reclaimed reclaimed-octets-freed held):
 ; what `status' prints and the reclaim verbs report.

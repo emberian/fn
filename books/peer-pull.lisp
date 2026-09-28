@@ -675,14 +675,52 @@
 ; The counts after a complete round: each id unavailable in it, one more
 ; than the round's cursor held; an id the round did not find unavailable
 ; starts again from nothing.
-(defun fn-pull-next-pending (ids pending)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-pull-next-pending-loop (ids pending acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp ids)
       (if (fn-pull-msgidp (car ids))
-          (cons (cons (car ids) (+ 1 (fn-pull-count-of (car ids) pending)))
-                (fn-pull-next-pending (cdr ids) pending))
-        (fn-pull-next-pending (cdr ids) pending))
-    nil))
+          (fn-pull-next-pending-loop (cdr ids)
+                                     pending
+                                     (cons (cons (car ids)
+                                                 (+ 1
+                                                    (fn-pull-count-of (car ids) pending)))
+                                           acc))
+        (fn-pull-next-pending-loop (cdr ids) pending acc))
+    (revappend acc nil)))
+
+(defun fn-pull-next-pending (ids pending)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp ids)
+           (if (fn-pull-msgidp (car ids))
+               (cons (cons (car ids) (+ 1 (fn-pull-count-of (car ids) pending)))
+                     (fn-pull-next-pending (cdr ids) pending))
+             (fn-pull-next-pending (cdr ids) pending))
+         nil)
+       :exec (fn-pull-next-pending-loop ids pending nil)))
+
+(local
+ (defthm fn-pull-next-pending-loop-is-revappend
+   (equal (fn-pull-next-pending-loop ids pending acc)
+          (revappend acc (fn-pull-next-pending ids pending)))
+   :hints (("Goal" :induct (fn-pull-next-pending-loop ids pending acc)
+                   :in-theory (union-theories '(fn-pull-next-pending-loop fn-pull-next-pending revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-pull-next-pending-loop)
+
+(verify-guards fn-pull-next-pending
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-pull-next-pending)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-pull-next-pending-loop-is-revappend (acc nil))))))
+
 
 ; Some unavailable id has not yet been unavailable BOUND consecutive rounds.
 (defun fn-pull-holdingp (ids pending bound)
@@ -725,13 +763,46 @@
 
 ; The ids a complete round drops: unavailable in it, their count reaching
 ; BOUND exactly now.  The owner log names each (`fn-pull-log-line').
-(defun fn-pull-dropped-of (ids pending bound)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-pull-dropped-of-loop (ids pending bound acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp ids)
       (if (equal (+ 1 (fn-pull-count-of (car ids) pending)) (fn-pull-bound-of bound))
-          (cons (car ids) (fn-pull-dropped-of (cdr ids) pending bound))
-        (fn-pull-dropped-of (cdr ids) pending bound))
-    nil))
+          (fn-pull-dropped-of-loop (cdr ids) pending bound (cons (car ids) acc))
+        (fn-pull-dropped-of-loop (cdr ids) pending bound acc))
+    (revappend acc nil)))
+
+(defun fn-pull-dropped-of (ids pending bound)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp ids)
+           (if (equal (+ 1 (fn-pull-count-of (car ids) pending)) (fn-pull-bound-of bound))
+               (cons (car ids) (fn-pull-dropped-of (cdr ids) pending bound))
+             (fn-pull-dropped-of (cdr ids) pending bound))
+         nil)
+       :exec (fn-pull-dropped-of-loop ids pending bound nil)))
+
+(local
+ (defthm fn-pull-dropped-of-loop-is-revappend
+   (equal (fn-pull-dropped-of-loop ids pending bound acc)
+          (revappend acc (fn-pull-dropped-of ids pending bound)))
+   :hints (("Goal" :induct (fn-pull-dropped-of-loop ids pending bound acc)
+                   :in-theory (union-theories '(fn-pull-dropped-of-loop fn-pull-dropped-of revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-pull-dropped-of-loop)
+
+(verify-guards fn-pull-dropped-of
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-pull-dropped-of)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-pull-dropped-of-loop-is-revappend (acc nil))))))
+
 
 (defun fn-pull-dropped (r)
   (declare (xargs :guard t))
@@ -1994,13 +2065,46 @@
   (declare (xargs :guard t))
   (and (member-equal (fn-pull-r-phase r) '(:done :failed)) t))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-pull-dropped-words-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-pull-dropped-words-loop (cdr rev)
+                                  (append (fn-record-string-octets " dropped=")
+                                          (fn-pull-list (car rev))
+                                          acc))
+    acc))
+
 (defun fn-pull-dropped-words (ids)
-  (declare (xargs :guard t))
-  (if (consp ids)
-      (append (fn-record-string-octets " dropped=")
-              (fn-pull-list (car ids))
-              (fn-pull-dropped-words (cdr ids)))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp ids)
+           (append (fn-record-string-octets " dropped=")
+                   (fn-pull-list (car ids))
+                   (fn-pull-dropped-words (cdr ids)))
+         nil)
+       :exec (fn-pull-dropped-words-loop (fn-ag-rev-onto ids nil) nil)))
+
+(local
+ (defthm fn-pull-dropped-words-loop-of-rev-onto
+   (equal (fn-pull-dropped-words-loop (fn-ag-rev-onto ids zs) nil)
+          (fn-pull-dropped-words-loop zs (fn-pull-dropped-words ids)))
+   :hints (("Goal" :induct (fn-ag-rev-onto ids zs)
+                   :in-theory (union-theories '(fn-pull-dropped-words-loop fn-pull-dropped-words fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-pull-dropped-words-loop)
+
+(verify-guards fn-pull-dropped-words
+  :hints (("Goal" :in-theory (union-theories '(fn-pull-dropped-words fn-pull-dropped-words-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-pull-dropped-words-loop-of-rev-onto (zs nil))))))
+
 
 ; The owner log line of a closed round: the peer, how it ended, whether the
 ; cursor moved, how many listed ids the peer could not produce, and each id

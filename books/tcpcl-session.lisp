@@ -81,9 +81,38 @@
 
 ; append with a total guard: the same function in the logic, so every
 ; theorem below speaks of append.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-tcl-app-loop (a b acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp a) (fn-tcl-app-loop (cdr a) b (cons (car a) acc)) (revappend acc b)))
+
 (defun fn-tcl-app (a b)
-  (declare (xargs :guard t))
-  (if (consp a) (cons (car a) (fn-tcl-app (cdr a) b)) b))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp a) (cons (car a) (fn-tcl-app (cdr a) b)) b)
+       :exec (fn-tcl-app-loop a b nil)))
+
+(local
+ (defthm fn-tcl-app-loop-is-revappend
+   (equal (fn-tcl-app-loop a b acc)
+          (revappend acc (fn-tcl-app a b)))
+   :hints (("Goal" :induct (fn-tcl-app-loop a b acc)
+                   :in-theory (union-theories '(fn-tcl-app-loop fn-tcl-app revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-tcl-app-loop)
+
+(verify-guards fn-tcl-app
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-tcl-app)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-tcl-app-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-tcl-app-is-append
   (equal (fn-tcl-app a b) (append a b)))

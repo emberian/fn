@@ -370,27 +370,102 @@
       (nthcdr (len *fn-ctl-sha256-scheme*) word)
     nil))
 
-(defun fn-ctl-sha256-entries (words)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-ctl-sha256-entries-loop (words acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp words)
       (let ((e (fn-ctl-sha256-entry (car words))))
         (if (consp e)
-            (cons e (fn-ctl-sha256-entries (cdr words)))
-          (fn-ctl-sha256-entries (cdr words))))
-    nil))
+            (fn-ctl-sha256-entries-loop (cdr words) (cons e acc))
+          (fn-ctl-sha256-entries-loop (cdr words) acc)))
+    (revappend acc nil)))
+
+(defun fn-ctl-sha256-entries (words)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp words)
+           (let ((e (fn-ctl-sha256-entry (car words))))
+             (if (consp e)
+                 (cons e (fn-ctl-sha256-entries (cdr words)))
+               (fn-ctl-sha256-entries (cdr words))))
+         nil)
+       :exec (fn-ctl-sha256-entries-loop words nil)))
+
+(local
+ (defthm fn-ctl-sha256-entries-loop-is-revappend
+   (equal (fn-ctl-sha256-entries-loop words acc)
+          (revappend acc (fn-ctl-sha256-entries words)))
+   :hints (("Goal" :induct (fn-ctl-sha256-entries-loop words acc)
+                   :in-theory (union-theories '(fn-ctl-sha256-entries-loop fn-ctl-sha256-entries revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ctl-sha256-entries-loop)
+
+(verify-guards fn-ctl-sha256-entries
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-ctl-sha256-entries)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-ctl-sha256-entries-loop-is-revappend (acc nil))))))
+
 
 ; Every sha256 entry of the fields FIELDS, in order.  RFC 8315 section 2
 ; allows each field once; a second one is read too (more entries, never
 ; fewer; stated in specs/nntp.md).
-(defun fn-ctl-field-entries (fields)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-ctl-field-entries-loop (fields acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp fields)
-      (append (if (and (true-listp (car fields)) (equal (len (car fields)) 3))
-                  (fn-ctl-sha256-entries
-                   (fn-ctl-words (fn-article-field-unfolded-value (car fields))))
-                nil)
-              (fn-ctl-field-entries (cdr fields)))
-    nil))
+      (fn-ctl-field-entries-loop (cdr fields)
+                                 (fn-ag-rev-onto (if (and (true-listp (car fields))
+                                                          (equal (len (car fields)) 3))
+                                                     (fn-ctl-sha256-entries (fn-ctl-words (fn-article-field-unfolded-value (car fields))))
+                                                   nil)
+                                                 acc))
+    (revappend acc nil)))
+
+(defun fn-ctl-field-entries (fields)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp fields)
+           (append (if (and (true-listp (car fields)) (equal (len (car fields)) 3))
+                       (fn-ctl-sha256-entries
+                        (fn-ctl-words (fn-article-field-unfolded-value (car fields))))
+                     nil)
+                   (fn-ctl-field-entries (cdr fields)))
+         nil)
+       :exec (fn-ctl-field-entries-loop fields nil)))
+
+(local
+ (defthm fn-ctl-field-entries-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-ctl-field-entries-loop-is-revappend
+   (equal (fn-ctl-field-entries-loop fields acc)
+          (revappend acc (fn-ctl-field-entries fields)))
+   :hints (("Goal" :induct (fn-ctl-field-entries-loop fields acc)
+                   :in-theory (union-theories '(fn-ctl-field-entries-loop fn-ctl-field-entries revappend car-cons cdr-cons fn-ctl-field-entries-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ctl-field-entries-loop)
+
+(verify-guards fn-ctl-field-entries
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-ctl-field-entries)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-ctl-field-entries-loop-is-revappend (acc nil))))))
+
 
 (defun fn-ctl-cancel-keys (fields)
   (declare (xargs :guard t))
@@ -632,12 +707,43 @@
 ; entries as the history holds them, which the record carries
 ; (`fn-ctl-w-tlocks'; books/control-visible.lisp fn-ctl-archive-entries).
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-ctl-configs-through-loop (txid configs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (and (consp configs) (<= (nfix (fn-cfg-record-txid (car configs))) (nfix txid)))
+      (fn-ctl-configs-through-loop txid (cdr configs) (cons (car configs) acc))
+    (revappend acc nil)))
+
 (defun fn-ctl-configs-through (txid configs)
-  (declare (xargs :guard t))
-  (if (and (consp configs)
-           (<= (nfix (fn-cfg-record-txid (car configs))) (nfix txid)))
-      (cons (car configs) (fn-ctl-configs-through txid (cdr configs)))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (and (consp configs)
+                (<= (nfix (fn-cfg-record-txid (car configs))) (nfix txid)))
+           (cons (car configs) (fn-ctl-configs-through txid (cdr configs)))
+         nil)
+       :exec (fn-ctl-configs-through-loop txid configs nil)))
+
+(local
+ (defthm fn-ctl-configs-through-loop-is-revappend
+   (equal (fn-ctl-configs-through-loop txid configs acc)
+          (revappend acc (fn-ctl-configs-through txid configs)))
+   :hints (("Goal" :induct (fn-ctl-configs-through-loop txid configs acc)
+                   :in-theory (union-theories '(fn-ctl-configs-through-loop fn-ctl-configs-through revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ctl-configs-through-loop)
+
+(verify-guards fn-ctl-configs-through
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-ctl-configs-through)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-ctl-configs-through-loop-is-revappend (acc nil))))))
+
 
 (defun fn-ctl-apply-records (cfg records)
   (declare (xargs :guard t))

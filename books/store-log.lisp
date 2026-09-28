@@ -100,11 +100,39 @@
               (append (true-list-fix (car records)) (fn-lg-pack (cdr records))))
     nil))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-lg-pack-len-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev) (fn-lg-pack-len-loop (cdr rev) (+ 4 (len (car rev)) acc)) acc))
+
 (defun fn-lg-pack-len (records)
-  (declare (xargs :guard t))
-  (if (consp records)
-      (+ 4 (len (car records)) (fn-lg-pack-len (cdr records)))
-    0))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp records)
+           (+ 4 (len (car records)) (fn-lg-pack-len (cdr records)))
+         0)
+       :exec (fn-lg-pack-len-loop (fn-ag-rev-onto records nil) 0)))
+
+(local
+ (defthm fn-lg-pack-len-loop-of-rev-onto
+   (equal (fn-lg-pack-len-loop (fn-ag-rev-onto records zs) 0)
+          (fn-lg-pack-len-loop zs (fn-lg-pack-len records)))
+   :hints (("Goal" :induct (fn-ag-rev-onto records zs)
+                   :in-theory (union-theories '(fn-lg-pack-len-loop fn-lg-pack-len fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-lg-pack-len-loop)
+
+(verify-guards fn-lg-pack-len
+  :hints (("Goal" :in-theory (union-theories '(fn-lg-pack-len fn-lg-pack-len-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-lg-pack-len-loop-of-rev-onto (zs nil))))))
+
 
 (local
  (defthm fn-lg-len-nthcdr-early

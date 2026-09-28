@@ -349,13 +349,49 @@
   (and (consp x) (consp (cdr x)) (cadr x) t))
 
 ; The host's call: every member's release, in the members' order.
-(defun fn-ocs-member-releases (action outcomes)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-ocs-member-releases-loop (action outcomes acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp outcomes)
-      (cons (fn-ocs-member-release action (fn-ocs-outcome-word (car outcomes))
-                                   (fn-ocs-outcome-renderable (car outcomes)))
-            (fn-ocs-member-releases action (cdr outcomes)))
-    nil))
+      (fn-ocs-member-releases-loop action
+                                   (cdr outcomes)
+                                   (cons (fn-ocs-member-release action
+                                                                (fn-ocs-outcome-word (car outcomes))
+                                                                (fn-ocs-outcome-renderable (car outcomes)))
+                                         acc))
+    (revappend acc nil)))
+
+(defun fn-ocs-member-releases (action outcomes)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp outcomes)
+           (cons (fn-ocs-member-release action (fn-ocs-outcome-word (car outcomes))
+                                        (fn-ocs-outcome-renderable (car outcomes)))
+                 (fn-ocs-member-releases action (cdr outcomes)))
+         nil)
+       :exec (fn-ocs-member-releases-loop action outcomes nil)))
+
+(local
+ (defthm fn-ocs-member-releases-loop-is-revappend
+   (equal (fn-ocs-member-releases-loop action outcomes acc)
+          (revappend acc (fn-ocs-member-releases action outcomes)))
+   :hints (("Goal" :induct (fn-ocs-member-releases-loop action outcomes acc)
+                   :in-theory (union-theories '(fn-ocs-member-releases-loop fn-ocs-member-releases revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ocs-member-releases-loop)
+
+(verify-guards fn-ocs-member-releases
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-ocs-member-releases)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-ocs-member-releases-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-ocs-member-releases-length
   (equal (len (fn-ocs-member-releases action outcomes)) (len outcomes)))

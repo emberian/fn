@@ -1527,6 +1527,18 @@ check:
 # A retained payload is a HANDLE (books/payload-kinds.lisp); every definition
 # that reads one declares which kind it takes (lane entry-guards, 2026-09-27).
 	@$(CHECK_STEP) $(PYTHON) tools/payload_kind_check.py
+# Every node thread runs on a 1,024 KiB control stack, and a non-tail
+# recursion costs a frame per step: LIST ACTIVE and GROUP stopped the owner
+# past ~30,000 articles in fn-nntp-group-low (PKT-877), the open in
+# fn-retain-obligation-ids (PKT-876).  This lists every non-tail recursion on
+# the host-called closure (the functions a raw host file names and what they
+# execute, mbe :exec branches only) and fails on one tools/depth_baseline.json
+# does not classify: "bounded" names its bound, "debt" (a walk whose depth is
+# an article count, a group's articles, a history, a queue or an octet count)
+# only shrinks.  Source-level, no ACL2; the extractor agreed on 604 of 604 at
+# lane serve-depth's head.
+	@$(CHECK_STEP) $(PYTHON) tools/depth_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_depth_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make
