@@ -1,0 +1,7 @@
+{
+ "about": "Extractor blockers (tools/extract/frontend.lisp: a function with no executable body, no attachment, not a primitive) that the gate (tools/extract/gate.py) accepts. chicken.py compiles each to a procedure that faults by name when called; the gate fails on any blocker not declared here, and every declared one is listed in the run's extraction manifest.",
+ "blockers": [
+  {"name": "ACL2::FN-SIG-VERIFY",
+   "why": "constrained signature verification with no attachment in the image's world (the verifier is a named assumption); reached from the probe root fn-intern-events, and the image itself refuses a call to an unattached constrained function; no transcript reaches it (planning/evidence/extract-2-2026-09-28.md)"}
+ ]
+}

@@ -56,12 +56,6 @@
   (fn-hsig-authorize-at (fn-hsig-source-version source)
                         principal keys source signatures observed-ml-key ed ml))
 
-(defun fn-hsig-host-keyring-event
-    (sequence txid generation keyring-generation principal keys)
-  (declare (xargs :mode :program))
-  (fn-hsig-keyring-event sequence txid generation keyring-generation
-                         principal keys))
-
 (defun fn-hl-host-enroll-event
     (sequence txid generation keyring-generation principal keys snapshots)
   (declare (xargs :mode :program))
@@ -80,10 +74,6 @@
          (fn-sn-keyring-snapshots (f-get-global 'fn-store-sn state))))
     (value (fn-hl-history-rows snapshots snapshots))))
 
-(defun fn-hsig-host-keyring-snapshot-value (snapshot)
-  (declare (xargs :mode :program))
-  (fn-hsig-keyring-snapshot-value snapshot))
-
 (defun fn-hsig-host-keyring-snapshot-octets (snapshot)
   (declare (xargs :mode :program))
   (if (fn-stxk-p snapshot) (fn-stxk-snapshot snapshot) nil))
@@ -91,37 +81,3 @@
 (defun fn-hsig-host-authored-source-fields (source)
   (declare (xargs :mode :program))
   (fn-hsig-authored-source-fields source))
-
-(defun fn-hsig-host-authorized-article-event
-    (sequence txid generation keyring-generation enrolled-snapshot
-              msgid content-subject
-              article-record principal keys source signatures observed-ml-key
-              ed ml)
-  (declare (xargs :mode :program))
-  (fn-hsig-authorized-article-event
-   sequence txid generation keyring-generation enrolled-snapshot
-   msgid content-subject
-   article-record principal keys source signatures observed-ml-key ed ml))
-
-(defun fn-hsig-host-authorized-submission-event
-    (sequence txid generation keyring-generation enrolled-snapshot
-              msgid source groups obligation-id content-subject
-              release-evidence charge principal keys signatures observed-ml-key
-              ed ml observation)
-  (declare (xargs :mode :program))
-  (fn-hsig-authorized-submission-event
-   sequence txid generation keyring-generation enrolled-snapshot
-   msgid source groups obligation-id content-subject release-evidence charge
-   principal keys signatures observed-ml-key ed ml observation))
-
-(defun fn-hsig-host-authorized-carried-submission-event
-    (sequence txid generation keyring-generation enrolled-snapshot
-              msgid source received groups obligation-id content-subject
-              release-evidence charge principal keys signatures observed-ml-key
-              ed ml observation)
-  (declare (xargs :mode :program))
-  (fn-hsig-authorized-carried-submission-event
-   sequence txid generation keyring-generation enrolled-snapshot
-   msgid source received groups obligation-id content-subject
-   release-evidence charge principal keys signatures observed-ml-key
-   ed ml observation))

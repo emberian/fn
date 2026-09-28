@@ -150,10 +150,15 @@ older image.
 
 ### A node behind NAT
 
-If the public node cannot reach you, name no address in the invitation
-(`- -` in place of `YOUR-HOST YOUR-PORT` in A1 is ember's side; your `peer
-accept` still names yours). Then give the public node an inbound half only,
-and pull from it: `peer pull fn.fg-goose.online SECONDS` on a timer. One
+If the public node cannot reach you, A1 still names a real address for you:
+`peer invite` refuses `-` for the invitee's HOST and PORT ("ACL2 refused the
+invitation's words"; books/peer-invite.lisp `fn-pinv-hosts-okp` allows `-`
+only for the inviter's own address, the last two words). Give your LAN
+listener (for example `192.168.50.39 563`); it is only recorded, because the
+public node's row for you gets `outbound=-` and never dials it (PKT-883,
+planning/evidence/node-migrate-2026-09-28.md). Then give the public node an
+inbound half only, and pull from it: `peer pull fn.fg-goose.online SECONDS`
+on a timer. One
 credential slot serves both directions of a peer, so a credentialed pull
 needs outbound groups as well (PKT-431). The public node never dials you.
 
