@@ -13200,18 +13200,20 @@
       "assumptions": [],
       "status": "uncertified-at-current-digest",
       "evidence": [
-        "books/owner-article-slots.lisp",
-        "books/heap-store-figure.lisp",
+        "books/connection-budget.lisp",
         "books/heap-figure.lisp",
         "books/heap-reservation.lisp",
-        "books/connection-budget.lisp",
+        "books/heap-store-figure.lisp",
+        "books/owner-article-slots.lisp",
         "host/owner-host.lisp",
-        "tests/acl2/owner-article-slots-tests.lisp",
+        "planning/evidence/manifests/certify-20260928T170547Z-326567.json",
+        "planning/evidence/zero-copy-commit-2026-09-28.md",
+        "specs/host.md",
         "tests/acl2/heap-reservation-tests.lisp",
-        "tests/test_native_article_slots.py",
-        "specs/host.md"
+        "tests/acl2/owner-article-slots-tests.lisp",
+        "tests/test_native_article_slots.py"
       ],
-      "progress_note": "Lane zero-copy-commit (Opus 5.5, 2026-09-28). REPL-admitted on persvati (books/owner-article-slots 28 forms, tests/acl2/owner-article-slots-tests). Teeth (tests/acl2/owner-article-slots-tests.lisp, prefix oast-, the host's call on live stobjs over owner-reader-read-tests' owner): reachable positive witness for the admission keystone (one slot, a POST offered 340, one held); a CONSTRUCTED state (a queued submission) where the read before this lane offers the POST with two held in one slot (MUTATION: the old host call violates the conclusion) and the host's call answers the memory 440; hypothesis removal (a connection already mid-article with zero slots: held 1 > 0); the never-blocks keystone's witness and its hypothesis removal; the slots at the small preset (32 of 1,589,248) and at A = 4 MiB (1) and 600,000 (3). SCN-193 is the native case.",
+      "progress_note": "Lane zero-copy-commit (Opus 5.5, 2026-09-28). REPL-admitted on persvati (books/owner-article-slots 28 forms, tests/acl2/owner-article-slots-tests). Teeth (tests/acl2/owner-article-slots-tests.lisp, prefix oast-, the host's call on live stobjs over owner-reader-read-tests' owner): reachable positive witness for the admission keystone (one slot, a POST offered 340, one held); a CONSTRUCTED state (a queued submission) where the read before this lane offers the POST with two held in one slot (MUTATION: the old host call violates the conclusion) and the host's call answers the memory 440; hypothesis removal (a connection already mid-article with zero slots: held 1 > 0); the never-blocks keystone's witness and its hypothesis removal; the slots at the small preset (32 of 1,589,248) and at A = 4 MiB (1) and 600,000 (3). SCN-193 is the native case. Certified: persvati certify-20260928T170547Z-326567 (11 passed: the affected roots). Record: planning/evidence/zero-copy-commit-2026-09-28.md.",
       "events": [
         "fn-oas-read-span-admits-within-the-slots",
         "fn-oas-read-span-never-blocks-an-admitted-article",
