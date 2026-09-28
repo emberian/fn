@@ -361,12 +361,6 @@
 (defun fn-store-charge (length)
   (if (natp length) (fn-charge-for-payload length) 0))
 
-(defun fn-store-group-name-octets (groups)
-  (if (consp groups)
-      (cons (fn-record-string-octets (car groups))
-            (fn-store-group-name-octets (cdr groups)))
-    nil))
-
 (defun fn-store-identity-text (identity)
   ; The one rendering of a canonical identity into a string, for the three
   ; boundaries that cannot carry octets: the store record metadata fields, the
