@@ -13239,7 +13239,8 @@
         "tools/depth_check.py",
         "tools/depth_baseline.json",
         "tests/test_depth_check.py",
-        "planning/evidence/manifests/certify-20260928T175634Z-806289.json"
+        "planning/evidence/manifests/certify-20260928T175634Z-806289.json",
+        "planning/evidence/peer-list-depth-2026-09-28.md"
       ],
       "events": []
     }
