@@ -851,15 +851,19 @@
 (defun fn-apc-held-facts-of (bytes carry)
   (declare (xargs :guard (true-listp bytes)))
   (fn-hf-make (len bytes) (fn-hf-split-index bytes 0) (fn-hf-body-lines-of bytes)
-              (fn-apc-control-of bytes carry)))
+              ;; The control facts, then the overview column from the take's
+              ;; parse (lane served-columns).
+              (fn-hf-control-with-nov (fn-apc-control-of bytes carry)
+                                      (fn-hnov-of-parsed bytes (fn-apc-parse bytes carry)))))
 
 (defthm fn-apc-held-facts-of-is-reference
   (implies (fn-apc-p carry)
            (equal (fn-apc-held-facts-of bytes carry)
                   (fn-held-facts-of bytes)))
-  :hints (("Goal" :in-theory (e/d (fn-held-facts-of)
+  :hints (("Goal" :in-theory (e/d (fn-held-facts-of fn-hnov-of)
                                   (fn-apc-control-of fn-ctl-control-of fn-hf-make
-                                   fn-hf-split-index fn-hf-body-lines-of)))))
+                                   fn-hf-split-index fn-hf-body-lines-of
+                                   fn-hnov-of-parsed fn-apc-parse fn-article-parse)))))
 
 (in-theory (disable fn-apc-control-of fn-apc-held-facts-of))
 

@@ -168,8 +168,9 @@ context of acceptance must be recoverable.
 The first usable site has configured unmoderated groups, a complete planned
 NNTP reader/posting surface, and all accepted visible articles retained. BP-backed disconnected exchange
 proceeds alongside this local service under the same acceptance and retention
-contracts. D17 selects NNTP and command-line clients first; a web reader/composer
-comes later. 9p views, private correspondence and moderation are also later
+contracts. D17 selects NNTP and command-line clients first; the web
+reader/composer is the node's own web face (WEB-005), an HTTP listener inside
+the node whose pages ACL2 renders from its own NNTP replies. 9p views, private correspondence and moderation are also later
 interfaces or policy features. D01 fixes the native source boundary: exact
 authored bytes are signed, with mutable NNTP trace and gateway injection records
 in separate projections. D09 requires both Ed25519 and ML-DSA-65 for native

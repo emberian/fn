@@ -238,9 +238,14 @@ the range is checked."
                   *fnn-digest-entries*)))
   t)
 
-(fnn-digest-capture-references)
+;; Captured on the first fnn-digest-initialize, before any install, not at
+;; load: the references are ACL2's certified world (the sha256 books), which
+;; a raw load of this file (host_check --load) does not have.  Nothing
+;; installs a native entry before the capture, so what it captures is
+;; always the ACL2 definition.
 
 (defun fnn-digest-reference (entry)
+  (fnn-digest-capture-references)
   (or (cdr (assoc entry *fnn-digest-references*))
       (error 'fnn-digest-unavailable
              :detail (format nil "no reference for ~(~a~)" entry))))
@@ -416,6 +421,7 @@ official vectors and with ACL2's `fn-b3x-hash'.  Runs before installation."
 Idempotent."
   (sb-thread:with-mutex (*fnn-digest-lock*)
     (unless (eq *fnn-digest-state* :native)
+      (fnn-digest-capture-references)
       (fnn-digest-restore-references)
       (let ((library (fnn-digest-load-library)))
         (let ((missing (remove-if #'sb-sys:find-foreign-symbol-address

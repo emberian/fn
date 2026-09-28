@@ -21,6 +21,12 @@
 (include-book "../books/payload-commit-extent")
 ; The served read's entry check over the realizer's buffer (PRF-295).
 (include-book "../books/payload-extent-read")
+; Compressed records (PRF-326, PRF-341): the append's plan and decision
+; (fnn-log-compress), the read's expansion (fnn-log-read-record), the
+; replay's compressed extents, the commit's compressed reseat, and the
+; realizer's decode (host/native/extent.lisp fn-durable-realize-lz).
+(include-book "../books/payload-lz-append")
+(include-book "../books/payload-lz-replay")
 (include-book "../books/store-config")
 (include-book "../books/identity")
 (include-book "../books/crypto-attach")
@@ -599,6 +605,12 @@
 ; (books/store-budget-naming.lisp), over the persisted PROFILE the caller was
 ; handed at open; both hosts call it by that name.  No host constant enters it.
 
+;; `store ROOT compression' (lane compression-extents-2): the threshold of the
+;; store's replayed configuration (books/payload-lz-append.lisp
+;; fn-lzr-config-min; no row is 0, off).
+(defun fn-store-compress-min-octets (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-lzr-config-min (fn-cfg-value (f-get-global 'fn-store-cfg state)))))
 ;; -----------------------------------------------------------------------------
 ;; The genesis (books/store-genesis.lisp; lane format-bump-10).  `init' and
 ;; `store import' write the file ACL2 builds from the host's recorded

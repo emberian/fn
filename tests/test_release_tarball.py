@@ -84,6 +84,7 @@ class ReleaseTarballTests(unittest.TestCase):
         for rel in ("SHA256SUMS", "install.sh", "bin/fn", "libexec/fn/fn-host",
                     "libexec/fn/fn-host.core", "libexec/fn/source-revision",
                     "libexec/fn/runtime/sbcl", "libexec/fn/lib/libfn-mldsa65.so",
+                    "libexec/fn/lib/libfn-lz4.so",
                     "libexec/fn/lib/libfn-blake3.so",
                     "share/fn/fn.toml.example", "share/fn/docs/fn-faq-3.txt",
                     "share/fn/release-gate.txt", "share/fn/runpath-check.txt"):
@@ -95,28 +96,31 @@ class ReleaseTarballTests(unittest.TestCase):
         self.assertFalse((self.top / "libexec/fn/fn-host-developer").exists())
 
     def test_the_clients_ship_beside_the_node_and_apart_from_it(self):
-        # The friends' web reader and the other clients (packaging/
-        # install-clients.sh): Python in clients/ only, a launcher each, the
-        # reader's service, its settings and a Caddy snippet.
-        for name in ("fn-reader", "fn-web", "fn-client", "fn-agent", "fn-consumer",
-                     "fn-verify"):
+        # The command-line clients (packaging/install-clients.sh): Python in
+        # clients/ only, a launcher each, no service.  The web page is the
+        # node's own face (install.sh --reader, share/fn/caddy/fn-web.caddy):
+        # no Python reader ships.
+        for name in ("fn-client", "fn-agent", "fn-consumer", "fn-verify"):
             self.assertTrue(os.access(self.top / "clients/bin" / name, os.X_OK), name)
-        for rel in ("clients/lib/fn_reader.py", "clients/lib/nntp_session.py",
-                    "clients/README.txt", "clients/share/fn-reader.conf.example",
-                    "clients/share/caddy/fn-reader.caddy", "share/fn/docs/web.md",
-                    ("clients/share/rc.d/fn_reader.rc.in" if platform.system() == "OpenBSD"
-                     else "clients/share/systemd/fn-reader.service.in")):
+        for name in ("fn-reader", "fn-web"):
+            self.assertFalse((self.top / "clients/bin" / name).exists(), name)
+        for rel in ("clients/lib/fn_client.py", "clients/lib/nntp_session.py",
+                    "clients/README.txt", "share/fn/caddy/fn-web.caddy", "share/fn/docs/web.md"):
             self.assertTrue((self.top / rel).is_file(), rel)
+        self.assertFalse((self.top / "clients/share").exists())
         python = {p.relative_to(self.top).as_posix() for p in self.top.rglob("*.py")}
         self.assertTrue(python and all(rel.startswith("clients/lib/") for rel in python),
                         python)
         record = (self.top / "share/fn/runpath-check.txt").read_text()
-        self.assertIn("clients/: 7 Python programs", record)
-        if shutil.which("python3"):
-            shown = subprocess.run([str(self.top / "clients/bin/fn-reader"), "--help"],
-                                   env=CLEAN_ENV, capture_output=True, text=True, timeout=60)
+        self.assertIn("clients/: 5 Python programs", record)
+        # A client runs under the login PATH, which on OpenBSD holds the
+        # package's python3 in /usr/local/bin (CLEAN_ENV's PATH does not):
+        # the precondition and the run use the same PATH.
+        client_env = dict(CLEAN_ENV, PATH=CLEAN_ENV["PATH"] + ":/usr/local/bin")
+        if shutil.which("python3", path=client_env["PATH"]):
+            shown = subprocess.run([str(self.top / "clients/bin/fn-client"), "--help"],
+                                   env=client_env, capture_output=True, text=True, timeout=60)
             self.assertEqual(shown.returncode, 0, shown.stderr)
-            self.assertIn("--settings", shown.stdout)
 
     def test_inner_sums_cover_every_file(self):
         listed = sums(self.top / "SHA256SUMS")
@@ -175,6 +179,7 @@ class ReleaseTarballTests(unittest.TestCase):
         self.assertIn("libexec/fn/runtime/sbcl", elves)
         self.assertIn("libexec/fn/lib/libsodium.so.23", elves)
         self.assertIn("libexec/fn/lib/libfn-mldsa65.so", elves)
+        self.assertIn("libexec/fn/lib/libfn-lz4.so", elves)
         self.assertIn("libexec/fn/lib/libfn-blake3.so", elves)
         self.assertEqual(above, [])
 

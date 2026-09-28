@@ -137,3 +137,17 @@
                                    '("fn.letters") "archive-b" "content-b" "release-b" 3 :legacy) 4))))
 (assert-event (fn-replay-faultp *replay-txid-reuse*))
 (assert-event (equal (fn-replay-result-sequence *replay-txid-reuse*) 1))
+
+; fn-replay-verdict-pairs by a loop (PKT-876, PRF-352): verdict events in
+; order, others skipped, over 50,000.
+(defconst *replay-od-verdict*
+  (fn-stxe-make 1 2 3 "<v@example.invalid>" :verified '(1) 4 '(1)))
+(assert-event (fn-stxe-p *replay-od-verdict*))
+(assert-event
+ (equal (fn-replay-verdict-pairs (list 7 *replay-od-verdict* :other))
+        (list (cons "<v@example.invalid>"
+                    (fn-stx-make-verdict :verified '(1) 4)))))
+(assert-event (equal (fn-replay-verdict-pairs (make-list 50000 :initial-element 7)) nil))
+(assert-event (equal (len (fn-replay-verdict-pairs
+                           (make-list 50000 :initial-element *replay-od-verdict*)))
+                     50000))

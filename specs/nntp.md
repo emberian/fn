@@ -165,8 +165,6 @@ NNT-016: XPAT is listed in the capability block and answers RFC 2980 section 2.9
   response` equates the XPAT arm of `fn-nntp-step-pinned` (reached from
   `fn-served-step` through `fn-auth-step-pinned` and
   `fn-nntp-post-step-pinned`) with `fn-nntp-xpat-response`.
-- The web reader (`tools/fn_web.py` `/search`) sends the reader's own
-  wildmat in one bounded `XPAT` window; it builds no pattern.
 
 `LIST ACTIVE.TIMES` reads the same persisted creation facts `NEWGROUPS`
 reads, so RFC 6048 §2.3's "the results SHOULD be consistent" is true by construction.
@@ -819,8 +817,7 @@ privileged query for that case.
 This is a stronger fn guarantee and a client contract, not an RFC
 requirement: RFC 3977 §6.3.1 allows 441 for any posting failure; the two
 duplicate answers and their meaning are fn's (D25). The clients
-(`tools/fn_client.py` `post --draft` / `reconcile`, `tools/fn_web.py`
-`/reconcile`) keep the original observed outcome, record each
+(`tools/fn_client.py` `post --draft` / `reconcile`) keep the original observed outcome, record each
 reconciliation beside it, re-send the stored bytes, and never mint a second
 Message-ID; `docs/agents.md` states it for agents.
 
@@ -1457,8 +1454,9 @@ gives them.
   a stamp without a wall clock) `:account-expired`, under a login a redeemed
   row holds `:account-login-taken`, and of a redeemed row
   `:account-redeemed` unless it is the identical row.
-- **Once only** (PRF-164): a redeemed row is the same row after every later
-  acceptable record the owner replays (`fn-acct-redeemed-row-stays-across-replay`);
+- **Once only** (PRF-164): a redeemed row is the same row, or its tombstone
+  once `account delete` names its login, after every later acceptable record
+  the owner replays (`fn-acct-bound-row-succeeds-across-replay`);
   the redeem plan (`fn-acct-redeem-plan`, a pure function of the
   configuration value and the request) plans a redeem only of a delta the
   configuration admits (`fn-acct-redeem-plan-is-admitted-and-redeems`), and

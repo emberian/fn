@@ -11,7 +11,7 @@ answers. Each can pick up where it stopped.
 
 This page shows the command-line client, `tools/fn_client.py`. It needs
 Python 3.9 or newer and nothing else. The clients are in the release, in
-`clients/bin/` (`fn-client`, `fn-agent`, `fn-web`, `fn-reader`; `/opt/fn/clients/bin/`
+`clients/bin/` (`fn-client`, `fn-agent`, `fn-consumer`, `fn-verify`; `/opt/fn/clients/bin/`
 once installed), and in fn's source as `tools/fn_client.py` and so on.
 `fn-client ARGS` is `python3 tools/fn_client.py ARGS`. For a node's TLS port
 (563) give that port; for another `tls_port`, add `--tls` (in

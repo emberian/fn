@@ -35,12 +35,34 @@
            (t (len (fn-store-event-encode row))))
      (* *fn-sbud-membership-octets* (fn-sbud-row-memberships row))))
 
-(defun fn-sbud-stored-octets (rows fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
+; Executes by a loop (PKT-876, lane open-depth): one frame per row, read at
+; the owner's start.  The :logic is the recursion, unchanged; equal by the
+; guard proof.
+(defun fn-sbud-stored-octets-acc (rows fn-arena acc)
+  (declare (xargs :stobjs fn-arena :guard (acl2-numberp acc)))
   (if (consp rows)
-      (+ (fn-sbud-row-stored-octets (car rows) fn-arena)
-         (fn-sbud-stored-octets (cdr rows) fn-arena))
-    0))
+      (fn-sbud-stored-octets-acc (cdr rows) fn-arena
+                                 (+ acc (fn-sbud-row-stored-octets (car rows) fn-arena)))
+    acc))
+
+(defun fn-sbud-stored-octets (rows fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp rows)
+           (+ (fn-sbud-row-stored-octets (car rows) fn-arena)
+              (fn-sbud-stored-octets (cdr rows) fn-arena))
+         0)
+       :exec (fn-sbud-stored-octets-acc rows fn-arena 0)))
+
+(encapsulate ()
+  (local
+   (defthm fn-sbud-stored-octets-acc-is-plus
+     (implies (acl2-numberp acc)
+              (equal (fn-sbud-stored-octets-acc rows fn-arena acc)
+                     (+ acc (fn-sbud-stored-octets rows fn-arena))))
+     :hints (("Goal" :in-theory (disable fn-sbud-row-stored-octets)))))
+  (verify-guards fn-sbud-stored-octets
+    :hints (("Goal" :in-theory (disable fn-sbud-row-stored-octets)))))
 
 ; The relation: every held row's facts octets are its handle's extent.
 (defun fn-sbud-row-extent-okp (h fn-arena)

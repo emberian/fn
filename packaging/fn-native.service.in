@@ -16,6 +16,11 @@ Type=simple
 User=@USER@
 Group=@USER@
 WorkingDirectory=@NODE@
+# ProtectHome=yes hides /home: a service account whose home is under /home
+# made the image's ACL2 startup halt ("ACL2 Halted", nothing else; hbox-node
+# finding H1, planning/evidence/hbox-node-2026-09-28.md).  HOME is the node
+# directory, which the unit can read.
+Environment=HOME=@NODE@
 ExecStart=@PREFIX@/bin/fn operator @NODE@/fn.toml run
 Restart=on-failure
 RestartSec=5

@@ -72,15 +72,14 @@ library's loader, no RPATH outside, every DT_NEEDED carried or the C
 library; every shared-object name in the saved core carried, the C library,
 or the system TLS library HST-016 names).
 
-HST-029: A release's `clients/` (packaging/install-clients.sh: the friends'
-web reader and the other client programs, Python 3.9+) is held apart from the
-node's path. `tools/runpath_check.py --tree` walks the node without
-`clients/`, holds `clients/` to its own rule (Python source in `clients/lib/`
-only, no object code or bytecode, launchers in `clients/bin/` that run only
-`python3` and file-name tools, service templates that start
-`PREFIX/clients/bin/fn-reader`), and fails when any script, launcher or
-service of the node's names `clients/`: nothing the node runs can start a
-client. HST-018's claim is the node's; the clients' requirement (Python) is
+HST-029: A release's `clients/` (packaging/install-clients.sh: the
+command-line client programs, Python 3.9+) is held apart from the node's
+path. `tools/runpath_check.py --tree` walks the node without `clients/`,
+holds `clients/` to its own rule (Python source in `clients/lib/` only, no
+object code or bytecode, launchers in `clients/bin/` that run only `python3`
+and file-name tools, no service template: a client is never a service), and
+fails when any script, launcher or service of the node's names `clients/`:
+nothing the node runs can start a client. HST-018's claim is the node's; the clients' requirement (Python) is
 stated in `clients/README.txt`.
 
 HST-021: The Linux release runs on glibc 2.36 (Debian 12) and later. No
@@ -621,6 +620,14 @@ batch prepared behind it is told ACL2's uncertain reply and closed -- never
 accepted, never refused (`fn-otm-stall-tells-no-member-its-outcome`): the
 barrier is pending, not failed, and its bytes may still become durable --
 and the POSTs queued behind them are refused try-later, nothing stored.
+A POST the store refuses when it is drained -- full (`unaffordable`,
+`memberships`) or malformed -- wrote nothing, so it is never a member of a
+batch: it is told its named refusal at its drain, before any barrier and
+whatever that barrier does, and a START all of whose POSTs were refused so
+issues no sync (`fn-ocs-unstaged-start-tells-its-refusals`, PRF-354). A
+refusal that names another record (a duplicate, a conflict, the generic
+refusal) still waits for its batch's barrier: the record it names may be one
+the barrier has not fenced.
 When the device returns the batches complete: an article whose poster was
 told uncertain IS stored. That is the documented ambiguity, and it is RFC
 3977's: section 6.3.1 has the client that did not get a clear answer check

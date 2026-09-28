@@ -39,6 +39,7 @@ name, outside a limit of at most 2 GiB.
 import base64
 import hashlib
 import os
+import resource
 import re
 import shutil
 import signal
@@ -48,6 +49,8 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+
+from tests.native_process import node_log_on_failure
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = os.environ.get("FN_NATIVE_HOST")
@@ -163,20 +166,27 @@ class Harness:
         return result
 
     def start(self, config, port, log):
-        self.owner = subprocess.Popen([self.fn, "operator", str(config), "run"],
-                                      env=self.env(), stdout=subprocess.DEVNULL,
-                                      stderr=open(log, "wb"))
+        """Start the owner and wait for ITS OWN announcement of PORT.  The
+        port came from free_port(), which released it: on a shared box
+        another process's node can take it first, and a greeting read from
+        the port proves only that somebody listens there.  The owner's
+        `LISTENING PORT' on its stdout is the proof that this owner bound it;
+        an owner that exits first fails here with its log."""
+        out = Path(str(log) + ".out")
+        with open(log, "wb") as err, open(out, "wb") as announced:
+            self.owner = subprocess.Popen([self.fn, "operator", str(config), "run"],
+                                          env=self.env(), stdout=announced, stderr=err)
         self.addCleanup(self.reap)
+        mine = "LISTENING {}".format(port).encode("ascii")
         deadline = time.monotonic() + 600
         while time.monotonic() < deadline:
             self.assertIsNone(self.owner.poll(), Path(log).read_text(errors="replace"))
-            try:
+            if mine in out.read_bytes().splitlines():
                 with socket.create_connection(("127.0.0.1", port), timeout=5) as conn:
-                    if conn.makefile("rb").readline().startswith(b"20"):
-                        return
-            except OSError:
-                time.sleep(0.5)
-        self.fail("the owner did not listen within 600 s")
+                    self.assertTrue(conn.makefile("rb").readline().startswith(b"20"))
+                return
+            time.sleep(0.5)
+        self.fail("the owner did not announce {!r} within 600 s".format(mine))
 
     def reap(self):
         if self.owner and self.owner.poll() is None:
@@ -470,6 +480,7 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         now also pays for every group membership), then `status' and a
         restart are accepted and the articles are served."""
         config, port = self.config("fill")
+        began = time.monotonic()
         made = self.run_fn("operator", config, "init", "local.test")
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         found = INIT_LINE.search(made.stdout.decode())
@@ -479,6 +490,7 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         body = ("y" * 72 + "\r\n") * 400  # 29,600 octets
         log1 = self.tmp / "fill-1.log"
         self.start(config, port, log1)
+        started = time.monotonic()
         stored, reply = [], b""
         with socket.create_connection(("127.0.0.1", port), timeout=600) as conn:
             stream = conn.makefile("rwb")
@@ -498,9 +510,13 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
                 stored.append(message_id)
             stream.write(b"QUIT\r\n")
             stream.flush()
-        self.assertEqual(reply.decode("ascii"),
-                         "441 posting failed; the store is full: no capacity for this "
-                         "article (unaffordable); the node's operator can raise it")
+        print("NATIVE-HEAP fill init-and-start-s={:.1f} fill-s={:.1f} posts={}".format(
+            started - began, time.monotonic() - started, len(stored)))
+        with node_log_on_failure(log1):
+            self.assertEqual(reply.decode("ascii"),
+                             "441 posting failed; the store is full: no capacity for this "
+                             "article (unaffordable); the node's operator can raise it",
+                             "after {} posts".format(len(stored)))
         hwm1 = self.stop()
         print("NATIVE-HEAP fill posts={} vmhwm kB={} init-reservation={} MB".format(
             len(stored), hwm1, reservation))
@@ -573,6 +589,49 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
             self.assertEqual(result.stdout, b"")
         with self.assertRaises(OSError):
             socket.create_connection(("127.0.0.1", port), timeout=2).close()
+
+
+@unittest.skipUnless(READY, "FN_NATIVE_HOST (the production image and its core) is not set")
+class DatasizeTests(Harness, unittest.TestCase):
+    """The process's datasize limit (RLIMIT_DATA; OpenBSD's login classes:
+    `default' 1536M, `daemon' 4096M) and the launcher (lane
+    openbsd-datasize).  A command naming no store (--version, help)
+    gets the store-less heap (books/heap-figure.lisp fn-heap-storeless-decide), so it
+    runs under both stock classes.  Under a limit below the image's own
+    mappings the runtime stops before the probe reaches ACL2: the launcher
+    reports that as a fault by name (exit 4), never as ACL2's refusal
+    (exit 1, which SBCL's own exit code would otherwise read as)."""
+
+    def under(self, mib, *words):
+        octets = mib * 1024 * 1024
+        result = subprocess.run(
+            [self.fn, *words], env=self.env(), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=600, check=False,
+            preexec_fn=lambda: resource.setrlimit(resource.RLIMIT_DATA, (octets, octets)))
+        print("NATIVE-HEAP datasize={} MiB {} -> {} {}".format(
+            mib, " ".join(words), result.returncode,
+            text(result).strip().replace("\n", " | ")[-300:]))
+        return result
+
+    def test_a_storeless_command_runs_under_both_stock_classes(self):
+        # `operator CONFIG help VERB' names no store, as --version does (which
+        # a build tree cannot answer: its image records no source revision;
+        # cut_release gate 13 checks --version itself on the installed release).
+        config = self.tmp / "absent.toml"
+        for mib in (1536, 4096):
+            with self.subTest(datasize_mib=mib):
+                result = self.under(mib, "operator", str(config), "help", "run")
+                self.assertEqual(result.returncode, EXIT_OK, text(result))
+                self.assertIn("usage: fn operator CONFIG run", result.stdout.decode())
+
+    def test_a_limit_below_the_image_is_a_named_fault_not_a_refusal(self):
+        result = self.under(64, "--version")
+        self.assertEqual(result.returncode, 4, text(result))
+        stderr = result.stderr.decode("utf-8", "replace")
+        self.assertIn("fn: fault heap-probe-did-not-run exit=", stderr)
+        self.assertIn("datasize-kib=65536", stderr)
+        self.assertNotIn("refused", stderr)
+        self.assertEqual(result.stdout, b"")
 
 
 if __name__ == "__main__":

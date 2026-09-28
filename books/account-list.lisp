@@ -18,6 +18,8 @@
 ;   moderator LOGIN GROUP           (P3: LOGIN moderates GROUP)
 ;   moderation GROUP QUEUE [ADDRESS]
 ;   consumer NAME account LOGIN     (PRF-234, mark 6)
+;   deleted LOGIN                   (public-node-2, mark 7: the tombstone
+;                                    `account delete' leaves)
 ;   unknown                         (a mark no writer makes)
 ;
 ; Never a digest or a verifier.
@@ -35,6 +37,7 @@
           ((equal mark 4) :moderator)
           ((equal mark 5) :moderation)
           ((equal mark 6) :consumer)
+          ((equal mark 7) :deleted)
           (t :unknown))))
 
 (defun fn-acct-kind-word (kind)
@@ -46,6 +49,7 @@
         ((equal kind :moderator) "moderator ")
         ((equal kind :moderation) "moderation ")
         ((equal kind :consumer) "consumer ")
+        ((equal kind :deleted) "deleted ")
         (t "unknown")))
 
 (defun fn-acct-list-text (x)
@@ -85,6 +89,7 @@
         ((equal kind :consumer)
          (concatenate 'string (fn-acct-list-text (fn-cfg-row-a row))
                       " account " (fn-acct-list-text (fn-cfg-row-b row))))
+        ((equal kind :deleted) (fn-acct-list-text (fn-cfg-row-b row)))
         (t "")))
 
 (defun fn-acct-list-line (row)

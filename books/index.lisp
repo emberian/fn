@@ -106,13 +106,34 @@
    (fn-article-memberships article)))
 (verify-guards fn-index-article-entries)
 
+; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
+; retained article on the owner's open.  The :logic is the recursion,
+; unchanged; the :exec is a loop, equal by the guard proof.
+(defun fn-index-build-loop (rev acc)
+  (declare (xargs :guard t))
+  (if (consp rev)
+      (fn-index-build-loop (cdr rev) (append (fn-index-article-entries (car rev)) acc))
+    acc))
+
 (defun fn-index-build (articles)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp articles)
-      (append (fn-index-article-entries (car articles))
-              (fn-index-build (cdr articles)))
-    nil))
-(verify-guards fn-index-build)
+  (mbe :logic
+       (if (consp articles)
+           (append (fn-index-article-entries (car articles))
+                   (fn-index-build (cdr articles)))
+         nil)
+       :exec (fn-index-build-loop (fn-ag-rev-onto articles nil) nil)))
+
+(encapsulate ()
+  (local
+   (defthm fn-index-build-loop-of-rev-onto
+     (equal (fn-index-build-loop (fn-ag-rev-onto xs zs) nil)
+            (fn-index-build-loop zs (fn-index-build xs)))
+     :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                     :in-theory (disable fn-index-article-entries)))))
+  (verify-guards fn-index-build
+    :hints (("Goal" :in-theory (disable fn-index-article-entries fn-ag-rev-onto)
+                    :use ((:instance fn-index-build-loop-of-rev-onto (xs articles) (zs nil)))))))
 
 (defun fn-index-rebuild (st)
   (declare (xargs :guard (fn-statep st) :verify-guards nil))

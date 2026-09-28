@@ -65,19 +65,41 @@
            (fn-node-binding-id stringp))
   :recognizer-verify-guards nil)
 
+; The two identity lists execute by loops (PKT-876, lane open-depth): one
+; control-stack frame per binding -- per retained article -- in the node
+; recognizer a full-replay open runs (fn-cnode-statep, fn-sco-cpr-finish),
+; which the installed launcher's 1,024 KiB stack does not hold past about
+; 30,000 articles.  The :logic is the recursion, unchanged; the :exec
+; reverses an accumulator twin, equal by the guard proof below.
+(defun fn-node-binding-msgids-rev (xs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp xs)
+      (fn-node-binding-msgids-rev (cdr xs) (cons (fn-node-binding-msgid (car xs)) acc))
+    acc))
+
 (defun fn-node-binding-msgids (xs)
   (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (cons (fn-node-binding-msgid (car xs))
+                 (fn-node-binding-msgids (cdr xs)))
+         nil)
+       :exec (reverse (fn-node-binding-msgids-rev xs nil))))
+
+(defun fn-node-binding-ids-rev (xs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp xs)
-      (cons (fn-node-binding-msgid (car xs))
-            (fn-node-binding-msgids (cdr xs)))
-    nil))
+      (fn-node-binding-ids-rev (cdr xs) (cons (fn-node-binding-id (car xs)) acc))
+    acc))
 
 (defun fn-node-binding-ids (xs)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp xs)
-      (cons (fn-node-binding-id (car xs))
-            (fn-node-binding-ids (cdr xs)))
-    nil))
+  (mbe :logic
+       (if (consp xs)
+           (cons (fn-node-binding-id (car xs))
+                 (fn-node-binding-ids (cdr xs)))
+         nil)
+       :exec (reverse (fn-node-binding-ids-rev xs nil))))
 
 ; Every element a binding, the list NIL-terminated.
 (defun fn-node-binding-list-shapep (xs)
@@ -433,8 +455,39 @@
 ; by opening it.
 (verify-guards fn-node-stagep)
 (verify-guards fn-node-bindingp)
-(verify-guards fn-node-binding-msgids)
-(verify-guards fn-node-binding-ids)
+(encapsulate ()
+  (local
+   (defthm fn-node-binding-msgids-rev-is-revappend
+     (equal (fn-node-binding-msgids-rev xs acc)
+            (revappend (fn-node-binding-msgids xs) acc))
+     :hints (("Goal" :in-theory (disable fn-node-binding-msgid)))))
+  (local
+   (defthm fn-node-binding-ids-rev-is-revappend
+     (equal (fn-node-binding-ids-rev xs acc)
+            (revappend (fn-node-binding-ids xs) acc))
+     :hints (("Goal" :in-theory (disable fn-node-binding-id)))))
+  (local
+   (defthm fn-node-revappend-revappend
+     (equal (revappend (revappend x y) z)
+            (revappend y (append x z)))))
+  (local
+   (defthm fn-node-true-listp-of-binding-msgids
+     (true-listp (fn-node-binding-msgids xs))))
+  (local
+   (defthm fn-node-true-listp-of-binding-ids
+     (true-listp (fn-node-binding-ids xs))))
+  (local
+   (defthm fn-node-append-nil-when-true-listp
+     (implies (true-listp x) (equal (append x nil) x))))
+  (local
+   (defthm fn-node-true-listp-of-revappend
+     (implies (true-listp y) (true-listp (revappend x y)))))
+  (verify-guards fn-node-binding-msgids-rev)
+  (verify-guards fn-node-binding-ids-rev)
+  (verify-guards fn-node-binding-msgids
+    :hints (("Goal" :in-theory (disable fn-node-binding-msgid))))
+  (verify-guards fn-node-binding-ids
+    :hints (("Goal" :in-theory (disable fn-node-binding-id)))))
 (verify-guards fn-node-binding-list-shapep)
 (verify-guards fn-node-binding-listp
   :hints (("Goal" :use fn-node-binding-listp-is-shape-and-distinct)))

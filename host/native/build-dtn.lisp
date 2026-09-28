@@ -258,6 +258,9 @@
         (load "host/native/io.lisp")
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
+        ; The LZ4 block encoder of the compressed append (lib/libfn-lz4;
+        ; untrusted: ACL2's proved decoder checks every candidate).
+        (load "host/native/lz4.lisp")
         ; Select once during construction, before any diagnostic module loads.
         ; A restart-time FN_NATIVE_PROFILE cannot promote this saved image.
         (fnn-select-image-profile)
@@ -279,6 +282,7 @@
         (fnn-digest-reset)
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
+        (fnn-lz4-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
           (fnn-crypto-startup)
@@ -287,6 +291,8 @@
           (fnn-digest-startup)
           (fnn-hsig-reset)
           (fnn-hsig-initialize)
+          (fnn-lz4-reset)
+          (fnn-lz4-initialize)
           (fnn-main)
           (values nil :exited *the-live-state*))
         (load "host/native/immutable-publish.lisp")
@@ -331,6 +337,10 @@
         (setq *print-startup-banner* nil))
 (defttag nil)
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
+;; Every thread's control stack, ACL2's figure (books/heap-reservation.lisp):
+;; tools/build_native_host.sh writes it into the saved launcher, so a run of
+;; the image outside the installed launcher has the deployed stack (PKT-876).
+(value-triple (prog2$ (cw "FN_NATIVE_STACK_KIB ~x0~%" (fn-heap-stack-kib nil)) :stack))
 
 :q
 ; The saved world (HST-025, host/native/strip-world.lisp).  FN_NATIVE_WORLD

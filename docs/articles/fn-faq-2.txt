@@ -1,11 +1,11 @@
 From: fn <docs@fn.fg-goose.online>
 Newsgroups: fn.docs
 Subject: fn FAQ, part 2: reading and posting
-Date: Sun, 27 Sep 2026 12:02:00 +0000
-Message-ID: <fn-faq-2-20260927@fn.fg-goose.online>
+Date: Mon, 28 Sep 2026 12:02:00 +0000
+Message-ID: <fn-faq-2-20260928@fn.fg-goose.online>
 Archive-name: fn-faq/part2
 Posting-Frequency: when fn changes
-Last-modified: 2026-09-27
+Last-modified: 2026-09-28
 Summary: Newsreaders, the web reader, and cancelling your own post.
 
 Any newsreader with TLS works.
@@ -30,15 +30,64 @@ mode 0600. Then:
 
 *Cancel:* Your reader's cancel withdraws your own post everywhere.
 
-*The web reader:* tools/fn_web.py in fn's source; Python 3 only. It
-uses STARTTLS on port 119, never 563:
+*The web page:* the node serves one itself, if its operator turned
+it on. Open the address they gave you in any browser. Part 11.
 
-    git clone https://github.com/emberian/fn ~/fn
-    cd ~/fn
-    python3 tools/fn_web.py --node news.example.org:119 \
-        --tls-cert cert.pem --user carol --outbox ~/.fn-web/outbox
+[generated from books/protocol-table.lisp; do not edit]
 
-Then open http://127.0.0.1:8919/. If a post comes back uncertain,
-press "Re-send this same article". Never post it again as new.
+*Commands:* what fn answers, from its protocol table. A * needs a login
+where the node requires one (480 otherwise).
+
+- CAPABILITIES (RFC 3977 5.2): What this node offers you now, as a list
+  of labels.
+- HELP (RFC 3977 7.2): The commands this node answers, one per line.
+- MODE (RFC 3977 5.3; RFC 4644 2.3 (MODE STREAM)): MODE READER says
+  whether you may post; peers use MODE STREAM.
+- QUIT (RFC 3977 5.4): Ends the connection.
+- GROUP * (RFC 3977 6.1.1): Selects a group; answers its count and first
+  and last numbers.
+- LISTGROUP * (RFC 3977 6.1.2): Selects a group and lists its article
+  numbers, optionally a range.
+- LAST * (RFC 3977 6.1.3): Moves to the previous article in the group.
+- NEXT * (RFC 3977 6.1.4): Moves to the next article in the group.
+- ARTICLE * (RFC 3977 6.2.1): Sends a whole article, by number, by
+  Message-ID, or the current one.
+- HEAD * (RFC 3977 6.2.2): Sends an article's header.
+- BODY * (RFC 3977 6.2.3): Sends an article's body.
+- STAT * (RFC 3977 6.2.4): Says whether an article exists, and moves to
+  it by number.
+- OVER * (RFC 3977 8.3): Overview lines (subject, author, date, ids,
+  size) for a range.
+- XOVER * (RFC 2980 2.8): OVER's older spelling.
+- HDR * (RFC 3977 8.5): One header field for a range; also :fn-verified,
+  :fn-control and :fn-enrollment.
+- XHDR * (RFC 2980 2.6): HDR's older spelling.
+- XPAT * (RFC 2980 2.9): XHDR filtered by a wildmat on the field's
+  content.
+- LIST * (RFC 3977 7.6; RFC 6048): Lists groups and server data; the
+  second word names which.
+- NEWGROUPS * (RFC 3977 7.3): Groups created since a date and time
+  (UTC).
+- NEWNEWS * (RFC 3977 7.4): Message-IDs of articles accepted since a
+  date, in matching groups.
+- DATE (RFC 3977 7.1): The node's clock, in UTC.
+- POST * (RFC 3977 6.3.1; RFC 5537 3.5): Sends an article; 340 asks for
+  it, 240 means it is stored.
+- IHAVE (RFC 3977 6.3.2): A peer offers an article by Message-ID (peers
+  only).
+- CHECK (RFC 4644 2.3): A streaming peer asks whether an article is
+  wanted (peers only).
+- TAKETHIS (RFC 4644 2.4): A streaming peer sends an article (peers
+  only).
+- AUTHINFO (RFC 4643 2.3): Logs in: AUTHINFO USER name, then AUTHINFO
+  PASS password.
+- STARTTLS (RFC 4642 2.2): Turns on TLS on this connection before you
+  log in.
+- XREDEEM (fn extension, PRF-164): Redeems an invitation code for a
+  login.
+- XFNCATCHUP * (fn extension, PRF-325): A peer's batched catch-up over
+  the articles it may read (peers only).
+
+[end of generated text]
 
 *Go deeper:* part 8, for programs.

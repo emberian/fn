@@ -134,6 +134,20 @@ class ScanTests(unittest.TestCase):
         self.assertIn("unknown kind XYZ", err.getvalue())
         self.assertEqual(next_id.default_lane(mine), "mine")
 
+    def test_an_unknown_subcommand_is_a_loud_usage_error_not_the_listing(self):
+        mine = self.repo.lane("mine")
+        with mock.patch.object(next_id, "ROOT", mine), \
+                mock.patch.object(next_id, "show") as listing, \
+                contextlib.redirect_stdout(io.StringIO()) as out, \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            with self.assertRaises(SystemExit) as stop:
+                next_id.main(["clam", "PRF", "--lane", "m", "--note", "n"])
+        self.assertEqual(stop.exception.code, 2)
+        listing.assert_not_called()
+        self.assertEqual(out.getvalue(), "")
+        self.assertIn("invalid choice: 'clam'", err.getvalue())
+        self.assertIn("may predate", err.getvalue())
+
     def test_with_no_ledger_a_box_is_told_the_laptop_command(self):
         with tempfile.TemporaryDirectory() as bare:
             with mock.patch.object(next_id, "ROOT", Path(bare)), \

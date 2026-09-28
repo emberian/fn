@@ -188,7 +188,7 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         self.assertEqual(len(codes), 1, text(result))
         return codes[0].decode("ascii")
 
-    def fn_redeem(self, *words, password="correct-horse"):
+    def fn_redeem(self, *words, password="correct-horse"):  # FAKE-SECRET: a test fixture's password
         # `fn redeem` (the stranger rehearsal's stop 10): no openssl, no
         # hand-typed XREDEEM.  The password comes on standard input.
         return subprocess.run([*self.image, "redeem", *words], cwd=ROOT,
@@ -225,6 +225,58 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         self.assertIn(b"refused redeem tls: ", untrusted.stderr)
         self.assertNotIn(b"redeemed", untrusted.stdout)
         self.stop()
+
+    def capabilities(self, stream):
+        stream.write(b"CAPABILITIES\r\n")
+        first = stream.readline()
+        self.assertTrue(first.startswith(b"101"), first)
+        lines = []
+        while True:
+            line = stream.readline().rstrip(b"\r\n")
+            if line == b".":
+                return lines
+            lines.append(line)
+
+    def test_authinfo_is_offered_after_starttls_before_any_account(self):
+        # The public node's deploy finding D1 (RFC 4643 s2.2), in its
+        # configuration: protected_only, `policy set anonymous none`, no
+        # auth.toml and no account redeemed yet.  In clear, STARTTLS and no
+        # AUTHINFO; after STARTTLS, and on the TLS port, AUTHINFO USER
+        # (books/nntp-auth.lisp fn-auth-access-capability-lines: a login is
+        # required, so the mechanism is offered with no credential yet).
+        self.ok(self.node, "policy", "set", "anonymous", "none")
+        self.start(self.node)
+        raw = socket.create_connection(("127.0.0.1", self.port), timeout=60)
+        clear = raw.makefile("rwb", buffering=0)
+        clear.readline()
+        listed = self.capabilities(clear)
+        self.assertIn(b"STARTTLS", listed)
+        self.assertNotIn(b"AUTHINFO USER", listed)
+        clear.write(b"STARTTLS\r\n")
+        self.assertTrue(clear.readline().startswith(b"382"))
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        secured = whole_stream(context.wrap_socket(raw))
+        listed = self.capabilities(secured)
+        self.assertIn(b"AUTHINFO USER", listed)
+        self.assertNotIn(b"STARTTLS", listed)
+        self.assertIn(b"AUTHINFO USER", self.capabilities(self.tls()))
+        self.stop()
+
+    def test_fn_redeem_to_an_unreachable_node_is_uncertain_never_refused(self):
+        # The OpenBSD rehearsal's finding 8 (packet C): nothing listens on
+        # the port.  ACL2's fn-redeem-lost at :connect, exit 3 (fenced), the
+        # words say unreachable, and no password prompt is printed when the
+        # password comes on standard input.
+        closed = free_port()
+        lost = self.fn_redeem("127.0.0.1:{}".format(closed), "0" * 32, "wren", "--tls",
+                              "--cafile", str(self.root / "cert.pem"))
+        self.assertEqual(lost.returncode, 3, text(lost))
+        self.assertIn(b"unreachable redeem: ", lost.stderr)
+        self.assertNotIn(b"refused redeem", lost.stderr)
+        self.assertNotIn(b"Password for the new account", lost.stderr)
+        self.assertEqual(lost.stdout, b"")
 
     def test_a_friend_redeems_a_code_once_across_a_crash(self):
         self.start(self.node)

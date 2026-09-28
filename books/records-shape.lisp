@@ -87,24 +87,89 @@
 ; -----------------------------------------------------------------------------
 ; Exact string/octet domains
 
-(defun fn-record-string-octets-aux (chars)
-  (declare (xargs :guard (character-listp chars)))
+;
+; Both conversions below execute by a loop (PKT-693, lane thread-stacks).
+; Their logical definitions recurse once per character or octet, and so did
+; their execution: on a node thread's 1,024 KB control stack a conversion of
+; about 80,000 octets exhausted it and stopped the thread (lane feed-queue,
+; 2026-09-27; the `operator CONFIG obligations' stop of the openbsd
+; rehearsal).  Each now carries an `mbe' whose :logic is the recursion,
+; unchanged, and whose :exec reverses an accumulator twin; guard verification
+; proves the two equal (the twin is `revappend' of the recursion).
+(defun fn-record-string-octets-rev (chars acc)
+  (declare (xargs :guard (and (character-listp chars) (true-listp acc))))
   (if (consp chars)
-      (cons (char-code (car chars))
-            (fn-record-string-octets-aux (cdr chars)))
-    nil))
+      (fn-record-string-octets-rev (cdr chars) (cons (char-code (car chars)) acc))
+    acc))
+
+(defun fn-record-string-octets-aux (chars)
+  (declare (xargs :guard (character-listp chars) :verify-guards nil))
+  (mbe :logic
+       (if (consp chars)
+           (cons (char-code (car chars))
+                 (fn-record-string-octets-aux (cdr chars)))
+         nil)
+       :exec (reverse (fn-record-string-octets-rev chars nil))))
+
+(encapsulate ()
+  (local
+   (defthm fn-record-string-octets-rev-is-revappend
+     (equal (fn-record-string-octets-rev chars acc)
+            (revappend (fn-record-string-octets-aux chars) acc))))
+  (local
+   (defthm fn-record-revappend-revappend-octets
+     (equal (revappend (revappend x y) z)
+            (revappend y (append x z)))))
+  (local
+   (defthm fn-record-true-listp-of-string-octets-aux
+     (true-listp (fn-record-string-octets-aux chars))))
+  (local
+   (defthm fn-record-append-nil-when-true-listp-octets
+     (implies (true-listp x) (equal (append x nil) x))))
+  (local
+   (defthm fn-record-true-listp-of-revappend-octets
+     (implies (true-listp y) (true-listp (revappend x y)))))
+  (verify-guards fn-record-string-octets-aux))
 
 (defun fn-record-string-octets (text)
   (if (stringp text)
       (fn-record-string-octets-aux (coerce text 'list))
     nil))
 
-(defun fn-record-octets-chars (octets)
-  (declare (xargs :guard (fn-cbor-octet-listp octets)))
+(defun fn-record-octets-chars-rev (octets acc)
+  (declare (xargs :guard (and (fn-cbor-octet-listp octets) (true-listp acc))))
   (if (consp octets)
-      (cons (code-char (car octets))
-            (fn-record-octets-chars (cdr octets)))
-    nil))
+      (fn-record-octets-chars-rev (cdr octets) (cons (code-char (car octets)) acc))
+    acc))
+
+(defun fn-record-octets-chars (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
+  (mbe :logic
+       (if (consp octets)
+           (cons (code-char (car octets))
+                 (fn-record-octets-chars (cdr octets)))
+         nil)
+       :exec (reverse (fn-record-octets-chars-rev octets nil))))
+
+(encapsulate ()
+  (local
+   (defthm fn-record-octets-chars-rev-is-revappend
+     (equal (fn-record-octets-chars-rev octets acc)
+            (revappend (fn-record-octets-chars octets) acc))))
+  (local
+   (defthm fn-record-revappend-revappend-chars
+     (equal (revappend (revappend x y) z)
+            (revappend y (append x z)))))
+  (local
+   (defthm fn-record-true-listp-of-octets-chars
+     (true-listp (fn-record-octets-chars octets))))
+  (local
+   (defthm fn-record-append-nil-when-true-listp-chars
+     (implies (true-listp x) (equal (append x nil) x))))
+  (local
+   (defthm fn-record-true-listp-of-revappend-chars
+     (implies (true-listp y) (true-listp (revappend x y)))))
+  (verify-guards fn-record-octets-chars))
 
 (defun fn-record-octets-string (octets)
   (if (fn-cbor-octet-listp octets)

@@ -527,3 +527,14 @@
  (not (fn-memberships-at-watermarkp
        (fn-allocate-memberships *acc-teeth-dup-groups* *acc-teeth-nexts-one*)
        *acc-teeth-nexts-one*)))
+
+; fn-article-msgids by a loop (PKT-693, PRF-345): the :exec branch executes
+; here, in order, over a list of 50,000 articles.
+(defconst *acc-many-articles*
+  (make-list 50000 :initial-element (fn-make-article "<m@x>" 0 nil nil t 0)))
+(assert-event (equal (fn-article-msgids
+                      (list (fn-make-article "<a@x>" 0 nil nil t 0)
+                            (fn-make-article "<b@x>" 0 nil nil t 0)))
+                     '("<a@x>" "<b@x>")))
+(assert-event (equal (fn-article-msgids nil) nil))
+(assert-event (equal (len (fn-article-msgids *acc-many-articles*)) 50000))

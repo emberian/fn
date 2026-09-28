@@ -355,13 +355,42 @@
 ;; keyring builds the empty index directly (fn-stx-index-of-store-without-a-
 ;; keyring: no statement verifies without a key, whatever the payloads).
 (fn-payload-kind fn-stx-index-of-store :wire "its articles are the octet model's; opens pass rows' bytes, or no keyring and build (fn-stx-index-empty)")
-(defun fn-stx-index-of-store (articles keyring)
+; Executes by a loop (PKT-876, lane open-depth): the right fold ran one
+; control-stack frame per article.  The :exec folds the reversed list from
+; the left, the same additions in the same order; equal by the guard proof.
+(fn-payload-kind fn-stx-index-of-store-loop :wire "fn-stx-index-of-store's loop twin: the same articles")
+(defun fn-stx-index-of-store-loop (rev keyring index)
   (declare (xargs :guard (fn-prin-keyringp keyring)))
-  (if (consp articles)
-      (fn-stx-index-add (fn-stx-index-of-store (cdr articles) keyring)
-                        (fn-stx-delta (fn-article-payload (car articles))
-                                      keyring))
-    (fn-stx-index-empty)))
+  (if (consp rev)
+      (fn-stx-index-of-store-loop (cdr rev) keyring
+                                  (fn-stx-index-add index
+                                                    (fn-stx-delta (fn-article-payload (car rev))
+                                                                  keyring)))
+    index))
+
+(defun fn-stx-index-of-store (articles keyring)
+  (declare (xargs :guard (fn-prin-keyringp keyring) :verify-guards nil))
+  (mbe :logic
+       (if (consp articles)
+           (fn-stx-index-add (fn-stx-index-of-store (cdr articles) keyring)
+                             (fn-stx-delta (fn-article-payload (car articles))
+                                           keyring))
+         (fn-stx-index-empty))
+       :exec (fn-stx-index-of-store-loop (fn-ag-rev-onto articles nil) keyring
+                                         (fn-stx-index-empty))))
+
+(encapsulate ()
+  (local
+   (defthm fn-stx-index-of-store-loop-of-rev-onto
+     (equal (fn-stx-index-of-store-loop (fn-ag-rev-onto xs zs) keyring (fn-stx-index-empty))
+            (fn-stx-index-of-store-loop zs keyring (fn-stx-index-of-store xs keyring)))
+     :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                     :in-theory (disable fn-stx-index-add fn-stx-delta fn-stx-index-empty
+                                         (:e fn-stx-index-empty))))))
+  (verify-guards fn-stx-index-of-store
+    :hints (("Goal" :in-theory (disable fn-stx-index-add fn-stx-delta fn-ag-rev-onto)
+                    :use ((:instance fn-stx-index-of-store-loop-of-rev-onto
+                                     (xs articles) (zs nil)))))))
 
 ;; KEYSTONE (PKT-859).  Without a keyring no statement verifies, so the
 ;; index of ANY article list -- handles, octets, anything -- is the empty

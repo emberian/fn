@@ -144,3 +144,58 @@
  (fn-auth-session-handshakingp
   (fn-served-conn-session
    (fn-served-result-conn (in-arena-fn-served-dispatch *sr-arena* (sit-open *sit-acfg*) *fn-sit-starttls-event*)))))
+
+; ---------------------------------------------------------------------------
+; The STARTTLS-then-CAPABILITIES transcript (public-node-2, D1), over the
+; served dispatch the owner calls, on *sit-acfg*: the configuration the
+; public node fn.fg-goose.online runs before its first account is redeemed
+; (anonymous none, protected-only, a certificate, no credential).  Subject:
+; fn-auth-authinfo-is-advertised-exactly-when-a-login-is-offered-on-any-connection.
+(defun sit-octets-list (lines)
+  (if (consp lines)
+      (cons (fn-nntp-string-octets (car lines)) (sit-octets-list (cdr lines)))
+    nil))
+
+(defun sit-caps (conn lines)
+  (fn-nntp-result-effects
+   (fn-nntp-multi (fn-auth-reader-session (fn-served-conn-session conn))
+                  "101 capability list follows"
+                  (sit-octets-list lines))))
+
+(defconst *sit-reader-caps*
+  '("VERSION 2" "READER" "OVER MSGID" "HDR" "XPAT" "NEWNEWS"
+    "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT"
+    "IMPLEMENTATION fn-nntp-lab"))
+
+; In clear: STARTTLS is offered and AUTHINFO USER is not (483 territory).
+(assert-event
+ (equal (in-arena-sit-command *sr-arena* (sit-open *sit-acfg*) "CAPABILITIES")
+        (sit-caps (sit-open *sit-acfg*)
+                  (append *sit-reader-caps* '("STARTTLS")))))
+; After STARTTLS and the handshake: AUTHINFO USER is offered and STARTTLS is
+; not, with no credential in the configuration.  Before D1 the block ended at
+; IMPLEMENTATION and a newsreader that gates its login on the label had none.
+(assert-event
+ (equal (in-arena-sit-command *sr-arena* (in-arena-sit-starttls *sr-arena* *sit-acfg*)
+                              "CAPABILITIES")
+        (sit-caps (in-arena-sit-starttls *sr-arena* *sit-acfg*)
+                  (append *sit-reader-caps* '("AUTHINFO USER")))))
+; And the label's promise holds on that connection: AUTHINFO USER is 381.
+(assert-event
+ (equal (in-arena-sit-command *sr-arena* (in-arena-sit-starttls *sr-arena* *sit-acfg*)
+                              "AUTHINFO USER probe")
+        (fn-nntp-result-effects
+         (sit-reply (in-arena-sit-starttls *sr-arena* *sit-acfg*)
+                    "381 password required"))))
+; The separating case: a configuration that requires nothing and holds no
+; credential offers no login after the handshake either.
+(defconst *sit-open-tls* (fn-auth-make-config nil t t nil))
+(assert-event
+ (equal (in-arena-sit-command *sr-arena* (in-arena-sit-starttls *sr-arena* *sit-open-tls*)
+                              "CAPABILITIES")
+        (sit-caps (in-arena-sit-starttls *sr-arena* *sit-open-tls*)
+                  (append '("VERSION 2" "READER" "POST" "OVER MSGID" "HDR" "XPAT"
+                            "NEWNEWS"
+                            "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT"
+                            "IMPLEMENTATION fn-nntp-lab")
+                          nil))))

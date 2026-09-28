@@ -33,12 +33,15 @@ import signal
 import socket
 import stat
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
 from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+import release_sequence  # noqa: E402
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
 # tools/hbox_native.sh sets no FN_NATIVE_HOST: take the developer image it
 # built, else the production one.
@@ -193,8 +196,13 @@ class NativeFriendsFeedTests(unittest.TestCase):
             if command is self.friend and FRIEND_FN:
                 self.assertEqual(version.returncode, EXIT_OK, text(version))
             if version.returncode == EXIT_OK:
-                self.assertRegex(version.stdout.decode(),
-                                 r"^fn 6\.7\.(0|[1-9][0-9]*) \([0-9a-f]{12}\)\n$")
+                # Any release of the D37 sequence (tools/release_sequence.py):
+                # the friend's fn may be an installed release, not the tree's
+                # VERSION; never a numeric pattern (6.6.0 comes before 6.7.x).
+                printed = re.fullmatch(r"fn ([0-9]+(?:\.[0-9]+)+) \(([0-9a-f]{12})\)\n",
+                                       version.stdout.decode())
+                self.assertIsNotNone(printed, version.stdout)
+                release_sequence.position(printed.group(1))
             else:
                 self.assertEqual(version.returncode, EXIT_REFUSED, text(version))
                 self.assertIn("records no source revision", text(version))

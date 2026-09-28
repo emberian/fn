@@ -31,6 +31,12 @@ imports the ledger's reader and adds the evaluation the ledger may not do.
     python3 tools/teeth_check.py --summary        # the counts `make check` prints
     python3 tools/teeth_check.py --table          # macro-generated teeth, marked apart
 
+DEFKEYSTONE.  `(defkeystone NAME ...)` (books/defkeystone.lisp) is the one
+macro from another book this tool expands, through the ledger's
+`defkeystone_expansion`: its positive, removal, mutant and corrupted-state
+witnesses are read as the assert-events they expand to, and `--table` lists
+its keystone and its must-fails with MACRO `defkeystone`.
+
 MACRO-GENERATED TEETH.  A book may write its witnesses through a `defmacro`
 that expands to one `defthm` -- `feed-connection-teeth-tests.lisp` admits a
 keystone once through such a macro and then calls it again under `must-fail`,
@@ -349,6 +355,12 @@ def read_book(path: Path) -> tuple[list[Assertion], list[str], str | None]:
                     predicate=head(claim)))
             assertions.append(record)
             return
+        if name == "defkeystone" and isinstance(form, list):
+            # books/defkeystone.lisp: its witnesses are assert-events of the
+            # expansion, which the ledger reads without evaluating anything.
+            for item in ledger.defkeystone_expansion(form):
+                walk(item, line)
+            return
         if name in TRANSPARENT and isinstance(form, list):
             for item in form[1:]:
                 walk(item, line)
@@ -526,6 +538,19 @@ def macro_teeth_for_book(path: Path) -> tuple[list[MacroTooth], dict[str, MacroI
         if head(form) == "defmacro":
             continue
         call, wrapped = unwrap_call(form)
+        if head(call) == "defkeystone" and not wrapped:
+            # The one macro from ANOTHER book this reader expands: its
+            # expansion is ledger.defkeystone_expansion, pinned to the Lisp
+            # macro's by tests/acl2/defkeystone-tests.lisp.
+            parts = ledger.defkeystone_parts(call)
+            if parts is not None:
+                names = ledger.defkeystone_names(parts)
+                teeth.append(MacroTooth(book=book, line=line, macro="defkeystone",
+                                        theorem=names["keystone"][0], kind="witness"))
+                for theorem in names["without"] + names["mutant"]:
+                    teeth.append(MacroTooth(book=book, line=line, macro="defkeystone",
+                                            theorem=theorem, kind="must-fail"))
+            continue
         info = macros.get(head(call))
         if info is None or call is None:
             continue
@@ -576,7 +601,7 @@ def macro_teeth_totals(macro_teeth: dict[str, list[MacroTooth]]) -> dict[str, in
 def prover_refusals() -> list[tuple[str, int, str]]:
     """(book, line, reason) for each `must-fail' its test book labels
     `; teeth: prover-refusal REASON' (ledger.PROVER_REFUSAL, PKT-341)."""
-    tree = ledger.load_tree()
+    tree = ledger.load_tree(lazy=True)
     return [(path, line, reason) for path, book in sorted(tree.books.items())
             for line, reason in book.prover_refusals]
 
@@ -584,7 +609,7 @@ def prover_refusals() -> list[tuple[str, int, str]]:
 def literal_must_fails(book: str, generated_lines: set[int]) -> list[tuple[int, str]]:
     """This book's own top-level `must-fail` forms that no local macro
     produced, for `--table` to set beside the macro-generated ones."""
-    tree = ledger.load_tree()
+    tree = ledger.load_tree(lazy=True)
     info = tree.books.get(book)
     if info is None:
         return []
@@ -987,7 +1012,7 @@ def macro_names() -> set[str]:
     global _MACROS
     if _MACROS is None:
         found: set[str] = set()
-        for book in ledger.load_tree().books.values():
+        for book in ledger.load_tree(lazy=True).books.values():
             found |= book.macros
         _MACROS = found
     return _MACROS
@@ -1016,7 +1041,7 @@ def defined_names() -> set[str]:
     """Every name `books/` and `tests/acl2/` bring into a world, cached."""
     global _DEFINED
     if _DEFINED is None:
-        tree = ledger.load_tree()
+        tree = ledger.load_tree(lazy=True)
         names: set[str] = set()
         for book in tree.books.values():
             names |= book.definitions
@@ -1275,7 +1300,7 @@ def hypothesis_coverage() -> tuple[int, int]:
     is witnessing, which is the second.  The gap is the honest figure and it
     is printed rather than turned into findings nobody can act on one by one.
     """
-    tree = ledger.load_tree()
+    tree = ledger.load_tree(lazy=True)
     statements = {theorem.name: theorem.statement
                   for book in tree.books.values() for theorem in book.theorems}
     registry = json.loads(PROOFS.read_text(encoding="utf-8"))
@@ -1299,7 +1324,7 @@ def hypothesis_teeth() -> list[Finding]:
     machine does.  This counts; it cannot tell WHICH hypothesis a witness is
     for, so it is a floor and not a verdict.
     """
-    tree = ledger.load_tree()
+    tree = ledger.load_tree(lazy=True)
     statements = {theorem.name: theorem.statement
                   for book in tree.books.values() for theorem in book.theorems}
     registry = json.loads(PROOFS.read_text(encoding="utf-8"))
@@ -1328,7 +1353,7 @@ def hypothesis_teeth() -> list[Finding]:
 def registry_findings(books: dict[str, list[Assertion]]) -> list[Finding]:
     """Keystones with no witness, and cited names the tree no longer defines."""
     out: list[Finding] = []
-    tree = ledger.load_tree()
+    tree = ledger.load_tree(lazy=True)
     defined: set[str] = set()
     for book in tree.books.values():
         defined |= book.definitions
@@ -1507,6 +1532,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("books", nargs="*",
                         help="test books to consider (default: all)")
+    parser.add_argument("--book", action="append", default=[], metavar="PATH",
+                        help="the same as a positional BOOK (repeatable): with --summary "
+                             "the counts, refusals and hypothesis coverage are this "
+                             "book's alone")
     parser.add_argument("--evaluate", action="store_true",
                         help="run one ACL2 per book and save the probe values")
     parser.add_argument("--report", action="store_true",
@@ -1530,6 +1559,7 @@ def main(argv: list[str] | None = None) -> int:
                              "recogniser against every constant its book "
                              "defines, and print the ones it accepts")
     arguments = parser.parse_args(argv)
+    arguments.books = list(arguments.books) + list(arguments.book)
 
     paths = test_books(arguments.books)
     assertions, constants, errors = load_books(paths)
@@ -1619,16 +1649,20 @@ def main(argv: list[str] | None = None) -> int:
                   f"{macro_totals['books']} test book(s), invisible to a "
                   f"literal count of `must-fail`; --table marks them apart "
                   f"from literal ones")
-        refusals = prover_refusals()
-        literal = sum(book.must_fails for book in ledger.load_tree().books.values())
+        chosen = ({p.relative_to(ROOT).as_posix() for p in paths}
+                  if arguments.books else None)
+        refusals = [r for r in prover_refusals() if chosen is None or r[0] in chosen]
+        literal = sum(book.must_fails for path, book in ledger.load_tree(lazy=True).books.items()
+                      if chosen is None or path in chosen)
         print(f"teeth: {literal} must-fail(s), of which {len(refusals)} labelled "
               f"prover-refusal (proof search refused; no counter-witness, so not "
               f"a necessity witness){': ' if refusals else ''}"
               + ", ".join(f"{book}:{line}" for book, line, _ in refusals))
-        total, cited = hypothesis_coverage()
-        print(f"teeth: {total} keystones have two or more hypotheses and a "
-              f"test book names {cited} of them, so one-must-fail-per-"
-              f"hypothesis is unchecked for {total - cited}")
+        if chosen is None:  # corpus-wide by nature (every registry keystone)
+            total, cited = hypothesis_coverage()
+            print(f"teeth: {total} keystones have two or more hypotheses and a "
+                  f"test book names {cited} of them, so one-must-fail-per-"
+                  f"hypothesis is unchecked for {total - cited}")
         for check, number in sorted(by_check.items()):
             print(f"teeth: {number} {check}")
         if not by_check:

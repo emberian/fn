@@ -211,7 +211,13 @@ def main():
     gen = os.path.join(a.seed, "journal", "000000.log")
     if os.path.exists(os.path.join(a.seed, "store-checkpoint.fnsc")) or \
        sorted(os.listdir(os.path.join(a.seed, "journal"))) != ["000000.log", "000001.log"]:
-        raise SystemExit("seed: expected the genesis, one segment and no checkpoint (format 10)")
+        raise SystemExit("seed: expected the genesis and one segment (journal/000000.log, "
+                         "000001.log; format 10) and no checkpoint; found journal/ %s%s (a seed "
+                         "whose owner checkpointed has rotated its log: initialize it with "
+                         "--max-open-suffix above its record count)"
+                         % (sorted(os.listdir(os.path.join(a.seed, "journal"))),
+                            " and store-checkpoint.fnsc" if os.path.exists(
+                                os.path.join(a.seed, "store-checkpoint.fnsc")) else ""))
     genesis = genesis_trailer(gen)
     raws = read_entries(seg, genesis)
     temps = [Template(r) for r in raws]

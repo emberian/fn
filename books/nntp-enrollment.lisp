@@ -34,6 +34,7 @@
 ; HEX is the verdict's principal in lowercase hex; N is decimal.
 (in-package "ACL2")
 (include-book "control-served")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "nntp-responses")
 (include-book "stx-reader")
 (include-book "hybrid-lifecycle")
@@ -146,14 +147,14 @@
            (fn-octet-listp (cadr args)))
       (let ((msgid (fn-nntp-token-string (cadr args))))
         (if (not (consp (fn-midx-lookup msgid (fn-gidx-pin-trie index))))
-            (fn-nntp-single session "430 no article with that message-id")
+            (fn-nntp-single session (fn-proto-text * :no-msgid))
           (fn-nntp-multi
            session (fn-nntp-hdr-initial nil)
            (list (fn-nntp-hdr-line
                   (fn-nntp-decimal-field 0)
                   (fn-enr-item (fn-stx-reader-lookup msgid verdicts)
                                (fn-gidx-pin-control index)))))))
-    (fn-nntp-single session "501 syntax error")))
+    (fn-nntp-single session (fn-proto-text * :syntax))))
 
 (defthm fn-nntp-enrollment-hdr-response-preserves-session
   (equal (fn-nntp-result-session

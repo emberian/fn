@@ -130,29 +130,23 @@ ceiling cannot hold KIND's worst-case encoded record."
 
 ; The committed record octets: the sum of the stored octets of the file
 ; kernel's records, counted exactly as `fn-sbud-used' counts the records.
-;; Executes by a loop (lane format10-import, PKT-693's pattern): `status'
-;; sums every committed record, and the recursion ran one control-stack frame
-;; per record (a 1,000,000-record store; the installed launcher's 1,024 KiB
-;; thread stack holds far fewer).  The :logic is the recursion, unchanged;
-;; `fn-sbud-record-octets-loop-is-the-sum' is the guard proof's equality.
-(defun fn-sbud-record-octets-loop (records acc)
+; Executes by a loop (PKT-876, lane open-depth): one frame per record, and
+; the owner reads it at start (fn-sbud-bytes-used).  The :logic is the
+; recursion, unchanged; equal by the guard proof below.
+(defun fn-sbud-record-octets-acc (records acc)
   (declare (xargs :guard (acl2-numberp acc) :verify-guards nil))
   (if (consp records)
-      (fn-sbud-record-octets-loop (cdr records) (+ (fn-sbud-row-octets (car records)) acc))
+      (fn-sbud-record-octets-acc (cdr records) (+ acc (fn-sbud-row-octets (car records))))
     acc))
 
 (defun fn-sbud-record-octets (records)
   (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp records)
-                  (+ (fn-sbud-row-octets (car records))
-                     (fn-sbud-record-octets (cdr records)))
-                0)
-       :exec (fn-sbud-record-octets-loop records 0)))
-
-(defthm fn-sbud-record-octets-loop-is-the-sum
-  (implies (acl2-numberp acc)
-           (equal (fn-sbud-record-octets-loop records acc)
-                  (+ acc (fn-sbud-record-octets records)))))
+  (mbe :logic
+       (if (consp records)
+           (+ (fn-sbud-row-octets (car records))
+              (fn-sbud-record-octets (cdr records)))
+         0)
+       :exec (fn-sbud-record-octets-acc records 0)))
 
 ; The memberships the committed records hold, and the bridge the heap
 ; figure uses: the budget's octets pay for every membership, so a store
@@ -567,11 +561,25 @@ count (O(1)), `fn-sbud-used' with no hypothesis."
 (verify-guards fn-store-event-encode)
 (verify-guards fn-sbud-row-octets)
 
-(verify-guards fn-sbud-record-octets-loop)
-(verify-guards fn-sbud-record-octets
-  :hints (("Goal" :in-theory (e/d (fn-sbud-record-octets-loop-is-the-sum)
-                                  (fn-sbud-record-octets fn-sbud-record-octets-loop))
-           :expand ((fn-sbud-record-octets records)))))
+(verify-guards fn-sbud-record-octets-acc)
+(encapsulate ()
+  (local
+   (defthm fn-sbud-plus-commute-2
+     (equal (+ a (+ b c)) (+ b (+ a c)))
+     :hints (("Goal" :in-theory (enable associativity-of-+ commutativity-of-+)
+                     :use ((:instance associativity-of-+ (x a) (y b) (z c))
+                           (:instance associativity-of-+ (x b) (y a) (z c))
+                           (:instance commutativity-of-+ (x a) (y b)))))))
+  (local
+   (defthm fn-sbud-record-octets-acc-is-plus
+     (implies (acl2-numberp acc)
+              (equal (fn-sbud-record-octets-acc records acc)
+                     (+ acc (fn-sbud-record-octets records))))
+     :hints (("Goal" :induct (fn-sbud-record-octets-acc records acc)
+                     :in-theory (enable fn-sbud-record-octets fn-sbud-record-octets-acc
+                                        associativity-of-+ commutativity-of-+)))))
+  (verify-guards fn-sbud-record-octets
+    :hints (("Goal" :in-theory (enable fn-sbud-record-octets)))))
 (verify-guards fn-sbud-bytes-used)
 (verify-guards fn-sbud-verdict)
 (verify-guards fn-sbud-headroom-at)

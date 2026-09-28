@@ -2,6 +2,7 @@
 ; accepted archive.  It never asks a current keyring to reverify an article.
 (in-package "ACL2")
 (include-book "nntp-responses")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "stx-reader")
 
 (defun fn-nntp-verdict-hdr-lines (group numbers articles verdicts)
@@ -23,13 +24,13 @@
   (let ((group (fn-nntp-session-group session))
         (current (fn-nntp-session-current session)))
     (if (null group)
-        (fn-nntp-single session "412 no newsgroup selected")
+        (fn-nntp-single session (fn-proto-text * :no-group-selected))
       (if (null current)
-          (fn-nntp-single session "420 no current article")
+          (fn-nntp-single session (fn-proto-text * :no-current))
         (let ((article (fn-nntp-available-article
                         group current (fn-state-articles archive))))
           (if (not (consp article))
-              (fn-nntp-single session "420 no current article")
+              (fn-nntp-single session (fn-proto-text * :no-current))
             (fn-nntp-multi
              session (fn-nntp-hdr-initial nil)
              (list (fn-nntp-hdr-line
@@ -42,7 +43,7 @@
   (let ((group (fn-nntp-session-group session))
         (range (fn-nntp-parse-range token)))
     (if (null group)
-        (fn-nntp-single session "412 no newsgroup selected")
+        (fn-nntp-single session (fn-proto-text * :no-group-selected))
       (let* ((numbers (fn-nntp-group-range-numbers
                        group (fn-nntp-range-low range)
                        (fn-nntp-range-high range) (fn-state-articles archive)))
@@ -50,14 +51,14 @@
                      group numbers (fn-state-articles archive) verdicts)))
         (if (consp lines)
             (fn-nntp-multi session (fn-nntp-hdr-initial nil) lines)
-          (fn-nntp-single session "423 no articles in that range"))))))
+          (fn-nntp-single session (fn-proto-text * :empty-range)))))))
 
 (defun fn-nntp-verdict-hdr-msgid (session archive verdicts token)
   (declare (xargs :guard t))
   (let ((article (fn-find-article (fn-nntp-token-string token)
                                   (fn-state-articles archive))))
     (if (not (consp article))
-        (fn-nntp-single session "430 no article with that message-id")
+        (fn-nntp-single session (fn-proto-text * :no-msgid))
       (fn-nntp-multi
        session (fn-nntp-hdr-initial nil)
        (list (fn-nntp-hdr-line
@@ -68,7 +69,7 @@
   (declare (xargs :guard t))
   (if (not (and (consp args)
                 (fn-nntp-keywordp (car args) ":FN-VERIFIED")))
-      (fn-nntp-single session "501 syntax error")
+      (fn-nntp-single session (fn-proto-text * :syntax))
     (let ((rest (cdr args)))
       (if (null rest)
           (fn-nntp-verdict-hdr-current session archive verdicts)
@@ -78,8 +79,8 @@
                   (fn-nntp-verdict-hdr-range session archive verdicts token)
                 (if (fn-nntp-message-id-tokenp token)
                     (fn-nntp-verdict-hdr-msgid session archive verdicts token)
-                  (fn-nntp-single session "501 syntax error"))))
-          (fn-nntp-single session "501 syntax error"))))))
+                  (fn-nntp-single session (fn-proto-text * :syntax)))))
+          (fn-nntp-single session (fn-proto-text * :syntax)))))))
 
 ; The Message-ID arm is the composition's key statement: the content is
 ; selected from the pinned list, not computed from a keyring or current Store.

@@ -2,6 +2,7 @@
 ; entries and all validity decisions remain books/index and books/nntp-index.
 (in-package "ACL2")
 (include-book "nntp-index-runtime")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "msgid-index")
 (include-book "group-number-index")
 
@@ -38,11 +39,33 @@
           (cons (car buckets) (fn-gidx-put entry (cdr buckets))))
       (list (cons group (cons (list entry) (fn-gnix-add group entry nil)))))))
 
-(defun fn-gidx-build-entries (entries)
+; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
+; retained article on the owner's open.  The :logic is the recursion,
+; unchanged; the :exec is a loop, equal by the guard proof.
+(defun fn-gidx-build-entries-loop (rev acc)
   (declare (xargs :guard t))
-  (if (consp entries)
-      (fn-gidx-put (car entries) (fn-gidx-build-entries (cdr entries)))
-    nil))
+  (if (consp rev)
+      (fn-gidx-build-entries-loop (cdr rev) (fn-gidx-put (car rev) acc))
+    acc))
+
+(defun fn-gidx-build-entries (entries)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp entries)
+           (fn-gidx-put (car entries) (fn-gidx-build-entries (cdr entries)))
+         nil)
+       :exec (fn-gidx-build-entries-loop (fn-ag-rev-onto entries nil) nil)))
+
+(encapsulate ()
+  (local
+   (defthm fn-gidx-build-entries-loop-of-rev-onto
+     (equal (fn-gidx-build-entries-loop (fn-ag-rev-onto xs zs) nil)
+            (fn-gidx-build-entries-loop zs (fn-gidx-build-entries xs)))
+     :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                     :in-theory (disable fn-gidx-put)))))
+  (verify-guards fn-gidx-build-entries
+    :hints (("Goal" :in-theory (disable fn-gidx-put fn-ag-rev-onto)
+                    :use ((:instance fn-gidx-build-entries-loop-of-rev-onto (xs entries) (zs nil)))))))
 
 (defun fn-gidx-build (articles)
   (declare (xargs :guard t))
@@ -308,7 +331,7 @@
                               (append (fn-gidx-group-initial archive buckets group)
                                       (fn-nntp-string-octets " list follows"))
                               (fn-nntp-number-lines shown)))
-    (fn-nntp-single session "411 no such newsgroup")))
+    (fn-nntp-single session (fn-proto-text * :no-group))))
 
 (defun fn-gidx-listgroup-command (session archive buckets args)
   (declare (xargs :guard t))
@@ -316,11 +339,11 @@
     (if (null args)
         (let ((group (fn-nntp-session-group session)))
           (if (null group)
-              (fn-nntp-single session "412 no newsgroup selected")
+              (fn-nntp-single session (fn-proto-text * :no-group-selected))
             (if (mbe :logic (member-equal group (fn-state-groups archive))
                      :exec (fn-ag-member group (fn-state-groups archive)))
                 (fn-gidx-listgroup-result session archive buckets group all-range)
-              (fn-nntp-single session "412 no newsgroup selected"))))
+              (fn-nntp-single session (fn-proto-text * :no-group-selected)))))
       (if (and (consp args) (null (cdr args))
                (fn-nntp-printable-tokenp (car args)))
           (fn-gidx-listgroup-result session archive buckets
@@ -332,5 +355,5 @@
                   (fn-gidx-listgroup-result
                    session archive buckets
                    (fn-nntp-token-string (car args)) range)
-                (fn-nntp-single session "501 syntax error")))
-          (fn-nntp-single session "501 syntax error"))))))
+                (fn-nntp-single session (fn-proto-text * :syntax))))
+          (fn-nntp-single session (fn-proto-text * :syntax)))))))

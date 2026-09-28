@@ -417,6 +417,9 @@ class Book:
     in_theory_forms: list[object] = field(default_factory=list)
     # Each ``must-fail`` as (line, arguments), for the teeth-form lint.
     must_fail_forms: list[tuple[int, list]] = field(default_factory=list)
+    # The theorem names of must-fails a ``defkeystone`` generated beside a
+    # ground counterexample (its removal or mutant witness).
+    paired_must_fails: set[str] = field(default_factory=set)
     # (line, reason) for each `must-fail' labelled `; teeth: prover-refusal
     # REASON' in the comment block directly above it: a refusal of proof
     # search, not a necessity witness (PKT-341; see PROVER_REFUSAL).
@@ -663,6 +666,36 @@ def defrecord_expansion(form: list) -> list:
     return events
 
 
+def defprotocol_expansion(form: list) -> list:
+    """The host-reached macro ``(defprotocol NAME ROWS...)`` defines, as read.
+
+    books/protocol-table.lisp's ``defprotocol`` defines the reader
+    dispatchers' command layer ``fn-nntp-command-dispatch`` (lane
+    defprotocol-2), whose expansion ``fn-proto-command-dispatch-term``
+    computes from the table: the :pinned rows' :arms are in it (today
+    XFNCATCHUP's ``fn-cu-serve-reply``).  A reader that never evaluates sees
+    the macro only here: one ``defmacro`` whose body mentions that function
+    and the :pinned rows' :arms terms, so a mention-graph walk reaches what
+    the expansion calls.
+    """
+    if not (len(form) >= 2 and isinstance(form[1], Sym)):
+        return []
+    pinned: list = []
+    for row in form[2:]:
+        if not (isinstance(row, list) and row):
+            continue
+        items = row[1:]
+        for index in range(0, len(items) - 1, 2):
+            if (isinstance(items[index], Sym) and str(items[index]) == ":arms"
+                    and isinstance(items[index + 1], list) and items[index + 1]
+                    and str(items[index + 1][0]) == ":pinned"):
+                pinned.extend(items[index + 1][1:])
+    return [[Sym("defmacro"), Sym("fn-nntp-command-dispatch"),
+             [Sym("archive-call"), Sym("&key"), Sym("pinned")],
+             [Sym("fn-proto-command-dispatch-term"), Sym("archive-call"), Sym("pinned"),
+              [Sym("quote"), pinned]]]]
+
+
 def defrecord_export_expansion(form: list) -> list:
     """The ``deftheory`` and withdrawal ``(fn-defrecord-export ...)`` generates."""
     if not (len(form) >= 2 and isinstance(form[1], Sym)):
@@ -679,6 +712,213 @@ def defrecord_export_expansion(form: list) -> list:
             names += [item for item in value if isinstance(item, Sym)]
     return [[Sym("deftheory"), Sym(theory), [Sym("quote"), names]],
             [Sym("in-theory"), [Sym("disable"), Sym(theory)]]]
+
+
+# --------------------------------------------------------------------------
+# defkeystone
+# --------------------------------------------------------------------------
+#
+# `(defkeystone NAME TERM . OPTIONS)` (books/defkeystone.lisp) generates a
+# keystone's teeth.  This is its expansion as the ledger sees it, form for
+# form the same as the Lisp `fn-dk-expand`: tests/acl2/defkeystone-tests.lisp
+# pins the Lisp side to one literal expansion and tests/test_ledger.py pins
+# this side to the same literal.  A form the Lisp macro would refuse
+# (`fn-dk-refusal`) expands to nothing here: certification is the authority
+# on the refusal, and a guess at a refused form's events would be a lie.
+
+DEFKEYSTONE_KEYS = {":subject", ":id", ":restates", ":hyps", ":witness", ":breaks",
+                    ":mutations", ":corrupt", ":hints", ":rule-classes", ":otf-flg"}
+
+
+def _dk_bindingsp(x: object) -> bool:
+    if not isinstance(x, list):
+        return False
+    names = []
+    for item in x:
+        if not (isinstance(item, list) and len(item) == 2 and isinstance(item[0], Sym)):
+            return False
+        names.append(str(item[0]))
+    return len(names) == len(set(names))
+
+
+def defkeystone_parts(form: list) -> dict | None:
+    """The parsed parts of a well-formed defkeystone form, or None.
+
+    The checks are `fn-dk-refusal`'s, in the same order; None where the
+    Lisp macro would refuse."""
+    if not (len(form) >= 3 and isinstance(form[1], Sym)):
+        return None
+    name, term, tail = form[1], form[2], list(form[3:])
+    if len(tail) % 2 or not all(isinstance(tail[i], Sym) and str(tail[i]).startswith(":")
+                                for i in range(0, len(tail), 2)):
+        return None
+    options = keyword_plist(tail)
+    if any(str(tail[i]) not in DEFKEYSTONE_KEYS for i in range(0, len(tail), 2)):
+        return None
+    implies = (isinstance(term, list) and len(term) == 3 and head(term) == "implies")
+    if implies:
+        hyps = term[1][1:] if head(term[1]) == "and" else [term[1]]
+        concl = term[2]
+    else:
+        hyps, concl = [], term
+    subject = options.get(":subject")
+    witness = options.get(":witness")
+    if not (isinstance(subject, Sym) and str(subject) != "nil"):
+        return None
+    if not (witness and _dk_bindingsp(witness)):
+        return None
+    if ":hyps" in options:
+        labels = options[":hyps"]
+        labels = [] if isinstance(labels, Sym) and str(labels) == "nil" else labels
+    else:
+        labels = [Sym(f"h{i}") for i in range(1, len(hyps) + 1)]
+    if not (isinstance(labels, list) and all(isinstance(x, Sym) for x in labels)
+            and len({str(x) for x in labels}) == len(labels) == len(hyps)):
+        return None
+    breaks = options.get(":breaks", [])
+    breaks = [] if isinstance(breaks, Sym) and str(breaks) == "nil" else breaks
+    by_label: dict[str, list] = {}
+    if not isinstance(breaks, list):
+        return None
+    for entry in breaks:
+        if not (isinstance(entry, list) and entry and isinstance(entry[0], Sym)
+                and len(entry) in (2, 4) and _dk_bindingsp(entry[1])):
+            return None
+        if len(entry) == 4 and not (str(entry[2]) == ":corrupt"
+                                    and isinstance(entry[3], str)
+                                    and not isinstance(entry[3], Sym) and entry[3]):
+            return None
+        if str(entry[0]) in by_label:
+            return None
+        by_label[str(entry[0])] = entry
+    if any(label not in {str(x) for x in labels} for label in by_label):
+        return None
+    if any(str(label) not in by_label for label in labels):
+        return None
+    mutations = options.get(":mutations", [])
+    mutations = [] if isinstance(mutations, Sym) and str(mutations) == "nil" else mutations
+    if not (isinstance(mutations, list) and all(
+            isinstance(m, list) and len(m) == 3 and isinstance(m[0], Sym)
+            and _dk_bindingsp(m[2]) for m in mutations)):
+        return None
+    corrupt = options.get(":corrupt", [])
+    corrupt = [] if isinstance(corrupt, Sym) and str(corrupt) == "nil" else corrupt
+    if not (isinstance(corrupt, list) and all(
+            isinstance(c, list) and len(c) == 2 and isinstance(c[0], Sym)
+            and _dk_bindingsp(c[1]) for c in corrupt)):
+        return None
+    if not hyps and not mutations:
+        return None
+    return {"name": name, "term": term, "hyps": hyps, "concl": concl,
+            "labels": labels, "witness": witness, "breaks": by_label,
+            "mutations": mutations, "corrupt": corrupt, "options": options,
+            "subject": subject, "id": options.get(":id"),
+            "restates": options.get(":restates")}
+
+
+def _dk_override(base: list, over: list) -> list:
+    over = list(over)
+    out = []
+    for binding in base:
+        match = next((b for b in over if str(b[0]) == str(binding[0])), None)
+        if match is not None:
+            out.append(match)
+            over.remove(match)
+        else:
+            out.append(binding)
+    return out + over
+
+
+def _dk_at(bindings: list, term: object) -> list:
+    return [Sym("let*"), bindings,
+            [Sym("declare"), [Sym("ignorable")] + [b[0] for b in bindings]], term]
+
+
+def _dk_logical(term: object) -> list:
+    return [Sym("with-guard-checking"), Sym(":none"), term]
+
+
+def _dk_implies(hyps: list, concl: object) -> object:
+    if not hyps:
+        return concl
+    if len(hyps) == 1:
+        return [Sym("implies"), hyps[0], concl]
+    return [Sym("implies"), [Sym("and")] + list(hyps), concl]
+
+
+def _dk_conj(terms: list) -> object:
+    return terms[0] if len(terms) == 1 else [Sym("and")] + list(terms)
+
+
+def _dk_quote(x: object) -> list:
+    return [Sym("quote"), x]
+
+
+def defkeystone_names(parts: dict) -> dict[str, list[str]]:
+    """The theorem names a well-formed form admits and asks to fail."""
+    name = str(parts["name"])
+    return {"keystone": [name],
+            "without": [f"{name}-without-{label}" for label in parts["labels"]],
+            "mutant": [f"{name}-mutant-{m[0]}" for m in parts["mutations"]]}
+
+
+def defkeystone_expansion(form: list) -> list:
+    """The events ``(defkeystone ...)`` generates, as the ledger sees them:
+    one ``progn``, or nothing for a form the Lisp macro refuses."""
+    parts = defkeystone_parts(form)
+    if parts is None:
+        return []
+    name, options = parts["name"], parts["options"]
+    upper = str(name).upper()
+    hint_args = [Sym(":hints"), options[":hints"]] if ":hints" in options else []
+    thm = [Sym("defthm"), name, parts["term"]] + hint_args
+    for key in (":rule-classes", ":otf-flg"):
+        if key in options:
+            thm += [Sym(key), options[key]]
+    events: list = [thm]
+    witness, hyps, concl = parts["witness"], parts["hyps"], parts["concl"]
+    if parts["restates"] is not None:
+        world = [Sym("w"), Sym("state")]
+        events.append([Sym("assert-event"),
+                       [Sym("equal"),
+                        [Sym("getpropc"), _dk_quote(name), _dk_quote(Sym("theorem")),
+                         Sym("nil"), world],
+                        [Sym("getpropc"), _dk_quote(parts["restates"]),
+                         _dk_quote(Sym("theorem")), Sym("nil"), world]],
+                       Sym(":msg"), f"{upper}: restates"])
+    events.append([Sym("assert-event"),
+                   _dk_conj([_dk_at(witness, h) for h in hyps] + [_dk_at(witness, concl)]),
+                   Sym(":msg"), f"{upper}: witness"])
+    for index, label in enumerate(parts["labels"]):
+        entry = parts["breaks"][str(label)]
+        bindings = _dk_override(witness, entry[1])
+        retained = hyps[:index] + hyps[index + 1:]
+        why = f" (corrupted state: {entry[3]})" if len(entry) == 4 else ""
+        events.append([Sym("assert-event"),
+                       _dk_logical([Sym("and")]
+                                   + [_dk_at(bindings, h) for h in retained]
+                                   + [[Sym("not"), _dk_at(bindings, hyps[index])],
+                                      [Sym("not"), _dk_at(bindings, concl)]]),
+                       Sym(":msg"), f"{upper}: without {str(label).upper()}{why}"])
+        events.append([Sym("local"), [Sym("must-fail-checked"),
+                                      [Sym("defthm"), Sym(f"{name}-without-{label}"),
+                                       _dk_implies(retained, concl)] + hint_args]])
+    for mutation in parts["mutations"]:
+        bindings = _dk_override(witness, mutation[2])
+        events.append([Sym("assert-event"),
+                       _dk_logical([Sym("not"), _dk_at(bindings, mutation[1])]),
+                       Sym(":msg"), f"{upper}: mutant {str(mutation[0]).upper()}"])
+        events.append([Sym("local"), [Sym("must-fail-checked"),
+                                      [Sym("defthm"), Sym(f"{name}-mutant-{mutation[0]}"),
+                                       mutation[1]] + hint_args]])
+    for corrupt in parts["corrupt"]:
+        bindings = _dk_override(witness, corrupt[1])
+        events.append([Sym("assert-event"),
+                       _dk_logical([Sym("and"),
+                                    [Sym("not"), _dk_at(bindings, _dk_conj(hyps))],
+                                    [Sym("not"), _dk_at(bindings, concl)]]),
+                       Sym(":msg"), f"{upper}: corrupt {str(corrupt[0]).upper()}"])
+    return [[Sym("progn")] + events]
 
 
 def record(book: Book, form: object, line: int, *, local: bool,
@@ -717,6 +957,18 @@ def record(book: Book, form: object, line: int, *, local: bool,
         expansion = (defrecord_expansion(form) if name == "fn-defrecord"
                      else defrecord_export_expansion(form))
         for item in expansion:
+            record(book, item, line, local=local, suppressed=suppressed,
+                   generated=True)
+        return
+    if name == "defkeystone":
+        parts = defkeystone_parts(form)
+        if parts is not None and not suppressed:
+            # Each generated must-fail stands beside an evaluated ground
+            # counterexample to the same weakened statement, so it is not a
+            # bare general claim (`teeth_form`).
+            names = defkeystone_names(parts)
+            book.paired_must_fails |= set(names["without"] + names["mutant"])
+        for item in defkeystone_expansion(form):
             record(book, item, line, local=local, suppressed=suppressed,
                    generated=True)
         return
@@ -820,7 +1072,7 @@ class Tree:
     """The whole readable tree: books, functions, theorems, roots."""
 
     def __init__(self, books: dict[str, Book], roots: list[str],
-                 hosts: "dict[str, HostFile] | None" = None) -> None:
+                 hosts: "dict[str, HostFile] | None" = None, *, eager: bool = True) -> None:
         self.books = books
         self.roots = roots
         # ACL2 `ld` wrappers and explicit raw `load` adapters: see host_names.
@@ -842,9 +1094,37 @@ class Tree:
             for theorem in book.theorems:
                 self.theorems.setdefault(theorem.name, theorem)
         self.closure = root_closure(books, roots)
-        self.suspects = {name: reasons for name, reasons in
-                         ((theorem.name, self.suspect_reasons(theorem))
-                          for theorem in self.theorems.values()) if reasons}
+        # Every theorem's suspect reasons: most of the analysis (~75 s of
+        # ~82 s on persvati, 2026-09-28).  A per-book caller (`--book')
+        # builds the tree with eager=False and asks `suspects_of' for its
+        # own theorems only; `suspects' computes the whole map on first use.
+        self._suspects: "dict[str, list[str]] | None" = None
+        if eager:
+            self._suspects = self._all_suspects()
+
+    def _all_suspects(self) -> dict[str, list[str]]:
+        return {name: reasons for name, reasons in
+                ((theorem.name, self.suspect_reasons(theorem))
+                 for theorem in self.theorems.values()) if reasons}
+
+    @property
+    def suspects(self) -> dict[str, list[str]]:
+        if self._suspects is None:
+            self._suspects = self._all_suspects()
+        return self._suspects
+
+    def suspects_of(self, theorems: "list[Theorem]") -> dict[str, list[str]]:
+        """The suspect reasons of THEOREMS alone (the whole map when known)."""
+        if self._suspects is not None:
+            return {t.name: self._suspects[t.name] for t in theorems if t.name in self._suspects}
+        found = {}
+        for theorem in theorems:
+            # A name defined twice is judged by its first definition, as the
+            # whole-tree map judges it.
+            reasons = self.suspect_reasons(self.theorems.get(theorem.name, theorem))
+            if reasons:
+                found[theorem.name] = reasons
+        return found
 
     # -- unfolding -------------------------------------------------------
 
@@ -1718,6 +1998,9 @@ def teeth_form(tree: "Tree") -> list[dict]:
                 continue
             if concrete_witness(statement_of(body)):
                 continue
+            if (head(body) != "thm" and len(body) > 1
+                    and str(body[1]) in book.paired_must_fails):
+                continue  # a defkeystone tooth: its counterexample is evaluated
             name = str(body[1]) if (head(body) != "thm" and len(body) > 1
                                     and isinstance(body[1], Sym)) else "thm"
             findings.append({
@@ -2482,7 +2765,7 @@ _TREE_CACHE: "tuple[str, Tree] | None" = None
 # off; a directory path moves it.
 TREE_CACHE_DIR = Path(__file__).resolve().parents[1] / "build" / "cache" / "ledger-tree"
 TREE_CACHE_ENTRIES = 4
-_TREE_CACHE_FORMAT = b"fn-ledger-tree-cache-1"
+_TREE_CACHE_FORMAT = b"fn-ledger-tree-cache-2"
 
 
 def _tree_cache_dir() -> "Path | None":
@@ -2541,12 +2824,14 @@ def _tree_cache_write(directory: Path, key: str, tree: Tree) -> None:
         entries = sorted(directory.glob("*.pickle"), key=lambda one: one.stat().st_mtime)
         for stale in entries[:-TREE_CACHE_ENTRIES]:
             stale.unlink(missing_ok=True)
-    except OSError:
+    except (OSError, pickle.PicklingError):
         # A cache that cannot be written is a slower run, never a wrong one.
+        # PicklingError: a second module object named `ledger' (a test that
+        # loads tools/ledger.py by path) owns the name the classes pickle as.
         pass
 
 
-def load_tree() -> Tree:
+def load_tree(*, lazy: bool = False) -> Tree:
     """The analysed tree, computed once per content of its inputs.
 
     One `make check` process asked for it up to five times (teeth_check:
@@ -2559,6 +2844,12 @@ def load_tree() -> Tree:
     Across processes the same key names an entry in TREE_CACHE_DIR, with the
     analyser's source, the Python version and the root list added to it.
     Callers read the Tree; none mutates it.
+
+    LAZY (a caller that never reads `suspects', or reads a few books'): a
+    persisted tree is used when there is one; otherwise the tree is built
+    without the whole-tree suspect pass (computed on first use of
+    `suspects') and is kept for this process but never persisted, so no
+    other process reads a partial analysis.
     """
     global _TREE_CACHE
     books = book_paths()
@@ -2580,9 +2871,13 @@ def load_tree() -> Tree:
     if directory is not None:
         shared = hashlib.sha256(_TREE_CACHE_FORMAT + b"\0")
         shared.update(sys.version.encode() + b"\0")
-        # Pickled classes are named by module: `python3 tools/ledger.py`
-        # writes __main__.Tree, which an importer of `ledger` cannot load.
-        shared.update(__name__.encode() + b"\0")
+        # Pickled classes are named by their module.  `python3 tools/ledger.py`
+        # runs its main() from the imported module `ledger' (see the end of
+        # this file), so a script run and every importer (teeth_check,
+        # certified_claims, ...) pickle and read the same ledger.Tree under
+        # one key; before 2026-09-28 the key held __name__ and the two never
+        # shared an entry (defkeystone).
+        shared.update(_PICKLE_MODULE.encode() + b"\0")
         shared.update(Path(__file__).resolve().read_bytes() + b"\0")
         shared.update(key.encode() + b"\0")
         shared.update("\n".join(roots).encode())
@@ -2593,8 +2888,11 @@ def load_tree() -> Tree:
             return tree
     tree = Tree({relative: analyze_book(path, relative) for path, relative in books},
                 roots,
-                {relative: analyze_host(path, relative) for path, relative in hosts})
+                {relative: analyze_host(path, relative) for path, relative in hosts},
+                eager=not lazy)
     _TREE_CACHE = (key, tree)
+    if lazy:
+        return tree
     if directory is not None:
         _tree_cache_write(directory, persistent, tree)
     return tree
@@ -2609,10 +2907,14 @@ GUARD_STATES = ("verified", "declared-off", "default-guarded", "default-unguarde
 
 
 def book_row(book: Book, tree: Tree) -> dict:
+    return book_row_with(book, tree, tree.suspects)
+
+
+def book_row_with(book: Book, tree: Tree, known: dict) -> dict:
     guards = {state: 0 for state in GUARD_STATES}
     for function in book.functions:
         guards[function.guard_status] += 1
-    suspects = sorted(t.name for t in book.theorems if t.name in tree.suspects)
+    suspects = sorted(t.name for t in book.theorems if t.name in known)
     return {
         "book": book.path,
         "in_root_closure": book.path in tree.closure,
@@ -3071,6 +3373,31 @@ def report(tree: Tree) -> None:
             print(f"      {reason}")
 
 
+def book_report(paths: list[str]) -> int:
+    """`--book': each named book's ledger row and its theorems' suspect
+    reasons, as JSON (stable for a before/after diff)."""
+    tree = load_tree(lazy=True)
+    out = []
+    missing = []
+    for given in paths:
+        path = Path(given)
+        relative = (path.resolve().relative_to(ROOT).as_posix() if path.is_absolute()
+                    else resolve(given))
+        book = tree.books.get(relative)
+        if book is None:
+            missing.append(given)
+            continue
+        suspects = tree.suspects_of(book.theorems)
+        row = book_row_with(book, tree, suspects)
+        row["suspect_reasons"] = {name: suspects[name] for name in sorted(suspects)}
+        out.append(row)
+    print(json.dumps(out, indent=1, sort_keys=True))
+    for given in missing:
+        print(f"ledger --book: {given}: not a book this tree reads "
+              "(books/*.lisp, tests/acl2/*.lisp)", file=sys.stderr)
+    return 2 if missing else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--write", action="store_true",
@@ -3080,7 +3407,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--strict", action="store_true",
                         help="with --check, fail on any lint warning: export "
                              "hygiene, teeth form, include hygiene or host names")
+    parser.add_argument("--book", action="append", default=[], metavar="PATH",
+                        help="report only these books (repeatable): their row and the "
+                             "suspect reasons of their own theorems, without the "
+                             "whole-tree suspect pass (a before/after diff of one book)")
     arguments = parser.parse_args(argv)
+    if arguments.book:
+        return book_report(arguments.book)
     if arguments.check:
         tree = load_tree()
         problems = check_problems(tree)
@@ -3109,5 +3442,15 @@ def main(argv: list[str] | None = None) -> int:
 _GENUINE_ANALYSIS = (book_paths, host_paths, makefile_roots, analyze_book, analyze_host, Tree)
 
 
+# The module the pickled tree's classes belong to.  A script run delegates
+# to the imported module below, so this is always "ledger".
+_PICKLE_MODULE = "ledger"
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    # Run as the module `ledger', not `__main__': the tree cache pickles
+    # classes by module name, and one name is what lets a script run and an
+    # importer share an entry.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import ledger as _ledger
+    sys.exit(_ledger.main())

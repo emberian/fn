@@ -436,6 +436,109 @@
          (mv-nth 0 (fn-ocs-commit-step (fn-ocs-phase s) event))))
 
 ; -----------------------------------------------------------------------------
+; A refusal that wrote nothing is told at its drain (lane full-vs-uncertain,
+; 2026-09-28; PRF-354).
+;
+; AGENTS.md: "Uncertain, refused and accepted stay distinct at every
+; boundary."  A member whose attempt was refused for capacity (:unaffordable,
+; :memberships: books/store-capacity-vector.lisp fn-cvec-article-refusal-word)
+; or for its inputs (:malformed) staged no record: the prepare refused before
+; any Store mutation and the host consumed the refused reservation
+; (host/native/owner.lisp fnn-owner-attempt; host/owner-host.lisp
+; fn-owner-prepare-buffer).  Its outcome, nothing stored, is known when it is
+; drained, whatever any barrier does afterwards.  Before this such a member
+; waited in its batch like every other and was told uncertain when a barrier
+; that held no record of its own failed (:stop) or stalled past H (:stalled;
+; books/owner-time-model.lisp fn-otm-stall-releases): a known refusal
+; reported uncertain because of an unrelated sync.
+;
+; Now the START (host/native/owner.lisp fnn-owner-commit-start-locked, which
+; is also START-NEXT's and the inline quantum's drain) asks
+; `fn-ocs-told-at-drain-p' of each member's word and hands such a member its
+; rendered refusal at once; it never joins the batch.  A START all of whose
+; members were told so keeps none and names no barrier
+; (`fn-ocs-unstaged-start-tells-its-refusals').
+;
+; Not told at the drain: a refusal that names another record (:duplicate,
+; :conflict, and the generic :refused, which carries transit's already-have
+; and the filing and login refusals).  It may rest on a member of the same
+; batch, or of the batch in flight, whose record the log does not hold yet;
+; it still waits for the barrier (fn-ocs-member-release).  A capacity refusal
+; also reads the capacity the unfenced members use, but only its REASON does:
+; the outcome it reports, nothing stored, holds whatever they become.
+
+(defconst *fn-ocs-drain-refusals* '(:unaffordable :memberships :malformed))
+
+(defun fn-ocs-told-at-drain-p (word)
+  (declare (xargs :guard t))
+  (if (member-equal word *fn-ocs-drain-refusals*) t nil))
+
+; What the predicate admits, by its definition: never an acceptance, never
+; an uncertain word, never a refusal that names another record.
+(defthm fn-ocs-told-at-drain-p-by-definition
+  (implies (fn-ocs-told-at-drain-p word)
+           (and (not (equal word :durable))
+                (not (equal word :durable-key-change-refused))
+                (not (equal word :uncertain))
+                (not (equal word :duplicate))
+                (not (equal word :conflict))
+                (not (equal word :refused))))
+  :rule-classes nil)
+
+; The number of members the batch keeps: those not told at their drain.
+(defun fn-ocs-kept-count (words)
+  (declare (xargs :guard t))
+  (if (consp words)
+      (+ (if (fn-ocs-told-at-drain-p (car words)) 0 1)
+         (fn-ocs-kept-count (cdr words)))
+    0))
+
+(defun fn-ocs-all-told-at-drain-p (words)
+  (declare (xargs :guard t))
+  (if (consp words)
+      (and (fn-ocs-told-at-drain-p (car words))
+           (fn-ocs-all-told-at-drain-p (cdr words)))
+    t))
+
+; The START's observation for fn-ocs-commit-step (and books/owner-commit-
+; pipeline.lisp fn-ocp-commit-step): UNCERTAIN whether a member's outcome or
+; an observation was uncertain, KEPT how many members the batch kept.  Host:
+; host/native/owner.lisp fnn-owner-commit-start-event.
+(defun fn-ocs-start-event (uncertain kept)
+  (declare (xargs :guard t))
+  (cond (uncertain :started-uncertain)
+        ((posp kept) :started)
+        (t :started-none)))
+
+(defthm fn-ocs-all-told-keeps-none
+  (implies (fn-ocs-all-told-at-drain-p words)
+           (equal (fn-ocs-kept-count words) 0)))
+
+; KEYSTONE (PRF-354).  The subjects are the host's calls at a START
+; (host/native/owner.lisp fnn-owner-commit-start-locked: fn-ocs-told-at-drain-p
+; per member; fnn-owner-commit-start-event: fn-ocs-start-event; the inline
+; quantum's fn-ocs-commit-step).  WORDS are the drained members' outcome
+; words, observed certain.  When every one of them is a refusal that wrote
+; nothing, the batch keeps no member, the START reports :started-none, and
+; the step names no barrier and leaves the owner idle: each member was told
+; its own refusal at its drain and no sync is run for them.
+(defthm fn-ocs-unstaged-start-tells-its-refusals
+  (implies (fn-ocs-all-told-at-drain-p words)
+           (let ((event (fn-ocs-start-event nil (fn-ocs-kept-count words))))
+             (and (equal (fn-ocs-kept-count words) 0)
+                  (equal event :started-none)
+                  (equal (mv-nth 0 (fn-ocs-commit-step :idle event)) :none)
+                  (equal (mv-nth 1 (fn-ocs-commit-step :idle event)) :idle)))))
+
+; And a member that names another record is kept: its START names the
+; barrier, as before.
+(defthm fn-ocs-kept-member-starts-the-barrier
+  (implies (and (consp words) (not (fn-ocs-told-at-drain-p (car words))))
+           (equal (mv-nth 0 (fn-ocs-commit-step
+                             :idle (fn-ocs-start-event nil (fn-ocs-kept-count words))))
+                  :barrier)))
+
+; -----------------------------------------------------------------------------
 ; KEYSTONE.  The subject is `fn-ocs-next', which host/native/owner.lisp
 ; fnn-owner-gate-pick calls at every release of the owner and every arrival
 ; at an idle one; the commit's events are `fn-ocs-commit-event', which the

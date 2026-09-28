@@ -69,19 +69,79 @@
            (fn-retain-obligation-listp (cdr xs)))
     (null xs)))
 
-(defun fn-retain-obligation-ids (xs)
-  (declare (xargs :guard (fn-retain-obligation-listp xs)))
+; The walks over the pins and the releases execute by loops (PKT-876, lane
+; open-depth).  Each recursed once per element, a control-stack frame per
+; retained article, and a full-replay open runs them over every pin in the
+; node recognizer (fn-cnode-statep, from fn-sco-cpr-finish): syn100k-2k's
+; open at the installed launcher's 1,024 KiB stack died in 30,527 frames of
+; fn-retain-obligation-ids (lane thread-stacks, hbox 2026-09-28).  Each
+; :logic is the recursion, unchanged; each :exec is an accumulator twin,
+; equal by the guard proof (the per-element accessor disabled).
+(local
+ (defthm fn-retain-revappend-revappend
+   (equal (revappend (revappend x y) z)
+          (revappend y (append x z)))))
+
+(local
+ (defthm fn-retain-append-nil-when-true-listp
+   (implies (true-listp x) (equal (append x nil) x))))
+
+(local
+ (defthm fn-retain-true-listp-of-revappend
+   (implies (true-listp y) (true-listp (revappend x y)))))
+
+(defun fn-retain-obligation-ids-rev (xs acc)
+  (declare (xargs :guard (and (fn-retain-obligation-listp xs) (true-listp acc))))
   (if (consp xs)
-      (cons (fn-retain-obligation-id (car xs))
-            (fn-retain-obligation-ids (cdr xs)))
-    nil))
+      (fn-retain-obligation-ids-rev (cdr xs)
+                                    (cons (fn-retain-obligation-id (car xs)) acc))
+    acc))
+
+(defun fn-retain-obligation-ids (xs)
+  (declare (xargs :guard (fn-retain-obligation-listp xs) :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (cons (fn-retain-obligation-id (car xs))
+                 (fn-retain-obligation-ids (cdr xs)))
+         nil)
+       :exec (reverse (fn-retain-obligation-ids-rev xs nil))))
+
+(encapsulate ()
+  (local
+   (defthm fn-retain-obligation-ids-rev-is-revappend
+     (equal (fn-retain-obligation-ids-rev xs acc)
+            (revappend (fn-retain-obligation-ids xs) acc))
+     :hints (("Goal" :in-theory (disable fn-retain-obligation-id)))))
+  (local
+   (defthm fn-retain-true-listp-of-obligation-ids
+     (true-listp (fn-retain-obligation-ids xs))))
+  (verify-guards fn-retain-obligation-ids
+    :hints (("Goal" :in-theory (disable fn-retain-obligation-id)))))
+
+(defun fn-retain-sum-acc (pins acc)
+  (declare (xargs :guard (and (fn-retain-obligation-listp pins) (acl2-numberp acc))))
+  (if (consp pins)
+      (fn-retain-sum-acc (cdr pins) (+ acc (fn-retain-obligation-charge (car pins))))
+    acc))
 
 (defun fn-retain-sum (pins)
-  (declare (xargs :guard (fn-retain-obligation-listp pins)))
-  (if (consp pins)
-      (+ (fn-retain-obligation-charge (car pins))
-         (fn-retain-sum (cdr pins)))
-    0))
+  (declare (xargs :guard (fn-retain-obligation-listp pins) :verify-guards nil))
+  (mbe :logic
+       (if (consp pins)
+           (+ (fn-retain-obligation-charge (car pins))
+              (fn-retain-sum (cdr pins)))
+         0)
+       :exec (fn-retain-sum-acc pins 0)))
+
+(encapsulate ()
+  (local
+   (defthm fn-retain-sum-acc-is-plus
+     (implies (acl2-numberp acc)
+              (equal (fn-retain-sum-acc pins acc)
+                     (+ acc (fn-retain-sum pins))))
+     :hints (("Goal" :in-theory (disable fn-retain-obligation-charge)))))
+  (verify-guards fn-retain-sum
+    :hints (("Goal" :in-theory (disable fn-retain-obligation-charge)))))
 
 (defun fn-retain-find-id (id pins)
   (declare (xargs :guard (fn-retain-obligation-listp pins)))
@@ -91,13 +151,32 @@
         (fn-retain-find-id id (cdr pins)))
     nil))
 
-(defun fn-retain-remove-id (id pins)
-  (declare (xargs :guard (fn-retain-obligation-listp pins)))
+(defun fn-retain-remove-id-rev (id pins acc)
+  (declare (xargs :guard (and (fn-retain-obligation-listp pins) (true-listp acc))))
   (if (consp pins)
       (if (equal id (fn-retain-obligation-id (car pins)))
-          (cdr pins)
-        (cons (car pins) (fn-retain-remove-id id (cdr pins))))
-    nil))
+          (revappend acc (cdr pins))
+        (fn-retain-remove-id-rev id (cdr pins) (cons (car pins) acc)))
+    (revappend acc nil)))
+
+(defun fn-retain-remove-id (id pins)
+  (declare (xargs :guard (fn-retain-obligation-listp pins) :verify-guards nil))
+  (mbe :logic
+       (if (consp pins)
+           (if (equal id (fn-retain-obligation-id (car pins)))
+               (cdr pins)
+             (cons (car pins) (fn-retain-remove-id id (cdr pins))))
+         nil)
+       :exec (fn-retain-remove-id-rev id pins nil)))
+
+(encapsulate ()
+  (local
+   (defthm fn-retain-remove-id-rev-is-revappend
+     (equal (fn-retain-remove-id-rev id pins acc)
+            (revappend acc (fn-retain-remove-id id pins)))
+     :hints (("Goal" :in-theory (disable fn-retain-obligation-id)))))
+  (verify-guards fn-retain-remove-id
+    :hints (("Goal" :in-theory (disable fn-retain-obligation-id)))))
 
 ; A release record preserves the identity, subject, kind, and evidence that
 ; authorized the decision.  It is distinct from an active obligation.
@@ -116,12 +195,36 @@
            (fn-retain-release-listp (cdr xs)))
     (null xs)))
 
-(defun fn-retain-release-ids (xs)
-  (declare (xargs :guard (fn-retain-release-listp xs)))
+(defun fn-retain-release-ids-rev (xs acc)
+  (declare (xargs :guard (and (fn-retain-release-listp xs) (true-listp acc))))
   (if (consp xs)
-      (cons (fn-retain-release-id (car xs))
-            (fn-retain-release-ids (cdr xs)))
-    nil))
+      (fn-retain-release-ids-rev (cdr xs) (cons (fn-retain-release-id (car xs)) acc))
+    acc))
+
+(defun fn-retain-release-ids (xs)
+  (declare (xargs :guard (fn-retain-release-listp xs) :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (cons (fn-retain-release-id (car xs))
+                 (fn-retain-release-ids (cdr xs)))
+         nil)
+       :exec (reverse (fn-retain-release-ids-rev xs nil))))
+
+(encapsulate ()
+  (local
+   (defthm fn-retain-release-ids-rev-is-revappend
+     (equal (fn-retain-release-ids-rev xs acc)
+            (revappend (fn-retain-release-ids xs) acc))
+     :hints (("Goal" :in-theory (disable fn-retain-release-id)))))
+  (local
+   (defthm fn-retain-true-listp-of-release-ids
+     (true-listp (fn-retain-release-ids xs))))
+  (verify-guards fn-retain-release-ids
+    :hints (("Goal" :in-theory (disable fn-retain-release-id)))))
+
+(local (in-theory (disable fn-retain-revappend-revappend
+                           fn-retain-append-nil-when-true-listp
+                           fn-retain-true-listp-of-revappend)))
 
 (defun fn-retain-known-idp (id pins releases)
   (declare (xargs :guard (and (fn-retain-obligation-listp pins)

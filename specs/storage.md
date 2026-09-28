@@ -699,6 +699,61 @@ journal replays.
   witness at batch sizes 1, 3 and 1000 is in
   tests/acl2/store-checkpoint-tables-tests.lisp.
 
+### The snapshot page store (STO-035)
+
+STO-035: The snapshot page store. The owner's snapshot is to become a copy-on-write page store (lane
+arena-store, 2026-09-27; `books/pagestore*.lisp`; record
+`planning/evidence/arena-store-2026-09-27.md`). One page file of 16 KiB pages
+(2048 little-endian u64 words). A commit record (two slots per root, in page 0
+for the owner's root: one barrier per commit; page 0 is the model's reserved
+page, which `pgs-disk-keeps` keeps and the reclamation cycle's start marks,
+so no allocation or sweep ever hands it out) names a directory run whose
+entries (address, writing txid, SHA-256) name table pages of 341 entries,
+whose entries name the data pages. A snapshot writes only its dirty data
+pages, the table pages holding them, the directory run and the record, all to
+fresh space, then one fdatasync. The open verifies the record's check, the
+directory, and (lazy) the pages its own commit wrote or (eager) every page;
+the rest is verified at first touch and a mismatch is refused by name.
+Limitation (L-PGS-LAZY-SHAPE): the model's lazy open checks the shape of every
+table page; the host's lazy open checks only the table pages the record's own
+commit wrote and checks the others (digest and shape) at first touch, so a
+malformed older table page is refused at its first touch, not at the open. Every
+decision is ACL2's; the host has two byte primitives. Proved (PRF-344):
+commit-then-open denotes the committed state; a crash anywhere opens on the
+committed or the previous state, the previous one unless the record landed;
+other roots and forks are isolated; allocation always answers fresh
+addresses; reclamation never frees a page a valid record of any root keeps.
+Named: A-PGS-HOST-IO. Scenario: SCN-186. Not yet the owner's path: the owner's state (fn-hist
+first) moves onto these pages in a later step.
+
+The history's image (PRF-342, lane arena-store-2; `books/history-pages.lisp`).
+The first owner state on these pages is the history (fn-hist). Its snapshot
+is the FNADTSN1 byte form (`books/proto/adt-bytes.lisp`) of one row per
+event: MKEY (1 + the salted FNV-1a bucket of the event's key Message-ID, 0
+when none), the length of the event's tree octets (the checkpoint's proved
+tree codec, `fn-scc-encode`), and those octets zero-padded to a multiple of 8
+(so every append writes whole words). Image page K is the page store's
+logical page K, and the page store's per-page digest is the image's
+page-digest leaf: there is no second digest table. Proved: the decoder
+inverts the image; an append changes only the header page and, per region,
+the pages its new octets overlap, at most 11 + (32 K + the new trees'
+octets) / 16384 pages for K events while no region doubles. Limitation
+(L-HP-DOUBLING): FNADTSN1 places regions contiguously, so a region that
+doubles moves every region after it and that commit writes them (amortized
+O(1) per row). The Message-ID bucket heads are not in the image (FNADTSN1's
+keyed form carries the live records, not the index). The open reads the
+image's page 0 only: the header check (magic, version, the schema digest,
+the region count, placement, column sizes, the page count) answers N and the
+regions, and another schema's image is refused by name (:schema), never
+rebuilt. Reads return need-verdicts: a page not yet verified answers
+(:need-table T PHYS) / (:need-page P PHYS) and the host fills it with its two
+byte primitives, verifies it against its table entry and asks again; the
+first read of a row pays at most its four cells' pages and its pool entry's
+pages. Proved: over any page store state whose verified pages hold the
+image's words, the header check and the row read answer the history.
+Not yet the owner's path: the writer, the host wiring and the snapshot
+commit are the next milestones.
+
 ## History classes and lifetimes
 
 STO-010: every class of durable state the store holds has a stated lifetime,

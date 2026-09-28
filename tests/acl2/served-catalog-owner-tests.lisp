@@ -157,6 +157,46 @@
 (assert-event (equal (scot-article-payloads (nth 4 *scot-r*)) '(2 1 0)))
 (assert-event (not (equal (nth 4 *scot-r*) (nth 6 *scot-r*))))
 (assert-event (equal (scot-article-payloads (nth 6 *scot-r*)) (reverse *scot-payloads*)))
+;; The overview column (lane served-columns, PRF-332): F at E on this real
+;; history.  Every store row the POSTs interned (fn-intern-row-at) has its
+;; column decided and faithful to the arena's octets (fn-scol-history-okp,
+;; the hypothesis of fn-scol-okp-of-load-held-rows), and F holds of the
+;; catalog E loads (evaluated over the catalog's rows read back through
+;; fn-cat-at): the complete antecedent and the conclusion, non-vacuously.
+(defun scot-cat-rows (i fn-cat)
+  (declare (xargs :mode :program :stobjs fn-cat))
+  (if (< i (fn-cat-count fn-cat))
+      (cons (fn-cat-at i fn-cat) (scot-cat-rows (+ 1 i) fn-cat))
+    nil))
+
+(defun scot-decided (rows)
+  (declare (xargs :mode :program))
+  (if (consp rows)
+      (+ (if (fn-hf-nov (fn-held-facts (car rows))) 1 0) (scot-decided (cdr rows)))
+    0))
+
+(defun scot-scol-run (records view fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((fn-arena (fn-arn-seal-many *scot-payloads* fn-arena))
+         (hyp (list (fn-arena-p fn-arena) (fn-scol-history-okp records fn-arena)))
+         (fn-cat (fn-sca-load-held-rows records (fn-own-view-index view) fn-arena fn-cat)))
+    (mv (list hyp
+              (fn-scol-rows-okp (scot-cat-rows 0 fn-cat) fn-arena)
+              (scot-decided (scot-cat-rows 0 fn-cat)))
+        fn-arena fn-cat)))
+
+(defun scot-scol-exec (records view)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (scot-scol-run records view fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+(assert-event (equal (scot-scol-exec *scot-records* *scot-view*) '((t t) t 3)))
+
 ;; The positive witness of fn-sca-load-held-rows-establishes-relation on the
 ;; owner's own history: every hypothesis holds (element 5) and R holds
 ;; (element 1).

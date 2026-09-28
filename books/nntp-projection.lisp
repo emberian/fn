@@ -4,6 +4,7 @@
 
 (in-package "ACL2")
 (include-book "nntp-session")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 
 ; The books below this one withdraw their definitions at their export events
 ; (2026-09-19 split of books/nntp.lisp).  This book is the continuation of
@@ -301,7 +302,7 @@
          next-session
          (list (fn-nntp-reply-effect
                 (fn-nntp-crlf (fn-nntp-group-initial archive group))))))
-    (fn-nntp-single session "411 no such newsgroup")))
+    (fn-nntp-single session (fn-proto-text * :no-group))))
 
 (defthm fn-nntp-unknown-group-preserves-session
   (implies (not (member-equal group (fn-state-groups archive)))
@@ -325,7 +326,7 @@
         (fn-nntp-multi-octets next-session
                               (fn-nntp-listgroup-initial archive group)
                               (fn-nntp-number-lines shown)))
-    (fn-nntp-single session "411 no such newsgroup")))
+    (fn-nntp-single session (fn-proto-text * :no-group))))
 
 (defthm fn-nntp-listgroup-unknown-preserves-session
   (implies (not (member-equal group (fn-state-groups archive)))
@@ -338,11 +339,11 @@
     (if (null args)
         (let ((group (fn-nntp-session-group session)))
           (if (null group)
-              (fn-nntp-single session "412 no newsgroup selected")
+              (fn-nntp-single session (fn-proto-text * :no-group-selected))
             (if (mbe :logic (member-equal group (fn-state-groups archive))
                      :exec (fn-ag-member group (fn-state-groups archive)))
                 (fn-nntp-listgroup-result session archive group all-range)
-              (fn-nntp-single session "412 no newsgroup selected"))))
+              (fn-nntp-single session (fn-proto-text * :no-group-selected)))))
       (if (and (consp args) (null (cdr args))
                (fn-nntp-printable-tokenp (car args)))
           (fn-nntp-listgroup-result session archive
@@ -353,8 +354,8 @@
               (if (fn-nntp-range-okp range)
                   (fn-nntp-listgroup-result session archive
                                             (fn-nntp-token-string (car args)) range)
-                (fn-nntp-single session "501 syntax error")))
-          (fn-nntp-single session "501 syntax error"))))))
+                (fn-nntp-single session (fn-proto-text * :syntax))))
+          (fn-nntp-single session (fn-proto-text * :syntax)))))))
 
 (verify-guards fn-nntp-membership-number)
 

@@ -1,4 +1,5 @@
 """Bounded cleanup for failed native-test startup diagnostics."""
+import contextlib
 import subprocess
 
 
@@ -29,7 +30,77 @@ def stop_and_diagnostics(process, timeout=10, stderr_path=None):
                 text += handle.read()
         except OSError as error:
             text += "(cannot read {}: {})".format(stderr_path, error).encode()
-    return "{} {}".format(status, text[-8192:].decode("utf-8", "replace"))
+    return "{} {}".format(status, stderr_digest(text))
+
+
+# The tail of stderr kept in a startup diagnostic, and how many of its
+# refusal lines are quoted first.
+STDERR_TAIL = 8192
+REFUSAL_LINES = 8
+
+
+def stderr_digest(text):
+    """STDERR (octets) as a diagnostic: every `refused' line first, then the tail.
+
+    A start refused for memory (lane ops-fixes) prints its refusal and then
+    the parts that do not fit; a long enough breakdown pushed the one line
+    that says why (`fn: refused init-budget-cannot-hold-profile ...',
+    `machine-cannot-hold-profile') out of the kept tail, and a lane read the
+    failure as a silent one (feed-queue, 2026-09-27).  The refusal lines are
+    read from the whole of stderr, whatever its length."""
+    decoded = (text or b"").decode("utf-8", "replace")
+    refusals = [line.strip() for line in decoded.splitlines()
+                if " refused " in " {} ".format(line) or line.startswith("refused ")]
+    parts = []
+    if refusals:
+        parts.append("refused lines ({}): {}".format(
+            len(refusals), " | ".join(refusals[:REFUSAL_LINES])))
+    size = len(text or b"")
+    if size > STDERR_TAIL:
+        parts.append("stderr (last {} of {} octets):\n{}".format(
+            STDERR_TAIL, size, decoded[-STDERR_TAIL:]))
+    else:
+        parts.append("stderr:\n{}".format(decoded))
+    return "\n".join(parts)
+
+
+def node_log_digest(log_path):
+    """The node's log at LOG_PATH as a diagnostic: the lines that name an
+    uncertain outcome or a fault first (the owner writes one for every
+    uncertain answer it gives: host/native/owner.lisp
+    fnn-owner-attempt-handlers, fnn-owner-commit-complete-locked), then
+    stderr_digest's refusals and tail."""
+    try:
+        with open(log_path, "rb") as handle:
+            text = handle.read()
+    except OSError as error:
+        return "(cannot read the node's log {}: {})".format(log_path, error)
+    decoded = text.decode("utf-8", "replace")
+    reasons = [line.strip() for line in decoded.splitlines()
+               if "uncertain" in line or " fault" in line]
+    head = ("uncertain/fault lines ({}): {}\n".format(len(reasons), " | ".join(reasons[:REFUSAL_LINES]))
+            if reasons else "")
+    return head + stderr_digest(text)
+
+
+@contextlib.contextmanager
+def node_log_on_failure(log_path):
+    """Attach the node's log to any assertion that fails inside the block.
+
+    A reply assertion that fails says what the client saw; why the node
+    answered so is in its log, which a test's temporary tree removes with
+    the test (lane full-vs-uncertain, 2026-09-28: a `441 ... uncertain' seen
+    once at a full store left no evidence of its reason).  Wrap every block
+    that asserts a node's replies:
+
+        with node_log_on_failure(self.tmp / "owner.log"):
+            self.assertEqual(reply, expected)
+    """
+    try:
+        yield
+    except AssertionError as error:
+        raise AssertionError("{}\n--- the node's log ({}) ---\n{}".format(
+            error, log_path, node_log_digest(log_path))) from None
 
 
 def wait_for_announcement(process, prefix, timeout=180, max_bytes=8192, stderr_path=None):
@@ -61,9 +132,11 @@ def wait_for_announcement(process, prefix, timeout=180, max_bytes=8192, stderr_p
             buffered += chunk
         raise AssertionError("native startup output exceeded byte bound")
     except (AssertionError, OSError) as error:
+        # stderr first and on its own lines: it is where the node says why
+        # it did not start (feed-queue's ask, 2026-09-27).
         diagnostic = stop_and_diagnostics(process, stderr_path=stderr_path)
-        raise AssertionError("{}; stdout={!r}; stderr={}".format(
-            error, observed, diagnostic)) from error
+        raise AssertionError("{}; process {}\nstdout={!r}".format(
+            error, diagnostic, observed)) from error
 
 
 def runtime_sbcl(image):

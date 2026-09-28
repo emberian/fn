@@ -57,6 +57,42 @@
   :car-fn fn-cbor-ag-car
   :cdr-fn fn-cbor-ag-cdr)
 
+;
+; NOV is the overview COLUMN (lane served-columns, 2026-09-27): what the
+; served OVER/XOVER, HDR/XHDR and XPAT read of an article instead of its
+; octets, decided at the same intern from the same parse
+; (books/catalog-record.lisp fn-hnov-of; books/served-columns.lisp says the
+; served replies built from it are the replies built from the bytes).  It
+; is the FOURTH element of the control position, not a field of its own:
+; the facts' shape is persisted in a state checkpoint's event table, and a
+; fifth field made an older checkpoint unreadable, which a store whose log
+; segments below it were dropped cannot fall back from (measured
+; 2026-09-28: "open refused reason=checkpoint-damaged").  CONTROL is a true
+; list whose first three elements the control vocabulary reads
+; (fn-ctl-at 0..2), so both images read both shapes.  Absent (a
+; three-element control, an older checkpoint's row, fn-held-plain's nil):
+; the column is not decided and a served reader reads the bytes, as before.
+(defun fn-hnov-flagp (x)
+  (declare (xargs :guard t))
+  (booleanp x))
+
+(fn-defrecord fn-hnov
+  :constructor (fn-hnov-make tomb ok subject from date msgid references)
+  :fields ((fn-hnov-tomb fn-hnov-flagp)
+           (fn-hnov-ok fn-hnov-flagp)
+           (fn-hnov-subject stringp)
+           (fn-hnov-from stringp)
+           (fn-hnov-date stringp)
+           (fn-hnov-msgid stringp)
+           (fn-hnov-references stringp))
+  :recognizer fn-hnov-p
+  :car-fn fn-cbor-ag-car
+  :cdr-fn fn-cbor-ag-cdr)
+
+(defun fn-hf-nov (facts)
+  (declare (xargs :guard t))
+  (fn-cbor-ag-car (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-hf-control facts))))))
+
 ; -----------------------------------------------------------------------------
 ; The context's shape: what the finish decides from the bytes, decided at
 ; intern under the keyring and generation in force.

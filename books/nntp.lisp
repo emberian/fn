@@ -18,6 +18,9 @@
 
 (in-package "ACL2")
 (include-book "nntp-responses")
+; The reply texts below are the protocol table's (books/protocol-table.lisp):
+; `fn-proto-text' is a macro, so each site admits the same literal as before.
+(include-book "protocol-table")
 
 ; The books below this one withdraw their definitions at their export events
 ; (2026-09-19 split of books/nntp.lisp).  This book is the continuation of
@@ -56,13 +59,13 @@
             (and (consp args) (null (cdr args))
                  (fn-nntp-keyword-tokenp (car args))))
         (fn-nntp-capabilities session (fn-nntp-env-posting env))
-      (fn-nntp-single session "501 syntax error")))
+      (fn-nntp-single session (fn-proto-text "CAPABILITIES" :syntax))))
    ((fn-nntp-keywordp keyword "HELP")
     (if (null args) (fn-nntp-help session)
-      (fn-nntp-single session "501 syntax error")))
+      (fn-nntp-single session (fn-proto-text "HELP" :syntax))))
    ((fn-nntp-keywordp keyword "POST")
     (if (null args) (fn-nntp-post-offer session)
-      (fn-nntp-single session "501 syntax error")))
+      (fn-nntp-single session (fn-proto-text "POST" :syntax))))
    ((fn-nntp-keywordp keyword "QUIT")
     (if (null args)
         (fn-nntp-make-result (fn-nntp-make-session nil
@@ -70,13 +73,13 @@
                                                    (fn-nntp-session-current session)
                                                    (fn-nntp-session-projected session))
                              (list (fn-nntp-reply-effect
-                                    (fn-nntp-crlf (fn-nntp-string-octets "205 closing connection")))
+                                    (fn-nntp-crlf (fn-nntp-string-octets (fn-proto-text "QUIT" :closing))))
                                    (fn-nntp-close-effect)))
-      (fn-nntp-single session "501 syntax error")))
+      (fn-nntp-single session (fn-proto-text "QUIT" :syntax))))
    ((fn-nntp-keywordp keyword "MODE") (fn-nntp-mode-response session env args))
    ((fn-nntp-keywordp keyword "DATE")
     (if (null args) (fn-nntp-date-response session env)
-      (fn-nntp-single session "501 syntax error")))
+      (fn-nntp-single session (fn-proto-text "DATE" :syntax))))
    ; The transit commands (RFC 3977 section 6.3.2 IHAVE; RFC 4644 CHECK,
    ; TAKETHIS) are recognized here so a reader never sees 500 for them, and
    ; are not permitted on a reader connection: RFC 3977 section 3.2.1's 502,
@@ -86,8 +89,8 @@
    ((or (fn-nntp-keywordp keyword "IHAVE")
         (fn-nntp-keywordp keyword "CHECK")
         (fn-nntp-keywordp keyword "TAKETHIS"))
-    (fn-nntp-single session "502 transit is not permitted on this connection"))
-   (t (fn-nntp-single session "500 command not recognized"))))
+    (fn-nntp-single session (fn-proto-text * :transit)))
+   (t (fn-nntp-single session (fn-proto-text "(unrecognized)" :unknown)))))
 
 (defun fn-nntp-archive-command (session archive env keyword args fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
@@ -95,17 +98,17 @@
    ((fn-nntp-keywordp keyword "GROUP")
     (if (and (consp args) (null (cdr args)) (fn-nntp-printable-tokenp (car args)))
         (fn-nntp-group-result session archive (fn-nntp-token-string (car args)))
-      (fn-nntp-single session "501 syntax error")))
+      (fn-nntp-single session (fn-proto-text "GROUP" :syntax))))
    ((fn-nntp-keywordp keyword "LISTGROUP")
     (fn-nntp-listgroup-command session archive args))
    ((fn-nntp-keywordp keyword "LIST")
     (fn-nntp-list-command session archive env args))
    ((fn-nntp-keywordp keyword "NEXT")
     (if (null args) (fn-nntp-next-or-last session archive :next fn-arena)
-      (fn-nntp-single session "501 syntax error")))
+      (fn-nntp-single session (fn-proto-text "NEXT" :syntax))))
    ((fn-nntp-keywordp keyword "LAST")
     (if (null args) (fn-nntp-next-or-last session archive :last fn-arena)
-      (fn-nntp-single session "501 syntax error")))
+      (fn-nntp-single session (fn-proto-text "LAST" :syntax))))
    ((fn-nntp-keywordp keyword "ARTICLE") (fn-nntp-retrieval session archive :article args fn-arena))
    ((fn-nntp-keywordp keyword "HEAD") (fn-nntp-retrieval session archive :head args fn-arena))
    ((fn-nntp-keywordp keyword "BODY") (fn-nntp-retrieval session archive :body args fn-arena))
@@ -129,41 +132,18 @@
     (fn-nntp-newnews-response session archive env args fn-arena))
    (t (fn-nntp-retrieval session archive :stat args fn-arena))))
 
-;; The reader dispatcher's command layer, ONE text (lane host-lints): the
-;; reference fn-nntp-command and fn-nntp-command-pinned and the pinned
-;; reference's concrete twins fn-pix-command-pinned
-;; (books/peer-offer-indexed.lisp) and fn-scr-command
-;; (books/served-catalog-chain.lisp) are each this expansion around their own
-;; archive dispatcher call.  An arm added here is in all four, and the twins'
-;; -is- theorems (fn-pix-command-pinned-is-command-pinned,
-;; fn-scr-command-is-command-pinned), which unfold both sides, keep their
-;; proofs; before, each twin was a hand copy that went red when the reference
-;; gained an arm (lane peer-catchup, XFNCATCHUP).  The expansion names the
-;; caller's formals SESSION, ENV and TOKENS (and ARCHIVE, INDEX and FN-ARENA
-;; with :pinned t) and binds KEYWORD and ARGS, which ARCHIVE-CALL uses.
-(defmacro fn-nntp-command-dispatch (archive-call &key pinned)
-  (let ((archive-arm
-         `(if (not (fn-nntp-archive-keywordp keyword))
-              (fn-nntp-session-command session env keyword args)
-            ; RFC 3977 section 3.2.1 assigns 503 to a recognized command the
-            ; server cannot carry out because it does not hold the required
-            ; information.
-            (if (fn-nntp-session-projected session)
-                ,archive-call
-              (fn-nntp-single session "503 archive projection unavailable")))))
-    `(let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
-           (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
-       (if (not (fn-nntp-keyword-tokenp keyword))
-           (fn-nntp-single session "501 syntax error")
-         ,(if pinned
-              ;; PRF-325: XFNCATCHUP answers over the pinned view, as the
-              ;; archive readers do; books/nntp-auth.lisp gates it with them.
-              `(if (fn-nntp-keywordp keyword "XFNCATCHUP")
-                   (if (fn-nntp-session-projected session)
-                       (fn-cu-serve-reply session archive index args fn-arena)
-                     (fn-nntp-single session "503 archive projection unavailable"))
-                 ,archive-arm)
-            archive-arm)))))
+;; The reader dispatchers' command layer is the macro fn-nntp-command-dispatch,
+;; GENERATED from the protocol table (books/protocol-table.lisp,
+;; fn-proto-command-dispatch-term; lane defprotocol-2 deleted the hand-written
+;; copy, whose expansion it reproduces byte for byte): the reference
+;; fn-nntp-command and fn-nntp-command-pinned and the pinned reference's
+;; concrete twins fn-pix-command-pinned (books/peer-offer-indexed.lisp) and
+;; fn-scr-command (books/served-catalog-chain.lisp) are each its expansion
+;; around their own archive dispatcher call, so the twins' -is- theorems
+;; (which unfold both sides) keep their proofs.  A :pinned row's :arms (today
+;; XFNCATCHUP, PRF-325) is in the pinned expansion.  books/protocol-dispatch.lisp
+;; proves the table's per-row reading of the whole pinned dispatcher equal to
+;; fn-nntp-command-pinned.
 
 (defun fn-nntp-command (session archive env tokens fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
@@ -184,13 +164,13 @@
              (null (cdr (cdr wire-event))))
         (let ((line (car (cdr wire-event))))
           (if (not (fn-nntp-command-inputp line))
-              (fn-nntp-single session "501 syntax error")
+              (fn-nntp-single session (fn-proto-text "(syntax)" :syntax))
             (let ((tokens (fn-nntp-tokenize line)))
               (if (and (consp tokens)
                        (fn-nntp-command-arguments-at-mostp tokens))
                   (fn-nntp-command session archive env tokens fn-arena)
-                (fn-nntp-single session "501 syntax error")))))
-      (fn-nntp-single session "501 syntax error"))))
+                (fn-nntp-single session (fn-proto-text "(syntax)" :syntax))))))
+      (fn-nntp-single session (fn-proto-text "(syntax)" :syntax)))))
 
 (verify-guards fn-nntp-archive-keywordp)
 
@@ -249,20 +229,20 @@
 
 (defun fn-gidx-list-counts-command (session archive buckets args)
   (if (null args)
-      (fn-nntp-multi session "215 list of newsgroups follows"
+      (fn-nntp-multi session (fn-proto-text "LIST" :newsgroups)
                      (fn-gidx-counts-lines archive buckets
                                            (fn-state-groups archive)))
     (if (and (consp args) (null (cdr args)))
         (let ((parsed (fn-wildmat-parse (car args))))
           (if (fn-wildmat-result-okp parsed)
-              (fn-nntp-multi session "215 list of newsgroups follows"
+              (fn-nntp-multi session (fn-proto-text "LIST" :newsgroups)
                              (fn-gidx-counts-lines
                               archive buckets
                               (fn-nntp-filter-groups-by-wildmat
                                (fn-wildmat-result-value parsed)
                                (fn-state-groups archive))))
-            (fn-nntp-single session "501 syntax error")))
-      (fn-nntp-single session "501 syntax error"))))
+            (fn-nntp-single session (fn-proto-text "LIST" :syntax))))
+      (fn-nntp-single session (fn-proto-text "LIST" :syntax)))))
 
 (verify-guards fn-gidx-counts-line)
 (verify-guards fn-gidx-counts-lines)
@@ -323,7 +303,8 @@
 
 (defun fn-nntp-withdrawn-reply (session msgidp)
   (declare (xargs :guard t))
-  (fn-nntp-single session (if msgidp "430 withdrawn" "423 withdrawn")))
+  (fn-nntp-single session (if msgidp (fn-proto-text * :withdrawn-msgid)
+                            (fn-proto-text * :withdrawn-number))))
 
 ; An HDR field is one line with no NUL, TAB, CR or LF (RFC 3977 section
 ; 8.5.2; the test is fn-nov-clean-fieldp's, which sits above this book).  An
@@ -353,7 +334,7 @@
              (c (fn-ctl-served-held (fn-nntp-token-string (cadr args))
                                     trie visible withdrawn)))
         (if (not (consp c))
-            (fn-nntp-single session "430 no article with that message-id")
+            (fn-nntp-single session (fn-proto-text "HDR" :no-msgid))
           (let* ((cbytes (fn-nntp-article-bytes c fn-arena))
                  (item (fn-nntp-string-octets
                         (fn-ctl-control-item
@@ -364,8 +345,8 @@
                 (fn-nntp-multi
                  session (fn-nntp-hdr-initial nil)
                  (list (fn-nntp-hdr-line (fn-nntp-decimal-field 0) item)))
-              (fn-nntp-single session "503 control status unavailable")))))
-    (fn-nntp-single session "501 syntax error")))
+              (fn-nntp-single session (fn-proto-text "HDR" :no-control-status))))))
+    (fn-nntp-single session (fn-proto-text "HDR" :syntax))))
 
 ;; The pinned dispatcher's arms, ONE text (lane host-lints): the reference
 ;; fn-nntp-archive-command-pinned below and its guard-verified twin
@@ -468,14 +449,14 @@
              (null (cdr (cdr wire-event))))
         (let ((line (car (cdr wire-event))))
           (if (not (fn-nntp-command-inputp line))
-              (fn-nntp-single session "501 syntax error")
+              (fn-nntp-single session (fn-proto-text "(syntax)" :syntax))
             (let ((tokens (fn-nntp-tokenize line)))
               (if (and (consp tokens)
                        (fn-nntp-command-arguments-at-mostp tokens))
                   (fn-nntp-command-pinned
                    session archive index verdicts env tokens fn-arena)
-                (fn-nntp-single session "501 syntax error")))))
-      (fn-nntp-single session "501 syntax error"))))
+                (fn-nntp-single session (fn-proto-text "(syntax)" :syntax))))))
+      (fn-nntp-single session (fn-proto-text "(syntax)" :syntax)))))
 
 (defthm fn-nntp-withdrawn-reply-preserves-session
   (equal (fn-nntp-result-session (fn-nntp-withdrawn-reply session msgidp))
