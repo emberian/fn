@@ -620,6 +620,14 @@ batch prepared behind it is told ACL2's uncertain reply and closed -- never
 accepted, never refused (`fn-otm-stall-tells-no-member-its-outcome`): the
 barrier is pending, not failed, and its bytes may still become durable --
 and the POSTs queued behind them are refused try-later, nothing stored.
+A POST the store refuses when it is drained -- full (`unaffordable`,
+`memberships`) or malformed -- wrote nothing, so it is never a member of a
+batch: it is told its named refusal at its drain, before any barrier and
+whatever that barrier does, and a START all of whose POSTs were refused so
+issues no sync (`fn-ocs-unstaged-start-tells-its-refusals`, PRF-354). A
+refusal that names another record (a duplicate, a conflict, the generic
+refusal) still waits for its batch's barrier: the record it names may be one
+the barrier has not fenced.
 When the device returns the batches complete: an article whose poster was
 told uncertain IS stored. That is the documented ambiguity, and it is RFC
 3977's: section 6.3.1 has the client that did not get a clear answer check

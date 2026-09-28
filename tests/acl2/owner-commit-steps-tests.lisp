@@ -283,3 +283,56 @@
 (assert-event (and (equal (ocst-class (fn-ocs-init) *ocst-readers*) :reader)
                    (not (equal (fn-ocs-ocm (ocst-pick (fn-ocs-init) *ocst-readers*))
                                (fn-ocs-ocm (fn-ocs-init))))))
+
+; -----------------------------------------------------------------------------
+; PRF-354: a refusal that wrote nothing is told at its drain (keystone
+; fn-ocs-unstaged-start-tells-its-refusals, lane full-vs-uncertain).  The
+; START is taken from *ocst-s-done*, an idle owner the committer reached (a
+; batch fenced and completed), through fn-ocs-commit-event as the inline
+; quantum and the committer take it.
+(defconst *ocst-full* '(:unaffordable :memberships :unaffordable))
+
+; Positive witness: the complete antecedent (every drained word a refusal
+; told at its drain) and every conjunct of the conclusion, over the reached
+; idle state.
+(assert-event (fn-ocs-all-told-at-drain-p *ocst-full*))
+(assert-event (equal (fn-ocs-kept-count *ocst-full*) 0))
+(assert-event (equal (fn-ocs-start-event nil (fn-ocs-kept-count *ocst-full*)) :started-none))
+(assert-event (equal (fn-ocs-phase *ocst-s-done*) :idle))
+(assert-event (equal (ocst-action *ocst-s-done*
+                                  (fn-ocs-start-event nil (fn-ocs-kept-count *ocst-full*)))
+                     :none))
+(assert-event (equal (fn-ocs-phase (ocst-event *ocst-s-done*
+                                               (fn-ocs-start-event nil (fn-ocs-kept-count *ocst-full*))))
+                     :idle))
+
+; Hypothesis-removal witness (the one hypothesis): a batch with an accepted
+; member beside the full-store refusals.  The hypothesis fails (:durable is
+; not told at its drain), and so does the conclusion: one member is kept, the
+; START reports :started and names the barrier, the batch is staged.
+(defconst *ocst-full-and-one* '(:unaffordable :durable :memberships))
+(assert-event (not (fn-ocs-all-told-at-drain-p *ocst-full-and-one*)))
+(assert-event (equal (fn-ocs-kept-count *ocst-full-and-one*) 1))
+(assert-event (equal (fn-ocs-start-event nil (fn-ocs-kept-count *ocst-full-and-one*)) :started))
+(assert-event (equal (ocst-action *ocst-s-done*
+                                  (fn-ocs-start-event nil (fn-ocs-kept-count *ocst-full-and-one*)))
+                     :barrier))
+(assert-event (equal (fn-ocs-phase (ocst-event *ocst-s-done*
+                                               (fn-ocs-start-event nil (fn-ocs-kept-count *ocst-full-and-one*))))
+                     :staged))
+
+; A refusal that names another record is kept and waits for the barrier
+; (fn-ocs-kept-member-starts-the-barrier): a duplicate beside full-store
+; refusals still starts the sync.
+(assert-event (not (fn-ocs-told-at-drain-p :duplicate)))
+(assert-event (equal (ocst-action *ocst-s-done*
+                                  (fn-ocs-start-event nil (fn-ocs-kept-count '(:duplicate :unaffordable))))
+                     :barrier))
+; An uncertain observation still stops, whatever was told.
+(assert-event (equal (ocst-action *ocst-s-done* (fn-ocs-start-event t 0)) :stop))
+
+; Mutation witnesses (labelled): a predicate that told a duplicate, the
+; generic refusal or an acceptance at its drain is what the design refuses.
+(must-fail-checked (assert-event (fn-ocs-told-at-drain-p :duplicate)))
+(must-fail-checked (assert-event (fn-ocs-told-at-drain-p :refused)))
+(must-fail-checked (assert-event (fn-ocs-told-at-drain-p :durable)))

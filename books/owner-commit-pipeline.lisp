@@ -193,6 +193,17 @@
                (and (equal phase :fenced) next (equal event :completed))))
   :rule-classes nil)
 
+; PRF-354 over the committer's step (host/native/owner.lisp
+; fnn-owner-commit-pipeline's START, through fn-otm-commit-event, which is
+; this step: fn-otm-commit-event-is-ocp-commit-event): a START whose members
+; were all refusals told at their drain names no sync.
+(defthm fn-ocp-unstaged-start-issues-no-sync
+  (implies (fn-ocs-all-told-at-drain-p words)
+           (let ((event (fn-ocs-start-event nil (fn-ocs-kept-count words))))
+             (and (equal (mv-nth 0 (fn-ocp-commit-step :idle next event)) :none)
+                  (equal (mv-nth 1 (fn-ocp-commit-step :idle next event)) :idle)
+                  (not (mv-nth 2 (fn-ocp-commit-step :idle next event)))))))
+
 ; A next batch is opened only behind a batch in flight, and only one.
 (defthm fn-ocp-next-opens-only-behind-a-sync
   (implies (and (not next) (mv-nth 2 (fn-ocp-commit-step phase next event)))

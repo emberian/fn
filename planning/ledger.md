@@ -13,17 +13,17 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1388 |
 | Certification roots in the Makefile | 1358 |
 | Books inside the root closure | 1386 |
-| `defthm` and `defthmd` events | 22072 |
-| `defun` events | 15007 |
+| `defthm` and `defthmd` events | 22081 |
+| `defun` events | 15012 |
 | Functions with verified guards | 2521 |
 | Functions declared `:verify-guards nil` and never verified | 1749 |
-| Functions left at the default with an explicit guard | 8515 |
+| Functions left at the default with an explicit guard | 8520 |
 | Functions left at the default with no guard | 2222 |
-| `assert-event` checks | 19971 |
-| `must-fail` checks | 2224 |
+| `assert-event` checks | 19994 |
+| `must-fail` checks | 2227 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 112 |
-| Theorems flagged SUSPECT by shape | 1091 |
+| Theorems flagged SUSPECT by shape | 1094 |
 | Export-hygiene warnings | 264 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 240 |
@@ -518,7 +518,7 @@ that `make certify` requests.
 | `books/octet-text.lisp` | root | 120 | 64 | 0/0/61/3 | 0 | 0 | 0 |
 | `books/octets-stobj.lisp` | root | 105 | 49 | 0/1/42/6 | 0 | 0 | 2 |
 | `books/outcome-class.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
-| `books/owner-ack-after-barrier.lisp` | root | 30 | 26 | 0/1/25/0 | 0 | 0 | 0 |
+| `books/owner-ack-after-barrier.lisp` | root | 34 | 27 | 0/1/26/0 | 0 | 0 | 3 |
 | `books/owner-advance-carried.lisp` | root | 23 | 7 | 0/2/5/0 | 0 | 0 | 0 |
 | `books/owner-agent.lisp` | root | 40 | 13 | 0/0/13/0 | 0 | 0 | 3 |
 | `books/owner-batch.lisp` | root | 61 | 31 | 0/14/17/0 | 0 | 0 | 4 |
@@ -529,8 +529,8 @@ that `make certify` requests.
 | `books/owner-commit-carried.lisp` | root | 39 | 18 | 8/0/10/0 | 0 | 0 | 0 |
 | `books/owner-commit-class.lisp` | root | 4 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/owner-commit-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 2 |
-| `books/owner-commit-pipeline.lisp` | root | 9 | 11 | 0/0/11/0 | 0 | 0 | 0 |
-| `books/owner-commit-steps.lisp` | root | 27 | 27 | 0/0/27/0 | 0 | 0 | 1 |
+| `books/owner-commit-pipeline.lisp` | root | 10 | 11 | 0/0/11/0 | 0 | 0 | 0 |
+| `books/owner-commit-steps.lisp` | root | 31 | 31 | 0/0/31/0 | 0 | 0 | 1 |
 | `books/owner-config-observe.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-config.lisp` | root | 44 | 44 | 0/6/38/0 | 0 | 0 | 5 |
 | `books/owner-control-read.lisp` | root | 62 | 2 | 0/2/0/0 | 0 | 0 | 2 |
@@ -1205,7 +1205,7 @@ that `make certify` requests.
 | `tests/acl2/octets-stobj-tests.lisp` | root | 31 | 16 | 0/5/1/10 | 24 | 20 | 0 |
 | `tests/acl2/open-one-pass-tests.lisp` | root | 0 | 8 | 0/6/0/2 | 56 | 1 | 0 |
 | `tests/acl2/outcome-class-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 37 | 7 | 0 |
-| `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 31 | 0 | 0 |
+| `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 47 | 11 | 0 |
 | `tests/acl2/owner-agent-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 3 | 0 |
 | `tests/acl2/owner-batch-tests.lisp` | root | 0 | 35 | 0/25/7/3 | 17 | 0 | 0 |
@@ -1216,7 +1216,7 @@ that `make certify` requests.
 | `tests/acl2/owner-commit-carried-tests.lisp` | root | 0 | 6 | 0/2/0/4 | 26 | 5 | 0 |
 | `tests/acl2/owner-commit-class-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 16 | 2 | 0 |
 | `tests/acl2/owner-commit-pipeline-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 40 | 2 | 0 |
-| `tests/acl2/owner-commit-steps-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 75 | 6 | 0 |
+| `tests/acl2/owner-commit-steps-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 89 | 9 | 0 |
 | `tests/acl2/owner-config-observe-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 1 | 0 |
 | `tests/acl2/owner-config-tests.lisp` | root | 0 | 4 | 0/1/0/3 | 149 | 1 | 0 |
 | `tests/acl2/owner-enrollment-read-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 31 | 9 | 0 |
@@ -1864,6 +1864,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-nop-native-action-of-unaccepted` | `books/native-operator.lisp` | 1796 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-operator-result-native-action and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value |
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | arm-of-definition: the hypotheses select one IF/COND arm of fn-nov-header-content and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
 | `fn-nss-hdr-lines-of-no-numbers` | `books/nntp-search-scope.lisp` | 78 | arm-of-definition: the hypotheses select one IF/COND arm of fn-nntp-hdr-lines-for-numbers and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-nntp-hdr-lines-for-numbers and the conclusion is that branch's value |
+| `fn-oab-drain-and-kept-of-atom` | `books/owner-ack-after-barrier.lisp` | 361 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oab-drain and the conclusion is that arm's value |
+| `fn-oab-drain-kept-step-unfolds` | `books/owner-ack-after-barrier.lisp` | 347 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oab-drain and the conclusion is that arm's value |
+| `fn-oab-drain-told-step-unfolds` | `books/owner-ack-after-barrier.lisp` | 355 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oab-drain and the conclusion is that arm's value |
 | `fn-oag-conns-of-set-conns` | `books/owner-agent.lisp` | 696 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-oag-tls-served-conn-config` | `books/owner-agent.lisp` | 624 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-oag-with-wire-keeps-the-config` | `books/owner-agent.lisp` | 504 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

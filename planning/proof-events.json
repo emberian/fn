@@ -12124,6 +12124,27 @@
           "name": "fn-pgc-release-ids"
         }
       ]
+    },
+    {
+      "id": "PRF-354",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-unstaged-start-tells-its-refusals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-kept-member-starts-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-told-at-drain-p-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-unstaged-start-issues-no-sync"
+        }
+      ]
     }
   ]
 }

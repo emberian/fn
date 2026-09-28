@@ -2382,7 +2382,7 @@ nil when nothing was queued (or the store does not commit through the log)."
       (return-from fnn-owner-commit-start-locked (values nil nil deferred)))
     (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
       (setf (fnn-owner-service-queued service) 0))
-    (let ((members nil) (uncertain nil)
+    (let ((members nil) (uncertain nil) (drained 0)
           (log (fnn-store-log store)))
       (destructuring-bind (bmax omax) (fnn-owner-core 'fn-owner-log-bounds)
         (setf (fnn-log-bmax log) bmax (fnn-log-omax log) omax))
@@ -2396,18 +2396,35 @@ nil when nothing was queued (or the store does not commit through the log)."
               ;; for the next batch.
               (loop repeat (fnn-log-bmax log) do
                 (setq *fnn-owner-uncertain-render* nil)
-                (multiple-value-bind (cid reply stop word) (fnn-owner-drain-one service)
-                  (unless cid (return))
-                  ;; A member ACL2 answered uncertain ends the START: the
-                  ;; batch is not appended (its :started-uncertain).
-                  (push (list cid reply word *fnn-owner-uncertain-render*) members)
-                  (when stop (setq uncertain t) (return))))
+                (let ((mark (cdr deferred)))
+                  (multiple-value-bind (cid reply stop word) (fnn-owner-drain-one service)
+                    (unless cid (return))
+                    (incf drained)
+                    (if (and (not stop) (fnn-core 'fn-ocs-told-at-drain-p word))
+                        ;; PRF-354 (books/owner-commit-steps.lisp
+                        ;; fn-ocs-told-at-drain-p): a refusal that wrote
+                        ;; nothing is known now, whatever the batch's barrier
+                        ;; does: its lines and feed resolution, then its
+                        ;; rendered refusal, leave at once, and it is not a
+                        ;; member of the batch.
+                        (let ((mine (ldiff (cdr deferred) mark)))
+                          (setf (cdr deferred) mark)
+                          (dolist (item (reverse mine))
+                            (if (eq (car item) :log)
+                                (fnn-log-line (cdr item))
+                              (fnn-owner-feed-flush service (cdr item))))
+                          (fnn-owner-deliver service cid reply))
+                      (progn
+                        ;; A member ACL2 answered uncertain ends the START: the
+                        ;; batch is not appended (its :started-uncertain).
+                        (push (list cid reply word *fnn-owner-uncertain-render*) members)
+                        (when stop (setq uncertain t) (return)))))))
               ;; The bound ended the drain: members may still be queued.
               ;; Keep the committer's wake-up count positive (host
               ;; bookkeeping: a START-NEXT or the next START that finds
               ;; nothing reports so), or the backlog would wait for a new
               ;; submission's wake-up.
-              (when (and (= (length members) (fnn-log-bmax log)) (not uncertain))
+              (when (and (= drained (fnn-log-bmax log)) (not uncertain))
                 (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
                   (setf (fnn-owner-service-queued service)
                         (max 1 (fnn-owner-service-queued service)))))
@@ -2444,11 +2461,15 @@ fnn-owner-commit-queued-locked.  Returns (values WORD CONDITION)."
   (fnn-log-sync-sealed-batch (fnn-owner-service-store service)))
 
 (defun fnn-owner-commit-start-event (members uncertain)
-  "The START's observation for fn-ocs-commit-step: a member (or an
-observation) was uncertain, nothing was queued, or a batch was staged."
-  (cond (uncertain :started-uncertain)
-        ((null members) :started-none)
-        (t :started)))
+  "The START's observation for fn-ocs-commit-step, ACL2's
+(books/owner-commit-steps.lisp fn-ocs-start-event): a member (or an
+observation) was uncertain, the batch kept no member (nothing was queued, or
+every member was a refusal told at its drain: PRF-354), or a batch was
+staged."
+  (let ((event (fnn-core 'fn-ocs-start-event (and uncertain t) (length members))))
+    (unless (member event '(:started :started-none :started-uncertain))
+      (fnn-fault "owner returned a malformed START event ~a" event))
+    event))
 
 (defun fnn-owner-commit-release-member (service member release)
   "Answer MEMBER (CID REPLY WORD RENDER) as ACL2's RELEASE for it

@@ -151,11 +151,27 @@
                          (list :line i (cons :k3 i))
                        (list :line i))))))
 
+; PRF-354 (lane full-vs-uncertain): a member whose word is a refusal that
+; wrote nothing (fn-ocs-told-at-drain-p) is told at its drain -- its reply
+; names no record, for it took none -- and is not one of the batch's
+; members, whose numbering skips it (host/native/owner.lisp
+; fnn-owner-commit-start-locked).
 (defun fn-oab-drain (i members)
   (declare (xargs :guard (natp i)))
   (if (consp members)
-      (append (fn-oab-member-steps i (car members))
-              (fn-oab-drain (+ 1 (nfix i)) (cdr members)))
+      (if (fn-ocs-told-at-drain-p (fn-oab-mword (car members)))
+          (cons (list :report) (fn-oab-drain i (cdr members)))
+        (append (fn-oab-member-steps i (car members))
+                (fn-oab-drain (+ 1 (nfix i)) (cdr members))))
+    nil))
+
+; The members the batch keeps: the ones its COMPLETE (or stop) answers.
+(defun fn-oab-kept (members)
+  (declare (xargs :guard t))
+  (if (consp members)
+      (if (fn-ocs-told-at-drain-p (fn-oab-mword (car members)))
+          (fn-oab-kept (cdr members))
+        (cons (car members) (fn-oab-kept (cdr members))))
     nil))
 
 (defun fn-oab-lines (i members)
@@ -189,12 +205,13 @@
     (append (and (equal action :complete) (fn-oab-lines i members))
             (fn-oab-reports i (fn-ocs-member-releases action (fn-oab-outcomes members))))))
 
-; One batch quantum from an idle owner: START (drain, seal), SYNC, COMPLETE.
+; One batch quantum from an idle owner: START (drain, seal), SYNC, COMPLETE
+; of the members the batch kept.
 (defun fn-oab-quantum (members word)
   (declare (xargs :guard t))
   (append (fn-oab-drain 0 members)
           (and (equal word :fenced) (list (list :fence)))
-          (fn-oab-complete 0 members word)))
+          (fn-oab-complete 0 (fn-oab-kept members) word)))
 
 ; A batch in flight (A, members 0..) and the batch prepared behind its
 ; barrier (B, START-NEXT, numbered after A's): A's drain and seal, B's drain
@@ -203,13 +220,13 @@
 ; COMPLETE.
 (defun fn-oab-pipeline (a b word-a word-b)
   (declare (xargs :guard t))
-  (let ((n (len a)))
+  (let ((n (len (fn-oab-kept a))))
     (append (fn-oab-drain 0 a)
             (fn-oab-drain n b)
             (and (equal word-a :fenced) (list (list :fence)))
-            (fn-oab-complete 0 a word-a)
+            (fn-oab-complete 0 (fn-oab-kept a) word-a)
             (and (equal word-a :fenced) (equal word-b :fenced) (list (list :fence)))
-            (fn-oab-complete n b (if (equal word-a :fenced) word-b :failed)))))
+            (fn-oab-complete n (fn-oab-kept b) (if (equal word-a :fenced) word-b :failed)))))
 
 ; The property: every record a report names was taken and then fenced.
 (defun fn-oab-names-fenced-p (ids fenced)
@@ -271,6 +288,16 @@
          (fn-oab-fenced-after y (fn-oab-pending-after x pending)
                               (fn-oab-fenced-after x pending fenced))))
 
+;; A report that names no record (a refusal told at its drain) keeps the
+;; trace's state and needs no fence.
+(defthm fn-oab-report-of-nothing-unfolds
+  (and (equal (fn-oab-reports-follow-fences-p (cons '(:report) rest) pending fenced)
+              (fn-oab-reports-follow-fences-p rest pending fenced))
+       (equal (fn-oab-pending-after (cons '(:report) rest) pending)
+              (fn-oab-pending-after rest pending))
+       (equal (fn-oab-fenced-after (cons '(:report) rest) pending fenced)
+              (fn-oab-fenced-after rest pending fenced))))
+
 (defthm fn-oab-mplan-only-after-the-fence
   (implies (fn-oab-mplan m) (fn-oab-mfence m))
   :hints (("Goal" :in-theory (disable fn-ks-plan))))
@@ -281,9 +308,11 @@
 (defun fn-oab-drain-ind (i members pending fenced)
   (declare (xargs :guard (natp i) :verify-guards nil))
   (if (consp members)
-      (fn-oab-drain-ind (+ 1 (nfix i)) (cdr members)
-                        (fn-oab-pending-after (fn-oab-member-steps i (car members)) pending)
-                        (fn-oab-fenced-after (fn-oab-member-steps i (car members)) pending fenced))
+      (if (fn-ocs-told-at-drain-p (fn-oab-mword (car members)))
+          (fn-oab-drain-ind i (cdr members) pending fenced)
+        (fn-oab-drain-ind (+ 1 (nfix i)) (cdr members)
+                          (fn-oab-pending-after (fn-oab-member-steps i (car members)) pending)
+                          (fn-oab-fenced-after (fn-oab-member-steps i (car members)) pending fenced)))
     (list i pending fenced)))
 
 (defthm fn-oab-reports-follow-fences-p-of-atom
@@ -315,14 +344,35 @@
     (and (member-equal i tk)
          (implies (and (equal (fn-oab-mword m) :durable) (fn-oab-mchange m))
                   (member-equal (cons :k3 i) tk)))))
+(defthm fn-oab-drain-kept-step-unfolds
+  (implies (and (consp members) (not (fn-ocs-told-at-drain-p (fn-oab-mword (car members)))))
+           (and (equal (fn-oab-drain i members)
+                       (append (fn-oab-member-steps i (car members))
+                               (fn-oab-drain (+ 1 (nfix i)) (cdr members))))
+                (equal (fn-oab-kept members) (cons (car members) (fn-oab-kept (cdr members))))))
+  :hints (("Goal" :expand ((fn-oab-drain i members) (fn-oab-kept members))
+           :in-theory (disable fn-oab-member-steps fn-ocs-told-at-drain-p))))
+(defthm fn-oab-drain-told-step-unfolds
+  (implies (and (consp members) (fn-ocs-told-at-drain-p (fn-oab-mword (car members))))
+           (and (equal (fn-oab-drain i members) (cons '(:report) (fn-oab-drain i (cdr members))))
+                (equal (fn-oab-kept members) (fn-oab-kept (cdr members)))))
+  :hints (("Goal" :expand ((fn-oab-drain i members) (fn-oab-kept members))
+           :in-theory (disable fn-oab-member-steps fn-ocs-told-at-drain-p))))
+(defthm fn-oab-drain-and-kept-of-atom
+  (implies (not (consp members))
+           (and (equal (fn-oab-drain i members) nil)
+                (equal (fn-oab-kept members) nil)))
+  :hints (("Goal" :expand ((fn-oab-drain i members) (fn-oab-kept members)))))
+
 (defthm fn-oab-drain-covers
-  (fn-oab-covered i members
+  (fn-oab-covered i (fn-oab-kept members)
                   (append (fn-oab-pending-after (fn-oab-drain i members) pending)
                           (fn-oab-fenced-after (fn-oab-drain i members) pending fenced)))
   :hints (("Goal" :induct (fn-oab-drain-ind i members pending fenced)
            :in-theory (disable fn-oab-member-steps fn-oab-pending-after fn-oab-fenced-after
-                               fn-oab-taken-stays-taken))
-          ("Subgoal *1/1" :use ((:instance fn-oab-taken-stays-taken
+                               fn-oab-taken-stays-taken fn-ocs-told-at-drain-p
+                               fn-oab-drain fn-oab-kept))
+          ("Subgoal *1/2" :use ((:instance fn-oab-taken-stays-taken
                                  (x i) (trace (fn-oab-drain (+ 1 (nfix i)) (cdr members)))
                                  (pending (fn-oab-pending-after (fn-oab-member-steps i (car members)) pending))
                                  (fenced (fn-oab-fenced-after (fn-oab-member-steps i (car members)) pending fenced)))
@@ -393,7 +443,8 @@
   :hints (("Goal" :induct (fn-oab-cov-ind i members)
            :in-theory (disable fn-oab-pending-after fn-oab-fenced-after
                                fn-oab-member-equal-of-append))))
-(in-theory (disable fn-oab-complete fn-oab-drain))
+(in-theory (disable fn-oab-complete fn-oab-drain fn-oab-kept fn-oab-drain-kept-step-unfolds
+                    fn-oab-drain-told-step-unfolds fn-oab-drain-and-kept-of-atom))
 (defthm fn-oab-quantum-reports-after-its-barrier
   (fn-oab-reports-follow-fences-p (fn-oab-quantum members word) nil nil)
   :hints (("Goal" :use ((:instance fn-oab-drain-covers (i 0) (pending nil) (fenced nil))))))
@@ -402,11 +453,11 @@
   (fn-oab-reports-follow-fences-p (fn-oab-pipeline a b word-a word-b) nil nil)
   :hints (("Goal" :in-theory (disable fn-oab-covered-stays-covered)
            :use ((:instance fn-oab-drain-covers (i 0) (members a) (pending nil) (fenced nil))
-                 (:instance fn-oab-drain-covers (i (len a)) (members b)
+                 (:instance fn-oab-drain-covers (i (len (fn-oab-kept a))) (members b)
                             (pending (fn-oab-pending-after (fn-oab-drain 0 a) nil))
                             (fenced (fn-oab-fenced-after (fn-oab-drain 0 a) nil nil)))
-                 (:instance fn-oab-covered-stays-covered (i 0) (members a)
-                            (trace (fn-oab-drain (len a) b))
+                 (:instance fn-oab-covered-stays-covered (i 0) (members (fn-oab-kept a))
+                            (trace (fn-oab-drain (len (fn-oab-kept a)) b))
                             (pending (fn-oab-pending-after (fn-oab-drain 0 a) nil))
                             (fenced (fn-oab-fenced-after (fn-oab-drain 0 a) nil nil)))))))
 
