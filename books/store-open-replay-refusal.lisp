@@ -48,7 +48,7 @@
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-sorr-configs-before-loop (rev txid acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
   (if (consp rev)
       (fn-sorr-configs-before-loop (cdr rev)
                                    txid
@@ -73,7 +73,7 @@
    (equal (fn-sorr-configs-before-loop (fn-ag-rev-onto configs zs) txid 0)
           (fn-sorr-configs-before-loop zs txid (fn-sorr-configs-before configs txid)))
    :hints (("Goal" :induct (fn-ag-rev-onto configs zs)
-                   :in-theory (union-theories '(fn-sorr-configs-before-loop fn-sorr-configs-before fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-sorr-configs-before-loop fn-sorr-configs-before fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

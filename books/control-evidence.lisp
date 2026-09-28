@@ -272,7 +272,7 @@
    (equal (fn-cev-targeting-lines-loop msgid (fn-ag-rev-onto ws zs) a verdicts nil)
           (fn-cev-targeting-lines-loop msgid zs a verdicts (fn-cev-targeting-lines msgid ws a verdicts)))
    :hints (("Goal" :induct (fn-ag-rev-onto ws zs)
-                   :in-theory (union-theories '(fn-cev-targeting-lines-loop fn-cev-targeting-lines fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-cev-targeting-lines-loop fn-cev-targeting-lines fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
@@ -416,7 +416,7 @@
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-cev-held-count-loop (rev ws raw verdicts acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
   (if (consp rev)
       (fn-cev-held-count-loop (cdr rev)
                               ws
@@ -446,7 +446,7 @@
    (equal (fn-cev-held-count-loop (fn-ag-rev-onto envs zs) ws raw verdicts 0)
           (fn-cev-held-count-loop zs ws raw verdicts (fn-cev-held-count envs ws raw verdicts)))
    :hints (("Goal" :induct (fn-ag-rev-onto envs zs)
-                   :in-theory (union-theories '(fn-cev-held-count-loop fn-cev-held-count fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-cev-held-count-loop fn-cev-held-count fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
@@ -500,7 +500,7 @@
    (equal (fn-cev-envelope-lines-loop (fn-ag-rev-onto envs zs) ws raw verdicts nil)
           (fn-cev-envelope-lines-loop zs ws raw verdicts (fn-cev-envelope-lines envs ws raw verdicts)))
    :hints (("Goal" :induct (fn-ag-rev-onto envs zs)
-                   :in-theory (union-theories '(fn-cev-envelope-lines-loop fn-cev-envelope-lines fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-cev-envelope-lines-loop fn-cev-envelope-lines fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

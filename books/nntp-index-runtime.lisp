@@ -82,7 +82,7 @@
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-nntp-numbers-min-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
   (if (consp rev)
       (fn-nntp-numbers-min-loop (cdr rev)
                                 (let ((number (fn-ag-car rev))
@@ -158,7 +158,7 @@
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-nntp-numbers-min-above-loop (current rev acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
   (if (consp rev)
       (fn-nntp-numbers-min-above-loop current
                                       (cdr rev)

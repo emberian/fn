@@ -1996,7 +1996,7 @@
    (equal (fn-served-reply-octets-loop (fn-ag-rev-onto effects zs) nil)
           (fn-served-reply-octets-loop zs (fn-served-reply-octets effects)))
    :hints (("Goal" :induct (fn-ag-rev-onto effects zs)
-                   :in-theory (union-theories '(fn-served-reply-octets-loop fn-served-reply-octets fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-served-reply-octets-loop fn-served-reply-octets fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

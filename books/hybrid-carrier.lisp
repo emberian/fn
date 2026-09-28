@@ -7,6 +7,7 @@
 (include-book "stx-carrier")
 (include-book "injection-shape")
 (include-book "article-fields")
+(include-book "rev-onto") ; the loop twins' step (PKT-877)
 
 (defconst *fn-hc-version* 1)
 ; Carrier v2 carries a source over the v1 length field's 65535 octets.  Its
@@ -293,7 +294,7 @@
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-hc-count-name-loop (name rev acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
   (if (consp rev)
       (fn-hc-count-name-loop name
                              (cdr rev)
@@ -319,7 +320,7 @@
    (equal (fn-hc-count-name-loop name (fn-ag-rev-onto fields zs) 0)
           (fn-hc-count-name-loop name zs (fn-hc-count-name name fields)))
    :hints (("Goal" :induct (fn-ag-rev-onto fields zs)
-                   :in-theory (union-theories '(fn-hc-count-name-loop fn-hc-count-name fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-hc-count-name-loop fn-hc-count-name fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

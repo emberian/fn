@@ -43,6 +43,7 @@
 (in-package "ACL2")
 (include-book "web-request")
 (include-book "web-2047")
+(include-book "rev-onto") ; the loop twins' step (PKT-877)
 
 ; -----------------------------------------------------------------------------
 ; Escaping (HTML 13.1.2.4: text and quoted attribute values).
@@ -169,7 +170,7 @@
    (equal (fn-wr-pct-encode-loop (fn-ag-rev-onto xs zs) nil)
           (fn-wr-pct-encode-loop zs (fn-wr-pct-encode xs)))
    :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
-                   :in-theory (union-theories '(fn-wr-pct-encode-loop fn-wr-pct-encode fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-wr-pct-encode-loop fn-wr-pct-encode fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
@@ -827,7 +828,7 @@
    (equal (fn-wr-over-rows-loop group (fn-ag-rev-onto rows zs) nil)
           (fn-wr-over-rows-loop group zs (fn-wr-over-rows group rows)))
    :hints (("Goal" :induct (fn-ag-rev-onto rows zs)
-                   :in-theory (union-theories '(fn-wr-over-rows-loop fn-wr-over-rows fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-wr-over-rows-loop fn-wr-over-rows fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

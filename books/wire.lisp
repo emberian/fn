@@ -16,6 +16,7 @@
 ; they return on every fn-wire-statep input.
 
 (in-package "ACL2")
+(include-book "rev-onto") ; the loop twins' step (PKT-877)
 
 ; ---------------------------------------------------------------------------
 ; Total selectors.  The records below are positional lists; these two helpers
@@ -135,7 +136,7 @@
     (revappend acc right)))
 
 (defun fn-wire-append (left right)
-  (declare (xargs :guard t :measure (acl2-count left)))
+  (declare (xargs :guard t :measure (acl2-count left) :verify-guards nil))
   (mbe :logic
        (if (consp left)
            (cons (car left) (fn-wire-append (cdr left) right))
@@ -149,6 +150,17 @@
    :hints (("Goal" :induct (fn-wire-append-loop left right acc)
                    :in-theory (union-theories '(fn-wire-append-loop fn-wire-append revappend car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
+
+(verify-guards fn-wire-append-loop)
+
+(verify-guards fn-wire-append
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-wire-append)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-wire-append-loop-is-revappend (acc nil))))))
 
 
 (defun fn-wire-outbound-ok (octets)
@@ -236,7 +248,7 @@
    (equal (fn-wire-render-lines-loop (fn-ag-rev-onto lines zs) nil)
           (fn-wire-render-lines-loop zs (fn-wire-render-lines lines)))
    :hints (("Goal" :induct (fn-ag-rev-onto lines zs)
-                   :in-theory (union-theories '(fn-wire-render-lines-loop fn-wire-render-lines fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-wire-render-lines-loop fn-wire-render-lines fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
@@ -486,7 +498,7 @@
    (equal (fn-wire-lines-size-loop (fn-ag-rev-onto lines zs) 0)
           (fn-wire-lines-size-loop zs (fn-wire-lines-size lines)))
    :hints (("Goal" :induct (fn-ag-rev-onto lines zs)
-                   :in-theory (union-theories '(fn-wire-lines-size-loop fn-wire-lines-size fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-wire-lines-size-loop fn-wire-lines-size fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
@@ -1206,16 +1218,7 @@
 (verify-guards fn-wire-reverse-octets)
 (verify-guards fn-wire-reverse-lines-aux)
 (verify-guards fn-wire-reverse-lines)
-(verify-guards fn-wire-append-loop)
-
-(verify-guards fn-wire-append
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-wire-append)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-wire-append-loop-is-revappend (acc nil))))))
+(verify-guards fn-wire-append)
 (verify-guards fn-wire-outbound-ok)
 (verify-guards fn-wire-outbound-refused)
 (verify-guards fn-wire-outbound-okp)

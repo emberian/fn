@@ -309,7 +309,7 @@
    (equal (fn-cu-join-loop (fn-ag-rev-onto lines zs) nil)
           (fn-cu-join-loop zs (fn-cu-join lines)))
    :hints (("Goal" :induct (fn-ag-rev-onto lines zs)
-                   :in-theory (union-theories '(fn-cu-join-loop fn-cu-join fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-cu-join-loop fn-cu-join fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

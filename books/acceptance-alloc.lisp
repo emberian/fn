@@ -7,6 +7,7 @@
 ; network, or cryptography.
 
 (in-package "ACL2")
+(include-book "rev-onto")
 
 ; -----------------------------------------------------------------------------
 ; Total executable helpers.
@@ -41,15 +42,7 @@
 ; and reverses it onto YS with `revappend', which is iterative; it allocates
 ; 2|XS| conses and a constant stack, and accepts any XS as `append' does
 ; (a non-list tail is dropped).
-(defun fn-ag-rev-onto (xs acc)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (fn-ag-rev-onto (cdr xs) (cons (car xs) acc))
-    acc))
-
-(defthm fn-ag-rev-onto-true-listp
-  (implies (true-listp acc)
-           (true-listp (fn-ag-rev-onto xs acc))))
+; fn-ag-rev-onto lives in books/rev-onto.lisp (every loop twin's step).
 
 (local
  (defthm fn-ag-revappend-of-rev-onto

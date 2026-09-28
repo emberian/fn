@@ -108,7 +108,7 @@
    (equal (fn-intern-events-loop (fn-ag-rev-onto ws zs) keyring generation fn-arena (mv nil fn-arena))
           (fn-intern-events-loop zs keyring generation fn-arena (fn-intern-events ws keyring generation fn-arena)))
    :hints (("Goal" :induct (fn-ag-rev-onto ws zs)
-                   :in-theory (union-theories '(fn-intern-events-loop fn-intern-events fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-intern-events-loop fn-intern-events fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

@@ -303,7 +303,7 @@
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-feed-inflight-count-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
   (if (consp rev)
       (fn-feed-inflight-count-loop (cdr rev)
                                    (+ (if (fn-feed-state-inflightp (fn-feed-entry-state (car rev)))
@@ -326,7 +326,7 @@
    (equal (fn-feed-inflight-count-loop (fn-ag-rev-onto xs zs) 0)
           (fn-feed-inflight-count-loop zs (fn-feed-inflight-count xs)))
    :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
-                   :in-theory (union-theories '(fn-feed-inflight-count-loop fn-feed-inflight-count fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-feed-inflight-count-loop fn-feed-inflight-count fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

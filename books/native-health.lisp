@@ -135,7 +135,7 @@ profile's."
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-nh-forward-count-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
   (if (consp rev)
       (fn-nh-forward-count-loop (cdr rev)
                                 (+ (if (and (consp (car rev))
@@ -161,7 +161,7 @@ profile's."
    (equal (fn-nh-forward-count-loop (fn-ag-rev-onto pins zs) 0)
           (fn-nh-forward-count-loop zs (fn-nh-forward-count pins)))
    :hints (("Goal" :induct (fn-ag-rev-onto pins zs)
-                   :in-theory (union-theories '(fn-nh-forward-count-loop fn-nh-forward-count fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-nh-forward-count-loop fn-nh-forward-count fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
@@ -179,7 +179,7 @@ profile's."
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-nh-forward-charge-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
   (if (consp rev)
       (fn-nh-forward-charge-loop (cdr rev)
                                  (+ (if (and (consp (car rev))
@@ -205,7 +205,7 @@ profile's."
    (equal (fn-nh-forward-charge-loop (fn-ag-rev-onto pins zs) 0)
           (fn-nh-forward-charge-loop zs (fn-nh-forward-charge pins)))
    :hints (("Goal" :induct (fn-ag-rev-onto pins zs)
-                   :in-theory (union-theories '(fn-nh-forward-charge-loop fn-nh-forward-charge fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-nh-forward-charge-loop fn-nh-forward-charge fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
@@ -232,7 +232,7 @@ profile's."
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-nh-dropped-count-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
   (if (consp rev)
       (fn-nh-dropped-count-loop (cdr rev)
                                 (+ (if (equal (fn-feed-entry-state (car rev))
@@ -257,7 +257,7 @@ profile's."
    (equal (fn-nh-dropped-count-loop (fn-ag-rev-onto xs zs) 0)
           (fn-nh-dropped-count-loop zs (fn-nh-dropped-count xs)))
    :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
-                   :in-theory (union-theories '(fn-nh-dropped-count-loop fn-nh-dropped-count fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-nh-dropped-count-loop fn-nh-dropped-count fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
@@ -285,7 +285,7 @@ profile's."
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-nh-deferred-count-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
   (if (consp rev)
       (fn-nh-deferred-count-loop (cdr rev)
                                  (+ (if (and (equal (fn-feed-entry-state (car rev))
@@ -312,7 +312,7 @@ profile's."
    (equal (fn-nh-deferred-count-loop (fn-ag-rev-onto xs zs) 0)
           (fn-nh-deferred-count-loop zs (fn-nh-deferred-count xs)))
    :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
-                   :in-theory (union-theories '(fn-nh-deferred-count-loop fn-nh-deferred-count fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-nh-deferred-count-loop fn-nh-deferred-count fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

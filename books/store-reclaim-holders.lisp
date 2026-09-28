@@ -222,7 +222,7 @@
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-rcl-summary-in-loop (rule now h verdicts rev fn-arena acc)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard (rationalp acc) :verify-guards nil))
   (if (consp rev)
       (fn-rcl-summary-in-loop rule
                               now
@@ -287,7 +287,7 @@
    (equal (fn-rcl-summary-in-loop rule now h verdicts (fn-ag-rev-onto articles zs) fn-arena (list 0 0 0 0))
           (fn-rcl-summary-in-loop rule now h verdicts zs fn-arena (fn-rcl-summary-in rule now h verdicts articles fn-arena)))
    :hints (("Goal" :induct (fn-ag-rev-onto articles zs)
-                   :in-theory (union-theories '(fn-rcl-summary-in-loop fn-rcl-summary-in fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-rcl-summary-in-loop fn-rcl-summary-in fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
@@ -305,7 +305,7 @@
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-rcl-held-count-in-loop (rule now h verdicts rev fn-arena acc)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard (rationalp acc) :verify-guards nil))
   (if (consp rev)
       (fn-rcl-held-count-in-loop rule
                                  now
@@ -338,7 +338,7 @@
    (equal (fn-rcl-held-count-in-loop rule now h verdicts (fn-ag-rev-onto articles zs) fn-arena 0)
           (fn-rcl-held-count-in-loop rule now h verdicts zs fn-arena (fn-rcl-held-count-in rule now h verdicts articles fn-arena)))
    :hints (("Goal" :induct (fn-ag-rev-onto articles zs)
-                   :in-theory (union-theories '(fn-rcl-held-count-in-loop fn-rcl-held-count-in fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-rcl-held-count-in-loop fn-rcl-held-count-in fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

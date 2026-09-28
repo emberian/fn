@@ -62,7 +62,7 @@
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-ng-len-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
   (if (consp rev) (fn-ng-len-loop (cdr rev) (1+ acc)) acc))
 
 (defun fn-ng-len (xs)

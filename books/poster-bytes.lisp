@@ -132,7 +132,7 @@
    (equal (fn-pb-upto-semicolon-loop (fn-ag-rev-onto r zs) :no)
           (fn-pb-upto-semicolon-loop zs (fn-pb-upto-semicolon r)))
    :hints (("Goal" :induct (fn-ag-rev-onto r zs)
-                   :in-theory (union-theories '(fn-pb-upto-semicolon-loop fn-pb-upto-semicolon fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-pb-upto-semicolon-loop fn-pb-upto-semicolon fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

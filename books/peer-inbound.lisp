@@ -244,7 +244,7 @@
    (equal (fn-peer-scope-groups-loop (fn-ag-rev-onto groups zs) record cfg nil)
           (fn-peer-scope-groups-loop zs record cfg (fn-peer-scope-groups groups record cfg)))
    :hints (("Goal" :induct (fn-ag-rev-onto groups zs)
-                   :in-theory (union-theories '(fn-peer-scope-groups-loop fn-peer-scope-groups fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-peer-scope-groups-loop fn-peer-scope-groups fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

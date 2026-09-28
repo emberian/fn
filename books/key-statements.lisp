@@ -168,7 +168,7 @@
    (equal (fn-ks-values-loop prefix (fn-ag-rev-onto lines zs) (cons nil nil))
           (fn-ks-values-loop prefix zs (fn-ks-values prefix lines)))
    :hints (("Goal" :induct (fn-ag-rev-onto lines zs)
-                   :in-theory (union-theories '(fn-ks-values-loop fn-ks-values fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-ks-values-loop fn-ks-values fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

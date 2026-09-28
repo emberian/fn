@@ -2093,7 +2093,7 @@
    (equal (fn-pull-dropped-words-loop (fn-ag-rev-onto ids zs) nil)
           (fn-pull-dropped-words-loop zs (fn-pull-dropped-words ids)))
    :hints (("Goal" :induct (fn-ag-rev-onto ids zs)
-                   :in-theory (union-theories '(fn-pull-dropped-words-loop fn-pull-dropped-words fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-pull-dropped-words-loop fn-pull-dropped-words fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

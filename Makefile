@@ -8,6 +8,7 @@ FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
 	books/defkeystone \
 	books/deftransition \
+	books/rev-onto \
 	books/acceptance-alloc \
 	tests/acl2/defrecord-tests \
 	tests/acl2/defkeystone-tests \

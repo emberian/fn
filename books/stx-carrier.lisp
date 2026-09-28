@@ -44,6 +44,7 @@
 (in-package "ACL2")
 (include-book "statement-invariants")
 (include-book "article")
+(include-book "rev-onto") ; the loop twins' step (PKT-877)
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -562,7 +563,7 @@
    (equal (fn-stx-field-octets-loop (fn-ag-rev-onto lines zs) nil)
           (fn-stx-field-octets-loop zs (fn-stx-field-octets lines)))
    :hints (("Goal" :induct (fn-ag-rev-onto lines zs)
-                   :in-theory (union-theories '(fn-stx-field-octets-loop fn-stx-field-octets fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-stx-field-octets-loop fn-stx-field-octets fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

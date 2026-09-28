@@ -399,7 +399,7 @@
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-exp-count-address-loop (address rev acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
   (if (consp rev)
       (fn-exp-count-address-loop address
                                  (cdr rev)
@@ -423,7 +423,7 @@
    (equal (fn-exp-count-address-loop address (fn-ag-rev-onto conns zs) 0)
           (fn-exp-count-address-loop address zs (fn-exp-count-address address conns)))
    :hints (("Goal" :induct (fn-ag-rev-onto conns zs)
-                   :in-theory (union-theories '(fn-exp-count-address-loop fn-exp-count-address fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-exp-count-address-loop fn-exp-count-address fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 

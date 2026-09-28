@@ -948,7 +948,7 @@
    (equal (fn-own-feed-dist-names-of-pieces-loop (fn-ag-rev-onto pieces zs) nil)
           (fn-own-feed-dist-names-of-pieces-loop zs (fn-own-feed-dist-names-of-pieces pieces)))
    :hints (("Goal" :induct (fn-ag-rev-onto pieces zs)
-                   :in-theory (union-theories '(fn-own-feed-dist-names-of-pieces-loop fn-own-feed-dist-names-of-pieces fn-ag-rev-onto fn-ag-car fn-ag-cdr
+                   :in-theory (union-theories '(fn-own-feed-dist-names-of-pieces-loop fn-own-feed-dist-names-of-pieces fn-ag-rev-onto
                                                 car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
