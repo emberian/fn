@@ -1434,7 +1434,8 @@
         "fn-served-dispatch-of-authinfo-on-a-clear-connection-is-483-and-changes-nothing",
         "fn-auth-step-pinned-post-by-a-principal-without-the-flag-is-440",
         "fn-auth-step-pinned-post-by-a-principal-with-the-flag-is-delegated",
-        "fn-scar-auth-step-pinned-is-auth-step-pinned"
+        "fn-scar-auth-step-pinned-is-auth-step-pinned",
+        "fn-auth-authinfo-is-advertised-exactly-when-a-login-is-offered-on-any-connection"
       ]
     },
     {
@@ -6241,8 +6242,8 @@
       "progress_note": "friends-accounts (2026-09-26): slot, admission, plan, once-only keystones and the credential snapshot. friends-accounts-2 (2026-09-26): the XREDEEM wire keystones over fn-auth-step-pinned, the bounded plan and the word, the host publication before the reply, operator account invite/list.",
       "events": [
         "fn-acct-text-verifier-of-verifier-text",
-        "fn-acct-redeemed-row-stays",
-        "fn-acct-redeemed-row-stays-across-replay",
+        "fn-acct-bound-row-succeeds",
+        "fn-acct-bound-row-succeeds-across-replay",
         "fn-acct-redeemed-refuses-another-redeem",
         "fn-acct-redeem-plan-is-admitted-and-redeems",
         "fn-acct-redeem-plan-after-its-redeem-is-already-redeemed",
@@ -6259,7 +6260,10 @@
         "fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound",
         "fn-acct-redeem-word-is-bound-only-after-a-durable-redeem",
         "fn-acct-redeem-word-of-an-unknown-code-is-refused",
-        "fn-acct-redeem-bounded-plan-after-its-redeem-is-bound"
+        "fn-acct-redeem-bounded-plan-after-its-redeem-is-bound",
+        "fn-acct-delete-is-admitted-exactly-when-held-and-unobligated",
+        "fn-acct-delete-keeps-the-login-taken",
+        "fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential"
       ]
     },
     {
@@ -8287,7 +8291,8 @@
         "fn-peer-tls-select-named-default",
         "fn-peer-tls-select-is-a-check",
         "fn-peer-host-name-is-not-an-ipv4-literal",
-        "fn-redeem-done-only-on-281-after-the-password"
+        "fn-redeem-done-only-on-281-after-the-password",
+        "fn-redeem-lost-is-fenced-and-server-answers-are-not"
       ]
     },
     {
@@ -10746,7 +10751,19 @@
         "fn-scj-join-of-finish-lists",
         "fn-scj-joinp-gives-sca-join",
         "fn-scj-ocl-relation-of-identity-finish",
-        "fn-scj-identity-finish-owner-is-article-finish-owner"
+        "fn-scj-identity-finish-owner-is-article-finish-owner",
+        "fn-scj-ocfg-read-span-is-reference-under-invp",
+        "fn-scj-invp-at-recover",
+        "fn-scj-invp-at-full-open",
+        "fn-scj-invp-of-otm-read-span",
+        "fn-scj-invp-of-orr-read-span",
+        "fn-scj-invp-of-refresh",
+        "fn-scj-identity-finish-keeps-verdicts",
+        "fn-scj-invp-of-ocfg-step-conn-event",
+        "fn-scjs-invp-of-store-frame",
+        "fn-scj-owner-catalogp-at-host-finish",
+        "fn-scj-invp-at-host-article-finish-carried",
+        "fn-scj-invp-at-identity-finish"
       ]
     },
     {
@@ -12029,7 +12046,11 @@
         "fn-hp-append-changes-only-dirty",
         "fn-hp-append-dirty-bound",
         "fn-hp-x-header-is-image",
-        "fn-hp-x-at-is-nth"
+        "fn-hp-x-at-is-nth",
+        "fn-hp-x-append-refines",
+        "fn-hp-x-header-is-placed",
+        "fn-hp-x-at-is-nth-placed",
+        "fn-hp-x-append-refines-placed"
       ]
     },
     {
@@ -12525,7 +12546,35 @@
         "tests/acl2/stx-transit-tests.lisp",
         "tests/test_native_open_depth.py"
       ],
-      "progress_note": "Certified at the lane head before the last origin/dev merge: persvati certify-20260928T045804Z-2021342 (748 passed) + hbox certify-20260928T045829Z-4075806 (283 passed), 0 failed, the 1,130 affected roots. Native (hbox native-od5, production image at the launcher's 1024KB): syn100k-2k full replay 25.4 s, checkpoint open 11.7 s; syn1m-2k full replay 275.1 s, checkpoint open 143.6 s; each serves DATE and stops cleanly. The served whole-list reads (LIST ACTIVE, GROUP) still die at this stack past ~30k articles: PKT-877."
+      "progress_note": "Certified at the lane head before the last origin/dev merge: persvati certify-20260928T045804Z-2021342 (748 passed) + hbox certify-20260928T045829Z-4075806 (283 passed), 0 failed, the 1,130 affected roots. Native (hbox native-od5, production image at the launcher's 1024KB): syn100k-2k full replay 25.4 s, checkpoint open 11.7 s; syn1m-2k full replay 275.1 s, checkpoint open 143.6 s; each serves DATE and stops cleanly. The served whole-list reads (LIST ACTIVE, GROUP) still die at this stack past ~30k articles: PKT-877.",
+      "events": [
+        "fn-retain-obligation-ids",
+        "fn-retain-release-ids",
+        "fn-retain-sum",
+        "fn-retain-remove-id",
+        "fn-node-binding-msgids",
+        "fn-node-binding-ids",
+        "fn-replay-verdict-pairs",
+        "fn-stx-index-of-store",
+        "fn-mxc-build",
+        "fn-rii-kbuild-releases",
+        "fn-rii-kbuild-pins",
+        "fn-ctl-articles-withdrawals-in",
+        "fn-ctl-drop-via",
+        "fn-ctl-visible-filter",
+        "fn-ctl-subseq-diff",
+        "fn-own-take",
+        "fn-gidx-build-entries",
+        "fn-index-build",
+        "fn-midx-build",
+        "fn-scka-canon-rows",
+        "fn-scka-enc-lens-sum",
+        "fn-sct-payloads",
+        "fn-sbud-record-octets",
+        "fn-sbud-stored-octets",
+        "fn-pgc-obligation-ids",
+        "fn-pgc-release-ids"
+      ]
     },
     {
       "id": "PRF-354",
