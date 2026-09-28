@@ -8,6 +8,7 @@ that brings back the evidence directory and the new certificate pairs.
 """
 
 import contextlib
+import datetime as dt
 import importlib.util
 import io
 import json
@@ -31,6 +32,9 @@ SPEC.loader.exec_module(farm)
 # No test reaches a real box's reservation lease (tools/boxes.sh wait).
 BOX_WAITS = []
 farm.BOXES = lambda words, **_: BOX_WAITS.append(words) or SimpleNamespace(returncode=0)
+# No test mirrors into a real box's cache (tools/cert_cache_sync.py).
+MIRRORS = []
+farm.MIRROR = lambda host, since: MIRRORS.append((host, since)) or 0
 
 
 COHERENT = ("install-set: 3 books, cache /home/ember/fn-certcache\n"
@@ -145,7 +149,7 @@ class SubmitTests(unittest.TestCase):
             self.assertIn("tools/certify_books.py", script)
             self.assertIn("--jobs 12", script)
             self.assertIn("books/alpha", script)
-            self.assertIn("FN_ACL2=/home/ember/fn-gates/toolchains/w25/acl2-literal",
+            self.assertIn("FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g",
                           script)
             self.assertIn("FN_ACL2_TIMEOUT_SECONDS=900", script)
             self.assertIn(f"build/farm/{identifier}.log", script)
@@ -169,7 +173,7 @@ class SubmitTests(unittest.TestCase):
 
     def test_default_toolchain_paths_reach_cache_preflight(self):
         self.assertIn(
-            'acl2=/home/ember/fn-gates/toolchains/w25/acl2-literal;',
+            'acl2=/tank/fn/toolchains/w28/acl2-literal-4g;',
             farm.cache_preflight_script("persvati", Path("/home/ember/fn-lanes/x"),
                                         ["books/base"], [], False))
         self.assertIn(
@@ -671,6 +675,30 @@ class WaitTests(unittest.TestCase):
             self.assertEqual(published["origin_kind"], "run")
             self.assertTrue(any("hbox:/tank/fn/tree/books/" in part
                                 for command in fake.rsyncs() for part in command))
+
+    def test_fetch_mirrors_the_runs_pairs_to_the_other_box(self):
+        """One toolchain on both boxes (lane toolchain-unify): a run's pairs
+        reach the other box's cache from the submit time on; a run with its
+        own cache (a measurement's isolation) is not mirrored."""
+        for cache, mirrored in ((None, True), ("/tank/fn/probe-cache", False)):
+            fake = Fake(["0"], log=self.LOG)
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                (root / "books").mkdir()
+                with driving(fake, root / "cache"):
+                    identifier = farm.submit("hbox", root, [], jobs=2,
+                                             timeout_seconds=60, affected_by=[],
+                                             remote=Path("/tank/fn/tree"),
+                                             cache=cache)
+                submitted = dt.datetime.fromisoformat(
+                    farm.run_record(root, identifier)["submitted_at"]).timestamp()
+                del MIRRORS[:]
+                with driving(fake, root / "cache"):
+                    farm.wait("hbox", identifier, root, poll=1, timeout_seconds=60)
+                if mirrored:
+                    self.assertEqual(MIRRORS, [("hbox", submitted - 600)])
+                else:
+                    self.assertEqual(MIRRORS, [])
 
     def test_wait_returns_the_remote_exit_code(self):
         fake = Fake(["1"], log=self.LOG)

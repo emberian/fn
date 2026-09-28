@@ -16,12 +16,15 @@ machine (a staging directory under build/, removed afterwards).
 
 An entry is only useful where its ACL2 toolchain identity is the one the
 destination certifies with.  By default the tool copies only entries whose
-toolchain the destination's cache already uses, and says how many it left
-because their toolchain differs: on 2026-09-27 hbox (w28, identity d5f2b9f0)
-and persvati (w25, identity 1b4169e9) ran different ACL2 builds, so no hbox
-certificate could install on persvati or the reverse, and a sync copied
-nothing usable.  One toolchain on both boxes is what makes their caches
-interchangeable.
+toolchain is one the destination uses: the identities of the launchers
+tools/farm.py HOSTS names for it (computed ON the destination by
+tools/acl2_toolchain.py), and those of its cache's newest entries.  It says
+how many it left because their toolchain differs.  On 2026-09-27 hbox (w28,
+identity d5f2b9f0) and persvati (w25, identity 1b4169e9) ran different ACL2
+builds and a sync copied nothing usable; since lane toolchain-unify
+(2026-09-28) both run w28 from the same absolute paths, so the identities
+are equal and the caches interchangeable.  `tools/farm.py`'s fetch runs this
+after every run, from the box that ran to the other one.
 """
 from __future__ import annotations
 
@@ -88,6 +91,14 @@ def cache_of(host: str) -> str:
                          f"(known: {', '.join(sorted(certs.REMOTE_CACHES))})") from None
 
 
+def rsync_path(cache: str) -> str:
+    """CACHE as an rsync remote path: `~/x` becomes `x` (relative to the
+    remote home).  rsync >= 3.2.4 protects arguments from the remote shell,
+    so a literal `~/fn-certcache` reached persvati as /home/ember/~/fn-certcache
+    and every sync from or to persvati failed with rsync exit 3 or 12."""
+    return cache[2:] if cache.startswith("~/") else cache
+
+
 def remote(host: str, arguments: list[str], stdin: str = "", run=subprocess.run) -> str:
     command = "python3 -c " + shlex.quote(REMOTE) + " " + " ".join(
         shlex.quote(word) for word in arguments)
@@ -109,9 +120,40 @@ def plan(scanned: list[tuple[str, str | None]], present: set[str],
             "other_identities": other}
 
 
+def configured_identities(host: str, run=subprocess.run) -> set[str]:
+    """The toolchain identities of the launchers farm.py HOSTS names for HOST,
+    fingerprinted on HOST itself (the identity hashes the files there)."""
+    import ast  # farm.py imports the native campaign; read HOSTS as a literal
+    tree = ast.parse((ROOT / "tools" / "farm.py").read_text(encoding="utf-8"))
+    hosts = next(ast.literal_eval(node.value) for node in tree.body
+                 if isinstance(node, ast.Assign) and len(node.targets) == 1
+                 and getattr(node.targets[0], "id", None) == "HOSTS")
+    source = (ROOT / "tools" / "acl2_toolchain.py").read_text(encoding="utf-8")
+    found: set[str] = set()
+    for role in ("acl2", "image_acl2"):
+        launcher = hosts.get(host, {}).get(role)
+        if not launcher:
+            continue
+        answer = run(["ssh", host, "python3 - identity " + shlex.quote(launcher)],
+                     input=source, capture_output=True, text=True)
+        identity = (answer.stdout or "").strip()
+        if answer.returncode == 0 and identity:
+            found.add(identity)
+        else:
+            print(f"cert_cache_sync: {host}: {launcher} is not a qualified launcher: "
+                  f"{(answer.stderr or '').strip() or 'ssh failed'}", file=sys.stderr)
+    return found
+
+
 def sync(source: str, target: str, hours: float, dry_run: bool = False,
-         all_toolchains: bool = False, run=subprocess.run) -> int:
-    since = time.time() - hours * 3600
+         all_toolchains: bool = False, run=subprocess.run,
+         since: float | None = None) -> int:
+    """Copy SOURCE's cache entries changed since SINCE (epoch seconds; default
+    HOURS ago) that TARGET lacks and can use into TARGET's cache."""
+    if since is None:
+        since = time.time() - hours * 3600
+    else:
+        hours = max(0.0, (time.time() - since) / 3600)
     source_cache, target_cache = cache_of(source), cache_of(target)
     scanned = [tuple(json.loads(line)) for line in
                remote(source, ["scan", source_cache, str(since)], run=run).splitlines()
@@ -119,9 +161,10 @@ def sync(source: str, target: str, hours: float, dry_run: bool = False,
     present = set(remote(target, ["have", target_cache],
                          "\n".join(path for path, _ in scanned), run=run).split())
     usable = set(json.loads(remote(target, ["toolchains", target_cache], run=run) or "{}"))
+    usable |= configured_identities(target, run=run)
     decided = plan(scanned, present, usable, all_toolchains)
     print(f"{source} -> {target}: {decided['scanned']} entries changed in the last "
-          f"{hours:g} h; {decided['present']} already there; "
+          f"{hours:.3g} h; {decided['present']} already there; "
           f"{len(decided['copy'])} to copy; {decided['other_toolchain']} left: their ACL2 "
           f"toolchain is not one {target}'s cache uses")
     if decided["other_toolchain"]:
@@ -138,9 +181,9 @@ def sync(source: str, target: str, hours: float, dry_run: bool = False,
     try:
         for command in (
                 ["rsync", "-a", "-r", f"--files-from={listing}",
-                 f"{source}:{source_cache}/", f"{staging}/"],
+                 f"{source}:{rsync_path(source_cache)}/", f"{staging}/"],
                 ["rsync", "-a", "-r", f"--files-from={listing}",
-                 f"{staging}/", f"{target}:{target_cache}/"]):
+                 f"{staging}/", f"{target}:{rsync_path(target_cache)}/"]):
             done = run(command)
             if done.returncode != 0:
                 print(f"cert_cache_sync: {' '.join(command[:2])} ... exit {done.returncode}")

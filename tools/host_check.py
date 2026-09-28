@@ -927,8 +927,8 @@ def main(argv: list[str] | None = None) -> int:
             acl2 = Path(found).resolve() if found else None
         if acl2 is None:
             print("host_check --load: NOT RUN -- no ACL2 (FN_ACL2 unset and no acl2 on "
-                  "PATH).  Set FN_ACL2 to the ACL2 executable (on persvati "
-                  "/home/ember/fn-gates/toolchains/w25/acl2-literal); make check "
+                  "PATH).  Set FN_ACL2 to the ACL2 executable (on hbox and persvati "
+                  "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k); make check "
                   "counts this as a failed step", file=sys.stderr)
             return 2
         order = raw_load_order(args.build)

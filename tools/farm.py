@@ -85,12 +85,18 @@ import evidence_manifests
 import native_program_check
 
 HOSTS = {
+    # ONE toolchain on both boxes (lane toolchain-unify, 2026-09-28): persvati
+    # holds byte-identical copies of hbox's /tank/fn/sbcl, /tank/fn/acl2-8.7
+    # and /tank/fn/toolchains/w28 at the same absolute paths, so
+    # tools/acl2_toolchain.py computes the same identity on both (d5f2b9f0;
+    # tls64k fcedce7e) and a certificate made on either box installs on the
+    # other (tools/cert_cache_sync.py; `fetch` mirrors each run).  Until then
+    # persvati ran w25 (1b4169e9) and every book certified twice.
     "persvati": {
-        "acl2": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
-        # The same launcher at --tls-limit 65536 (batch AZ, 2026-09-28): make
-        # check's host_check loads the production world, which exhausts the
-        # 16384 default; two lanes hit it running check-lane here.
-        "image_acl2": "/home/ember/fn-gates/toolchains/w25/acl2-literal-tls64k",
+        "acl2": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        # The same launcher at --tls-limit 65536: make check's host_check
+        # loads the production world, which exhausts the 16384 default.
+        "image_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
         "cache": "~/fn-certcache",
         "wrap": "",
     },
@@ -127,6 +133,23 @@ INSTALLED_FASL = re.compile(r"; fasl (\d+) missing (\d+)$", re.MULTILINE)
 # Seams: the tests drive the real command construction through these.
 RUN = subprocess.run
 SLEEP = time.sleep
+
+
+def mirror_cache(host: str, since: float) -> int:
+    """Copy the entries HOST's cache gained since SINCE into the other box's
+    cache (tools/cert_cache_sync.py), so a certificate made on either box
+    installs on the other with no recertification.  Both boxes run one ACL2
+    toolchain (HOSTS); the sync still skips an entry the target cannot use."""
+    import cert_cache_sync
+    others = [box for box in HOSTS if box != host]
+    code = 0
+    for other in others:
+        code = max(code, cert_cache_sync.sync(host, other, 0.0, since=since))
+    return code
+
+
+# The seam a test replaces: fetch mirrors every run's new pairs to the other box.
+MIRROR = mirror_cache
 
 
 class FarmError(Exception):
@@ -921,6 +944,25 @@ def fetch(host: str, identifier: str, root: Path,
         print(f"{host}: the cache sweep under {remote} exited "
               f"{shared.returncode} with no report; the run's pairs are NOT "
               f"in this box's cache", file=sys.stderr)
+    elif (cache or HOSTS.get(host, {}).get("cache")) == HOSTS.get(host, {}).get("cache"):
+        # One toolchain on both boxes: the other box's cache gets this run's
+        # pairs too, so neither box certifies what the other already did.
+        # The window starts at submit (minus slack for clock skew); an entry
+        # the other box already holds is not copied again.  A run with its
+        # own cache (a measurement's isolation, host_settings) is not mirrored.
+        submitted = run_record(root, identifier).get("submitted_at")
+        try:
+            since = dt.datetime.fromisoformat(submitted).timestamp() - 600
+        except (TypeError, ValueError):
+            since = time.time() - 24 * 3600
+        try:
+            if MIRROR(host, since) != 0:
+                print(f"{host}: mirroring the run's pairs to the other box "
+                      f"failed; `tools/cert_cache_sync.py {host} OTHER` again",
+                      file=sys.stderr)
+        except SystemExit as error:
+            print(f"{host}: mirroring the run's pairs to the other box "
+                  f"failed: {error}", file=sys.stderr)
     # The pairs were produced under the *remote* path, which is what their
     # sub-book entries name; record that as their origin.
     manifests = certs.load_manifests(root)

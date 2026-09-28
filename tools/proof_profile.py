@@ -55,7 +55,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ledger  # noqa: E402
 
 HOSTS = {
-    "persvati": {"acl2": "$HOME/fn-tools/acl2-8.7/saved_acl2",
+    "persvati": {"acl2": "/tank/fn/acl2-8.7/saved_acl2",
                  "root": "/home/ember/fn-lanes", "wrap": ""},
     "hbox": {"acl2": "/tank/fn/acl2-8.7/saved_acl2",
              "root": "/tank/fn/lanes", "wrap": "swarm-build"},

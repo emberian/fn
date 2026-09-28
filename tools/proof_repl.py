@@ -2348,10 +2348,10 @@ def reap(args) -> int:
 
 # Where a lane's REPL tree lives on each box (relative paths are under the
 # remote home).  The toolchain, the cache and the wrapper come from
-# tools/farm.py's HOSTS, the one table of what each box certifies with: the
-# boxes run different ACL2 builds (hbox w28, persvati w25), and a
-# certificate is usable only under the build that wrote it, so each box
-# reads its own cache.
+# tools/farm.py's HOSTS, the one table of what each box certifies with.
+# Both boxes run the same ACL2 build (w28, identity d5f2b9f0), and each
+# reads its own cache; tools/cert_cache_sync.py (which farm's fetch runs)
+# copies one box's new certificates into the other's.
 REMOTE_TREES = {"persvati": "fn-gates", "hbox": "/tank/fn/gates"}
 # Subcommands whose remote process may start a session server: on hbox they
 # run under swarm-build, whose scope carries the enforced memory cap and

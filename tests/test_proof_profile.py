@@ -161,7 +161,7 @@ class HostChoice(unittest.TestCase):
         command = proof_profile.remote_command("persvati", "/home/ember/fn-lanes/w9",
                                                "d.lsp", 60)
         self.assertNotIn("swarm-build", command)
-        self.assertIn("fn-tools/acl2-8.7/saved_acl2", command)
+        self.assertIn("/tank/fn/acl2-8.7/saved_acl2", command)
 
     def test_default_host_is_the_quieter_box(self):
         loads = {"persvati": "14:02:31 up, load average: 11.15, 10.25, 7.72",

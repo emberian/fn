@@ -7,6 +7,22 @@ session. None of them is a gate or a claim; each says what it does at the top.
   certifies, acquire and validate the artifact set, build the production,
   developer, DTN production and DTN developer images under `swarm-build`, freeze them under
   `build/images/<rev>/` with a source manifest and hashes.
+- ONE ACL2 TOOLCHAIN on hbox and persvati (lane toolchain-unify, 2026-09-28):
+  both run w28 from the SAME absolute paths, `/tank/fn/sbcl`,
+  `/tank/fn/acl2-8.7` (core + certified system books) and the launchers in
+  `/tank/fn/toolchains/w28/` (`acl2-literal-4g`, `-tls64k`).  The identity
+  `tools/acl2_toolchain.py` computes hashes the launcher's bytes (which name
+  those paths), the core and the runtime, so a byte-identical copy at the
+  same paths has the same identity (d5f2b9f0; tls64k fcedce7e) and the two
+  caches exchange certificates (`tools/cert_cache_sync.py`, run by farm's
+  fetch).  To put it on another Linux box (as done for persvati; its
+  `/tank/fn` is a plain directory, and it has no `/tank/fn/scratch`, which
+  `tools/boxes.sh` reads as hbox's): `sudo mkdir -p /tank/fn && sudo chown
+  $USER /tank/fn`, then from the laptop `ssh hbox 'cd /tank/fn && tar cf -
+  sbcl acl2-8.7 toolchains/w28' | ssh BOX 'cd /tank/fn && tar xpf -'`, and
+  check `ssh BOX python3 - identity /tank/fn/toolchains/w28/acl2-literal-4g
+  < tools/acl2_toolchain.py` prints hbox's identity.  persvati's old w25
+  (`~/fn-tools`, `~/fn-gates/toolchains/w25`, identity 1b4169e9) is retired.
 - `persvati-acl2p.sh build | measure <book> <mode> [cpus]`: build ACL2(p)
   8.7 into `/home/ember/fn-gates/toolchains/w25p` from the tarball w25 used,
   certify its system books, and time one book's certification in the
