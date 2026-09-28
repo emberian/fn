@@ -4,9 +4,6 @@
 
 (in-package "ACL2")
 
-(defun fn-bpn-host-machine-initial (config max-jobs max-octets)
-  (fn-bpn-initial-machine-state config max-jobs max-octets))
-
 (defun fn-bpn-host-answer-state (answer)
   (fn-bpn-answer-state answer))
 
