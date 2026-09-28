@@ -13534,6 +13534,25 @@
         "planning/evidence/f8-reservation-2026-09-28.md"
       ],
       "progress_note": "Lane f8-reservation (2026-09-28): books/memory-credits.lisp and its test book are certified (persvati certify-20260928T171227Z-391318, hbox certify-20260928T173440Z-1769341): fn-mcr-transitions-keep-funded, fn-mcr-acquire-refuses-exactly-past-the-budget, fn-mcr-grow-within-the-reserve-is-admitted, fn-mcr-retain-moves-the-credit, fn-mcr-evict-returns-what-was-evicted, fn-mcr-overdraw-is-within-the-completion-reserve. NO EVENTS ARE CITED: no host line calls the ledger yet (reach_check), so the running server exercises none of it. The events are cited when an allocation site calls it; the first is the article slots (lane zero-copy-commit, fn-oas-read-span, PRF-377), U + R one reserve a slot. Teeth: tests/acl2/memory-credits-tests.lisp."
+    },
+    {
+      "id": "PRF-915",
+      "title": "SCRAM-SHA-256's server half: HMAC-SHA-256 and PBKDF2 execute as their RFC text, an honest client is accepted, and a final message bound to another exchange's nonce or channel binding is refused before any key is read",
+      "statement": "books/hmac-sha256.lisp: fn-hmac-sha256 is RFC 2104's text and fn-pbkdf2-sha256 is RFC 8018's first block (RFC 5802's Hi) as an mbe whose :exec runs from the two key-block states (fn-sha256-of-block-prefix-is-from-state, fn-hmac-from-states-is-hmac, fn-pbkdf2-chain-fast-is-chain). books/scram.lisp: KEYSTONE fn-scram-honest-proof-verifies (a proof derived from the password, salt and count fn-scram-keys enrolled is accepted for every AuthMessage); KEYSTONE fn-scram-finish-refuses-another-nonce and fn-scram-finish-refuses-another-binding (a client-final whose nonce is not the exchange's, or whose channel binding is not the gs2 header plus, under tls-exporter, this connection's exporter value, never :accept); fn-scram-finish-accepts-only-a-valid-proof. Forgery resistance is A-CRYPTO. Teeth: tests/acl2/scram-tests.lisp runs RFC 7677's exchange byte for byte and refuses each one-change variant; tests/acl2/hmac-sha256-tests.lisp checks RFC 4231 and RFC 7914 vectors.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-056"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/hmac-sha256.lisp",
+        "books/scram.lisp",
+        "tests/acl2/hmac-sha256-tests.lisp",
+        "tests/acl2/scram-tests.lisp"
+      ],
+      "progress_note": "Lane sasl increment 1 (2026-09-28): the two books and their test books certify. NO EVENTS ARE CITED: no host line calls SCRAM yet (reach_check); the events are cited with increment 2, when books/nntp-auth.lisp's AUTHINFO SASL arm calls books/sasl.lisp."
     }
   ]
 }

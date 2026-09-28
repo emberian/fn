@@ -55,6 +55,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-config \
 	books/sha256 \
 	tests/acl2/sha256-tests \
+	books/hmac-sha256 \
+	tests/acl2/hmac-sha256-tests \
+	books/scram \
+	tests/acl2/scram-tests \
 	books/blake3 \
 	tests/acl2/blake3-tests \
 	books/blake3-stobj \
