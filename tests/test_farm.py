@@ -1019,6 +1019,21 @@ class FrictionTests(unittest.TestCase):
             farm.refuse_bad_book_names(root, ["books/alpha"],
                                        ["books/beta.lisp", "books/wire"])
 
+    def test_a_submit_refuses_a_tree_a_run_is_still_certifying(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / "build" / "farm").mkdir(parents=True)
+            (root / "build" / "farm" / "run-a.json").write_text(json.dumps(
+                {"run_id": "run-a", "host": "hbox", "remote_path": str(root)}))
+            running = lambda host, script, check=False: SimpleNamespace(
+                stdout="RUNNING run-a\n", returncode=0)
+            with self.assertRaises(farm.FarmError):
+                farm.refuse_a_running_run_in_the_same_tree("hbox", root, root, running)
+            finished = lambda host, script, check=False: SimpleNamespace(stdout="", returncode=0)
+            farm.refuse_a_running_run_in_the_same_tree("hbox", root, root, finished)
+            # another box's tree is another tree
+            farm.refuse_a_running_run_in_the_same_tree("persvati", root, root, running)
+
     def test_an_empty_selection_is_refused_without_all(self):
         calls = []
         with mock.patch.object(farm, "pick_host", lambda: "hbox"), \
