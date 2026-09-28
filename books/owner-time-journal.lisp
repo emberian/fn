@@ -292,10 +292,19 @@
   (mv-let (s2 e) (fn-otm-note s a b) (list s2 (fn-otm-jline e))))
 
 ; THE HOST'S CALL at a run's start (the gate made from fn-otm-init): the
-; start entry, with the first monotonic READING and the WALL reading.
-(defun fn-otm-start-line (reading wall)
+; start entry.  A run is its own clock domain (lane time-bars, PRF-384): a
+; monotonic reading means nothing in another process, so the entry records
+; the semantic observation -- the WALL reading and whether it is USABLE
+; (1/0) -- and no monotonic origin (its READING field is 0); the replay
+; starts the segment from fn-otm-init (books/owner-time-bars.lisp
+; fn-otb-a-restart-forgets-the-previous-clock-domain).
+(defun fn-otm-start-entry (wall usable)
   (declare (xargs :guard t))
-  (fn-otm-jline (list 0 0 (nfix reading) (nfix wall) 0 0 0)))
+  (list 0 0 0 (nfix wall) (if usable 1 0) 0 0))
+
+(defun fn-otm-start-line (wall usable)
+  (declare (xargs :guard t))
+  (fn-otm-jline (fn-otm-start-entry wall usable)))
 
 ; -----------------------------------------------------------------------------
 ; Replay.  From S, apply each entry's event to the value and compare the
