@@ -31,6 +31,10 @@
 (include-book "injection-info-params")
 (include-book "store-intern")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-ipp-injected-octets-without-parameters))))
+
 ; -----------------------------------------------------------------------------
 ; P2.  The 240 names this submission's record.
 ;

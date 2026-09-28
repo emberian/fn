@@ -3,6 +3,10 @@
 (in-package "ACL2")
 (include-book "article")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-article-header-rev-add-line-recomposes))))
+
 (defthm fn-article-append-associative
   (equal (append (append a b) c) (append a (append b c))))
 

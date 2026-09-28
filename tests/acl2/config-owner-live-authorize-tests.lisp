@@ -10,6 +10,10 @@
 (include-book "must-fail-checked")
 (include-book "config-owner-publish-tests")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-sob-identity-typedp))))
+
 (defconst *olaut-st* (fn-own-store (fn-ocfg-owner *ocp-closed*)))
 (defconst *olaut-files* (fn-sn-files *olaut-st*))
 (defconst *olaut-configs* (fn-sn-config-history *olaut-st*))

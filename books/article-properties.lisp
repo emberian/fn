@@ -9,6 +9,10 @@
 (include-book "article")
 (include-book "article-invariants")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-article-octets-are-proper-list))))
+
 ; -----------------------------------------------------------------------------
 ; Field construction preserves the article view recognizers.
 

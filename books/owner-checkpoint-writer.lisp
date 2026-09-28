@@ -39,6 +39,11 @@
 (include-book "store-maintenance-reserve")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-sccb-treep)
+                          (:rewrite fn-sccb-cons-ops-is-append-repeat))))
+
 (local
  (defthm fn-ockp-len-append
    (equal (len (append a b)) (+ (len a) (len b)))))

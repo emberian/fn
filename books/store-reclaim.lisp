@@ -608,6 +608,10 @@
 
 (local (include-book "std/lists/append" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-rcl-u64-octets-aux))))
+
 (local
  (defthm fn-rcl-len-blake3
    (equal (len (fn-blake3 x)) 32)))

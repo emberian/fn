@@ -348,6 +348,47 @@ def withdraw(rows: list[dict], root: Path = ROOT) -> dict[str, list[str]]:
     return written
 
 
+ENABLE_HEAD = ";; Rules withdrawn at their source that this book's proofs use"
+
+
+def after_last_include(text: str) -> int:
+    """The offset just past the book's last top-level include-book form."""
+    end = 0
+    for form, line in ledger.Reader(text).top_level():
+        inner = form[1] if (ledger.head(form) == "local" and len(form) > 1) else form
+        if ledger.head(inner) == "include-book":
+            end = line
+    if not end:
+        raise RuleCostError("no top-level include-book")
+    lines = text.splitlines(keepends=True)
+    # The form starts on line `end`; it ends at the first line whose parens
+    # balance from there (an include-book is short and holds no strings with
+    # parens).
+    depth, index = 0, end - 1
+    while True:
+        depth += lines[index].count("(") - lines[index].count(")")
+        index += 1
+        if depth <= 0:
+            return sum(len(line) for line in lines[:index])
+
+
+def enable_in(book: str, runes: list[str], root: Path = ROOT) -> None:
+    """Add `(local (in-theory (enable RUNES)))` after the book's includes."""
+    path = root / (book + ".lisp")
+    text = path.read_text(encoding="utf-8")
+    runes = [rune.lower() for rune in runes]
+    if ENABLE_HEAD in text:
+        before, _, rest = text.partition(ENABLE_HEAD)
+        block, _, after = rest.partition(")))\n")
+        runes = sorted(set(runes) | set(re.findall(r"\(:[a-z-]+ [^()]+\)", block)))
+        text = before.rstrip("\n") + "\n\n" + after.lstrip("\n")
+    at = after_last_include(text)
+    block = (f"\n{ENABLE_HEAD}\n;; (lane rule-hygiene, tools/rule_cost.py).\n"
+             "(local (in-theory (enable " + "\n                          ".join(sorted(runes))
+             + ")))\n")
+    path.write_text(text[:at] + block + text[at:], encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="action", required=True)
@@ -374,6 +415,11 @@ def main(argv: list[str] | None = None) -> int:
     pull.add_argument("--min-useless", type=int, default=300_000)
     pull.add_argument("--kinds", default="REWRITE,LINEAR,FORWARD-CHAINING,DEFINITION")
     pull.add_argument("--dry-run", action="store_true")
+    pull.add_argument("--enable-in", choices=("none", "useful", "failed"), default="useful",
+                      help="add local enables in the books where a withdrawn rule "
+                           "was useful (default), or only in those a certify "
+                           "manifest (--manifest) did not pass")
+    pull.add_argument("--manifest", type=Path)
     args = parser.parse_args(argv)
     try:
         if args.action == "withdraw":
@@ -384,10 +430,25 @@ def main(argv: list[str] | None = None) -> int:
             for row in rows:
                 print(f"{row['useless']:>12,} {row['books_useful']:>3} {row['rune']} "
                       f"<- {row['definer']}")
+            needs: dict[str, list[str]] = defaultdict(list)
+            passed: set[str] = set()
+            if args.enable_in == "failed":
+                if not args.manifest:
+                    parser.error("--enable-in failed needs --manifest")
+                results = json.loads(args.manifest.read_text())["book_results"]
+                passed = {book for book, verdict in results.items() if verdict == "passed"}
+            if args.enable_in != "none":
+                for row in rows:
+                    for book in row["useful_in"]:
+                        if book not in passed:
+                            needs[book].append(row["rune"])
             if not args.dry_run:
                 written = withdraw(rows)
+                for book, runes in sorted(needs.items()):
+                    enable_in(book, runes)
                 print(f"withdrew {sum(map(len, written.values()))} rune(s) in "
-                      f"{len(written)} book(s)")
+                      f"{len(written)} book(s); enabled {sum(map(len, needs.values()))} "
+                      f"where useful, in {len(needs)} book(s)")
             return 0
         if args.action == "run":
             books = [b.removesuffix(".lisp") for b in args.books] or default_books()

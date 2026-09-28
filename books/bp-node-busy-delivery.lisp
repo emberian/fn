@@ -10,6 +10,10 @@
 (include-book "bp-node-progress")
 (include-book "bp-fnbs-family-replay")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bpnp-first-busy-stranded))))
+
 (local
  (defthm bpbusy-step-is-busy-step
    (implies (fn-bpnp-busy-eventp event)

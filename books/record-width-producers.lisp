@@ -33,6 +33,10 @@
 (include-book "bp-ingress")
 (include-book "store-budget-article")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-snrt-new-success-is-actual-matching-durable-completion))))
+
 (local
  (defthm fn-rwp-event-coordinates-are-natural
    (implies (fn-store-event-p record)

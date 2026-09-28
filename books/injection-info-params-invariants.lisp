@@ -25,6 +25,10 @@
 (include-book "injection-info-params")
 (include-book "poster-bytes-invariants")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-ipp-addr-spec-has-no-quote-or-line-break))))
+
 (local
  (defthm fn-ipp-inj-append-is-append
    (equal (fn-inj-append a b) (append a b))

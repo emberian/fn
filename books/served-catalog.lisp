@@ -46,6 +46,10 @@
 (include-book "nntp-list-counts")
 (include-book "served-columns")   ; the overview column: OVER/HDR/XPAT without the bytes
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-scat-msgid-idp))))
+
 ; Included rules these proofs try on every string, length and group-number
 ; goal and never use (accumulated-persistence over the whole book,
 ; 2026-09-28, lane d26-books).  None is cited below.
