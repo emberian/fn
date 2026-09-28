@@ -211,13 +211,46 @@
 ; books/peer-config.lisp decodes the group into the typed record).  Three total
 ; helpers over a keyed row group: select, remove, and the recognizer that
 ; every row of a delta names the peer the delta names.
-(defun fn-cfg-rows-with-key (rows a)
+;
+; `fn-cfg-rows-with-key' walks the whole peer table (every peer's rows; D27:
+; no row cap, PRF-171), so it executes by a loop (lane config-and-legacy,
+; after peer-list-depth's twin in books/native-admin-peer-budget): the :logic
+; is the recursion, unchanged; the :exec collects onto an accumulator.
+(defun fn-cfg-rows-with-key-loop (rows a acc)
   (declare (xargs :guard t))
   (if (consp rows)
-      (if (equal (fn-cfg-row-a (car rows)) a)
-          (cons (car rows) (fn-cfg-rows-with-key (cdr rows) a))
-        (fn-cfg-rows-with-key (cdr rows) a))
-    nil))
+      (fn-cfg-rows-with-key-loop
+       (cdr rows) a
+       (if (equal (fn-cfg-row-a (car rows)) a) (cons (car rows) acc) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-cfg-rows-with-key (rows a)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp rows)
+           (if (equal (fn-cfg-row-a (car rows)) a)
+               (cons (car rows) (fn-cfg-rows-with-key (cdr rows) a))
+             (fn-cfg-rows-with-key (cdr rows) a))
+         nil)
+       :exec (fn-cfg-rows-with-key-loop rows a nil)))
+
+(local
+ (defthm fn-cfg-rows-with-key-loop-is-rev-onto
+   (equal (fn-cfg-rows-with-key-loop rows a acc)
+          (fn-ag-rev-onto acc (fn-cfg-rows-with-key rows a)))
+   :hints (("Goal" :induct (fn-cfg-rows-with-key-loop rows a acc)
+                   :in-theory (union-theories
+                               '(fn-cfg-rows-with-key-loop fn-cfg-rows-with-key
+                                 fn-ag-rev-onto car-cons cdr-cons)
+                               (theory 'minimal-theory))))))
+
+(verify-guards fn-cfg-rows-with-key
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-cfg-rows-with-key
+                                fn-cfg-rows-with-key-loop-is-rev-onto
+                                fn-ag-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-cfg-rows-without-key (rows a)
   (declare (xargs :guard t))
@@ -2588,54 +2621,6 @@
        (fn-cfg-stampp (fn-cfg-record-stamp r))))
 
 ; -----------------------------------------------------------------------------
-; Configuration replay: the fold of configuration records into (generation
-; value).  Fail closed: a record out of generation order or inadmissible on
-; the replayed value is a fault, never a skipped record.
-
-(defun fn-cfg-apply-record (cfg r)
-  (declare (xargs :guard t))
-  (fn-cfg-make (fn-cfg-record-generation r)
-               (fn-cfg-apply (fn-cfg-value cfg)
-                             (fn-cfg-record-generation r)
-                             (fn-cfg-record-stamp r)
-                             (fn-cfg-record-change r))))
-
-(defun fn-cfg-record-acceptablep (cfg r reserved ceiling)
-  (declare (xargs :guard t))
-  (and (fn-cfgp cfg)
-       (fn-cfg-recordp r)
-       (equal (fn-cfg-record-generation r) (+ 1 (fn-cfg-generation cfg)))
-       (fn-cfg-admissiblep (fn-cfg-value cfg)
-                           (fn-cfg-record-generation r)
-                           (fn-cfg-record-stamp r)
-                           reserved ceiling
-                           (fn-cfg-record-change r))))
-
-(defun fn-config-replay-loop (cfg reserved ceiling records)
-  ; The measure is the record list alone.  The acceptability ruler is
-  ; irrelevant to termination and is kept closed here: left open, the measure
-  ; conjecture case-splits on admissibility and does not finish inside two
-  ; million prover steps (measured 2026-09-19; that was the whole cost of
-  ; this book).
-  (declare (xargs :guard t :measure (len records)
-                  :hints (("Goal" :in-theory (disable fn-cfg-record-acceptablep
-                                                      fn-cfg-apply-record)))))
-  (if (consp records)
-      (if (fn-cfg-record-acceptablep cfg (car records) reserved ceiling)
-          (fn-config-replay-loop (fn-cfg-apply-record cfg (car records))
-                                 reserved ceiling (cdr records))
-        :fault)
-    (if (null records) cfg :fault)))
-
-(defun fn-config-replay (reserved ceiling records)
-  (declare (xargs :guard t))
-  (fn-config-replay-loop (fn-cfg-initial) reserved ceiling records))
-
-(defun fn-config-replay-okp (x)
-  (declare (xargs :guard t))
-  (and (not (equal x :fault)) (fn-cfgp x)))
-
-; -----------------------------------------------------------------------------
 ; The canonical CBOR encoding of a configuration record.
 ;
 ; A count-prefixed stream of CBOR items over the `books/cbor' primitives:
@@ -2776,6 +2761,195 @@
             (append (fn-cbor-encode (fn-cfg-uitem *fn-cfg-schema-version*))
                     (append (fn-cbor-encode (fn-cfg-uitem (len items)))
                             (fn-cfg-item-octets items))))))
+
+; -----------------------------------------------------------------------------
+; The whole-record limits at admission.
+;
+; The decoder refuses a stream past *fn-cfg-max-octets* octets or
+; *fn-cfg-max-items* items (`fn-cfg-decode-exact', :limit / :item-count), and
+; those two are NOT consequences of `fn-cfg-recordp': a record every field of
+; which is within its maximum can encode past them (100 rows of three
+; 256-octet labels; tests/acl2/config-field-max-tests.lisp).  So acceptance
+; checks them (`fn-cfg-record-fitsp'), and no accepted record is one the codec
+; cannot carry (lane clock-units-2's open item; lane config-and-legacy).
+;
+; The counts are computed item by item: each item is encoded alone and only
+; its length kept, so the check allocates one item (a label: at most
+; *fn-cfg-max-label* octets) at a time, never the whole record's octets, and
+; every walk is a loop.  Each count is equal to the length of the encoder's
+; own output by a named theorem below, so the check is about the octets the
+; host writes, not about a second size model.
+
+(defun fn-cfg-items-octet-count (items acc)
+  (declare (xargs :guard (natp acc)))
+  (if (consp items)
+      (fn-cfg-items-octet-count (cdr items)
+                                (+ acc (len (fn-cfg-item-encode (car items)))))
+    acc))
+
+(defun fn-cfg-rows-octet-count (rows acc)
+  (declare (xargs :guard (natp acc)))
+  (if (consp rows)
+      (fn-cfg-rows-octet-count
+       (cdr rows) (fn-cfg-items-octet-count (fn-cfg-row-items (car rows)) acc))
+    acc))
+
+(defun fn-cfg-delta-head-items (d)
+  (declare (xargs :guard t))
+  (list (fn-cfg-uitem (fn-cfg-kind-code (fn-cfg-delta-kind d)))
+        (fn-cfg-titem (fn-cfg-delta-a d))
+        (fn-cfg-titem (fn-cfg-delta-b d))
+        (fn-cfg-uitem (fn-cfg-delta-n d))
+        (fn-cfg-uitem (len (fn-cfg-delta-rows d)))))
+
+(defun fn-cfg-deltas-octet-count (ds acc)
+  (declare (xargs :guard (natp acc)))
+  (if (consp ds)
+      (fn-cfg-deltas-octet-count
+       (cdr ds)
+       (fn-cfg-rows-octet-count
+        (fn-cfg-delta-rows (car ds))
+        (fn-cfg-items-octet-count (fn-cfg-delta-head-items (car ds)) acc)))
+    acc))
+
+(defun fn-cfg-record-head-items (r)
+  (declare (xargs :guard t))
+  (append (list (fn-cfg-uitem (fn-cfg-record-sequence r))
+                (fn-cfg-uitem (fn-cfg-record-txid r))
+                (fn-cfg-uitem (fn-cfg-record-generation r)))
+          (append (fn-cfg-stamp-items (fn-cfg-record-stamp r))
+                  (list (fn-cfg-uitem (len (fn-cfg-record-change r)))))))
+
+(defun fn-cfg-deltas-item-count (ds acc)
+  (declare (xargs :guard (natp acc)))
+  (if (consp ds)
+      (fn-cfg-deltas-item-count
+       (cdr ds) (+ acc 5 (* 4 (len (fn-cfg-delta-rows (car ds))))))
+    acc))
+
+(defun fn-cfg-record-item-count (r)
+  (declare (xargs :guard t))
+  (fn-cfg-deltas-item-count (fn-cfg-record-change r) 8))
+
+(defun fn-cfg-record-octet-count (r)
+  (declare (xargs :guard t))
+  (+ (len (fn-cbor-encode (cons :bytes *fn-cfg-magic*)))
+     (len (fn-cbor-encode (fn-cfg-uitem *fn-cfg-schema-version*)))
+     (len (fn-cbor-encode (fn-cfg-uitem (fn-cfg-record-item-count r))))
+     (fn-cfg-deltas-octet-count
+      (fn-cfg-record-change r)
+      (fn-cfg-items-octet-count (fn-cfg-record-head-items r) 0))))
+
+; The item count first: past it the octet count is not computed.
+(defun fn-cfg-record-fitsp (r)
+  (declare (xargs :guard t))
+  (and (<= (fn-cfg-record-item-count r) *fn-cfg-max-items*)
+       (<= (fn-cfg-record-octet-count r) *fn-cfg-max-octets*)))
+
+; The counts are the encoder's.
+(local (defthm fn-cfg-item-octets-of-append
+  (equal (fn-cfg-item-octets (append a b))
+         (append (fn-cfg-item-octets a) (fn-cfg-item-octets b)))
+  :hints (("Goal" :in-theory (disable fn-cfg-item-encode)))))
+
+(local (defthm fn-cfg-items-octet-count-is-len
+  (implies (acl2-numberp acc)
+           (equal (fn-cfg-items-octet-count items acc)
+                  (+ acc (len (fn-cfg-item-octets items)))))
+  :hints (("Goal" :in-theory (disable fn-cfg-item-encode)))))
+
+(local (defthm fn-cfg-rows-octet-count-is-len
+  (implies (acl2-numberp acc)
+           (equal (fn-cfg-rows-octet-count rows acc)
+                  (+ acc (len (fn-cfg-item-octets (fn-cfg-rows-items rows))))))
+  :hints (("Goal" :in-theory (disable fn-cfg-item-encode fn-cfg-row-items)))))
+
+(local (defthm fn-cfg-deltas-octet-count-is-len
+  (implies (acl2-numberp acc)
+           (equal (fn-cfg-deltas-octet-count ds acc)
+                  (+ acc (len (fn-cfg-item-octets (fn-cfg-deltas-items ds))))))
+  :hints (("Goal" :in-theory (disable fn-cfg-item-encode fn-cfg-row-items
+                                      fn-cfg-rows-items)))))
+
+(local (defthm fn-cfg-len-rows-items
+  (equal (len (fn-cfg-rows-items rows)) (* 4 (len rows)))))
+
+(local (defthm fn-cfg-deltas-item-count-is-len
+  (implies (acl2-numberp acc)
+           (equal (fn-cfg-deltas-item-count ds acc)
+                  (+ acc (len (fn-cfg-deltas-items ds)))))
+  :hints (("Goal" :in-theory (disable fn-cfg-rows-items)))))
+
+(defthm fn-cfg-record-item-count-is-len-of-items
+  (equal (fn-cfg-record-item-count r) (len (fn-cfg-record-items r)))
+  :hints (("Goal" :in-theory (disable fn-cfg-deltas-items))))
+
+(defthm fn-cfg-record-octet-count-is-len-of-encode
+  (equal (fn-cfg-record-octet-count r) (len (fn-cfg-encode r)))
+  :hints (("Goal" :in-theory (disable fn-cfg-item-encode fn-cfg-deltas-items
+                                      fn-cfg-deltas-item-count fn-cbor-encode
+                                      fn-cfg-stamp-items))))
+
+; KEYSTONE: a record fits exactly when its encoding is within the decoder's
+; two whole-record limits.
+(defthm fn-cfg-record-fitsp-is-the-decoder-limits
+  (equal (fn-cfg-record-fitsp r)
+         (and (<= (len (fn-cfg-record-items r)) *fn-cfg-max-items*)
+              (<= (len (fn-cfg-encode r)) *fn-cfg-max-octets*)))
+  :hints (("Goal" :in-theory (disable fn-cfg-record-item-count
+                                      fn-cfg-record-octet-count
+                                      fn-cfg-encode fn-cfg-record-items))))
+
+(in-theory (disable fn-cfg-record-fitsp))
+
+; -----------------------------------------------------------------------------
+; Configuration replay: the fold of configuration records into (generation
+; value).  Fail closed: a record out of generation order or inadmissible on
+; the replayed value is a fault, never a skipped record.
+
+(defun fn-cfg-apply-record (cfg r)
+  (declare (xargs :guard t))
+  (fn-cfg-make (fn-cfg-record-generation r)
+               (fn-cfg-apply (fn-cfg-value cfg)
+                             (fn-cfg-record-generation r)
+                             (fn-cfg-record-stamp r)
+                             (fn-cfg-record-change r))))
+
+(defun fn-cfg-record-acceptablep (cfg r reserved ceiling)
+  (declare (xargs :guard t))
+  (and (fn-cfgp cfg)
+       (fn-cfg-recordp r)
+       (fn-cfg-record-fitsp r)
+       (equal (fn-cfg-record-generation r) (+ 1 (fn-cfg-generation cfg)))
+       (fn-cfg-admissiblep (fn-cfg-value cfg)
+                           (fn-cfg-record-generation r)
+                           (fn-cfg-record-stamp r)
+                           reserved ceiling
+                           (fn-cfg-record-change r))))
+
+(defun fn-config-replay-loop (cfg reserved ceiling records)
+  ; The measure is the record list alone.  The acceptability ruler is
+  ; irrelevant to termination and is kept closed here: left open, the measure
+  ; conjecture case-splits on admissibility and does not finish inside two
+  ; million prover steps (measured 2026-09-19; that was the whole cost of
+  ; this book).
+  (declare (xargs :guard t :measure (len records)
+                  :hints (("Goal" :in-theory (disable fn-cfg-record-acceptablep
+                                                      fn-cfg-apply-record)))))
+  (if (consp records)
+      (if (fn-cfg-record-acceptablep cfg (car records) reserved ceiling)
+          (fn-config-replay-loop (fn-cfg-apply-record cfg (car records))
+                                 reserved ceiling (cdr records))
+        :fault)
+    (if (null records) cfg :fault)))
+
+(defun fn-config-replay (reserved ceiling records)
+  (declare (xargs :guard t))
+  (fn-config-replay-loop (fn-cfg-initial) reserved ceiling records))
+
+(defun fn-config-replay-okp (x)
+  (declare (xargs :guard t))
+  (and (not (equal x :fault)) (fn-cfgp x)))
 
 ; -----------------------------------------------------------------------------
 ; The decoder.  Item readers return the `books/records' parse result.
