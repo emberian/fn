@@ -12759,6 +12759,19 @@
           "name": "fn-heap-breakdown-is-inits-reservation"
         }
       ]
+    },
+    {
+      "id": "PRF-902",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-admin-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-reasoned-admin-decode-of-encode"
+        }
+      ]
     }
   ]
 }

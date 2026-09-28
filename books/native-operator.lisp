@@ -17,24 +17,40 @@
 ; PKT-209: `control log' and `control evidence MESSAGE-ID'.
 (include-book "control-evidence-grammar")
 
-(defconst *fn-nop-max-arguments* 32)
-(defconst *fn-nop-max-argument-octets* 512)
-
+; PKT-867 (D27): no word count and no word length.  The kernel admits the
+; argv (its ARG_MAX); the parse is one pass over it, and every field a word
+; names is bounded where it is used (a group name by the record's name width,
+; a path by the configuration's, a profile field by its codec width).  What
+; reaches the running owner travels in one control frame, read under the
+; profile's bound (books/native-control.lisp fn-nctrl-read-bound-for).
 (defun fn-nop-argvp (argv)
   (declare (xargs :guard t))
   (if (consp argv)
       (and (consp (car argv))
-           (<= (len (car argv)) *fn-nop-max-argument-octets*)
            (fn-ncfg-ascii-octetsp (car argv))
            (fn-nop-argvp (cdr argv)))
     (null argv)))
 
-(defun fn-nop-argument-texts (argv)
-  (declare (xargs :guard t))
+(defun fn-nop-argument-texts-loop (argv acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp argv)
-      (cons (fn-record-octets-string (car argv))
-            (fn-nop-argument-texts (cdr argv)))
-    nil))
+      (fn-nop-argument-texts-loop (cdr argv) (cons (fn-record-octets-string (car argv)) acc))
+    (revappend acc nil)))
+
+(defun fn-nop-argument-texts (argv)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp argv)
+                  (cons (fn-record-octets-string (car argv))
+                        (fn-nop-argument-texts (cdr argv)))
+                nil)
+       :exec (fn-nop-argument-texts-loop argv nil)))
+
+(local
+ (defthm fn-nop-argument-texts-loop-is-revappend
+   (equal (fn-nop-argument-texts-loop argv acc)
+          (revappend acc (fn-nop-argument-texts argv)))))
+
+(verify-guards fn-nop-argument-texts)
 
 (defun fn-nop-result (status reason command config arguments)
   (declare (xargs :guard t))
@@ -936,9 +952,8 @@ configuration file.  Every other result is the ordinary tagged operator result,
 so malformed argv and help syntax remain ACL2-owned before any host file I/O."
   (declare (xargs :guard t))
   (if (or (not (true-listp argv-octets))
-          (< *fn-nop-max-arguments* (len argv-octets))
           (not (fn-nop-argvp argv-octets)))
-      (fn-nop-usage :argv-bounds nil nil nil)
+      (fn-nop-usage :argv-malformed nil nil nil)
     (let ((words (fn-nop-argument-texts argv-octets)))
       (cond ((and (consp words) (equal (car words) "help"))
              (fn-nop-parse-command words nil argv-octets))
@@ -974,7 +989,6 @@ so malformed argv and help syntax remain ACL2-owned before any host file I/O."
   (declare (xargs :guard t))
   (let ((words (fn-nop-argument-texts argv-octets)))
     (if (or (not (true-listp argv-octets))
-            (< *fn-nop-max-arguments* (len argv-octets))
             (not (fn-nop-argvp argv-octets))
             (not (equal (fn-ncfg-first words) "mission"))
             (not (consp (fn-ncfg-rest words)))
@@ -1247,12 +1261,26 @@ is installed into the owner for both served and control submission."
        (fn-ncfg-nth 2 (fn-native-operator-result-arguments result)))
     nil))
 
-(defun fn-native-operator-post-group-octets (groups)
-  (declare (xargs :guard t))
+(defun fn-native-operator-post-group-octets-loop (groups acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp groups)
-      (cons (fn-record-string-octets (car groups))
-            (fn-native-operator-post-group-octets (cdr groups)))
-    nil))
+      (fn-native-operator-post-group-octets-loop (cdr groups) (cons (fn-record-string-octets (car groups)) acc))
+    (revappend acc nil)))
+
+(defun fn-native-operator-post-group-octets (groups)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp groups)
+                  (cons (fn-record-string-octets (car groups))
+                        (fn-native-operator-post-group-octets (cdr groups)))
+                nil)
+       :exec (fn-native-operator-post-group-octets-loop groups nil)))
+
+(local
+ (defthm fn-native-operator-post-group-octets-loop-is-revappend
+   (equal (fn-native-operator-post-group-octets-loop groups acc)
+          (revappend acc (fn-native-operator-post-group-octets groups)))))
+
+(verify-guards fn-native-operator-post-group-octets)
 
 (defun fn-native-operator-result-post-group-octets (result)
   (declare (xargs :guard t))

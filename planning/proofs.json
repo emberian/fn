@@ -13468,6 +13468,28 @@
         "planning/evidence/f8-reservation-2026-09-28.md"
       ],
       "progress_note": "Lane f8-reservation (2026-09-28): books/memory-credits.lisp and its test book are certified (persvati certify-20260928T171227Z-391318, hbox certify-20260928T173440Z-1769341): fn-mcr-transitions-keep-funded, fn-mcr-acquire-refuses-exactly-past-the-budget, fn-mcr-grow-within-the-reserve-is-admitted, fn-mcr-retain-moves-the-credit, fn-mcr-evict-returns-what-was-evicted, fn-mcr-overdraw-is-within-the-completion-reserve. NO EVENTS ARE CITED: no host line calls the ledger yet (reach_check), so the running server exercises none of it. The events are cited when an allocation site calls it; the first is the article slots (lane zero-copy-commit, fn-oas-read-span, PRF-377), U + R one reserve a slot. Teeth: tests/acl2/memory-credits-tests.lisp."
+    },
+    {
+      "id": "PRF-902",
+      "title": "An administrative argv of any length round-trips through the control frame",
+      "statement": "books/native-control-reason.lisp KEYSTONE fn-native-control-admin-decode-of-encode and fn-native-control-reasoned-admin-decode-of-encode: (implies (not (equal (fn-native-control-admin-encode argv) :bad)) (equal (fn-native-control-admin-decode (fn-native-control-admin-encode argv)) (list :admin argv))), and the same for the reasoned kind. The encoder refuses only a malformed word (empty, non-ASCII), a word past the record codec's byte-string width, a count past the u32 codec field, or a frame past the FNCT payload width; no word count or length bound. Subjects: fn-native-control-host-admin-encode / -reasoned-admin-encode (host/native/control.lisp fnn-control-admin) and fn-native-control-host-admin-decode / -reasoned-admin-decode (the owner's control read). Built on fn-nctrl-admin-words-decode-of-encode and fn-nctrl-admin-argv-decode-of-encode (books/native-control.lisp).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-032"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/native-control.lisp",
+        "books/native-control-reason.lisp",
+        "tests/acl2/native-control-reason-tests.lisp"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: 200 words and a 70,000-octet word round-trip with the antecedent asserted; an unsealable argv is :bad and its decode is not the argv; must-fail of the theorem without the antecedent.",
+      "events": [
+        "fn-native-control-admin-decode-of-encode",
+        "fn-native-control-reasoned-admin-decode-of-encode"
+      ]
     }
   ]
 }

@@ -18,14 +18,6 @@
   (declare (xargs :mode :program))
   (fn-native-operator-run config-octets argv-octets))
 
-(defun fn-native-operator-host-argv-max-arguments ()
-  (declare (xargs :mode :program))
-  *fn-nop-max-arguments*)
-
-(defun fn-native-operator-host-argv-max-octets ()
-  (declare (xargs :mode :program))
-  *fn-nop-max-argument-octets*)
-
 (defun fn-native-operator-host-result-status (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-status result))

@@ -144,19 +144,62 @@ decoded as source-address for durable command compatibility."
        (equal (length x) 64)
        (subsetp-equal (coerce x 'list) (coerce "0123456789abcdef" 'list))))
 
-(defun fn-native-admin-carries-rows (name hexes)
-  (declare (xargs :guard t))
+; PKT-867: the argv has no word bound; these walks are loop twins
+; (tools/depth_check.py).
+(defun fn-native-admin-carries-rows-loop (name hexes acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp hexes)
-      (let ((rest (fn-native-admin-carries-rows name (cdr hexes))))
-        (if (and (fn-native-admin-carries-hexp (car hexes)) (listp rest))
-            (cons (list name "carries-principal" (car hexes) 0) rest)
-          :bad))
-    nil))
+      (if (fn-native-admin-carries-hexp (car hexes))
+          (fn-native-admin-carries-rows-loop
+           name (cdr hexes) (cons (list name "carries-principal" (car hexes) 0) acc))
+        :bad)
+    (revappend acc nil)))
+
+(defun fn-native-admin-carries-rows (name hexes)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp hexes)
+           (let ((rest (fn-native-admin-carries-rows name (cdr hexes))))
+             (if (and (fn-native-admin-carries-hexp (car hexes)) (listp rest))
+                 (cons (list name "carries-principal" (car hexes) 0) rest)
+               :bad))
+         nil)
+       :exec (fn-native-admin-carries-rows-loop name hexes nil)))
+
+(local
+ (defthm fn-native-admin-carries-rows-listp-or-bad
+   (or (true-listp (fn-native-admin-carries-rows name hexes))
+       (equal (fn-native-admin-carries-rows name hexes) :bad))
+   :rule-classes nil))
+
+(local
+ (defthm fn-native-admin-carries-rows-loop-is-revappend
+   (equal (fn-native-admin-carries-rows-loop name hexes acc)
+          (if (listp (fn-native-admin-carries-rows name hexes))
+              (revappend acc (fn-native-admin-carries-rows name hexes))
+            :bad))))
+
+(verify-guards fn-native-admin-carries-rows)
+
+(defun fn-native-admin-before-carries-loop (words acc)
+  (declare (xargs :guard (true-listp acc)))
+  (if (or (atom words) (equal (car words) "carries"))
+      (revappend acc nil)
+    (fn-native-admin-before-carries-loop (cdr words) (cons (car words) acc))))
 
 (defun fn-native-admin-before-carries (words)
-  (declare (xargs :guard t))
-  (if (or (atom words) (equal (car words) "carries")) nil
-    (cons (car words) (fn-native-admin-before-carries (cdr words)))))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (or (atom words) (equal (car words) "carries"))
+                  nil
+                (cons (car words) (fn-native-admin-before-carries (cdr words))))
+       :exec (fn-native-admin-before-carries-loop words nil)))
+
+(local
+ (defthm fn-native-admin-before-carries-loop-is-revappend
+   (equal (fn-native-admin-before-carries-loop words acc)
+          (revappend acc (fn-native-admin-before-carries words)))))
+
+(verify-guards fn-native-admin-before-carries)
 
 (defun fn-native-admin-peer-plan (words)
   (declare (xargs :guard t))
@@ -328,12 +371,26 @@ decoded as source-address for durable command compatibility."
 ; process in the originator set.  Its auth-principal value cannot be a SHA-256
 ; principal hex, so this row does not grant an NNTP peer login as a side effect.
 ; D23: the source EIDs the neighbour may carry, one row each.
-(defun fn-native-admin-bp-carries-rows (name eids)
-  (declare (xargs :guard t))
+(defun fn-native-admin-bp-carries-rows-loop (name eids acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp eids)
-      (cons (fn-cfg-row-make name "bp-boundary-carries" (car eids) 0)
-            (fn-native-admin-bp-carries-rows name (cdr eids)))
-    nil))
+      (fn-native-admin-bp-carries-rows-loop name (cdr eids) (cons (fn-cfg-row-make name "bp-boundary-carries" (car eids) 0) acc))
+    (revappend acc nil)))
+
+(defun fn-native-admin-bp-carries-rows (name eids)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp eids)
+                  (cons (fn-cfg-row-make name "bp-boundary-carries" (car eids) 0)
+                        (fn-native-admin-bp-carries-rows name (cdr eids)))
+                nil)
+       :exec (fn-native-admin-bp-carries-rows-loop name eids nil)))
+
+(local
+ (defthm fn-native-admin-bp-carries-rows-loop-is-revappend
+   (equal (fn-native-admin-bp-carries-rows-loop name eids acc)
+          (revappend acc (fn-native-admin-bp-carries-rows name eids)))))
+
+(verify-guards fn-native-admin-bp-carries-rows)
 
 ; A carried or release EID has the shape above; its scheme prefix also keeps
 ; it from being confused with the decimal limits of the long form.
@@ -353,12 +410,26 @@ decoded as source-address for durable command compatibility."
 ; D23: the release-issuer EIDs whose receipts the neighbour may relay, one
 ; (NAME "bp-boundary-releases-for" EID 0) row each.  A separate row kind from
 ; the carried list: a carried source is not a release issuer.
-(defun fn-native-admin-bp-releases-rows (name eids)
-  (declare (xargs :guard t))
+(defun fn-native-admin-bp-releases-rows-loop (name eids acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp eids)
-      (cons (fn-cfg-row-make name "bp-boundary-releases-for" (car eids) 0)
-            (fn-native-admin-bp-releases-rows name (cdr eids)))
-    nil))
+      (fn-native-admin-bp-releases-rows-loop name (cdr eids) (cons (fn-cfg-row-make name "bp-boundary-releases-for" (car eids) 0) acc))
+    (revappend acc nil)))
+
+(defun fn-native-admin-bp-releases-rows (name eids)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp eids)
+                  (cons (fn-cfg-row-make name "bp-boundary-releases-for" (car eids) 0)
+                        (fn-native-admin-bp-releases-rows name (cdr eids)))
+                nil)
+       :exec (fn-native-admin-bp-releases-rows-loop name eids nil)))
+
+(local
+ (defthm fn-native-admin-bp-releases-rows-loop-is-revappend
+   (equal (fn-native-admin-bp-releases-rows-loop name eids acc)
+          (revappend acc (fn-native-admin-bp-releases-rows name eids)))))
+
+(verify-guards fn-native-admin-bp-releases-rows)
 
 (defun fn-native-admin-bp-list-keywordp (word)
   (declare (xargs :guard t))
@@ -366,11 +437,25 @@ decoded as source-address for durable command compatibility."
 
 ; The clauses after the base form: [carries EID ...] [releases-for EID ...],
 ; each list non-empty, in that order.  (mv ok carried releases).
-(defun fn-native-admin-bp-before-releases (words)
-  (declare (xargs :guard t))
+(defun fn-native-admin-bp-before-releases-loop (words acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (or (atom words) (equal (car words) "releases-for"))
-      nil
-    (cons (car words) (fn-native-admin-bp-before-releases (cdr words)))))
+      (revappend acc nil)
+    (fn-native-admin-bp-before-releases-loop (cdr words) (cons (car words) acc))))
+
+(defun fn-native-admin-bp-before-releases (words)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (or (atom words) (equal (car words) "releases-for"))
+                  nil
+                (cons (car words) (fn-native-admin-bp-before-releases (cdr words))))
+       :exec (fn-native-admin-bp-before-releases-loop words nil)))
+
+(local
+ (defthm fn-native-admin-bp-before-releases-loop-is-revappend
+   (equal (fn-native-admin-bp-before-releases-loop words acc)
+          (revappend acc (fn-native-admin-bp-before-releases words)))))
+
+(verify-guards fn-native-admin-bp-before-releases)
 
 (defun fn-native-admin-bp-list-clauses (tail)
   (declare (xargs :guard t))

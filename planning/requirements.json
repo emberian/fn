@@ -5015,6 +5015,35 @@
         "planning/evidence/health-truth-journal-2026-09-28.md"
       ],
       "implementation_note": "Lane health-truth-journal (PKT-872). ENOSPC mid-line used to leave torn octets the next entry was appended after (fitness f2-full: malformed-at-18416 forever). The writer's rule is ACL2's (books/owner-time-journal-writer.lisp); the host truncates with ftruncate, which needs no free space. A developer selector FN_NATIVE_TEST_JOURNAL_FAIL_FILE injects the failure."
+    },
+    {
+      "id": "HST-032",
+      "title": "An operator command carries any number of words of any length: ACL2 parses the argv the kernel admits in one linear pass in constant stack, and an administrative argv the client can seal is exactly the argv the running owner decodes",
+      "specification": "specs/native-admin.md",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-902"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/native-operator.lisp",
+        "books/native-admin-shape.lisp",
+        "books/native-admin.lisp",
+        "books/native-admin-peer.lisp",
+        "books/native-control.lisp",
+        "books/native-control-reason.lisp",
+        "host/native/operator.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "tests/acl2/native-control-tests.lisp",
+        "tests/acl2/native-control-reason-tests.lisp",
+        "tests/test_native_operator_verbs.py"
+      ],
+      "implementation_note": "Lane operations (PKT-867, D27). The operator argv was capped at 32 words of 512 octets and the administrative vector the owner reads at 16: `init' could not name more than about 20 groups with a profile. Both caps are gone; the argv walks became loop twins (tools/depth_check.py baseline shrank by 16 entries), the words travel in the record codec (a word past 65,535 octets no longer vanishes from the frame), and what bounds one command is the control frame the owner reads under the profile's bound. Left: init's group validation (fn-record-groupsp) is quadratic in the named groups on the offline CLI, under the record's 65,535 group codec width."
     }
   ]
 }

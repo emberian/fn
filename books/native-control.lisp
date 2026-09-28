@@ -74,10 +74,11 @@
 (defconst *fn-nctrl-max-frame*
   (+ *fn-frame-overhead-octets* *fn-nctrl-max-payload*))
 
-; Work bound: the read bound of a control frame that carries no article (an
-; administrative argv of at most sixteen 512-octet words, a topic or consumer
-; request, a hybrid enrolment, every reply).  It is the pre-D27 request frame,
-; far above each of those encoders' payloads.
+; Work bound: the least read bound of a control frame (a topic or consumer
+; request, a hybrid enrolment, every reply, an administrative argv).  It is
+; the pre-D27 request frame; the profile's article and group bounds raise it
+; (fn-nctrl-read-bound-for).  An administrative argv has no count or word
+; bound of its own (PKT-867): what bounds it is this read.
 (defconst *fn-nctrl-max-command-frame* 262708)
 
 ; The request frame at the profile's article bound A and group bound G:
@@ -208,15 +209,54 @@
 ; Administrative argv is its own ordered vector grammar.  It shares the
 ; count-plus-bytes representation with group lists, but deliberately does not
 ; inherit group-name width or uniqueness rules: an argv word is an ASCII,
-; nonempty octet list of at most 512 octets, and repeated words are ordinary.
+; nonempty octet list, and repeated words are ordinary.  PKT-867: no word
+; count or length bound; the walks run as loops (tools/depth_check.py), and
+; the recognizer is checked once, not at every word.
+(defun fn-nctrl-admin-words-encode-loop (argv acc)
+  (declare (xargs :guard (true-listp acc)))
+  (if (consp argv)
+      (fn-nctrl-admin-words-encode-loop
+       (cdr argv) (revappend (fn-record-item-encode (cons :bytes (car argv))) acc))
+    (revappend acc nil)))
+
 (defun fn-nctrl-admin-words-encode (argv)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (not (fn-native-admin-argvp argv))
+           nil
+         (if (consp argv)
+             (append (fn-record-item-encode (cons :bytes (car argv)))
+                     (fn-nctrl-admin-words-encode (cdr argv)))
+           nil))
+       :exec (if (fn-native-admin-argvp argv)
+                 (fn-nctrl-admin-words-encode-loop argv nil)
+               nil)))
+
+(local
+ (defthm fn-nctrl-revappend-revappend
+   (equal (revappend (revappend x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-nctrl-admin-words-encode-loop-is-revappend
+   (implies (fn-native-admin-argvp argv)
+            (equal (fn-nctrl-admin-words-encode-loop argv acc)
+                   (revappend acc (fn-nctrl-admin-words-encode argv))))
+   :hints (("Goal" :induct (fn-nctrl-admin-words-encode-loop argv acc)))))
+
+(verify-guards fn-nctrl-admin-words-encode)
+
+; A word's width is the record codec's (2^32 - 1 octets), the width of the
+; byte string that carries it: a codec width, not an argv bound.  The words
+; are encoded with the record codec (`fn-record-item-encode'), whose head for
+; a word under 65 536 octets is the narrow codec's, so every frame an older
+; client sealed decodes as before.
+(defun fn-nctrl-admin-words-widthp (argv)
   (declare (xargs :guard t))
-  (if (not (fn-native-admin-argvp argv))
-      nil
-    (if (consp argv)
-        (append (fn-cbor-encode (cons :bytes (car argv)))
-                (fn-nctrl-admin-words-encode (cdr argv)))
-      nil)))
+  (if (consp argv)
+      (and (<= (len (car argv)) *fn-record-max-octets*)
+           (fn-nctrl-admin-words-widthp (cdr argv)))
+    t))
 
 (defun fn-nctrl-admin-argv-encode (argv)
   (declare (xargs :guard t))
@@ -225,27 +265,73 @@
     (append (fn-cbor-encode (cons :uint (len argv)))
             (fn-nctrl-admin-words-encode argv))))
 
+(defun fn-nctrl-admin-words-decode-loop (count octets acc)
+  (declare (xargs :guard (and (natp count) (fn-cbor-octet-listp octets)
+                              (true-listp acc))
+                  :measure (nfix count)
+                  :guard-hints
+                  (("Goal"
+                    :use ((:instance fn-record-read-bytes-success-domain
+                                     (octets octets)))
+                    :in-theory (disable fn-record-read-bytes
+                                        fn-record-parse-okp
+                                        fn-record-parse-value
+                                        fn-record-parse-rest)))))
+  (if (zp count)
+      (fn-record-parse-ok (revappend acc nil) octets)
+    (let ((first (fn-record-read-bytes octets)))
+      (if (not (fn-record-parse-okp first))
+          first
+        (let ((word (fn-record-parse-value first)))
+          (if (not (and (consp word)
+                        (fn-record-ascii-octet-listp word)))
+              (fn-record-parse-error :argument)
+            (fn-nctrl-admin-words-decode-loop
+             (1- count) (fn-record-parse-rest first) (cons word acc))))))))
+
 (defun fn-nctrl-admin-words-decode (count octets)
-  (declare (xargs :guard t))
-  (if (not (and (natp count) (fn-cbor-octet-listp octets)))
-      (fn-record-parse-error :arguments)
-    (if (zp count)
-        (fn-record-parse-ok nil octets)
-      (let ((first (fn-record-read-bytes octets)))
-        (if (not (fn-record-parse-okp first))
-            first
-          (let ((word (fn-record-parse-value first)))
-            (if (not (and (consp word)
-                          (<= (len word) *fn-native-admin-max-argument-octets*)
-                          (fn-record-ascii-octet-listp word)))
-                (fn-record-parse-error :argument)
-              (let ((tail (fn-nctrl-admin-words-decode
-                           (1- count) (fn-record-parse-rest first))))
-                (if (not (fn-record-parse-okp tail))
-                    tail
-                  (fn-record-parse-ok
-                   (cons word (fn-record-parse-value tail))
-                   (fn-record-parse-rest tail)))))))))))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (not (and (natp count) (fn-cbor-octet-listp octets)))
+           (fn-record-parse-error :arguments)
+         (if (zp count)
+             (fn-record-parse-ok nil octets)
+           (let ((first (fn-record-read-bytes octets)))
+             (if (not (fn-record-parse-okp first))
+                 first
+               (let ((word (fn-record-parse-value first)))
+                 (if (not (and (consp word)
+                               (fn-record-ascii-octet-listp word)))
+                     (fn-record-parse-error :argument)
+                   (let ((tail (fn-nctrl-admin-words-decode
+                                (1- count) (fn-record-parse-rest first))))
+                     (if (not (fn-record-parse-okp tail))
+                         tail
+                       (fn-record-parse-ok
+                        (cons word (fn-record-parse-value tail))
+                        (fn-record-parse-rest tail))))))))))
+       :exec (if (and (natp count) (fn-cbor-octet-listp octets))
+                 (fn-nctrl-admin-words-decode-loop count octets nil)
+               (fn-record-parse-error :arguments))))
+
+(local
+ (defthm fn-nctrl-admin-words-decode-loop-is-decode
+   (implies (and (natp count) (fn-cbor-octet-listp octets))
+            (equal (fn-nctrl-admin-words-decode-loop count octets acc)
+                   (let ((r (fn-nctrl-admin-words-decode count octets)))
+                     (if (fn-record-parse-okp r)
+                         (fn-record-parse-ok
+                          (revappend acc (fn-record-parse-value r))
+                          (fn-record-parse-rest r))
+                       r))))
+   :hints (("Goal" :induct (fn-nctrl-admin-words-decode-loop count octets acc)
+                   :in-theory (e/d (fn-record-parse-ok fn-record-parse-okp
+                                    fn-record-parse-value fn-record-parse-rest)
+                                   (fn-record-read-bytes)))
+           ("Subgoal *1/4"
+            :use ((:instance fn-record-read-bytes-success-domain (octets octets)))))))
+
+(verify-guards fn-nctrl-admin-words-decode)
 
 (defun fn-nctrl-admin-argv-decode (octets)
   ; `zp' of the decoded count needs the count to be a natural.  The bounded
@@ -268,7 +354,10 @@
       (if (not (fn-record-parse-okp counted))
           (fn-record-parse-error :arguments)
         (let ((count (fn-record-parse-value counted)))
-          (if (or (zp count) (< *fn-native-admin-max-arguments* count))
+          ; PKT-867: no count bound.  Each word consumes at least two
+          ; octets of the payload, so the decode is bounded by the frame,
+          ; which the owner read under the profile's bound.
+          (if (zp count)
               (fn-record-parse-error :arguments)
             (let ((parsed (fn-nctrl-admin-words-decode
                            count (fn-record-parse-rest counted))))
@@ -276,6 +365,90 @@
                       (consp (fn-record-parse-rest parsed)))
                   (fn-record-parse-error :arguments)
                 parsed))))))))
+
+;; PKT-867: an administrative argv of any length round-trips through the
+;; payload codec: the words' decode is the words, whatever their count.
+(local
+ (defthm fn-nctrl-ascii-octets-are-cbor-octets
+   (implies (fn-record-ascii-octet-listp xs) (fn-cbor-octet-listp xs))
+   :hints (("Goal" :in-theory (enable fn-record-ascii-octet-listp fn-record-ascii-octetp
+                                      fn-cbor-octet-listp fn-cbor-octetp)))))
+
+(defthm fn-nctrl-admin-words-encode-octets
+  (fn-cbor-octet-listp (fn-nctrl-admin-words-encode argv))
+  :hints (("Goal" :in-theory (e/d (fn-nctrl-admin-words-encode) (fn-record-item-encode)))))
+
+(defthm fn-nctrl-admin-words-encode-true-listp
+  (true-listp (fn-nctrl-admin-words-encode argv))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (e/d (fn-nctrl-admin-words-encode) (fn-record-item-encode)))))
+
+(defthm fn-nctrl-admin-words-decode-of-word
+  (implies (and (natp n)
+                (consp w) (fn-record-ascii-octet-listp w)
+                (<= (len w) *fn-record-max-octets*)
+                (fn-cbor-octet-listp rest))
+           (equal (fn-nctrl-admin-words-decode
+                   (+ 1 n) (append (fn-record-item-encode (cons :bytes w)) rest))
+                  (let ((tail (fn-nctrl-admin-words-decode n rest)))
+                    (if (fn-record-parse-okp tail)
+                        (fn-record-parse-ok (cons w (fn-record-parse-value tail))
+                                            (fn-record-parse-rest tail))
+                      tail))))
+  :hints (("Goal" :do-not-induct t
+                  :expand ((fn-nctrl-admin-words-decode
+                            (+ 1 n) (append (fn-record-item-encode (cons :bytes w)) rest)))
+                  :use ((:instance fn-record-read-bytes-of-item-encoding (xs w)))
+                  :in-theory (e/d (fn-record-parse-okp fn-record-parse-value
+                                   fn-record-parse-rest fn-record-parse-ok)
+                                  (fn-nctrl-admin-words-decode
+                                   fn-record-read-bytes-of-item-encoding
+                                   fn-record-item-encode fn-record-read-bytes
+                                   fn-cbor-octet-listp fn-record-ascii-octet-listp)))))
+
+(defthm fn-nctrl-admin-words-decode-of-encode
+  (implies (and (fn-native-admin-argvp argv)
+                (fn-nctrl-admin-words-widthp argv)
+                (fn-cbor-octet-listp rest))
+           (equal (fn-nctrl-admin-words-decode
+                   (len argv) (append (fn-nctrl-admin-words-encode argv) rest))
+                  (fn-record-parse-ok argv rest)))
+  :hints (("Goal" :induct (fn-nctrl-admin-words-widthp argv)
+                  :do-not '(generalize fertilize eliminate-destructors)
+                  :expand ((fn-nctrl-admin-words-encode argv)
+                           (fn-nctrl-admin-words-decode 0 rest))
+                  :in-theory (e/d (fn-native-admin-argvp fn-nctrl-admin-words-widthp
+                                   fn-record-parse-okp fn-record-parse-value
+                                   fn-record-parse-rest fn-record-parse-ok)
+                                  (fn-nctrl-admin-words-encode fn-nctrl-admin-words-decode
+                                   fn-record-item-encode fn-record-read-bytes
+                                   fn-cbor-octet-listp fn-record-ascii-octet-listp)))))
+
+(local (defthm fn-nctrl-len-of-consp-posp
+  (implies (consp x) (posp (len x)))
+  :rule-classes :forward-chaining))
+(defthm fn-nctrl-admin-argv-decode-of-encode
+  (implies (and (fn-native-admin-argvp argv)
+                (consp argv)
+                (fn-nctrl-admin-words-widthp argv)
+                (<= (len argv) *fn-cbor-max-uint*))
+           (equal (fn-nctrl-admin-argv-decode (fn-nctrl-admin-argv-encode argv))
+                  (fn-record-parse-ok argv nil)))
+  :hints (("Goal" :do-not-induct t
+                  :use ((:instance fn-record-read-uint-of-encoding
+                                   (n (len argv))
+                                   (rest (fn-nctrl-admin-words-encode argv)))
+                        (:instance fn-nctrl-admin-words-decode-of-encode (rest nil)))
+                  :in-theory (e/d (fn-nctrl-admin-argv-encode fn-nctrl-admin-argv-decode
+                                   fn-record-uint32p len
+                                   fn-record-parse-okp fn-record-parse-value
+                                   fn-record-parse-rest fn-record-parse-ok)
+                                  (fn-record-read-uint-of-encoding
+                                   fn-nctrl-admin-words-decode-of-encode
+                                   fn-nctrl-admin-words-encode fn-nctrl-admin-words-decode
+                                   fn-record-read-uint fn-cbor-encode
+                                   fn-record-item-encode fn-record-read-bytes
+                                   fn-record-ascii-octet-listp)))))
 
 (defun fn-nctrl-seal (kind payload)
   (declare (xargs :guard t))
@@ -299,13 +472,14 @@
           (fn-nctrl-seal *fn-nctrl-request-kind* payload))))))
 
 (defun fn-native-control-admin-encode (argv)
-  ; The argv budget is one bound, applied on both sides: `fn-native-admin-plan'
-  ; refuses more than *fn-native-admin-max-arguments* with :argv and
-  ; `fn-nctrl-admin-argv-decode' refuses the count, so an encoder without it
-  ; emits a frame its own decoder must refuse.
+  ; PKT-867: no argv count or word bound; the sealed frame is bounded by the
+  ; FNCT payload width (fn-nctrl-seal) and the owner reads it under the
+  ; profile's bound.
   (declare (xargs :guard t))
   (if (or (not (fn-native-admin-argvp argv)) (not (consp argv))
-          (< *fn-native-admin-max-arguments* (len argv)))
+          (not (fn-nctrl-admin-words-widthp argv))
+          ; the count is a u32 codec field (a width, not a bound)
+          (< *fn-cbor-max-uint* (len argv)))
       :bad
     (let ((payload (fn-nctrl-admin-argv-encode argv)))
       (if payload (fn-nctrl-seal *fn-nctrl-admin-kind* payload) :bad))))

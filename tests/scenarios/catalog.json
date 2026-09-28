@@ -5614,6 +5614,28 @@
         "native": true,
         "record": "planning/evidence/zero-copy-commit-2026-09-28.md"
       }
+    },
+    {
+      "id": "SCN-196",
+      "title": "An operator names sixty groups at init and sends a forty-line message of the day and a sixty-word description to the running owner, each in one command",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-032"
+      ],
+      "steps": [
+        "`operator init fit.g00 ... fit.g59` (61 words); `run`; LIST NEWSGROUPS; `operator motd set` with 40 lines; `operator group describe fit.g07` with 60 words; LIST MOTD; LIST NEWSGROUPS fit.g07; `operator status \"\"`."
+      ],
+      "expected": [
+        "init exits 0 and LIST NEWSGROUPS lists the sixty groups; both live commands exit 0; LIST MOTD answers the forty lines in order and LIST NEWSGROUPS fit.g07 the sixty words; the empty word is usage, ARGV-MALFORMED, exit 2."
+      ],
+      "implementation": {
+        "test": "tests.test_native_operator_verbs",
+        "cases": [
+          "NativeOperatorWideArgvTests.test_init_names_sixty_groups_and_a_live_command_carries_sixty_words"
+        ],
+        "native": true
+      }
     }
   ]
 }

@@ -14,8 +14,6 @@
 (include-book "acceptance-alloc")
 (include-book "byte-store-txn-name")
 
-(defconst *fn-native-admin-max-arguments* 16)
-(defconst *fn-native-admin-max-argument-octets* 512)
 (defconst *fn-native-admin-config-name-width* 8)
 (defconst *fn-native-admin-config-name-limit* 100000000)
 (defconst *fn-native-admin-config-name-suffix* '(#\. #\c #\f #\g))
@@ -42,17 +40,34 @@
   (declare (xargs :guard t))
   (if (consp argv)
       (and (consp (car argv))
-           (<= (len (car argv)) *fn-native-admin-max-argument-octets*)
            (fn-record-ascii-octet-listp (car argv))
            (fn-native-admin-argvp (cdr argv)))
     (null argv)))
 
-(defun fn-native-admin-words (argv)
-  (declare (xargs :guard t))
+; PKT-867: the argv has no word bound, so its walks run in constant stack:
+; each non-tail walk is an (mbe :logic RECURSION :exec LOOP) with the lemma
+; equating them (the loop-twin rule, tools/depth_check.py).
+(defun fn-native-admin-words-loop (argv acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp argv)
-      (cons (fn-record-octets-string (car argv))
-            (fn-native-admin-words (cdr argv)))
-    nil))
+      (fn-native-admin-words-loop (cdr argv)
+                                  (cons (fn-record-octets-string (car argv)) acc))
+    (revappend acc nil)))
+
+(defun fn-native-admin-words (argv)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp argv)
+                  (cons (fn-record-octets-string (car argv))
+                        (fn-native-admin-words (cdr argv)))
+                nil)
+       :exec (fn-native-admin-words-loop argv nil)))
+
+(local
+ (defthm fn-native-admin-words-loop-is-revappend
+   (equal (fn-native-admin-words-loop argv acc)
+          (revappend acc (fn-native-admin-words argv)))))
+
+(verify-guards fn-native-admin-words)
 
 (defun fn-native-admin-digit-value (char)
   (declare (xargs :guard t))

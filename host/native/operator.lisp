@@ -1,6 +1,6 @@
 ;;; Native `--fn operator CONFIG-PATH COMMAND ...` transport and execution.
 ;;;
-;;; This raw module transports only bounded ASCII argv/configuration octets to
+;;; This raw module transports only ASCII argv and bounded configuration octets to
 ;;; host/native-operator-host.lisp.  ACL2 chooses command grammar, defaults,
 ;;; profile availability, the result tag, and the exit-code projection.  RUN
 ;;; installs the local-control lifecycle and POST calls that control socket;
@@ -68,12 +68,10 @@ this image loaded (fnn-operator-register-action).")
 
 (defvar *fnn-operator-live-owner* nil)
 
-(defun fnn-operator-argv-octets (texts max-arguments max-octets)
-  (when (< max-arguments (length texts))
-    (error 'fnn-usage-error :message "operator argv exceeds ACL2 bound"))
+(defun fnn-operator-argv-octets (texts)
+  "The argv as ASCII octet lists, as the kernel handed it (PKT-867: no word
+count or length here; ACL2's grammar judges every word)."
   (mapcar (lambda (text)
-            (when (< max-octets (length text))
-              (error 'fnn-usage-error :message "operator argument exceeds ACL2 bound"))
             (let ((octets (fnn-ascii-octet-list text)))
               (unless (every (lambda (octet) (<= octet 127)) octets)
                 (error 'fnn-usage-error :message "operator argument is not ASCII"))
@@ -772,9 +770,7 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
 of the node's web face from the same octets, books/web-config.lisp).")
 
 (defun fnn-command-operator (config-path argv)
-  (let* ((max-arguments (fnn-core 'fn-native-operator-host-argv-max-arguments))
-         (max-octets (fnn-core 'fn-native-operator-host-argv-max-octets))
-         (argv-octets (fnn-operator-argv-octets argv max-arguments max-octets))
+  (let* ((argv-octets (fnn-operator-argv-octets argv))
          (preflight (fnn-core 'fn-native-operator-host-preflight argv-octets)))
     (when (fnn-core 'fn-native-operator-host-preflight-needs-config-path-p preflight)
       (return-from fnn-command-operator
