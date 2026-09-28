@@ -338,14 +338,6 @@
       (fn-id-obligation-of msgid subject)
     nil))
 
-(defun fn-store-obligation-preimage (msgid subject)
-  (if (and (fn-cbor-octet-listp msgid)
-           (<= (len msgid) *fn-cbor-max-uint*)
-           (fn-cbor-octet-listp subject)
-           (<= (len subject) *fn-cbor-max-uint*))
-      (fn-id-obligation-preimage msgid subject)
-    nil))
-
 (defun fn-store-obligation-id (digest)
   (if (fn-id-digestp digest) (fn-id-obligation digest) nil))
 
