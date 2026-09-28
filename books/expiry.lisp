@@ -13,7 +13,8 @@
 ; Age (INN expire.ctl's semantics, per group):
 ;   the instant an article of the group asks to leave is its Expires: header's
 ;   date-time (RFC 5536 section 3.2.5; RFC 5322 section 3.3, read by
-;   books/relay-checks.lisp `fn-rck-date-instant'), or without a usable one its
+;   books/relay-checks.lisp `fn-rck-date-instant', moved to the stamp's
+;   2000-01-01 epoch), or without a usable one its
 ;   acceptance stamp plus DEFAULT days, or never;
 ;   that instant is raised to the stamp plus KEEP days and lowered to the stamp
 ;   plus PURGE days (`fn-xpy-age-instant'), so a poster's Expires: is honoured
@@ -63,17 +64,23 @@
         (cons (car bytes) (fn-xpy-header-block (cdr bytes))))
     nil))
 
-; The Expires: header's instant (seconds since 1970-01-01T00:00:00Z), or nil
-; when the header block does not parse, the field is absent or repeated, or
-; its value is not an RFC 5322 date-time.
+; The Expires: header's instant on the acceptance stamp's clock -- seconds
+; since 2000-01-01T00:00:00Z, the DTN epoch of books/clock.lisp and
+; books/records-stamp.lisp -- or nil when the header block does not parse,
+; the field is absent or repeated, or its value is not an RFC 5322
+; date-time.  The date reader answers seconds since 1970, so the instant is
+; moved by the 10,957 days between the epochs, as books/peer-inbound.lisp
+; moves its clock (`fn-peer-clock-unix-seconds'); the first native run of
+; this book compared them unconverted and honoured no Expires: at all.
 (defun fn-xpy-expires-instant (bytes)
   (declare (xargs :guard t))
   (let ((parsed (fn-article-parse (fn-xpy-header-block bytes))))
     (if (and (fn-article-result-okp parsed) (true-listp parsed)
              (fn-article-syntax-p (fn-article-result-article parsed)))
-        (let ((value (fn-path-single-field-value (fn-article-result-article parsed)
-                                                 *fn-xpy-expires-name*)))
-          (if value (fn-rck-date-instant value) nil))
+        (let* ((value (fn-path-single-field-value (fn-article-result-article parsed)
+                                                  *fn-xpy-expires-name*))
+               (unix (and value (fn-rck-date-instant value))))
+          (if (integerp unix) (- unix *fn-rck-dtn-epoch-unix-seconds*) nil))
       nil)))
 
 ; -----------------------------------------------------------------------------

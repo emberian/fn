@@ -104,15 +104,15 @@ class ExpiryMixin:
         node = self.filled()
         # No policy: nothing expires (D03).
         dry = self.reclaim(node, "--dry-run")
-        self.assertIn(b"would-reclaim=0", dry.stdout, dry.stdout)
-        self.assertIn(b"would-expire=0", dry.stdout, dry.stdout)
+        self.assertTrue(dry.stdout.startswith(b"reclaimed=0 expired=0 "), dry.stdout)
         # An age rule for fn.test (purge 30): a posted Expires: in the past
         # is honoured at once; fn.keep has none.
         node.operator("retention", "expire", GROUP, "purge", "30", expect=EXIT.OK)
+        # Words that are no policy are refused as usage, by name.
         node.operator("retention", "expire", "no.such/group!", "purge", "30",
-                      expect=EXIT.REFUSED)
+                      expect=EXIT.USAGE)
         node.operator("retention", "expire", GROUP, "keep", "30", "purge", "7",
-                      expect=EXIT.REFUSED)
+                      expect=EXIT.USAGE)
         dry = self.reclaim(node, "--dry-run")
         self.assertIn(b"would-expire=2", dry.stdout, dry.stdout)
         listed = set(dry.stdout.decode().split("would-reclaim ")[1:])
@@ -151,14 +151,15 @@ class ExpiryMixin:
         self.assertEqual(words(again.stdout)["reclaimed"], "0", again.stdout)
         node.operator("retention", "expire", GROUP, "clear", expect=EXIT.OK)
         dry = self.reclaim(node, "--dry-run")
-        self.assertIn(b"would-expire=0", dry.stdout, dry.stdout)
+        self.assertTrue(dry.stdout.startswith(b"reclaimed=0 expired=0 "), dry.stdout)
 
     def test_size_window_keeps_the_newest(self):
         node = self.node()
         self.post_all(node, [("s%d" % i, GROUP, None, 2000) for i in range(4)])
         one = len(article("s0", GROUP, None, 2000))
-        # A window of a little over two articles: the two oldest leave.
-        node.operator("retention", "expire", GROUP, "octets", str(2 * one + 100),
+        # A window of two and a half posted articles (the stored one adds the
+        # injecting agent's few header lines): the two oldest leave.
+        node.operator("retention", "expire", GROUP, "octets", str(2 * one + one // 2),
                       expect=EXIT.OK)
         dry = self.reclaim(node, "--dry-run")
         self.assertIn(b"would-expire=2", dry.stdout, dry.stdout)

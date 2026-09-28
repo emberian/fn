@@ -46,9 +46,11 @@
 ; Age (fn-xpy-age-instant keystones)
 
 (defconst *xt-day* 86400)
-(defconst *xt-s* 1789862400)                 ; 2026-09-20T00:00:00Z
-(defconst *xt-oct1* 1790812800)              ; 2026-10-01T00:00:00Z
-(defconst *xt-sep28* 1790553600)             ; 2026-09-28T00:00:00Z
+; Instants on the stamp's clock: seconds since 2000-01-01T00:00:00Z.
+(defconst *xt-e* 946684800)                   ; 2000-01-01 in Unix seconds
+(defconst *xt-s* (- 1789862400 *xt-e*))       ; 2026-09-20T00:00:00Z
+(defconst *xt-oct1* (- 1790812800 *xt-e*))    ; 2026-10-01T00:00:00Z
+(defconst *xt-sep28* (- 1790553600 *xt-e*))   ; 2026-09-28T00:00:00Z
 ; Expires within [stamp + keep, stamp + purge]: honoured exactly.
 (assert-event (equal (fn-xpy-age-instant *xt-inn* *xt-s* *xt-oct1*) *xt-oct1*))
 ; Below keep: raised to stamp + keep.  Above purge: lowered to stamp + purge.
@@ -89,6 +91,10 @@
 (defconst *xt-p2* (xt-article "<a2@x>" nil "two two two two two two two two"))
 (assert-event (equal (fn-xpy-expires-instant *xt-p0*) *xt-oct1*))
 (assert-event (null (fn-xpy-expires-instant *xt-p1*)))
+; The epoch is the stamp's (books/records-stamp.lisp: 2000-01-01), not Unix's.
+(assert-event (equal (fn-xpy-expires-instant
+                      (xt-article "<e@x>" "Sat, 01 Jan 2000 00:00:00 +0000" "e"))
+                     0))
 ; Tooth: the header block stops at the empty line; an "Expires:" line in the
 ; body is not the header.
 (assert-event (null (fn-xpy-expires-instant
