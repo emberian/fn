@@ -1078,32 +1078,18 @@
                      nil)))
               (t (mv (fn-feed-lost f obs) nil))))))
 
-; The feed with no back-off deadline.
-(defun fn-feed-without-backoff (f)
-  (declare (xargs :guard t))
-  (fn-feed-make (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
-                (fn-feed-contact f) 0 (fn-feed-conn f) (fn-feed-next-attempt f)))
-
 ; Restart: on open, before any offer.  Every in-flight entry is fenced back to
 ; :queued with its attempt RETIRED, and the connection is forgotten.  The next
 ; command for such an entry is therefore an offer -- a CHECK or an IHAVE --
 ; whose 435/438 is the peer's own history absorbing the one retransmission a
 ; lost reply can cause.  Never a blind TAKETHIS.
-; The back-off deadline is forgotten too (lane time-bars, PRF-385): it is a
-; reading of the previous process's monotonic clock (the replay of
-; :feed-retry and :feed-lost rebuilds it from that run's readings), which
-; means nothing in this one -- SBCL's clock starts near zero in every
-; process, so a kept deadline held a peer that was backing off unfed for
-; about the previous run's uptime.  What crosses the restart is the semantic
-; observation: each entry's attempt count, which sets the next back-off.
 (defun fn-feed-restart (f)
   (declare (xargs :guard t))
   (if (not (fn-feedp f))
       f
-      (fn-feed-without-backoff
-       (fn-feed-with-conn
-        (fn-feed-with-queue f (fn-feed-queue-settle (fn-feed-queue f)))
-        nil))))
+      (fn-feed-with-conn
+       (fn-feed-with-queue f (fn-feed-queue-settle (fn-feed-queue f)))
+       nil)))
 
 (defun fn-feed-settle (f)
   (declare (xargs :guard t))

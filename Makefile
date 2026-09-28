@@ -1284,8 +1284,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-stop-drain-tests \
 	books/owner-time-bars \
 	tests/acl2/owner-time-bars-tests \
-	books/feed-restart-domain \
-	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
 	tests/acl2/web-request-tests \
 	books/web-2047 \

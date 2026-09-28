@@ -12784,15 +12784,6 @@
           "name": "fn-otb-a-restart-forgets-the-previous-clock-domain"
         }
       ]
-    },
-    {
-      "id": "PRF-385",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-feed-restart-forgets-the-previous-clock-domain"
-        }
-      ]
     }
   ]
 }

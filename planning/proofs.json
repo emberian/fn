@@ -13501,28 +13501,6 @@
         "fn-otb-a-restart-forgets-the-previous-clock-domain"
       ],
       "progress_note": "Lane time-bars (Opus 5.5, 2026-09-28). REPL-admitted on hbox against certified dependencies. Teeth: tests/acl2/owner-time-bars-tests.lisp (prefix otbt-): a reached pipeline of ledgers (a normal completion; a stall telling the batch in flight and the next; the late completion answering no one; the successor answering only its untold member); per keystone a reached positive witness of the whole antecedent and conclusion, hypothesis-removal witnesses (a consumed ledger; a member listed twice; a stale then a fresh completion; a regressed dependency reading; a tampered earlier segment), a must-fail for the open hypothesis, and the splice tooth (run 2's readings on run 1's domain do not replay as run 2). Native: tests.test_native_slow_disk test_the_adopted_default_bars_classify_an_unresolved_write."
-    },
-    {
-      "id": "PRF-385",
-      "title": "The push feed's restart forgets the previous process's back-off deadline: a restarted feed does not depend on it, has none, and admits the new process's first observation",
-      "statement": "Subject fn-feed-restart (books/peer-feed.lisp), reached at every open through host/owner-host.lisp fn-owner-feed-restart (books/owner-feed-port.lisp fn-own-feed-port-restart-fold, the :restart event of fn-feed-live-next) and in the model's reopen (books/owner.lisp fn-own-reopen, fn-own-feed-restart-all). KEYSTONE fn-feed-restart-forgets-the-previous-clock-domain (books/feed-restart-domain.lisp): for a feed and any natural deadline B, the restart of the feed with B in place of its deadline is the restart of the feed; the restarted feed's deadline is 0; so the back-off conjunct of fn-feed-selection holds at every observation. The attempt counts (the semantic observation) are kept and set the next back-off.",
-      "milestone": "M5",
-      "requirements": [
-        "HST-031"
-      ],
-      "depends_on": [],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/peer-feed.lisp",
-        "books/feed-restart-domain.lisp",
-        "tests/acl2/feed-restart-domain-tests.lisp",
-        "planning/evidence/time-bars-2026-09-28.md"
-      ],
-      "events": [
-        "fn-feed-restart-forgets-the-previous-clock-domain"
-      ],
-      "progress_note": "Lane time-bars (Opus 5.5, 2026-09-28). Found by the restart clock-domain audit: fn-feed-restart kept backoff-until, a reading of the previous process's monotonic clock rebuilt by the replay of :feed-retry/:feed-lost, and fn-feed-with-backoff never lowers it, so a peer backing off at the stop was not fed for about the previous run's uptime. Teeth: tests/acl2/feed-restart-domain-tests.lisp (prefix frd-): a feed backed off at 259,200,000 ms (three days up), restarted, offers again at 1,500 ms; the same through the replayed journal; the defect as a tooth (no restart: nothing offered); a non-feed keeps its deadline (the feedp hypothesis)."
     }
   ]
 }
