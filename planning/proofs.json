@@ -13206,7 +13206,13 @@
         "tests/test_native_tls_transport.py",
         "tests/test_native_feed_tls_read.py"
       ],
-      "progress_note": "Lane feed-tls-read (2026-09-28), defect M3 from lane node-migrate."
+      "progress_note": "Lane feed-tls-read (2026-09-28), defect M3 from lane node-migrate.",
+      "events": [
+        "fn-flb-lost-advances-the-backoff",
+        "fn-flb-lost-doubles-below-the-ceiling",
+        "fn-flb-first-loss-after-ready-waits-the-base",
+        "fn-flb-delay-is-bounded"
+      ]
     },
     {
       "id": "PRF-381",
@@ -13227,7 +13233,11 @@
         "host/owner-host.lisp",
         "tests/test_native_feed_tls_read.py"
       ],
-      "progress_note": "Lane feed-tls-read (2026-09-28), the coordinator's containment ask from lane node-migrate (PKT-882)."
+      "progress_note": "Lane feed-tls-read (2026-09-28), the coordinator's containment ask from lane node-migrate (PKT-882).",
+      "events": [
+        "fn-fps-deltas-set-the-pause",
+        "fn-fps-live-names-are-the-unpaused-feeds"
+      ]
     },
     {
       "id": "PRF-374",
