@@ -185,6 +185,7 @@
 (defthm fn-orr-span-read-is-historical-read
   (implies (and (fn-ocri-relation x)
                 (fn-scr-owner-catalogp (fn-ocfg-owner x) id fn-arena fn-cat)
+                (fn-scol-okp fn-arena fn-cat)
                 (natp i) (natp end))
            (let* ((r (fn-scr-ocfg-read-span x id i end fn-octets fn-arena fn-cat))
                   (full (fn-ocfg-read x id (take (fn-own-tls-result-consumed r)
@@ -201,6 +202,7 @@
 (defthm fn-orr-span-read-keeps-the-reader-relation-and-the-rest
   (implies (and (fn-ocri-relation x)
                 (fn-scr-owner-catalogp (fn-ocfg-owner x) id fn-arena fn-cat)
+                (fn-scol-okp fn-arena fn-cat)
                 (natp i) (natp end))
            (let* ((x2 (fn-own-tls-result-owner
                        (fn-scr-ocfg-read-span x id i end fn-octets fn-arena fn-cat))))
@@ -303,6 +305,7 @@
                 (equal (fn-ocfg-config oc) (fn-ocfg-config oc0))
                 (fn-scr-owner-catalogp (fn-ocfg-owner (fn-ocfg-with-view oc (car views)))
                                        id fn-arena fn-cat)
+                (fn-scol-okp fn-arena fn-cat)
                 (natp i) (natp end))
            (let* ((r (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat))
                   (oc2 (fn-own-tls-result-owner r))

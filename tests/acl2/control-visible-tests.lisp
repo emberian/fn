@@ -131,8 +131,11 @@
 (defconst *cvt-hist* (list *cvt-rt* *cvt-rc2*))
 (assert-event
  (and (fn-held-p *cvt-rc2*)
+      ;; the row's control position: the three control facts, then the
+      ;; overview column (lane served-columns)
       (equal (fn-ctl-row-control "<c2@example.invalid>" *cvt-hist*)
-             (fn-ctl-control-of (fn-article-payload *cvt-c2*)))
+             (fn-hf-control-with-nov (fn-ctl-control-of (fn-article-payload *cvt-c2*))
+                                     (fn-hnov-of (fn-article-payload *cvt-c2*))))
       (equal (fn-ctl-control-target (fn-ctl-row-control "<c2@example.invalid>" *cvt-hist*))
              "<t@example.invalid>")
       (null (fn-ctl-control-target (fn-ctl-row-control "<t@example.invalid>" *cvt-hist*)))))

@@ -43,6 +43,7 @@
 (include-book "nntp")
 (include-book "nntp-range-indexed-invariants")
 (include-book "nntp-list-counts")
+(include-book "served-columns")   ; the overview column: OVER/HDR/XPAT without the bytes
 
 ;;; The finders.
 
@@ -1133,7 +1134,7 @@
       (let* ((number (car numbers))
              (article (fn-scat-available-article group number v fn-arena fn-cat))
              (content (if (consp article)
-                          (fn-nntp-hdr-content field article fn-arena)
+                          (fn-scol-hdr-content field article fn-arena fn-cat)
                         (list :error))))
         (if (fn-nntp-hdr-okp content)
             (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
@@ -1143,7 +1144,7 @@
     nil))
 
 (defthm fn-nntp-hdr-lines-for-numbers-cat-is-archive
-  (implies (and (fn-cnx-freshp fn-cat) group)
+  (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat) group)
            (equal (fn-nntp-hdr-lines-for-numbers-cat field group numbers v fn-arena fn-cat)
                   (fn-nntp-hdr-lines-for-numbers field group numbers
                                                  (fn-cat-view-articles v fn-arena fn-cat) fn-arena)))
@@ -1169,7 +1170,7 @@
                   (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
                     (if (not (consp article))
                         (fn-nntp-single session "420 no current article")
-                      (let ((content (fn-nntp-hdr-content field article fn-arena)))
+                      (let ((content (fn-scol-hdr-content field article fn-arena fn-cat)))
                         (if (fn-nntp-hdr-okp content)
                             (fn-nntp-multi
                              session (fn-nntp-hdr-initial legacyp)
@@ -1198,7 +1199,7 @@
                                                             v fn-arena fn-cat)))
                         (if (not (consp article))
                             (fn-nntp-single session "430 no article with that message-id")
-                          (let ((content (fn-nntp-hdr-content field article fn-arena)))
+                          (let ((content (fn-scol-hdr-content field article fn-arena fn-cat)))
                             (if (fn-nntp-hdr-okp content)
                                 (fn-nntp-multi
                                  session (fn-nntp-hdr-initial legacyp)
@@ -1211,7 +1212,7 @@
             (fn-nntp-single session "501 syntax error"))))))
 
 (defthm fn-nntp-hdr-command-cat-is-archive
-  (implies (and (fn-cnx-freshp fn-cat)
+  (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat)
                 (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
            (equal (fn-nntp-hdr-command-cat session args v legacyp fn-arena fn-cat)
                   (fn-nntp-hdr-command session archive args legacyp fn-arena)))
@@ -1240,7 +1241,7 @@
       (let* ((number (car numbers))
              (article (fn-scat-available-article group number v fn-arena fn-cat))
              (content (if (consp article)
-                          (fn-nntp-hdr-content field article fn-arena)
+                          (fn-scol-hdr-content field article fn-arena fn-cat)
                         (list :error))))
         (if (and (fn-nntp-hdr-okp content)
                  (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content)))
@@ -1253,7 +1254,7 @@
     nil))
 
 (defthm fn-nntp-xpat-lines-for-numbers-cat-is-archive
-  (implies (and (fn-cnx-freshp fn-cat) group)
+  (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat) group)
            (equal (fn-nntp-xpat-lines-for-numbers-cat field patterns group numbers v fn-arena fn-cat)
                   (fn-nntp-xpat-lines-for-numbers field patterns group numbers
                                                   (fn-cat-view-articles v fn-arena fn-cat) fn-arena)))
@@ -1295,7 +1296,7 @@
                                                       v fn-arena fn-cat)))
                   (if (not (consp article))
                       (fn-nntp-single session "430 no article with that message-id")
-                    (if (not (fn-nntp-hdr-okp (fn-nntp-hdr-content field article fn-arena)))
+                    (if (not (fn-nntp-hdr-okp (fn-scol-hdr-content field article fn-arena fn-cat)))
                         (fn-nntp-single session "503 stored article framing unavailable")
                       (fn-nntp-multi session (fn-nntp-hdr-initial t)
                                      (fn-nntp-xpat-msgid-lines field patterns token
@@ -1303,7 +1304,7 @@
               (fn-nntp-single session "501 syntax error"))))))))
 
 (defthm fn-nntp-xpat-response-cat-is-archive
-  (implies (and (fn-cnx-freshp fn-cat)
+  (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat)
                 (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
            (equal (fn-nntp-xpat-response-cat session args v fn-arena fn-cat)
                   (fn-nntp-xpat-response session archive args fn-arena)))
@@ -1598,7 +1599,7 @@
                   :guard (and (natp v)
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil))
-  (let ((xref (fn-nntp-xref-reply session archive index env keyword args fn-arena)))
+  (let ((xref (fn-nntp-xref-reply-col session archive index env keyword args fn-arena fn-cat)))
     (if xref xref
       (cond
        ((and (fn-nntp-keywordp keyword "LIST")
@@ -1760,7 +1761,8 @@
                 (fn-gidx-pin-correspondencep index archive)
                 (fn-midx-correspondencep (fn-gidx-pin-trie index)
                                          (fn-state-articles archive))
-                (fn-cnx-freshp fn-cat))
+                (fn-cnx-freshp fn-cat)
+                (fn-scol-okp fn-arena fn-cat))
            (equal (fn-nntp-archive-command-cat
                    session archive index verdicts env keyword args v fn-arena fn-cat)
                   (fn-nntp-archive-command-pinned

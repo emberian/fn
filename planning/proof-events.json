@@ -11730,6 +11730,97 @@
           "note": "The catalog chain's dispatch, statement unchanged, now re-pinning through fn-scr-repin."
         }
       ]
+    },
+    {
+      "id": "PRF-334",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-article-response-is-of-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-response-block-rev-is-the-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-section-rev-is-the-section"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-response-validp-is-framed-section"
+        }
+      ]
+    },
+    {
+      "id": "PRF-333",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-record-p-of-make-is-without-payload"
+        }
+      ]
+    },
+    {
+      "id": "PRF-332",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scol-facts-are-the-bytes-facts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-tombstonep-is-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-overview-of-is-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-hdr-content-is-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-xref-reply-col-is-xref-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-served-lines-numbered-col-is-served"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-seal-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-faithful-reseat"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-intern-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-load-held-rows"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-row-okp-of-intern-row-at"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scol-okp-of-sca-finish"
+        }
+      ]
     }
   ]
 }

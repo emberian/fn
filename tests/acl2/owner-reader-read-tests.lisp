@@ -38,10 +38,11 @@
     (fn-scar-ocfg-read-span oc id i end fn-octets fn-arena)))
 
 (defthm orrt-the-host-read-is-the-twin-under-the-catalog
-  (implies (fn-scr-owner-catalogp (fn-ocfg-owner (if (consp views)
-                                                     (fn-ocfg-at-reader-view oc views)
-                                                   oc))
-                                  id fn-arena fn-cat)
+  (implies (and (fn-scr-owner-catalogp (fn-ocfg-owner (if (consp views)
+                                                          (fn-ocfg-at-reader-view oc views)
+                                                        oc))
+                                       id fn-arena fn-cat)
+                (fn-scol-okp fn-arena fn-cat))
            (equal (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)
                   (orrt-read-span-scar oc views id i end fn-octets fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-orr-read-span fn-scr-ocfg-read-span-is-scar-ocfg-read-span)
@@ -213,6 +214,7 @@
                         (fn-sn-config-history (fn-own-store (fn-ocfg-owner oc0))))
                  (fn-scr-owner-catalogp (fn-ocfg-owner (fn-ocfg-with-view oc (car views)))
                                         id fn-arena fn-cat)
+                 (fn-scol-okp fn-arena fn-cat)
                  (natp i) (natp end))
             (fn-ocri-relation
              (fn-own-tls-result-owner (fn-orr-read-span oc views id i end fn-octets fn-arena
@@ -483,12 +485,15 @@
                    (orrt-concl *orrt-views* *lgt-finished* 0 *orrt-group*)))
 (make-event
  `(defthm g12b-orr-catalog-premise-at-the-witness
-    (fn-scr-owner-catalogp ',(fn-ocfg-owner (fn-ocfg-with-view *lgt-finished* (car *orrt-views*)))
-                           0 ',*g12b-payloads* ',(caddr *g12b-read*))
+    (and (fn-scr-owner-catalogp ',(fn-ocfg-owner (fn-ocfg-with-view *lgt-finished* (car *orrt-views*)))
+                                0 ',*g12b-payloads* ',(caddr *g12b-read*))
+         ;; the overview column's premise F, decided on the same ground state
+         (fn-scol-okp ',*g12b-payloads* ',(caddr *g12b-read*)))
     :rule-classes nil
     :hints (("Goal" :in-theory (enable fn-scr-owner-catalogp fn-scr-conn-okp fn-scr-conn-catalogp
                                        fn-scr-live-catalogp fn-scr-fields-catalogp
-                                       fn-scr-catalogp)))))
+                                       fn-scr-catalogp fn-scol-okp fn-scol-rows-okp
+                                       fn-scol-row-okp)))))
 
 ; Removal of the catalog premise (CORRUPTED catalog, not reached): the same
 ; owners, views and read, every other hypothesis as above; the catalog holds
