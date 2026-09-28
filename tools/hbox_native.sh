@@ -15,12 +15,24 @@
 #   2. acquires and validates the image's artifact set (tools/proof_artifacts.py;
 #      the dtn profile too when a DTN image is asked);
 #   3. builds the requested images under swarm-build
-#      (--images from developer,production,dtn,dtn-developer; default
+#      (--images from developer,production,dtn,dtn-developer,reference,
+#      developer-stripped,prof; default
 #      developer).  dtn and dtn-developer are host/native/build-dtn.lisp's
 #      images (build/fn-host-dtn, build/fn-host-dtn-developer), built exactly
-#      as tools/runbooks/hbox-image-build.sh builds them;
+#      as tools/runbooks/hbox-image-build.sh builds them.  `prof` is the
+#      PROFILING developer image (tools/profile/build_native_profile.sh,
+#      build/fn-host-prof; sb-sprof when FN_PROF_OUT is set), a measurement
+#      tool and never a release or test subject.  It needs this run's own
+#      full certify and acquire (steps 1-2): copying another native tree and
+#      building only the image failed because that tree's certified set
+#      lacked books the profiling entry's world loads (served-columns,
+#      native-n1: outcome-class, replay, node).  Build it here, in the run
+#      that certifies, not by hand in a copied tree;
 #   4. runs each MODULE under systemd-run --user --scope -p MemoryMax (24G by
-#      default, --mem), against hbox's system libssl (OpenSSL 3.3.1; no
+#      default, --mem; a served-read measurement through
+#      tools/fundamentals/sr_measure.py or served_ab.sh needs 40G: at 24G the
+#      owner refuses its connections, connections-exceed-memory), against
+#      hbox's system libssl (OpenSSL 3.3.1; no
 #      FN_OPENSSL_PREFIX: HST-016), with every --env NAME=VALUE exported.
 #      OpenSSL 3.5.8 stays a TEST TOOL only (ML-DSA-65 keys and signatures
 #      made independently of the node): $FN_TEST_OPENSSL_BIN, a wrapper
@@ -93,7 +105,7 @@ DRY=0
 DEADLINE=5400
 ENVS=
 POSITIONAL=
-usage() { sed -n '2,52p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,74p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 while [ $# -gt 0 ]; do
     case $1 in
         --name) NAME=$2; shift 2 ;;
@@ -148,10 +160,10 @@ DTN_PRODUCTION=0
 DTN_DEVELOPER=0
 for image in $(echo "$IMAGES" | tr ',' ' '); do
     case $image in
-        developer|production|reference|developer-stripped) ;;
+        developer|production|reference|developer-stripped|prof) ;;
         dtn) DTN=1; DTN_PRODUCTION=1 ;;
         dtn-developer) DTN=1; DTN_DEVELOPER=1 ;;
-        *) echo "hbox_native: --images takes developer,production,dtn,dtn-developer,reference,developer-stripped" >&2; exit 2 ;;
+        *) echo "hbox_native: --images takes developer,production,dtn,dtn-developer,reference,developer-stripped,prof" >&2; exit 2 ;;
     esac
 done
 if [ $DTN_DEVELOPER -eq 1 ] && [ $DTN_PRODUCTION -eq 0 ]; then
@@ -267,6 +279,14 @@ BOX
         for image in $(echo "$IMAGES" | tr ',' ' '); do
             # The (profile, session script, image) triple per image, as
             # tools/runbooks/hbox-image-build.sh's four build lines.
+            if [ "$image" = prof ]; then
+                # The profiling entry is loaded before build.lisp's
+                # save-exec; the script owns the (developer, full) triple.
+                cat <<BOX
+step image-prof env FN_ACL2=${IMAGE_ACL2:-\$ACL2} swarm-build sh tools/profile/build_native_profile.sh build/fn-host-prof
+BOX
+                continue
+            fi
             case $image in
                 production) profile=production build=host/native/build.lisp out=build/fn-host world=stripped ;;
                 developer) profile=developer build=host/native/build.lisp out=build/fn-host-developer world=full ;;
