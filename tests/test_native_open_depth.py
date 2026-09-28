@@ -36,7 +36,9 @@ hide the next one: when the owner stops, the command, its exit and the
 owner's last frames are recorded, the owner is reopened and the list goes
 on; the test fails at the end naming every command that killed it.  Each
 command prints `OPEN-DEPTH NAME MODE SERVED <command> <first reply line>
-lines=N seconds=S`.  FN_OPEN_DEPTH_SERVED=0 serves DATE only.
+lines=N seconds=S`.  FN_OPEN_DEPTH_SERVED=0 serves DATE only;
+FN_OPEN_DEPTH_ONLY=PREFIX/PREFIX (`_' for a space: GROUP/HDR_:fn-verified) serves
+only the commands starting with one (a measurement, not the table's coverage).
 """
 import os
 from pathlib import Path
@@ -94,11 +96,11 @@ def served_commands(group, low, high, msgid):
         ("XOVER {}".format(whole), None), ("OVER {}".format(msgid), None),
         ("HDR Subject {}".format(whole), None), ("HDR Message-ID {}-".format(low), None),
         ("HDR :bytes {}".format(whole), None), ("HDR :lines {}".format(whole), None),
-        ("HDR Xref {}".format(whole), None), ("HDR :fn-verified {}-{}".format(low, low + 99), None),
-        # :fn-verified looks each number up in the whole article list (books/
-        # nntp-verdict.lisp fn-nntp-available-article per number): quadratic,
-        # over 30 minutes at 100,000 (lane serve-depth's finding), so its
-        # range is a hundred numbers.
+        ("HDR Xref {}".format(whole), None), ("HDR :fn-verified {}".format(whole), None),
+        # :fn-verified over the whole range: the catalog and one pass over the
+        # verdict list (lane scale-reads, books/served-catalog.lisp
+        # fn-nntp-verdict-hdr-response-cat); it was quadratic, over 30 minutes
+        # at 100,000 (lane serve-depth).
         ("HDR :fn-control {}".format(whole), None),
         ("HDR :fn-enrollment {}".format(whole), None), ("HDR Subject {}".format(msgid), None),
         ("XHDR Subject {}".format(whole), None), ("XHDR Message-ID {}".format(msgid), None),
@@ -353,7 +355,10 @@ class OpenDepthTests(unittest.TestCase):
         self.msgid = msgid
         print("OPEN-DEPTH {} {} group={} low={} high={} msgid={}".format(
             name, mode, group, low, high, msgid), flush=True)
+        only = [w.replace("_", " ") for w in os.environ.get("FN_OPEN_DEPTH_ONLY", "").split("/") if w]
         for text, body in served_commands(group, low, high, msgid):
+            if only and not any(text.startswith(w) for w in only):
+                continue
             if run(text, body) is not None and text == "QUIT":
                 break
         conn.close()

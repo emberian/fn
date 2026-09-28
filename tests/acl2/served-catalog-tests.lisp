@@ -476,3 +476,86 @@
           (fn-rcompat-retrieval (sct-f2-session) *sct-f2-state0* nil :article *sct-f2-args-2*
                                 *sct-f2-server* *sct-a*))
    :rule-classes nil))
+
+;;; Teeth for KEYSTONE fn-nntp-verdict-hdr-response-cat-is-archive (lane
+;;; scale-reads): HDR :fn-verified reads the catalog and ONE pass over the
+;;; verdict list.  The list holds a non-pair, a newer and an older verdict for
+;;; <b@x> (the newer is the recorded one) and none for <c@x> (no record).
+(defconst *sct-vh-verdicts*
+  (list (cons "<b@x>" (fn-stx-make-verdict :absent nil 2))
+        7
+        (cons "<a@x>" (fn-stx-make-verdict :absent nil 1))
+        (cons "<b@x>" (fn-stx-make-verdict :absent nil 0))))
+
+(defmacro sct-vh-arch ()
+  `  (fn-make-state '("fn.test" "fn.other") '(("fn.test" . 4) ("fn.other" . 2))
+                 (fn-cat-view-articles 3 *sct-a* *sct-c*) 0 nil nil))
+
+(defun sct-vh-args-fn (xs)
+  (declare (xargs :mode :program))
+  (if (consp xs)
+      (cons (list 'fn-nntp-string-octets (car xs)) (sct-vh-args-fn (cdr xs)))
+    nil))
+
+(defmacro sct-vh-args (&rest xs)
+  (cons 'list (sct-vh-args-fn xs)))
+
+(defmacro sct-vh-agree (session args arch c)
+  `(equal (fn-nntp-verdict-hdr-response-cat ,session *sct-vh-verdicts* ,args 3 *sct-a* ,c)
+          (fn-nntp-verdict-hdr-response ,session ,arch *sct-vh-verdicts* ,args)))
+
+;; Positive: both hypotheses hold and every arm agrees; the range reply has
+;; three lines, <b@x>'s the newer verdict (generation 2), <c@x>'s no-record.
+(defthm sct-teeth-vh-positive
+  (and (fn-cnx-freshp *sct-c*)
+       (equal (fn-state-articles (sct-vh-arch)) (fn-cat-view-articles 3 *sct-a* *sct-c*))
+       (sct-vh-agree (sct-session "fn.test") (sct-vh-args ":fn-verified" "1-10") (sct-vh-arch) *sct-c*)
+       (sct-vh-agree (sct-session "fn.test") (sct-vh-args ":fn-verified" "2") (sct-vh-arch) *sct-c*)
+       (sct-vh-agree (fn-nntp-make-session t "fn.test" 3 t) (sct-vh-args ":fn-verified") (sct-vh-arch) *sct-c*)
+       (sct-vh-agree (sct-session "fn.test") (sct-vh-args ":fn-verified" "<b@x>") (sct-vh-arch) *sct-c*)
+       (sct-vh-agree (sct-session "fn.test") (sct-vh-args ":fn-verified" "<z@x>") (sct-vh-arch) *sct-c*)
+       (equal (fn-nntp-verdict-hdr-response-cat (sct-session "fn.test") *sct-vh-verdicts*
+                                                (sct-vh-args ":fn-verified" "1-10") 3 *sct-a* *sct-c*)
+              (fn-nntp-multi
+               (sct-session "fn.test") (fn-nntp-hdr-initial nil)
+               (list (fn-nntp-hdr-line (fn-nntp-decimal-field 1)
+                                       (fn-stx-reader-item (fn-stx-make-verdict :absent nil 1)))
+                     (fn-nntp-hdr-line (fn-nntp-decimal-field 2)
+                                       (fn-stx-reader-item (fn-stx-make-verdict :absent nil 2)))
+                     (fn-nntp-hdr-line (fn-nntp-decimal-field 3) (fn-stx-reader-item nil)))))
+       (equal (fn-stx-reader-lookup "<b@x>" *sct-vh-verdicts*) (fn-stx-make-verdict :absent nil 2)))
+  :rule-classes nil)
+
+;; Without freshness (a duplicated number): the retained hypothesis holds,
+;; the omitted one fails, and the conclusion fails.
+(defmacro sct-vh-arch-dup ()
+  `  (fn-make-state '("fn.test" "fn.other") '(("fn.test" . 4) ("fn.other" . 2))
+                 (fn-cat-view-articles 3 *sct-a* *sct-c-dup*) 0 nil nil))
+
+(defthm sct-teeth-vh-freshness-hypotheses
+  (and (not (fn-cnx-freshp *sct-c-dup*))
+       (equal (fn-state-articles (sct-vh-arch-dup)) (fn-cat-view-articles 3 *sct-a* *sct-c-dup*))
+       (not (sct-vh-agree (sct-session "fn.test") (sct-vh-args ":fn-verified" "1-10") (sct-vh-arch-dup) *sct-c-dup*)))
+  :rule-classes nil)
+
+(must-fail-checked
+ (defthm sct-teeth-vh-without-freshness
+   (sct-vh-agree (sct-session "fn.test") (sct-vh-args ":fn-verified" "1-10") (sct-vh-arch-dup) *sct-c-dup*)
+   :rule-classes nil))
+
+;; Without the view equation (an archive of other articles): freshness holds,
+;; the omitted hypothesis fails, and the conclusion fails.
+(defmacro sct-vh-arch-other ()
+  `  (fn-make-state '("fn.test" "fn.other") '(("fn.test" . 4) ("fn.other" . 2))
+                 (cdr (fn-cat-view-articles 3 *sct-a* *sct-c*)) 0 nil nil))
+
+(defthm sct-teeth-vh-view-hypotheses
+  (and (fn-cnx-freshp *sct-c*)
+       (not (equal (fn-state-articles (sct-vh-arch-other)) (fn-cat-view-articles 3 *sct-a* *sct-c*)))
+       (not (sct-vh-agree (sct-session "fn.test") (sct-vh-args ":fn-verified" "1-10") (sct-vh-arch-other) *sct-c*)))
+  :rule-classes nil)
+
+(must-fail-checked
+ (defthm sct-teeth-vh-without-view
+   (sct-vh-agree (sct-session "fn.test") (sct-vh-args ":fn-verified" "1-10") (sct-vh-arch-other) *sct-c*)
+   :rule-classes nil))
