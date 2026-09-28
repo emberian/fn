@@ -32,6 +32,11 @@
 (include-book "article-properties")
 (include-book "article-header-census")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-article-parse-lines)
+                          (:rewrite fn-ap-at-most-is-length-bound))))
+
 (local (in-theory (enable fn-article-census-refusal fn-article-header-census
                           fn-article-census-within)))
 

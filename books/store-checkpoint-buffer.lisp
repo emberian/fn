@@ -47,6 +47,19 @@
 (include-book "octets-stobj")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-scc-atom-octets)
+                          (:definition fn-scc-atomp)
+                          (:definition fn-scc-le-digits)
+                          (:definition fn-scc-nat-encodablep)
+                          (:definition fn-scc-nat-octets)
+                          (:definition fn-scc-octet-listp)
+                          (:definition fn-scc-program)
+                          (:definition fn-scc-string-octets)
+                          (:definition fn-scc-treep)
+                          (:rewrite fn-scc-octet-listp-facts . 2))))
+
 ; -----------------------------------------------------------------------------
 ; List facts the correspondences rest on.
 
