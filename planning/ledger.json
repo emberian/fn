@@ -1291,29 +1291,34 @@
     "books/proto/adt-topic-accepted",
     "tests/acl2/proto-adt-2-tests",
     "books/history-pages",
-    "tests/acl2/history-pages-tests"
+    "tests/acl2/history-pages-tests",
+    "books/history-pages-words",
+    "books/history-pages-exec",
+    "books/history-pages-row",
+    "books/history-pages-read",
+    "tests/acl2/history-pages-read-tests"
   ],
   "totals": {
-    "books": 1316,
-    "books_in_root_closure": 1314,
-    "roots": 1290,
-    "theorems": 20300,
-    "functions": 13722,
-    "assert_events": 19243,
-    "must_fails": 2188,
+    "books": 1321,
+    "books_in_root_closure": 1319,
+    "roots": 1295,
+    "theorems": 20450,
+    "functions": 13762,
+    "assert_events": 19244,
+    "must_fails": 2196,
     "prover_refusals": 0,
     "encapsulates": 102,
     "guards": {
       "verified": 2488,
-      "declared-off": 1627,
-      "default-guarded": 7618,
-      "default-unguarded": 1989
+      "declared-off": 1641,
+      "default-guarded": 7629,
+      "default-unguarded": 2004
     },
-    "suspect_theorems": 1017,
-    "export_hygiene_warnings": 242,
+    "suspect_theorems": 1023,
+    "export_hygiene_warnings": 245,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 229,
-    "include_hygiene_warnings": 1788,
+    "include_hygiene_warnings": 1793,
     "host_names_warnings": 1485,
     "hand_written_record_warnings": 18
   },
@@ -10680,6 +10685,129 @@
         "fn-hfr-wire-of-a-held-row",
         "fn-hfr-wire-of-another-event"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/history-pages-exec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 43,
+      "functions": 18,
+      "guards": {
+        "verified": 0,
+        "declared-off": 9,
+        "default-guarded": 0,
+        "default-unguarded": 9
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-pages",
+        "history-pages-words",
+        "pagestore-exec"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-hp-lens-is",
+        "fn-hp-starts-is"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/history-pages-read.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 31,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 5,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-pages-row"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-pages-row.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 44,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 5,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-pages-exec"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-hp-cells-of-is",
+        "fn-hp-len-pe-bound",
+        "fn-hp-pe-def",
+        "fn-hp-pe-is-pad8"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/history-pages-words.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 21,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "pagestore-words-sha",
+        "proto/adt-bytes-lib"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -30271,6 +30399,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/history-pages-read-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 11,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 8,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-pages-read",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/history-pages-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -41272,6 +41427,57 @@
       ]
     },
     {
+      "theorem": "fn-hp-cells-of-is",
+      "book": "books/history-pages-row.lisp",
+      "line": 198,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-hp-len-pe-bound",
+      "book": "books/history-pages-row.lisp",
+      "line": 406,
+      "reasons": [
+        "instance-corollary: the statement is fn-hp-len-enc-le-pe instantiated, discharging nothing"
+      ]
+    },
+    {
+      "theorem": "fn-hp-lens-is",
+      "book": "books/history-pages-exec.lisp",
+      "line": 397,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-hp-pe-def",
+      "book": "books/history-pages-row.lisp",
+      "line": 219,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
+        "definition-restated: the conclusion is the body of fn-hp-pe"
+      ]
+    },
+    {
+      "theorem": "fn-hp-pe-is-pad8",
+      "book": "books/history-pages-row.lisp",
+      "line": 62,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
+        "definition-restated: the conclusion is the body of fn-hp-pe"
+      ]
+    },
+    {
+      "theorem": "fn-hp-starts-is",
+      "book": "books/history-pages-exec.lisp",
+      "line": 394,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
+        "definition-restated: the conclusion is the body of fn-hp-starts"
+      ]
+    },
+    {
       "theorem": "fn-hrt-event-is-intern-event-by-definition",
       "book": "tests/acl2/held-rows-intern-tests.lisp",
       "line": 9,
@@ -47867,6 +48073,24 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-hp-enc-len-is-pes-len",
+        "book": "books/history-pages-exec.lisp",
+        "line": 79,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-hp-pe-is-pad8",
+        "book": "books/history-pages-row.lisp",
+        "line": 62,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-hp-iw-pool",
+        "book": "books/history-pages-row.lisp",
+        "line": 177,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-hw-composite-of-a-row",
         "book": "books/history-wire.lisp",
         "line": 21,
@@ -52808,6 +53032,27 @@
         "line": 42,
         "include": "store-open-pre-c1",
         "included": "books/store-open-pre-c1.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-pages-exec.lisp",
+        "line": 5,
+        "include": "history-pages-words",
+        "included": "books/history-pages-words.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-pages-read.lisp",
+        "line": 16,
+        "include": "history-pages-row",
+        "included": "books/history-pages-row.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-pages-words.lisp",
+        "line": 12,
+        "include": "pagestore-words-sha",
+        "included": "books/pagestore-words-sha.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -58861,6 +59106,20 @@
       {
         "book": "tests/acl2/history-fold-refinement-tests.lisp",
         "line": 13,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/history-pages-read-tests.lisp",
+        "line": 17,
+        "include": "../../books/history-pages-read",
+        "included": "books/history-pages-read.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/history-pages-read-tests.lisp",
+        "line": 18,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

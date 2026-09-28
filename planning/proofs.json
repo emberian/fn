@@ -11252,7 +11252,9 @@
         "fn-hp-decode-image",
         "fn-hp-page-digest-is-leaf",
         "fn-hp-append-changes-only-dirty",
-        "fn-hp-append-dirty-bound"
+        "fn-hp-append-dirty-bound",
+        "fn-hp-x-header-is-image",
+        "fn-hp-x-at-is-nth"
       ]
     }
   ]
