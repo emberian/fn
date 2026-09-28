@@ -1030,6 +1030,23 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
                 slow.append((seconds, book, jobs))
         lines.append(f"  manifest {directory / 'manifest.json'}: "
                      f"status {manifest.get('status', 'unknown')}")
+    # Judged here, where the committed archive is (the box's tree has no git).
+    installed_books = sorted({book for _, manifest in manifests
+                              for book, value in (manifest.get("book_provenance")
+                                                  or {}).items()
+                              if value == "installed"})
+    uncited: list[str] = []
+    if installed_books:
+        import certified_claims  # noqa: E402
+        try:
+            uncited = certified_claims.uncited_books(root, installed_books)
+        except Exception as error:  # a report line, never the verdict
+            lines.append(f"  (could not judge the installed books' citations: {error})")
+    if uncited:
+        lines.append(f"  installed-without-cited-manifest: {len(uncited)}: "
+                     + ", ".join(uncited[:20]) + (" ..." if len(uncited) > 20 else ""))
+        lines.append("    green_check and certified_claims owe these until a committed "
+                     "manifest certifies them: submit again with --recertify-uncited")
     lines.append(f"  certified here: passed {passed}, failed {len(failing) // 2}"
                  + (f", killed {len(killed) // 2}" if killed else "")
                  + f"; installed from the cache {installed}")
@@ -1182,6 +1199,18 @@ def status(host: str, remote: Path, local_root: Path | None = None) -> int:
     return 0
 
 
+def uncited_in_selection(root: Path, books: list[str], affected_by: list[str]) -> list[str]:
+    """The closure books of this selection no committed manifest certified at
+    their current digest (`certified_claims.uncited_books`)."""
+    import certify_books  # noqa: E402
+    import certified_claims  # noqa: E402
+    import ledger  # noqa: E402
+    roots = books or ledger.makefile_roots()
+    if affected_by:
+        roots = certify_books.affected_roots(roots, affected_by)
+    return certified_claims.uncited_books(root, certify_books.with_dependencies(roots))
+
+
 def cache_summary(record: dict) -> str:
     """What `submit` installed for a run, from its local record, in one word.
 
@@ -1222,6 +1251,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="certify this book of the closure afresh instead of "
                              "installing its cached pair (repeatable; passed to "
                              "the cache preflight and the runner)")
+    parser.add_argument("--recertify-uncited", action="store_true",
+                        help="add to --recertify every book of the closure no "
+                             "committed manifest certified at its current digest "
+                             "(the books a run would otherwise install uncited)")
     parser.add_argument("--timeout-seconds", type=int, default=1800,
                         help="per-ACL2-invocation timeout on the host")
     parser.add_argument("--wait-seconds", type=int, default=DEFAULT_WAIT_SECONDS,
@@ -1243,6 +1276,13 @@ def main(argv: list[str] | None = None) -> int:
                              "certificates installable in any local worktree")
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
+    if arguments.action == "submit" and arguments.recertify_uncited:
+        arguments.recertify = sorted(set(arguments.recertify)
+                                     | set(uncited_in_selection(
+                                         root, list(arguments.rest),
+                                         list(arguments.affected_by))))
+        print(f"--recertify-uncited: recertifying {len(arguments.recertify)} book(s)",
+              file=sys.stderr)
     try:
         if arguments.action == "submit":
             identifier = submit(arguments.host, root, list(arguments.rest),
