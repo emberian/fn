@@ -1160,7 +1160,9 @@ the effect it authorizes" (bp-workflow-host, scheduler.md):
 | `(:feed-enqueue peer msgid tick)` | text, text, nat | before the entry is `:queued` |
 | `(:feed-offer peer msgid attempt tick)` | text, text, nat, nat | before the `:command` effect for CHECK/IHAVE |
 | `(:feed-sent peer msgid attempt)` | | before the TAKETHIS/article effect |
-| `(:feed-outcome peer msgid attempt code)` | code in `{235 239 435 438 437 439 431 436 400}` | after the response is parsed, before the next selection |
+| `(:feed-outcome peer msgid attempt code)` | final code in `{235 239 435 438 437 439}` | after the response is parsed, before the next selection |
+| `(:feed-retry peer msgid attempt code tick)` | code in `{431 436}`, the observation's monotonic tick | after a retry response, before the next selection |
+| `(:feed-lost peer tick)` | the observation's monotonic tick | on a lost connection or a reply outside the map, before the next selection |
 | `(:feed-drop peer msgid reason)` | | when the retry bound is reached or the peer is removed |
 | `(:feed-restart peer)` | | on open, before any offer; fences the in-flight entries |
 | `(:feed-intent peer msgid obligation evidence generation txid tick)` | text, text, text, text, nat, nat, nat | before the article transaction may begin |
@@ -2724,9 +2726,12 @@ record family is complete.
 entry that was in flight when a socket died stayed `:sent` until the
 process restarted. `fn-own-feed-lost` / `fn-own-feed-lost-one` apply it to
 ONE peer -- `fn-own-feed-lost-one-touches-no-other-peer` is the theorem --
-and the record it authorizes is the `(:feed-outcome peer msgid attempt 400)`
-that a 400 on the wire already writes, so `fn-feed-apply-record` replays it
-to the state the live machine reached. A `(:feed-restart peer)` record would
+and the record it authorizes is the `(:feed-lost peer tick)` that a reply
+outside the map also writes, so `fn-feed-apply-record` replays it to the
+state the live machine reached, deadline included. (An earlier release wrote
+`(:feed-outcome ... 400)` here, without the tick; that shape is no longer a
+record, and a journal carrying one is invalid evidence at the scan: no
+migrations, fresh deploys at 6.6.0.) A `(:feed-restart peer)` record would
 not: `fn-feed-restart` retires the attempt where `fn-feed-lost` counts it.
 
 ### `CAPABILITIES` on a transit connection
