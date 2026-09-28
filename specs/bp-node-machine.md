@@ -3806,6 +3806,29 @@ at the next start (PKT-464).
 - The ACK is released when kind 5 is durable, before dispatch, delivery or
   any application work: the callback returns as soon as the receive answer
   exists; the loop continues with the queued progress events after it.
+- **Progress in the same turn (PKT-873, PRF-906, lane durability-bugs
+  2026-09-28).** "The loop continues with the queued progress events" is
+  now the session's own turn, not the end of the session: when the plan
+  names the progress point (`fn-tcl-delivery-plan-progress-p`, exactly the
+  `:accepted` plans), `fnn-tcl-session` calls `*fnn-tcl-progress*` after
+  flushing the plan's messages and before it reads again, and `bp-node
+  serve` binds it to the delivery pass (`fnn-bpnode-dispatch-pending`,
+  after the kind-5 durable-cut marker). Keystone
+  `fn-tcl-acknowledged-custody-is-progressed-in-its-turn`: a plan whose
+  messages carry the transfer's final END ACK came from an `(:accepted
+  ...)` callback result and names the progress point; its converse
+  `fn-tcl-unaccepted-delivery-names-no-progress`. Before it, a node
+  delivered only between sessions, and a peer that keeps its session open
+  with keepalives (dtn7-rs pools its sessions) held an acknowledged custody
+  undelivered for as long as the node ran (fitness 2026-09-28, 2 of 2
+  runs). The forwarding, outbox and receipt passes, which open sessions of
+  their own, still run between sessions. Crash points: the turn adds no
+  durable write; a death after the ACK and before or during the in-session
+  delivery is the existing kind-5 (and kind-7) cut, which recovery answers
+  by delivering at open (`BP FNBS recovered held=N`, then the open's
+  delivery pass). Native: tests/test_native_source_corpus_bp.py (B
+  SIGKILLed mid-receive, the relay restarted after B so its keepalive
+  session is the only one; the verdict precedes that session's end).
 - At XFER_SEGMENT START with a Transfer Length Extension, the session calls
   `fn-bpn-transfer-admissiblep` and refuses `No Resources` early when it
   answers nil. Without the extension there is no early answer; the END

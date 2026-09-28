@@ -49,6 +49,9 @@
 (defstruct (fnn-tcl-conn (:conc-name fnn-tclc-))
   fd tag spool session (carry nil) (held nil) (closing nil) (broken nil)
   (pending nil) (trace nil) (inbound 0)
+  ;; PKT-873: T when an accepted transfer's custody awaits the session's
+  ;; progress hook (ACL2's fn-tcl-delivery-plan-progress-p named it).
+  (progress nil)
   (accepted 0) (refused 0) (uncertain 0) (outcome nil)
   ;; T when a Store or FNBS publication inside the delivery callback was
   ;; uncertain: a fence, not the connection's own loss (ACL2 reads both,
@@ -94,6 +97,16 @@
 ;;; The FNBS barrier.  A received bundle is a regular file whose data and whose
 ;;; name are both durable before its acknowledgement is released.  An ambiguous
 ;;; failure is not a refusal: it is uncertain, and the caller never acks.
+
+(defvar *fnn-tcl-progress* nil
+  "When non-nil, a function (conn) the session calls after a turn in which it
+released the final ACK of an accepted transfer (ACL2's
+fn-tcl-delivery-plan-progress-p), before it reads its next input: the
+receiving node's delivery of the custody it just acknowledged (PKT-873,
+books/tcpcl-delivery-invariants.lisp fn-tcl-acknowledged-custody-is-
+progressed-in-its-turn).  Before it, a node delivered only after the session
+ended, and a peer that keeps its session open with keepalives held the
+acknowledged custody undelivered for as long as the node ran.")
 
 (defvar *fnn-tcl-deliver* nil
   "When non-nil, a function (conn xfer-id octets) that takes custody of one
@@ -288,6 +301,8 @@ and faults without following or deleting anything."
              (:accepted
               (incf (fnn-tclc-accepted conn))
               (incf (fnn-tclc-inbound conn))
+              (when (fnn-core 'fn-tcl-delivery-plan-progress-p plan)
+                (setf (fnn-tclc-progress conn) t))
               (fnn-tcl-log conn "accepted" "xfer=~d path=~a"
                            (second event)
                            (fnn-core 'fn-tcl-delivery-plan-detail plan))
@@ -407,6 +422,12 @@ failure rather than a refusal."
                (setf (fnn-tclc-carry conn) (third triple))
                (fnn-tcl-apply conn triple "event")))
            (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake))))
+        ;; PKT-873: the custody this turn acknowledged goes to progress
+        ;; now, while the session stays open.
+        (when (and (fnn-tclc-progress conn) *fnn-tcl-progress*
+                   (not (fnn-tclc-closing conn)))
+          (setf (fnn-tclc-progress conn) nil)
+          (funcall *fnn-tcl-progress* conn))
         (when (and on-ready (not ready-called)
                    (eq (fnn-core 'fn-tcl-host-phase
                                  (fnn-tclc-session conn)) :established))
