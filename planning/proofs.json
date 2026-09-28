@@ -402,8 +402,8 @@
         "fn-snrt-acknowledged-history-retained-through-mixed-trace",
         "fn-snrt-new-success-is-actual-matching-durable-completion",
         "fn-sn-open-observed-success-exact-history",
-        "fn-sn-open-observed-not-ready-before-five-barriers",
-        "fn-sn-open-observed-five-barriers-open-ready",
+        "fn-sn-open-observed-not-ready-before-the-barriers",
+        "fn-sn-open-observed-barriers-open-ready",
         "fn-bprv-successful-replay-has-invariant",
         "fn-bprv-replay-no-receipt-before-committed-decision",
         "fn-bprv-replayed-receipt-is-grounded",
@@ -1434,7 +1434,8 @@
         "fn-served-dispatch-of-authinfo-on-a-clear-connection-is-483-and-changes-nothing",
         "fn-auth-step-pinned-post-by-a-principal-without-the-flag-is-440",
         "fn-auth-step-pinned-post-by-a-principal-with-the-flag-is-delegated",
-        "fn-scar-auth-step-pinned-is-auth-step-pinned"
+        "fn-scar-auth-step-pinned-is-auth-step-pinned",
+        "fn-auth-authinfo-is-advertised-exactly-when-a-login-is-offered-on-any-connection"
       ]
     },
     {
@@ -3242,19 +3243,7 @@
         "planning/evidence/manifests/certify-20260926T092212Z-1110255.json",
         "planning/evidence/manifests/certify-20260926T093542Z-1162878.json"
       ],
-      "progress_note": "Retired 2026-09-27 (lane flip-cleanup, 2026-09-27; design 2026-09-27 storage-log section 9 row 5, log-recovery's section 6 continuation): its subject was deleted with the pack layer. A format-9 store has no transaction namespace and no packs: `store compact` publishes a state checkpoint with the log rotated and drops the covered segments (host/native/checkpoint.lisp fnn-command-compact). books/checkpoint-compaction-preservation.lisp, books/byte-store-compaction-correspondence.lisp and books/store-compact-verb.lisp and their tests are gone, with the host wrappers (host/checkpoint-host.lisp fn-store-checkpoint-compaction-observe/-coverage, fn-store-compact-decide), which no native line had called since the native pack verbs went (PKT-838). What covers the property now: the drop preserves the open's history (PRF-270, fn-lg-segment-drop-preserves-the-open). The two operator keystones (`store compact` is exactly the compact action) moved to PRF-270. Before: Lane m5-compaction (2026-09-24). Certified on persvati (run-20260924T213519Z-7956, manifest certify-20260924T213534Z-827010, ACL2 8.7, every book under 4 s) and on hbox with the w28 toolchain. Teeth: a reachable five-event store (record, undertaking, release, identity, enrollment) whose open before, after losing covered names 1 and 3, and after the whole plan reconstructs the same five records; concrete counterexamples and a must-fail for each composition hypothesis (a suffix gap; losing the newest suffix name, which the gate accepts and which silently drops record 4; a plan computed above the pack boundary, same loss; a conflicting surviving covered file, refused before and accepted after). Native, developer image of this branch on hbox: six operator POSTs around a selected pack, then reclaim and every reclaim cut (each covered unlink occurrence and the directory barrier); GROUP, ARTICLE by number and by Message-ID, HDR Subject and store retention are identical, the suffix files byte-identical, and the next POST gets high+1. Open: the byte model states survival for the uncovered suffix only, not old-or-absent for a covered name; guards of the framed observe stay unverified (the Store-event decoder chain); one pack holds at most 4096 events and 4 MiB, so the exact-history pack cannot compact an arbitrarily large store; no operator entry reaches reclaim (developer `checkpoint` verb only). Lane m5-compact-verb (2026-09-24): the operator entry `operator CONFIG store compact` (fn-cverb-decide decides pack+select+reclaim+retire, resume, or a named refusal; the host carries out exactly those steps). fn-cverb-pack-fits-the-profile-budget: when the decision packs, every file present plus the pack the host seals from the same records fits the profile's aggregate bound (field 3); fn-cverb-pack-decision-capture-succeeds: a pack decision on an exact event history below a uint32 frontier is never refused by the capture; the operator argv reaches :compact exactly for `store compact` (two native-operator theorems). The 4 MiB pack is kept as the compaction unit (refused by name above it; the 4096-event limit never binds, fn-cverb-profile-count-within-pack-events). Native on images of 5181e0ea: the ten CHECKPOINT_CUTS (now including the two retire cuts) pass through the developer checkpoint verbs and the operator verb, 20/20; the production image compacts, rereads every article identically and posts at high+1. Finding 3 of m5-compaction is not detectable from the open's observation: the frontier is reserved before the record, so a lost newest file equals an abandoned reservation (fn-cverb-open-history-gate-admits-a-lost-suffix); a post-commit witness is a decision for ember. Lane bounds-p1-profile (2026-09-25): fn-cverb-profile-count-within-pack-events is renamed fn-cverb-preset-count-within-pack-events and holds for the presets only; under an operator profile with max_transactions above 4096 (the D27 default is 2^32-1) the 4096-event pack limit can refuse compaction by name (:exceeds-compaction-unit) until chained packs (P5).",
-      "events": [
-        "fn-ccp-reclaim-keeps-namespace-observation",
-        "fn-ccp-covered-deletion-keeps-reconstruction",
-        "fn-ccp-complete-observation-reconstructs-its-records",
-        "fn-ccp-reclaim-preserves-reconstructed-history",
-        "fn-bs-selected-reclaim-crash-preserves-suffix-payload",
-        "fn-cverb-pack-fits-the-disk",
-        "fn-cverb-capture-within-pack-octets",
-        "fn-cverb-pack-decision-capture-succeeds",
-        "fn-native-operator-run-store-compact-is-the-compact-action",
-        "fn-native-operator-run-compact-action-is-only-store-compact"
-      ]
+      "progress_note": "Retired 2026-09-27 (lane flip-cleanup, 2026-09-27; design 2026-09-27 storage-log section 9 row 5, log-recovery's section 6 continuation): its subject was deleted with the pack layer. A format-9 store has no transaction namespace and no packs: `store compact` publishes a state checkpoint with the log rotated and drops the covered segments (host/native/checkpoint.lisp fnn-command-compact). books/checkpoint-compaction-preservation.lisp, books/byte-store-compaction-correspondence.lisp and books/store-compact-verb.lisp and their tests are gone, with the host wrappers (host/checkpoint-host.lisp fn-store-checkpoint-compaction-observe/-coverage, fn-store-compact-decide), which no native line had called since the native pack verbs went (PKT-838). What covers the property now: the drop preserves the open's history (PRF-270, fn-lg-segment-drop-preserves-the-open). The two operator keystones (`store compact` is exactly the compact action) moved to PRF-270. Before: Lane m5-compaction (2026-09-24). Certified on persvati (run-20260924T213519Z-7956, manifest certify-20260924T213534Z-827010, ACL2 8.7, every book under 4 s) and on hbox with the w28 toolchain. Teeth: a reachable five-event store (record, undertaking, release, identity, enrollment) whose open before, after losing covered names 1 and 3, and after the whole plan reconstructs the same five records; concrete counterexamples and a must-fail for each composition hypothesis (a suffix gap; losing the newest suffix name, which the gate accepts and which silently drops record 4; a plan computed above the pack boundary, same loss; a conflicting surviving covered file, refused before and accepted after). Native, developer image of this branch on hbox: six operator POSTs around a selected pack, then reclaim and every reclaim cut (each covered unlink occurrence and the directory barrier); GROUP, ARTICLE by number and by Message-ID, HDR Subject and store retention are identical, the suffix files byte-identical, and the next POST gets high+1. Open: the byte model states survival for the uncovered suffix only, not old-or-absent for a covered name; guards of the framed observe stay unverified (the Store-event decoder chain); one pack holds at most 4096 events and 4 MiB, so the exact-history pack cannot compact an arbitrarily large store; no operator entry reaches reclaim (developer `checkpoint` verb only). Lane m5-compact-verb (2026-09-24): the operator entry `operator CONFIG store compact` (fn-cverb-decide decides pack+select+reclaim+retire, resume, or a named refusal; the host carries out exactly those steps). fn-cverb-pack-fits-the-profile-budget: when the decision packs, every file present plus the pack the host seals from the same records fits the profile's aggregate bound (field 3); fn-cverb-pack-decision-capture-succeeds: a pack decision on an exact event history below a uint32 frontier is never refused by the capture; the operator argv reaches :compact exactly for `store compact` (two native-operator theorems). The 4 MiB pack is kept as the compaction unit (refused by name above it; the 4096-event limit never binds, fn-cverb-profile-count-within-pack-events). Native on images of 5181e0ea: the ten CHECKPOINT_CUTS (now including the two retire cuts) pass through the developer checkpoint verbs and the operator verb, 20/20; the production image compacts, rereads every article identically and posts at high+1. Finding 3 of m5-compaction is not detectable from the open's observation: the frontier is reserved before the record, so a lost newest file equals an abandoned reservation (fn-cverb-open-history-gate-admits-a-lost-suffix); a post-commit witness is a decision for ember. Lane bounds-p1-profile (2026-09-25): fn-cverb-profile-count-within-pack-events is renamed fn-cverb-preset-count-within-pack-events and holds for the presets only; under an operator profile with max_transactions above 4096 (the D27 default is 2^32-1) the 4096-event pack limit can refuse compaction by name (:exceeds-compaction-unit) until chained packs (P5)."
     },
     {
       "id": "PRF-074",
@@ -3572,7 +3561,10 @@
         "fn-bpnr-family-replay-aux-append",
         "fn-bpnp-rotate-step-proposes-only-own-projection",
         "fn-bpnr-retirement-cut-keeps-open-view",
-        "fn-bpnr-retired-names-never-the-selected-directory"
+        "fn-bpnr-retired-names-never-the-selected-directory",
+        "fn-bpnrd-due-rotation-event-by-definition",
+        "fn-bpnrd-due-rotation-preserves-recovery",
+        "fn-bpnrd-rotation-keeps-every-held-family"
       ]
     },
     {
@@ -3735,6 +3727,7 @@
         "fn-nntp-withdrawn-article-answers-430-withdrawn",
         "fn-nntp-hdr-fn-control-is-the-status",
         "fn-nntp-hdr-fn-control-executed-means-withdrawn",
+        "fn-nntp-hdr-fn-control-status-is-the-model-status",
         "fn-own-read-archive-command-is-the-pinned-dispatcher",
         "fn-own-related-conn-control",
         "fn-ctl-served-status-is-control-status"
@@ -3931,7 +3924,6 @@
         "fn-pbb-block-agent-is-pb-block-agent",
         "fn-pbb-path-agent-is-pb-path-agent",
         "fn-pbb-same-articlep-is-pb-same-articlep",
-        "fn-pbb-existing-action-is-pb-existing-action",
         "fn-octets-append-back{correspondence}",
         "fn-octets-get-word{correspondence}",
         "fn-octets-append-word{correspondence}",
@@ -3980,7 +3972,9 @@
         "fn-frame-fields-octets-within-width",
         "fn-frame-field-parse-of-octets-wide-blob",
         "fn-nctrl-groups-encode-length-bound",
-        "fn-nhctrl-read-bound-covers-both"
+        "fn-nhctrl-read-bound-covers-both",
+        "fn-native-hybrid-control-author-request-within-read-bound",
+        "fn-nhctrl-author-request-covers-every-storable-article"
       ]
     },
     {
@@ -4035,7 +4029,6 @@
         "fn-rcl-config-rule-after-retention-set",
         "fn-nntp-msgid-retrieval-answers-reclaimed",
         "fn-nntp-number-retrieval-answers-reclaimed",
-        "fn-rclb-existing-action-is-rcl-existing-action",
         "fn-nntp-over-by-msgid-answers-reclaimed",
         "fn-nntp-over-current-answers-reclaimed",
         "fn-nov-lines-indexed-skip-a-reclaimed-article",
@@ -4046,7 +4039,10 @@
         "fn-rcl-tombstone-refused-at-carrier-form",
         "fn-rca-nul-first-octet-is-not-an-article",
         "fn-rcl-tombstone-contributes-nothing",
-        "fn-rcl-store-counts-is-the-model-over-alpha"
+        "fn-rcl-store-counts-is-the-model-over-alpha",
+        "fn-rcl-store-classes-partition-the-articles",
+        "fn-rcl-signed-article-is-never-reclaimable",
+        "fn-rclb-same-articlep-is-rcl-same-articlep"
       ]
     },
     {
@@ -4336,9 +4332,7 @@
         "fn-cbor-decode-prechecked-wide-uint-reencode-prefix",
         "fn-record-impl-round-trip",
         "fn-record-impl-accepted-input-is-canonical",
-        "fn-record-impl-encode-narrow-length-bound",
-        "fn-bs-profile-v1-valid-is-valid",
-        "fn-bs-profile-v1-valid-stays-valid"
+        "fn-record-impl-encode-narrow-length-bound"
       ]
     },
     {
@@ -4359,8 +4353,8 @@
       ],
       "status": "uncertified-at-current-digest",
       "events": [
-        "fn-sha256-of-prefixed-buffer-is-sha256",
-        "fn-shb-subject-id-is-id-subject-of-sha256-preimage"
+        "fn-blake3-of-prefixed-buffer-is-blake3",
+        "fn-sidb-subject-id-is-id-subject-of-payload"
       ],
       "evidence": [
         "planning/evidence/rep-wave-c-2026-09-25.md",
@@ -5080,8 +5074,6 @@
         "fn-rclp-events-keep-every-other-kind",
         "fn-rclp-freed-octets-account",
         "fn-rclp-freed-is-the-admission-count",
-        "fn-rclp-decide-publishes-the-rewrite",
-        "fn-rclp-keep-forever-writes-nothing",
         "fn-native-operator-run-store-reclaim-is-the-reclaim-action",
         "fn-native-operator-run-reclaim-action-is-only-store-reclaim",
         "fn-native-operator-run-store-reclaim-dry-run-is-the-reclaim-dry-run-action",
@@ -5256,8 +5248,7 @@
         "fn-smr-roomp-antitone-in-octets",
         "fn-smr-roomp-is-within-the-bound",
         "fn-smr-admitted-profile-starts-reserved",
-        "fn-cverb-pack-fits-the-disk",
-        "fn-rclp-pack-fits-the-disk"
+        "fn-scka-publication-setup-plans-within-the-disk"
       ]
     },
     {
@@ -5421,8 +5412,8 @@
         "tests/acl2/owner-store-indexed-tests.lisp"
       ],
       "events": [
-        "fn-bpaj-dispatch-never-resubmits-a-stored-article",
-        "fn-bpaj-dispatch-binds-the-stores-own-record"
+        "fn-bpaj-dispatch-never-resubmits-under-index",
+        "fn-bpaj-dispatch-binds-the-stores-own-record-under-index"
       ],
       "progress_note": " CHANGED 2026-09-26 (PRF-144, lanes signed-history-index and signed-history-index-2): the dispatcher's lookups read the Store's Message-ID index; the keystones are stated over the live owner's Store, where the index relation is a theorem (fn-osi-live-owner-store-is-indexed), not a hypothesis."
     },
@@ -5540,7 +5531,6 @@
         "fn-bpnpf-profile-read-of-octets",
         "fn-bpnpf-profile-read-of-format-1",
         "fn-bpnpf-profile-read-is-valid",
-        "fn-bpnpf-profile-write-never-lowers",
         "fn-bpnpf-profile-within-codec-widths",
         "fn-bpnpf-admission-within-profile-is-the-channel-answer",
         "fn-bpnpf-admission-ready-is-within-profile",
@@ -5553,7 +5543,12 @@
         "fn-bpa-encoding-bound",
         "fn-bpnpf-restart-names-held-beyond-profile",
         "fn-bpnf-family-without-offset-zero-is-not-ready",
-        "fn-bpnf-family-next-memo-is-aux"
+        "fn-bpnf-family-next-memo-is-aux",
+        "fn-bpnpf-node-profile-read-of-octets",
+        "fn-bpnpf-node-profile-read-of-older",
+        "fn-bpnpf-node-profile-read-is-valid",
+        "fn-bpnpf-node-profile-base-is-a-profile",
+        "fn-bpnpf-node-profile-write-never-lowers"
       ]
     },
     {
@@ -5951,21 +5946,7 @@
         "planning/evidence/manifests/certify-20260925T091457Z-3109471.json",
         "planning/evidence/bounds-p5-2026-09-25.md"
       ],
-      "progress_note": "Retired 2026-09-27 (lane flip-cleanup, 2026-09-27; design 2026-09-27 storage-log section 9 row 5, log-recovery's section 6 continuation): its subject was deleted with the pack layer: the pack chain (books/checkpoint-pack-chain.lisp) and its host wrappers (host/checkpoint-host.lisp fn-store-checkpoint-chain-*) had no native caller since PKT-838 deleted fnn-pack-walk and the pack verbs; the books and tests are gone. What covers the property now: the record log's open over its segments and the checkpoint (PRF-270). Before: Lane bounds-p5 (2026-09-25). Open: the link codec round trip is executed, not proved; the crash keystone is stated under the pack program's two facts, not composed with fn-cpp-crash-selects-old-authority-or-complete-candidate by a theorem. Lane pack-chain-cut (2026-09-26, PKT-459): the between-links cut pack-chain-link is a model program cut (fn-ccc-chain-program) with its K0-shaped state theorem and its crash keystones (fn-ccc-chain-link-cut-walks-the-extended-chain, fn-ccc-chain-link-cut-reopens-to-the-history); the chain's links-okp at the cut is a hypothesis, not composed from the per-link captures (PKT-460).",
-      "events": [
-        "fn-ccc-links-okp-composes-a-prefix",
-        "fn-ccc-capture-extends-the-chain",
-        "fn-ccc-capture-link-succeeds",
-        "fn-ccc-chain-reconstructs-the-history",
-        "fn-ccc-reclaim-preserves-reconstructed-history",
-        "fn-ccc-retire-plan-keeps-the-chain",
-        "fn-ccc-publication-crash-walks-old-or-new-chain",
-        "fn-ccc-links-count-within-boundary",
-        "fn-cverb-pack-decision-capture-succeeds",
-        "fn-rclp-reclaiming-pack-is-a-first-link",
-        "fn-ccc-chain-link-cut-walks-the-extended-chain",
-        "fn-ccc-chain-link-cut-reopens-to-the-history"
-      ]
+      "progress_note": "Retired 2026-09-27 (lane flip-cleanup, 2026-09-27; design 2026-09-27 storage-log section 9 row 5, log-recovery's section 6 continuation): its subject was deleted with the pack layer: the pack chain (books/checkpoint-pack-chain.lisp) and its host wrappers (host/checkpoint-host.lisp fn-store-checkpoint-chain-*) had no native caller since PKT-838 deleted fnn-pack-walk and the pack verbs; the books and tests are gone. What covers the property now: the record log's open over its segments and the checkpoint (PRF-270). Before: Lane bounds-p5 (2026-09-25). Open: the link codec round trip is executed, not proved; the crash keystone is stated under the pack program's two facts, not composed with fn-cpp-crash-selects-old-authority-or-complete-candidate by a theorem. Lane pack-chain-cut (2026-09-26, PKT-459): the between-links cut pack-chain-link is a model program cut (fn-ccc-chain-program) with its K0-shaped state theorem and its crash keystones (fn-ccc-chain-link-cut-walks-the-extended-chain, fn-ccc-chain-link-cut-reopens-to-the-history); the chain's links-okp at the cut is a hypothesis, not composed from the per-link captures (PKT-460)."
     },
     {
       "id": "PRF-163",
@@ -6195,10 +6176,9 @@
         "fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation",
         "fn-cei-msgid-records-of-correspondence",
         "fn-bpaj-indexed-records-are-the-walk",
-        "fn-ceis-io-preserves-indexed",
-        "fn-osi-open-installs-indexed-store",
-        "fn-osi-host-step-keeps-indexed",
-        "fn-osi-live-dispatch-fast-is-checked"
+        "fn-hist-refresh-is-the-history",
+        "fn-hist-sync-after-run-is-the-history",
+        "fn-bpaj-dispatch-fast-is-checked"
       ]
     },
     {
@@ -6263,8 +6243,8 @@
       "progress_note": "friends-accounts (2026-09-26): slot, admission, plan, once-only keystones and the credential snapshot. friends-accounts-2 (2026-09-26): the XREDEEM wire keystones over fn-auth-step-pinned, the bounded plan and the word, the host publication before the reply, operator account invite/list.",
       "events": [
         "fn-acct-text-verifier-of-verifier-text",
-        "fn-acct-redeemed-row-stays",
-        "fn-acct-redeemed-row-stays-across-replay",
+        "fn-acct-bound-row-succeeds",
+        "fn-acct-bound-row-succeeds-across-replay",
         "fn-acct-redeemed-refuses-another-redeem",
         "fn-acct-redeem-plan-is-admitted-and-redeems",
         "fn-acct-redeem-plan-after-its-redeem-is-already-redeemed",
@@ -6281,7 +6261,10 @@
         "fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound",
         "fn-acct-redeem-word-is-bound-only-after-a-durable-redeem",
         "fn-acct-redeem-word-of-an-unknown-code-is-refused",
-        "fn-acct-redeem-bounded-plan-after-its-redeem-is-bound"
+        "fn-acct-redeem-bounded-plan-after-its-redeem-is-bound",
+        "fn-acct-delete-is-admitted-exactly-when-held-and-unobligated",
+        "fn-acct-delete-keeps-the-login-taken",
+        "fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential"
       ]
     },
     {
@@ -6632,12 +6615,8 @@
       "progress_note": "Lane control-reply-fit (2026-09-26), the coordinator's PKT-467 ruling and the control-reply sweep. Lane profile-open-refusal (2026-09-26): PKT-471, the named refusal at open and the one repair. Format 10 (lane format-bump-10, 2026-09-28): books/byte-store-profile-v1.lisp and its tests were deleted with format 9 (D34: every format-10 profile is written by a format-10 init or import under the current relation; the frozen pre-P6 relation and the PKT-467 window describe profiles no format-10 store holds); the events and paths that named them are removed from this row. Part (c)'s keystones (the window refusal) are retired; the open's refusals by name are PRF-350 and PRF-258.",
       "events": [
         "fn-bs-profile-valid-record-fits-a-poll-reply",
-        "fn-bs-profile-v1-valid-stays-valid",
-        "fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name",
         "fn-col-poll-report-of-an-admitted-payload-fits",
-        "fn-nls-page-refuses-exactly-past-the-total-width",
-        "fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name",
-        "fn-spo-config-open-refuses-only-what-the-old-open-rejected"
+        "fn-nls-page-refuses-exactly-past-the-total-width"
       ]
     },
     {
@@ -6682,7 +6661,6 @@
         "fn-cfg-apply-adds-at-most-the-work-bound",
         "fn-pcb-extend-deltas-apply-as-the-extend-delta",
         "fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity",
-        "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity",
         "fn-cvec-native-admin-authorize-refuses-exactly-past-the-group-name-bound",
         "fn-cvec-accepted-group-names-are-within-the-profile",
         "fn-nop-init-plain-groups-are-within-the-profile",
@@ -6763,7 +6741,6 @@
       ],
       "events": [
         "fn-cei-count-of-correspondence",
-        "fn-sbud-count-is-used",
         "fn-sbud-lookup-of-correspondence",
         "fn-sbud-octets-advance-is-the-suffix-fold",
         "fn-sbud-bytes-carried-is-the-fold",
@@ -7018,7 +6995,6 @@
         "fn-pidx-sbud-prepare-is-pcar-sbud-prepare",
         "fn-pidx-find-in-visible-is-find",
         "fn-pidx-view-okp-of-live-owner",
-        "fn-osi-pidx-prepare-keeps-indexed",
         "fn-osi-pidx-prepare-keeps-view-indexed"
       ]
     },
@@ -7555,9 +7531,9 @@
         "fn-heap-with-nursery-holds-the-trigger",
         "fn-heap-store-figure-observed-is-at-most-unobserved",
         "fn-heap-operation-decide-holds-the-store",
-        "fn-heap-reserve-first-run-accepted-is-within-the-machine",
         "fn-heap-storeless-decide-is-small-and-fits",
-        "fn-heap-status-decide-is-the-launchers-run-reservation"
+        "fn-heap-status-decide-is-the-launchers-run-reservation",
+        "fn-heap-reserve-full-store-accepted-is-within-the-machine"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -8215,7 +8191,6 @@
         "fn-bpaj-sn-statep-carries-node-statep",
         "fn-bpaj-store-record-accepted-fast-is-checked",
         "fn-bpaj-ocl-relation-carries-sn-statep",
-        "fn-osi-ocl-store-record-accepted-fast-is-checked",
         "fn-bpaj-record-lookup-fast-found-is-an-accepted-match"
       ]
     },
@@ -8246,21 +8221,10 @@
       ],
       "progress_note": "Trimmed 2026-09-27 (lane flip-cleanup, 2026-09-27): the pack chain's decode-once memo (books/checkpoint-pack-chain-once.lisp, the fn-ccco-* keystones; host wrappers fn-store-checkpoint-chain-*) was deleted with the pack layer; the catalog-load-index part and the event-fields keystone stay. Before: Lane open-by-index (2026-09-26/27): certified by persvati farm run run-20260927T020711Z (certify-20260927T020711Z-1880439: the two books and their test books); hbox run-20260927T003414Z-f8e9 certified the chain book before its comment was renumbered. Lane openbsd-release-fixes (2026-09-27): certified by persvati farm runs run-20260927T081126Z-3648 (certify-20260927T081222Z-2154140: checkpoint-pack-chain-once, heap-figure, heap-reservation and their test books) and run-20260927T081705Z-af7b (certify-20260927T081801Z-2227997: heap-reservation and its test book after the keystone was re-proved by instances; the book was 13.7 s before the lane and is 14.4 s, over D26's 10 s, pre-existing). A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them.",
       "events": [
-        "fn-ccco-entry-step-is-entry-step",
-        "fn-ccco-coverage-chain-is-coverage-chain",
-        "fn-ccco-observe-chain-is-observe-chain",
-        "fn-ccco-links-okp-of-decoded",
-        "fn-ccco-remember-keeps-sound",
-        "fn-ccco-remember-all-keeps-sound",
-        "fn-ccco-framed-link-fast-is-framed-link",
-        "fn-ccco-octet-event-listp-is-octet-event-listp",
         "fn-event-fields-of-wire-is-the-dispatchers",
-        "fn-ccco-linkp-is-linkp",
-        "fn-ccco-decode-link-is-decode-link",
         "fn-obi-load-is-cat-load",
         "fn-obi-intern-range-is-intern-list",
-        "fn-obi-load-from-empty-establishes-relation",
-        "fn-ccco-coverage-headers-is-coverage-chain"
+        "fn-obi-load-from-empty-establishes-relation"
       ]
     },
     {
@@ -8328,7 +8292,8 @@
         "fn-peer-tls-select-named-default",
         "fn-peer-tls-select-is-a-check",
         "fn-peer-host-name-is-not-an-ipv4-literal",
-        "fn-redeem-done-only-on-281-after-the-password"
+        "fn-redeem-done-only-on-281-after-the-password",
+        "fn-redeem-lost-is-fenced-and-server-answers-are-not"
       ]
     },
     {
@@ -8687,7 +8652,6 @@
         "fn-cl-served-payload-projects-to-the-injected-octets",
         "fn-cl-ring-keys-open-every-retained-lock",
         "fn-cll-skip-of-the-generated-lines",
-        "fn-ns-expand-input-separates-info",
         "fn-ns-cancel-lock-and-posting-account-inputs-differ",
         "fn-ns-file-parse-of-render",
         "fn-cld-a-retry-by-any-account-or-epoch-is-already-stored",
@@ -8825,8 +8789,7 @@
       "events": [
         "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
         "fn-bs-imp-classify-by-what-is-known",
-        "fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store",
-        "fn-bs-init-pub-classify-by-what-is-known"
+        "fn-bs-init-pub-admission-proceeds-only-on-nothing"
       ]
     },
     {
@@ -9149,7 +9112,6 @@
         "fn-event-fields-of-rows-is-the-dispatchers",
         "fn-rii-sf-record-listp-is-sf-record-listp",
         "fn-rii-sco-finalize-from-is-sco-finalize-from",
-        "fn-sbud-count-is-used",
         "fn-pidx-sbud-prepare-is-pcar-sbud-prepare"
       ]
     },
@@ -9550,7 +9512,6 @@
       "progress_note": "Lane fixtures-refresh 2026-09-27 (PKT-705). Restated for format 10 (lane format-bump-10): one text before the u64 run, 15 fields.",
       "events": [
         "fn-spo-open-of-another-layout-refuses-by-name",
-        "fn-spo-config-open-layout-refusal-is-never-a-decoded-frame",
         "fn-spo-layout-fields-of-a-layout-frame"
       ]
     },
@@ -9722,12 +9683,14 @@
       ],
       "progress_note": "Lane log-recovery 2026-09-27: admitted in the persvati REPL with its test book; certification is the batch's. Lane log-leftovers 2026-09-27: T8 restated over the streamed open (log-open-stream's fnn-log-stream-segment): the string-era fold fn-lgs-open-chain-records / -last (fn-lg-open-kernel per segment read as a string), its theorems fn-lg-segment-drop-preserves-the-open, fn-lgs-open-chain-records-of-append, fn-lgs-open-chain-is-the-chain and the string splice classifier fn-lgs-chain-broken-string-p / -at (no host caller since the stream) are deleted; the keystone is fn-lgw-segment-drop-preserves-the-open.",
       "events": [
-        "fn-lg-segment-drop-preserves-the-open",
-        "fn-lgs-open-chain-records-of-append",
-        "fn-lgs-open-chain-is-the-chain",
+        "fn-lgw-segment-drop-preserves-the-open",
+        "fn-lgw-open-chain-is-the-chain",
+        "fn-lgw-segment-is-the-scan",
         "fn-lgs-open-plan-scan-ignores-covered",
         "fn-lgs-rotate-is-the-recovered-kernel",
-        "fn-lgs-chain-records-of-append"
+        "fn-lgs-chain-records-of-append",
+        "fn-native-operator-run-store-compact-is-the-compact-action",
+        "fn-native-operator-run-compact-action-is-only-store-compact"
       ]
     },
     {
@@ -9878,7 +9841,19 @@
         "fn-lgob-recovered-segment-fence-is-identity",
         "fn-lgob-file-fence-keeps-entry-operations",
         "fn-lgob-one-barrier-loses-a-rotated-segment",
-        "fn-lgob-journal-fence-keeps-the-rotated-segment"
+        "fn-lgob-journal-fence-keeps-the-rotated-segment",
+        "fn-lgob-fence-of-a-fenced-file-is-identity",
+        "fn-lgob-three-barrier-open-is-the-five-at-every-cut",
+        "fn-lgob-three-and-five-barrier-opens-have-the-same-cut-states",
+        "fn-lgob-only-a-write-unfences-a-file",
+        "fn-lgob-recovered-state-meets-the-segment-hypothesis",
+        "fn-lgob-three-barrier-open-after-recovery-is-the-five",
+        "fn-lgob-two-barriers-without-journal-lose-a-rotated-segment",
+        "fn-lgob-three-barriers-keep-the-rotated-segment",
+        "fn-lgob-two-barriers-without-root-lose-a-checkpointed-history",
+        "fn-lgob-three-barriers-keep-the-checkpoint",
+        "fn-lgob-two-barriers-without-parent-lose-an-imported-store",
+        "fn-lgob-three-barriers-keep-the-imported-store"
       ]
     },
     {
@@ -10088,13 +10063,7 @@
         "books/store-reclaim-stream.lisp",
         "tests/acl2/store-reclaim-stream-tests.lisp"
       ],
-      "progress_note": "Retired 2026-09-27 (lane flip-cleanup, 2026-09-27; design 2026-09-27 storage-log section 9 row 5, log-recovery's section 6 continuation): its subjects were deleted with the pack layer: books/store-compact-window.lisp (the compaction verb's window, no native caller since PKT-838) and books/store-reclaim-stream.lisp fn-rcls-decide (the pack reclaim's streamed decision; host wrapper fn-store-reclaim-decide-stream had no caller). The fold itself stays (fn-rcls-step, fn-rcls-fold-of-init): books/store-log-reclaim.lisp fn-lgr-decide-stream-is-lgr-decide rests on it (PRF-271). Before: Lane compact-arena (2026-09-27): both books and their test books REPL-admitted on hbox (w28); certification is the batch's. Renumbered from PRF-264 (dev's format-9 log row took it). A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them.",
-      "events": [
-        "fn-scw-window-count-is-fit",
-        "fn-cverb-decide-window-is-cverb-decide",
-        "fn-ccc-capture-link-window-is-capture-link",
-        "fn-rcls-decide-is-rclp-decide"
-      ]
+      "progress_note": "Retired 2026-09-27 (lane flip-cleanup, 2026-09-27; design 2026-09-27 storage-log section 9 row 5, log-recovery's section 6 continuation): its subjects were deleted with the pack layer: books/store-compact-window.lisp (the compaction verb's window, no native caller since PKT-838) and books/store-reclaim-stream.lisp fn-rcls-decide (the pack reclaim's streamed decision; host wrapper fn-store-reclaim-decide-stream had no caller). The fold itself stays (fn-rcls-step, fn-rcls-fold-of-init): books/store-log-reclaim.lisp fn-lgr-decide-stream-is-lgr-decide rests on it (PRF-271). Before: Lane compact-arena (2026-09-27): both books and their test books REPL-admitted on hbox (w28); certification is the batch's. Renumbered from PRF-264 (dev's format-9 log row took it). A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them."
     },
     {
       "id": "PRF-280",
@@ -10784,7 +10753,19 @@
         "fn-scj-join-of-finish-lists",
         "fn-scj-joinp-gives-sca-join",
         "fn-scj-ocl-relation-of-identity-finish",
-        "fn-scj-identity-finish-owner-is-article-finish-owner"
+        "fn-scj-identity-finish-owner-is-article-finish-owner",
+        "fn-scj-ocfg-read-span-is-reference-under-invp",
+        "fn-scj-invp-at-recover",
+        "fn-scj-invp-at-full-open",
+        "fn-scj-invp-of-otm-read-span",
+        "fn-scj-invp-of-orr-read-span",
+        "fn-scj-invp-of-refresh",
+        "fn-scj-identity-finish-keeps-verdicts",
+        "fn-scj-invp-of-ocfg-step-conn-event",
+        "fn-scjs-invp-of-store-frame",
+        "fn-scj-owner-catalogp-at-host-finish",
+        "fn-scj-invp-at-host-article-finish-carried",
+        "fn-scj-invp-at-identity-finish"
       ]
     },
     {
@@ -11127,7 +11108,12 @@
         "fn-otm-return-records-the-latency",
         "fn-otm-wait-reaches-the-deadline",
         "fn-otm-issue-only-when-none-pending",
-        "fn-otm-issue-is-pending-and-admits"
+        "fn-otm-issue-is-pending-and-admits",
+        "fn-otm-admit-is-the-mode",
+        "fn-otm-return-after-a-stall-is-named",
+        "fn-otm-stall-tells-no-member-its-outcome",
+        "fn-otm-wait-stays-within-the-stall",
+        "fn-otm-f4w-stall-within-h"
       ]
     },
     {
@@ -11354,7 +11340,35 @@
         "tests/acl2/stx-transit-tests.lisp",
         "tests/test_native_open_depth.py"
       ],
-      "progress_note": "Certified at the lane head before the last origin/dev merge: persvati certify-20260928T045804Z-2021342 (748 passed) + hbox certify-20260928T045829Z-4075806 (283 passed), 0 failed, the 1,130 affected roots. Native (hbox native-od5, production image at the launcher's 1024KB): syn100k-2k full replay 25.4 s, checkpoint open 11.7 s; syn1m-2k full replay 275.1 s, checkpoint open 143.6 s; each serves DATE and stops cleanly. The served whole-list reads (LIST ACTIVE, GROUP) still die at this stack past ~30k articles: PKT-877."
+      "progress_note": "Certified at the lane head before the last origin/dev merge: persvati certify-20260928T045804Z-2021342 (748 passed) + hbox certify-20260928T045829Z-4075806 (283 passed), 0 failed, the 1,130 affected roots. Native (hbox native-od5, production image at the launcher's 1024KB): syn100k-2k full replay 25.4 s, checkpoint open 11.7 s; syn1m-2k full replay 275.1 s, checkpoint open 143.6 s; each serves DATE and stops cleanly. The served whole-list reads (LIST ACTIVE, GROUP) still die at this stack past ~30k articles: PKT-877.",
+      "events": [
+        "fn-retain-obligation-ids",
+        "fn-retain-release-ids",
+        "fn-retain-sum",
+        "fn-retain-remove-id",
+        "fn-node-binding-msgids",
+        "fn-node-binding-ids",
+        "fn-replay-verdict-pairs",
+        "fn-stx-index-of-store",
+        "fn-mxc-build",
+        "fn-rii-kbuild-releases",
+        "fn-rii-kbuild-pins",
+        "fn-ctl-articles-withdrawals-in",
+        "fn-ctl-drop-via",
+        "fn-ctl-visible-filter",
+        "fn-ctl-subseq-diff",
+        "fn-own-take",
+        "fn-gidx-build-entries",
+        "fn-index-build",
+        "fn-midx-build",
+        "fn-scka-canon-rows",
+        "fn-scka-enc-lens-sum",
+        "fn-sct-payloads",
+        "fn-sbud-record-octets",
+        "fn-sbud-stored-octets",
+        "fn-pgc-obligation-ids",
+        "fn-pgc-release-ids"
+      ]
     },
     {
       "id": "PRF-314",
@@ -11451,7 +11465,7 @@
         "pgs-reclaim-never-frees-live",
         "pgs-x-commit-refines",
         "pgs-g-reclaim-sound",
-        "pgs-x-words-digest-is-sha256"
+        "pgs-x-words-digest-is-blake3"
       ]
     },
     {
@@ -11597,7 +11611,7 @@
       ],
       "progress_note": "Lane snapshot-open-2 (2026-09-27): the checkpoint open's list hashing.",
       "events": [
-        "fn-sha256-of-prefixed-range-is-sha256",
+        "fn-blake3-of-prefixed-range-is-blake3",
         "fn-frame-digest-range-is-the-frame-digest",
         "fn-sccr-window-seal-is-seal"
       ]
@@ -12001,7 +12015,23 @@
         "fn-hp-decode-image",
         "fn-hp-page-digest-is-leaf",
         "fn-hp-append-changes-only-dirty",
-        "fn-hp-append-dirty-bound"
+        "fn-hp-append-dirty-bound",
+        "fn-hp-x-header-is-image",
+        "fn-hp-x-at-is-nth",
+        "fn-hp-x-append-refines",
+        "fn-hp-x-header-is-placed",
+        "fn-hp-x-at-is-nth-placed",
+        "fn-hp-x-append-refines-placed",
+        "fn-hp-piw-relocated",
+        "fn-hp-x-relocate-refines",
+        "fn-hp-piw-caps-extend",
+        "fn-hp-piw-of-append1-grown",
+        "fn-hp-grow-then-append",
+        "fn-hp-grow-then-append-only-r",
+        "fn-hp-x-append-step-refines",
+        "fn-hp-x-init-refines",
+        "fn-hp-x-append-all-refines",
+        "fn-hp-records-at-is-nth"
       ]
     },
     {
@@ -12630,7 +12660,7 @@
         "PRF-352"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/nntp-projection.lisp",
         "books/nntp-index-runtime.lisp",
