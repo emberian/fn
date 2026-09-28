@@ -4997,6 +4997,7 @@ tree root), or stop the build."
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_EXTENT_CACHE_TEST_OFF"
+    "FN_NATIVE_IMPORT_COMPRESS_MIN_TEST"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
@@ -5178,14 +5179,14 @@ with its depth, and the rows under it name the path that called it."
   ;; fence); the COMPLETE reseats FENCED (fnn-log-reseat-fenced).
   ;; EXTENT-FILE the realizer's id of the active segment (EXTENT-PATH).
   (members nil) (inflight nil) (fenced nil) (extent-file nil) (extent-path nil)
-  ;; Compressed records (lane compression-extents-2).  LZ-MIN the owner's
-  ;; live compression threshold (the `compress-min-octets' configuration
-  ;; row, fn-owner-compress-min-octets; 0 off, the default), set with the
-  ;; batch bounds; LZ set once this log has taken a compressed record: the
+  ;; Compressed records (lane compression-extents-2).  LZ-MIN the
+  ;; compression threshold (the `compress-min-octets' configuration row; 0
+  ;; off, the default): the owner's live one, set with the batch bounds, or
+  ;; (NIL until read) the store's replayed configuration's; LZ set once this log has taken a compressed record: the
   ;; COMPLETE then reseats through ACL2's compressed reseat
   ;; (fn-lzr-commit-reseats), which a framed member needs; NIL keeps
   ;; fn-arx-commit-reseats, as before.
-  (lz-min 0) (lz nil))
+  (lz-min nil) (lz nil))
 
 (defmacro fnn-log-with-kernel ((log) &body body)
   "BODY under the log's kernel lock (recursive: a kernel step may call another)."
@@ -5344,10 +5345,16 @@ entry passed its trailer, is a store fault."
           (fnn-fault "~a" line))))))
 
 (defun fnn-store-compress-min (store)
-  "The owner's live compression threshold (the configuration row; 0 off):
-the log's LZ-MIN, which the owner sets from fn-owner-compress-min-octets."
+  "The compression threshold (the `compress-min-octets' configuration row;
+0 off): the log's LZ-MIN, which the owner sets from its live configuration
+(fn-owner-compress-min-octets); without an owner (the developer image's
+offline `store ROOT post'), the store's replayed configuration's
+(fn-store-compress-min-octets)."
   (let ((log (fnn-store-log store)))
-    (if log (fnn-nat (fnn-log-lz-min log)) 0)))
+    (cond ((null log) 0)
+          ((fnn-log-lz-min log) (fnn-nat (fnn-log-lz-min log)))
+          (t (setf (fnn-log-lz-min log)
+                   (fnn-nat (fnn-core-state 'fn-store-compress-min-octets)))))))
 
 (defun fnn-log-compress (store record)
   "RECORD (octets) as the log takes it: ACL2's frame of it, or RECORD."
@@ -6414,7 +6421,18 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
                                (fnn-nat (fnn-core 'fn-store-profile-max-record-octets values)))))
     (setf (fnn-store-log store) log
           (fnn-log-bmax log) (fnn-nat (fnn-core 'fn-olr-bmax nil))
-          (fnn-log-omax log) (fnn-nat (fnn-core 'fn-olr-omax nil)))
+          (fnn-log-omax log) (fnn-nat (fnn-core 'fn-olr-omax nil))
+          ;; The import writes the archive's records as they are (the
+          ;; archive holds each record R); a developer image given
+          ;; FN_NATIVE_IMPORT_COMPRESS_MIN_TEST=N appends them through the
+          ;; compressed append at threshold N instead (tools/fixtures.py's
+          ;; compressed fixtures; lane compression-extents-2).
+          (fnn-log-lz-min log) (let ((n (fnn-developer-selector
+                                         "FN_NATIVE_IMPORT_COMPRESS_MIN_TEST")))
+                                 (if (and n (plusp (length n)) (every #'digit-char-p n)
+                                          (<= (length n) 9))
+                                     (parse-integer n)
+                                   0)))
     (fnn-log-batch-reset log)
     (unwind-protect
          (let ((*fnn-log-batch* t))
@@ -6426,7 +6444,7 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
              ;; that admits the stage derives the frontier from the records
              ;; (fn-store-log-next-txid).
              (setf (fnn-log-reserved log) (fnn-core 'fn-lgc-next-txid (fnn-log-kernel log)))
-             (fnn-log-take store (cdr record))
+             (fnn-log-take store (fnn-log-compress store (cdr record)))
              (fnn-log-batch-finish store))
            (fnn-log-commit-open-batch store)
            (fnn-log-batch-finish store))

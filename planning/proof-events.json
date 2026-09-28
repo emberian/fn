@@ -11286,6 +11286,55 @@
           "name": "fn-lzr-dicts-add-keeps-bindings"
         }
       ]
+    },
+    {
+      "id": "PRF-341",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-framed-expands"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-framed-is-the-seal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-refuses-exactly-a-bad-candidate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-keeps-only-without-gain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-framed-is-shorter"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-record-is-not-a-frame"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-replay-reads-the-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-plan-off"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-config-min-without-a-row-is-off"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-config-decode-archive-is-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-config-decode-archive-of-a-current-frame"
+        }
+      ]
     }
   ]
 }

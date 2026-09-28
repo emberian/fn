@@ -286,6 +286,37 @@ def recipe_synth(ctx: Context, n: int) -> None:
     (ctx.dest / "store" / "writer.lock").unlink(missing_ok=True)
 
 
+def recipe_synth_lz(ctx: Context, n: int, threshold: int = 64) -> None:
+    """recipe_synth's store with its records COMPRESSED (lane
+    compression-extents-2): the synthesized store (built in WORK/plain) is
+    exported and imported by the developer image with
+    FN_NATIVE_IMPORT_COMPRESS_MIN_TEST=THRESHOLD, so every article record goes
+    through the compressed append (ACL2's plan, the LZ4 candidate, the proved
+    decoder's check) exactly as a POST under `policy set compress-min-octets'
+    would; then that configuration row is set, so an owner started on a copy
+    keeps compressing.  A function of recipe_synth: rebuilt after any format
+    change with it."""
+    plain = Context(ctx.image, ctx.rev, ctx.work / "plain-work", ctx.work / "plain", ctx.mem)
+    plain.work.mkdir(parents=True, exist_ok=True)
+    plain.log = ctx.log
+    recipe_synth(plain, n)
+    archive = ctx.work / "archive"
+    ctx.run([ctx.image, "--fn", "store", plain.dest / "store", "export", archive], env=ctx.env)
+    ctx.dest.mkdir(parents=True)
+    store = ctx.dest / "store"
+    ctx.run([ctx.image, "--fn", "store", store, "import", archive],
+            env=dict(ctx.env, FN_NATIVE_IMPORT_COMPRESS_MIN_TEST=str(threshold)))
+    config = ctx.work / "fn.toml"
+    config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = 1\n'
+                      '[control]\npath = "%s"\n' % (store, ctx.work / "c.sock"))
+    ctx.run([ctx.image, "--fn", "operator", config, "policy", "set", "compress-min-octets",
+             threshold], env=ctx.env)
+    ctx.run([ctx.image, "--fn", "store", store, "compression"], env=ctx.env)
+    (store / "writer.lock").unlink(missing_ok=True)
+    shutil.rmtree(plain.dest, ignore_errors=True)
+    shutil.rmtree(archive, ignore_errors=True)
+
+
 def recipe_bp_open(ctx: Context) -> None:
     """planning/evidence/bp-checkpoint-open-2026-09-26/fixture.py: SCN-077's
     first half (1,311 held rows), the journal before and after the rotation
@@ -349,6 +380,12 @@ REGISTRY = [
                    "from a 1,000-article seed, capacity 4,000,000, batch-8 entries, no checkpoint): "
                    "the open is a full replay (OWNER-OPEN open=full-replay). Copy store/ and touch "
                    "writer.lock (mode 600) before use."),
+    Fixture("syn100k-2k-lz", lambda c: recipe_synth_lz(c, 100000), mem="40G",
+            readme="syn100k-2k with every article record COMPRESSED (LZ4-HC block frames, "
+                   "dictionary 0, threshold 64; tools/fixtures.py recipe_synth_lz: the "
+                   "synthesized store exported and imported through the compressed append), "
+                   "and the `compress-min-octets 64' configuration row. `store ROOT compression' "
+                   "reports it. Copy store/ and touch writer.lock (mode 600) before use."),
     Fixture("syn1m-2k", lambda c: recipe_synth(c, 1000000), mem="40G",
             readme="1,000,000 x 2 KiB article records, as syn100k-2k (2.56 GB of entries). A full "
                    "replay: run it in a unit with MemoryMax (the open's peak was 9.2 GB on the "
