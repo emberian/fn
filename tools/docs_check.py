@@ -566,7 +566,13 @@ def health_not_running_exit():
 
 
 def post_refusals():
-    text = book_text("books/nntp-post.lisp")
+    # The reply texts are the protocol table's (lane defprotocol-2): read the
+    # book with each (fn-proto-text ROW KEY) put back as its literal, as the
+    # macro expands it (tools/protocol_emit.py --expand).
+    if str(Path(__file__).resolve().parent) not in sys.path:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import protocol_emit
+    text = protocol_emit.expand(protocol_emit.load(), book_text("books/nntp-post.lisp"))
     body = text[text.index("(defun fn-post-refusal-line"):]
     body = body[:body.index("\n\n")]
     return re.findall(r'\(\(equal reason :([a-z0-9-]+)\) "([^"]+)"\)', body)

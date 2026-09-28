@@ -666,6 +666,36 @@ def defrecord_expansion(form: list) -> list:
     return events
 
 
+def defprotocol_expansion(form: list) -> list:
+    """The host-reached macro ``(defprotocol NAME ROWS...)`` defines, as read.
+
+    books/protocol-table.lisp's ``defprotocol`` defines the reader
+    dispatchers' command layer ``fn-nntp-command-dispatch`` (lane
+    defprotocol-2), whose expansion ``fn-proto-command-dispatch-term``
+    computes from the table: the :pinned rows' :arms are in it (today
+    XFNCATCHUP's ``fn-cu-serve-reply``).  A reader that never evaluates sees
+    the macro only here: one ``defmacro`` whose body mentions that function
+    and the :pinned rows' :arms terms, so a mention-graph walk reaches what
+    the expansion calls.
+    """
+    if not (len(form) >= 2 and isinstance(form[1], Sym)):
+        return []
+    pinned: list = []
+    for row in form[2:]:
+        if not (isinstance(row, list) and row):
+            continue
+        items = row[1:]
+        for index in range(0, len(items) - 1, 2):
+            if (isinstance(items[index], Sym) and str(items[index]) == ":arms"
+                    and isinstance(items[index + 1], list) and items[index + 1]
+                    and str(items[index + 1][0]) == ":pinned"):
+                pinned.extend(items[index + 1][1:])
+    return [[Sym("defmacro"), Sym("fn-nntp-command-dispatch"),
+             [Sym("archive-call"), Sym("&key"), Sym("pinned")],
+             [Sym("fn-proto-command-dispatch-term"), Sym("archive-call"), Sym("pinned"),
+              [Sym("quote"), pinned]]]]
+
+
 def defrecord_export_expansion(form: list) -> list:
     """The ``deftheory`` and withdrawal ``(fn-defrecord-export ...)`` generates."""
     if not (len(form) >= 2 and isinstance(form[1], Sym)):

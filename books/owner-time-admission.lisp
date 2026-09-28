@@ -39,6 +39,7 @@
 ; admission and the reason lines are ACL2's over that one value.
 (in-package "ACL2")
 (include-book "owner-time-model")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "owner-reader-read")
 
 ; The injection configuration with its posting bit set to ALLOW; the other
@@ -110,7 +111,7 @@
 
 ; The generic lines the served machine renders with posting off.
 (defconst *fn-otm-generic-440*
-  (fn-nntp-reply-effect (fn-nntp-crlf (fn-nntp-string-octets "440 posting not permitted"))))
+  (fn-nntp-reply-effect (fn-nntp-crlf (fn-nntp-string-octets (fn-proto-text "POST" :not-permitted)))))
 (defconst *fn-otm-generic-441*
   (fn-nntp-reply-effect
    (fn-nntp-crlf (fn-nntp-string-octets (fn-post-refusal-line :posting-disallowed)))))
