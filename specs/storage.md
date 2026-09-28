@@ -465,10 +465,19 @@ STO-034: Segments, rotation and drop (format `fn-store-9`; design
 2026-09-27 storage-log section 6; books/store-log-segments.lisp). The record
 log is the segments `journal/NNNNNN.log` (six digits, from 000001); the
 highest present is the active one. A state checkpoint's capture ROTATES the
-log: the next segment is created, preallocated and fenced and `journal/` is
-fenced (cuts `rotate-created`, `rotate-fenced`, `rotate-durable`) before the
-checkpoint's F row names it with the closed segment's last trailer as its
-genesis; after the checkpoint is installed (rename and root fence) the
+log in three programs (lane operations; books/store-log-segments.lisp
+`fn-lgs-spare-program`, `fn-lgs-rotate-program`,
+`fn-lgs-rotate-durable-program`): the next segment is created in `staging/`
+as `.stage-segment-NNNNNN`, preallocated and fenced (cuts `rotate-created`,
+`rotate-fenced`) off the owner mutex; the switch, under the mutex with no
+batch in flight, renames it into `journal/` (cut `rotate-renamed`), its only
+I/O; `journal/` is fenced (cut `rotate-durable`) off the mutex by the new
+segment's first fence, before any member written there is acknowledged, and
+by the publication before the checkpoint's F row names the segment with the
+closed segment's last trailer as its genesis
+(books/store-log-rotate-spare.lisp: `fn-lgrs-journal-fence-names-the-acknowledged-batch`,
+and without that fence an acknowledged batch can be left under the staging
+name only); after the checkpoint is installed (rename and root fence) the
 segments below it are unlinked and `journal/` fenced (cuts `drop-unlinked`,
 `drop-durable`): the replacement is durable and reachable before old storage
 is reclaimed (STO-007). The open reads the checkpoint first, scans the
@@ -477,9 +486,10 @@ and refuses by name, exit 1: a segment missing between that one and the
 active one (`history-short-of-checkpoint`), segment 1 gone with no checkpoint
 the open can use (`checkpoint-damaged`), and an entry that validates under
 another predecessor (`log-chain-broken`, never read as a torn tail). A death
-at any rotation or drop cut reopens to the same history: before
-`rotate-durable` the new segment is an interrupted rotation the open
-completes, and a covered segment left by a drop is dropped again
+at any rotation or drop cut reopens to the same history: a spare staged but
+not renamed is a staging orphan the writable open sweeps (segment K stays the
+active one); after the rename and before `rotate-durable` the new segment is
+an interrupted rotation the open completes, holding nothing acknowledged; and a covered segment left by a drop is dropped again
 (`fn-lgs-open-plan-scan-ignores-covered`). The history the open replays after
 the drop is the full chain's (T8, `fn-lgw-segment-drop-preserves-the-open`, over the streamed open).
 `store compact` on a `fn-store-9` store is a checkpoint with rotation

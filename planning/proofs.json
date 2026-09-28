@@ -13490,6 +13490,30 @@
         "fn-native-control-admin-decode-of-encode",
         "fn-native-control-reasoned-admin-decode-of-encode"
       ]
+    },
+    {
+      "id": "PRF-907",
+      "title": "The rotation with its I/O off the owner mutex keeps every acknowledged batch named: a staged spare leaves the journal as it was, and journal/'s fence before the new segment's first acknowledgment names the batch in every crash image",
+      "statement": "books/store-log-rotate-spare.lisp, in books/byte-store.lisp's crash model. KEYSTONE fn-lgrs-journal-fence-names-the-acknowledged-batch: after the spare (created in staging/, preallocated, fenced) is renamed into journal/ as 000002.log, a batch written to it, journal/ fenced and the batch fenced (acknowledged), every crash image names journal/000002.log with the batch and journal/000001.log as it was. fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was: a death with the spare staged changes no journal/ entry. Teeth fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed: without journal/'s fence a crash image keeps the acknowledged batch's octets under the staging name only. fn-lgrs-spare-name-is-swept-and-never-a-segment: the spare's name is no segment (fn-lgs-segment-index) and is a staging name the writable open sweeps (fn-sn-staging-namep). The programs are books/store-log-segments.lisp fn-lgs-spare-program / fn-lgs-rotate-program / fn-lgs-rotate-durable-program, hosted by host/native/io.lisp fnn-log-prepare-spare / fnn-log-rotate / fnn-log-make-durable (tests/campaign/native_cuts.py verify_log_segment_cut_map checks the order, that fnn-log-rotate does no other disk I/O, that fnn-log-fence runs fnn-log-make-durable before its barrier and that the publication runs it before writing the checkpoint).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-033"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-rotate-spare.lisp",
+        "books/store-log-segments.lisp",
+        "tests/campaign/native_cuts.py"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox (all four theorems, 4.5k steps). Ground witnesses over the byte model, as books/store-log-open-barriers.lisp's.",
+      "events": [
+        "fn-lgrs-journal-fence-names-the-acknowledged-batch",
+        "fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was",
+        "fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed",
+        "fn-lgrs-spare-name-is-swept-and-never-a-segment"
+      ]
     }
   ]
 }

@@ -5044,6 +5044,32 @@
         "tests/test_native_operator_verbs.py"
       ],
       "implementation_note": "Lane operations (PKT-867, D27). The operator argv was capped at 32 words of 512 octets and the administrative vector the owner reads at 16: `init' could not name more than about 20 groups with a profile. Both caps are gone; the argv walks became loop twins (tools/depth_check.py baseline shrank by 16 entries), the words travel in the record codec (a word past 65,535 octets no longer vanishes from the frame), and what bounds one command is the control frame the owner reads under the profile's bound. Left: init's group validation (fn-record-groupsp) is quadratic in the named groups on the offline CLI, under the record's 65,535 group codec width."
+    },
+    {
+      "id": "HST-033",
+      "title": "The owner holds its mutex for no disk I/O at a connection's greeting or a checkpoint's capture: the free-space observation is taken before a quantum's gate entry, and the log rotation's file creation, preallocation and fences run outside the mutex, the switch under it being one rename",
+      "specification": "specs/storage.md",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-907"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/store-log-rotate-spare.lisp",
+        "books/store-log-segments.lisp",
+        "host/native/io.lisp",
+        "host/native/owner.lisp",
+        "host/native/control.lisp",
+        "tests/campaign/native_cuts.py",
+        "tests/test_native_checkpoint_auto.py",
+        "tests/test_native_log_compaction.py"
+      ],
+      "implementation_note": "Lane operations (row N1 item 4; GPT-6's 2026-09-28 review asked that I/O leave the semantic critical section). Before: every greeting's clock observation ran statvfs under the owner mutex when a space observation was due, the checkpoint capture ran statvfs and the whole of P-ROTATE (create, fallocate, fsync, fsync journal/) under it, and a status render ran statvfs under it. Now fnn-owner-gated observes before the gate admits the quantum (ACL2's fn-otm-space-due-p decides when; the NEED ACL2 computes under the mutex is kept on the service), the status render and the drain observe before their quantum, the capture's statvfs precedes its quantum, and P-ROTATE is three programs: the spare staged in staging/ off the mutex, the rename under it, journal/'s fence off it (by the new segment's first fence before any member there is acknowledged, and by the publication before its checkpoint names the segment). The whole-state greeting cost PKT-190 was retired earlier (served-path-scale-2)."
     }
   ]
 }

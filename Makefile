@@ -1299,6 +1299,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-route-programs-tests \
 	books/store-log-open-barriers \
 	tests/acl2/store-log-open-barriers-tests \
+	books/store-log-rotate-spare \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \

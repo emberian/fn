@@ -12772,6 +12772,27 @@
           "name": "fn-native-control-reasoned-admin-decode-of-encode"
         }
       ]
+    },
+    {
+      "id": "PRF-907",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgrs-journal-fence-names-the-acknowledged-batch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgrs-spare-name-is-swept-and-never-a-segment"
+        }
+      ]
     }
   ]
 }
