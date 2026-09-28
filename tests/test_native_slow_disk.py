@@ -536,23 +536,26 @@ class SlowDiskNativeTests(unittest.TestCase):
         told uncertain, as it was when it waited in the next batch.  The
         stalled POST is untouched: no answer while its device is stalled,
         its 240 when it comes back; the refused article is not stored."""
-        # A store of 4 MiB of history, filled with 900,000-octet articles
-        # until the store refuses one by name.
+        # A store of 8 MiB of history (a record of at most 2 MiB, an article
+        # of at most 256 KiB; the transaction bound keeps the reservation
+        # small), filled with 199,800-octet articles until the store refuses
+        # one by name.
         self.reap(self.owner)
         shutil.rmtree(self.store)
-        init = self.operator("init", "--max-article-octets", "1048576",
-                             "--max-history-octets", "4194304", "fn.test")
+        init = self.operator("init", "--max-article-octets", "262144",
+                             "--max-record-octets", "2097152", "--max-history-octets", "8388608",
+                             "--max-transactions", "10000", "fn.test")
         self.assertEqual(init.returncode, 0, (init.stdout, init.stderr))
         self.owner = self.start_owner({"FN_NATIVE_TEST_DISK_STALL_FILE": str(self.stall)})
         self.policy("barrier-deadline-ms", 2000)
         self.policy("barrier-stall-ms", 6000)
-        big = (b"z" * 72 + b"\r\n") * 12300
+        big = (b"z" * 72 + b"\r\n") * 2700
         fill_conn, fill = self.connect()
         a_conn, a = self.connect()
         f_conn, f = self.connect()
         with fill_conn, a_conn, f_conn:
             stored = 0
-            for n in range(64):
+            for n in range(100):
                 self.send_article(fill, b"fill-%d@example.invalid" % n, big)
                 line = fill.readline()
                 if not line.startswith(b"240"):
