@@ -282,14 +282,6 @@
       "class": "cold",
       "packet": "PKT-041"
     },
-    "fn-cpc-legacy-articlesp recursion N": {
-      "class": "cold",
-      "packet": "PKT-041"
-    },
-    "fn-cpc-upgrade-legacy-articles recursion N": {
-      "class": "cold",
-      "packet": "PKT-041"
-    },
     "fn-cpe-projection-replay recursion N": {
       "class": "cold",
       "packet": "PKT-448 (d)",

@@ -1689,24 +1689,6 @@
         (cons (car names) (fn-own-feed-new-targets (cdr names) tbl msgid)))
     nil))
 
-(defun fn-own-feed-offer-record (peer msgid attempt tick)
-  (declare (xargs :guard t))
-  (fn-feed-journal-entry :feed-offer
-                         (list (fn-record-string-octets peer) msgid
-                               (nfix attempt) (nfix tick))))
-
-(defun fn-own-feed-sent-record (peer msgid attempt)
-  (declare (xargs :guard t))
-  (fn-feed-journal-entry :feed-sent
-                         (list (fn-record-string-octets peer) msgid
-                               (nfix attempt))))
-
-(defun fn-own-feed-outcome-record (peer msgid attempt code)
-  (declare (xargs :guard t))
-  (fn-feed-journal-entry :feed-outcome
-                         (list (fn-record-string-octets peer) msgid
-                               (nfix attempt) (nfix code))))
-
 (defun fn-own-feed-restart-record (peer)
   (declare (xargs :guard t))
   (fn-feed-journal-entry :feed-restart
@@ -1779,22 +1761,6 @@
   :hints (("Goal" :use fn-own-feed-response-code-is-a-nat
            :in-theory (e/d (fn-feed-responsep fn-feed-response)
                            (fn-own-feed-response-code)))))
-
-; -----------------------------------------------------------------------------
-; Durable before the effect: the FNFD records a tick and a reply authorize
-;
-; Legacy record constructor retained for codec compatibility fixtures. The
-; host-called fn-own-feed-reply-records uses fn-feed-observe-records with the
-; actual feed and observation; this constructor is not its replay theorem
-; subject. In particular these legacy retry/loss outcomes omit timing.
-
-(defun fn-own-feed-reply-records-of (peer msgid attempt code)
-  (declare (xargs :guard t))
-  (cond ((member-equal code '(335 238))
-         (list (fn-own-feed-sent-record peer msgid attempt)))
-        ((member-equal code *fn-feed-outcome-codes*)
-         (list (fn-own-feed-outcome-record peer msgid attempt code)))
-        (t (list (fn-own-feed-outcome-record peer msgid attempt 400)))))
 
 ; -----------------------------------------------------------------------------
 ; The connection to ONE peer is gone (K5, specs/peering.md sec. 3.2)
@@ -2013,7 +1979,7 @@
     fn-own-feed-intent-values fn-own-feed-intent-records
     fn-own-feed-resolution-records fn-own-feed-target-capacityp
     fn-own-feed-new-targets
-    fn-own-feed-parse-response fn-own-feed-reply-records-of
+    fn-own-feed-parse-response
     fn-own-feed-lost-one fn-own-feed-lost-records-of
     fn-own-feed-tick-peer-records fn-own-feed-tick-records
     fn-own-feed-port-result fn-own-feed-port-status fn-own-feed-port-table
