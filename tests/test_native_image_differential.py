@@ -247,7 +247,7 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
         assert owner.returncode == 0, diagnostics
         # The same history with no checkpoint yet: `store checkpoint' below
         # rotates the log and drops the segments the checkpoint covers
-        # (format 9), after which a store without its checkpoint is refused
+        #, after which a store without its checkpoint is refused
         # by name (checkpoint-damaged), not replayed.  The full replay runs
         # on this copy (lane fitness, for release-machinery's native-rm1).
         cls.base_log = cls.tmp / "base-log"

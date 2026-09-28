@@ -1627,7 +1627,7 @@ def main(argv=None):
     w.add_argument("--seed", type=int, default=1)
     w.add_argument("--history-octets", type=int, default=0, help="a near-full store's bound")
     w.add_argument("--refuse-every", type=int, default=0)
-    # Lane commit-onto-log: a format-9 store (the record log).  Its compact,
+    # Lane commit-onto-log: a store (the record log).  Its compact,
     # reclaim and export are refused by name until w6-log-recovery (PKT-750),
     # so those phases are skipped; POSTERS concurrent connections post (the
     # owner commits them in batches), each client marking after its own 240.

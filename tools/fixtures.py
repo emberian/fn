@@ -193,7 +193,7 @@ class Context:
 def recipe_chain(ctx: Context, n: int) -> None:
     """planning/evidence/pack-chain-open-2026-09-26/chain_fixture.py build:
     the scale store of N probe articles, the served BEFORE view, the retention
-    listing and `operator CONFIG store compact` (format 9: rotation and drop);
+    listing and `operator CONFIG store compact` (rotation and drop);
     the test copies it
     (tests.test_native_pack_chain, FN_P5_FIXTURE)."""
     ctx.run([PY, TREE / EVIDENCE / "pack-chain-open-2026-09-26/chain_fixture.py", "build",

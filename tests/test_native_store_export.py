@@ -103,7 +103,7 @@ class StoreExportTests(ProfileFixture):
         config2 = self.second_config(store2)
         imported = self.operator_with(config2, "store", "import", str(archive))
         self.assertEqual(imported.returncode, EXIT_OK, imported.stderr.decode())
-        # Format 9: the imported history is in the record log (journal/),
+        # the imported history is in the record log (journal/),
         # never in transaction files, and exporting it again gives the same
         # archive, file for file: the same profile, frontier, configuration
         # records and records (PRF-205 over the log).

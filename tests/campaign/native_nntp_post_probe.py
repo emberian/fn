@@ -1,5 +1,5 @@
 """The served POST's process-death and EIO cuts observed at the NNTP wire,
-on the record log (format 9; lane ack-before-barrier, restoring the per-cut
+on the record log (lane ack-before-barrier, restoring the per-cut
 wire probe log-recovery-2 deleted with the per-file route).
 
 A served POST on the record log is a member of the owner's batch quantum

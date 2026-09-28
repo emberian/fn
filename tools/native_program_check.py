@@ -642,7 +642,7 @@ class Walk:
             self.walk_body(live, env, mode, stack)
         elif (head in ("when", "if") and isinstance(f[1], list) and len(f[1]) == 2
               and f[1][0] == "fnn-store-logp"):
-            # Lane commit-onto-log: the record-log route of a format-9 store
+            # Lane commit-onto-log: the record-log route of a store
             # is another program (P-BATCH, P-LOG-RECOVER and lane log-2's
             # books/store-log-route-programs.lisp); main() checks each such
             # arm against its programs (native_cuts.verify_log_route_arms);
@@ -1000,7 +1000,7 @@ def main(argv=None) -> int:
         print(json.dumps(asdict(report), indent=2))
     else:
         print(render(report))
-    # Lane log-2: every format-9 arm skipped above, against its log programs
+    # Lane log-2: every record-log arm skipped above, against its log programs
     # (every process-death cut of the log route is a model program's cut).
     from tests.campaign.native_cuts import LOG_ROUTE_ARMS, verify_log_route_arms
     arms = verify_log_route_arms()

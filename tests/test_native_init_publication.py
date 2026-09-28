@@ -72,7 +72,7 @@ class InitFixture(ProfileFixture):
         self.assertIn(b"transactions=0", status.stdout)
         segment = self.store / "journal" / "000001.log"
         if segment.exists():
-            # Format 9 (books/store-init-log-publication.lisp): the segment is
+            # The record log (books/store-init-log-publication.lisp): the segment is
             # the plan's third file, its ACL2 extent of zeros; no allocator
             # file and no transactions/ are written.
             data = segment.read_bytes()

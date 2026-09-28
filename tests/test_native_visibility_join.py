@@ -149,7 +149,7 @@ class NativeVisibilityJoinTests(unittest.TestCase):
                 process.communicate(timeout=60)
 
     def transactions(self, node):
-        # The committed history (format 9: the record log), read by the image.
+        # The committed history, read by the image.
         return native_log_observation.committed_history(IMAGE, node["store"],
                                                         env=self.env, cwd=ROOT)
 

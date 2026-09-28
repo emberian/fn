@@ -249,7 +249,7 @@ class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
             words.append((out.returncode, hashlib.sha256(out.stdout).hexdigest()))
         return words
 
-    # Format 9 (T8): a checkpoint's publication drops the log segments it
+    # T8: a checkpoint's publication drops the log segments it
     # covers, so with the checkpoint gone or refused no full replay is left
     # and the open refuses by name.  A test that compares an open from the
     # checkpoint with the full replay keeps the covered segments through a

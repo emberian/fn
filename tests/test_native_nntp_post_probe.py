@@ -1,6 +1,6 @@
 """The served POST's wire reply per cut, on the record log (lane
 ack-before-barrier; the per-file probe log-recovery-2 deleted in f93733f60,
-rekeyed to the format-9 route).
+rekeyed to the record-log route).
 
 `served_arm` derives each served cut's arm from its program's place relative
 to the batch's append and barrier (tests/campaign/native_nntp_post_probe.py);

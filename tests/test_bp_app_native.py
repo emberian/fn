@@ -163,7 +163,7 @@ class NativeBpApplicationTests(unittest.TestCase):
 
     def recovered_counts(self):
         """(committed transactions, articles, retention pins) of the Store,
-        from the node's own read-only opens of the format-9 record log:
+        from the node's own read-only opens of the record log:
         `store PATH status' (fn-nls-report's transactions= word is
         fn-sbud-used, the file kernel's records; articles= the accepted
         articles) and `store PATH retention' (pins=, the replayed ledger's

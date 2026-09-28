@@ -102,7 +102,7 @@ class NativeTopicLocalTest(unittest.TestCase):
         return result
 
     def transactions(self):
-        # The committed history (format 9: the record log), read by the image.
+        # The committed history, read by the image.
         return native_log_observation.committed_history(self.image, self.store,
                                                         env=self.env, cwd=ROOT)
 

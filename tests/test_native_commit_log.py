@@ -2,7 +2,7 @@
 commit-onto-log; planning/design-2026-09-27-storage-log.md sections 3.3 and
 4; tests/campaign/native_cuts.py POST_LOG_CUTS).
 
-`operator CONFIG init` writes a format-9 store (journal/000001.log; the
+`operator CONFIG init` writes a store (journal/000001.log; the
 profile frame's word is fn-store-9) and the served node commits every POST
 through the log: concurrent posters are committed in batches (one append and
 one barrier per commit quantum) and each is answered 240 only after its
@@ -11,7 +11,7 @@ served again after a restart, no transaction file written, on both images;
 a process death at each POST_LOG_CUTS cut on the developer image, the next
 owner serving the article whole (a lost-reply POST is durable or absent, and
 from log-fenced on it is durable) and admitting the next POST; and the
-format-9 refusals by name of compact and reclaim (export and import run over
+refusals by name of compact and reclaim (export and import run over
 the log: tests.test_native_store_export; a format-8 store is refused at open
 by name there too).
 
@@ -217,7 +217,7 @@ class CommitLogMixin:
         self.assertEqual(errors, [])
         self.assertEqual(sorted(replies), list(range(48)))
         self.assertTrue(all(r.startswith(b"240") for r in replies.values()), replies)
-        self.assertEqual(node.transaction_files(), [], "a format-9 commit wrote a transaction file")
+        self.assertEqual(node.transaction_files(), [], "a commit wrote a transaction file")
         node.start()
         try:
             c = Conn(node.port)

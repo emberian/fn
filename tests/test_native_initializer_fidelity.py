@@ -174,7 +174,7 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         # The injection happens after the actual fsync returned.  This checks
         # source-cut routing only; it does not assert a platform EIO outcome.
         self.assertTrue((store / "config" / "00000001.cfg").is_file())
-        # Format 9: the store is complete when its record log's segment is
+        # the store is complete when its record log's segment is
         # (init's last step); before it the open faults naming the journal,
         # and init again completes the store.
         self.assert_incomplete_then_completed_by_init(store)
@@ -205,7 +205,7 @@ class NativeInitializerFidelityTests(unittest.TestCase):
             if config_dir.exists():
                 os.chmod(config_dir, 0o700)
         self.assertTrue((config_dir / "00000001.cfg").is_file())
-        # Format 9: the segment (the store's last durable step) was made
+        # the segment (the store's last durable step) was made
         # before this enumeration, so the store the failed init leaves is
         # complete: a new process recovers it empty, and init again succeeds.
         self.assertTrue((store / "journal" / "000001.log").is_file())
@@ -225,7 +225,7 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assert_incomplete_then_completed_by_init(store)
 
     def test_sigkill_at_segment_created_is_completed_by_the_open(self):
-        # Format 9 has no allocator file (init-final-frontier-file-fenced is
+        # The store has no allocator file (init-final-frontier-file-fenced is
         # the per-file layout's cut).  A death just after the segment's
         # create (before its extent of zeros and its fence) leaves an empty
         # segment: the writable open completes it as it completes an

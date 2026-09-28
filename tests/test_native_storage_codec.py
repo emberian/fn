@@ -1,7 +1,7 @@
-"""Native store evidence for the ACL2-owned metadata codec (format 9).
+"""Native store evidence for the ACL2-owned metadata codec.
 
 The per-file allocator and transaction namespace (allocation-frontier.json,
-transactions/NNN.txn) are not read by a format-9 store: its history and its
+transactions/NNN.txn) are not read by a store: its history and its
 frontier are the record log's (books/store-log*.lisp).  The cases that
 exercised them -- the Python/native cross-open of per-file stores, the
 frontier file's maximum and barrier, the file name bound to the record's
@@ -168,7 +168,7 @@ class NativeStorageCodecTests(unittest.TestCase):
         failed = self.direct_native_post(
             store, "<record-barrier@example.invalid>", "recordbarrier",
             run_store.EXIT_UNCERTAIN)
-        # Format 9: the record's write is P-BATCH's append (the log batch).
+        # the record's write is P-BATCH's append (the log batch).
         self.assertIn(b"log batch outcome is indeterminate", failed.stderr)
         self.invoke(True, store, "recover")
         inspected = self.invoke(True, store, "inspect", "--message-id",
