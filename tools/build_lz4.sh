@@ -23,10 +23,13 @@ case $(uname -s) in
 esac
 mkdir -p "$out"
 tmp=$out/.$name.$$
-# LZ4_HC_STATIC_LINKING_ONLY is not needed: the shim uses the stable API.
 # lz4hc.c includes lz4.c's common definitions itself; both are compiled.
+# LZ4LIB_VISIBILITY= keeps every LZ4 symbol hidden (lz4.h marks them
+# "default" otherwise): the library exports fn_lz4_* only, so no caller can
+# reach the unverified decoder and no other liblz4 in the process can
+# interpose on the encoder.
 # shellcheck disable=SC2086
-$cc -std=c11 -O2 -fPIC -fvisibility=hidden -Wall -Wextra ${CFLAGS:-} \
+$cc -std=c11 -O2 -fPIC -fvisibility=hidden -DLZ4LIB_VISIBILITY= -Wall -Wextra ${CFLAGS:-} \
     -I"$vendor" $shared -o "$tmp" \
     "$root/host/native/fn-lz4.c" "$vendor/lz4.c" "$vendor/lz4hc.c"
 mv -f "$tmp" "$out/$name"
