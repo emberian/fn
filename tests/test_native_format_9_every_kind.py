@@ -320,8 +320,7 @@ class FormatNineEveryKindTest(unittest.TestCase):
         self.assertEqual(names10, names9)
         kinds = {}
         for old_octets, new_octets in zip(records9, records10):
-            it9, it10 = cbor_items(old_octets), cbor_items(new_octets)
-            kind = self.check_record(it9, it10, old_octets, new_octets)
+            kind = self.check_record(old_octets, new_octets)
             kinds[kind] = kinds.get(kind, 0) + 1
         witness("kinds", sorted(kinds.items()))
         for kind in ("article", "composite-verified", "composite-carried", "keyring",
@@ -339,11 +338,15 @@ class FormatNineEveryKindTest(unittest.TestCase):
         self.assertEqual([it9[i] for i in keep], [it10[i] for i in keep])
         return s
 
-    def check_record(self, it9, it10, old, new):
-        if it9[0] == ("b", b"fn-r"):
-            self.check_article(it9, it10)
+    def check_record(self, old, new):
+        # Every envelope opens with its 4-octet magic as a CBOR byte string
+        # (0x44), then a version and a kind as small unsigned integers.
+        magic, kind = old[1:5], old[6] if len(old) > 6 and old[0] == 0x44 else None
+        if magic == b"fn-r":
+            self.check_article(cbor_items(old), cbor_items(new))
             return "article"
-        if it9[0] == ("b", b"fn-e") and it9[2] == ("u", 4):
+        if magic == b"fn-e" and kind == 4:
+            it9, it10 = cbor_items(old), cbor_items(new)
             # The accepted composite (books/stx-accept-records.lisp items):
             # 8 content subject, 9 article record, 10 verdict, [11 source,
             # 12 authored id].
@@ -357,12 +360,12 @@ class FormatNineEveryKindTest(unittest.TestCase):
                 return "composite-carried" if it9[6] == ("u", 0) else "composite-verified"
             return "composite-legacy"
         self.assertEqual(old, new)
-        if it9[0] == ("b", b"fn-e"):
-            return {2: "verdict", 3: "keyring"}.get(it9[2][1], "fn-e-%d" % it9[2][1])
-        if it9[0] == ("b", b"fnce"):
+        if magic == b"fn-e":
+            return {2: "verdict", 3: "keyring"}.get(kind, "fn-e-%s" % kind)
+        if magic == b"fnce":
             return "consumer"
-        if it9[0] == ("b", b"fnto"):
-            return "topic-install"
+        if magic == b"fnto":
+            return "topic-install" if kind == 2 else "topic-%s" % kind
         return "other"
 
     def test_a_topic_anchor_is_refused_by_name(self):
