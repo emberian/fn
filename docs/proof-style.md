@@ -473,6 +473,23 @@ lemmas); corollaries; anything an includer would have to `disable` to keep
 its own proofs stable. A hint that reaches for `minimal-theory` is a book
 that exported too much; say which rules you mean with `e/d`.
 
+What a book exported that it should not have is measured across the tree by
+`tools/rule_cost.py` (lane rule-hygiene, 2026-09-28): it `ld`s every book
+under `accumulated-persistence` on a farm box and ranks each exported rune
+by the useless frames its includers spent on it, naming the includers where
+it was useful at all. On the whole tree that day, 668M of 1.50G frames were
+useless tries of rules another fn book exported. `rule_cost.py withdraw`
+disables the worst at the END of the defining book (its own proofs keep
+them) and enables each in the includers where it was useful. Two lessons from
+that pass: an enable an includer gets must sit after its header includes,
+not after a mid-book include; and a rule can be never-useful by the profile
+yet load-bearing, because its being enabled keeps another pair of rules from
+looping (enabled, the definition of `fn-lg-declared-len` keeps
+`fn-lgw-slice-is-take` and `fn-lg-slice`'s definition from rewriting each
+other; `fn-scc-encode-is-program` does the same in the history-pages
+books). `rule_cost.py restore`
+takes such a rune back out of every block.
+
 ## 9. The first thing to run on a slow form
 
 Before hints, before `e/d`, before splitting the book: profile it.
