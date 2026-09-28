@@ -116,7 +116,10 @@
   (declare (xargs :guard t))
   (let ((protected (fn-bpnf-stored-record-protected record)))
     (if (equal protected :bad) :bad
-      (append protected (fn-frame-trailer protected)))))
+      ; PROTECTED is the whole record frame (the bundle's wire in it): the
+      ; :exec appends in constant stack (fn-ag-append; lane depth-debt).
+      (mbe :logic (append protected (fn-frame-trailer protected))
+           :exec (fn-ag-append protected (fn-frame-trailer protected))))))
 
 (defun fn-bpnf-stored-from-values (values)
   (declare (xargs :guard t))
