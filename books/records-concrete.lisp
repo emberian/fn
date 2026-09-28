@@ -364,18 +364,15 @@
   (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :record-attempted))
       (cond
        ((equal result :ok)
-        ; The commit appends the record in O(1): the history is a snoc-list
-        ; (books/snoc-list.lisp; fn-sf-make-fields-snoc-records-is-make).
+        ; The commit appends the record in O(1) to the history's field
+        ; (books/store-records-field.lisp fn-sfr-snoc; the kernel's
+        ; fn-sf-record-dir-result, field for field).
         (let ((record (fn-sf-record-candidate s)))
-          (mbe :logic (fn-sf-make :completing (fn-sf-frontier s) nil
-                                  (append (fn-sf-records s) (list record)) nil
-                                  (fn-rcon-sf-record-pair record) (fn-sf-successes s)
-                                  (fn-sf-barriers s))
-               :exec (fn-sf-make-fields :completing (fn-sf-frontier s) nil
-                                        (fn-sl-snoc (fn-sf-records-field s) record)
-                                        nil (fn-rcon-sf-record-pair record)
-                                        (fn-sf-successes-field s)
-                                        (fn-sf-barriers s)))))
+          (fn-sf-make-fields :completing (fn-sf-frontier s) nil
+                             (fn-sfr-snoc (fn-sf-records-field s) record)
+                             nil (fn-rcon-sf-record-pair record)
+                             (fn-sf-successes-field s)
+                             (fn-sf-barriers s))))
        ((equal result :error)
         (fn-sf-remake :fenced-record (fn-sf-frontier s) nil
                       (fn-sf-record-candidate s) nil (fn-sf-barriers s) s))

@@ -25,6 +25,10 @@
 (include-book "../../books/history-pages-owner")
 (include-book "must-fail-checked")
 
+; The history image's own rules, as its books leave them: store-files'
+; include of the decode (books/store-records-field.lisp) keeps them out of
+; the theory it exports, and the includes above find those books loaded.
+(local (in-theory (union-theories (current-theory :here) (theory 'fn-sfr-theory-after-disk))))
 (local (in-theory (enable fn-hp-vhold-is-x)))
 
 (defconst *hpo-events*

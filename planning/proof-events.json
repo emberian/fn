@@ -12759,6 +12759,51 @@
           "name": "fn-heap-breakdown-is-inits-reservation"
         }
       ]
+    },
+    {
+      "id": "PRF-373",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hrs-disk-history-is-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrc-get-is-hrecs-get"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrs-disk-history-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-list-of-fn-sfr-based-is-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-list-of-fn-sfr-based"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-list-of-fn-sl-of"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-list-of-fn-sfr-snoc"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-count-is-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-last-is-last"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sfr-nth-is-nth"
+        }
+      ]
     }
   ]
 }

@@ -1427,6 +1427,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-pages-owner-tests \
 	books/history-records \
 	tests/acl2/history-records-tests \
+	books/history-records-disk \
+	books/store-records-field \
+	tests/acl2/history-records-disk-tests \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test
