@@ -404,7 +404,7 @@
    :hints (("Goal" :in-theory (e/d (fn-otm-read-span fn-otm-unshed-ocfg fn-otm-owner-with-allow
                                     fn-otm-conn-allow fn-own-conn-shapep)
                                    (fn-orr-read-span fn-otm-shed-ocfg fn-otm-cfg-with-allow
-                                    fn-own-find-conn fn-own-replace-conn fn-otm-conn-with-allow cache
+                                    fn-own-find-conn fn-own-replace-conn fn-otm-conn-with-allow
                                     fn-otm-ocfg-with-refused fn-otm-disk-effects
                                     fn-otm-admit-post))))))
 
