@@ -66,13 +66,17 @@
   (declare (xargs :guard t))
   (equal (fn-wire-state-mode (fn-own-conn-wire c)) :article))
 
+; A loop (tail recursive): one control-stack frame whatever the count.
+(defun fn-oas-article-conns-onto (conns n)
+  (declare (xargs :guard (natp n)))
+  (if (consp conns)
+      (fn-oas-article-conns-onto (cdr conns)
+                                 (if (fn-oas-conn-articlep (car conns)) (+ 1 n) n))
+    n))
+
 (defun fn-oas-article-conns (conns)
   (declare (xargs :guard t))
-  (if (consp conns)
-      (if (fn-oas-conn-articlep (car conns))
-          (+ 1 (fn-oas-article-conns (cdr conns)))
-        (fn-oas-article-conns (cdr conns)))
-    0))
+  (fn-oas-article-conns-onto conns 0))
 
 (defun fn-oas-held (oc)
   (declare (xargs :guard t))
@@ -106,14 +110,21 @@
                  "400 the articles in flight fill the memory; try again later")))
 
 ; Each generic 440 becomes this book's line; every other effect as it is.
+; A loop onto an accumulator, reversed at the end (tail recursive).
+(defun fn-oas-post-effects-onto (effects acc)
+  (declare (xargs :guard (true-listp acc)))
+  (if (consp effects)
+      (fn-oas-post-effects-onto
+       (cdr effects)
+       (cons (if (equal (car effects) *fn-otm-generic-440*)
+                 (fn-nntp-reply-effect *fn-oas-post-line*)
+               (car effects))
+             acc))
+    (revappend acc nil)))
+
 (defun fn-oas-post-effects (effects)
   (declare (xargs :guard t))
-  (if (consp effects)
-      (cons (if (equal (car effects) *fn-otm-generic-440*)
-                (fn-nntp-reply-effect *fn-oas-post-line*)
-              (car effects))
-            (fn-oas-post-effects (cdr effects)))
-    nil))
+  (fn-oas-post-effects-onto effects nil))
 
 ; Connection ID's wire closed (its retained input dropped), every other
 ; field and connection as it is.

@@ -1369,8 +1369,8 @@ admitted connection's reads are never refused by the slots (KEYSTONE
 `fn-oas-read-span-never-blocks-an-admitted-article`) and partial uploads
 cannot hold the pool while each needs more of it; a stalled upload holds
 its credit until the idle timeout closes its connection. The launcher's
-former room (`fn-cbud-launch-decide`, 1,024 connections' heap parts, no
-caller since lane reservation-figure) is gone. Not yet: the body in bounded
+former room (connection-budget's launch figure, 1,024 connections' heap
+parts, no caller since lane reservation-figure) is gone. Not yet: the body in bounded
 pooled chunks (one octet a byte) instead of wire lists, which lowers the
 credit about 32-fold; the frame theorem that a read of one connection leaves
 every other connection's wire mode as it was.
