@@ -647,14 +647,14 @@
                      :bad)))
 (assert! (not (equal (fn-heap-article-held *hrt-dev-a8*) *hrt-dev-a8*)))
 (assert! (hrt-held-conclusion *hrt-dev-a8*))
-; Without the well-formed fields: a field index below 2 makes the values
+; Without the well-formed fields: a field index below 1 makes the values
 ; :bad (the omitted hypothesis false, the request still a request), and
 ; the conclusion fails.  The request hypothesis is kept: no counterexample
 ; is known without it.
-(defconst *hrt-bad-field* '(:development ((1 . 5))))
+(defconst *hrt-bad-field* '(:development ((0 . 5))))
 (assert! (fn-bs-profile-requestp *hrt-bad-field*))
 (assert! (equal (fn-bs-profile-set-fields (fn-bs-config-for-profile :development)
-                                          '((1 . 5)))
+                                          '((0 . 5)))
                 :bad))
 (assert! (not (hrt-held-conclusion *hrt-bad-field*)))
 (must-fail-checked
@@ -689,7 +689,7 @@
               (not (fn-bs-profile-requestp '(:foo ((4 . 8388608)))))))
 (assert! (equal (fn-bs-profile-resolve (fn-heap-article-held '(:current ((4 . 8388608)))) nil)
                 '(:invalid :request)))
-(assert! (equal (fn-bs-profile-resolve (fn-heap-article-held '(:development ((1 . 5)))) nil)
+(assert! (equal (fn-bs-profile-resolve (fn-heap-article-held '(:development ((0 . 5)))) nil)
                 '(:invalid :request)))
 (assert! (fn-bs-profile-admittedp
           (fn-bs-profile-resolve (fn-heap-article-held '(:development ((4 . 8388608)) extra)) nil)))

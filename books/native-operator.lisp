@@ -322,9 +322,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   (implies (member-equal name *fn-ncfg-mission-names*)
            (fn-bs-profile-validp
             (fn-bs-profile-resolve (fn-native-mission-request name) nil)))
-  :hints (("Goal" :in-theory (disable fn-bs-profile-validp fn-bs-profile-resolve
-                                      (:e fn-bs-profile-validp)))
-          ("Goal'" :in-theory (enable (:e fn-bs-profile-validp)))))
+  :hints (("Goal" :in-theory (e/d ((:e fn-bs-profile-validp) (:e fn-bs-profile-resolve)
+                                   (:e fn-native-mission-request))
+                                  (fn-bs-profile-validp fn-bs-profile-resolve
+                                   fn-native-mission-request)))))
 
 ;; PRF-171 (PKT-451 (C)): field 7, max-group-name-octets, governs the names
 ;; `init' creates, as it governs `group create' (books/store-capacity-config

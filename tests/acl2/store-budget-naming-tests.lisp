@@ -249,12 +249,12 @@
 ; The operator's R decides, one octet either side of the composite.
 (defconst *sbnt-r-at* (fn-bs-profile-set-fields
                        *fn-bs-profile-defaults*
-                       (list (cons 4 *sbnt-composite-octets*)
-                             (cons 5 65536) (cons 6 1) (cons 7 64))))
+                       (list (cons 3 *sbnt-composite-octets*)
+                             (cons 4 65536) (cons 5 1) (cons 6 64))))
 (defconst *sbnt-r-below* (fn-bs-profile-set-fields
                           *fn-bs-profile-defaults*
-                          (list (cons 4 (1- *sbnt-composite-octets*))
-                                (cons 5 65536) (cons 6 1) (cons 7 64))))
+                          (list (cons 3 (1- *sbnt-composite-octets*))
+                                (cons 4 65536) (cons 5 1) (cons 6 64))))
 (assert-event (fn-bs-profile-admittedp *sbnt-r-at*))
 (assert-event (fn-bs-profile-admittedp *sbnt-r-below*))
 (assert-event (equal (fn-sbud-signed-event-boundary *sbnt-r-at* *sbnt-composite*)
