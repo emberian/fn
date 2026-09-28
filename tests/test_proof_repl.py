@@ -586,14 +586,59 @@ class RemoteTests(unittest.TestCase):
         self.addCleanup(shutil.rmtree, directory, True)
         ns = proof_repl.argparse.Namespace
         start = ns(command="start", name=name)
-        self.assertEqual(proof_repl.resolve_auto_host(start, lambda: "persvati"), "persvati")
+        no_laptop = lambda: None  # noqa: E731
+        self.assertEqual(proof_repl.resolve_auto_host(start, lambda: "persvati", no_laptop),
+                         "persvati")
+        # A session directory here with no remote.json is this machine's session.
+        self.assertEqual(proof_repl.resolve_auto_host(ns(command="send", name=name),
+                                                      lambda: "hbox", no_laptop), "laptop")
         with self.assertRaises(SystemExit):
-            proof_repl.resolve_auto_host(ns(command="send", name=name), lambda: "hbox")
+            proof_repl.resolve_auto_host(ns(command="send", name=name + "-absent"),
+                                         lambda: "hbox", no_laptop)
         (directory / "remote.json").write_text(json.dumps({"host": "hbox"}))
         self.assertEqual(proof_repl.resolve_auto_host(ns(command="send", name=name),
-                                                      lambda: "persvati"), "hbox")
+                                                      lambda: "persvati", no_laptop), "hbox")
         with self.assertRaises(SystemExit):
-            proof_repl.resolve_auto_host(start, lambda: "")
+            proof_repl.resolve_auto_host(start, lambda: "", no_laptop)
+
+    def test_host_auto_starts_on_the_laptop_only_when_it_is_less_loaded(self):
+        start = proof_repl.argparse.Namespace(command="start", name="auto-laptop-test")
+        box = lambda: ("hbox", 0.50)  # noqa: E731
+        self.assertEqual(proof_repl.resolve_auto_host(start, box, lambda: (0.25, 3)), "laptop")
+        self.assertEqual(proof_repl.resolve_auto_host(start, box, lambda: (0.75, 3)), "hbox")
+        # No qualified launcher, or no free slot: laptop_offer says None.
+        self.assertEqual(proof_repl.resolve_auto_host(start, box, lambda: None), "hbox")
+        # No box answered: the laptop, when it offers, rather than a refusal.
+        self.assertEqual(proof_repl.resolve_auto_host(start, lambda: ("", None),
+                                                      lambda: (2.0, 1)), "laptop")
+        # Only start considers the laptop; list/reap stay on the boxes.
+        listing = proof_repl.argparse.Namespace(command="list", name=None)
+        self.assertEqual(proof_repl.resolve_auto_host(listing, box, lambda: (0.1, 6)), "hbox")
+
+    def test_laptop_offer_needs_a_qualified_launcher(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            unqualified = pathlib.Path(temporary) / "acl2"
+            unqualified.write_text('#!/bin/sh\nexec /bin/sbcl --core /x ${SBCL_USER_ARGS} "$@"\n')
+            unqualified.chmod(0o755)
+            with mock.patch.object(proof_repl.socket, "gethostname", return_value="laptop"):
+                self.assertIsNone(proof_repl.laptop_offer({"FN_ACL2": str(unqualified)}))
+                self.assertIsNone(proof_repl.laptop_offer({"FN_REPL_LAPTOP": "0"}))
+            with mock.patch.object(proof_repl.socket, "gethostname", return_value="hbox"):
+                self.assertIsNone(proof_repl.laptop_offer({"FN_ACL2": str(unqualified)}))
+
+    def test_the_local_launcher_file_is_the_default_acl2_off_the_boxes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            named = pathlib.Path(temporary) / "acl2-file"
+            named.write_text("/opt/fn/acl2-literal\n")
+            env = {"FN_ACL2_FILE": str(named)}
+            self.assertEqual(proof_repl.apply_local_defaults(env), "/opt/fn/acl2-literal")
+            self.assertEqual(env["FN_ACL2"], "/opt/fn/acl2-literal")
+            mine = {"FN_ACL2_FILE": str(named), "FN_ACL2": "/mine"}
+            self.assertIsNone(proof_repl.apply_local_defaults(mine))
+            self.assertEqual(mine["FN_ACL2"], "/mine")
+            absent = {"FN_ACL2_FILE": str(named) + ".absent"}
+            self.assertIsNone(proof_repl.apply_local_defaults(absent))
+            self.assertNotIn("FN_ACL2", absent)
 
     def test_the_sync_is_tools_and_the_closure_never_planning(self):
         files = proof_repl.sync_files(["books/wildmat"], ["tests/acl2/extra.lisp"])

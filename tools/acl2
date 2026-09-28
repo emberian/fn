@@ -11,8 +11,9 @@ This wrapper is the `ld` path's entry to the same pool.  It acquires exactly
 one slot the way the runner does -- the same lock directory, the same
 once-a-minute wait line on stderr, so a wait is never mistaken for a hang --
 sets the same two environment variables the runner sets, and runs `$FN_ACL2`
-(default `acl2`) with this process's stdin, stdout and stderr passed straight
-through.  The slot is an `flock` held by this process, so it is released when
+(default: the launcher ~/.config/fn/acl2 names, else `acl2`;
+`acl2_slots.configured_acl2`) with this process's stdin, stdout and
+stderr passed straight through.  The slot is an `flock` held by this process, so it is released when
 ACL2 exits, when the wrapper is killed, and when the harness that started it
 goes away.
 
@@ -126,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
     if arguments.timeout is not None and arguments.timeout <= 0:
         parser.error("--timeout must be positive")
 
-    configured = os.environ.get("FN_ACL2", "acl2")
+    configured = acl2_slots.configured_acl2()
     executable = resolve_executable(configured)
     if executable is None or not os.access(executable, os.X_OK):
         print(f"fn: no executable ACL2 at {configured!r}. Install the pinned "

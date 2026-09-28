@@ -27,7 +27,10 @@ and [the current view](current.md). Release scope is
    sent before the encapsulate). `start` runs each of the book's events
    under the per-form prover limit (`--load-limit S`, default `--limit`),
    so a runaway lemma stops the load with its checkpoints in `status`.
-   `--host hbox|persvati` runs any command in your tree on that box.
+   `--host hbox|persvati` runs any command in your tree on that box;
+   `--host laptop` (or `auto`, when the laptop is less loaded per core and
+   has a free slot) runs the session here, with the ACL2 that
+   `tools/build_local_acl2.sh` built and named in ~/.config/fn/acl2.
    `forms BOOK` numbers a book's forms for `#N`. An admitted form is not a
    certificate. A raw host file (`host/native/*.lisp`) loads in seconds with
    `tools/host_check.py --load` (errors, arity, macro order, undefined
