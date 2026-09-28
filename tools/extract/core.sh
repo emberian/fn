@@ -39,7 +39,14 @@ python3 "$X/core_build.py" "$TREE" "$OUT/host-block.lisp"
 LIB=$TREE/build/lib
 export FN_MLDSA_LIBRARY=$LIB/libfn-mldsa65.so FN_LZ4_LIBRARY=$LIB/libfn-lz4.so FN_BLAKE3_LIBRARY=$LIB/libfn-blake3.so
 export FN_NATIVE_PROFILE=${FN_NATIVE_PROFILE:-developer}
-( cd "$TREE" && XL_OUT="$OUT/" XL_X="$X/" swarm-build "$SBCL" --dynamic-space-size 8000 --control-stack-size 64 \
+# The image's runtime options (its launcher's: heap, control stack, thread-
+# local storage, from the profile: tools/build_native_host.sh), saved into the
+# core (:save-runtime-options), so the product runs as the image does.
+IMAGE=${FN_EXTRACT_IMAGE:-$TREE/build/fn-host-developer}
+opt() { sed -n "s/.*$1 \([^ ]*\) .*/\1/p" "$IMAGE" | head -1; }
+HEAP=$(opt --dynamic-space-size); STACK=$(opt --control-stack-size); TLS=$(opt --tls-limit)
+[ -n "$HEAP" ] && [ -n "$STACK" ] || { echo "core: cannot read the runtime options of $IMAGE" >&2; exit 1; }
+( cd "$TREE" && XL_OUT="$OUT/" XL_X="$X/" swarm-build "$SBCL" ${TLS:+--tls-limit $TLS} --dynamic-space-size "$HEAP" --control-stack-size "$STACK" \
       --non-interactive --no-userinit --load "$X/core-main.lisp" > "$OUT/sbcl.log" 2>&1 ) || {
     echo "core: the SBCL build failed; see $OUT/sbcl.log" >&2; tail -30 "$OUT/sbcl.log" >&2; exit 1; }
 [ -x "$OUT/fn-core" ] || { echo "core: no $OUT/fn-core" >&2; exit 1; }

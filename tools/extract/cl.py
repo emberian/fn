@@ -70,6 +70,15 @@ RAW = {
     # (concatenate 'string ...), which translates back to string-append)
     "ACL2::STRING-APPEND": "|ACL2|::|XL-STRING-APPEND|",
     "ACL2::NONNEGATIVE-INTEGER-QUOTIENT": "|ACL2|::|XL-NIQ|",
+    # ACL2 list built-ins whose raw definition loops (or is Common Lisp's:
+    # the raw `append' macro is CL's append) where the logical one recurses
+    # once per cons: emitted as their logic, a thread's 1 MiB stack runs out
+    # on a 200 KB article (tests/test_native_slow_disk.py on the core)
+    "ACL2::BINARY-APPEND": "|ACL2|::|XL-APPEND|", "ACL2::STRIP-CARS": "|ACL2|::|XL-STRIP-CARS|",
+    "ACL2::STRIP-CDRS": "|ACL2|::|XL-STRIP-CDRS|", "ACL2::TRUE-LIST-FIX-EXEC": "|ACL2|::|XL-TRUE-LIST-FIX|",
+    "ACL2::REMOVE-DUPLICATES-EQUAL": "|ACL2|::|XL-REMOVE-DUPLICATES-EQUAL|",
+    "ACL2::INTERSECTION-EQUAL": "|ACL2|::|XL-INTERSECTION-EQUAL|",
+    "ACL2::STRING-APPEND-LST": "|ACL2|::|XL-STRING-APPEND-LST|",
 }
 LOGIC = {"COMMON-LISP::CAR": "|ACL2|::|XL-CAR|", "COMMON-LISP::CDR": "|ACL2|::|XL-CDR|",
          "ACL2::BINARY-+": "|ACL2|::|XL-+|", "ACL2::BINARY-*": "|ACL2|::|XL-*|",
