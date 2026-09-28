@@ -20,6 +20,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "extract"))
 import certs  # noqa: E402
 import acl2_toolchain  # noqa: E402
 
@@ -42,7 +43,7 @@ PROFILES = {
 INCLUDE = re.compile(r'^\s*\(include-book\s+"([^"]+)"')
 LOAD = re.compile(r'^\s*\(ld\s+"([^"]+)"')
 FAILURE_MARKERS = ("ACL2 Error", "HARD ACL2 ERROR", "ABORTING from raw Lisp",
-                   "Uncertified", "sub-book")
+                   "Uncertified", "sub-book", "FN_IMAGE_WORLD_OPEN")
 READY = "FN_ARTIFACT_SET_LOADED"
 
 
@@ -103,8 +104,21 @@ def profile_roots(root: Path, profile: str) -> list[str]:
 
 
 def load_driver(roots: list[str]) -> str:
+    """Include the roots.  When the first is the image's umbrella book
+    (tools/extract/world.py), the rest follow with the compiler off, as in
+    the build script: each is then redundant and loads nothing (a top-level
+    include-book reloads its closure's compiled files, and each load of a
+    constrained stub takes a TLS index SBCL never frees), and the closure
+    check prints FN_IMAGE_WORLD_OPEN if one of them added a book."""
+    import world  # noqa: PLC0415 (tools/extract/ is on sys.path above)
+    umbrella = bool(roots) and roots[0] in world.UMBRELLAS.values()
     lines = ['(in-package "ACL2")']
-    lines.extend('(include-book "{}")'.format(name) for name in roots)
+    for index, name in enumerate(roots):
+        lines.append('(include-book "{}")'.format(name))
+        if umbrella and index == 0:
+            lines.extend(world.PROLOGUE)
+    if umbrella:
+        lines.extend(world.EPILOGUE)
     lines.extend(['(cw "{}~%")'.format(READY), '(good-bye)'])
     return "\n".join(lines) + "\n"
 

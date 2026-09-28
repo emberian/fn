@@ -127,6 +127,40 @@ if ! grep -q 'FN_NATIVE_BUILD_LOADED' "$LOG"; then
     echo "build_native_host: ready marker missing from $LOG" >&2
     exit 1
 fi
+# The world loaded once (lane image-umbrella; tools/extract/world.py): the
+# script included its umbrella book first and no later include-book added a
+# book, and the thread-local storage the build used is within its budget.
+# Each top-level include-book reloads the compiled files of its closure and
+# each load of a constrained stub takes a TLS index SBCL never frees; the
+# saved launcher runs at --tls-limit FN_TLS_LIMIT (below), whose capacity in
+# SBCL's units is FN_TLS_LIMIT * 8.  FN_TLS_BUDGET_PERCENT (default 25) of
+# the smaller of that and the build's own capacity is the budget: an image
+# over it is refused here, not at a node's first thread.
+case "$BUILD" in
+    host/native/build.lisp|host/native/build-dtn.lisp|host/native/build-store-test.lisp)
+        if ! grep -q 'FN_IMAGE_WORLD_CLOSED' "$LOG"; then
+            echo "build_native_host: FN_IMAGE_WORLD_CLOSED missing from $LOG (an include-book after the umbrella added a book, or the umbrella is not first)" >&2
+            exit 1
+        fi ;;
+esac
+TLS_LINE=$(grep -a -E '^FN_NATIVE_TLS [0-9]+ [0-9]+' "$LOG" | tail -1 || true)
+if [ -n "$TLS_LINE" ]; then
+    TLS_USED=$(echo "$TLS_LINE" | cut -d' ' -f2)
+    TLS_CAP=$(echo "$TLS_LINE" | cut -d' ' -f3)
+    TLS_RUN=$(( ${FN_TLS_LIMIT:-65536} * 8 ))
+    [ "$TLS_RUN" -lt "$TLS_CAP" ] && TLS_CAP=$TLS_RUN
+    TLS_PCT=${FN_TLS_BUDGET_PERCENT:-25}
+    if [ $(( TLS_USED * 100 )) -gt $(( TLS_CAP * TLS_PCT )) ]; then
+        echo "build_native_host: the build used TLS index $TLS_USED of $TLS_CAP, over ${TLS_PCT}% (tools/tls_check.py --measure names the books)" >&2
+        exit 1
+    fi
+    echo "build_native_host: TLS index $TLS_USED of $TLS_CAP ($(( TLS_USED * 100 / TLS_CAP ))%)" >&2
+else
+    case "$BUILD" in
+        host/native/build.lisp|host/native/build-dtn.lisp|host/native/build-store-test.lisp)
+            echo "build_native_host: FN_NATIVE_TLS missing from $LOG" >&2; exit 1 ;;
+    esac
+fi
 # The saved world is the one asked for (host/native/strip-world.lisp).
 if [ "$WORLD" = stripped ]; then
     if ! grep -q 'FN_NATIVE_WORLD_STRIPPED' "$LOG"; then
