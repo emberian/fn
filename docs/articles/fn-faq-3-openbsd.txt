@@ -9,7 +9,7 @@ Posting-Frequency: when fn changes
 Last-modified: 2026-09-27
 Summary: The OpenBSD 7.9 differences.
 
-OpenBSD 7.9 runs fn. Four things differ.
+OpenBSD 7.9 runs fn. Five things differ.
 
 *The disk:* FFS2, the installer's default, can lose the newest
 articles in a crash. So can a disk with a write cache. FFS1 on an
@@ -38,3 +38,8 @@ rcctl, and syslog for the log.
 
 *Ports:* _fn cannot bind below 1024. Use --port 11563 and a
 tls_port above 1024, or redirect with pf.
+
+*Memory:* Keep /etc/login.conf as it is. fn sizes itself within
+the datasize limit of the login class it runs under (4096M for
+_fn's daemon class, 1536M for a default login), and a store that
+needs more is refused by name with both numbers.
