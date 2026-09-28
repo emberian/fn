@@ -1385,6 +1385,11 @@
        (true-listp wire-event)
        (equal (len wire-event) 3)))
 
+; EXPORTED: a command line is never the context event, so a theorem about a
+; (:command LINE) step reads that branch off without opening the recognizer.
+(defthm fn-auth-context-eventp-of-a-command
+  (not (fn-auth-context-eventp (cons :command rest))))
+
 (defun fn-auth-install-context (as wire-event)
   (declare (xargs :guard t))
   (let* ((seed (fn-scram-nth 1 wire-event))

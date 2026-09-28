@@ -204,6 +204,8 @@
 (defthm fn-auth-step-pinned-answers-500-to-a-keyword-help-does-not-list
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                ; A line while a SASL exchange is kept is its response.
+                (not (fn-auth-sasl-waitingp as))
                 (not (fn-peer-session-transfer (fn-auth-session-base as)))
                 (not (fn-post-session-awaiting (fn-auth-post-session as)))
                 (equal (fn-nntp-session-openp (fn-auth-reader-session as)) t)

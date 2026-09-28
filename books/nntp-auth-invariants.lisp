@@ -136,6 +136,7 @@
 (defthm fn-auth-step-pinned-post-without-permission-is-not-offered
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-sasl-waitingp as))
                 (not (fn-auth-postingp as))
                 (fn-nntp-command-inputp line)
                 (consp (fn-nntp-tokenize line))
@@ -369,6 +370,7 @@
 (defthm fn-auth-step-pinned-gated-command-is-refused-and-not-performed
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-sasl-waitingp as))
                 (fn-auth-config-requiredp (fn-auth-session-config as))
                 (not (fn-auth-session-subject as))
                 (fn-nntp-command-inputp line)
@@ -421,6 +423,7 @@
 (defthm fn-auth-step-pinned-protected-only-refuses-authinfo-before-tls
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-sasl-waitingp as))
                 (not (fn-auth-session-subject as))
                 (fn-auth-config-protected-onlyp (fn-auth-session-config as))
                 (not (fn-auth-session-tlsp as))
@@ -776,6 +779,7 @@
 (defthm fn-auth-step-pinned-post-by-a-principal-without-the-flag-is-440
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-sasl-waitingp as))
                 (fn-auth-session-subject as)
                 (not (fn-auth-cred-postingp
                       (fn-auth-find-cred (fn-auth-session-pending as)
@@ -848,6 +852,7 @@
 (defthm fn-auth-step-pinned-post-by-a-principal-with-the-flag-is-delegated
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-sasl-waitingp as))
                 (fn-auth-cred-postingp
                  (fn-auth-find-cred (fn-auth-session-pending as)
                                     (fn-auth-config-creds
