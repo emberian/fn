@@ -86,8 +86,8 @@ class LogCompactionMixin:
         self.dir.cleanup()
 
     def filled(self, first: int, count: int, node=None) -> Node:
-        node = node or Node(self.image, self.root)
-        if not (node.store / "journal").exists():
+        node = node or Node(self, self.image, root=self.root)
+        if not (node.store_path / "journal").exists():
             node.init()
         node.start()
         try:
@@ -102,54 +102,54 @@ class LogCompactionMixin:
         out = {}
         for i in ids:
             if store is None:
-                result = node.fn("operator", str(node.config), "store", "inspect", msgid(i))
+                result = node.invoke("operator", str(node.config), "store", "inspect", msgid(i))
             else:
-                result = node.fn("store", str(store), "inspect", msgid(i))
+                result = node.invoke("store", str(store), "inspect", msgid(i))
             self.assertEqual(result.returncode, 0, (i, result.stderr[-600:]))
             out[i] = result.stdout
         return out
 
     def compact(self, node: Node, env=None):
-        return node.fn("operator", str(node.config), "store", "compact", env=env)
+        return node.invoke("operator", str(node.config), "store", "compact", env=env)
 
     def test_compaction_rotates_drops_and_serves_the_same_history(self):
         node = self.filled(0, 12)
-        self.assertEqual(segments(node.store), ["000001.log"])
+        self.assertEqual(segments(node.store_path), ["000001.log"])
         before = self.inspect_all(node, range(12))
         done = self.compact(node)
         self.assertEqual(done.returncode, 0, done.stderr[-800:])
         self.assertIn(b"compacted steps=checkpoint,drop records=", done.stdout)
         self.assertIn(b"segment=2 dropped=1", done.stdout)
-        self.assertEqual(segments(node.store), ["000002.log"])
+        self.assertEqual(segments(node.store_path), ["000002.log"])
         self.assertEqual(self.inspect_all(node, range(12)), before)
         # The node reopens over the checkpoint and segment 2 and commits.
         self.filled(12, 6, node)
         before = self.inspect_all(node, range(18))
         done = self.compact(node)
         self.assertEqual(done.returncode, 0, done.stderr[-800:])
-        self.assertEqual(segments(node.store), ["000003.log"])
+        self.assertEqual(segments(node.store_path), ["000003.log"])
         self.assertEqual(self.inspect_all(node, range(18)), before)
         # Export of the compacted store (the checkpoint's records then the
         # log's), import, export again: the same archive.
         archive, again = self.root / "archive", self.root / "again"
-        exported = node.fn("store", str(node.store), "export", str(archive))
+        exported = node.invoke("store", str(node.store_path), "export", str(archive))
         self.assertEqual(exported.returncode, 0, exported.stderr[-800:])
         self.assertIn(b"exported records=", exported.stdout)
         imported_root = self.root / "imported"
-        imported = node.fn("store", str(imported_root), "import", str(archive))
+        imported = node.invoke("store", str(imported_root), "import", str(archive))
         self.assertEqual(imported.returncode, 0, imported.stderr[-800:])
         self.assertEqual(segments(imported_root), ["000001.log"])
-        reexported = node.fn("store", str(imported_root), "export", str(again))
+        reexported = node.invoke("store", str(imported_root), "export", str(again))
         self.assertEqual(reexported.returncode, 0, reexported.stderr[-800:])
         files = lambda d: {p.relative_to(d): p.read_bytes() for p in sorted(d.rglob("*")) if p.is_file()}
         self.assertEqual(files(again), files(archive))
         # `store ROOT inspect` on both stores (the operator's form prints
         # another report).
         self.assertEqual(self.inspect_all(node, range(18), store=imported_root),
-                         self.inspect_all(node, range(18), store=node.store))
+                         self.inspect_all(node, range(18), store=node.store_path))
 
     def store_holds(self, node: Node, needle: bytes) -> bool:
-        return any(needle in p.read_bytes() for p in node.store.rglob("*") if p.is_file())
+        return any(needle in p.read_bytes() for p in node.store_path.rglob("*") if p.is_file())
 
     def test_reclaim_over_the_log_removes_the_released_payloads(self):
         """`store reclaim` on a store (books/store-log-reclaim.lisp):
@@ -157,9 +157,9 @@ class LogCompactionMixin:
         the released articles' payload octets are on no file of the store."""
         node = self.filled(0, 8)
         self.assertTrue(self.store_holds(node, b"body of 3\r\n"))
-        rule = node.fn("operator", str(node.config), "retention", "set", "released-by-all-holders")
+        rule = node.invoke("operator", str(node.config), "retention", "set", "released-by-all-holders")
         self.assertEqual(rule.returncode, 0, rule.stderr[-600:])
-        dry = node.fn("operator", str(node.config), "store", "reclaim", "--dry-run")
+        dry = node.invoke("operator", str(node.config), "store", "reclaim", "--dry-run")
         self.assertEqual(dry.returncode, 0, dry.stderr[-600:])
         self.assertIn(b"dry-run would-reclaim=8", dry.stdout)
         # The counts read each article through the arena (lane
@@ -169,21 +169,21 @@ class LogCompactionMixin:
         self.assertEqual(before["reclaimable"], 8, dry.stdout)
         self.assertGreater(before["reclaimable-octets"], 0, dry.stdout)
         self.assertEqual(before["reclaimed"], 0, dry.stdout)
-        self.assertEqual(segments(node.store), ["000001.log"])
-        done = node.fn("operator", str(node.config), "store", "reclaim")
+        self.assertEqual(segments(node.store_path), ["000001.log"])
+        done = node.invoke("operator", str(node.config), "store", "reclaim")
         self.assertEqual(done.returncode, 0, done.stderr[-800:])
         self.assertIn(b"reclaimed=8", done.stdout)
-        self.assertEqual(segments(node.store), ["000002.log"])
+        self.assertEqual(segments(node.store_path), ["000002.log"])
         for i in range(8):
             self.assertFalse(self.store_holds(node, b"body of %d\r\n" % i), i)
-        again = node.fn("operator", str(node.config), "store", "reclaim")
+        again = node.invoke("operator", str(node.config), "store", "reclaim")
         self.assertEqual(again.returncode, 0, again.stderr[-800:])
         self.assertIn(b"reclaimed=0", again.stdout)
         after = reclaim_counts(again.stdout)
         self.assertEqual(after["reclaimable"], 0, again.stdout)
         self.assertEqual(after["reclaimable-octets"], 0, again.stdout)
         self.assertEqual(after["reclaimed"], 8, again.stdout)
-        recovered = node.fn("store", str(node.store), "recover")
+        recovered = node.invoke("store", str(node.store_path), "recover")
         self.assertEqual(recovered.returncode, 0, recovered.stderr[-800:])
 
     def test_refusals_by_name(self):
@@ -191,27 +191,27 @@ class LogCompactionMixin:
         self.assertEqual(self.compact(node).returncode, 0)
         self.filled(6, 3, node)
         self.assertEqual(self.compact(node).returncode, 0)
-        self.assertEqual(segments(node.store), ["000003.log"])
+        self.assertEqual(segments(node.store_path), ["000003.log"])
         self.filled(9, 2, node)
         pristine = self.root / "pristine"
-        shutil.copytree(node.store, pristine)
+        shutil.copytree(node.store_path, pristine)
 
         def reopened_refusal(word):
-            result = node.fn("store", str(node.store), "recover")
+            result = node.invoke("store", str(node.store_path), "recover")
             self.assertEqual(result.returncode, 1, (word, result.stdout, result.stderr[-600:]))
             self.assertIn(("reason=" + word).encode(), result.stdout + result.stderr)
-            shutil.rmtree(node.store)
-            shutil.copytree(pristine, node.store)
+            shutil.rmtree(node.store_path)
+            shutil.copytree(pristine, node.store_path)
 
         # A stale segment after the active one: segment 3's bytes as 000004.log
         # chain from segment 2's trailer, not segment 3's last.
-        shutil.copyfile(node.store / "journal" / "000003.log", node.store / "journal" / "000004.log")
+        shutil.copyfile(node.store_path / "journal" / "000003.log", node.store_path / "journal" / "000004.log")
         reopened_refusal("log-chain-broken")
         # The checkpoint's first segment missing: history-short-of-checkpoint.
-        (node.store / "journal" / "000003.log").rename(node.store / "journal" / "000005.log")
+        (node.store_path / "journal" / "000003.log").rename(node.store_path / "journal" / "000005.log")
         reopened_refusal("history-short-of-checkpoint")
         # The checkpoint gone after the drop: checkpoint-damaged.
-        (node.store / "store-checkpoint.fnsc").unlink()
+        (node.store_path / "store-checkpoint.fnsc").unlink()
         reopened_refusal("checkpoint-damaged")
 
 
@@ -223,19 +223,19 @@ class DeveloperLogCompactionTests(LogCompactionMixin, unittest.TestCase):
         node = self.filled(0, 8)
         before = self.inspect_all(node, range(8))
         pristine = self.root / "pristine"
-        shutil.copytree(node.store, pristine)
+        shutil.copytree(node.store_path, pristine)
         for cut in ROTATION_CUTS:
             with self.subTest(cut=cut):
-                shutil.rmtree(node.store)
-                shutil.copytree(pristine, node.store)
+                shutil.rmtree(node.store_path)
+                shutil.copytree(pristine, node.store_path)
                 killed = self.compact(node, env={"FN_NATIVE_LOG_FAULT": cut})
                 self.assertEqual(killed.returncode, -9, (cut, killed.stdout, killed.stderr[-600:]))
-                recovered = node.fn("store", str(node.store), "recover")
+                recovered = node.invoke("store", str(node.store_path), "recover")
                 self.assertEqual(recovered.returncode, 0, (cut, recovered.stderr[-800:]))
                 self.assertEqual(self.inspect_all(node, range(8)), before, cut)
-                present = segments(node.store)
+                present = segments(node.store_path)
                 # the genesis survives every rotation and drop cut
-                self.assertTrue(genesis_kept(node.store), cut)
+                self.assertTrue(genesis_kept(node.store_path), cut)
                 if cut.startswith("drop"):
                     # the checkpoint was installed: the recover finished the drop
                     self.assertEqual(present, ["000002.log"], cut)
@@ -243,7 +243,7 @@ class DeveloperLogCompactionTests(LogCompactionMixin, unittest.TestCase):
                     # the spare was staged, never named: segment 1 is still
                     # the active one, and the writable open swept the spare
                     self.assertEqual(present, ["000001.log"], cut)
-                    self.assertEqual([p.name for p in (node.store / "staging").glob(".stage-segment-*")],
+                    self.assertEqual([p.name for p in (node.store_path / "staging").glob(".stage-segment-*")],
                                      [], cut)
                 else:
                     # no checkpoint names segment 2 yet: the open scans 1 then 2
@@ -251,7 +251,7 @@ class DeveloperLogCompactionTests(LogCompactionMixin, unittest.TestCase):
                 again = self.compact(node)
                 self.assertEqual(again.returncode, 0, (cut, again.stderr[-800:]))
                 self.assertEqual(self.inspect_all(node, range(8)), before, cut)
-                self.assertEqual(len(segments(node.store)), 1, cut)
+                self.assertEqual(len(segments(node.store_path)), 1, cut)
 
 
 @unittest.skipUnless(PRODUCTION, "FN_NATIVE_HOST names the production image")
