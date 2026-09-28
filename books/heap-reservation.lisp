@@ -52,18 +52,19 @@
 (in-package "ACL2")
 (include-book "heap-figure")
 (include-book "native-control")
+(include-book "profile-limits") ; its figures are rows there
 
 ; The tau system is off in this book: it is time no prover step counts, and
 ; here it was half the proof time (ACL2 time over the book's own forms 6.0 ->
 ; 3.2 s at the same steps, persvati REPL 2026-09-28, lane d26-books-2).
 (local (in-theory (disable (tau-system))))
 
-(defconst *fn-heap-stack-octets* (* 1024 1024))
-(defconst *fn-heap-thread-runtime-octets* (* 4 *fn-heap-mib*))
-(defconst *fn-heap-fixed-threads* 12)
+(defconst *fn-heap-stack-octets* (* 1024 (fn-profile-limit :stack-kib)))
+(defconst *fn-heap-thread-runtime-octets* (* (fn-profile-limit :thread-runtime-mib) *fn-heap-mib*))
+(defconst *fn-heap-fixed-threads* (fn-profile-limit :fixed-threads))
 ; The stack when no store profile is named (help, --version): SBCL's own
 ; default, 2 MiB.
-(defconst *fn-heap-default-stack-kib* 2048)
+(defconst *fn-heap-default-stack-kib* (fn-profile-limit :default-stack-kib))
 
 ; The control stack of every thread: the constant above, whatever the
 ; profile (PROFILE stays an argument: the figure is the profile's, and a
@@ -89,7 +90,7 @@
 ;; Before this lane the reservation still counted one thread per connection
 ;; (32 x 5 MiB at the default capacity).  The host's thread count for the
 ;; connection budget is this one (fnn-mux-thread-count).
-(defconst *fn-heap-mux-loops* 2)
+(defconst *fn-heap-mux-loops* (fn-profile-limit :mux-loops))
 
 (defun fn-heap-mux-loops ()
   (declare (xargs :guard t))

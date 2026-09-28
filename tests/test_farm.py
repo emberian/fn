@@ -1230,3 +1230,44 @@ class FrictionTests(unittest.TestCase):
             start = next(index for index, line in enumerate(printed)
                          if line.startswith("== verdict run-w: exit 0"))
             self.assertIn("verdict is unknown", printed[start + 1])
+
+
+class RecertifyFromTests(unittest.TestCase):
+    """--recertify-from FILE: a book list that no shell word splitting can merge."""
+
+    def submitted(self, text: str, *extra: str) -> tuple[list[str], list[str]]:
+        with tempfile.TemporaryDirectory() as directory:
+            listing = Path(directory) / "books.txt"
+            listing.write_text(text)
+            with mock.patch.object(farm, "submit", return_value="run-1") as submit, \
+                    mock.patch.object(farm, "honour_reservation"), \
+                    contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                code = farm.main(["submit", "hbox", "--recertify-from", str(listing),
+                                  "--root", directory, *extra])
+            self.assertEqual(code, 0)
+            books = submit.call_args.args[2]
+            return books, submit.call_args.kwargs["recertify"]
+
+    def test_commas_whitespace_and_comments_read_as_one_list(self):
+        books, recertify = self.submitted(
+            "books/config, books/stx-lace  # pasted from green_check\n\nbooks/config\n")
+        self.assertEqual(recertify, ["books/config", "books/stx-lace"])
+        self.assertEqual(books, ["books/config", "books/stx-lace"])
+
+    def test_named_roots_stay_the_roots(self):
+        books, recertify = self.submitted("books/config\n", "books/owner")
+        self.assertEqual(books, ["books/owner"])
+        self.assertEqual(recertify, ["books/config"])
+
+    def test_an_empty_list_is_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            listing = Path(directory) / "books.txt"
+            listing.write_text("# nothing\n")
+            with mock.patch.object(farm, "submit") as submit, \
+                    contextlib.redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit) as raised:
+                farm.main(["submit", "hbox", "--recertify-from", str(listing),
+                           "--root", directory])
+            self.assertEqual(raised.exception.code, 2)
+            submit.assert_not_called()

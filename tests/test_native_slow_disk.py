@@ -24,6 +24,7 @@ latency; the node's answers are stated relative to it
     barrier's latency and one slow episode, and the next POST is accepted
     (fn-otm-return-recovers).
 """
+import json
 import os
 import re
 import select
@@ -504,19 +505,28 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertIn(b"disk stalled: a barrier has waited ", log)
         self.assertIn(b"disk recovered after a stall: the barrier completed after ", log)
         # The decision journal: this run's segment, entries in sequence
-        # (books/owner-time-journal.lisp: (SEQ OP READING A B C WORD)).
+        # (books/owner-time-journal.lisp: (SEQ OP READING A B C WORD)), its
+        # codes looked up by name in the registry its defevent forms generate
+        # (planning/events.json), never copied here.
+        families = json.loads((ROOT / "planning" / "events.json").read_text())["families"]
+        op = dict(families["fn-otm-op"]["codes"],
+                  **{r["name"]: int(c) for c, r in families["fn-otm-op"]["reserved"].items()})
+        word = families["fn-otm-word"]["codes"]
         journal = (self.store / "decisions" / "decisions.fnj").read_bytes()
         entries = [[int(x) for x in line.split(b" ")] for line in journal.split(b"\n") if line]
-        start = max(i for i, entry in enumerate(entries) if entry[1] == 0)
+        start = max(i for i, entry in enumerate(entries) if entry[1] == op["start"])
         segment = entries[start + 1:]
         self.assertTrue(all(len(entry) == 7 for entry in entries))
         self.assertEqual([entry[0] for entry in segment], list(range(1, len(segment) + 1)))
-        readings = [entry[2] for entry in segment if entry[1] in (1, 2, 3, 4)]
+        readings = [entry[2] for entry in segment
+                    if entry[1] in (op["clock"], op["served"], op["issue"], op["return"])]
         self.assertEqual(readings, sorted(readings), "the recorded time went backwards")
-        self.assertIn([3, 2000, 6000, 250], [[e[1], e[3], e[4], e[5]] for e in segment])
-        self.assertTrue(any(e[1] in (1, 2) and e[6] == 6 for e in segment), "no :became-stalled")
-        self.assertIn([5, 2, 1], [[e[1], e[3], e[4]] for e in segment])
-        self.assertTrue(any(e[1] == 4 and e[6] == 4 for e in segment), "no :recovered-from-stall")
+        self.assertIn([op["issue"], 2000, 6000, 250], [[e[1], e[3], e[4], e[5]] for e in segment])
+        self.assertTrue(any(e[1] in (op["clock"], op["served"]) and e[6] == word["became-stalled"]
+                            for e in segment), "no :became-stalled")
+        self.assertIn([op["note"], 2, 1], [[e[1], e[3], e[4]] for e in segment])
+        self.assertTrue(any(e[1] == op["return"] and e[6] == word["recovered-from-stall"]
+                            for e in segment), "no :recovered-from-stall")
         print("journal: %d entries in this run's segment, %d bytes in the file" % (len(segment), len(journal)))
         # The operator's replay (`store ROOT journal', ACL2's fn-otm-replay).
         replay = self.node.store("journal", timeout=120)

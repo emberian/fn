@@ -400,10 +400,17 @@
 
 (defun fn-native-auth-admin-bind (octets presentp name signing-text
                                         max-credentials)
-  ; Host-called mutation subject for `principal bind' / `unbind'.  The login
-  ; must already be enrolled; its credential row is unchanged and only its
+  ; Host-called mutation subject for `principal bind' / `unbind'.  For a
+  ; login the file enrolls, its credential row is unchanged and only its
   ; `signing' field is written or removed.  MAX-CREDENTIALS is the store
   ; profile's (D27, PRF-102): the file is loaded and rewritten under it.
+  ; A login the file does not hold is answered (:account :account-login),
+  ; nothing written (PRF-388, PKT-560): it may be a login redeemed from an
+  ; invitation, whose credential and binding are the configuration's, and
+  ; the operator sends the administrative record `account bind|unbind'
+  ; (books/native-operator.lisp fn-native-operator-result-principal-account-
+  ; result), which books/login-binding-live.lisp fn-lb-account-bind-plan
+  ; admits only for a redeemed account and otherwise refuses unknown-login.
   (declare (xargs :guard t))
   (let ((loaded (fn-native-auth-load octets presentp nil nil nil
                                      max-credentials))
@@ -423,7 +430,7 @@
       (let* ((creds (fn-auth-config-creds (fn-native-auth-result-config loaded)))
              (credential (fn-auth-find-cred name creds)))
         (if (not (consp credential))
-            (list :refused :unknown-login)
+            (list :account :account-login)
           (let* ((bindings (fn-native-auth-admin-rebind
                             name principal
                             (fn-native-auth-load-bindings octets presentp max-credentials)))

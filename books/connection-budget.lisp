@@ -87,6 +87,7 @@
 
 (include-book "heap-figure")
 (include-book "public-exposure")
+(include-book "profile-limits") ; its figures are rows there
 
 ; -----------------------------------------------------------------------------
 ; The per-connection figure.  The measured constants are pinned by the native
@@ -145,7 +146,7 @@
 (defconst *fn-cbud-reply-status-octets* 1024)
 (defconst *fn-cbud-kernel-octets* 212992)
 (defconst *fn-cbud-tls-octets* 131072)
-(defconst *fn-cbud-thread-runtime-octets* 4194304)
+(defconst *fn-cbud-thread-runtime-octets* (* (fn-profile-limit :thread-runtime-mib) 1024 1024))
 
 (defun fn-cbud-conn-heap-octets (article)
   (declare (xargs :guard t))

@@ -126,6 +126,117 @@ class DriverThroughGit(unittest.TestCase):
             self.assertFalse((repo / "build/merge-conflicts/registry.jsonl").exists())
 
 
+class RequirementsAndCatalogThroughGit(unittest.TestCase):
+    """C5 (COMPLETE-BEFORE-6.6.0): requirements.json and the scenario catalog
+    merge by id like proofs.json, and the cross-file link stays reciprocal."""
+
+    def write_all(self, repo: Path, requirements: list, scenarios: list, proofs: list) -> None:
+        for path, key, rows in (("planning/requirements.json", "requirements", requirements),
+                                ("tests/scenarios/catalog.json", "scenarios", scenarios),
+                                ("planning/proofs.json", "proofs", proofs)):
+            target = repo / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps({"schema_version": 1, key: rows}, indent=2) + "\n")
+
+    def test_two_lanes_linking_proofs_to_one_requirement_keep_both_links(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            git(repo, "init", "-q", "-b", "dev")
+            (repo / ".gitattributes").write_text(
+                "planning/proofs.json merge=fn-registry\n"
+                "planning/requirements.json merge=fn-registry\n"
+                "tests/scenarios/catalog.json merge=fn-registry\n")
+            req = {"id": "NNT-034", "title": "t", "proof_targets": ["PRF-164"]}
+            scn = {"id": "SCN-001", "title": "s", "requirements": ["NNT-034"]}
+            prf = {"id": "PRF-164", "title": "p", "requirements": ["NNT-034"]}
+            self.write_all(repo, [req], [scn], [prf])
+            git(repo, "add", ".")
+            git(repo, "commit", "-q", "-m", "base")
+            # Lane a: PRF-374 on NNT-034 (both sides) and SCN-002.
+            git(repo, "checkout", "-q", "-b", "a", "dev")
+            self.write_all(repo, [dict(req, proof_targets=["PRF-164", "PRF-374"])],
+                           [scn, {"id": "SCN-002", "title": "a", "requirements": ["NNT-034"]}],
+                           [prf, {"id": "PRF-374", "title": "a", "requirements": ["NNT-034"]}])
+            git(repo, "commit", "-q", "-am", "a")
+            # Lane b: PRF-378 on NNT-034 (both sides) and SCN-003.
+            git(repo, "checkout", "-q", "-b", "b", "dev")
+            self.write_all(repo, [dict(req, proof_targets=["PRF-164", "PRF-378"])],
+                           [scn, {"id": "SCN-003", "title": "b", "requirements": ["NNT-034"]}],
+                           [prf, {"id": "PRF-378", "title": "b", "requirements": ["NNT-034"]}])
+            git(repo, "commit", "-q", "-am", "b")
+            git(repo, "checkout", "-q", "a")
+            merged = git(repo, "merge", "--no-edit", "b", check=False)
+            self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
+            (only,) = json.loads((repo / "planning/requirements.json").read_text())["requirements"]
+            self.assertEqual(only["proof_targets"], ["PRF-164", "PRF-374", "PRF-378"])
+            scenarios = json.loads((repo / "tests/scenarios/catalog.json").read_text())
+            self.assertEqual([r["id"] for r in scenarios["scenarios"]],
+                             ["SCN-001", "SCN-002", "SCN-003"])
+            check = subprocess.run([sys.executable, str(DRIVER), "--reciprocate", "--check"],
+                                   cwd=repo, capture_output=True, text=True)
+            self.assertEqual(check.returncode, 0, check.stdout)
+
+    def test_a_one_way_registration_is_found_and_repaired_on_both_files(self):
+        # The recurring break (PRF-374/378/379/383): the proof names the
+        # requirement; the requirement never lists the proof.
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            self.write_all(repo,
+                           [{"id": "NNT-034", "proof_targets": ["PRF-164", "PRF-900"]},
+                            {"id": "HST-006", "proof_targets": []}],
+                           [], [{"id": "PRF-164", "requirements": ["NNT-034"]},
+                                {"id": "PRF-374", "requirements": ["NNT-034"]},
+                                {"id": "PRF-383", "requirements": ["HST-006"]},
+                                {"id": "PRF-500", "requirements": []}])
+            requirements = json.loads((repo / "planning/requirements.json").read_text())
+            requirements["requirements"][1]["proof_targets"].append("PRF-500")
+            (repo / "planning/requirements.json").write_text(
+                json.dumps(requirements, indent=2) + "\n")
+            check = subprocess.run([sys.executable, str(DRIVER), "--reciprocate", "--check"],
+                                   cwd=repo, capture_output=True, text=True)
+            self.assertEqual(check.returncode, 1)
+            self.assertIn("MISSING NNT-034 proof_targets += PRF-374", check.stdout)
+            self.assertIn("MISSING HST-006 proof_targets += PRF-383", check.stdout)
+            self.assertIn("MISSING PRF-500 requirements += HST-006", check.stdout)
+            fixed = subprocess.run([sys.executable, str(DRIVER), "--reciprocate"],
+                                   cwd=repo, capture_output=True, text=True)
+            self.assertEqual(fixed.returncode, 0, fixed.stdout + fixed.stderr)
+            rows = {r["id"]: r for r in json.loads(
+                (repo / "planning/requirements.json").read_text())["requirements"]}
+            # A link to an unknown proof (PRF-900) is left for check_scaffold.
+            self.assertEqual(rows["NNT-034"]["proof_targets"], ["PRF-164", "PRF-900", "PRF-374"])
+            self.assertEqual(rows["HST-006"]["proof_targets"], ["PRF-500", "PRF-383"])
+            proofs = {r["id"]: r for r in json.loads(
+                (repo / "planning/proofs.json").read_text())["proofs"]}
+            self.assertEqual(proofs["PRF-500"]["requirements"], ["HST-006"])
+            again = subprocess.run([sys.executable, str(DRIVER), "--reciprocate", "--check"],
+                                   cwd=repo, capture_output=True, text=True)
+            self.assertEqual(again.returncode, 0, again.stdout)
+
+    def test_the_tree_is_reciprocal(self):
+        requirements = json.loads((ROOT / "planning/requirements.json").read_text())
+        proofs = json.loads((ROOT / "planning/proofs.json").read_text())
+        self.assertEqual(merge_registry.reciprocate(requirements, proofs), [])
+
+    def test_an_unregistered_clone_is_named_and_install_registers_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_SYSTEM=os.devnull)
+            run = lambda *words: subprocess.run([sys.executable, str(DRIVER), *words],
+                                                cwd=repo, capture_output=True, text=True,
+                                                env=env)
+            missing = run("--installed")
+            self.assertEqual(missing.returncode, 1)
+            self.assertIn("NOT REGISTERED", missing.stdout)
+            self.assertEqual(run("--install").returncode, 0)
+            driver = subprocess.run(["git", "-C", str(repo), "config", "--get",
+                                     "merge.fn-registry.driver"], capture_output=True,
+                                    text=True, env=env).stdout.strip()
+            self.assertEqual(driver, "python3 tools/merge_registry.py %O %A %B %P")
+            self.assertEqual(run("--installed").returncode, 0)
+
+
 class RuleTests(unittest.TestCase):
     def test_deleted_on_one_side_unchanged_on_the_other_stays_deleted(self):
         base = {"rows": [row("A"), row("B")]}
