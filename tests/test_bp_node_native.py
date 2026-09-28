@@ -16,7 +16,7 @@ import tempfile
 import time
 import unittest
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests import native_harness
 from tests.test_bp_contact_relay_native import ByteRelay
 from tools import run_bp_ingress, run_store
 from tools.wire_stream import whole_stream
@@ -194,33 +194,21 @@ class NativeBpNodeTests(unittest.TestCase):
         env = dict(self.env)
         if extra_env:
             env.update(extra_env)
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "bp-node", "serve", str(listen_port),
+        process = native_harness.start(
+            [IMAGE, "--fn", "bp-node", "serve", str(listen_port),
              str(journal), str(store), str(receipts), str(workflow),
              node, peer, node, "native-policy", node,
              "127.0.0.1", str(self.relay.port),
              "1" if once else "0", "3600000", "2", "32", str(transfer_mru),
              "0", "0"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0,
-        )
+            cwd=ROOT, env=env)
         self.addCleanup(self.stop_process, process)
-        line = wait_for_announcement(process, b"BP NODE LISTENING ", timeout=45)
-        if not line.startswith(b"BP NODE LISTENING "):
-            self.fail(f"node failed: {line!r} {stop_and_diagnostics(process)}")
+        line = process.announcement(b"BP NODE LISTENING ", timeout=45)
         return process, int(line.rsplit(b" ", 1)[1])
 
     @staticmethod
     def stop_process(process):
-        if process.poll() is None:
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=5)
-        process.stdout.close()
-        process.stderr.close()
+        process.stop(grace=5)
 
     def send_request(self, port, work, *, lifetime=3600000):
         return self.invoke(
@@ -635,9 +623,8 @@ class NativeBpNodeTests(unittest.TestCase):
         time.sleep(self.BACKOFF_MS / 1000 + 0.2)
         self.send_transit(port, transit, "p3")
         time.sleep(2)
-        receiver.terminate()
-        receiver.wait(timeout=15)
-        seen += receiver.stdout.read()
+        receiver.stop(grace=15)
+        seen += receiver.output_since_cursor()
         self.assertNotIn(b"busy=4", seen)
         self.assertNotIn(b"request-refused", seen)
         self.assertNotIn(b"request-accepted", seen)
@@ -901,10 +888,7 @@ class NativeBpNodeTests(unittest.TestCase):
         args = self.dispatch_receiver_args()
         env = dict(self.env)
         env["FN_BP_NODE_TEST_PAUSE_AFTER_KIND_EIGHT_SENT"] = "1"
-        cut = subprocess.Popen(
-            args, cwd=ROOT, env=env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0,
-        )
+        cut = native_harness.start(args, cwd=ROOT, env=env)
         self.addCleanup(self.stop_process, cut)
         self.wait_for_output(cut, b"BP NODE KIND8 SENT", timeout=240)
         cut.kill()
@@ -1107,12 +1091,10 @@ class NativeBpNodeTests(unittest.TestCase):
             f'[listener]\nhost = "127.0.0.1"\nport = {port}\n'
             f'[control]\npath = "{self.tmp / "reader-control.sock"}"\n',
             encoding="ascii")
-        process = subprocess.Popen(
-            [str(READER_IMAGE), "--fn", "operator", str(config), "run"], cwd=ROOT,
-            env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            bufsize=0)
+        process = native_harness.start(
+            [READER_IMAGE, "--fn", "operator", config, "run"], cwd=ROOT, env=self.env)
         try:
-            wait_for_announcement(process, b"LISTENING ", timeout=60)
+            process.announcement(b"LISTENING ", timeout=60)
             with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
                 stream = whole_stream(client)
                 self.assertTrue(stream.readline().startswith(b"200 "))
@@ -1341,21 +1323,7 @@ class NativeBpNodeTests(unittest.TestCase):
 
     @staticmethod
     def wait_for_output(process, marker, timeout=45):
-        deadline = time.monotonic() + timeout
-        captured = bytearray()
-        while time.monotonic() < deadline:
-            if process.poll() is not None:
-                break
-            ready = select.select([process.stdout], [], [], 0.2)[0]
-            if ready:
-                line = process.stdout.readline()
-                captured.extend(line)
-                if marker in captured:
-                    return bytes(captured)
-        raise AssertionError(
-            f"native marker {marker!r} absent: {bytes(captured)!r}; "
-            f"{stop_and_diagnostics(process)}"
-        )
+        return process.output_until(marker, timeout=timeout)
 
     def test_conflicting_return_job_fences_after_request_commit(self):
         conflict = self.tmp / "conflict.adu"
@@ -1544,10 +1512,8 @@ class NativeBpNodeTests(unittest.TestCase):
         # The kind-10 record is durable before the outbound sequence/job cut.
         env = dict(self.env)
         env["FN_BP_NODE_TEST_PAUSE_AFTER_KIND_TEN"] = "1"
-        candidate = subprocess.Popen(
-            self.dispatch_receiver_args(reports=True), cwd=ROOT, env=env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0,
-        )
+        candidate = native_harness.start(
+            self.dispatch_receiver_args(reports=True), cwd=ROOT, env=env)
         self.addCleanup(self.stop_process, candidate)
         self.wait_for_output(candidate, b"BP NODE KIND10 DURABLE", timeout=120)
         candidate.kill()
