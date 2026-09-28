@@ -42,12 +42,6 @@
                                      (f-get-global 'fn-workflow-state state))))
   (value (if (consp selected) (fn-sched-item-work-id selected) :none))))
 
-(defun fn-sched-host-passes (work-id state)
- (declare (xargs :stobjs state :mode :program))
- (let ((item (fn-sched-find work-id
-                            (fn-sched-queue (f-get-global 'fn-sched-state state)))))
-  (value (if (consp item) (fn-sched-item-passes item) :none))))
-
 ; The durable decision record for the work the scheduler just selected, as the
 ; protected octets of one FNSC frame.  The host appends the A-CRYPTO trailer
 ; over exactly these octets, as it does for FNST, FNWF, FNRJ and FNBI.
