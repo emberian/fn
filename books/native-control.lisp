@@ -6,6 +6,7 @@
 
 (in-package "ACL2")
 (include-book "frame-trailer")
+(include-book "profile-limits") ; its figures are rows there
 (include-book "frame-invariants")
 (include-book "records-invariants")
 (include-book "injection")
@@ -105,7 +106,7 @@
   (<= *fn-nctrl-max-payload* *fn-frame-max-payload*)
   :rule-classes nil)
 ; Work bound: concurrent control clients the owner serves.
-(defconst *fn-nctrl-max-active-clients* 16)
+(defconst *fn-nctrl-max-active-clients* (fn-profile-limit :control-clients))
 (defconst *fn-nctrl-lease-suffix* '(46 108 111 99 107)) ; .lock
 (defconst *fn-nctrl-max-lease-path* (+ *fn-ncfg-max-path* 5))
 

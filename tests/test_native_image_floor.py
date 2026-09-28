@@ -41,6 +41,7 @@ import tempfile
 import unittest
 
 from tests import native_harness
+from tools import profile_limits
 from tests.native_harness import (
     EXIT_FAULT, EXIT_USAGE, ROOT, Client, Node, executable, native_image)
 
@@ -55,7 +56,8 @@ MEASURE = ROOT / "tools" / "runtime_image" / "node_measure.py"
 GUARD_LINE = (b"store: host-entry-guard: fn-b3-left-chunks argument 2 (n) must be a "
               b"natural (natp); the host passed the integer -1\n")
 CORE_CEILING_KIB = 128 * 1024
-SMALL_STACK_KIB = 1024          # fn-heap-stack-kib: the constant (served-line-iterative)
+# fn-heap-stack-kib: the profile's row (books/profile-limits.lisp), read, not copied.
+SMALL_STACK_KIB = profile_limits.get("stack-kib")
 
 
 # This module measures the control stack, so it names every stack itself:
@@ -94,6 +96,20 @@ class ProductionTests(unittest.TestCase):
     def setUp(self):
         if not executable(IMAGE):
             self.skipTest("needs the production image %s" % IMAGE)
+
+    def test_launcher_carries_the_profile_figures(self):
+        """The saved launcher runs SBCL at the profile's figures: the build
+        printed them from ACL2 (FN_NATIVE_TLS_LIMIT, FN_NATIVE_STACK_KIB,
+        books/profile-limits.lisp through fn-profile-limit) and
+        tools/build_native_host.sh wrote them in.  The table is read here by
+        tools/profile_limits.py, a different reader of the same literal, so a
+        disagreement between the macro's reading, the build's and the tools'
+        shows here."""
+        text = Path(IMAGE).read_text(errors="replace")
+        tls = re.findall(r"--tls-limit (\d+) ", text)
+        stack = re.findall(r"--control-stack-size (\d+)KB ", text)
+        self.assertEqual(tls, [str(profile_limits.get("tls-limit"))], text)
+        self.assertEqual(stack, [str(profile_limits.get("stack-kib"))], text)
 
     def test_production_refuses_guard_probe(self):
         res = run(IMAGE, ["guard-probe"], environment())
