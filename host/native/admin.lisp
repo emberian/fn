@@ -30,6 +30,9 @@ represent."
   ;; configuration stamps (books/owner-config.lisp `fn-ocfg-config-stamp').
   ;; It was get-universal-time (seconds since 1900), so an offline record's
   ;; stamp was 3155673600 s ahead of a live one's (PKT-665, 2026-09-27).
+  ;; The stamp is therefore a :seconds reading; an offline `account invite'
+  ;; names that unit (books/accounts.lisp fn-acct-offline-invite-reading,
+  ;; PRF-374) so its expiry is in the owner clock's milliseconds (bug M1).
   (let ((result (fnn-core 'fn-native-admin-host-clock-observation
                           (floor (fnn-now) internal-time-units-per-second)
                           (floor (fnn-owner-wall-milliseconds) 1000))))

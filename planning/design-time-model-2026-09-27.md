@@ -63,6 +63,12 @@ latency: the disk, every peer and client socket, and the clock. The rule:
    argument. Nothing in ACL2 reads a clock; the host never compares times.
    A deadline expiring is a clock event `(:clock T)` appended by whoever waits
    (the committer's timed wait in slice 1); section 3.7.
+   A reading names its unit (books/clock-unit.lisp, lane invite-clock,
+   PRF-374): the owner's clock is `:milliseconds`, a configuration record's
+   stamp `:seconds`, and a decision that adds a duration to a reading
+   converts both to milliseconds there, never at the call site (bug M1: a
+   stopped node's invitation added seconds to milliseconds and was born
+   expired).
 3. **A timeout is not a failure.** An fdatasync that has not returned after
    its deadline is PENDING, not failed: the bytes may yet become durable.
    Only the device's own error (EIO, ENOSPC, EROFS) is a failure, and a

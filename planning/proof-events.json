@@ -12705,6 +12705,31 @@
           "name": "fn-heap-articles-octets-monotone"
         }
       ]
+    },
+    {
+      "id": "PRF-374",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-invite-expiry-agrees-across-the-running-and-stopped-paths"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-invite-delta-is-live-at-its-stamp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clock-reading-latest-milliseconds-of-an-owner-reading"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clock-reading-latest-milliseconds-of-a-record-stamp-reading"
+        }
+      ]
     }
   ]
 }
