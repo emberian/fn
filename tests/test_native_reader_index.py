@@ -8,94 +8,47 @@ tests.test_native_reader_index -v
 """
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
-from pathlib import Path
-import socket
-import subprocess
-import tempfile
 import time
 import unittest
 
-from tests.native_harness import wait_for_announcement, stop_and_diagnostics
+from tests.native_harness import EXIT, Client, Node, executable, native_image
 
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+IMAGE = native_image("FN_NATIVE_HOST")
 
 
 @unittest.skipUnless(os.environ.get("FN_RUN_NATIVE_READER_INDEX") == "1",
                      "set FN_RUN_NATIVE_READER_INDEX=1 for the integrated saved-image gate")
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
+@unittest.skipUnless(executable(IMAGE),
                      "an executable FN_NATIVE_HOST is required")
 class NativeReaderIndexTest(unittest.TestCase):
     def setUp(self):
-        temporary = tempfile.TemporaryDirectory(prefix="fn-reader-index-")
-        self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
-        self.store = self.root / "store"
-        self.control = self.root / "control.sock"
-        self.port = free_port()
-        self.config = self.root / "fn.toml"
-        self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
+        self.node = Node(self, IMAGE)
+        self.root, self.store, self.config = self.node.root, self.node.store_path, self.node.config
+        self.port, self.control = self.node.port, self.node.control
         self.run_native("operator", self.config, "init", "fn.test")
 
     def run_native(self, *words):
-        result = subprocess.run([str(IMAGE), "--fn", *map(str, words)], cwd=ROOT,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=180, check=False)
-        self.assertEqual(result.returncode, 0,
-                         result.stderr.decode("utf-8", "replace"))
-        return result
+        return self.node.invoke(*words, expect=EXIT.OK)
 
     def start_owner(self):
-        proc = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self.addCleanup(self.reap, proc)
-        wait_for_announcement(proc, b"LISTENING ")
-        return proc
-
-    @staticmethod
-    def reap(proc):
-        if proc.poll() is None:
-            proc.kill()
-            proc.wait(timeout=10)
-        for stream in (proc.stdout, proc.stderr):
-            if stream and not stream.closed:
-                stream.close()
+        return self.node.start()
 
     def stop_owner(self, proc):
-        diagnostic = stop_and_diagnostics(proc, timeout=60)
-        self.assertEqual(proc.returncode, 0, diagnostic)
+        self.node.stop(process=proc)
 
     def reader(self):
-        sock = socket.create_connection(("127.0.0.1", self.port), timeout=15)
-        sock.settimeout(15)
-        self.addCleanup(sock.close)
-        stream = sock.makefile("rb", buffering=0)
-        self.addCleanup(stream.close)
-        greeting = stream.readline(4096)
-        self.assertTrue(greeting.startswith(b"200 "), greeting)
-        return sock, stream
+        client = Client(self.port, timeout=15, greeting=(b"200",))
+        self.addCleanup(client.close, False)
+        return client
 
     def command(self, reader, line, multiline=False):
-        sock, stream = reader
-        sock.sendall(line.encode("ascii") + b"\r\n")
-        status = stream.readline(4096)
-        self.assertTrue(status, "missing NNTP reply to " + line)
+        """(status line, the block's rows as sent, stuffing kept)."""
+        status = reader.command(line)
         rows = []
         if multiline and status[:1] in (b"1", b"2"):
             while True:
-                row = stream.readline(32769)
-                self.assertTrue(row, "unterminated reply to " + line)
+                row = reader.line(limit=32769)
                 if row == b".\r\n":
                     break
                 rows.append(row)
@@ -181,16 +134,14 @@ class NativeReaderIndexTest(unittest.TestCase):
                 return self.overview(reader, "OVER", "1-100"), self.overview(
                     reader, "XOVER", "2-2")
             finally:
-                reader[1].close()
-                reader[0].close()
+                reader.close(quit=False)
 
         with ThreadPoolExecutor(max_workers=4) as pool:
             for pair in pool.map(read_pair, range(4)):
                 self.assertEqual(pair[0], (status, rows))
                 self.assertEqual(pair[1][1], [rows[1]])
         for reader in (old, middle, fresh):
-            reader[1].close()
-            reader[0].close()
+            reader.close(quit=False)
         self.stop_owner(owner)
         restarted = self.start_owner()
         recovered = self.reader()
@@ -198,8 +149,7 @@ class NativeReaderIndexTest(unittest.TestCase):
                         .startswith(b"211 "))
         self.assertEqual(self.overview(recovered, "OVER", "1-100"),
                          (status, rows))
-        recovered[1].close()
-        recovered[0].close()
+        recovered.close(quit=False)
         self.stop_owner(restarted)
 
     def test_over_carries_xref_of_local_numbers(self):
@@ -253,8 +203,7 @@ class NativeReaderIndexTest(unittest.TestCase):
         xref_rows = [row for row in art_rows if row.lower().startswith(b"xref:")]
         self.assertEqual(len(xref_rows), 1, art_rows)
         self.assertTrue(art_rows[0].lower().startswith(b"xref:"), art_rows[0])
-        reader[1].close()
-        reader[0].close()
+        reader.close(quit=False)
         self.stop_owner(owner)
 
     def listgroup(self, reader, group, number_range=None):
@@ -304,8 +253,7 @@ class NativeReaderIndexTest(unittest.TestCase):
             self.assertEqual(self.listgroup(reader, "fn.live")[1], [b"1\r\n"])
 
         for reader in (old, configured, middle, fresh):
-            reader[1].close()
-            reader[0].close()
+            reader.close(quit=False)
         self.stop_owner(owner)
         restarted = self.start_owner()
         recovered = self.reader()
@@ -313,8 +261,7 @@ class NativeReaderIndexTest(unittest.TestCase):
                          [b"1\r\n", b"2\r\n"])
         self.assertEqual(self.listgroup(recovered, "fn.live", "1-9")[1],
                          [b"1\r\n"])
-        recovered[1].close()
-        recovered[0].close()
+        recovered.close(quit=False)
         self.stop_owner(restarted)
 
     def test_list_counts_and_numbered_msgid_lookup(self):
@@ -356,22 +303,18 @@ class NativeReaderIndexTest(unittest.TestCase):
                          ("223 1 %s retrieved\r\n" % one).encode("ascii"))
         self.assertEqual(self.command(reader, "STAT 2")[0],
                          ("223 2 %s retrieved\r\n" % two).encode("ascii"))
-        reader[1].close()
-        reader[0].close()
+        reader.close(quit=False)
         self.stop_owner(owner)
 
         restarted = self.start_owner()
         recovered = self.reader()
         self.assertEqual(sorted(self.command(recovered, "LIST COUNTS", True)[1]),
                          [b"fn.live 1 1 1 y\r\n", b"fn.test 2 1 2 y\r\n"])
-        recovered[1].close()
-        recovered[0].close()
+        recovered.close(quit=False)
         self.stop_owner(restarted)
 
     def run_refused(self, *words):
-        result = subprocess.run([str(IMAGE), "--fn", *map(str, words)], cwd=ROOT,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=180, check=False)
+        result = self.node.invoke(*words)
         self.assertNotEqual(result.returncode, 0, result.stdout)
         return result
 
@@ -390,8 +333,7 @@ class NativeReaderIndexTest(unittest.TestCase):
                                         b"fn.test\t(no description)\r\n"])
         self.assertEqual(self.command(before, "LIST MOTD", True),
                          (b"215 message of the day follows\r\n", []))
-        before[1].close()
-        before[0].close()
+        before.close(quit=False)
 
         self.run_native("operator", self.config, "group", "describe", "fn.test",
                         "Friends", "and letters")
@@ -417,8 +359,7 @@ class NativeReaderIndexTest(unittest.TestCase):
                           [b"Welcome to fn.\r\n", b"Ask ember for a code.\r\n"]))
         self.assertEqual(self.command(reader, "LIST MOTD x")[0],
                          b"501 syntax error\r\n")
-        reader[1].close()
-        reader[0].close()
+        reader.close(quit=False)
         self.stop_owner(owner)
 
         restarted = self.start_owner()
@@ -428,8 +369,7 @@ class NativeReaderIndexTest(unittest.TestCase):
                           b"fn.test\tFriends and letters\r\n"])
         self.assertEqual(self.command(recovered, "LIST MOTD", True)[1],
                          [b"Welcome to fn.\r\n", b"Ask ember for a code.\r\n"])
-        recovered[1].close()
-        recovered[0].close()
+        recovered.close(quit=False)
         self.run_native("operator", self.config, "group", "describe", "fn.test")
         self.run_native("operator", self.config, "motd", "clear")
         cleared = self.reader()
@@ -437,8 +377,7 @@ class NativeReaderIndexTest(unittest.TestCase):
                          [b"fn.live\t(no description)\r\n",
                           b"fn.test\t(no description)\r\n"])
         self.assertEqual(self.command(cleared, "LIST MOTD", True)[1], [])
-        cleared[1].close()
-        cleared[0].close()
+        cleared.close(quit=False)
         self.stop_owner(restarted)
 
     def test_listgroup_many_unrelated_groups_measured_socket_workload(self):
@@ -467,8 +406,7 @@ class NativeReaderIndexTest(unittest.TestCase):
         elapsed = time.monotonic() - started
         print("native LISTGROUP workload: groups=24 articles=24 commands=96 "
               "range=1-1 elapsed={:.3f}s".format(elapsed))
-        reader[1].close()
-        reader[0].close()
+        reader.close(quit=False)
         self.stop_owner(owner)
 
     def test_pinned_archive_and_index_through_public_reader(self):
@@ -525,8 +463,7 @@ class NativeReaderIndexTest(unittest.TestCase):
                     observations.append(self.command(reader, "STAT " + absent)[0])
                 return observations
             finally:
-                reader[1].close()
-                reader[0].close()
+                reader.close(quit=False)
 
         started = time.monotonic()
         with ThreadPoolExecutor(max_workers=4) as pool:
@@ -544,8 +481,7 @@ class NativeReaderIndexTest(unittest.TestCase):
         print("native reader indexed 96 concurrent STAT reads: {:.3f}s".format(
             time.monotonic() - started))
         for reader in (old, middle, fresh):
-            reader[1].close()
-            reader[0].close()
+            reader.close(quit=False)
         self.stop_owner(owner)
         reopened = self.start_owner()
         recovered = self.reader()
@@ -555,8 +491,7 @@ class NativeReaderIndexTest(unittest.TestCase):
             self.assertIn(msgid.encode(), status)
         self.assertEqual(self.command(recovered, "STAT " + absent)[0],
                          b"430 no article with that message-id\r\n")
-        recovered[1].close()
-        recovered[0].close()
+        recovered.close(quit=False)
         self.stop_owner(reopened)
 
 

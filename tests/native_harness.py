@@ -795,6 +795,15 @@ def run(argv, *, env=None, timeout=180, cwd=None, stdin=None, input=None):
                           timeout=timeout, check=False)
 
 
+def class_case(cls):
+    """A case whose cleanups are CLS's class cleanups, for a Node made in
+    setUpClass that lives as long as the class."""
+    import unittest
+    case = unittest.TestCase()
+    case.addCleanup = cls.addClassCleanup
+    return case
+
+
 def scratch(case, prefix="fn-native-"):
     """A temporary directory removed when CASE's test ends."""
     directory = tempfile.TemporaryDirectory(prefix=prefix)
