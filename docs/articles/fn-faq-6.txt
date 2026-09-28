@@ -43,6 +43,8 @@ could not check (the peer lines need a running node).
 these. The log line starts refused and names the reason.
 
 - unparsable: the article is not valid syntax
+- line-length: a header line is longer than 998 octets (RFC 5322 section
+  2.1.1); fold it
 - header-fields-limit: the header has more fields than the profile's
   max-header-fields
 - header-lines-limit: the header has more lines than the profile's

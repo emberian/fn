@@ -80,6 +80,7 @@
 (include-book "injection-path")
 (include-book "article-fields")
 (include-book "article-header-census")
+(include-book "article-line-bound")
 (include-book "mailbox")
 (include-book "clock")
 (local (include-book "arithmetic/top" :dir :system))
@@ -951,6 +952,17 @@
   (declare (xargs :guard t))
   (equal (fn-inj-source-of stored agent msgid) (cons t source)))
 
+;; PKT-506: a parse refusal by name.  The parser's :limit, for a source within
+;; the configuration's bound (at most the codec ceiling, fn-inj-configp), is
+;; a header line longer than RFC 5322 section 2.1.1's 998 octets
+;; (books/article-line-bound.lisp fn-article-parse-limit-is-a-long-header-
+;; line), refused :line-length: a References or Subject of any length is
+;; admitted folded (section 2.2.3), up to the profile's header limits.
+;; Every other parse refusal is :unparsable.
+(defun fn-inj-parse-refusal (parsed)
+  (declare (xargs :guard t))
+  (if (equal parsed '(:error :limit)) :line-length :unparsable))
+
 (defun fn-inj-decide (source config observation)
   (declare (xargs :guard t))
   (if (not (fn-inj-configp config)) (fn-inj-refuse :config-invalid)
@@ -971,7 +983,7 @@
               (fn-inj-refuse :oversize)
           (let ((parsed (fn-article-parse source)))
             (if (not (fn-article-result-okp parsed))
-                (fn-inj-refuse :unparsable)
+                (fn-inj-refuse (fn-inj-parse-refusal parsed))
               (let ((article (fn-article-result-article parsed)))
                 (if (not (fn-article-syntax-p article))
                     (fn-inj-refuse :unparsable)
@@ -1190,3 +1202,69 @@
                                fn-inj-config-max-octets-of-fn-inj-make-config-listed
                                fn-inj-config-header-limits-of-fn-inj-make-config-listed
                                fn-inj-config-header-limits-of-fn-inj-make-config))))
+
+;; -----------------------------------------------------------------------------
+;; PKT-506: the line bound is refused by its name.
+
+(local
+ (defthm fn-inj-at-mostp-weakens
+   (implies (and (fn-cbor-at-mostp xs a) (natp a) (natp b) (<= a b))
+            (fn-cbor-at-mostp xs b))
+   :hints (("Goal" :in-theory (enable fn-cbor-at-mostp)))))
+
+; No other arm of fn-inj-decide names :line-length.
+(local
+ (defthm fn-inj-census-refusal-not-line-length
+   (not (equal (fn-article-census-refusal census limits) :line-length))
+   :hints (("Goal" :in-theory (enable fn-article-census-refusal)))))
+
+(local
+ (defthm fn-inj-proto-check-not-line-length
+   (not (equal (fn-inj-proto-reason (fn-af-proto-article-check article)) :line-length))
+   :hints (("Goal" :in-theory (e/d (fn-inj-proto-reason fn-inj-nth fn-inj-car fn-inj-cdr
+                                    fn-af-proto-article-check
+                                    fn-af-relayed-article-check)
+                                   (fn-af-newsgroups-status fn-af-message-id-status
+                                    fn-article-get-headers))))))
+
+(local
+ (defthm fn-inj-mandatory-reason-not-line-length
+   (not (equal (fn-inj-mandatory-reason article) :line-length))
+   :hints (("Goal" :in-theory (enable fn-inj-mandatory-reason)))))
+
+(local
+ (defthm fn-inj-path-reason-not-line-length
+   (not (equal (fn-inj-path-reason article source) :line-length))
+   :hints (("Goal" :in-theory (enable fn-inj-path-reason)))))
+
+(local
+ (defthm fn-inj-other-reason-not-line-length
+   (not (equal (fn-inj-other-reason article) :line-length))
+   :hints (("Goal" :in-theory (enable fn-inj-other-reason)))))
+
+;; KEYSTONE.  Subject: fn-inj-decide, which every POST's injection runs
+;; (books/nntp-post.lisp fn-nntp-post-step, reached from host/owner-host.lisp
+;; fn-owner-chunk-span-at) and the operator's article
+;; (fn-own-operator-submit-result).  A :line-length refusal is a header line
+;; longer than RFC 5322 section 2.1.1's 998 octets, the parser reading the
+;; header as it reads it (books/article-line-bound.lisp); by contraposition a
+;; header whose every line is within the bound -- a References or Subject of
+;; any length, folded -- is never refused :line-length.  No hypothesis: an
+;; invalid configuration is refused :config-invalid first.
+(defthm fn-inj-decide-line-length-is-a-long-header-line
+  (implies (equal (fn-inj-decision-reason (fn-inj-decide source config observation))
+                  :line-length)
+           (fn-alb-long-header-linep source (1+ *fn-article-max-octets*)))
+  :hints (("Goal" :in-theory (e/d (fn-inj-decide fn-inj-parse-refusal fn-inj-configp
+                                   fn-inj-refuse)
+                                  (fn-article-parse fn-alb-long-header-linep
+                                   fn-cbor-at-mostp fn-article-census-refusal
+                                   fn-article-header-census fn-af-proto-article-check
+                                   fn-inj-mandatory-reason fn-inj-path-reason
+                                   fn-inj-other-reason fn-inj-absentp fn-inj-proto-reason
+                                   fn-article-syntax-p))
+           :use ((:instance fn-article-parse-limit-is-a-long-header-line
+                            (octets source))
+                 (:instance fn-inj-at-mostp-weakens
+                            (xs source) (a (fn-inj-config-max-octets config))
+                            (b *fn-article-max-octets*))))))
