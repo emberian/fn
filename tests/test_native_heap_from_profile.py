@@ -50,6 +50,8 @@ import time
 import unittest
 from pathlib import Path
 
+from tests.native_process import node_log_on_failure
+
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = os.environ.get("FN_NATIVE_HOST")
 EXIT_OK, EXIT_REFUSED = 0, 1
@@ -510,11 +512,11 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
             stream.flush()
         print("NATIVE-HEAP fill init-and-start-s={:.1f} fill-s={:.1f} posts={}".format(
             started - began, time.monotonic() - started, len(stored)))
-        self.assertEqual(reply.decode("ascii"),
-                         "441 posting failed; the store is full: no capacity for this "
-                         "article (unaffordable); the node's operator can raise it",
-                         "posts={}; the owner's log ends:\n{}".format(
-                             len(stored), log1.read_text(errors="replace")[-4000:]))
+        with node_log_on_failure(log1):
+            self.assertEqual(reply.decode("ascii"),
+                             "441 posting failed; the store is full: no capacity for this "
+                             "article (unaffordable); the node's operator can raise it",
+                             "after {} posts".format(len(stored)))
         hwm1 = self.stop()
         print("NATIVE-HEAP fill posts={} vmhwm kB={} init-reservation={} MB".format(
             len(stored), hwm1, reservation))

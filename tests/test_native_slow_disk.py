@@ -28,6 +28,7 @@ import os
 from pathlib import Path
 import re
 import select
+import shutil
 import signal
 import socket
 import subprocess
@@ -35,6 +36,8 @@ import tempfile
 import threading
 import time
 import unittest
+
+from tests.native_process import node_log_on_failure
 
 ROOT = Path(__file__).resolve().parents[1]
 # The developer image: the only one that honours a developer selector.
@@ -519,6 +522,89 @@ class SlowDiskNativeTests(unittest.TestCase):
         print("store journal: rc=%d %r" % (replay.returncode, replay.stdout))
         self.assertEqual(replay.returncode, 0, (replay.stdout, replay.stderr))
         self.assertIn(b" replay=agrees", replay.stdout)
+
+    FULL_REFUSAL = (b"441 posting failed; the store is full: no capacity for this article "
+                    b"(unaffordable); the node's operator can raise it\r\n")
+
+    def test_a_full_store_refusal_is_told_while_another_barrier_stalls(self):
+        """PRF-354 (lane full-vs-uncertain; books/owner-commit-steps.lisp
+        fn-ocs-unstaged-start-tells-its-refusals): a POST the full store
+        refuses wrote nothing, so its refusal is known before any barrier.
+        It arrives behind a batch whose barrier is stalled (drained by the
+        START-NEXT behind it, before the deadline D) and is answered the
+        named refusal at once -- not held to the stall deadline H and then
+        told uncertain, as it was when it waited in the next batch.  The
+        stalled POST is untouched: no answer while its device is stalled,
+        its 240 when it comes back; the refused article is not stored."""
+        # A store of 4 MiB of history, filled with 900,000-octet articles
+        # until the store refuses one by name.
+        self.reap(self.owner)
+        shutil.rmtree(self.store)
+        init = self.operator("init", "--max-article-octets", "1048576",
+                             "--max-history-octets", "4194304", "fn.test")
+        self.assertEqual(init.returncode, 0, (init.stdout, init.stderr))
+        self.owner = self.start_owner({"FN_NATIVE_TEST_DISK_STALL_FILE": str(self.stall)})
+        self.policy("barrier-deadline-ms", 2000)
+        self.policy("barrier-stall-ms", 6000)
+        big = (b"z" * 72 + b"\r\n") * 12300
+        fill_conn, fill = self.connect()
+        a_conn, a = self.connect()
+        f_conn, f = self.connect()
+        with fill_conn, a_conn, f_conn:
+            stored = 0
+            for n in range(64):
+                self.send_article(fill, b"fill-%d@example.invalid" % n, big)
+                line = fill.readline()
+                if not line.startswith(b"240"):
+                    break
+                stored += 1
+            with node_log_on_failure(self.root / "owner.stderr"):
+                self.assertEqual(line, self.FULL_REFUSAL, (stored, line))
+                self.assertGreater(stored, 0)
+            # The device stalls; a small article still fits and goes in flight.
+            self.stall.write_bytes(b"")
+            t0 = time.monotonic()
+            self.send_article(a, b"held-small@example.invalid", b"a small article that fits")
+            time.sleep(0.3)
+            # A large one does not fit: refused by name while A's barrier stalls.
+            sent = time.monotonic()
+            self.send_article(f, b"full-f@example.invalid", big)
+            f_conn.settimeout(30)
+            refused = f.readline()
+            refused_at, refused_since_stall = time.monotonic() - sent, time.monotonic() - t0
+            held_unanswered = select.select([a_conn], [], [], 0)[0] == []
+            # F's connection stays open after its refusal.
+            f.write(b"DATE\r\n")
+            f.flush()
+            date = f.readline()
+            self.stall.unlink()
+            a_conn.settimeout(60)
+            accepted = a.readline()
+            fill.write(b"STAT <full-f@example.invalid>\r\n")
+            fill.flush()
+            stat_f = fill.readline()
+            fill.write(b"GROUP fn.test\r\n")
+            fill.flush()
+            fill.readline()
+            fill.write(b"STAT <held-small@example.invalid>\r\n")
+            fill.flush()
+            stat_a = fill.readline()
+            for stream in (fill, a, f):
+                stream.write(b"QUIT\r\n")
+                stream.flush()
+        print("full store (%d articles of %d octets): refused %r in %.3fs (%.3fs into the stall); "
+              "held POST unanswered then: %s; after the stall %r; STAT F %r, A %r"
+              % (stored, len(big), refused, refused_at, refused_since_stall, held_unanswered,
+                 accepted, stat_f, stat_a))
+        with node_log_on_failure(self.root / "owner.stderr"):
+            self.assertEqual(refused, self.FULL_REFUSAL)
+            self.assertLess(refused_since_stall, 2.0, refused_since_stall)
+            self.assertTrue(held_unanswered,
+                            "the stalled POST was answered before its device came back")
+            self.assertTrue(date.startswith(b"111"), date)
+            self.assertTrue(accepted.startswith(b"240"), accepted)
+            self.assertTrue(stat_f.startswith(b"430"), stat_f)
+            self.assertTrue(stat_a.startswith(b"223"), stat_a)
 
     def test_a_peer_is_told_to_retry_while_the_disk_is_slow(self):
         """PKT-858 (lane log-leftovers): while the disk sheds, a peer's read

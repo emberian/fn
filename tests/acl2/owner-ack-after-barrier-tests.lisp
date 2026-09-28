@@ -132,3 +132,29 @@
 (assert-event (not (assoc-equal :unrouted *fn-oab-record-kinds*)))
 (assert-event (not (fn-oab-reports-follow-fences-p
                     (fn-oab-kind-trace :unrouted *oabt-batch* :fenced) nil nil)))
+
+; -----------------------------------------------------------------------------
+; PRF-354 (lane full-vs-uncertain): a refusal that wrote nothing is told at
+; its drain.  A full-store POST (:unaffordable) drained before an ordinary
+; article, in a batch whose barrier FAILS: the refusal's reply is in the
+; trace (naming no record), the batch kept only the article, and the keystone
+; property holds.  Before PRF-354 the stop told the refusal uncertain.
+(defconst *oabt-full*
+  (list :unaffordable *tha-event* *kst-snapshots* *kst-rows* *oabt-ml* :verified :verified 5 6 7))
+(defconst *oabt-full-batch* (list *oabt-full* *oabt-article*))
+(assert-event (equal (fn-oab-drain 0 *oabt-full-batch*) '((:report) (:take 0))))
+(assert-event (equal (fn-oab-kept *oabt-full-batch*) (list *oabt-article*)))
+(assert-event (member-equal '(:report) (fn-oab-quantum *oabt-full-batch* :failed)))
+(assert-event (fn-oab-reports-follow-fences-p (fn-oab-quantum *oabt-full-batch* :failed) nil nil))
+; The article kept beside it is still told nothing when the barrier fails,
+; and is told its outcome once it is fenced.
+(assert-event (not (member-equal '(:report 0) (fn-oab-quantum *oabt-full-batch* :failed))))
+(assert-event (member-equal '(:report 0) (fn-oab-quantum *oabt-full-batch* :fenced)))
+(assert-event (fn-oab-reports-follow-fences-p (fn-oab-quantum *oabt-full-batch* :fenced) nil nil))
+; A duplicate is not told at its drain: it stays in the batch (it may rest
+; on a record the barrier has not fenced).
+(assert-event (equal (fn-oab-kept (list (cons :duplicate (cdr *oabt-full*))))
+                     (list (cons :duplicate (cdr *oabt-full*)))))
+; Mutation witness (labelled): a told refusal whose reply named a record of
+; its own -- a record it never took -- is what the property refuses.
+(assert-event (not (fn-oab-reports-follow-fences-p '((:report 0)) nil nil)))
