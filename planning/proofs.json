@@ -12559,7 +12559,7 @@
       "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-model.lisp",
-        "tests/acl2/owner-time-model-tests.lisp",
+        "tests/acl2/owner-time-space-tests.lisp",
         "host/native/owner.lisp",
         "host/owner-host.lisp",
         "host/native-live-status-host.lisp",
@@ -12599,7 +12599,7 @@
       "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-model.lisp",
-        "tests/acl2/owner-time-model-tests.lisp",
+        "tests/acl2/owner-time-space-tests.lisp",
         "host/native/owner.lisp",
         "host/owner-host.lisp",
         "host/native-live-status-host.lisp",
@@ -12610,7 +12610,7 @@
         "host/native/io.lisp",
         "planning/evidence/manifests/certify-20260928T063909Z-97938.json"
       ],
-      "progress_note": "Lane health-truth (Opus 5.5, 2026-09-28; PKT-872 from lane fitness, the admission half; the journal's torn line is lane health-truth-journal's). REPL-admitted on persvati: books/owner-time-model, books/owner-time-journal, tests/acl2/owner-time-model-tests (--ld-local). Teeth (prefix htt-): reached room/full/recovered/unobserved states from fn-otm-init, the full reason on the 440/441 lines and a reached served read's 440 (t2r-host-read), must-fail per hypothesis of fn-otm-admit-keeps-the-space-need, fn-otm-full-sheds, fn-otm-space-recovers (its natp hypothesis removed after the weakened theorem was proved), fn-otm-space-need-covers-two-batches and the four restated PRF-311 theorems. Native: tests.test_native_slow_disk test_a_full_disk_refuses_posts_before_the_write_and_recovers (FN_NATIVE_DISK_FREE=@FILE). Certified on hbox: run-20260928T063812Z-0804, manifest certify-20260928T063909Z-97938 (23 books recertified, 0 failed). Native tests.test_native_slow_disk OK 6/6 at 137529eca (hbox native-ht2).",
+      "progress_note": "Lane health-truth (Opus 5.5, 2026-09-28; PKT-872 from lane fitness, the admission half; the journal's torn line is lane health-truth-journal's). REPL-admitted on persvati: books/owner-time-model, books/owner-time-journal, tests/acl2/owner-time-model-tests (--ld-local). Teeth (prefix htt-, tests/acl2/owner-time-space-tests.lisp, split from owner-time-model-tests to keep both under 10 s): reached room/full/recovered/unobserved states from fn-otm-init, the full reason on the 440/441 lines and a reached served read's 440 (t2r-host-read), must-fail per hypothesis of fn-otm-admit-keeps-the-space-need, fn-otm-full-sheds, fn-otm-space-recovers (its natp hypothesis removed after the weakened theorem was proved), fn-otm-space-need-covers-two-batches and the four restated PRF-311 theorems. Native: tests.test_native_slow_disk test_a_full_disk_refuses_posts_before_the_write_and_recovers (FN_NATIVE_DISK_FREE=@FILE). Certified on hbox: run-20260928T063812Z-0804, manifest certify-20260928T063909Z-97938 (23 books recertified, 0 failed). Native tests.test_native_slow_disk OK 6/6 at 137529eca (hbox native-ht2).",
       "events": [
         "fn-otm-admit-keeps-the-space-need",
         "fn-otm-full-sheds",
