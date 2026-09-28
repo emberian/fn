@@ -65,6 +65,17 @@ and [the current view](current.md). Release scope is
    deployment or claim until the repaired candidate has matching evidence;
    unchanged evidence is reused, a green verdict is never transferred to
    changed bytes. Deploy when the candidate is green.
+7. **Green has two coordinates** (2026-09-28). BOOK GREEN at sha X: make
+   check (green_check in it), the union cites of every merged lane, and the
+   OpenBSD guest's certification of the default closure. NATIVE GREEN at sha
+   Y: the native modules on the images built at Y. Natives re-run only when
+   host/, packaging/, a tool the natives call, or the images' book closure
+   (the image digest) changed since the last native green; a change to books
+   outside the image closure reuses the last native verdict, named with its
+   sha. The report says `BOOK GREEN <X> / NATIVE GREEN <Y> (image digest
+   ...)`. No module runs at 1M: open_depth runs at 100k, and a scale claim
+   comes from a curve (1k to 100k, fitted and extrapolated; tools/
+   scale_curve.py), stated with its fit and range.
 
 ## Width and who proves
 
