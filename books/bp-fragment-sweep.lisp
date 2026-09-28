@@ -49,6 +49,15 @@
 
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bpf-canvas)
+                          (:definition fn-bpf-cell-at)
+                          (:definition fn-bpf-fragment-listp)
+                          (:definition fn-bpf-fragmentp)
+                          (:rewrite fn-bpf-fragment-listp-car-and-cdr)
+                          (:rewrite fn-bpf-fragmentp-fields))))
+
 (local (in-theory (disable mod-x-y-=-x+y-for-rationals)))
 
 ; -----------------------------------------------------------------------------
