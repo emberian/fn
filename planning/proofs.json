@@ -11273,9 +11273,13 @@
         "tests/test_native_peering.py",
         "planning/evidence/manifests/certify-20260928T002033Z-3553464.json",
         "planning/evidence/manifests/certify-20260928T002216Z-3243313.json",
-        "planning/evidence/manifests/certify-20260928T003307Z-3688271.json"
+        "planning/evidence/manifests/certify-20260928T003307Z-3688271.json",
+        "planning/evidence/manifests/certify-20260928T030827Z-1007200.json",
+        "planning/evidence/manifests/certify-20260928T031001Z-3653036.json",
+        "planning/evidence/manifests/certify-20260928T031352Z-1055761.json",
+        "planning/evidence/thread-stacks-2026-09-28.md"
       ],
-      "progress_note": "hbox REPL (1 MiB thread, raw mode): 80,000, 1,000,000 and 17,000,000 octets round-trip; the old recursion as a raw copy: 40,000 ok, 80,000 control-stack-exhausted.",
+      "progress_note": "hbox REPL (1 MiB thread, raw mode): 80,000, 1,000,000 and 17,000,000 octets round-trip; the old recursion as a raw copy: 40,000 ok, 80,000 control-stack-exhausted. Native (hbox native-ts5, production image, FN_TEST_CONTROL_STACK_KB=1024): TenMibArticleTests and the 5,000-obligation report OK. Open: the full-replay open still exhausts the 1,024 KB main-thread stack past about 30,000 retained articles in other R-long walks under fn-cnode-statep (PKT-876).",
       "events": [
         "fn-record-octets-chars",
         "fn-record-string-octets-aux",
