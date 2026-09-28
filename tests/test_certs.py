@@ -578,6 +578,43 @@ class CompiledFileTests(unittest.TestCase):
             self.assertTrue((target / "books/base.cert").is_file())
             self.assertFalse((target / "books/base.fasl").exists())
 
+    def test_a_local_compiled_file_beside_the_same_certificate_stays(self):
+        """An entry without a compiled file does not delete the tree's own
+        `.fasl` beside the same certificate bytes: that deletion made the
+        tree's next publish clear the cache's (image-growth, 2026-09-28)."""
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            root, manifest = self.source(one, ["books/mid"])
+            cache = Path(two) / "cache"
+            certs.publish(root, cache, [manifest], origin=self.FARM, origin_kind="run")
+            (root / "books/base.fasl").write_bytes(b"FASL books/base")
+            report = self.install(root, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual((report.fasl_installed, report.fasl_missing), (2, 0))
+            fasl, cert = root / "books/base.fasl", root / "books/base.cert"
+            self.assertEqual(fasl.read_bytes(), b"FASL books/base")
+            self.assertGreaterEqual(fasl.stat().st_mtime, cert.stat().st_mtime)
+            # Older than its certificate, ACL2 would refuse it: removed.
+            os.utime(fasl, (cert.stat().st_mtime - 60,) * 2)
+            report = self.install(root, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual(report.fasl_missing, 1)
+            self.assertFalse(fasl.exists())
+
+    def test_a_republish_without_the_compiled_file_keeps_the_cached_one(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            root, manifest = self.source(one, ["books/base", "books/mid"])
+            cache = Path(two) / "cache"
+            certs.publish(root, cache, [manifest], origin=self.FARM, origin_kind="run")
+            stored = entry(cache, root, "books/mid", Path(self.FARM))
+            digest = certs.content_hash(stored / "book.fasl")
+            (root / "books/mid.fasl").unlink()
+            later = dict(manifest, evidence="/farm/run-fasl/later/manifest.json")
+            certs.publish(root, cache, [later], origin=self.FARM, origin_kind="run")
+            self.assertEqual(certs.content_hash(stored / "book.fasl"), digest)
+            meta = json.loads((stored / "meta.json").read_text())
+            self.assertEqual(meta["fasl_sha256"], digest)
+            target = worktree(two + "/target")
+            report = self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual((report.fasl_installed, report.fasl_missing), (2, 0))
+
     def test_a_compiled_file_the_manifest_did_not_record_is_not_cached(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
             root, manifest = self.source(one, ["books/base", "books/mid"],

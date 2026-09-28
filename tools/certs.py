@@ -522,9 +522,14 @@ def install_entry(directory: Path, selected: dict, cert: Path, port: Path,
     """Copy one selected pair under its reader lock; return whether it moved.
 
     The compiled file travels with its pair and only with it: the entry's
-    ``book.fasl`` is placed beside the certificate when the entry has one, and
-    a local ``.fasl`` is removed when it has none, so no compiled file from
-    another certification sits beside this certificate.  ACL2 loads a
+    ``book.fasl`` is placed beside the certificate when the entry has one.
+    When it has none, a local ``.fasl`` stays only beside the same certificate
+    bytes it was loadable with (not older than the local ``.cert``), and is
+    removed otherwise, so no compiled file from another certification sits
+    beside this certificate.  Removing a same-certificate compiled file was a
+    ratchet: the tree's next publish then had no ``.fasl`` and cleared the
+    cache entry's, and the image build compiled those books in core, keeping
+    every source form (image-growth, 2026-09-28: 114 books, +8.9 MB of core).  ACL2 loads a
     ``.fasl`` only when its write date is not older than the ``.cert``'s, so
     the installed one is dated no earlier than the certificate.  A pair
     without a compiled file still installs; ACL2 then processes its events.
@@ -548,6 +553,12 @@ def install_entry(directory: Path, selected: dict, cert: Path, port: Path,
         port_same = (port.is_file() and cached_port.is_file()
                      and content_hash(port) == content_hash(cached_port)) or (
                          not port.is_file() and not cached_port.is_file())
+        fasl = cert.with_suffix(".fasl")
+        # A local compiled file made with these very certificate bytes, and
+        # still loadable beside them (ACL2's rule: not older than the .cert),
+        # is kept when the entry has none; judged before any date moves.
+        local_fasl_ok = (cert_same and fasl.is_file()
+                         and fasl.stat().st_mtime >= cert.stat().st_mtime)
         if not cert_same:
             place(cached, cert)
         date_after_source(cert)
@@ -556,11 +567,16 @@ def install_entry(directory: Path, selected: dict, cert: Path, port: Path,
                 place(cached_port, port)
         else:
             port.unlink(missing_ok=True)
-        fasl = cert.with_suffix(".fasl")
         cached_fasl = directory / "book.fasl"
         if selected.get("fasl_sha256"):
             if not (fasl.is_file() and content_hash(fasl) == selected["fasl_sha256"]):
                 place(cached_fasl, fasl)
+            dated = cert.stat().st_mtime
+            if fasl.stat().st_mtime < dated:
+                os.utime(fasl, (dated, dated))
+            if report is not None:
+                report.fasl_installed += 1
+        elif local_fasl_ok:
             dated = cert.stat().st_mtime
             if fasl.stat().st_mtime < dated:
                 os.utime(fasl, (dated, dated))
@@ -1315,6 +1331,18 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
                      (fasl is not None and target_fasl.is_file() and
                       content_hash(target_fasl) == meta["fasl_sha256"]))
         old_meta = read_meta(directory)
+        if (fasl is None and same_cert and target_fasl.is_file()
+                and old_meta.get("cert_sha256") == record.cert
+                and old_meta.get("toolchain") == record.compatibility
+                and old_meta.get("fasl_sha256")
+                and content_hash(target_fasl) == old_meta["fasl_sha256"]):
+            # A republish of the same certificate without its compiled file
+            # (the tree lost it) keeps the one the entry has: it was compiled
+            # with these certificate bytes by this toolchain.  Clearing it was
+            # the second half of the fasl ratchet (install_entry).
+            meta["fasl_sha256"] = old_meta["fasl_sha256"]
+            meta["fasl_kept_from"] = old_meta.get("fasl_kept_from") or old_meta.get("evidence")
+            same_fasl = True
         same_provenance = (
             old_meta.get("book") == name
             and old_meta.get("closure") == listing
@@ -1340,9 +1368,9 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
             target_port.unlink(missing_ok=True)
         elif not same_port:
             place(port, target_port)
-        if fasl is None:
+        if fasl is None and not meta["fasl_sha256"]:
             target_fasl.unlink(missing_ok=True)
-        elif not same_fasl:
+        elif fasl is not None and not same_fasl:
             place(fasl, target_fasl)
         if not entry_matches_meta(directory, meta):
             raise EntryChanged(f"source pair changed while publishing {directory}")
