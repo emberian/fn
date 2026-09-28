@@ -139,15 +139,16 @@ class SlowDiskSourceTests(unittest.TestCase):
 
     def test_a_graceful_stop_drains_before_its_fence(self):
         """PKT-875 (PRF-357): after a SIGTERM the drain (ACL2's
-        fn-osd-drain-step) runs before the fence; the I/O loops end only at
+        fn-osd-drain-next) runs before the fence; the I/O loops end only at
         the fence; the committer releases at the drain's deadline as at a
-        stall."""
+        stall.  `once' reaches the drain at the SIGTERM too (lane
+        sigterm-hang: its wait returned only when its client ended)."""
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text()
         run = owner[owner.index("(defun fnn-owner-run "):owner.index("(defun fnn-owner-run-normalized")]
         self.assertLess(run.index("(fnn-owner-drain-service service)"),
                         run.index("(fnn-owner-stop-service service +fnn-exit-ok+))\n                  (fnn-owner-service-exit-code"))
         drain = owner[owner.index("(defun fnn-owner-drain-service "):owner.index("(defun fnn-owner-run ")]
-        self.assertIn("(fnn-core 'fn-osd-drain-step s0 s limits awaiting unsent released)", drain)
+        self.assertIn("(fnn-call 'fn-osd-drain-next s0 s limits awaiting unsent released)", drain)
         self.assertIn("(fnn-owner-sched-snapshot service)", drain)
         pipeline = owner[owner.index("(defun fnn-owner-commit-pipeline "):
                          owner.index("(defun fnn-owner-loops-snapshot")]
@@ -157,6 +158,8 @@ class SlowDiskSourceTests(unittest.TestCase):
         self.assertNotIn("*fnn-sigterm-requested*", run_loop)
         work = mux[mux.index("(defun fnn-mux-work "):mux.index("(defun fnn-mux-readable ")]
         self.assertIn("*fnn-sigterm-requested*", work)
+        once = mux[mux.index("(defun fnn-mux-serve-once "):mux.index(";;; The connection budget")]
+        self.assertIn("*fnn-sigterm-requested*", once)
 
 
 @unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
@@ -854,6 +857,74 @@ class SlowDiskNativeTests(unittest.TestCase):
             self.assertEqual(code, 0)
             # Uncertain allows either; the device came back, so they landed.
             self.assertTrue(set(stat.values()) <= {b"223", b"430"}, stat)
+
+    def test_a_stop_with_clients_mid_article_and_mid_commit_ends_by_its_deadline(self):
+        """Lane sigterm-hang (PRF-357 fn-osd-drain-stops-by-the-deadline):
+        SIGTERM with 8 clients mid-article (POST, 340, half a header, the
+        descriptor held open) and 8 POSTs mid-commit on a stalled barrier.
+        The clients mid-article are owed nothing and never hold the drain;
+        the device returns 1.5 s after the SIGTERM and each committed poster
+        is told its outcome (240, or ACL2's 441: uncertain or try-later),
+        never a bare close; the clients mid-article are closed; the owner
+        exits 0 within H + grace (6 s + 10 s) of the SIGTERM.  After a
+        restart every poster told 240 has its article (STAT 223), and one
+        told try-later has none (430)."""
+        self.policy("barrier-deadline-ms", 4000)
+        self.policy("barrier-stall-ms", 6000)
+        middle = [self.connect() for _ in range(8)]
+        posters = [self.connect() for _ in range(8)]
+        w_conn, w = self.connect()
+        try:
+            self.send_article(w, b"warm-mix@example.invalid", b"a healthy barrier")
+            self.assertTrue(w.readline().startswith(b"240"))
+            for _conn, stream in middle:
+                stream.write(b"POST\r\n")
+                stream.flush()
+                self.assertTrue(stream.readline().startswith(b"340"))
+                stream.write(b"From: incomplete")
+                stream.flush()
+            self.stall.write_bytes(b"")
+            msgids = [b"mix-%d@example.invalid" % n for n in range(8)]
+            for (_conn, stream), msgid in zip(posters, msgids):
+                self.send_article(stream, msgid, b"mid-commit at the stop")
+            time.sleep(0.3)
+            t0 = self.sigterm()
+            time.sleep(1.5)
+            still_running = self.owner.poll() is None
+            self.stall.unlink()
+            answers, pending = self.stop_answers(
+                {"p%d" % n: posters[n] for n in range(8)}, 20)
+            closed, open_middle = self.stop_answers(
+                {"m%d" % n: middle[n] for n in range(8)}, 20)
+            code = self.owner.wait(timeout=30)
+            exited = time.monotonic() - t0
+        finally:
+            for conn, _stream in middle + posters + [(w_conn, w)]:
+                conn.close()
+        stat = self.restart_and_stat(msgids)
+        print("stop with 8 mid-article and 8 mid-commit: answers %r; mid-article %r; exit %d after %.3fs; STAT %r"
+              % (sorted(set(v[1][:3] for v in answers.values())),
+                 sorted(set(v[1] for v in closed.values())), code, exited, stat))
+        with node_log_on_failure(self.root / "owner.stderr"):
+            self.assertTrue(still_running)
+            self.assertEqual(pending, {}, "a committed poster was not answered")
+            self.assertEqual(open_middle, {}, "a client mid-article was not closed")
+            for name, (_at, line) in closed.items():
+                self.assertFalse(line.startswith((b"240", b"441")), (name, line))
+            self.assertEqual(code, 0)
+            self.assertLess(exited, 6.0 + 10.0, exited)
+            for n, msgid in enumerate(msgids):
+                line = answers["p%d" % n][1]
+                self.assertTrue(line.startswith((b"240", b"441")), (n, line))
+                if line.startswith(b"240"):
+                    self.assertEqual(stat[msgid], b"223", (n, line))
+                elif b"uncertain" in line:
+                    self.assertIn(stat[msgid], (b"223", b"430"), (n, line))
+                else:
+                    self.assertEqual(stat[msgid], b"430", (n, line))
+            log = (self.root / "owner.stderr").read_bytes()
+            self.assertIn(b"stopping: answering the posts in flight first", log)
+            self.assertIn(b"stopping: drained after ", log)
 
     def test_a_peer_is_told_to_retry_while_the_disk_is_slow(self):
         """PKT-858 (lane log-leftovers): while the disk sheds, a peer's read

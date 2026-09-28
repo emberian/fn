@@ -52,7 +52,6 @@
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-nntp-article-idp)
                           (:definition fn-scat-msgid-idp)
-                          (:rewrite fn-nntp-article-idp-is-consp)
                           (:rewrite fn-nntp-available-number-article-is-projectable)
                           (:rewrite fn-nntp-message-id-token-is-response-text)
                           (:rewrite fn-nntp-response-text-is-octets))))
@@ -62,6 +61,14 @@
 ; 2026-09-28, lane d26-books).  None is cited below.
 (local (in-theory (disable fn-nntp-index-msgid-okp-stringp
                            fn-nntp-find-group-number-of-fresh-member)))
+
+; The tau system is off here: it is time no prover step counts (tau is not
+; rewriting), and on this book's goals it was half the proof time (7.7 ->
+; 3.7 s ACL2 time over the book's own forms, persvati REPL 2026-09-28).
+; One guard proof below is shorter with it (7,565 against 447,668 steps)
+; and turns it back on.  `fn-nntp-article-idp-is-consp' is not enabled:
+; 230k frames tried, 144 useful, none needed (lane d26-books-2).
+(local (in-theory (disable (tau-system))))
 
 ;;; The finders.
 
@@ -2529,7 +2536,8 @@
 (verify-guards fn-rcompat-hdr-cat)
 (verify-guards fn-rcompat-reply-cat)
 (verify-guards fn-nntp-number-withdrawn-p-cat)
-(verify-guards fn-nntp-archive-command-cat)
+(verify-guards fn-nntp-archive-command-cat
+  :hints (("Goal" :in-theory (enable (tau-system)))))
 
 ;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
 ;; Each is tried in includers' proofs and pays for its frames in

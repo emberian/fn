@@ -675,7 +675,14 @@ def ratchet(selected: dict[tuple[str, str, str, str], Measurement], books: set[s
                 result.kept.append(
                     f"KEPT {book}: steps={record.steps:,} is within "
                     f"{step_tolerance:.0%} of baseline {prior_steps:,}; baseline not raised")
-                result.proposed[book] = dict(prior)
+                # The steps row is kept, but a faster measurement still
+                # lowers its seconds (d26-books-2: tau off took catalog from
+                # 10.4 to 6.4 s with steps a little up, and the row kept
+                # 10.36 s).
+                value = dict(prior)
+                if record.seconds < float(prior["seconds"]):
+                    value.update({k: v for k, v in entry(record).items() if k != "steps"})
+                result.proposed[book] = value
             else:
                 result.proposed[book] = lowered(prior, record)
             continue
