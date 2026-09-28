@@ -191,10 +191,6 @@
   (declare (xargs :mode :program))
   (fn-native-operator-init-outcome result observed))
 
-(defun fn-native-operator-host-result-init-store-octets (result)
-  (declare (xargs :mode :program))
-  (fn-native-operator-result-init-store-octets result))
-
 (defun fn-native-operator-host-result-init-profile (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-init-profile result))
