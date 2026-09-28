@@ -150,7 +150,7 @@ class Client:
     def cmd(self, text, multiline=False):
         self.send(text)
         status = self.line()
-        body = self.block() if multiline and status[:1] == "2" else []
+        body = self.block() if multiline and status[:1] in "12" else []
         return status, body
 
     def login(self, user, password):
@@ -931,6 +931,93 @@ def digest_check(node: Node, events: Events, label):
     return row
 
 
+def starttls_session(node: Node, creds, events: Events):
+    """The clear port as a reader that upgrades (RFC 4642): CAPABILITIES,
+    STARTTLS, AUTHINFO, POST, a reply with References, a cancel of its own
+    article; each reply line recorded."""
+    rows = []
+    try:
+        conn = Client(node.port, None, 60)
+        rows.append(("greeting", conn.greeting))
+        s, caps = conn.cmd("CAPABILITIES", True)
+        rows.append(("CAPABILITIES", s + " " + " ".join(caps)))
+        s, _ = conn.cmd("AUTHINFO USER " + creds[0])
+        rows.append(("AUTHINFO before STARTTLS", s))
+        s, _ = conn.cmd("STARTTLS")
+        rows.append(("STARTTLS", s))
+        if s.startswith("382"):
+            conn.sock = node.context().wrap_socket(conn.sock, server_hostname="127.0.0.1")
+            conn.buf = b""
+            rows.append(("AUTHINFO", conn.login(*creds)))
+            mid = "<starttls-{}@fitness.example.invalid>".format(secrets.token_hex(4))
+            first, final = conn.post(make_article(mid, ["fit.general"], "over starttls", 400))
+            rows.append(("POST", final or first))
+            reply = "<starttls-re-{}@fitness.example.invalid>".format(secrets.token_hex(4))
+            first, final = conn.post(make_article(reply, ["fit.general"], "Re: over starttls",
+                                                  300, [mid]))
+            rows.append(("POST reply", final or first))
+            s, head = conn.cmd("HEAD " + reply, True)
+            rows.append(("HEAD reply References", next((h for h in head if h.lower().startswith(
+                "references:")), s)))
+            cancel = "<starttls-cancel-{}@fitness.example.invalid>".format(secrets.token_hex(4))
+            first, final = conn.post(make_article(cancel, ["control.cancel"], "cmsg cancel " + mid,
+                                                  50, extra=("Control: cancel " + mid,)))
+            rows.append(("POST cancel", final or first))
+            s, _ = conn.cmd("STAT " + mid)
+            rows.append(("STAT cancelled", s))
+        conn.close()
+    except Exception as error:                          # noqa: BLE001
+        rows.append(("error", "{}: {}".format(type(error).__name__, error)))
+    events.emit("starttls", rows=rows)
+    return rows
+
+
+def overview_consistency(node: Node, creds, events: Events, groups, per_group=40):
+    """OVER, HDR and XPAT against HEAD of the same articles (RFC 3977 8.3-8.5,
+    RFC 2980 XPAT): every field the overview names equals the header."""
+    conn = node.session(creds, timeout=120)
+    checked, bad = 0, []
+    for group in groups:
+        s, _ = conn.cmd("GROUP " + group)
+        if not s.startswith("211"):
+            continue
+        _, low, high = (int(x) for x in s.split()[1:4])
+        lo = max(low, high - per_group)
+        s, over = conn.cmd("OVER {}-{}".format(lo, high), True)
+        s2, hdr = conn.cmd("HDR Subject {}-{}".format(lo, high), True)
+        s3, xpat = conn.cmd("XPAT Subject {}-{} *fitness*".format(lo, high), True)
+        hdr_map = dict(l.split(" ", 1) for l in hdr if " " in l)
+        xpat_set = {l.split(" ", 1)[0] for l in xpat}
+        for line in over:
+            f = line.split("\t")
+            if len(f) < 8:
+                bad.append((group, "short OVER line", line[:80]))
+                continue
+            n = f[0]
+            hs, head = conn.cmd("HEAD " + n, True)
+            if not hs.startswith("221"):
+                continue
+            h = {}
+            for l in head:
+                k, _, v = l.partition(":")
+                h.setdefault(k.lower(), v.strip())
+            checked += 1
+            for idx, key in ((1, "subject"), (2, "from"), (3, "date"), (4, "message-id"),
+                             (5, "references")):
+                if f[idx] != h.get(key, ""):
+                    bad.append((group, n, key, f[idx][:60], h.get(key, "")[:60]))
+            if hdr_map.get(n, None) != h.get("subject", ""):
+                bad.append((group, n, "HDR Subject", hdr_map.get(n), h.get("subject")))
+            if ("fitness" in h.get("subject", "")) != (n in xpat_set):
+                bad.append((group, n, "XPAT", n in xpat_set, h.get("subject")))
+    conn.close()
+    events.emit("overview-consistency", checked=checked, bad=len(bad), rows=bad[:30])
+    if bad:
+        events.emit("finding", what="OVER/HDR/XPAT disagree with HEAD", count=len(bad),
+                    rows=bad[:10])
+    return checked, bad
+
+
 def cmd_soak(args):
     work = Path(args.work).resolve()
     work.mkdir(parents=True, exist_ok=True)
@@ -1002,6 +1089,8 @@ def cmd_soak(args):
         if row:
             samples.append(row)
         verify_presence(node, creds[0], ledger, events, "end-live", limit=args.presence_limit)
+        overview_consistency(node, creds[0], events, [g for g in GROUPS if g != "control.cancel"])
+        starttls_session(node, creds[1], events)
         replies = live_sample_replies(node, creds[0], [g for g in GROUPS], rng)
         stop_rc = node.stop()
         events.emit("stopped", rc=stop_rc)
