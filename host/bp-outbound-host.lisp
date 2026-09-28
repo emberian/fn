@@ -24,20 +24,6 @@
                (fn-bpo-result-value result)
              nil))))
 
-; Return a fixed local :receipt-intent record suitable for the existing
-; workflow journal preflight/publication path.  This call is read-only: only
-; that existing path may publish and apply the intent.
-(defun fn-bpo-host-receipt-record
-  (receipt-octets txid generation policy-authorizedp state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((result
-         (fn-bpo-receipt-intent-record
-          (f-get-global 'fn-workflow-state state)
-          txid generation receipt-octets policy-authorizedp)))
-    (value (if (fn-bpo-result-okp result)
-               (fn-bpo-result-value result)
-             nil))))
-
 (defun fn-bpo-host-receipt-validp
   (receipt-octets txid generation policy-authorizedp state)
   (declare (xargs :stobjs state :mode :program))
