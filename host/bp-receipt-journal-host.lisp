@@ -11,12 +11,6 @@
      (f-get-global 'fn-bprj-bound-store state)
    (f-get-global 'fn-store-sn state)))
 
-(defun fn-bprj-use-standalone-store (state)
- (declare (xargs :stobjs state :mode :program))
- (let* ((state (f-put-global 'fn-bprj-store-source :standalone state))
-        (state (f-put-global 'fn-bprj-bound-store nil state)))
-  (value :ready)))
-
 (defun fn-bprj-valid-config (record state)
  (declare (xargs :stobjs state :mode :program))
  (value (if (and (fn-bprr-configp record)
