@@ -21,10 +21,9 @@ Run on hbox with FN_NATIVE_HOST naming the image under test
 """
 import unittest
 
-from tests import test_native_operator_verbs as verbs
+from tests.native_harness import EXIT_OK, EXIT_REFUSED
 from tests.test_native_bounds_join import JoinFixture, article
 
-EXIT_OK, EXIT_REFUSED = verbs.EXIT_OK, verbs.EXIT_REFUSED
 A = 300000
 BELOW_A = 290000
 
@@ -33,7 +32,7 @@ class OperatorPostAboveTheOldBlobTests(JoinFixture):
     def test_operator_post_carries_up_to_a_and_names_one_octet_past(self):
         created = self.op("init", "--max-article-octets", str(A), "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        owner = self.start_owner(self.image)
+        self.node.start(image=self.image)
         served = {}
         try:
             for n in (131073, BELOW_A, A + 1):
@@ -49,7 +48,7 @@ class OperatorPostAboveTheOldBlobTests(JoinFixture):
                       for n in (131073, BELOW_A)}
             print("reread", reread, flush=True)
         finally:
-            self.stop(owner)
+            self.node.stop()
         for n in (131073, BELOW_A):
             self.assertEqual(served[n].returncode, EXIT_OK, served[n].stderr.decode())
             self.assertTrue(reread[n], "{} did not reread identical".format(n))

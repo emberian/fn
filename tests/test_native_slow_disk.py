@@ -25,23 +25,18 @@ latency; the node's answers are stated relative to it
     (fn-otm-return-recovers).
 """
 import os
-from pathlib import Path
 import re
 import select
 import shutil
 import signal
 import socket
-import subprocess
-import tempfile
-import threading
 import time
 import unittest
 
-from tests.native_process import node_log_on_failure
+from tests.native_harness import ROOT, Node, native_image, node_log_on_failure, requires
 
-ROOT = Path(__file__).resolve().parents[1]
 # The developer image: the only one that honours a developer selector.
-DEVELOPER = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 STALL_SECONDS = float(os.environ.get("FN_SLOW_DISK_STALL_SECONDS", "30"))
 DISK_SLOW = re.compile(rb"^disk slow: barrier (\d+) ms pending deadline-ms=(\d+) stall-ms=(\d+) "
                        rb"slow-episodes=(\d+) stalls=(\d+) posts=try-later$", re.M)
@@ -49,24 +44,6 @@ DISK_STALLED = re.compile(rb"^disk stalled: barrier (\d+) ms pending deadline-ms
                           rb"slow-episodes=(\d+) stalls=(\d+) posts=try-later members=uncertain$", re.M)
 DISK_OK = re.compile(rb"^disk ok: pending-ms=(\d+) last-barrier-ms=(\d+) max-barrier-ms=(\d+) "
                      rb"deadline-ms=(\d+) stall-ms=(\d+) slow-episodes=(\d+) stalls=(\d+)$", re.M)
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    return env
-
-
-def executable(image):
-    return image.is_file() and os.access(image, os.X_OK)
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 class SlowDiskSourceTests(unittest.TestCase):
@@ -162,63 +139,42 @@ class SlowDiskSourceTests(unittest.TestCase):
         self.assertIn("*fnn-sigterm-requested*", once)
 
 
-@unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
+@requires(DEVELOPER)
 class SlowDiskNativeTests(unittest.TestCase):
     def setUp(self):
-        self.directory = tempfile.TemporaryDirectory(prefix="fn-slowdisk-")
-        self.addCleanup(self.directory.cleanup)
-        self.root = Path(self.directory.name)
-        self.store = self.root / "store"
-        self.control = self.root / "control.sock"
-        self.config = self.root / "fn.toml"
+        self.node = Node(self, DEVELOPER)
+        self.root, self.store, self.port = self.node.root, self.node.store_path, self.node.port
         self.stall = self.root / "stall"
-        self.port = free_port()
-        self.config.write_text(
-            '[store]\npath = "{}"\n'
-            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
         init = self.operator("init", "--max-article-octets", "1048576", "fn.test")
         self.assertEqual(init.returncode, 0, init.stderr.decode())
-        self.log = open(self.root / "owner.stderr", "wb")
-        self.addCleanup(self.log.close)
+        # Registered after the node, so it runs before the node's stop: a
+        # stalled barrier never holds the stop.
         self.addCleanup(lambda: self.stall.unlink() if self.stall.exists() else None)
         self.owner = self.start_owner({"FN_NATIVE_TEST_DISK_STALL_FILE": str(self.stall)})
 
     def operator(self, *words, timeout=60):
-        return subprocess.run(
-            [str(DEVELOPER), "--fn", "operator", str(self.config), *words],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=timeout, check=False)
+        return self.node.operator(*words, timeout=timeout)
 
     def start_owner(self, extra):
-        env = environment()
-        env.update(extra)
-        process = subprocess.Popen(
-            [str(DEVELOPER), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=self.log, bufsize=0)
-        self.addCleanup(self.reap, process)
-        for _ in range(4):
-            self.assertTrue(select.select([process.stdout], [], [], 180)[0],
-                            "the owner did not become ready")
-            line = process.stdout.readline()
-            if line.startswith(b"LISTENING "):
-                return process
-            self.assertIsNone(process.poll(), "the owner exited before listening")
-        self.fail("the owner's readiness output was malformed")
+        return self.node.start(env=extra)
 
     def reap(self, process):
         if self.stall.exists():
             self.stall.unlink()
-        if process.poll() is None:
-            process.send_signal(signal.SIGTERM)
-            try:
-                process.wait(timeout=60)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=10)
-        if process.stdout and not process.stdout.closed:
-            process.stdout.close()
+        self.node.stop(expect=None, process=process)
+
+    def owner_log(self, settle=0.3, limit=10.0):
+        """Every owner's stderr this test started, in order, once the drains
+        have stopped growing (the owner wrote it before the test looked)."""
+        deadline = time.monotonic() + limit
+        end = None
+        while time.monotonic() < deadline:
+            now = sum(process.stderr.end for process in self.node.processes)
+            if now == end:
+                break
+            end = now
+            time.sleep(settle)
+        return b"".join(process.stderr.since(0) for process in self.node.processes)
 
     def connect(self):
         conn = socket.create_connection(("127.0.0.1", self.port), timeout=120)
@@ -399,7 +355,7 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertLess(stat_held, 2.0)
         del stat_shed, stat_after, stat_a
         # The service log names the episode, entered and left, with figures.
-        log = (self.root / "owner.stderr").read_bytes()
+        log = self.owner_log()
         self.assertIn(b"disk slow: a barrier has waited ", log)
         self.assertIn(b"disk recovered: the barrier completed after ", log)
 
@@ -540,7 +496,7 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertIsNotNone(held, stalled_health.stdout)
         self.assertGreaterEqual(int(held.group(1)), int(held.group(2)))
         self.assertEqual(health.returncode, 0, health.stdout)
-        log = (self.root / "owner.stderr").read_bytes()
+        log = self.owner_log()
         self.assertIn(b"disk stalled: a barrier has waited ", log)
         self.assertIn(b"disk recovered after a stall: the barrier completed after ", log)
         # The decision journal: this run's segment, entries in sequence
@@ -559,9 +515,7 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertTrue(any(e[1] == 4 and e[6] == 4 for e in segment), "no :recovered-from-stall")
         print("journal: %d entries in this run's segment, %d bytes in the file" % (len(segment), len(journal)))
         # The operator's replay (`store ROOT journal', ACL2's fn-otm-replay).
-        replay = subprocess.run([str(DEVELOPER), "--fn", "store", str(self.store), "journal"],
-                                cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, timeout=120, check=False)
+        replay = self.node.store("journal", timeout=120)
         print("store journal: rc=%d %r" % (replay.returncode, replay.stdout))
         self.assertEqual(replay.returncode, 0, (replay.stdout, replay.stderr))
         self.assertIn(b" replay=agrees", replay.stdout)
@@ -648,7 +602,7 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertEqual(stat_full, b"430")
         self.assertEqual(stat_after, b"223")
         self.assertIsNone(self.owner.poll(), "the owner stopped")
-        log = (self.root / "owner.stderr").read_bytes()
+        log = self.owner_log()
         self.assertIn(b"disk full: 1000 octets free, ", log)
         self.assertIn(b"disk space recovered: ", log)
         self.assertNotIn(b"needs recovery", log)
@@ -691,7 +645,7 @@ class SlowDiskNativeTests(unittest.TestCase):
                 if not line.startswith(b"240"):
                     break
                 stored += 1
-            with node_log_on_failure(self.root / "owner.stderr"):
+            with node_log_on_failure(self.owner):
                 self.assertEqual(line, self.FULL_REFUSAL, (stored, line))
                 self.assertGreater(stored, 0)
             # The device stalls; a small article still fits and goes in flight.
@@ -729,7 +683,7 @@ class SlowDiskNativeTests(unittest.TestCase):
               "held POST unanswered then: %s; after the stall %r; STAT F %r, A %r"
               % (stored, len(big), refused, refused_at, refused_since_stall, held_unanswered,
                  accepted, stat_f, stat_a))
-        with node_log_on_failure(self.root / "owner.stderr"):
+        with node_log_on_failure(self.owner):
             self.assertEqual(refused, self.FULL_REFUSAL)
             self.assertLess(refused_since_stall, 2.0, refused_since_stall)
             self.assertTrue(held_unanswered,
@@ -740,7 +694,7 @@ class SlowDiskNativeTests(unittest.TestCase):
             self.assertTrue(stat_a.startswith(b"223"), stat_a)
 
     def sigterm(self):
-        self.owner.send_signal(signal.SIGTERM)
+        self.owner.signal(signal.SIGTERM)
         return time.monotonic()
 
     def stop_answers(self, streams, seconds):
@@ -799,17 +753,18 @@ class SlowDiskNativeTests(unittest.TestCase):
             answers, pending = self.stop_answers({"a": (a_conn, a), "e": (e_conn, e)}, 20)
             code = self.owner.wait(timeout=30)
             exited = time.monotonic() - t0
+        stopped = self.owner
         stat = self.restart_and_stat([b"stop-a@example.invalid", b"stop-e@example.invalid"])
         print("graceful stop (device back 1.5 s after SIGTERM): answers %r; exit %d after %.3fs; STAT %r"
               % ({k: (round(v[0] - t0, 3), v[1]) for k, v in answers.items()}, code, exited, stat))
-        with node_log_on_failure(self.root / "owner.stderr"):
+        with node_log_on_failure(stopped):
             self.assertTrue(still_running, "the owner stopped before its posts in flight were answered")
             self.assertEqual(pending, {}, "a poster was not answered")
             for name in ("a", "e"):
                 self.assertTrue(answers[name][1].startswith(b"240"), (name, answers[name]))
             self.assertEqual(code, 0)
             self.assertEqual(set(stat.values()), {b"223"}, stat)
-            log = (self.root / "owner.stderr").read_bytes()
+            log = self.owner_log()
             self.assertIn(b"stopping: answering the posts in flight first", log)
             self.assertIn(b"stopping: drained after ", log)
 
@@ -841,10 +796,11 @@ class SlowDiskNativeTests(unittest.TestCase):
             running_while_stalled = self.owner.poll() is None
             self.stall.unlink()
             code = self.owner.wait(timeout=60)
+        stopped = self.owner
         stat = self.restart_and_stat([b"stop2-a@example.invalid", b"stop2-e@example.invalid"])
         print("graceful stop past H (device stalled): answers %r then %r; exit %d; STAT %r"
               % ({k: (round(v[0] - issued, 3), v[1]) for k, v in answers.items()}, rest, code, stat))
-        with node_log_on_failure(self.root / "owner.stderr"):
+        with node_log_on_failure(stopped):
             self.assertEqual(pending, {}, "a poster was not answered")
             for name in ("a", "e"):
                 at, line = answers[name]
@@ -901,11 +857,12 @@ class SlowDiskNativeTests(unittest.TestCase):
         finally:
             for conn, _stream in middle + posters + [(w_conn, w)]:
                 conn.close()
+        stopped = self.owner
         stat = self.restart_and_stat(msgids)
         print("stop with 8 mid-article and 8 mid-commit: answers %r; mid-article %r; exit %d after %.3fs; STAT %r"
               % (sorted(set(v[1][:3] for v in answers.values())),
                  sorted(set(v[1] for v in closed.values())), code, exited, stat))
-        with node_log_on_failure(self.root / "owner.stderr"):
+        with node_log_on_failure(stopped):
             self.assertTrue(still_running)
             self.assertEqual(pending, {}, "a committed poster was not answered")
             self.assertEqual(open_middle, {}, "a client mid-article was not closed")
@@ -922,7 +879,7 @@ class SlowDiskNativeTests(unittest.TestCase):
                     self.assertIn(stat[msgid], (b"223", b"430"), (n, line))
                 else:
                     self.assertEqual(stat[msgid], b"430", (n, line))
-            log = (self.root / "owner.stderr").read_bytes()
+            log = self.owner_log()
             self.assertIn(b"stopping: answering the posts in flight first", log)
             self.assertIn(b"stopping: drained after ", log)
 

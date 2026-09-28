@@ -154,11 +154,48 @@
 ; The line: the older `peer list' line with the budget words inserted before
 ; its newline.
 
-(defun fn-napb-before-last (line extra)
-  (declare (xargs :guard t))
+;
+; The walks of the `peer list' render execute by loops (lane peer-list-depth):
+; a peer's row group grows one row per `peer carries' request (PRF-171, D27:
+; no row cap), so its line grows about 82 octets per carried principal, and
+; `fn-napb-before-last' took one control-stack frame per octet of it: at
+; about 1,100 carried principals `peer list' died at the deployed 1,024 KiB
+; ("Control stack guard page unprotected", batch AZ,
+; tests/test_native_peer_rows_growth.py).  Each :logic is the recursion,
+; unchanged; each :exec is a loop, equal by the local lemma after it.
+(defun fn-napb-before-last-loop (line extra acc)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (consp line) (consp (cdr line)))
-      (cons (car line) (fn-napb-before-last (cdr line) extra))
-    (append (true-list-fix extra) (true-list-fix line))))
+      (fn-napb-before-last-loop (cdr line) extra (cons (car line) acc))
+    (fn-ag-rev-onto acc (append (true-list-fix extra) (true-list-fix line)))))
+
+(defun fn-napb-before-last (line extra)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (and (consp line) (consp (cdr line)))
+           (cons (car line) (fn-napb-before-last (cdr line) extra))
+         (append (true-list-fix extra) (true-list-fix line)))
+       :exec (fn-napb-before-last-loop line extra nil)))
+
+(local
+ (defthm fn-napb-before-last-loop-is-rev-onto
+   (equal (fn-napb-before-last-loop line extra acc)
+          (fn-ag-rev-onto acc (fn-napb-before-last line extra)))
+   :hints (("Goal" :induct (fn-napb-before-last-loop line extra acc)
+                   :in-theory (union-theories
+                               '(fn-napb-before-last-loop fn-napb-before-last
+                                 fn-ag-rev-onto car-cons cdr-cons)
+                               (theory 'minimal-theory))))))
+
+(verify-guards fn-napb-before-last-loop)
+
+(verify-guards fn-napb-before-last
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-napb-before-last
+                                fn-napb-before-last-loop-is-rev-onto
+                                fn-ag-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defthm fn-napb-before-last-of-append-newline
   (implies (and (true-listp a) (true-listp extra))
@@ -172,22 +209,108 @@ budget words of ROWS (the peer's row group), then the newline."
   (fn-napb-before-last (fn-native-admin-peer-row-octets p rows)
                        (fn-native-admin-peer-budget-octets rows)))
 
-(defun fn-native-admin-peer-budget-report-rows (names peers)
+; The peer table's walks, as loops, for the report's :exec: books/config.lisp
+; `fn-cfg-rows-with-key' and books/peer-config.lisp `fn-cfg-peer-names' are
+; recursions over the whole peer table (every peer's rows), and both books
+; are wide (743 and 520 dependents), so the report calls these twins in its
+; :exec and the lemmas equate them; the two definitions stay as they are
+; until those books are next opened (tools/depth_baseline.json "debt").
+(defun fn-napb-rows-with-key-loop (rows a acc)
   (declare (xargs :guard t))
-  (if (consp names)
-      (let ((p (fn-cfg-peer-find (car names) peers)))
-        (append (if p
-                    (fn-native-admin-peer-budget-row-octets
-                     p (fn-cfg-rows-with-key peers (car names)))
-                  nil)
-                (fn-native-admin-peer-budget-report-rows (cdr names) peers)))
-    nil))
+  (if (consp rows)
+      (fn-napb-rows-with-key-loop
+       (cdr rows) a
+       (if (equal (fn-cfg-row-a (car rows)) a) (cons (car rows) acc) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defthm fn-napb-rows-with-key-loop-is-rev-onto
+  (equal (fn-napb-rows-with-key-loop rows a acc)
+         (fn-ag-rev-onto acc (fn-cfg-rows-with-key rows a)))
+  :hints (("Goal" :induct (fn-napb-rows-with-key-loop rows a acc)
+                  :in-theory (union-theories
+                              '(fn-napb-rows-with-key-loop fn-cfg-rows-with-key
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(defun fn-napb-peer-names-loop (peers acc)
+  (declare (xargs :guard t))
+  (if (consp peers)
+      (fn-napb-peer-names-loop
+       (cdr peers)
+       (if (equal (fn-cfg-row-b (car peers)) "path-identity")
+           (cons (fn-cfg-row-a (car peers)) acc)
+         acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defthm fn-napb-peer-names-loop-is-rev-onto
+  (equal (fn-napb-peer-names-loop peers acc)
+         (fn-ag-rev-onto acc (fn-cfg-peer-names peers)))
+  :hints (("Goal" :induct (fn-napb-peer-names-loop peers acc)
+                  :in-theory (union-theories
+                              '(fn-napb-peer-names-loop fn-cfg-peer-names
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+; The report's right fold, from the left over the reversed names.  Each
+; name's rows are found once (fn-cfg-peer-find is the typed record of the
+; same rows).
+(defun fn-napb-report-rows-loop (rev peers acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-napb-report-rows-loop
+       (cdr rev) peers
+       (let* ((rows (fn-napb-rows-with-key-loop peers (car rev) nil))
+              (p (fn-cfg-peer-of-rows (car rev) rows)))
+         (append (if p (fn-native-admin-peer-budget-row-octets p rows) nil)
+                 acc)))
+    acc))
+
+(defun fn-native-admin-peer-budget-report-rows (names peers)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp names)
+           (let ((p (fn-cfg-peer-find (car names) peers)))
+             (append (if p
+                         (fn-native-admin-peer-budget-row-octets
+                          p (fn-cfg-rows-with-key peers (car names)))
+                       nil)
+                     (fn-native-admin-peer-budget-report-rows (cdr names) peers)))
+         nil)
+       :exec (fn-napb-report-rows-loop (fn-ag-rev-onto names nil) peers nil)))
+
+(local
+ (defthm fn-napb-report-rows-loop-of-rev-onto
+   (equal (fn-napb-report-rows-loop (fn-ag-rev-onto names zs) peers nil)
+          (fn-napb-report-rows-loop
+           zs peers (fn-native-admin-peer-budget-report-rows names peers)))
+   :hints (("Goal" :induct (fn-ag-rev-onto names zs)
+                   :in-theory (union-theories
+                               '(fn-napb-report-rows-loop
+                                 fn-native-admin-peer-budget-report-rows
+                                 fn-cfg-peer-find fn-ag-rev-onto
+                                 fn-napb-rows-with-key-loop-is-rev-onto
+                                 car-cons cdr-cons)
+                               (union-theories (theory 'minimal-theory)
+                                               (executable-counterpart-theory :here)))))))
+
+(verify-guards fn-napb-report-rows-loop)
+
+(verify-guards fn-native-admin-peer-budget-report-rows
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-native-admin-peer-budget-report-rows
+                                fn-napb-report-rows-loop)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here)))
+                  :use ((:instance fn-napb-report-rows-loop-of-rev-onto (zs nil))))))
 
 (defun fn-native-admin-peer-budget-report (peers)
   "The `peer list' report: books/native-admin.lisp fn-native-admin-query-report
 and books/native-live-status.lisp fn-nls-report (:peers) call it."
   (declare (xargs :guard t))
-  (fn-native-admin-peer-budget-report-rows (fn-cfg-peer-names peers) peers))
+  (fn-native-admin-peer-budget-report-rows
+   (mbe :logic (fn-cfg-peer-names peers)
+        :exec (fn-napb-peer-names-loop peers nil))
+   peers))
 
 ;; A line that ends in its newline: inserting before the last octet is
 ;; inserting before the newline.

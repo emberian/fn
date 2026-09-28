@@ -1,5 +1,4 @@
 """Public native operator submission through the serialized local owner."""
-import hashlib
 import os
 from pathlib import Path
 import re
@@ -8,23 +7,23 @@ import signal
 import stat
 import socket
 import subprocess
-import tempfile
 import time
 import unittest
-from tools.wire_stream import whole_stream
 import sys
+
+from tests.native_harness import (
+    EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_USAGE, ROOT, Client, Node, executable,
+    native_image, requires)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
+IMAGE = native_image("FN_NATIVE_HOST")
 # The stop cut after a control submission, and the owner's SIGTERM and
 # cleanup-pause cuts, are selected by environment variables that only a
 # developer image honours; a production image refuses to start with any of
 # them (host/native/io.lisp, `fnn-developer-selector-gate').
-DEVELOPER = Path(os.environ.get(
-    "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 DEVELOPER_REASON = (
     "build/fn-host-developer (or FN_NATIVE_DEVELOPER_HOST) is required: {} is "
     "a developer-image selector and a production image refuses to start with it")
@@ -32,7 +31,6 @@ DEVELOPER_REASON = (
 SELECTORS = tuple(re.findall(r'"(FN_[A-Z_]+)"', re.search(
     r"\(defparameter \+fnn-developer-selectors\+\s+'\((.*?)\)\)",
     (ROOT / "host/native/io.lisp").read_text(encoding="ascii"), re.S).group(1)))
-EXIT_USAGE = 5
 # The structured local-control replies, as ACL2 defines them: each tagged
 # reply the control books construct, `(list :<kind>-reply status ...)'.
 STRUCTURED_REPLY_KINDS = {
@@ -41,20 +39,6 @@ STRUCTURED_REPLY_KINDS = {
                  "books/topic-history-local-control.lisp")
     for kind in re.findall(r"\(list\s+(:[a-z-]+-reply)\b",
                            (ROOT / book).read_text(encoding="ascii"))}
-
-
-def executable(path):
-    return path.is_file() and os.access(path, os.X_OK)
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    for name in SELECTORS:
-        env.pop(name, None)
-    return env
 
 
 def cbor_head(major, n):
@@ -93,12 +77,6 @@ def control_exchange(path, frame):
             if not chunk:
                 return b"".join(chunks)
             chunks.append(chunk)
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 # What `operator post` stores (books/owner.lisp fn-own-operator-submit): the
@@ -199,27 +177,14 @@ class NativeControlCutGateTests(unittest.TestCase):
                         consume.index("(fnn-feed-send link command)"))
 
 
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
-                     "build/fn-host is required")
+@requires(IMAGE)
 class NativeControlTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-control-")
-        self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
-        self.store = self.root / "store"
-        self.control = self.root / "control.sock"
-        self.port = free_port()
-        self.config = self.root / "fn.toml"
-        initialized = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(self.store), "init", "fn.test"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=180, check=False)
+        self.node = Node(self, IMAGE)
+        self.root, self.store, self.control = self.node.root, self.node.store_path, self.node.control
+        self.port, self.config = self.node.port, self.node.config
+        initialized = self.node.store("init", "fn.test")
         self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
-        self.config.write_text(
-            "[store]\npath = \"{}\"\n"
-            "[listener]\nhost = \"127.0.0.1\"\nport = {}\n"
-            "[control]\npath = \"{}\"\n".format(
-                self.store, self.port, self.control), encoding="ascii")
 
     @staticmethod
     def article(message_id):
@@ -237,54 +202,40 @@ class NativeControlTests(unittest.TestCase):
         self.assertEqual(stored[prefix.end():], payload)
 
     def start_owner(self, extra_env=None, image=None):
-        env = environment()
-        if extra_env:
-            env.update(extra_env)
-        process = subprocess.Popen(
-            [str(image or IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            bufsize=0)
-        seen_control = False
-        deadline_lines = []
-        for _ in range(4):
-            ready = select.select([process.stdout], [], [], 180)[0]
-            self.assertTrue(ready, "native operator did not become ready")
-            line = process.stdout.readline()
-            deadline_lines.append(line)
-            if line.startswith(b"CONTROL "):
-                seen_control = True
-            if line.startswith(b"LISTENING "):
-                self.assertTrue(seen_control, deadline_lines)
-                return process
-            if process.poll() is not None:
-                self.fail("owner failed: {} {}".format(
-                    deadline_lines, process.stderr.read().decode("utf-8", "replace")))
-        self.fail("owner readiness output was malformed: {!r}".format(deadline_lines))
+        """The owner, ready; its CONTROL line came before its LISTENING line."""
+        process = self.node.start(image=image, env=extra_env)
+        head = process.stdout.since(0)
+        self.assertGreaterEqual(head.find(b"CONTROL "), 0, head)
+        self.assertLess(head.find(b"CONTROL "), head.find(b"LISTENING "), head)
+        return process
+
+    def stop_owner(self, owner=None):
+        self.node.stop(process=owner, grace=30)
 
     def post(self, message_id, payload, env=None):
-        path = self.root / (message_id.strip("<>").replace("@", "-") + ".eml")
-        path.write_bytes(payload)
-        return subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(self.config), "post",
-             "--message-id", message_id, "--payload", str(path),
-             "--group", "fn.test"],
-            cwd=ROOT, env=env or environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=60, check=False)
+        return self.node.post(message_id, payload, env=env, timeout=60)
+
+    def post_process(self, message_id, path):
+        """`operator post` running concurrently (its own process)."""
+        return subprocess.Popen(
+            self.node.argv(IMAGE, ("operator", self.config, "post", "--message-id",
+                                   message_id, "--payload", path, "--group", "fn.test")),
+            cwd=ROOT, env=self.node.environment(), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
 
     def inspect(self, message_id):
         return self.inspect_store(self.store, message_id)
 
     def inspect_store(self, store, message_id):
-        return subprocess.run(
-            [str(IMAGE), "--fn", "store", str(store), "inspect", message_id],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=180, check=False)
+        return self.node.invoke("store", store, "inspect", message_id)
 
     def operator(self, *words, image=None, timeout=120):
-        return subprocess.run(
-            [str(image or IMAGE), "--fn", "operator", str(self.config)] + list(words),
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=timeout, check=False)
+        return self.node.operator(*words, image=image, timeout=timeout)
+
+    def quit_cleanly(self):
+        with Client(self.port, timeout=30, greeting=(b"200",)) as client:
+            self.assertTrue(client.command(b"QUIT").startswith(b"205 "))
+            client.close(quit=False)
 
     def test_sigkilled_owner_socket_is_stale_and_control_list_runs_offline(self):
         # PKT-344: an owner killed without cleanup leaves its socket node; the
@@ -293,20 +244,15 @@ class NativeControlTests(unittest.TestCase):
         owner = self.start_owner()
         owner.kill()
         owner.wait(timeout=30)
-        owner.stdout.close()
-        owner.stderr.close()
+        owner.finish()
         self.assertTrue(stat.S_ISSOCK(os.lstat(self.control).st_mode))
         listed = self.operator("control", "list")
         self.assertEqual(listed.returncode, 0, listed.stderr.decode())
         self.assertIn(b"stale control socket removed", listed.stderr)
         self.assertFalse(os.path.lexists(self.control))
         # A restarted owner binds its socket as before.
-        restarted = self.start_owner()
-        restarted.send_signal(signal.SIGTERM)
-        self.assertEqual(restarted.wait(timeout=30), 0,
-                         restarted.stderr.read().decode("utf-8", "replace"))
-        restarted.stdout.close()
-        restarted.stderr.close()
+        self.start_owner()
+        self.stop_owner()
 
     def test_health_during_a_slow_start_says_starting(self):
         # PKT-283: the owner holds the recovered Store's lock and its control
@@ -315,31 +261,15 @@ class NativeControlTests(unittest.TestCase):
         if not executable(DEVELOPER):
             raise unittest.SkipTest(
                 DEVELOPER_REASON.format("FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN"))
-        env = environment()
-        env["FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN"] = "1"
-        process = subprocess.Popen(
-            [str(DEVELOPER), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            bufsize=0)
-        try:
-            ready = select.select([process.stdout], [], [], 180)[0]
-            self.assertTrue(ready, "the paused owner printed nothing")
-            self.assertEqual(process.stdout.readline(),
-                             b"OWNER-PAUSED-BEFORE-LISTEN\n")
-            self.assertFalse(os.path.lexists(self.control))
-            health = self.operator("health")
-            self.assertEqual(health.returncode, 20, health.stderr.decode())
-            self.assertTrue(health.stdout.startswith(
-                b"health exit=20 state=fenced reason=starting"), health.stdout)
-            process.send_signal(signal.SIGTERM)
-            self.assertEqual(process.wait(timeout=60), 0,
-                             process.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if process.poll() is None:
-                process.kill()
-                process.wait(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
+        process = self.node.start(image=DEVELOPER, ready=None,
+                                  env={"FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN": "1"})
+        self.assertEqual(process.next_line(180), b"OWNER-PAUSED-BEFORE-LISTEN\n")
+        self.assertFalse(os.path.lexists(self.control))
+        health = self.operator("health")
+        self.assertEqual(health.returncode, 20, health.stderr.decode())
+        self.assertTrue(health.stdout.startswith(
+            b"health exit=20 state=fenced reason=starting"), health.stdout)
+        self.stop_owner(process)
 
     def test_health_and_status_say_the_node_is_not_running_and_why(self):
         # friend-path-2: with nothing running where an owner would listen,
@@ -374,18 +304,14 @@ class NativeControlTests(unittest.TestCase):
         # Never run: the log holds no run line.
         self.assertTrue(down("never").startswith(b"last-stop unrecorded"))
         # A clean stop.
-        owner = self.start_owner()
-        owner.send_signal(signal.SIGTERM)
-        self.assertEqual(owner.wait(timeout=60), 0)
-        owner.stdout.close()
-        owner.stderr.close()
+        self.start_owner()
+        self.node.stop()
         self.assertEqual(down("sigterm"), b"last-stop exit=00")
         # Killed: its start is the last run line.
         owner = self.start_owner()
         owner.kill()
         owner.wait(timeout=30)
-        owner.stdout.close()
-        owner.stderr.close()
+        owner.finish()
         self.assertTrue(down("sigkill").startswith(
             b"last-stop none: the log's last run line is its start"))
         # A run that cannot start (its port is taken) says why, in the log, in
@@ -408,49 +334,27 @@ class NativeControlTests(unittest.TestCase):
         self.assertEqual(text.count("run stopped exit="), 2, text[-2000:])
 
     def test_shared_control_path_is_not_stolen_by_another_store(self):
-        owner = self.start_owner()
-        second_store = self.root / "second-store"
-        second_config = self.root / "second.toml"
-        initialized = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(second_store), "init", "fn.test"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=180, check=False)
+        self.start_owner()
+        second = Node(self, IMAGE, root=self.root / "second")
+        second.control = self.control
+        second.write_config()
+        initialized = second.store("init", "fn.test")
         self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
-        second_config.write_text(
-            "[store]\npath = \"{}\"\n"
-            "[listener]\nhost = \"127.0.0.1\"\nport = {}\n"
-            "[control]\npath = \"{}\"\n".format(
-                second_store, free_port(), self.control), encoding="ascii")
-        second = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(second_config), "run"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        try:
-            second_stdout, second_stderr = second.communicate(timeout=60)
-            self.assertEqual(second.returncode, 1, second_stderr.decode())
-            self.assertNotIn(b"CONTROL ", second_stdout)
-            self.assertIn(b"control path is already owned", second_stderr)
+        refused = second.operator("run", timeout=60)
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+        self.assertNotIn(b"CONTROL ", refused.stdout)
+        self.assertIn(b"control path is already owned", refused.stderr)
 
-            message_id = "<control-lease@example.invalid>"
-            payload = self.article(message_id)
-            accepted = self.post(message_id, payload)
-            self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
-        finally:
-            if second.poll() is None:
-                second.kill()
-                second.wait(timeout=10)
-            second.stdout.close()
-            second.stderr.close()
-            owner.send_signal(signal.SIGTERM)
-            self.assertEqual(owner.wait(timeout=30), 0,
-                             owner.stderr.read().decode("utf-8", "replace"))
-            owner.stdout.close()
-            owner.stderr.close()
+        message_id = "<control-lease@example.invalid>"
+        payload = self.article(message_id)
+        accepted = self.post(message_id, payload)
+        self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
+        self.stop_owner()
 
         observed = self.inspect(message_id)
         self.assertEqual(observed.returncode, 0, observed.stderr.decode())
         self.assert_injected(observed.stdout, payload)
-        absent = self.inspect_store(second_store, message_id)
+        absent = self.inspect_store(second.store_path, message_id)
         self.assertNotEqual(absent.returncode, 0)
 
     def test_two_clients_sigterm_cleanup_and_restart(self):
@@ -462,110 +366,59 @@ class NativeControlTests(unittest.TestCase):
         ids = ["<native-control-a@example.invalid>",
                "<native-control-b@example.invalid>"]
         payloads = [self.article(value) for value in ids]
-        paths = []
         clients = []
-        try:
-            for index, payload in enumerate(payloads):
-                path = self.root / "concurrent-{}.eml".format(index)
-                path.write_bytes(payload)
-                paths.append(path)
-                clients.append(subprocess.Popen(
-                    [str(IMAGE), "--fn", "operator", str(self.config), "post",
-                     "--message-id", ids[index], "--payload", str(path),
-                     "--group", "fn.test"], cwd=ROOT, env=environment(),
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            for client in clients:
-                stdout, stderr = client.communicate(timeout=60)
-                self.assertEqual(client.returncode, 0, stderr.decode())
-                self.assertEqual(stdout, b"")
-            # Keep one served client active while SIGTERM asks the main owner
-            # thread to take its ordinary stop/join/close path.
-            active = socket.create_connection(("127.0.0.1", self.port), timeout=30)
-            self.addCleanup(active.close)
-            self.assertTrue(active.makefile("rb", buffering=0).readline().startswith(b"200 "))
-            active_control = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            active_control.settimeout(30)
-            active_control.connect(str(self.control))
-            active_control.sendall(b"F")  # hold an incomplete bounded frame
-            self.addCleanup(active_control.close)
-            owner.send_signal(signal.SIGTERM)
-            ready = select.select([owner.stdout], [], [], 30)[0]
-            self.assertTrue(ready, "owner did not enter ordinary cleanup")
-            self.assertEqual(owner.stdout.readline(), b"OWNER-CLEANUP\n")
-            owner.send_signal(signal.SIGTERM)
-            self.assertEqual(owner.wait(timeout=30), 0,
-                             owner.stderr.read().decode("utf-8", "replace"))
-            self.assertEqual(active_control.recv(1), b"")
-            self.assertFalse(self.control.exists())
-        finally:
-            if owner.poll() is None:
-                owner.kill()
-                owner.wait(timeout=10)
-            owner.stdout.close()
-            owner.stderr.close()
+        for index, payload in enumerate(payloads):
+            path = self.root / "concurrent-{}.eml".format(index)
+            path.write_bytes(payload)
+            clients.append(self.post_process(ids[index], path))
+        for client in clients:
+            stdout, stderr = client.communicate(timeout=60)
+            self.assertEqual(client.returncode, 0, stderr.decode())
+            self.assertEqual(stdout, b"")
+        # Keep one served client active while SIGTERM asks the main owner
+        # thread to take its ordinary stop/join/close path.
+        active = Client(self.port, timeout=30, greeting=(b"200",))
+        self.addCleanup(active.close, quit=False)
+        active_control = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        active_control.settimeout(30)
+        active_control.connect(str(self.control))
+        active_control.sendall(b"F")  # hold an incomplete bounded frame
+        self.addCleanup(active_control.close)
+        owner.signal(signal.SIGTERM)
+        self.assertEqual(owner.next_line(30), b"OWNER-CLEANUP\n",
+                         "owner did not enter ordinary cleanup")
+        owner.signal(signal.SIGTERM)
+        self.node.exited(EXIT_OK, timeout=30)
+        self.assertEqual(active_control.recv(1), b"")
+        self.assertFalse(self.control.exists())
 
         for message_id, payload in zip(ids, payloads):
             observed = self.inspect(message_id)
             self.assertEqual(observed.returncode, 0, observed.stderr.decode())
             self.assert_injected(observed.stdout, payload)
 
-        restarted = self.start_owner()
-        try:
-            duplicate = self.post(ids[0], payloads[0])
-            self.assertEqual(duplicate.returncode, 0, duplicate.stderr.decode())
-            self.assertIn(b"DUPLICATE", duplicate.stderr)
-            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client:
-                stream = whole_stream(client)
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"QUIT\r\n")
-                self.assertTrue(stream.readline().startswith(b"205 "))
-            restarted.send_signal(signal.SIGTERM)
-            self.assertEqual(restarted.wait(timeout=30), 0,
-                             restarted.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if restarted.poll() is None:
-                restarted.kill()
-                restarted.wait(timeout=10)
-            restarted.stdout.close()
-            restarted.stderr.close()
+        self.start_owner()
+        duplicate = self.post(ids[0], payloads[0])
+        self.assertEqual(duplicate.returncode, 0, duplicate.stderr.decode())
+        self.assertIn(b"DUPLICATE", duplicate.stderr)
+        self.quit_cleanly()
+        self.stop_owner()
 
     def test_prelisten_sigterm_skips_modules_and_reopens(self):
         if not executable(DEVELOPER):
             raise unittest.SkipTest(
                 DEVELOPER_REASON.format("FN_NATIVE_OWNER_TEST_SIGTERM"))
-        env = environment()
-        env["FN_NATIVE_OWNER_TEST_SIGTERM"] = "after-install"
-        process = subprocess.Popen(
-            [str(DEVELOPER), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        try:
-            stdout, stderr = process.communicate(timeout=60)
-            self.assertEqual(process.returncode, 0, stderr.decode())
-            self.assertIn(b"OWNER-PRELISTEN\n", stdout)
-            self.assertNotIn(b"CONTROL ", stdout)
-            self.assertNotIn(b"LISTENING ", stdout)
-            self.assertFalse(self.control.exists())
-        finally:
-            if process.poll() is None:
-                process.kill()
-                process.wait(timeout=10)
+        stopped = self.node.operator("run", image=DEVELOPER, timeout=60,
+                                     env={"FN_NATIVE_OWNER_TEST_SIGTERM": "after-install"})
+        self.assertEqual(stopped.returncode, 0, stopped.stderr.decode())
+        self.assertIn(b"OWNER-PRELISTEN\n", stopped.stdout)
+        self.assertNotIn(b"CONTROL ", stopped.stdout)
+        self.assertNotIn(b"LISTENING ", stopped.stdout)
+        self.assertFalse(self.control.exists())
 
-        restarted = self.start_owner()
-        try:
-            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client:
-                stream = whole_stream(client)
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"QUIT\r\n")
-                self.assertTrue(stream.readline().startswith(b"205 "))
-            restarted.send_signal(signal.SIGTERM)
-            self.assertEqual(restarted.wait(timeout=30), 0,
-                             restarted.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if restarted.poll() is None:
-                restarted.kill()
-                restarted.wait(timeout=10)
-            restarted.stdout.close()
-            restarted.stderr.close()
+        self.start_owner()
+        self.quit_cleanly()
+        self.stop_owner()
 
     def test_lost_reply_after_submission_is_uncertain_and_recovers(self):
         # The stop is directed at the worker thread that holds the reply
@@ -582,50 +435,24 @@ class NativeControlTests(unittest.TestCase):
         payload = self.article(message_id)
         payload_path = self.root / "lost.eml"
         payload_path.write_bytes(payload)
-        client = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "post",
-             "--message-id", message_id, "--payload", str(payload_path),
-             "--group", "fn.test"], cwd=ROOT, env=environment(),
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        try:
-            ready = select.select([owner.stdout], [], [], 60)[0]
-            self.assertTrue(ready, "owner did not reach post-recovery cut")
-            self.assertEqual(owner.stdout.readline(), b"CONTROL-SUBMITTED\n")
-            owner.kill()
-            owner.wait(timeout=10)
-            stdout, stderr = client.communicate(timeout=30)
-            self.assertEqual(client.returncode, 3, stderr.decode())
-            self.assertEqual(stdout, b"")
-            self.assertIn(b"uncertain operator post", stderr)
-        finally:
-            if client.poll() is None:
-                client.kill()
-                client.wait(timeout=10)
-            if owner.poll() is None:
-                owner.kill()
-                owner.wait(timeout=10)
-            owner.stdout.close()
-            owner.stderr.close()
+        client = self.post_process(message_id, payload_path)
+        self.addCleanup(lambda: client.poll() is None and (client.kill(), client.wait(10)))
+        self.assertEqual(owner.next_line(60), b"CONTROL-SUBMITTED\n",
+                         "owner did not reach post-recovery cut")
+        owner.kill()
+        owner.wait(timeout=10)
+        owner.finish()
+        stdout, stderr = client.communicate(timeout=30)
+        self.assertEqual(client.returncode, EXIT_UNCERTAIN, stderr.decode())
+        self.assertEqual(stdout, b"")
+        self.assertIn(b"uncertain operator post", stderr)
 
         observed = self.inspect(message_id)
         self.assertEqual(observed.returncode, 0, observed.stderr.decode())
         self.assert_injected(observed.stdout, payload)
-        restarted = self.start_owner()
-        try:
-            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client_socket:
-                stream = whole_stream(client_socket)
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"QUIT\r\n")
-                self.assertTrue(stream.readline().startswith(b"205 "))
-            restarted.send_signal(signal.SIGTERM)
-            self.assertEqual(restarted.wait(timeout=30), 0,
-                             restarted.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if restarted.poll() is None:
-                restarted.kill()
-                restarted.wait(timeout=10)
-            restarted.stdout.close()
-            restarted.stderr.close()
+        self.start_owner()
+        self.quit_cleanly()
+        self.stop_owner()
 
     def store_digest(self):
         return sorted((str(path.relative_to(self.store)),
@@ -647,12 +474,7 @@ class NativeControlTests(unittest.TestCase):
         before = self.store_digest()
         for name in SELECTORS:
             with self.subTest(selector=name):
-                env = environment()
-                env[name] = "x"
-                started = subprocess.run(
-                    [str(IMAGE), "--fn", "operator", str(self.config), "run"],
-                    cwd=ROOT, env=env, stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE, timeout=120, check=False)
+                started = self.node.operator("run", env={name: "x"}, timeout=120)
                 self.assertEqual(started.returncode, EXIT_USAGE,
                                  started.stderr.decode())
                 self.assertIn(name.encode("ascii"), started.stderr)
@@ -660,21 +482,14 @@ class NativeControlTests(unittest.TestCase):
                 self.assertFalse(self.control.exists())
                 if name != SELECTORS[0]:
                     continue
-                recovered = subprocess.run(
-                    [str(IMAGE), "--fn", "store", str(self.store), "recover"],
-                    cwd=ROOT, env=env, stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE, timeout=120, check=False)
+                recovered = self.node.store("recover", env={name: "x"}, timeout=120)
                 self.assertEqual(recovered.returncode, EXIT_USAGE,
                                  recovered.stderr.decode())
                 self.assertEqual(recovered.stdout, b"")
         payload = self.root / "positional.eml"
         payload.write_bytes(self.article("<native-positional@example.invalid>"))
-        injected = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(self.store), "post",
-             "<native-positional@example.invalid>", str(payload), "-",
-             "postpublish", "fn.test"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=120, check=False)
+        injected = self.node.store("post", "<native-positional@example.invalid>", payload,
+                                   "-", "postpublish", "fn.test", timeout=120)
         self.assertEqual(injected.returncode, EXIT_USAGE, injected.stderr.decode())
         self.assertIn(b"FAULT argument", injected.stderr)
         self.assertEqual(self.store_digest(), before)
@@ -687,46 +502,37 @@ class NativeControlTests(unittest.TestCase):
         Message-ID the article does not carry.  A well-formed supplied Path is
         accepted (D32, RFC 5537 3.4): the node prepends its own identity and
         keeps the supplied tail verbatim."""
-        owner = self.start_owner()
-        try:
-            message_id = "<native-control-injected@example.invalid>"
-            payload = self.article(message_id)
-            accepted = self.post(message_id, payload)
-            self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
+        self.start_owner()
+        message_id = "<native-control-injected@example.invalid>"
+        payload = self.article(message_id)
+        accepted = self.post(message_id, payload)
+        self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
 
-            yue_id = "<native-control-yue@example.invalid>"
-            yue = self.article(yue_id).replace(b"From: author@example.invalid",
-                                              b"From: yue")
-            refused = self.post(yue_id, yue)
-            self.assertEqual(refused.returncode, 1, refused.stderr.decode())
+        yue_id = "<native-control-yue@example.invalid>"
+        yue = self.article(yue_id).replace(b"From: author@example.invalid",
+                                          b"From: yue")
+        refused = self.post(yue_id, yue)
+        self.assertEqual(refused.returncode, 1, refused.stderr.decode())
 
-            supplied_id = "<native-control-path@example.invalid>"
-            supplied = self.post(supplied_id, b"Path: elsewhere!not-for-mail\r\n"
-                                 + self.article(supplied_id))
-            self.assertEqual(supplied.returncode, 0, supplied.stderr.decode())
+        supplied_id = "<native-control-path@example.invalid>"
+        supplied = self.post(supplied_id, b"Path: elsewhere!not-for-mail\r\n"
+                             + self.article(supplied_id))
+        self.assertEqual(supplied.returncode, 0, supplied.stderr.decode())
 
-            path_id = "<native-control-bad-path@example.invalid>"
-            refused_path = self.post(path_id, b"Path: not a path\r\n"
-                                     + self.article(path_id))
-            self.assertEqual(refused_path.returncode, 1, refused_path.stderr.decode())
+        path_id = "<native-control-bad-path@example.invalid>"
+        refused_path = self.post(path_id, b"Path: not a path\r\n"
+                                 + self.article(path_id))
+        self.assertEqual(refused_path.returncode, 1, refused_path.stderr.decode())
 
-            xref_id = "<native-control-xref@example.invalid>"
-            refused_xref = self.post(xref_id, b"Xref: elsewhere fn.test:1\r\n"
-                                     + self.article(xref_id))
-            self.assertEqual(refused_xref.returncode, 1, refused_xref.stderr.decode())
+        xref_id = "<native-control-xref@example.invalid>"
+        refused_xref = self.post(xref_id, b"Xref: elsewhere fn.test:1\r\n"
+                                 + self.article(xref_id))
+        self.assertEqual(refused_xref.returncode, 1, refused_xref.stderr.decode())
 
-            other = self.post("<native-control-other@example.invalid>",
-                              self.article("<native-control-named@example.invalid>"))
-            self.assertEqual(other.returncode, 1, other.stderr.decode())
-            owner.send_signal(signal.SIGTERM)
-            self.assertEqual(owner.wait(timeout=30), 0,
-                             owner.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if owner.poll() is None:
-                owner.kill()
-                owner.wait(timeout=10)
-            owner.stdout.close()
-            owner.stderr.close()
+        other = self.post("<native-control-other@example.invalid>",
+                          self.article("<native-control-named@example.invalid>"))
+        self.assertEqual(other.returncode, 1, other.stderr.decode())
+        self.stop_owner()
         observed = self.inspect(message_id)
         self.assertEqual(observed.returncode, 0, observed.stderr.decode())
         self.assert_injected(observed.stdout, payload)
@@ -752,39 +558,30 @@ class NativeControlTests(unittest.TestCase):
         # reasoned reply, and the operator's line prints it after the status:
         # the injection decision's word for a post, fn-cfg-delta-reason's
         # word for a live reconfiguration.  Exit codes are unchanged (1).
-        owner = self.start_owner()
-        try:
-            yue_id = "<native-control-reason-yue@example.invalid>"
-            yue = self.article(yue_id).replace(b"From: author@example.invalid",
-                                              b"From: yue")
-            refused = self.post(yue_id, yue)
-            self.assertEqual(refused.returncode, 1, refused.stderr.decode())
-            self.assertIn(b"refused operator post REFUSED from-invalid", refused.stderr)
+        self.start_owner()
+        yue_id = "<native-control-reason-yue@example.invalid>"
+        yue = self.article(yue_id).replace(b"From: author@example.invalid",
+                                          b"From: yue")
+        refused = self.post(yue_id, yue)
+        self.assertEqual(refused.returncode, 1, refused.stderr.decode())
+        self.assertIn(b"refused operator post REFUSED from-invalid", refused.stderr)
 
-            nowhere_id = "<native-control-reason-nowhere@example.invalid>"
-            nowhere = self.article(nowhere_id).replace(b"Newsgroups: fn.test",
-                                                       b"Newsgroups: fn.nowhere")
-            unknown = self.post(nowhere_id, nowhere)
-            self.assertEqual(unknown.returncode, 1, unknown.stderr.decode())
-            self.assertIn(b"refused operator post REFUSED unknown-group", unknown.stderr)
+        nowhere_id = "<native-control-reason-nowhere@example.invalid>"
+        nowhere = self.article(nowhere_id).replace(b"Newsgroups: fn.test",
+                                                   b"Newsgroups: fn.nowhere")
+        unknown = self.post(nowhere_id, nowhere)
+        self.assertEqual(unknown.returncode, 1, unknown.stderr.decode())
+        self.assertIn(b"refused operator post REFUSED unknown-group", unknown.stderr)
 
-            accepted_id = "<native-control-reason-ok@example.invalid>"
-            accepted = self.post(accepted_id, self.article(accepted_id))
-            self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
-            self.assertIn(b"accepted operator post ACCEPTED", accepted.stderr)
+        accepted_id = "<native-control-reason-ok@example.invalid>"
+        accepted = self.post(accepted_id, self.article(accepted_id))
+        self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
+        self.assertIn(b"accepted operator post ACCEPTED", accepted.stderr)
 
-            revoked = self.operator("control", "revoke", "ab" * 32, "keys", "fn.keys")
-            self.assertEqual(revoked.returncode, 1, revoked.stderr.decode())
-            self.assertIn(b"refused operator control REFUSED no-such-grant", revoked.stderr)
-            owner.send_signal(signal.SIGTERM)
-            self.assertEqual(owner.wait(timeout=30), 0,
-                             owner.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if owner.poll() is None:
-                owner.kill()
-                owner.wait(timeout=10)
-            owner.stdout.close()
-            owner.stderr.close()
+        revoked = self.operator("control", "revoke", "ab" * 32, "keys", "fn.keys")
+        self.assertEqual(revoked.returncode, 1, revoked.stderr.decode())
+        self.assertIn(b"refused operator control REFUSED no-such-grant", revoked.stderr)
+        self.stop_owner()
         # No owner at the control path: the connect fails before anything is
         # submitted, so the post is refused, and names why (ACL2's
         # fn-native-control-transport-word; lane ops-fixes: it printed
@@ -799,56 +596,35 @@ class NativeControlTests(unittest.TestCase):
         # image before the reasoned kinds 13 and 17) reads the one-field reply
         # it always read (kind 2, the status's enumeration octet); only a
         # reasoned frame is answered with the reasoned reply (kind 18).
-        owner = self.start_owner()
-        try:
-            words = [b"control", b"grant", b"ab" * 32, b"keys", b"fn.keys"]
-            reply = control_exchange(self.control, fnct_seal(3, admin_payload(words)))
-            self.assertEqual(reply[:4], b"FNCT")
-            self.assertEqual((reply[4], reply[5]), (1, 2), reply[:10])
-            self.assertEqual(reply[6:10], (1).to_bytes(4, "big"), reply[:10])
-            self.assertEqual(reply[10:11], b"\x01", reply)          # :accepted
-            self.assertEqual(reply[11:], blake3_ref.blake3(reply[:11]))
-            # The grant is durable: the revoke the new client sends succeeds.
-            revoked = self.operator("control", "revoke", "ab" * 32, "keys", "fn.keys")
-            self.assertEqual(revoked.returncode, 0, revoked.stderr.decode())
-            owner.send_signal(signal.SIGTERM)
-            self.assertEqual(owner.wait(timeout=30), 0,
-                             owner.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if owner.poll() is None:
-                owner.kill()
-                owner.wait(timeout=10)
-            owner.stdout.close()
-            owner.stderr.close()
+        self.start_owner()
+        words = [b"control", b"grant", b"ab" * 32, b"keys", b"fn.keys"]
+        reply = control_exchange(self.control, fnct_seal(3, admin_payload(words)))
+        self.assertEqual(reply[:4], b"FNCT")
+        self.assertEqual((reply[4], reply[5]), (1, 2), reply[:10])
+        self.assertEqual(reply[6:10], (1).to_bytes(4, "big"), reply[:10])
+        self.assertEqual(reply[10:11], b"\x01", reply)          # :accepted
+        self.assertEqual(reply[11:], blake3_ref.blake3(reply[:11]))
+        # The grant is durable: the revoke the new client sends succeeds.
+        revoked = self.operator("control", "revoke", "ab" * 32, "keys", "fn.keys")
+        self.assertEqual(revoked.returncode, 0, revoked.stderr.decode())
+        self.stop_owner()
 
     def test_disabled_posting_refuses_cli_and_served_post(self):
         with self.config.open("a", encoding="ascii") as stream:
             stream.write("[posting]\nenabled = false\n")
-        owner = self.start_owner()
+        self.start_owner()
         message_id = "<native-control-disabled@example.invalid>"
-        try:
-            refused = self.post(message_id, self.article(message_id))
-            self.assertEqual(refused.returncode, 1, refused.stderr.decode())
-            self.assertIn(b"posting-disabled", refused.stderr.lower())
-            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client:
-                stream = whole_stream(client)
-                self.assertTrue(stream.readline().startswith(b"201 "))
-                stream.write(b"POST\r\n")
-                self.assertTrue(stream.readline().startswith(b"440 "))
-                stream.write(b"QUIT\r\n")
-                self.assertTrue(stream.readline().startswith(b"205 "))
-            owner.send_signal(signal.SIGTERM)
-            self.assertEqual(owner.wait(timeout=30), 0,
-                             owner.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if owner.poll() is None:
-                owner.kill()
-                owner.wait(timeout=10)
-            owner.stdout.close()
-            owner.stderr.close()
+        refused = self.post(message_id, self.article(message_id))
+        self.assertEqual(refused.returncode, 1, refused.stderr.decode())
+        self.assertIn(b"posting-disabled", refused.stderr.lower())
+        with Client(self.port, timeout=30, greeting=(b"201",)) as client:
+            self.assertTrue(client.command(b"POST").startswith(b"440 "))
+            self.assertTrue(client.command(b"QUIT").startswith(b"205 "))
+            client.close(quit=False)
+        self.stop_owner()
 
     def test_control_worker_ceiling_returns_busy(self):
-        owner = self.start_owner()
+        self.start_owner()
         blockers = []
         try:
             # ACL2 fixes the active control worker ceiling at 16. Each partial
@@ -867,14 +643,10 @@ class NativeControlTests(unittest.TestCase):
         finally:
             for client in blockers:
                 client.close()
-            owner.send_signal(signal.SIGTERM)
-            self.assertEqual(owner.wait(timeout=30), 0,
-                             owner.stderr.read().decode("utf-8", "replace"))
-            owner.stdout.close()
-            owner.stderr.close()
+        self.stop_owner()
 
     def test_partial_frame_has_one_absolute_deadline(self):
-        owner = self.start_owner()
+        self.start_owner()
         client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         client.settimeout(30)
         try:
@@ -894,11 +666,7 @@ class NativeControlTests(unittest.TestCase):
             self.assertNotEqual(client.recv(4096), b"")
         finally:
             client.close()
-            owner.send_signal(signal.SIGTERM)
-            self.assertEqual(owner.wait(timeout=30), 0,
-                             owner.stderr.read().decode("utf-8", "replace"))
-            owner.stdout.close()
-            owner.stderr.close()
+        self.stop_owner()
 
 
 if __name__ == "__main__":

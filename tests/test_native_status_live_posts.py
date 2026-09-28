@@ -39,8 +39,6 @@ import json
 import os
 import re
 import shutil
-import signal
-import subprocess
 import sys
 import tempfile
 import threading
@@ -48,14 +46,12 @@ import time
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+from tests.native_harness import ROOT, Node, native_image, requires
+
 sys.path.insert(0, str(ROOT / "tools"))
-from tests.native_process import wait_for_announcement  # noqa: E402
-from tools import msgid_measure as m  # noqa: E402
 import native_env  # noqa: E402
 
-IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 POSTS = int(os.environ.get("FN_STATUS_POSTS", "60000"))
 FLAGS = ["--max-transactions", "131072", "--max-history-octets", "128000000"]
 SLACK = float(os.environ.get("FN_STATUS_SLACK", "2.0"))
@@ -69,74 +65,51 @@ def article(i):
             % (i, i)).encode("ascii") + b"status line body\r\n" * 8
 
 
-@unittest.skipUnless(os.access(IMAGE, os.X_OK), "the developer image")
+@requires(IMAGE)
 class NativeStatusLivePostsTests(unittest.TestCase):
 
     def setUp(self):
         self.temp = Path(tempfile.mkdtemp(prefix="fn-status-live-"))
-        self.env = native_env.harness_store_env(dict(os.environ, ACL2_CUSTOMIZATION="NONE"))
-        self.env.pop("ACL2_SYSTEM_BOOKS", None)
-        self.env.pop("FN_HOST", None)
-        self.owner = None
+        budget = os.environ.get("FN_INIT_BUDGET_MB", native_env.HARNESS_INIT_BUDGET_MB)
+        self.node = Node(self, IMAGE, root=self.temp / "node",
+                         env={"FN_INIT_BUDGET_MB": budget})
 
     def tearDown(self):
-        if self.owner and self.owner.poll() is None:
-            self.owner.send_signal(signal.SIGTERM)
-            try:
-                self.owner.wait(timeout=600)
-            except subprocess.TimeoutExpired:
-                self.owner.kill()
-                self.owner.wait(timeout=60)
-        if self.owner:
-            self.owner.stdout.close()
+        owner = self.node.process
+        if owner is not None:
+            self.node.stop(expect=None, grace=600)
+            log = os.environ.get("FN_STATUS_OWNER_LOG")
+            if log:
+                with open(log, "ab") as handle:
+                    handle.write(owner.stderr.since(0))
         if not os.environ.get("FN_STATUS_KEEP"):
             shutil.rmtree(self.temp, ignore_errors=True)
 
     def out(self, **rec):
         print(json.dumps(rec), flush=True)
 
-    def invoke(self, *words, timeout=900):
-        return subprocess.run([str(IMAGE), "--fn", *map(str, words)], cwd=str(ROOT),
-                              env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              timeout=timeout, check=False)
-
-    def status(self, cfg):
+    def status(self):
         started = time.monotonic()
-        r = self.invoke("operator", cfg, "status", timeout=300)
+        r = self.node.operator("status", timeout=300)
         seconds = time.monotonic() - started
         text = r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace")
         found = re.search(r"\barticles=(\d+)", text)
         return r.returncode, seconds, int(found.group(1)) if found else None, text
 
-    def poster(self, port, indices, replies):
-        c = m.Conn(port)
-        try:
+    def poster(self, indices, replies):
+        with self.node.session(timeout=600, greeting=None) as client:
             for i in indices:
-                r = c.line("POST")
-                if not r.startswith(b"340"):
-                    replies.append(r.decode(errors="replace").strip())
-                    continue
-                c.stream.write(article(i) + b".\r\n")
-                replies.append(c.readline().decode(errors="replace").strip())
-        finally:
-            c.close()
+                first, final = client.post(article(i))
+                replies.append((final or first).decode(errors="replace").strip())
 
     def test_status_after_live_posts_stays_within_the_slack(self):
-        store = self.temp / "store"
-        init = self.invoke("store", store, "init", *FLAGS, "fn.test")
+        init = self.node.store("init", *FLAGS, "fn.test", timeout=900)
         self.assertEqual(init.returncode, 0, init.stderr.decode(errors="replace")[-400:])
-        port = m.free_port()
-        cfg = self.temp / "fn.toml"
-        cfg.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n'
-                       '[control]\npath = "%s"\n' % (store, port, self.temp / "c.sock"))
         started = time.monotonic()
-        self.owner = subprocess.Popen([str(IMAGE), "--fn", "operator", str(cfg), "run"],
-                                      cwd=str(ROOT), env=self.env, stdout=subprocess.PIPE,
-                                      stderr=open(os.environ.get("FN_STATUS_OWNER_LOG", os.devnull), "ab"))
-        wait_for_announcement(self.owner, b"LISTENING ", timeout=1200)
+        owner = self.node.start(timeout=1200)
         self.out(step="open", seconds=round(time.monotonic() - started, 2))
 
-        before = [self.status(cfg) for _ in range(2)]
+        before = [self.status() for _ in range(2)]
         for rc, s, n, text in before:
             self.out(step="status-before", exit=rc, seconds=round(s, 3), articles=n)
             self.assertEqual(rc, 0, text[-600:])
@@ -145,7 +118,7 @@ class NativeStatusLivePostsTests(unittest.TestCase):
 
         replies = []
         threads = [threading.Thread(target=self.poster,
-                                    args=(port, range(k, POSTS, CONNECTIONS), replies))
+                                    args=(range(k, POSTS, CONNECTIONS), replies))
                    for k in range(CONNECTIONS)]
         started = time.monotonic()
         for t in threads:
@@ -158,21 +131,21 @@ class NativeStatusLivePostsTests(unittest.TestCase):
                  other=sorted(set(r for r in replies if not r.startswith("240")))[:5])
         self.assertEqual(accepted, POSTS)
 
-        after = [self.status(cfg) for _ in range(2)]
+        after = [self.status() for _ in range(2)]
         for rc, s, n, text in after:
             self.out(step="status-after", exit=rc, seconds=round(s, 3), articles=n)
             self.assertEqual(rc, 0, text[-600:])
         t1 = min(s for _, s, _, _ in after)
-        health = self.invoke("operator", cfg, "health", timeout=300)
+        health = self.node.operator("health", timeout=300)
         self.out(step="health-after", exit=health.returncode,
                  head=health.stdout.decode(errors="replace").splitlines()[:1],
                  err=health.stderr.decode(errors="replace")[-300:])
         self.assertNotEqual(health.returncode, 3,
                             (health.stdout + health.stderr).decode(errors="replace")[-600:])
-        again = self.status(cfg)
+        again = self.status()
         self.out(step="status-after-health", exit=again[0], seconds=round(again[1], 3))
         self.assertEqual(again[0], 0, again[3][-600:])
-        self.assertIsNone(self.owner.poll(), "the owner stopped")
+        self.assertIsNone(owner.poll(), "the owner stopped")
         self.assertEqual(after[-1][2], n0 + POSTS)
         self.out(step="verdict", t0=round(t0, 3), t1=round(t1, 3),
                  growth=round(t1 - t0, 3), slack=SLACK)

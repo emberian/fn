@@ -6,27 +6,21 @@ processes; they do not turn the older Python/native differential finding into
 a claim about this source revision.
 """
 
-import hashlib
-import os
-from pathlib import Path
 import re
-import subprocess
 import sys
-import tempfile
 import unittest
 
+from tests.native_harness import (
+    EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, environment, executable,
+    native_image, run, scratch)
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", str(ROOT / "build" / "fn-host")))
+IMAGE = native_image("FN_NATIVE_HOST")
 # A fault selector is a developer-image selector: a production image refuses
 # to start with FN_NATIVE_RECOVERY_FAULT in its environment (exit 5, host/native/io.lisp
 # `fnn-developer-selector-gate'), so every faulted step runs this image.
-DEVELOPER = Path(os.environ.get(
-    "FN_NATIVE_DEVELOPER_HOST", str(ROOT / "build" / "fn-host-developer")))
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 sys.path.insert(0, str(ROOT / "tools"))
-import run_store  # noqa: E402
-import frame_bridge  # noqa: E402
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+import frame_bridge  # noqa: E402  the ACL2 bridge session the fixtures are framed in
 import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
 
@@ -146,55 +140,40 @@ class StagingSweepDecisionTests(unittest.TestCase):
             frame_bridge.close()
 
 
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
+@unittest.skipUnless(executable(IMAGE),
                      "the developer image {} is absent; build it with "
                      "tools/runbooks/hbox-image-build.sh or set FN_NATIVE_HOST".format(IMAGE))
 class NativeRecoveryFidelityTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-recovery-")
-        self.base = Path(self.temporary.name)
-
-    def tearDown(self):
-        frame_bridge.close()
-        self.temporary.cleanup()
+        self.base = scratch(self, "fn-native-recovery-")
+        self.addCleanup(frame_bridge.close)
 
     def invoke(self, store, command, recovery_fault=None):
-        env = dict(os.environ)
-        env.pop("FN_NATIVE_INIT_FAULT", None)
-        env.pop("FN_NATIVE_RECOVERY_FAULT", None)
-        if recovery_fault is not None:
-            env["FN_NATIVE_RECOVERY_FAULT"] = recovery_fault
         image = IMAGE
         if recovery_fault is not None:
-            if not (DEVELOPER.is_file() and os.access(DEVELOPER, os.X_OK)):
+            if not executable(DEVELOPER):
                 self.skipTest(
                     "build/fn-host-developer (or FN_NATIVE_DEVELOPER_HOST) is "
                     "required: FN_NATIVE_RECOVERY_FAULT is a developer-image selector and a "
                     "production image refuses to start with it")
             image = DEVELOPER
-        return subprocess.run(
-            [str(image), "--fn", "store", str(store), command], cwd=ROOT,
-            env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        return run([image, "--fn", "store", store, command], timeout=None,
+                   env=environment({"FN_NATIVE_RECOVERY_FAULT": recovery_fault}))
 
     def initialized(self, name):
         store = self.base / name
         result = self.invoke(store, "init")
-        self.assertEqual(result.returncode, run_store.EXIT_OK, result.stderr)
+        self.assertEqual(result.returncode, EXIT_OK, result.stderr)
         return store
 
     def store_words(self, store, *words):
-        env = dict(os.environ)
-        env.pop("FN_NATIVE_INIT_FAULT", None)
-        env.pop("FN_NATIVE_RECOVERY_FAULT", None)
-        return subprocess.run(
-            [str(IMAGE), "--fn", "store", str(store), *map(str, words)], cwd=ROOT,
-            env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        return run([IMAGE, "--fn", "store", store, *words], timeout=None)
 
     def test_missing_staging_is_a_current_native_fault(self):
         store = self.initialized("missing-staging")
         (store / "staging").rmdir()
         result = self.invoke(store, "status")
-        self.assertEqual(result.returncode, run_store.EXIT_FAULT, result.stderr)
+        self.assertEqual(result.returncode, EXIT_FAULT, result.stderr)
         self.assertIn(b"missing store directory", result.stderr)
 
     def test_recover_removes_only_acl2_stage_names_and_preserves_unknown_names(self):
@@ -204,7 +183,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         stage.write_bytes(b"staged but uncommitted")
         unknown.write_bytes(b"do not classify in raw Lisp")
         recovered = self.invoke(store, "recover")
-        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr)
         self.assertFalse(stage.exists())
         self.assertTrue(unknown.exists())
         self.assertIn(b"staging-orphans=1 [.operator-evidence]", recovered.stdout)
@@ -227,17 +206,17 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         # A reader does not sweep; it reports one bounded observation and
         # says there is more.  It still opens.
         status = self.invoke(store, "status")
-        self.assertEqual(status.returncode, run_store.EXIT_OK, status.stderr)
+        self.assertEqual(status.returncode, EXIT_OK, status.stderr)
         self.assertIn(b"staging-orphans=64+ [", status.stdout)
         self.assertEqual(len(list((store / "staging").iterdir())), 65)
         # The writer's recovery sweeps them all, in two rounds.
         recovered = self.invoke(store, "recover")
-        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr)
         self.assertIn(b"staging-orphans=0", recovered.stdout)
         self.assertEqual(list((store / "staging").iterdir()), [])
         self.assertEqual((store / "journal" / "000001.log").read_bytes(), segment)
         again = self.invoke(store, "status")
-        self.assertEqual(again.returncode, run_store.EXIT_OK, again.stderr)
+        self.assertEqual(again.returncode, EXIT_OK, again.stderr)
         self.assertIn(b"staging-orphans=0", again.stdout)
 
     def test_every_host_staging_prefix_is_swept(self):
@@ -247,7 +226,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         for name in names:
             (store / "staging" / name).write_bytes(b"staged, never committed")
         recovered = self.invoke(store, "recover")
-        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr)
         self.assertEqual(list((store / "staging").iterdir()), [])
 
     def test_over_limit_unrecognized_names_refuse_without_removing_them(self):
@@ -255,7 +234,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         for number in range(65):
             (store / "staging" / ".operator-{:02d}".format(number)).write_bytes(b"x")
         result = self.invoke(store, "recover")
-        self.assertEqual(result.returncode, run_store.EXIT_REFUSED, result.stderr)
+        self.assertEqual(result.returncode, EXIT_REFUSED, result.stderr)
         self.assertIn(b"staging namespace holds more than 64 names recovery may not remove",
                       result.stderr)
         self.assertEqual(len(list((store / "staging").iterdir())), 65)
@@ -267,7 +246,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         for number in range(10):
             (store / "staging" / ".operator-{:02d}".format(number)).write_bytes(b"x")
         result = self.invoke(store, "recover")
-        self.assertEqual(result.returncode, run_store.EXIT_OK, result.stderr)
+        self.assertEqual(result.returncode, EXIT_OK, result.stderr)
         self.assertEqual(sorted(path.name for path in (store / "staging").iterdir()),
                          [".operator-{:02d}".format(number) for number in range(10)])
         self.assertIn(b"staging-orphans=10 [", result.stdout)
@@ -277,12 +256,12 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         stage = store / "staging" / ".stage-post-unlink"
         stage.write_bytes(b"interrupted")
         failed = self.invoke(store, "recover", "recovery-stage-unlinked:eio")
-        self.assertEqual(failed.returncode, run_store.EXIT_UNCERTAIN, failed.stderr)
+        self.assertEqual(failed.returncode, EXIT_UNCERTAIN, failed.stderr)
         # The test seam runs after unlink.  It exercises source-cut routing;
         # it does not claim a platform EIO occurred after every successful unlink.
         self.assertFalse(stage.exists())
         restarted = self.invoke(store, "recover")
-        self.assertEqual(restarted.returncode, run_store.EXIT_OK, restarted.stderr)
+        self.assertEqual(restarted.returncode, EXIT_OK, restarted.stderr)
         self.assertIn(b"staging-orphans=0", restarted.stdout)
 
     def test_sigkill_after_one_unlink_restarts_and_reconciles_remaining_stage(self):
@@ -293,7 +272,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         self.assertEqual(killed.returncode, -9, killed.stderr)
         self.assertEqual(len(list((store / "staging").iterdir())), 1)
         restarted = self.invoke(store, "recover")
-        self.assertEqual(restarted.returncode, run_store.EXIT_OK, restarted.stderr)
+        self.assertEqual(restarted.returncode, EXIT_OK, restarted.stderr)
         self.assertEqual(list((store / "staging").iterdir()), [])
         self.assertIn(b"staging-orphans=0", restarted.stdout)
 
@@ -310,7 +289,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         source = self.initialized("hybrid-source")
         archive = self.base / "hybrid-archive"
         exported = self.store_words(source, "export", archive)
-        self.assertEqual(exported.returncode, run_store.EXIT_OK, exported.stderr)
+        self.assertEqual(exported.returncode, EXIT_OK, exported.stderr)
         self.assertEqual(list((archive / "records").iterdir()), [])
         transaction, _frontier = missing_enrollment_fixture()
         record = frame_bridge.session().store_unframe(transaction)
@@ -326,7 +305,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
 
         store = self.base / "missing-hybrid-enrollment"
         imported = self.store_words(store, "import", archive)
-        self.assertEqual(imported.returncode, run_store.EXIT_FAULT, imported.stderr)
+        self.assertEqual(imported.returncode, EXIT_FAULT, imported.stderr)
         self.assertIn(b"ACL2 replay rejected committed transaction history",
                       imported.stderr)
         self.assertFalse(store.exists())

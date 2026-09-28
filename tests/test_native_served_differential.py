@@ -21,14 +21,11 @@ tests are skipped rather than silently passing.  The production image has no
 raw `reader` entry: its listener is reached only through the native operator.
 """
 import os
-from pathlib import Path
-import select
 import socket
-import subprocess
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parent.parent
+from tests.native_harness import EXIT, ROOT, environment, executable, native_image, run, start
 
 
 MULTI_COMMAND = b"GROUP fn.letters\r\nSTAT\r\nQUIT\r\n"
@@ -37,22 +34,13 @@ QUIT_WITH_TRAILER = b"QUIT\r\nSTAT\r\n"
 BARE_LF = b"STAT\n"
 
 
-def image_environment():
-    env = dict(os.environ)
-    env.pop("FN_HOST", None)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    return env
-
-
 class NativeServedDifferentialTests(unittest.TestCase):
     """One image invocation per side, both over the seeded archive."""
 
     @classmethod
     def setUpClass(cls):
-        cls.image = Path(os.environ.get(
-            "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
-        if not os.access(cls.image, os.X_OK):
+        cls.image = native_image("FN_NATIVE_DEVELOPER_HOST")
+        if not executable(cls.image):
             raise unittest.SkipTest(
                 "developer native image missing: {} "
                 "(FN_NATIVE_PROFILE=developer tools/build_native_host.sh)"
@@ -70,11 +58,8 @@ class NativeServedDifferentialTests(unittest.TestCase):
                 handle.write(bytes(chunk))
             path = handle.name
         try:
-            result = subprocess.run(
-                [str(self.image), "--fn", "model", path, "-"], cwd=ROOT,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                env=image_environment(), timeout=180, check=False)
-            self.assertEqual(result.returncode, 0,
+            result = run([self.image, "--fn", "model", path, "-"], timeout=180)
+            self.assertEqual(result.returncode, EXIT.OK,
                              "model run failed: {}".format(result.stderr.decode("utf-8", "replace")))
             return result.stdout
         finally:
@@ -82,20 +67,10 @@ class NativeServedDifferentialTests(unittest.TestCase):
 
     def socket_bytes(self, chunks):
         """Serve one connection through the production native listener."""
-        process = subprocess.Popen(
-            [str(self.image), "--fn", "reader", "0", "1", "-"], cwd=ROOT,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=image_environment())
+        process = start([self.image, "--fn", "reader", "0", "1", "-"], cwd=ROOT,
+                        env=environment())
         try:
-            port = None
-            while port is None:
-                ready = select.select([process.stdout], [], [], 180)[0]
-                self.assertTrue(ready, "native reader did not announce a port")
-                line = process.stdout.readline()
-                if not line:
-                    self.fail("native reader exited: {}".format(
-                        process.stderr.read().decode("utf-8", "replace")))
-                if line.startswith(b"LISTENING "):
-                    port = int(line.split()[1])
+            port = int(process.announcement(b"LISTENING ").split()[1])
             received = []
             with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
                 for chunk in chunks:
@@ -108,17 +83,10 @@ class NativeServedDifferentialTests(unittest.TestCase):
                     if not piece:
                         break
                     received.append(piece)
-            self.assertEqual(process.wait(timeout=60), 0)
+            self.assertEqual(process.wait(timeout=60), EXIT.OK)
             return b"".join(received)
         finally:
-            if process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-            process.stdout.close()
-            process.stderr.close()
+            process.stop(grace=10)
 
     def assertAgree(self, chunks):
         model = self.model_bytes(chunks)

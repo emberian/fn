@@ -16,11 +16,13 @@ PKT-102, PKT-103; planning/evidence/operator-verdicts-2026-09-25.md).
 Run: FN_NATIVE_HOST=<launcher> python3 -m unittest tests.test_native_operator_verdicts
 """
 
-import subprocess
 import unittest
 
 import tests.test_native_control_filing as base
-from tests.test_native_control_filing import IMAGE, READY, ROOT, article
+from tests.native_harness import EXIT, native_image, scratch
+from tests.test_native_control_filing import READY, article
+
+IMAGE = native_image("FN_NATIVE_HOST")
 
 SECRET = b"correct-horse-battery\ncorrect-horse-battery\n"
 SECOND = b"staple-battery-horse\nstaple-battery-horse\n"
@@ -34,31 +36,23 @@ class NativeOperatorVerdictTests(base.NativeControlFilingTests):
     test_signed_author = None
 
     def set_password(self, node, secret=SECRET):
-        result = subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "principal",
-             "set-password", "alice", "--posting"],
-            cwd=ROOT, env=self.env, input=secret, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=600, check=False)
-        self.assertEqual(result.returncode, 0, result)
+        result = node.operator("principal", "set-password", "alice", "--posting",
+                               input=secret, timeout=600, expect=EXIT.OK)
         return result.stderr.decode("utf-8", "replace")
 
     def test_refused_posts_are_logged_on_both_paths(self):
         node = self.initialize("refusals", ["fn.test"])
-        self.start(node)
+        node.start()
         served_id = "<ov-served-refused@example.invalid>"
         payload = article(served_id, "x").replace(b"Newsgroups: fn.test",
                                                   b"Newsgroups: not.carried")
         reply = self.post(node, payload)
         control_id = "<ov-control-refused@example.invalid>"
-        source = node["root"] / "control-article"
+        source = node.root / "control-article"
         source.write_bytes(article(control_id, "y").replace(b"Newsgroups: fn.test",
                                                             b"Newsgroups: not.carried"))
-        refused = subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "post",
-             "--message-id", control_id, "--payload", str(source),
-             "--group", "not.carried"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=180, check=False)
+        refused = node.operator("post", "--message-id", control_id, "--payload", source,
+                                "--group", "not.carried")
         accepted = self.post(node, article("<ov-served-ok@example.invalid>", "z"))
         log = self.stop(node)
         lines = [line for line in log.splitlines() if " post " in line]
@@ -84,7 +78,7 @@ class NativeOperatorVerdictTests(base.NativeControlFilingTests):
     def test_set_password_answers_from_the_owner(self):
         node = self.initialize("principal", ["fn.test"])
         offline = self.set_password(node)
-        self.start(node)
+        node.start()
         before = self.login(node, SECRET)
         online = self.set_password(node, SECOND)
         new_login = self.login(node, SECOND)
@@ -104,7 +98,7 @@ class NativeOperatorVerdictTests(base.NativeControlFilingTests):
         self.assertEqual(old_login, b"481")
 
     def test_developer_init_reads_profile_flags_and_refuses_flag_groups(self):
-        store = self.base / "dev-store"
+        store = scratch(self) / "dev-store"
         bad = self.command([IMAGE, "--fn", "store", store, "init", "--no-such-flag",
                             "fn.test"], expected=5)
         self.assertFalse(store.exists() and any(store.iterdir()), bad)
@@ -119,9 +113,6 @@ class NativeOperatorVerdictTests(base.NativeControlFilingTests):
         self.assertIn("max-article-octets=65536", text)
         self.assertNotIn("--max-article-octets", text)
 
-    def operator(self, node, *words, expected=0):
-        return self.command([IMAGE, "--fn", "operator", node["config"], *words],
-                            expected=expected)
 
 if __name__ == "__main__":
     unittest.main()

@@ -37,6 +37,16 @@
 ; `books/records-attach.lisp' attaches these two to them for evaluation.
 ; The record itself (bounds, domains, accessors, recognizer, result shapes)
 ; is `books/records-shape.lisp', which is not a codec.
+;
+; THE EXEC SPLIT (G9, book-split-pilot 2026-09-28).  The decoder's record
+; level has an executable twin per function in `books/records-exec.lisp'
+; (`fn-record-decode-exact-exec' and the two below it), each an `mbe' whose
+; :logic is the function here; `books/records-attach-concrete.lisp', which
+; the images include, attaches it.  No proof book includes records-exec, so
+; this book carries no record-level :exec body, and an edit to one
+; recertifies the exec book and the attachment's includers only
+; (planning/evidence/book-split-2026-09-28.md).  The item codec's two mbe
+; forms stay here: guard-verified books above the codec call them directly.
 
 (in-package "ACL2")
 (include-book "records-shape")
@@ -193,28 +203,11 @@
                    (cons name (fn-record-parse-value tail))
                    (fn-record-parse-rest tail)))))))))))
 
-;; PRF-333: the decode checks each payload ONCE.  The two equations its
-;; exec branches run under (the :logic definitions are unchanged, so no
-;; codec or seam theorem moves).  An item the decoder read from the checked
-;; input is already an octet list: its payload check is the length bound.
-(defthm fn-record-payloadp-of-octets-by-definition
-  (implies (fn-cbor-octet-listp payload)
-           (equal (fn-record-payloadp payload)
-                  (<= (len payload) *fn-record-max-payload*))))
-
-;; The record check of a made record whose payload is valid is the check of
-;; the same record with the empty payload: fn-record-p's other conjuncts do
-;; not read the payload.  (syntaxp: the right side is an instance of the left.)
-(defthm fn-record-p-of-make-is-without-payload
-  (implies (and (syntaxp (not (equal payload ''nil)))
-                (fn-record-payloadp payload))
-           (equal (fn-record-p (fn-record-make sequence txid generation msgid payload groups
-                                               obligation-id content-subject
-                                               release-evidence charge stamp))
-                  (fn-record-p (fn-record-make sequence txid generation msgid nil groups
-                                               obligation-id content-subject
-                                               release-evidence charge stamp))))
-  :hints (("Goal" :in-theory (enable fn-record-p fn-record-internals))))
+;; G9 (book-split-pilot): the decode's exec twins -- PRF-333's one payload
+;; check -- are books/records-exec.lisp, which no proof book includes; the
+;; image attaches them (books/records-attach-concrete.lisp).  This book keeps
+;; the :logic definitions only, so an edit to an exec body recertifies the
+;; exec book and the attachment's includers, not this book's dependents.
 
 (defun fn-record-decode-tail (schema sequence txid generation msgid payload octets)
   (declare (xargs :guard (and (member-equal schema '(0 1 2))
@@ -277,17 +270,7 @@
                                     stamp-result
                                   (if (not (null (fn-record-parse-rest stamp-result)))
                                     (fn-record-parse-error :trailing)
-                                  ;; PRF-333: the payload position was checked above and is
-                                  ;; in the guard; the exec checks the record with an empty
-                                  ;; payload in its place (fn-record-p-of-make-is-without-payload).
-                                  (if (mbe :logic (fn-record-p record)
-                                           :exec (fn-record-p
-                                                  (fn-record-make
-                                                   sequence txid generation msgid nil
-                                                   (fn-record-parse-value groups-result)
-                                                   id subject evidence
-                                                   (fn-record-parse-value charge-result)
-                                                   (fn-record-parse-value stamp-result))))
+                                  (if (fn-record-p record)
                                       (fn-record-parse-ok record nil)
                                     (fn-record-parse-error :invalid))))))))))))))))))))
 
@@ -321,12 +304,7 @@
                         (if (not (fn-record-parse-okp payload-result))
                             payload-result
                           (let ((payload (fn-record-parse-value payload-result)))
-                            ;; PRF-333: the item's octets are already an octet list (the
-                            ;; whole input's one check, fn-record-read-bytes-success-domain);
-                            ;; only the length bound is left to test
-                            ;; (fn-record-payloadp-of-octets-by-definition).
-                            (if (not (mbe :logic (fn-record-payloadp payload)
-                                          :exec (<= (len payload) *fn-record-max-payload*)))
+                            (if (not (fn-record-payloadp payload))
                                 (fn-record-parse-error :payload)
                               (fn-record-decode-tail
                                schema
@@ -699,13 +677,6 @@
                                fn-record-parse-rest
                                fn-cbor-octet-listp
                                true-listp))))
-
-;; PRF-333: the two equations served the guard proofs above; withdrawn on
-;; export so no proof above the codec changes (a store-checkpoint-arena-writer
-;; proof stalled with the payload equation enabled, persvati
-;; run-20260927T223317Z-f677).
-(in-theory (disable fn-record-payloadp-of-octets-by-definition
-                    fn-record-p-of-make-is-without-payload))
 
 ; A certified end-to-end schema-0 vector.  The broader all-record round-trip
 ; property remains proof work because it includes the exact ACL2 string/octet

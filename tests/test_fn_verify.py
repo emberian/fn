@@ -675,7 +675,7 @@ class NativeVerifyTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from tests.native_process import stop_and_diagnostics, wait_for_announcement
+        from tests.native_harness import stop_and_diagnostics, wait_for_announcement
         cls.temp = tempfile.TemporaryDirectory(prefix="fn-verify-native-")
         root = cls.root = Path(cls.temp.name)
         store, control, auth = root / "store", root / "control.sock", root / "auth.toml"
@@ -769,7 +769,7 @@ class NativeVerifyTests(unittest.TestCase):
 
     @classmethod
     def start(cls, control):
-        from tests.native_process import wait_for_announcement
+        from tests.native_harness import wait_for_announcement
         line = wait_for_announcement(cls.owner, b"LISTENING ")
         assert line.startswith(b"LISTENING "), line
         if not OLD_IMAGE:
@@ -824,7 +824,7 @@ class NativeVerifyTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        from tests.native_process import stop_and_diagnostics
+        from tests.native_harness import stop_and_diagnostics
         stop_and_diagnostics(cls.owner, timeout=60)
         cls.temp.cleanup()
 

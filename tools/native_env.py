@@ -12,7 +12,8 @@ read and what each variable means, and the check hbox_native.sh makes before
 any test step.
 
 A module *reads* a variable when its source calls `os.environ.get("NAME"`,
-`os.environ["NAME"]` or `os.getenv("NAME"`; `plan` scans the module's own file
+`os.environ["NAME"]`, `os.getenv("NAME"` or tests/native_harness.py's
+`native_image("NAME"`; `plan` scans the module's own file
 (tests/test_x.py for tests.test_x or tests.test_x.Class) and every tests/
 module it imports, transitively, for image variables (PKT-490 (2)); opt-ins
 and fixed paths count from the module's own file.  An image variable read only
@@ -101,6 +102,13 @@ IMAGES = {
     "FN_NATIVE_CONTACT_RECEIVER": ("dtn", "dtn-developer"),
     "FN_NATIVE_DTN_HOST": ("dtn",),
     "FN_NATIVE_DTN_DEVELOPER_HOST": ("dtn-developer",),
+}
+# A module that needs a different first choice for a variable (module stem,
+# variable) -> images in order: 7 of test_bp_service_native's 17 cases need
+# fault-injection switches the non-developer DTN image refuses (image-strip,
+# 2026-09-28), so it takes the dtn-developer image when that is built.
+PREFER = {
+    ("test_bp_service_native", "FN_NATIVE_BP_HOST"): ("dtn-developer", "dtn"),
 }
 # The modules reading these default to exactly the first image's path in
 # their own tree ($T), so when that image is built nothing is exported and
@@ -215,7 +223,7 @@ def image_identity(image: Path, source: str | None = None) -> dict[str, str]:
     return found
 
 
-READ = re.compile(r'(?:environ\.get\(|environ\[|getenv\()\s*"(FN_[A-Z0-9_]+)"')
+READ = re.compile(r'(?:environ\.get\(|environ\[|getenv\(|native_image\()\s*"(FN_[A-Z0-9_]+)"')
 
 
 def module_file(module: str) -> Path:
@@ -289,7 +297,8 @@ def plan(images: list[str], given: dict[str, str], modules: list[str]
                                  and name not in TOOLS):
                 continue  # a helper's opt-ins stay the helper's own modules'
             if name in IMAGES:
-                image = next((i for i in IMAGES[name] if i in images), None)
+                choices = PREFER.get((stem, name), IMAGES[name])
+                image = next((i for i in choices if i in images), None)
                 if (stem, name) in FALLBACK:
                     continue
                 if image is not None:

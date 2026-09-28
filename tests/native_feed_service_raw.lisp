@@ -35,9 +35,21 @@
 (defun fnn-core (name &rest args)
   ;; PKT-613: the one core call the TLS transition makes, answered as
   ;; books/peer-host.lisp `fn-peer-tls-verification' answers a pinned DNS name.
-  (if (eq name 'fn-peer-tls-verification)
-      (list :verify (first args) t (list :pinned (second args)))
-    (error "unexpected raw core call")))
+  ;; Defect M3: the link backoff calls (books/feed-link-backoff.lisp) are
+  ;; answered with the values the test book states for base 1000
+  ;; (fn-flb-lost 1000 0) = (1000 1), (fn-flb-lost 1000 1) = (2000 2); the
+  ;; drop line is stood for by its arguments.
+  (case name
+    (fn-peer-tls-verification
+     (list :verify (first args) t (list :pinned (second args))))
+    (fn-flb-ready 0)
+    (fn-flb-lost
+     (let ((base (first args)) (streak (second args)))
+       (list (* base (expt 2 streak)) (+ 1 streak))))
+    (fn-flb-drop-line (list :drop-line (first args) (second args) (third args)))
+    (t (error "unexpected raw core call ~s" name))))
+(defvar *test-log-lines* nil)
+(defun fnn-log-line (line) (push line *test-log-lines*))
 (defun fnn-octet-list-p (x)
   (and (listp x) (every (lambda (b) (and (integerp b) (<= 0 b 255))) x)))
 (defun fnn-octets (x) x)
@@ -322,11 +334,11 @@
                  (declare (ignore ignored))
                  (error 'fnn-peer-dial-error :outcome :unresolved))
                (symbol-function 'fnn-feed-drop-link)
-               (lambda (runtime link now backoff)
+               (lambda (runtime link now backoff cause)
                  (declare (ignore runtime link))
-                 (setq dropped (list now backoff))))
+                 (setq dropped (list now backoff cause))))
          (fnn-feed-dial runtime link 5)
-         (unless (equal dropped '(5 250))
+         (unless (equal dropped '(5 250 :dial))
            (error "an unresolved peer was not dropped through the backoff: ~s" dropped))
          (unless (equalp *test-dial-reports*
                         '((:feed #(110) "no-such-peer.invalid" fnn-peer-dial-error)))
@@ -365,5 +377,57 @@
     (setf (symbol-function 'fnn-tls-open-client-context) old-open
           (symbol-function 'fnn-tls-connect) old-connect
           (symbol-function 'fnn-tls-close-context) old-close)))
+
+
+;; Defect M3: an I/O condition on an established link's read drops the link
+;; through ACL2's link backoff and names it in ACL2's drop line; consecutive
+;; failures carry the streak ACL2 answered, so the second waits longer.
+(define-condition fnn-tls-io-error (fnn-tls-error) ())
+(let* ((runtime (%make-fnn-feed-runtime :service :m3-test
+                                        :lock (sb-thread:make-mutex) :limit 512))
+       (link (%make-fnn-feed-link :peer "fsn1" :peer-octets '(102 115 110 49)
+                                  :socket :fake :fd 23 :tls-channel :channel))
+       (losses 0)
+       (old-plan (symbol-function 'fnn-feed-dial-plan))
+       (old-lost (symbol-function 'fnn-feed-lost))
+       (old-read (symbol-function 'fnn-tls-read)))
+  (setq *test-log-lines* nil)
+  (unwind-protect
+       (progn
+         (setf (symbol-function 'fnn-feed-dial-plan)
+               (lambda (&rest ignored)
+                 (declare (ignore ignored))
+                 (values t "fsn1.example" 563 1000 13
+                         '(:tls :implicit "fsn1.example" "/tmp/ca.pem") nil))
+               (symbol-function 'fnn-feed-lost)
+               (lambda (&rest ignored) (declare (ignore ignored)) (incf losses) :ok)
+               (symbol-function 'fnn-tls-read)
+               (lambda (&rest ignored)
+                 (declare (ignore ignored)) (error 'fnn-tls-io-error)))
+         (fnn-feed-pump-link runtime link 100)
+         (unless (and (= losses 1) (null (fnn-feed-link-socket link))
+                      (= (fnn-feed-link-streak link) 1)
+                      (= (fnn-feed-link-next-dial link) 1100)
+                      (equal *test-log-lines*
+                             '((:drop-line (102 115 110 49) :read 1000))))
+           (error "a TLS read failure was not a named, backed-off drop: ~s ~s ~s"
+                  losses (fnn-feed-link-next-dial link) *test-log-lines*))
+         ;; The redial fails the same way: the second delay is ACL2's next one.
+         (setf (fnn-feed-link-socket link) :fake (fnn-feed-link-fd link) 23
+               (fnn-feed-link-tls-channel link) :channel)
+         (fnn-feed-pump-link runtime link 1100)
+         (unless (and (= losses 2) (= (fnn-feed-link-streak link) 2)
+                      (= (fnn-feed-link-next-dial link) 3100)
+                      (equal (first *test-log-lines*)
+                             '(:drop-line (102 115 110 49) :read 2000)))
+           (error "the second failure did not advance the backoff: ~s ~s"
+                  (fnn-feed-link-next-dial link) *test-log-lines*))
+         ;; A ready link restarts the streak through ACL2.
+         (fnn-feed-link-became-ready link)
+         (unless (and (fnn-feed-link-ready link) (= (fnn-feed-link-streak link) 0))
+           (error "ready did not restart the streak: ~s" (fnn-feed-link-streak link))))
+    (setf (symbol-function 'fnn-feed-dial-plan) old-plan
+          (symbol-function 'fnn-feed-lost) old-lost
+          (symbol-function 'fnn-tls-read) old-read)))
 
 (format t "native feed raw phase/sequencing test passed~%")

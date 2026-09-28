@@ -3,23 +3,20 @@
 import os
 from pathlib import Path
 import shutil
-import socket
 import ssl
 import subprocess
-import tempfile
 import unittest
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import EXIT, Client, Node, native_image, run
 
 
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", "/nonexistent/fn-host"))
+IMAGE = native_image("FN_NATIVE_HOST")
 BUILD_OPENSSL = Path(os.environ.get("FN_BUILD_OPENSSL_PREFIX", "/nonexistent/build-openssl"))
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 
 
 def invoke(image, *args, timeout=120):
-    return subprocess.run([str(image), "--fn", *args], stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, timeout=timeout, check=False)
+    return run([image, "--fn", *args], timeout=timeout)
 
 
 @unittest.skipUnless(os.environ.get("FN_RUN_RELOCATION_E2E") == "1",
@@ -30,18 +27,15 @@ class FrozenRelocationTest(unittest.TestCase):
         self.assertFalse(BUILD_OPENSSL.exists(),
                          "build-time OpenSSL path must be unavailable here")
         self.assertTrue((IMAGE.parent / "image.sha256").is_file())
-        self.temp = tempfile.TemporaryDirectory(prefix="fn-frozen-relocation-")
-        self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.node = Node(self, IMAGE, name="relocated")
+        self.root = self.node.root
 
     def test_relocated_image_uses_bundled_tls_and_ml_dsa(self):
         integrity = subprocess.run(["sha256sum", "-c", "image.sha256"],
                                    cwd=IMAGE.parent, stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE, timeout=120, check=False)
         self.assertEqual(integrity.returncode, 0, integrity.stderr.decode())
-        store = self.root / "store"
-        initialized = invoke(IMAGE, "store", str(store), "init", "fn.test")
-        self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
+        self.node.store("init", "fn.test", timeout=120, expect=EXIT.OK)
 
         principal = self.root / "principal.bin"
         ed_public = self.root / "ed-public.bin"
@@ -77,31 +71,13 @@ class FrozenRelocationTest(unittest.TestCase):
              "-out", str(cert)], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             timeout=60, check=False)
         self.assertEqual(generated.returncode, 0, generated.stderr.decode())
-        with socket.socket() as probe:
-            probe.bind(("127.0.0.1", 0))
-            port = probe.getsockname()[1]
-        config = self.root / "fn.toml"
-        config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-                          'port = {}\ntls_cert = "{}"\ntls_key = "{}"\n'
-                          '[control]\npath = "{}"\n'.format(
-                              store, port, cert, key, self.root / "control.sock"),
-                          encoding="ascii")
-        owner = subprocess.Popen([str(IMAGE), "--fn", "operator", str(config), "run"],
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        try:
-            wait_for_announcement(owner, b"LISTENING ")
-            with socket.create_connection(("127.0.0.1", port), timeout=15) as raw:
-                greeting = raw.recv(1024)
-                self.assertTrue(greeting.startswith((b"200 ", b"201 ")), greeting)
-                raw.sendall(b"STARTTLS\r\n")
-                self.assertTrue(raw.recv(1024).startswith(b"382 "))
-                context = ssl.create_default_context(cafile=str(cert))
-                with context.wrap_socket(raw, server_hostname="localhost") as protected:
-                    protected.sendall(b"CAPABILITIES\r\n")
-                    self.assertTrue(protected.recv(1024).startswith(b"101 "))
-        finally:
-            diagnostic = stop_and_diagnostics(owner, timeout=60)
-            self.assertEqual(owner.returncode, 0, diagnostic)
+        self.node.write_config(extra='tls_cert = "{}"\ntls_key = "{}"\n'.format(cert, key))
+        self.node.start()
+        with Client(self.node.port, timeout=15, server_hostname="localhost") as client:
+            context = ssl.create_default_context(cafile=str(cert))
+            self.assertTrue(client.starttls(context).startswith(b"382 "))
+            self.assertTrue(client.command(b"CAPABILITIES").startswith(b"101 "))
+        self.node.stop()
 
     def test_missing_bundled_openssl_refuses_startup(self):
         # Symlink only immutable runtime/core files into a separate launcher
@@ -139,7 +115,7 @@ class FrozenRelocationTest(unittest.TestCase):
                         if proc.stdin:
                             proc.stdin.close()
                 out, err = out_path.read_bytes(), err_path.read_bytes()
-                self.assertEqual(proc.returncode, 5, (label, out, err))
+                self.assertEqual(proc.returncode, EXIT.USAGE, (label, out, err))
                 self.assertEqual(out, b"", label)
                 self.assertIn(b"refused start", err)
                 self.assertIn(b"OpenSSL", err)

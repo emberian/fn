@@ -23,36 +23,14 @@ launcher> python3 -m unittest -v tests.test_native_group_access
 """
 
 import os
-from pathlib import Path
 import re
-import select
-import signal
-import socket
-import ssl
-import subprocess
-import tempfile
 import unittest
-from tools.wire_stream import whole_stream
 
-ROOT = Path(__file__).resolve().parent.parent
-PRODUCTION = os.environ.get("FN_NATIVE_HOST")
-DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
-IMAGES = [(name, Path(value)) for name, value in
-          (("production", PRODUCTION), ("developer", DEVELOPER)) if value]
-READY = bool(IMAGES) and all(p.is_file() and os.access(p, os.X_OK) for _, p in IMAGES)
+from tests.native_harness import ROOT, Client, Node, article, client_context, native_image
 
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    return env
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+IMAGES = [("production", native_image("FN_NATIVE_HOST")),
+          ("developer", native_image("FN_NATIVE_DEVELOPER_HOST"))]
+READY = all(p.is_file() and os.access(p, os.X_OK) for _, p in IMAGES)
 
 
 def text(result):
@@ -81,31 +59,13 @@ class GroupAccessSourceTests(unittest.TestCase):
                 self.assertIn(view, flat, book)
 
 
-@unittest.skipUnless(READY, "set FN_NATIVE_HOST and/or FN_NATIVE_DEVELOPER_HOST")
+@unittest.skipUnless(READY, "the production and developer images are required")
 class NativeGroupAccessTests(unittest.TestCase):
     def node(self, image):
-        root = Path(tempfile.mkdtemp(prefix="fn-group-access-"))
-        self.addCleanup(subprocess.run, ["rm", "-rf", str(root)], check=False)
-        port, tls_port = free_port(), free_port()
-        cert, key = root / "cert.pem", root / "key.pem"
-        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout",
-                        str(key), "-out", str(cert), "-days", "2", "-nodes",
-                        "-subj", "/CN=127.0.0.1"], check=True,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        config = root / "fn.toml"
-        config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            'tls_port = {}\ntls_cert = "{}"\ntls_key = "{}"\n[control]\npath = "{}"\n'
-            '[auth]\nprotected_only = true\n'.format(
-                root / "store", port, tls_port, cert, key, root / "control.sock"),
-            encoding="ascii")
-        return {"image": image, "config": config, "tls_port": tls_port, "process": None}
+        return Node(self, image).use_tls()
 
     def operator(self, node, *words):
-        result = subprocess.run(
-            [str(node["image"]), "--fn", "operator", str(node["config"]), *words],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=240, check=False)
+        result = node.operator(*words, timeout=240)
         print("NATIVE-ACCESS", " ".join(words[:3]), "->", result.returncode)
         return result
 
@@ -114,64 +74,19 @@ class NativeGroupAccessTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, text(result))
         return result
 
-    def start(self, node):
-        process = subprocess.Popen(
-            [str(node["image"]), "--fn", "operator", str(node["config"]), "run"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0)
-        node["process"] = process
-        self.addCleanup(self.reap, node)
-        seen = 0
-        for _ in range(6):
-            self.assertTrue(select.select([process.stdout], [], [], 240)[0])
-            if process.stdout.readline().startswith(b"LISTENING"):
-                seen += 1
-                if seen == 2:
-                    return
-        self.fail("owner readiness output was malformed")
-
-    def stop(self, node):
-        process = node["process"]
-        process.send_signal(signal.SIGTERM)
-        self.assertEqual(process.wait(timeout=60), 0)
-        self.reap(node)
-
-    def reap(self, node):
-        process, node["process"] = node["process"], None
-        if process is None:
-            return
-        if process.poll() is None:
-            process.send_signal(signal.SIGKILL)
-            process.wait(timeout=10)
-        for stream in (process.stdout, process.stderr):
-            if stream and not stream.closed:
-                stream.close()
-
     def tls(self, node):
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
-        raw = socket.create_connection(("127.0.0.1", node["tls_port"]), timeout=60)
-        stream = whole_stream(context.wrap_socket(raw))
-        self.addCleanup(stream.close)
-        stream.readline()
-        return stream
+        client = Client(node.tls_port, implicit_tls=client_context(), greeting=None)
+        self.addCleanup(client.close, quit=False)
+        return client
 
     @staticmethod
-    def line(stream, command):
-        stream.write(command.encode("ascii") + b"\r\n")
-        return stream.readline().decode("ascii", "replace").rstrip("\r\n")
+    def line(client, command):
+        return client.command(command).decode("ascii", "replace").rstrip("\r\n")
 
-    def multi(self, stream, command):
-        status = self.line(stream, command)
-        rows = []
-        if status[:1] == "2":
-            while True:
-                raw = stream.readline()
-                row = raw.decode("ascii", "replace").rstrip("\r\n")
-                if row == "." or raw == b"":
-                    break
-                rows.append(row)
+    def multi(self, client, command):
+        status, body = client.multiline(command)
+        status = status.decode("ascii", "replace").rstrip("\r\n")
+        rows = body.decode("ascii", "replace").split("\r\n")[:-1] if status[:1] == "2" else []
         return status, rows
 
     def account(self, node, login):
@@ -189,14 +104,13 @@ class NativeGroupAccessTests(unittest.TestCase):
         self.assertTrue(self.line(stream, "AUTHINFO PASS pw-" + login).startswith("281"))
         return stream
 
-    def post(self, stream, groups, tag):
-        status = self.line(stream, "POST")
-        if not status.startswith("340"):
-            return status
-        stream.write(("From: {}@example.invalid\r\nNewsgroups: {}\r\nSubject: {}\r\n"
-                      "Message-ID: <{}@example.invalid>\r\n\r\nbody\r\n.\r\n"
-                      .format(tag, groups, tag, tag)).encode("ascii"))
-        return stream.readline().decode("ascii", "replace").rstrip("\r\n")
+    def post(self, client, groups, tag):
+        first, final = client.post(article(
+            "<{}@example.invalid>".format(tag), groups=groups, subject=tag,
+            sender=tag + "@example.invalid", date=None))
+        if final is None:
+            return first.decode("ascii", "replace").rstrip("\r\n")
+        return final.decode("ascii", "replace").rstrip("\r\n")
 
     def listed(self, stream, command):
         status, rows = self.multi(stream, command)
@@ -208,7 +122,7 @@ class NativeGroupAccessTests(unittest.TestCase):
         self.ok(node, "init", "local.general")
         for group in ("fn.public", "fn.private.x"):
             self.ok(node, "group", "create", group)
-        self.start(node)
+        node.start()
         self.account(node, "alice")
         self.account(node, "bob")
 
@@ -261,9 +175,9 @@ class NativeGroupAccessTests(unittest.TestCase):
             posted = self.post(alice, "fn.private.x", "alice-" + phase)
             self.assertTrue(posted.startswith("240"), posted)
             if phase == "live":
-                self.stop(node)
-                self.start(node)
-        self.stop(node)
+                node.stop()
+                node.start()
+        node.stop()
 
     def test_two_accounts_one_private_group(self):
         for name, image in IMAGES:

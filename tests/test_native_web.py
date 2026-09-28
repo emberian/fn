@@ -10,42 +10,21 @@ withdrawn by its served POST path, and the pages are rendered by ACL2 from
 the replies the session's own connection got.  There is no Python between
 the browser and the node.
 
-Set FN_NATIVE_DEVELOPER_HOST to a developer image and FN_NATIVE_TEST_ROOT to
-its source snapshot.  The test creates and removes only its own Store.
+FN_NATIVE_DEVELOPER_HOST names the developer image (default
+build/fn-host-developer).  The test creates and removes only its own Store.
 """
 import html
 import http.client
-import os
-from pathlib import Path
 import re
 import socket
 import ssl
-import subprocess
-import tempfile
-import time
 import unittest
 from urllib.parse import urlencode
 
-from tests.native_process import wait_for_announcement, stop_and_diagnostics
+from tests.native_harness import EXIT, Node, class_case, free_port, native_image, requires
 
-IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", "/nonexistent/fn-host-developer"))
-ROOT = Path(os.environ.get("FN_NATIVE_TEST_ROOT", Path(__file__).resolve().parents[1]))
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 PASSWORD = "wren-secret-9"
-
-
-def native_environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    env.pop("FN_NATIVE_POST_FAULT", None)
-    return env
-
-
-def free_loopback_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 class Browser:
@@ -102,52 +81,24 @@ class FaceCases:
 
     @classmethod
     def setUpClass(cls):
-        cls.temporary = tempfile.TemporaryDirectory(prefix="fn-web-face-")
-        root = cls.root = Path(cls.temporary.name)
-        cls.store, cls.config = root / "store", root / "fn.toml"
-        cls.port, cls.tls_port, cls.web_port = (free_loopback_port(), free_loopback_port(),
-                                                free_loopback_port())
-        env = native_environment()
-        cert, key = root / "cert.pem", root / "key.pem"
-        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout", str(key),
-                        "-out", str(cert), "-sha256", "-days", "1", "-nodes",
-                        "-subj", "/CN=localhost", "-addext", "subjectAltName=IP:127.0.0.1"],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60,
-                       check=True)
-        cls.config.write_text(
-            '[store]\npath = "{}"\n\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            'tls_port = {}\ntls_cert = "{}"\ntls_key = "{}"\n\n[control]\npath = "{}"\n\n'
+        node = cls.node = Node(class_case(cls), IMAGE, name="web-face")
+        node.use_tls(alt_name=True, protected_only=False)
+        cls.port, cls.tls_port, cls.web_port = node.port, node.tls_port, free_port()
+        node.write_config(extra=(
+            'tls_port = {}\ntls_cert = "{}"\ntls_key = "{}"\n\n'
             '[auth]\nrequired = true\nprotected_only = true\n\n'
             '[web]\nport = {}\nsite = "Friends news"\ndomain = "friends.invalid"\n{}'.format(
-                cls.store, cls.port, cls.tls_port, cert, key, root / "control.sock",
-                cls.web_port, "tls = true\n" if cls.TLS else ""),
-            encoding="ascii")
-        done = subprocess.run([str(IMAGE), "--fn", "operator", str(cls.config), "init",
-                               "local.general", "control.cancel"], cwd=ROOT, env=env,
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=240,
-                              check=False)
-        assert done.returncode == 0, done.stderr.decode(errors="replace")
-        cls.owner = subprocess.Popen([str(IMAGE), "--fn", "operator", str(cls.config), "run"],
-                                     cwd=ROOT, env=env, stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
-        try:
-            wait_for_announcement(cls.owner, b"LISTENING-WEB ")
-        except AssertionError as error:
-            raise AssertionError(str(error) + ": " + stop_and_diagnostics(cls.owner))
-
-    @classmethod
-    def tearDownClass(cls):
-        stop_and_diagnostics(cls.owner, timeout=30)
-        cls.owner.stdout.close()
-        cls.owner.stderr.close()
-        cls.temporary.cleanup()
+                node.tls_port, node.cert, node.root / "key.pem", cls.web_port,
+                "tls = true\n" if cls.TLS else "")))
+        cls.config = node.config
+        node.init("local.general", "control.cancel", timeout=240)
+        # Three listeners announce: NNTP, NNTP over TLS, and the web face.
+        node.listening = 3
+        node.start()
 
     def invite(self):
-        result = subprocess.run([str(IMAGE), "--fn", "operator", str(self.config), "account",
-                                 "invite", "--expires", "3600"], cwd=ROOT,
-                                env=native_environment(), stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, timeout=240, check=False)
-        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        result = self.node.operator("account", "invite", "--expires", "3600", timeout=240,
+                                    expect=EXIT.OK)
         codes = re.findall(rb"^[0-9a-f]{32}$", result.stdout, re.M)
         self.assertEqual(len(codes), 1, result.stdout)
         return codes[0].decode("ascii")
@@ -321,7 +272,7 @@ class FaceCases:
         self.assertEqual(status, 200)
 
 
-@unittest.skipUnless(os.access(IMAGE, os.X_OK), "native developer image required")
+@requires(IMAGE)
 class NativeWebFaceTests(FaceCases, unittest.TestCase):
     """Plain HTTP from loopback (the way a TLS proxy on the machine reaches it)."""
     TLS = False
@@ -330,7 +281,7 @@ class NativeWebFaceTests(FaceCases, unittest.TestCase):
         self.fuzz_requests_are_answered_or_closed()
 
 
-@unittest.skipUnless(os.access(IMAGE, os.X_OK), "native developer image required")
+@requires(IMAGE)
 class NativeWebFaceTlsTests(FaceCases, unittest.TestCase):
     """The same visit with the face serving HTTPS itself ([web] tls = true,
     [listener]'s certificate): the session cookie is Secure."""

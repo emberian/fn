@@ -42,15 +42,15 @@ only the commands starting with one (a measurement, not the table's coverage).
 """
 import os
 from pathlib import Path
-import select
 import shutil
-import socket
 import subprocess
 import tempfile
 import time
 import unittest
 
-from tests import test_native_operator_verbs as verbs
+from tests.native_harness import Node, executable, native_image
+
+IMAGE = native_image("FN_NATIVE_HOST")
 
 
 FIXTURES = os.environ.get("FN_OPEN_DEPTH_FIXTURES")
@@ -143,17 +143,14 @@ def post_body(group):
                 group, os.getpid()).encode("ascii")
 
 
-def env_at(kib):
-    env = verbs.environment()
-    if kib:
-        env["SBCL_USER_ARGS"] = "--control-stack-size {}KB".format(kib)
-    return env
+def stack_env(kib):
+    return {"SBCL_USER_ARGS": "--control-stack-size {}KB".format(kib)} if kib else None
 
 
 class OpenDepthTests(unittest.TestCase):
     def setUp(self):
-        if not verbs.executable(verbs.IMAGE):
-            self.skipTest("needs the production image {}".format(verbs.IMAGE))
+        if not executable(IMAGE):
+            self.skipTest("needs the production image {}".format(IMAGE))
         if not FIXTURES or not Path(FIXTURES).is_dir():
             self.skipTest("FN_OPEN_DEPTH_FIXTURES names no directory (hbox: /tank/fn/scratch/fixtures)")
         self.work = Path(tempfile.mkdtemp(prefix="fn-open-depth-", dir=os.environ.get("FN_OPEN_DEPTH_WORK")))
@@ -163,136 +160,93 @@ class OpenDepthTests(unittest.TestCase):
         source = Path(FIXTURES) / name / "store"
         if not source.is_dir():
             self.skipTest("no fixture store {}".format(source))
-        root = self.work / name
-        store = root / "store"
-        shutil.copytree(source, store, symlinks=True)
-        lock = store / "writer.lock"
+        node = Node(self, IMAGE, root=self.work / name, name=name)
+        shutil.copytree(source, node.store_path, symlinks=True)
+        lock = node.store_path / "writer.lock"
         if not lock.exists():
             lock.touch(mode=0o600)
-        rebound = subprocess.run([str(verbs.IMAGE), "--fn", "store", str(store), "rebind-filesystem"],
-                                 env=verbs.environment(), stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, timeout=600)
+        rebound = node.store("rebind-filesystem", timeout=600)
         self.assertEqual(rebound.returncode, 0, rebound.stderr)
-        port = verbs.free_port()
-        config = root / "fn.toml"
-        config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-                          '[control]\npath = "{}"\n'.format(store, port, root / "control.sock"),
-                          encoding="ascii")
-        return root, config, port
+        return node
 
-    def start_owner(self, name, mode, root, config, err_path):
+    def start_owner(self, node):
         """Start the owner; answer (process, seconds to LISTENING, OWNER-OPEN line)."""
-        if hasattr(self, "state"):
-            self.state["err_at"] = err_path.stat().st_size if err_path.exists() else 0
-        err = open(err_path, "ab")
-        self.addCleanup(err.close)
         started = time.monotonic()
-        owner = subprocess.Popen([str(verbs.IMAGE), "--fn", "operator", str(config), "run"],
-                                 env=verbs.environment(), stdout=subprocess.PIPE, stderr=err)
-        while True:
-            ready = select.select([owner.stdout], [], [], OPEN_SECONDS)[0]
-            if not ready:
-                owner.kill()
-                self.fail("no LISTENING in {} s".format(OPEN_SECONDS))
-            line = owner.stdout.readline()
-            if not line:
-                owner.wait(60)
-                self.fail("{} {}: the owner stopped at open (exit {}): {}".format(
-                    name, mode, owner.returncode,
-                    err_path.read_bytes()[-3000:].decode("utf-8", "replace")))
-            if line.startswith(b"LISTENING"):
-                break
-        opened = [l for l in err_path.read_text("utf-8", "replace").splitlines()
+        owner = node.start(timeout=OPEN_SECONDS, limit=64 << 20)
+        opened = [l for l in owner.stderr.since(0).decode("utf-8", "replace").splitlines()
                   if l.startswith("OWNER-OPEN")]
         return owner, time.monotonic() - started, (opened[-1] if opened else "")
 
-    def stop_owner(self, owner, err_path):
-        if owner.poll() is None:
-            owner.terminate()
-            # At 1,000,000 an owner still rendering the reports the control
-            # client gave up on (status, obligations: uncertain after 10 s)
-            # took over 600 s to stop (native-sd5).
-            owner.wait(OPEN_SECONDS)
+    def stop_owner(self, node, owner):
+        # At 1,000,000 an owner still rendering the reports the control
+        # client gave up on (status, obligations: uncertain after 10 s)
+        # took over 600 s to stop (native-sd5).
+        status = node.stop(expect=None, process=owner, grace=OPEN_SECONDS)
         if self.deaths:
             return
-        text = err_path.read_text("utf-8", "replace")
+        text = owner.stderr.since(0).decode("utf-8", "replace")
         self.assertNotIn("Control stack exhausted", text)
-        self.assertEqual(owner.returncode, 0, text[-3000:])
+        self.assertEqual(status, 0, text[-3000:])
 
-    def open_and_serve(self, name, mode, root, config, port):
-        err_path = root / "owner-{}.err".format(mode)
+    def open_and_serve(self, name, mode, node):
         self.deaths = []
-        owner, listening, opened = self.start_owner(name, mode, root, config, err_path)
-        self.state = {"owner": owner, "err_at": 0}
+        owner, listening, opened = self.start_owner(node)
+        self.state = {"owner": owner}
         print("OPEN-DEPTH {} {} seconds={:.1f} {}".format(
             name, mode, listening, opened or "(no OWNER-OPEN line)"), flush=True)
         try:
             if SERVED:
-                self.serve_every_command(name, mode, root, config, port, err_path)
+                self.serve_every_command(name, mode, node)
                 if CONTROL:
-                    self.control_reports(name, mode, root, config, err_path)
+                    self.control_reports(name, mode, node)
                 self.assertEqual([(t, e) for t, e, _ in self.deaths], [],
                                  "commands or reports that stopped the owner at {} ({})".format(
                                      name, mode))
             else:
-                with socket.create_connection(("127.0.0.1", port), timeout=600) as conn:
-                    f = conn.makefile("rwb")
-                    self.assertTrue(f.readline().startswith(b"20"))
-                    f.write(b"DATE\r\n")
-                    f.flush()
-                    reply = f.readline()
+                with node.session(timeout=600, greeting=None) as client:
+                    self.assertTrue(client.greeting.startswith(b"20"))
+                    reply = client.command("DATE")
                     print("OPEN-DEPTH {} {} {}".format(name, mode, reply.strip().decode("ascii")),
                           flush=True)
                     self.assertTrue(reply.startswith(b"111 "), reply)
             return opened
         finally:
-            self.stop_owner(self.state["owner"], err_path)
+            self.stop_owner(node, self.state["owner"])
 
-    def serve_every_command(self, name, mode, root, config, port, err_path):
+    def serve_every_command(self, name, mode, node):
         """Every command of the table against the open store; reopen after a death."""
         deaths = self.deaths
         state = self.state
 
         def connect():
-            c = socket.create_connection(("127.0.0.1", port), timeout=1800)
-            h = c.makefile("rwb")
-            greeting = h.readline()
-            self.assertTrue(greeting.startswith(b"20"), greeting)
-            return c, h
+            client = node.session(timeout=1800, greeting=None)
+            self.assertTrue(client.greeting.startswith(b"20"), client.greeting)
+            return client
 
-        def exchange(h, text, body):
-            h.write(text.encode("ascii") + b"\r\n")
-            h.flush()
-            first = h.readline()
-            if not first:
-                return None, 0
-            code = first[:3]
+        def exchange(client, text, body):
             lines = 0
-            if body is not None and code == b"340":
-                h.write(post_body(body))
-                h.flush()
-                first = h.readline()
-                if not first:
-                    return None, 0
+            try:
+                first = client.command(text)
                 code = first[:3]
-            if code in MULTI or (code == b"211" and text.startswith("LISTGROUP")):
-                while True:
-                    line = h.readline()
-                    if not line:
-                        return None, lines
-                    if line == b".\r\n":
-                        break
-                    lines += 1
+                if body is not None and code == b"340":
+                    client.send(post_body(body))
+                    first = client.line()
+                    code = first[:3]
+                if code in MULTI or (code == b"211" and text.startswith("LISTGROUP")):
+                    while client.line() != b".\r\n":
+                        lines += 1
+            except EOFError:
+                return None, lines
             return first, lines
 
-        conn, f = connect()
+        client = connect()
         group = os.environ.get("FN_OPEN_DEPTH_GROUP", "fn.test")
 
         def run(text, body):
-            nonlocal conn, f
+            nonlocal client
             started = time.monotonic()
             try:
-                first, lines = exchange(f, text, body)
+                first, lines = exchange(client, text, body)
             except OSError as e:
                 first, lines = None, 0
                 print("OPEN-DEPTH {} {} SERVED {} connection error {}".format(name, mode, text, e),
@@ -308,38 +262,38 @@ class OpenDepthTests(unittest.TestCase):
                 proc.wait(5 if text == "QUIT" else 60)
             except subprocess.TimeoutExpired:
                 pass
-            conn.close()
+            client.close(quit=False)
             if proc.poll() is None:
                 # The connection closed and the owner lives (QUIT): reconnect.
                 print("OPEN-DEPTH {} {} SERVED {} (closed) seconds={:.1f}".format(
                     name, mode, text, seconds), flush=True)
             else:
-                frames = dying_frames(err_path.read_bytes()[state["err_at"]:])
+                frames = dying_frames(proc.stderr.since(0))
                 deaths.append((text, proc.returncode, frames))
                 print("OPEN-DEPTH {} {} SERVED {} OWNER-DIED exit={} seconds={:.1f} {}".format(
                     name, mode, text, proc.returncode, seconds, " | ".join(frames)), flush=True)
-                state["owner"], _, _ = self.start_owner(name, mode + "-reopen", root, config,
-                                                        err_path)
-            conn, f = connect()
+                state["owner"], _, _ = self.start_owner(node)
+            client = connect()
             if text != "QUIT":
-                exchange(f, "GROUP {}".format(group), None)
+                exchange(client, "GROUP {}".format(group), None)
             return None
 
         # The group with the most articles, when LIST ACTIVE answers: the one
         # whose whole range is deepest.
-        f.write(b"LIST ACTIVE\r\n")
-        f.flush()
-        head = f.readline()
         best = None
-        while head.startswith(b"215"):
-            line = f.readline()
-            if not line or line == b".\r\n":
-                break
-            words = line.split()
-            if len(words) >= 3 and words[1].isdigit() and words[2].isdigit():
-                depth = int(words[1]) - int(words[2])
-                if best is None or depth > best[0]:
-                    best = (depth, words[0].decode("ascii"))
+        try:
+            head = client.command("LIST ACTIVE")
+            while head.startswith(b"215"):
+                line = client.line()
+                if line == b".\r\n":
+                    break
+                words = line.split()
+                if len(words) >= 3 and words[1].isdigit() and words[2].isdigit():
+                    depth = int(words[1]) - int(words[2])
+                    if best is None or depth > best[0]:
+                        best = (depth, words[0].decode("ascii"))
+        except EOFError:
+            pass
         if best is not None:
             group = best[1]
         else:
@@ -361,9 +315,9 @@ class OpenDepthTests(unittest.TestCase):
                 continue
             if run(text, body) is not None and text == "QUIT":
                 break
-        conn.close()
+        client.close(quit=False)
 
-    def control_reports(self, name, mode, root, config, err_path):
+    def control_reports(self, name, mode, node):
         """Every live report the control thread renders, against the open store.
 
         The owner renders them on the control socket's thread (1,024 KiB like
@@ -372,9 +326,7 @@ class OpenDepthTests(unittest.TestCase):
         reopened, as for a served command."""
         for words in CONTROL_REPORTS:
             started = time.monotonic()
-            done = subprocess.run([str(verbs.IMAGE), "--fn", "operator", str(config)] + words,
-                                  env=verbs.environment(), stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE, timeout=OPEN_SECONDS)
+            done = node.operator(*words, timeout=OPEN_SECONDS)
             seconds = time.monotonic() - started
             proc = self.state["owner"]
             text = (done.stdout + done.stderr).decode("utf-8", "replace")
@@ -383,31 +335,25 @@ class OpenDepthTests(unittest.TestCase):
             except subprocess.TimeoutExpired:
                 pass
             if proc.poll() is not None or "Control stack exhausted" in text:
-                frames = dying_frames(err_path.read_bytes()[self.state["err_at"]:])
+                frames = dying_frames(proc.stderr.since(0))
                 self.deaths.append((" ".join(words), proc.returncode, frames))
                 print("OPEN-DEPTH {} {} CONTROL {} OWNER-DIED exit={} seconds={:.1f} {} | {}".format(
                     name, mode, " ".join(words), proc.returncode, seconds, " | ".join(frames),
                     text.strip()[-200:]), flush=True)
-                if proc.poll() is None:
-                    proc.terminate()
-                    proc.wait(600)
-                self.state["owner"], _, _ = self.start_owner(name, mode + "-reopen", root, config,
-                                                             err_path)
+                node.stop(expect=None, process=proc, grace=600)
+                self.state["owner"], _, _ = self.start_owner(node)
                 continue
             print("OPEN-DEPTH {} {} CONTROL {} exit={} bytes={} seconds={:.1f} {}".format(
                 name, mode, " ".join(words), done.returncode, len(done.stdout), seconds,
                 text.strip().splitlines()[-1][:100] if text.strip() else ""), flush=True)
 
-    def offline_store_verbs(self, name, root):
+    def offline_store_verbs(self, name, node):
         """The store verbs, with no owner, over the whole store."""
-        store = root / "store"
         failures = []
-        export = [["export", str(root / "export")]] if name in EXPORT_NAMES else []
+        export = [["export", str(node.root / "export")]] if name in EXPORT_NAMES else []
         for words in OFFLINE_VERBS + export:
             started = time.monotonic()
-            done = subprocess.run([str(verbs.IMAGE), "--fn", "store", str(store)] + words,
-                                  env=verbs.environment(), stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE, timeout=OPEN_SECONDS)
+            done = node.store(*words, timeout=OPEN_SECONDS)
             text = (done.stdout + done.stderr).decode("utf-8", "replace")
             print("OPEN-DEPTH {} STORE {} exit={} bytes={} seconds={:.1f} {}".format(
                 name, " ".join(words[:1]), done.returncode, len(done.stdout),
@@ -415,16 +361,16 @@ class OpenDepthTests(unittest.TestCase):
                 text.strip().splitlines()[-1][:100] if text.strip() else ""), flush=True)
             if done.returncode != 0 or "Control stack exhausted" in text:
                 failures.append((words[0], done.returncode, text.strip()[-300:]))
-        shutil.rmtree(root / "export", ignore_errors=True)
+        shutil.rmtree(node.root / "export", ignore_errors=True)
         self.assertEqual(failures, [], "store verbs that failed at {}".format(name))
 
     def test_full_replay_open_at_the_deployed_stack(self):
         for name in NAMES:
             with self.subTest(fixture=name):
-                root, config, port = self.prepare(name)
-                line = self.open_and_serve(name, "full-replay", root, config, port)
+                node = self.prepare(name)
+                line = self.open_and_serve(name, "full-replay", node)
                 if CONTROL:
-                    self.offline_store_verbs(name, root)
+                    self.offline_store_verbs(name, node)
                 self.assertIn("open=full-replay", line)
 
     def test_checkpoint_open_at_the_deployed_stack(self):
@@ -434,16 +380,15 @@ class OpenDepthTests(unittest.TestCase):
                             "FN_OPEN_DEPTH_CHECKPOINT_STACK_KB needs FN_TEST_CONTROL_STACK_REASON")
         for name in NAMES:
             with self.subTest(fixture=name):
-                root, config, port = self.prepare(name)
+                node = self.prepare(name)
                 started = time.monotonic()
-                made = subprocess.run([str(verbs.IMAGE), "--fn", "operator", str(config), "store",
-                                       "checkpoint"], env=env_at(kib), stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE, timeout=OPEN_SECONDS)
+                made = node.operator("store", "checkpoint", env=stack_env(kib),
+                                     timeout=OPEN_SECONDS)
                 print("OPEN-DEPTH {} store-checkpoint stack={} seconds={:.1f} exit={} {}".format(
                     name, kib or "launcher", time.monotonic() - started, made.returncode,
                     made.stdout.decode("utf-8", "replace").strip()[-200:]), flush=True)
                 self.assertEqual(made.returncode, 0, made.stderr[-3000:])
-                line = self.open_and_serve(name, "checkpoint", root, config, port)
+                line = self.open_and_serve(name, "checkpoint", node)
                 self.assertIn("open=checkpoint:", line)
 
 if __name__ == "__main__":

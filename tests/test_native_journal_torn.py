@@ -22,37 +22,12 @@ f2-full shape without filling a filesystem).  The cases:
     is cut when the next run opens the journal, which then replays to
     agreement.
 """
-import os
-from pathlib import Path
-import re
-import select
-import signal
-import socket
-import subprocess
-import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parents[1]
-DEVELOPER = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+from tests.native_harness import ROOT, Node, article, native_image, requires
+
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 MARK = [0, 7, 0, 0, 0, 0, 0]
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    return env
-
-
-def executable(path):
-    return path.is_file() and os.access(path, os.X_OK)
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 class JournalWriterSourceTests(unittest.TestCase):
@@ -80,91 +55,32 @@ class JournalWriterSourceTests(unittest.TestCase):
                         opening.index("'fn-otm-start-line"))
 
 
-@unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
+@requires(DEVELOPER)
 class JournalWriterNativeTests(unittest.TestCase):
     def setUp(self):
-        self.directory = tempfile.TemporaryDirectory(prefix="fn-journal-torn-")
-        self.addCleanup(self.directory.cleanup)
-        self.root = Path(self.directory.name)
-        self.store = self.root / "store"
-        self.control = self.root / "control.sock"
-        self.config = self.root / "fn.toml"
-        self.fail_file = self.root / "journal-fail"
-        self.port = free_port()
-        self.config.write_text(
-            '[store]\npath = "{}"\n'
-            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
-        init = self.operator("init", "--max-article-octets", "1048576", "fn.test")
-        self.assertEqual(init.returncode, 0, init.stderr.decode())
-        self.log = open(self.root / "owner.stderr", "wb")
-        self.addCleanup(self.log.close)
+        self.node = Node(self, DEVELOPER)
+        self.store = self.node.store_path
+        self.fail_file = self.node.root / "journal-fail"
+        self.node.init("--max-article-octets", "1048576", "fn.test", timeout=60)
         self.addCleanup(lambda: self.fail_file.unlink() if self.fail_file.exists() else None)
         self.journal = self.store / "decisions" / "decisions.fnj"
         self.posted = 0
 
-    def operator(self, *words, timeout=60):
-        return subprocess.run(
-            [str(DEVELOPER), "--fn", "operator", str(self.config), *words],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=timeout, check=False)
-
     def start_owner(self):
-        env = environment()
-        env["FN_NATIVE_TEST_JOURNAL_FAIL_FILE"] = str(self.fail_file)
-        process = subprocess.Popen(
-            [str(DEVELOPER), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=self.log, bufsize=0)
-        self.addCleanup(self.stop_owner, process)
-        for _ in range(4):
-            self.assertTrue(select.select([process.stdout], [], [], 180)[0],
-                            "the owner did not become ready")
-            line = process.stdout.readline()
-            if line.startswith(b"LISTENING "):
-                return process
-            self.assertIsNone(process.poll(), "the owner exited before listening")
-        self.fail("the owner's readiness output was malformed")
-
-    def stop_owner(self, process):
-        if process.poll() is None:
-            process.send_signal(signal.SIGTERM)
-            try:
-                process.wait(timeout=60)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=10)
-        if process.stdout and not process.stdout.closed:
-            process.stdout.close()
+        return self.node.start(env={"FN_NATIVE_TEST_JOURNAL_FAIL_FILE": str(self.fail_file)})
 
     def post(self, count):
-        conn = socket.create_connection(("127.0.0.1", self.port), timeout=120)
-        with conn:
-            stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"200"))
+        with self.node.session(timeout=120) as client:
             for _ in range(count):
                 self.posted += 1
-                msgid = b"jt-%d@example.invalid" % self.posted
-                stream.write(b"POST\r\n")
-                stream.flush()
-                line = stream.readline()
-                self.assertTrue(line.startswith(b"340"), line)
-                stream.write(b"From: author@example.invalid\r\nNewsgroups: fn.test\r\n"
-                             b"Subject: journal\r\nMessage-ID: <" + msgid + b">\r\n\r\n"
-                             b"body\r\n.\r\n")
-                stream.flush()
-                line = stream.readline()
-                self.assertTrue(line.startswith(b"240"), (msgid, line))
-                stream.write(b"GROUP fn.test\r\n")
-                stream.flush()
-                self.assertTrue(stream.readline().startswith(b"211"))
-            stream.write(b"QUIT\r\n")
-            stream.flush()
+                msgid = "<jt-%d@example.invalid>" % self.posted
+                first, final = client.post(article(msgid, subject="journal", date=None))
+                self.assertTrue(first.startswith(b"340"), first)
+                self.assertTrue(final.startswith(b"240"), (msgid, final))
+                self.assertTrue(client.command(b"GROUP fn.test").startswith(b"211"))
 
     def replay(self):
-        result = subprocess.run([str(DEVELOPER), "--fn", "store", str(self.store), "journal"],
-                                cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, timeout=120, check=False)
+        result = self.node.store("journal", timeout=120)
         print("store journal: rc=%d %r" % (result.returncode, result.stdout))
         return result
 
@@ -184,8 +100,7 @@ class JournalWriterNativeTests(unittest.TestCase):
         self.post(4)
         self.fail_file.unlink()
         self.post(3)
-        self.stop_owner(owner)
-        self.assertEqual(owner.returncode, 0)
+        self.node.stop(process=owner)
         entries = self.entries()
         self.assertIn(MARK, entries)
         at = entries.index(MARK)
@@ -200,8 +115,7 @@ class JournalWriterNativeTests(unittest.TestCase):
     def test_a_torn_tail_is_cut_when_the_next_run_opens_the_journal(self):
         owner = self.start_owner()
         self.post(2)
-        self.stop_owner(owner)
-        self.assertEqual(owner.returncode, 0)
+        self.node.stop(process=owner)
         whole = self.journal.read_bytes()
         # Half an entry, as a process that died mid-append leaves it.
         with open(self.journal, "ab") as journal:
@@ -210,13 +124,12 @@ class JournalWriterNativeTests(unittest.TestCase):
         self.assertIn(b" status=torn", torn.stdout)
         owner = self.start_owner()
         self.post(2)
-        self.stop_owner(owner)
-        self.assertEqual(owner.returncode, 0)
+        self.node.stop(process=owner)
         data = self.journal.read_bytes()
         self.assertTrue(data.startswith(whole), "the cut removed a whole entry")
         self.assertEqual(data[len(whole):len(whole) + 2], b"0 ", "the next run did not start after the cut")
         self.entries()
-        log = (self.root / "owner.stderr").read_bytes()
+        log = owner.stderr.since(0)
         self.assertIn(b"decision journal: the previous run's torn last entry (7 octets) was cut", log)
         replay = self.replay()
         self.assertEqual(replay.returncode, 0, (replay.stdout, replay.stderr))

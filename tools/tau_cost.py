@@ -453,6 +453,8 @@ def main(argv: list[str] | None = None) -> int:
     start = sub.add_parser("run")
     start.add_argument("host", choices=sorted(farm.HOSTS))
     start.add_argument("books", nargs="*")
+    start.add_argument("--all", action="store_true",
+                       help="measure every book (an empty book list is refused without it)")
     start.add_argument("--remote-root", required=True)
     start.add_argument("--jobs", type=int, default=2)
     start.add_argument("--timeout", type=int, default=900)
@@ -488,6 +490,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.action == "run":
+            if not args.books and not args.all:
+                # An unset shell variable reached here as "every book" (the
+                # farm's --all rule, tau-pass's ask).
+                parser.error("start names no book: pass --all to measure every book")
             books = args.books or rule_cost.default_books()
             if args.shard:
                 k, n = (int(x) for x in args.shard.split("/"))

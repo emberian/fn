@@ -1,27 +1,20 @@
 """Two real native BP processes through a byte-only interruptible relay."""
 
-import os
-from pathlib import Path
 import select
-import shutil
 import socket
 import subprocess
-import tempfile
 import threading
 import time
 import unittest
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import (
+    EXIT, ROOT, environment, free_port, native_image, requires, run, scratch, start)
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
-# connection lost after it existed is exit 6 (connection-local: the job stays
-# and is re-offered; no recovery); exit 3 stays the fence.
-LOST = 6
-
-
-
-ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_IMAGE = ROOT / "build" / "fn-host-dtn"
+# connection lost after it existed is EXIT.INTERRUPTED (connection-local:
+# the job stays and is re-offered; no recovery); EXIT.UNCERTAIN stays the fence.
+SENDER = native_image("FN_NATIVE_CONTACT_SENDER")
+RECEIVER = native_image("FN_NATIVE_CONTACT_RECEIVER")
 
 
 class ByteRelay:
@@ -123,14 +116,12 @@ class ByteRelay:
             worker.join(timeout=2)
 
 
+@requires(SENDER, RECEIVER)
 class NativeBpContactRelayTests(unittest.TestCase):
+    sender_image, receiver_image = SENDER, RECEIVER
+
     @classmethod
     def setUpClass(cls):
-        cls.sender_image = Path(os.environ.get("FN_NATIVE_CONTACT_SENDER", DEFAULT_IMAGE))
-        cls.receiver_image = Path(os.environ.get("FN_NATIVE_CONTACT_RECEIVER", DEFAULT_IMAGE))
-        if not all(os.access(path, os.X_OK)
-                   for path in (cls.sender_image, cls.receiver_image)):
-            raise unittest.SkipTest("two native DTN image paths are required")
         # The receiver is the node, `bp-node serve`, which admits a TCPCL
         # principal from the store's observed-channel profile (`operator
         # bp-boundary add`) under the store's path identity.  The DTN image
@@ -138,32 +129,22 @@ class NativeBpContactRelayTests(unittest.TestCase):
         cls.trusted_image = cls.receiver_image
 
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="fn-contact-relay-"))
-        self.addCleanup(shutil.rmtree, self.tmp)
+        self.tmp = scratch(self, "fn-contact-relay-")
         self.sender_journal = self.tmp / "sender"
         self.receiver_journal = self.tmp / "receiver"
         self.adu = self.tmp / "request.adu"
         self.adu.write_bytes(b"interrupted contact custody witness")
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.env.pop("ACL2_SYSTEM_BOOKS", None)
         self.relay = ByteRelay()
         self.addCleanup(self.relay.close)
 
     def invoke(self, image, *args):
-        return subprocess.run(
-            [str(image), "--fn", *map(str, args)], cwd=ROOT, env=self.env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=90,
-            check=False,
-        )
+        return run([image, "--fn", *args], timeout=90)
 
     def trust_receiver(self):
         """Store, path identity and the sender's boundary, before any contact."""
         self.receiver_store = self.tmp / "receiver-store"
         self.receiver_config = self.tmp / "receiver-fn.toml"
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
-            reservation.bind(("127.0.0.1", 0))
-            self.receiver_port = reservation.getsockname()[1]
+        self.receiver_port = free_port()
         steps = (
             ("store", self.receiver_store, "init", "fn.test"),
             ("operator", self.receiver_config, "policy", "set",
@@ -176,23 +157,20 @@ class NativeBpContactRelayTests(unittest.TestCase):
             f'[store]\npath = "{self.receiver_store}"\n', encoding="ascii")
         for step in steps:
             done = self.invoke(self.trusted_image, *step)
-            self.assertEqual(done.returncode, 0, (step, done.stdout, done.stderr))
+            self.assertEqual(done.returncode, EXIT.OK, (step, done.stdout, done.stderr))
 
     def receive_once(self):
         if not hasattr(self, "receiver_port"):
             self.trust_receiver()
-        process = subprocess.Popen(
-            [str(self.trusted_image), "--fn", "bp-node", "serve",
-             str(self.receiver_port), str(self.receiver_journal),
-             str(self.receiver_store), str(self.tmp / "receiver-fnrj"),
-             str(self.tmp / "receiver-fnwf"), "dtn://receiver/",
-             "dtn://sender/", "dtn://receiver/", "native-policy",
-             "dtn://receiver/", "127.0.0.1", str(self.relay.port), "1",
-             "3600000", "2", "32", "1048576", "0", "0"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0,
-        )
-        line = wait_for_announcement(process, b"BP NODE LISTENING ", timeout=45)
+        process = start(
+            [self.trusted_image, "--fn", "bp-node", "serve", self.receiver_port,
+             self.receiver_journal, self.receiver_store, self.tmp / "receiver-fnrj",
+             self.tmp / "receiver-fnwf", "dtn://receiver/", "dtn://sender/",
+             "dtn://receiver/", "native-policy", "dtn://receiver/", "127.0.0.1",
+             self.relay.port, "1", "3600000", "2", "32", "1048576", "0", "0"],
+            cwd=ROOT, env=environment())
+        self.addCleanup(process.stop, 10)
+        line = process.announcement(b"BP NODE LISTENING ", timeout=45)
         return process, int(line.rsplit(b" ", 1)[1])
 
     def service_run(self, work, journal=None, lifetime=3600000):
@@ -217,41 +195,32 @@ class NativeBpContactRelayTests(unittest.TestCase):
         self.relay.route(first_port, cut_next=True)
         try:
             interrupted = self.service_run("work-interrupted")
-            self.assertEqual(interrupted.returncode, LOST, interrupted.stderr)
+            self.assertEqual(interrupted.returncode, EXIT.INTERRUPTED, interrupted.stderr)
             self.assertIn(b"BP queue accepted", interrupted.stdout)
             self.assertIn(b"reason=uncertain", interrupted.stdout)
             try:
                 first.wait(timeout=15)
             except subprocess.TimeoutExpired:
-                first.terminate()
-                first.wait(timeout=10)
+                pass
         finally:
-            if first.poll() is None:
-                first.kill()
-                first.wait(timeout=10)
-            first.stdout.close()
-            first.stderr.close()
+            first.stop(grace=10)
 
         restarted, restarted_port = self.receive_once()
         self.relay.route(restarted_port)
         try:
             closed = self.tick(1, 60000)
-            self.assertEqual(closed.returncode, 0, closed.stderr)
+            self.assertEqual(closed.returncode, EXIT.OK, closed.stderr)
             self.assertIn(b"BP contact closed", closed.stdout)
             self.assertIsNone(restarted.poll(), "closed window sent no transfer")
 
             delivered = self.tick(0, 60000)
             received_out, received_err = restarted.communicate(timeout=90)
-            self.assertEqual(delivered.returncode, 0, delivered.stderr)
+            self.assertEqual(delivered.returncode, EXIT.OK, delivered.stderr)
             self.assertIn(b"BP contact open", delivered.stdout)
-            self.assertEqual(restarted.returncode, 0, received_err)
+            self.assertEqual(restarted.returncode, EXIT.OK, received_err)
             self.assertIn(b"BP accepted", received_out)
         finally:
-            if restarted.poll() is None:
-                restarted.kill()
-                restarted.wait(timeout=10)
-            restarted.stdout.close()
-            restarted.stderr.close()
+            restarted.stop(grace=10)
 
         held = tuple((self.receiver_journal / "lifecycle").glob("*.fnb"))
         self.assertTrue(held, "receiver custody must have a durable FNBS row")
@@ -266,11 +235,11 @@ class NativeBpContactRelayTests(unittest.TestCase):
         expiring = self.tmp / "sender-expiring"
         second = self.service_run("work-to-expire", journal=expiring,
                                   lifetime=1000)
-        self.assertEqual(second.returncode, LOST, second.stderr)
+        self.assertEqual(second.returncode, EXIT.INTERRUPTED, second.stderr)
         before = len(tuple((expiring / "lifecycle").glob("*.fnb")))
         time.sleep(1.5)
         expired = self.tick(1, 60000, journal=expiring, lifetime=1000)
-        self.assertEqual(expired.returncode, 0, expired.stderr)
+        self.assertEqual(expired.returncode, EXIT.OK, expired.stderr)
         self.assertIn(b"BP contact closed", expired.stdout)
         self.assertIn(b"status=expired", expired.stdout)
         after = len(tuple((expiring / "lifecycle").glob("*.fnb")))

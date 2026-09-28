@@ -15,6 +15,7 @@
 (in-package "ACL2")
 (include-book "../../books/records-canonicality")
 (include-book "../../books/records-attach")
+(include-book "../../books/records-exec")
 (include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
@@ -256,10 +257,19 @@
                                        release-evidence charge stamp)))
    :hints (("Goal" :in-theory (enable fn-record-p fn-record-internals)))))
 
-; The decode through both exec branches: the witness's encoding decodes to
-; the witness, and one octet cut from its payload is refused.
+; The decode through both exec branches (the twin in books/records-exec.lisp,
+; G9): the witness's encoding decodes to the witness, and one octet cut from
+; its payload is refused, by the twin and by the :logic decoder alike.
 (defconst *rec-teeth-encoded* (fn-record-encode-impl *rec-teeth-record*))
+(assert-event (equal (fn-record-decode-exact-exec *rec-teeth-encoded*)
+                     (fn-record-result-ok *rec-teeth-record*)))
 (assert-event (equal (fn-record-decode-exact-impl *rec-teeth-encoded*)
                      (fn-record-result-ok *rec-teeth-record*)))
 (assert-event (not (fn-record-result-okp
-                    (fn-record-decode-exact-impl (butlast *rec-teeth-encoded* 1)))))
+                    (fn-record-decode-exact-exec (butlast *rec-teeth-encoded* 1)))))
+(assert-event (equal (fn-record-decode-exact-exec (butlast *rec-teeth-encoded* 1))
+                     (fn-record-decode-exact-impl (butlast *rec-teeth-encoded* 1))))
+; The twin and the :logic decoder agree on an early refusal too (the
+; unknown version above).
+(assert-event (equal (fn-record-decode-exact-exec *rec-teeth-unknown-version*)
+                     (fn-record-decode-exact-impl *rec-teeth-unknown-version*)))

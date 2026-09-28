@@ -182,7 +182,7 @@ DUPLICATE = "441 posting failed; this article is already stored here\r\n"
 CONFLICT = ("441 posting failed; a different article with this Message-ID is "
             "stored here\r\n")
 NO_FROM = "441 posting failed; From is required\r\n"
-EXIT_UNCERTAIN = 3
+from tools.outcome_codes import EXIT_UNCERTAIN  # noqa: E402
 
 # The served commit's programs in the host's order (START: the member's
 # reservation, its record's place, its finish; then the batch's append and

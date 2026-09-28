@@ -12764,6 +12764,53 @@
           "name": "fn-acct-offline-invite-refusal-is-no-clock-exactly-without-a-wall"
         }
       ]
+    },
+    {
+      "id": "PRF-383",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-napb-rows-with-key-loop-is-rev-onto"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-napb-peer-names-loop-is-rev-onto"
+        }
+      ]
+    },
+    {
+      "id": "PRF-376",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-flb-lost-advances-the-backoff"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-flb-lost-doubles-below-the-ceiling"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-flb-first-loss-after-ready-waits-the-base"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-flb-delay-is-bounded"
+        }
+      ]
+    },
+    {
+      "id": "PRF-381",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-fps-deltas-set-the-pause"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fps-live-names-are-the-unpaused-feeds"
+        }
+      ]
     }
   ]
 }

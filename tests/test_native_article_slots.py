@@ -33,10 +33,9 @@ import socket
 import time
 import unittest
 
-from tests import test_native_operator_verbs as verbs
 from tests.test_native_bounds_join import JoinFixture, article, dot_stuff
 
-EXIT_OK = verbs.EXIT_OK
+from tests.native_harness import EXIT_OK  # noqa: E402
 MIB4 = 4 * 1024 * 1024
 INIT_PROFILE = ("--profile", "development", "--max-transactions", "1024",
                 "--max-history-octets", str(64 << 20),
@@ -88,7 +87,7 @@ class ArticleSlotsTests(JoinFixture):
     def test_concurrent_large_posters_are_answered_by_name_and_the_node_lives(self):
         created = self.op("init", *INIT_PROFILE, "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        owner = self.start_owner(self.image)
+        owner = self.node.start(image=self.image)
         posters = [Poster(self.port) for _ in range(POSTERS)]
         try:
             wire = [dot_stuff(article("<slots-{}@example.invalid>".format(n), MIB4 - 4096))
@@ -122,13 +121,13 @@ class ArticleSlotsTests(JoinFixture):
         finally:
             for p in posters:
                 p.close()
-        self.stop(owner)
+        self.node.stop(process=owner)
         self.assertEqual(self.headroom()["transactions-used"], POSTERS)
 
     def test_partial_uploads_holding_the_pool_all_complete(self):
         created = self.op("init", *DEADLOCK_PROFILE, "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        owner = self.start_owner(self.image)
+        owner = self.node.start(image=self.image)
         posters = [Poster(self.port) for _ in range(5)]
         try:
             wire = [dot_stuff(article("<pool-{}@example.invalid>".format(n), A600K - 4096))
@@ -159,7 +158,7 @@ class ArticleSlotsTests(JoinFixture):
         finally:
             for p in posters:
                 p.close()
-        self.stop(owner)
+        self.node.stop(process=owner)
         self.assertEqual(self.headroom()["transactions-used"], 5)
 
 

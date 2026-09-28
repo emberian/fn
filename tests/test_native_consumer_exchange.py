@@ -16,17 +16,13 @@ import os
 from pathlib import Path
 import re
 import signal
-import socket
-import subprocess
 import sys
-import tempfile
 import unittest
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import (
+    EXIT_OK, ROOT, Node, environment, native_image, requires, run, scratch, start)
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST",
-                            ROOT / "build" / "fn-host-developer"))
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 ENABLED = os.environ.get("FN_RUN_CONSUMER_EXCHANGE") == "1"
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 CONSUMER = ROOT / "tools" / "fn_consumer.py"
@@ -34,60 +30,46 @@ VERIFIER = ROOT / "tools" / "fn_verify.py"
 APP = "fn-e1"
 
 
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
-
-
-@unittest.skipUnless(ENABLED and IMAGE.is_file() and os.access(IMAGE, os.X_OK),
-                     "set FN_RUN_CONSUMER_EXCHANGE=1 and a source-matched "
+@unittest.skipUnless(ENABLED, "set FN_RUN_CONSUMER_EXCHANGE=1 and a source-matched "
                      "FN_NATIVE_DEVELOPER_HOST")
+@requires(IMAGE)
 class NativeConsumerExchangeTests(unittest.TestCase):
     def setUp(self):
-        temporary = tempfile.TemporaryDirectory(prefix="fn-consumer-x-")
-        self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        for name in ("ACL2_SYSTEM_BOOKS", "FN_HOST", "FN_NATIVE_CONTROL_FAULT",
-                     "FN_NATIVE_CONTROL_TEST_STOP", "FN_CONSUMER_CUT"):
-            self.env.pop(name, None)
+        self.root = scratch(self, "fn-consumer-x-")
+        # The consumers' environment: no cut unless a call names one.
+        self.env = environment({"FN_CONSUMER_CUT": None})
         self.log = []
 
-    def native(self, *words, expected=0):
-        result = subprocess.run([str(IMAGE), "--fn", *map(str, words)],
-                                cwd=ROOT, env=self.env, capture_output=True,
-                                timeout=300, check=False)
-        if expected is not None:
-            self.assertEqual(result.returncode, expected,
-                             (result.stdout + result.stderr).decode("utf-8", "replace"))
-        return result
+    def native(self, *words, expected=EXIT_OK):
+        return self.node.invoke(*words, timeout=300, expect=expected)
+
+    def start_node(self, *, log=True, bootstrap=True):
+        """A fresh store (`store init`) and developer owner with a control
+        socket, a service log when LOG, the consumer bootstrap when BOOTSTRAP."""
+        base = self.root / "node"
+        self.node = Node(self, IMAGE, root=base, extra='[log]\npath = "{}"\n'.format(
+            base / "service.log") if log else "")
+        self.store, self.control, self.config = (
+            self.node.store_path, self.node.control, self.node.config)
+        self.native("store", self.store, "init", "fn.test")
+        self.owner = self.start_owner()
+        if bootstrap:
+            self.native("consumer", "bootstrap", self.control)
 
     def start_owner(self, *, stop_after_submit=False):
-        env = dict(self.env)
-        if stop_after_submit:
-            env["FN_NATIVE_CONTROL_TEST_STOP"] = "after-submit"
-        proc = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            bufsize=0)
-        self.addCleanup(self.reap, proc)
-        wait_for_announcement(proc, b"LISTENING ", timeout=120)
-        return proc
-
-    @staticmethod
-    def reap(proc):
-        if proc.poll() is None:
-            proc.kill()
-            proc.wait(timeout=10)
-        for stream in (proc.stdout, proc.stderr):
-            if stream and not stream.closed:
-                stream.close()
+        return self.node.start(timeout=120, env={"FN_NATIVE_CONTROL_TEST_STOP": "after-submit"}
+                               if stop_after_submit else None)
 
     def stop_owner(self, proc):
-        diagnostics = stop_and_diagnostics(proc, timeout=60)
-        self.assertEqual(proc.returncode, 0, diagnostics)
+        self.node.stop(process=proc)
+
+    def kill_cut_owner(self, cut_owner, timeout):
+        """The owner stopped after the consumer's first control request
+        completed: kill it before it replies."""
+        cut_owner.announcement(b"CONTROL-SUBMITTED", timeout=timeout)
+        cut_owner.kill()
+        cut_owner.wait(timeout=10)
+        cut_owner.finish()
 
     def signer(self, label, principal_byte, generation):
         from cryptography.hazmat.primitives import serialization
@@ -108,7 +90,7 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         for args in (["genpkey", "-algorithm", "ML-DSA-65", "-out", keys["ml_private"]],
                      ["pkey", "-in", keys["ml_private"], "-pubout", "-out",
                       keys["ml_public"]]):
-            made = subprocess.run([OPENSSL, *args], capture_output=True, timeout=60)
+            made = run([OPENSSL, *args], timeout=60)
             self.assertEqual(made.returncode, 0, made.stderr)
         self.native("hybrid-enroll", self.control, generation, keys["principal"],
                     keys["ed_public"], keys["ml_public"])
@@ -136,10 +118,9 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         entries = []
         for label in labels:
             keys, _, generation = self.principals[label]
-            made = subprocess.run(
-                [sys.executable, str(VERIFIER), "keyring-entry", keys["principal"],
-                 keys["ed_public"], keys["ml_public"], "--generation", str(generation)],
-                capture_output=True, timeout=60, check=False)
+            made = run([sys.executable, VERIFIER, "keyring-entry", keys["principal"],
+                        keys["ed_public"], keys["ml_public"], "--generation", generation],
+                       timeout=60)
             self.assertEqual(made.returncode, 0, made.stderr)
             entries.append(json.loads(made.stdout))
         data = json.loads(config.read_text(encoding="utf-8"))
@@ -159,12 +140,10 @@ class NativeConsumerExchangeTests(unittest.TestCase):
             env["FN_CONSUMER_CUT"] = cut
         argv = [sys.executable, str(CONSUMER), str(config), *words]
         if background:
-            proc = subprocess.Popen(argv, cwd=ROOT, env=env, stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
-            self.addCleanup(self.reap, proc)
+            proc = start(argv, cwd=ROOT, env=env)
+            self.addCleanup(proc.stop, 10)
             return proc
-        result = subprocess.run(argv, cwd=ROOT, env=env, capture_output=True,
-                                timeout=900, check=False)
+        result = run(argv, env=env, timeout=900)
         self.log.append((config.parent.name, words, cut, result.returncode,
                          result.stderr.decode("utf-8", "replace")[-2000:]))
         if expected is not None:
@@ -190,9 +169,7 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         self.stop_owner(self.owner)
         cut_owner = self.start_owner(stop_after_submit=True)
         proc = self.consumer(config, *words, background=True)
-        wait_for_announcement(cut_owner, b"CONTROL-SUBMITTED", timeout=300)
-        cut_owner.kill()
-        cut_owner.wait(timeout=10)
+        self.kill_cut_owner(cut_owner, 300)
         stdout, stderr = proc.communicate(timeout=300)
         self.log.append((config.parent.name, words, "owner-after-submit",
                          proc.returncode, stderr.decode("utf-8", "replace")[-2000:]))
@@ -201,18 +178,7 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         return json.loads(stdout)
 
     def test_two_sleeping_agents_exchange_across_every_ownership_cut(self):
-        base = self.root / "node"
-        base.mkdir()
-        self.store, self.control = base / "store", base / "control.sock"
-        self.config = base / "fn.toml"
-        self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-            'port = {}\n[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
-                self.store, free_port(), self.control, base / "service.log"),
-            encoding="ascii")
-        self.native("store", self.store, "init", "fn.test")
-        self.owner = self.start_owner()
-        self.native("consumer", "bootstrap", self.control)
+        self.start_node()
         a = self.agent("agent-a", 0xA1, 1)
         b = self.agent("agent-b", 0xB2, 2)
         m = self.agent("agent-m", 0xC3, 3)  # a third author reusing A's operation id
@@ -318,22 +284,6 @@ class NativeConsumerExchangeTests(unittest.TestCase):
                 "q_settlement": self.settlement},
                 indent=1, sort_keys=True), encoding="utf-8")
 
-    def node(self, *, log=True):
-        """A fresh store and developer owner with a control socket."""
-        base = self.root / "node"
-        base.mkdir()
-        self.store, self.control = base / "store", base / "control.sock"
-        self.config = base / "fn.toml"
-        text = ('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-                'port = {}\n[control]\npath = "{}"\n').format(
-                    self.store, free_port(), self.control)
-        if log:
-            text += '[log]\npath = "{}"\n'.format(base / "service.log")
-        self.config.write_text(text, encoding="ascii")
-        self.native("store", self.store, "init", "fn.test")
-        self.owner = self.start_owner()
-        self.native("consumer", "bootstrap", self.control)
-
     def stored_message(self, message_id):
         """fn's Store, read with the owner stopped, then the owner restarted."""
         self.stop_owner(self.owner)
@@ -345,7 +295,7 @@ class NativeConsumerExchangeTests(unittest.TestCase):
     def lone_author(self):
         """A node and one registered author A who trusts itself and owns the
         report ids."""
-        self.node()
+        self.start_node()
         a = self.agent("agent-a", 0xA1, 1)
         self.register("agent-a")
         self.trust(a, ("agent-a",), (("r", "agent-a"),))
@@ -403,18 +353,16 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         a = self.lone_author()
         self.stop_owner(self.owner)
         cut_owner = self.start_owner(stop_after_submit=True)
-        env = dict(self.env)
-        proc = subprocess.Popen([sys.executable, str(CONSUMER), str(a), "report", "r1",
-                                 "dregg-receipt-0001"], cwd=ROOT, env=env,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                start_new_session=True)
-        self.addCleanup(self.reap, proc)
-        wait_for_announcement(cut_owner, b"CONTROL-SUBMITTED", timeout=120)
+        proc = start([sys.executable, CONSUMER, a, "report", "r1", "dregg-receipt-0001"],
+                     cwd=ROOT, env=self.env, start_new_session=True)
+        self.addCleanup(proc.stop, 10)
+        cut_owner.announcement(b"CONTROL-SUBMITTED", timeout=120)
         os.killpg(proc.pid, signal.SIGKILL)  # the group this test started
         proc.wait(timeout=30)
         self.assertEqual(proc.returncode, -signal.SIGKILL)
         cut_owner.kill()
         cut_owner.wait(timeout=10)
+        cut_owner.finish()
         self.owner = self.start_owner()
         after_death = self.summary(a)["outbox"]
         self.assertEqual([(o["state"], o["attempts"]) for o in after_death],
@@ -455,7 +403,7 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         """fn enrolled U and accepted U's signed report; B was never given U's
         keys, so B's own check cannot decide it.  B keeps the evidence beside
         fn's verdict and performs no operation, transition or reply."""
-        self.node()
+        self.start_node()
         a = self.agent("agent-a", 0xA1, 1)
         b = self.agent("agent-b", 0xB2, 2)
         u = self.agent("agent-u", 0xD4, 3)
@@ -491,7 +439,7 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         operation identity.  M (trusted, correctly signed) claims r1 BEFORE A
         does and r2 AFTER A does; in both orders A's operation is the one
         applied and M's is kept as conflict evidence with no transition."""
-        self.node()
+        self.start_node()
         a = self.agent("agent-a", 0xA1, 1)
         b = self.agent("agent-b", 0xB2, 2)
         m = self.agent("agent-m", 0xC3, 3)
@@ -533,16 +481,7 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         """D25 on the local control route: a byte-identical resend of an
         accepted signed article is "already stored here" (exit 0), which is
         what lets a consumer settle an uncertain POST by re-POSTing."""
-        base = self.root / "node"
-        base.mkdir()
-        self.store, self.control = base / "store", base / "control.sock"
-        self.config = base / "fn.toml"
-        self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-            'port = {}\n[control]\npath = "{}"\n'.format(
-                self.store, free_port(), self.control), encoding="ascii")
-        self.native("store", self.store, "init", "fn.test")
-        self.owner = self.start_owner()
+        self.start_node(log=False, bootstrap=False)
         a = self.agent("agent-a", 0xA1, 1)
         self.consumer(a, "report", "r1", "dregg-receipt-0001")
         cfg = json.loads(a.read_text(encoding="utf-8"))
@@ -553,10 +492,8 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         paths = [self.root / name for name in ("again.eml", "again.ed", "again.ml")]
         for path, octets in zip(paths, (source, ed_sig, ml_sig)):
             path.write_bytes(octets)
-        again = subprocess.run(
-            [str(IMAGE), "--fn", "hybrid-author", str(self.control), "1",
-             *map(str, paths), cfg["keys"]["ml_public"]],
-            cwd=ROOT, env=self.env, capture_output=True, timeout=300, check=False)
+        again = self.native("hybrid-author", self.control, "1", *paths,
+                            cfg["keys"]["ml_public"], expected=None)
         self.stop_owner(self.owner)
         self.assertEqual(again.returncode, 0,
                          "identical resend answered %d, not D25 duplicate"
@@ -564,16 +501,7 @@ class NativeConsumerExchangeTests(unittest.TestCase):
 
     def test_identical_operator_post_resend_answers_duplicate(self):
         """D25 on the operator post route (unsigned, same control socket)."""
-        base = self.root / "node"
-        base.mkdir()
-        self.store, self.control = base / "store", base / "control.sock"
-        self.config = base / "fn.toml"
-        self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-            'port = {}\n[control]\npath = "{}"\n'.format(
-                self.store, free_port(), self.control), encoding="ascii")
-        self.native("store", self.store, "init", "fn.test")
-        self.owner = self.start_owner()
+        self.start_node(log=False, bootstrap=False)
         msgid = "<operator-resend@example.invalid>"
         article = self.root / "plain.eml"
         article.write_bytes(b"From: author@example.invalid\r\n"
@@ -583,9 +511,7 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         words = ("operator", self.config, "post", "--message-id", msgid,
                  "--payload", article, "--group", "fn.test")
         self.native(*words)
-        again = subprocess.run([str(IMAGE), "--fn", *map(str, words)], cwd=ROOT,
-                               env=self.env, capture_output=True, timeout=300,
-                               check=False)
+        again = self.native(*words, expected=None)
         self.stop_owner(self.owner)
         self.assertEqual(again.returncode, 0,
                          "identical operator post resend answered %d: %s"

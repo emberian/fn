@@ -1106,6 +1106,12 @@ on them are named in `planning/now.md`.
   a verdict over the line only when quiet (load at most a quarter of the
   CPUs) or above three times it; the ratchet on baseline books is ACL2's
   prover steps (docs/proofs.md, the proof_cost paragraphs).
+  Note (G9, book-split-pilot 2026-09-28): the per-book number bounds a
+  book's own cost; what an edit costs is its fan-in. An :exec body moved to
+  an exec book no proof book includes (the attachment reaches it) costs
+  that book's includers: the record decoder's twins, 5 books against
+  records.lisp's 1,132 (planning/evidence/book-split-2026-09-28.md, which
+  has the recipe).
 
 Adopted defaults ember did not overrule, standing until said otherwise:
 P5's sentence, restated with its fault domain (2026-09-24 evening, after

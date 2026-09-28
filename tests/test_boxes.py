@@ -94,6 +94,19 @@ class BoxesTests(unittest.TestCase):
             self.assertEqual(boxes("b", "reserve", "hbox", "--for", "1", "--why", "z").returncode, 0)
             self.assertEqual(boxes("a", "release", "hbox", "--force").returncode, 0)
             self.assertFalse((Path(directory) / ".fn-box-reservation").exists())
+            # A named token (closeout-common's `wide'): the same lease, kept on
+            # the token host under its own file; a box's lease is untouched.
+            took = boxes("a", "reserve", "wide", "--for", "5", "--why", "config.lisp")
+            self.assertEqual(took.returncode, 0, took.stderr)
+            self.assertIn("config.lisp",
+                          (Path(directory) / ".fn-box-reservation-token-wide").read_text())
+            self.assertEqual(boxes("b", "check", "wide").returncode, 4)
+            self.assertEqual(boxes("b", "check", "hbox").returncode, 0)
+            self.assertEqual(boxes("b", "reserve", "wide", "--for", "5", "--why", "y").returncode, 4)
+            self.assertEqual(boxes("a", "release", "wide").returncode, 0)
+            self.assertEqual(boxes("b", "check", "wide").returncode, 0)
+            self.assertEqual(boxes("b", "reserve", "Not A Token", "--for", "1",
+                                   "--why", "z").returncode, 2)
 
 
 class mock_env:

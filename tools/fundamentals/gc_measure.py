@@ -34,7 +34,7 @@ sys.path.insert(0, str(TREE))
 import msgid_measure as m  # noqa: E402
 import rep_measure as r  # noqa: E402
 import service_envelope as se  # noqa: E402
-from tests.native_process import wait_for_announcement  # noqa: E402
+from tests.native_harness import wait_for_announcement  # noqa: E402
 
 
 def box():

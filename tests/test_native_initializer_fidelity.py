@@ -7,25 +7,21 @@ of those post-syscall cuts, exercises representative post-call EIO behavior,
 and kills a real native child before reopening its on-disk image.
 """
 
-import os
-from pathlib import Path
-import re
-import subprocess
-import sys
-import tempfile
-import unittest
 import fcntl
+import os
+import re
+import unittest
+
+from tests.native_harness import (
+    EXIT_FAULT, EXIT_OK, EXIT_REFUSED, ROOT, environment, executable, native_image, requires,
+    run, scratch)
 
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", str(ROOT / "build" / "fn-host")))
 # A fault selector is a developer-image selector: a production image refuses
 # to start with FN_NATIVE_INIT_FAULT in its environment (exit 5, host/native/io.lisp
 # `fnn-developer-selector-gate'), so every faulted step runs this image.
-DEVELOPER = Path(os.environ.get(
-    "FN_NATIVE_DEVELOPER_HOST", str(ROOT / "build" / "fn-host-developer")))
-sys.path.insert(0, str(ROOT / "tools"))
-import run_store  # noqa: E402
+IMAGE = native_image("FN_NATIVE_HOST")
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 
 MODEL_CUTS = {
@@ -76,37 +72,27 @@ class NativeInitializerSourceMapTests(unittest.TestCase):
         self.assertIn(":fnn-test-config-no-read", source)
 
 
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
-                     "build/fn-host is required")
+@requires(IMAGE)
 class NativeInitializerFidelityTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-init-")
-        self.base = Path(self.temporary.name)
-
-    def tearDown(self):
-        self.temporary.cleanup()
+        self.base = scratch(self, "fn-native-init-")
 
     def invoke(self, store, command, fault=None):
-        env = dict(os.environ)
-        env.pop("FN_NATIVE_INIT_FAULT", None)
-        if fault is not None:
-            env["FN_NATIVE_INIT_FAULT"] = fault
         image = IMAGE
         if fault is not None:
-            if not (DEVELOPER.is_file() and os.access(DEVELOPER, os.X_OK)):
+            if not executable(DEVELOPER):
                 self.skipTest(
                     "build/fn-host-developer (or FN_NATIVE_DEVELOPER_HOST) is "
                     "required: FN_NATIVE_INIT_FAULT is a developer-image selector and a "
                     "production image refuses to start with it")
             image = DEVELOPER
-        return subprocess.run(
-            [str(image), "--fn", "store", str(store), command], cwd=ROOT,
-            env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        return run([image, "--fn", "store", store, command], timeout=None,
+                   env=environment({"FN_NATIVE_INIT_FAULT": fault}))
 
     def test_fresh_init_then_new_process_recover(self):
         store = self.base / "fresh"
         initialized = self.invoke(store, "init")
-        self.assertEqual(initialized.returncode, run_store.EXIT_OK, initialized.stderr)
+        self.assertEqual(initialized.returncode, EXIT_OK, initialized.stderr)
         self.assertTrue((store / "config.json").is_file())
         self.assertTrue((store / "config" / "00000001.cfg").is_file())
         # Format 10 (books/byte-store-log-initializer.lisp): the genesis at
@@ -118,19 +104,19 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertFalse((store / "allocation-frontier.json").exists())
         self.assertFalse((store / "transactions").exists())
         recovered = self.invoke(store, "recover")
-        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr)
         self.assertIn(b"recovered transactions=0 articles=0", recovered.stdout)
 
     def test_existing_valid_init_takes_actual_eexist_links_then_reopens(self):
         store = self.base / "existing"
-        self.assertEqual(self.invoke(store, "init").returncode, run_store.EXIT_OK)
+        self.assertEqual(self.invoke(store, "init").returncode, EXIT_OK)
         # config.json and allocation-frontier.json are immutable link targets.
         # The second init stages/fences a candidate, receives real EEXIST at
         # both links, and retains the existing bytes for the later recover.
         repeated = self.invoke(store, "init")
-        self.assertEqual(repeated.returncode, run_store.EXIT_OK, repeated.stderr)
+        self.assertEqual(repeated.returncode, EXIT_OK, repeated.stderr)
         recovered = self.invoke(store, "recover")
-        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr)
 
     def test_history_fenced_process_death_retries_through_config_eexist(self):
         store = self.base / "history-retry"
@@ -140,17 +126,17 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertTrue((store / "config" / "00000001.cfg").is_file())
         self.assertFalse((store / "journal" / "000001.log").exists())
         retried = self.invoke(store, "init")
-        self.assertEqual(retried.returncode, run_store.EXIT_OK, retried.stderr)
-        self.assertEqual(self.invoke(store, "recover").returncode, run_store.EXIT_OK)
+        self.assertEqual(retried.returncode, EXIT_OK, retried.stderr)
+        self.assertEqual(self.invoke(store, "recover").returncode, EXIT_OK)
 
     def test_sigkill_after_actual_config_eexist_leaves_existing_store_openable(self):
         store = self.base / "eexist-cut"
-        self.assertEqual(self.invoke(store, "init").returncode, run_store.EXIT_OK)
+        self.assertEqual(self.invoke(store, "init").returncode, EXIT_OK)
         # The model cut is inside the EEXIST handler, after fnn-link returned.
         killed = self.invoke(store, "init", "init-config-link-eexist:kill")
         self.assertEqual(killed.returncode, -9, killed.stderr)
         recovered = self.invoke(store, "recover")
-        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr)
 
     def test_live_initializer_lock_refuses_second_initializer_before_metadata(self):
         store = self.base / "contended"
@@ -159,17 +145,17 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         with lock_path.open("wb") as lock:
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             blocked = self.invoke(store, "init")
-            self.assertEqual(blocked.returncode, run_store.EXIT_REFUSED, blocked.stderr)
+            self.assertEqual(blocked.returncode, EXIT_REFUSED, blocked.stderr)
             self.assertFalse((store / "config.json").exists())
         # The losing initializer created neither metadata nor a replacement
         # lock and a later owner can initialize the same namespace.
         initialized = self.invoke(store, "init")
-        self.assertEqual(initialized.returncode, run_store.EXIT_OK, initialized.stderr)
+        self.assertEqual(initialized.returncode, EXIT_OK, initialized.stderr)
 
     def test_post_history_fence_eio_stops_before_frontier_publication(self):
         store = self.base / "eio"
         failed = self.invoke(store, "init", "init-config-history-fenced:eio")
-        self.assertEqual(failed.returncode, run_store.EXIT_FAULT, failed.stderr)
+        self.assertEqual(failed.returncode, EXIT_FAULT, failed.stderr)
         self.assertIn(b"Input/output error", failed.stderr)
         # The injection happens after the actual fsync returned.  This checks
         # source-cut routing only; it does not assert a platform EIO outcome.
@@ -181,14 +167,14 @@ class NativeInitializerFidelityTests(unittest.TestCase):
 
     def assert_incomplete_then_completed_by_init(self, store):
         reopened = self.invoke(store, "recover")
-        self.assertEqual(reopened.returncode, run_store.EXIT_FAULT, reopened.stderr)
+        self.assertEqual(reopened.returncode, EXIT_FAULT, reopened.stderr)
         self.assertIn(b"missing store directory", reopened.stderr)
         self.assertIn(b"journal", reopened.stderr)
         self.assertFalse((store / "journal" / "000001.log").exists())
         retried = self.invoke(store, "init")
-        self.assertEqual(retried.returncode, run_store.EXIT_OK, retried.stderr)
+        self.assertEqual(retried.returncode, EXIT_OK, retried.stderr)
         recovered = self.invoke(store, "recover")
-        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr)
         self.assertIn(b"recovered transactions=0 articles=0", recovered.stdout)
 
     def test_second_config_enumeration_eacces_is_not_empty_history(self):
@@ -196,7 +182,7 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         config_dir = store / "config"
         try:
             failed = self.invoke(store, "init", "init-config-records-final-enumerate:eacces")
-            self.assertEqual(failed.returncode, run_store.EXIT_FAULT, failed.stderr)
+            self.assertEqual(failed.returncode, EXIT_FAULT, failed.stderr)
             # The test control removes directory access immediately before
             # fnn-list-directory.  EACCES therefore comes from that real call;
             # the former handler would have returned NIL and init would pass.
@@ -210,9 +196,9 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         # complete: a new process recovers it empty, and init again succeeds.
         self.assertTrue((store / "journal" / "000001.log").is_file())
         recovered = self.invoke(store, "recover")
-        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr)
         self.assertIn(b"recovered transactions=0 articles=0", recovered.stdout)
-        self.assertEqual(self.invoke(store, "init").returncode, run_store.EXIT_OK)
+        self.assertEqual(self.invoke(store, "init").returncode, EXIT_OK)
 
     def test_sigkill_at_history_fence_is_process_death_then_faulted_restart(self):
         store = self.base / "killed-history"
@@ -236,7 +222,7 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertEqual(killed.returncode, -9, killed.stderr)
         self.assertEqual((store / "journal" / "000001.log").stat().st_size, 0)
         reopened = self.invoke(store, "recover")
-        self.assertEqual(reopened.returncode, run_store.EXIT_OK, reopened.stderr)
+        self.assertEqual(reopened.returncode, EXIT_OK, reopened.stderr)
         self.assertIn(b"recovered transactions=0 articles=0", reopened.stdout)
         self.assertGreater((store / "journal" / "000001.log").stat().st_size, 0)
 
@@ -247,7 +233,7 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         killed = self.invoke(store, "init", "init-journal-segment-fenced:kill")
         self.assertEqual(killed.returncode, -9, killed.stderr)
         reopened = self.invoke(store, "recover")
-        self.assertEqual(reopened.returncode, run_store.EXIT_OK, reopened.stderr)
+        self.assertEqual(reopened.returncode, EXIT_OK, reopened.stderr)
         self.assertIn(b"recovered transactions=0 articles=0", reopened.stdout)
 
     def test_sigkill_before_metadata_makes_restart_refuse_by_name(self):
@@ -259,13 +245,13 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         # name before the structural checks that used to fault here; the
         # line names `init' again as the remedy.  Nothing is written.
         reopened = self.invoke(store, "recover")
-        self.assertEqual(reopened.returncode, run_store.EXIT_REFUSED, reopened.stderr)
+        self.assertEqual(reopened.returncode, EXIT_REFUSED, reopened.stderr)
         self.assertIn(b"store filesystem unrecorded: ", reopened.stderr)
         self.assertIn(b"run init again if it was interrupted", reopened.stderr)
         self.assertFalse((store / "config.json").exists())
         retried = self.invoke(store, "init")
-        self.assertEqual(retried.returncode, run_store.EXIT_OK, retried.stderr)
-        self.assertEqual(self.invoke(store, "recover").returncode, run_store.EXIT_OK)
+        self.assertEqual(retried.returncode, EXIT_OK, retried.stderr)
+        self.assertEqual(self.invoke(store, "recover").returncode, EXIT_OK)
 
 
 if __name__ == "__main__":

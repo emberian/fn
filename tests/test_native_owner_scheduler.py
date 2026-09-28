@@ -20,46 +20,24 @@ What this module asserts on the image:
     answered within its 10 s deadline, every time, and no held quantum
     reached a second: the bound the gate gives control, observed.
 """
-import os
-from pathlib import Path
 import re
-import select
-import signal
 import socket
 import subprocess
-import tempfile
 import threading
 import time
 import unittest
 
-ROOT = Path(__file__).resolve().parents[1]
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host-developer"))
+from tests.native_harness import ROOT, Node, executable, free_port, native_image, requires
+
+IMAGE = native_image("FN_NATIVE_HOST", "build/fn-host-developer")
 # The developer image: the only one that honours a developer selector
 # (FN_NATIVE_OWNER_TEST_BARRIER_MS); a production image refuses to start.
-DEVELOPER = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 SCHED_HEAD = re.compile(rb"^sched order=control,reader,poster,transit bound=(\d+) cursor=(\d+)$", re.M)
 SCHED_ROW = re.compile(
     rb"^sched (control|reader|poster|transit) holds=(\d+) hold<1ms=(\d+) hold<10ms=(\d+) "
     rb"hold<100ms=(\d+) hold<1s=(\d+) hold>=1s=(\d+) hold-max-ms=(\d+) wait-max-ms=(\d+) waits>=1s=(\d+)$", re.M)
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    return env
-
-
-def executable(image):
-    return image.is_file() and os.access(image, os.X_OK)
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def stuffed(body):
@@ -134,58 +112,24 @@ class SchedulerSourceTests(unittest.TestCase):
         self.assertIn("fn-splan-step-make", wrapper)
 
 
-@unittest.skipUnless(executable(IMAGE), "no native image at %s" % IMAGE)
+@requires(IMAGE)
 class SchedulerNativeTests(unittest.TestCase):
     def setUp(self):
-        self.directory = tempfile.TemporaryDirectory(prefix="fn-sched-")
-        self.addCleanup(self.directory.cleanup)
-        self.root = Path(self.directory.name)
-        self.store = self.root / "store"
-        self.control = self.root / "control.sock"
-        self.config = self.root / "fn.toml"
-        self.port = free_port()
-        self.config.write_text(
-            '[store]\npath = "{}"\n'
-            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
+        self.node = Node(self, IMAGE)
+        self.root, self.store, self.port = self.node.root, self.node.store_path, self.node.port
+        self.config, self.control = self.node.config, self.node.control
         init = self.operator("init", "--max-article-octets", "1048576", "fn.test")
         self.assertEqual(init.returncode, 0, init.stderr.decode())
         self.owner = self.start_owner()
 
     def operator(self, *words, timeout=60):
-        return subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(self.config), *words],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=timeout, check=False)
+        return self.node.operator(*words, timeout=timeout)
 
-    def start_owner(self, extra=None, image=None, stderr=None):
-        env = environment()
-        env.update(extra or {})
-        process = subprocess.Popen(
-            [str(image or IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE,
-            stderr=stderr or subprocess.DEVNULL, bufsize=0)
-        self.addCleanup(self.reap, process)
-        for _ in range(4):
-            self.assertTrue(select.select([process.stdout], [], [], 180)[0],
-                            "the owner did not become ready")
-            line = process.stdout.readline()
-            if line.startswith(b"LISTENING "):
-                return process
-            self.assertIsNone(process.poll(), "the owner exited before listening")
-        self.fail("the owner's readiness output was malformed")
+    def start_owner(self, extra=None, image=None):
+        return self.node.start(image=image, env=extra)
 
     def reap(self, process):
-        if process.poll() is None:
-            process.send_signal(signal.SIGTERM)
-            try:
-                process.wait(timeout=30)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=10)
-        if process.stdout and not process.stdout.closed:
-            process.stdout.close()
+        self.node.stop(expect=None, process=process)
 
     def connect(self):
         conn = socket.create_connection(("127.0.0.1", self.port), timeout=120)
@@ -448,11 +392,9 @@ class SchedulerNativeTests(unittest.TestCase):
         # both.
         self.reap(self.owner)
         hold = 4.0
-        trace = open(self.root / "pipeline.stderr", "wb")
-        self.addCleanup(trace.close)
         self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000)),
                                        "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE": "1"},
-                                      image=DEVELOPER, stderr=trace)
+                                      image=DEVELOPER)
         reader_conn, reader = self.connect()
         a_conn, a = self.connect()
         b_conn, b = self.connect()
@@ -478,8 +420,7 @@ class SchedulerNativeTests(unittest.TestCase):
                 stream.write(b"QUIT\r\n")
                 stream.flush()
         self.reap(self.owner)
-        trace.flush()
-        lines = (self.root / "pipeline.stderr").read_bytes()
+        lines = self.owner.stderr.since(0)
         print("pipeline (barrier %.1fs): GROUP %d at %.3fs; A 240 at %.3fs; GROUP %d; "
               "B 240 at %.3fs; GROUP %d (before %d); trace %r"
               % (hold, count1, at1, at_a, count2, at_b, count3, before,

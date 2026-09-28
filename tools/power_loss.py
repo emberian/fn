@@ -204,7 +204,7 @@ def native(image, *argv, timeout=1800):
 
 
 def start_owner(image, cfg, stderr_path, timeout=600):
-    from tests.native_process import wait_for_announcement
+    from tests.native_harness import wait_for_announcement
     err = open(stderr_path, "ab")
     p = subprocess.Popen([str(image), "--fn", "operator", str(cfg), "run"],
                          stdout=subprocess.PIPE, stderr=err)

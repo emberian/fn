@@ -10,53 +10,16 @@ and books/injection.lisp (fn-inj-decide); this is the measurement that the
 image wires the opened profile's limits into the served POST.
 """
 import os
-from pathlib import Path
-import select
-import socket
-import subprocess
-import tempfile
-import time
 import unittest
-from tools.wire_stream import whole_stream
 
+from tests.native_harness import EXIT, Node, dot_stuff, executable, native_image
 
-ROOT = Path(__file__).resolve().parent.parent
-
-
-def image():
-    """The image under test: FN_NATIVE_HOST, else the developer image."""
-    named = os.environ.get("FN_NATIVE_HOST")
-    if named:
-        return Path(named)
-    return Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST",
-                               ROOT / "build" / "fn-host-developer"))
-
-
-IMAGE = image()
+# The image under test: FN_NATIVE_HOST, else the developer image.
+IMAGE = (native_image("FN_NATIVE_HOST") if os.environ.get("FN_NATIVE_HOST")
+         else native_image("FN_NATIVE_DEVELOPER_HOST"))
 SKIP_REASON = ("no native image at {}: build one with tools/build_native_host.sh "
                "(FN_NATIVE_PROFILE=developer) or name one with FN_NATIVE_HOST or "
                "FN_NATIVE_DEVELOPER_HOST".format(IMAGE))
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    for name in ("FN_HOST", "FN_NATIVE_CONTROL_TEST_STOP",
-                 "FN_NATIVE_CONTROL_FAULT", "FN_NATIVE_POST_FAULT",
-                 "FN_NATIVE_OWNER_TEST_SIGTERM",
-                 "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP",
-                 "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN",
-                 "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"):
-        env.pop(name, None)
-    return env
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
-
 
 
 FIELDS_LINE = (b"441 posting failed; the header has more fields than the "
@@ -73,82 +36,29 @@ def article(total_fields, message_id):
     return b"\r\n".join(lines) + b"\r\n\r\nbody\r\n"
 
 
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK), SKIP_REASON)
+@unittest.skipUnless(executable(IMAGE), SKIP_REASON)
 class NativeHeaderLimitsTests(unittest.TestCase):
     """PRF-230, STO-030, SCN-156: the header limits are the profile's."""
 
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-header-limits-")
-        self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
-        self.store = self.root / "store"
-        self.port = free_port()
-
-    def image(self, *words, timeout=180):
-        return subprocess.run([str(IMAGE), "--fn"] + list(words), cwd=ROOT,
-                              env=environment(), stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, timeout=timeout, check=False)
+        self.node = Node(self, IMAGE)
 
     def init(self, *flags):
-        result = self.image("store", str(self.store), "init", *flags, "fn.test")
-        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.node.store("init", *flags, "fn.test", expect=EXIT.OK)
 
     def start(self):
-        config = self.root / "fn.toml"
-        if not config.exists():
-            self.start_config_only(config)
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(config), "run"], cwd=ROOT,
-            env=environment(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            bufsize=0)
-        self.addCleanup(self.stop, process)
-        lines = []
-        for _ in range(6):
-            ready = select.select([process.stdout], [], [], 180)[0]
-            self.assertTrue(ready, "the owner did not become ready: {}".format(lines))
-            line = process.stdout.readline()
-            lines.append(line)
-            if line.startswith(b"LISTENING "):
-                return process
-            if process.poll() is not None:
-                self.fail("owner exited: {} {}".format(
-                    lines, process.stderr.read().decode("utf-8", "replace")))
-        self.fail("no LISTENING line: {!r}".format(lines))
-
-    @staticmethod
-    def stop(process):
-        if process.poll() is None:
-            process.terminate()
-            try:
-                process.wait(timeout=120)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
+        self.node.start()
 
     def post(self, octets, message_id):
         """POST OCTETS; return the reply and, on 240, the ARTICLE text."""
-        with socket.create_connection(("127.0.0.1", self.port), timeout=120) as conn:
-            stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"200"))
-            stream.write(b"POST\r\n")
-            stream.flush()
-            self.assertTrue(stream.readline().startswith(b"340"))
-            stream.write(octets + b".\r\n")
-            stream.flush()
-            reply = stream.readline().rstrip(b"\r\n")
+        with self.node.session(timeout=120) as client:
+            first, reply = client.post(octets)
+            self.assertTrue(first.startswith(b"340"), first)
+            reply = reply.rstrip(b"\r\n")
             served = b""
             if reply.startswith(b"240"):
-                stream.write(b"ARTICLE " + message_id.encode("ascii") + b"\r\n")
-                stream.flush()
-                head = stream.readline()
-                self.assertTrue(head.startswith(b"220"), head)
-                while True:
-                    line = stream.readline()
-                    if line in (b".\r\n", b""):
-                        break
-                    served += line
-            stream.write(b"QUIT\r\n")
-            stream.flush()
+                served = client.article(message_id)
+                self.assertIsNotNone(served)
             return reply, served
 
     def test_a_raised_profile_accepts_900_fields_and_refuses_1001_by_name(self):
@@ -198,30 +108,22 @@ class NativeHeaderLimitsTests(unittest.TestCase):
         does (books/transit-header-limits.lisp): the default profile's 64
         fields are relayed, the 65th is refused 437 (by name) / 439."""
         self.init()
-        config = self.root / "fn.toml"
-        self.start_config_only(config)
-        result = self.image("operator", str(config), "peer", "add", "src",
-                            "src.example.invalid", "127.0.0.1", "1", "fn.*",
-                            "-", "127.0.0.1", "true")
-        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.node.operator("peer", "add", "src", "src.example.invalid", "127.0.0.1", "1",
+                           "fn.*", "-", "127.0.0.1", "true", expect=EXIT.OK)
         self.start()
         replies = {}
-        with socket.create_connection(("127.0.0.1", self.port), timeout=120) as conn:
-            stream = whole_stream(conn)
-            self.assertTrue(stream.readline().startswith(b"200"))
+        with self.node.session(timeout=120) as client:
             for total, verb in ((64, "IHAVE"), (65, "IHAVE"), (65, "TAKETHIS")):
                 message_id = "<t%d-%s@example.invalid>" % (total, verb.lower())
                 octets = self.transit_article(total, message_id)
                 if verb == "IHAVE":
-                    stream.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
-                    offer = stream.readline()
+                    offer, final = client.post(octets, verb=b"IHAVE " + message_id.encode("ascii"))
                     self.assertTrue(offer.startswith(b"335"), offer)
-                    stream.write(octets + b".\r\n")
                 else:
-                    stream.write(b"TAKETHIS " + message_id.encode("ascii") + b"\r\n"
-                                 + octets + b".\r\n")
-                replies[(total, verb)] = stream.readline().rstrip(b"\r\n")
-            stream.write(b"QUIT\r\n")
+                    client.send(b"TAKETHIS " + message_id.encode("ascii") + b"\r\n"
+                                + dot_stuff(octets) + b".\r\n")
+                    final = client.line()
+                replies[(total, verb)] = final.rstrip(b"\r\n")
         print("NATIVE-HEADER-LIMITS-TRANSIT " + repr(replies))
         self.assertTrue(replies[(64, "IHAVE")].startswith(b"235"), replies)
         # 437 carries the reason text; 439 echoes the Message-ID only
@@ -231,14 +133,6 @@ class NativeHeaderLimitsTests(unittest.TestCase):
                          b"than the profile's max-header-fields", replies)
         self.assertEqual(replies[(65, "TAKETHIS")],
                          b"439 <t65-takethis@example.invalid>", replies)
-
-    def start_config_only(self, config):
-        config.write_text(
-            "[store]\npath = \"{}\"\n"
-            "[listener]\nhost = \"127.0.0.1\"\nport = {}\n"
-            "[control]\npath = \"{}\"\n".format(
-                self.store, self.port, self.root / "control.sock"),
-            encoding="ascii")
 
 
 if __name__ == "__main__":

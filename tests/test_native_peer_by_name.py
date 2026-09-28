@@ -26,31 +26,26 @@ assertions pass.
 """
 import json
 import os
-from pathlib import Path
-import socket
 import ssl
 import subprocess
-import tempfile
 import time
 import unittest
 
 from tests import test_native_peering as peer
 from tests import test_native_protected_peering as protected
-from tools.wire_stream import whole_stream
+from tests.native_harness import EXIT_OK, Client
 
 IMAGE = peer.IMAGE
 # The image the batch built (tools/native_env.py sets FN_NATIVE_HOST); its
 # SHA-256 goes into the record from the run's SHA256SUMS, so this module does
 # not require the v0 matrix's pinned launcher/core/runtime hashes.
 READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
-free_port = peer.free_port
 
 Base = protected.NativeProtectedPeeringTests
 
 
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST to a built native image")
 class NativePeerByNameTests(unittest.TestCase):
-    command = Base.command
     process_identity = Base.process_identity
     stop_all = Base.stop_all
     article = staticmethod(Base.article)
@@ -60,12 +55,13 @@ class NativePeerByNameTests(unittest.TestCase):
     initialize = Base.initialize
     profile = Base.profile
     assert_not_received = Base.assert_not_received
+    article_from = Base.article_from
 
     setUp = Base.setUp
 
     def verify_process_identity(self, node):
-        found = self.process_identity(node["process"])
-        node.setdefault("identities", []).append(found)
+        found = self.process_identity(node.process)
+        node.identities = getattr(node, "identities", []) + [found]
         return found
 
     def scratch_ca(self):
@@ -102,83 +98,57 @@ class NativePeerByNameTests(unittest.TestCase):
                       "-sha256", "-extfile", str(extensions), "-out", str(certificate)])
         return certificate, key
 
-    def article_from(self, node, message_id):
-        """A protected reader's ARTICLE, verifying the node's own certificate name."""
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=15) as raw:
-            def recvline():
-                line = bytearray()
-                while not line.endswith(b"\n"):
-                    chunk = raw.recv(1)
-                    if not chunk:
-                        break
-                    line.extend(chunk)
-                return bytes(line)
-
-            self.assertTrue(recvline().startswith((b"200 ", b"201 ")))
-            raw.sendall(b"STARTTLS\r\n")
-            self.assertTrue(recvline().startswith(b"382 "))
-            context = ssl.create_default_context(cafile=str(self.ca))
-            hostname = getattr(self, "certificate_names", {}).get(node["name"], "localhost")
-            with context.wrap_socket(raw, server_hostname=hostname) as tls:
-                with whole_stream(tls) as stream:
-                    stream.write(b"AUTHINFO USER " + node["login"].encode() + b"\r\n")
-                    self.assertTrue(stream.readline().startswith(b"381 "))
-                    stream.write(b"AUTHINFO PASS " + node["password"].encode() + b"\r\n")
-                    self.assertTrue(stream.readline().startswith(b"281 "))
-                    stream.write(b"ARTICLE " + message_id.encode() + b"\r\n")
-                    response = stream.readline()
-                    if response.startswith(b"430 "):
-                        return None
-                    self.assertTrue(response.startswith(b"220 "), response)
-                    article = bytearray()
-                    while True:
-                        line = stream.readline()
-                        self.assertNotEqual(line, b"", "observer article EOF")
-                        if line == b".\r\n":
-                            return bytes(article)
-                        article.extend(line[1:] if line.startswith(b"..") else line)
+    def protected_client(self, node):
+        """STARTTLS verifying the node's own certificate name under the CA."""
+        hostname = getattr(self, "certificate_names", {}).get(node.name, "localhost")
+        client = Client(node.port, timeout=15, server_hostname=hostname)
+        response = client.starttls(ssl.create_default_context(cafile=str(self.ca)))
+        self.assertTrue(response.startswith(b"382 "), response)
+        return client
 
     def node(self, name, login, password):
-        node = self.initialize(name, free_port(), login, password)
+        node = self.initialize(name, login, password)
         # Observers and the pinned reverse direction anchor on the scratch CA.
-        node["certificate"] = self.ca
+        node.certificate = self.ca
         # The system roots of this node's TLS library are the scratch CA.
-        node["owner_env"] = {"SSL_CERT_FILE": str(self.ca)}
+        node.owner_env = {"SSL_CERT_FILE": str(self.ca)}
         return node
 
     def add_named_peer(self, source, target, host):
-        self.command([
-            IMAGE, "--fn", "operator", source["config"], "peer", "add",
-            target["name"], target["name"] + ".example.invalid", host,
-            str(target["port"]), "fn.*", "fn.*", "principal", source["principal"],
-            self.profile(source, target), "false", "true", "starttls", "-", "-"])
+        source.operator(
+            "peer", "add", target.name, target.name + ".example.invalid", host,
+            str(target.port), "fn.*", "fn.*", "principal", source.principal,
+            self.profile(source, target), "false", "true", "starttls", "-", "-",
+            expect=EXIT_OK)
 
     def add_pinned_peer(self, source, target):
-        self.command([
-            IMAGE, "--fn", "operator", source["config"], "peer", "add",
-            target["name"], target["name"] + ".example.invalid", "127.0.0.1",
-            str(target["port"]), "fn.*", "fn.*", "principal", source["principal"],
+        source.operator(
+            "peer", "add", target.name, target.name + ".example.invalid", "127.0.0.1",
+            str(target.port), "fn.*", "fn.*", "principal", source.principal,
             self.profile(source, target), "false", "true", "starttls",
-            "localhost", str(self.ca)])
+            "localhost", str(self.ca), expect=EXIT_OK)
 
     def peer_list(self, node):
-        return self.command([IMAGE, "--fn", "operator", node["config"], "peer",
-                             "list"]).stdout.decode("ascii")
+        return node.operator("peer", "list", expect=EXIT_OK).stdout.decode("ascii")
+
+    @staticmethod
+    def log(node):
+        return node.process.stderr.since(0).decode("utf-8", "replace")
 
     def dial_lines(self, node, outcome, count, timeout=60):
         pattern = "outcome={} retry=yes".format(outcome)
         deadline = time.monotonic() + timeout
         lines = []
         while time.monotonic() < deadline:
-            text = node["stderr_path"].read_text(errors="replace")
+            text = self.log(node)
             lines = [line for line in text.splitlines()
                      if line.startswith("peer dial ") and pattern in line]
             if len(lines) >= count:
                 return lines
             time.sleep(0.5)
         self.fail("{} logged {} of {} `{}` dial lines:\n{}".format(
-            node["name"], len(lines), count, pattern,
-            node["stderr_path"].read_text(errors="replace")[-4000:]))
+            node.name, len(lines), count, pattern,
+            self.log(node)[-4000:]))
 
     @staticmethod
     def witness(record):
@@ -198,11 +168,11 @@ class NativePeerByNameTests(unittest.TestCase):
         self.post(a, message_id, "by-name")
         self.assertEqual(self.await_article(b, message_id),
                          self.await_article(a, message_id))
-        text = a["stderr_path"].read_text(errors="replace")
+        text = self.log(a)
         self.assertNotIn("peer dial via=feed", text)
         self.witness({"case": "by-name", "host": "localhost", "server_name": "localhost",
                       "trust": "system-roots", "delivered": True,
-                      "identity": {"a": a["identities"][-1], "b": b["identities"][-1]}})
+                      "identity": {"a": a.identities[-1], "b": b.identities[-1]}})
 
     def test_name_mismatch_is_refused_by_name_and_retried(self):
         self.certificate_names = {"mismatch-b": "other.test"}
@@ -217,8 +187,8 @@ class NativePeerByNameTests(unittest.TestCase):
         lines = self.dial_lines(a, "name-mismatch", 2)
         self.assertIn("host=localhost", lines[0])
         self.assert_not_received(b, message_id)
-        self.assertIsNone(a["process"].poll())
-        self.assertIsNone(b["process"].poll())
+        self.assertIsNone(a.process.poll())
+        self.assertIsNone(b.process.poll())
         self.witness({"case": "name-mismatch", "host": "localhost",
                       "certificate": "other.test", "refusals": len(lines),
                       "line": lines[0], "delivered": False, "source_alive": True})
@@ -232,7 +202,7 @@ class NativePeerByNameTests(unittest.TestCase):
         self.post(a, message_id, "unresolved")
         lines = self.dial_lines(a, "unresolved", 2)
         self.assertIn("host=no-such-peer.invalid", lines[0])
-        self.assertIsNone(a["process"].poll())
+        self.assertIsNone(a.process.poll())
         # Still serving: the posted article reads back on a fresh connection.
         self.assertIsNotNone(self.await_article(a, message_id))
         self.witness({"case": "unresolved", "host": "no-such-peer.invalid",
@@ -242,13 +212,10 @@ class NativePeerByNameTests(unittest.TestCase):
         a = self.node("refuse-a", "b-at-a", "b-secret")
         b = self.node("refuse-b", "a-at-b", "a-secret")
         for host, name in (("bad_host.example", "-"), ("127.0.0.1", "-")):
-            result = subprocess.run(
-                [str(IMAGE), "--fn", "operator", str(a["config"]), "peer", "add",
-                 "b", "b.example.invalid", host, str(b["port"]), "fn.*", "fn.*",
-                 "principal", a["principal"], str(self.profile(a, b)), "false",
-                 "true", "starttls", name, "-"],
-                cwd=peer.ROOT, env=self.env, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, timeout=180)
+            result = a.operator(
+                "peer", "add", "b", "b.example.invalid", host, str(b.port), "fn.*", "fn.*",
+                "principal", a.principal, str(self.profile(a, b)), "false",
+                "true", "starttls", name, "-")
             self.assertNotEqual(result.returncode, 0, (host, result.stdout))
         self.assertNotIn("b path-identity", self.peer_list(a))
         self.witness({"case": "refused-words", "hosts": ["bad_host.example", "127.0.0.1 with -"]})

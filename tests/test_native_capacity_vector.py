@@ -28,15 +28,13 @@ import hashlib
 import json
 import os
 import shutil
-import signal
 import subprocess
 import time
 import unittest
 from pathlib import Path
 
 import tests.test_bp_app_native as base
-from tests.native_process import wait_for_announcement
-from tools import msgid_measure as m
+from tests.native_harness import Client, Node
 
 HIST = int(os.environ.get("FN_CV_HIST", "300000"))
 # T well above what H admits, so the history bound is the one the fill meets
@@ -99,12 +97,13 @@ class NativeCapacityVectorTests(_Bp):
                 f.write(line + "\n")
 
     def config(self, store, name):
-        port = m.free_port()
-        cfg = self.temp / (name + ".toml")
-        cfg.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\n'
-                       'port = %d\n[control]\npath = "%s"\n'
-                       % (store, port, self.temp / (name + ".sock")))
-        return cfg, port
+        """A node serving STORE (anywhere): its fn.toml and port."""
+        node = Node(self, base.IMAGE, root=self.temp / (name + "-node"), name=name)
+        node.store_path = store
+        node.write_config()
+        self.nodes = getattr(self, "nodes", {})
+        self.nodes[node.config] = node
+        return node.config, node.port
 
     def status(self, cfg):
         r = self.invoke("operator", cfg, "status")
@@ -115,24 +114,11 @@ class NativeCapacityVectorTests(_Bp):
         return {"exit": r.returncode, "headroom": pick("headroom"),
                 "reserve": pick("maintenance-reserve"), "reclaim": pick("reclaim")}
 
-    def owner(self, cfg):
-        p = subprocess.Popen([str(base.IMAGE), "--fn", "operator", str(cfg), "run"],
-                             env=self.env, stdout=subprocess.PIPE,
-                             stderr=subprocess.DEVNULL)
-        wait_for_announcement(p, b"LISTENING ", timeout=600)
-        return p
-
-    def stop_owner(self, p):
-        p.send_signal(signal.SIGTERM)
-        p.wait(timeout=600)
-        p.stdout.close()
-
     def post(self, c, i):
-        r = c.line("POST")
-        if not r.startswith(b"340"):
-            return r.decode(errors="replace").strip()
-        c.stream.write(article(i) + b".\r\n")
-        return c.readline().decode(errors="replace").strip()
+        first, final = c.post(article(i))
+        if final is None:
+            return first.decode(errors="replace").strip()
+        return final.decode(errors="replace").strip()
 
     def verb(self, cfg, *words, env=None):
         r = self.invoke("operator", cfg, *words, env=env, timeout=3600)
@@ -167,8 +153,7 @@ class NativeCapacityVectorTests(_Bp):
         bad = []
         for point in LOG_CUTS:
             copy, ccfg = self.cut_copy(store, "cut-%s-%s" % (verb, point))
-            env = dict(self.env)
-            env["FN_NATIVE_LOG_FAULT"] = point
+            env = {"FN_NATIVE_LOG_FAULT": point}
             first = "exit-%d" % self.verb(ccfg, "store", verb, env=env)[0]
             reopened = self.status(ccfg)
             rerun = self.verb(ccfg, "store", verb)
@@ -216,10 +201,11 @@ class NativeCapacityVectorTests(_Bp):
 
         # 2. Fill until ordinary admission refuses by name.
         t0 = time.perf_counter()
-        owner = self.owner(cfg)
+        owner = self.nodes[cfg]
+        owner.start(timeout=600)
         accepted, refused = 0, ""
         try:
-            c = m.Conn(port)
+            c = Client(port, timeout=600)
             for i in range(5000):
                 answer = self.post(c, i)
                 if not answer.startswith("240"):
@@ -228,7 +214,7 @@ class NativeCapacityVectorTests(_Bp):
                 accepted += 1
             c.close()
         finally:
-            self.stop_owner(owner)
+            owner.stop(expect=None, grace=600)
         full = self.status(cfg)
         self.out(tag="full", accepted=accepted, refused=refused,
                  wall_s=round(time.perf_counter() - t0, 1),
@@ -244,11 +230,7 @@ class NativeCapacityVectorTests(_Bp):
             r_out, r_err = receiver.communicate(timeout=600)
         finally:
             for p in (receiver, bp_sender):
-                if p.poll() is None:
-                    p.kill()
-                    p.wait(timeout=10)
-                p.stdout.close()
-                p.stderr.close()
+                p.stop(grace=10)
         self.out(tag="bp-exchange", sender=bp_sender.returncode,
                  receiver=receiver.returncode,
                  accepted=b"BP summary accepted=1" in s_out)
@@ -296,13 +278,14 @@ class NativeCapacityVectorTests(_Bp):
                  before=before, after=after, status_before=pre, status_after=post)
         self.assertEqual(code, 0, se)
         self.assertEqual(post["exit"], 0)
-        owner = self.owner(cfg)
+        owner = self.nodes[cfg]
+        owner.start(timeout=600)
         try:
-            c = m.Conn(port)
+            c = Client(port, timeout=600)
             reused = [self.post(c, 900000 + k) for k in range(3)]
             c.close()
         finally:
-            self.stop_owner(owner)
+            owner.stop(expect=None, grace=600)
         final = self.status(cfg)
         self.out(tag="reuse", posts=reused, footprint=footprint(sender), status=final)
         self.out(tag="cuts", failures=bad)

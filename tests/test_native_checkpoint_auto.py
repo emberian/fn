@@ -33,19 +33,15 @@ after 64 POSTs):
   deferral blocks until the budget covers E), and `status` names the
   deferral on its checkpoint-file line while the owner runs.
 """
-import hashlib
 import re
-import socket
 import time
 import unittest
 
 from tests.campaign import native_cuts
-from tests import test_native_operator_verbs as verbs
 from tests import test_native_state_checkpoint as scp
+from tests.native_harness import EXIT_OK, ROOT, native_image
 
-ROOT = verbs.ROOT
-DEVELOPER = verbs.DEVELOPER
-EXIT_OK = verbs.EXIT_OK
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 CHECKPOINT_AUTO = re.compile(rb"CHECKPOINT auto sequence=(\d+) suffix=(\d+) octets=(\d+) steps=(\d+) ms=(\d+)")
 CHECKPOINT_DEFERRED = re.compile(
@@ -120,10 +116,6 @@ class AutoCheckpointFixture(scp.StateCheckpointFixture):
     image = DEVELOPER
     ids = ()
 
-    def setUp(self):
-        super().setUp()
-        self.control = self.root / "control.sock"
-
     def init_development(self):
         created = self.op("init", "--profile", "development", "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
@@ -133,41 +125,38 @@ class AutoCheckpointFixture(scp.StateCheckpointFixture):
         self.assertEqual(self.post_many(ids), ["240 article received OK"] * len(ids))
         return ids
 
+    def nudge(self, timeout):
+        """Open a connection and read the greeting (the owner publishes
+        between accepts)."""
+        with self.node.session(timeout=timeout, greeting=None):
+            pass
+
     def owner_line(self, owner, pattern, deadline=180.0, nudge=True):
         """The first stderr line of OWNER matching PATTERN within DEADLINE
-        seconds, opening a connection now and then (the owner publishes
-        between accepts), or None.
-
-        The owner's stderr is a FILE (start_filed, PKT-505), not a pipe: a
-        read at the file's current end returns b"" while the owner lives,
-        and select() always reports a regular file ready.  So end of file
-        means "no new line yet", a line without its LF is kept until the
-        rest arrives, and only the owner's exit (poll()) fails the wait."""
-        seen = []
-        partial = b""
+        seconds, nudging now and then, or None.  OWNER's stderr is drained
+        from birth (tests/native_harness.py); each complete line is read
+        once, from this owner's cursor on, and only the owner's exit fails
+        the wait."""
         end = time.monotonic() + deadline
-        while time.monotonic() < end:
-            chunk = owner.stderr.readline()
-            if chunk:
-                partial += chunk
-                if not partial.endswith(b"\n"):
-                    continue
-                line, partial = partial, b""
-                seen.append(line)
+        offset = getattr(owner, "stderr_cursor", 0)
+        while True:
+            text = owner.stderr.since(offset)
+            for line in text[:text.rfind(b"\n") + 1].splitlines(keepends=True):
+                offset += len(line)
                 match = pattern.search(line)
                 if match:
+                    owner.stderr_cursor = offset
                     return match
-                continue
+            owner.stderr_cursor = offset
             status = owner.poll()
             if status is not None:
-                rest = owner.stderr.read()
-                self.fail("the owner exited with status {} before the line; lines so far: {!r}"
-                          .format(status, seen + ([partial + rest] if partial or rest else [])))
+                self.fail("the owner exited with status {} before the line; stderr: {}"
+                          .format(status, owner.stderr.tail().decode("utf-8", "replace")))
+            if time.monotonic() >= end:
+                return None
             time.sleep(0.25)
             if nudge:
-                with socket.create_connection(("127.0.0.1", self.port), timeout=30) as conn:
-                    conn.recv(256)
-        return None
+                self.nudge(30)
 
     def status_lines(self):
         status = self.op("status")
@@ -180,7 +169,7 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.init_development()
         # the segments the publication will drop (T8) stay readable
         self.keep_log()
-        owner = self.start_owner(self.image)
+        owner = self.node.start()
         self.ids = self.post_batch(0, 64)
         line = self.owner_line(owner, CHECKPOINT_AUTO)
         self.assertIsNotNone(line, "no automatic publication within the deadline")
@@ -190,7 +179,7 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         # The four tables are written in at least four steps (one per table
         # at the development profile's batch), never as one file.
         self.assertGreaterEqual(steps, 4)
-        self.stop(owner)
+        self.node.stop(process=owner)
         # The file the owner wrote has the octets ACL2 named (the estimate,
         # the plan's octets and the list codec's file are one length).
         self.assertTrue(self.path().exists())
@@ -219,8 +208,7 @@ class AutoCheckpointTests(AutoCheckpointFixture):
     def test_a_publication_past_the_budget_is_deferred_by_name_and_serving_continues(self):
         self.init_development()
         budget = 1024
-        owner = self.start_owner(self.image,
-                                 extra_env={"FN_NATIVE_CHECKPOINT_BUDGET_TEST": str(budget)})
+        owner = self.node.start(env={"FN_NATIVE_CHECKPOINT_BUDGET_TEST": str(budget)})
         self.ids = self.post_batch(0, 64)
         line = self.owner_line(owner, CHECKPOINT_DEFERRED)
         self.assertIsNotNone(line, "no deferral within the deadline")
@@ -241,7 +229,7 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.assertEqual(lines, ["checkpoint-file=absent deferred=exceeds-budget estimate={} budget={}"
                                  .format(estimate, budget)])
         self.assertEqual(self.headroom()["transactions-used"], 66)
-        self.stop(owner)
+        self.node.stop(process=owner)
         self.assertFalse(self.path().exists())
         # Offline: no owner, no publisher, no deferral; the store opens by
         # full replay with every article.
@@ -250,11 +238,11 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.assertEqual(self.headroom()["transactions-used"], 66)
         # A fresh owner under the profile's own budget publishes at once (the
         # suffix is past K/2 and the deferral was this process's).
-        owner = self.start_owner(self.image)
+        owner = self.node.start()
         line = self.owner_line(owner, CHECKPOINT_AUTO)
         self.assertIsNotNone(line, "no automatic publication after the restart")
         self.assertEqual(int(line.group(1)), 66)
-        self.stop(owner)
+        self.node.stop(process=owner)
         self.assertEqual(self.open_line(), "open=checkpoint:66 suffix=0")
 
     def test_a_kill_between_two_batches_reopens_with_the_old_checkpoint_and_sweeps_the_stage(self):
@@ -270,16 +258,15 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         # checkpoint at 64 needed 128 posts and the budget refused the last
         # of them with 441 before the publication was due).
         self.init_development()
-        owner = self.start_owner(self.image)
+        owner = self.node.start()
         self.ids = self.post_batch(0, 8)
-        self.stop(owner)
+        self.node.stop(process=owner)
         made = self.checkpoint()
-        self.assertEqual(made.returncode, scp.EXIT_OK, made.stderr.decode())
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
         old = self.digest()
         self.assertIsNotNone(old)
         self.assertEqual(self.open_line(), "open=checkpoint:8 suffix=0")
-        owner = self.start_owner(self.image,
-                                 extra_env={"FN_NATIVE_CHECKPOINT_BATCH_FAULT": "0:kill"})
+        owner = self.node.start(env={"FN_NATIVE_CHECKPOINT_BATCH_FAULT": "0:kill"})
         self.ids += self.post_batch(8, 64)
         # The owner is killed by its own publication thread after the first
         # step; wait for the process to end.
@@ -287,12 +274,11 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         while owner.poll() is None and time.monotonic() < deadline:
             time.sleep(0.25)
             try:
-                with socket.create_connection(("127.0.0.1", self.port), timeout=5) as conn:
-                    conn.recv(256)
-            except OSError:
+                self.nudge(5)
+            except (OSError, EOFError):
                 pass
         self.assertIsNotNone(owner.poll(), "the owner survived the batch fault")
-        self.reap(owner)
+        self.node.stop(expect=None, process=owner)
         # A staging orphan (the partial file) exists; the old checkpoint is
         # what the open reads, byte for byte; the writer's recover sweeps.
         self.assertEqual(self.digest(), old)
@@ -303,11 +289,11 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.assertEqual(self.digest(), old)
         # A fresh owner is due at once (suffix 64) and publishes the whole
         # history at 72.
-        owner = self.start_owner(self.image)
+        owner = self.node.start()
         line = self.owner_line(owner, CHECKPOINT_AUTO)
         self.assertIsNotNone(line, "no automatic publication after the restart")
         self.assertEqual(int(line.group(1)), 72)
-        self.stop(owner)
+        self.node.stop(process=owner)
         self.assertEqual(self.open_line(), "open=checkpoint:72 suffix=0")
 
 

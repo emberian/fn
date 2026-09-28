@@ -34,16 +34,29 @@ reader is source-level so `make check' needs no ACL2.
 
 THE BASELINE, tools/depth_baseline.json, classifies every non-tail recursion
 the closure has today:
-  "bounded": {fn: why its depth is bounded by something that is not an
-             article count, a group's article list, a history, a queue or
-             an octet count (a fixed record's fields, a number's digits, a
-             balanced tree's height, an operator's configuration table)};
+  "bounded": {fn: its bound, NAMED: a `*constant*' the tree defines (the
+             check reads the defconst), a literal number (depth <= 31, a
+             32-octet digest), or a structural bound (a number's decimal
+             digits / log n, a fixed record's fields or width, a tree's
+             car-nesting or height)};
   "debt":    {fn: what it walks} -- depth an article count, a list of
-             articles, records, history entries, queue entries or octets,
-             not yet a loop.  Only shrinks.
+             articles, records, history entries, queue entries, octets, or
+             OPERATOR DATA: a configuration table's rows, a profile field
+             (max-config-generations, max-connections, max-consumers) or any
+             other count the operator sets.  Not yet a loop.  Only shrinks.
 A non-tail recursion on the closure that is in neither fails, and so does a
 listed function that no longer is one (remove its entry: the list only
-shrinks).  A new entry under "bounded" must name the bound.
+shrinks), and so does a "bounded" entry that names no bound or cites a
+constant the tree does not define.
+
+WHY OPERATOR DATA IS NOT A BOUND (lane peer-list-depth, batch AZ).  D27: no
+fixed cap on stored data, so a configuration table grows as far as the
+operator (or a stream of admin requests) takes it.  Until 2026-09-28 the
+baseline accepted "bounded by the operator's profile" / "the peer config
+table" as bounds, 128 entries of them, and `peer list' over a peer carrying
+~1,100 principals (PRF-171 lifted the 1,024-row cap) died at 1,024 KiB in
+fn-napb-before-last, an entry classified "bounded peer-config-row
+rendering".  The rule is now mechanical: no named bound, not "bounded".
 
     python3 tools/depth_check.py                 # the lint (make check)
     python3 tools/depth_check.py --list          # every finding, classified
@@ -66,6 +79,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 import sys
 
@@ -454,7 +468,7 @@ def load_baseline(path: Path = BASELINE) -> dict:
     return {"bounded": dict(data.get("bounded", {})), "debt": dict(data.get("debt", {}))}
 
 
-def check(rows: list[dict], baseline: dict) -> list[str]:
+def check(rows: list[dict], baseline: dict, constants: set[str] | None = None) -> list[str]:
     problems = []
     found = {r["function"]: r for r in rows}
     both = set(baseline["bounded"]) & set(baseline["debt"])
@@ -469,18 +483,50 @@ def check(rows: list[dict], baseline: dict) -> list[str]:
             "1,024 KiB.  Make it a loop twin, (mbe :logic <this> :exec <a tail-recursive "
             "loop>) with its equality lemma (docs/proof-style.md, PRF-352), or, if its depth "
             "is bounded by something that is not an article count, a group's article list, "
-            "a history, a queue or an octet count, list it under \"bounded\" in "
-            "tools/depth_baseline.json with the bound".format(
+            "a history, a queue, an octet count or operator data (a configuration "
+            "table, a profile field: D27), list it under \"bounded\" in "
+            "tools/depth_baseline.json with the bound named".format(
                 fn, r["where"], " ".join(r["nontail_calls"])))
     for kind in ("bounded", "debt"):
         for fn in sorted(set(baseline[kind]) - set(found)):
             problems.append("{}: listed under \"{}\" in tools/depth_baseline.json but no longer "
                             "a non-tail recursion on the host-called closure: remove its entry "
                             "(the list only shrinks)".format(fn, kind))
+    known = defined_constants() if constants is None else constants
     for fn, why in sorted(baseline["bounded"].items()):
-        if not isinstance(why, str) or len(why.strip()) < 8:
-            problems.append("{}: a \"bounded\" entry names no bound".format(fn))
+        text = why if isinstance(why, str) else ""
+        cited = CONSTANT.findall(text)
+        unknown = sorted(c for c in set(cited) if c.lower() not in known)
+        if unknown:
+            problems.append("{}: its \"bounded\" entry cites {}, which the tree does not "
+                            "define (books/, host/): name the bound that exists".format(
+                                fn, " ".join(unknown)))
+        elif not (cited or LITERAL.search(text) or STRUCTURAL.search(text)):
+            problems.append(
+                "{}: a \"bounded\" entry names no bound ({!r}): cite the `*constant*' "
+                "or the number that caps its depth, or a structural bound (decimal digits, "
+                "a fixed width or shape, car-nesting).  A configuration table, a profile "
+                "field or any count the operator sets is data (D27: no fixed cap), not a "
+                "bound: make it a loop twin or list it under \"debt\"".format(fn, text))
     return problems
+
+
+# A named bound (check): a constant, a literal number, or a structural bound.
+CONSTANT = re.compile(r"\*[A-Za-z0-9-]+\*")
+LITERAL = re.compile(r"\d")
+STRUCTURAL = re.compile(r"decimal digits|\blog n\b|\bfixed\b|car-nesting|\bheight\b",
+                        re.IGNORECASE)
+
+
+def defined_constants() -> set[str]:
+    """Every `*name*' a book or host file defines by defconst (lower case)."""
+    found: set[str] = set()
+    pattern = re.compile(r"\(defconst\s+(\*[A-Za-z0-9-]+\*)", re.IGNORECASE)
+    for top in ("books", "host"):
+        for path in sorted((ROOT / top).rglob("*.lisp")):
+            text = path.read_text(encoding="utf-8", errors="replace")
+            found.update(m.lower() for m in pattern.findall(text))
+    return found
 
 
 def compare(rows: list[dict], path: str) -> int:

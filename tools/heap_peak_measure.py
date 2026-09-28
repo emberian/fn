@@ -49,7 +49,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT))
 import msgid_measure as m  # noqa: E402
 import rep_measure as rep  # noqa: E402
-from tests.native_process import wait_for_announcement  # noqa: E402
+from tests.native_harness import wait_for_announcement  # noqa: E402
 
 # The rig's profile (planning/evidence/power-loss-openbsd-2026-09-26.md 9.1).
 RIG_FLAGS = ["--max-transactions", "16384", "--max-history-octets", "8388608",

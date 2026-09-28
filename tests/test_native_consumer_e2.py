@@ -13,96 +13,61 @@ import json
 import re
 from pathlib import Path
 import shutil
-import socket
-import subprocess
 import sys
-import tempfile
 import time
 import unittest
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import (
+    EXIT_OK, EXIT_UNCERTAIN, Node, acl2_boolean, assert_outcome, environment,
+    native_image, requires, run, scratch, start)
 
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST",
-                            ROOT / "build" / "fn-host-developer"))
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 ENABLED = os.environ.get("FN_RUN_CONSUMER_E2E") == "1"
 
 
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
-
-
-@unittest.skipUnless(ENABLED and IMAGE.is_file() and os.access(IMAGE, os.X_OK),
-                     "set FN_RUN_CONSUMER_E2E=1 and a source-matched "
+@unittest.skipUnless(ENABLED, "set FN_RUN_CONSUMER_E2E=1 and a source-matched "
                      "FN_NATIVE_DEVELOPER_HOST")
+@requires(IMAGE)
 class NativeConsumerE2Tests(unittest.TestCase):
     def setUp(self):
-        temporary = tempfile.TemporaryDirectory(prefix="fn-consumer-e2-")
-        self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.env.pop("ACL2_SYSTEM_BOOKS", None)
-        self.env.pop("FN_HOST", None)
-        self.env.pop("FN_NATIVE_CONTROL_FAULT", None)
-        self.env.pop("FN_NATIVE_CONTROL_TEST_STOP", None)
+        self.root = scratch(self, "fn-consumer-e2-")
+        self.env = environment()
 
     def native(self, *words, env=None, timeout=120):
-        return subprocess.run([str(IMAGE), "--fn", *map(str, words)],
-                              cwd=ROOT, env=env or self.env,
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              timeout=timeout, check=False)
+        return run([IMAGE, "--fn", *words], env=env or self.env, timeout=timeout)
 
     def accepted(self, *words, env=None):
-        result = self.native(*words, env=env)
-        self.assertEqual(result.returncode, 0,
-                         result.stderr.decode("utf-8", "replace"))
-        return result
+        return assert_outcome(self, self.native(*words, env=env), EXIT_OK)
 
     def node(self, name):
-        base = self.root / name
-        base.mkdir()
-        store = base / "store"
-        control = base / "control.sock"
-        config = base / "fn.toml"
-        config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-            'port = {}\n[control]\npath = "{}"\n'.format(
-                store, free_port(), control), encoding="ascii")
-        self.accepted("store", store, "init", "fn.test")
-        return {"base": base, "store": store, "control": control,
-                "config": config}
+        """A node under ROOT/NAME whose store `store init` made."""
+        node = Node(self, IMAGE, root=self.root / name, name=name)
+        self.accepted("store", node.store_path, "init", "fn.test")
+        return node
 
     def start_owner(self, node, *, stop_after_submit=False):
-        env = dict(self.env)
-        if stop_after_submit:
-            env["FN_NATIVE_CONTROL_TEST_STOP"] = "after-submit"
-        proc = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            bufsize=0)
-        self.addCleanup(self.reap, proc)
-        wait_for_announcement(proc, b"LISTENING ", timeout=120)
-        return proc
-
-    @staticmethod
-    def reap(proc):
-        if proc.poll() is None:
-            proc.kill()
-            proc.wait(timeout=10)
-        for stream in (proc.stdout, proc.stderr):
-            if stream and not stream.closed:
-                stream.close()
+        return node.start(timeout=120, env={"FN_NATIVE_CONTROL_TEST_STOP": "after-submit"}
+                          if stop_after_submit else None)
 
     def stop_owner(self, proc):
-        diagnostics = stop_and_diagnostics(proc, timeout=60)
-        self.assertEqual(proc.returncode, 0, diagnostics)
+        assert_outcome(self, proc.stop(grace=60), EXIT_OK, log=proc)
+
+    def lose_reply(self, owner, words):
+        """Run `fn WORDS` against an owner stopped after it completes the
+        request; kill the owner before it replies.  The client's (stdout, stderr)."""
+        client = start([IMAGE, "--fn", *words], env=self.env)
+        self.addCleanup(client.stop, 10)
+        owner.announcement(b"CONTROL-SUBMITTED", timeout=120)
+        owner.kill()  # actual process death after durable completion, pre-reply
+        owner.wait(timeout=10)
+        owner.finish()
+        stdout, stderr = client.communicate(timeout=30)
+        self.assertEqual(client.returncode, EXIT_UNCERTAIN, (stdout + stderr).decode())
+        return stdout, stderr
 
     def consumer(self, verb, node, *args, expected=0):
-        result = self.native("consumer", verb, node["control"], *args)
+        result = self.native("consumer", verb, node.control, *args)
         self.assertEqual(result.returncode, expected,
                          result.stderr.decode("utf-8", "replace"))
         return result
@@ -152,14 +117,14 @@ class NativeConsumerE2Tests(unittest.TestCase):
         usage = self.native("consumer")
         self.assertEqual(usage.returncode, 0, usage.stderr)
         self.assertIn(b"register CONTROL NAME GROUP CURSOR-OUT", usage.stdout)
-        refused = self.native("consumer", "register", first["control"], "worker")
+        refused = self.native("consumer", "register", first.control, "worker")
         self.assertEqual(refused.returncode, 5, refused.stderr)
         self.assertIn(b"usage: fn consumer [--json] COMMAND CONTROL", refused.stderr)
-        token_path = first["base"] / "initial.fncu"
+        token_path = first.root / "initial.fncu"
         initial = self.register(first, "worker", token_path)
         self.consumer("bootstrap", first, expected=1)
         self.assertEqual(self.position(first, "worker",
-                                       first["base"] / "before.fncu"), initial)
+                                       first.root / "before.fncu"), initial)
         before_status = self.status(first, "worker")
         self.assertEqual(before_status[0], 0)
         self.assertIsNone(self.status(first, "unknown", expected=1))
@@ -172,12 +137,12 @@ class NativeConsumerE2Tests(unittest.TestCase):
                   b"Newsgroups: fn.test\r\nSubject: unrelated\r\n"
                   b"Message-ID: " + msgid.encode("ascii") +
                   b"\r\n\r\nunrelated exact body\r\n")
-        article = first["base"] / "unrelated.eml"
+        article = first.root / "unrelated.eml"
         article.write_bytes(source)
-        self.accepted("operator", first["config"], "post", "--message-id",
+        self.accepted("operator", first.config, "post", "--message-id",
                       msgid, "--payload", article, "--group", "fn.test")
         self.assertEqual(self.position(first, "worker",
-                                       first["base"] / "after-post.fncu"), initial)
+                                       first.root / "after-post.fncu"), initial)
         after_post_status = self.status(first, "worker")
         self.assertEqual(after_post_status[0], before_status[0])
         self.assertGreater(after_post_status[1], before_status[1])
@@ -185,34 +150,34 @@ class NativeConsumerE2Tests(unittest.TestCase):
         self.assertIn(b"consumer accepted",
                       self.consumer("ack", first, token_path).stdout)
         self.assertEqual(self.position(first, "worker",
-                                       first["base"] / "after-ack.fncu"), initial)
+                                       first.root / "after-ack.fncu"), initial)
 
         # The same ID in an independent history cannot use this cursor.
         other = self.node("other")
         other_owner = self.start_owner(other)
         self.bootstrap(other)
-        other_token = self.register(other, "worker", other["base"] / "other.fncu")
+        other_token = self.register(other, "worker", other.root / "other.fncu")
         self.assertNotEqual(other_token, initial)
         self.consumer("ack", other, token_path, expected=1)
         self.assertEqual(self.position(other, "worker",
-                                       other["base"] / "other-position.fncu"),
+                                       other.root / "other-position.fncu"),
                          other_token)
 
         self.consumer("unregister", first, "worker")
-        self.position(first, "worker", first["base"] / "removed.fncu", expected=1)
-        current = self.register(first, "worker", first["base"] / "renewed.fncu")
+        self.position(first, "worker", first.root / "removed.fncu", expected=1)
+        current = self.register(first, "worker", first.root / "renewed.fncu")
         self.assertNotEqual(current, initial)  # durable registration epoch
         self.consumer("ack", first, token_path, expected=1)
         self.assertEqual(self.position(first, "worker",
-                                       first["base"] / "renewed-position.fncu"),
+                                       first.root / "renewed-position.fncu"),
                          current)
         self.stop_owner(owner)
         self.stop_owner(other_owner)
-        inspected = self.accepted("store", first["store"], "inspect", msgid)
+        inspected = self.accepted("store", first.store_path, "inspect", msgid)
         self.assertIn(b"unrelated exact body", inspected.stdout)
         reopened = self.start_owner(first)
         self.assertEqual(self.position(first, "worker",
-                                       first["base"] / "reopened.fncu"), current)
+                                       first.root / "reopened.fncu"), current)
         self.assertEqual(self.status(first, "worker")[0], 0)
         self.stop_owner(reopened)
 
@@ -223,49 +188,49 @@ class NativeConsumerE2Tests(unittest.TestCase):
         bind` of a name no registration declared is refused by name."""
         node = self.node("reasons")
         owner = self.start_owner(node)
-        self.register(node, "worker", node["base"] / "worker.fncu")
+        self.register(node, "worker", node.root / "worker.fncu")
         # The reason, in text.
         status = self.consumer("status", node, "ghost", expected=1)
         self.assertIn(b"consumer status refused unknown-consumer", status.stdout)
-        poll = self.consumer("poll", node, "ghost", node["base"] / "g.fncu",
-                             node["base"] / "g.report", expected=1)
+        poll = self.consumer("poll", node, "ghost", node.root / "g.fncu",
+                             node.root / "g.report", expected=1)
         self.assertIn(b"consumer refused unknown-consumer", poll.stdout)
         # The same, as JSON; every line is one JSON object.
-        refused = self.native("consumer", "--json", "poll", node["control"], "ghost",
-                              node["base"] / "g2.fncu", node["base"] / "g2.report")
+        refused = self.native("consumer", "--json", "poll", node.control, "ghost",
+                              node.root / "g2.fncu", node.root / "g2.report")
         self.assertEqual(refused.returncode, 1, refused.stderr)
         line = json.loads(refused.stdout.decode("ascii").strip().splitlines()[-1])
         self.assertEqual(line, {"command": "poll", "outcome": "refused",
                                 "reason": "unknown-consumer"})
-        counts = self.native("consumer", "--json", "status", node["control"], "worker")
+        counts = self.native("consumer", "--json", "status", node.control, "worker")
         self.assertEqual(counts.returncode, 0, counts.stderr)
         line = json.loads(counts.stdout.decode("ascii").strip().splitlines()[-1])
         self.assertEqual(line["outcome"], "accepted")
         self.assertIsNone(line["reason"])
         self.assertEqual(line["journal_event_distance"],
                          line["journal_frontier"] - line["committed_ack"])
-        empty = self.native("consumer", "--json", "poll", node["control"], "worker",
-                            node["base"] / "w.fncu", node["base"] / "w.report")
+        empty = self.native("consumer", "--json", "poll", node.control, "worker",
+                            node.root / "w.fncu", node.root / "w.report")
         self.assertEqual(empty.returncode, 0, empty.stderr)
         line = json.loads(empty.stdout.decode("ascii").strip().splitlines()[-1])
         self.assertEqual((line["outcome"], line["report"]), ("accepted", "empty"))
         # `fn consumer-article` on the empty report names it.
-        article = self.native("consumer-article", "--json", node["base"] / "w.report")
+        article = self.native("consumer-article", "--json", node.root / "w.report")
         self.assertEqual(article.returncode, 1, article.stderr)
         self.assertEqual(json.loads(article.stdout.decode("ascii").strip()),
                          {"report": "empty"})
         # A bind of a name no registration declared is refused by name; the
         # registered one is bound.
-        ghost = self.native("operator", node["config"], "consumer", "bind",
+        ghost = self.native("operator", node.config, "consumer", "bind",
                             "ghost", "--account", "bob")
         self.assertEqual(ghost.returncode, 1, ghost.stdout + ghost.stderr)
         self.assertIn(b"unknown-consumer", ghost.stdout + ghost.stderr)
-        bound = self.native("operator", node["config"], "consumer", "bind",
+        bound = self.native("operator", node.config, "consumer", "bind",
                             "worker", "--account", "bob")
         self.assertEqual(bound.returncode, 0, bound.stdout + bound.stderr)
         # The plain poll of the now bound consumer names why it is refused.
-        plain = self.consumer("poll", node, "worker", node["base"] / "b.fncu",
-                              node["base"] / "b.report", expected=1)
+        plain = self.consumer("poll", node, "worker", node.root / "b.fncu",
+                              node.root / "b.report", expected=1)
         self.assertIn(b"consumer refused bound", plain.stdout)
         self.stop_owner(owner)
 
@@ -275,46 +240,38 @@ class NativeConsumerE2Tests(unittest.TestCase):
         self.bootstrap(node)
         self.stop_owner(bootstrap_owner)
         owner = self.start_owner(node, stop_after_submit=True)
-        token_path = node["base"] / "lost-reply.fncu"
-        client = subprocess.Popen(
-            [str(IMAGE), "--fn", "consumer", "register", str(node["control"]),
-             "worker", "fn.test", str(token_path)],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        self.addCleanup(self.reap, client)
-        wait_for_announcement(owner, b"CONTROL-SUBMITTED", timeout=120)
-        owner.kill()  # actual process death after durable completion, pre-reply
-        owner.wait(timeout=10)
-        stdout, stderr = client.communicate(timeout=30)
-        self.assertEqual(client.returncode, 3, (stdout + stderr).decode())
+        token_path = node.root / "lost-reply.fncu"
+        self.lose_reply(owner, ("consumer", "register", node.control, "worker", "fn.test",
+                                token_path))
         self.assertFalse(token_path.exists())
 
         reopened = self.start_owner(node)
-        recovered = self.position(node, "worker", node["base"] / "recovered.fncu")
+        recovered = self.position(node, "worker", node.root / "recovered.fncu")
         # Same-scope registration is idempotent after replay: no fresh epoch.
-        again = self.register(node, "worker", node["base"] / "again.fncu")
+        again = self.register(node, "worker", node.root / "again.fncu")
         self.assertEqual(again, recovered)
-        self.consumer("ack", node, node["base"] / "recovered.fncu")
+        self.consumer("ack", node, node.root / "recovered.fncu")
         self.assertEqual(self.position(node, "worker",
-                                       node["base"] / "after-resolution.fncu"),
+                                       node.root / "after-resolution.fncu"),
                          recovered)
         self.stop_owner(reopened)
 
     @unittest.skipUnless(os.environ.get("FN_RUN_CONSUMER_POLL_E2E") == "1",
                          "requires the ACL2-owned consumer poll command")
     def test_signed_composite_poll_and_lost_positive_ack_reply(self):
+        # The ACL2 bridge session is tools/run_store.py's (its last use here).
         from tools import run_store
 
         node = self.node("signed-poll")
         owner = self.start_owner(node)
         self.bootstrap(node)
-        before = self.register(node, "worker", node["base"] / "registered.fncu")
+        before = self.register(node, "worker", node.root / "registered.fncu")
 
-        principal = node["base"] / "principal.bin"
-        ed_public = node["base"] / "ed-public.bin"
-        ed_secret = node["base"] / "ed-secret.bin"
-        ml_private = node["base"] / "ml-private.pem"
-        ml_public = node["base"] / "ml-public.pem"
+        principal = node.root / "principal.bin"
+        ed_public = node.root / "ed-public.bin"
+        ed_secret = node.root / "ed-secret.bin"
+        ml_private = node.root / "ml-private.pem"
+        ml_public = node.root / "ml-public.pem"
         principal.write_bytes(bytes([85]) * 32)
         ed_public.write_bytes(bytes.fromhex(
             "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
@@ -322,15 +279,11 @@ class NativeConsumerE2Tests(unittest.TestCase):
             "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
             "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
         openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
-        made = subprocess.run([openssl, "genpkey", "-algorithm", "ML-DSA-65",
-                               "-out", str(ml_private)], cwd=ROOT,
-                              env=self.env, capture_output=True, timeout=60,
-                              check=False)
+        made = run([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out", ml_private],
+                   env=self.env, timeout=60)
         self.assertEqual(made.returncode, 0, made.stderr.decode("utf-8", "replace"))
-        exported = subprocess.run([openssl, "pkey", "-in", str(ml_private),
-                                   "-pubout", "-out", str(ml_public)],
-                                  cwd=ROOT, env=self.env, capture_output=True,
-                                  timeout=60, check=False)
+        exported = run([openssl, "pkey", "-in", ml_private, "-pubout", "-out", ml_public],
+                       env=self.env, timeout=60)
         self.assertEqual(exported.returncode, 0,
                          exported.stderr.decode("utf-8", "replace"))
 
@@ -347,22 +300,22 @@ class NativeConsumerE2Tests(unittest.TestCase):
                       b"Newsgroups: fn.test\r\nSubject: exact consumer poll\r\n"
                       b"Message-ID: <consumer-poll@example.invalid>\r\n"
                       b"\r\nsigned source body\r\n")
-        article = node["base"] / "authored.eml"
+        article = node.root / "authored.eml"
         article.write_bytes(source)
-        self.accepted("hybrid-enroll", node["control"], "1", principal,
+        self.accepted("hybrid-enroll", node.control, "1", principal,
                       ed_public, ml_public)
         signatures = self.accepted("hybrid-sign", principal, ed_public,
                                    ed_secret, ml_public, ml_private, article)
         parts = dict(line.split() for line in signatures.stdout.decode("ascii").splitlines())
-        ed_sig = node["base"] / "ed.sig"
-        ml_sig = node["base"] / "ml.sig"
+        ed_sig = node.root / "ed.sig"
+        ml_sig = node.root / "ml.sig"
         ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
         ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
-        self.accepted("hybrid-author", node["control"], "1", article,
+        self.accepted("hybrid-author", node.control, "1", article,
                       ed_sig, ml_sig, ml_public)
 
-        poll_cursor = node["base"] / "polled.fncu"
-        report_path = node["base"] / "polled.event"
+        poll_cursor = node.root / "polled.fncu"
+        report_path = node.root / "polled.event"
         self.consumer("poll", node, "worker", poll_cursor, report_path)
         continuation = poll_cursor.read_bytes()
         report = report_path.read_bytes()
@@ -370,7 +323,7 @@ class NativeConsumerE2Tests(unittest.TestCase):
         self.assertNotEqual(continuation, before)
         self.assertTrue(report)
         self.assertEqual(self.position(node, "worker",
-                                       node["base"] / "pre-ack.fncu"), before)
+                                       node.root / "pre-ack.fncu"), before)
 
         # ACL2 decodes and checks the returned parent and its exact signed
         # source. Python only transports the returned Store event octets.
@@ -386,14 +339,14 @@ class NativeConsumerE2Tests(unittest.TestCase):
                     "(equal (fn-stxa-authored-source event) '" +
                     bridge.literal(source) + ") "
                     "(fn-record-result-okp record-result)))))")
-            self.assertTrue(run_store.acl2_boolean(bridge.call(form)))
+            self.assertTrue(acl2_boolean(bridge.call(form)))
         finally:
             bridge.close()
 
         # Poll is read-only even when repeated; only an explicit ack commits
         # the returned frontier. Lose the reply after that durable ack.
-        second_cursor = node["base"] / "second-polled.fncu"
-        second_report = node["base"] / "second-polled.event"
+        second_cursor = node.root / "second-polled.fncu"
+        second_report = node.root / "second-polled.event"
         self.consumer("poll", node, "worker", second_cursor, second_report)
         self.assertEqual(second_cursor.read_bytes(), continuation)
         self.assertEqual(second_report.read_bytes(), report)
@@ -410,9 +363,9 @@ class NativeConsumerE2Tests(unittest.TestCase):
             handoff.mkdir(parents=True, exist_ok=False)
             ready = {
                 "version": 1,
-                "control": str(node["control"]),
+                "control": str(node.control),
                 "consumer": "worker",
-                "registered_cursor": str(node["base"] / "registered.fncu"),
+                "registered_cursor": str(node.root / "registered.fncu"),
                 "poll_cursor": str(poll_cursor),
                 "poll_report": str(report_path),
                 "authored_source": str(article),
@@ -437,25 +390,16 @@ class NativeConsumerE2Tests(unittest.TestCase):
         self.stop_owner(owner)
 
         cut_owner = self.start_owner(node, stop_after_submit=True)
-        client = subprocess.Popen(
-            [str(IMAGE), "--fn", "consumer", "ack", str(node["control"]),
-             str(poll_cursor)], cwd=ROOT, env=self.env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self.addCleanup(self.reap, client)
-        wait_for_announcement(cut_owner, b"CONTROL-SUBMITTED", timeout=120)
-        cut_owner.kill()
-        cut_owner.wait(timeout=10)
-        stdout, stderr = client.communicate(timeout=30)
-        self.assertEqual(client.returncode, 3, (stdout + stderr).decode())
+        self.lose_reply(cut_owner, ("consumer", "ack", node.control, poll_cursor))
 
         reopened = self.start_owner(node)
         self.assertEqual(self.position(node, "worker",
-                                       node["base"] / "recovered-ack.fncu"),
+                                       node.root / "recovered-ack.fncu"),
                          continuation)
         status_after_ack = self.status(node, "worker")
         self.assertGreater(status_after_ack[0], status_before_ack[0])
-        after_cursor = node["base"] / "after-ack-poll.fncu"
-        after_report = node["base"] / "after-ack-poll.event"
+        after_cursor = node.root / "after-ack-poll.fncu"
+        after_report = node.root / "after-ack-poll.event"
         self.consumer("poll", node, "worker", after_cursor, after_report)
         self.assertEqual(after_report.read_bytes(), b"")
         self.assertEqual(self.status(node, "worker"), status_after_ack)
@@ -487,21 +431,18 @@ class NativeConsumerE2Tests(unittest.TestCase):
         node = self.node("foreign-uid")
         owner = self.start_owner(node)
         self.bootstrap(node)
-        self.register(node, "worker", node["base"] / "owner.fncu")
+        self.register(node, "worker", node.root / "owner.fncu")
         self.root.chmod(0o755)
-        node["base"].chmod(0o755)
-        node["control"].chmod(0o666)  # pass the filesystem gate in this fixture
-        target = node["base"] / "foreign.fncu"
-        result = subprocess.run(
-            ["setpriv", "--reuid", "65534", "--regid", "65534",
-             "--clear-groups", str(IMAGE), "--fn", "consumer", "position",
-             str(node["control"]), "worker", str(target)],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=30, check=False)
+        node.root.chmod(0o755)
+        node.control.chmod(0o666)  # pass the filesystem gate in this fixture
+        target = node.root / "foreign.fncu"
+        result = run(["setpriv", "--reuid", "65534", "--regid", "65534",
+                      "--clear-groups", IMAGE, "--fn", "consumer", "position",
+                      node.control, "worker", target], env=self.env, timeout=30)
         self.assertEqual(result.returncode, 1,
                          result.stderr.decode("utf-8", "replace"))
         self.assertFalse(target.exists())
-        self.position(node, "worker", node["base"] / "owner-still.fncu")
+        self.position(node, "worker", node.root / "owner-still.fncu")
         self.stop_owner(owner)
 
 

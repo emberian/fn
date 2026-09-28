@@ -662,7 +662,7 @@
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
          ((and (consp (cdr words))
                (member-equal (cadr words) '("budget" "carries" "pull" "distributions"
-                                            "catch-up")))
+                                            "catch-up" "feed")))
           (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
        ; PRF-164 (PKT-439): invitation-code accounts.  `account list' is a
@@ -873,10 +873,17 @@
       ; :remove-peer-rows of a superseded single-valued slot), which apply
       ; as the whole-group `fn-pcb-extend-delta'
       ; (`fn-pcb-extend-deltas-apply-as-the-extend-delta').
-      (fn-pcb-extend-deltas
-       (fn-record-octets-string (fn-native-admin-result-name plan))
-       (fn-native-admin-result-value plan)
-       peers)
+      ; `peer feed NAME pause|resume' (books/feed-pause.lisp): the deltas
+      ; that set the one pause row, removing the other.
+      (if (fn-fps-plan-rowsp (fn-native-admin-result-value plan))
+          (fn-fps-deltas
+           (fn-record-octets-string (fn-native-admin-result-name plan))
+           (fn-fps-plan-pausep (fn-native-admin-result-value plan))
+           peers)
+        (fn-pcb-extend-deltas
+         (fn-record-octets-string (fn-native-admin-result-name plan))
+         (fn-native-admin-result-value plan)
+         peers))
     (fn-native-admin-plan-deltas plan)))
 
 (defthm fn-native-admin-plan-deltas-over-other-plans-by-definition
@@ -1101,18 +1108,62 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
 
 ;; `control list': one line per grant row of the replayed configuration,
 ;; "grant PRINCIPAL VERB NAMESPACE", in row order.
+;; Executes by a loop (lane peer-list-depth): the grant table is operator
+;; data with no row cap (D27), so the recursion took one control-stack frame
+;; per grant.  The :logic is the recursion, unchanged; the :exec folds the
+;; reversed rows (fn-ag-rev-onto) from the left with the same step.
+(defun fn-native-admin-control-report-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-native-admin-control-report-loop
+       (cdr rev)
+       (append (fn-record-string-octets "grant ")
+               (fn-record-string-octets (fn-cfg-row-b (car rev)))
+               (list 32)
+               (fn-record-string-octets (fn-cfg-row-c (car rev)))
+               (list 32)
+               (fn-record-string-octets (fn-cfg-row-a (car rev)))
+               (list 10)
+               acc))
+    acc))
+
 (defun fn-native-admin-control-report (rows)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (append (fn-record-string-octets "grant ")
-              (fn-record-string-octets (fn-cfg-row-b (car rows)))
-              (list 32)
-              (fn-record-string-octets (fn-cfg-row-c (car rows)))
-              (list 32)
-              (fn-record-string-octets (fn-cfg-row-a (car rows)))
-              (list 10)
-              (fn-native-admin-control-report (cdr rows)))
-    nil))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp rows)
+           (append (fn-record-string-octets "grant ")
+                   (fn-record-string-octets (fn-cfg-row-b (car rows)))
+                   (list 32)
+                   (fn-record-string-octets (fn-cfg-row-c (car rows)))
+                   (list 32)
+                   (fn-record-string-octets (fn-cfg-row-a (car rows)))
+                   (list 10)
+                   (fn-native-admin-control-report (cdr rows)))
+         nil)
+       :exec (fn-native-admin-control-report-loop (fn-ag-rev-onto rows nil) nil)))
+
+(local
+ (defthm fn-native-admin-control-report-loop-of-rev-onto
+   (equal (fn-native-admin-control-report-loop (fn-ag-rev-onto rows zs) nil)
+          (fn-native-admin-control-report-loop
+           zs (fn-native-admin-control-report rows)))
+   :hints (("Goal" :induct (fn-ag-rev-onto rows zs)
+                   :in-theory (union-theories
+                               '(fn-native-admin-control-report-loop
+                                 fn-native-admin-control-report fn-ag-rev-onto
+                                 car-cons cdr-cons)
+                               (theory 'minimal-theory))))))
+
+(verify-guards fn-native-admin-control-report-loop)
+
+(verify-guards fn-native-admin-control-report
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-native-admin-control-report
+                                fn-native-admin-control-report-loop)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here)))
+                  :use ((:instance fn-native-admin-control-report-loop-of-rev-onto
+                                   (zs nil))))))
 
 ;; `control list' lists exactly when the configuration holds a grant row:
 ;; the report is empty only over no authority row (qual-e747dbcc A3 printed

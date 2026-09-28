@@ -12,6 +12,9 @@ import subprocess
 import tempfile
 import unittest
 import threading
+import time
+
+from tests.native_harness import client_context
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -103,12 +106,8 @@ class NativeTlsTransportTest(unittest.TestCase):
                         break
                 self.assertIn("FAILURE-ISOLATED\n", lines)
 
-                context = ssl.create_default_context()
-                context.check_hostname = False
-                context.verify_mode = ssl.CERT_NONE
-                context.minimum_version = ssl.TLSVersion.TLSv1_2
                 with socket.create_connection(("127.0.0.1", port), timeout=5) as raw_peer:
-                    with context.wrap_socket(raw_peer, server_hostname="localhost") as protected:
+                    with client_context().wrap_socket(raw_peer, server_hostname="localhost") as protected:
                         for line in process.stdout:
                             lines.append(line)
                             if line.startswith("TLS-READY"):
@@ -131,6 +130,9 @@ class NativeTlsTransportTest(unittest.TestCase):
                          interrupt: bool = False) -> subprocess.CompletedProcess:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(certificate, private_key)
+        if expect == "tickets":
+            context.minimum_version = ssl.TLSVersion.TLSv1_3
+            context.num_tickets = 2
         listener = socket.socket()
         listener.bind(("127.0.0.1", 0))
         listener.listen(1)
@@ -142,7 +144,13 @@ class NativeTlsTransportTest(unittest.TestCase):
                         return
                     try:
                         with context.wrap_socket(raw, server_side=True) as protected:
-                            if protected.recv(64) == b"PING\r\n":
+                            if expect == "tickets":
+                                # The tickets left with the handshake; the
+                                # greeting follows them, later.
+                                time.sleep(0.5)
+                                protected.sendall(b"200 hi\r\n")
+                                protected.recv(64)
+                            elif protected.recv(64) == b"PING\r\n":
                                 protected.sendall(b"PONG\r\n")
                     except ssl.SSLError:
                         pass
@@ -181,6 +189,18 @@ class NativeTlsTransportTest(unittest.TestCase):
                                                 "localhost", "failure", interrupt=True)
             self.assertEqual(interrupted.returncode, 0, interrupted.stdout)
             self.assertIn("TLS-CLIENT-REFUSED", interrupted.stdout)
+
+    def test_session_tickets_before_the_greeting_are_no_data_yet(self) -> None:
+        """Defect M3: a zero-second read that meets only TLS 1.3
+        NewSessionTicket records answers :timeout, then the greeting."""
+        self.assertIsNotNone(shutil.which("sbcl"))
+        with tempfile.TemporaryDirectory(prefix="fn-native-tls-tickets-") as raw:
+            directory = Path(raw)
+            certificate, key = self._certificate(directory, "server")
+            result = self._run_client_case(certificate, key, certificate,
+                                           "localhost", "tickets")
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertIn("TLS-CLIENT-TICKETS-PASSED", result.stdout)
 
 
 if __name__ == "__main__":
