@@ -167,11 +167,12 @@
 ;; The catalog's finish under LINK's token and count answers the completion
 ;; and holds no pending row after.
 (defthm fn-sjh-sca-finish-clears-pending
-  (implies (and pending
+  (implies (and (fn-pc-p pending)
                 (equal token (fn-pc-token pending))
                 (equal (fn-pc-expected pending) (len fn-cat)))
            (equal (mv-nth 1 (fn-sca-finish token pending view-index targets fn-cat)) nil))
-  :hints (("Goal" :in-theory (e/d (fn-sca-finish fn-sca-complete fn-cat-complete fn-cat-complete-hidden)
+  :hints (("Goal" :in-theory (e/d (fn-sca-finish fn-sca-complete fn-cat-complete fn-cat-complete-hidden
+                                   fn-pc-p)
                                   (fn-sca-withdraw-targets fn-cat-commit fn-delta-of-row fn-cat-at
                                    fn-midx-lookup)))))
 
@@ -200,6 +201,7 @@
          (fn-cst-relation s2)
          (fn-own-store-idlep s2)
          (fn-rows-composites-okp records fn-arena)
+         (fn-rows-handles-inp records fn-arena)
          (fn-scj-rows-clearp records)
          (equal (fn-scj-load-h event) held)
          (fn-pc-p pending)
@@ -242,7 +244,7 @@
                   (equal (car (fn-ccar-own-finish o cfg fn-arena)) :durable))
              (fn-sjh-finish-premisesp o cfg fn-arena fn-cat pending token)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories '(fn-sjh-finish-premisesp fn-sjh-okp fn-sjh-ocfg-owner-of-with-owner
+           :in-theory (union-theories '(fn-sjh-finish-premisesp fn-sjh-ocfg-owner-of-with-owner
                                         (:executable-counterpart fn-held-p)
                                         fn-sjh-durable-finish-is-enabled
                                         fn-ccar-ocl-relation-carries-sn-statep
@@ -254,7 +256,8 @@
                                         fn-sjh-completion-record-needs-records
                                         fn-sjh-linkp-at-enabled-completion)
                                       (theory 'minimal-theory))
-           :use ((:instance fn-sjh-finish-store-image (o (fn-ocfg-owner oc)))
+           :use ((:instance fn-sjh-okp-unfolds (o (fn-ocfg-owner oc)))
+                 (:instance fn-sjh-finish-store-image (o (fn-ocfg-owner oc)))
                  (:instance fn-sjh-durable-finish-names-a-held-row (o (fn-ocfg-owner oc)))
                  (:instance fn-sjh-durable-needs-pending (o (fn-ocfg-owner oc)))
                  (:instance fn-sjh-completion-record-needs-records (s (fn-own-store (fn-ocfg-owner oc))))
@@ -267,6 +270,45 @@
                             (oc (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))
                  (:instance fn-scj-vvp-of-host-finish (o (fn-ocfg-owner oc)))
                  (:instance fn-scj-vvp-parts (o (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena))))))))
+
+;; What the finished owner and catalog satisfy, from the premises alone.
+(defthm fn-sjh-premises-facts
+  (implies (fn-sjh-finish-premisesp o cfg fn-arena fn-cat pending token)
+           (let ((records (fn-sf-records (fn-sn-files (fn-own-store o)))))
+             (and (fn-ccar-completion-enabledp (fn-own-store o))
+                  (fn-scjs-historyp o)
+                  (fn-scj-versions-okp o)
+                  (fn-scar-view-indexedp o)
+                  (fn-rows-composites-okp records fn-arena)
+                  (fn-rows-handles-inp records fn-arena)
+                  (fn-scj-rows-clearp records)
+                  (fn-pc-p pending)
+                  (equal (fn-pc-token pending) token)
+                  (equal (fn-pc-expected pending) (len fn-cat)))))
+  :hints (("Goal" :in-theory '(fn-sjh-finish-premisesp))))
+
+(defthm fn-sjh-pc-p-non-nil
+  (implies (fn-pc-p pending) pending)
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-pc-p))))
+
+(defthm fn-sjh-okp-after-finish-by-premises
+  (let* ((o2 (cdr (fn-ccar-own-finish o cfg fn-arena)))
+         (view2 (fn-own-view o2))
+         (fin (fn-sca-finish token pending (fn-own-view-index view2)
+                             (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
+                                                (fn-own-view-withdrawals view2))
+                             fn-cat)))
+    (implies (fn-sjh-finish-premisesp o cfg fn-arena fn-cat pending token)
+             (and (equal (mv-nth 1 fin) nil)
+                  (fn-sjh-okp o2 nil fn-arena (mv-nth 2 fin)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-sjh-okp-when-parts fn-sjh-premises-facts fn-sjh-pc-p-non-nil
+                                        fn-sjh-carried-finish-by-premises fn-sjh-finish-side-facts
+                                        fn-sjh-finish-keeps-view-indexed fn-sjh-sca-finish-clears-pending)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-sjh-finish-store-image)
+                 (:instance fn-sjh-premises-facts)))))
 
 ; KEYSTONE (the join carried across the host's article finish).  Over
 ; fn-ccar-own-finish, the owner finish the host's call equals (below): under
@@ -295,29 +337,15 @@
                   (fn-ocl-relation (fn-ocfg-with-owner oc o2)))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories '(fn-sjh-okp fn-sjh-ocfg-owner-of-with-owner
-                                        fn-ocmt-post-commit-preserves-ocl-relation)
+           :in-theory (union-theories '(fn-ocmt-post-commit-preserves-ocl-relation fn-sjh-pc-p-non-nil)
                                       (theory 'minimal-theory))
            :use ((:instance fn-sjh-finish-premises-of-okp)
-                 (:instance fn-sjh-finish-store-image (o (fn-ocfg-owner oc)))
-                 (:instance fn-sjh-carried-finish-by-premises (o (fn-ocfg-owner oc)) (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))) (fn-pc-expected pending))))
-                 (:instance fn-sjh-durable-finish-is-enabled (o (fn-ocfg-owner oc)))
-                 (:instance fn-sjh-durable-finish-names-a-held-row (o (fn-ocfg-owner oc)))
-                 (:instance fn-ccar-ocl-relation-carries-sn-statep)
-                 (:instance fn-sjh-durable-needs-pending (o (fn-ocfg-owner oc)))
-                 (:instance fn-sjh-linkp-at-enabled-completion (o (fn-ocfg-owner oc)))
-                 (:instance fn-sjh-sca-finish-clears-pending
-                            (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))) (fn-pc-expected pending)))
-                            (view-index (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))
-                            (targets (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
-                                                        (fn-own-view-withdrawals (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))))
-                 (:instance fn-sjh-finish-side-facts (o (fn-ocfg-owner oc))
-                            (c2 (mv-nth 2 (fn-sca-finish (cons (nfix (cdr (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))) (fn-pc-expected pending))
-                                          pending (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena))))
-                                          (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
-                                                             (fn-own-view-withdrawals (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))
-                                          fn-cat))))
-                 (:instance fn-sjh-finish-keeps-view-indexed (o (fn-ocfg-owner oc)))))))
+                 (:instance fn-sjh-premises-facts (o (fn-ocfg-owner oc))
+                            (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
+                                         (fn-pc-expected pending))))
+                 (:instance fn-sjh-okp-after-finish-by-premises (o (fn-ocfg-owner oc))
+                            (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
+                                         (fn-pc-expected pending))))))))
 
 ; The same over the function the host calls, fn-apc-own-finish, under the two
 ; facts that make it fn-own-finish (fn-apc-own-finish-is-own-finish): a

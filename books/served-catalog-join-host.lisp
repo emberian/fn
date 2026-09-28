@@ -97,6 +97,7 @@
                        (equal (fn-sf-completion files) (fn-sf-record-pair r))))
          (implies (fn-sf-record-phasep phase)
                   (and (fn-row-composite-okp r fn-arena)
+                       (fn-rows-handles-inp (list r) fn-arena)
                        (fn-scj-rows-clearp (list r))))
          (if pending
              (and (or (fn-sf-record-phasep phase) (equal phase :completing))
@@ -110,18 +111,57 @@
 (defun-nx fn-sjh-linkp (o pending fn-arena fn-cat)
   (fn-sjh-files-linkp (fn-sn-files (fn-own-store o)) pending fn-arena fn-cat))
 
+;; The store's side: S (every row of the history a well-formed composite
+;; without a withdrawal, its handles in the arena) and LINK.
+(defun-nx fn-sjh-files-okp (files pending fn-arena fn-cat)
+  (and (fn-rows-composites-okp (fn-sf-records files) fn-arena)
+       (fn-rows-handles-inp (fn-sf-records files) fn-arena)
+       (fn-scj-rows-clearp (fn-sf-records files))
+       (fn-sjh-files-linkp files pending fn-arena fn-cat)))
+
 (defun-nx fn-sjh-okp (o pending fn-arena fn-cat)
-  (let ((records (fn-sf-records (fn-sn-files (fn-own-store o)))))
-    (and (fn-scj-invp o fn-arena fn-cat)
-         (fn-scjs-seenp o)
-         (fn-scjs-historyp o)
-         (fn-scar-view-indexedp o)
-         (fn-scj-seqs-sortedp fn-cat)
-         (fn-cnx-freshp fn-cat)
-         (fn-scj-versions-okp o)
-         (fn-rows-composites-okp records fn-arena)
-         (fn-scj-rows-clearp records)
-         (fn-sjh-linkp o pending fn-arena fn-cat))))
+  (and (fn-scj-invp o fn-arena fn-cat)
+       (fn-scjs-seenp o)
+       (fn-scjs-historyp o)
+       (fn-scar-view-indexedp o)
+       (fn-scj-seqs-sortedp fn-cat)
+       (fn-cnx-freshp fn-cat)
+       (fn-scj-versions-okp o)
+       (fn-sjh-files-okp (fn-sn-files (fn-own-store o)) pending fn-arena fn-cat)))
+
+(defthm fn-sjh-okp-unfolds
+  (equal (fn-sjh-okp o pending fn-arena fn-cat)
+         (let ((records (fn-sf-records (fn-sn-files (fn-own-store o)))))
+           (and (fn-scj-invp o fn-arena fn-cat)
+                (fn-scjs-seenp o)
+                (fn-scjs-historyp o)
+                (fn-scar-view-indexedp o)
+                (fn-scj-seqs-sortedp fn-cat)
+                (fn-cnx-freshp fn-cat)
+                (fn-scj-versions-okp o)
+                (fn-rows-composites-okp records fn-arena)
+                (fn-rows-handles-inp records fn-arena)
+                (fn-scj-rows-clearp records)
+                (fn-sjh-linkp o pending fn-arena fn-cat))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-sjh-okp fn-sjh-files-okp fn-sjh-linkp))))
+
+(defthm fn-sjh-okp-when-parts
+  (implies (and (fn-scj-invp o fn-arena fn-cat)
+                (fn-scjs-seenp o)
+                (fn-scjs-historyp o)
+                (fn-scar-view-indexedp o)
+                (fn-scj-seqs-sortedp fn-cat)
+                (fn-cnx-freshp fn-cat)
+                (fn-scj-versions-okp o)
+                (fn-rows-composites-okp (fn-sf-records (fn-sn-files (fn-own-store o))) fn-arena)
+                (fn-rows-handles-inp (fn-sf-records (fn-sn-files (fn-own-store o))) fn-arena)
+                (fn-scj-rows-clearp (fn-sf-records (fn-sn-files (fn-own-store o))))
+                (fn-sjh-linkp o pending fn-arena fn-cat))
+           (fn-sjh-okp o pending fn-arena fn-cat))
+  :hints (("Goal" :use fn-sjh-okp-unfolds)))
+
+(in-theory (disable fn-sjh-okp-when-parts))
 
 ; -----------------------------------------------------------------------------
 ; LINK at an enabled completion: the completion record is the last record
@@ -200,11 +240,6 @@
 ; record-directory append moves the staged candidate into the history as the
 ; completing last record, every other step keeps the candidate or has none.
 
-(defun-nx fn-sjh-files-okp (files pending fn-arena fn-cat)
-  (and (fn-rows-composites-okp (fn-sf-records files) fn-arena)
-       (fn-scj-rows-clearp (fn-sf-records files))
-       (fn-sjh-files-linkp files pending fn-arena fn-cat)))
-
 (defthm fn-sjh-composites-okp-of-snoc
   (equal (fn-rows-composites-okp (append rows (list r)) fn-arena)
          (and (fn-rows-composites-okp rows fn-arena) (fn-row-composite-okp r fn-arena)))
@@ -216,6 +251,12 @@
          (and (fn-scj-rows-clearp rows) (fn-scj-rows-clearp (list r))))
   :hints (("Goal" :induct (fn-scj-rows-clearp rows)
            :in-theory (e/d (fn-scj-rows-clearp) (fn-scj-load-h)))))
+
+(defthm fn-sjh-handles-inp-of-snoc
+  (equal (fn-rows-handles-inp (append rows (list r)) fn-arena)
+         (and (fn-rows-handles-inp rows fn-arena) (fn-rows-handles-inp (list r) fn-arena)))
+  :hints (("Goal" :induct (fn-rows-handles-inp rows fn-arena)
+           :in-theory (e/d (fn-rows-handles-inp) (fn-row-handle-inp fn-held-p fn-hstxa-p)))))
 
 (defthm fn-sjh-car-last-of-snoc
   (equal (car (last (append x (list c)))) c))
@@ -233,7 +274,8 @@
                                    fn-sf-record-dir-result fn-sf-recovery-barrier
                                    fn-sf-record-phasep)
                                   (fn-sf-statep fn-row-composite-okp fn-scj-load-h fn-pc-p
-                                   fn-sf-record-pair fn-rows-composites-okp fn-scj-rows-clearp)))))
+                                   fn-sf-record-pair fn-rows-composites-okp fn-scj-rows-clearp
+                                   fn-rows-handles-inp)))))
 
 (defthm fn-sjh-okp-is-parts
   (equal (fn-sjh-okp o pending fn-arena fn-cat)
@@ -246,7 +288,7 @@
               (fn-scjs-versionsp o)
               (fn-sjh-files-okp (fn-sn-files (fn-own-store o)) pending fn-arena fn-cat)))
   :rule-classes nil
-  :hints (("Goal" :in-theory '(fn-sjh-okp fn-sjh-files-okp fn-sjh-linkp fn-scj-versions-okp fn-scjs-versionsp))))
+  :hints (("Goal" :in-theory '(fn-sjh-okp fn-scj-versions-okp fn-scjs-versionsp))))
 
 (defthm fn-sjh-io-store-files
   (implies (fn-sn-statep s)
