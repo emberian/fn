@@ -357,6 +357,11 @@ definition book when its theorems discharge the definitions' guards
 (`replay-invariants` into `replay`); leave a two-line include shim behind
 for includers outside the cluster and say who should delete it.
 
+A book that is a data table read by tools as well as by ACL2
+(`books/protocol-table.lisp`) writes every number as ACL2 reads it: a
+probability is a rational (`1/5`), never `0.2`, which ACL2 refuses as input;
+the tool's reader converts.
+
 ## 7. Naming
 
 - `fn-<field>-of-fn-make-<rec>`: accessor of constructor. `fn-<rec>-shapep`:

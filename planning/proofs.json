@@ -11671,6 +11671,32 @@
         "fn-lzr-lz-read-is-the-lz-value",
         "fn-lzr-dicts-add-keeps-bindings"
       ]
+    },
+    {
+      "id": "PRF-343",
+      "title": "The NNTP protocol table is the reader dispatcher's reply codes and framing: every reply code fn-nntp-command-pinned emits for a command is in that command's table row, and only :article-framed rows (POST) hand the connection to article mode",
+      "statement": "books/protocol-table.lisp (lane defprotocol, G4 of planning/extrapolation-2026-09-27.md section 3): `defprotocol` holds one row per NNTP command (RFC 3977, 4642, 4643, 4644, 6048, RFC 2980's legacy spellings, fn's XREDEEM and XFNCATCHUP) and three pseudo-rows (syntax, unrecognized, connection): the RFC section, the dispatch layer, the existing parser functions, the reference / -cat / Xref model functions, the framing (:command or :article), every reply (code, class accepted/refused/uncertain, layer, key, text; :computed and :unreachable flags), the fuzzer's argument grammar and the FAQ line; it checks the rows (a 2xx/3xx reply is accepted, a 4xx/5xx never is; a text begins with its code). KEYSTONE fn-proto-command-pinned-replies-are-in-the-row (books/protocol-codes.lisp), no hypothesis: every :reply effect of (fn-nntp-command-pinned session archive index verdicts env tokens fn-arena) carries a status code in (fn-proto-reader-codes (car tokens)) -- the syntax pseudo-row's for a non-keyword token, the matching row's :reader codes, else the unrecognized pseudo-row's. Subject: fn-nntp-command-pinned; the host path is host/native/owner.lisp fnn-owner-handle-chunk-read -> fn-owner-chunk-span -> fn-scr-step -> fn-scr-command, which fn-scr-command-is-command-pinned equates with it under fn-scr-catalogp. Proof: one lemma per response builder (fn-proto-codes-of-*, parametric in the retrieval kind and the legacy HDR flag), one generated theorem per row (fn-proto-row-NAME-codes, fn-proto-row-NAME-lookup) and the keystone as their generated case split. KEYSTONE fn-proto-command-pinned-offers-only-article-framing (books/protocol-framing.lisp): a first token no :article row names yields no begin-article effect; the case split is generated from the :framing column (fn-proto-row-NAME-framing), and fn-proto-offers-only-post-by-table derives nntp-auth-fold's fn-auth-fold-command-pinned-offers-only-post from it without that theorem. Not claimed: the auth, peer, post and owner layers' replies (listed in the rows, layer-tagged, unproved), which situation earns which code (tested), and codes of branches marked :unreachable.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-002"
+      ],
+      "depends_on": [
+        "PRF-325"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/protocol-table.lisp",
+        "books/protocol-codes.lisp",
+        "books/protocol-framing.lisp",
+        "tests/acl2/protocol-codes-tests.lisp"
+      ],
+      "progress_note": "Lane defprotocol (Opus 5.5, 2026-09-27/28). Admitted in the persvati REPL (protocol-codes 6.3M prover steps; teeth book 171 forms, all admitted). Teeth: 120 witnesses asserting the keystone's conclusion and the exact code per row, 25 must-fail row theorems with a witnessed code removed, the framing witnesses and a must-fail without the :article exclusion; unwitnessed codes named at the end of the test book.",
+      "events": [
+        "fn-proto-command-pinned-replies-are-in-the-row",
+        "fn-proto-command-pinned-offers-only-article-framing",
+        "fn-proto-offers-only-post-by-table"
+      ]
     }
   ]
 }
