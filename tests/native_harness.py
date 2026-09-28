@@ -87,7 +87,7 @@ class Drain:
                     self.condition.notify_all()
                     return
                 self.data += chunk
-                excess = len(self.data) - self.limit
+                excess = 0 if self.limit is None else len(self.data) - self.limit
                 if excess > 0:
                     del self.data[:excess]
                     self.dropped += excess
@@ -261,9 +261,16 @@ class NativeProcess:
     def communicate(self, timeout=None):
         """Popen.communicate for a drained process: wait for it to exit on its
         own (TimeoutExpired as Popen raises it, the process left running),
-        then (stdout the cursor has not passed, the retained stderr)."""
+        then (stdout the cursor has not passed, the retained stderr).  A
+        stream that outgrew its limit fails here, never returns truncated:
+        start a process whose whole output is read with `limit=None`."""
         self.process.wait(timeout=timeout)
         self.finish()
+        for drain in (self.stdout, self.stderr):
+            if drain.dropped:
+                raise AssertionError("{}: {} octets past the {}-octet limit were not kept; "
+                                     "start it with limit=None".format(
+                                         drain.thread.name, drain.dropped, drain.limit))
         return self.output_since_cursor(), self.stderr.since(0)
 
     def output_since_cursor(self):
@@ -1051,7 +1058,8 @@ class Client:
         self.sock.settimeout(timeout)
         self.host = host
         self.server_hostname = server_hostname or host
-        self.buffer = b""
+        self.buffer = bytearray()
+        self.offset = 0
         try:
             if implicit_tls is not None:
                 self.sock = implicit_tls.wrap_socket(self.sock,
@@ -1070,16 +1078,33 @@ class Client:
     def __exit__(self, *_):
         self.close()
 
-    def line(self, limit=1 << 20):
-        while b"\r\n" not in self.buffer:
-            if len(self.buffer) > limit:
+    def line(self, limit=None):
+        """The next line with its CRLF.  No length is assumed (a served line
+        is as long as the stored article's, D27); LIMIT, when a case asks for
+        one, fails a longer line.  Linear in what is read: the buffer is a
+        bytearray consumed from an offset and compacted when half spent."""
+        scanned = self.offset
+        while True:
+            at = self.buffer.find(b"\r\n", max(self.offset, scanned - 1))
+            if at >= 0:
+                line = bytes(self.buffer[self.offset:at + 2])
+                self.offset = at + 2
+                if self.offset > (1 << 20) and self.offset * 2 > len(self.buffer):
+                    del self.buffer[:self.offset]
+                    self.offset = 0
+                return line
+            scanned = len(self.buffer)
+            if limit is not None and scanned - self.offset > limit:
                 raise AssertionError("an NNTP line past {} octets".format(limit))
-            chunk = self.sock.recv(65536)
+            chunk = self.sock.recv(1 << 20)
             if not chunk:
                 raise EOFError("the node closed the connection")
             self.buffer += chunk
-        line, self.buffer = self.buffer.split(b"\r\n", 1)
-        return line + b"\r\n"
+
+    @property
+    def pending(self):
+        """Octets received and not yet returned by `line`."""
+        return bytes(self.buffer[self.offset:])
 
     def send(self, octets):
         self.sock.sendall(octets)
@@ -1126,7 +1151,7 @@ class Client:
     def starttls(self, context=None):
         status = self.command(b"STARTTLS")
         if status.startswith(b"382"):
-            if self.buffer:
+            if self.pending:
                 raise AssertionError("octets followed the 382 before the handshake")
             self.sock = (context or client_context()).wrap_socket(
                 self.sock, server_hostname=self.server_hostname)

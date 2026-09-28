@@ -131,7 +131,7 @@ class StatusScaleTests(unittest.TestCase):
         self.assertTrue(all(l.startswith(b"obligation id=") for l in lines[1:count + 1]))
         # Two at once: the crash at syn1m-2k was the second whole render.
         both = [start([IMAGE, "--fn", "operator", node.config, "obligations"],
-                      cwd=ROOT, env=node.environment())
+                      cwd=ROOT, env=node.environment(), limit=None)
                 for _ in range(2)]
         outs = [p.communicate(timeout=3600) for p in both]
         for p, (out, err) in zip(both, outs):
