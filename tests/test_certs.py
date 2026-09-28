@@ -1365,5 +1365,53 @@ class StatusAndRemoteTests(unittest.TestCase):
                          ["rsync", "-a", "/cache/", "hbox:/tank/fn/certcache/"])
 
 
+class PruneTests(unittest.TestCase):
+    def entry(self, cache, key, origin, meta):
+        directory = cache / key / origin
+        directory.mkdir(parents=True)
+        (directory / "book.cert").write_bytes(b"x" * 100)
+        (directory / ".entry.lock").write_bytes(b"")
+        if meta is not None:
+            (directory / "meta.json").write_text(
+                meta if isinstance(meta, str) else json.dumps(meta))
+        return directory
+
+    def test_prune_keeps_only_the_named_toolchains_and_never_touches_the_unreadable(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            cache = Path(temporary)
+            mine = self.entry(cache, "k1", "o1", {"toolchain_identity": "laptop"})
+            other = self.entry(cache, "k1", "o2", {"toolchain_identity": "hbox"})
+            alone = self.entry(cache, "k2", "o1", {"toolchain_identity": "persvati"})
+            third = self.entry(cache, "k3", "o1", {"toolchain_identity": "third"})
+            garbled = self.entry(cache, "k4", "o1", "{not json")
+            bare = self.entry(cache, "k4", "o2", None)
+            nameless = self.entry(cache, "k4", "o3", {"book": "books/x"})
+            dry = certs.prune(cache, ["laptop", "third"], dry_run=True)
+            self.assertEqual((dry.kept, dry.removed), (2, 2))
+            self.assertEqual(dry.removed_bytes, sum(
+                path.stat().st_size for entry in (other, alone)
+                for path in entry.iterdir()))
+            self.assertEqual(dry.removed_by_toolchain, {"hbox": 1, "persvati": 1})
+            self.assertEqual(sorted(dry.unreadable), sorted(map(str, (garbled, bare, nameless))))
+            self.assertTrue(other.is_dir() and alone.is_dir())
+            self.assertIn("would remove 2 entries", "\n".join(dry.lines()))
+            dry.listed = 1
+            self.assertIn("... 2 more", "\n".join(dry.lines()))
+            done = certs.prune(cache, ["laptop", "third"])
+            self.assertEqual((done.kept, done.removed), (2, 2))
+            self.assertFalse(other.exists())
+            self.assertFalse(alone.exists())
+            self.assertFalse((cache / "k2").exists())  # an emptied key goes too
+            for kept in (mine, third, garbled, bare, nameless):
+                self.assertTrue((kept / "book.cert").is_file(), kept)
+            with self.assertRaises(ValueError):
+                certs.prune(cache, [])
+
+    def test_the_cli_requires_a_keep_list(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaises(SystemExit):
+                certs.main(["prune", "--cache", temporary])
+
+
 if __name__ == "__main__":
     unittest.main()
