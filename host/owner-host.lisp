@@ -54,6 +54,9 @@
 ; PRF-191: a POST's Message-ID tests through the owner's view trie
 ; (fn-pidx-existing-action, fn-pidx-sbud-prepare).
 (include-book "../books/post-identity-index")
+; join-f2-midx: the duplicate test's lookup through the catalog, not the trie
+; (fn-pidx-existing-action-cat).
+(include-book "../books/post-identity-catalog")
 ; The retention admission of a POST through a carried obligation-id trie
 ; (fn-prc-refresh, fn-prc-sbud-prepare; fn-owner-prepare-buffer).
 (include-book "../books/post-retain-carried")
@@ -1386,8 +1389,8 @@
 
 (defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
                                  subject-octets evidence-octets charge
-                                 fn-octets fn-arena fn-hist state)
-  (declare (xargs :stobjs (fn-octets fn-arena fn-hist state) :mode :program))
+                                 fn-octets fn-arena fn-cat fn-hist state)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat fn-hist state) :mode :program))
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
@@ -1400,11 +1403,11 @@
       ; is refused by the prepare below (fn-psrv-prepare, lane
       ; prepare-served): the host makes no served test of its own.
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             ; PRF-191: the held article through the view trie
-             ; (books/post-identity-index.lisp
-             ; fn-pidx-existing-action-is-store-existing-action).
-             (existing (fn-pidx-existing-action msgid fn-octets groups
-                                                (fn-owner-core state) fn-arena)))
+             ; PRF-191: the held article through the catalog's Message-ID
+             ; column (books/post-identity-catalog.lisp
+             ; fn-pidx-existing-action-cat-of-live-owner).
+             (existing (fn-pidx-existing-action-cat msgid fn-octets groups
+                                                    (fn-owner-core state) fn-arena fn-cat)))
         (if existing
             (mv nil existing fn-arena fn-hist state)
           (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
@@ -3058,18 +3061,19 @@
 ; (fn-rcl-action-over-is-pb-without-a-tombstone);
 ; the list entry's fn-octet-listp test is the buffer's recognizer
 ; (fn-pbb-buffer-is-octet-listp).
-(defun fn-owner-existing-action-buffer (msgid-octets group-codes fn-octets fn-arena state)
-  (declare (xargs :stobjs (fn-octets fn-arena state) :mode :program))
+(defun fn-owner-existing-action-buffer (msgid-octets group-codes fn-octets fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
   (let ((groups (fn-store-groups-from-codes
                  group-codes
                  (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
     (if (not (fn-pfld-lookup-inputsp msgid-octets groups))
         (value :absent)
-      ; PRF-191: D25's buffer verdict through the view trie
-      ; (fn-pidx-existing-action-is-store-existing-action).
-      (let ((action (fn-pidx-existing-action
+      ; PRF-191: D25's buffer verdict, the article found through the
+      ; catalog's Message-ID column (books/post-identity-catalog.lisp,
+      ; fn-pidx-existing-action-cat-of-live-owner).
+      (let ((action (fn-pidx-existing-action-cat
                      (fn-store-octets->string msgid-octets) fn-octets groups
-                     (fn-owner-core state) fn-arena)))
+                     (fn-owner-core state) fn-arena fn-cat)))
         (value (if action action :absent))))))
 
 ; The subject identity of the payload in the octet buffer is
