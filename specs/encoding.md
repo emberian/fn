@@ -65,9 +65,9 @@ intern arbitrary remote symbols, or execute data. Bound checks precede allocatio
 [`books/identity.lisp`](../books/identity.lisp) owns the two derivations, and
 they are the domain-separated v1 profile:
 
-    subject-v1    = SHA-256("fn/subject/v1" || 0x00 || uint32-be(len(payload))
+    subject-v1    = BLAKE3("fn/subject/v1" || 0x00 || uint32-be(len(payload))
                             || payload)
-    obligation-v1 = SHA-256("fn/obligation/v1" || 0x00 || uint32-be(len(msgid))
+    obligation-v1 = BLAKE3("fn/obligation/v1" || 0x00 || uint32-be(len(msgid))
                             || msgid || uint32-be(len(subject)) || subject)
 
 An identity is the triple (label octets, algorithm id, digest octets),
@@ -75,7 +75,10 @@ rendered canonically as
 
     identity = label || 0x00 || version-octet || algorithm-octet || digest
 
-with version 1 and algorithm 1 (SHA-256). The kind is carried *inside* the
+with version 1 and algorithm 2 (BLAKE3, 32-octet output; store format 10
+and later). Algorithm 1 (SHA-256) was written by formats up to 9 and is not
+read: a format-10 store holds none (D34, fresh deploys; `store export` and
+import is the migration path, and identities re-derive on import). The kind is carried *inside* the
 encoded identity rather than as a hex prefix, and the algorithm identifier
 travels in the container, so algorithm agility (D09) changes the algorithm
 octet and does not change the meaning of an identity already written. A
@@ -193,8 +196,9 @@ payload text field; because an inbound bundle can reach four mebibytes and
 cannot cross the decimal-octet bridge, ACL2 builds and validates the frame head
 and the host concatenates bundle bytes it never interprets.
 
-**A-CRYPTO.** The 32-octet trailer is SHA-256 in deployment and ACL2 does not
-compute it. `fn-frame-digest` is an `encapsulate` whose only constraints are
+**A-CRYPTO.** The 32-octet trailer is BLAKE3 in deployment (SHA-256 up to store
+format 9), computed by ACL2's attached `fn-blake3-stobj` (books/blake3.lisp;
+the C BLAKE3 in the saved images, A-CRYPTO-NATIVE). `fn-frame-digest` is an `encapsulate` whose only constraints are
 output shape (an octet list of length 32), with a local witness proving the
 constraints satisfiable. No theorem in this tree claims collision or preimage
 resistance for it. `fn-frame-seal` and `fn-frame-open` are the specification
@@ -222,10 +226,11 @@ kind-4 composites round-trip through the actual Store-event dispatcher.
 
 FNST's 196,608-octet ceiling counts its payload, excluding the fixed 42-octet
 frame header and trailer. The store profile (FNSM kind 1, format
-`fn-store-9`, the one format an image opens; `fn-store-8`, the retired
-per-file layout, is refused at the open by name: STO-028,
-books/byte-store-frame.lisp, books/store-profile-open.lisp) is two texts
-(the format and the frontier format) and sixteen eight-octet frame naturals
+`fn-store-10`, the one format an image opens; `fn-store-9`, the release
+before, is refused at the open by name with the way out, and every older word
+as another format: STO-028, books/byte-store-frame.lisp,
+books/store-profile-open.lisp) is one text (the format) and fifteen
+eight-octet frame naturals
 (a sealed frame of another width is refused `older-release` or
 `newer-release`, fixtures-refresh 2026-09-27), the operator's fields
 in the order of `*fn-bs-profile-field-names*`; `fn-bs-profile-validp` states

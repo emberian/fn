@@ -45,12 +45,14 @@ if grep -q '^# fn frozen image launcher v2$' "$image"; then
     # libsodium keeps its OpenBSD name (libsodium.so.MAJOR.MINOR).
     set -- "$image_dir"/lib/libsodium.so.*
     [ -s "$1" ] && [ -s "$image_dir/lib/libfn-mldsa65.so" ] &&
-    [ -s "$image_dir/lib/libfn-lz4.so" ] || {
+    [ -s "$image_dir/lib/libfn-lz4.so" ] &&
+    [ -s "$image_dir/lib/libfn-blake3.so" ] || {
       echo "install-native: frozen crypto dependencies missing" >&2; exit 4; }
   else
     [ -s "$image_dir/lib/libsodium.so.23" ] &&
     [ -s "$image_dir/lib/libfn-mldsa65.so" ] &&
-    [ -s "$image_dir/lib/libfn-lz4.so" ] || {
+    [ -s "$image_dir/lib/libfn-lz4.so" ] &&
+    [ -s "$image_dir/lib/libfn-blake3.so" ] || {
       echo "install-native: frozen crypto dependencies missing" >&2; exit 4; }
   fi
   frozen=yes
@@ -76,6 +78,14 @@ else
   done
   [ -n "$lz4" ] || {
     echo "install-native: no lib/libfn-lz4 beside the core (tools/build_lz4.sh)" >&2; exit 4; }
+  # BLAKE3, fn's digest, loads from the same lib/ (host/native/digest.lisp).
+  blake3=
+  for candidate in "$(dirname -- "$launcher_core")/lib/libfn-blake3.so" \
+                   "$(dirname -- "$launcher_core")/lib/libfn-blake3.dylib"; do
+    [ ! -s "$candidate" ] || blake3=$candidate
+  done
+  [ -n "$blake3" ] || {
+    echo "install-native: no lib/libfn-blake3 beside the core (tools/build_blake3.sh)" >&2; exit 4; }
   frozen=no
 fi
 [ -s "$launcher_core" ] || { echo "install-native: generated launcher core is unavailable" >&2; exit 4; }
@@ -155,8 +165,7 @@ if [ "$frozen" = yes ]; then
   cp -p "$image_dir/lib/"* "$libdir/lib/"
   cp -p "$image" "$libdir/fn-host"
 else
-  cp -p "$mldsa" "$libdir/lib/"
-  cp -p "$lz4" "$libdir/lib/"
+  cp -p "$mldsa" "$lz4" "$blake3" "$libdir/lib/"
 
   sed -e "s|^export SBCL_HOME='[^']*'|export SBCL_HOME='$prefix/libexec/fn/runtime/sbcl-home/'|" \
       -e "s|^exec \"[^\"]*\"|exec \"$prefix/libexec/fn/runtime/sbcl\"|" \
@@ -204,13 +213,14 @@ install -m 0755 packaging/install.sh "$destdir$prefix/install.sh"
   elif command -v otool >/dev/null 2>&1; then otool -L "$runtime"
   elif command -v ldd >/dev/null 2>&1; then ldd "$runtime"
   fi
-  echo "dlopen-requirements: system libcrypto+libssl (OpenSSL 3.0+ or LibreSSL 3+), libsodium, lib/libfn-mldsa65 and lib/libfn-lz4 (bundled)"
+  echo "dlopen-requirements: system libcrypto+libssl (OpenSSL 3.0+ or LibreSSL 3+), libsodium, lib/libfn-mldsa65, lib/libfn-lz4 and lib/libfn-blake3 (bundled)"
   if [ "$frozen" = yes ]; then
     $hash_command "$image_dir"/lib/*
     $hash_command "$libdir"/lib/*
   else
-    $hash_command "$mldsa" "$libdir/lib/$(basename -- "$mldsa")"
-    $hash_command "$lz4" "$libdir/lib/$(basename -- "$lz4")"
+    $hash_command "$mldsa" "$libdir/lib/$(basename -- "$mldsa")" \
+                  "$lz4" "$libdir/lib/$(basename -- "$lz4")" \
+                  "$blake3" "$libdir/lib/$(basename -- "$blake3")"
   fi
   if [ -n "$crypto_inventory" ]; then
     printf '%s\n' "$crypto_inventory" | grep -E 'libsodium\.so|libcrypto\.so|libssl\.so'

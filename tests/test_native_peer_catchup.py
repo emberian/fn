@@ -37,6 +37,9 @@ import time
 import unittest
 
 from tests.native_process import wait_for_announcement
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
@@ -148,8 +151,8 @@ def without_path_and_xref(octets):
 
 
 def chain_step(chain, msgid, octets):
-    return hashlib.sha256(chain + hashlib.sha256(octets).digest()
-                          + msgid.encode("ascii")).digest()
+    return blake3_ref.blake3(chain + blake3_ref.blake3(octets)
+                             + msgid.encode("ascii"))
 
 
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native launcher")

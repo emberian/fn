@@ -466,6 +466,51 @@ class NativeReplayDeterminismTests(unittest.TestCase):
         for name in ("digest field groups", "digest field capacity"):
             self.assertEqual(b[name], a[name], name)
 
+    def test_g_the_genesis_is_read_only_where_it_must_be(self):
+        """Format 10 (books/store-genesis.lisp, lane format-bump-10): two
+        stores holding the same records under DIFFERENT genesis records (two
+        imports of one export: each import draws its own node identity,
+        history salt and clock reading) fold the same state: every digest
+        line but `digest genesis' is equal, and that one differs.  So no
+        folded field reads a genesis field; the salt keys only the owner's
+        derived index.  Teeth, where the open must read it: a genesis with
+        one octet changed is refused by name (genesis-damaged), and a genesis
+        swapped from the other store opens but its trailer is not the chain
+        segment 1 names (the open refuses, never replays)."""
+        d = self.base / "gen"
+        d.mkdir(exist_ok=True)
+        archive = d / "archive"
+        self.operator(self.store, "gen-src", "store", "export", str(archive))
+        a, b = d / "a", d / "b"
+        self.operator(a, "gen-a", "store", "import", str(archive))
+        self.operator(b, "gen-b", "store", "import", str(archive))
+        da, _ = self.digest(a)
+        db, _ = self.digest(b)
+        rest = lambda lines: [ln for ln in lines if not ln.startswith("digest genesis ")]
+        gen = lambda lines: [ln for ln in lines if ln.startswith("digest genesis ")]
+        self.assertEqual(len(gen(da)), 1, da)
+        self.assert_same(rest(da), rest(db), "two genesis records, one history")
+        self.assertNotEqual(gen(da), gen(db), "the two imports drew the same genesis")
+        self.assertNotEqual((a / "journal" / "000000.log").read_bytes(),
+                            (b / "journal" / "000000.log").read_bytes())
+        # Teeth 1: a damaged genesis is refused by name at the open.
+        damaged = self.copy(a, "gen-damaged")
+        path = damaged / "journal" / "000000.log"
+        octets = bytearray(path.read_bytes())
+        octets[40] ^= 1
+        path.write_bytes(bytes(octets))
+        refused = self.run_native("store", damaged, "digest", expected=None)
+        self.assertEqual(refused.returncode, 1, refused.stderr)
+        self.assertIn(b"reason=genesis-damaged", refused.stderr + refused.stdout)
+        # Teeth 2: b's genesis under a's log: it opens (same profile and
+        # schema), but segment 1 chains from a's trailer, so the open refuses.
+        swapped = self.copy(a, "gen-swapped")
+        (swapped / "journal" / "000000.log").write_bytes(
+            (b / "journal" / "000000.log").read_bytes())
+        chained = self.run_native("store", swapped, "digest", expected=None)
+        self.assertNotEqual(chained.returncode, 0, chained.stdout)
+        self.assertNotIn(b"digest state ", chained.stdout)
+
     def operator(self, store, name, *words, expected=0):
         config, _, _ = self.node_config(store, name)
         return self.run_native("operator", config, *words, expected=expected)

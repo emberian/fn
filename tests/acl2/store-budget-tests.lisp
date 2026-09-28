@@ -56,7 +56,7 @@
 ; count far below T.
 (defconst *sbudt-r* (fn-bs-profile-max-record-octets *sbudt-dev*))
 (defconst *sbudt-tight*
-  (fn-bs-profile-set-fields *sbudt-dev* (list (cons 3 *sbudt-r*))))
+  (fn-bs-profile-set-fields *sbudt-dev* (list (cons *fn-bs-pf-max-history-octets* *sbudt-r*))))
 (assert-event (fn-bs-profile-validp *sbudt-tight*))
 (defconst *sbudt-room* (- *sbudt-r* (fn-store-publication-ceiling :article)))
 (assert-event (equal (fn-sbud-verdict-at *sbudt-tight* :article 5 *sbudt-room*)

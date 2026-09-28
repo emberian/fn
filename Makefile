@@ -53,6 +53,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-config \
 	books/sha256 \
 	tests/acl2/sha256-tests \
+	books/blake3 \
+	tests/acl2/blake3-tests \
+	books/blake3-stobj \
+	tests/acl2/blake3-stobj-tests \
 	books/frame-octets \
 	books/frame-fields \
 	books/frame-journal \
@@ -232,6 +236,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-init-publication \
 	tests/acl2/store-init-publication-tests \
 	tests/acl2/store-profile-facts-tests \
+	books/store-genesis \
+	tests/acl2/store-genesis-tests \
+	books/store-format-9 \
+	books/store-format-9-records \
+	tests/acl2/store-format-9-tests \
 	books/store-profile-open \
 	tests/acl2/store-profile-open-tests \
 	books/store-profile-namespace \
@@ -313,8 +322,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-tests \
 	books/byte-store-frame \
 	tests/acl2/byte-store-frame-tests \
-	books/byte-store-profile-v1 \
-	tests/acl2/byte-store-profile-v1-tests \
 	books/byte-store-txn-name \
 	tests/acl2/byte-store-txn-name-tests \
 	books/byte-store-initializer \
@@ -928,10 +935,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-feed-article \
 	tests/acl2/owner-feed-article-tests \
 	tests/acl2/catalog-number-index-tests \
-	books/sha256-buffer \
-	tests/acl2/sha256-buffer-tests \
-	books/sha256-range \
-	tests/acl2/sha256-range-tests \
+	books/octet-window \
+	books/subject-id-buffer \
+	tests/acl2/subject-id-buffer-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -1217,7 +1223,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/group-status-tests \
 	tests/acl2/moderation-tests \
 	tests/acl2/peer-host-tests \
-	tests/acl2/sha256-stobj-tests \
 	tests/acl2/topic-history-identity-disjoint-tests \
 	books/public-exposure \
 	tests/acl2/public-exposure-tests \

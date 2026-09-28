@@ -7,7 +7,7 @@ checking, stobj and attachment dispatch, LP's start and error reporting read
 stays at its current value.  These witnesses run the saved images:
 
 * a guard violation at the host boundary (the developer verb `guard-probe'
-  calls fn-sha256-of-string on 42 through fnn-call) is the fault it was
+  calls fn-b3-left-chunks on 42 and -1 through fnn-call) is the fault it was
   before the strip: the same stderr line and exit 4
   (planning/evidence/image-floor-2026-09-26.md has the unstripped image's
   line, byte-identical);
@@ -51,8 +51,12 @@ DEVELOPER = Path(os.environ.get(
 MEASURE = ROOT / "tools" / "runtime_image" / "node_measure.py"
 
 EXIT_FAULT, EXIT_USAGE = 4, 5
-GUARD_LINE = (b"store: ACL2 error in fn-sha256-of-string: "
-              b"(EV-FNCALL-GUARD-ER FN-SHA256-OF-STRING (42) (STRINGP S) (NIL) NIL)\n")
+# The entry is caught by the host's entry guard (io.lisp fnn-call's
+# host-entry-guard) before ACL2 evaluates it: still one fault line, exit 4.
+# (Until store format 10 the probe called fn-sha256-of-string, which the
+# entry guard did not describe, and the line was ACL2's EV-FNCALL-GUARD-ER.)
+GUARD_LINE = (b"store: host-entry-guard: fn-b3-left-chunks argument 2 (n) must be a "
+              b"natural (natp); the host passed the integer -1\n")
 CORE_CEILING_KIB = 128 * 1024
 SMALL_STACK_KIB = 1024          # fn-heap-stack-kib: the constant (served-line-iterative)
 

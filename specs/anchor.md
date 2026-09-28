@@ -194,7 +194,7 @@ Every keystone in `books/anchor-invariants.lisp` is conditional on:
   whose only constraints are "64 octets", and no book attaches a realiser to
   it (the sole `defattach` is a test-only one in
   `tests/acl2/anchor-teeth-tests.lisp`). ACL2 has **no executable SHA-512**:
-  `books/sha256.lisp` is the only executable hash in logic, and Roughtime's
+  `books/blake3.lisp` (fn's digest) and `books/sha256.lisp` (RFC 8315's lock hash only) are the executable hashes in logic, and Roughtime's
   fold is SHA-512. So "the host's leaf observation is
   `fn-anchor-leaf-digest`" is a named
   trusted correspondence and not a proved one, exactly as "the host's Ed25519

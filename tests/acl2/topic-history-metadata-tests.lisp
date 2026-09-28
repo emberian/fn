@@ -4,7 +4,7 @@
 (include-book "must-fail-checked")
 
 (defconst *th-id*
-  (append *fn-id-subject-label* '(0 1 1)
+  (append *fn-id-subject-label* '(0 1 2)
           (make-list 32 :initial-element 5)))
 (defconst *th-principal* (make-list 32 :initial-element 7))
 (defconst *th-author* (list *th-principal* *th-id*))

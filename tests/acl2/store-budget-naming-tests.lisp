@@ -166,14 +166,14 @@
                      :payload-bound))
 ; An operator's profile (`init --max-article-octets 20000'): its A is the
 ; bound, P-1 and P admitted and P+1 refused, whatever the codec could carry.
-(defconst *sbnt-operator* (fn-bs-profile-set-fields *sbnt-dev* '((5 . 20000))))
+(defconst *sbnt-operator* (fn-bs-profile-set-fields *sbnt-dev* '((4 . 20000))))
 (assert-event (fn-bs-profile-validp *sbnt-operator*))
 (assert-event (equal (fn-sbud-post-boundary *sbnt-operator* *sbnt-msgid* 19999 1 9) :ok))
 (assert-event (equal (fn-sbud-post-boundary *sbnt-operator* *sbnt-msgid* 20000 1 9) :ok))
 (assert-event (equal (fn-sbud-post-boundary *sbnt-operator* *sbnt-msgid* 20001 1 9)
                      :payload-bound))
 ; Its G: a profile with 4 groups per article refuses a fifth group.
-(defconst *sbnt-four* (fn-bs-profile-set-fields *sbnt-dev* '((6 . 4))))
+(defconst *sbnt-four* (fn-bs-profile-set-fields *sbnt-dev* '((5 . 4))))
 (assert-event (equal (fn-sbud-post-boundary *sbnt-four* *sbnt-msgid* 10 4 9) :ok))
 (assert-event (equal (fn-sbud-post-boundary *sbnt-four* *sbnt-msgid* 10 5 9)
                      :group-bound))
@@ -249,12 +249,12 @@
 ; The operator's R decides, one octet either side of the composite.
 (defconst *sbnt-r-at* (fn-bs-profile-set-fields
                        *fn-bs-profile-defaults*
-                       (list (cons 4 *sbnt-composite-octets*)
-                             (cons 5 65536) (cons 6 1) (cons 7 64))))
+                       (list (cons 3 *sbnt-composite-octets*)
+                             (cons 4 65536) (cons 5 1) (cons 6 64))))
 (defconst *sbnt-r-below* (fn-bs-profile-set-fields
                           *fn-bs-profile-defaults*
-                          (list (cons 4 (1- *sbnt-composite-octets*))
-                                (cons 5 65536) (cons 6 1) (cons 7 64))))
+                          (list (cons 3 (1- *sbnt-composite-octets*))
+                                (cons 4 65536) (cons 5 1) (cons 6 64))))
 (assert-event (fn-bs-profile-admittedp *sbnt-r-at*))
 (assert-event (fn-bs-profile-admittedp *sbnt-r-below*))
 (assert-event (equal (fn-sbud-signed-event-boundary *sbnt-r-at* *sbnt-composite*)

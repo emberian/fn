@@ -131,8 +131,8 @@
 ;; fn-store-sn-replay-digest-report) calls books/state-digest (fn-sdg-).
 (include-book "books/state-digest")
 ;; The subject digest over the buffer (D27 wave C): host/native/io.lisp
-;; fnn-subject-id-buffer calls fn-shb-subject-id-bounded.
-(include-book "books/sha256-buffer")
+;; fnn-subject-id-buffer calls fn-sidb-subject-id-bounded.
+(include-book "books/subject-id-buffer")
 (include-book "books/owner-advance-carried")
 (include-book "books/owner-intent-carried")
 (include-book "books/owner-commit-ocl")
@@ -351,12 +351,13 @@
         ; The build-time feature check: the system libssl pair (OpenSSL 3.0+
         ; or LibreSSL 3+) resolves every function tls.lisp calls.
         (fnn-tls-initialize)
-        ; Native SHA-256 (lane digest-native, A-CRYPTO-NATIVE): the pinned
-        ; libcrypto's EVP SHA-256 replaces the raw definitions of
-        ; fn-sha256-stobj, fn-sha256-of-string and fn-sha256-of-prefixed-buffer
-        ; after a known-answer and reference check.  Checked here, then reset
-        ; so the saved core holds the ACL2 references; every start re-checks
-        ; and re-installs after the TLS pair is pinned.
+        ; Native BLAKE3 (A-CRYPTO-NATIVE; lanes digest-native, blake3-digest):
+        ; the vendored C in lib/libfn-blake3 (tools/build_blake3.sh;
+        ; FN_BLAKE3_LIBRARY names it during the build) replaces the raw
+        ; definitions of fn-blake3-stobj, fn-blake3-of-prefixed-buffer and
+        ; fn-blake3-of-prefixed-range after an official-vector and reference
+        ; check.  Checked here, then reset so the saved core holds the ACL2
+        ; references; every start re-checks and re-installs.
         (load "host/native/digest.lisp")
         (fnn-digest-initialize)
         (fnn-digest-reset)

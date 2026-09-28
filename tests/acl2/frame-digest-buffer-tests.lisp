@@ -3,7 +3,8 @@
 ;
 ; 1. The functions the host calls are guard-verified.
 ; 2. The attachment executes: the buffer digest of "a" then "bc" in the
-;    buffer is SHA-256("abc") (FIPS 180-2 appendix B.1), equal to the list
+;    buffer is BLAKE3("abc") (the Rust blake3 crate's value; the realiser is
+;    BLAKE3 since store format 10), equal to the list
 ;    frame digest; the entry check accepts the digest and refuses a torn
 ;    (zero) trailer.
 ; 3. Teeth for the keystones.
@@ -13,12 +14,12 @@
 (include-book "must-fail-checked")
 
 (assert-event
- (and (eq (symbol-class 'fn-sha256-of-prefixed-buffer-any (w state)) :common-lisp-compliant)
+ (and (eq (symbol-class 'fn-blake3-of-prefixed-buffer-any (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arx-entry-ok-buffer (w state)) :common-lisp-compliant)))
 
 (defconst *fdbt-abc*
-  '(#xba #x78 #x16 #xbf #x8f #x01 #xcf #xea #x41 #x41 #x40 #xde #x5d #xae #x22 #x23
-    #xb0 #x03 #x61 #xa3 #x96 #x17 #x7a #x9c #xb4 #x10 #xff #x61 #xf2 #x00 #x15 #xad))
+  '(#x64 #x37 #xb3 #xac #x38 #x46 #x51 #x33 #xff #xb6 #x3b #x75 #x27 #x3a #x8d #xb5
+    #x48 #xc5 #x58 #x46 #x5d #x79 #xdb #x03 #xfd #x35 #x9c #x6c #xd5 #xbd #x9d #x85))
 
 (assert-event
  (let* ((fn-octets-rd (fn-octets-rd-clear fn-octets-rd))

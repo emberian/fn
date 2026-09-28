@@ -327,8 +327,8 @@ one-owner rule in `AGENTS.md`. So the configuration held the shared secret
 in the clear and `fn-auth-checkp` compared the supplied octets to it with
 `equal`.
 
-**It is closed** because `books/sha256.lisp` defines an executable,
-guard-verified SHA-256 and `books/crypto-attach.lisp` attaches it to
+**It is closed** because `books/sha256.lisp` defined an executable,
+guard-verified SHA-256 (BLAKE3's `books/blake3.lisp` since store format 10) and `books/crypto-attach.lisp` attaches it to
 `fn-digest`. `books/auth-secret.lisp` is the scheme over it — a 16-octet
 salt per credential, the tagged digest of `salt || secret`, the stored
 verifier `(:fn-authsec-v1 salt digest)` — and `fn-auth-checkp` is
@@ -345,7 +345,7 @@ property of the mechanism RFC 4643 §2.3 defines, which is why §2.3.2 asks
 for a protected channel and why `fn-auth-config-protected-onlyp` exists.
 What changed is what a stolen *configuration file* contains. And that a
 WRONG secret is rejected is still not a theorem — it is second-preimage
-resistance of the attached SHA-256, A-CRYPTO — though it is now a witness
+resistance of the attached digest (BLAKE3), A-CRYPTO — though it is now a witness
 on concrete octets under the real attachment in
 `tests/acl2/nntp-auth-tests.lisp` and on the wire in
 `planning/evidence/auth-w10-2026-09-20.md`.

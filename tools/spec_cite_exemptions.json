@@ -10,7 +10,8 @@
   "fn-version-platform.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
   "fn-version-openbsd-amd64.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
   "fn-version+rev12-platform.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
-  "fn-store-9": "a store format word, not a Lisp definition: the profile frame's first text field, books/byte-store-frame.lisp *fn-bs-meta-format-9* (lane commit-onto-log, STO-028)"
+  "fn-store-9": "a store format word, not a Lisp definition: the profile frame's first text field, books/byte-store-frame.lisp *fn-bs-meta-format-9* (lane commit-onto-log, STO-028)",
+  "fn-store-10": "a store format word, not a Lisp definition: the profile frame's first text field, books/byte-store-frame.lisp *fn-bs-meta-format-10* (lane format-bump-10, STO-028)"
  },
  "stale": {
   "PKT-446": {
@@ -620,8 +621,6 @@
     "specs/substrate-transport.md"
    ],
    "fn-store-8": [
-    "docs/operator-internals.md",
-    "specs/encoding.md",
     "specs/storage.md"
    ],
    "fn-store-experiment-4": [

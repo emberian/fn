@@ -1,5 +1,5 @@
 ; Teeth for SEC-006 (PRF-210): own-post cancel by RFC 8315 Cancel-Lock keyed
-; by the posting ACCOUNT under HKDF-derived purpose keys (books/cancel-lock.lisp,
+; by the posting ACCOUNT under BLAKE3-derived purpose keys (books/cancel-lock.lisp,
 ; books/cancel-lock-lines.lisp, the :poster arm of books/control-authority.lisp).
 ; Per keystone a reachable witness asserting the complete antecedent and
 ; conclusion, and per hypothesis a removal witness (AGENTS.md, "Teeth ship
@@ -19,21 +19,29 @@
     nil))
 
 ; ---------------------------------------------------------------------------
-; RFC 8315 section 5.2's example: K = HMAC-SHA256("AnotherSecret",
-; "JaneDoe<12345@mid.example>"); the key is Base64(K) and the lock is
-; Base64(SHA-256(Base64(K))): the hash is over the Base64-ENCODED key.
+; RFC 8315 section 5.2's example, the part every verifier computes: the key
+; string "yM0ep490Fzt83CLYYAytm3S2HasHhYG4LAeAlmuSEys=" (Base64 of the
+; example's K) locks as Base64(SHA-256(Base64(K))): the hash is over the
+; Base64-ENCODED key (sections 2.1, 2.2).
 (assert-event
- (let ((k (fn-cl-rfc8315-key (clt-octets "AnotherSecret") (clt-octets "JaneDoe")
+ (equal (fn-ctl-lock-of-key (clt-octets "yM0ep490Fzt83CLYYAytm3S2HasHhYG4LAeAlmuSEys="))
+        (clt-octets "NSBTz7BfcQFTCen+U4lQ0VS8VIlZao2b8mxD/xJaaeE=")))
+; fn's own K (section 4's shape, the MAC keyed BLAKE3; only this node
+; recomputes it): Base64(keyed_hash(SEC, "JaneDoe" || "<12345@mid.example>"))
+; under a 32-octet SEC of 3s, and its lock, both the Rust blake3 crate's and
+; Python hashlib's values, not this tree's.
+(assert-event
+ (let ((k (fn-cl-rfc8315-key (make-list 32 :initial-element 3) (clt-octets "JaneDoe")
                              (clt-octets "<12345@mid.example>"))))
-   (and (equal k (clt-octets "yM0ep490Fzt83CLYYAytm3S2HasHhYG4LAeAlmuSEys="))
+   (and (equal k (clt-octets "AHgYG/bOZiCz1yKys8ePeJb1O5h+G11F3Zn5B721+uo="))
         (equal (fn-ctl-lock-of-key k)
-               (clt-octets "NSBTz7BfcQFTCen+U4lQ0VS8VIlZao2b8mxD/xJaaeE=")))))
+               (clt-octets "y82iWYXdH6rE7tUMxXJ0wfVJW3DPrCHnxE54JD8utXY=")))))
 ; A lock of the RAW key would differ (the encoding is not optional).
 (assert-event
  (not (equal (fn-stx-b64-encode
-              (fn-sha256 (fn-ns-hmac-sha256 (clt-octets "AnotherSecret")
-                                            (clt-octets "JaneDoe<12345@mid.example>"))))
-             (clt-octets "NSBTz7BfcQFTCen+U4lQ0VS8VIlZao2b8mxD/xJaaeE="))))
+              (fn-sha256 (fn-ns-mac (make-list 32 :initial-element 3)
+                                    (clt-octets "JaneDoe<12345@mid.example>"))))
+             (clt-octets "y82iWYXdH6rE7tUMxXJ0wfVJW3DPrCHnxE54JD8utXY="))))
 
 ; ---------------------------------------------------------------------------
 ; Two accounts on one node (principal ids, 32 octets), one key ring: epoch 1,
@@ -365,11 +373,11 @@
             (list (fn-cl-lock *clt-e1* *clt-alice* (clt-octets *clt-t-id*)))))
       (not (equal (fn-cl-lock *clt-e1* *clt-bob* (clt-octets *clt-t-id*))
                   (fn-cl-lock *clt-e1* *clt-alice* (clt-octets *clt-t-id*))))))
-; The key is RFC 8315's over the purpose key, not a bare HMAC of the root.
+; The key is RFC 8315's shape over the purpose key, not a bare MAC under the root.
 (assert-event
  (not (equal (fn-cl-key *clt-e1* *clt-alice* (clt-octets *clt-t-id*))
              (fn-stx-b64-encode
-              (fn-ns-hmac-sha256 (fn-ns-entry-root *clt-e1*)
+              (fn-ns-mac (fn-ns-entry-root *clt-e1*)
                                  (append (fn-cl-uid *clt-alice*) (clt-octets *clt-t-id*)))))))
 
 ; books/control-authority.lisp fn-ctl-control-of-fields (PRF-210; no

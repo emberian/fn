@@ -645,11 +645,11 @@
 ; Written out, not computed: ACL2 refuses to call an ATTACHMENT while
 ; evaluating a `defconst' (:DOC ignored-attachment), and a constant over
 ; `fn-digest' would bake an attachment-dependent value into the world.  The
-; assert-event re-derives it under the real SHA-256 attachment, where
+; assert-event re-derives it under the real digest (BLAKE3) attachment, where
 ; top-level evaluation applies, so the literal cannot drift from enrolment.
 (defconst *fn-t-served-cred-digest*
-  '(60 237 250 71 154 204 168 180 72 224 241 93 232 185 72 59
-    73 5 240 237 54 116 175 93 127 219 39 238 113 83 63 194))
+  '(42 82 187 10 181 221 230 125 199 188 135 91 193 55 205 245
+    177 50 208 139 71 236 67 86 54 24 223 76 55 144 61 51))
 (defconst *fn-t-served-cred*
   (fn-auth-make-cred *fn-t-served-cred-name* (make-list 32 :initial-element 7)
                      (fn-authsec-verifier *fn-t-served-cred-salt*

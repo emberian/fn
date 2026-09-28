@@ -39,8 +39,12 @@ MODEL_CUTS = {
     "init-config-history-fenced",
     "init-final-config-file-fenced", "init-final-config-record-file-fenced",
     "init-root-fenced", "init-parent-fenced",
-    # books/byte-store-log-initializer.lisp fn-bsi-log-init-program (format 9).
+    # books/byte-store-log-initializer.lisp fn-bsi-log-init-program (format 10:
+    # the genesis, books/store-genesis.lisp, then segment 1).
     "init-journal-mkdir", "init-journal-parent-fenced",
+    "init-genesis-created", "init-genesis-written", "init-genesis-file-fenced",
+    "init-genesis-linked", "init-genesis-link-eexist", "init-genesis-root-fenced",
+    "init-genesis-stage-unlinked", "init-genesis-journal-fenced",
     "init-segment-created", "init-segment-written", "init-segment-file-fenced",
     "init-journal-segment-fenced",
 }
@@ -105,8 +109,9 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertEqual(initialized.returncode, run_store.EXIT_OK, initialized.stderr)
         self.assertTrue((store / "config.json").is_file())
         self.assertTrue((store / "config" / "00000001.cfg").is_file())
-        # Format 9 (books/byte-store-log-initializer.lisp): the segment, no
-        # allocator file, no transactions/.
+        # Format 10 (books/byte-store-log-initializer.lisp): the genesis at
+        # position 0, the segment, no allocator file, no transactions/.
+        self.assertTrue((store / "journal" / "000000.log").is_file())
         segment = store / "journal" / "000001.log"
         self.assertTrue(segment.is_file())
         self.assertEqual(segment.read_bytes().count(0), segment.stat().st_size)

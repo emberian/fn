@@ -185,19 +185,14 @@ whose own failure would raise a new condition here."
   (apply #'concatenate 'string strings))
 
 ;;; ---------------------------------------------------------------------------
-;;; SHA-256 has one owner, and it is ACL2.  `books/sha256-stobj.lisp'
-;;; computes FIPS 180-4 over a word stobj: `fn-sha256-stobj' is what
-;;; books/crypto-attach.lisp attaches to the digest seams, and
-;;; `fn-sha256-of-string' reads a string in place.  This host used to carry
-;;; a SHA-256 of its own for the diagnostic `sha256' verb, a second
-;;; implementation of a decision ACL2 owns; the verb now hands ACL2 the file
-;;; as a string.  tools/fn_native.py `sha256-selftest' checks the verb
-;;; against hashlib, which is now a check of ACL2's digest through the host.
-
-(defun fnn-octet-string (octets)
-  "A byte array as an ACL2 string of the same character codes: the concrete
-input the core's string entries read in place, with no list in between."
-  (map '(simple-array character (*)) #'code-char octets))
+;;; The digest has one owner, and it is ACL2.  books/crypto-attach.lisp
+;;; attaches BLAKE3 (`fn-blake3-stobj', books/blake3-stobj.lisp; SHA-256 up
+;;; to store format 9) to the digest seams, and the diagnostic `blake3' verb
+;;; hands ACL2 the file in the octet buffer (`fn-blake3-of-prefixed-buffer').
+;;; In the saved images host/native/digest.lisp swaps the vendored C BLAKE3
+;;; in for those functions after a start-up check against them
+;;; (A-CRYPTO-NATIVE).  tools/fn_native.py `blake3-selftest' checks the verb
+;;; against an independent BLAKE3.
 
 ;;; ---------------------------------------------------------------------------
 ;;; The octet buffer (books/octets-stobj.lisp, D27 boundary 6).  `fn-octets'
@@ -1577,12 +1572,13 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
   "The integrity trailer over a protected prefix, computed by ACL2.
 
 `books/frame-trailer.lisp' owns it: `fn-frame-trailer' is `fn-frame-digest',
-realised by `fn-sha256' through `books/crypto-attach.lisp'.  This host used
-to run `fnn-sha256' here, which made three separate SHA-256s the owners of
-one decision -- the other two being `tools/frame_bridge.py' and
-`tools/run_owner.py' -- and that is what AGENTS.md's one-owner rule forbids.
-The diagnostic `sha256' verb asks ACL2 too (`fn-sha256-of-string'); this
-host has no SHA-256 of its own."
+realised by BLAKE3 (`fn-blake3-stobj') through `books/crypto-attach.lisp'.
+This host once ran a SHA-256 of its own here, which made three separate
+digests the owners of one decision -- the other two being
+`tools/frame_bridge.py' and `tools/run_owner.py' -- and that is what
+AGENTS.md's one-owner rule forbids.  The diagnostic `blake3' verb asks ACL2
+too; this host has no digest of its own (host/native/digest.lisp's C
+BLAKE3 replaces ACL2's executable only after checking it against it)."
   (let ((value (fnn-core 'fn-frame-trailer (fnn-octet-list prefix))))
     (when (eq value :bad)
       (fnn-fault "ACL2 refused to trail a protected prefix"))
@@ -1598,9 +1594,9 @@ host has no SHA-256 of its own."
 
 (defun fnn-subject-id (payload)
   "Content identity v1 (books/identity), derived end to end in ACL2.
-`books/crypto-attach.lisp' attaches SHA-256 to `fn-frame-digest', so the
+`books/crypto-attach.lisp' attaches BLAKE3 to `fn-frame-digest', so the
 preimage AND the digest are ACL2's; this host no longer hashes for identity,
-because a second SHA-256 here would be a second owner of the derivation.
+because a second digest here would be a second owner of the derivation.
 Hashing the bare payload is the v0 profile and derives a different identity,
 which `fn-store-sn-prepare' then refuses."
   (fnn-as-octets (fnn-core 'fn-store-subject-id-of-payload
@@ -1608,13 +1604,13 @@ which `fn-store-sn-prepare' then refuses."
 
 (defun fnn-subject-id-buffer ()
   "FNN-SUBJECT-ID of the payload in the octet buffer, digested in place.
-books/sha256-buffer.lisp `fn-shb-subject-id-bounded', guard-verified with
+books/subject-id-buffer.lisp `fn-sidb-subject-id-bounded', guard-verified with
 guard T, so the call runs the compiled stobj code and ACL2 raises no
 invariant-risk warning on standard output (qual-e747dbcc A4): the subject
 preimage's fixed head is a short list and the payload is read from the
 buffer by index, so no octet list of the payload is built for the digest
 (D27 wave C; the served POST, host/native/owner.lisp fnn-owner-attempt)."
-  (fnn-as-octets (fnn-core 'fn-shb-subject-id-bounded (fnn-live-octets))))
+  (fnn-as-octets (fnn-core 'fn-sidb-subject-id-bounded (fnn-live-octets))))
 
 (defun fnn-obligation-id (msgid subject)
   "Obligation identity v1, preimage and digest both ACL2's.  See FNN-SUBJECT-ID."
@@ -2007,6 +2003,20 @@ after the syscall."
     (setf (fnn-store-orphans store) (fnn-staging-orphans store))
     (nreverse removed)))
 
+(defun fnn-refuse-another-format (store)
+  "A store whose config.json ACL2's open names as another format
+(`:store-format-9', `:store-format') is refused by ACL2's line before any
+other check reads the store; anything else is left to the ordinary open."
+  (let ((path (fnn-config-path store)))
+    (when (ignore-errors (fnn-check-regular path))
+      (let* ((raw (ignore-errors (fnn-read-regular-bounded path 16384)))
+             (verdict (and raw (> (length raw) 0) (/= (aref raw 0) (char-code #\{))
+                           (fnn-core 'fn-store-metadata-config-open (fnn-octet-list raw)))))
+        (when (and (consp verdict) (eq (first verdict) :refused)
+                   (member (second verdict) '(:store-format-9 :store-format)))
+          (error 'fnn-store-profile-refusal
+                 :message (fnn-core 'fn-store-metadata-config-refusal-text verdict)))))))
+
 (defun fnn-load-config (store)
   (fnn-check-regular (fnn-config-path store))
   (let ((raw (handler-case
@@ -2057,7 +2067,9 @@ after the syscall."
                  (fnn-indeterminate "configuration history appeared during initialization"))
                (fnn-fsync-dir (fnn-config-dir store))
                (fnn-init-cut store "init-config-history-fenced"))
-             ;; fn-bsi-log-segment-steps.
+             ;; Format 10: the genesis at position 0 (books/store-genesis.lisp),
+             ;; then fn-bsi-log-segment-steps.
+             (fnn-log-init-genesis store)
              (fnn-log-init-segment store)
              (fnn-fsync-regular (fnn-config-path store))
              (fnn-init-cut store "init-final-config-file-fenced")
@@ -2076,6 +2088,12 @@ after the syscall."
 (defun fnn-acquire (store)
   (fnn-safe-directory (fnn-store-root store))
   (fnn-require-clone-activated store)
+  ;; Format 10 (lane format-bump-10): a store of another format is named
+  ;; first.  Its filesystem record is a frame of its own release's digest, so
+  ;; the record check below would call a format-9 store's record undecodable
+  ;; and point at `rebind-filesystem'; the profile's open (ACL2's
+  ;; fn-spo-config-open) names the format and the way out instead.
+  (fnn-refuse-another-format store)
   ;; PKT-579: the store root is on the filesystem its record names, or the
   ;; open is refused by name before anything else is read.
   (fnn-check-filesystem-identity store)
@@ -3117,8 +3135,12 @@ the records are read after the open by the verbs that need them
     "init-config-history-fenced"
     "init-final-config-file-fenced" "init-final-config-record-file-fenced"
     "init-root-fenced" "init-parent-fenced"
-    ;; books/byte-store-log-initializer.lisp fn-bsi-log-init-program (format 9).
+    ;; books/byte-store-log-initializer.lisp fn-bsi-log-init-program (format 10:
+    ;; the genesis, books/store-genesis.lisp, then segment 1).
     "init-journal-mkdir" "init-journal-parent-fenced"
+    "init-genesis-created" "init-genesis-written" "init-genesis-file-fenced"
+    "init-genesis-linked" "init-genesis-link-eexist" "init-genesis-root-fenced"
+    "init-genesis-stage-unlinked" "init-genesis-journal-fenced"
     "init-segment-created" "init-segment-written" "init-segment-file-fenced"
     "init-journal-segment-fenced"))
 
@@ -3388,10 +3410,13 @@ or refuses by name, saying what to run."
        "init" stage root-path
        ;; books/store-init-log-publication.lisp fn-bs-init-log-files, in
        ;; its order: the profile, the generation-1 configuration record,
-       ;; the segment's ACL2 extent of zeros.  No allocator file and no
-       ;; transactions/ (a format-9 store reads neither).
+       ;; the genesis (format 10, books/store-genesis.lisp), the segment's
+       ;; ACL2 extent of zeros.  No allocator file and no transactions/.
        (list (cons (fnn-config-path stage) (fnn-metadata-config-frame profile))
              (cons (fnn-config-record-path stage 1) record)
+             (cons (fnn-genesis-path stage)
+                   (fnn-genesis-octets
+                    (fnn-metadata-config-decode (fnn-metadata-config-frame profile))))
              (cons (fnn-segment-path stage)
                    (fnn-make-octets (fnn-nat (fnn-core 'fn-store-log-initial-extent)))))
        0
@@ -3811,7 +3836,9 @@ presence of the two names is classified by fn-bs-imp-classify."
          ;; below refuses the archive by name (its MANIFEST check comes first
          ;; and names the profile when its octets changed; lane fuzz-nntp,
          ;; planning/evidence/fuzz-nntp-2026-09-27.md).
-         (decoded (fnn-core 'fn-bs-config-decode profile))
+         ;; This format's profile, or a format-9 archive's translated
+         ;; (books/store-export.lisp fn-sxp-config-decode-archive).
+         (decoded (fnn-core 'fn-sxp-config-decode-archive profile))
          (record-bound (and decoded (fnn-core 'fn-store-profile-read-bound decoded)))
          (manifest (fnn-octet-list
                     (fnn-archive-entry
@@ -3866,6 +3893,10 @@ presence of the two names is classified by fn-bs-imp-classify."
                  (mapcar (lambda (config)
                            (cons (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
                          configs)
+                 ;; format 10: the imported store's own genesis (a new node:
+                 ;; its identity, salt and clock reading drawn here and
+                 ;; recorded; the archive carries none), before the segment.
+                 (list (cons (fnn-genesis-path stage) (fnn-genesis-octets values)))
                  (list (cons (fnn-segment-path stage)
                              (fnn-make-octets
                               (fnn-nat (fnn-core 'fn-store-log-initial-extent))))))
@@ -4893,7 +4924,7 @@ connection `fn-reader-reset' opens and projects with
 ;;;                      SEGMENT-MRU TRANSFER-MRU EXPECT TRACE]
 ;;;   tcpcl replay TRACE-FILE [ROLE NODE-ID PEER KEEPALIVE SEGMENT-MRU
 ;;;                      TRANSFER-MRU]
-;;;   sha256 PATH
+;;;   blake3 PATH
 ;;; `FN_NATIVE_INIT_FAULT=MODEL-CUT:eio|kill|eacces` is a developer-only test seam;
 ;;; it is intentionally absent from this command protocol and normal CLI.
 
@@ -5827,6 +5858,61 @@ number of units is a fault: init and every extension leave whole units."
     (unless st (fnn-refuse "no log segment at ~a" path))
     (sb-posix:stat-size st)))
 
+;;; The genesis at position 0 of the log (format 10, lane format-bump-10;
+;;; books/store-genesis.lisp).  The host draws the recorded readings -- the
+;;; node identity (32 CSPRNG octets), the history salt (4 CSPRNG octets), the
+;;; wall-clock reading and the image's source revision -- and ACL2 builds the
+;;; file from them (fn-gen-octets-for); the host neither frames nor checks.
+(defun fnn-genesis-path (store)
+  (fnn-join (fnn-journal-dir store) (fnn-core 'fn-store-genesis-file-name)))
+
+(defun fnn-genesis-octets (profile)
+  (let ((octets (fnn-core 'fn-store-genesis-octets
+                          (fnn-csprng-octets 32 "genesis node identity")
+                          (fnn-csprng-octets 4 "genesis history salt")
+                          (floor (fnn-owner-wall-milliseconds) 1000)
+                          (fnn-octet-list (fnn-string-octets
+                                           (or (ignore-errors (fnn-source-revision))
+                                               "unknown")))
+                          profile)))
+    (unless (and octets (fnn-octet-list-p octets))
+      (fnn-fault "ACL2 built no genesis for these readings"))
+    (fnn-octets octets)))
+
+(defun fnn-log-init-genesis (store)
+  "books/byte-store-log-initializer.lisp: the genesis published into journal/
+as config.json is (fnn-publish-initial-file, cuts init-genesis-*), then
+journal/ fenced (init-genesis-journal-fenced).  An existing genesis is kept (a
+re-run init completes, never redraws: EEXIST at the link)."
+  (fnn-publish-initial-file store (fnn-genesis-path store)
+                            (fnn-genesis-octets (fnn-store-config store))
+                            "init-genesis-")
+  (fnn-fsync-dir (fnn-journal-dir store))
+  (fnn-init-cut store "init-genesis-journal-fenced"))
+
+(defun fnn-genesis-open (store &optional (profile (fnn-store-config store)))
+  "Every open of a format-10 store: ACL2's open of journal/000000.log under
+the profile the store opened (fn-gen-open, books/store-genesis.lisp),
+refused by name (genesis-damaged, genesis-format, schema-digest,
+profile-digest) or kept for this process (fn-store-genesis-install: the
+owner's history salt, `store digest').  Answers the chain value segment 1
+starts from.  No file at all: an init that did not finish."
+  (let ((path (fnn-genesis-path store)))
+    (unless (fnn-check-regular path)
+      (fnn-fault "missing store genesis: ~a (an init that did not finish: run init again)" path))
+    (let ((verdict (fnn-core 'fn-store-genesis-open
+                             (fnn-octet-list (fnn-read-regular-bounded path 1024))
+                             profile)))
+      (unless (and (consp verdict) (member (first verdict) '(:genesis :refused)))
+        (fnn-fault "ACL2 returned a malformed genesis verdict"))
+      (when (eq (first verdict) :refused)
+        (let ((text (fnn-core 'fn-store-genesis-refusal-text verdict)))
+          (unless (stringp text)
+            (fnn-fault "ACL2 refused the genesis without naming a reason"))
+          (error 'fnn-store-open-refusal :message text)))
+      (fnn-core-state 'fn-store-genesis-install verdict)
+      (fnn-core 'fn-store-genesis-chain verdict))))
+
 (defun fnn-log-init-segment (store)
   "books/byte-store-log-initializer.lisp fn-bsi-log-segment-steps: create the
 store's segment (O_EXCL), its ACL2 initial extent of zeros
@@ -6260,7 +6346,12 @@ does, and records how the log holds the history (fnn-store-log-history) for
             ;; the replay's chunk (fnn-recover-log-stream-take) and none is
             ;; kept; otherwise each is kept as its octet vector for the
             ;; checkpoint's suffix.
-            (let* ((genesis (if log-position (second log-position) *fn-lg-genesis*))
+            ;; Format 10: the genesis is read and checked at every open (its
+            ;; schema and profile digests, refused by name); segment 1 chains
+            ;; from its trailer, a checkpoint's first suffix segment from the
+            ;; F row's genesis.
+            (let* ((genesis (let ((chain (fnn-genesis-open store)))
+                              (if log-position (second log-position) chain)))
                    (full (and (not log-position) (not (eq status :ok))
                               (let ((choice (fnn-core 'fn-store-sco-select status sequence 0
                                                       (fnn-store-config store))))
@@ -6522,7 +6613,9 @@ acknowledged.  The stage is unpublished throughout: a death here leaves
 ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
   (let* ((path (fnn-segment-path store))
          (log (fnn-log-recover path (fnn-log-observed-extent path) (fnn-store-log-unit)
-                               (fnn-nat (fnn-core 'fn-store-profile-max-record-octets values)))))
+                               (fnn-nat (fnn-core 'fn-store-profile-max-record-octets values))
+                               ;; format 10: segment 1 chains from the stage's genesis
+                               (fnn-genesis-open store values))))
     (setf (fnn-store-log store) log
           (fnn-log-bmax log) (fnn-nat (fnn-core 'fn-olr-bmax nil))
           (fnn-log-omax log) (fnn-nat (fnn-core 'fn-olr-omax nil))
@@ -6824,7 +6917,7 @@ observation (the COMPLETE re-signals it under the owner)."
          (unless (fnn-developer-image-p)
            (error 'fnn-usage-error
                   :message "guard-probe is available only in the developer image"))
-         (fnn-core 'fn-sha256-of-string 42)
+         (fnn-core 'fn-b3-left-chunks 42 -1)
          +fnn-exit-ok+)
         ((string= verb "redeem")
          (fnn-command-redeem (cdr args)))
@@ -6841,14 +6934,16 @@ observation (the COMPLETE re-signals it under the owner)."
          (if (null (cdr args))
              (funcall (fnn-verb-handler verb) "help" nil)
            (funcall (fnn-verb-handler verb) (second args) (cddr args))))
-        ((string= verb "sha256")
+        ((string= verb "blake3")
          (need 2)
-         ;; The file reaches ACL2 as a string, read in place by
-         ;; `fn-sha256-of-string' (books/sha256-stobj.lisp): no octet list.
+         ;; The file reaches ACL2 in the octet buffer, read in place by
+         ;; `fn-blake3-of-prefixed-buffer-any' (books/frame-digest-buffer.lisp):
+         ;; no octet list.
          (fnn-out "~a" (fnn-hex (fnn-as-octets
-                                 (fnn-core 'fn-sha256-of-string
-                                           (fnn-octet-string
+                                 (fnn-core 'fn-blake3-of-prefixed-buffer-any nil
+                                           (fnn-octets-fill
                                             (fnn-read-regular-bounded (second args) (ash 1 26)))))))
+         (fnn-octets-clear)
          +fnn-exit-ok+)
         (t (error 'fnn-usage-error :message (format nil "unknown verb ~a" verb)))))))
 

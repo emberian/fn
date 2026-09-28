@@ -89,24 +89,23 @@
 ;; weakened theorem was proved (the keystone as stated) before validp was
 ;; removed.  '(1 2 3) is refused by name above.
 
-;; logp: the development preset in the per-file layout's word (format 8, what
-;; the previous release exported).  Valid, in order, not a log profile: the
-;; plan imports it under the fn-store-9 word, so not under VALUES.
-(defconst *sxpt-format-8* (cons *fn-bs-meta-format-8* (cdr *fn-bs-profile-development*)))
-(assert-event (fn-bs-profile-validp *sxpt-format-8*))
+;; logp: the development preset's fields under the previous format's word
+;; (fn-store-9).  In order, not a log profile (not a format-10 profile at
+;; all): the plan does not import it under VALUES.
+(defconst *sxpt-word-9* (cons *fn-bs-meta-format-9* (cdr *fn-bs-profile-development*)))
+(assert-event (not (fn-bs-profile-validp *sxpt-word-9*)))
 (assert-event (and (fn-sxp-increasingp *sxpt-records*)
                    (fn-sxp-config-names-increasingp *sxpt-configs* nil)))
-(assert-event (not (fn-bs-profile-logp *sxpt-format-8*)))
-(assert-event (not (equal (sxpt-plan *sxpt-format-8* *sxpt-frontier* *sxpt-configs*
+(assert-event (not (fn-bs-profile-logp *sxpt-word-9*)))
+(assert-event (not (equal (sxpt-plan *sxpt-word-9* *sxpt-frontier* *sxpt-configs*
                                      *sxpt-records*)
-                          (list :import *sxpt-format-8* *sxpt-frontier*
+                          (list :import *sxpt-word-9* *sxpt-frontier*
                                 *sxpt-configs* *sxpt-records*))))
 (must-fail-checked
  (with-prover-step-limit
   20000
   (defthm sxpt-without-logp
-   (implies (and (fn-bs-profile-validp values)
-                 (fn-sxp-increasingp records)
+   (implies (and (fn-sxp-increasingp records)
                  (fn-sxp-config-names-increasingp configs nil))
             (equal (sxpt-plan values frontier configs records)
                    (list :import values frontier configs records)))
@@ -116,15 +115,113 @@
                                     fn-bs-config-encode fn-bs-config-decode
                                     fn-bs-profile-validp)))))))
 
-;; The migration (fn-sxp-log-profile-is-a-valid-log-profile): the format-8
-;; archive above imports under the development preset itself, format 9.
-(assert-event (equal (sxpt-plan *sxpt-format-8* *sxpt-frontier* *sxpt-configs*
-                                *sxpt-records*)
-                     (list :import *fn-bs-profile-development* *sxpt-frontier*
-                           *sxpt-configs* *sxpt-records*)))
-(assert-event (let ((v (fn-sxp-log-profile *sxpt-format-8*)))
+;; -----------------------------------------------------------------------------
+;; The migration reads records as the export writes them: each record's
+;; codec octets (host/native/io.lisp fnn-command-store-export: the log's
+;; records as the open reads them), not frames.
+(defun sxpt-encodings (events)
+  (if (consp events)
+      (cons (fn-store-event-encode (car events)) (sxpt-encodings (cdr events)))
+    nil))
+(make-event
+ `(defconst *sxpt-raw-records*
+    ',(pairlis$ '(0 1 2 4 5) (sxpt-encodings *sxpt-events*))))
+
+;; The migration from format 9 (fn-sxp-import-of-a-format-9-export): the
+;; archive the previous release exported -- the development preset's fields
+;; in format 9's layout (the word, the frontier word, sixteen naturals with
+;; the committed-history marker 0 at field 14), its config.json sealed under
+;; SHA-256, and a MANIFEST of SHA-256 lines -- imports as the development
+;; preset itself, format 10.
+(defconst *sxpt-v9*
+  (list* *fn-bs-meta-format-9* *fn-f9-frontier-word*
+         (append (take 12 (cdr *fn-bs-profile-development*))
+                 (list 0)
+                 (nthcdr 12 (cdr *fn-bs-profile-development*)))))
+(assert-event (equal (len *sxpt-v9*) 18))
+(make-event `(defconst *sxpt-profile-9* ',(fn-f9-config-frame *sxpt-v9*)))
+(make-event
+ `(defconst *sxpt-manifest-9*
+    ',(fn-sxp-manifest-under t (fn-sxp-entries *sxpt-profile-9* *sxpt-frontier*
+                                               *sxpt-configs* *sxpt-raw-records*))))
+;; The records translated (books/store-format-9-records.lisp): the article's
+;; two identities re-derived under this format's digest, every other field and
+;; every other event kept.
+(make-event `(defconst *sxpt-records-10* ',(fn-f9r-records *sxpt-raw-records*)))
+(assert-event (equal (strip-cars *sxpt-records-10*) (strip-cars *sxpt-raw-records*)))
+(assert-event (equal (cdr *sxpt-records-10*) (cdr *sxpt-raw-records*)))
+(assert-event (not (equal (car *sxpt-records-10*) (car *sxpt-raw-records*))))
+(make-event
+ `(defconst *sxpt-article-10*
+    ',(cadr (fn-store-event-decode-exact (cdar *sxpt-records-10*)))))
+(assert-event (equal (fn-record-msgid *sxpt-article-10*) "<sxpt-0@example.invalid>"))
+(assert-event (equal (fn-record-payload *sxpt-article-10*) '(65)))
+(assert-event (equal (fn-record-release-evidence *sxpt-article-10*) "evidence"))
+(make-event
+ `(defconst *sxpt-subject-10*
+    ',(fn-record-octets-string (fn-id-text (fn-id-subject-of-payload '(65))))))
+(assert-event (equal (fn-record-content-subject *sxpt-article-10*) *sxpt-subject-10*))
+;; Reachable positive witness: the complete antecedent, then the conclusion.
+(assert-event (null (fn-f9-profile-refusal *sxpt-v9*)))
+(assert-event (not (equal (car *sxpt-records-10*) :refused)))
+(assert-event (fn-sxp-increasingp *sxpt-records-10*))
+(assert-event (equal (fn-f9-profile-of *sxpt-v9*) *fn-bs-profile-development*))
+(assert-event (fn-sxp-archive-format-9p *sxpt-profile-9*))
+(assert-event
+ (equal (fn-sxp-import-plan *sxpt-manifest-9* *sxpt-profile-9* *sxpt-frontier*
+                            *sxpt-configs* *sxpt-raw-records* '(:current nil))
+        (list :import *fn-bs-profile-development* *sxpt-frontier*
+              *sxpt-configs* *sxpt-records-10*)))
+;; A retention event naming a format-9 identity no article defined is refused
+;; by name (the translation never guesses).
+(make-event
+ `(defconst *sxpt-v1-obligation*
+    ',(fn-record-octets-string
+       (fn-id-hex-octets (append *fn-id-obligation-label* (list 0 1 1)
+                                 (make-list 32 :initial-element 5))))))
+(assert-event (fn-f9r-v1-identity-textp *sxpt-v1-obligation*))
+(defconst *sxpt-orphan*
+  (list (cons 7 (fn-store-event-encode
+                 (fn-store-retention-event-make :undertake 7 8 1 *sxpt-v1-obligation*
+                                                "article-9" "local" 1)))))
+(assert-event (equal (fn-f9r-records *sxpt-orphan*) '(:refused :unknown-identity 7)))
+;; Hypothesis removed (no refusal): the marker `required' (1).  The retained
+;; hypotheses hold; the translation is refused by name, so the plan is.
+(defconst *sxpt-v9-marked* (update-nth *fn-f9-history-marker* 1 *sxpt-v9*))
+(assert-event (equal (fn-f9-profile-refusal *sxpt-v9-marked*) :history-marker-required))
+(make-event `(defconst *sxpt-profile-9m* ',(fn-f9-config-frame *sxpt-v9-marked*)))
+(assert-event
+ (equal (fn-sxp-import-plan
+         (fn-sxp-manifest-under t (fn-sxp-entries *sxpt-profile-9m* *sxpt-frontier*
+                                                  *sxpt-configs* *sxpt-raw-records*))
+         *sxpt-profile-9m* *sxpt-frontier* *sxpt-configs* *sxpt-raw-records* '(:current nil))
+        '(:refused :profile :history-marker-required)))
+;; And a field the translation cannot hold (R below H is kept in order: H
+;; below R) is refused by the relation's own name.
+(defconst *sxpt-v9-short* (update-nth 3 196607 *sxpt-v9*))
+(assert-event (equal (fn-f9-profile-refusal *sxpt-v9-short*)
+                     :max-history-octets-below-max-record-octets))
+(must-fail-checked
+ (with-prover-step-limit
+  20000
+  (defthm sxpt-format-9-without-no-refusal
+   (implies (and (not (equal (car (fn-f9r-records records)) :refused))
+                 (fn-sxp-increasingp (fn-f9r-records records))
+                 (fn-sxp-config-names-increasingp configs nil))
+            (equal (fn-sxp-import-plan
+                    (fn-sxp-manifest-under
+                     t (fn-sxp-entries (fn-f9-config-frame values9) frontier
+                                       configs records))
+                    (fn-f9-config-frame values9) frontier configs records
+                    '(:current nil))
+                   (list :import (fn-f9-profile-of values9) frontier configs
+                         (fn-f9r-records records))))
+   :hints (("Goal" :do-not-induct t)))))
+
+;; The written word (fn-sxp-log-profile-is-a-valid-log-profile).
+(assert-event (let ((v (fn-sxp-log-profile *fn-bs-profile-development*)))
                 (and (fn-bs-profile-validp v) (fn-bs-profile-logp v)
-                     (equal (cdr v) (cdr *sxpt-format-8*)))))
+                     (equal (cdr v) (cdr *fn-bs-profile-development*)))))
 ;; Without validp: '(1 2 3) takes the word and stays invalid.
 (assert-event (not (fn-bs-profile-validp '(1 2 3))))
 (assert-event (not (fn-bs-profile-validp (fn-sxp-log-profile '(1 2 3)))))
@@ -234,7 +331,7 @@
 ; An override that breaks a relation: H 1000 below R.
 (assert-event
  (equal (fn-sxp-import-plan *sxpt-manifest* *sxpt-profile* *sxpt-frontier*
-                            *sxpt-configs* *sxpt-records* '(:current ((3 . 1000))))
+                            *sxpt-configs* *sxpt-records* '(:current ((2 . 1000))))
         '(:refused :profile :max-history-octets-below-max-record-octets)))
 
 ; A request that is not a profile request.
@@ -245,12 +342,12 @@
 
 ; A raised field: T to 1000, every other field kept, the same history.
 (defconst *sxpt-raised*
-  (fn-bs-profile-set-fields *fn-bs-profile-development* '((2 . 1000))))
+  (fn-bs-profile-set-fields *fn-bs-profile-development* '((1 . 1000))))
 (assert-event (fn-bs-profile-validp *sxpt-raised*))
 (assert-event (not (equal *sxpt-raised* *fn-bs-profile-development*)))
 (assert-event
  (equal (fn-sxp-import-plan *sxpt-manifest* *sxpt-profile* *sxpt-frontier*
-                            *sxpt-configs* *sxpt-records* '(:current ((2 . 1000))))
+                            *sxpt-configs* *sxpt-records* '(:current ((1 . 1000))))
         (list :import *sxpt-raised* *sxpt-frontier* *sxpt-configs* *sxpt-records*)))
 
 

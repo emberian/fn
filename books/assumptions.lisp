@@ -347,7 +347,9 @@
 ; A-CRYPTO-TRAILER.  The tears the platform produces are a subset of the
 ; model's tears, and none of them validates unless it is the exact write.
 ; Its qualification is statistical: the campaign's garble and truncate
-; variants over SHA-256 never validate; a 2^-256 event is not modeled.
+; variants over the trailer's digest (BLAKE3 since store format 10; SHA-256
+; before) never validate; the pessimistic figure is the collision bound,
+; about 2^-128 per chosen pair, and no such event is modeled.
 ;
 ; The local witness is "no tears, of an empty write".  The natural witness
 ; "no tears" (observed = written for every written) needs

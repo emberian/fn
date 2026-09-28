@@ -1,29 +1,35 @@
-"""A-CRYPTO-NATIVE: the served image's SHA-256 is the ACL2 reference's.
+"""A-CRYPTO-NATIVE: the served image's BLAKE3 is the ACL2 reference's.
 
-host/native/digest.lisp replaces the raw definitions of fn-sha256-stobj,
-fn-sha256-of-string and fn-sha256-of-prefixed-buffer with the pinned
-libcrypto's EVP SHA-256 after a start-up check.  These witnesses run the
-saved images:
+host/native/digest.lisp replaces the raw definitions of fn-blake3-stobj,
+fn-blake3-of-prefixed-buffer and fn-blake3-of-prefixed-range with the
+vendored BLAKE3 C (lib/libfn-blake3) after a start-up check against the
+official vectors and ACL2's fn-b3x-hash.  These witnesses run the saved
+images:
 
-* the developer verb `digest-check run COUNT SEED' digests COUNT inputs
-  (8,000 by default; 100,000 in the lane's evidence run)
-  natively and by the ACL2 references captured before installation (every
-  length 0..4200, the block and copy-chunk edges, then log-uniform lengths
-  to 1 MiB; list, prefixed-buffer and string forms) and reports agreement;
+* the developer verb `digest-check run COUNT SEED' hashes COUNT inputs
+  (8,000 by default; 100,000 in the lane's evidence run) natively and by
+  ACL2's fn-b3x-hash (every length 0..4200, the chunk, block and copy-chunk
+  edges, then log-uniform lengths to 1 MiB; list, prefixed-buffer and window
+  forms) and reports agreement;
 * `digest-check bench' reports MB/s of both (recorded, not asserted);
-* the production image's `sha256' verb over a file equals Python's hashlib
-  (a third implementation, over the served image's native path), and the
-  production image refuses `digest-check' by name.
+* the production image's `blake3' verb over a file equals
+  tools/blake3_ref.py's pure-Python BLAKE3 (a third implementation, over the
+  served image's native path) on the official vector inputs and random
+  octets across the chunk edges, and the production image refuses
+  `digest-check' by name.
 
 Each witness skips, naming the image, when that image is absent.
 """
-import hashlib
 import os
 from pathlib import Path
 import re
 import subprocess
 import tempfile
+import sys
 import unittest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+import blake3_ref  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -64,14 +70,13 @@ class DeveloperDifferentialTests(unittest.TestCase):
         out = done.stdout.decode()
         print(out.strip())
         self.assertEqual(done.returncode, 0, out + done.stderr.decode())
-        found = re.search(r"digest-check \(:agree (\d+)\s+:buffer-reference (\d+)\s+"
-                          r":string-reference (\d+)\s+:octets (\d+)\)", out)
+        found = re.search(r"digest-check \(:agree (\d+)\s+:reference (\d+)\s+"
+                          r":octets (\d+)\)", out)
         self.assertIsNotNone(found, out)
-        # Every generated input agreed in the list and buffer forms.
-        self.assertEqual(int(found.group(1)), max(COUNT, 4201 + 90 + 24 + 1))
-        self.assertGreater(int(found.group(2)), 0)
-        # The string form ran on at least every length 0..4200.
-        self.assertGreaterEqual(int(found.group(3)), 4201)
+        # Every generated input agreed in the list, buffer and window forms.
+        self.assertEqual(int(found.group(1)), max(COUNT, 4201 + 66 + 24 + 1))
+        # The ACL2 reference ran on at least every length 0..4200.
+        self.assertGreaterEqual(int(found.group(2)), 4201)
 
     def test_bench_reports_both(self):
         done = run(DEVELOPER, ["digest-check", "bench"])
@@ -86,16 +91,16 @@ class ProductionTests(unittest.TestCase):
         if not executable(IMAGE):
             self.skipTest(f"no production image at {IMAGE}")
 
-    def test_sha256_verb_is_hashlib(self):
+    def test_blake3_verb_is_the_reference(self):
         with tempfile.TemporaryDirectory() as directory:
-            for size in (0, 55, 56, 64, 16384, 16385, 1 << 20):
+            for size in (0, 1, 63, 64, 65, 1023, 1024, 1025, 2049, 16384, 16385, 102400, 1 << 20):
                 path = Path(directory) / f"m{size}"
                 data = bytes((i * 131 + size) & 0xFF for i in range(size))
                 path.write_bytes(data)
-                done = run(IMAGE, ["sha256", str(path)], timeout=300)
+                done = run(IMAGE, ["blake3", str(path)], timeout=300)
                 self.assertEqual(done.returncode, 0, done.stderr.decode())
                 self.assertEqual(done.stdout.decode().strip(),
-                                 hashlib.sha256(data).hexdigest(), size)
+                                 blake3_ref.blake3_py(data).hex(), size)
 
     def test_production_refuses_digest_check(self):
         done = run(IMAGE, ["digest-check", "run", "1"], timeout=300)

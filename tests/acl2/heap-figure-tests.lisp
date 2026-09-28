@@ -300,8 +300,8 @@
 (assert! (equal (fn-heap-init-request '(:default nil) (* 8 1024 *fn-heap-mib*))
                 '(:default nil)))
 (assert! (equal (fn-heap-init-request '(:development nil) *hft-2g*) '(:development nil)))
-(assert! (equal (fn-heap-init-request '(:default ((2 . 100))) *hft-2g*)
-                '(:default ((2 . 100)))))
+(assert! (equal (fn-heap-init-request '(:default ((1 . 100))) *hft-2g*)
+                '(:default ((1 . 100)))))
 
 ; -----------------------------------------------------------------------------
 ; The store-less figure (PKT-686 item 3).  fn-heap-storeless-decide-is-small-
@@ -366,7 +366,7 @@
                 (* 2 *fn-heap-octets-per-list-octet*
                    (+ (* (fn-heap-operation-history-copies action) used)
                       (fn-bs-profile-max-record-octets profile)
-                      (* *fn-heap-header-copies* (fn-bs-profile-field 17 profile))))
+                      (* *fn-heap-header-copies* (fn-bs-profile-field 15 profile))))
                 (* 2 (fn-ock-capture-budget profile)))
              (* *fn-heap-mib* (fn-heap-decision-mb decision)))
          (<= (* *fn-heap-mib* (fn-heap-decision-mb decision))
@@ -481,7 +481,7 @@
                         (* 2 *fn-heap-octets-per-list-octet*
                            (+ (* (fn-heap-operation-history-copies action) used)
                               (fn-bs-profile-max-record-octets profile)
-                              (* *fn-heap-header-copies* (fn-bs-profile-field 17 profile))))
+                              (* *fn-heap-header-copies* (fn-bs-profile-field 15 profile))))
                         (* 2 (fn-ock-capture-budget profile)))
                      (* *fn-heap-mib* (fn-heap-decision-mb decision)))))
       :hints (("Goal" :in-theory (union-theories

@@ -162,7 +162,7 @@ reason)`, `(:missing name)`.
 
 `publish` asks ACL2 for the protected prefix of the capture of the durable
 records at the durable frontier (`fn-store-checkpoint-protected`), seals it
-with SHA-256 (A-CRYPTO), and issues the three publication steps; `select`
+with BLAKE3 (A-CRYPTO), and issues the three publication steps; `select`
 issues the three marker steps. The six `faults.at("checkpoint:<name>")`
 sites are the cuts in `tests/campaign/cuts.py`. `Store.recover` replays the
 journal as before (the journal remains the authority), then decodes the
@@ -188,7 +188,7 @@ lifetime).
 
 What the host still asserts, outside the proofs:
 
-- SHA-256 is a fixed function of the bytes (the digest the host supplies at
+- BLAKE3 is a fixed function of the bytes (the digest the host supplies at
   recovery is the one it supplied at publication when the bytes are
   unchanged); ACL2 only compares it.
 - `os.link` publishes the whole data-durable file or nothing, `os.replace`

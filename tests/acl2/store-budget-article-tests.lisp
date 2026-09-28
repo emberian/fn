@@ -20,7 +20,7 @@
 (assert-event (equal (fn-sbud-article-verdict-at *pmt-old* 0 0 32768 400) :unaffordable))
 (assert-event (fn-bs-history-admissiblep *pmt-old* 0 (fn-sbud-article-record-figure 32768 400)))
 ; The witnesses below that admit it use the same profile with H = 500 000.
-(defconst *sbat-p* (fn-bs-profile-set-fields *pmt-old* '((3 . 500000))))
+(defconst *sbat-p* (fn-bs-profile-set-fields *pmt-old* '((2 . 500000))))
 (assert-event (fn-bs-profile-admittedp *sbat-p*))
 (assert-event (equal (fn-sbud-budget *sbat-p* :article) (fn-sbud-budget *pmt-old* :article)))
 

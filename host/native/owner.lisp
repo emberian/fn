@@ -1409,7 +1409,7 @@ follows is justified only by this line."
           ;; prepare (host/owner-host.lisp fn-owner-existing-action-buffer,
           ;; fn-owner-prepare-buffer), and the subject identity is digested
           ;; from it in place (fnn-metadata-buffer, fnn-subject-id-buffer;
-          ;; books/sha256-buffer.lisp).  Nothing between the fill and the
+          ;; books/subject-id-buffer.lisp).  Nothing between the fill and the
           ;; prepare writes the buffer; all of it runs under the service mutex.
           (fnn-octets-fill payload)
           (case (fnn-owner-buffer-arena-action 'fn-owner-existing-action-buffer

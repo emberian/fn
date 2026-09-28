@@ -4447,7 +4447,7 @@
         "On today's image and the new one: 1,000 POSTs of 2,048 octets on a fresh scale store, the fixed served transcript (node_measure.py run --transcript), stop and reopen; a development store until the owner publishes a checkpoint, then the reopen."
       ],
       "expected": [
-        "guard-probe exits 4 with the one stderr line `store: ACL2 error in fn-sha256-of-string: (EV-FNCALL-GUARD-ER FN-SHA256-OF-STRING (42) (STRINGP S) (NIL) NIL)` on both developer images and with ACL2_SYSTEM_BOOKS set; the production image refuses the verb with exit 5.",
+        "guard-probe exits 4 with the one stderr line `store: host-entry-guard: fn-b3-left-chunks argument 2 (n) must be a natural (natp); the host passed the integer -1` on both developer images and with ACL2_SYSTEM_BOOKS set; the production image refuses the verb with exit 5.",
         "The stripped core needs under 192 MiB of dynamic space (today's 271 MiB); the 256 MB node answers 240 and 220.",
         "The transcripts of today's image and the new one are byte-identical; the qualifying native modules pass on the new images."
       ],
@@ -5476,6 +5476,64 @@
         "record": "planning/evidence/web-native-2026-09-28.md",
         "log": "planning/evidence/web-native-2026-09-28/native-w4c.log"
       }
+    },
+    {
+      "id": "SCN-188",
+      "title": "The genesis is read only where it must be: two stores holding one history under two genesis records fold the same state, and a damaged or swapped genesis is refused",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-036"
+      ],
+      "steps": [
+        "Export the mixed store, import the archive twice (each import draws its own genesis), run store digest on both; copy one, flip one octet of journal/000000.log and open it; copy one, put the other's genesis in its place and open it."
+      ],
+      "expected": [
+        "Every digest line of the two imports but digest genesis is equal and digest genesis differs; the damaged copy is refused reason=genesis-damaged, exit 1; the swapped copy is refused and prints no state digest."
+      ],
+      "implementation": {
+        "test": "tests.test_native_replay_determinism",
+        "cases": [
+          "NativeReplayDeterminismTests.test_g_the_genesis_is_read_only_where_it_must_be"
+        ],
+        "native": true,
+        "record": "planning/evidence/format-bump-10-2026-09-28.md",
+        "log": "planning/evidence/format-bump-10-2026-09-28/native-n4-replay_determinism.log"
+      },
+      "evidence": [
+        "tests/test_native_replay_determinism.py",
+        "planning/evidence/format-bump-10-2026-09-28/native-n4-replay_determinism.log",
+        "planning/evidence/format-bump-10-2026-09-28.md"
+      ]
+    },
+    {
+      "id": "SCN-189",
+      "title": "Format 9 to 10 across a reinstall: refused here by name, exported there, imported here with the same records and BLAKE3 identities",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-028"
+      ],
+      "steps": [
+        "Open a format-9 store with this image; export it with the format-9 image; import the archive with this image; export the imported store; compare the two archives record by record."
+      ],
+      "expected": [
+        "The open exits 1 with open refused reason=store-format-9 and the way out, the store unchanged; the import succeeds with a new genesis; the re-export holds the same records in order, each article's two identities the BLAKE3 identities of its Message-ID and payload, every other item equal, every MANIFEST line BLAKE3."
+      ],
+      "implementation": {
+        "test": "tests.test_native_format_9_migration",
+        "cases": [
+          "FormatNineMigrationTest.test_a_format_9_store_exports_there_and_imports_here_with_the_same_history"
+        ],
+        "native": true,
+        "record": "planning/evidence/format-bump-10-2026-09-28.md",
+        "log": "planning/evidence/format-bump-10-2026-09-28/native-n4-format_9_migration.log"
+      },
+      "evidence": [
+        "tests/test_native_format_9_migration.py",
+        "planning/evidence/format-bump-10-2026-09-28/native-n4-format_9_migration.log",
+        "planning/evidence/format-bump-10-2026-09-28.md"
+      ]
     }
   ]
 }

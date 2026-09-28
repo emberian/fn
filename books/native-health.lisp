@@ -300,12 +300,9 @@ profile's."
 
 (defun fn-nh-profile-words (profile)
   (declare (xargs :guard t))
-  ;; The store's own format (batch AW: this printed 8 for every store, and
-  ;; every store an image opens is format 9, the record log): 9 for a log
-  ;; profile, 8 for a valid per-file one, 0 otherwise.
-  (append (fn-nls-field "format" (cond ((not (fn-bs-profile-validp profile)) 0)
-                                       ((fn-bs-profile-logp profile) 9)
-                                       (t 8)))
+  ;; The store's own format: 10 (the one format an image opens) for a
+  ;; valid profile, 0 otherwise.
+  (append (fn-nls-field "format" (if (fn-bs-profile-validp profile) 10 0))
           (if (fn-nh-development-profilep profile)
               (fn-nls-text " development")
             nil)))

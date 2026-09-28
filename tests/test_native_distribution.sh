@@ -51,6 +51,8 @@ mkdir "$tmp/lib"
 printf mldsa > "$tmp/lib/libfn-mldsa65.so"
 # The LZ4 block encoder beside it (tools/build_lz4.sh).
 printf lz4 > "$tmp/lib/libfn-lz4.so"
+# BLAKE3, fn's digest, from the same lib/ (host/native/digest.lisp).
+printf blake3 > "$tmp/lib/libfn-blake3.so"
 set +e
 PREFIX="$tmp/rejected/opt/fn" FN_NATIVE_HOST="$tmp/fn-host" \
   FN_NATIVE_SOURCE_REVISION=0123456789abcdef \

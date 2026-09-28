@@ -42,7 +42,7 @@
 ; THE DIGEST.  CHAIN is 32 octets, hexadecimal on the wire; a record extends
 ; it as
 ;
-;   c' = SHA-256(c || SHA-256(article octets) || msgid octets)
+;   c' = BLAKE3(c || BLAKE3(article octets) || msgid octets)
 ;
 ; from 32 zero octets.  The peer answers CHAIN' = the chain over this
 ; batch's records continued from the requester's CHAIN; the requester
@@ -68,7 +68,7 @@
 (include-book "control-served")
 (include-book "group-bucket-index")
 (include-book "msgid-index")
-(include-book "sha256-stobj")
+(include-book "blake3-stobj")
 
 ; -----------------------------------------------------------------------------
 ; Policy
@@ -204,8 +204,8 @@
 ; MSGID the Message-ID's octets, BYTES the article's.
 (defun fn-cu-chain-step (chain msgid bytes)
   (declare (xargs :guard t))
-  (fn-sha256-stobj (append (fn-cu-list chain)
-                           (fn-sha256-stobj bytes)
+  (fn-blake3-stobj (append (fn-cu-list chain)
+                           (fn-blake3-stobj bytes)
                            (fn-cu-list msgid))))
 
 ; -----------------------------------------------------------------------------
