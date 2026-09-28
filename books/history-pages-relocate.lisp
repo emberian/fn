@@ -734,8 +734,8 @@
                              fn-hp-regs fn-hp-lens adt-cap adt-placement-ok fn-hp-vhold fn-hp-hdr-m fn-hp-u64-listp take nthcdr
                              fn-hp-x-ready fn-hp-x-ready-range pgs-x-grow-image nth update-nth resize-list))))))
 
-(local
- (defthm fn-hp-x-relocate-mem2-frame
+; exported: the step (books/history-pages-step.lisp) keeps verified pages verified
+(defthm fn-hp-x-relocate-mem2-frame
    (implies (fn-hp-x-reloc-key-hyps)
             (and (equal (nth *pgs-vi* (mv-nth 3 (fn-hp-x-relocate r c n lens starts np pgs-mem)))
                         (nth *pgs-vi* (pgs-x-grow-image (+ np c) pgs-mem)))
@@ -751,7 +751,7 @@
                                 fn-hp-grow-image-words fn-hp-x-reloc-writes-frame
                                 fn-hp-x-relocate fn-hp-x-copy fn-hp-x-zero fn-hp-x-put fn-hp-x-mark fn-hp-piw fn-hp-wreps fn-hp-wpad
                                 fn-hp-regs fn-hp-lens adt-cap adt-placement-ok fn-hp-vhold fn-hp-hdr-m fn-hp-u64-listp take nthcdr
-                                fn-hp-x-ready fn-hp-x-ready-range pgs-x-grow-image nth update-nth resize-list))))))
+                                fn-hp-x-ready fn-hp-x-ready-range pgs-x-grow-image nth update-nth resize-list)))))
 
 (defthm fn-hp-x-relocate-vhold
   (implies (fn-hp-x-reloc-key-hyps)
@@ -881,3 +881,5 @@
                 (equal (mv-nth 3 (fn-hp-x-relocate r c n lens starts np pgs-mem)) pgs-mem)))
   :hints (("Goal" :in-theory (disable fn-hp-x-copy fn-hp-x-zero fn-hp-x-put fn-hp-x-mark fn-hp-x-ready fn-hp-x-ready-range
                                       fn-hp-hdr-m adt-cap adt-placement-ok fn-hp-u64-listp pgs-x-grow-image))))
+
+(in-theory (disable fn-hp-x-relocate-mem2-frame))
