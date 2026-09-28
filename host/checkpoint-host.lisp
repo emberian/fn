@@ -240,10 +240,6 @@
                               final-absentp
                               (fn-store-checkpoint-generation-capacity values)))
 
-(defun fn-store-checkpoint-marker-step (phase result)
-  (declare (xargs :mode :program))
-  (fn-cpp-marker-driver-step phase result))
-
 (defun fn-store-checkpoint-marker-outcome (phase)
   (declare (xargs :mode :program))
   (fn-cpp-marker-driver-outcome phase))
