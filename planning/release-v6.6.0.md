@@ -116,6 +116,15 @@ the common conditions in planning/evidence/fundamentals-2026-09-27/README.md):
 - **F8 OPEN.** The reservation is 672 MB empty and 1,407 MB after 1k, against
   a bar of 256 MB; that belongs to lane reservation-figure. In use after 1k is
   114.1 MiB RSS (high-water mark 142.2 MiB). The reopen floor is 138 MB.
+- **F8 bar "the small profile fits 1.5 GB": UNMET** (lane heap-bounds, row B2,
+  model; recorded as ember's F8 ruling recorded the reserved verdict). With
+  the records' term derived from the profile's limits the small preset's
+  first run reserves 1,872 MB on the release image (1,906 MB on the
+  image-floor core; 1,263 MB with the 12 KiB constant, which long headers
+  exceeded), so a 1,500 MB budget (a 2 GiB machine after the system's share,
+  OpenBSD's 1,536M login class) refuses it by name. The tests take the budget
+  from the figure (tests.test_native_image_floor's small_budget); the way
+  down is B9 (the reservation as a base and a credited pool).
 
 ## 2b. The prerelease convergence checklist (runs ONCE, before the cut)
 
