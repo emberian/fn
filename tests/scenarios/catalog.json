@@ -5475,7 +5475,22 @@
       ],
       "evidence": [
         "tests/test_native_web.py"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_web",
+        "cases": [
+          "NativeWebFaceTests.test_1_a_friend_makes_an_account_reads_posts_and_removes",
+          "NativeWebFaceTests.test_2_refusals",
+          "NativeWebFaceTests.test_3_the_code_works_once",
+          "NativeWebFaceTests.test_4_fuzzed_requests_are_answered_or_closed",
+          "NativeWebFaceTlsTests.test_1_a_friend_makes_an_account_reads_posts_and_removes",
+          "NativeWebFaceTlsTests.test_2_refusals",
+          "NativeWebFaceTlsTests.test_3_the_code_works_once"
+        ],
+        "native": true,
+        "record": "planning/evidence/web-native-2026-09-28.md",
+        "log": "planning/evidence/web-native-2026-09-28/native-w4c.log"
+      }
     }
   ]
 }

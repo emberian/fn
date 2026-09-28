@@ -11312,7 +11312,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-web-client-address-without-proxy"
+          "name": "fn-web-client-address-without-proxy-unfolds"
         },
         {
           "kind": "theorem",

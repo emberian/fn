@@ -11676,7 +11676,7 @@
     {
       "id": "PRF-337",
       "title": "The web face's request is read in place, in one pass of at most 2N work for an N-octet head, into a parsed request or a refusal RFC 9112 names; its route is a row of the table for that path and method; no field a caller passes can add a line to a response head",
-      "statement": "books/web-request.lisp. Subjects: fn-web-head-frame and fn-web-parse-head (host/native/web-host.lisp fnn-web-read-request, through host/web-host.lisp fn-web-host-frame / fn-web-host-parse), fn-web-route (fn-wss-begin, called by fn-web-step), fn-web-response-head (fnn-web-respond through fn-web-host-head), fn-web-client-address (fn-wss-ctx). KEYSTONES fn-wrq-scan-work-bound (for natural END, the work counter of the scan of [0, END) is at most 2*END; fn-wrq-scan-is-fold: the in-place scan is the fold of fn-wrq-next over the slice), fn-web-head-frame-bounded, fn-web-route-is-a-row, fn-web-response-head-crlf-count (the head's CR and LF counts are 2 plus the fields it carries, whatever FIELDS), fn-web-client-address-without-proxy; fn-web-parse-head-answers, fn-wrq-span-decode-is-urldecode.",
+      "statement": "books/web-request.lisp. Subjects: fn-web-head-frame and fn-web-parse-head (host/native/web-host.lisp fnn-web-read-request, through host/web-host.lisp fn-web-host-frame / fn-web-host-parse), fn-web-route (fn-wss-begin, called by fn-web-step), fn-web-response-head (fnn-web-respond through fn-web-host-head), fn-web-client-address (fn-wss-ctx). KEYSTONES fn-wrq-scan-work-bound (for natural END, the work counter of the scan of [0, END) is at most 2*END; fn-wrq-scan-is-fold: the in-place scan is the fold of fn-wrq-next over the slice), fn-web-head-frame-bounded, fn-web-route-is-a-row, fn-web-response-head-crlf-count (the head's CR and LF counts are 2 plus the fields it carries, whatever FIELDS), fn-web-client-address-without-proxy-unfolds; fn-web-parse-head-answers, fn-wrq-span-decode-is-urldecode.",
       "milestone": "M6",
       "requirements": [
         "WEB-005"
@@ -11696,7 +11696,7 @@
         "fn-web-head-frame-bounded",
         "fn-web-route-is-a-row",
         "fn-web-response-head-crlf-count",
-        "fn-web-client-address-without-proxy",
+        "fn-web-client-address-without-proxy-unfolds",
         "fn-web-parse-head-answers",
         "fn-wrq-span-decode-is-urldecode"
       ]

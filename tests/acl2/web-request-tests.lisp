@@ -213,7 +213,7 @@
                      (+ 1 (len *wrqt-evil*))))
 (assert-event (equal (take 17 *wrqt-head*) (wrqt-octs "HTTP/1.1 303 See ")))
 
-; KEYSTONE fn-web-client-address-without-proxy.  Witness: a loopback peer
+; fn-web-client-address-without-proxy-unfolds (an arm of the definition).  Witness: a loopback peer
 ; with an X-Forwarded-For entry, not proxied: the peer.
 (defconst *wrqt-xff*
   (cadr (wrqt-parse (wrqt-crlf (list "GET / HTTP/1.1" "Host: a"

@@ -1320,7 +1320,7 @@
                 (t peer)))
       peer)))
 
-(defthm fn-web-client-address-without-proxy
+(defthm fn-web-client-address-without-proxy-unfolds
   ; Without PROXIED, the address is the socket's peer: no field a browser
   ; sends can choose it.
   (implies (not proxied)
