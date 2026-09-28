@@ -49,6 +49,6 @@ sh packaging/freeze-native-image.sh "$ROOT/build" "$IMG"
 printf '%s\n' "$REV" > "$IMG/source-revision"   # `fn --version` (PKT-403)
 find books host Makefile tools/build_native_host.sh -type f \( -name '*.lisp' -o -name Makefile -o -name '*.sh' \) | sort | xargs sha256sum > "$IMG/build-source.sha256"
 run_logged build/freeze/image-validation.txt sh -c 'cd "$1" && sha256sum -c image.sha256' sh "$IMG"
-run_logged build/freeze/image-hashes.txt sha256sum "$IMG"/*.core "$IMG"/runtime/sbcl "$IMG"/lib/libsodium.so.23 "$IMG"/lib/libfn-mldsa65.so "$ACL2"
+run_logged build/freeze/image-hashes.txt sha256sum "$IMG"/*.core "$IMG"/runtime/sbcl "$IMG"/lib/libsodium.so.23 "$IMG"/lib/libfn-mldsa65.so "$IMG"/lib/libfn-lz4.so "$ACL2"
 ls -la "$IMG"
 echo "== done"
