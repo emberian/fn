@@ -206,7 +206,7 @@
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-peer-scope-groups-loop (rev record cfg acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp rev)
       (fn-peer-scope-groups-loop (cdr rev)
                                  record

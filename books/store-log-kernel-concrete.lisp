@@ -115,17 +115,62 @@
 (defthm fn-lgc-rest-is-nthcdr
   (equal (fn-lgc-rest n xs) (nthcdr n xs)))
 
-(defun fn-lgc-log-len (records prevlen unit)
-  (declare (xargs :guard (natp prevlen) :measure (len records)
-                  :hints (("Goal" :in-theory (enable fn-lg-chunk-len)))))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-lgc-log-len-loop (records prevlen unit acc)
+  (declare (xargs :measure (len records) :guard (and (natp prevlen) (acl2-numberp acc)) :verify-guards nil))
   (if (consp records)
       (let* ((k (fn-lg-chunk-len records))
-             (f (+ 10 (nfix prevlen) (fn-lgc-chunk-body-len (fn-lgc-first k records))
+             (f (+ 10
+                   (nfix prevlen)
+                   (fn-lgc-chunk-body-len (fn-lgc-first k records))
                    *fn-frame-trailer-octets*)))
-        (+ f (fn-lg-pad-len f unit)
-           (fn-lgc-log-len (mbe :logic (nthcdr k records) :exec (fn-lgc-rest k records))
-                           *fn-frame-trailer-octets* unit)))
-    0))
+        (fn-lgc-log-len-loop (mbe :logic
+                                  (nthcdr k records)
+                                  :exec
+                                  (fn-lgc-rest k records))
+                             *fn-frame-trailer-octets*
+                             unit
+                             (+ (+ f (fn-lg-pad-len f unit)) acc)))
+    (+ acc 0)))
+
+(defun fn-lgc-log-len (records prevlen unit)
+  (declare (xargs :verify-guards nil :guard (natp prevlen) :measure (len records)
+                  :hints (("Goal" :in-theory (enable fn-lg-chunk-len)))))
+  (mbe :logic
+       (if (consp records)
+           (let* ((k (fn-lg-chunk-len records))
+                  (f (+ 10 (nfix prevlen) (fn-lgc-chunk-body-len (fn-lgc-first k records))
+                        *fn-frame-trailer-octets*)))
+             (+ f (fn-lg-pad-len f unit)
+                (fn-lgc-log-len (mbe :logic (nthcdr k records) :exec (fn-lgc-rest k records))
+                                *fn-frame-trailer-octets* unit)))
+         0)
+       :exec (fn-lgc-log-len-loop records prevlen unit 0)))
+
+(local
+ (defthm fn-lgc-log-len-loop-is-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-lgc-log-len-loop records prevlen unit acc)
+                   (+ acc (fn-lgc-log-len records prevlen unit))))
+   :hints (("Goal" :induct (fn-lgc-log-len-loop records prevlen unit acc)
+                   :in-theory (disable fn-lg-chunk-len fn-lg-pad-len fn-lgc-chunk-body-len fn-lgc-first fn-lgc-rest)))))
+
+(verify-guards fn-lgc-log-len-loop)
+
+(verify-guards fn-lgc-log-len
+  :hints (("Goal"
+           :in-theory
+           (disable fn-lgc-log-len-loop
+                    fn-lg-chunk-len
+                    fn-lg-pad-len
+                    fn-lgc-chunk-body-len
+                    fn-lgc-first
+                    fn-lgc-rest)
+           :use
+           ((:instance fn-lgc-log-len-loop-is-plus (acc 0))))))
+
 
 (defthm fn-lgc-len-of-frame
   (equal (len (fn-lg-frame prev chunk))
@@ -168,13 +213,53 @@
 
 (verify-guards fn-lgx-zeros)
 
-(defun fn-lgx-pack (records)
-  (declare (xargs :guard (fn-lg-recordsp records *fn-frame-max-payload*)
-                  :guard-hints (("Goal" :in-theory (enable fn-lg-recordp)))))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-lgx-pack-loop (records acc)
+  (declare (xargs :guard (and (fn-lg-recordsp records *fn-frame-max-payload*) (true-listp acc)) :verify-guards nil))
   (if (consp records)
-      (append (fn-cbor-u32-bytes (len (car records)))
-              (append (true-list-fix (car records)) (fn-lgx-pack (cdr records))))
-    nil))
+      (fn-lgx-pack-loop (cdr records)
+                        (fn-ag-rev-onto (true-list-fix (car records))
+                                        (fn-ag-rev-onto (fn-cbor-u32-bytes (len (car records)))
+                                                        acc)))
+    (revappend acc nil)))
+
+(defun fn-lgx-pack (records)
+  (declare (xargs :verify-guards nil :guard (fn-lg-recordsp records *fn-frame-max-payload*)
+                  :guard-hints (("Goal" :in-theory (enable fn-lg-recordp)))))
+  (mbe :logic
+       (if (consp records)
+           (append (fn-cbor-u32-bytes (len (car records)))
+                   (append (true-list-fix (car records)) (fn-lgx-pack (cdr records))))
+         nil)
+       :exec (fn-lgx-pack-loop records nil)))
+
+(local
+ (defthm fn-lgx-pack-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-lgx-pack-loop-is-revappend
+   (equal (fn-lgx-pack-loop records acc)
+          (revappend acc (fn-lgx-pack records)))
+   :hints (("Goal" :induct (fn-lgx-pack-loop records acc)
+                   :in-theory (union-theories '(fn-lgx-pack-loop fn-lgx-pack revappend car-cons cdr-cons fn-lgx-pack-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-lgx-pack-loop
+  :hints (("Goal" :in-theory (enable fn-lg-recordp))))
+
+(verify-guards fn-lgx-pack
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-lgx-pack)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-lgx-pack-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-lgx-pack-is-pack
   (equal (fn-lgx-pack records) (fn-lg-pack records))
@@ -234,20 +319,50 @@
   (true-listp (fn-lg-frame prev chunk))
   :hints (("Goal" :in-theory (enable fn-lg-frame))))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-lgx-log-loop (records prev unit acc)
+  (declare (xargs :measure (len records) :guard (and (and (fn-frame-digestp prev) (fn-lg-recordsp records *fn-frame-max-payload*)) (true-listp acc)) :verify-guards nil))
+  (if (consp records)
+      (let* ((k (fn-lg-chunk-len records))
+             (chunk (fn-lgc-first k records)))
+        (fn-lgx-log-loop (mbe :logic (nthcdr k records) :exec (fn-lgc-rest k records))
+                         (fn-lgx-trailer (fn-lgx-frame prev chunk))
+                         unit
+                         (fn-ag-rev-onto (fn-lgx-entry prev chunk unit) acc)))
+    (revappend acc nil)))
+
 (defun fn-lgx-log (records prev unit)
   (declare (xargs :guard (and (fn-frame-digestp prev)
                               (fn-lg-recordsp records *fn-frame-max-payload*))
                   :measure (len records)
                   :hints (("Goal" :in-theory (enable fn-lg-chunk-len)))
                   :verify-guards nil))
-  (if (consp records)
-      (let* ((k (fn-lg-chunk-len records))
-             (chunk (fn-lgc-first k records)))
-        (append (fn-lgx-entry prev chunk unit)
-                (fn-lgx-log (mbe :logic (nthcdr k records) :exec (fn-lgc-rest k records))
-                            (fn-lgx-trailer (fn-lgx-frame prev chunk))
-                            unit)))
-    nil))
+  (mbe :logic
+       (if (consp records)
+           (let* ((k (fn-lg-chunk-len records))
+                  (chunk (fn-lgc-first k records)))
+             (append (fn-lgx-entry prev chunk unit)
+                     (fn-lgx-log (mbe :logic (nthcdr k records) :exec (fn-lgc-rest k records))
+                                 (fn-lgx-trailer (fn-lgx-frame prev chunk))
+                                 unit)))
+         nil)
+       :exec (fn-lgx-log-loop records prev unit nil)))
+
+(local
+ (defthm fn-lgx-log-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-lgx-log-loop-is-revappend
+   (equal (fn-lgx-log-loop records prev unit acc)
+          (revappend acc (fn-lgx-log records prev unit)))
+   :hints (("Goal" :induct (fn-lgx-log-loop records prev unit acc)
+                   :in-theory (union-theories '(fn-lgx-log-loop fn-lgx-log revappend car-cons cdr-cons fn-lgx-log-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
 
 (defthm fn-lgx-log-is-log
   (equal (fn-lgx-log records prev unit) (fn-lg-log records prev unit))
@@ -261,15 +376,48 @@
   (true-listp (fn-lg-entry prev chunk unit))
   :hints (("Goal" :in-theory (enable fn-lg-entry))))
 
+(verify-guards fn-lgx-log-loop
+  :hints (("Goal"
+           :in-theory
+           (disable fn-lgx-entry
+                    fn-lgx-frame
+                    fn-lgx-trailer
+                    fn-lg-chunkp
+                    fn-frame-digestp
+                    fn-lg-recordsp
+                    fn-lg-entry
+                    fn-lg-frame
+                    fn-lg-trailer)
+           :use
+           ((:instance fn-lg-chunkp-of-first-chunk (max *fn-frame-max-payload*))
+            (:instance fn-lg-recordsp-of-nthcdr
+                       (max *fn-frame-max-payload*)
+                       (k (fn-lg-chunk-len records)))
+            (:instance fn-lg-trailer-of-frame-digestp
+                       (max *fn-frame-max-payload*)
+                       (chunk (fn-bs-take (fn-lg-chunk-len records) records)))))))
+
 (verify-guards fn-lgx-log
-  :hints (("Goal" :in-theory (disable fn-lgx-entry fn-lgx-frame fn-lgx-trailer fn-lg-chunkp
-                                      fn-frame-digestp fn-lg-recordsp fn-lg-entry fn-lg-frame
-                                      fn-lg-trailer)
-           :use ((:instance fn-lg-chunkp-of-first-chunk (max *fn-frame-max-payload*))
-                 (:instance fn-lg-recordsp-of-nthcdr (max *fn-frame-max-payload*)
-                            (k (fn-lg-chunk-len records)))
-                 (:instance fn-lg-trailer-of-frame-digestp (max *fn-frame-max-payload*)
-                            (chunk (fn-bs-take (fn-lg-chunk-len records) records)))))))
+  :hints (("Goal"
+           :in-theory
+           (disable fn-lgx-entry
+                    fn-lgx-frame
+                    fn-lgx-trailer
+                    fn-lg-chunkp
+                    fn-frame-digestp
+                    fn-lg-recordsp
+                    fn-lg-entry
+                    fn-lg-frame
+                    fn-lg-trailer)
+           :use
+           ((:instance fn-lgx-log-loop-is-revappend (acc nil))
+            (:instance fn-lg-chunkp-of-first-chunk (max *fn-frame-max-payload*))
+            (:instance fn-lg-recordsp-of-nthcdr
+                       (max *fn-frame-max-payload*)
+                       (k (fn-lg-chunk-len records)))
+            (:instance fn-lg-trailer-of-frame-digestp
+                       (max *fn-frame-max-payload*)
+                       (chunk (fn-bs-take (fn-lg-chunk-len records) records)))))))
 
 (defun fn-lgx-last-trailer (records prev)
   (declare (xargs :guard (and (fn-frame-digestp prev)

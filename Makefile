@@ -1013,6 +1013,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/ideal \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
+	tests/acl2/serve-depth-tests \
 	books/nntp-index-runtime \
 	books/group-number-index \
 	books/group-bucket-index \

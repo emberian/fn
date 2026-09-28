@@ -222,7 +222,7 @@
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-rcl-summary-in-loop (rule now h verdicts rev fn-arena acc)
-  (declare (xargs :stobjs fn-arena :guard (rationalp acc) :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard (true-listp acc) :verify-guards nil))
   (if (consp rev)
       (fn-rcl-summary-in-loop rule
                               now

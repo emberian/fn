@@ -140,7 +140,7 @@
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
 (defun fn-ks-values-loop (prefix rev acc)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (consp acc) :verify-guards nil))
   (if (consp rev)
       (fn-ks-values-loop prefix
                          (cdr rev)
