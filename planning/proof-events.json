@@ -11504,6 +11504,27 @@
           "name": "fn-nls-octets-string-is-record-octets-string"
         }
       ]
+    },
+    {
+      "id": "PRF-342",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hp-decode-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-page-digest-is-leaf"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-append-changes-only-dirty"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-append-dirty-bound"
+        }
+      ]
     }
   ]
 }

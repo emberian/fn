@@ -725,6 +725,25 @@ addresses; reclamation never frees a page a valid record of any root keeps.
 Named: A-PGS-HOST-IO. Scenario: SCN-186. Not yet the owner's path: the owner's state (fn-hist
 first) moves onto these pages in a later step.
 
+The history's image (PRF-342, lane arena-store-2; `books/history-pages.lisp`).
+The first owner state on these pages is the history (fn-hist). Its snapshot
+is the FNADTSN1 byte form (`books/proto/adt-bytes.lisp`) of one row per
+event: MKEY (1 + the salted FNV-1a bucket of the event's key Message-ID, 0
+when none), the length of the event's tree octets (the checkpoint's proved
+tree codec, `fn-scc-encode`), and those octets zero-padded to a multiple of 8
+(so every append writes whole words). Image page K is the page store's
+logical page K, and the page store's per-page digest is the image's
+page-digest leaf: there is no second digest table. Proved: the decoder
+inverts the image; an append changes only the header page and, per region,
+the pages its new octets overlap, at most 11 + (32 K + the new trees'
+octets) / 16384 pages for K events while no region doubles. Limitation
+(L-HP-DOUBLING): FNADTSN1 places regions contiguously, so a region that
+doubles moves every region after it and that commit writes them (amortized
+O(1) per row). The Message-ID bucket heads are not in the image (FNADTSN1's
+keyed form carries the live records, not the index). Not yet the owner's
+path: the open over these pages and the snapshot commit are the next
+milestones.
+
 ## History classes and lifetimes
 
 STO-010: every class of durable state the store holds has a stated lifetime,
