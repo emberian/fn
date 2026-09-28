@@ -233,13 +233,6 @@
   (value (fn-rci-decide-stream profile (fn-cfg-value (f-get-global 'fn-store-cfg state))
                                (f-get-global 'fn-store-sn state) acc dry fn-arena)))
 
-(defun fn-store-checkpoint-publication-initial
-  (generations proposed-generation exclusivep final-absentp values)
-  (declare (xargs :mode :program))
-  (fn-cpp-publication-initial generations proposed-generation exclusivep
-                              final-absentp
-                              (fn-store-checkpoint-generation-capacity values)))
-
 ; Decode a selected generation against the live configuration and the
 ; observed durable frontier and record count.  The accepted checkpoint is
 ; installed for the restore call; the reply carries only its sequence and
