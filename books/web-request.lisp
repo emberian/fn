@@ -123,6 +123,14 @@
                                     :exec fn-octets$c-append-word :protect t))
   :congruent-to fn-octets)
 
+(defthm fn-web-in-p-is-octet-listp
+  (equal (fn-web-in-p x) (fn-cbor-octet-listp x))
+  :hints (("Goal" :in-theory (enable fn-web-in-p fn-octets$ap))))
+
+(defthm fn-web-out-p-is-octet-listp
+  (equal (fn-web-out-p x) (fn-cbor-octet-listp x))
+  :hints (("Goal" :in-theory (enable fn-web-out-p fn-octets$ap))))
+
 ; -----------------------------------------------------------------------------
 ; Octet classes (RFC 9110 5.6.2 tchar; 5.5 field-vchar / obs-text).
 
