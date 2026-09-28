@@ -543,19 +543,63 @@
 ; 5. The tries after one step.
 
 ; The id trie of a ledger, built once: every pin's id over every release's.
-(defun fn-rii-kbuild-releases (releases)
+; Both folds execute by loops (PKT-876, lane open-depth): each ran one
+; control-stack frame per pin or release, a retained article each.  The
+; :exec folds the reversed list from the left, the same puts in the same
+; order; equal by the guard proofs.
+(defun fn-rii-kbuild-releases-loop (rev trie)
   (declare (xargs :guard t))
-  (if (consp releases)
-      (fn-rii-id-put (fn-retain-release-id (car releases))
-                     (fn-rii-kbuild-releases (cdr releases)))
-    nil))
+  (if (consp rev)
+      (fn-rii-kbuild-releases-loop (cdr rev)
+                                   (fn-rii-id-put (fn-retain-release-id (car rev)) trie))
+    trie))
+
+(defun fn-rii-kbuild-releases (releases)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp releases)
+           (fn-rii-id-put (fn-retain-release-id (car releases))
+                          (fn-rii-kbuild-releases (cdr releases)))
+         nil)
+       :exec (fn-rii-kbuild-releases-loop (fn-ag-rev-onto releases nil) nil)))
+
+(defun fn-rii-kbuild-pins-loop (rev trie)
+  (declare (xargs :guard t))
+  (if (consp rev)
+      (fn-rii-kbuild-pins-loop (cdr rev)
+                               (fn-rii-id-put (fn-retain-obligation-id (car rev)) trie))
+    trie))
 
 (defun fn-rii-kbuild-pins (pins base)
-  (declare (xargs :guard t))
-  (if (consp pins)
-      (fn-rii-id-put (fn-retain-obligation-id (car pins))
-                     (fn-rii-kbuild-pins (cdr pins) base))
-    base))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp pins)
+           (fn-rii-id-put (fn-retain-obligation-id (car pins))
+                          (fn-rii-kbuild-pins (cdr pins) base))
+         base)
+       :exec (fn-rii-kbuild-pins-loop (fn-ag-rev-onto pins nil) base)))
+
+(encapsulate ()
+  (local
+   (defthm fn-rii-kbuild-releases-loop-of-rev-onto
+     (equal (fn-rii-kbuild-releases-loop (fn-ag-rev-onto xs zs) nil)
+            (fn-rii-kbuild-releases-loop zs (fn-rii-kbuild-releases xs)))
+     :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                     :in-theory (disable fn-rii-id-put fn-retain-release-id)))))
+  (local
+   (defthm fn-rii-kbuild-pins-loop-of-rev-onto
+     (equal (fn-rii-kbuild-pins-loop (fn-ag-rev-onto xs zs) base)
+            (fn-rii-kbuild-pins-loop zs (fn-rii-kbuild-pins xs base)))
+     :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                     :in-theory (disable fn-rii-id-put fn-retain-obligation-id)))))
+  (verify-guards fn-rii-kbuild-releases
+    :hints (("Goal" :in-theory (disable fn-rii-id-put fn-retain-release-id fn-ag-rev-onto)
+                    :use ((:instance fn-rii-kbuild-releases-loop-of-rev-onto
+                                     (xs releases) (zs nil))))))
+  (verify-guards fn-rii-kbuild-pins
+    :hints (("Goal" :in-theory (disable fn-rii-id-put fn-retain-obligation-id fn-ag-rev-onto)
+                    :use ((:instance fn-rii-kbuild-pins-loop-of-rev-onto
+                                     (xs pins) (zs nil)))))))
 
 (defun fn-rii-kbuild (retention)
   (declare (xargs :guard t))

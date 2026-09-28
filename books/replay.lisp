@@ -466,20 +466,67 @@
 
 (verify-guards fn-replay-identity)
 
+; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
+; verdict event, a depth of the store's statement count on a checkpoint's
+; open.  The :logic is the recursion, unchanged; the :exec reverses an
+; accumulator twin, equal by the guard proof.
+(defun fn-replay-verdict-pair (e)
+  (declare (xargs :guard t :verify-guards nil))
+  (cons (fn-stxe-msgid e)
+        (fn-stx-make-verdict (fn-stxe-token e) (fn-stxe-detail e)
+                             (fn-stxe-keyring-generation e))))
+
+(verify-guards fn-replay-verdict-pair)
+
+(defun fn-replay-verdict-pairs-rev (events acc)
+  (declare (xargs :guard (true-listp acc)))
+  (if (consp events)
+      (fn-replay-verdict-pairs-rev (cdr events)
+                                   (if (fn-stxe-p (car events))
+                                       (cons (fn-replay-verdict-pair (car events)) acc)
+                                     acc))
+    acc))
+
 (defun fn-replay-verdict-pairs (events)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp events)
-      (let ((e (car events)))
-        (if (fn-stxe-p e)
-            (cons (cons (fn-stxe-msgid e)
-                        (fn-stx-make-verdict
-                         (fn-stxe-token e) (fn-stxe-detail e)
-                         (fn-stxe-keyring-generation e)))
-                  (fn-replay-verdict-pairs (cdr events)))
-          (fn-replay-verdict-pairs (cdr events))))
-    nil))
+  (mbe :logic
+       (if (consp events)
+           (let ((e (car events)))
+             (if (fn-stxe-p e)
+                 (cons (cons (fn-stxe-msgid e)
+                             (fn-stx-make-verdict
+                              (fn-stxe-token e) (fn-stxe-detail e)
+                              (fn-stxe-keyring-generation e)))
+                       (fn-replay-verdict-pairs (cdr events)))
+               (fn-replay-verdict-pairs (cdr events))))
+         nil)
+       :exec (reverse (fn-replay-verdict-pairs-rev events nil))))
 
-(verify-guards fn-replay-verdict-pairs)
+(encapsulate ()
+  (local
+   (defthm fn-replay-verdict-pairs-rev-is-revappend
+     (equal (fn-replay-verdict-pairs-rev events acc)
+            (revappend (fn-replay-verdict-pairs events) acc))
+     :hints (("Goal" :in-theory (disable fn-stxe-p fn-stxe-msgid fn-stxe-token
+                                         fn-stxe-detail fn-stxe-keyring-generation
+                                         fn-stx-make-verdict)))))
+  (local
+   (defthm fn-replay-revappend-revappend
+     (equal (revappend (revappend x y) z)
+            (revappend y (append x z)))))
+  (local
+   (defthm fn-replay-true-listp-of-verdict-pairs
+     (true-listp (fn-replay-verdict-pairs events))))
+  (local
+   (defthm fn-replay-append-nil-when-true-listp
+     (implies (true-listp x) (equal (append x nil) x))))
+  (local
+   (defthm fn-replay-true-listp-of-revappend
+     (implies (true-listp y) (true-listp (revappend x y)))))
+  (verify-guards fn-replay-verdict-pairs
+    :hints (("Goal" :in-theory (disable fn-stxe-p fn-stxe-msgid fn-stxe-token
+                                        fn-stxe-detail fn-stxe-keyring-generation
+                                        fn-stx-make-verdict)))))
 
 ; Apply exactly one record only after its sequence has been checked.  NIL is a
 ; refusal signal; it is deliberately not a normal partial state.  The guard

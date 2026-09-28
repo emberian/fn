@@ -69,11 +69,34 @@
         (fn-mxc-put msgid 0 article trie)
       (fn-midx-branch-put *fn-midx-value-key* article trie))))
 
-(defun fn-mxc-build (articles)
+; Executes by a loop (PKT-876, lane open-depth): the right fold ran one
+; control-stack frame per retained article on every open that builds the
+; index.  The :exec folds the reversed list from the left, the same puts in
+; the same order; equal by the guard proof.
+(defun fn-mxc-build-loop (rev trie)
   (declare (xargs :guard t))
-  (if (consp articles)
-      (fn-mxc-extend (fn-ag-car articles) (fn-mxc-build (fn-ag-cdr articles)))
-    nil))
+  (if (consp rev)
+      (fn-mxc-build-loop (cdr rev) (fn-mxc-extend (car rev) trie))
+    trie))
+
+(defun fn-mxc-build (articles)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp articles)
+           (fn-mxc-extend (fn-ag-car articles) (fn-mxc-build (fn-ag-cdr articles)))
+         nil)
+       :exec (fn-mxc-build-loop (fn-ag-rev-onto articles nil) nil)))
+
+(encapsulate ()
+  (local
+   (defthm fn-mxc-build-loop-of-rev-onto
+     (equal (fn-mxc-build-loop (fn-ag-rev-onto xs zs) nil)
+            (fn-mxc-build-loop zs (fn-mxc-build xs)))
+     :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                     :in-theory (disable fn-mxc-extend)))))
+  (verify-guards fn-mxc-build
+    :hints (("Goal" :in-theory (disable fn-mxc-extend fn-ag-rev-onto)
+                    :use ((:instance fn-mxc-build-loop-of-rev-onto (xs articles) (zs nil)))))))
 
 (defun fn-mxc-refresh (index old-articles new-articles)
   (declare (xargs :guard t))
