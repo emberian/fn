@@ -3715,7 +3715,9 @@
         "PRF-350",
         "PRF-355",
         "PRF-356",
-        "PRF-366"
+        "PRF-366",
+        "PRF-369",
+        "PRF-370"
       ],
       "verification": [
         "proof",
@@ -3744,7 +3746,9 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-205",
-        "PRF-366"
+        "PRF-366",
+        "PRF-369",
+        "PRF-370"
       ],
       "verification": [
         "inspection",

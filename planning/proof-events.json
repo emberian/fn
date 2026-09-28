@@ -12551,6 +12551,31 @@
       ]
     },
     {
+      "id": "PRF-369",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sxi-stream-plan-is-the-import-plan",
+          "note": "KEYSTONE (no hypotheses). Host: host/native/io.lisp fnn-import-pass calls fn-sxi-head, fn-sxi-start, fn-sxi-want and fn-sxi-step per chunk, fn-sxi-final; fnn-command-store-import runs it twice. Teeth: tests/acl2/store-import-stream-tests.lisp (every chunking, format 9, each refusal by name incl. a cross-chunk sequence and a later MANIFEST mismatch outranking an earlier translation refusal; mutation witnesses: swapped and dropped chunks, an uncarried sequence)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-370",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sxd-crash-is-incomplete-or-complete",
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-export (the program's steps and cuts, tests/campaign/native_cuts.py verify_export_cut_map). Teeth: tests/acl2/store-export-durability-tests.lisp (a full run, both arms reached; mutation: the MANIFEST renamed before the sync; hypothesis removal: a stale MANIFEST, a short write reported :ok, an entry named MANIFEST)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxd-import-verdict-is-incomplete-or-complete",
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-import-pass asks fn-sxd-archive-verdict before reading any entry."
+        }
+      ]
+    },
+    {
       "id": "PRF-372",
       "events": [
         {

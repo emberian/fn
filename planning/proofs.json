@@ -12967,8 +12967,6 @@
         "fn-osd-stops-only-when-nothing-is-owed",
         "fn-osd-releases-only-at-the-deadline",
         "fn-osd-drain-ends-by-the-deadline",
-        "fn-osd-drain-stops-by-the-deadline",
-        "fn-osd-drain-next-step-unfolds",
         "fn-osd-deadline-is-past-the-slow-deadline"
       ]
     },
@@ -13058,6 +13056,58 @@
         "fn-sxp-stream-is-the-export",
         "fn-sxp-record-entries-of-append",
         "fn-sxp-manifest-under-of-append"
+      ]
+    },
+    {
+      "id": "PRF-369",
+      "title": "store import a chunk at a time: the streamed plan is the whole-archive import plan",
+      "statement": "books/store-import-stream.lisp fn-sxi-stream-plan-is-the-import-plan (no hypotheses): for every chunking CHUNKS of the archive's records and every MANIFEST octet string M, the host's loop (host/native/io.lisp fnn-import-pass: fn-sxi-head and fn-sxi-start over the profile, frontier and configuration records, then per chunk of at most +fnn-export-chunk+ records fn-sxi-want and fn-sxi-step over the MANIFEST octets read at the chunk's place, then fn-sxi-final over what follows the last chunk's lines) decides exactly what fn-sxp-import-plan decides over the whole archive: the same refusal by the same name, or the same profile, configuration records and records (the steps' records joined in order). So PRF-205's round trip and the format-9 migration hold of the streamed import. The import's work and allocation per ACL2 call are one chunk's; the MANIFEST is never held whole. Pass two (the records appended to the stage's log) re-runs the same steps and is refused by name (archive-changed) when it does not decide what pass one decided.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028",
+        "HST-014"
+      ],
+      "depends_on": [
+        "PRF-205",
+        "PRF-366"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-import-stream.lisp",
+        "tests/acl2/store-import-stream-tests.lisp",
+        "host/native/io.lisp"
+      ],
+      "progress_note": "Lane obligations-paged-archive 2026-09-28: store import read every record of the archive into one list (and the MANIFEST whole) before one fn-sxp-import-plan call; now two streamed passes.",
+      "events": [
+        "fn-sxi-stream-plan-is-the-import-plan"
+      ]
+    },
+    {
+      "id": "PRF-370",
+      "title": "export durability: the data share one sync, the MANIFEST is durable last, a crash leaves an archive refused by name or the complete archive",
+      "statement": "books/store-export-durability.lisp fn-sxd-crash-is-incomplete-or-complete: over the byte model (books/byte-store.lisp, crash images with torn writes and unordered entry operations), from a well-formed state whose archive directory has no MANIFEST durable or pending, a crash at any state of any run of fn-sxd-program (entries created and written with no per-file fence, the MANIFEST's lines into MANIFEST.partial, ONE :sync-all, then MANIFEST.partial, records/ and config/ fenced, the rename onto MANIFEST, the directory fenced), under any syscall outcome, leaves either no MANIFEST or the MANIFEST bound to the file the lines were written to, holding them, with every entry bound to a file holding its octets. fn-sxd-import-verdict-is-incomplete-or-complete: the import's verdict (fn-sxd-archive-verdict, which host/native/io.lisp fnn-import-pass asks first) over every such image is :archive-incomplete (refused by name) or :read over the complete archive. The host (fnn-command-store-export) runs the program step for step with its cuts (tests/campaign/native_cuts.py EXPORT_CUTS); :sync-all is Linux syncfs(2), elsewhere a fence of every file under the archive. The model writes the MANIFEST's lines in one write; the host appends them per chunk, all before the sync.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028",
+        "HST-014"
+      ],
+      "depends_on": [
+        "PRF-366"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-export-durability.lisp",
+        "tests/acl2/store-export-durability-tests.lisp",
+        "host/native/io.lisp",
+        "tests/campaign/native_cuts.py",
+        "tests/test_native_store_export.py"
+      ],
+      "progress_note": "Lane obligations-paged-archive 2026-09-28 (coordinator decision): the export fsynced every entry (about 40 files/s on hbox ZFS); now one sync, MANIFEST last.",
+      "events": [
+        "fn-sxd-crash-is-incomplete-or-complete",
+        "fn-sxd-import-verdict-is-incomplete-or-complete"
       ]
     },
     {
