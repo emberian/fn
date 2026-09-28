@@ -979,7 +979,7 @@ class NativeBpNodeTests(unittest.TestCase):
     def receiver_articles(self):
         """The receiver Store's article count, from the node's own read-only
         open (`store PATH status`, books/native-live-status.lisp
-        fn-nls-report's `articles=' word): it replays the format-9 record log
+        fn-nls-report's `articles=' word): it replays the record log
         the way the served path does.  The Python Store (tools/run_store.py)
         reads another layout and is not this Store's readback."""
         status = self.invoke("store", self.receiver_store, "status", timeout=300)

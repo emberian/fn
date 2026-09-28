@@ -1,4 +1,4 @@
-"""Served-owner process deaths on the record log (format 9).
+"""Served-owner process deaths on the record log.
 
 FN_NATIVE_CRASH_HOST must be a source-matched developer image.  No test class
 is registered without it; an absent image contributes zero runtime evidence.
@@ -13,7 +13,7 @@ that history, serves the prior as stored and the candidate whole exactly when
 it is in the history (tests.test_native_crash_model's NativeCampaignMixin).
 The per-file programs' model-image differential this module ran before
 (fn-bs-record-program and fn-bs-marker-program's cuts, fn-bs-recover-program's
-image) is not reachable on a format-9 store and is retired with them.
+image) is not reachable on a store and is retired with them.
 """
 import os
 from pathlib import Path

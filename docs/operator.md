@@ -529,22 +529,12 @@ back to an older release over a newer store.
 2. Install the new release. The program folder is replaced whole.
 3. Start the node. The store folder stays as it is.
 
-Only if the new release refuses the old store do you move the data
-through an export. The refusal names why: `reason=store-format` (the
-store is in an older format; every store made before 27 September 2026
-is) or `reason=older-release`. Run the export with the **old** release,
-before you install the new one:
-
-```text
-fn operator NODE/fn.toml store export ARCHIVE
-# stop the unit; install the release
-mv NODE/store/keys NODE/keys.keep && rm -r NODE/store
-fn operator NODE/fn.toml store import ARCHIVE
-mv NODE/keys.keep NODE/store/keys
-# start the unit
-```
-
-Keep the export until the new node works. Peers reconnect after the move.
+A release opens only a store of its own format; there are no migrations.
+If the new release refuses the store, the line says so:
+`open refused reason=store-format: not an fn store of this release:
+redeploy fresh`. Set the node up again with `init`; the old store's data
+does not carry over. `store export` and `store import` move a store between
+installs of the same format (see [moving data](install.md#4-reinstalling)).
 
 ### The node's secret key
 
@@ -825,7 +815,7 @@ Limits: `--max-transactions`, `--max-history-octets`,
 `--max-credentials`. `--profile scale|development|default` names a starting
 set. When this machine's memory cannot hold the limits you name, `init`
 refuses and makes nothing:
-`fn: refused init-budget-cannot-hold-profile profile=scale sizing=requested reservation=10866 MB budget=2048 MB`
+`fn: refused init-budget-cannot-hold-profile profile=scale sizing=requested reservation=10097 MB budget=2048 MB`
 (exit code 1). The first number is what the store would need at its
 limits, the second what this machine can give. Choose smaller limits, or,
 to make a store for a bigger machine, name that machine's memory with

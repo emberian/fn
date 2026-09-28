@@ -14,9 +14,7 @@ The witnesses, on the developer image:
 
 * `init` one octet past the ceiling (H raised with it) is refused by that
   name, exit 1, and writes no config.json; at the ceiling it is written and
-  the store serves: the owner starts and takes a POST;
-* a store saved in the window is refused by name at every open, with the
-  line that names the reinstall and import (D34 removed the in-place repair).
+  the store serves: the owner starts and takes a POST.
 
 The live-status (FNLS) row's named refusal
 (`fn-nls-page-refuses-exactly-past-the-total-width`) needs a report of 2^32
@@ -91,76 +89,6 @@ class ControlReplyFitTests(ControlReplyFitFixture):
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.assertEqual(self.profile_line()["max-record-octets"], CEILING)
         self.serves("init")
-
-# PKT-471 (the coordinator's decision of 2026-09-26): a store SAVED before
-# PKT-467 with R in the window above CEILING is refused by name at every open
-# (books/store-profile-open.lisp fn-spo-config-open, the open
-# host/native/io.lisp fnn-metadata-config-decode calls; keystone
-# fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name); D34
-# removed the in-place repair, so the line names a reinstall and an import.
-#
-# The witness config.json is written BY HAND, never taken from a real store:
-# the octets the format-8 encoder wrote under the relation before PKT-467 for
-# the scale preset's fields with R = H = 4,294,967,295 (the codec's u32), the
-# same constant tests/acl2/store-profile-open-tests.lisp checks is
-# (fn-spo-saved-frame *spot-window*).  Its last 32 octets are the SHA-256 of
-# the rest (the FNSM trailer).
-WINDOW_FRAME = bytes.fromhex(
-    "464e534d0101000000ac000a666e2d73746f72652d38001e666e2d73746f7265"
-    "2d616c6c6f636174696f6e2d66726f6e746965722d3200000000000010000000"
-    "0000ffffffff00000000ffffffff0000000000008000000000000000ffff0000"
-    "0000000001000000000000001000000000000010000000000000001000000000"
-    "0000001000000000000000100000000000000010000000000000000000000000"
-    "00000000004000000000000001000000000000004000798b663d5cce0214bb58"
-    "721d80936087dafdcb98853d2ef91c790fdd0ed2160b")
-# Format 10 (lane format-bump-10): the window refusal went with format 9 (every
-# format-10 profile is written under the relation that carries the arm); this
-# format-8 frame is now refused as another format, by name, at every open.
-LINE = "open refused reason=store-format: reinstall from the release and import"
-
-
-class ProfileOpenRefusalSourceTests(unittest.TestCase):
-    def test_the_witness_frame_is_a_sealed_format_8_frame(self):
-        self.assertEqual(len(WINDOW_FRAME), 214)
-        self.assertEqual(WINDOW_FRAME[:4], b"FNSM")
-        self.assertEqual(hashlib.sha256(WINDOW_FRAME[:-32]).digest(), WINDOW_FRAME[-32:])
-
-
-class ProfileOpenRefusalTests(ControlReplyFitFixture):
-    def files(self):
-        return {str(p.relative_to(self.store)): hashlib.sha256(p.read_bytes()).hexdigest()
-                for p in sorted(self.store.rglob("*"))
-                if p.is_file() and p.name != "writer.lock"}
-
-    def assert_named(self, result, what):
-        out = (result.stdout + result.stderr).decode("utf-8", "replace")
-        print("$", what, "->", result.returncode, "\n" + out.strip(), flush=True)
-        self.assertEqual(result.returncode, EXIT_REFUSED, out)
-        self.assertIn(LINE, out)
-        self.assertNotIn("ACL2 rejected durable configuration frame", out)
-
-    def test_a_store_saved_in_the_window_is_refused_by_name_at_every_open(self):
-        created = self.op("init", "fn.test")
-        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        self.serves("window")
-        (self.store / "config.json").write_bytes(WINDOW_FRAME)
-        before = self.files()
-
-        self.assert_named(self.op("status"), "operator status")
-        self.assert_named(self.op("recover"), "operator recover")
-        self.assert_named(self.op("store", "inspect", "<fit-window@example.invalid>"),
-                          "operator store inspect")
-        self.assert_named(self.op("store", "checkpoint"), "operator store checkpoint")
-        self.assert_named(self.op("health"), "operator health")
-        self.assert_named(self.op("run", env={"FN_INIT_BUDGET_MB": HARNESS_INIT_BUDGET_MB}),
-                          "operator run")
-        self.assert_named(self.store_cli("recover"), "store recover")
-        self.assert_named(self.store_cli("inspect", "<fit-window@example.invalid>"),
-                          "store inspect")
-        self.assert_named(self.store_cli("checkpoint"), "store checkpoint")
-        # Refused, never mutated.
-        self.assertEqual(self.files(), before)
-
 
 
 if __name__ == "__main__":

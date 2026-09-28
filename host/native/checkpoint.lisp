@@ -1,4 +1,4 @@
-;;; The `checkpoint' verbs of the record log (format 9): `checkpoint clone'
+;;; The `checkpoint' verbs of the record log: `checkpoint clone'
 ;;; and `clone-resume', and `store compact' / `store reclaim' (the state
 ;;; checkpoint's rotation and the covered segments' drop).
 ;;;
@@ -8,7 +8,7 @@
 ;;; frame is the node of books/checkpoint.lisp fn-checkpoint-capture, and since
 ;;; the records flip that node holds arena handles its frame does not resolve,
 ;;; so every capture of a store holding an article was refused ("ACL2 refused
-;;; checkpoint capture").  Format 9's checkpoint is the state checkpoint
+;;; checkpoint capture").  The record log's checkpoint is the state checkpoint
 ;;; (fn-bs-scp-program; the arena run then the tables, lane checkpoint-arena):
 ;;; the open reads it (fn-sn-recover-from-checkpoint-equals-full-recover,
 ;;; PRF-083; KEYSTONE fn-scka-load-of-written-file), the owner publishes it
@@ -51,7 +51,7 @@
         (sb-posix:kill (sb-posix:getpid) sb-unix:sigstop)))))
 
 (defun fnn-command-compact (root)
-  "`store compact'.  Format 9 (the record log): compaction is the
+  "`store compact'.  On the record log compaction is the
 checkpoint's rotation and the drop of the segments it covers (design
 2026-09-27 storage-log section 6; T8 books/store-log-stream.lisp
 fn-lgw-segment-drop-preserves-the-open):
@@ -62,7 +62,7 @@ state (D27)."
   (multiple-value-bind (store count) (fnn-open-live-store root t)
     (unwind-protect
          (progn
-           ;; Every store an image opens is format 9 (batch AW: a format-8
+           ;; Every store an image opens is on the record log (batch AW: a format-8
            ;; profile is refused at the open); the pack chain's verb is the
            ;; per-file layout's, deleted with it (design section 9 row 5).
            (unless (fnn-store-logp store)
@@ -109,7 +109,7 @@ Answers the report line's field."
         (format nil "instant-record=~a generation=~d" name generation)))))
 
 (defun fnn-log-reclaim-steps (store mode)
-  "`store reclaim' on a format-9 store (books/store-log-reclaim.lisp): the
+  "`store reclaim' on a store (books/store-log-reclaim.lisp): the
 history streamed one record at a time into ACL2's fold (fn-rcls-step under the
 store's context, compact-arena's books/store-reclaim-stream.lisp) with each
 record's rewrite (fn-rclp-event) kept as an octet vector, then ACL2's decision
@@ -469,7 +469,7 @@ the report line."
 
 (defun fnn-checkpoint-command (command args)
   (cond ((member command +fnn-checkpoint-retired-verbs+ :test #'string=)
-         (fnn-refuse "checkpoint ~a: generation checkpoints are retired on the record log (format 9); the store's checkpoint is the state checkpoint: `operator CONFIG store checkpoint' (or `store ROOT checkpoint'), `operator CONFIG store compact'" command))
+         (fnn-refuse "checkpoint ~a: generation checkpoints are retired on the record log; the store's checkpoint is the state checkpoint: `operator CONFIG store checkpoint' (or `store ROOT checkpoint'), `operator CONFIG store compact'" command))
         ((string= command "clone")
          (unless (= (length args) 2)
            (error 'fnn-usage-error :message

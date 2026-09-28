@@ -8,7 +8,7 @@ generation) are retired (lane matrix-reds, 2026-09-27): their frame is the
 node of books/checkpoint.lisp fn-checkpoint-capture, which since the records
 flip holds arena handles the frame does not resolve, so every capture of a
 store holding an article was refused.  The verbs now refuse by name
-(test_retired_generation_verbs_refuse_by_name).  Format 9's checkpoint is
+(test_retired_generation_verbs_refuse_by_name).  The record log's checkpoint is
 the state checkpoint (fn-bs-scp-program with the arena run, lane
 checkpoint-arena), covered by tests.test_native_state_checkpoint (the open
 equals the full replay, a corrupt or arena-less file falls back to the
@@ -243,7 +243,7 @@ class NativeCheckpointTests(unittest.TestCase):
         self.assertNotIn("checkpoint=", recovered.stdout.splitlines()[0])
 
     def transaction_bytes(self, store):
-        """The committed history the store's open reads (format 9: the record
+        """The committed history the store's open reads (the record
         log), as `store export' writes it: the archive's files and their
         octets.  Equal exactly when no record changed."""
         archive = self.base / "history-archive"
@@ -362,7 +362,7 @@ class NativeProductionCompactTests(unittest.TestCase):
     assert_view_kept_and_next_number = NativeCheckpointTests.assert_view_kept_and_next_number
 
     def test_operator_compact_keeps_every_article_and_next_number(self):
-        # Format 9: compaction is the checkpoint with the log rotated and the
+        # compaction is the checkpoint with the log rotated and the
         # covered segments dropped (lane log-recovery; T8).  The history the
         # open reads (the export archive) and the served view are unchanged,
         # the next POST takes the next number, a second compaction covers

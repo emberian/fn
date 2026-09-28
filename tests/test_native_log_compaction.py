@@ -2,7 +2,7 @@
 planning/design-2026-09-27-storage-log.md sections 4 and 6; books/store-log-
 segments.lisp, T8 fn-lg-segment-drop-preserves-the-open).
 
-A format-9 store's `store compact` publishes a state checkpoint with the log
+A store's `store compact` publishes a state checkpoint with the log
 ROTATED (the active segment closed, the next created and fenced before the
 checkpoint's F row names it) and, once the checkpoint is installed, DROPS the
 segments it covers.  The cases, each over a store the served node filled:
@@ -148,7 +148,7 @@ class LogCompactionMixin:
         return any(needle in p.read_bytes() for p in node.store.rglob("*") if p.is_file())
 
     def test_reclaim_over_the_log_removes_the_released_payloads(self):
-        """`store reclaim` on a format-9 store (books/store-log-reclaim.lisp):
+        """`store reclaim` on a store (books/store-log-reclaim.lisp):
         the rewritten history's checkpoint with the log rotated, then the drop;
         the released articles' payload octets are on no file of the store."""
         node = self.filled(0, 8)

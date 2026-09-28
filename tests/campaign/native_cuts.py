@@ -126,7 +126,7 @@ EXPORT_CUTS = tuple(
 PUBLICATION_SUFFIXES = tuple(c.name[len("import-"):] for c in IMPORT_CUTS)
 
 # `operator CONFIG init' (host/native/io.lisp `fnn-command-init-published',
-# PKT-647, format 9 since lane log-2): books/store-init-log-publication.lisp
+# PKT-647, the record log since lane log-2): books/store-init-log-publication.lisp
 # fn-bs-init-log-program, the import's program over the record log's plan with
 # init's cut names (books/store-init-publication.lisp
 # *fn-bs-init-pub-cut-names*), selected by FN_NATIVE_INIT_FAULT.
@@ -143,7 +143,7 @@ INIT_PUB_CUTS = tuple(
 # chain, the prefix reclaim and the retirement went with the per-file layout
 # (lane log-recovery-2, PKT-838): compaction and reclaim on the log are the
 # checkpoint's rotation and the segments' drop (SEGMENT_PROGRAM_HOSTS below);
-# format 9's checkpoint is the state checkpoint (STATE_CHECKPOINT_CUTS).
+# the record log's checkpoint is the state checkpoint (STATE_CHECKPOINT_CUTS).
 
 # The record log (lane w6-log-core; books/store-log-programs.lisp).  Each cut
 # is a named point of one log program, hosted by one function of
@@ -178,7 +178,7 @@ LOG_CUTS = (
 LOG_STEP_HOST = {"write-at": "(fnn-log-pwrite ", "fence": "(fnn-log-fdatasync ",
                  "extend-to": "(fnn-log-preallocate "}
 
-# The served commit on a format-9 store (lane commit-onto-log): P-BATCH as the
+# The served commit on a store (lane commit-onto-log): P-BATCH as the
 # owner's commit quantum runs it (host/native/owner.lisp
 # fnn-owner-commit-queued-locked).  Each member's finish (fnn-finish: cuts
 # finish-consumed, finish-durable) is its in-memory completion, in order,
@@ -905,7 +905,7 @@ def verify_statement_cut_map() -> None:
             sorted(binders), list(LOG_BATCH_BINDERS)))
 
 # The record-log route's arms (lane log-2; books/store-log-route-programs.lisp).
-# Each per-file host function above has a format-9 arm, `(when (fnn-store-logp
+# Each per-file host function above has a record-log arm, `(when (fnn-store-logp
 # store) ...)', that calls the log route instead; tools/native_program_check.py
 # reads the per-file route and checks each arm here: the arm's callee's
 # durable steps and process-death cuts, in source order, are its programs'
@@ -1003,7 +1003,7 @@ def log_route_host_steps(source: str, name: str) -> list:
 
 
 def verify_log_route_arms(source: str | None = None) -> list:
-    """Each format-9 arm's host steps equal its log programs' steps; returns
+    """Each record-log arm's host steps equal its log programs' steps; returns
     the mismatches (empty when every arm matches).  SOURCE: io.lisp's text
     (a test's mutation), the file by default."""
     if source is None:

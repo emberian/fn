@@ -85,7 +85,7 @@ class MountIdentityNativeTests(unittest.TestCase):
         self.expect(self.fn("store", copy, "recover"), EXIT_OK, "recover the copy")
 
     def test_rebind_on_the_same_filesystem_opens_a_log_store(self):
-        # Every store init makes is a format-9 log store, which has no
+        # Every store init makes is a log store, which has no
         # allocation-frontier file (its frontier is derived from the log).
         # The rebind loaded one unconditionally and faulted on every such
         # store (lane catalog-scan, 2026-09-27: the hbox fixtures could not

@@ -245,10 +245,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-profile-facts-tests \
 	books/store-genesis \
 	tests/acl2/store-genesis-tests \
-	books/store-format-9 \
-	books/store-format-9-records \
-	tests/acl2/store-format-9-tests \
-	tests/acl2/store-format-9-records-tests \
 	books/store-profile-open \
 	tests/acl2/store-profile-open-tests \
 	books/store-profile-namespace \
@@ -268,6 +264,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/heap-open-nursery-tests \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
+	books/heap-breakdown \
+	tests/acl2/heap-breakdown-tests \
+	books/memory-credits \
+	tests/acl2/memory-credits-tests \
 	tests/acl2/heap-figure-tests \
 	books/connection-budget \
 	tests/acl2/connection-budget-tests \

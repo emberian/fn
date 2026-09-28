@@ -1833,9 +1833,7 @@
   (equal (fn-heap-figure-octets profile core nursery)
          (fn-heap-with-nursery
           (+ (fn-heap-core-dynamic core)
-             (fn-heap-store-state-octets profile (fn-bs-profile-max-history-octets profile)
-                                         (fn-bs-profile-max-transactions profile)
-                                         (fn-heap-membership-bound profile))
+             (fn-heap-store-state-bound profile)
              (fn-heap-store-open-octets
               profile
               (nfix (fn-bs-profile-max-history-octets profile))
