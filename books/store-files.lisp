@@ -272,6 +272,27 @@
                                   (fn-sf-make-fields))
            :use fn-sf-shape-fields-canonical)))
 
+;; Over a state built from lists (fn-sf-make), a kept field is the list's
+;; representation, so a transition that keeps it builds the state fn-sf-make
+;; builds from the same lists: value equalities between kernel states
+;; written with fn-sf-make keep holding.
+(defthm fn-sf-records-field-of-fn-sf-make
+  (equal (fn-sf-records-field (fn-sf-make phase frontier frontier-candidate records
+                                          record-candidate completion successes barriers))
+         (fn-sl-of records))
+  :hints (("Goal" :in-theory (enable fn-sf-make))))
+(defthm fn-sf-successes-field-of-fn-sf-make
+  (equal (fn-sf-successes-field (fn-sf-make phase frontier frontier-candidate records
+                                            record-candidate completion successes barriers))
+         (fn-sl-of successes))
+  :hints (("Goal" :in-theory (enable fn-sf-make))))
+(defthm fn-sf-make-fields-of-fn-sl-of-is-make
+  (equal (fn-sf-make-fields phase frontier frontier-candidate (fn-sl-of records)
+                            record-candidate completion (fn-sl-of successes) barriers)
+         (fn-sf-make phase frontier frontier-candidate records record-candidate completion
+                     successes barriers))
+  :hints (("Goal" :in-theory (enable fn-sf-make))))
+
 ; A transition that keeps both histories keeps their fields.
 (defmacro fn-sf-remake (phase frontier frontier-candidate record-candidate
                               completion barriers s)

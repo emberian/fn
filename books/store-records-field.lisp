@@ -116,6 +116,10 @@
 (defthm fn-sfr-list-of-fn-sfr-snoc
   (equal (fn-sfr-list (fn-sfr-snoc f r)) (append (fn-sfr-list f) (list r))))
 
+; Over a field built from a list, the snoc builds the appended list's field.
+(defthm fn-sfr-snoc-of-fn-sl-of
+  (equal (fn-sfr-snoc (fn-sl-of x) r) (fn-sl-of (append x (list r)))))
+
 (defthm fn-sfr-canonp-of-fn-sfr-snoc
   (implies (fn-sfr-canonp f) (fn-sfr-canonp (fn-sfr-snoc f r))))
 
