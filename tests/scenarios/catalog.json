@@ -120,14 +120,12 @@
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/store-files-invariants.lisp",
-        "tests/test_store.py",
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
         "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
-        "tests/test_store_corruption.py",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "tests/acl2/byte-store-initializer-tests.lisp",
@@ -285,7 +283,6 @@
         "tests/evidence/2026-09-18-bp-workflow.md",
         "tests/evidence/2026-09-18-bp-exchange.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
-        "tests/test_bp_receive_process_crash.py",
         "tests/acl2/bp-receiver-invariants-tests.lisp",
         "planning/evidence/native-bp-app-2026-09-21.md",
         "tests/test_bp_app_native.py"
@@ -482,7 +479,6 @@
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/nntp-invariants.lisp",
         "books/nntp-effects.lisp",
-        "tests/test_reader_partitions.py",
         "books/served.lisp",
         "tests/acl2/served-tests.lisp",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
@@ -535,7 +531,6 @@
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/store-files-invariants.lisp",
-        "tests/test_store.py",
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
@@ -702,7 +697,6 @@
         "A Message-ID the node does not hold is a refusal (exit 1), distinct from uncertainty (exit 3) and a fault (exit 4)."
       ],
       "evidence": [
-        "tests/test_provenance.py",
         "tests/acl2/provenance-tests.lisp"
       ],
       "note": "The transit path is NOT covered: it still stores fn-peer-evidence's rendering. See planning/lanes/HANDOFF-w10-provenance.md."

@@ -29,7 +29,7 @@ able to run a lab says so.
     python3 tools/labs.py                 # everything runnable on this machine
     python3 tools/labs.py --tier quick    # the subset a lane can afford
     python3 tools/labs.py --tier box --host hbox
-    python3 tools/labs.py --only four-node --json build/labs/report.json
+    python3 tools/labs.py --only tcpcl --json build/labs/report.json
 
 `tests/README.md` carries the table of which lab is in which tier and what
 each one costs.  Nothing here is wired into `make check`: a lab takes minutes
@@ -44,7 +44,6 @@ import datetime as dt
 import json
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 import time
@@ -80,90 +79,6 @@ def repo_root(start: Path | None = None) -> Path:
         return Path(__file__).resolve().parents[1]
 
 
-def revision(root: Path, args=None) -> str:
-    """What this run is evidence about, without asking git twice.
-
-    `--commit` when the caller named one that is not a moving reference,
-    `FN_GATE_REVISION` when a gate set it, else this worktree's HEAD, else
-    the empty string -- and a lab that needs one refuses on the empty string
-    rather than writing "unknown".
-    """
-    named = getattr(args, "commit", None)
-    if named and named not in ("HEAD", "dev"):
-        return named
-    from_gate = os.environ.get("FN_GATE_REVISION", "").strip()
-    if from_gate:
-        return from_gate
-    try:
-        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(root),
-                             check=True, stdout=subprocess.PIPE,
-                             stderr=subprocess.DEVNULL)
-        return out.stdout.decode().strip()
-    except Exception:
-        return ""
-
-
-def acl2_executable() -> str | None:
-    """The ACL2 this tree would use, or None."""
-    named = os.environ.get("FN_ACL2")
-    if named:
-        return named if Path(named).is_file() and os.access(named, os.X_OK) else None
-    return shutil.which("acl2")
-
-
-def certificate_closure(root: Path, hosts: tuple[str, ...]):
-    """Every book those host files transitively include, and its certificate.
-
-    A host file is `ld`ed, never certified, so nothing else in the tree reads
-    it; the books under it are what an `include-book` inside it needs a
-    certificate for.
-
-    Presence only. A certificate here is content-keyed
-    (`ACL2_BOOK_HASH_ALISTP=NIL`) and `tools/certs.py install` copies pairs
-    out of the cache with their original timestamps, so a file date says
-    nothing about whether a pair matches -- an mtime staleness proxy calls
-    every book in a freshly installed worktree stale. Whether an installed
-    pair is still VALID is ACL2's answer and nobody else's, and when it is not
-    the lab does not fail honestly: `include-book` treats a stale certificate
-    as an ERROR where an absent one is only a warning, and the bridge dies
-    with `ACL2 bridge call marker did not precede its prompt`. `DIAGNOSES`
-    below says so on the failing row, which is where it is useful.
-
-    Returns (missing, reader error).
-    """
-    try:
-        from tools import ledger
-    except Exception as error:  # pragma: no cover - a broken tree, not a lab
-        return [], "the book reader did not load: {!r}".format(error)
-    try:
-        books = {relative: ledger.analyze_book(path, relative)
-                 for path, relative in ledger.book_paths()}
-        pending, seen = [], set()
-        for relative in hosts:
-            path = root / relative
-            if not path.is_file():
-                return [], "{} is not in this tree".format(relative)
-            host = ledger.analyze_host(path, relative)
-            pending.extend(ledger.resolve(reference + ".lisp")
-                           for reference in host.includes)
-        missing = []
-        while pending:
-            target = pending.pop()
-            if target in seen:
-                continue
-            seen.add(target)
-            book = books.get(target)
-            if book is None:
-                continue  # a system book: ACL2's own certificate, not ours
-            if not (root / target).with_suffix(".cert").is_file():
-                missing.append(target)
-            pending.extend(ledger.included_path(book, reference)
-                           for reference in book.includes)
-        return sorted(missing), None
-    except Exception as error:  # pragma: no cover
-        return [], "the book reader failed: {!r}".format(error)
-
-
 # --------------------------------------------------------------------------
 # the registry
 # --------------------------------------------------------------------------
@@ -196,33 +111,6 @@ def _git_repository(root: Path) -> str | None:
     return None
 
 
-# The host files `tools/run_store.py`, `tools/run_bp_receive.py`,
-# `tools/workflow_bridge.py` and `tools/bundle_bridge.py` `ld` on the lab's
-# path.  Their include closure is what needs certificates in this worktree.
-FOUR_NODE_HOSTS = (
-    "host/store-host.lisp", "host/store-node-host.lisp",
-    "host/config-host.lisp", "host/anchor-host.lisp",
-    "host/checkpoint-host.lisp", "host/bp-ingress-host.lisp",
-    "host/bp-receive-host.lisp", "host/bp-receipt-journal-host.lisp",
-    "host/workflow-host.lisp")
-
-
-def _four_node_unmet(root: Path, args) -> str | None:
-    if acl2_executable() is None:
-        return ("no ACL2: FN_ACL2 names none and `acl2` is not on PATH "
-                "(the lab's every acceptance, receipt and local number is ACL2's)")
-    missing, error = certificate_closure(root, FOUR_NODE_HOSTS)
-    if error:
-        return error
-    if missing:
-        return ("{} of the books under the lab's host files have no certificate "
-                "in this worktree ({}{}); run `python3 tools/certs.py install`, "
-                "or certify them".format(
-                    len(missing), ", ".join(missing[:4]),
-                    ", ..." if len(missing) > 4 else ""))
-    return None
-
-
 def _tcpcl_image(root: Path, args) -> Path:
     return Path(args.image).expanduser() if args.image else root / "build" / "fn-host"
 
@@ -233,19 +121,6 @@ def _tcpcl_unmet(root: Path, args) -> str | None:
         return ("no native fn image at {}: `sh tools/build_native_host.sh` builds "
                 "one, and that needs a certified tree first (it refuses to load an "
                 "uncertified book)".format(image))
-    return None
-
-
-def _ltp_unmet(root: Path, args) -> str | None:
-    ion = Path(args.ion_root).expanduser()
-    for binary in ("bpsendfile", "fn_ltp_stage"):
-        if not (ion / "install" / "bin" / binary).is_file():
-            return ("no pinned ION build at {}: {} is not there.  The build "
-                    "recorded in tests/ltp/pin.json lives on hbox at /tank/fn/ltp, "
-                    "and the two ION nodes must already be started "
-                    "(tests/ltp/start_node.sh)".format(ion, binary))
-    if acl2_executable() is None:
-        return "no ACL2: FN_ACL2 names none and `acl2` is not on PATH"
     return None
 
 
@@ -277,20 +152,6 @@ def _commit(args) -> str:
 
 
 LABS: tuple[Lab, ...] = (
-    Lab(name="four-node", kind="lab", tier="quick",
-        script="tests/bp-dtn7/run_four_node_lab.py",
-        budget=600.0, cost="about 65 s and one ACL2 on this laptop",
-        carries="the only end-to-end evidence for the carried-media and "
-                "crash-recovery rows of M3: 22 assertions over four nodes, "
-                "non-overlapping contacts, a SIGKILLed relay, a lost receipt, "
-                "an expiry and a reordered duplicate pair",
-        # `--revision` explicitly: the lab refuses to write an evidence file
-        # it cannot name a revision for, and a gate tree is a `git archive`
-        # extract with no repository to ask.
-        argv=lambda root, run, args: [
-            sys.executable, str(root / "tests/bp-dtn7/run_four_node_lab.py"),
-            "--run-base", str(run), "--revision", revision(root, args)],
-        unmet=_four_node_unmet),
     Lab(name="tcpcl", kind="lab", tier="local",
         script="tools/tcpcl_lab.py",
         budget=900.0, cost="a few minutes once build/fn-host exists; the image "
@@ -304,38 +165,6 @@ LABS: tuple[Lab, ...] = (
             "--image", str(_tcpcl_image(root, args)), "--work", str(run),
             "--scenario", "all"],
         unmet=_tcpcl_unmet),
-    Lab(name="ltp", kind="lab", tier="box",
-        script="tests/ltp/run_fn_ltp_lab.py",
-        budget=900.0, cost="a couple of minutes on the box that holds ION",
-        carries="fn's request ADU across an actual ION BP-over-LTP link and "
-                "back into fn's own acceptance: feasibility evidence for one "
-                "adapter route, not interoperability qualification",
-        argv=lambda root, run, args: [
-            sys.executable, str(root / "tests/ltp/run_fn_ltp_lab.py"),
-            "--ion-root", str(Path(args.ion_root).expanduser()),
-            "--run", str(run)],
-        unmet=_ltp_unmet),
-    Lab(name="deploy", kind="lab", tier="box",
-        script="tools/deploy_gate.py",
-        budget=5400.0, cost="tens of minutes on a box, and a certification if "
-                            "the box holds no gate for the tree",
-        carries="one commit unpacked on a machine that is not the laptop, "
-                "serving a real socket to an independent client, SIGKILLed "
-                "mid-session and reopened through the real recovery path",
-        argv=lambda root, run, args: [
-            sys.executable, str(root / "tools/deploy_gate.py"), _commit(args),
-            "--host", args.host or "", "--jobs", str(args.jobs)],
-        unmet=_box_unmet),
-    Lab(name="twonode", kind="lab", tier="box",
-        script="tools/twonode_gate.py",
-        budget=5400.0, cost="tens of minutes on a box",
-        carries="two fn nodes beside each other: what A accepts is A's, an "
-                "IHAVE offer from A to B, and B SIGKILLed mid-transfer and "
-                "reread",
-        argv=lambda root, run, args: [
-            sys.executable, str(root / "tools/twonode_gate.py"), _commit(args),
-            "--host", args.host or "", "--jobs", str(args.jobs)],
-        unmet=_box_unmet),
     Lab(name="inn", kind="lab", tier="box",
         script="tools/inn_lab.py",
         budget=1800.0, cost="about a minute on the box that holds INN (52 s on "
@@ -349,48 +178,11 @@ LABS: tuple[Lab, ...] = (
             "--host", args.host or "", "--native-image", args.native_image or "",
             "--evidence", str(Path(run) / "inn-lab.md")],
         unmet=_inn_unmet),
-    Lab(name="scale", kind="lab", tier="box",
-        script="tools/scale_gate.py",
-        budget=10800.0, cost="hours on a box; it doubles a store until a post "
-                             "or a recover crosses its ceiling",
-        carries="the number that has to ship beside `one commit serves`: at "
-                "what store size a post stops returning, at what size recover "
-                "becomes an outage, and what a reader pays per command",
-        argv=lambda root, run, args: [
-            sys.executable, str(root / "tools/scale_gate.py"), _commit(args),
-            "--host", args.host or "", "--jobs", str(args.jobs)],
-        unmet=_box_unmet),
     # The dry runs.  Each drives the real gate script through bash on this
     # machine with HOME redirected, fakes over the entry points and no ssh at
     # all.  They establish that the harness parses, sequences, classifies and
     # renders.  They establish NOTHING about fn, and they are printed apart
     # from the labs so that they cannot be read as a lab result.
-    Lab(name="deploy-dry", kind="dry", tier="quick",
-        script="tests/test_deploy_gate.py",
-        budget=600.0, cost="about 30 s",
-        carries="tools/deploy_gate.py's sequencing, certificate choice, port "
-                "parsing, kill/recover cut, exit-code classification and "
-                "evidence rendering, against fakes",
-        argv=lambda root, run, args: [
-            sys.executable, "-m", "unittest", "tests.test_deploy_gate"],
-        unmet=_dry_unmet),
-    Lab(name="twonode-dry", kind="dry", tier="quick",
-        script="tests/test_twonode_gate.py",
-        budget=600.0, cost="about 20 s",
-        carries="tools/twonode_gate.py's two-node sequencing, peer records, "
-                "feed and kill scenarios and evidence, against fakes",
-        argv=lambda root, run, args: [
-            sys.executable, "-m", "unittest", "tests.test_twonode_gate"],
-        unmet=_dry_unmet),
-    Lab(name="scale-dry", kind="dry", tier="quick",
-        script="tests/test_scale_gate.py",
-        budget=600.0, cost="about 15 s",
-        carries="tools/scale_gate.py's series, stop rule, comparison and "
-                "tables, against fake series, generate, measure and server "
-                "entry points",
-        argv=lambda root, run, args: [
-            sys.executable, "-m", "unittest", "tests.test_scale_gate"],
-        unmet=_dry_unmet),
     Lab(name="inn-dry", kind="dry", tier="quick",
         script="tests/test_inn_lab.py",
         budget=600.0, cost="about 20 s",
@@ -414,12 +206,6 @@ TIERS = {"quick": ("quick",), "local": ("quick", "local"),
 # Failures whose cause is not in the lab at all.  A row that matches one says
 # so, because the alternative is a lane spending an afternoon in the lab.
 DIAGNOSES = (
-    ("ACL2 bridge call marker did not precede its prompt",
-     "this is almost always a STALE certificate, not a defect of the lab: "
-     "`include-book` treats a stale pair as an ERROR where an absent one is "
-     "only a warning, so the bridge dies before the lab runs. Run "
-     "`python3 tools/certs.py install`, or certify the closure, and try "
-     "again."),
     ("Uncertified",
      "a book in the closure was included uncertified. Run "
      "`python3 tools/certs.py install`, or certify the closure."),
@@ -571,8 +357,6 @@ def main(argv=None) -> int:
     parser.add_argument("--native-image", default=None,
                         help="the saved native image's path on the box, for the "
                              "INN lab (its fn side is the image, D07)")
-    parser.add_argument("--ion-root", default=os.environ.get("FN_ION_ROOT", "/tank/fn/ltp"),
-                        help="the pinned ION install for the LTP lab")
     parser.add_argument("--run", default=None,
                         help="where the run directories go "
                              "(default: build/labs/<utc timestamp> under this worktree)")

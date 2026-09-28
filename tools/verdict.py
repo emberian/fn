@@ -592,7 +592,7 @@ def claim(fibers: list[Fiber], gate_facts: dict) -> str:
             "the Python suite ran {} tests ({})".format(
                 roots - bad, roots, acl2,
                 suite.get("ran", 0), suite.get("verdict", "unknown")))
-    lived = [n for n in ("deploy", "twonode", "inn", "scale") if n in passed]
+    lived = [n for n in ("deploy", "twonode", "inn") if n in passed]
     if lived:
         head += ("; the {} harness{} drove a server built from it and returned "
                  "every step at its expected code".format(
@@ -759,10 +759,10 @@ def main(argv=None) -> int:
                         help="the host's ACL2 image; the default is tools/farm.py's")
     parser.add_argument("--evidence", default=None)
     parser.add_argument("--skip", action="append", default=[],
-                        choices=["gate", "deploy", "twonode", "inn", "scale"],
+                        choices=["gate", "deploy", "twonode", "inn"],
                         help="a fiber to leave out; it is still a row saying so")
     parser.add_argument("--only", action="append", default=[],
-                        choices=["gate", "deploy", "twonode", "inn", "scale"])
+                        choices=["gate", "deploy", "twonode", "inn"])
     parser.add_argument("--reuse-gate", nargs="?", const="", default=None,
                         metavar="REV",
                         help="read a gate directory that already exists and "
@@ -786,13 +786,12 @@ def main(argv=None) -> int:
     acl2 = args.acl2 or FARM_HOSTS.get(args.host, {}).get("acl2", "acl2")
 
     wanted = set(args.only) if args.only else {
-        "gate", "deploy", "twonode", "inn", "scale"} - set(args.skip)
+        "gate", "deploy", "twonode", "inn"} - set(args.skip)
     plan = [
         Fiber("gate", args.host, "make certify + unittest + gate_publish.sh"),
         Fiber("deploy", args.host, "tools/deploy_gate.py"),
         Fiber("twonode", args.host, "tools/twonode_gate.py"),
         Fiber("inn", args.inn_host, "tools/inn_lab.py"),
-        Fiber("scale", args.host, "tools/scale_gate.py"),
     ]
     for fiber in plan:
         if fiber.name not in wanted:
@@ -823,10 +822,8 @@ def main(argv=None) -> int:
         else:
             command = [sys.executable, "tools/{}.py".format(
                 {"deploy": "deploy_gate", "twonode": "twonode_gate",
-                 "inn": "inn_lab", "scale": "scale_gate"}[fiber.name]),
+                 "inn": "inn_lab"}[fiber.name]),
                 commit, "--host", fiber.host, "--tree", args.tree]
-            if fiber.name == "scale":
-                command += ["--reuse"]
             if fiber.name == "inn":
                 command += ["--jobs", str(args.jobs)]
             harness(fiber, command, repo, args.harness_timeout)

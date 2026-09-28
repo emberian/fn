@@ -18,7 +18,7 @@ import time
 import unittest
 
 from tests.native_harness import (
-    EXIT_OK, EXIT_UNCERTAIN, Node, acl2_boolean, assert_outcome, environment,
+    EXIT_OK, EXIT_UNCERTAIN, Acl2Session, Node, acl2_boolean, assert_outcome, environment,
     native_image, requires, run, scratch, start)
 
 
