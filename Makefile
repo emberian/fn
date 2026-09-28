@@ -1487,6 +1487,8 @@ check:
 # counts move with every include (lane lane-tools-2, for served-columns).
 	@$(CHECK_STEP) $(PYTHON) tools/shape_books.py --check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_shape_books
+# tools/rule_usage.py's graph simulation and log reading (lane fan-in-cuts).
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_rule_usage
 # The website renders the guides' articles (site/build_site.py, stdlib only):
 # every article is well-formed (tools/docs_articles.py: its headers, its
 # Message-ID, 72 columns), every repository path it names exists, and every

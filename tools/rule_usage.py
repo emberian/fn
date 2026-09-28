@@ -221,6 +221,12 @@ class Map:
         used = self.used(book)
         return bool(used) and "tau-system" in used
 
+    def source_text(self, book: str) -> str:
+        try:
+            return (self.root / f"{book}.lisp").read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return ""
+
     def tokens(self, book: str) -> set[str]:
         if book not in self._tokens:
             self._tokens[book] = source_tokens(self.root / f"{book}.lisp")
@@ -361,14 +367,21 @@ def chain_edges(usage: "Map", slack: int = 0) -> list[dict]:
     return rows
 
 
+def book_name(value: str) -> str:
+    """A graph key from `books/x`, `books/x.lisp` or `./books/x.lisp` (simulate
+    checks it is in the graph)."""
+    return value.strip().removeprefix("./").removesuffix(".lisp")
+
+
 def parse_rewire(spec: str) -> tuple[str, str, str]:
     """`X:-Y` drops X's include of Y, `X:+Y` adds one."""
     for sign in ("-", "+"):
         book, sep, target = spec.partition(":" + sign)
         if sep:
-            if certify_books.normalize_book(book) == certify_books.normalize_book(target):
+            book, target = book_name(book), book_name(target)
+            if book == target:
                 raise SystemExit(f"rule_usage: --simulate {spec!r}: a book cannot include itself")
-            return certify_books.normalize_book(book), sign, certify_books.normalize_book(target)
+            return book, sign, target
     raise SystemExit(f"rule_usage: --simulate {spec!r}: want X:-Y or X:+Y")
 
 
@@ -395,8 +408,7 @@ def source_names(usage: "Map", book: str) -> set[str]:
     if book in _SOURCE_NAMES:
         return _SOURCE_NAMES[book]
     names = set(usage.tokens(book))
-    text = (usage.root / f"{book}.lisp").read_text(encoding="utf-8", errors="replace")
-    for record in DEFRECORD.findall(text):
+    for record in DEFRECORD.findall(usage.source_text(book)):
         record = record.lower()
         names.update({record + "p", record + "-shapep", record + "-internals",
                       record + "p-forward-shape"})
