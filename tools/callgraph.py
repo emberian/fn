@@ -46,8 +46,11 @@ from __future__ import annotations
 import argparse
 import collections
 from dataclasses import dataclass, field
+import hashlib
 import json
+import os
 from pathlib import Path
+import pickle
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -169,17 +172,115 @@ def collect(forms: list[tuple[object, int]], path: str, records: bool = True) ->
     return found
 
 
+# One file's definitions, persisted by the digest of everything they are a
+# function of: this reader's and the ledger's source, the Python, the
+# file's path and bytes.  A tree where one book changed re-reads that book
+# only (defkeystone: a before/after diff of one book re-read ~1,300 in each
+# tool).  FN_CALLGRAPH_CACHE=0 turns it off; a directory path moves it.
+CACHE_DIR = ROOT / "build" / "cache" / "callgraph"
+CACHE_ENTRIES = 20000
+_CACHE_SALT: bytes | None = None
+
+
+def _cache_dir() -> Path | None:
+    setting = os.environ.get("FN_CALLGRAPH_CACHE", "")
+    if setting == "0":
+        return None
+    return Path(setting) if setting else CACHE_DIR
+
+
+def _cache_key(relative: str, data: bytes, records: bool) -> str:
+    global _CACHE_SALT
+    if _CACHE_SALT is None:
+        salt = hashlib.sha256(b"fn-callgraph-cache-2\0" + sys.version.encode())
+        for source in (Path(__file__), Path(ledger.__file__)):
+            salt.update(source.resolve().read_bytes())
+        _CACHE_SALT = salt.digest()
+    digest = hashlib.sha256(_CACHE_SALT)
+    digest.update(relative.encode() + b"\0" + (b"r" if records else b"-") + b"\0" + data)
+    return digest.hexdigest()
+
+
+# The cache holds builtins only: a pickled `ledger.Sym' is resolved against
+# whatever module object is `sys.modules["ledger"]' when it is read (a test
+# may load a second one), and a Sym of the other class is not a symbol here.
+def _encode(form: object) -> object:
+    if isinstance(form, Sym):
+        return ("s", str(form))
+    if isinstance(form, list):
+        return [_encode(item) for item in form]
+    return form
+
+
+def _decode(form: object) -> object:
+    if isinstance(form, tuple):
+        return Sym(form[1])
+    if isinstance(form, list):
+        return [_decode(item) for item in form]
+    return form
+
+
+def _dump(result: "tuple[list[Definition], str | None]") -> bytes:
+    definitions, error = result
+    rows = [(d.name, d.kind, d.path, d.line, _encode(d.form)) for d in definitions]
+    return pickle.dumps((rows, error), protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def _load(data: bytes) -> "tuple[list[Definition], str | None]":
+    rows, error = pickle.loads(data)
+    return [Definition(name, kind, path, line, _decode(form))
+            for name, kind, path, line, form in rows], error
+
+
 def read_file(path: Path, relative: str, records: bool = True) -> tuple[list[Definition], str | None]:
     try:
-        forms = ledger.Reader(path.read_text(encoding="utf-8", errors="replace")).top_level()
-    except ledger.ReadError as exc:
+        data = path.read_bytes()
+    except OSError as exc:
         return [], str(exc)
-    return collect(forms, relative, records), None
+    directory = _cache_dir()
+    entry = None
+    if directory is not None:
+        entry = directory / (_cache_key(relative, data, records) + ".pickle")
+        try:
+            return _load(entry.read_bytes())
+        except Exception:
+            pass
+    try:
+        forms = ledger.Reader(data.decode("utf-8", errors="replace")).top_level()
+        result: tuple[list[Definition], str | None] = (collect(forms, relative, records), None)
+    except ledger.ReadError as exc:
+        result = ([], str(exc))
+    if entry is not None:
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+            temporary = entry.with_name(".{}.{}.tmp".format(entry.name, os.getpid()))
+            temporary.write_bytes(_dump(result))
+            os.replace(temporary, entry)
+        except OSError:
+            pass  # a cache that cannot be written is a slower run, never a wrong one
+    return result
+
+
+def prune_cache() -> None:
+    """Keep the newest CACHE_ENTRIES entries (one call per tree build)."""
+    directory = _cache_dir()
+    if directory is None:
+        return
+    try:
+        entries = list(directory.glob("*.pickle"))
+        if len(entries) <= CACHE_ENTRIES:
+            return
+        entries.sort(key=lambda one: one.stat().st_mtime)
+        for stale in entries[:-CACHE_ENTRIES]:
+            stale.unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def build(files: list[tuple[Path, str]], records: bool = True) -> Graph:
     """The graph over FILES ((path, repository-relative name) pairs)."""
     graph = Graph()
+    prune_cache()
     for path, relative in files:
         found, error = read_file(path, relative, records)
         if error is not None:
@@ -243,4 +344,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # Run as the module `callgraph', so the per-file cache pickles
+    # callgraph.Definition, which every importer (reach_check) can read.
+    import callgraph as _callgraph
+    sys.exit(_callgraph.main())

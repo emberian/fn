@@ -422,6 +422,7 @@ class Graph:
         """name -> (file, form) for every definition callgraph reads in
         PATHS; a later file's definition of a name replaces an earlier's."""
         found = {}
+        callgraph.prune_cache()
         for path in paths:
             relative = str(path.relative_to(ROOT))
             definitions, error = callgraph.read_file(path, relative, records=False)
@@ -709,8 +710,12 @@ def load_rows() -> list:
     return registry["proofs"] if isinstance(registry, dict) else registry
 
 
-def audit(graph: Graph):
+def audit(graph: Graph, books: "set[str] | None" = None):
+    """(findings, hosted, unresolved) over the registry's events; with BOOKS,
+    only the events whose theorem one of those books defines (`--book')."""
     theorems = theorem_forms(graph.books)
+    if books is not None:
+        theorems = {name: entry for name, entry in theorems.items() if entry[0] in books}
     bridges = equality_bridges(graph, theorems)
     rows = load_rows()
 
@@ -723,6 +728,8 @@ def audit(graph: Graph):
         for event in row.get("events", []):
             name = str(event).lower()
             entry = theorems.get(name)
+            if books is not None and entry is None:
+                continue
             if name in declared:
                 # A defkeystone names its subject (tools/keystone_emit.py's
                 # generated `keystone_subjects'): that function's host
@@ -761,6 +768,10 @@ def audit(graph: Graph):
                 continue
             findings.append(Finding(row["id"], name, book, subjects))
     return findings, hosted, unresolved
+
+
+def theorem_names_of(graph: "Graph", books: set[str]) -> set[str]:
+    return {name for name, (book, _) in theorem_forms(graph.books).items() if book in books}
 
 
 def load_baseline() -> dict:
@@ -809,6 +820,9 @@ def main(argv=None) -> int:
                         help="exit non-zero on an orphan not in the baseline")
     parser.add_argument("--baseline", action="store_true",
                         help="rewrite planning/reach-baseline.json from this run")
+    parser.add_argument("--book", action="append", default=[], metavar="PATH",
+                        help="with --summary or the listing: only the registry events "
+                             "these books define (the graph is still the whole tree's)")
     parser.add_argument("--explain", metavar="EVENT",
                         help="print what this reader takes EVENT's subject to be and why it is or is not hosted")
     arguments = parser.parse_args(argv)
@@ -856,7 +870,14 @@ def main(argv=None) -> int:
         else:
             print("NOT hosted: no reached subject, and no named equality to a reached function")
         return 0
-    findings, hosted, unresolved = audit(graph)
+    chosen = ({str((pathlib.Path(b) if pathlib.Path(b).is_absolute() else ROOT / b)
+                   .resolve().relative_to(ROOT)) for b in arguments.book}
+              if arguments.book else None)
+    if chosen is not None and arguments.baseline:
+        print("reach_check: --baseline rewrites the whole baseline; not with --book",
+              file=sys.stderr)
+        return 2
+    findings, hosted, unresolved = audit(graph, chosen)
 
     if arguments.baseline:
         write_baseline(findings)
@@ -867,6 +888,13 @@ def main(argv=None) -> int:
     accepted = load_baseline().get("accepted", {})
     fresh = [f for f in findings if f.key() not in accepted]
     stale = sorted(set(accepted) - {f.key() for f in findings})
+    if chosen is not None:
+        # Only this book's events were judged: a baselined orphan elsewhere
+        # is not "now hosted", it was not looked at.
+        names = theorem_names_of(graph, chosen)
+        judged = {key for key in accepted if key.split(":", 1)[-1] in names}
+        stale = [key for key in stale if key in judged]
+        accepted = {key: accepted[key] for key in judged}
 
     if arguments.summary:
         print(f"reach_check: {hosted + len(findings)} registry events over "
