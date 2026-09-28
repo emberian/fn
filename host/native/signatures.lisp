@@ -148,10 +148,6 @@ build/lib for a built image, the frozen or installed directory's lib/."
           *fnn-hsig-mldsa-library* nil *fnn-hsig-mldsa-version* nil))
   t)
 
-(defun fnn-hsig-version ()
-  (fnn-hsig-initialize)
-  (list *fnn-hsig-mldsa-library* *fnn-hsig-mldsa-version*))
-
 (defun fnn-hsig-ml-fault (code what)
   (error 'fnn-hsig-fault
          :detail (format nil "~a: ~a" what (fnn-%hsig-ml-strerror code))))
