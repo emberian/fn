@@ -5619,7 +5619,7 @@
       "id": "SCN-202",
       "title": "The adopted default F4 bars classify an unresolved write: try-later past D, the held poster told uncertain once at H (not at D), the same article re-sent answered try-later during the stall and `already stored here' after it, and a restart a new clock domain",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "HST-031"
       ],
