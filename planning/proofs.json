@@ -3264,7 +3264,6 @@
         "books/nntp.lisp",
         "tests/acl2/nntp-list-counts-tests.lisp",
         "tests/test_native_reader_index.py",
-        "tests/test_fn_web_native.py",
         "planning/evidence/m6-list-counts-2026-09-24.md",
         "planning/evidence/manifests/certify-20260924T214755Z-939221.json",
         "planning/evidence/manifests/certify-20260924T220328Z-1075905.json",
@@ -4831,7 +4830,7 @@
     {
       "id": "PRF-122",
       "title": "The reader's search scope: the served XPAT reply over a range is XHDR's lines for exactly the served, matching numbers in it, and a withdrawn number is never a hit",
-      "statement": "Over fn-nntp-step-pinned (books/nntp.lisp), which the served path reaches for every non-POST reader command (host/native/owner.lisp through host/owner-host.lisp fn-owner-chunk, fn-served-step, fn-served-dispatch, fn-auth-step-pinned, fn-nntp-post-step-pinned): fn-nntp-step-pinned-xpat-range-is-the-scope, for an open, well-formed, projected session with a selected group and a command line within the preflight whose keyword is XPAT, whose field is a header name or metadata item, whose second argument is a range and whose joined pattern parses, the step's result is fn-nntp-multi of the 221 initial line and fn-nntp-hdr-lines-for-numbers of the field over fn-nss-hits of the range's numbers in the served archive. fn-nss-hits-are-the-scope: a number is in that set iff it is positive, within the range's bounds, the group's served archive holds an available article at it, the field renders, and fn-nntp-xpat-matchesp accepts the rendered field. fn-nss-withdrawn-number-is-never-a-hit: a token the pinned step answers 423 withdrawn for (fn-nntp-number-withdrawn-p) never names a hit, for any field, pattern or number list. tools/fn_web.py Backend.search and Backend.thread send exactly these commands and keep no index.",
+      "statement": "Over fn-nntp-step-pinned (books/nntp.lisp), which the served path reaches for every non-POST reader command (host/native/owner.lisp through host/owner-host.lisp fn-owner-chunk, fn-served-step, fn-served-dispatch, fn-auth-step-pinned, fn-nntp-post-step-pinned): fn-nntp-step-pinned-xpat-range-is-the-scope, for an open, well-formed, projected session with a selected group and a command line within the preflight whose keyword is XPAT, whose field is a header name or metadata item, whose second argument is a range and whose joined pattern parses, the step's result is fn-nntp-multi of the 221 initial line and fn-nntp-hdr-lines-for-numbers of the field over fn-nss-hits of the range's numbers in the served archive. fn-nss-hits-are-the-scope: a number is in that set iff it is positive, within the range's bounds, the group's served archive holds an available article at it, the field renders, and fn-nntp-xpat-matchesp accepts the rendered field. fn-nss-withdrawn-number-is-never-a-hit: a token the pinned step answers 423 withdrawn for (fn-nntp-number-withdrawn-p) never names a hit, for any field, pattern or number list.",
       "milestone": "M6",
       "requirements": [
         "NNT-021"
@@ -8264,7 +8263,7 @@
     {
       "id": "PRF-231",
       "title": "A peer named by a DNS name: the dial resolves only RFC 1123 names, each attempt, and the TLS check a transport selects is the configured name under a pinned anchor or the system's public roots",
-      "statement": "books/peer-host.lisp over the functions the host calls. fn-peer-dial-target-decides-the-path (no hypothesis; host host/native/io.lisp fnn-peer-connect, called by host/native/feed-service.lisp fnn-feed-dial and host/native/pull-service.lisp fnn-pull-round): the target is exactly one of (:address A) with A the four octets fn-native-config-ipv4-address spells and the host not a name, (:resolve HOST) with HOST exactly the configured text, an RFC 1123 section 2.1 name of at most 253 octets of letters, digits, hyphen and dot and not an IPv4 literal (fn-peer-host-name-is-not-an-ipv4-literal), or (:refused :host-syntax) for anything else. fn-peer-tls-verification-selects-one-check (no hypothesis; host fnn-feed-enable-tls and the pull's (:tls NAME TRUST) effect in fnn-pull-round): the answer is :verify or :refused only; a :verify names exactly the configured server name, which is a host, sends SNI exactly when it is a DNS name (fn-peer-tls-verification-sni-is-never-a-literal, RFC 6066 section 3), and selects the system roots iff the trust is :system-roots and a pinned file iff it is a C string; a string host name with a well-formed trust is always :verify. fn-peer-tls-select-named-default (peer add, books/native-admin-peer.lisp fn-native-admin-peer-plan-base): a named host given `-` `-` is checked against its own name under the system roots; fn-peer-tls-select-numeric-host-needs-a-name-by-definition; fn-peer-tls-select-is-a-check: every selection is one fn-peer-tls-verification accepts, the roots exactly when the anchor word is `-`. The peer record admits (:tls MODE NAME :system-roots) (books/peer-config.lisp fn-cfg-peer-transportp, row n = 1), the pull plan reads it (books/peer-pull.lisp fn-pull-security-of-rows, books/peer-pull-session.lisp fn-pull-tls-securityp), and invitations carry only hosts (books/peer-invite.lisp fn-pinv-hosts-okp). Not claimed: DNS authenticity, the system bundle's trustworthiness, OpenSSL's hostname check, IPv6 peers, inbound source-address peers after renumbering. EXTENSION (lane friend-blockers, 2026-09-27, the stranger rehearsal's stops): Stop 10: `fn redeem HOST[:PORT] CODE LOGIN [--tls] [--cafile PEM]` (host/native/io.lisp fnn-command-redeem) runs XREDEEM for a friend; fn-redeem-step decides each step from the reply code, fn-peer-tls-verification the TLS check, fn-redeem-text every line. KEYSTONE fn-redeem-done-only-on-281-after-the-password. EXTENSION (lane public-node-3, 2026-09-27, the OpenBSD rehearsal's finding 8): a connection that never opens or ends (host fnn-command-redeem: fnn-os-error, fnn-tls-io-error, socket and name-service errors, a close or 30 s silence in fnn-redeem-read-line) is fn-redeem-lost at its stage, and the exit code is fn-outcome-code of fn-redeem-outcome-class. KEYSTONE fn-redeem-lost-is-fenced-and-server-answers-are-not: every lost outcome is :fenced (exit 3), (:uncertain :password) exactly after the password, (:unreachable STAGE) before it; a final step outcome ((:done) or (:refused WORD)) is :accepted exactly on the 281 after the password and :refused otherwise. tools/fn_reader.py counts only exit 1 as a refused code. Not claimed: that the server did not bind the account when the connection ended after the password (it is uncertain, and said so).",
+      "statement": "books/peer-host.lisp over the functions the host calls. fn-peer-dial-target-decides-the-path (no hypothesis; host host/native/io.lisp fnn-peer-connect, called by host/native/feed-service.lisp fnn-feed-dial and host/native/pull-service.lisp fnn-pull-round): the target is exactly one of (:address A) with A the four octets fn-native-config-ipv4-address spells and the host not a name, (:resolve HOST) with HOST exactly the configured text, an RFC 1123 section 2.1 name of at most 253 octets of letters, digits, hyphen and dot and not an IPv4 literal (fn-peer-host-name-is-not-an-ipv4-literal), or (:refused :host-syntax) for anything else. fn-peer-tls-verification-selects-one-check (no hypothesis; host fnn-feed-enable-tls and the pull's (:tls NAME TRUST) effect in fnn-pull-round): the answer is :verify or :refused only; a :verify names exactly the configured server name, which is a host, sends SNI exactly when it is a DNS name (fn-peer-tls-verification-sni-is-never-a-literal, RFC 6066 section 3), and selects the system roots iff the trust is :system-roots and a pinned file iff it is a C string; a string host name with a well-formed trust is always :verify. fn-peer-tls-select-named-default (peer add, books/native-admin-peer.lisp fn-native-admin-peer-plan-base): a named host given `-` `-` is checked against its own name under the system roots; fn-peer-tls-select-numeric-host-needs-a-name-by-definition; fn-peer-tls-select-is-a-check: every selection is one fn-peer-tls-verification accepts, the roots exactly when the anchor word is `-`. The peer record admits (:tls MODE NAME :system-roots) (books/peer-config.lisp fn-cfg-peer-transportp, row n = 1), the pull plan reads it (books/peer-pull.lisp fn-pull-security-of-rows, books/peer-pull-session.lisp fn-pull-tls-securityp), and invitations carry only hosts (books/peer-invite.lisp fn-pinv-hosts-okp). Not claimed: DNS authenticity, the system bundle's trustworthiness, OpenSSL's hostname check, IPv6 peers, inbound source-address peers after renumbering. EXTENSION (lane friend-blockers, 2026-09-27, the stranger rehearsal's stops): Stop 10: `fn redeem HOST[:PORT] CODE LOGIN [--tls] [--cafile PEM]` (host/native/io.lisp fnn-command-redeem) runs XREDEEM for a friend; fn-redeem-step decides each step from the reply code, fn-peer-tls-verification the TLS check, fn-redeem-text every line. KEYSTONE fn-redeem-done-only-on-281-after-the-password. EXTENSION (lane public-node-3, 2026-09-27, the OpenBSD rehearsal's finding 8): a connection that never opens or ends (host fnn-command-redeem: fnn-os-error, fnn-tls-io-error, socket and name-service errors, a close or 30 s silence in fnn-redeem-read-line) is fn-redeem-lost at its stage, and the exit code is fn-outcome-code of fn-redeem-outcome-class. KEYSTONE fn-redeem-lost-is-fenced-and-server-answers-are-not: every lost outcome is :fenced (exit 3), (:uncertain :password) exactly after the password, (:unreachable STAGE) before it; a final step outcome ((:done) or (:refused WORD)) is :accepted exactly on the 281 after the password and :refused otherwise. Not claimed: that the server did not bind the account when the connection ended after the password (it is uncertain, and said so).",
       "milestone": "M3",
       "requirements": [
         "NNT-048"
@@ -12195,7 +12194,8 @@
         "tests/acl2/web-request-tests.lisp",
         "planning/evidence/web-native-2026-09-28.md",
         "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
-        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json",
+        "planning/evidence/manifests/certify-20260928T042412Z-1705234.json"
       ],
       "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
@@ -12226,7 +12226,8 @@
         "tests/acl2/web-render-tests.lisp",
         "planning/evidence/web-native-2026-09-28.md",
         "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
-        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json",
+        "planning/evidence/manifests/certify-20260928T043449Z-1806205.json"
       ],
       "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
@@ -12256,7 +12257,8 @@
         "tests/acl2/web-session-tests.lisp",
         "planning/evidence/web-native-2026-09-28.md",
         "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
-        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json",
+        "planning/evidence/manifests/certify-20260928T043449Z-1806205.json"
       ],
       "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
@@ -12285,12 +12287,37 @@
         "tests/test_native_web.py",
         "planning/evidence/web-native-2026-09-28.md",
         "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
-        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json",
+        "planning/evidence/manifests/certify-20260928T043449Z-1806205.json"
       ],
       "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
         "fn-web-config-plan-answers"
       ]
+    },
+    {
+      "id": "PRF-353",
+      "title": "The web face shows an RFC 2047 encoded-word in Subject and From as the text it encodes (B and Q; UTF-8, US-ASCII, ISO-8859-1), anything else as it is, and the decoded text is escaped like any other",
+      "statement": "books/web-2047.lisp. Subject: fn-w47-decode, applied by books/web-render.lisp fn-wr-emit-decoded to the (:w S . E) segment (fn-wr-emit, called by books/web-session.lisp fn-wss-page for every page fn-web-step answers; host/native/web-host.lisp writes the buffer), used for Subject and From on the group page and the article page. KEYSTONES fn-w47-decode-without-openers-is-identity (a field with no \"=?\" decodes to itself: a plain header is shown exactly as it is) and fn-w47-decode-octets (the decoded field is octets); PRF-338's fn-wr-emit-writes-vocabulary-or-escaped, fn-wr-emit-reads-only-its-spans and fn-wr-emit-is-seq re-proved over the new segment, so decoded text is escaped (an encoded < is shown as &lt;). RFC 2047 sections 2 (the word, at most 75 octets), 4.1 (B, books/octet-text.lisp fn-ot-b64-decode), 4.2 (Q), 6.2 (white space between words dropped); RFC 2231 section 5 language suffix dropped. Local policy: a field longer than *fn-w47-max* (4096) octets is shown undecoded (the copy the decoder makes is bounded, never the field). Not claimed: that decoded octets are valid UTF-8 (the browser shows a replacement character).",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/web-2047.lisp",
+        "books/web-render.lisp",
+        "tests/acl2/web-render-tests.lisp",
+        "planning/evidence/web-native-2-2026-09-28.md",
+        "planning/evidence/manifests/certify-20260928T043449Z-1806205.json"
+      ],
+      "events": [
+        "fn-w47-decode-without-openers-is-identity",
+        "fn-w47-decode-octets"
+      ],
+      "progress_note": "Lane web-native-2 (Opus 5.5, 2026-09-28): certified on persvati with tests/acl2/web-render-tests (certify-20260928T043449Z-1806205, 9 passed at 2 jobs; web-render 4.2 s)."
     }
   ]
 }

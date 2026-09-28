@@ -1186,7 +1186,7 @@
       "id": "SCN-036",
       "title": "Durable local human submission without automatic repost",
       "milestone": "M6",
-      "status": "implemented",
+      "status": "deferred",
       "requirements": [
         "WEB-001"
       ],
@@ -1202,25 +1202,9 @@
         "In-flight and lost-reply outcomes remain uncertain; an ARTICLE lookup records only what is currently served.",
         "A parent or intent write failure sends no article; a reply-record write failure retains the known node answer in the running process and fences new submissions; a full spool preserves all prior records."
       ],
-      "evidence": [
-        "tests/test_fn_web.py",
-        "tools/fn_web.py"
-      ],
+      "evidence": [],
       "execution_scope": "Real local HTTP and fake NNTP socket tests exercise this separate client's behavior. A source-matched native-node run, physical power-loss qualification, and general external-web security audit remain open.",
-      "implementation": {
-        "test": "tests.test_fn_web",
-        "cases": [
-          "test_durable_outbox_restart_duplicate_and_single_instance",
-          "test_durable_draft_survives_restart_and_post_freezes_edited_source",
-          "test_durable_inflight_restart_and_lost_reply_never_repost",
-          "test_outbox_parent_barrier_failure_prevents_startup_and_post",
-          "test_durable_concurrent_submit_and_full_spool_preserve_records",
-          "test_durable_fsync_failures_before_and_after_network"
-        ],
-        "native": false,
-        "log": "planning/evidence/harness-repair-2026-09-25/laptop-after.txt",
-        "record": "planning/evidence/m6-web-2026-09-24.md"
-      }
+      "note": "Retired 2026-09-28 (lane web-native-2) with tools/fn_web.py and tools/fn_reader.py: the web page is the node's own face (WEB-005). This scenario ran against the Python reader; its record stays as history."
     },
     {
       "id": "SCN-037",
@@ -1699,7 +1683,6 @@
       ],
       "evidence": [
         "tests/acl2/nntp-xpat-tests.lisp",
-        "tests/test_fn_web.py",
         "planning/evidence/reader-surface-2026-09-25.md"
       ],
       "note": "assurance-triage 2026-09-26: returned to specified: the served-node steps were not run (planning/evidence/reader-surface-2026-09-25.md \"Native: NOT RUN (blocked)\"); only the fake-node tests.test_fn_web ReaderSearchTests and the ACL2 book ran."
@@ -1961,7 +1944,7 @@
       "id": "SCN-068",
       "title": "A person reads a conversation across a withdrawn message, searches a stated window, and resends an uncertain post only on request",
       "milestone": "M6",
-      "status": "implemented",
+      "status": "deferred",
       "requirements": [
         "NNT-021",
         "NNT-036",
@@ -1977,27 +1960,10 @@
         "Back after posting shows that the form was already posted and sends nothing; after restart the intent is uncertain and nothing is sent until the button; the reconciliation answer is recorded beside the unchanged original (NNT-019)."
       ],
       "evidence": [
-        "tests/test_fn_web.py",
         "planning/evidence/reader-daily-2026-09-25.md",
         "planning/evidence/reader-2-2026-09-26.md"
       ],
-      "implementation": {
-        "test": "tests.test_fn_web",
-        "cases": [
-          "test_holes_are_the_nodes_answers_and_withdrawn_is_not_absent",
-          "test_conversation_follows_references_across_a_withdrawn_middle",
-          "test_back_to_the_form_after_posting_returns_the_same_identifier",
-          "test_enrollment_is_the_nodes_current_fact_beside_the_historical_verdict",
-          "test_enrollment_asks_about_the_id_the_node_served_not_the_header",
-          "test_verified_here_names_the_principal_and_whose_keyring",
-          "test_failed_here_says_why",
-          "test_not_performed_says_why",
-          "test_the_page_shows_the_readers_check_beside_the_nodes_facts"
-        ],
-        "native": false,
-        "log": "planning/evidence/harness-repair-2026-09-25/laptop-after.txt",
-        "record": "planning/evidence/reader-daily-2026-09-25.md"
-      }
+      "note": "Retired 2026-09-28 (lane web-native-2) with tools/fn_web.py and tools/fn_reader.py: the web page is the node's own face (WEB-005). This scenario ran against the Python reader; its record stays as history."
     },
     {
       "id": "SCN-061",
@@ -4955,7 +4921,7 @@
       "id": "SCN-173",
       "title": "Friends sign in on the web, read, reply, post, remove their own post, approve a held post, and do not see a private group",
       "milestone": "M6",
-      "status": "implemented",
+      "status": "deferred",
       "requirements": [
         "WEB-003",
         "NNT-046",
@@ -4970,28 +4936,10 @@
         "bob's group list omits fn.private.club and the queue, and its address answers not found; no page carries a password or a script, every page sends default-src 'none', and no page scrolls sideways at 390 pixels."
       ],
       "evidence": [
-        "tests/test_fn_reader.py",
-        "tests/fn_reader_scratch.py",
-        "tests/fn_reader_drive.mjs",
         "planning/evidence/web-reader-2-2026-09-27/drive.json"
       ],
       "execution_scope": "One scratch node on hbox (production image of batch AS, 4c5cc6213) and Chromium 1.62.1 on the laptop over an ssh tunnel. Not a public deployment, not a load test, not an external security audit.",
-      "implementation": {
-        "test": "tests.test_fn_reader",
-        "cases": [
-          "test_sign_in_is_the_nodes_answer_and_the_password_stays_out",
-          "test_unreachable_node_is_not_a_wrong_password",
-          "test_a_post_from_another_site_or_without_the_token_does_nothing",
-          "test_post_once_read_unread_and_remove_own",
-          "test_refused_shows_the_nodes_reason_and_offers_an_edit",
-          "test_not_sure_is_settled_by_the_same_article_never_a_new_one",
-          "test_state_is_per_login",
-          "test_plain_http_off_loopback_is_refused"
-        ],
-        "native": false,
-        "log": "planning/evidence/web-reader-2-2026-09-27/drive.log",
-        "record": "planning/evidence/web-reader-2-2026-09-27.md"
-      }
+      "note": "Retired 2026-09-28 (lane web-native-2) with tools/fn_web.py and tools/fn_reader.py: the web page is the node's own face (WEB-005). This scenario ran against the Python reader; its record stays as history. Sign-in, post and removal are SCN-187 on the node's face; approve, read marks and the access-rule pages are not built there."
     },
     {
       "id": "SCN-172",
@@ -5401,7 +5349,7 @@
       "id": "SCN-185",
       "title": "A friend's node from the release: installed with --reader in a fresh Debian 12, the web reader behind Caddy on the node's TLS port; a friend makes an account from a code, reads a group, posts, sees the post and removes it",
       "milestone": "M6",
-      "status": "implemented",
+      "status": "deferred",
       "requirements": [
         "WEB-004",
         "HST-029",
@@ -5416,19 +5364,12 @@
         "The session cookie is HttpOnly and Secure; no page carries the password; every page sends default-src 'none'; the phone page does not scroll sideways."
       ],
       "evidence": [
-        "tests/fn_reader_friend_drive.mjs",
         "planning/evidence/release-web-reader-2026-09-27.md",
         "planning/evidence/release-web-reader-2026-09-27/drive.json",
         "planning/evidence/release-web-reader-2026-09-27/debian-transcript.md"
       ],
       "execution_scope": "One Debian 12 container on hbox and Chromium on the laptop over an ssh tunnel, with an ungated --frozen package of this lane's image. Not a public deployment, not OpenBSD, not a load test, not an external security audit.",
-      "implementation": {
-        "test": "tests/fn_reader_friend_drive.mjs",
-        "cases": [],
-        "native": true,
-        "log": "planning/evidence/release-web-reader-2026-09-27/drive.json",
-        "record": "planning/evidence/release-web-reader-2026-09-27.md"
-      }
+      "note": "Retired 2026-09-28 (lane web-native-2) with tools/fn_web.py and tools/fn_reader.py: the web page is the node's own face (WEB-005). This scenario ran against the Python reader; its record stays as history. The release path of the node's face: tests/friends_tarball.sh (install.sh --reader adds [web]); a fresh-machine rehearsal behind Caddy is open."
     },
     {
       "id": "SCN-184",
@@ -5509,13 +5450,16 @@
       ],
       "steps": [
         "A scratch store with [auth] required and protected_only and a [web] table; `operator CONFIG run' announces LISTENING-WEB; `account invite' makes a code.",
-        "tests/test_native_web.py drives the face over HTTP and HTTPS: make the account, read the groups, post (a body with a '.' line and markup), read the group and the article, remove the post, sign out, a wrong password, sign in again; malformed requests; a second use of the code."
+        "tests/test_native_web.py drives the face over HTTP and HTTPS: make the account, read the groups, post (a body with a '.' line and markup), read the group and the article, remove the post, sign out, a wrong password, sign in again; malformed requests; a second use of the code.",
+        "tests/web_face_drive.mjs drives headless Chromium through the same visit against a scratch node's face over HTTPS (16 checks, a 390-pixel phone viewport among them)."
       ],
       "expected": [
         "Every outcome is the node's: 303 to / after XREDEEM and AUTHINFO 281; the post accepted, listed, read back escaped; removed (STAT 430) and gone from the group; 401 'don't match' for the wrong password; 505/501/400/411 for the malformed requests; 403 for the second use of the code; no page carries the password; every page has CSP default-src 'none'; the session cookie is HttpOnly, SameSite=Lax, and Secure over HTTPS."
       ],
       "evidence": [
-        "tests/test_native_web.py"
+        "tests/test_native_web.py",
+        "tests/web_face_drive.mjs",
+        "planning/evidence/web-native-2-2026-09-28.md"
       ],
       "implementation": {
         "test": "tests.test_native_web",

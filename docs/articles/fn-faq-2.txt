@@ -1,11 +1,11 @@
 From: fn <docs@fn.fg-goose.online>
 Newsgroups: fn.docs
 Subject: fn FAQ, part 2: reading and posting
-Date: Sun, 27 Sep 2026 12:02:00 +0000
-Message-ID: <fn-faq-2-20260927@fn.fg-goose.online>
+Date: Mon, 28 Sep 2026 12:02:00 +0000
+Message-ID: <fn-faq-2-20260928@fn.fg-goose.online>
 Archive-name: fn-faq/part2
 Posting-Frequency: when fn changes
-Last-modified: 2026-09-27
+Last-modified: 2026-09-28
 Summary: Newsreaders, the web reader, and cancelling your own post.
 
 Any newsreader with TLS works.
@@ -30,16 +30,8 @@ mode 0600. Then:
 
 *Cancel:* Your reader's cancel withdraws your own post everywhere.
 
-*The web reader:* tools/fn_web.py in fn's source; Python 3 only. It
-uses STARTTLS on port 119, never 563:
-
-    git clone https://github.com/emberian/fn ~/fn
-    cd ~/fn
-    python3 tools/fn_web.py --node news.example.org:119 \
-        --tls-cert cert.pem --user carol --outbox ~/.fn-web/outbox
-
-Then open http://127.0.0.1:8919/. If a post comes back uncertain,
-press "Re-send this same article". Never post it again as new.
+*The web page:* the node serves one itself, if its operator turned
+it on. Open the address they gave you in any browser. Part 11.
 
 [generated from books/protocol-table.lisp; do not edit]
 

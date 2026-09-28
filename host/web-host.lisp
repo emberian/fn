@@ -66,7 +66,7 @@
 (defun fn-web-host-refusal-body (code)
   (declare (xargs :mode :program))
   (append (fn-wrq-oct "<!doctype html><title>")
-          (fn-web-decimal code)
+          (fn-ot-decimal-octets code)
           (fn-wrq-oct "</title><p>")
           (fn-wrq-chars-octets (coerce (fn-web-reason code) 'list))
           (fn-wrq-oct "</p>")))

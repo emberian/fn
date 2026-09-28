@@ -13,8 +13,9 @@
 # (never /tank/fn/node).  The system provides libssl (OpenSSL 3.0+); the
 # tarball bundles no TLS library (HST-016).  Prints the tarball's SHA-256
 # and the module's result; exit is the module's.  The install is --reader
-# too: the friends' web reader's unit and settings must render and its
-# installed launcher run (clients/, outside the node's path).
+# too: before `mission' it only says to run it again; after, the node's
+# fn.toml gains one [web] table (the node's own web face), and a third run
+# leaves it as it is.
 #
 # The freeze bundles the glibc-floor SBCL runtime (packaging/floor-runtime.sh's
 # output, the build's SBCL rebuilt on glibc 2.36): the package's runpath step
@@ -45,16 +46,21 @@ cp "$scratch/release/$name" "$scratch/release/SHA256SUMS" "$scratch/friend/"
    && tar xzf "$name" \
    && sh fn/install.sh --prefix "$scratch/friend/opt/fn" --node "$scratch/friend/node" --no-service --reader)
 echo "friends_tarball: installed $scratch/friend/opt/fn"
-# The web reader came with it (clients/, packaging/install-clients.sh): its
-# unit and settings rendered beside the node, and the installed launcher runs.
-for rendered in fn-reader.service reader/reader.conf; do
-  [ -s "$scratch/friend/node/$rendered" ] || { echo "friends_tarball: no $rendered" >&2; exit 4; }
+# The web face is the node's: `mission' writes fn.toml, then --reader adds
+# [web] to it, once (docs/web.md 1).
+friend=$scratch/friend
+[ ! -e "$friend/node/fn.toml" ] || { echo 'friends_tarball: fn.toml before mission' >&2; exit 4; }
+"$friend/opt/fn/bin/fn" operator "$friend/node/fn.toml" mission small-community --host 127.0.0.1 --port 11919
+for round in 1 2; do
+  sh "$friend/opt/fn/install.sh" --prefix "$friend/opt/fn" --node "$friend/node" --no-service --reader
 done
-grep -q "^ExecStart=$scratch/friend/opt/fn/clients/bin/fn-reader --settings " \
-  "$scratch/friend/node/fn-reader.service" || { echo 'friends_tarball: the reader unit starts something else' >&2; exit 4; }
-"$scratch/friend/opt/fn/clients/bin/fn-reader" --help > /dev/null
-python3 tools/runpath_check.py --quiet --tree "$scratch/friend/opt/fn"
-echo "friends_tarball: the web reader is installed beside the node"
+[ "$(grep -c '^\[web\]' "$friend/node/fn.toml")" = 1 ] && grep -q '^port = 8920$' "$friend/node/fn.toml" \
+  && grep -q '^proxied = true$' "$friend/node/fn.toml" || {
+  echo 'friends_tarball: --reader did not add exactly one [web] table' >&2; exit 4; }
+[ -s "$friend/opt/fn/share/fn/caddy/fn-web.caddy" ] && [ ! -e "$friend/opt/fn/clients/bin/fn-reader" ] || {
+  echo 'friends_tarball: the release still ships the Python reader, or no Caddy block' >&2; exit 4; }
+python3 tools/runpath_check.py --quiet --tree "$friend/opt/fn"
+echo "friends_tarball: --reader turned on the node's web face"
 FN_NATIVE_HOST="$scratch/frozen/fn-host-developer" \
 FN_FRIEND_FN="$scratch/friend/opt/fn/bin/fn" \
   python3 -m unittest -v tests.test_native_friends_feed

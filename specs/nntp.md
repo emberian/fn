@@ -165,8 +165,6 @@ NNT-016: XPAT is listed in the capability block and answers RFC 2980 section 2.9
   response` equates the XPAT arm of `fn-nntp-step-pinned` (reached from
   `fn-served-step` through `fn-auth-step-pinned` and
   `fn-nntp-post-step-pinned`) with `fn-nntp-xpat-response`.
-- The web reader (`tools/fn_web.py` `/search`) sends the reader's own
-  wildmat in one bounded `XPAT` window; it builds no pattern.
 
 `LIST ACTIVE.TIMES` reads the same persisted creation facts `NEWGROUPS`
 reads, so RFC 6048 §2.3's "the results SHOULD be consistent" is true by construction.
@@ -819,8 +817,7 @@ privileged query for that case.
 This is a stronger fn guarantee and a client contract, not an RFC
 requirement: RFC 3977 §6.3.1 allows 441 for any posting failure; the two
 duplicate answers and their meaning are fn's (D25). The clients
-(`tools/fn_client.py` `post --draft` / `reconcile`, `tools/fn_web.py`
-`/reconcile`) keep the original observed outcome, record each
+(`tools/fn_client.py` `post --draft` / `reconcile`) keep the original observed outcome, record each
 reconciliation beside it, re-send the stored bytes, and never mint a second
 Message-ID; `docs/agents.md` states it for agents.
 

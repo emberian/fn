@@ -71,6 +71,7 @@
 
 (in-package "ACL2")
 (include-book "octets-stobj")
+(include-book "octet-text")
 
 ; -----------------------------------------------------------------------------
 ; The two buffers of the web thread.
@@ -134,18 +135,10 @@
 ; -----------------------------------------------------------------------------
 ; Octet classes (RFC 9110 5.6.2 tchar; 5.5 field-vchar / obs-text).
 
-(defun fn-wrq-digitp (o)
-  (declare (xargs :guard t))
-  (and (integerp o) (<= 48 o) (<= o 57)))
-
-(defun fn-wrq-alphap (o)
-  (declare (xargs :guard t))
-  (and (integerp o) (or (and (<= 65 o) (<= o 90)) (and (<= 97 o) (<= o 122)))))
-
 (defun fn-wrq-tcharp (o)
   (declare (xargs :guard t))
-  (or (fn-wrq-digitp o)
-      (fn-wrq-alphap o)
+  (or (fn-ot-digitp o)
+      (fn-ot-alphap o)
       (and (member o '(33 35 36 37 38 39 42 43 45 46 94 95 96 124 126)) t)))
 
 (defun fn-wrq-vcharp (o)
@@ -164,15 +157,11 @@
       (and (fn-wrq-field-octetp (car xs)) (fn-wrq-field-valuep (cdr xs)))
     (null xs)))
 
-(defun fn-wrq-downcase (o)
-  (declare (xargs :guard t))
-  (if (and (integerp o) (<= 65 o) (<= o 90)) (+ o 32) o))
-
 ; REV reversed onto ACC, each octet case-folded: the finalized name.
 (defun fn-wrq-rev-down (rev acc)
   (declare (xargs :guard t))
   (if (consp rev)
-      (fn-wrq-rev-down (cdr rev) (cons (fn-wrq-downcase (car rev)) acc))
+      (fn-wrq-rev-down (cdr rev) (cons (fn-ot-downcase-octet (car rev)) acc))
     acc))
 
 (defun fn-wrq-rev (rev acc)
@@ -362,9 +351,9 @@
         ((and (true-listp token)
               (equal (len token) 8)
               (equal (take 5 token) (fn-wrq-oct "HTTP/"))
-              (fn-wrq-digitp (nth 5 token))
+              (fn-ot-digitp (nth 5 token))
               (equal (nth 6 token) 46)
-              (fn-wrq-digitp (nth 7 token)))
+              (fn-ot-digitp (nth 7 token)))
          :unsupported)
         (t :bad)))
 
@@ -556,7 +545,7 @@
   (declare (xargs :guard t))
   (if (consp pre)
       (and (consp xs)
-           (equal (fn-wrq-downcase (car xs)) (car pre))
+           (equal (fn-ot-downcase-octet (car xs)) (car pre))
            (fn-wrq-prefix-ci (cdr pre) (cdr xs)))
     t))
 
@@ -624,28 +613,7 @@
         (fn-wrq-true (car vals)))
     nil))
 
-(defun fn-wrq-decimal-aux (xs acc)
-  (declare (xargs :guard (natp acc)))
-  (if (consp xs)
-      (and (fn-wrq-digitp (car xs))
-           (fn-wrq-decimal-aux (cdr xs) (+ (* 10 acc) (- (car xs) 48))))
-    acc))
-
-(defun fn-wrq-decimal (xs)
-  ; 1*DIGIT as a natural, or nil.
-  (declare (xargs :guard t))
-  (and (consp xs) (fn-wrq-decimal-aux xs 0)))
-
-(defthm fn-wrq-decimal-aux-type
-  (implies (natp acc)
-           (or (null (fn-wrq-decimal-aux xs acc)) (natp (fn-wrq-decimal-aux xs acc))))
-  :rule-classes :type-prescription)
-
-(defthm fn-wrq-decimal-type
-  (or (null (fn-wrq-decimal xs)) (natp (fn-wrq-decimal xs)))
-  :rule-classes :type-prescription)
-
-(in-theory (disable fn-wrq-decimal))
+(in-theory (disable fn-ot-decimal-parse))
 
 (defun fn-wrq-all-equal (x vals)
   (declare (xargs :guard t))
@@ -692,7 +660,7 @@
          (hosts (fn-wrq-values :host fields nil))
          (tes (fn-wrq-values :transfer-encoding fields nil))
          (cls (fn-wrq-values :content-length fields nil))
-         (clen (and (consp cls) (fn-wrq-decimal (car cls)))))
+         (clen (and (consp cls) (fn-ot-decimal-parse (car cls) nil))))
     (cond ((fn-wrq-error s) (list :refused 400))
           ((not (equal (fn-wrq-phase s) :done)) (list :refused 400))
           ((equal version :unsupported) (list :refused 505))
@@ -752,29 +720,14 @@
 ; found by its raw name: every name this face's forms use is a plain
 ; lower-case word.
 
-(defun fn-wrq-hexval (o)
-  (declare (xargs :guard t))
-  (cond ((fn-wrq-digitp o) (- o 48))
-        ((and (integerp o) (<= 65 o) (<= o 70)) (- o 55))
-        ((and (integerp o) (<= 97 o) (<= o 102)) (- o 87))
-        (t nil)))
-
-(defthm fn-wrq-hexval-type
-  (or (null (fn-wrq-hexval o))
-      (and (natp (fn-wrq-hexval o)) (< (fn-wrq-hexval o) 16)))
-  :rule-classes ((:type-prescription :corollary
-                  (or (null (fn-wrq-hexval o)) (natp (fn-wrq-hexval o))))
-                 (:linear :corollary
-                  (implies (fn-wrq-hexval o) (< (fn-wrq-hexval o) 16)))))
-
 (defun fn-wrq-urldecode (xs)
   (declare (xargs :guard t))
   (if (consp xs)
       (let ((o (car xs)))
         (cond ((equal o 43) (cons 32 (fn-wrq-urldecode (cdr xs))))
               ((and (equal o 37) (consp (cdr xs)) (consp (cddr xs))
-                    (fn-wrq-hexval (cadr xs)) (fn-wrq-hexval (caddr xs)))
-               (cons (+ (* 16 (fn-wrq-hexval (cadr xs))) (fn-wrq-hexval (caddr xs)))
+                    (fn-ot-hex-value (cadr xs)) (fn-ot-hex-value (caddr xs)))
+               (cons (+ (* 16 (fn-ot-hex-value (cadr xs))) (fn-ot-hex-value (caddr xs)))
                      (fn-wrq-urldecode (cdddr xs))))
               (t (cons o (fn-wrq-urldecode (cdr xs))))))
     nil))
@@ -865,10 +818,10 @@
     (let ((o (fn-octets-get s fn-octets)))
       (cond ((equal o 43) (cons 32 (fn-wrq-span-decode (1+ s) e fn-octets)))
             ((and (equal o 37) (< (+ 2 s) e)
-                  (fn-wrq-hexval (fn-octets-get (+ 1 s) fn-octets))
-                  (fn-wrq-hexval (fn-octets-get (+ 2 s) fn-octets)))
-             (cons (+ (* 16 (fn-wrq-hexval (fn-octets-get (+ 1 s) fn-octets)))
-                      (fn-wrq-hexval (fn-octets-get (+ 2 s) fn-octets)))
+                  (fn-ot-hex-value (fn-octets-get (+ 1 s) fn-octets))
+                  (fn-ot-hex-value (fn-octets-get (+ 2 s) fn-octets)))
+             (cons (+ (* 16 (fn-ot-hex-value (fn-octets-get (+ 1 s) fn-octets)))
+                      (fn-ot-hex-value (fn-octets-get (+ 2 s) fn-octets)))
                    (fn-wrq-span-decode (+ 3 s) e fn-octets)))
             (t (cons o (fn-wrq-span-decode (1+ s) e fn-octets)))))))
 
@@ -1072,27 +1025,6 @@
     (505 "HTTP Version Not Supported")
     (otherwise "Error")))
 
-(defun fn-wrq-digit-octet (d)
-  (declare (xargs :guard t))
-  (if (and (natp d) (< d 10)) (+ 48 d) 48))
-
-(encapsulate
-  ()
-  (local (include-book "arithmetic-5/top" :dir :system))
-  (defun fn-wrq-decimal-octets-aux (n acc)
-    (declare (xargs :guard (natp n) :measure (nfix n)))
-    (if (or (zp n) (< n 10))
-        (cons (fn-wrq-digit-octet (nfix n)) acc)
-      (fn-wrq-decimal-octets-aux (floor n 10) (cons (fn-wrq-digit-octet (mod n 10)) acc)))))
-
-(defthm fn-wrq-decimal-octets-aux-true-listp
-  (implies (true-listp acc) (true-listp (fn-wrq-decimal-octets-aux n acc)))
-  :rule-classes :type-prescription)
-
-(defun fn-web-decimal (n)
-  (declare (xargs :guard t))
-  (fn-wrq-decimal-octets-aux (nfix n) nil))
-
 (defconst *fn-web-csp*
   "default-src 'none'; style-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
 
@@ -1115,14 +1047,14 @@
   (fn-web-good-fields
    (append (fn-wrq-true fields)
            (fn-web-own-fields secure)
-           (list (cons (fn-wrq-oct "Content-Length") (fn-web-decimal clen))))))
+           (list (cons (fn-wrq-oct "Content-Length") (fn-ot-decimal-octets clen))))))
 
 ; THE HOST-CALLED HEAD (host/native/web-host.lisp fnn-web-respond): the
 ; status line, the fields, CRLF.
 (defun fn-web-response-head (code fields clen secure)
   (declare (xargs :guard t))
   (append (fn-wrq-oct "HTTP/1.1 ")
-          (fn-web-decimal code)
+          (fn-ot-decimal-octets code)
           (list 32)
           (fn-wrq-chars-octets (coerce (fn-web-reason code) 'list))
           (list 13 10)
@@ -1171,15 +1103,12 @@
            (and (equal (fn-wrq-count 13 (fn-web-fields-octets fields)) (len fields))
                 (equal (fn-wrq-count 10 (fn-web-fields-octets fields)) (len fields)))))
 
-(defthm fn-wrq-digit-octet-not-crlf
-  (and (not (equal (fn-wrq-digit-octet d) 13))
-       (not (equal (fn-wrq-digit-octet d) 10))))
-
-(defthm fn-wrq-count-crlf-of-decimal-aux
-  (and (equal (fn-wrq-count 13 (fn-wrq-decimal-octets-aux n acc)) (fn-wrq-count 13 acc))
-       (equal (fn-wrq-count 10 (fn-wrq-decimal-octets-aux n acc)) (fn-wrq-count 10 acc)))
-  :hints (("Goal" :induct (fn-wrq-decimal-octets-aux n acc)
-           :in-theory (disable fn-wrq-digit-octet floor mod))))
+; The decimal renderer (books/octet-text.lisp) emits digits only.
+(defthm fn-wrq-count-crlf-of-nat-digits
+  (and (equal (fn-wrq-count 13 (fn-ot-nat-digits n r acc)) (fn-wrq-count 13 acc))
+       (equal (fn-wrq-count 10 (fn-ot-nat-digits n r acc)) (fn-wrq-count 10 acc)))
+  :hints (("Goal" :induct (fn-ot-nat-digits n r acc)
+           :in-theory (e/d (fn-ot-nat-digits fn-ot-hex-digit) (floor mod)))))
 
 (defthm fn-web-all-good-of-head-fields
   (fn-web-all-good (fn-web-head-fields fields clen secure)))
@@ -1215,7 +1144,7 @@
 (defun fn-wrq-ipv4-part (xs)
   (declare (xargs :guard t))
   (and (consp xs) (fn-wrq-shortp xs 3)
-       (let ((v (fn-wrq-decimal xs))) (and v (<= v 255) v))))
+       (let ((v (fn-ot-decimal-parse xs nil))) (and v (<= v 255) v))))
 
 (defun fn-wrq-ipv4-parts (parts)
   (declare (xargs :guard t))
@@ -1233,7 +1162,7 @@
 (defun fn-wrq-hex16 (xs acc)
   (declare (xargs :guard (natp acc)))
   (if (consp xs)
-      (let ((h (fn-wrq-hexval (car xs))))
+      (let ((h (fn-ot-hex-value (car xs))))
         (and h (fn-wrq-hex16 (cdr xs) (+ (* 16 acc) h))))
     acc))
 

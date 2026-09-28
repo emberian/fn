@@ -63,7 +63,7 @@ class DocsCheckTests(unittest.TestCase):
     def test_every_python_invocation_parses_and_a_wrong_one_does_not(self):
         self.assertEqual(docs_check.parse_python(self.found), [])
         wrong = [("fn_client", "docs/x.md", 1, "fn_client.py fetch 1", ["fetch", "1"], None),
-                 ("fn_web", "docs/x.md", 2, "fn_web.py --plane", ["--plane"], None),
+                 ("fn_consumer", "docs/x.md", 2, "fn_consumer.py --plane", ["--plane"], None),
                  ("bin/fn", "docs/x.md", 3, "fn --config c ruin", ["--config", "c", "ruin"],
                   None)]
         self.assertEqual(len(docs_check.parse_python(wrong)), 3)

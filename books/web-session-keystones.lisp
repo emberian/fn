@@ -208,7 +208,7 @@
                    (fn-wss-s-cid (fn-wss-c-session (fn-wss-f-ctx flow)))
                    (fn-wss-c-session (fn-wss-f-ctx flow)))
   :hints (("Goal" :in-theory (e/d (fn-wss-k-groups)
-                                  (fn-wss-reply fn-wss-status-fields fn-web-decimal fn-wrq-decimal
+                                  (fn-wss-reply fn-wss-status-fields fn-ot-decimal-octets fn-ot-decimal-parse
                                    fn-wss-reply-code fn-wss-flow)))))
 
 (defthm fn-wss-k-group-sends-to
@@ -216,7 +216,7 @@
                    (fn-wss-s-cid (fn-wss-c-session (fn-wss-f-ctx flow)))
                    (fn-wss-c-session (fn-wss-f-ctx flow)))
   :hints (("Goal" :in-theory (e/d (fn-wss-k-group)
-                                  (fn-wss-reply fn-wss-status-fields fn-web-decimal fn-wrq-decimal
+                                  (fn-wss-reply fn-wss-status-fields fn-ot-decimal-octets fn-ot-decimal-parse
                                    fn-wss-reply-code fn-wss-flow)))))
 
 (defthm fn-wss-k-article-sends-to
@@ -224,7 +224,7 @@
                    (fn-wss-s-cid (fn-wss-c-session (fn-wss-f-ctx flow)))
                    (fn-wss-c-session (fn-wss-f-ctx flow)))
   :hints (("Goal" :in-theory (e/d (fn-wss-k-article)
-                                  (fn-wss-reply fn-wss-status-fields fn-web-decimal fn-wrq-decimal
+                                  (fn-wss-reply fn-wss-status-fields fn-ot-decimal-octets fn-ot-decimal-parse
                                    fn-wss-reply-code fn-wss-flow)))))
 
 (defthm fn-wss-k-submit-sends-to
@@ -232,7 +232,7 @@
                    (fn-wss-s-cid (fn-wss-c-session (fn-wss-f-ctx flow)))
                    (fn-wss-c-session (fn-wss-f-ctx flow)))
   :hints (("Goal" :in-theory (e/d (fn-wss-k-submit)
-                                  (fn-wss-reply fn-wss-status-fields fn-web-decimal fn-wrq-decimal
+                                  (fn-wss-reply fn-wss-status-fields fn-ot-decimal-octets fn-ot-decimal-parse
                                    fn-wss-reply-code fn-wss-flow)))))
 
 (defthm fn-web-session-sends-only-to-its-connection
@@ -345,7 +345,7 @@
        (equal (car (cdr (fn-wss-k-article sessions flow event config fn-web-in fn-web-out))) sessions)
        (equal (car (cdr (fn-wss-k-submit sessions flow event config fn-web-in fn-web-out))) sessions))
   :hints (("Goal" :in-theory (e/d (fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit)
-                                  (fn-wss-reply fn-wss-status-fields fn-web-decimal fn-wrq-decimal
+                                  (fn-wss-reply fn-wss-status-fields fn-ot-decimal-octets fn-ot-decimal-parse
                                    fn-wss-reply-code fn-wss-flow)))))
 
 (defthm fn-wss-begin-sessions

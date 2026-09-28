@@ -10,6 +10,9 @@
 ;   (:s S . E)        text read in place from fn-web-in [S, E), escaped
 ;   (:d S . E)        a dot-stuffed NNTP block read in place from fn-web-in
 ;                     [S, E), un-stuffed (RFC 3977 3.1.1) and escaped
+;   (:w S . E)        a header field (Subject, From) from fn-web-in [S, E),
+;                     its RFC 2047 encoded-words decoded (books/web-2047.lisp
+;                     fn-w47-decode), then escaped
 ;
 ; The article body and the overview fields are never copied into lists: a
 ; (:s) or (:d) segment names where they are in the reply the host placed in
@@ -39,6 +42,7 @@
 
 (in-package "ACL2")
 (include-book "web-request")
+(include-book "web-2047")
 
 ; -----------------------------------------------------------------------------
 ; Escaping (HTML 13.1.2.4: text and quoted attribute values).
@@ -127,11 +131,7 @@
 
 (defun fn-wr-unreservedp (o)
   (declare (xargs :guard t))
-  (or (fn-wrq-digitp o) (fn-wrq-alphap o) (member o '(45 46 95 126))))
-
-(defun fn-wr-hexdigit (d)
-  (declare (xargs :guard t))
-  (if (and (natp d) (< d 16)) (if (< d 10) (+ 48 d) (+ 55 d)) 48))
+  (or (fn-ot-digitp o) (fn-ot-alphap o) (member o '(45 46 95 126))))
 
 (defun fn-wr-pct-encode (xs)
   (declare (xargs :guard t))
@@ -140,7 +140,7 @@
         (if (fn-wr-unreservedp o)
             (cons o (fn-wr-pct-encode (cdr xs)))
           (let ((n (if (and (natp o) (< o 256)) o 0)))
-            (list* 37 (fn-wr-hexdigit (floor n 16)) (fn-wr-hexdigit (mod n 16))
+            (list* 37 (fn-ot-hex-digit-upper (floor n 16)) (fn-ot-hex-digit-upper (mod n 16))
                    (fn-wr-pct-encode (cdr xs))))))
     nil))
 
@@ -164,7 +164,7 @@
   (and (consp seg)
        (case (car seg)
          ((:m :t :u) (fn-cbor-octet-listp (cdr seg)))
-         ((:s :d) (and (consp (cdr seg)) (natp (cadr seg)) (natp (cddr seg))
+         ((:s :d :w) (and (consp (cdr seg)) (natp (cadr seg)) (natp (cddr seg))
                        (<= (cadr seg) (cddr seg))))
          (otherwise nil))))
 
@@ -185,6 +185,10 @@
         (:s (if (consp (cdr seg))
                 (fn-wr-escape (take (nfix (- (nfix (cddr seg)) (nfix (cadr seg))))
                                     (nthcdr (nfix (cadr seg)) in)))
+              nil))
+        (:w (if (consp (cdr seg))
+                (fn-wr-escape (fn-w47-decode (take (nfix (- (nfix (cddr seg)) (nfix (cadr seg))))
+                                                   (nthcdr (nfix (cadr seg)) in))))
               nil))
         (:d (if (consp (cdr seg))
                 (fn-wr-escape (fn-wr-unstuff (take (nfix (- (nfix (cddr seg)) (nfix (cadr seg))))
@@ -217,7 +221,7 @@
   (declare (xargs :guard t))
   (if (consp segs)
       (and (or (not (consp (car segs)))
-               (not (member (car (car segs)) '(:s :d)))
+               (not (member (car (car segs)) '(:s :d :w)))
                (and (consp (cdr (car segs))) (natp (cddr (car segs)))
                     (<= (cddr (car segs)) (nfix n))))
            (fn-wr-segs-within (cdr segs) n))
@@ -267,13 +271,28 @@
         (let ((fn-web-out (fn-octets-append-list (fn-wr-escape-octet o) fn-web-out)))
           (fn-wr-emit-unstuffed (1+ s) e (equal o 10) fn-web-in fn-web-out))))))
 
+(defthm fn-wr-slice-octets
+  (implies (and (fn-cbor-octet-listp st) (natp n) (<= n (len st)))
+           (fn-cbor-octet-listp (fn-oct-slice-list i n st)))
+  :hints (("Goal" :induct (fn-oct-slice-list i n st) :in-theory (enable fn-oct-slice-list nth))))
+
+(defun fn-wr-emit-decoded (s e fn-web-in fn-web-out)
+  ; escape(fn-w47-decode(in[s, e))) appended.  A field longer than
+  ; *fn-w47-max* is shown as it is (fn-w47-decode's own rule), read in place;
+  ; a shorter one is copied into a list of at most that many octets.
+  (declare (xargs :stobjs (fn-web-in fn-web-out)
+                  :guard (and (natp s) (natp e) (<= s e) (<= e (fn-octets-len fn-web-in)))))
+  (if (<= (- e s) *fn-w47-max*)
+      (fn-wr-emit-list (fn-w47-decode (fn-oct-slice-list s e fn-web-in)) fn-web-out)
+    (fn-wr-emit-span s e fn-web-in fn-web-out)))
+
 (defthm fn-wr-segsp-car
   (implies (and (fn-wr-segsp segs) (consp segs))
            (and (consp (car segs))
                 (implies (member (car (car segs)) '(:m :t :u))
                          (fn-cbor-octet-listp (cdr (car segs))))
                 (implies (not (member (car (car segs)) '(:m :t :u)))
-                         (and (member (car (car segs)) '(:s :d))
+                         (and (member (car (car segs)) '(:s :d :w))
                               (consp (cdr (car segs)))
                               (natp (cadr (car segs)))
                               (natp (cddr (car segs)))
@@ -310,6 +329,7 @@
                 (:t (fn-wr-emit-list (cdr seg) fn-web-out))
                 (:u (fn-wr-emit-list (fn-wr-pct-encode (cdr seg)) fn-web-out))
                 (:s (fn-wr-emit-span (cadr seg) (cddr seg) fn-web-in fn-web-out))
+                (:w (fn-wr-emit-decoded (cadr seg) (cddr seg) fn-web-in fn-web-out))
                 (otherwise (fn-wr-emit-unstuffed (cadr seg) (cddr seg) t
                                                  fn-web-in fn-web-out)))))
         (fn-wr-emit (cdr segs) fn-web-in fn-web-out))
@@ -360,6 +380,18 @@
            :expand ((:free (x y b) (fn-wr-unstuff (cons x y) b))
                     (fn-oct-slice-list (+ 1 s) e fn-web-in)))))
 
+(defthm fn-wr-len-slice
+  (equal (len (fn-oct-slice-list s e st))
+         (if (and (natp s) (natp e) (< s e)) (- e s) 0))
+  :hints (("Goal" :induct (fn-oct-slice-list s e st) :in-theory (enable fn-oct-slice-list))))
+
+(defthm fn-wr-emit-decoded-is-append
+  (implies (and (true-listp fn-web-out) (natp s) (natp e))
+           (equal (fn-wr-emit-decoded s e fn-web-in fn-web-out)
+                  (append fn-web-out
+                          (fn-wr-escape (fn-w47-decode (fn-oct-slice-list s e fn-web-in))))))
+  :hints (("Goal" :in-theory (disable fn-wr-slice-open))))
+
 (local
  (defthm fn-wr-octet-listp-true-listp
    (implies (fn-cbor-octet-listp x) (true-listp x))
@@ -392,7 +424,8 @@
            (equal (fn-wr-emit segs fn-web-in fn-web-out)
                   (append fn-web-out (fn-wr-seq segs fn-web-in))))
   :hints (("Goal" :induct (fn-wr-emit segs fn-web-in fn-web-out)
-           :in-theory (e/d (fn-wr-segsp) (fn-wr-segsp-car fn-wr-segs-within-car)))))
+           :in-theory (e/d (fn-wr-segsp) (fn-wr-segsp-car fn-wr-segs-within-car
+                                          fn-wr-emit-decoded)))))
 
 ; -----------------------------------------------------------------------------
 ; The pieces: the page is its pieces, flattened.
@@ -579,6 +612,17 @@
   (declare (xargs :guard t))
   (or (fn-wr-span span) (list alt)))
 
+(defun fn-wr-wspan (span)
+  ; A header field's span, shown RFC 2047-decoded (the (:w) segment).
+  (declare (xargs :guard t))
+  (if (and (consp span) (natp (car span)) (natp (cdr span)) (< (car span) (cdr span)))
+      (list (cons :w (cons (car span) (cdr span))))
+    nil))
+
+(defun fn-wr-wspan-or (span alt)
+  (declare (xargs :guard t))
+  (or (fn-wr-wspan span) (list alt)))
+
 ; -----------------------------------------------------------------------------
 ; The frame every page shares.
 
@@ -702,9 +746,9 @@
                       (fn-wm "&amp;n=")
                       (fn-wr-url (fn-wrq-nth 0 row))
                       (fn-wm "'>"))
-                (fn-wr-span-or (fn-wrq-nth 1 row) (fn-wt "(no subject)"))
+                (fn-wr-wspan-or (fn-wrq-nth 1 row) (fn-wt "(no subject)"))
                 (list (fn-wm "</a></td><td class='from'>"))
-                (fn-wr-span (fn-wrq-nth 2 row))
+                (fn-wr-wspan (fn-wrq-nth 2 row))
                 (list (fn-wm "</td><td class='date'>"))
                 (fn-wr-span (fn-wrq-nth 3 row))
                 (list (fn-wm "</td></tr>"))
@@ -736,6 +780,16 @@
 ")))
     nil))
 
+(defun fn-wr-wheader-line (label span)
+  ; The same line, the value RFC 2047-decoded (From).
+  (declare (xargs :guard t))
+  (if (fn-wr-wspan span)
+      (append (list (fn-wm "<span class='hk'>") label (fn-wm ":</span> "))
+              (fn-wr-wspan span)
+              (list (fn-wm "
+")))
+    nil))
+
 ; FIELDS: (SUBJECT FROM DATE NEWSGROUPS MESSAGE-ID) spans; BODY a span of
 ; the dot-stuffed body; OWN whether the page offers "Remove my post" (the
 ; node decides whether the removal withdraws anything); MSGID octets.
@@ -743,9 +797,9 @@
   (declare (xargs :guard t))
   (append (list (fn-wm "<p class='keys'>[<a href='/g?name=") (fn-wr-url group) (fn-wm "'>")
                 (fn-wr-txt group) (fn-wm "</a>]</p><h1>"))
-          (fn-wr-span-or (fn-wrq-nth 0 fields) (fn-wt "(no subject)"))
+          (fn-wr-wspan-or (fn-wrq-nth 0 fields) (fn-wt "(no subject)"))
           (list (fn-wm "</h1><pre class='headers'>"))
-          (fn-wr-header-line (fn-wt "From") (fn-wrq-nth 1 fields))
+          (fn-wr-wheader-line (fn-wt "From") (fn-wrq-nth 1 fields))
           (fn-wr-header-line (fn-wt "Date") (fn-wrq-nth 2 fields))
           (fn-wr-header-line (fn-wt "Newsgroups") (fn-wrq-nth 3 fields))
           (fn-wr-header-line (fn-wt "Message-ID") (fn-wrq-nth 4 fields))
@@ -833,8 +887,14 @@
 (defthm fn-wr-segs-okp-span-or
   (implies (fn-wr-segs-okp (list alt)) (fn-wr-segs-okp (fn-wr-span-or span alt))))
 (defthm fn-wr-true-listp-span-or (true-listp (fn-wr-span-or span alt)))
+(defthm fn-wr-segs-okp-wspan (fn-wr-segs-okp (fn-wr-wspan span))
+  :hints (("Goal" :in-theory (enable fn-wr-segs-okp fn-wr-segsp))))
+(defthm fn-wr-true-listp-wspan (true-listp (fn-wr-wspan span)))
+(defthm fn-wr-segs-okp-wspan-or
+  (implies (fn-wr-segs-okp (list alt)) (fn-wr-segs-okp (fn-wr-wspan-or span alt))))
+(defthm fn-wr-true-listp-wspan-or (true-listp (fn-wr-wspan-or span alt)))
 
-(in-theory (disable fn-wr-txt fn-wr-url fn-wr-span fn-wr-span-or))
+(in-theory (disable fn-wr-txt fn-wr-url fn-wr-span fn-wr-span-or fn-wr-wspan fn-wr-wspan-or))
 
 (defthm fn-wr-theme-attr-ok (fn-wr-segs-okp (fn-wr-theme-attr theme)))
 (defthm fn-wr-theme-button-ok
@@ -858,6 +918,11 @@
   (implies (fn-wr-segs-okp (list label))
            (and (true-listp (fn-wr-header-line label span))
                 (fn-wr-segs-okp (fn-wr-header-line label span)))))
+
+(defthm fn-wr-wheader-line-ok
+  (implies (fn-wr-segs-okp (list label))
+           (and (true-listp (fn-wr-wheader-line label span))
+                (fn-wr-segs-okp (fn-wr-wheader-line label span)))))
 
 (defthm fn-wr-page-segs-ok
   ; Every page main is accepted, and so is every framed page.
