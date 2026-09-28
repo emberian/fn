@@ -34,10 +34,6 @@
 (defun fn-bpn-host-lifecycle-record-name (token)
   (fn-bpn-lifecycle-record-name token))
 
-(defun fn-bpn-host-lifecycle-plan-record-names (plan)
-  (if (fn-bpn-lifecycle-namespace-planp plan)
-      (fn-bpn-lifecycle-plan-record-names plan) nil))
-
 (defun fn-bpn-host-lifecycle-recovery (names records)
   (fn-bpn-lifecycle-recovery names records))
 
