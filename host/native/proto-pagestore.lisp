@@ -833,12 +833,24 @@
       (fnps-close s))))
 
 (defun fnps-cmd-branch (dir src dst)
+  ;; The fork is ACL2's: `pgs-x-fork' (books/pagestore-refine.lisp) turns
+  ;; pgs-m[0, 1024) -- the slot words the open read -- into the new root's
+  ;; slot page (slot 0 the record the open landed on, every other word
+  ;; zero), the subject of pgs-x-fork-refines (the model's fork over the
+  ;; abstraction).  The host writes exactly those 1024 words.
   (let ((s (fnps-open dir src :lazy :emit nil)) (t-branch 0))
+    (unless s
+      (fnps-emit :event :branch :src src :dst dst :refused "no-open-commit")
+      (sb-ext:exit :code 5 :abort t))
+    (multiple-value-bind (v mem) (pgs-x-fork (fnps-k s) (fnps-mem))
+      (declare (ignore mem))
+      (when v
+        (fnps-emit :event :branch :src src :dst dst :refused (fnps-refusal-string v))
+        (fnps-close s)
+        (sb-ext:exit :code 5 :abort t)))
     (fnps-timed t-branch
-      ;; pgs-m[0, 1024) still holds the slot words read at open.
-      (let* ((base (* 512 (fnps-k s)))
-             (fd (fnps-write-zero-root (fnps-root-path dir dst))))
-        (fnps-write-to-file fd 0 (fnps-m) base 20)
+      (let ((fd (fnps-write-zero-root (fnps-root-path dir dst))))
+        (fnps-write-to-file fd 0 (fnps-m) 0 1024)
         (fnps-fullsync fd)
         (sb-unix:unix-close fd)
         (fnps-sync-dir dir)))

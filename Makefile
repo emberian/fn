@@ -1093,6 +1093,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/pagestore-exec \
 	books/pagestore-gc \
 	tests/acl2/pagestore-tests \
+	books/pagestore-refine \
+	tests/acl2/pagestore-refine-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \
 	books/snapshot-segments \

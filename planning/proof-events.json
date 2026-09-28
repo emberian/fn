@@ -11235,6 +11235,22 @@
         {
           "kind": "theorem",
           "name": "pgs-x-words-digest-is-blake3"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-commit-refines-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-commit-refines-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-commit-refines-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-fork-refines"
         }
       ]
     },

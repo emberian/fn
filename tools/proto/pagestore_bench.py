@@ -71,7 +71,7 @@ def ship(_a):
 # the history image's host-called ones (m4).  Certified by the project's
 # runner against the box's certificate cache (--incremental: what the cache
 # holds at its digest is installed, the rest certified), under swarm-build.
-ROOTS = ("books/pagestore-gc", "books/history-pages-import", "books/history-pages-view")
+ROOTS = ("books/pagestore-gc", "books/pagestore-refine", "books/history-pages-import", "books/history-pages-view")
 FARM_ACL2 = "/tank/fn/toolchains/w28/acl2-literal-4g"   # tools/farm.py HOSTS["hbox"]
 CERT_CACHE = "/tank/fn/certcache"
 
@@ -102,6 +102,7 @@ def build(_a):
         return 1
     script = f"""(set-cbd "{TREE}/books/")
 (include-book "pagestore-gc")
+(include-book "pagestore-refine")
 (include-book "history-pages-import")
 (include-book "history-pages-view")
 :q
