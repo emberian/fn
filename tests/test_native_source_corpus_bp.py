@@ -632,5 +632,132 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
         self.assertEqual(len(set(identities)), len(identities), identities)
 
 
+    def test_partition_then_heal_carries_every_article(self):
+        """Lane fitness (f4): C (here B) is reachable ONLY by BP, and not at
+        all while the partition lasts.  N articles are POSTed to A's served
+        owner and each is requested onto the carrier while B's bp-node is
+        down (dtn7 takes the bundles into its sled store and cannot forward
+        them); B reads none of them.  Healed (B serves, the relay is
+        restarted over its store, which re-forwards), every article reaches
+        B, accepted once, and B's stored record is A's with B's Path splice
+        and nothing else changed.  The DTN image's guard refuses the NNTP
+        verbs it omits by name."""
+        count = int(os.environ.get("FN_BP_PARTITION_ARTICLES", "20"))
+        base = self.base
+        a_store, b_store = base / "a-store", base / "b-store"
+        a_fnbs, b_fnbs = base / "a-fnbs", base / "b-fnbs"
+        a_wf, b_wf, b_rj = base / "a-fnwf", base / "b-fnwf", base / "b-fnrj"
+        a_port, b_port, relay_port = free_port(), free_port(), free_port()
+        self.hold = HoldRelay(b_port)
+        for store in (a_store, b_store):
+            self.fn("p-init-" + store.name, "store", store, "init", "fn.test")
+        a, b = self.owner_config("a", a_store), self.owner_config("b", b_store)
+        for node, identity in ((a, A_ID), (b, B_ID)):
+            self.fn("p-{}-path".format(node["side"]), "operator", node["config"],
+                    "policy", "set", "path-identity", identity)
+        # The DTN image omits the served surface and says so by name.
+        guard = {}
+        for verb in ("run", "post"):
+            words = ["operator", a["config"], verb]
+            if verb == "post":
+                words += ["--message-id", "<guard@example.invalid>", "--payload",
+                          str(CORPUS / "legacy.article"), "--group", "fn.test"]
+            result = self.fn("p-guard-" + verb, *words, expected=None)
+            guard[verb] = (result.returncode, (result.stdout + result.stderr).decode(
+                "utf-8", "replace").strip().splitlines()[-1:])
+            self.assertNotEqual(result.returncode, 0, guard[verb])
+            self.assertIn("needs the nntp-service surface, which this image omits",
+                          " ".join(guard[verb][1]), guard[verb])
+        # --- N articles at A, POSTed to its served owner ------------------------
+        owner = self.owner_start(a, "p-a-owner")
+        ids = []
+        for n in range(count):
+            msgid = "<partition-{:03d}@sender.example.invalid>".format(n)
+            payload = ("From: carrier@example.invalid\r\nNewsgroups: fn.test\r\n"
+                       "Subject: carried across a partition {}\r\n"
+                       "Date: {}\r\nMessage-ID: {}\r\n\r\n"
+                       "article {} of {}, carried by BP only\r\n.a dotted line\r\n").format(
+                n, time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), msgid, n,
+                count).encode("ascii")
+            reply = self.post(a, payload)
+            self.assertTrue(reply.startswith("240"), (msgid, reply))
+            ids.append(msgid)
+        self.stop(owner)
+        self.fn("p-wf-init", "app-journal", "workflow-init", a_store, a_wf, SENDER,
+                RECEIVER, "native-policy", RECEIVER, 3600000, "origin-native", "wire-auth")
+        for txid, msgid in enumerate(ids, start=1):
+            work = "work-p{}".format(txid)
+            self.fn("p-enqueue-{}".format(txid), "app-journal", "workflow-enqueue", a_store,
+                    a_wf, txid, 0, work, msgid, "forward-" + work, RECEIVER, "native-policy",
+                    "terms-native")
+            self.fn("p-undertake-{}".format(txid), "bp-obligation", "undertake", a_store,
+                    a_wf, work, 3)
+        for node, name, remote, port, far, scope in (
+                (a, "return-boundary", "r1.bp.gate.invalid", a_port,
+                 ("receiver-author", B_ID, RECEIVER), []),
+                (b, "ingress-boundary", "rn.bp.gate.invalid", b_port,
+                 ("sender-author", A_ID, SENDER), ["fn.test", "65536", "16"])):
+            side = node["side"]
+            releases = ["releases-for", far[2]] if side == "a" else []
+            self.fn("p-{}-boundary".format(side), "operator", node["config"],
+                    "bp-boundary", "add", name, remote, "dtn://dtn7-r1/", port, "carries",
+                    far[2], *releases, "contact", relay_port)
+            self.fn("p-{}-route".format(side), "operator", node["config"], "bp-route",
+                    "add", far[2] + "*", name)
+            self.fn("p-{}-author".format(side), "operator", node["config"],
+                    "bp-boundary", "add", far[0], far[1], far[2], free_port(), *scope)
+        relay = Dtnd(base, "dtn7-r1", relay_port,
+                     ["tcp://127.0.0.1:{}/receiver".format(self.hold.port),
+                      "tcp://127.0.0.1:{}/sender".format(a_port)])
+        self.relays.append(relay)
+        relay.start()
+        # --- the partition: B's BP node is down; every request goes to dtn7 ----
+        requests = []
+        for txid, msgid in enumerate(ids, start=1):
+            work = "work-p{}".format(txid)
+            result = self.fn("p-request-{}".format(txid), "bp-obligation", "request",
+                             a_store, a_wf, work, work + "-attempt", a_fnbs, SENDER,
+                             "127.0.0.1", relay_port, 3600000, 2, 32, 1048576, self.wall,
+                             60000, expected=None)
+            text = (result.stdout + result.stderr).decode("utf-8", "replace")
+            requests.append((result.returncode,
+                             bool(re.search(r"BP obligation request durable attempt", text))))
+        partitioned = self.records(b, "p-b-during")
+        # --- heal ----------------------------------------------------------------
+        healed_at = time.monotonic()
+        process, log = self.spawn(
+            "p-b-serve", "bp-node", "serve", b_port, b_fnbs, b_store, b_rj, b_wf, RECEIVER,
+            SENDER, RECEIVER, "native-policy", RECEIVER, "127.0.0.1", relay_port, "0",
+            3600000, 2, 32, 1048576, self.wall, 60000)
+        self.assertTrue(self.wait_count(log, r"BP NODE LISTENING", 1, 60))
+        relay.stop()
+        relay.start()
+        arrived = self.wait_count(log, r"BP node delivery request-accepted", count, 600)
+        seconds = time.monotonic() - healed_at
+        verdicts = re.findall(r"BP node delivery (request-\S+)",
+                              log.read_text(errors="replace"))
+        self.stop(process)
+        a_view = self.records(a, "p-a-read")
+        b_view = self.records(b, "p-b-read")
+        same = [m for m in ids if m in a_view and m in b_view
+                and stored_record(b_view[m], B_ID) == spliced(stored_record(a_view[m], A_ID)
+                                                              or b"", B_ID)]
+        table = {"articles": count, "request_rc": sorted({rc for rc, _ in requests}),
+                 "attempt_lines": sum(1 for _, seen in requests if seen),
+                 "b_during_partition": len([m for m in ids if m in partitioned]),
+                 "heal_seconds": round(seconds, 1), "verdicts": sorted(set(verdicts)),
+                 "accepted": verdicts.count("request-accepted"),
+                 "a_serves": len([m for m in ids if m in a_view]),
+                 "b_serves": len([m for m in ids if m in b_view]),
+                 "b_is_a_with_b_splice": len(same), "dtn_guard": guard}
+        print("BP-PARTITION-TABLE " + json.dumps(table, sort_keys=True), flush=True)
+        self.assertEqual(table["b_during_partition"], 0, table)
+        self.assertTrue(arrived, table)
+        self.assertEqual(table["accepted"], count, table)
+        self.assertEqual(table["a_serves"], count, table)
+        self.assertEqual(table["b_serves"], count, table)
+        self.assertEqual(table["b_is_a_with_b_splice"], count, table)
+
+
 if __name__ == "__main__":
     unittest.main()
