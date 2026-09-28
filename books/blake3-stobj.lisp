@@ -71,6 +71,7 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
 (defun fn-b3x-words-loop (k p e prefix lp a fn-octets acc)
+  (declare (type (integer 0 *) p e lp a))
   (declare (xargs :stobjs fn-octets :measure (nfix k) :guard (and (and (natp k) (true-listp prefix) (= lp (len prefix)) (<= (+ a (- e lp)) (fn-octets-len fn-octets))) (true-listp acc)) :verify-guards nil))
   (if (zp k)
       (revappend acc nil)
