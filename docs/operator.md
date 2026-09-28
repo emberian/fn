@@ -182,6 +182,7 @@ no-route clear
 stranded-transfer clear
 unavailable-peer held peers: hub
 receipt-debt clear
+disk clear
 accepted operator health
 ```
 

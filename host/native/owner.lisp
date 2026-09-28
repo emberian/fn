@@ -352,6 +352,11 @@ function supplied no observation at all, which is a defect here."
                      'fn-owner-observe mono wall +fnn-owner-wall-error-ms+ has-wall)))
       (when (eq outcome :invalid)
         (fnn-fault "owner was handed a malformed clock reading"))
+      ;; PRF-359 (PKT-872): the free space, when ACL2 says an observation
+      ;; is due (fn-otm-space-due-p: none yet, or a cadence old), before
+      ;; this read's write admission reads the value.
+      (when *fnn-owner-time-service*
+        (fnn-owner-space-observe-if-due *fnn-owner-time-service*))
       outcome)))
 
 (defun fnn-owner-finish ()
@@ -938,10 +943,30 @@ disk's deadline logic reads (books/owner-time-model.lisp takes it as NOW;
 the host compares no times)."
   (floor (* (get-internal-real-time) 1000) internal-time-units-per-second))
 
+(defun fnn-owner-space-event (service need)
+  "PRF-359 (PKT-872): record the store filesystem's free octets (statvfs,
+host/native/io.lisp fnn-disk-free-octets; nil when it cannot observe) with
+ACL2's NEED as a :space event (books/owner-time-model.lisp): below the need
+the disk is :full and every write is shed.  The host compares nothing."
+  (let ((free (ignore-errors
+               (fnn-disk-free-octets (fnn-owner-service-store service)))))
+    (fnn-owner-disk-event service :space
+                          (list (and (integerp free) (>= free 0) free) need))))
+
+(defun fnn-owner-space-observe-if-due (service)
+  "A :space event when ACL2 says one is due (fn-otm-space-due-p over the
+gate's value).  The caller holds the owner mutex (fn-owner-space-need reads
+the live configuration)."
+  (when (fnn-core 'fn-otm-space-due-p (fnn-owner-gate-sched-value service))
+    (fnn-owner-space-event service (fnn-owner-core 'fn-owner-space-need))))
+
 (defun fnn-owner-sched-snapshot (service)
   "ACL2's scheduler value for `health' and `status'
 (books/owner-time-model.lisp fn-otm-health-lines, fn-otm-disk-lines): a clock
-event is appended on demand first, so the figures are at the render's time."
+event is appended on demand first, so the figures are at the render's time,
+and the free space is observed (PRF-359: health's `disk' state reads it).
+The caller holds the owner mutex."
+  (fnn-owner-space-event service (fnn-owner-core 'fn-owner-space-need))
   (fnn-owner-disk-event service :clock)
   (let ((gate (fnn-owner-service-gate service)))
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
@@ -968,7 +993,9 @@ Returns (values WORD READING)."
       (destructuring-bind (w sched jline lline)
           (fnn-core 'fn-otm-disk-step (fnn-owner-gate-sched gate) kind reading arg)
         (unless (member w '(:issued :returned :recovered :recovered-from-stall
-                            :became-slow :became-stalled :none :clock-regressed :fault))
+                            :became-slow :became-stalled :none :clock-regressed :fault
+                            ;; PRF-359: a :space event's words.
+                            :became-full :space-recovered :space-unobserved))
           (fnn-fault "owner returned a malformed disk event word ~a" w))
         (when (eq w :fault)
           (fnn-fault "owner refused the disk event ~a" kind))
@@ -2655,6 +2682,7 @@ leave only in its COMPLETE, after its barrier returned
 (fn-ocp-complete-only-after-the-barrier)."
   (let ((members nil) (uncertain nil) (deferred nil) (action nil)
         (next nil) (next-deferred nil) (syncer nil) (result nil) (limits nil)
+        (need nil)
         ;; Lane time-model-2: the cids told uncertain at a stall (their
         ;; replies are not delivered again), and whether this barrier's
         ;; stall was answered.
@@ -2665,7 +2693,9 @@ leave only in its COMPLETE, after its barrier returned
        ;; Lane time-model: the barrier's limits (D H C), from the
        ;; configuration generation current at the START
        ;; (fn-owner-barrier-limits).
-       (setq limits (fnn-owner-core 'fn-owner-barrier-limits))
+       (setq limits (fnn-owner-core 'fn-owner-barrier-limits)
+             ;; PRF-359: the space the next admissions are judged against.
+             need (fnn-owner-core 'fn-owner-space-need))
        ;; PKT-828: the view the readers read while this batch is in flight.
        (fnn-owner-reader-capture :start)
        (multiple-value-setq (members uncertain deferred)
@@ -2680,6 +2710,11 @@ leave only in its COMPLETE, after its barrier returned
          (t (fnn-fault "owner named ~a after a START" action))))
      :commit)
     (loop while (eq action :sync) do
+      ;; PRF-359 (PKT-872): the free space at every barrier's issue, before
+      ;; its append: the POSTs admitted from here on join the next batch, so
+      ;; an observation per barrier keeps fn-otm-space-need's two batches
+      ;; the only octets between the observation and the appends it admits.
+      (fnn-owner-space-event service need)
       (multiple-value-setq (syncer result) (fnn-owner-start-syncer service))
       ;; Lane time-model (PRF-311): the barrier is a request with a
       ;; deadline; its issue is a disk event at this reading.
@@ -2786,7 +2821,8 @@ leave only in its COMPLETE, after its barrier returned
                        (store (fnn-owner-service-store service)))
                    ;; The next batch's barrier (sealed below) gets the
                    ;; limits of the configuration current now.
-                   (setq limits (fnn-owner-core 'fn-owner-barrier-limits))
+                   (setq limits (fnn-owner-core 'fn-owner-barrier-limits)
+                         need (fnn-owner-core 'fn-owner-space-need))
                    (fnn-owner-shared-action-locked
                     service nil
                     (lambda ()

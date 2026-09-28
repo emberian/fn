@@ -12182,6 +12182,76 @@
           "name": "fn-otm-jw-replay-of-pm"
         }
       ]
+    },
+    {
+      "id": "PRF-358",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otm-health-disk-held-iff-stalled-or-full"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-health-disk-stalled-names-the-stall"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-held-disk-is-never-healthy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-verdict-states"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-exit-code-decodes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-report-exit-of-render"
+        }
+      ]
+    },
+    {
+      "id": "PRF-359",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otm-admit-keeps-the-space-need"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-full-sheds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-space-need-covers-two-batches"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-space-recovers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-space-of-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-full-p-of-other-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-space-event-keeps-the-disk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-admit-is-the-mode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-shed-iff-slow"
+        }
+      ]
     }
   ]
 }

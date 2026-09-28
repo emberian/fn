@@ -597,7 +597,11 @@
              (equal (cadr words) "set")
              (member-equal (caddr words) '("log-batch-records" "log-batch-octets"
                                            "barrier-deadline-ms" "barrier-stall-ms"
-                                           "clock-event-ms" "compress-min-octets"))
+                                           "clock-event-ms" "compress-min-octets"
+                                           ;; PRF-359: the operator's free-space
+                                           ;; reserve (books/owner-time-model.lisp
+                                           ;; fn-otm-space-need).
+                                           "disk-reserve-octets"))
              (fn-native-admin-decimalp (cadddr words))
              ; Lane compression-extents-2 (PRF-341): `compress-min-octets'
              ; (books/payload-lz-append.lisp fn-lzr-config-min) also admits

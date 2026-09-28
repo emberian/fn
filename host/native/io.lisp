@@ -2514,9 +2514,21 @@ handed to fnn-state-checkpoint-write."
              nil))
       (sb-alien:free-alien buffer))))
 
+(defun fnn-disk-free-cap-text (cap)
+  "The developer cap's text: CAP itself, or with a leading @ the first line
+of the file it names, read at every observation (lane health-truth, PRF-359:
+the native case fills and frees the disk while the owner runs; a missing
+file is no cap)."
+  (if (and (plusp (length cap)) (char= (char cap 0) #\@))
+      (ignore-errors
+       (with-open-file (in (subseq cap 1) :direction :input :if-does-not-exist nil)
+         (and in (string-trim '(#\Space #\Newline #\Return #\Tab) (or (read-line in nil) "")))))
+    cap))
+
 (defun fnn-disk-free-octets (store)
-  (let ((free (fnn-statvfs-free-octets (fnn-store-root store)))
-        (cap (fnn-developer-selector "FN_NATIVE_DISK_FREE")))
+  (let* ((free (fnn-statvfs-free-octets (fnn-store-root store)))
+         (raw (fnn-developer-selector "FN_NATIVE_DISK_FREE"))
+         (cap (and raw (fnn-disk-free-cap-text raw))))
     (if (and free cap)
         (let ((n (ignore-errors (parse-integer cap))))
           (unless (and (integerp n) (>= n 0))
