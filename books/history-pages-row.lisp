@@ -303,7 +303,7 @@
   (declare (xargs :stobjs pgs-mem :guard (natp npages)))
   (let ((v (fn-hp-x-ready 0 pgs-mem)))
     (if (eq v :ok)
-        (mv :ok (fn-hp-w-header (fn-hp-x-words 0 18 pgs-mem) npages))
+        (mv :ok (fn-hp-w-header (fn-hp-x-words 0 19 pgs-mem) npages))
       (mv v nil))))
 
 (local
@@ -312,13 +312,13 @@
             (equal (nth j (take k w)) (nth j w)))
    :hints (("Goal" :in-theory (enable nth take)))))
 
-(defthm fn-hp-w-header-take-18
-  (equal (fn-hp-w-header (take 18 w) npages) (fn-hp-w-header w npages))
-  :hints (("Goal" :in-theory (disable take adt-starts-l adt-end-l))))
+(defthm fn-hp-w-header-take-19
+  (equal (fn-hp-w-header (take 19 w) npages) (fn-hp-w-header w npages))
+  :hints (("Goal" :in-theory (disable take adt-starts-l adt-end-l adt-placement-ok))))
 
 (local
- (defthm fn-hp-take-18-of-take-2048
-   (equal (take 18 (take 2048 w)) (take 18 w))
+ (defthm fn-hp-take-19-of-take-2048
+   (equal (take 19 (take 2048 w)) (take 19 w))
    :hints (("Goal" :in-theory (enable take)))))
 
 ; KEYSTONE (the open's header, m2): when page 0 of the page store's image
@@ -334,11 +334,11 @@
                   (list :ok (len h) (fn-hp-lens h salt) (fn-hp-starts h salt))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-hp-w-header-of-image)
-                 (:instance fn-hp-w-header-take-18 (w (nth *pgs-wi* pgs-mem)) (npages (fn-hp-npages h salt)))
-                 (:instance fn-hp-w-header-take-18 (w (fn-hp-iw h salt)) (npages (fn-hp-npages h salt)))
-                 (:instance fn-hp-take-18-of-take-2048 (w (nth *pgs-wi* pgs-mem)))
-                 (:instance fn-hp-take-18-of-take-2048 (w (fn-hp-iw h salt))))
-           :in-theory (disable fn-hp-w-header-of-image fn-hp-w-header-take-18 fn-hp-take-18-of-take-2048
+                 (:instance fn-hp-w-header-take-19 (w (nth *pgs-wi* pgs-mem)) (npages (fn-hp-npages h salt)))
+                 (:instance fn-hp-w-header-take-19 (w (fn-hp-iw h salt)) (npages (fn-hp-npages h salt)))
+                 (:instance fn-hp-take-19-of-take-2048 (w (nth *pgs-wi* pgs-mem)))
+                 (:instance fn-hp-take-19-of-take-2048 (w (fn-hp-iw h salt))))
+           :in-theory (disable fn-hp-w-header-of-image fn-hp-w-header-take-19 fn-hp-take-19-of-take-2048
                                fn-hp-w-header fn-hp-iw fn-hp-okp fn-hp-npages fn-hp-lens fn-hp-starts take))))
 
 (local

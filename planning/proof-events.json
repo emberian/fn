@@ -11525,6 +11525,22 @@
         {
           "kind": "theorem",
           "name": "fn-hp-x-at-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-append-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-header-is-placed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-at-is-nth-placed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-append-refines-placed"
         }
       ]
     },
@@ -12213,6 +12229,51 @@
         {
           "kind": "theorem",
           "name": "fn-otm-shed-iff-slow"
+        }
+      ]
+    },
+    {
+      "id": "PRF-355",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-composite-keeps-what-it-binds",
+          "note": "KEYSTONE (a composite keeps its signed source, verdict, keyring generation and article). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-composite-identities-are-format-10s",
+          "note": "KEYSTONE (a composite's identities are the ones replay derives). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-step-of-a-composite",
+          "note": "KEYSTONE (a composite imports bound or is refused by name). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-step-carries-identity-free-kinds-verbatim",
+          "note": "KEYSTONE (verdicts, keyring snapshots, consumer events, topic install: verbatim). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-loop-keeps-sequences",
+          "note": "The translated history keeps the archive's sequences in order."
+        }
+      ]
+    },
+    {
+      "id": "PRF-356",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sdg-canon-rev-sink-is-the-chain-of-the-canon",
+          "note": "KEYSTONE (the streamed digest is the chain of the canonical octets; D27 boundary). Host: host/native/io.lisp fnn-command-store-digest via host/store-node-host.lisp fn-store-sn-replay-digest-report. Teeth: tests/acl2/state-digest-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sdg-chain-of-one-block",
+          "note": "KEYSTONE (a stream within one block digests as before). Teeth: tests/acl2/state-digest-tests.lisp."
         }
       ]
     }

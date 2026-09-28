@@ -14,6 +14,7 @@
 (include-book "../../books/state-digest")
 ; The store's digest executes through its attachment.
 (include-book "../../books/crypto-attach")
+(include-book "must-fail-checked")
 
 (assert-event
  (equal (list (symbol-class 'fn-sdg-digest (w state))
@@ -66,3 +67,56 @@
 
 (assert-event
  (equal (fn-sdg-hex '(0 15 16 255)) '(48 48 48 102 49 48 102 102)))
+;; ---------------------------------------------------------------------------
+;; The streamed digest (lane format10-import): `store digest' no longer lists
+;; a field's canonical octets.  The executable stream (the :exec of
+;; `fn-sdg-digest', `fn-sdg-canon-rev-sink') is the chain of the canonical
+;; encoding (fn-sdg-canon-rev-sink-is-the-chain-of-the-canon), and a value of
+;; at most one block digests as it did before (fn-sdg-chain-of-one-block).
+
+(assert-event
+ (equal (list (symbol-class 'fn-sdg-canon-rev-sink (w state))
+              (symbol-class 'fn-sdg-chain (w state))
+              (symbol-class 'fn-sdg-rows-sink (w state))
+              (symbol-class 'fn-sdg-arena-sink (w state)))
+        '(:common-lisp-compliant :common-lisp-compliant :common-lisp-compliant
+          :common-lisp-compliant)))
+
+;; Reachable positive witness of the boundary theorem, over a value whose
+;; canonical stream spans two blocks (120,021 octets): the streamed digest
+;; (evaluated through the :exec) equals the chain of the listed encoding
+;; (evaluated through the :logic), and both are 32 octets.
+(defconst *sdgt-long* (make-list 40000 :initial-element 1))
+(assert-event (equal (len (fn-sdg-canon *sdgt-long*)) 120021))
+(assert-event (< *fn-sdg-block-octets* (len (fn-sdg-canon *sdgt-long*))))
+(assert-event
+ (let ((streamed (fn-sdg-sink-final (fn-sdg-canon-rev-sink *sdgt-long* (fn-sdg-sink-init))))
+       (listed (fn-sdg-chain (fn-sdg-canon *sdgt-long*))))
+   (and (equal streamed listed)
+        (equal (fn-sdg-digest *sdgt-long*) listed)
+        (equal (len streamed) 32))))
+;; Mutation: one element changed in the second block changes the digest.
+(assert-event
+ (not (equal (fn-sdg-digest *sdgt-long*)
+             (fn-sdg-digest (update-nth 39999 2 *sdgt-long*)))))
+
+;; fn-sdg-chain-of-one-block, positive witness: the antecedent (a true list
+;; of at most one block), then the conclusion (the digest of before).
+(defconst *sdgt-short-canon* (fn-sdg-canon '(1 -300 "ab" #\c)))
+(assert-event (and (true-listp *sdgt-short-canon*)
+                   (<= (len *sdgt-short-canon*) *fn-sdg-block-octets*)))
+(assert-event (equal (fn-sdg-chain *sdgt-short-canon*) (fn-digest *sdgt-short-canon*)))
+(assert-event (equal (fn-sdg-digest '(1 -300 "ab" #\c)) (fn-digest *sdgt-short-canon*)))
+;; At exactly one block the value is still the digest of before.
+(defconst *sdgt-block* (make-list 65536 :initial-element 7))
+(assert-event (equal (fn-sdg-chain *sdgt-block*) (fn-digest *sdgt-block*)))
+;; Hypothesis removed (at most one block): the retained hypothesis holds, the
+;; omitted one fails (one octet more), and so does the conclusion.
+(defconst *sdgt-block+1* (cons 7 *sdgt-block*))
+(assert-event (true-listp *sdgt-block+1*))
+(assert-event (not (<= (len *sdgt-block+1*) *fn-sdg-block-octets*)))
+(assert-event (not (equal (fn-sdg-chain *sdgt-block+1*) (fn-digest *sdgt-block+1*))))
+(must-fail-checked
+ (defthm sdgt-chain-without-the-block-bound
+   (implies (true-listp l)
+            (equal (fn-sdg-chain l) (fn-digest l)))))

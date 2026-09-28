@@ -129,6 +129,23 @@
                    (equal (adt-decode '((:u64)) *bb*) '(:refused :schema))
                    (equal (adt-decode *bs* (take (* 6 *adt-page*) *bb*)) '(:refused :length))
                    (equal (adt-decode *bs* (take 100 *bb*)) '(:refused :short))))
+; FNADTSN2 free placement: the pool moved to a new page at the image's end
+; (NPAGES 8, its old page zeroed) decodes to the same value; placed over
+; another region it is refused :placement; placed past NPAGES, :placement.
+(defun bb-moved (start np)
+  (append (take 144 *bb*) (adt-le 8 start) (take 8 (nthcdr 152 *bb*)) (adt-le 8 np)
+          (nthcdr 168 (take (* 6 *adt-page*) *bb*)) (adt-zeros *adt-page*)
+          (take *adt-page* (nthcdr (* 6 *adt-page*) *bb*))))
+(assert-event (and (equal (adt-unle 8 (nthcdr 144 *bb*)) 6)
+                   (equal (adt-unle 8 (nthcdr 160 *bb*)) 7)
+                   (equal (len (bb-moved 7 8)) (* 8 *adt-page*))
+                   (not (equal (bb-moved 7 8) *bb*))
+                   (equal (adt-decode *bs* (bb-moved 7 8)) (list :ok *ba*))
+                   (equal (adt-decode *bs* (bb-moved 5 8)) '(:refused :placement))
+                   (equal (adt-decode *bs* (bb-moved 8 8)) '(:refused :placement))
+                   (equal (adt-decode *bs* (bb-moved 0 8)) '(:refused :placement))))
+; FNADTSN1 is refused by name.
+(assert-event (equal (adt-decode *bs* (append '(70 78 65 68 84 83 78 49) (nthcdr 8 *bb*))) '(:refused :magic)))
 ; Integrity is the page digests' job, not the decoder's: a flipped pool
 ; octet decodes to another value; its page's leaf changes.
 (assert-event (let ((bad (update-nth (* 6 *adt-page*) 9 *bb*)))

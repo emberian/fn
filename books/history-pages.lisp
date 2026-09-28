@@ -1,8 +1,8 @@
-; fn: the store's history (fn-hist) as FNADTSN1 pages in the page store
+; fn: the store's history (fn-hist) as FNADTSN2 pages in the page store
 ; (lane arena-store-2, 2026-09-27).  Prefix fn-hp-.
 ;
 ; The history's snapshot IS the canonical byte form of a sequence ADT
-; (books/proto/adt-bytes.lisp, FNADTSN1) over the schema
+; (books/proto/adt-bytes.lisp, FNADTSN2) over the schema
 ;   field 0  (:u64)     MKEY: 1 + the salted FNV hash of the event's key
 ;                       Message-ID (`fn-hist-key-msgid', books/history-columns),
 ;                       0 when the event has none
@@ -19,7 +19,7 @@
 ; Image pages are the page store's logical pages 1:1 (image page K = page
 ; store logical page K; the store's physical page 0, its root slots, is
 ; another thing).  The page store's per-page digest (the table entry a
-; commit writes, `pgs-x-page-digest' over the page's words) IS the FNADTSN1
+; commit writes, `pgs-x-page-digest' over the page's words) IS the FNADTSN2
 ; page-digest leaf of the same page (`fn-hp-page-digest-is-leaf'): there is
 ; no second per-page digest table.
 ;
@@ -29,9 +29,9 @@
 ;   fn-hp-append-changes-only-dirty  an append changes only the dirty list
 ;   fn-hp-append-dirty-bound         the dirty list is O(K + columns) pages
 ;                                    while no region doubles
-; Named limit L-HP-DOUBLING: FNADTSN1 v1 places regions contiguously, so a
-; region that doubles moves every region after it (one larger commit;
-; amortized O(1) per row).
+; Named limit L-HP-DOUBLING: the canonical image places regions contiguously;
+; a region that doubles is the writer's verdict (:grow R) and FNADTSN2's free
+; placement lets it move alone (the growth path, lane arena-store-3, open).
 ;
 ; Sections: A. rows and schema; B. image and decoder; C. the digest
 ; theorem; D. the region plan.
@@ -204,7 +204,7 @@
            :use ((:instance adt-decode-ser (s *fn-hp-schema*) (a (fn-hp-rows h salt)))))))
 
 ; -----------------------------------------------------------------------------
-; C. The one digest theorem: the page store's page digest IS the FNADTSN1
+; C. The one digest theorem: the page store's page digest IS the FNADTSN2
 ; leaf.
 ;
 ; `pgs-x-page-digest' is what the commit writes into the table entry of a
@@ -432,7 +432,7 @@
 (local
  (defthm fn-hp-bschemap-header-room
    (implies (adt-bschemap s)
-            (<= (+ 64 (* 16 (+ 1 (adt-ncols s)))) *adt-page*))
+            (<= (+ 72 (* 16 (+ 1 (adt-ncols s)))) *adt-page*))
    :rule-classes :linear))
 
 (defthm fn-hp-ser-page-same

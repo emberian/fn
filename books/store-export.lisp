@@ -273,6 +273,9 @@
 ;                                      FRONTIER, CONFIGS and RECORDS
 ;   (:refused :manifest-mismatch NAME) an entry the MANIFEST does not carry
 ;                                      under the archive's digest
+;   (:refused :record-translation REASON SEQUENCE)
+;                                      a format-9 record the translation
+;                                      refuses (books/store-format-9-records)
 ;   (:refused :record-out-of-sequence N)
 ;   (:refused :config-out-of-sequence)
 ;   (:refused :profile REASON)         a profile the codec cannot represent
@@ -293,7 +296,8 @@
     (cond (mismatch (list :refused :manifest-mismatch mismatch))
           ((and f9p (consp records) (equal (car records) :refused))
            (list :refused :record-translation
-                 (if (consp (cdr records)) (cadr records) nil)))
+                 (if (consp (cdr records)) (cadr records) nil)
+                 (if (consp (cdr records)) (caddr records) nil)))
           ((fn-sxp-out-of-sequence records nil)
            (list :refused :record-out-of-sequence
                  (fn-sxp-out-of-sequence records nil)))
