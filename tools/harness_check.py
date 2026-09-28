@@ -1701,6 +1701,14 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
     from tools import ledger
     if re.search(r'\(load\s+"host/', text):
         return None  # it loads whole host files: nothing is stubbed in their place
+    if re.search(r'\(defparameter \*roots\*', text):
+        # It extracts the closure of its *ROOTS* over the host's definitions
+        # at load and refuses there, by name, a reached function it neither
+        # extracts, stubs nor declares unreached (tests/native_owner_chunk_
+        # loop_raw.lisp).  The mention-based model below is not its
+        # extraction: a derived stub for a function the closure extracts cut
+        # the closure (batch AY: its *unreached* all went unreached).
+        return None
     hand, current = split_stub_block(text)
     forms = ledger.Reader(hand).top_level()
     stubs, _ = raw_definitions({relative: forms})
