@@ -11,21 +11,18 @@ import os
 from pathlib import Path
 import socket
 import struct
-import subprocess
-import tempfile
 import threading
 import time
-
-from tests.native_harness import deployed_stack
+import types
 import unittest
 
-from tests import native_harness
+from tests.native_harness import EXIT_OK, Client, Node, free_port, native_image, scratch
 from tools.wire_stream import whole_stream
 
 
-ROOT = Path(__file__).resolve().parent.parent
+# The image must be named explicitly: the case pins its launcher and core.
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
-IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
+IMAGE = native_image("FN_NATIVE_HOST") if IMAGE_TEXT else None
 CORE = Path(str(IMAGE) + ".core") if IMAGE is not None else None
 SOURCE = os.environ.get("FN_NATIVE_IMAGE_SOURCE_SHA")
 LAUNCHER_SHA256 = os.environ.get("FN_NATIVE_LAUNCHER_SHA256")
@@ -48,12 +45,6 @@ READY = bool(
     and IMAGE.is_file() and os.access(IMAGE, os.X_OK) and CORE.is_file()
     and LAUNCHER_SHA256 == ACTUAL_LAUNCHER
     and CORE_SHA256 == ACTUAL_CORE and RUNTIME_SHA256)
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 class ScriptedTransitPeer:
@@ -159,41 +150,15 @@ class NativePeeringTests(unittest.TestCase):
             ACTUAL_LAUNCHER, ACTUAL_CORE, SOURCE))
 
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-peering-")
-        self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
-        self.env = deployed_stack(dict(os.environ))
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.env.pop("ACL2_SYSTEM_BOOKS", None)
-        self.env.pop("FN_HOST", None)
-        self.processes = []
-        self.addCleanup(self.stop_all)
+        self.base = scratch(self, "fn-native-peering-")
 
-    def command(self, arguments, expected=0, timeout=180):
-        result = subprocess.run(
-            list(map(str, arguments)), cwd=ROOT, env=self.env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=timeout, check=False)
-        self.assertEqual(result.returncode, expected,
-                         "command {} returned {}\nstdout={}\nstderr={}".format(
-                             arguments, result.returncode,
-                             result.stdout.decode("utf-8", "replace"),
-                             result.stderr.decode("utf-8", "replace")))
-        return result
-
-    def initialize(self, name, port):
-        root = self.base / name
-        store = root / "store"
-        control = root / "control.sock"
-        root.mkdir()
-        self.command([IMAGE, "--fn", "store", store, "init", "fn.test"])
-        config = root / "fn.toml"
-        config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(store, port, control),
-            encoding="ascii")
-        return {"name": name, "root": root, "store": store,
-                "control": control, "config": config, "port": port}
+    def initialize(self, name, *init):
+        """A node NAME under the test's tree, its store made by `store init`
+        (INIT, default the one group fn.test); every node it starts is
+        stopped at cleanup."""
+        node = Node(self, IMAGE, root=self.base / name, name=name)
+        node.store("init", *(init or ("fn.test",)), expect=EXIT_OK)
+        return node
 
     def process_identity(self, process):
         proc = Path("/proc") / str(process.pid)
@@ -211,40 +176,23 @@ class NativePeeringTests(unittest.TestCase):
                 type(error).__name__, error)}
 
     def verify_process_identity(self, node):
-        found = self.process_identity(node["process"])
+        found = self.process_identity(node.process)
         if found["status"] != "observed":
             self.skipTest("cannot observe native runtime/core: {}".format(found["reason"]))
         self.assertEqual(found["runtime_sha256"], RUNTIME_SHA256, found)
         self.assertEqual(found["core_sha256"], CORE_SHA256, found)
-        node.setdefault("identities", []).append(found)
+        node.identities = getattr(node, "identities", []) + [found]
         return found
 
     def configure_peer(self, source, target, outbound="fn.*"):
-        self.command([
-            IMAGE, "--fn", "operator", source["config"], "peer", "add",
-            target["name"], "{}.example.invalid".format(target["name"]),
-            "127.0.0.1", str(target["port"]), "fn.*", outbound,
-            "127.0.0.1", "true",
-        ])
+        source.operator("peer", "add", target.name,
+                        "{}.example.invalid".format(target.name), "127.0.0.1",
+                        str(target.port), "fn.*", outbound, "127.0.0.1", "true",
+                        expect=EXIT_OK)
 
     def start(self, node):
-        process = native_harness.start(
-            [IMAGE, "--fn", "operator", node["config"], "run"], cwd=ROOT, env=self.env)
-        self.processes.append(process)
-        node["process"] = process
-        line = process.announcement(b"LISTENING ")
-        self.assertEqual(line, "LISTENING {}\n".format(node["port"]).encode(),
-                         "{} emitted an unexpected readiness line: {!r}".format(
-                             node["name"], line))
-        node["process"] = process
+        node.start()
         self.verify_process_identity(node)
-
-    def stop_all(self):
-        for process in self.processes:
-            process.terminate()
-        for process in self.processes:
-            process.stop()
-        self.processes = []
 
     @staticmethod
     def article(message_id, marker):
@@ -256,36 +204,25 @@ class NativePeeringTests(unittest.TestCase):
                     marker, message_id, marker)).encode("ascii")
 
     def post(self, node, message_id, marker):
-        payload = node["root"] / (marker + ".article")
-        payload.write_bytes(self.article(message_id, marker))
-        self.command([IMAGE, "--fn", "operator", node["config"], "post",
-                      "--message-id", message_id, "--payload", payload,
-                      "--group", "fn.test"])
+        node.post(message_id, self.article(message_id, marker), expect=EXIT_OK)
 
     def article_from(self, node, message_id):
         try:
-            client = socket.create_connection(("127.0.0.1", node["port"]), timeout=10)
+            client = Client(node.port, timeout=10, greeting=(b"200",))
         except ConnectionRefusedError:
-            process = node.get("process")
+            process = node.process
             if process is not None and process.poll() is not None:
                 self.fail("{} exited while awaiting article: {}".format(
-                    node["name"], process.stderr.tail().decode("utf-8", "replace")))
+                    node.name, process.stderr.tail().decode("utf-8", "replace")))
+            return None
+        except (AssertionError, EOFError):
             return None
         with client:
-            stream = whole_stream(client)
-            if not stream.readline().startswith(b"200 "):
+            try:
+                served = client.article(message_id)
+            except EOFError:
                 return None
-            stream.write(b"ARTICLE " + message_id.encode("ascii") + b"\r\n")
-            if not stream.readline().startswith(b"220 "):
-                return None
-            article = bytearray()
-            while True:
-                line = stream.readline()
-                if line == b".\r\n":
-                    return self.stored_octets(bytes(article))
-                if not line:
-                    return None
-                article.extend(line[1:] if line.startswith(b"..") else line)
+        return None if served is None else self.stored_octets(served)
 
     def stored_octets(self, served):
         # ARTICLE serves this node's Xref line first, then the stored octets
@@ -304,17 +241,14 @@ class NativePeeringTests(unittest.TestCase):
             if article is not None:
                 return article
             time.sleep(0.1)
-        self.fail("{} did not receive {}".format(node["name"], message_id))
+        self.fail("{} did not receive {}".format(node.name, message_id))
 
     def duplicate_offer(self, node, message_id):
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=10) as client:
-            stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
-            stream.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
-            return stream.readline()
+        with Client(node.port, timeout=10, greeting=(b"200",)) as client:
+            return client.command(b"IHAVE " + message_id.encode("ascii"))
 
     def transfer_then_reset_before_reply(self, node, message_id, marker):
-        client = socket.create_connection(("127.0.0.1", node["port"]), timeout=10)
+        client = socket.create_connection(("127.0.0.1", node.port), timeout=10)
         greeting = bytearray()
         while not greeting.endswith(b"\n"):
             chunk = client.recv(1)
@@ -333,35 +267,24 @@ class NativePeeringTests(unittest.TestCase):
 
     def transit(self, node, message_id, source):
         """Drive the public peer port through IHAVE and compare served octets."""
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=10) as client:
-            stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
-            stream.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
-            self.assertTrue(stream.readline().startswith(b"335 "))
-            for line in source.splitlines(keepends=True):
-                self.assertTrue(line.endswith(b"\r\n"))
-                stream.write(b"." + line if line.startswith(b".") else line)
-            stream.write(b".\r\n")
-            self.assertTrue(stream.readline().startswith(b"235 "))
+        for line in source.splitlines(keepends=True):
+            self.assertTrue(line.endswith(b"\r\n"))
+        with Client(node.port, timeout=10, greeting=(b"200",)) as client:
+            offer, reply = client.post(source, verb=b"IHAVE " + message_id.encode("ascii"))
+        self.assertTrue(offer.startswith(b"335 "), offer)
+        self.assertTrue(reply.startswith(b"235 "), reply)
 
     def capabilities(self, node):
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=10) as client:
-            stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
-            stream.write(b"CAPABILITIES\r\n")
-            self.assertTrue(stream.readline().startswith(b"101 "))
-            lines = []
-            while True:
-                line = stream.readline()
-                if line == b".\r\n":
-                    break
-                self.assertNotEqual(line, b"")
-                lines.append(line.rstrip(b"\r\n"))
+        client = Client(node.port, timeout=10, greeting=(b"200",))
+        try:
+            status, body = client.multiline(b"CAPABILITIES")
+            self.assertTrue(status.startswith(b"101 "), status)
             # Keep this on one connection: it detects a worker that returns
             # after every successful read instead of only after QUIT/close.
-            stream.write(b"QUIT\r\n")
-            self.assertTrue(stream.readline().startswith(b"205 "))
-            return lines
+            self.assertTrue(client.command(b"QUIT").startswith(b"205 "))
+        finally:
+            client.close(quit=False)
+        return [line for line in body.split(b"\r\n") if line]
 
     def test_public_native_nodes_exchange_both_ways_and_suppress_duplicate(self):
         self.exchange_both_ways(live_configuration=False)
@@ -370,8 +293,8 @@ class NativePeeringTests(unittest.TestCase):
         self.exchange_both_ways(live_configuration=True)
 
     def exchange_both_ways(self, live_configuration):
-        a = self.initialize("a", free_port())
-        b = self.initialize("b", free_port())
+        a = self.initialize("a")
+        b = self.initialize("b")
         if not live_configuration:
             self.configure_peer(a, b)
             self.configure_peer(b, a)
@@ -414,7 +337,7 @@ class NativePeeringTests(unittest.TestCase):
         self.assertEqual(a_article, b_source)
         b_duplicate = self.duplicate_offer(a, b_id)
         self.assertTrue(b_duplicate.startswith(b"435 "))
-        identities = {node["name"]: self.verify_process_identity(node)
+        identities = {node.name: self.verify_process_identity(node)
                       for node in (a, b)}
         print("NATIVE-PEERING-WITNESS " + json.dumps({
             "kind": "transit-and-feed", "transit": {
@@ -431,8 +354,8 @@ class NativePeeringTests(unittest.TestCase):
 
 
     def test_durable_feed_requeues_after_source_process_death(self):
-        a = self.initialize("restart-a", free_port())
-        b = self.initialize("restart-b", free_port())
+        a = self.initialize("restart-a")
+        b = self.initialize("restart-b")
         self.configure_peer(a, b)
         # B starts after A is killed, but its peer record must exist before
         # that listener accepts A's loopback feed connection; otherwise it is
@@ -442,13 +365,13 @@ class NativePeeringTests(unittest.TestCase):
 
         message_id = "<native-requeue-after-kill@example.invalid>"
         self.post(a, message_id, "requeue-after-kill")
-        journal = a["store"] / "feed" / "restart-b.fnfd"
+        journal = a.store_path / "feed" / "restart-b.fnfd"
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline and not journal.is_file():
             time.sleep(0.05)
         self.assertTrue(journal.is_file(), "accepted post has no durable FNFD intent")
 
-        source = self.processes.pop(0)
+        source = a.process
         source.kill()
         source.wait(timeout=30)
         source.finish()
@@ -460,7 +383,7 @@ class NativePeeringTests(unittest.TestCase):
         self.assertEqual(target_article, source_article)
         duplicate = self.duplicate_offer(b, message_id)
         self.assertTrue(duplicate.startswith(b"435 "))
-        identities = {node["name"]: self.verify_process_identity(node)
+        identities = {node.name: self.verify_process_identity(node)
                       for node in (a, b)}
         print("NATIVE-PEERING-WITNESS " + json.dumps({
             "kind": "requeue-restart", "journal": True, "source_killed": True,
@@ -469,8 +392,8 @@ class NativePeeringTests(unittest.TestCase):
         }, sort_keys=True))
 
     def test_reset_while_transit_completes_keeps_durable_article_and_owner(self):
-        source = self.initialize("reset-source", free_port())
-        target = self.initialize("reset-target", free_port())
+        source = self.initialize("reset-source")
+        target = self.initialize("reset-target")
         self.configure_peer(target, source, outbound="-")
         self.start(target)
 
@@ -478,7 +401,7 @@ class NativePeeringTests(unittest.TestCase):
         self.transfer_then_reset_before_reply(target, message_id, "reset-after-transit")
         self.assertEqual(self.await_article(target, message_id),
                          self.article(message_id, "reset-after-transit"))
-        self.assertIsNone(target["process"].poll(),
+        self.assertIsNone(target.process.poll(),
                           "connection-local reply failure stopped the owner")
         self.assertIn(b"IHAVE", self.capabilities(target))
 
@@ -487,18 +410,18 @@ class NativePeeringTests(unittest.TestCase):
         # was stored but answered 436 uncertain and stopped the service,
         # because the completion was compared with the received octets
         # rather than the Path-updated octets the owner stored.
-        source = self.initialize("path-source", free_port())
-        target = self.initialize("path-target", free_port())
+        source = self.initialize("path-source")
+        target = self.initialize("path-target")
         self.configure_peer(target, source, outbound="-")
-        self.command([IMAGE, "--fn", "operator", target["config"], "policy",
-                      "set", "path-identity", "path-target.example.invalid"])
+        target.operator("policy", "set", "path-identity", "path-target.example.invalid",
+                        expect=EXIT_OK)
         self.start(target)
 
         replies = {}
         message_id = "<native-path-identity-ihave@example.invalid>"
         offered = (b"Path: path-source.example.invalid!not-for-mail\r\n"
                    + self.article(message_id, "path-identity-ihave"))
-        with socket.create_connection(("127.0.0.1", target["port"]), timeout=30) as client:
+        with socket.create_connection(("127.0.0.1", target.port), timeout=30) as client:
             stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
@@ -512,7 +435,7 @@ class NativePeeringTests(unittest.TestCase):
             replies["takethis"] = stream.readline()
         self.assertTrue(replies["ihave"].startswith(b"235 "), replies)
         self.assertTrue(replies["takethis"].startswith(b"239 "), replies)
-        self.assertIsNone(target["process"].poll(),
+        self.assertIsNone(target.process.poll(),
                           "a durable transit stopped the owner for recovery")
 
         served = self.await_article(target, message_id)
@@ -520,13 +443,13 @@ class NativePeeringTests(unittest.TestCase):
             b"Path: path-target.example.invalid!"), served[:80])
         self.assertIn(b"path-source.example.invalid!not-for-mail", served)
         self.assertTrue(self.duplicate_offer(target, message_id).startswith(b"435 "))
-        self.assertIsNone(target["process"].poll())
+        self.assertIsNone(target.process.poll())
         print("NATIVE-PEERING-WITNESS " + json.dumps({
             "kind": "path-identity-transit",
             "ihave": replies["ihave"][:3].decode(),
             "takethis": replies["takethis"][:3].decode(),
             "served_path": served.split(b"\r\n", 1)[0].decode("ascii", "replace"),
-            "owner_alive": target["process"].poll() is None,
+            "owner_alive": target.process.poll() is None,
             "identity": self.verify_process_identity(target),
         }, sort_keys=True))
 
@@ -539,8 +462,8 @@ class NativePeeringTests(unittest.TestCase):
         streamed answer is the RFC 4644 image of the IHAVE answer for the
         same case (one decision, three wire forms), and the pipeline past
         the peer's max-inflight (16, `peer add`'s inbound bound) is 431."""
-        source = self.initialize("stream-source", free_port())
-        target = self.initialize("stream-target", free_port())
+        source = self.initialize("stream-source")
+        target = self.initialize("stream-target")
         self.configure_peer(target, source, outbound="-")
         self.start(target)
 
@@ -553,7 +476,7 @@ class NativePeeringTests(unittest.TestCase):
         refused_ihave = "<stream-refused-ihave@example.invalid>"
         refused_takethis = "<stream-refused-takethis@example.invalid>"
         replies = {}
-        with socket.create_connection(("127.0.0.1", target["port"]), timeout=30) as client:
+        with socket.create_connection(("127.0.0.1", target.port), timeout=30) as client:
             stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"MODE STREAM\r\n")
@@ -629,7 +552,7 @@ class NativePeeringTests(unittest.TestCase):
                              self.article(message_id, message_id[1:-1]))
         self.assertIsNone(self.article_from(target, refused_takethis))
         self.assertIsNone(self.article_from(target, refused_ihave))
-        self.assertIsNone(target["process"].poll())
+        self.assertIsNone(target.process.poll())
         print("NATIVE-PEERING-WITNESS " + json.dumps({
             "kind": "inn-shaped-streaming",
             "ihave": {"offer": codes["ihave-offer"], "transfer": codes["ihave-transfer"],
@@ -657,16 +580,13 @@ class NativePeeringTests(unittest.TestCase):
         "dated in the future" and a Path-less one 437 "no Path"; an article
         within the skew and with a Path is accepted 235.  Nothing is
         persisted: the memory is the owner's, in memory only."""
-        target = self.initialize("hygiene-target", free_port())
+        target = self.initialize("hygiene-target")
         sources = [("hyg1", "127.0.0.1"), ("hyg2", "127.0.0.2"), ("hyg3", "127.0.0.3")]
         for name, address in sources:
-            self.command([IMAGE, "--fn", "operator", target["config"], "peer", "add",
-                          name, "{}.example.invalid".format(name), address, "9",
-                          "fn.*", "-", address, "true"])
-        self.command([IMAGE, "--fn", "operator", target["config"], "policy", "set",
-                      "relay-date-skew", "3600"])
-        self.command([IMAGE, "--fn", "operator", target["config"], "policy", "set",
-                      "relay-require-path", "1"])
+            target.operator("peer", "add", name, "{}.example.invalid".format(name),
+                            address, "9", "fn.*", "-", address, "true", expect=EXIT_OK)
+        target.operator("policy", "set", "relay-date-skew", "3600", expect=EXIT_OK)
+        target.operator("policy", "set", "relay-require-path", "1", expect=EXIT_OK)
         self.start(target)
 
         def hygienic(message_id, path, date):
@@ -681,7 +601,7 @@ class NativePeeringTests(unittest.TestCase):
                                  time.gmtime(time.time() + offset)).encode()
 
         def session(address):
-            client = socket.create_connection(("127.0.0.1", target["port"]), timeout=15,
+            client = socket.create_connection(("127.0.0.1", target.port), timeout=15,
                                               source_address=(address, 0))
             stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
@@ -738,7 +658,7 @@ class NativePeeringTests(unittest.TestCase):
                          "437 transfer rejected; no Path\r\n", witness)
         self.assertTrue(witness["good-offer"].startswith("335 "), witness)
         self.assertTrue(witness["good-transfer"].startswith("235 "), witness)
-        self.assertIsNone(target["process"].poll())
+        self.assertIsNone(target.process.poll())
 
     def test_pipelined_takethis_in_one_read_answers_every_article(self):
         """PKT-600, repaired (PRF-213, NNT-044, SCN-144): eight TAKETHIS
@@ -750,12 +670,12 @@ class NativePeeringTests(unittest.TestCase):
         back; every article is answered 239 in order and stored.  Until the
         repair the second of two articles in one read was never admitted
         and never answered, and this case was an expected failure."""
-        source = self.initialize("pipe-source", free_port())
-        target = self.initialize("pipe-target", free_port())
+        source = self.initialize("pipe-source")
+        target = self.initialize("pipe-target")
         self.configure_peer(target, source, outbound="-")
         self.start(target)
         ids = ["<pipe-{}@example.invalid>".format(n) for n in range(8)]
-        with socket.create_connection(("127.0.0.1", target["port"]), timeout=15) as client:
+        with socket.create_connection(("127.0.0.1", target.port), timeout=15) as client:
             stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"".join(b"TAKETHIS " + m.encode() + b"\r\n"
@@ -780,7 +700,7 @@ class NativePeeringTests(unittest.TestCase):
         for message_id in ids:
             self.assertEqual(self.await_article(target, message_id),
                              self.article(message_id, message_id[1:-1]))
-        self.assertIsNone(target["process"].poll())
+        self.assertIsNone(target.process.poll())
 
     def test_a_full_store_defers_transit_and_the_sender_is_not_healthy(self):
         """PKT-711 (the stranger rehearsal, 2026-09-27): a receiver whose
@@ -791,20 +711,9 @@ class NativePeeringTests(unittest.TestCase):
         reason=unaffordable, and a sender whose peer defers holds
         unavailable-peer (books/native-health.lisp
         fn-nh-deferring-peer-is-held)."""
-        source = self.initialize("full-source", free_port())
-        target = self.base / "full-target"
-        target.mkdir()
-        port = free_port()
-        self.command([IMAGE, "--fn", "store", target / "store", "init",
-                      "--max-transactions", "12", "fn.test"])
-        (target / "fn.toml").write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(target / "store", port,
-                                             target / "control.sock"),
-            encoding="ascii")
-        full = {"name": "full-target", "root": target, "store": target / "store",
-                "control": target / "control.sock", "config": target / "fn.toml",
-                "port": port}
+        source = self.initialize("full-source")
+        full = self.initialize("full-target", "--max-transactions", "12", "fn.test")
+        port = full.port
         self.configure_peer(full, source, outbound="-")
         self.start(full)
         ids = ["<full-{}@example.invalid>".format(n) for n in range(16)]
@@ -833,10 +742,7 @@ class NativePeeringTests(unittest.TestCase):
         deadline = time.monotonic() + 90
         health = None
         while time.monotonic() < deadline:
-            health = subprocess.run(
-                [str(IMAGE), "--fn", "operator", str(source["config"]), "health"],
-                cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, timeout=60, check=False)
+            health = source.operator("health", timeout=60)
             if b"unavailable-peer held" in health.stdout:
                 break
             time.sleep(1)
@@ -844,8 +750,8 @@ class NativePeeringTests(unittest.TestCase):
         self.assertIn(b"unavailable-peer held deferred=", health.stdout, health.stdout)
         self.assertNotEqual(health.returncode, 0, health.stdout)
         # The receiver's log names why it deferred.
-        full["process"].terminate()
-        _, log = full["process"].communicate(timeout=60)
+        full.process.terminate()
+        _, log = full.process.communicate(timeout=60)
         self.assertIn(b"reason=unaffordable", log, log[-2000:])
 
     def test_fragmented_takethis_without_check_answers_every_article(self):
@@ -856,8 +762,8 @@ class NativePeeringTests(unittest.TestCase):
         `.CRLF' terminator (between `.' and CR and between CR and LF).  Every
         article is answered 239 in order and stored, as in one write
         (fn-served-drain-run-is-boundary-independent)."""
-        source = self.initialize("frag-source", free_port())
-        target = self.initialize("frag-target", free_port())
+        source = self.initialize("frag-source")
+        target = self.initialize("frag-target")
         self.configure_peer(target, source, outbound="-")
         self.start(target)
         ids = ["<frag-{}@example.invalid>".format(n) for n in range(4)]
@@ -874,7 +780,7 @@ class NativePeeringTests(unittest.TestCase):
             pieces.append(data[start:cut])
             start = cut
         pieces.append(data[start:])
-        with socket.create_connection(("127.0.0.1", target["port"]), timeout=15) as client:
+        with socket.create_connection(("127.0.0.1", target.port), timeout=15) as client:
             client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
@@ -894,7 +800,7 @@ class NativePeeringTests(unittest.TestCase):
         for message_id in ids:
             self.assertEqual(self.await_article(target, message_id),
                              self.article(message_id, message_id[1:-1]))
-        self.assertIsNone(target["process"].poll())
+        self.assertIsNone(target.process.poll())
 
     def test_pipelined_post_in_one_read_answers_every_article(self):
         """PKT-600 for POST (PRF-213, NNT-044, SCN-144): two POST blocks in
@@ -902,10 +808,10 @@ class NativePeeringTests(unittest.TestCase):
         write.  Each article is its own step: the reply stream is 340 240
         340 240 in order, the 340 for the next POST never precedes the 240
         for the article before it, and every article is stored."""
-        node = self.initialize("pipe-post", free_port())
+        node = self.initialize("pipe-post")
         self.start(node)
         ids = ["<pipe-post-{}@example.invalid>".format(n) for n in range(4)]
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=15) as client:
+        with socket.create_connection(("127.0.0.1", node.port), timeout=15) as client:
             stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             # Two whole POST blocks in one write.
@@ -932,13 +838,13 @@ class NativePeeringTests(unittest.TestCase):
             got = self.await_article(node, message_id)
             self.assertIsNotNone(got, message_id)
             self.assertIn(("Message-ID: " + message_id).encode("ascii"), got)
-        self.assertIsNone(node["process"].poll())
+        self.assertIsNone(node.process.poll())
 
     def feed_to_scripted_peer(self, mode_reply, marker):
         peer = ScriptedTransitPeer(mode_reply)
         self.addCleanup(peer.close)
-        source = self.initialize(marker + "-source", free_port())
-        target = {"name": marker + "-peer", "port": peer.port}
+        source = self.initialize(marker + "-source")
+        target = types.SimpleNamespace(name=marker + "-peer", port=peer.port)
         self.configure_peer(source, target)
         self.start(source)
         message_id = "<{}@example.invalid>".format(marker)
@@ -972,7 +878,7 @@ class NativePeeringTests(unittest.TestCase):
         again = peer.await_article(second)
         self.assertIsNotNone(again, commands)
         self.assertEqual(again[0], "IHAVE")
-        self.assertIsNone(source["process"].poll())
+        self.assertIsNone(source.process.poll())
         print("NATIVE-PEERING-WITNESS " + json.dumps({
             "kind": "mode-stream-501-ihave-fallback",
             "commands": commands, "identical": article == served,
@@ -1005,11 +911,10 @@ class NativePeeringTests(unittest.TestCase):
         Distribution, are."""
         peer = ScriptedTransitPeer("203 streaming permitted")
         self.addCleanup(peer.close)
-        source = self.initialize("dist-source", free_port())
-        target = {"name": "dist-peer", "port": peer.port}
+        source = self.initialize("dist-source")
+        target = types.SimpleNamespace(name="dist-peer", port=peer.port)
         self.configure_peer(source, target)
-        self.command([IMAGE, "--fn", "operator", source["config"], "peer",
-                      "distributions", target["name"], "fn"])
+        source.operator("peer", "distributions", target.name, "fn", expect=EXIT_OK)
         self.start(source)
         cases = [("world", "Distribution: world\r\n"),
                  ("fn", "Distribution: FN\r\n"),
@@ -1018,18 +923,14 @@ class NativePeeringTests(unittest.TestCase):
         for marker, header in cases:
             message_id = "<dist-{}@example.invalid>".format(marker)
             ids[marker] = message_id
-            payload = source["root"] / ("dist-" + marker + ".article")
-            payload.write_bytes((
+            source.post(message_id, (
                 "From: sender@example.invalid\r\n"
                 "Newsgroups: fn.test\r\n"
                 "Subject: distribution {}\r\n"
                 "Date: Mon, 21 Sep 2026 12:00:00 +0000\r\n"
                 "{}"
                 "Message-ID: {}\r\n\r\n{}\r\n").format(
-                    marker, header, message_id, marker).encode("ascii"))
-            self.command([IMAGE, "--fn", "operator", source["config"], "post",
-                          "--message-id", message_id, "--payload", payload,
-                          "--group", "fn.test"])
+                    marker, header, message_id, marker).encode("ascii"), expect=EXIT_OK)
         for marker in ("world", "fn", "none"):
             self.assertIsNotNone(self.await_article(source, ids[marker]), marker)
         for marker in ("fn", "none"):
@@ -1041,7 +942,7 @@ class NativePeeringTests(unittest.TestCase):
             received = sorted(peer.articles)
         self.assertNotIn(ids["world"], received, commands)
         self.assertFalse([c for _, c in commands if ids["world"] in c], commands)
-        self.assertIsNone(source["process"].poll())
+        self.assertIsNone(source.process.poll())
         print("NATIVE-PEERING-WITNESS " + json.dumps({
             "kind": "feed-distribution-filter-prf-237",
             "commands": commands, "received": received,
@@ -1058,41 +959,28 @@ class NativePeeringTests(unittest.TestCase):
         """A node with two peers, both by source address: `injector'
         (127.0.0.1, inbound only: the test's raw TAKETHIS client) and
         `down' (127.0.0.2, outbound only, at DOWN_PORT)."""
-        root = self.base / marker
-        root.mkdir()
-        port = free_port()
         # Room for 12,000 transactions with a record bound small enough that
         # the heap the profile asks for fits the test's 24 GiB scope.
-        self.command([IMAGE, "--fn", "store", root / "store", "init",
-                      "--max-transactions", "12000", "--max-record-octets", "262144",
-                      "--max-history-octets", "134217728",
-                      "--max-article-octets", "8192",
-                      "--max-groups-per-article", "8", "fn.test"])
-        (root / "fn.toml").write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(root / "store", port,
-                                             root / "control.sock"),
-            encoding="ascii")
-        node = {"name": marker, "root": root, "store": root / "store",
-                "control": root / "control.sock", "config": root / "fn.toml",
-                "port": port}
-        self.command([IMAGE, "--fn", "operator", node["config"], "peer", "add",
-                      "injector", "injector.example.invalid", "127.0.0.1",
-                      str(free_port()), "fn.*", "-", "127.0.0.1", "true"])
+        node = self.initialize(marker, "--max-transactions", "12000",
+                               "--max-record-octets", "262144",
+                               "--max-history-octets", "134217728",
+                               "--max-article-octets", "8192",
+                               "--max-groups-per-article", "8", "fn.test")
+        node.operator("peer", "add", "injector", "injector.example.invalid", "127.0.0.1",
+                      str(free_port()), "fn.*", "-", "127.0.0.1", "true", expect=EXIT_OK)
         if down_port is not None:
-            self.command([IMAGE, "--fn", "operator", node["config"], "peer", "add",
-                          "down", "down.example.invalid", "127.0.0.1",
-                          str(down_port), "-", "fn.*", "127.0.0.2", "true"])
+            node.operator("peer", "add", "down", "down.example.invalid", "127.0.0.1",
+                          str(down_port), "-", "fn.*", "127.0.0.2", "true", expect=EXIT_OK)
         return node
 
     def stop_timed(self, node):
         started = time.monotonic()
-        node["process"].stop(grace=300)
+        node.process.stop(grace=300)
         return round(time.monotonic() - started, 2)
 
     def inject(self, node, ids):
         replies = []
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=60) as client:
+        with socket.create_connection(("127.0.0.1", node.port), timeout=60) as client:
             stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             for message_id in ids:
@@ -1103,7 +991,7 @@ class NativePeeringTests(unittest.TestCase):
         return replies
 
     def nntp_post(self, node, message_id):
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=60) as client:
+        with socket.create_connection(("127.0.0.1", node.port), timeout=60) as client:
             stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"POST\r\n")
@@ -1114,10 +1002,7 @@ class NativePeeringTests(unittest.TestCase):
             return stream.readline()
 
     def health(self, node):
-        return subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "health"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=120, check=False)
+        return node.operator("health", timeout=120)
 
     def test_feeding_past_the_queue_bound_keeps_local_posts_accepted(self):
         """PRF-335: 1,100 transit articles are fed to a streaming peer (more
@@ -1217,21 +1102,15 @@ class NativePeeringTests(unittest.TestCase):
         replies = self.inject(node, ids)
         self.assertEqual(set(r[:3] for r in replies), {b"239"},
                          [r for r in replies if r[:3] != b"239"][:5])
-        report = subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "obligations"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=300, check=False)
+        report = node.operator("obligations", timeout=300)
         self.assertEqual(report.returncode, 0, report.stderr[-2000:])
         first = report.stdout.split(b"\n", 1)[0]
         self.assertTrue(first.startswith(b"obligations="), first)
         held = int(first.split(b"=", 1)[1].split()[0])
         self.assertGreaterEqual(held, 5000, first)
         self.assertEqual(report.stdout.count(b"\nobligation id="), held, first)
-        self.assertIsNone(node["process"].poll(), "the owner stopped")
-        status = subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "status"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=120, check=False)
+        self.assertIsNone(node.process.poll(), "the owner stopped")
+        status = node.operator("status", timeout=120)
         self.assertEqual(status.returncode, 0, status.stderr[-2000:])
         print("NATIVE-PEERING-WITNESS " + json.dumps({
             "kind": "obligations-five-thousand-prf-336", "held": held,
