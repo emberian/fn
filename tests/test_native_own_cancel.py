@@ -44,31 +44,15 @@ Run: FN_NATIVE_HOST=<launcher> python3 -m unittest -v tests.test_native_own_canc
 import base64
 import hashlib
 import json
-import os
-from pathlib import Path
-import socket
-import subprocess
-import sys
-import tempfile
 import unittest
 
-from tests.native_harness import wait_for_announcement
-from tools.wire_stream import whole_stream
+from tests.native_harness import EXIT, ROOT, Client, Node, executable, free_port, native_image
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
-IMAGE = (Path(IMAGE_TEXT) if IMAGE_TEXT else
-         next((p for p in (ROOT / "build" / "fn-host-developer", ROOT / "build" / "fn-host")
-               if p.is_file()), None))
-READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
+IMAGE = native_image("FN_NATIVE_HOST", "build/fn-host-developer"
+                     if (ROOT / "build" / "fn-host-developer").is_file() else "build/fn-host")
+READY = executable(IMAGE)
 GROUPS = ["fn.own.t", "control.cancel"]
 TARGET = "<own-target@example.invalid>"
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def article(message_id, extra=None, subject=None):
@@ -95,144 +79,79 @@ def lock_of(key):
     return base64.b64encode(hashlib.sha256(key.encode("ascii")).digest()).decode("ascii")
 
 
-def stuffed(octets):
-    return b"".join((b"." + line if line.startswith(b".") else line)
-                    for line in octets.splitlines(keepends=True))
-
-
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST (a saved fn image)")
 class NativeOwnCancelTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-own-cancel-")
-        self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.env.pop("FN_HOST", None)
-        self.processes = []
-        self.addCleanup(self.stop_all)
-
-    def command(self, arguments, expected=0, timeout=180):
-        result = subprocess.run(list(map(str, arguments)), cwd=ROOT, env=self.env,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=timeout, check=False)
-        self.assertEqual(result.returncode, expected, result)
-        return result
+        self.nodes = []
 
     def initialize(self, name, auth):
-        root = self.base / name
-        root.mkdir()
-        store = root / "store"
-        port = free_port()
-        self.command([IMAGE, "--fn", "store", store, "init", *GROUPS])
-        config = root / "fn.toml"
-        text = ('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-                '[control]\npath = "{}"\n'.format(store, port, root / "control.sock"))
+        node = Node(self, IMAGE, name=name,
+                    root=self.nodes[0].root.parent / name if self.nodes else None)
+        self.nodes.append(node)
+        node.store("init", *GROUPS, expect=EXIT.OK)
         if auth:
-            text += ('[auth]\nrequired = true\nprotected_only = false\npath = "{}"\n'
-                     .format(root / "credentials.toml"))
-        config.write_text(text, encoding="ascii")
-        node = {"name": name, "root": root, "config": config, "port": port,
-                "store": store, "starts": 0}
-        if auth:
+            node.write_config(extra='[auth]\nrequired = true\nprotected_only = false\npath = "{}"\n'
+                              .format(node.root / "credentials.toml"))
             for login in ("alice", "bob"):
                 # The native operator reads the password on stdin.
-                result = subprocess.run(
-                    [str(IMAGE), "--fn", "operator", str(config), "principal",
-                     "set-password", login, "--posting"],
-                    cwd=ROOT, env=self.env, input=((login + "-correct-horse-battery\n") * 2).encode(),
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=600,
-                    check=False)
-                self.assertEqual(result.returncode, 0, result)
+                node.operator("principal", "set-password", login, "--posting",
+                              input=((login + "-correct-horse-battery\n") * 2).encode(),
+                              timeout=600, expect=EXIT.OK)
         else:
-            self.command([IMAGE, "--fn", "operator", config, "peer", "add", "source",
-                          "source.example.invalid", "127.0.0.1", str(free_port()),
-                          "fn.*", "-", "127.0.0.1", "true"])
+            node.operator("peer", "add", "source", "source.example.invalid", "127.0.0.1",
+                          str(free_port()), "fn.*", "-", "127.0.0.1", "true", expect=EXIT.OK)
         return node
 
     def start(self, node):
-        node["starts"] += 1
-        log = open(node["root"] / "node-{}.log".format(node["starts"]), "wb")
-        self.addCleanup(log.close)
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=log)
-        self.processes.append(process)
-        node["process"] = process
-        wait_for_announcement(process, b"LISTENING ")
+        node.start()
 
     def kill(self, node):
-        process = node.pop("process")
-        process.kill()
-        process.communicate(timeout=60)
-        self.processes.remove(process)
+        node.process.kill()
+        node.process.wait(timeout=60)
+        node.process.finish()
 
-    def stop_all(self):
-        for process in self.processes:
-            if process.poll() is None:
-                process.terminate()
-                process.communicate(timeout=60)
+    def dump_logs(self):
+        for node in self.nodes:
+            for number, process in enumerate(node.processes, 1):
+                print("== {} start {}\n{}".format(node.name, number, process.stderr.tail(
+                    3000).decode("utf-8", "replace")))
 
     def connect(self, node, login=None):
-        client = socket.create_connection(("127.0.0.1", node["port"]), timeout=30)
+        client = Client(node.port, timeout=30)
         self.addCleanup(client.close)
-        stream = whole_stream(client)
-        self.assertTrue(stream.readline()[:1] == b"2")
         if login:
-            stream.write(b"AUTHINFO USER " + login.encode() + b"\r\n")
-            self.assertTrue(stream.readline().startswith(b"381"))
-            stream.write(b"AUTHINFO PASS " + login.encode() + b"-correct-horse-battery\r\n")
-            reply = stream.readline()
+            self.assertTrue(client.command("AUTHINFO USER " + login).startswith(b"381"))
+            reply = client.command("AUTHINFO PASS " + login + "-correct-horse-battery")
             self.assertTrue(reply.startswith(b"281"), reply)
-        return stream
+        return client
 
     def post(self, node, login, payload):
-        stream = self.connect(node, login)
-        stream.write(b"POST\r\n")
-        first = stream.readline()
+        first, final = self.connect(node, login).post(payload)
         self.assertTrue(first.startswith(b"340"), first)
-        stream.write(stuffed(payload) + b".\r\n")
-        return stream.readline().decode().strip()
+        return final.decode().strip()
 
     def answer(self, node, message_id, login="alice"):
-        stream = self.connect(node, login if node["name"] == "h" else None)
-        stream.write(b"ARTICLE " + message_id.encode() + b"\r\n")
-        line = stream.readline()
-        if line.startswith(b"220"):
-            while stream.readline() not in (b".\r\n", b""):
-                pass
+        client = self.connect(node, login if node.name == "h" else None)
+        line, _ = client.multiline("ARTICLE " + message_id)
         return line.decode().strip()
 
     def fetch(self, node, message_id):
-        stream = self.connect(node, "alice")
-        stream.write(b"ARTICLE " + message_id.encode() + b"\r\n")
-        status = stream.readline()
+        client = self.connect(node, "alice")
+        status, body = client.multiline("ARTICLE " + message_id)
         self.assertTrue(status.startswith(b"220"), (message_id, status))
-        lines = []
-        while True:
-            line = stream.readline()
-            if line in (b".\r\n", b""):
-                break
-            lines.append(line[1:] if line.startswith(b".") else line)
-        return b"".join(lines)
+        return body
 
     def over_ids(self, node):
-        stream = self.connect(node, "alice" if node["name"] == "h" else None)
-        stream.write(b"GROUP fn.own.t\r\n")
-        group = stream.readline()
+        client = self.connect(node, "alice" if node.name == "h" else None)
+        group = client.command("GROUP fn.own.t")
         if not group.startswith(b"211"):
             return group.decode().strip(), []
-        stream.write(b"OVER 1-\r\n")
-        first = stream.readline()
+        first, body = client.multiline("OVER 1-")
         ids = []
-        if first.startswith(b"224"):
-            while True:
-                line = stream.readline()
-                if line in (b".\r\n", b""):
-                    break
-                fields = line.rstrip(b"\r\n").split(b"\t")
-                if len(fields) > 4:
-                    ids.append(fields[4].decode())
+        for line in body.splitlines():
+            fields = line.split(b"\t")
+            if len(fields) > 4:
+                ids.append(fields[4].decode())
         return first.decode().strip(), ids
 
     def relay(self, octets, destination, message_id):
@@ -243,29 +162,24 @@ class NativeOwnCancelTests(unittest.TestCase):
         tail = old[0].split(b":", 1)[1].strip() if old else b"not-for-mail"
         relayed = (b"\r\n".join([b"Path: source.example.invalid!" + tail] + rest)
                    + b"\r\n\r\n" + body)
-        stream = self.connect(destination)
-        stream.write(b"IHAVE " + message_id.encode() + b"\r\n")
-        first = stream.readline().decode().strip()
-        if first.startswith("335"):
-            stream.write(stuffed(relayed) + b".\r\n")
-            first += " / " + stream.readline().decode().strip()
-        return first
+        first, final = self.connect(destination).post(
+            relayed, verb=b"IHAVE " + message_id.encode())
+        text = first.decode().strip()
+        if first.startswith(b"335"):
+            text += " / " + final.decode().strip()
+        return text
 
     def run_refused(self, node):
-        result = subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=300, check=False)
+        result = node.operator("run", timeout=300)
         return result.returncode, (result.stdout + result.stderr).decode("utf-8", "replace")
 
     def node_secret(self, node, *words, expected=0):
-        result = self.command([IMAGE, "--fn", "store", node["store"], "node-secret", *words],
-                              expected=expected)
+        result = node.store("node-secret", *words, expect=expected)
         return (result.stdout + result.stderr).decode("utf-8", "replace").strip()
 
     def test_node_secret_is_written_at_init_and_refused_by_name(self):
         node = self.initialize("s", False)
-        key = node["store"] / "keys" / "node-secret.key"
+        key = node.store_path / "keys" / "node-secret.key"
         original = key.read_bytes()
         seen = {"size": len(original), "magic": original[:18].decode("ascii", "replace"),
                 "mode": oct(key.stat().st_mode & 0o777),
@@ -275,7 +189,7 @@ class NativeOwnCancelTests(unittest.TestCase):
         key.chmod(0o644)
         seen["world-readable"] = self.run_refused(node)
         key.chmod(0o600)
-        key.rename(node["root"] / "node-secret.aside")
+        key.rename(node.root / "node-secret.aside")
         seen["missing"] = self.run_refused(node)
         seen["not recreated"] = not key.exists()
         seen["create"] = self.node_secret(node, "create")
@@ -299,19 +213,14 @@ class NativeOwnCancelTests(unittest.TestCase):
         self.assertTrue(seen["new differs"], seen)
 
     def run_create_refused(self, node):
-        result = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(node["store"]), "node-secret", "create"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=300, check=False)
+        result = node.store("node-secret", "create", timeout=300)
         return result.returncode, (result.stdout + result.stderr).decode("utf-8", "replace")
 
     def test_a_same_source_retry_is_already_stored_across_accounts_and_epochs(self):
         try:
             self.retry_scenario()
         except BaseException:
-            for log in sorted(self.base.glob("*/node-*.log")):
-                print("== {}\n{}".format(log, log.read_bytes()[-3000:].decode(
-                    "utf-8", "replace")))
+            self.dump_logs()
             raise
 
     def retry_scenario(self):
@@ -339,7 +248,7 @@ class NativeOwnCancelTests(unittest.TestCase):
         seen["T3 after bob cancel"] = self.answer(h, target)
         self.kill(h)
         seen["rotate"] = self.node_secret(h, "rotate")
-        seen["kept epoch 1"] = (h["store"] / "keys" / "node-secret-1.key").is_file()
+        seen["kept epoch 1"] = (h.store_path / "keys" / "node-secret-1.key").is_file()
         self.start(h)
         seen["alice retry after rotation"] = self.post(h, "alice", source)
         seen["held unchanged after rotation"] = self.fetch(h, target) == held
@@ -353,10 +262,10 @@ class NativeOwnCancelTests(unittest.TestCase):
                                      alice_cancel.partition(b"\r\n\r\n")[0].split(b"\r\n")
                                      if f.lower().startswith(b"cancel-key:")]
         self.kill(h)
-        kept = h["store"] / "keys" / "node-secret-1.key"
-        kept.rename(h["root"] / "kept.aside")
+        kept = h.store_path / "keys" / "node-secret-1.key"
+        kept.rename(h.root / "kept.aside")
         seen["kept epoch missing"] = self.run_refused(h)
-        (h["root"] / "kept.aside").rename(kept)
+        (h.root / "kept.aside").rename(kept)
         print("NATIVE-OWN-CANCEL-RETRY-WITNESS " + json.dumps(seen, sort_keys=True))
 
         self.assertTrue(seen["alice post"].startswith("240"), seen)
@@ -386,9 +295,7 @@ class NativeOwnCancelTests(unittest.TestCase):
         try:
             self.node_written_scenario()
         except BaseException:
-            for log in sorted(self.base.glob("*/node-*.log")):
-                print("== {}\n{}".format(log, log.read_bytes()[-3000:].decode(
-                    "utf-8", "replace")))
+            self.dump_logs()
             raise
 
     def node_written_scenario(self):
@@ -462,9 +369,7 @@ class NativeOwnCancelTests(unittest.TestCase):
             self.scenario()
         except BaseException:
             # The nodes' own logs name a host fault; the temporary tree goes.
-            for log in sorted(self.base.glob("*/node-*.log")):
-                print("== {}\n{}".format(log, log.read_bytes()[-3000:].decode(
-                    "utf-8", "replace")))
+            self.dump_logs()
             raise
 
     def scenario(self):

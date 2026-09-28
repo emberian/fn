@@ -35,7 +35,7 @@ import sys
 import unittest
 
 from tests.native_harness import (
-    EXIT_OK, ROOT, Client, environment, native_image, native_peer_add, run, scratch, start)
+    EXIT_OK, ROOT, Client, Node, environment, native_image, native_peer_add)
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 GROUP = b"fn.test"
@@ -78,16 +78,9 @@ class ReaderFreshnessProbe(unittest.TestCase):
                 "(FN_NATIVE_PROFILE=developer tools/build_native_host.sh)".format(IMAGE))
 
     def setUp(self):
-        self.store = scratch(self, "fn-r1-probe-") / "store"
-        initialized = run([IMAGE, "--fn", "store", self.store, "init", "fn.test"])
-        self.assertEqual(initialized.returncode, EXIT_OK, initialized.stderr.decode())
-
-    def start_owner(self):
-        """`owner run STORE 0 0 8`: the store owner on an ephemeral port."""
-        process = start([IMAGE, "--fn", "owner", "run", self.store, "0", "0", "8"],
-                        cwd=ROOT, env=environment())
-        self.addCleanup(process.stop, 10)
-        return int(process.announcement(b"LISTENING ").split()[1])
+        self.node = Node(self, IMAGE, listener=False, control=False)
+        self.store = self.node.store_path
+        self.node.store("init", "fn.test", expect=EXIT_OK)
 
     def record(self, arrival, long_lived_before, long_lived_after, fresh):
         row = {"arrival": arrival, "long_lived_before": long_lived_before,
@@ -122,7 +115,7 @@ class ReaderFreshnessProbe(unittest.TestCase):
         return row
 
     def test_another_connections_post(self):
-        port = self.start_owner()
+        _, port = self.node.start_store_owner(once=False)
         message_id = "<r1-post@example.invalid>"
 
         def post():
@@ -138,7 +131,7 @@ class ReaderFreshnessProbe(unittest.TestCase):
             IMAGE, self.store, ["source", "source.invalid", "127.0.0.1", "9", "fn.*", "-",
                                 "127.0.0.1", "true"], environment(), ROOT)
         self.assertEqual(configured.returncode, 0, configured.stderr.decode())
-        port = self.start_owner()
+        _, port = self.node.start_store_owner(once=False)
         message_id = "<r1-ihave@example.invalid>"
 
         def ihave():

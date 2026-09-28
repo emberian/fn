@@ -924,6 +924,16 @@ class Node:
                                       "{} announced {!r}".format(self.name, line))
         return process
 
+    def start_store_owner(self, *, once=True, fault=None, connections=8, env=None, image=None):
+        """`owner run STORE 0 ONCE N [FAULT]`, the store owner on an ephemeral
+        port, drained and stopped at cleanup; (process, announced port)."""
+        words = ["owner", "run", self.store_path, "0", "1" if once else "0", str(connections)]
+        process = start(self.argv(image, words + ([fault] if fault else [])),
+                        cwd=ROOT, env=self.environment(env))
+        self.processes.append(process)
+        self.process = process
+        return process, int(process.announcement(b"LISTENING ").split()[1])
+
     def try_start(self, *, image=None, env=None, timeout=180):
         """(the owner, None) once it announces LISTENING, or (the exited
         owner, its stderr) when it refuses to start: for a case whose
