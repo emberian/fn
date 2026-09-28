@@ -5039,6 +5039,30 @@
         "planning/evidence/time-bars-2026-09-28.md"
       ],
       "implementation_note": "Lane time-bars (row F1 of COMPLETE-BEFORE-6.6.0). Bars (ember 2026-09-28): D 5 s, H 30 s with at most 1 s notification slack, cached health p99 <= 250 ms and <= 1 s under the injected stall, warm reads <= 1 s, cold page-dependent reads a declared 5 s dependency deadline then 403 (design section 4b). The committer's told-connection list moved into ACL2 (fn-otb-*); the journal's start entry records the wall observation, no monotonic origin; the push feed's restart forgets the previous process's back-off deadline. The cold-read decision is the interface row A4's asynchronous page fault calls; until A4 a cold extent read is synchronous under the owner. The push feed restart fix (PRF-385) follows on lane/time-bars-feed."
+    },
+    {
+      "id": "NNT-056",
+      "title": "AUTHINFO SASL: SCRAM-SHA-256 (and -PLUS over TLS 1.3 with tls-exporter) and PLAIN over TLS, with ACL2 deciding the whole exchange and the server never storing the password",
+      "specification": "specs/nntp.md#authinfo-sasl-nnt-056",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-915",
+        "PRF-916",
+        "PRF-917"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/hmac-sha256.lisp",
+        "books/scram.lisp",
+        "tests/acl2/hmac-sha256-tests.lisp",
+        "tests/acl2/scram-tests.lisp"
+      ],
+      "implementation_note": "RFC 4643 section 2.4 with PLAIN (RFC 4616), SCRAM-SHA-256 (RFC 5802, RFC 7677) and SCRAM-SHA-256-PLUS (RFC 9266 tls-exporter). DIGEST-MD5 (RFC 4643's mandatory mechanism) is not implemented: RFC 6331 made it Historic. Increment 1 (lane sasl): the HMAC-SHA-256/PBKDF2 and SCRAM mechanism books. Increment 2: the exchange (books/sasl.lisp), verifier v2 and the served AUTHINFO SASL arm."
     }
   ]
 }
