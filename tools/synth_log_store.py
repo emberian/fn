@@ -33,7 +33,9 @@ node's own open verifies every frame, chain link and record (a fixture it
 refuses is refused by name), so a wrong byte here is a refused fixture, never
 an accepted wrong history.  Streams: memory is one batch, whatever N is.
 """
-import argparse, hashlib, os, shutil, struct, sys
+import argparse, os, shutil, struct, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
 UNIT = 4096
 MAGIC = b"FNLG"
@@ -84,14 +86,14 @@ def encode(items):
 
 
 def subject_of(payload):
-    d = hashlib.sha256(SUBJECT_LABEL + b"\x00" + struct.pack(">I", len(payload)) + payload).digest()
-    return SUBJECT_LABEL + b"\x00\x01\x01" + d
+    d = blake3_ref.blake3(SUBJECT_LABEL + b"\x00" + struct.pack(">I", len(payload)) + payload)
+    return SUBJECT_LABEL + b"\x00\x01\x02" + d
 
 
 def obligation_of(msgid, subject):
-    d = hashlib.sha256(OBLIGATION_LABEL + b"\x00" + struct.pack(">I", len(msgid)) + msgid
-                       + struct.pack(">I", len(subject)) + subject).digest()
-    return OBLIGATION_LABEL + b"\x00\x01\x01" + d
+    d = blake3_ref.blake3(OBLIGATION_LABEL + b"\x00" + struct.pack(">I", len(msgid)) + msgid
+                          + struct.pack(">I", len(subject)) + subject)
+    return OBLIGATION_LABEL + b"\x00\x01\x02" + d
 
 
 def read_entries(path):
@@ -102,7 +104,7 @@ def read_entries(path):
         n = struct.unpack(">I", d[pos + 6:pos + 10])[0]
         prot = d[pos:pos + 10 + n]
         trailer = d[pos + 10 + n:pos + 42 + n]
-        if hashlib.sha256(prot).digest() != trailer or prot[10:42] != prev:
+        if blake3_ref.blake3(prot) != trailer or prot[10:42] != prev:
             raise SystemExit("seed log: entry at %d does not verify" % pos)
         body = prot[42:]
         if kind == 1:
@@ -168,7 +170,7 @@ def frame(prev, chunk):
     body = chunk[0] if kind == 1 else b"".join(struct.pack(">I", len(r)) + r for r in chunk)
     payload = prev + body
     prot = MAGIC + bytes([1, kind]) + struct.pack(">I", len(payload)) + payload
-    trailer = hashlib.sha256(prot).digest()
+    trailer = blake3_ref.blake3(prot)
     f = prot + trailer
     return f + bytes((-len(f)) % UNIT), trailer
 

@@ -17,8 +17,9 @@
 
 ; Its config.json, octet for octet: the FNSM frame the format-8 encoder wrote
 ; under the relation before PKT-467 (magic, version 1, kind 1, the u32
-; payload length 172, the two texts, sixteen u64 fields, the SHA-256
-; trailer).  tests/test_native_control_reply_fit.py writes the same octets.
+; payload length 172, the two texts, sixteen u64 fields, the trailer:
+; BLAKE3 of the rest under the current attachment, SHA-256 when the format-8
+; encoder wrote it).  tests/test_native_control_reply_fit.py writes the same octets.
 (defconst *spot-window-octets*
   '(
     70 78 83 77 1 1 0 0 0 172 0 10 102 110 45 115
@@ -32,9 +33,9 @@
     0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
     0 0 0 16 0 0 0 0 0 0 0 0 0 0 0 0
     0 0 0 0 0 64 0 0 0 0 0 0 1 0 0 0
-    0 0 0 0 64 0 121 139 102 61 92 206 2 20 187 88
-    114 29 128 147 96 135 218 253 203 152 133 61 46 249 28 121
-    15 221 14 210 22 11))
+    0 0 0 0 64 0 111 86 5 14 228 255 200 64 249 24
+    69 3 38 89 207 193 92 78 180 78 31 39 17 4 96 207
+    222 193 110 152 33 123))
 
 (assert-event (equal (len *spot-window-octets*) 214))
 (assert-event (equal (fn-spo-saved-frame *spot-window*) *spot-window-octets*))

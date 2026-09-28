@@ -1,6 +1,7 @@
-"""Differential: the ACL2-derived content identity against the host's old SHA-256.
+"""Differential: the ACL2-derived content identity against an independent BLAKE3.
 
-`books/crypto-attach.lisp` attaches an executable SHA-256 to `fn-frame-digest`,
+`books/crypto-attach.lisp` attaches an executable BLAKE3 to `fn-frame-digest`
+(SHA-256 up to store format 9),
 so `fn-id-subject-of-payload` and `fn-id-obligation-of` now run in logic and
 `tools/frame_bridge.py` no longer hashes.  This script is the evidence that the
 move changed no octet: for each random payload it derives the identity BOTH
@@ -8,10 +9,12 @@ ways through one live ACL2 session --
 
   new: (fn-store-subject-id-of-payload payload)      -- preimage and digest
                                                         both in ACL2
-  old: (fn-store-subject-id <sha256(prefix || payload)>) with the prefix from
+  old: (fn-store-subject-id <blake3(prefix || payload)>) with the prefix from
        (fn-store-subject-prefix <len>)               -- the split the host used
 
--- and compares them.  A disagreement is a defect in `books/sha256.lisp`, not
+-- the digest by tools/blake3_ref.py's pure-Python BLAKE3, a third
+implementation -- and compares them.  A disagreement is a defect in
+`books/blake3.lisp` or in the reference, not
 a tolerable difference: these are the same bytes or the identity changed.
 
 Run on a box with ACL2 and a certified `host/store-host`:
@@ -27,6 +30,9 @@ import random
 import sys
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+import blake3_ref  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -65,7 +71,7 @@ def main() -> int:
                 "(fn-store-subject-prefix {})".format(len(payload))))
             old = _as_bytes(session.call(
                 "(fn-store-subject-id "
-                + _octets(hashlib.sha256(prefix + payload).digest()) + ")"))
+                + _octets(blake3_ref.blake3_py(prefix + payload)) + ")"))
             if new != old:
                 mismatches.append(("subject", index, len(payload)))
 
@@ -76,7 +82,7 @@ def main() -> int:
                 + _octets(new) + ")"))
             old_ob = _as_bytes(session.call(
                 "(fn-store-obligation-id "
-                + _octets(hashlib.sha256(preimage).digest()) + ")"))
+                + _octets(blake3_ref.blake3_py(preimage)) + ")"))
             if new_ob != old_ob:
                 mismatches.append(("obligation", index, len(payload)))
     finally:

@@ -312,7 +312,7 @@ configuration records and the Store records (the checkpoint's records, then
 the log's: the history the open recovers), and nothing else: not the node's private state and secrets (the TLS
 keys, credentials, the HKDF and pseudonym roots), not peer journals, not
 consumer or application state held outside the Store, and not the other
-persistence domains (the BP and TCPCL stores). The MANIFEST's SHA-256 per
+persistence domains (the BP and TCPCL stores). The MANIFEST's BLAKE3 digest per
 entry says each file is the one the export wrote; it does not establish that
 the archive is the newest history of that node.
 
@@ -455,7 +455,7 @@ freed-octets=F ...` and one `reclaimed MSGID` line each; `--dry-run` prints
 `dry-run would-reclaim=N ...` and changes nothing; nothing to do is
 `reclaimed=0`. `store checkpoint` publishes the checkpoint alone (the same
 rotate and drop). `store ROOT digest` opens the store read-only (refused while an
-owner runs) and prints ACL2's SHA-256 digests of the state the open folded
+owner runs) and prints ACL2's BLAKE3 digests of the state the open folded
 (`fn-store-sn-replay-digest-report`, host/store-node-host.lisp, over
 books/state-digest.lisp): `history` (the records as wire events, in log
 order), `pool` (the payload arena's logical value), one `field` line per

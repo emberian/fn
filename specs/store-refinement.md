@@ -340,7 +340,7 @@ an older valid image, which no theorem here detects. The Python known-abort and
 refusal classifications are host claims under A-HOST.
 
 The frame checksum supplies only the predicate that damaged bytes in the stated
-fault class are rejected. Do not assume SHA-256 is injective, that it authenticates
+fault class are rejected. Do not assume BLAKE3 is injective, that it authenticates
 an attacker-controlled file, or that the experimental content label proves a
 portable identity. Codec exactness and node replay remain separate obligations.
 

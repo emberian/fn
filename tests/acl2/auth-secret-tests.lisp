@@ -1,7 +1,7 @@
 ; fn: teeth for books/auth-secret.lisp, the AUTHINFO stored-credential scheme.
 ;
 ; Everything here runs under the REAL attachment (books/crypto-attach.lisp
-; attaches fn-sha256 to fn-digest), so these are digests of actual SHA-256,
+; attaches BLAKE3 to fn-digest), so these are digests of actual BLAKE3,
 ; not of a toy realiser.  Read the rejection witnesses accordingly: they are
 ; evidence on concrete octets, and rejection in general is A-CRYPTO.
 

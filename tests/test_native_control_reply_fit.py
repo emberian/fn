@@ -24,7 +24,12 @@ octets and is not driven natively; its host carriage is checked statically.
 Run on hbox with FN_NATIVE_HOST naming the image under test.
 """
 import hashlib
+from pathlib import Path
+import sys
 import unittest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+import blake3_ref  # noqa: E402
 
 from tests import test_native_operator_verbs as verbs
 from tests.native_profile_fixture import ProfileFixture as ProfileUpgradeFixture
@@ -96,16 +101,16 @@ class ControlReplyFitTests(ControlReplyFitFixture):
 # the octets the format-8 encoder wrote under the relation before PKT-467 for
 # the scale preset's fields with R = H = 4,294,967,295 (the codec's u32), the
 # same constant tests/acl2/store-profile-open-tests.lisp checks is
-# (fn-spo-saved-frame *spot-window*).  Its last 32 octets are the SHA-256 of
-# the rest (the FNSM trailer).
+# (fn-spo-saved-frame *spot-window*).  Its last 32 octets are the BLAKE3
+# digest of the rest (the FNSM trailer under the current attachment).
 WINDOW_FRAME = bytes.fromhex(
     "464e534d0101000000ac000a666e2d73746f72652d38001e666e2d73746f7265"
     "2d616c6c6f636174696f6e2d66726f6e746965722d3200000000000010000000"
     "0000ffffffff00000000ffffffff0000000000008000000000000000ffff0000"
     "0000000001000000000000001000000000000010000000000000001000000000"
     "0000001000000000000000100000000000000010000000000000000000000000"
-    "00000000004000000000000001000000000000004000798b663d5cce0214bb58"
-    "721d80936087dafdcb98853d2ef91c790fdd0ed2160b")
+    "000000000040000000000000010000000000000040006f56050ee4ffc840f918"
+    "45032659cfc15c4eb44e1f27110460cfdec16e98217b")
 LINE = ("open refused reason=max-record-octets-above-the-poll-reply: the profile "
         "record bound exceeds the poll reply width; reinstall from the release and import")
 
@@ -114,7 +119,7 @@ class ProfileOpenRefusalSourceTests(unittest.TestCase):
     def test_the_witness_frame_is_a_sealed_format_8_frame(self):
         self.assertEqual(len(WINDOW_FRAME), 214)
         self.assertEqual(WINDOW_FRAME[:4], b"FNSM")
-        self.assertEqual(hashlib.sha256(WINDOW_FRAME[:-32]).digest(), WINDOW_FRAME[-32:])
+        self.assertEqual(blake3_ref.blake3(WINDOW_FRAME[:-32]), WINDOW_FRAME[-32:])
         book = (ROOT / "tests" / "acl2" / "store-profile-open-tests.lisp").read_text(encoding="ascii")
         octets = book.split("(defconst *spot-window-octets*", 1)[1].split("))", 1)[0]
         self.assertEqual(bytes(int(w) for w in octets.replace("'(", " ").split()), WINDOW_FRAME)

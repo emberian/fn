@@ -1,6 +1,6 @@
 ; fn: witnesses and teeth for the snapshot container
 ; (books/snapshot-segments.lisp; lane snapshot-open).  Attachments evaluate
-; in assert-event and defun bodies: the digest is fn-sha256's.
+; in assert-event and defun bodies: the digest is fn-blake3's.
 
 (in-package "ACL2")
 (include-book "std/testing/must-fail" :dir :system)
@@ -58,7 +58,7 @@
 ; Mutation witnesses (corrupted file, labelled): an octet of the FIRST
 ; segment's body changed -> :digest before any commit (nothing is used);
 ; an octet inside the second write changed -> :digest, the first commit
-; stands.  (That a change is DETECTED is the attached SHA-256's property,
+; stands.  (That a change is DETECTED is the attached BLAKE3's property,
 ; A-CRYPTO; the logic only says an accepted segment's digest verified.)
 (assert-event
  (let ((f (t-file *t-states* 2)))

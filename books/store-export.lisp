@@ -37,7 +37,7 @@
 ; it is replayed.  An interrupted import leaves only ROOT.import-XXXX,
 ; never a store at ROOT.)
 ;
-; What the digest is: the crypto seam's `fn-digest', SHA-256 under
+; What the digest is: the crypto seam's `fn-digest', BLAKE3 under
 ; books/crypto-attach in the image.  In this logic it is constrained only by
 ; its shape, so the MANIFEST equality proves nothing about integrity against
 ; an adversary (AGENTS.md: an abstract model proves nothing about real

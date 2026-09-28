@@ -810,7 +810,7 @@ served reply to it while the re-submission is in flight is one of the two
 word before any reservation or prepare, so no transaction or article number
 is allocated. That the same source is `:duplicate` rather than `:conflict`
 after reclamation is `fn-rcl-existing-action-after-reclaim` with its stated
-SHA-256 collision disjuncts. Not proved: the login-binding gate and the
+BLAKE3 collision disjuncts. Not proved: the login-binding gate and the
 posting allowance run before the Store's decision, so a poster whose
 authorization changed is answered by them (unresolved); PKT-164 in
 `planning/evidence/visibility-join-2026-09-25.md` is the decision on a
@@ -837,8 +837,8 @@ identity table. What each identity is, and which equality holds:
 | Application operation | the client's own (a persisted Message-ID) | a client that omits Message-ID has no retry identity: its resend is a new article (NNT-005) |
 | Message-ID | RFC 5536 s3.1.3 | transit (IHAVE, CHECK, TAKETHIS) and BP admission decide duplicates by it alone (RFC 3977 s6.3.2, RFC 4644); `fn-peer-decide-offer`, `fn-peer-decide-transfer` |
 | Authored source | the poster's octets, recovered by the injection inverse (`fn-inj-source-of`) | on the injecting routes (served POST, `operator post`, `hybrid-author`) the D25 verdict the host calls, `fn-store-existing-action` (books/store-intern.lisp; over the octet model `fn-rcl-action-over`): same source at any later clock is "already stored here" (`fn-sr-a-retry-is-already-stored`), one changed authored byte is "a different article" (`fn-sr-a-changed-source-is-a-conflict`); a supplied Path tail is source (D32); no field is normalized, so a signed carrier is stored octet for octet after the injected block |
-| Stored representation | the record payload (`store inspect`), its SHA-256 | the injected octets on the injecting node; on a receiving node the same octets with that node's path identity spliced into Path and any Xref dropped (`fn-peer-relayed-octets`); an injection is never a tombstone (`fn-sr-an-injection-is-not-a-tombstone`) |
-| Tombstone | SHA-256 of the octets and of the source, and the injecting agent | a retry after reclamation is still the duplicate and a changed source the conflict, up to a SHA-256 collision on the two sources (`fn-sr-a-retry-after-reclaim-is-already-stored`, `fn-sr-a-changed-source-after-reclaim-is-a-conflict`); marked unreachable-in-composition when no program wrote tombstones; `store reclaim` over the record log now rewrites a reclaimed article's record to its tombstone (`fn-lgr-decide`, books/store-log-reclaim.lisp, PRF-271, lane log-recovery 2026-09-27), and the mark has not been re-examined against it |
+| Stored representation | the record payload (`store inspect`), its BLAKE3 digest | the injected octets on the injecting node; on a receiving node the same octets with that node's path identity spliced into Path and any Xref dropped (`fn-peer-relayed-octets`); an injection is never a tombstone (`fn-sr-an-injection-is-not-a-tombstone`) |
+| Tombstone | BLAKE3 digests of the octets and of the source, and the injecting agent | a retry after reclamation is still the duplicate and a changed source the conflict, up to a BLAKE3 collision on the two sources (about 2^-128 per chosen pair) (`fn-sr-a-retry-after-reclaim-is-already-stored`, `fn-sr-a-changed-source-after-reclaim-is-a-conflict`); marked unreachable-in-composition when no program wrote tombstones; `store reclaim` over the record log now rewrites a reclaimed article's record to its tombstone (`fn-lgr-decide`, books/store-log-reclaim.lisp, PRF-271, lane log-recovery 2026-09-27), and the mark has not been re-examined against it |
 | Bundle identity | RFC 9171 (source EID, creation time, sequence) | one per carried request; a re-offer of an uncertain forwarding attempt keeps it (specs/bp-node-machine.md s4.3.1) |
 | Forwarding attempt | one durable kind-8 FNBS row | settled by kind 9; never an article identity |
 | Local sequence and number | per node, per group | never compared across nodes; kept across reopen |
@@ -1030,9 +1030,10 @@ line of the stored article is
 
 where AGENT is the node's path-identity (the agent of the plain line, which
 the injection decision writes), HEX the 64 lowercase hexadecimal digits of
-HMAC-SHA256 of L's octets under the posting-account purpose key, HKDF-SHA256
-of the key ring's current root with the node identity as salt and info
-`fn/posting-account/v1` (books/posting-account.lisp fn-pa-account-value over
+keyed BLAKE3 of L's octets under the posting-account purpose key, BLAKE3
+derive_key of the key ring's current root and node identity under the context
+`fn/posting-account/v2` (HMAC-SHA256 under HKDF-SHA256 up to store format 9;
+books/posting-account.lisp fn-pa-account-value over
 fn-pa-mac = books/node-secret.lisp fn-ns-posting-account-mac), and ADDR the
 `complaints-to` policy of the live configuration when set. Without a login
 (an anonymous POST where the configuration allows one, a control or BP
@@ -1087,7 +1088,7 @@ login only through the MAC, `fn-pa-account-value-depends-only-on-the-mac`);
 testing a guessed login needs the node secret. The operator authorizes this
 by running a node that accepts authenticated posting; docs/operator.md says
 so where logins are issued. Not claimed: that one value means one login
-(HMAC-SHA256 collision resistance, an assumption about the real function:
+(keyed BLAKE3's collision resistance, an assumption about the real function:
 for n logins under one secret a shared value has probability at most
 n(n-1)/2^257), and not unlinkability across a key rotation (a new epoch gives every login
 a new value; the value names only the current epoch). A login name reused for another person
@@ -1148,11 +1149,13 @@ ROOT node-secret rotate [IDENTITY]` keeps the current file as
 every kept older epoch and hands ACL2 the ring (current first, epochs
 strictly decreasing, `fn-ns-ringp`); it refuses by name when a file is
 missing, accessible to group or others, or does not parse, and it never
-creates a secret. Every use is a purpose key derived by HKDF-SHA256 (RFC 5869)
-from one epoch's root, salt the node identity recorded in its file, info a
-versioned label: `fn/cancel-lock/v1` (below) and `fn/posting-account/v1`
-(Injection-Info's posting-account). `fn-ns-expand-input-separates-info`:
-distinct labels never expand the same HMAC input under one root.
+creates a secret. Every use is a purpose key derived by BLAKE3's derive_key
+mode from one epoch's root and the node identity recorded in its file, the
+context a versioned label: `fn/cancel-lock/v2` (below) and
+`fn/posting-account/v2` (Injection-Info's posting-account); HKDF-SHA256 (RFC
+5869) up to store format 9. `fn-ns-purpose-inputs-separate-by-definition`:
+distinct labels are distinct derive_key contexts under one root. No other
+party recomputes either value, so the algorithm is fn's (BLAKE3).
 
 What the node writes. The octets the owner stores for a served POST from
 account A are `fn-own-sub-stored-octets` of the submission under the owner's
@@ -1164,7 +1167,9 @@ injected block it writes
     Cancel-Lock: sha256:Base64(SHA-256(Base64(K)))
     Cancel-Key: sha256:K1 sha256:K2 ...     (a cancel or Supersedes only)
 
-with `K = HMAC-SHA256(sec, uid || mid)` (RFC 8315 section 4): `sec` the
+with `K = keyed-BLAKE3(sec, uid || mid)` (RFC 8315 section 4's shape; the
+section RECOMMENDS HMAC and says the MAC's hash need not be the scheme's, and
+only this node recomputes K; HMAC-SHA256 up to store format 9): `sec` the
 current epoch's cancel-lock purpose key, `uid` A in lowercase hex (no angle
 brackets), `mid` the Message-ID with its angle brackets; the lock hashes the
 Base64-encoded key, as RFC 8315 section 2.1 and the example of section 5.2
@@ -1218,10 +1223,13 @@ whose key opens a lock of the target. By
 account opens A's lock exactly when that account's lock equals A's, so A's
 own key opens it. Not theorems: that the written line parses back as the
 entry the decision reads (the teeth check it on served articles), that
-another account's key opens nothing (SHA-256 of two HMAC outputs under a key
-the forger does not hold would have to collide: 2^128 generic work for a
-collision among chosen accounts; 2^256 for a second preimage against a seen
-lock), and that distinct labels give unrelated keys (HMAC as a PRF). An
+another account's key opens nothing (SHA-256 of two keyed-BLAKE3 outputs under
+a key the forger does not hold would have to collide: about 2^-128 per chosen
+pair of accounts, the collision figure; 2^-256 is only the second-preimage
+figure against a seen lock), and that distinct labels give unrelated keys
+(derive_key and keyed BLAKE3 as PRFs). The lock's hash is SHA-256 because
+RFC 8315 puts it on the wire (sections 2.1, 2.2, 3: `sha256` is the scheme
+every verifier reads); it is fn's only SHA-256. An
 abstract model of the hash would prove nothing about the real one, so there
 is no assumption book entry.
 
@@ -1298,8 +1306,8 @@ which makes AUTHINFO answer 483 until a TLS layer is active. What changed on
 | check | the supplied octets pass iff re-deriving the digest under the stored salt yields the stored digest |
 
 The digest is the seam's, and the seam is now executable:
-`books/crypto-attach.lisp` attaches the guard-verified SHA-256 of
-`books/sha256.lisp` to `fn-digest`. That is what `OB-AUTH-DIGEST` was waiting
+`books/crypto-attach.lisp` attaches the guard-verified BLAKE3 of
+`books/blake3.lisp` to `fn-digest` (SHA-256 up to store format 9). That is what `OB-AUTH-DIGEST` was waiting
 for; the audit's entry is updated rather than deleted, because the reason the
 credential was cleartext is part of the record.
 
@@ -1311,7 +1319,9 @@ guessing, or universal rejection of a different secret. The seam's constant-
 digest witness accepts every secret. Concrete rejection cases in
 `tests/acl2/auth-secret-tests.lisp` remain witnesses for those inputs.
 
-The concrete v1 scheme is a fast salted, tagged SHA-256 verifier, with no tunable
+The concrete v1 scheme is a fast salted, tagged digest verifier (the seam's
+BLAKE3 since store format 10; SHA-256 before, and a format-9 row does not
+verify under it: credentials are re-enrolled after an import), with no tunable
 work factor or memory-hard password derivation. Preserving this format in native
 administration establishes compatibility, not hardened password storage. The
 next authentication profile needs an explicit version/migration contract,
@@ -1371,7 +1381,7 @@ separate composition edge; this component does not add a second top-level
 grammar or a Python fallback.
 
 This administration path preserves the existing explicit
-`:fn-authsec-v1` compatibility format.  Salted, domain-tagged SHA-256 is not a
+`:fn-authsec-v1` compatibility format.  Salted, domain-tagged BLAKE3 is not a
 tunable-cost or memory-hard password KDF, and this component makes no claim
 that low-entropy passwords resist offline guessing.  A hardening successor
 must use a new credential version and an explicit migration/refusal policy;
@@ -1430,7 +1440,7 @@ gives them.
 
 - **The code.** `operator CONFIG account invite [--expires SECONDS]` prints one
   code, once, and stages the pending row. The code is never stored: the row is
-  keyed on the crypto seam's tagged SHA-256 digest of it
+  keyed on the crypto seam's tagged digest (BLAKE3) of it
   (`fn-acct-code-digest`, tag `"fn-account-code-v1"`). That a code the
   operator did not print finds no row is the seam's preimage resistance
   (A-CRYPTO), not a theorem here.

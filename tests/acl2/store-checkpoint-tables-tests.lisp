@@ -13,7 +13,7 @@
 ; refusal at the budget boundary both sides, a row referencing a P row
 ; past the count, the space deferral below the estimate, and a must-fail
 ; per keystone hypothesis.  (Attachments evaluate in assert-event: the seal
-; is fn-sha256's.)
+; is fn-blake3's.)
 
 (in-package "ACL2")
 (include-book "must-fail-checked")

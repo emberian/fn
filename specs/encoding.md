@@ -196,8 +196,9 @@ payload text field; because an inbound bundle can reach four mebibytes and
 cannot cross the decimal-octet bridge, ACL2 builds and validates the frame head
 and the host concatenates bundle bytes it never interprets.
 
-**A-CRYPTO.** The 32-octet trailer is SHA-256 in deployment and ACL2 does not
-compute it. `fn-frame-digest` is an `encapsulate` whose only constraints are
+**A-CRYPTO.** The 32-octet trailer is BLAKE3 in deployment (SHA-256 up to store
+format 9), computed by ACL2's attached `fn-blake3-stobj` (books/blake3.lisp;
+the C BLAKE3 in the saved images, A-CRYPTO-NATIVE). `fn-frame-digest` is an `encapsulate` whose only constraints are
 output shape (an octet list of length 32), with a local witness proving the
 constraints satisfiable. No theorem in this tree claims collision or preimage
 resistance for it. `fn-frame-seal` and `fn-frame-open` are the specification

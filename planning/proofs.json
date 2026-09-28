@@ -1563,7 +1563,7 @@
     {
       "id": "PRF-035",
       "title": "The frame integrity trailer has one owner, and the host's framing is the model's",
-      "statement": "fn-frame-trailer (books/frame-trailer.lisp) is the only definition of the 32-octet frame integrity trailer in the tree: it is fn-frame-digest, realised through books/crypto-attach.lisp by fn-sha256-stobj (books/sha256-stobj.lisp, the word-stobj computation), which fn-sha256-stobj-is-sha256 equates to the list model fn-sha256 on every object, and it answers :bad rather than a digest for an argument that is not an octet list. For any magic, version, kind and payload in fn-frame-inputp, the byte string a host builds by asking ACL2 for the protected prefix, asking ACL2 for the trailer over it and concatenating the two is fn-frame-seal of those fields; and handing that byte string back to fn-frame-decode with the trailer re-derived over the frame's own fn-frame-protected-prefix answers fn-frame-ok of the fields that went in. The same two statements hold for the store instance the bridge executes, over fn-frame-store-protected and fn-frame-store-decode. Collision and preimage resistance are A-CRYPTO and are not claimed: the attachment introduces no axiom and the seam's constraints are shape only.",
+      "statement": "fn-frame-trailer (books/frame-trailer.lisp) is the only definition of the 32-octet frame integrity trailer in the tree: it is fn-frame-digest, realised through books/crypto-attach.lisp by fn-blake3-stobj (books/blake3-stobj.lisp, the buffer computation; SHA-256 up to store format 9), which fn-blake3-stobj-is-blake3 equates to the definition fn-blake3 (books/blake3.lisp) on every object, and it answers :bad rather than a digest for an argument that is not an octet list. For any magic, version, kind and payload in fn-frame-inputp, the byte string a host builds by asking ACL2 for the protected prefix, asking ACL2 for the trailer over it and concatenating the two is fn-frame-seal of those fields; and handing that byte string back to fn-frame-decode with the trailer re-derived over the frame's own fn-frame-protected-prefix answers fn-frame-ok of the fields that went in. The same two statements hold for the store instance the bridge executes, over fn-frame-store-protected and fn-frame-store-decode. Collision and preimage resistance are A-CRYPTO and are not claimed: the attachment introduces no axiom and the seam's constraints are shape only.",
       "milestone": "M2",
       "requirements": [
         "ENC-003",
@@ -1592,8 +1592,6 @@
         "planning/evidence/manifests/certify-20260924T224341Z-2081666.json",
         "planning/evidence/manifests/certify-20260925T001652Z-2229194.json",
         "planning/evidence/manifests/certify-20260925T004450Z-2510809.json",
-        "books/sha256-stobj.lisp",
-        "tests/acl2/sha256-stobj-tests.lisp",
         "planning/evidence/rep-sha256-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T054927Z-1178625.json",
         "planning/evidence/manifests/certify-20260925T062846Z-1530323.json",
@@ -1602,7 +1600,9 @@
         "planning/evidence/manifests/certify-20260925T093812Z-3053804.json",
         "planning/evidence/manifests/certify-20260925T103038Z-3156842.json",
         "planning/evidence/manifests/certify-20260925T110203Z-65756.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "books/blake3-stobj.lisp",
+        "tests/acl2/blake3-stobj-tests.lisp"
       ],
       "progress_note": "Both books certified with tools/certify_books.py on the laptop (ACL2 8.7, SBCL 2.6.8), evidence dirs above. The four keystones and the 25 assert-events all pass. What the target does NOT establish: collision or preimage resistance of SHA-256 (A-CRYPTO, unchanged by the attachment); and the old tools/run_feed.py driver has since been deleted. W12 feed-durability owns the remaining FNFD envelope/recovery decisions in tools/feed_wire.py and their host adoption; that extension is separate from these trailer theorems."
     },
@@ -4330,8 +4330,8 @@
     },
     {
       "id": "PRF-106",
-      "title": "The subject digest reads the octet buffer in place",
-      "statement": "fn-sha256-of-prefixed-buffer (books/sha256-buffer.lisp) digests (append PREFIX buffer) over the word stobj of books/sha256-stobj.lisp with the buffer read by index: fn-shb-byte is the prefix's octet below the prefix length, the buffer's cell at i - lp below the message length and the padding past it, and the block loader, the compression loop and the digest are the string reader's with the buffer and the prefix in place of the string. fn-sha256-of-prefixed-buffer-is-sha256 (the keystone) says the buffer digest equals fn-sha256 of the appended list on every prefix and every value, with no hypothesis; it is proved as the correspondence of the buffer reader with the list reader on the list's suffix (the byte, the loaded word, the loaded block, the compressed block, the block loop, the digest) and then sha256-stobj's keystone fn-sha256-stobj-is-sha256. fn-sha256-of-prefixed-buffer-is-sha256-of-octets is its instance on an octet prefix and a buffer value (fn-octets-p). fn-shb-subject-id is fn-id-subject-of-payload with the payload in the buffer, and fn-shb-subject-id-is-id-subject-of-sha256-preimage says it is fn-id-subject of fn-sha256 over fn-id-subject-preimage, with no hypothesis: fn-id-subject-of-payload with fn-sha256 in the place of the constrained fn-frame-digest, which is what books/crypto-attach.lisp attaches (fn-sha256-stobj, equal to fn-sha256), so on the host image the two identities are the same octets. Every function is guard-verified. The host calls fn-shb-subject-id through host/owner-host.lisp fn-owner-subject-id-buffer (the list entry's length test, then the buffer identity), reached from host/native/io.lisp fnn-subject-id-buffer under fnn-metadata-buffer, which host/native/owner.lisp fnn-owner-attempt calls for the served POST after fnn-octets-fill: the last per-POST octet list of the payload before the store record is gone.",
+      "title": "The subject identity reads the octet buffer in place, through the digest seam",
+      "statement": "books/subject-id-buffer.lisp: fn-sidb-subject-id is fn-id-subject of fn-frame-digest-buffer over the subject preimage's fixed head (fn-id-subject-prefix of the buffer's length) and the buffer, and fn-sidb-subject-id-is-id-subject-of-payload (the keystone) says it is fn-id-subject-of-payload of the buffer's octets, with no hypothesis: the identity is stated against the constrained digest (A-CRYPTO), not a named algorithm, and books/frame-digest-buffer.lisp attaches the buffer form to fn-blake3-of-prefixed-buffer-any (BLAKE3 since store format 10, lane blake3-digest; SHA-256's books/sha256-buffer.lisp before, now deleted). fn-blake3-of-prefixed-buffer-is-blake3 (books/blake3-stobj.lisp) is the buffer BLAKE3 equal to fn-blake3 of the appended list on every prefix and every value. fn-sidb-subject-id-bounded (guard t, guard-verified, fn-sidb-subject-id-bounded-unfolds) is the entry: host/native/io.lisp fnn-subject-id-buffer calls it under fnn-metadata-buffer, which host/native/owner.lisp fnn-owner-attempt calls for the served POST after fnn-octets-fill, so no octet list of the payload is built for its identity.",
       "milestone": "M5",
       "requirements": [
         "HST-001",
@@ -4346,18 +4346,19 @@
       ],
       "status": "uncertified-at-current-digest",
       "events": [
-        "fn-sha256-of-prefixed-buffer-is-sha256",
-        "fn-shb-subject-id-is-id-subject-of-sha256-preimage"
+        "fn-sidb-subject-id-is-id-subject-of-payload",
+        "fn-blake3-of-prefixed-buffer-is-blake3"
       ],
       "evidence": [
-        "books/sha256-buffer.lisp",
-        "tests/acl2/sha256-buffer-tests.lisp",
         "planning/evidence/rep-wave-c-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T103038Z-3935155.json",
         "planning/evidence/manifests/certify-20260925T103519Z-3987534.json",
         "planning/evidence/manifests/certify-20260925T184459Z-4147314.json",
         "planning/evidence/manifests/certify-20260925T210036Z-3850666.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "books/subject-id-buffer.lisp",
+        "tests/acl2/subject-id-buffer-tests.lisp",
+        "books/blake3-stobj.lisp"
       ],
       "progress_note": "Lane rep-wave-c (D27 wave C, 2026-09-25). Teeth in tests/acl2/sha256-buffer-tests.lisp: the FIPS 180-4 vectors through the buffer reader on a live local buffer with the prefix/buffer split varied, the padding boundaries and a 3,000-octet buffer (past the array's first 1024 cells) against fn-sha256-stobj, non-degeneracy, and the subject identity equal to fn-id-subject-of-payload under the attachment and to the theorem's right-hand side on a 160-octet article, the empty payload and a 3,000-octet payload; both keystones have no hypothesis, so no must-fail case exists; the octets instance's hypotheses are proof support (as sha256-stobj's instance). NOT done here: the owner's chunk read (fn-owner-chunk) and the accumulated body are still octet lists (the owner state's representation, wave C boundary 10); the record encoder, the frame and the article parser over the buffer (boundaries 7 to 9); the obligation identity and the frame trailer still digest short lists. A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them."
     },
@@ -8602,7 +8603,7 @@
     {
       "id": "PRF-210",
       "title": "A cancel's authority is exactly a granted signed canceller or the poster: an unsigned cancel or Supersedes withdraws its target exactly when one of its RFC 8315 Cancel-Key entries opens one of the target's sha256 Cancel-Locks; the octets the owner stores for an account's POST carry exactly one Cancel-Lock keyed by that account under an HKDF purpose key, outside the D25 source",
-      "statement": "Withdrawal (unchanged): over fn-ctl-refresh-withdrawals / fn-ctl-journal-withdrawals, the record of a cause withdraws a target exactly when the cause names another target and either a verified principal P signed it or P's grants cover its groups, or no principal is verified and a Cancel-Key K of the cause has Base64(SHA-256(K)) among the target's sha256 Cancel-Locks (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster; fn-ctl-verified-cause-ignores-its-keys). Stored octets: books/owner-served-invariants.lisp fn-own-sub-stored-octets CFG SUB RING (host/owner-host.lisp fn-owner-take; the completion gate compares the same function): for a served submission by account A (fn-own-sub-account, recorded by fn-own-finish-read from the session subject) with a key ring installed (fn-ns-ringp), unsigned and with no poster Cancel-Lock, the stored octets are `Cancel-Lock: sha256:Base64(SHA-256(K))` CRLF, then on a cancel `Cancel-Key:` with one key per retained epoch, then the injected octets unchanged, K = Base64(HMAC-SHA256(key, hex(A) || MSGID)) with key the HKDF-SHA256 purpose key of the current epoch (info fn/cancel-lock/v1, salt the node identity) (fn-own-stored-octets-carry-the-account-lock, fn-cl-served-payload-writes-one-account-lock). D25: the projection fn-cll-skip that books/poster-bytes.lisp reads both compared payloads through gives the injected octets for every ring and account (fn-own-stored-octets-keep-the-injected-octets, fn-cl-served-payload-projects-to-the-injected-octets, fn-cll-skip-of-the-generated-lines), so a same-source retry by any account or key epoch is :duplicate and a different source :conflict at fn-rcl-existing-action (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored, fn-cld-a-changed-source-is-a-conflict-whatever-the-account). Rotation: a cancel's keys open a lock made under any retained epoch (fn-cl-ring-keys-open-every-retained-lock). Exactly the account's key opens its lock up to the stated collision (fn-cl-account-key-opens-exactly-its-lock). Derivation: distinct info labels never expand the same HKDF input (fn-ns-expand-input-separates-info); the key file round-trips (fn-ns-file-parse-of-render). Not theorems: that the written line parses back as the entry (teeth on parsed stored octets); that another account's key opens nothing (a SHA-256 collision of two HMAC outputs under a key the forger does not hold, about 2^128 generic work); HMAC/HKDF pseudorandomness. PKT-575 (PRF-256): the plan's first arm is the node's own authority (fn-ctl-node-authorizesp: a configuration row (CAUSE TARGET REASON 1) the operator wrote), and the keystone's right side is `the node authorizes CAUSE for TARGET, or` the signer/poster condition; the effect answers :node for such a record. RECORDS FLIP (flip-books-residue, 2026-09-27): the held payload is an arena handle; the subject is fn-store-existing-action (books/store-intern.lisp), which the host calls after flip-L6 at fn-owner-existing-action, fn-owner-prepare and host/store-node-host.lisp fn-store-sn-existing-action, and at fn-owner-existing-action-buffer through fn-pidx-existing-action (fn-pidx-existing-action-is-store-existing-action); the held-payload hypothesis reads the bytes under the held handle through the arena the verdict reads (fn-handle-bytes). The pre-flip statements over fn-rcl-existing-action equated a handle with octets and were vacuous on a flipped Store. After the records flip (flip-L8-2) the target's Cancel-Lock entries are its row's control fact, carried by the record as TLOCKS (fn-ctl-w-with-tlocks) and read by fn-ctl-withdrawal-effect's key arm; the keystone is stated over the plan resolved to TLOCKS.",
+      "statement": "Withdrawal (unchanged): over fn-ctl-refresh-withdrawals / fn-ctl-journal-withdrawals, the record of a cause withdraws a target exactly when the cause names another target and either a verified principal P signed it or P's grants cover its groups, or no principal is verified and a Cancel-Key K of the cause has Base64(SHA-256(K)) among the target's sha256 Cancel-Locks (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster; fn-ctl-verified-cause-ignores-its-keys). Stored octets: books/owner-served-invariants.lisp fn-own-sub-stored-octets CFG SUB RING (host/owner-host.lisp fn-owner-take; the completion gate compares the same function): for a served submission by account A (fn-own-sub-account, recorded by fn-own-finish-read from the session subject) with a key ring installed (fn-ns-ringp), unsigned and with no poster Cancel-Lock, the stored octets are `Cancel-Lock: sha256:Base64(SHA-256(K))` CRLF, then on a cancel `Cancel-Key:` with one key per retained epoch, then the injected octets unchanged, K = Base64(keyed-BLAKE3(key, hex(A) || MSGID)) with key the BLAKE3 derive_key purpose key of the current epoch (context fn/cancel-lock/v2, material the root and the node identity; HMAC-SHA256 under HKDF-SHA256 up to store format 9, RFC 8315 section 4 leaving the MAC's hash to the agent) (fn-own-stored-octets-carry-the-account-lock, fn-cl-served-payload-writes-one-account-lock). D25: the projection fn-cll-skip that books/poster-bytes.lisp reads both compared payloads through gives the injected octets for every ring and account (fn-own-stored-octets-keep-the-injected-octets, fn-cl-served-payload-projects-to-the-injected-octets, fn-cll-skip-of-the-generated-lines), so a same-source retry by any account or key epoch is :duplicate and a different source :conflict at fn-rcl-existing-action (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored, fn-cld-a-changed-source-is-a-conflict-whatever-the-account). Rotation: a cancel's keys open a lock made under any retained epoch (fn-cl-ring-keys-open-every-retained-lock). Exactly the account's key opens its lock up to the stated collision (fn-cl-account-key-opens-exactly-its-lock). Derivation: distinct info labels are distinct derive_key contexts (fn-ns-purpose-inputs-separate-by-definition); the key file round-trips (fn-ns-file-parse-of-render). Not theorems: that the written line parses back as the entry (teeth on parsed stored octets); that another account's key opens nothing (a SHA-256 collision of two keyed-BLAKE3 outputs under a key the forger does not hold: about 2^-128 per chosen pair); keyed-BLAKE3 and derive_key pseudorandomness. PKT-575 (PRF-256): the plan's first arm is the node's own authority (fn-ctl-node-authorizesp: a configuration row (CAUSE TARGET REASON 1) the operator wrote), and the keystone's right side is `the node authorizes CAUSE for TARGET, or` the signer/poster condition; the effect answers :node for such a record. RECORDS FLIP (flip-books-residue, 2026-09-27): the held payload is an arena handle; the subject is fn-store-existing-action (books/store-intern.lisp), which the host calls after flip-L6 at fn-owner-existing-action, fn-owner-prepare and host/store-node-host.lisp fn-store-sn-existing-action, and at fn-owner-existing-action-buffer through fn-pidx-existing-action (fn-pidx-existing-action-is-store-existing-action); the held-payload hypothesis reads the bytes under the held handle through the arena the verdict reads (fn-handle-bytes). The pre-flip statements over fn-rcl-existing-action equated a handle with octets and were vacuous on a flipped Store. After the records flip (flip-L8-2) the target's Cancel-Lock entries are its row's control fact, carried by the record as TLOCKS (fn-ctl-w-with-tlocks) and read by fn-ctl-withdrawal-effect's key arm; the keystone is stated over the plan resolved to TLOCKS.",
       "milestone": "M4",
       "requirements": [
         "SEC-006"
@@ -8643,7 +8644,7 @@
         "fn-cl-served-payload-projects-to-the-injected-octets",
         "fn-cl-ring-keys-open-every-retained-lock",
         "fn-cll-skip-of-the-generated-lines",
-        "fn-ns-expand-input-separates-info",
+        "fn-ns-purpose-inputs-separate-by-definition",
         "fn-ns-cancel-lock-and-posting-account-inputs-differ",
         "fn-ns-file-parse-of-render",
         "fn-cld-a-retry-by-any-account-or-epoch-is-already-stored",
@@ -10939,7 +10940,7 @@
     {
       "id": "PRF-295",
       "title": "The frame digest over an octet buffer (P3's obstruction): a buffer digest attached together with fn-frame-digest, and the served read's entry check in the realizer's buffer",
-      "statement": "books/frame-digest-buffer.lisp: fn-frame-digest-buffer PREFIX BUF is constrained to be fn-frame-digest of PREFIX followed by the buffer's octets (KEYSTONE fn-frame-digest-buffer-is-the-frame-digest), and one defattach attaches it together with fn-frame-digest (fn-sha256-stobj, as books/crypto-attach.lisp) to the buffer SHA-256 (fn-sha256-of-prefixed-buffer-any); the attachment's obligation is books/sha256-buffer.lisp's keystone; A-CRYPTO still says only 32 octets. books/payload-extent-read.lisp: the realizer's own buffer fn-octets-rd (congruent to fn-octets) and fn-arx-entry-ok-buffer TRAILER BUF; KEYSTONE fn-arx-entry-ok-buffer-is-the-frame-check: it is (equal (fn-frame-digest BUF) TRAILER), the log's own frame check (fn-lg-frame through fn-frame-seal); fn-arx-entry-ok-buffer-of-durable: a faithful read of an intact entry passes. Host subject: host/native/extent.lisp fnn-extent-entry-ok (called by fnn-extent-entry, the realizer's read) calls fn-arx-entry-ok-buffer over fn-octets-rd. NOT done: the record decode reading the buffer by index (the rest of recover-memory-2's P3); the obstruction it named is removed.",
+      "statement": "books/frame-digest-buffer.lisp: fn-frame-digest-buffer PREFIX BUF is constrained to be fn-frame-digest of PREFIX followed by the buffer's octets (KEYSTONE fn-frame-digest-buffer-is-the-frame-digest), and one defattach attaches it together with fn-frame-digest (fn-blake3-stobj, as books/crypto-attach.lisp) to the buffer BLAKE3 (fn-blake3-of-prefixed-buffer-any; SHA-256 up to store format 9); the attachment's obligation is books/blake3-stobj.lisp's keystone fn-blake3-of-prefixed-buffer-is-blake3; A-CRYPTO still says only 32 octets. books/payload-extent-read.lisp: the realizer's own buffer fn-octets-rd (congruent to fn-octets) and fn-arx-entry-ok-buffer TRAILER BUF; KEYSTONE fn-arx-entry-ok-buffer-is-the-frame-check: it is (equal (fn-frame-digest BUF) TRAILER), the log's own frame check (fn-lg-frame through fn-frame-seal); fn-arx-entry-ok-buffer-of-durable: a faithful read of an intact entry passes. Host subject: host/native/extent.lisp fnn-extent-entry-ok (called by fnn-extent-entry, the realizer's read) calls fn-arx-entry-ok-buffer over fn-octets-rd. NOT done: the record decode reading the buffer by index (the rest of recover-memory-2's P3); the obstruction it named is removed.",
       "milestone": "M5",
       "requirements": [
         "REP-010",
@@ -11329,8 +11330,8 @@
     },
     {
       "id": "PRF-320",
-      "title": "The frame digest over a window of an octet buffer: SHA-256 of a prefix and buffer[a, a+wn) read in place, attached as fn-frame-digest-range, and the checkpoint reader's frame seal over it",
-      "statement": "books/sha256-range.lisp: fn-sha256-of-prefixed-range PREFIX A WN BUF reads the window by index with a base offset (KEYSTONE fn-sha256-of-prefixed-range-is-sha256: it is fn-sha256 of (append PREFIX (fn-shr-win A WN BUF)), no hypothesis; fn-shr-win-is-slice relates the window to fn-oct-slice-list inside the buffer). books/frame-digest-buffer.lisp: the constrained fn-frame-digest-range (KEYSTONE fn-frame-digest-range-is-the-frame-digest), attached together with fn-frame-digest and fn-frame-digest-buffer in one defattach (the obligation is fn-sha256-of-prefixed-range-any-is-sha256). books/store-checkpoint-reader.lisp: fn-sccr-open-frame's seal is an mbe whose exec fn-sccr-window-seal digests the frame's window in place, never slicing it (fn-sccr-window-seal-is-seal: equal to fn-scc-seal over the slice on a live buffer, an in-range window and an octet header). Host subject: host/native/io.lisp fnn-state-checkpoint-load-arena calls fn-store-sco-decode and fn-store-sco-decode-finish (host/store-node-host.lisp), whose reader is fn-sccr-join over fn-sccr-open-frame. NOT done: the log walk's entry check (fn-lgw-decide) still frames and digests the entry as a list.",
+      "title": "The frame digest over a window of an octet buffer: BLAKE3 of a prefix and buffer[a, a+wn) read in place, attached as fn-frame-digest-range, and the checkpoint reader's frame seal over it",
+      "statement": "books/blake3-stobj.lisp: fn-blake3-of-prefixed-range PREFIX A WN BUF reads the window by index with a base offset (KEYSTONE fn-blake3-of-prefixed-range-is-blake3: it is fn-blake3 of (append PREFIX (fn-shr-win A WN BUF)) for a window inside the buffer; the SHA-256 reader of books/sha256-range.lisp it replaces is deleted, store format 10); books/octet-window.lisp: fn-shr-win-is-slice relates the window to fn-oct-slice-list inside the buffer. books/frame-digest-buffer.lisp: the constrained fn-frame-digest-range (KEYSTONE fn-frame-digest-range-is-the-frame-digest), attached together with fn-frame-digest and fn-frame-digest-buffer in one defattach (the obligation is fn-blake3-of-prefixed-range-any-is-blake3). books/store-checkpoint-reader.lisp: fn-sccr-open-frame's seal is an mbe whose exec fn-sccr-window-seal digests the frame's window in place, never slicing it (fn-sccr-window-seal-is-seal: equal to fn-scc-seal over the slice on a live buffer, an in-range window and an octet header). Host subject: host/native/io.lisp fnn-state-checkpoint-load-arena calls fn-store-sco-decode and fn-store-sco-decode-finish (host/store-node-host.lisp), whose reader is fn-sccr-join over fn-sccr-open-frame. NOT done: the log walk's entry check (fn-lgw-decide) still frames and digests the entry as a list.",
       "milestone": "M5",
       "requirements": [
         "REP-010",
@@ -11345,15 +11346,16 @@
       ],
       "status": "uncertified-at-current-digest",
       "evidence": [
-        "books/sha256-range.lisp",
         "books/frame-digest-buffer.lisp",
         "books/store-checkpoint-reader.lisp",
-        "tests/acl2/sha256-range-tests.lisp",
-        "planning/evidence/snapshot-open-2-2026-09-27.md"
+        "planning/evidence/snapshot-open-2-2026-09-27.md",
+        "books/blake3-stobj.lisp",
+        "books/octet-window.lisp",
+        "tests/acl2/blake3-stobj-tests.lisp"
       ],
       "progress_note": "Lane snapshot-open-2 (2026-09-27): the checkpoint open's list hashing.",
       "events": [
-        "fn-sha256-of-prefixed-range-is-sha256",
+        "fn-blake3-of-prefixed-range-is-blake3",
         "fn-frame-digest-range-is-the-frame-digest",
         "fn-sccr-window-seal-is-seal"
       ]
@@ -11672,6 +11674,41 @@
         "fn-lzr-lz-read-is-the-lz-value",
         "fn-lzr-dicts-add-keeps-bindings"
       ]
+    },
+    {
+      "id": "PRF-347",
+      "title": "BLAKE3 in ACL2: the definition over octet lists and its executable twin over the octet buffer",
+      "statement": "books/blake3.lisp defines BLAKE3 (the compression function over 64-octet blocks with seven rounds as a chain of multiple-value functions over declared 32-bit words, chunks of up to 1024 octets with CHUNK_START and CHUNK_END, the tree whose left subtree holds the largest power-of-two number of whole chunks shorter than the input, parents, and the root's first 32 output octets) in the hash, keyed_hash and derive_key modes, every function guard-verified, with the shape proved (fn-blake3-shape, fn-blake3-keyed-shape, fn-blake3-derive-key-shape: 32 octets for every object). Agreement with BLAKE3 is evidence, not proof: tests/acl2/blake3-tests.lisp evaluates all 35 official vectors (third_party/blake3/test_vectors, tag 1.8.7) in all three modes. books/blake3-stobj.lisp is the executable twin over a list prefix and a window of the octet buffer, conses nothing per block, and is proved equal to the definition level by level: fn-b3x-byte-is-nthx, fn-b3x-words-is-words, fn-b3x-chunk-is-chunk, fn-b3x-node-is-node, and the keystone fn-b3x-hash-is-hash (the buffer hash of PREFIX then the window [A, A+WN) is fn-b3-hash of the octets of their concatenation, for a window inside the buffer); its three entries fn-blake3-stobj (any object, copied once into a local buffer), fn-blake3-of-prefixed-buffer and fn-blake3-of-prefixed-range are equal to fn-blake3 (fn-blake3-stobj-is-blake3, fn-blake3-of-prefixed-buffer-is-blake3, fn-blake3-of-prefixed-range-is-blake3). books/crypto-attach.lisp and books/frame-digest-buffer.lisp attach them to fn-digest, fn-frame-digest, fn-frame-digest-buffer and fn-frame-digest-range. In the saved images host/native/digest.lisp replaces the three entries with the vendored C (lib/libfn-blake3) after checking it against the official vectors and fn-b3x-hash (A-CRYPTO-NATIVE). Collision resistance is A-CRYPTO: about 2^-128 per chosen pair (the birthday bound over 256 bits), not proved.",
+      "milestone": "M5",
+      "requirements": [
+        "ENC-003",
+        "STO-008",
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-087",
+        "PRF-035"
+      ],
+      "assumptions": [
+        "A-CRYPTO",
+        "A-CRYPTO-NATIVE"
+      ],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-b3x-hash-is-hash",
+        "fn-blake3-stobj-is-blake3",
+        "fn-blake3-of-prefixed-buffer-is-blake3",
+        "fn-blake3-of-prefixed-range-is-blake3",
+        "fn-blake3-shape"
+      ],
+      "evidence": [
+        "books/blake3.lisp",
+        "books/blake3-stobj.lisp",
+        "tests/acl2/blake3-tests.lisp",
+        "tests/acl2/blake3-stobj-tests.lisp",
+        "third_party/blake3/test_vectors/test_vectors.json"
+      ],
+      "progress_note": "Lane blake3-digest (2026-09-28): ember, BLAKE3 wherever fn chooses the algorithm; store format 10 with lane format-bump-10."
     }
   ]
 }

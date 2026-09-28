@@ -858,8 +858,8 @@ exactly "no obligation in the flattened list names the article" together
 with the rule.
 
 **The tombstone** replaces the payload octets of the article record and
-nothing else: NUL `FN-RCL1`, a source flag, the payload's SHA-256, the
-SHA-256 of its D25 source under its own agent, the payload length and that
+nothing else: NUL `FN-RCL1`, a source flag, the payload's BLAKE3 digest, the
+BLAKE3 digest of its D25 source under its own agent, the payload length and that
 agent (`books/reclaim-tombstone`). The record keeps its Message-ID,
 sequence, txid, generation, groups, memberships, obligation identity,
 content subject, release evidence, charge and stamp, so the history entry,
@@ -879,7 +879,7 @@ history (`fn-acceptedp` for every Message-ID; a reclaimed ID is refused
 again, never resurrected), group numbering (per-group next numbers), each
 article's bindings, and the D25 duplicate-versus-conflict verdict the host
 calls (`fn-store-existing-action`, `fn-rcl-action-over` over the stored
-bytes) up to a SHA-256 collision on the compared
+bytes) up to a BLAKE3 collision (about 2^-128 per chosen pair) on the compared
 pair. Verdict lookup reads the Store's verdict slot, which reclamation does
 not touch, and an article with a verdict is not reclaimed.
 
@@ -1128,7 +1128,7 @@ export DIR` writes the committed history the open reads (the profile frame,
 the allocation frontier -- on `fn-store-9` the one the log derives -- each
 configuration record and each committed record in sequence order: on
 `fn-store-9` the checkpoint's records then the log's, T8) with a MANIFEST
-whose names and SHA-256 lines ACL2 renders; `store import DIR [--FIELD N
+whose names and BLAKE3 lines (b3sum's format) ACL2 renders; `store import DIR [--FIELD N
 ...]` builds a new `fn-store-9` store from it (the archive's profile fields
 under the `fn-store-9` word, `fn-sxp-log-profile`: an archive the previous
 release exported from a `fn-store-8` store imports as a `fn-store-9` store
