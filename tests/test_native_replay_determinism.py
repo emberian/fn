@@ -10,7 +10,8 @@ without a Message-ID, cross-posts, operator posts, an operator withdrawal and
 the cancel the node injects for it, group create/describe, motd, retention and
 capacity configuration, an account invitation, consumer bootstrap/register/
 ack, and -- when FN_TEST_OPENSSL makes ML-DSA-65 keys -- a hybrid key
-enrollment and a signed post), and over the registered fixture n1k-2k:
+enrollment and a signed post), and over the registered fixture n1k-2k
+(test f: a reclaim is reproduced from its recorded instant, PKT-857):
 
 (a) `store ROOT digest' (ACL2's digest of the folded state's LOGICAL value,
     books/state-digest.lisp; host/store-node-host.lisp
@@ -464,6 +465,68 @@ class NativeReplayDeterminismTests(unittest.TestCase):
                             [k for k in a if k.startswith("digest history")])
         for name in ("digest field groups", "digest field capacity"):
             self.assertEqual(b[name], a[name], name)
+
+    def operator(self, store, name, *words, expected=0):
+        config, _, _ = self.node_config(store, name)
+        return self.run_native("operator", config, *words, expected=expected)
+
+    def test_f_a_reclaim_replays_from_its_recorded_instant(self):
+        """PKT-857 (books/reclaim-instant.lisp): `store reclaim' records its
+        instant as the configuration row `retention-reclaim-at' before it
+        rewrites anything, and the rewrite is a function of the pre-reclaim
+        store and that record.  A copy of the pre-reclaim store given the
+        record (the one new config/ file) reclaims with `store reclaim
+        --recorded' exactly as the store did: the same report and the same
+        folded state.  Teeth: without the record `--recorded' is refused by
+        name and rewrites nothing."""
+        # Its own small store: the mixed store's registered consumer lags the
+        # frontier, and a lagging consumer holds every article
+        # (books/store-reclaim-holders.lisp, the conservative reading).
+        base = self.base / "rc" / "store"
+        base.parent.mkdir(exist_ok=True)
+        config, port, _ = self.node_config(base, "rc-base")
+        self.run_native("operator", config, "init", "fn.test")
+        owner = self.start_owner(config)
+        try:
+            client = Nntp(port)
+            try:
+                for i in range(4):
+                    reply = client.post(article("<det-rc-{}@example.invalid>".format(i), "fn.test",
+                                                "rc {}".format(i), b"reclaimable\r\n" * (4 + i)))
+                    self.assertTrue(reply.startswith(b"240"), reply)
+            finally:
+                client.close()
+        finally:
+            self.stop_owner(owner)
+        self.operator(base, "rc-base", "retention", "set", "released-by-all-holders")
+        a, b, c = (self.copy(base, "rc-" + x) for x in "abc")
+        before = set(os.listdir(b / "config"))
+        done = self.operator(a, "rc-a", "store", "reclaim").stdout.decode("ascii")
+        first = done.splitlines()[0]
+        self.assertTrue(first.startswith("reclaimed="), done)
+        self.assertNotEqual(first.split()[0], "reclaimed=0", done)
+        record = [w.split("=", 1)[1] for w in first.split() if w.startswith("instant-record=")]
+        new = sorted(set(os.listdir(a / "config")) - before)
+        self.assertEqual(new, record, (done, new))
+        shutil.copyfile(a / "config" / new[0], b / "config" / new[0])
+        again = self.operator(b, "rc-b", "store", "reclaim", "--recorded").stdout.decode("ascii")
+        strip = lambda text: [ln if not ln.startswith("reclaimed=") else
+                              " ".join(w for w in ln.split()
+                                       if w.split("=")[0] in ("reclaimed", "freed-octets"))
+                              for ln in text.splitlines()]
+        self.assertEqual(strip(done), strip(again), (done, again))
+        self.assertIn("instant=recorded", again)
+        da, opens_a = self.digest(a)
+        db, opens_b = self.digest(b)
+        self.assertTrue(opens_a and opens_a[0].startswith("open=checkpoint"), opens_a)
+        self.assert_same(da, db, "the reclaim against its replay from the recorded instant")
+        refused = self.operator(c, "rc-c", "store", "reclaim", "--recorded", expected=None)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn(b"no-recorded-instant", refused.stdout + refused.stderr)
+        dc, _ = self.digest(c)
+        dbase, _ = self.digest(base)
+        self.assert_same(dc, dbase, "the refused copy against the pre-reclaim store")
+        self.assertNotEqual(dc, da)
 
     @unittest.skipUnless((FIXTURES / FIXTURE / "store").is_dir(),
                          "the registered fixture is not on this box")

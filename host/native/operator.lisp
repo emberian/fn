@@ -458,7 +458,7 @@ observation into the outcome and this function only carries it out."
 ; host/native/checkpoint.lisp installs `fnn-command-compact' here after it
 ; loads.  An image built without it (the DTN image) has no compaction.
 (defvar *fnn-compact-callback* nil)
-; And `fnn-command-reclaim' (`store reclaim [--dry-run]', STO-017).
+; And `fnn-command-reclaim' (`store reclaim [--dry-run | --recorded]', STO-017).
 (defvar *fnn-reclaim-callback* nil)
 
 (defun fnn-operator-execute-store-action (result action)
@@ -473,8 +473,9 @@ observation into the outcome and this function only carries it out."
                          (fnn-command-recover root (and (stringp at)
                                                         (list "--repair" "truncate" at)))))
                       (:compact (funcall *fnn-compact-callback* root))
-                      (:reclaim (funcall *fnn-reclaim-callback* root nil))
-                      (:reclaim-dry-run (funcall *fnn-reclaim-callback* root t))
+                      (:reclaim (funcall *fnn-reclaim-callback* root :reclaim))
+                      (:reclaim-dry-run (funcall *fnn-reclaim-callback* root :dry-run))
+                      (:reclaim-recorded (funcall *fnn-reclaim-callback* root :recorded))
                       (:checkpoint (fnn-command-state-checkpoint root))
                       (:rebind-filesystem
                        (fnn-command-rebind-filesystem
@@ -726,7 +727,7 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
                (fnn-core 'fn-native-operator-host-result-exit-code result))
       (let ((action (fnn-core 'fn-native-operator-host-result-native-action result)))
         (let ((surface (fnn-operator-action-surface action)))
-          (when (and (member action '(:reclaim :reclaim-dry-run))
+          (when (and (member action '(:reclaim :reclaim-dry-run :reclaim-recorded))
                      (null *fnn-reclaim-callback*))
             (fnn-operator-emit-status
              :usage "action" "reclaim needs the checkpoint surface, which this image omits")
@@ -751,7 +752,7 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
           (:status (fnn-operator-execute-status result))
           (:health (fnn-operator-execute-health result))
           ((:recover :compact :checkpoint :export :import
-            :reclaim :reclaim-dry-run :rebind-filesystem)
+            :reclaim :reclaim-dry-run :reclaim-recorded :rebind-filesystem)
            (fnn-operator-execute-store-action result action))
           (:inspect (fnn-operator-execute-inspect result))
           (:admin (fnn-operator-execute-admin result))

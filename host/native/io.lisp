@@ -1729,7 +1729,6 @@ route's point and the record log's, lane commit-onto-log)."
            (error (fnn-store-fault-class store) :message (fnn-store-fault-message store))))))
 
 (defun fnn-config-path (s) (fnn-join (fnn-store-root s) "config.json"))
-(defun fnn-transactions (s) (fnn-join (fnn-store-root s) "transactions"))
 (defun fnn-staging (s) (fnn-join (fnn-store-root s) "staging"))
 (defun fnn-lock-path (s) (fnn-join (fnn-store-root s) "writer.lock"))
 (defvar *fnn-clone-activation* nil)
@@ -1756,7 +1755,6 @@ route's point and the record log's, lane commit-onto-log)."
   (when (and (fnn-lstat (fnn-clone-fence-path s))
              (not *fnn-clone-activation*))
     (fnn-refuse "clone is fenced pending durable incarnation rollover")))
-(defun fnn-frontier-path (s) (fnn-join (fnn-store-root s) "allocation-frontier.json"))
 ;; The record log's directory and its one segment (format 9).  The name is
 ;; ACL2's (books/owner-log-route.lisp fn-olr-segment-name).
 (defun fnn-journal-dir (s) (fnn-join (fnn-store-root s) "journal"))
@@ -2817,7 +2815,7 @@ it covers are dropped (fnn-log-drop; T8)."
                             (fnn-profile-nat 'fn-store-profile-max-record-octets store)
                             +fnn-checkpoint-batch-octets+))
          (budget (fnn-core 'fn-ock-capture-budget profile))
-         (position (and (fnn-store-logp store) (fnn-log-rotate store)))
+         (position (fnn-log-rotate store))
          ;; one walk of the live rows, a bounded number per call: each
          ;; canonical payload's length and source (fn-store-sco-pass-step)
          (walked (progn
@@ -3389,7 +3387,7 @@ or refuses by name, saying what to run."
        (lambda (stage) (fnn-record-filesystem-at-init stage profile policy))
        (fnn-core 'fn-bs-init-log-subdir-names))
       ;; SEC-006: the node's key files, as `fnn-command-init' writes them,
-      ;; once the store is published (outside fn-bs-init-pub-program: a
+      ;; once the store is published (outside fn-bs-init-log-program: a
       ;; death between the two leaves the complete store without
       ;; keys/node-secret.key, which `run' refuses by name until
       ;; `store ROOT node-secret create'; PKT-694).
@@ -3645,7 +3643,8 @@ fn-bs-imp-program's cuts."
 
 (defun fnn-pub-at (store kind suffix)
   "The cut KIND-SUFFIX of fn-bs-imp-program (KIND \"import\") or of
-fn-bs-init-pub-program (KIND \"init\": the same program, init's cut names)."
+fn-bs-init-log-program (KIND \"init\": the same program over the log's plan,
+init's cut names)."
   (fnn-at store (intern (string-upcase (fnn-concat kind "-" suffix)) :keyword)))
 
 (defun fnn-import-write-file (store path octets &optional (kind "import"))
@@ -3878,14 +3877,13 @@ presence of the two names is classified by fn-bs-imp-classify."
         +fnn-exit-ok+))))
 
 (defun fnn-staged-publication (kind stage root-path files record-count
-                               &optional record-filesystem
-                                 (subdirs '("transactions" "staging" "config")))
+                               record-filesystem subdirs)
   "Build the store STAGE (at ROOT-PATH.KIND-XXXX) from FILES, a list of
 (PATH . OCTETS) in plan order, admit it through the ordinary open (it must
 replay RECORD-COUNT records), and publish it at ROOT-PATH by a no-replace
 rename, then fence ROOT-PATH's parent: books/store-import-publication.lisp
 fn-bs-imp-program step for step, with its cuts (KIND \"import\") or
-books/store-init-publication.lisp fn-bs-init-pub-program's (KIND \"init\":
+books/store-init-log-publication.lisp fn-bs-init-log-program's (KIND \"init\":
 the same steps, init's cut names).  An OS error before the rename is a known
 failure (exit 1, the staged directory named); at or after it the outcome is
 uncertain (exit 3) and the observed presence of the two names is classified
@@ -5860,9 +5858,9 @@ the next open completes); it is a known failure of the checkpoint."
 the chain carried from each segment's kernel to the next (fn-lgc-last), each
 record handed to SINK in order as it is read (fnn-log-stream-segment: one
 entry's octets at a time).  The closed segments are read only (the fold's step,
-books/store-log-segments.lisp fn-lgs-open-chain-records / -last over one
-segment, T8's subject: its records and last are the recovered kernel's, which
-the stream's are by fn-lgw-run-is-the-open); the active one is recovered (a
+books/store-log-stream.lisp fn-lgw-open-chain-records / -last over one
+segment, T8's subject, fn-lgw-segment-drop-preserves-the-open); the active one
+is recovered (a
 writable open: P-LOG-RECOVER) or read.  Returns the active segment's log.
 With PLACES (the full replay), each segment gets an extent realizer id
 (host/native/extent.lisp fnn-extent-register: a read-only descriptor held for
@@ -5894,9 +5892,9 @@ the process's life) and the stream binds each record's place for SINK
 
 (defun fnn-log-read-closed-segment (store k genesis unit max sink)
   "A closed segment K read only, one entry at a time (fnn-log-stream-segment;
-the fold's step of books/store-log-segments.lisp fn-lgs-open-chain-records /
--last over the one segment, T8's subject, which the stream's records and last
-are by fn-lgw-run-is-the-open), each record to SINK as ACL2's octet list, the
+the fold's step of books/store-log-stream.lisp fn-lgw-open-chain-records /
+-last over the one segment, T8's subject), each record to SINK as ACL2's octet
+list, the
 splice refused by name.  Answers the chain's last trailer, the next segment's
 genesis."
   (let* ((path (fnn-segment-path-at store k))

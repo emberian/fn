@@ -656,7 +656,7 @@ class Campaign:
             if not self.mount(rec):
                 violations.append("mount-failed")
             # after an init cut (PKT-647's published init,
-            # fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store):
+            # fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log):
             # ROOT is absent (at most one ROOT.init-*, which the next init
             # names as interrupted-init and after whose removal init
             # succeeds) or the complete empty store (status 0,

@@ -2683,7 +2683,8 @@
       "proof_targets": [
         "PRF-119",
         "PRF-279",
-        "PRF-271"
+        "PRF-271",
+        "PRF-327"
       ],
       "verification": [
         "proof",
@@ -2697,9 +2698,11 @@
         "planning/evidence/reclaim-lifecycle-2026-09-25.md",
         "planning/evidence/reclaim-lifecycle-2-2026-09-26.md",
         "books/store-log-reclaim.lisp",
-        "tests/test_native_log_compaction.py"
+        "tests/test_native_log_compaction.py",
+        "books/reclaim-instant.lisp",
+        "tests/test_native_replay_determinism.py"
       ],
-      "implementation_note": "Lane flip-cleanup (2026-09-27): the reclaiming pack's decision (fn-rclp-decide, PRF-119's pack keystones, PRF-279's streamed decision) was deleted with the pack layer. `store reclaim` is fn-lgr-decide-stream over the fold of fn-rclp-event per record (host/native/checkpoint.lisp fnn-log-reclaim-steps): the rewritten history's state checkpoint with the log rotated, then the drop (PRF-271); the rewrite's theorems are PRF-119's. Before: `operator CONFIG store reclaim [--dry-run]` and `operator CONFIG retention set RULE`. The decision is fn-rclp-decide; the program drops the derived state checkpoint, publishes the reclaiming generation, selects it and retires the older one, reusing the pack publication, selection and retirement cuts and adding five reclaim-* cuts. Lane reclaim-lifecycle-2: the maintenance reservation (PKT-169) is STO-019/PRF-129; a reclaimed article's retention charge falls to the one permanent history unit. Not implemented: a per-article release verb, BP/feed holders, chained packs."
+      "implementation_note": "Lane flip-cleanup (2026-09-27): the reclaiming pack's decision (fn-rclp-decide, PRF-119's pack keystones, PRF-279's streamed decision) was deleted with the pack layer. `store reclaim` is fn-lgr-decide-stream over the fold of fn-rclp-event per record (host/native/checkpoint.lisp fnn-log-reclaim-steps): the rewritten history's state checkpoint with the log rotated, then the drop (PRF-271); the rewrite's theorems are PRF-119's. Before: `operator CONFIG store reclaim [--dry-run]` and `operator CONFIG retention set RULE`. The decision is fn-rclp-decide; the program drops the derived state checkpoint, publishes the reclaiming generation, selects it and retires the older one, reusing the pack publication, selection and retirement cuts and adding five reclaim-* cuts. Lane reclaim-lifecycle-2: the maintenance reservation (PKT-169) is STO-019/PRF-129; a reclaimed article's retention charge falls to the one permanent history unit. Not implemented: a per-article release verb, BP/feed holders, chained packs. Lane log-leftovers (2026-09-27, PKT-857): the reclaim's instant is recorded before the rewrite as the configuration row `retention-reclaim-at` (PRF-327), and `store reclaim --recorded` reclaims at the recorded instant, so a copy of the pre-reclaim store given that record reproduces the reclaim (tests/test_native_replay_determinism.py test f). No store-format change."
     },
     {
       "id": "STO-018",
@@ -4710,19 +4713,22 @@
         "test"
       ],
       "evidence": [
+        "books/owner-time-admission.lisp",
         "books/owner-time-model.lisp",
-        "tests/acl2/owner-time-model-tests.lisp",
+        "books/peer-inbound-invariants.lisp",
+        "books/peer-inbound.lisp",
+        "host/native-live-status-host.lisp",
+        "host/native/control.lisp",
+        "host/native/mux.lisp",
         "host/native/owner.lisp",
         "host/owner-host.lisp",
-        "host/native-live-status-host.lisp",
-        "tests/test_native_slow_disk.py",
         "planning/design-time-model-2026-09-27.md",
+        "planning/evidence/time-model-2-2026-09-27.md",
         "planning/evidence/time-model-2026-09-27.md",
-        "books/owner-time-admission.lisp",
-        "host/native/control.lisp",
-        "planning/evidence/time-model-2-2026-09-27.md"
+        "tests/acl2/owner-time-model-tests.lisp",
+        "tests/test_native_slow_disk.py"
       ],
-      "implementation_note": "Slices 1 and 2 of planning/design-time-model-2026-09-27.md. The limits D, H and the clock-event cadence are the live configuration's barrier-deadline-ms, barrier-stall-ms and clock-event-ms rows (policy set; defaults 5,000 / 30,000 / 1,000 ms). Past D: a POST command is answered 440 with the reason, an article already announced 441 with the reason, a mutating control request BUSY; past H every poster of the batch in flight and of the next is told uncertain and the queued POSTs are refused try-later. Not yet: IHAVE 436 / CHECK 431 during slow (PKT-862: transit is not admitted while a barrier is pending; peers wait), the inline barrier and configuration publication as requests (slice 3), health's exit in stalled (PKT-853 (b))."
+      "implementation_note": "Slices 1 and 2 of planning/design-time-model-2026-09-27.md. The limits D, H and the clock-event cadence are the live configuration's barrier-deadline-ms, barrier-stall-ms and clock-event-ms rows (policy set; defaults 5,000 / 30,000 / 1,000 ms). Past D: a POST command is answered 440 with the reason, an article already announced 441 with the reason, a mutating control request BUSY; past H every poster of the batch in flight and of the next is told uncertain and the queued POSTs are refused try-later. Not yet: IHAVE 436 / CHECK 431 during slow (PKT-862: transit is not admitted while a barrier is pending; peers wait), the inline barrier and configuration publication as requests (slice 3), health's exit in stalled (PKT-853 (b)). Lane log-leftovers (2026-09-27): the 440 at the POST command and the 441 of an article whose POST got 340 before the disk went slow carry ACL2's disk reason (books/owner-time-admission.lisp fn-otm-disk-effects); a peer's IHAVE is answered 436 and CHECK 431 at once while the disk sheds (PKT-858: a reader-class quantum under the disk-slow posture, books/peer-inbound.lisp fn-peer-shed-p)."
     },
     {
       "id": "HST-027",

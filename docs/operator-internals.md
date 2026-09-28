@@ -100,12 +100,12 @@ locked to find that out. An existing store is adopted by `run` and repaired by
 `init` never builds the store in place (PKT-647). It builds the empty store
 in a new directory `ROOT.init-XXXX` beside the configured store ROOT and
 publishes it by the same program as `store import` (below; `fn-bs-imp-program`
-with init's cut names, `fn-bs-init-pub-program` in
-`books/store-init-publication.lisp`): each file created exclusively, written
+with init's cut names, `fn-bs-init-log-program` in
+`books/store-init-log-publication.lisp`): each file created exclusively, written
 and fenced, the directories fenced, the staged store opened the ordinary way,
 renamed onto ROOT without replacing anything, ROOT's parent fenced. A crash
 at any point leaves no store at ROOT or the complete empty store
-(`fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store`),
+(`fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log`),
 never a partial one. Before writing anything `init` looks for a staged
 directory an earlier `init` left, and ACL2 answers
 (`fn-bs-init-pub-admission` over `fn-bs-imp-classify`):
@@ -427,7 +427,7 @@ running owner's automatic checkpoint does the same under the owner mutex,
 so a node that runs rarely needs the verb. The open reads the checkpoint
 first and scans from the segment its F row names, with the chain carried
 across segments; the drop preserves the history that open replays (KEYSTONE
-`fn-lg-segment-drop-preserves-the-open`, books/store-log-segments.lisp,
+`fn-lgw-segment-drop-preserves-the-open`, books/store-log-stream.lisp,
 PRF-270). A checkpoint ACL2 will not write is refused by name before
 anything is allocated (`checkpoint deferred reason=... estimate=...
 budget=...`, the profile's checkpoint budget and the free space). The open
@@ -935,7 +935,7 @@ which answers nothing on a production image.
 | --- | --- | --- |
 | `FN_NATIVE_POST_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-post-model-cuts+`; or `record-prepublish:refuse` | the frontier, record and finish cuts of a post, in `store ROOT post` and in the served owner (`operator CONFIG run`, and the developer `owner run`); `record-prepublish:refuse` is injection only (no process-death cut): every publication (`fnn-publish`, either route) is refused before its first write, which the owner resolves by ACL2's known abort (tests/test_native_known_abort.py) |
 | `FN_NATIVE_RECOVERY_FAULT` | `CUT:eio\|kill`, CUT one of `recover-replayed`, `recover-barrier` (the first of its five sites), `recovery-stage-unlinked` | recovery's cuts, in `store ROOT recover`, `operator CONFIG recover`, `store ROOT post` and the served owner's own recovery at start |
-| `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts (`store ROOT init`), and `operator init`'s publication cuts `+fnn-init-publication-cuts+` (`fn-bs-init-pub-program`, eio or kill) |
+| `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts (`store ROOT init`), and `operator init`'s publication cuts `+fnn-init-publication-cuts+` (`fn-bs-init-log-program`, eio or kill) |
 | `FN_NATIVE_IMPORT_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-import-model-cuts+` (a repeated cut at its first occurrence) | `store import`'s publication cuts (`fn-bs-imp-program`) |
 | `FN_NATIVE_CONTROL_FAULT` | one of `prepublish`, `postpublish`, `frontierbarrier`, `recordbarrier` | the owner's store for exactly one control submission; `postpublish` is the uncertain outcome |
 | `FN_NATIVE_CONTROL_TEST_STOP` | `after-submit` | a SIGSTOP of the owner from the worker that holds the reply, after the owner answered accepted, duplicate or refused and before the reply is sent; the stop is directed at that thread (`pthread_kill`), so the reply cannot leave first |

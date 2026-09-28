@@ -3325,7 +3325,7 @@
 ; are the render plan (books/served-plan.lisp), which the host renders into
 ; the connection's own buffer after the mutex is released.  The owner and
 ; exposure states are installed exactly as fn-owner-chunk installs them.
-(defun fn-owner-chunk-span-at (id start end admit replies fn-octets fn-arena fn-cat state)
+(defun fn-owner-chunk-span-at (id start end sched fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
@@ -3336,16 +3336,17 @@
         ;; PKT-828: at the reader view while the committer holds a capture,
         ;; the working view put back after it (books/owner-reader-read.lisp
         ;; fn-orr-read-span; with no capture it is fn-scr-ocfg-read-span).
-        ;; Lane time-model-2 (PRF-323): ADMIT is the disk's write admission
-        ;; at this read's recorded time; while it sheds, the read runs with
-        ;; posting not permitted, so a POST command is answered 440 before
-        ;; its article (books/owner-time-admission.lisp fn-otm-read-span;
-        ;; admitted it is fn-orr-read-span, fn-otm-read-span-when-admitted-
-        ;; unfolds).  REPLIES is ACL2's pair of lines naming the disk's
-        ;; reason (fn-otm-shed-replies), passed through unread.
+        ;; Lane time-model-2 (PRF-323): SCHED is the gate's scheduler value
+        ;; at this read's recorded time; while the disk sheds
+        ;; (fn-otm-admit-post), the read runs with posting not permitted, so
+        ;; a POST command is answered 440 before its article, with the disk's
+        ;; reason (lane log-leftovers), and a peer's offers under the
+        ;; disk-slow posture (PKT-858: 436 / 431) (books/owner-time-
+        ;; admission.lisp fn-otm-read-span; admitted it is fn-orr-read-span,
+        ;; fn-otm-read-span-when-admitted-unfolds).
         (let* ((result (fn-otm-read-span
                         (fn-owner-ocfg state) (fn-owner-reader-views state)
-                        id start end admit replies fn-octets fn-arena fn-cat))
+                        id start end sched fn-octets fn-arena fn-cat))
                (effects (fn-own-tls-result-effects result))
                (consumed (fn-own-tls-result-consumed result))
                (state (fn-owner-install-ocfg
@@ -3363,9 +3364,9 @@
                   (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
                   (f-get-global 'fn-owner-exposure-close state))))))))
 
-(defun fn-owner-chunk-span (id start end admit replies fn-octets fn-arena fn-cat state)
+(defun fn-owner-chunk-span (id start end sched fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
-  (fn-owner-chunk-span-at id start end admit replies fn-octets fn-arena fn-cat state))
+  (fn-owner-chunk-span-at id start end sched fn-octets fn-arena fn-cat state))
 
 (defun fn-owner-close (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))

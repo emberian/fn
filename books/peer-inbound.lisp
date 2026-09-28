@@ -106,7 +106,9 @@
     :unapproved-moderated
     :no-path :path-syntax :date-syntax
     ; PRF-230: the store profile's header limits, each by its field's name.
-    :header-fields-limit :header-lines-limit :header-octets-limit))
+    :header-fields-limit :header-lines-limit :header-octets-limit
+    ; PKT-858: the disk is slow (books/owner-time-admission.lisp).
+    :disk-slow))
 
 (defun fn-peer-decision-shapep (x)
   (declare (xargs :guard t))
@@ -152,6 +154,7 @@
         ((equal reason :staged) "the same article is being accepted")
         ((equal reason :busy) "another article is being accepted")
         ((equal reason :fenced) "recovery pending")
+        ((equal reason :disk-slow) "the disk is slow")
         ((equal reason :inflight-limit) "too many offers outstanding")
         ((equal reason :capacity) "capacity")
         ((equal reason :out-of-scope) "no newsgroup accepted from this peer")
@@ -421,6 +424,24 @@
 ; -----------------------------------------------------------------------------
 ; Offer-time decision: only what the Message-ID and the connection decide
 
+; PKT-858 (lane log-leftovers, 2026-09-27): the disk-slow posture.  While
+; the disk sheds (books/owner-time-model.lisp fn-otm-admit-post = :shed), a
+; peer's read runs as a reader-class quantum (the transit class waits for the
+; barrier) with this entry in the refused-offer memory the session is re-pinned
+; with (books/owner-time-admission.lisp fn-otm-read-span puts it there for the
+; one read and takes it out after).  Its key is a keyword, never a Message-ID
+; string, so no remembered refusal reads it.  Under it every well-formed offer
+; from an inbound peer is :defer :disk-slow -- 436 to IHAVE, 431 to CHECK, the
+; retry class (RFC 3977 section 6.3.2, RFC 4644 section 2.4) -- BEFORE the
+; history arm: the live node the session is re-pinned to holds the batch in
+; flight, whose articles are not durable yet, so a 435/438 "duplicate" for one
+; of them would let the peer drop an article the failed barrier can lose.
+(defconst *fn-peer-shed-entry* '(:disk-slow . t))
+
+(defun fn-peer-shed-p (session)
+  (declare (xargs :guard t))
+  (equal (fn-rof-lookup :disk-slow (fn-peer-session-refused session)) t))
+
 (defun fn-peer-decide-offer (node cfg peer session msgid clock inflight)
   (declare (xargs :guard (fn-node-statep node) :verify-guards nil)
            (ignorable clock))
@@ -430,6 +451,8 @@
            (fn-peer-decision :refuse :no-inbound))
           ((not (fn-af-message-idp msgid))
            (fn-peer-decision :refuse :message-id-syntax))
+          ((fn-peer-shed-p session)
+           (fn-peer-decision :defer :disk-slow))
           ((fn-peer-history-hasp (fn-record-octets-string msgid) node)
            (fn-peer-decision :have :history))
           ; PRF-235: refused before, for a reason the octets decide.

@@ -1001,22 +1001,28 @@ decision that changed nothing in the value, with its two counts."
       (fnn-fault "owner returned a malformed admission ~a" word))
     word))
 
-;; Lane ax-fix/reply-text: a served read takes the admission and ACL2's two
-;; replies naming the disk's reason (fn-otm-shed-replies: nil when the disk
-;; admits) from ONE value of the gate, so the lines are of the same reading
-;; as the word.  The replies go back to ACL2 unread.
-(defun fnn-owner-read-admission (service)
-  "The write admission at the gate's recorded time (fn-otm-admit-post) and
-the reply lines naming the disk's reason (fn-otm-shed-replies), both of one
-scheduler value: (values WORD REPLIES).  Appends nothing."
-  (let* ((gate (fnn-owner-service-gate service))
-         (sched (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
-                  (fnn-owner-gate-sched gate)))
-         (word (fnn-core 'fn-otm-admit-post sched))
-         (replies (fnn-core 'fn-otm-shed-replies sched)))
-    (unless (member word '(:admit :shed))
-      (fnn-fault "owner returned a malformed admission ~a" word))
-    (values word replies)))
+(defun fnn-owner-gate-sched-value (service)
+  "The gate's scheduler value (books/owner-time-model.lisp), read once under
+the gate mutex: the admission, the reason lines and the peer read's class
+are ACL2's over this one value."
+  (let ((gate (fnn-owner-service-gate service)))
+    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (fnn-owner-gate-sched gate))))
+
+(defun fnn-owner-peer-read-class (service)
+  "The class a peer connection's read enters the gate as (PKT-858,
+books/owner-time-admission.lisp fn-otm-peer-read-class): :reader while the
+disk sheds at the gate's recorded time (the read runs under the disk-slow
+posture, so IHAVE is answered 436 and CHECK 431 at once), else :transit
+(which waits for a batch in flight).  Appends nothing: the committer's timed
+wakes append the clock events that move the disk past its deadline."
+  (let ((class (let ((gate (fnn-owner-service-gate service)))
+                 ;; Under the gate mutex, as fnn-owner-gate-pick's fn-otm-next.
+                 (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                   (fnn-core 'fn-otm-peer-read-class (fnn-owner-gate-sched gate))))))
+    (unless (member class '(:reader :transit))
+      (fnn-fault "owner returned a malformed peer read class ~a" class))
+    class))
 
 (defun fnn-owner-disk-stalled-p (service)
   "Whether the pending barrier's :stalled mode was entered (a clock event
@@ -3198,7 +3204,7 @@ waits."
             (fnn-octet-list (fnn-owner-account-redeem service cid))))
      class)))
 
-(defun fnn-owner-handle-chunk (service cid incoming &optional socket (class :reader))
+(defun fnn-owner-handle-chunk (service cid incoming &optional socket (class :reader) peerp)
   "One served read (fnn-owner-handle-chunk-read, a quantum of CLASS) and,
 when it left an XREDEEM PASS waiting, the publication's own quantum
 (fnn-owner-redeem-quantum); the step's plan carries the redeem reply after
@@ -3207,7 +3213,7 @@ fnn-owner-handle-chunk-read's: (values PLAN CLOSING STARTTLS CONSUMED
 REDEEMED SUBMITTED), (values :defer MS), or (values :await STEP REDEEM
 CLOSING STARTTLS CONSUMED)."
   (let ((results (multiple-value-list
-                  (fnn-owner-handle-chunk-read service cid incoming socket class))))
+                  (fnn-owner-handle-chunk-read service cid incoming socket class peerp))))
     (case (first results)
       (:redeem
        (destructuring-bind (tag step completion closing starttls consumed submitted) results
@@ -3223,9 +3229,11 @@ CLOSING STARTTLS CONSUMED)."
       (t (values-list results)))))
 
 
-(defun fnn-owner-handle-chunk-read (service cid incoming socket class)
+(defun fnn-owner-handle-chunk-read (service cid incoming socket class &optional peerp)
   "Run one owner read and its serial writer drain under the service mutex,
-admitted by the gate as CLASS (:reader, or :transit for a peer connection).
+admitted by the gate as CLASS (:reader, or :transit for a peer connection;
+PEERP: a peer connection's read, admitted as :reader while the disk sheds by
+fnn-owner-peer-read-class).
 
 Returns (values PLAN CLOSING STARTTLS CONSUMED REDEEMED SUBMITTED), PLAN the
 immutable render plan of this step's whole reply (books/served-plan.lisp
@@ -3245,7 +3253,7 @@ EPIPE and the client saw a bare close)."
   (fnn-owner-serialized
    service cid
    (lambda ()
-     (let ((admit :admit) (replies nil))
+     (let ((admit :admit) (sched nil))
      (block step
        ;; One reading per read, before the transition that decides under it.
        ;; books/owner.lisp fn-own-open: "The injection clock is not pinned:
@@ -3258,10 +3266,21 @@ EPIPE and the client saw a bare close)."
        ;; time (the :served clock event above): while the disk sheds, the
        ;; read runs with posting not permitted (a POST command is answered
        ;; 440 before its article: host/owner-host.lisp fn-owner-chunk-span)
-       ;; and a submitted POST is shed below (441).  REPLIES: ACL2's 440 and
-       ;; 441 naming the disk's reason, of the same value (lane
-       ;; ax-fix/reply-text; books/owner-time-admission.lisp).
-       (multiple-value-setq (admit replies) (fnn-owner-read-admission service))
+       ;; and a submitted POST is shed below (441).
+       ;; Lane log-leftovers: the gate's value itself goes to the read
+       ;; (fn-otm-read-span: the admission and the disk's reason lines are
+       ;; ACL2's over it), read once here.
+       (setq sched (fnn-owner-gate-sched-value service)
+             admit (fnn-core 'fn-otm-admit-post sched))
+       (unless (member admit '(:admit :shed))
+         (fnn-fault "owner returned a malformed admission ~a" admit))
+       ;; PKT-858: a peer's read admitted as :reader runs only while the disk
+       ;; sheds (fn-otm-peer-read-proceeds-p): recovered since the class was
+       ;; chosen, it is deferred and retried as transit (a reader-class read
+       ;; of the live node without the posture could reveal the batch in
+       ;; flight).
+       (unless (or (not peerp) (fnn-core 'fn-otm-peer-read-proceeds-p class sched))
+         (return-from step (values :defer 1)))
        ;; PRF-161: the work budget (books/public-exposure.lisp fn-exp-charge):
        ;; :proceed, or the milliseconds to wait.  Waiting reads nothing more
        ;; from this socket, so the client meets TCP backpressure and nothing
@@ -3281,7 +3300,7 @@ EPIPE and the client saw a bare close)."
        ;; step's typed result carries the effects, the plan the caller
        ;; renders off the mutex.
        (fnn-octets-fill incoming)
-       (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming) admit replies)))
+       (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming) sched)))
          (when (eq step :unknown)
            (fnn-refuse "owner no longer knows connection ~d" cid))
          (fnn-owner-refresh-read-octets service)
@@ -3609,12 +3628,11 @@ reads run as a :control quantum; the thread's registration is the roster's."
           ;; and the checkpoint's F row names the new segment.  A failed
           ;; rotation is a failed publication: logged, serving continues.
           (let* ((store (fnn-owner-service-store service))
-                 (position (and (fnn-store-logp store)
-                                (handler-case (fnn-log-rotate store)
-                                  ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
-                                  (fnn-store-error (e)
-                                    (fnn-err "CHECKPOINT auto failed: ~a" e)
-                                    :failed))))
+                 (position (handler-case (fnn-log-rotate store)
+                             ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
+                             (fnn-store-error (e)
+                               (fnn-err "CHECKPOINT auto failed: ~a" e)
+                               :failed)))
                  (captured (and (not (eq position :failed))
                                 (fnn-owner-core 'fn-owner-sco-capture
                                                 (fnn-checkpoint-budget-test-override nil)
