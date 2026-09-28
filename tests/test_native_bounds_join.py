@@ -17,12 +17,14 @@ from pathlib import Path
 import shutil
 import signal
 import socket
+import time
 import unittest
 
 from tests import test_native_operator_verbs as verbs
 from tests.native_profile_fixture import ProfileFixture as ProfileUpgradeFixture
 
 EXIT_OK, EXIT_REFUSED = verbs.EXIT_OK, verbs.EXIT_REFUSED
+EXIT_UNCERTAIN = verbs.EXIT_UNCERTAIN
 MIB4 = 4 * 1024 * 1024
 # The store these cases need, named: a capacity-free init sizes to the
 # process budget (PKT-582, image-floor), whose 8 MiB of history the 6 MiB of
@@ -250,7 +252,8 @@ class TenMibArticleTests(JoinFixture):
     in execution and exhausted a node thread's stack at about 80,000 octets.
     Here a 10 MiB article is POSTed over NNTP (a connection thread) and
     submitted by `operator post' (the control thread), each re-read over
-    NNTP identical, and the owner is still serving after both.
+    NNTP identical, and the owner is still serving after both.  Run with
+    FN_TEST_CONTROL_STACK_KB=1024: the image's own launcher gives 64 MiB.
     """
 
     def test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post(self):
@@ -266,13 +269,25 @@ class TenMibArticleTests(JoinFixture):
                              "--group", "fn.test")
             print("operator post", posted.returncode, posted.stdout.decode().strip(),
                   posted.stderr.decode().strip(), flush=True)
-            reread = self.reread(msgid, MIB10) if posted.returncode == EXIT_OK else None
+            # The control client's reply deadline is a fixed 10 s
+            # (host/native/control.lisp +fnn-control-io-seconds+, PKT-871):
+            # a 10 MiB submission outlasts it, so the client reports
+            # UNCERTAIN (exit 3) while the owner completes the commit.  The
+            # article is then read back from the store, the durable fact.
+            reread = False
+            for _ in range(60):
+                if owner.poll() is not None:
+                    break
+                reread = self.reread(msgid, MIB10)
+                if reread:
+                    break
+                time.sleep(2)
             alive = owner.poll() is None
         finally:
             self.stop(owner)
         self.assertTrue(rows[MIB10][0].startswith("240"), rows)
         self.assertTrue(rows[MIB10][1], "the 10 MiB NNTP POST did not reread identical")
-        self.assertEqual(posted.returncode, EXIT_OK, posted.stderr.decode())
+        self.assertIn(posted.returncode, (EXIT_OK, EXIT_UNCERTAIN), posted.stderr.decode())
         self.assertTrue(reread, "the 10 MiB operator post did not reread identical")
         self.assertTrue(alive, "the owner stopped serving after the 10 MiB articles")
 
