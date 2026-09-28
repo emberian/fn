@@ -12686,10 +12686,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-oas-read-span-when-held-unfolds"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-oas-refused-read-is-not-article"
         },
         {

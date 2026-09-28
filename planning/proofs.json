@@ -13218,7 +13218,6 @@
       "events": [
         "fn-oas-read-span-admits-within-the-slots",
         "fn-oas-read-span-never-blocks-an-admitted-article",
-        "fn-oas-read-span-when-held-unfolds",
         "fn-oas-refused-read-is-not-article",
         "fn-heap-article-slots-are-held",
         "fn-heap-article-slots-bounds",
