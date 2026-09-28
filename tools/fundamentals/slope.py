@@ -8,7 +8,10 @@ ap = argparse.ArgumentParser()
 ap.add_argument("tree"); ap.add_argument("image"); ap.add_argument("work")
 ap.add_argument("--posts", type=int, default=1000); ap.add_argument("--octets", type=int, default=2048)
 ap.add_argument("--groups", type=int, default=1); ap.add_argument("--subject", type=int, default=0); ap.add_argument("--heap", type=int, default=2048)
-ap.add_argument("--flags", default="--profile development --max-transactions 16384 --max-history-octets 8388608 --max-record-octets 196608 --max-groups-per-article 16 --max-open-suffix 128")
+# 16 MiB of history (was 8 MiB): the 1,000 x 8,000 row's bodies alone are
+# 8,000,000 octets, and under format 10 the store refused POST 998 as full
+# (batch AZ, 2026-09-28); all three rows share the profile.
+ap.add_argument("--flags", default="--profile development --max-transactions 16384 --max-history-octets 16777216 --max-record-octets 196608 --max-groups-per-article 16 --max-open-suffix 128")
 a = ap.parse_args()
 sys.path.insert(0, a.tree + "/tools"); sys.path.insert(0, a.tree)
 import rep_measure as r, msgid_measure as m

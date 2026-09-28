@@ -343,12 +343,12 @@
 
 (local
  (defthm fn-hp-octetp-sha-byte
-   (fn-scc-octetp (fn-sha256-byte x))
-   :hints (("Goal" :in-theory (enable fn-sha256-byte fn-scc-octetp)))))
+   (fn-scc-octetp (pgs-octet x))
+   :hints (("Goal" :in-theory (enable pgs-octet fn-scc-octetp)))))
 (local
  (defthm fn-hp-scc-octets-of-word
    (fn-scc-octet-listp (pgs-word-le-octets w))
-   :hints (("Goal" :in-theory (disable fn-sha256-byte ash)))))
+   :hints (("Goal" :in-theory (disable pgs-octet ash)))))
 (local
  (defthm fn-hp-scc-octet-listp-append
    (implies (and (fn-scc-octet-listp x) (fn-scc-octet-listp y)) (fn-scc-octet-listp (append x y)))))

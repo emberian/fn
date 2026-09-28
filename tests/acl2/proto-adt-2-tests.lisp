@@ -151,11 +151,11 @@
 (assert-event (let ((bad (update-nth (* 6 *adt-page*) 9 *bb*)))
                 (and (equal (car (adt-decode *bs* bad)) :ok)
                      (not (equal (adt-decode *bs* bad) (list :ok *ba*)))
-                     (not (equal (fn-sha256 (take *adt-page* (nthcdr (* 6 *adt-page*) bad)))
+                     (not (equal (fn-blake3 (take *adt-page* (nthcdr (* 6 *adt-page*) bad)))
                                  (nth 6 (adt-page-digests *bs* *ba*)))))))
 ; adt-page-digest-nth, and one leaf per page
 (assert-event (and (equal (len (adt-page-digests *bs* *ba*)) 7)
-                   (equal (nth 0 (adt-page-digests *bs* *ba*)) (fn-sha256 (take *adt-page* *bb*)))))
+                   (equal (nth 0 (adt-page-digests *bs* *ba*)) (fn-blake3 (take *adt-page* *bb*)))))
 ; adt-ser-image-of-corr: two images of one value (a set leaves dead octets),
 ; one byte string
 (defconst *img-a* (adt-set-c *bs* 1 0 '(104 105) (adt-set-c *bs* 1 0 '(3) (adt-canon *bs* *ba*))))

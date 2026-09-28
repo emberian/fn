@@ -3,8 +3,8 @@
 ; The model's decisions (books/pagestore.lisp) over the stobj
 ; `pgs-mem' of books/pagestore-words.lisp, with the refinement
 ; theorems that make the stobj's words the model's lists.  The table stays
-; in words (no abstract stobj): the word SHA-256 digests the table pages in
-; place (`pgs-x-words-digest', proved SHA-256 in pagestore-words-sha).
+; in words (no abstract stobj): the word BLAKE3 digest hashes the table pages in
+; place (`pgs-x-words-digest', proved BLAKE3 in pagestore-words-blake3).
 ;
 ; Representation (SEL 2 = pgs-t, SEL 1 = pgs-m):
 ;   flat table entry I   pgs-t words 2048 T + 6 K, I = 341 T + K: PHYS,
@@ -1545,12 +1545,12 @@
            (pgs-x-tab-inv n (pgs-x-fill 2 (* 2048 tp) ws pgs-mem)))
   :hints (("Goal" :in-theory (e/d (pgs-x-tab-inv) (pgs-ntables pgs-ntables-as-tq pgs-x-fill)))))
 
-(local (in-theory (disable fn-shs-p)))
+(local (in-theory (disable fn-octets-pg-p)))
 
 ; =============================================================================
 ; 9. The commit record: 20 words in pgs-m at a slot base (0 or 512):
 ;    0 magic  1 txid  2 dir-addr  3 npages  4 page words  5-7 zero
-;    8-11 dir digest  12-15 zero  16-19 check = SHA-256 of words 0-15.
+;    8-11 dir digest  12-15 zero  16-19 check = BLAKE3 of words 0-15.
 ; A slot of zeros is EMPTY (nil); anything else not of this shape is :torn,
 ; which `pgs-slot-refusals' names.
 
@@ -1571,13 +1571,13 @@
 
 (in-theory (disable pgs-x-put-dig4))
 
-(defun pgs-x-read-rec (base pgs-mem fn-shs)
-  ; (mv RECORD CHECK fn-shs): the record slot BASE holds (nil when empty,
+(defun pgs-x-read-rec (base pgs-mem fn-octets-pg)
+  ; (mv RECORD CHECK fn-octets-pg): the record slot BASE holds (nil when empty,
   ; :torn when malformed) and the check observed over its words 0-15.
-  (declare (xargs :stobjs (pgs-mem fn-shs)
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg)
                   :guard (and (natp base) (<= (+ base *pgs-rec-words*) (pgs-m-length pgs-mem)))))
-  (mv-let (check fn-shs)
-    (pgs-x-words-digest 1 base 2 pgs-mem fn-shs)
+  (mv-let (check fn-octets-pg)
+    (pgs-x-words-digest 1 base 2 pgs-mem fn-octets-pg)
     (mv (cond ((pgs-x-zero-range 1 base (+ base *pgs-rec-words*) pgs-mem) nil)
               ((and (equal (pgs-mi base pgs-mem) *pgs-magic*)
                     (equal (pgs-mi (+ 4 base) pgs-mem) *pgs-page-words*)
@@ -1589,7 +1589,7 @@
                      (pgs-x-dig4 1 (+ 16 base) pgs-mem)))
               (t :torn))
         check
-        fn-shs)))
+        fn-octets-pg)))
 
 (defun pgs-x-zero-words (sel a k pgs-mem)
   (declare (xargs :stobjs pgs-mem
@@ -1610,10 +1610,10 @@
 
 (in-theory (disable pgs-x-zero-words))
 
-(defun pgs-x-write-rec (base txid addr npages ddig pgs-mem fn-shs)
+(defun pgs-x-write-rec (base txid addr npages ddig pgs-mem fn-octets-pg)
   ; Encode the record at slot BASE and compute its check:
-  ; (mv RECORD pgs-mem fn-shs), RECORD the one the words hold.
-  (declare (xargs :stobjs (pgs-mem fn-shs)
+  ; (mv RECORD pgs-mem fn-octets-pg), RECORD the one the words hold.
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg)
                   :guard (and (natp base) (<= (+ base *pgs-rec-words*) (pgs-m-length pgs-mem)))))
   (let* ((pgs-mem (pgs-x-zero-words 1 base *pgs-rec-words* pgs-mem))
          (pgs-mem (pgs-x-put 1 base *pgs-magic* pgs-mem))
@@ -1622,21 +1622,21 @@
          (pgs-mem (pgs-x-put 1 (+ 3 base) (pgs-dlo npages) pgs-mem))
          (pgs-mem (pgs-x-put 1 (+ 4 base) *pgs-page-words* pgs-mem))
          (pgs-mem (pgs-x-put-dig4 1 (+ 8 base) ddig pgs-mem)))
-    (mv-let (check fn-shs)
-      (pgs-x-words-digest 1 base 2 pgs-mem fn-shs)
+    (mv-let (check fn-octets-pg)
+      (pgs-x-words-digest 1 base 2 pgs-mem fn-octets-pg)
       (let ((pgs-mem (pgs-x-put-dig4 1 (+ 16 base) check pgs-mem)))
         (mv (list :pgs-commit (pgs-dlo txid) (pgs-dlo addr) (pgs-dlo npages)
                   (pgs-x-dig4 1 (+ 8 base) pgs-mem) (pgs-x-dig4 1 (+ 16 base) pgs-mem))
-            pgs-mem fn-shs)))))
+            pgs-mem fn-octets-pg)))))
 
 (defthm pgs-x-write-rec-facts
   (implies (and (natp base) (<= (+ base 20) (pgs-m-length pgs-mem)))
-           (and (equal (pgs-m-length (mv-nth 1 (pgs-x-write-rec base txid addr npages ddig pgs-mem fn-shs)))
+           (and (equal (pgs-m-length (mv-nth 1 (pgs-x-write-rec base txid addr npages ddig pgs-mem fn-octets-pg)))
                        (pgs-m-length pgs-mem))
                 (implies (pgs-memp pgs-mem)
-                         (pgs-memp (mv-nth 1 (pgs-x-write-rec base txid addr npages ddig pgs-mem fn-shs))))
-                (implies (fn-shs-p fn-shs)
-                         (fn-shs-p (mv-nth 2 (pgs-x-write-rec base txid addr npages ddig pgs-mem fn-shs)))))))
+                         (pgs-memp (mv-nth 1 (pgs-x-write-rec base txid addr npages ddig pgs-mem fn-octets-pg))))
+                (implies (fn-octets-pg-p fn-octets-pg)
+                         (fn-octets-pg-p (mv-nth 2 (pgs-x-write-rec base txid addr npages ddig pgs-mem fn-octets-pg)))))))
 
 (in-theory (disable pgs-x-write-rec pgs-x-read-rec))
 
@@ -1669,18 +1669,18 @@
           nil
         (list :dir-malformed (pgs-rec-dir-addr rec)))))
 
-(defun pgs-x-open-dir (rec pgs-mem fn-shs)
-  ; (mv VERDICT fn-shs): nil when REC's directory run (in pgs-m from
+(defun pgs-x-open-dir (rec pgs-mem fn-octets-pg)
+  ; (mv VERDICT fn-octets-pg): nil when REC's directory run (in pgs-m from
   ; *pgs-x-dir-base*) is sound, else the refusal.
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard t))
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard t))
   (let* ((nt (pgs-x-ntables (pgs-rec-npages rec)))
          (m (pgs-ptab-run-pages nt)))
     (if (not (and (<= (+ *pgs-x-dir-base* (* 2048 m)) (pgs-m-length pgs-mem))
                   (< m 4294967296)))
-        (mv (list :dir-unloaded (pgs-rec-dir-addr rec)) fn-shs)
-      (mv-let (observed fn-shs)
-        (pgs-x-words-digest 1 *pgs-x-dir-base* (* 256 m) pgs-mem fn-shs)
-        (mv (pgs-x-dir-verdict rec nt observed pgs-mem) fn-shs)))))
+        (mv (list :dir-unloaded (pgs-rec-dir-addr rec)) fn-octets-pg)
+      (mv-let (observed fn-octets-pg)
+        (pgs-x-words-digest 1 *pgs-x-dir-base* (* 256 m) pgs-mem fn-octets-pg)
+        (mv (pgs-x-dir-verdict rec nt observed pgs-mem) fn-octets-pg)))))
 
 (defthm pgs-x-dir-verdict-establishes-inv
   ; A directory the open accepts satisfies the representation invariant.
@@ -1743,23 +1743,23 @@
                   :use ((:instance pgs-x-decode-table-page (n npages)) (:instance pgs-x-tab-inv-parts (n npages))
                         (:instance pgs-x-tpages-canon-member (k (pgs-ntables npages)) (n npages))))))
 
-(defun pgs-x-open-table-page (tp rec mode pgs-mem fn-shs)
-  ; (mv VERDICT pgs-mem fn-shs) after the host filled table page TP of
+(defun pgs-x-open-table-page (tp rec mode pgs-mem fn-octets-pg)
+  ; (mv VERDICT pgs-mem fn-octets-pg) after the host filled table page TP of
   ; pgs-t from the address directory entry TP names: nil (and table page TP
   ; marked verified) or the refusal.  MODE :eager at a first touch.
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (natp tp)))
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (natp tp)))
   (let* ((npages (pgs-rec-npages rec)))
     (if (not (and (< tp (pgs-x-ntables npages))
                   (<= (* 2048 (+ 1 tp)) (pgs-t-length pgs-mem))
                   (< tp (pgs-tv-length pgs-mem))))
-        (mv (list :table-unloaded tp) pgs-mem fn-shs)
-      (mv-let (observed fn-shs)
-        (pgs-x-words-digest 2 (* 2048 tp) 256 pgs-mem fn-shs)
+        (mv (list :table-unloaded tp) pgs-mem fn-octets-pg)
+      (mv-let (observed fn-octets-pg)
+        (pgs-x-words-digest 2 (* 2048 tp) 256 pgs-mem fn-octets-pg)
         (let ((v (pgs-x-table-verdict tp npages (pgs-rec-txid rec) mode observed pgs-mem)))
           (if v
-              (mv v pgs-mem fn-shs)
+              (mv v pgs-mem fn-octets-pg)
             (let ((pgs-mem (update-pgs-tvi tp 2 pgs-mem)))
-              (mv nil pgs-mem fn-shs))))))))
+              (mv nil pgs-mem fn-octets-pg))))))))
 
 (defun pgs-x-open-tables (j nt txid mode acc pgs-mem)
   ; The table pages J..NT-1 the open loads now, as (T PHYS), ascending onto
@@ -1793,26 +1793,26 @@
   (declare (xargs :guard (and (natp tp) (natp npages))))
   (list (* 341 tp) (+ (* 341 tp) (pgs-x-tcnt tp npages))))
 
-(defun pgs-x-open-page (i txid mode pgs-mem fn-shs)
-  ; (mv VERDICT pgs-mem fn-shs) after the host filled image page I from
+(defun pgs-x-open-page (i txid mode pgs-mem fn-octets-pg)
+  ; (mv VERDICT pgs-mem fn-octets-pg) after the host filled image page I from
   ; the address its entry names: nil (page I marked verified when MODE
   ; checks it, resident otherwise), (:need-table T) when its table page is
   ; not verified, or (:page-damaged I PHYS) -- `pgs-check-pages''s step.
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (natp i)))
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (natp i)))
   (let ((tp (floor i 341)))
     (cond ((not (and (< i (pgs-v-length pgs-mem))
                      (<= (* 2048 (+ 1 i)) (pgs-w-length pgs-mem))
                      (< tp (pgs-tv-length pgs-mem))))
-           (mv (list :page-unloaded i) pgs-mem fn-shs))
+           (mv (list :page-unloaded i) pgs-mem fn-octets-pg))
           ((not (equal (pgs-tvi tp pgs-mem) 2))
-           (mv (list :need-table tp) pgs-mem fn-shs))
+           (mv (list :need-table tp) pgs-mem fn-octets-pg))
           (t (let ((e (pgs-x-get-entry 2 0 i pgs-mem)))
-               (mv-let (observed fn-shs)
-                 (pgs-x-page-digest i pgs-mem fn-shs)
+               (mv-let (observed fn-octets-pg)
+                 (pgs-x-page-digest i pgs-mem fn-octets-pg)
                  (if (eq (pgs-entry-verdict e txid mode observed) :damaged)
-                     (mv (list :page-damaged i (first e)) pgs-mem fn-shs)
+                     (mv (list :page-damaged i (first e)) pgs-mem fn-octets-pg)
                    (let ((pgs-mem (update-pgs-vi i (if (pgs-entry-checked-p e txid mode) 2 1) pgs-mem)))
-                     (mv nil pgs-mem fn-shs)))))))))
+                     (mv nil pgs-mem fn-octets-pg)))))))))
 
 (defthm pgs-x-get-entry-is-nth-tab
   ; The entry `pgs-x-open-page' and `pgs-x-read' check a data page against
@@ -1824,8 +1824,8 @@
 ; -----------------------------------------------------------------------------
 ; Reads through the store, on demand.
 
-(defun pgs-x-read (i off pgs-mem fn-shs)
-  ; Word OFF of logical page I: (mv VERDICT WORD pgs-mem fn-shs), VERDICT
+(defun pgs-x-read (i off pgs-mem fn-octets-pg)
+  ; Word OFF of logical page I: (mv VERDICT WORD pgs-mem fn-octets-pg), VERDICT
   ;   :ok
   ;   (:need-table T PHYS)  fill table page T from PHYS, call
   ;                         `pgs-x-open-table-page' T with :eager, retry
@@ -1834,33 +1834,33 @@
   ;   (:page-damaged I PHYS), (:table-damaged ...) never a value
   ;   :out-of-range
   ; A resident, unverified page (lazy open) is verified here, at first touch.
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (and (natp i) (natp off))))
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (and (natp i) (natp off))))
   (let ((tp (floor i 341)))
     (cond ((not (and (< off 2048)
                      (< i (pgs-v-length pgs-mem))
                      (<= (* 2048 (+ 1 i)) (pgs-w-length pgs-mem))
                      (< tp (pgs-tv-length pgs-mem))))
-           (mv :out-of-range 0 pgs-mem fn-shs))
+           (mv :out-of-range 0 pgs-mem fn-octets-pg))
           ((not (equal (pgs-tvi tp pgs-mem) 2))
            (mv (list :need-table tp (first (pgs-x-get-entry 1 *pgs-x-dir-base* tp pgs-mem)))
-               0 pgs-mem fn-shs))
+               0 pgs-mem fn-octets-pg))
           ((equal (pgs-vi i pgs-mem) 0)
-           (mv (list :need-page i (first (pgs-x-get-entry 2 0 i pgs-mem))) 0 pgs-mem fn-shs))
+           (mv (list :need-page i (first (pgs-x-get-entry 2 0 i pgs-mem))) 0 pgs-mem fn-octets-pg))
           ((equal (pgs-vi i pgs-mem) 2)
-           (mv :ok (pgs-wi (+ (* 2048 i) off) pgs-mem) pgs-mem fn-shs))
+           (mv :ok (pgs-wi (+ (* 2048 i) off) pgs-mem) pgs-mem fn-octets-pg))
           (t (let ((e (pgs-x-get-entry 2 0 i pgs-mem)))
-               (mv-let (observed fn-shs)
-                 (pgs-x-page-digest i pgs-mem fn-shs)
+               (mv-let (observed fn-octets-pg)
+                 (pgs-x-page-digest i pgs-mem fn-octets-pg)
                  (if (eq (pgs-entry-verdict e 0 :eager observed) :damaged)
-                     (mv (list :page-damaged i (first e)) 0 pgs-mem fn-shs)
+                     (mv (list :page-damaged i (first e)) 0 pgs-mem fn-octets-pg)
                    (let ((pgs-mem (update-pgs-vi i 2 pgs-mem)))
-                     (mv :ok (pgs-wi (+ (* 2048 i) off) pgs-mem) pgs-mem fn-shs)))))))))
+                     (mv :ok (pgs-wi (+ (* 2048 i) off) pgs-mem) pgs-mem fn-octets-pg)))))))))
 
 (defthm pgs-x-read-stobjs
-  (implies (and (pgs-memp pgs-mem) (fn-shs-p fn-shs) (natp i))
-           (let ((r (pgs-x-read i off pgs-mem fn-shs)))
+  (implies (and (pgs-memp pgs-mem) (fn-octets-pg-p fn-octets-pg) (natp i))
+           (let ((r (pgs-x-read i off pgs-mem fn-octets-pg)))
              (and (pgs-memp (mv-nth 2 r))
-                  (fn-shs-p (mv-nth 3 r))
+                  (fn-octets-pg-p (mv-nth 3 r))
                   (equal (pgs-w-length (mv-nth 2 r)) (pgs-w-length pgs-mem))
                   (equal (pgs-v-length (mv-nth 2 r)) (pgs-v-length pgs-mem))
                   (equal (pgs-tv-length (mv-nth 2 r)) (pgs-tv-length pgs-mem))))))
@@ -1871,7 +1871,7 @@
 ; 11. The commit, as the host calls it.
 ;
 ;   (pgs-x-dirty-list (pgs-d-length) nil pgs-mem) -> LPAGES, ascending
-;   (pgs-x-commit LPAGES N TXID ALLOC SLOT pgs-mem fn-shs) -> a plan, or a
+;   (pgs-x-commit LPAGES N TXID ALLOC SLOT pgs-mem fn-octets-pg) -> a plan, or a
 ;     refusal before anything changed, or (:need-table T PHYS) (lazy mode:
 ;     load it and retry)
 ;   the host writes, in order: each data page LPAGES[k] (pgs-w words
@@ -1906,23 +1906,23 @@
          (< (car lpages) (pgs-d-length pgs-mem))
          (pgs-x-lpages-resident (cdr lpages) pgs-mem))))
 
-(defun pgs-x-dirty-digests (lpages pgs-mem fn-shs)
-  ; (mv DIGESTS fn-shs): the SHA-256 of each dirty page's words.
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (nat-listp lpages)))
+(defun pgs-x-dirty-digests (lpages pgs-mem fn-octets-pg)
+  ; (mv DIGESTS fn-octets-pg): the BLAKE3 of each dirty page's words.
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (nat-listp lpages)))
   (if (atom lpages)
-      (mv nil fn-shs)
-    (mv-let (d fn-shs)
+      (mv nil fn-octets-pg)
+    (mv-let (d fn-octets-pg)
       (if (<= (* 2048 (+ 1 (car lpages))) (pgs-w-length pgs-mem))
-          (pgs-x-page-digest (car lpages) pgs-mem fn-shs)
-        (mv 0 fn-shs))
-      (mv-let (ds fn-shs)
-        (pgs-x-dirty-digests (cdr lpages) pgs-mem fn-shs)
-        (mv (cons d ds) fn-shs)))))
+          (pgs-x-page-digest (car lpages) pgs-mem fn-octets-pg)
+        (mv 0 fn-octets-pg))
+      (mv-let (ds fn-octets-pg)
+        (pgs-x-dirty-digests (cdr lpages) pgs-mem fn-octets-pg)
+        (mv (cons d ds) fn-octets-pg)))))
 
 (defthm pgs-x-dirty-digests-facts
-  (and (true-listp (mv-nth 0 (pgs-x-dirty-digests lpages pgs-mem fn-shs)))
-       (true-listp (car (pgs-x-dirty-digests lpages pgs-mem fn-shs)))
-       (implies (fn-shs-p fn-shs) (fn-shs-p (mv-nth 1 (pgs-x-dirty-digests lpages pgs-mem fn-shs))))))
+  (and (true-listp (mv-nth 0 (pgs-x-dirty-digests lpages pgs-mem fn-octets-pg)))
+       (true-listp (car (pgs-x-dirty-digests lpages pgs-mem fn-octets-pg)))
+       (implies (fn-octets-pg-p fn-octets-pg) (fn-octets-pg-p (mv-nth 1 (pgs-x-dirty-digests lpages pgs-mem fn-octets-pg))))))
 
 (defun pgs-x-tables-ready (tl nt pgs-mem)
   ; nil when every existing table page in TL is verified, else
@@ -1934,31 +1934,31 @@
          (list :need-table (car tl) (first (pgs-x-get-entry 1 *pgs-x-dir-base* (car tl) pgs-mem))))
         (t (pgs-x-tables-ready (cdr tl) nt pgs-mem))))
 
-(defun pgs-x-table-digests (tl pgs-mem fn-shs)
-  ; (mv DIGESTS fn-shs): the SHA-256 of each table page in TL, over its
-  ; 2048 words in pgs-t (taken mod 2^256, the identity on a SHA-256 value).
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (nat-listp tl)))
+(defun pgs-x-table-digests (tl pgs-mem fn-octets-pg)
+  ; (mv DIGESTS fn-octets-pg): the BLAKE3 of each table page in TL, over its
+  ; 2048 words in pgs-t (taken mod 2^256, the identity on a BLAKE3 value).
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (nat-listp tl)))
   (if (atom tl)
-      (mv nil fn-shs)
-    (mv-let (d fn-shs)
+      (mv nil fn-octets-pg)
+    (mv-let (d fn-octets-pg)
       (if (<= (* 2048 (+ 1 (car tl))) (pgs-t-length pgs-mem))
-          (pgs-x-words-digest 2 (* 2048 (car tl)) 256 pgs-mem fn-shs)
-        (mv 0 fn-shs))
-      (mv-let (ds fn-shs)
-        (pgs-x-table-digests (cdr tl) pgs-mem fn-shs)
+          (pgs-x-words-digest 2 (* 2048 (car tl)) 256 pgs-mem fn-octets-pg)
+        (mv 0 fn-octets-pg))
+      (mv-let (ds fn-octets-pg)
+        (pgs-x-table-digests (cdr tl) pgs-mem fn-octets-pg)
         (mv (cons (mod (nfix d) 115792089237316195423570985008687907853269984665640564039457584007913129639936) ds)
-            fn-shs)))))
+            fn-octets-pg)))))
 
 (defun pgs-x-u64-bounded (xs)
   (declare (xargs :guard t))
   (if (atom xs) t (and (< (nfix (car xs)) 18446744073709551616) (pgs-x-u64-bounded (cdr xs)))))
 
 (defthm pgs-x-table-digests-true-listp
-  (and (true-listp (mv-nth 0 (pgs-x-table-digests tl pgs-mem fn-shs)))
-       (true-listp (car (pgs-x-table-digests tl pgs-mem fn-shs)))))
+  (and (true-listp (mv-nth 0 (pgs-x-table-digests tl pgs-mem fn-octets-pg)))
+       (true-listp (car (pgs-x-table-digests tl pgs-mem fn-octets-pg)))))
 
 (defthm pgs-x-table-digests-shs
-  (implies (fn-shs-p fn-shs) (fn-shs-p (mv-nth 1 (pgs-x-table-digests tl pgs-mem fn-shs)))))
+  (implies (fn-octets-pg-p fn-octets-pg) (fn-octets-pg-p (mv-nth 1 (pgs-x-table-digests tl pgs-mem fn-octets-pg)))))
 
 (defun pgs-x-mod256-listp (ds)
   (declare (xargs :guard t))
@@ -1968,8 +1968,8 @@
          (pgs-x-mod256-listp (cdr ds)))))
 
 (defthm pgs-x-table-digests-bounded
-  (and (pgs-x-mod256-listp (mv-nth 0 (pgs-x-table-digests tl pgs-mem fn-shs)))
-       (pgs-x-mod256-listp (car (pgs-x-table-digests tl pgs-mem fn-shs)))))
+  (and (pgs-x-mod256-listp (mv-nth 0 (pgs-x-table-digests tl pgs-mem fn-octets-pg)))
+       (pgs-x-mod256-listp (car (pgs-x-table-digests tl pgs-mem fn-octets-pg)))))
 
 (defthm pgs-x-plan-fits1-when-bounded
   (implies (and (pgs-x-u64-bounded fresh) (pgs-x-mod256-listp ds))
@@ -2044,11 +2044,11 @@
   :rule-classes ((:type-prescription :corollary (integerp (pgs-dir-run-pages n)))
                  (:linear :corollary (<= 1 (pgs-dir-run-pages n)))))
 
-(defun pgs-x-commit-prepare (lpages n txid alloc pgs-mem fn-shs)
-  ; The commit's checks and allocation, changing nothing but fn-shs:
-  ; (mv VERDICT PLAN fn-shs), VERDICT nil or the refusal / (:need-table T
+(defun pgs-x-commit-prepare (lpages n txid alloc pgs-mem fn-octets-pg)
+  ; The commit's checks and allocation, changing nothing but fn-octets-pg:
+  ; (mv VERDICT PLAN fn-octets-pg), VERDICT nil or the refusal / (:need-table T
   ; PHYS); PLAN (TL FRESH TFRESH DIGESTS RUN-START M N2 NT2 ALLOC2).
-  (declare (xargs :stobjs (pgs-mem fn-shs)
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg)
                   :guard (and (nat-listp lpages) (natp n))
                   :guard-hints (("Goal" :in-theory (disable pgs-alloc pgs-grown-len pgs-touched
                                                             pgs-lpages-ok pgs-x-plan-fits
@@ -2058,23 +2058,23 @@
   (let* ((nt (pgs-x-ntables n)))
     (cond
      ((not (pgs-lpages-ok lpages n 0))
-      (mv (list :refused :dirty-out-of-order) nil fn-shs))
+      (mv (list :refused :dirty-out-of-order) nil fn-octets-pg))
      ((not (pgs-x-lpages-resident lpages pgs-mem))
-      (mv (list :refused :dirty-not-resident) nil fn-shs))
+      (mv (list :refused :dirty-not-resident) nil fn-octets-pg))
      ((not (and (equal (pgs-t-length pgs-mem) (* 2048 nt))
                 (<= (+ *pgs-x-dir-base* (* 2048 (pgs-ptab-run-pages nt))) (pgs-m-length pgs-mem))
                 (<= nt (pgs-tv-length pgs-mem))))
-      (mv (list :refused :state-unloaded) nil fn-shs))
+      (mv (list :refused :state-unloaded) nil fn-octets-pg))
      (t
       (let* ((tl (pgs-touched lpages nil))
              (need (pgs-x-tables-ready tl nt pgs-mem)))
         (cond
-         (need (mv need nil fn-shs))
+         (need (mv need nil fn-octets-pg))
          ((not (pgs-lpages-ok tl nt 0))
-          (mv (list :refused :touched-out-of-order) nil fn-shs))
+          (mv (list :refused :touched-out-of-order) nil fn-octets-pg))
          (t
-          (mv-let (digests fn-shs)
-            (pgs-x-dirty-digests lpages pgs-mem fn-shs)
+          (mv-let (digests fn-octets-pg)
+            (pgs-x-dirty-digests lpages pgs-mem fn-octets-pg)
             (let* ((ndirty (len lpages))
                    (n2 (pgs-grown-len lpages n))
                    (nt2 (pgs-x-ntables n2))
@@ -2090,13 +2090,13 @@
                             (< n2 18446744073709551616)
                             (< m 4294967296)
                             (equal (pgs-grown-len tl nt) nt2)))
-                  (mv (list :refused :out-of-range) nil fn-shs)
+                  (mv (list :refused :out-of-range) nil fn-octets-pg)
                 (mv nil (list tl fresh tfresh digests rs m n2 nt2 (list (third al) (fourth al)))
-                    fn-shs)))))))))))
+                    fn-octets-pg)))))))))))
 
 (defthm pgs-x-commit-prepare-shs
-  (implies (fn-shs-p fn-shs)
-           (fn-shs-p (mv-nth 2 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-shs))))
+  (implies (fn-octets-pg-p fn-octets-pg)
+           (fn-octets-pg-p (mv-nth 2 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-octets-pg))))
   :hints (("Goal" :in-theory (disable pgs-alloc pgs-grown-len pgs-touched pgs-lpages-ok
                                       pgs-x-plan-fits pgs-dir-run-pages pgs-x-ntables
                                       pgs-x-dirty-digests pgs-ptab-run-pages
@@ -2121,10 +2121,10 @@
                  (:rewrite :corollary (equal (pgs-t-length (pgs-x-ensure-m k pgs-mem)) (pgs-t-length pgs-mem)))
                  (:rewrite :corollary (implies (pgs-memp pgs-mem) (pgs-memp (pgs-x-ensure-m k pgs-mem))))))
 
-(defun pgs-x-commit-apply (lpages n txid slot plan pgs-mem fn-shs)
+(defun pgs-x-commit-apply (lpages n txid slot plan pgs-mem fn-octets-pg)
   ; The commit's effect, after `pgs-x-commit-prepare' answered PLAN:
-  ; (mv RESULT pgs-mem fn-shs).
-  (declare (xargs :stobjs (pgs-mem fn-shs)
+  ; (mv RESULT pgs-mem fn-octets-pg).
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg)
                   :guard (and (nat-listp lpages) (natp n) (natp txid)
                               (or (equal slot 0) (equal slot 512)))
                   :guard-hints (("Goal" :in-theory (disable pgs-x-plan-entries pgs-x-ensure-m
@@ -2132,7 +2132,7 @@
                                                             pgs-x-ntables)
                                  :do-not '(eliminate-destructors)))))
   (if (not (pgs-x-commit-plan-p plan))   ; unreachable-in-composition: pgs-x-commit-prepare-plan-p
-      (mv (list :refused :internal) pgs-mem fn-shs)
+      (mv (list :refused :internal) pgs-mem fn-octets-pg)
     (let ((tl (nth 0 plan)) (fresh (nth 1 plan)) (tfresh (nth 2 plan)) (digests (nth 3 plan))
           (rs (nth 4 plan)) (m (nth 5 plan)) (n2 (nth 6 plan)) (nt2 (nth 7 plan))
           (nt (pgs-x-ntables n)))
@@ -2140,23 +2140,23 @@
         (pgs-x-plan-tab lpages fresh digests txid n pgs-mem)
         (declare (ignore n2b))
         (let ((pgs-mem (pgs-x-mark-tables tl nt2 pgs-mem)))
-          (mv-let (tdigests fn-shs)
-            (pgs-x-table-digests tl pgs-mem fn-shs)
+          (mv-let (tdigests fn-octets-pg)
+            (pgs-x-table-digests tl pgs-mem fn-octets-pg)
             (mv-let (nd2 pgs-mem)
               (pgs-x-plan-dir tl tfresh tdigests txid nt pgs-mem)
               (declare (ignore nd2))
               (let ((pgs-mem (pgs-x-ensure-m (+ *pgs-x-dir-base* (* 2048 m)) pgs-mem)))
-                (mv-let (ddig fn-shs)
-                  (pgs-x-words-digest 1 *pgs-x-dir-base* (* 256 m) pgs-mem fn-shs)
-                  (mv-let (rec pgs-mem fn-shs)
-                    (pgs-x-write-rec slot txid rs n2 ddig pgs-mem fn-shs)
+                (mv-let (ddig fn-octets-pg)
+                  (pgs-x-words-digest 1 *pgs-x-dir-base* (* 256 m) pgs-mem fn-octets-pg)
+                  (mv-let (rec pgs-mem fn-octets-pg)
+                    (pgs-x-write-rec slot txid rs n2 ddig pgs-mem fn-octets-pg)
                     (mv (list :plan rec fresh tl tfresh rs m (nth 8 plan) digests tdigests)
-                        pgs-mem fn-shs)))))))))))
+                        pgs-mem fn-octets-pg)))))))))))
 
-(defun pgs-x-commit (lpages n txid alloc slot pgs-mem fn-shs)
+(defun pgs-x-commit (lpages n txid alloc slot pgs-mem fn-octets-pg)
   ; The commit of the dirty pages LPAGES over the open table of N logical
   ; pages, as transaction TXID, allocating from ALLOC = (FREE HWM), the
-  ; record into pgs-m slot SLOT (0 or 512): (mv RESULT pgs-mem fn-shs),
+  ; record into pgs-m slot SLOT (0 or 512): (mv RESULT pgs-mem fn-octets-pg),
   ; RESULT one of
   ;   (:refused REASON)       nothing changed; REASON :dirty-out-of-order,
   ;                           :dirty-not-resident, :state-unloaded,
@@ -2169,15 +2169,15 @@
   ; `pgs-alloc' of N-DIRTY + N-TOUCHED singles and the directory run,
   ; `pgs-plan-ptab' of the table (`pgs-x-plan-tab') and of the directory
   ; (`pgs-x-plan-dir') over the table pages' digests, then the record.
-  (declare (xargs :stobjs (pgs-mem fn-shs)
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg)
                   :guard (and (nat-listp lpages) (natp n) (natp txid)
                               (or (equal slot 0) (equal slot 512)))
                   :guard-hints (("Goal" :in-theory (disable pgs-x-commit-prepare pgs-x-commit-apply)))))
-  (mv-let (verdict plan fn-shs)
-    (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-shs)
+  (mv-let (verdict plan fn-octets-pg)
+    (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-octets-pg)
     (if verdict
-        (mv verdict pgs-mem fn-shs)
-      (pgs-x-commit-apply lpages n txid slot plan pgs-mem fn-shs))))
+        (mv verdict pgs-mem fn-octets-pg)
+      (pgs-x-commit-apply lpages n txid slot plan pgs-mem fn-octets-pg))))
 
 ; -- The commit refines the model: frames for each step, then the theorem.
 
@@ -2197,7 +2197,7 @@
 (defthm pgs-x-write-rec-frame
   (implies (and (natp slot) (<= (+ slot 20) (pgs-m-length pgs-mem))
                 (pgs-x-sel-p s) (natp j) (or (equal s 2) (<= (+ slot 20) j)))
-           (let ((m2 (mv-nth 1 (pgs-x-write-rec slot txid addr npages ddig pgs-mem fn-shs))))
+           (let ((m2 (mv-nth 1 (pgs-x-write-rec slot txid addr npages ddig pgs-mem fn-octets-pg))))
              (and (equal (pgs-x-word s j m2) (pgs-x-word s j pgs-mem))
                   (equal (pgs-x-len s m2) (pgs-x-len s pgs-mem)))))
   :hints (("Goal" :in-theory (enable pgs-x-write-rec))))
@@ -2263,15 +2263,15 @@
 (pgs-x-frame-lemmas plan-dir-2 (mv-nth 1 (pgs-x-plan-entries 1 bb ll ff dd tt nn pgs-mem)) () 2 0)
 (defthm pgs-x-write-rec-t-length
   (implies (and (natp slot) (<= (+ slot 20) (pgs-m-length pgs-mem)))
-           (equal (pgs-t-length (mv-nth 1 (pgs-x-write-rec slot tx ad np dg pgs-mem fn-shs)))
+           (equal (pgs-t-length (mv-nth 1 (pgs-x-write-rec slot tx ad np dg pgs-mem fn-octets-pg)))
                   (pgs-t-length pgs-mem)))
   :hints (("Goal" :use ((:instance pgs-x-write-rec-frame (s 2) (j 0) (txid tx) (addr ad)
                                    (npages np) (ddig dg)))
                   :in-theory (disable pgs-x-write-rec-frame))))
 
-(pgs-x-frame-lemmas write-rec-2 (mv-nth 1 (pgs-x-write-rec slot tx ad np dg pgs-mem fn-shs))
+(pgs-x-frame-lemmas write-rec-2 (mv-nth 1 (pgs-x-write-rec slot tx ad np dg pgs-mem fn-octets-pg))
                     ((natp slot) (<= (+ slot 20) (pgs-m-length pgs-mem))) 2 0)
-(pgs-x-frame-lemmas write-rec-1 (mv-nth 1 (pgs-x-write-rec slot tx ad np dg pgs-mem fn-shs))
+(pgs-x-frame-lemmas write-rec-1 (mv-nth 1 (pgs-x-write-rec slot tx ad np dg pgs-mem fn-octets-pg))
                     ((natp slot) (<= (+ slot 20) (pgs-m-length pgs-mem))) 1 (+ slot 20))
 
 (defthm pgs-x-ensure-m-noop
@@ -2331,7 +2331,7 @@
                   (nt2 (pgs-ntables n2))
                   (m (pgs-ptab-run-pages nt2))
                   (r (pgs-x-commit-apply lpages n txid slot (list tl fresh tfresh digests rs m n2 nt2 a2)
-                                         pgs-mem fn-shs))
+                                         pgs-mem fn-octets-pg))
                   (m2 (mv-nth 1 r)))
              (and (equal (car (mv-nth 0 r)) :plan)
                   (equal (nth 2 (mv-nth 0 r)) fresh)
@@ -2359,7 +2359,7 @@
                                                       tl (pgs-ntables (pgs-grown-len lpages n))
                                                       (mv-nth 1 (pgs-x-plan-entries 2 0 lpages fresh digests
                                                                                     txid n pgs-mem)))
-                                                  fn-shs)))
+                                                  fn-octets-pg)))
                                    (pgs-mem (pgs-x-mark-tables
                                              tl (pgs-ntables (pgs-grown-len lpages n))
                                              (mv-nth 1 (pgs-x-plan-entries 2 0 lpages fresh digests
@@ -2370,9 +2370,9 @@
   ; `pgs-plan-commit' computes (touched pages, the allocation cut into the
   ; data pages' and the table pages' addresses, the grown lengths), and the
   ; facts the effect needs.
-  (implies (and (not (mv-nth 0 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-shs)))
+  (implies (and (not (mv-nth 0 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-octets-pg)))
                 (natp n) (nat-listp lpages))
-           (let* ((plan (mv-nth 1 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-shs)))
+           (let* ((plan (mv-nth 1 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-octets-pg)))
                   (tl (pgs-touched lpages nil))
                   (n2 (pgs-grown-len lpages n))
                   (al (pgs-alloc (+ (len lpages) (len tl)) (pgs-dir-run-pages n2) alloc)))
@@ -2380,14 +2380,14 @@
                          (list tl
                                (take (len lpages) (true-list-fix (second al)))
                                (nthcdr (len lpages) (true-list-fix (second al)))
-                               (mv-nth 0 (pgs-x-dirty-digests lpages pgs-mem fn-shs))
+                               (mv-nth 0 (pgs-x-dirty-digests lpages pgs-mem fn-octets-pg))
                                (nfix (first al))
                                (pgs-ptab-run-pages (pgs-ntables n2))
                                n2 (pgs-ntables n2)
                                (list (third al) (fourth al))))
                   (pgs-lpages-ok lpages n 0)
                   (pgs-x-plan-fits lpages (take (len lpages) (true-list-fix (second al)))
-                                   (mv-nth 0 (pgs-x-dirty-digests lpages pgs-mem fn-shs)) txid)
+                                   (mv-nth 0 (pgs-x-dirty-digests lpages pgs-mem fn-octets-pg)) txid)
                   (pgs-lpages-ok tl (pgs-ntables n) 0)
                   (pgs-x-u64-bounded (nthcdr (len lpages) (true-list-fix (second al))))
                   (equal (pgs-grown-len tl (pgs-ntables n)) (pgs-ntables n2))
@@ -2402,8 +2402,8 @@
            (equal (car (pgs-x-tables-ready tl nt pgs-mem)) :need-table)))
 
 (defthm pgs-x-commit-prepare-verdict-not-plan
-  (and (not (equal (car (mv-nth 0 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-shs))) :plan))
-       (not (equal (car (car (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-shs))) :plan)))
+  (and (not (equal (car (mv-nth 0 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-octets-pg))) :plan))
+       (not (equal (car (car (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-octets-pg))) :plan)))
   :hints (("Goal" :in-theory (disable pgs-alloc pgs-grown-len pgs-touched pgs-lpages-ok
                                       pgs-x-plan-fits pgs-ntables pgs-ntables-as-tq
                                       pgs-x-dirty-digests pgs-ptab-run-pages
@@ -2420,8 +2420,8 @@
   (implies (and (pgs-x-tab-inv n pgs-mem)
                 (pgs-x-dir-inv *pgs-x-dir-base* (pgs-ntables n) pgs-mem)
                 (natp n) (nat-listp lpages) (or (equal slot 0) (equal slot 512))
-                (equal (car (mv-nth 0 (pgs-x-commit lpages n txid alloc slot pgs-mem fn-shs))) :plan))
-           (let* ((r (pgs-x-commit lpages n txid alloc slot pgs-mem fn-shs))
+                (equal (car (mv-nth 0 (pgs-x-commit lpages n txid alloc slot pgs-mem fn-octets-pg))) :plan))
+           (let* ((r (pgs-x-commit lpages n txid alloc slot pgs-mem fn-octets-pg))
                   (res (mv-nth 0 r))
                   (m2 (mv-nth 1 r))
                   (n2 (pgs-grown-len lpages n))
@@ -2454,7 +2454,7 @@
                                                     (second (pgs-alloc (+ (len lpages) (len (pgs-touched lpages nil)))
                                                                        (pgs-dir-run-pages (pgs-grown-len lpages n))
                                                                        alloc)))))
-                                   (digests (mv-nth 0 (pgs-x-dirty-digests lpages pgs-mem fn-shs)))
+                                   (digests (mv-nth 0 (pgs-x-dirty-digests lpages pgs-mem fn-octets-pg)))
                                    (rs (nfix (first (pgs-alloc (+ (len lpages) (len (pgs-touched lpages nil)))
                                                                (pgs-dir-run-pages (pgs-grown-len lpages n))
                                                                alloc))))
@@ -2464,14 +2464,14 @@
                                              (fourth (pgs-alloc (+ (len lpages) (len (pgs-touched lpages nil)))
                                                                 (pgs-dir-run-pages (pgs-grown-len lpages n))
                                                                 alloc))))
-                                   (fn-shs (mv-nth 2 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-shs))))))))
+                                   (fn-octets-pg (mv-nth 2 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-octets-pg))))))))
 
 (defthm pgs-x-commit-prepare-plan-p
   ; `pgs-x-commit-apply''s :internal refusal is unreachable-in-composition:
   ; the plan `pgs-x-commit-prepare' answers always has the shape.
-  (implies (and (not (mv-nth 0 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-shs)))
+  (implies (and (not (mv-nth 0 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-octets-pg)))
                 (natp n) (nat-listp lpages))
-           (pgs-x-commit-plan-p (mv-nth 1 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-shs))))
+           (pgs-x-commit-plan-p (mv-nth 1 (pgs-x-commit-prepare lpages n txid alloc pgs-mem fn-octets-pg))))
   :hints (("Goal" :in-theory (disable pgs-alloc pgs-grown-len pgs-touched pgs-lpages-ok
                                       pgs-x-plan-fits pgs-ntables pgs-ntables-as-tq
                                       pgs-x-dirty-digests pgs-ptab-run-pages
@@ -2580,15 +2580,15 @@
 
 (defconst *pgs-cols-magic* #x534C4F4353504E46)   ; "FNPSCOLS", little-endian
 
-(defun pgs-x-rd (w pgs-mem fn-shs)
-  ; Word W of the image: (mv VERDICT WORD pgs-mem fn-shs).
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (natp w)))
-  (pgs-x-read (floor (nfix w) 2048) (mod (nfix w) 2048) pgs-mem fn-shs))
+(defun pgs-x-rd (w pgs-mem fn-octets-pg)
+  ; Word W of the image: (mv VERDICT WORD pgs-mem fn-octets-pg).
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (natp w)))
+  (pgs-x-read (floor (nfix w) 2048) (mod (nfix w) 2048) pgs-mem fn-octets-pg))
 
 (defthm pgs-x-rd-stobjs
-  (implies (and (pgs-memp pgs-mem) (fn-shs-p fn-shs))
-           (and (pgs-memp (mv-nth 2 (pgs-x-rd w pgs-mem fn-shs)))
-                (fn-shs-p (mv-nth 3 (pgs-x-rd w pgs-mem fn-shs))))))
+  (implies (and (pgs-memp pgs-mem) (fn-octets-pg-p fn-octets-pg))
+           (and (pgs-memp (mv-nth 2 (pgs-x-rd w pgs-mem fn-octets-pg)))
+                (fn-octets-pg-p (mv-nth 3 (pgs-x-rd w pgs-mem fn-octets-pg))))))
 
 (in-theory (disable pgs-x-rd))
 
@@ -2596,113 +2596,113 @@
   (declare (xargs :guard (and (natp w) (natp k))))
   (mod (floor (nfix w) (expt 2 (* 8 (mod (nfix k) 8)))) 256))
 
-(defun pgs-x-pool-bytes (o n pool acc pgs-mem fn-shs)
+(defun pgs-x-pool-bytes (o n pool acc pgs-mem fn-octets-pg)
   ; N octets from pool byte O, reversed onto ACC (the caller reverses).
-  (declare (xargs :stobjs (pgs-mem fn-shs)
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg)
                   :guard (and (natp o) (natp n) (natp pool) (true-listp acc))
                   :measure (nfix n)))
   (if (zp n)
-      (mv :ok acc pgs-mem fn-shs)
-    (mv-let (v w pgs-mem fn-shs)
-      (pgs-x-rd (+ pool (floor o 8)) pgs-mem fn-shs)
+      (mv :ok acc pgs-mem fn-octets-pg)
+    (mv-let (v w pgs-mem fn-octets-pg)
+      (pgs-x-rd (+ pool (floor o 8)) pgs-mem fn-octets-pg)
       (if (not (eq v :ok))
-          (mv v acc pgs-mem fn-shs)
+          (mv v acc pgs-mem fn-octets-pg)
         (pgs-x-pool-bytes (+ 1 o) (1- n) pool (cons (pgs-byte-of-word (nfix w) o) acc)
-                          pgs-mem fn-shs)))))
+                          pgs-mem fn-octets-pg)))))
 
 (defthm pgs-x-pool-bytes-true-listp
   (implies (true-listp acc)
-           (true-listp (mv-nth 1 (pgs-x-pool-bytes o n pool acc pgs-mem fn-shs))))
-  :hints (("Goal" :induct (pgs-x-pool-bytes o n pool acc pgs-mem fn-shs))))
+           (true-listp (mv-nth 1 (pgs-x-pool-bytes o n pool acc pgs-mem fn-octets-pg))))
+  :hints (("Goal" :induct (pgs-x-pool-bytes o n pool acc pgs-mem fn-octets-pg))))
 
 (defthm pgs-x-pool-bytes-stobjs
-  (implies (and (pgs-memp pgs-mem) (fn-shs-p fn-shs))
-           (and (pgs-memp (mv-nth 2 (pgs-x-pool-bytes o n pool acc pgs-mem fn-shs)))
-                (fn-shs-p (mv-nth 3 (pgs-x-pool-bytes o n pool acc pgs-mem fn-shs)))))
-  :hints (("Goal" :induct (pgs-x-pool-bytes o n pool acc pgs-mem fn-shs)
+  (implies (and (pgs-memp pgs-mem) (fn-octets-pg-p fn-octets-pg))
+           (and (pgs-memp (mv-nth 2 (pgs-x-pool-bytes o n pool acc pgs-mem fn-octets-pg)))
+                (fn-octets-pg-p (mv-nth 3 (pgs-x-pool-bytes o n pool acc pgs-mem fn-octets-pg)))))
+  :hints (("Goal" :induct (pgs-x-pool-bytes o n pool acc pgs-mem fn-octets-pg)
                   :in-theory (disable pgs-byte-of-word))))
 
 (in-theory (disable pgs-x-pool-bytes))
 
-(defun pgs-x-rd2 (w1 w2 pgs-mem fn-shs)
-  ; Words W1 and W2: (mv VERDICT A B pgs-mem fn-shs), VERDICT the first
+(defun pgs-x-rd2 (w1 w2 pgs-mem fn-octets-pg)
+  ; Words W1 and W2: (mv VERDICT A B pgs-mem fn-octets-pg), VERDICT the first
   ; that is not :ok.
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (and (natp w1) (natp w2))))
-  (mv-let (v a pgs-mem fn-shs)
-    (pgs-x-rd w1 pgs-mem fn-shs)
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (and (natp w1) (natp w2))))
+  (mv-let (v a pgs-mem fn-octets-pg)
+    (pgs-x-rd w1 pgs-mem fn-octets-pg)
     (if (not (eq v :ok))
-        (mv v 0 0 pgs-mem fn-shs)
-      (mv-let (v b pgs-mem fn-shs)
-        (pgs-x-rd w2 pgs-mem fn-shs)
-        (mv v a b pgs-mem fn-shs)))))
+        (mv v 0 0 pgs-mem fn-octets-pg)
+      (mv-let (v b pgs-mem fn-octets-pg)
+        (pgs-x-rd w2 pgs-mem fn-octets-pg)
+        (mv v a b pgs-mem fn-octets-pg)))))
 
 (defthm pgs-x-rd2-stobjs
-  (implies (and (pgs-memp pgs-mem) (fn-shs-p fn-shs))
-           (and (pgs-memp (mv-nth 3 (pgs-x-rd2 w1 w2 pgs-mem fn-shs)))
-                (fn-shs-p (mv-nth 4 (pgs-x-rd2 w1 w2 pgs-mem fn-shs))))))
+  (implies (and (pgs-memp pgs-mem) (fn-octets-pg-p fn-octets-pg))
+           (and (pgs-memp (mv-nth 3 (pgs-x-rd2 w1 w2 pgs-mem fn-octets-pg)))
+                (fn-octets-pg-p (mv-nth 4 (pgs-x-rd2 w1 w2 pgs-mem fn-octets-pg))))))
 
 (in-theory (disable pgs-x-rd2))
 
-(defun pgs-x-row-tail (seq off pool pgs-mem fn-shs)
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (and (natp seq) (natp off) (natp pool))))
-  (mv-let (v o pgs-mem fn-shs)
-    (pgs-x-rd (+ off seq) pgs-mem fn-shs)
+(defun pgs-x-row-tail (seq off pool pgs-mem fn-octets-pg)
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (and (natp seq) (natp off) (natp pool))))
+  (mv-let (v o pgs-mem fn-octets-pg)
+    (pgs-x-rd (+ off seq) pgs-mem fn-octets-pg)
     (if (not (eq v :ok))
-        (mv v nil pgs-mem fn-shs)
-      (mv-let (v h pgs-mem fn-shs)
-        (pgs-x-rd (+ pool (floor (nfix o) 8)) pgs-mem fn-shs)
+        (mv v nil pgs-mem fn-octets-pg)
+      (mv-let (v h pgs-mem fn-octets-pg)
+        (pgs-x-rd (+ pool (floor (nfix o) 8)) pgs-mem fn-octets-pg)
         (if (not (eq v :ok))
-            (mv v nil pgs-mem fn-shs)
+            (mv v nil pgs-mem fn-octets-pg)
           (mv :ok (list (nfix o) (mod (nfix h) 65536) (mod (floor (nfix h) 65536) 65536) pool)
-              pgs-mem fn-shs))))))
+              pgs-mem fn-octets-pg))))))
 
 (defthm pgs-x-row-tail-stobjs
-  (implies (and (pgs-memp pgs-mem) (fn-shs-p fn-shs))
-           (and (pgs-memp (mv-nth 2 (pgs-x-row-tail seq off pool pgs-mem fn-shs)))
-                (fn-shs-p (mv-nth 3 (pgs-x-row-tail seq off pool pgs-mem fn-shs))))))
+  (implies (and (pgs-memp pgs-mem) (fn-octets-pg-p fn-octets-pg))
+           (and (pgs-memp (mv-nth 2 (pgs-x-row-tail seq off pool pgs-mem fn-octets-pg)))
+                (fn-octets-pg-p (mv-nth 3 (pgs-x-row-tail seq off pool pgs-mem fn-octets-pg))))))
 
 (in-theory (disable pgs-x-row-tail))
 
-(defun pgs-x-row (seq pgs-mem fn-shs)
-  ; (mv VERDICT (O L R POOL) pgs-mem fn-shs) for record SEQ.
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (natp seq)))
-  (mv-let (v magic n pgs-mem fn-shs)
-    (pgs-x-rd2 0 1 pgs-mem fn-shs)
+(defun pgs-x-row (seq pgs-mem fn-octets-pg)
+  ; (mv VERDICT (O L R POOL) pgs-mem fn-octets-pg) for record SEQ.
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (natp seq)))
+  (mv-let (v magic n pgs-mem fn-octets-pg)
+    (pgs-x-rd2 0 1 pgs-mem fn-octets-pg)
     (if (not (eq v :ok))
-        (mv v nil pgs-mem fn-shs)
-      (mv-let (v off pool pgs-mem fn-shs)
-        (pgs-x-rd2 3 5 pgs-mem fn-shs)
-        (cond ((not (eq v :ok)) (mv v nil pgs-mem fn-shs))
+        (mv v nil pgs-mem fn-octets-pg)
+      (mv-let (v off pool pgs-mem fn-octets-pg)
+        (pgs-x-rd2 3 5 pgs-mem fn-octets-pg)
+        (cond ((not (eq v :ok)) (mv v nil pgs-mem fn-octets-pg))
               ((not (equal magic *pgs-cols-magic*))
-               (mv :header-malformed nil pgs-mem fn-shs))
+               (mv :header-malformed nil pgs-mem fn-octets-pg))
               ((not (< seq (nfix n)))
-               (mv :no-such-sequence nil pgs-mem fn-shs))
-              (t (pgs-x-row-tail seq (nfix off) (nfix pool) pgs-mem fn-shs)))))))
+               (mv :no-such-sequence nil pgs-mem fn-octets-pg))
+              (t (pgs-x-row-tail seq (nfix off) (nfix pool) pgs-mem fn-octets-pg)))))))
 
 (defthm pgs-x-row-stobjs
-  (implies (and (pgs-memp pgs-mem) (fn-shs-p fn-shs))
-           (and (pgs-memp (mv-nth 2 (pgs-x-row seq pgs-mem fn-shs)))
-                (fn-shs-p (mv-nth 3 (pgs-x-row seq pgs-mem fn-shs))))))
+  (implies (and (pgs-memp pgs-mem) (fn-octets-pg-p fn-octets-pg))
+           (and (pgs-memp (mv-nth 2 (pgs-x-row seq pgs-mem fn-octets-pg)))
+                (fn-octets-pg-p (mv-nth 3 (pgs-x-row seq pgs-mem fn-octets-pg))))))
 
 (in-theory (disable pgs-x-row))
 
-(defun pgs-x-lookup-seq (seq pgs-mem fn-shs)
-  ; The first request by sequence: (mv VERDICT MSGID-OCTETS pgs-mem fn-shs).
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (natp seq)))
-  (mv-let (v e pgs-mem fn-shs)
-    (pgs-x-row seq pgs-mem fn-shs)
+(defun pgs-x-lookup-seq (seq pgs-mem fn-octets-pg)
+  ; The first request by sequence: (mv VERDICT MSGID-OCTETS pgs-mem fn-octets-pg).
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (natp seq)))
+  (mv-let (v e pgs-mem fn-octets-pg)
+    (pgs-x-row seq pgs-mem fn-octets-pg)
     (if (not (and (eq v :ok) (true-listp e) (= (len e) 4)))
-        (mv v nil pgs-mem fn-shs)
-      (mv-let (v bytes pgs-mem fn-shs)
+        (mv v nil pgs-mem fn-octets-pg)
+      (mv-let (v bytes pgs-mem fn-octets-pg)
         (pgs-x-pool-bytes (+ 8 (nfix (first e))) (nfix (second e)) (nfix (fourth e))
-                          nil pgs-mem fn-shs)
-        (mv v (revappend bytes nil) pgs-mem fn-shs)))))
+                          nil pgs-mem fn-octets-pg)
+        (mv v (revappend bytes nil) pgs-mem fn-octets-pg)))))
 
 (defthm pgs-x-lookup-seq-facts
-  (and (true-listp (mv-nth 1 (pgs-x-lookup-seq seq pgs-mem fn-shs)))
-       (implies (and (pgs-memp pgs-mem) (fn-shs-p fn-shs))
-                (and (pgs-memp (mv-nth 2 (pgs-x-lookup-seq seq pgs-mem fn-shs)))
-                     (fn-shs-p (mv-nth 3 (pgs-x-lookup-seq seq pgs-mem fn-shs)))))))
+  (and (true-listp (mv-nth 1 (pgs-x-lookup-seq seq pgs-mem fn-octets-pg)))
+       (implies (and (pgs-memp pgs-mem) (fn-octets-pg-p fn-octets-pg))
+                (and (pgs-memp (mv-nth 2 (pgs-x-lookup-seq seq pgs-mem fn-octets-pg)))
+                     (fn-octets-pg-p (mv-nth 3 (pgs-x-lookup-seq seq pgs-mem fn-octets-pg)))))))
 
 (in-theory (disable pgs-x-lookup-seq))
 
@@ -2724,25 +2724,25 @@
          (equal (char-code (char s i)) (car bytes))
          (pgs-x-octets-match s (+ 1 i) (cdr bytes)))))
 
-(defun pgs-x-probe (s slot k size tab pgs-mem fn-shs)
+(defun pgs-x-probe (s slot k size tab pgs-mem fn-octets-pg)
   ; Walk the table from SLOT for at most K slots; every candidate is
-  ; compared exactly.  (mv VERDICT SEQ-OR-NIL pgs-mem fn-shs).
-  (declare (xargs :stobjs (pgs-mem fn-shs)
+  ; compared exactly.  (mv VERDICT SEQ-OR-NIL pgs-mem fn-octets-pg).
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg)
                   :guard (and (stringp s) (natp slot) (natp k) (natp size) (natp tab))
                   :measure (nfix k)))
   (if (zp k)
-      (mv :ok nil pgs-mem fn-shs)
-    (mv-let (v x pgs-mem fn-shs)
-      (pgs-x-rd (+ tab slot) pgs-mem fn-shs)
-      (cond ((not (eq v :ok)) (mv v nil pgs-mem fn-shs))
-            ((equal x 0) (mv :ok nil pgs-mem fn-shs))
-            ((not (posp x)) (mv :table-malformed nil pgs-mem fn-shs))
-            (t (mv-let (v bytes pgs-mem fn-shs)
-                 (pgs-x-lookup-seq (1- x) pgs-mem fn-shs)
-                 (cond ((not (eq v :ok)) (mv v nil pgs-mem fn-shs))
-                       ((pgs-x-octets-match s 0 bytes) (mv :ok (1- x) pgs-mem fn-shs))
+      (mv :ok nil pgs-mem fn-octets-pg)
+    (mv-let (v x pgs-mem fn-octets-pg)
+      (pgs-x-rd (+ tab slot) pgs-mem fn-octets-pg)
+      (cond ((not (eq v :ok)) (mv v nil pgs-mem fn-octets-pg))
+            ((equal x 0) (mv :ok nil pgs-mem fn-octets-pg))
+            ((not (posp x)) (mv :table-malformed nil pgs-mem fn-octets-pg))
+            (t (mv-let (v bytes pgs-mem fn-octets-pg)
+                 (pgs-x-lookup-seq (1- x) pgs-mem fn-octets-pg)
+                 (cond ((not (eq v :ok)) (mv v nil pgs-mem fn-octets-pg))
+                       ((pgs-x-octets-match s 0 bytes) (mv :ok (1- x) pgs-mem fn-octets-pg))
                        (t (pgs-x-probe s (if (< (+ 1 slot) size) (+ 1 slot) 0) (1- k)
-                                       size tab pgs-mem fn-shs)))))))))
+                                       size tab pgs-mem fn-octets-pg)))))))))
 
 (defun pgs-msgid-start (s salt size)
   (declare (xargs :guard (and (stringp s) (posp size))))
@@ -2754,19 +2754,19 @@
 
 (in-theory (disable pgs-msgid-start))
 
-(defun pgs-x-lookup-msgid (s pgs-mem fn-shs)
-  ; The first request by Message-ID: (mv VERDICT SEQ-OR-NIL pgs-mem fn-shs).
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (stringp s)))
-  (mv-let (v2 hbits pgs-mem fn-shs) (pgs-x-rd 2 pgs-mem fn-shs)
-    (mv-let (v4 tab pgs-mem fn-shs) (pgs-x-rd 4 pgs-mem fn-shs)
-      (mv-let (v7 salt pgs-mem fn-shs) (pgs-x-rd 7 pgs-mem fn-shs)
-        (cond ((not (eq v2 :ok)) (mv v2 nil pgs-mem fn-shs))
-              ((not (eq v4 :ok)) (mv v4 nil pgs-mem fn-shs))
-              ((not (eq v7 :ok)) (mv v7 nil pgs-mem fn-shs))
-              ((not (< (nfix hbits) 40)) (mv :header-malformed nil pgs-mem fn-shs))
+(defun pgs-x-lookup-msgid (s pgs-mem fn-octets-pg)
+  ; The first request by Message-ID: (mv VERDICT SEQ-OR-NIL pgs-mem fn-octets-pg).
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg) :guard (stringp s)))
+  (mv-let (v2 hbits pgs-mem fn-octets-pg) (pgs-x-rd 2 pgs-mem fn-octets-pg)
+    (mv-let (v4 tab pgs-mem fn-octets-pg) (pgs-x-rd 4 pgs-mem fn-octets-pg)
+      (mv-let (v7 salt pgs-mem fn-octets-pg) (pgs-x-rd 7 pgs-mem fn-octets-pg)
+        (cond ((not (eq v2 :ok)) (mv v2 nil pgs-mem fn-octets-pg))
+              ((not (eq v4 :ok)) (mv v4 nil pgs-mem fn-octets-pg))
+              ((not (eq v7 :ok)) (mv v7 nil pgs-mem fn-octets-pg))
+              ((not (< (nfix hbits) 40)) (mv :header-malformed nil pgs-mem fn-octets-pg))
               (t (let ((size (expt 2 (nfix hbits))))
                    (pgs-x-probe s (pgs-msgid-start s salt size) size size (nfix tab)
-                                pgs-mem fn-shs))))))))
+                                pgs-mem fn-octets-pg))))))))
 
 ; =============================================================================
 ; 13. Ground witnesses, run on the executable (with-local-stobj).
@@ -2838,15 +2838,15 @@
   ; A commit on an empty store of two dirty pages (0 and 1, both appended),
   ; then the record read back and the durable step.  Seven checks:
   ; a plan; the table's (PHYS TXID) are the fresh singles after the run;
-  ; each entry's digest is its page's SHA-256; the directory's one entry
-  ; names the table page at its fresh address with the page's SHA-256;
-  ; the record's directory digest is the run's SHA-256 and the record reads
+  ; each entry's digest is its page's BLAKE3; the directory's one entry
+  ; names the table page at its fresh address with the page's BLAKE3;
+  ; the record's directory digest is the run's BLAKE3 and the record reads
   ; back valid; both invariants; no dirty page left.
   (declare (xargs :guard t :verify-guards nil))
   (with-local-stobj pgs-mem
     (mv-let (r pgs-mem)
-      (with-local-stobj fn-shs
-        (mv-let (r pgs-mem fn-shs)
+      (with-local-stobj fn-octets-pg
+        (mv-let (r pgs-mem fn-octets-pg)
           (let* ((pgs-mem (pgs-x-reset-table 0 pgs-mem))
                  (pgs-mem (resize-pgs-m (+ *pgs-x-dir-base* 2048) pgs-mem))
                  (pgs-mem (resize-pgs-w 4096 pgs-mem))
@@ -2860,14 +2860,14 @@
                  (inv0 (and (pgs-x-tab-inv 0 pgs-mem) (pgs-x-dir-inv *pgs-x-dir-base* 0 pgs-mem)))
                  (tab0 (pgs-x-tab 0 pgs-mem))
                  (dir0 (pgs-x-dir 0 pgs-mem)))
-            (mv-let (res pgs-mem fn-shs)
-              (pgs-x-commit lpages 0 1 '(nil 10) 0 pgs-mem fn-shs)
-              (mv-let (d0 fn-shs) (pgs-x-page-digest 0 pgs-mem fn-shs)
-                (mv-let (d1 fn-shs) (pgs-x-page-digest 1 pgs-mem fn-shs)
-                  (mv-let (td fn-shs) (pgs-x-words-digest 2 0 256 pgs-mem fn-shs)
-                    (mv-let (dd fn-shs) (pgs-x-words-digest 1 *pgs-x-dir-base* 256 pgs-mem fn-shs)
-                      (mv-let (rec check fn-shs)
-                        (pgs-x-read-rec 0 pgs-mem fn-shs)
+            (mv-let (res pgs-mem fn-octets-pg)
+              (pgs-x-commit lpages 0 1 '(nil 10) 0 pgs-mem fn-octets-pg)
+              (mv-let (d0 fn-octets-pg) (pgs-x-page-digest 0 pgs-mem fn-octets-pg)
+                (mv-let (d1 fn-octets-pg) (pgs-x-page-digest 1 pgs-mem fn-octets-pg)
+                  (mv-let (td fn-octets-pg) (pgs-x-words-digest 2 0 256 pgs-mem fn-octets-pg)
+                    (mv-let (dd fn-octets-pg) (pgs-x-words-digest 1 *pgs-x-dir-base* 256 pgs-mem fn-octets-pg)
+                      (mv-let (rec check fn-octets-pg)
+                        (pgs-x-read-rec 0 pgs-mem fn-octets-pg)
                         (let* ((tab (pgs-x-tab 2 pgs-mem))
                                (dir (pgs-x-dir 1 pgs-mem))
                                (pgs-mem (pgs-x-commit-durable lpages pgs-mem)))
@@ -2892,7 +2892,7 @@
                                            (equal (nth 4 res) (nthcdr 2 (second al)))
                                            (equal tab (pgs-plan-ptab tab0 lpages (nth 2 res) (nth 8 res) 1))
                                            (equal dir (pgs-plan-ptab dir0 tl (nth 4 res) (nth 9 res) 1)))))
-                              pgs-mem fn-shs)))))))))
+                              pgs-mem fn-octets-pg)))))))))
           (mv r pgs-mem)))
       r)))
 
@@ -2911,16 +2911,16 @@
   (declare (xargs :guard t :verify-guards nil))
   (with-local-stobj pgs-mem
     (mv-let (r pgs-mem)
-      (with-local-stobj fn-shs
-        (mv-let (r pgs-mem fn-shs)
+      (with-local-stobj fn-octets-pg
+        (mv-let (r pgs-mem fn-octets-pg)
           (let* ((pgs-mem (pgs-x-reset-table 0 pgs-mem))
                  (pgs-mem (pgs-x-grow-image 343 pgs-mem)))
-            (mv-let (v w pgs-mem fn-shs)
-              (pgs-x-read 342 0 pgs-mem fn-shs)
+            (mv-let (v w pgs-mem fn-octets-pg)
+              (pgs-x-read 342 0 pgs-mem fn-octets-pg)
               (mv (list (pgs-tv-length pgs-mem) (list (pgs-tvi 0 pgs-mem) (pgs-tvi 1 pgs-mem))
                         (pgs-v-length pgs-mem) (pgs-vi 342 pgs-mem) (pgs-w-length pgs-mem)
                         (list v w))
-                  pgs-mem fn-shs)))
+                  pgs-mem fn-octets-pg)))
           (mv r pgs-mem)))
       r)))
 
