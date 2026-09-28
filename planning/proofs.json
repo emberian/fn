@@ -11294,7 +11294,11 @@
         "fn-hp-piw-caps-extend",
         "fn-hp-piw-of-append1-grown",
         "fn-hp-grow-then-append",
-        "fn-hp-grow-then-append-only-r"
+        "fn-hp-grow-then-append-only-r",
+        "fn-hp-x-append-step-refines",
+        "fn-hp-x-init-refines",
+        "fn-hp-x-append-all-refines",
+        "fn-hp-records-at-is-nth"
       ]
     },
     {
