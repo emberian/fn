@@ -272,6 +272,39 @@
                                   (fn-sf-make-fields))
            :use fn-sf-shape-fields-canonical)))
 
+(defthm fn-sf-make-fields-snoc-records-is-make
+  (implies (and (fn-sf-shapep s) (not (fn-sfr-basedp (fn-sf-records-field s))))
+           (equal (fn-sf-make-fields phase frontier frontier-candidate
+                                     (fn-sfr-snoc (fn-sf-records-field s) record)
+                                     record-candidate completion
+                                     (fn-sf-successes-field s) barriers)
+                  (fn-sf-make phase frontier frontier-candidate
+                              (append (fn-sf-records s) (list record))
+                              record-candidate completion
+                              (fn-sf-successes s) barriers)))
+  :hints (("Goal" :in-theory (e/d (fn-sf-make fn-sf-records fn-sf-successes fn-sfr-list fn-sfr-canonp fn-sfr-snoc)
+                                  (fn-sf-make-fields fn-sl-snoc-of-fn-sl-of))
+           :use (fn-sf-shape-fields-canonical
+                 (:instance fn-sl-snoc-of-fn-sl-of
+                            (x (fn-sl-list (fn-sf-records-field s)))
+                            (r record))))))
+(defthm fn-sf-make-fields-snoc-successes-is-make
+  (implies (and (fn-sf-shapep s) (not (fn-sfr-basedp (fn-sf-records-field s))))
+           (equal (fn-sf-make-fields phase frontier frontier-candidate
+                                     (fn-sf-records-field s)
+                                     record-candidate completion
+                                     (fn-sl-snoc (fn-sf-successes-field s) pair)
+                                     barriers)
+                  (fn-sf-make phase frontier frontier-candidate
+                              (fn-sf-records s) record-candidate completion
+                              (append (fn-sf-successes s) (list pair))
+                              barriers)))
+  :hints (("Goal" :in-theory (e/d (fn-sf-make fn-sf-records fn-sf-successes fn-sfr-list fn-sfr-canonp)
+                                  (fn-sf-make-fields fn-sl-snoc-of-fn-sl-of))
+           :use (fn-sf-shape-fields-canonical
+                 (:instance fn-sl-snoc-of-fn-sl-of
+                            (x (fn-sl-list (fn-sf-successes-field s)))
+                            (r pair))))))
 ;; Over a state built from lists (fn-sf-make), a kept field is the list's
 ;; representation, so a transition that keeps it builds the state fn-sf-make
 ;; builds from the same lists: value equalities between kernel states
