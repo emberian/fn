@@ -12,7 +12,6 @@
 
 (in-package "ACL2")
 (include-book "bp-node")
-(include-book "rev-onto") ; the loop twins' step (PKT-877)
 (include-book "defrecord")
 (include-book "frame-fields")
 
@@ -46,40 +45,11 @@
     (or (equal x (car xs))
         (fn-bpn-member x (cdr xs)))))
 
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bpn-append-loop (xs ys acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (atom xs) (revappend acc ys) (fn-bpn-append-loop (cdr xs) ys (cons (car xs) acc))))
-
 (defun fn-bpn-append (xs ys)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (atom xs)
-           ys
-         (cons (car xs) (fn-bpn-append (cdr xs) ys)))
-       :exec (fn-bpn-append-loop xs ys nil)))
-
-(local
- (defthm fn-bpn-append-loop-is-revappend
-   (equal (fn-bpn-append-loop xs ys acc)
-          (revappend acc (fn-bpn-append xs ys)))
-   :hints (("Goal" :induct (fn-bpn-append-loop xs ys acc)
-                   :in-theory (union-theories '(fn-bpn-append-loop fn-bpn-append revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bpn-append-loop)
-
-(verify-guards fn-bpn-append
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bpn-append)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bpn-append-loop-is-revappend (acc nil))))))
-
+  (declare (xargs :guard t))
+  (if (atom xs)
+      ys
+    (cons (car xs) (fn-bpn-append (cdr xs) ys))))
 
 (defun fn-bpn-nth (n xs)
   (declare (xargs :guard t))
@@ -151,81 +121,20 @@
          (not (fn-bpn-job-key-memberp (fn-bpn-job-key (car jobs)) (cdr jobs)))
          (fn-bpn-job-listp (cdr jobs)))))
 
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bpn-replace-job-loop (key replacement jobs acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (atom jobs)
-      (revappend acc nil)
-    (if (equal key (fn-bpn-job-key (car jobs)))
-        (revappend acc (cons replacement (cdr jobs)))
-      (fn-bpn-replace-job-loop key replacement (cdr jobs) (cons (car jobs) acc)))))
-
 (defun fn-bpn-replace-job (key replacement jobs)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (atom jobs)
-           nil
-         (if (equal key (fn-bpn-job-key (car jobs)))
-             (cons replacement (cdr jobs))
-           (cons (car jobs) (fn-bpn-replace-job key replacement (cdr jobs)))))
-       :exec (fn-bpn-replace-job-loop key replacement jobs nil)))
-
-(local
- (defthm fn-bpn-replace-job-loop-is-revappend
-   (equal (fn-bpn-replace-job-loop key replacement jobs acc)
-          (revappend acc (fn-bpn-replace-job key replacement jobs)))
-   :hints (("Goal" :induct (fn-bpn-replace-job-loop key replacement jobs acc)
-                   :in-theory (union-theories '(fn-bpn-replace-job-loop fn-bpn-replace-job revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bpn-replace-job-loop)
-
-(verify-guards fn-bpn-replace-job
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bpn-replace-job)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bpn-replace-job-loop-is-revappend (acc nil))))))
-
-
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec adds onto an accumulator.
-(defun fn-bpn-jobs-octets-loop (jobs acc)
-  (declare (xargs :guard (acl2-numberp acc) :verify-guards nil))
+  (declare (xargs :guard t))
   (if (atom jobs)
-      (+ acc 0)
-    (fn-bpn-jobs-octets-loop (cdr jobs) (+ (len (fn-bpn-job-wire (car jobs))) acc))))
+      nil
+    (if (equal key (fn-bpn-job-key (car jobs)))
+        (cons replacement (cdr jobs))
+      (cons (car jobs) (fn-bpn-replace-job key replacement (cdr jobs))))))
 
 (defun fn-bpn-jobs-octets (jobs)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (atom jobs)
-           0
-         (+ (len (fn-bpn-job-wire (car jobs)))
-            (fn-bpn-jobs-octets (cdr jobs))))
-       :exec (fn-bpn-jobs-octets-loop jobs 0)))
-
-(local
- (defthm fn-bpn-jobs-octets-loop-is-plus
-   (implies (acl2-numberp acc)
-            (equal (fn-bpn-jobs-octets-loop jobs acc)
-                   (+ acc (fn-bpn-jobs-octets jobs))))
-   :hints (("Goal" :induct (fn-bpn-jobs-octets-loop jobs acc)))))
-
-(verify-guards fn-bpn-jobs-octets-loop)
-
-(verify-guards fn-bpn-jobs-octets
-  :hints (("Goal"
-           :in-theory
-           (disable fn-bpn-jobs-octets-loop)
-           :use
-           ((:instance fn-bpn-jobs-octets-loop-is-plus (acc 0))))))
-
+  (declare (xargs :guard t))
+  (if (atom jobs)
+      0
+    (+ (len (fn-bpn-job-wire (car jobs)))
+       (fn-bpn-jobs-octets (cdr jobs)))))
 
 (defun fn-bpn-contact-listp (contacts)
   (declare (xargs :guard t))
@@ -741,51 +650,15 @@
 
 (verify-guards fn-bpn-find-queued-for-peer)
 
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
-; same step.
-(defun fn-bpn-ready-peers-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-bpn-ready-peers-loop (cdr rev)
-                               (let ((rest acc))
-                                 (if (and (equal (fn-bpn-job-status (car rev)) :queued)
-                                          (not (fn-bpn-member (fn-bpn-job-peer (car rev))
-                                                              rest)))
-                                     (cons (fn-bpn-job-peer (car rev)) rest)
-                                   rest)))
-    acc))
-
 (defun fn-bpn-ready-peers (jobs)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (atom jobs)
-           nil
-         (let ((rest (fn-bpn-ready-peers (cdr jobs))))
-           (if (and (equal (fn-bpn-job-status (car jobs)) :queued)
-                    (not (fn-bpn-member (fn-bpn-job-peer (car jobs)) rest)))
-               (cons (fn-bpn-job-peer (car jobs)) rest)
-             rest)))
-       :exec (fn-bpn-ready-peers-loop (fn-ag-rev-onto jobs nil) nil)))
-
-(local
- (defthm fn-bpn-ready-peers-loop-of-rev-onto
-   (equal (fn-bpn-ready-peers-loop (fn-ag-rev-onto jobs zs) nil)
-          (fn-bpn-ready-peers-loop zs (fn-bpn-ready-peers jobs)))
-   :hints (("Goal" :induct (fn-ag-rev-onto jobs zs)
-                   :in-theory (union-theories '(fn-bpn-ready-peers-loop fn-bpn-ready-peers fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bpn-ready-peers-loop)
-
-(verify-guards fn-bpn-ready-peers
-  :hints (("Goal" :in-theory (union-theories '(fn-bpn-ready-peers fn-bpn-ready-peers-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-bpn-ready-peers-loop-of-rev-onto (zs nil))))))
-
+  (declare (xargs :guard t))
+  (if (atom jobs)
+      nil
+    (let ((rest (fn-bpn-ready-peers (cdr jobs))))
+      (if (and (equal (fn-bpn-job-status (car jobs)) :queued)
+               (not (fn-bpn-member (fn-bpn-job-peer (car jobs)) rest)))
+          (cons (fn-bpn-job-peer (car jobs)) rest)
+        rest))))
 
 (defun fn-bpn-start-one (st peer)
   (declare (xargs :guard (fn-bpn-machine-statep st)))
@@ -991,53 +864,15 @@
            :in-theory (disable fn-bpn-machine-statep fn-bpn-machine-recordp
                                fn-bpn-state-field-types-for-guard))))
 
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bpn-resume-jobs-loop (jobs acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (atom jobs)
-      (revappend acc nil)
-    (fn-bpn-resume-jobs-loop (cdr jobs)
-                             (cons (if (equal (fn-bpn-job-status (car jobs))
-                                              :attempting)
-                                       (fn-bpn-job-with-status (car jobs)
-                                                               :queued
-                                                               (fn-bpn-job-last-token (car jobs)))
-                                     (car jobs))
-                                   acc))))
-
 (defun fn-bpn-resume-jobs (jobs)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (atom jobs)
-           nil
-         (cons (if (equal (fn-bpn-job-status (car jobs)) :attempting)
-                   (fn-bpn-job-with-status (car jobs) :queued
-                                           (fn-bpn-job-last-token (car jobs)))
-                 (car jobs))
-               (fn-bpn-resume-jobs (cdr jobs))))
-       :exec (fn-bpn-resume-jobs-loop jobs nil)))
-
-(local
- (defthm fn-bpn-resume-jobs-loop-is-revappend
-   (equal (fn-bpn-resume-jobs-loop jobs acc)
-          (revappend acc (fn-bpn-resume-jobs jobs)))
-   :hints (("Goal" :induct (fn-bpn-resume-jobs-loop jobs acc)
-                   :in-theory (union-theories '(fn-bpn-resume-jobs-loop fn-bpn-resume-jobs revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bpn-resume-jobs-loop)
-
-(verify-guards fn-bpn-resume-jobs
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bpn-resume-jobs)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bpn-resume-jobs-loop-is-revappend (acc nil))))))
-
+  (declare (xargs :guard t))
+  (if (atom jobs)
+      nil
+    (cons (if (equal (fn-bpn-job-status (car jobs)) :attempting)
+              (fn-bpn-job-with-status (car jobs) :queued
+                                      (fn-bpn-job-last-token (car jobs)))
+            (car jobs))
+          (fn-bpn-resume-jobs (cdr jobs)))))
 
 (verify-guards fn-bpn-resume-jobs)
 

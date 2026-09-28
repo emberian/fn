@@ -54,46 +54,13 @@
               (fn-bpnf-fragment-coherence-key
                (fn-bpb-bundle-primary (fn-bpnf-held-bundle anchor))))))
 
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bpnf-active-set-rows-loop (held anchor acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+(defun fn-bpnf-active-set-rows (held anchor)
+  (declare (xargs :guard t))
   (if (consp held)
       (if (fn-bpnf-same-fragment-family-p (car held) anchor)
-          (fn-bpnf-active-set-rows-loop (cdr held) anchor (cons (car held) acc))
-        (fn-bpnf-active-set-rows-loop (cdr held) anchor acc))
-    (revappend acc nil)))
-
-(defun fn-bpnf-active-set-rows (held anchor)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp held)
-           (if (fn-bpnf-same-fragment-family-p (car held) anchor)
-               (cons (car held) (fn-bpnf-active-set-rows (cdr held) anchor))
-             (fn-bpnf-active-set-rows (cdr held) anchor))
-         nil)
-       :exec (fn-bpnf-active-set-rows-loop held anchor nil)))
-
-(local
- (defthm fn-bpnf-active-set-rows-loop-is-revappend
-   (equal (fn-bpnf-active-set-rows-loop held anchor acc)
-          (revappend acc (fn-bpnf-active-set-rows held anchor)))
-   :hints (("Goal" :induct (fn-bpnf-active-set-rows-loop held anchor acc)
-                   :in-theory (union-theories '(fn-bpnf-active-set-rows-loop fn-bpnf-active-set-rows revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bpnf-active-set-rows-loop)
-
-(verify-guards fn-bpnf-active-set-rows
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bpnf-active-set-rows)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bpnf-active-set-rows-loop-is-revappend (acc nil))))))
-
+          (cons (car held) (fn-bpnf-active-set-rows (cdr held) anchor))
+        (fn-bpnf-active-set-rows (cdr held) anchor))
+    nil))
 
 ; The anchor must be a current held row.  Thus an arbitrary caller-supplied
 ; header cannot make a phantom family out of rows with a matching key.

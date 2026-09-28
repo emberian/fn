@@ -25,46 +25,13 @@
        (null (fn-bpn-nth 13 h))
        (null (fn-bpn-nth 14 h))))
 
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bpnp-replace-dispatched-loop (arrival peer held acc)
-  (declare (xargs :measure (acl2-count held) :guard (true-listp acc) :verify-guards nil))
-  (if (atom held)
-      (revappend acc nil)
-    (if (equal arrival (fn-bpn-nth 3 (car held)))
-        (revappend acc (cons (fn-bpnp-dispatched-held (car held) peer) (cdr held)))
-      (fn-bpnp-replace-dispatched-loop arrival peer (cdr held) (cons (car held) acc)))))
-
 (defun fn-bpnp-replace-dispatched (arrival peer held)
-  (declare (xargs :verify-guards nil :guard t :measure (acl2-count held)))
-  (mbe :logic
-       (if (atom held) nil
-         (if (equal arrival (fn-bpn-nth 3 (car held)))
-             (cons (fn-bpnp-dispatched-held (car held) peer) (cdr held))
-           (cons (car held)
-                 (fn-bpnp-replace-dispatched arrival peer (cdr held)))))
-       :exec (fn-bpnp-replace-dispatched-loop arrival peer held nil)))
-
-(local
- (defthm fn-bpnp-replace-dispatched-loop-is-revappend
-   (equal (fn-bpnp-replace-dispatched-loop arrival peer held acc)
-          (revappend acc (fn-bpnp-replace-dispatched arrival peer held)))
-   :hints (("Goal" :induct (fn-bpnp-replace-dispatched-loop arrival peer held acc)
-                   :in-theory (union-theories '(fn-bpnp-replace-dispatched-loop fn-bpnp-replace-dispatched revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bpnp-replace-dispatched-loop)
-
-(verify-guards fn-bpnp-replace-dispatched
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bpnp-replace-dispatched)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bpnp-replace-dispatched-loop-is-revappend (acc nil))))))
-
+  (declare (xargs :guard t :measure (acl2-count held)))
+  (if (atom held) nil
+    (if (equal arrival (fn-bpn-nth 3 (car held)))
+        (cons (fn-bpnp-dispatched-held (car held) peer) (cdr held))
+      (cons (car held)
+            (fn-bpnp-replace-dispatched arrival peer (cdr held))))))
 
 (defun fn-bpnp-dispatch-apply (record held)
   (declare (xargs :guard t))
