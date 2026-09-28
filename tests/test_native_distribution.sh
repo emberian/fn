@@ -49,6 +49,8 @@ printf different-core > "$tmp/mismatched.core"
 # The ML-DSA-65 library the image loads from lib/ beside its core (HST-016).
 mkdir "$tmp/lib"
 printf mldsa > "$tmp/lib/libfn-mldsa65.so"
+# BLAKE3, fn's digest, from the same lib/ (host/native/digest.lisp).
+printf blake3 > "$tmp/lib/libfn-blake3.so"
 set +e
 PREFIX="$tmp/rejected/opt/fn" FN_NATIVE_HOST="$tmp/fn-host" \
   FN_NATIVE_SOURCE_REVISION=0123456789abcdef \

@@ -36,7 +36,7 @@
 (include-book "reclaim-rule")
 (include-book "reclaim-tombstone")
 (include-book "poster-bytes")
-(include-book "sha256")
+(include-book "blake3")
 
 (defun fn-rcl-car (x) (declare (xargs :guard t)) (if (consp x) (car x) nil))
 (defun fn-rcl-cdr (x) (declare (xargs :guard t)) (if (consp x) (cdr x) nil))
@@ -522,8 +522,9 @@
 
 ;  D13.  The tombstone of PAYLOAD: what `store reclaim' writes in place of
 ; a reclaimed article's payload (books/reclaim-tombstone for the layout).  It
-; keeps the SHA-256 of the octets, and when the payload's own Path line names
-; an agent whose recipe gives back a source, the SHA-256 of that source.
+; keeps the BLAKE3 digest of the octets, and when the payload's own Path line
+; names an agent whose recipe gives back a source, the BLAKE3 digest of that
+; source (SHA-256 up to store format 9).
 (defun fn-rcl-zeros (n)
   (declare (xargs :guard (natp n)))
   (if (zp n) nil (cons 0 (fn-rcl-zeros (1- n)))))
@@ -535,9 +536,9 @@
          (sourcep (equal (car subject) :source)))
     (append *fn-rcl-magic*
             (cons (if sourcep 1 0)
-                  (append (fn-sha256 payload)
+                  (append (fn-blake3 payload)
                           (append (if sourcep
-                                      (fn-sha256 (cdr subject))
+                                      (fn-blake3 (cdr subject))
                                     (fn-rcl-zeros 32))
                                   (append (fn-rcl-u64-octets (len payload))
                                           (append (fn-rcl-u64-octets (len agent))
@@ -554,8 +555,8 @@
     (if (and (fn-rcl-tomb-sourcep tomb)
              (equal agent (fn-rcl-tomb-agent tomb))
              (equal (car a) :source))
-        (equal (fn-sha256 (cdr a)) (fn-rcl-tomb-source-digest tomb))
-      (equal (fn-sha256 payload) (fn-rcl-tomb-octets-digest tomb)))))
+        (equal (fn-blake3 (cdr a)) (fn-rcl-tomb-source-digest tomb))
+      (equal (fn-blake3 payload) (fn-rcl-tomb-octets-digest tomb)))))
 
 ; The same-article test for an already held Message-ID whose held payload may
 ; be a tombstone: `fn-pb-same-articlep' (books/poster-bytes) for a live
@@ -600,19 +601,16 @@
                   (fn-pb-action-over msgid payload groups articles)))
   :hints (("Goal" :in-theory (enable fn-rcl-action-over fn-pb-action-over))))
 
-; Two different octet lists with one SHA-256.
+; Two different octet lists with one BLAKE3 digest.
 (defun fn-rcl-collisionp (x y)
   (declare (xargs :guard t :verify-guards nil))
-  (and (not (equal x y)) (equal (fn-sha256 x) (fn-sha256 y))))
+  (and (not (equal x y)) (equal (fn-blake3 x) (fn-blake3 y))))
 
 (local (include-book "std/lists/append" :dir :system))
 
 (local
- (defthm fn-rcl-len-sha256
-   (equal (len (fn-sha256 x)) 32)
-   :hints (("Goal" :use ((:instance fn-sha256-of-octets-shape
-                                    (msg (fn-sha256-fix-octets x))))
-                   :in-theory (enable fn-sha256)))))
+ (defthm fn-rcl-len-blake3
+   (equal (len (fn-blake3 x)) 32)))
 
 (local
  (defthm fn-rcl-len-u64-aux
@@ -659,11 +657,8 @@
    (equal (fn-rcl-drop 0 x) x)))
 
 (local
- (defthm fn-rcl-true-listp-sha256
-   (true-listp (fn-sha256 x))
-   :hints (("Goal" :use ((:instance fn-sha256-of-octets-shape
-                                    (msg (fn-sha256-fix-octets x))))
-                   :in-theory (enable fn-sha256)))))
+ (defthm fn-rcl-true-listp-blake3
+   (true-listp (fn-blake3 x))))
 
 (local
  (defthm fn-rcl-true-listp-u64-aux
@@ -675,35 +670,36 @@
    (true-listp (fn-rcl-zeros n))))
 
 (verify-guards fn-rcl-tombstone-of
-  :hints (("Goal" :in-theory (disable fn-sha256 fn-pb-subject fn-pb-path-agent))))
+  :hints (("Goal" :in-theory (disable fn-blake3 fn-pb-subject fn-pb-path-agent))))
 
 ; The fields of a tombstone read back what `fn-rcl-tombstone-of' put there.
 (defthm fn-rcl-tombstone-of-fields
   (let ((tomb (fn-rcl-tombstone-of payload msgid))
         (agent (fn-pb-path-agent payload msgid)))
     (and (fn-rcl-tombstonep tomb)
-         (equal (fn-rcl-tomb-octets-digest tomb) (fn-sha256 payload))
+         (equal (fn-rcl-tomb-octets-digest tomb) (fn-blake3 payload))
          (equal (fn-rcl-tomb-sourcep tomb)
                 (equal (car (fn-pb-subject payload agent msgid)) :source))
          (implies (equal (car (fn-pb-subject payload agent msgid)) :source)
                   (equal (fn-rcl-tomb-source-digest tomb)
-                         (fn-sha256 (cdr (fn-pb-subject payload agent msgid)))))
+                         (fn-blake3 (cdr (fn-pb-subject payload agent msgid)))))
          (equal (fn-rcl-tomb-agent tomb) agent)))
   ; SEC-006: the agent is now read through fn-cll-skip; the proof is the
   ; same case split, without destructor elimination or induction.
-  :hints (("Goal" :in-theory (e/d (fn-rcl-tombstone-of) (fn-sha256 fn-pb-subject
+  :hints (("Goal" :in-theory (e/d (fn-rcl-tombstone-of) (fn-blake3 fn-pb-subject
                                                         fn-pb-path-agent))
            :do-not '(generalize eliminate-destructors fertilize)
            :do-not-induct t)))
 
 ;  KEYSTONE (D25 after reclamation).  Reclaiming article M leaves the
 ; host's duplicate-versus-conflict verdict unchanged for every Message-ID X,
-; every submission P and every group list G -- unless SHA-256 collides on
+; every submission P and every group list G -- unless BLAKE3 collides on
 ; the pair the tombstone compares (the submission against the removed
 ; payload, or their D25 sources), or the submission names a different
 ; injecting agent under which the removed payload still gives back a source.
-; The collision disjuncts are the stated limit: SHA-256's collision
-; resistance, about 2^128 work, is the assumption, and it is not proved.
+; The collision disjuncts are the stated limit: BLAKE3's collision
+; resistance (A-CRYPTO: about 2^-128 per chosen pair, the birthday bound over
+; its 256-bit output) is the assumption, and it is not proved.
 (local
  (defthm fn-rcl-found-stays-found
    (implies (fn-find-article m a)
@@ -731,7 +727,7 @@
   :hints (("Goal" :cases ((equal x m))
                   :in-theory (e/d (fn-pb-same-articlep fn-rcl-action-over)
                                   (fn-find-article fn-rcl-reclaim-articles
-                                   fn-rcl-tombstone-of fn-sha256 fn-pb-subject
+                                   fn-rcl-tombstone-of fn-blake3 fn-pb-subject
                                    fn-pb-path-agent fn-rcl-tombstonep
                                    fn-rcl-tomb-sourcep fn-rcl-tomb-agent
                                    fn-rcl-tomb-octets-digest

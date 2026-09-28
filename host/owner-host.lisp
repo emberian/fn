@@ -2972,7 +2972,7 @@
         (value (if action action :absent))))))
 
 ; The subject identity of the payload in the octet buffer is
-; books/sha256-buffer.lisp fn-shb-subject-id-bounded, which host/native/io.lisp
+; books/subject-id-buffer.lisp fn-sidb-subject-id-bounded, which host/native/io.lisp
 ; fnn-subject-id-buffer calls directly: a guard-verified entry, so no :program
 ; wrapper here reaches the digest's local stobj updaters (qual-e747dbcc A4).
 

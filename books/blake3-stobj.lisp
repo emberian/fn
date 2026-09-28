@@ -29,21 +29,17 @@
 (in-package "ACL2")
 (include-book "blake3")
 (include-book "octets-stobj")
+(include-book "octet-window")
 
 (local (include-book "arithmetic/top" :dir :system))
-(local (in-theory (disable floor mod truncate rem unsigned-byte-p mv-nth)))
+(local (in-theory (e/d (fn-shr-win) (floor mod truncate rem unsigned-byte-p mv-nth))))
 
 ; -----------------------------------------------------------------------------
 ; The logical message: the prefix, then the window.
 
-(defun fn-b3x-win (a wn l)
-  ; WN octets of L at A; the same term as books/sha256-range.lisp `fn-shr-win'.
-  (declare (xargs :guard t :verify-guards nil))
-  (take (nfix wn) (nthcdr (nfix a) l)))
-
 (defun fn-b3x-msg (prefix a wn l)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-b3-fix-octets (append prefix (fn-b3x-win a wn l))))
+  (fn-b3-fix-octets (append prefix (fn-shr-win a wn l))))
 
 ; -----------------------------------------------------------------------------
 ; The reader.  Positions at and past the node's end E read as zero: the zero
@@ -540,7 +536,7 @@
 (defthm fn-blake3-of-prefixed-range-is-blake3
   (implies (and (natp a) (natp wn) (<= (+ a wn) (len fn-octets)))
            (equal (fn-blake3-of-prefixed-range prefix a wn fn-octets)
-                  (fn-blake3 (append prefix (fn-b3x-win a wn fn-octets)))))
+                  (fn-blake3 (append prefix (fn-shr-win a wn fn-octets)))))
   :hints (("Goal" :in-theory (enable fn-blake3))))
 
 (defun fn-blake3-of-prefixed-buffer (prefix fn-octets)

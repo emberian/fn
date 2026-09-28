@@ -156,8 +156,8 @@
 ;; tools/build_lists_check.py `included` checks this now.
 (include-book "books/octets-stobj")
 (include-book "books/poster-bytes-buffer")
-;; host/native/io.lisp fnn-subject-id-buffer calls fn-shb-subject-id-bounded, as in build.lisp.
-(include-book "books/sha256-buffer")
+;; host/native/io.lisp fnn-subject-id-buffer calls fn-sidb-subject-id-bounded, as in build.lisp.
+(include-book "books/subject-id-buffer")
 ;; D13 (STO-014): the tombstone-aware same-article test over the buffer
 ;; (fn-rclb-same-articlep), which fn-pidx-existing-action, the served POST's
 ;; duplicate verdict, calls.
@@ -267,12 +267,13 @@
         (fnn-select-release-version)
         (load "host/native/tls.lisp")
         (fnn-tls-initialize)
-        ; Native SHA-256 (lane digest-native, A-CRYPTO-NATIVE): the pinned
-        ; libcrypto's EVP SHA-256 replaces the raw definitions of
-        ; fn-sha256-stobj, fn-sha256-of-string and fn-sha256-of-prefixed-buffer
-        ; after a known-answer and reference check.  Checked here, then reset
-        ; so the saved core holds the ACL2 references; every start re-checks
-        ; and re-installs after the TLS pair is pinned.
+        ; Native BLAKE3 (A-CRYPTO-NATIVE; lanes digest-native, blake3-digest):
+        ; the vendored C in lib/libfn-blake3 (tools/build_blake3.sh;
+        ; FN_BLAKE3_LIBRARY names it during the build) replaces the raw
+        ; definitions of fn-blake3-stobj, fn-blake3-of-prefixed-buffer and
+        ; fn-blake3-of-prefixed-range after an official-vector and reference
+        ; check.  Checked here, then reset so the saved core holds the ACL2
+        ; references; every start re-checks and re-installs.
         (load "host/native/digest.lisp")
         (fnn-digest-initialize)
         (fnn-digest-reset)

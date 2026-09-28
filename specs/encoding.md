@@ -65,9 +65,9 @@ intern arbitrary remote symbols, or execute data. Bound checks precede allocatio
 [`books/identity.lisp`](../books/identity.lisp) owns the two derivations, and
 they are the domain-separated v1 profile:
 
-    subject-v1    = SHA-256("fn/subject/v1" || 0x00 || uint32-be(len(payload))
+    subject-v1    = BLAKE3("fn/subject/v1" || 0x00 || uint32-be(len(payload))
                             || payload)
-    obligation-v1 = SHA-256("fn/obligation/v1" || 0x00 || uint32-be(len(msgid))
+    obligation-v1 = BLAKE3("fn/obligation/v1" || 0x00 || uint32-be(len(msgid))
                             || msgid || uint32-be(len(subject)) || subject)
 
 An identity is the triple (label octets, algorithm id, digest octets),
@@ -75,7 +75,10 @@ rendered canonically as
 
     identity = label || 0x00 || version-octet || algorithm-octet || digest
 
-with version 1 and algorithm 1 (SHA-256). The kind is carried *inside* the
+with version 1 and algorithm 2 (BLAKE3, 32-octet output; store format 10
+and later). Algorithm 1 (SHA-256) was written by formats up to 9 and is not
+read: a format-10 store holds none (D34, fresh deploys; `store export` and
+import is the migration path, and identities re-derive on import). The kind is carried *inside* the
 encoded identity rather than as a hex prefix, and the algorithm identifier
 travels in the container, so algorithm agility (D09) changes the algorithm
 octet and does not change the meaning of an identity already written. A

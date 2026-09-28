@@ -1,7 +1,9 @@
 #!/bin/sh
 # Build lib/libfn-blake3 (host/native/fn-blake3.c over the vendored BLAKE3
-# 1.8.7 C in third_party/blake3) into OUT_DIR.  Lane digest-native's
-# prototype for the page/extent digest decision: no served image loads it.
+# 1.8.7 C in third_party/blake3) into OUT_DIR: the served images' BLAKE3
+# (host/native/digest.lisp loads it from lib/ beside the core, as
+# host/native/signatures.lisp loads libfn-mldsa65; tools/build_native_host.sh
+# builds it).
 #
 #   tools/build_blake3.sh OUT_DIR
 #

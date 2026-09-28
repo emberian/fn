@@ -1642,5 +1642,5 @@ reopen predicate, writer-lock observation and observed final namespace."
                 (fn-store-sn-digest-fields s *fn-store-sn-digest-fields* 0)
                 (fn-store-sn-digest-line "config" (fn-sdg-digest cfg))
                 (fn-store-sn-digest-line "canonical"
-                                         (fn-sha256-stobj (append history config-history))))))
-    (value (append body (fn-store-sn-digest-line "state" (fn-sha256-stobj body))))))
+                                         (fn-blake3-stobj (append history config-history))))))
+    (value (append body (fn-store-sn-digest-line "state" (fn-blake3-stobj body))))))
