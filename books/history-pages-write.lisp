@@ -286,17 +286,20 @@
 
 (defthm fn-hp-header-of-meta
   (implies (and (equal (len regs2) (len regs))
-                (<= (+ 64 (* 16 (len regs))) *adt-page*)
-                (equal (adt-starts regs2 1) (adt-starts regs 1)))
+                (<= (+ 72 (* 16 (len regs))) *adt-page*)
+                (equal (adt-starts regs2 1) (adt-starts regs 1))
+                (equal (adt-end regs2 1) (adt-end regs 1)))
            (equal (adt-header s n2 regs2)
                   (fn-hp-rep (adt-header s n regs) 48
                              (fn-hp-hmeta n2 (len regs) (adt-starts regs 1) (adt-lens regs2)))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-hp-rep-middle (p (append (adt-hdr-const) (adt-schema-digest s))) (j 0)
                             (x (fn-hp-hmeta n (len regs) (adt-starts regs 1) (adt-lens regs)))
-                            (y (adt-zeros (- *adt-page* (+ 64 (* 16 (len regs))))))
+                            (y (append (adt-le 8 (adt-end regs 1))
+                                       (adt-zeros (- *adt-page* (+ 72 (* 16 (len regs)))))))
                             (b (fn-hp-hmeta n2 (len regs) (adt-starts regs 1) (adt-lens regs2)))))
-           :in-theory (e/d (adt-header adt-header-content) (fn-hp-rep-middle adt-starts adt-lens)))))
+           :in-theory (e/d (adt-header adt-header-content)
+                           (fn-hp-rep-middle adt-starts adt-lens adt-end adt-end-is-end-l adt-starts-is-starts-l)))))
 
 (defun fn-hp-u64-listp (xs)
   (declare (xargs :guard t))
@@ -407,7 +410,11 @@
                              6 (fn-hp-hb (+ 1 (len h)) (adt-starts (fn-hp-regs h salt) 1)
                                          (adt-lens (fn-hp-zapp (fn-hp-regs h salt) (fn-hp-ds ev salt (fn-hp-pes-len h))))))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hp-header-of-meta (s *fn-hp-schema*) (n (len h)) (n2 (+ 1 (len h)))
+           :use ((:instance fn-hp-end-is-caps-sum (regs (fn-hp-regs h salt)) (s 1))
+                 (:instance fn-hp-end-is-caps-sum (regs (fn-hp-zapp (fn-hp-regs h salt) (fn-hp-ds ev salt (fn-hp-pes-len h))))
+                            (s 1))
+                 (:instance fn-hp-caps-sum-of-zapp (regs (fn-hp-regs h salt)) (ds (fn-hp-ds ev salt (fn-hp-pes-len h))))
+                 (:instance fn-hp-header-of-meta (s *fn-hp-schema*) (n (len h)) (n2 (+ 1 (len h)))
                             (regs (fn-hp-regs h salt))
                             (regs2 (fn-hp-zapp (fn-hp-regs h salt) (fn-hp-ds ev salt (fn-hp-pes-len h)))))
                  (:instance fn-hp-pack8-rep (m 2048) (j 6) (k 12)
@@ -417,7 +424,8 @@
                  (:instance fn-hp-pack8-hmeta (n (+ 1 (len h))) (r 5) (starts (adt-starts (fn-hp-regs h salt) 1))
                             (lens (adt-lens (fn-hp-zapp (fn-hp-regs h salt) (fn-hp-ds ev salt (fn-hp-pes-len h)))))))
            :in-theory (disable fn-hp-header-of-meta fn-hp-pack8-rep fn-hp-pack8-hmeta fn-hp-regs fn-hp-ds adt-header
-                               fn-hp-zapp fn-hp-pack8 adt-starts adt-lens fn-hp-hmeta fn-hp-deltas-ok adt-starts-is-starts-l))))
+                               fn-hp-zapp fn-hp-pack8 adt-starts adt-lens fn-hp-hmeta fn-hp-deltas-ok adt-starts-is-starts-l
+                               fn-hp-end-is-caps-sum fn-hp-caps-sum-of-zapp adt-end adt-end-is-end-l fn-hp-caps-sum))))
 (defthm fn-hp-rep-front
   (implies (and (natp j) (true-listp x) (<= (+ j (len b)) (len x)))
            (equal (fn-hp-rep (append x y) j b) (append (fn-hp-rep x j b) y)))
