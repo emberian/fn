@@ -126,6 +126,16 @@ predicted curve. `tools/shape_books.py --critical [--affected-by BOOK]` and
 `--chain BOOK` print the same chain without running anything;
 `tools/chain_schedule.py fit` refits the curves from the archived manifests.
 The prediction orders and sizes the run only; no verdict depends on it.
+Measured 2026-09-28 on a reserved, otherwise idle persvati, the 751 books
+`--affected-by books/config.lisp --recertify books/config` recertifies (the
+same set each time, all passed): the previous runner at 8 jobs 308 s
+(work-bound: 2,442 s summed over 8), `--jobs auto` 267 s at the 12 it chose
+(chain-bound: the realised chain 266 s), 16 jobs 278 s (chain-bound, the
+chain slower). Manifests certify-20260928T204026Z-2290548,
+certify-20260928T205549Z-2436707, certify-20260928T210620Z-2538408. The
+ranking was right; the absolute prediction ran high (351 s predicted for
+267 s): the fitted curve overstates the slowdown below a load per core of
+about 0.5.
 
 Measured on 2026-09-19 with ACL2 8.7 on SBCL 2.6.8, 12-core laptop, all 162
 Makefile roots, `FN_ACL2_TIMEOUT_SECONDS=1800 FN_CERTIFY_JOBS=8 make certify`
