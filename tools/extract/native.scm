@@ -146,6 +146,11 @@
          (unless (equal? (a-native-sha256-prefixed-buffer (list-head m k) (make-buffer (list-tail m k)))
                          (|f:ACL2::FN-SHA256-OF-PREFIXED-BUFFER| (list-head m k) (make-buffer (list-tail m k))))
            (fail "buffer differential")))))
-   '(0 1 55 56 63 64 65 119 120 127 128 1000 16383 16384 16385 40000)))
+   ;; the block-boundary lengths; the reference is the extracted ACL2
+   ;; SHA-256, about 0.1 MB/s in this program, so the long messages the
+   ;; image's check adds (16 KiB, 40,000 octets) stay in the per-build
+   ;; qualification (make extract-check's per-function differential), not
+   ;; in every start
+   '(0 1 55 56 63 64 65 119 120 127 128 200)))
 
 (define (list-head l k) (if (or (fx= k 0) (not (pair? l))) '() (cons (car l) (list-head (cdr l) (fx- k 1)))))
