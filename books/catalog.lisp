@@ -394,9 +394,12 @@
   (declare (xargs :guard (fn-cat$ap fn-cat$a)))
   (fn-cat-live-last group (fn-cat-group-high group fn-cat$a) fn-cat$a))
 
+;; Off the recognizer the horizon is past the count, so a reader that
+;; takes the fast path when the horizon is at most the count learns that the
+;; rows are well formed (books/served-catalog.lisp).
 (defun fn-cat$a-horizon (fn-cat$a)
   (declare (xargs :guard t))
-  (fn-cat-horizon-of fn-cat$a))
+  (if (fn-cat-rowsp fn-cat$a) (fn-cat-horizon-of fn-cat$a) (+ 1 (len fn-cat$a))))
 
 ; -----------------------------------------------------------------------------
 ; The foundation.
@@ -408,15 +411,21 @@
   (fn-cat$c-numbers :type (hash-table equal))
   (fn-cat$c-groups :type (hash-table equal))
   (fn-cat$c-octets :type (integer 0 *) :initially 0)
+  ;; The live summary (sca-join-5): group -> (count low . high), and the
+  ;; withdrawal horizon.
+  (fn-cat$c-lives :type (hash-table equal))
+  (fn-cat$c-hz :type (integer 0 *) :initially 0)
   :inline t)
 
 (local
  (defthm fn-ctg-cells-are-naturals
    (implies (fn-cat$cp fn-cat$c)
             (and (natp (fn-cat$c-count fn-cat$c))
-                 (natp (fn-cat$c-octets fn-cat$c))))
+                 (natp (fn-cat$c-octets fn-cat$c))
+                 (natp (fn-cat$c-hz fn-cat$c))))
    :rule-classes (:rewrite (:forward-chaining :trigger-terms ((fn-cat$cp fn-cat$c))))
-   :hints (("Goal" :in-theory (enable fn-cat$cp fn-cat$c-countp fn-cat$c-octetsp)))))
+   :hints (("Goal" :in-theory (enable fn-cat$cp fn-cat$c-countp fn-cat$c-octetsp
+                                      fn-cat$c-hzp)))))
 
 (local
  (defthm fn-ctg-rowsp-true-listp
@@ -479,10 +488,18 @@
             (and (fn-cat$cp (fn-cat$c-msgids-put k v fn-cat$c))
                  (fn-cat$cp (fn-cat$c-numbers-put k v fn-cat$c))
                  (fn-cat$cp (fn-cat$c-groups-put k v fn-cat$c))
+                 (fn-cat$cp (fn-cat$c-lives-put k v fn-cat$c))
                  (fn-cat$cp (fn-cat$c-msgids-clear fn-cat$c))
                  (fn-cat$cp (fn-cat$c-numbers-clear fn-cat$c))
-                 (fn-cat$cp (fn-cat$c-groups-clear fn-cat$c))))
+                 (fn-cat$cp (fn-cat$c-groups-clear fn-cat$c))
+                 (fn-cat$cp (fn-cat$c-lives-clear fn-cat$c))))
    :hints (("Goal" :in-theory (enable fn-cat$cp)))))
+
+(local
+ (defthm fn-ctg-cp-of-update-hz
+   (implies (and (fn-cat$cp fn-cat$c) (natp n))
+            (fn-cat$cp (update-fn-cat$c-hz n fn-cat$c)))
+   :hints (("Goal" :in-theory (enable fn-cat$cp fn-cat$c-hzp)))))
 
 (local
  (defthm fn-ctg-rows-length-of-writes
@@ -617,14 +634,16 @@
                      fn-cat$c-rows-length fn-cat$c-octets update-fn-cat$c-octets
                      fn-cat$c-msgids-get fn-cat$c-msgids-put fn-cat$c-msgids-clear
                      fn-cat$c-numbers-get fn-cat$c-numbers-put fn-cat$c-numbers-clear
-                     fn-cat$c-groups-get fn-cat$c-groups-put fn-cat$c-groups-clear)))
+                     fn-cat$c-groups-get fn-cat$c-groups-put fn-cat$c-groups-clear
+                     fn-cat$c-lives-get fn-cat$c-lives-put fn-cat$c-lives-clear
+                     fn-cat$c-hz update-fn-cat$c-hz)))
 
 ; A total snoc: append on a true list, and on anything else the list of one.
 (defun fn-cat-snoc (xs x)
   (declare (xargs :guard t))
   (if (consp xs) (cons (car xs) (fn-cat-snoc (cdr xs) x)) (list x)))
 
-(defun fn-cat$c-commit (h fn-cat$c)
+(defun fn-cat$c-commit-base (h fn-cat$c)
   (declare (xargs :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
   (let* ((seq (fn-cat$c-count fn-cat$c))
          (plan (fn-cat$c-plan (fn-record-groups h) fn-cat$c))
@@ -644,7 +663,7 @@
                     fn-cat$c)))
     (update-fn-cat$c-count (+ 1 seq) fn-cat$c)))
 
-(defun fn-cat$c-withdraw (target by fn-cat$c)
+(defun fn-cat$c-withdraw-base (target by fn-cat$c)
   (declare (xargs :stobjs fn-cat$c
                   :guard (and (fn-cat$c-wfp fn-cat$c) (natp target) (natp by)
                               (< target (fn-cat$c-count fn-cat$c)))))
@@ -662,13 +681,149 @@
   (update-fn-cat$c-rowsi
    seq (fn-held-with-context (fn-cat$c-rowsi seq fn-cat$c) context) fn-cat$c))
 
-(defun fn-cat$c-clear (fn-cat$c)
+(defun fn-cat$c-clear-base (fn-cat$c)
   (declare (xargs :stobjs fn-cat$c))
   (let* ((fn-cat$c (update-fn-cat$c-count 0 fn-cat$c))
          (fn-cat$c (update-fn-cat$c-octets 0 fn-cat$c))
          (fn-cat$c (fn-cat$c-msgids-clear fn-cat$c))
          (fn-cat$c (fn-cat$c-numbers-clear fn-cat$c)))
     (fn-cat$c-groups-clear fn-cat$c)))
+
+;; -----------------------------------------------------------------------------
+;; The live summary's cells (sca-join-5).  Readers: one probe each.
+
+(defun fn-cat$c-group-live-count (group fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c))
+  (let ((e (fn-cat$c-lives-get group fn-cat$c)))
+    (if (consp e) (nfix (car e)) 0)))
+
+(defun fn-cat$c-group-live-low (group fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c))
+  (let ((e (fn-cat$c-lives-get group fn-cat$c)))
+    (if (and (consp e) (consp (cdr e))) (nfix (car (cdr e))) 0)))
+
+(defun fn-cat$c-group-live-high (group fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c))
+  (let ((e (fn-cat$c-lives-get group fn-cat$c)))
+    (if (and (consp e) (consp (cdr e))) (nfix (cdr (cdr e))) 0)))
+
+(defun fn-cat$c-horizon (fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c))
+  (fn-cat$c-hz fn-cat$c))
+
+;; Number K of GROUP is live in the tables: the number table's row, read.
+(defun fn-cat$c-live-at-p (group k fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
+  (let ((s (fn-cat$c-numbers-get (cons group k) fn-cat$c)))
+    (and (natp s) (< s (fn-cat$c-count fn-cat$c))
+         (fn-cat-live-rowp group k (fn-cat$c-rowsi s fn-cat$c)))))
+
+;; The scans a withdrawal of a group's low or high number runs: over
+;; numbers, one probe each.  Their cost is amortized: a group's low only
+;; rises (a commit's number is above every other), so the upward scans of a
+;; group together cross each of its numbers once; the downward scan crosses
+;; the withdrawn numbers at the group's top.
+(defun fn-cat$c-scan-up (group k top fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c :guard (and (fn-cat$c-wfp fn-cat$c) (natp k) (natp top))
+                  :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
+  (if (and (natp k) (natp top) (<= k top))
+      (if (fn-cat$c-live-at-p group k fn-cat$c)
+          k
+        (fn-cat$c-scan-up group (+ 1 k) top fn-cat$c))
+    0))
+
+(defun fn-cat$c-scan-down (group k fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c :guard (and (fn-cat$c-wfp fn-cat$c) (natp k))))
+  (if (posp k)
+      (if (fn-cat$c-live-at-p group k fn-cat$c)
+          k
+        (fn-cat$c-scan-down group (- k 1) fn-cat$c))
+    0))
+
+;; The commit's entries, read before any write: per group, the entry after
+;; a row numbered N (the group's next) joins it, live or not.
+(defun fn-cat$c-live-plan (groups livep fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c))
+  (if (consp groups)
+      (let* ((g (car groups))
+             (ge (fn-cat$c-groups-get g fn-cat$c))
+             (n (if (consp ge) (nfix (cdr ge)) 1))
+             (count (fn-cat$c-group-live-count g fn-cat$c))
+             (low (fn-cat$c-group-live-low g fn-cat$c))
+             (high (fn-cat$c-group-live-high g fn-cat$c)))
+        (cons (cons g (if (and livep (posp n) (<= n *fn-nntp-max-article-number*))
+                          (cons (+ 1 count) (cons (if (equal low 0) n low) n))
+                        (cons count (cons low high))))
+              (fn-cat$c-live-plan (cdr groups) livep fn-cat$c)))
+    nil))
+
+(defun fn-cat$c-live-apply (plan fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c))
+  (if (consp plan)
+      (let ((fn-cat$c (fn-cat$c-lives-put (fn-cbor-ag-car (car plan))
+                                          (fn-cbor-ag-cdr (car plan)) fn-cat$c)))
+        (fn-cat$c-live-apply (cdr plan) fn-cat$c))
+    fn-cat$c))
+
+(defun fn-cat$c-commit (h fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
+  (let* ((lplan (fn-cat$c-live-plan (fn-record-groups h)
+                                    (and (null (fn-held-withdrawn h))
+                                         (fn-scat-msgid-idp (fn-record-msgid h)))
+                                    fn-cat$c))
+         (w (fn-held-withdrawn h))
+         (hz (max (fn-cat$c-hz fn-cat$c) (if (consp w) (+ 1 (nfix (car w))) 0)))
+         (fn-cat$c (fn-cat$c-commit-base h fn-cat$c))
+         (fn-cat$c (fn-cat$c-live-apply lplan fn-cat$c)))
+    (update-fn-cat$c-hz hz fn-cat$c)))
+
+;; A withdrawal's entry for GROUP, whose live number K stops being live.
+(defun fn-cat$c-drop-entry (group k fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c :guard (and (fn-cat$c-wfp fn-cat$c) (posp k))))
+  (let* ((ge (fn-cat$c-groups-get group fn-cat$c))
+         (top (nfix (- (if (consp ge) (nfix (cdr ge)) 1) 1)))
+         (count (fn-cat$c-group-live-count group fn-cat$c))
+         (low (fn-cat$c-group-live-low group fn-cat$c))
+         (high (fn-cat$c-group-live-high group fn-cat$c)))
+    (cons (nfix (- count 1))
+          (cons (if (equal low k) (fn-cat$c-scan-up group (+ 1 k) top fn-cat$c) low)
+                (if (equal high k) (fn-cat$c-scan-down group (- k 1) fn-cat$c) high)))))
+
+;; The withdrawal's entries, read before any write: for each binding
+;; (g . k) of the row whose number the table answers with the row and which
+;; is live; a repeated binding repeats the same entry.
+(defun fn-cat$c-drop-plan (pairs target row fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
+  (if (consp pairs)
+      (let* ((p (car pairs))
+             (g (fn-cbor-ag-car p))
+             (k (fn-cbor-ag-cdr p)))
+        (if (and (consp p)
+                 (equal (fn-cat$c-numbers-get (cons g k) fn-cat$c) target)
+                 (fn-cat-live-rowp g k row))
+            (cons (cons g (fn-cat$c-drop-entry g k fn-cat$c))
+                  (fn-cat$c-drop-plan (cdr pairs) target row fn-cat$c))
+          (fn-cat$c-drop-plan (cdr pairs) target row fn-cat$c)))
+    nil))
+
+(defun fn-cat$c-withdraw (target by fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c
+                  :guard (and (fn-cat$c-wfp fn-cat$c) (natp target) (natp by)
+                              (< target (fn-cat$c-count fn-cat$c)))))
+  (let ((row (fn-cat$c-rowsi target fn-cat$c)))
+    (if (null (fn-held-withdrawn row))
+        (let* ((dplan (fn-cat$c-drop-plan (fn-held-numbers row) target row fn-cat$c))
+               (hz (max (fn-cat$c-hz fn-cat$c) (+ 1 (fn-cat$c-count fn-cat$c))))
+               (fn-cat$c (fn-cat$c-withdraw-base target by fn-cat$c))
+               (fn-cat$c (fn-cat$c-live-apply dplan fn-cat$c)))
+          (update-fn-cat$c-hz hz fn-cat$c))
+      fn-cat$c)))
+
+(defun fn-cat$c-clear (fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c))
+  (let* ((fn-cat$c (fn-cat$c-clear-base fn-cat$c))
+         (fn-cat$c (fn-cat$c-lives-clear fn-cat$c)))
+    (update-fn-cat$c-hz 0 fn-cat$c)))
 
 ; -----------------------------------------------------------------------------
 ; The abstraction relation.
@@ -753,7 +908,7 @@
 ; below the count are C; each table's bound keys look up to their columns
 ; and every row's keys are bound; the octets cell is the sum.  Stated over
 ; the stobj's logical fields (defun-nx: nothing executes it).
-(defun-nx fn-cat$corr (fn-cat$c fn-cat$a)
+(defun-nx fn-cat$corr-base (fn-cat$c fn-cat$a)
   (and (fn-cat$cp fn-cat$c)
        (fn-cat-rowsp fn-cat$a)
        (equal (nth 1 fn-cat$c) (len fn-cat$a))
@@ -766,6 +921,33 @@
        (fn-cat-groups-okp (nth 4 fn-cat$c) (nth 4 fn-cat$c) fn-cat$a)
        (fn-cat-groups-coverp fn-cat$a (nth 4 fn-cat$c))
        (equal (nth 5 fn-cat$c) (fn-cat-octets-of fn-cat$a))))
+
+; The live summary of a group as the logical side states it, and the live
+; table's conjunct: every bound group's entry is its summary; every row's
+; groups are bound (so an unbound group has no rows and the summary 0 0 0);
+; the horizon cell is the rows' horizon.
+(defun fn-cat-live-entry (g c)
+  (declare (xargs :guard t :verify-guards nil))
+  (cons (fn-cat-live-count-from g 1 (fn-cat-group-high g c) c)
+        (cons (fn-cat-live-first g 1 (fn-cat-group-high g c) c)
+              (fn-cat-live-last g (fn-cat-group-high g c) c))))
+
+(defun fn-cat-live-okp (keys tab c)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp keys)
+      (and (equal (cdr (hons-assoc-equal (car (car keys)) tab))
+                  (fn-cat-live-entry (car (car keys)) c))
+           (fn-cat-live-okp (cdr keys) tab c))
+    t))
+
+(defun-nx fn-cat$corr-live (fn-cat$c fn-cat$a)
+  (and (fn-cat-live-okp (nth 6 fn-cat$c) (nth 6 fn-cat$c) fn-cat$a)
+       (fn-cat-groups-coverp fn-cat$a (nth 6 fn-cat$c))
+       (equal (nth 7 fn-cat$c) (fn-cat-horizon-of fn-cat$a))))
+
+(defun-nx fn-cat$corr (fn-cat$c fn-cat$a)
+  (and (fn-cat$corr-base fn-cat$c fn-cat$a)
+       (fn-cat$corr-live fn-cat$c fn-cat$a)))
 
 ; -----------------------------------------------------------------------------
 ; The columns over an appended row, and over a row replaced with its keys
@@ -918,6 +1100,279 @@
               (+ 1 (fn-cat-group-high g c))
             nil))
    :hints (("Goal" :in-theory (enable fn-held-number-in)))))
+
+; -----------------------------------------------------------------------------
+; The live summary over the list: the committed row and a withdrawal.
+
+(local
+ (defthm fn-ctg-withdrawn-of-assign
+   (equal (fn-held-withdrawn (fn-cat-assign h c)) (fn-held-withdrawn h))
+   :hints (("Goal" :in-theory (enable fn-cat-assign fn-held-with-numbers)))))
+
+(local
+ (defthm fn-ctg-nth-append-one-below
+   (implies (and (natp i) (< i (len c)))
+            (equal (nth i (append c (list h))) (nth i c)))))
+
+(local
+ (defthm fn-ctg-nth-append-one-at
+   (implies (equal i (len c))
+            (equal (nth i (append c (list h))) h))))
+
+(local
+ (defthm fn-ctg-len-append-one (equal (len (append c (list h))) (+ 1 (len c)))))
+
+(local
+ (defthm fn-ctg-number-seq-natp
+   (implies (natp i)
+            (or (equal (fn-cat-number-seq g n c i) nil)
+                (natp (fn-cat-number-seq g n c i))))
+   :rule-classes :type-prescription))
+
+(local
+ (defthm fn-ctg-number-seq-bounds
+   (implies (and (natp i) (fn-cat-number-seq g n c i))
+            (and (<= i (fn-cat-number-seq g n c i))
+                 (< (fn-cat-number-seq g n c i) (+ i (len c)))))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-ctg-number-seq-names-number
+   (implies (and (natp i) (fn-cat-number-seq g n c i))
+            (equal (fn-held-number-in g (nth (- (fn-cat-number-seq g n c i) i) c)) n))
+   :hints (("Goal" :induct (fn-cat-number-seq g n c i)))))
+
+(local
+ (defthm fn-ctg-number-seq-names-number-0
+   (implies (fn-cat-number-seq g n c 0)
+            (equal (fn-held-number-in g (nth (fn-cat-number-seq g n c 0) c)) n))
+   :hints (("Goal" :use ((:instance fn-ctg-number-seq-names-number (i 0)))))))
+
+(local
+ (defthm fn-ctg-live-append-other
+   (implies (and (fn-cat-rowsp c)
+                 (not (and (member-equal g (fn-record-groups h))
+                           (equal k (+ 1 (fn-cat-group-high g c))))))
+            (equal (fn-cat-live-numberp g k (append c (list (fn-cat-assign h c))))
+                   (fn-cat-live-numberp g k c)))
+   :hints (("Goal" :in-theory (e/d (fn-cat-live-numberp)
+                                   (fn-cat-assign fn-cat-live-rowp fn-cat-rowsp fn-held-number-in
+                                    nth fn-cat-number-seq len))))))
+
+(local
+ (defthm fn-ctg-live-append-new
+   (implies (and (fn-cat-rowsp c) (member-equal g (fn-record-groups h))
+                 (equal n (+ 1 (fn-cat-group-high g c))))
+            (equal (fn-cat-live-numberp g n (append c (list (fn-cat-assign h c))))
+                   (and (null (fn-held-withdrawn h))
+                        (<= n *fn-nntp-max-article-number*)
+                        (fn-scat-msgid-idp (fn-record-msgid h)))))
+   :hints (("Goal" :in-theory (e/d (fn-cat-live-numberp fn-cat-live-rowp)
+                                   (fn-cat-assign fn-cat-rowsp fn-held-number-in fn-scat-msgid-idp
+                                    nth fn-cat-number-seq len fn-cat-group-high))))))
+
+(local
+ (defthm fn-ctg-live-count-append
+   (implies (and (fn-cat-rowsp c)
+                 (or (not (member-equal g (fn-record-groups h)))
+                     (<= top (fn-cat-group-high g c))))
+            (equal (fn-cat-live-count-from g k top (append c (list (fn-cat-assign h c))))
+                   (fn-cat-live-count-from g k top c)))
+   :hints (("Goal" :induct (fn-cat-live-count-from g k top c)
+            :in-theory (disable fn-cat-assign fn-cat-live-numberp)))))
+
+(local
+ (defthm fn-ctg-live-first-append
+   (implies (and (fn-cat-rowsp c)
+                 (or (not (member-equal g (fn-record-groups h)))
+                     (<= top (fn-cat-group-high g c))))
+            (equal (fn-cat-live-first g k top (append c (list (fn-cat-assign h c))))
+                   (fn-cat-live-first g k top c)))
+   :hints (("Goal" :induct (fn-cat-live-first g k top c)
+            :in-theory (disable fn-cat-assign fn-cat-live-numberp)))))
+
+(local
+ (defthm fn-ctg-live-last-append
+   (implies (and (fn-cat-rowsp c)
+                 (or (not (member-equal g (fn-record-groups h)))
+                     (<= k (fn-cat-group-high g c))))
+            (equal (fn-cat-live-last g k (append c (list (fn-cat-assign h c))))
+                   (fn-cat-live-last g k c)))
+   :hints (("Goal" :induct (fn-cat-live-last g k c)
+            :in-theory (disable fn-cat-assign fn-cat-live-numberp)))))
+
+; One more number at the top of the range.
+(local
+ (defthm fn-ctg-live-empty-range
+   (implies (< top k)
+            (and (equal (fn-cat-live-count-from g k top c) 0)
+                 (equal (fn-cat-live-first g k top c) 0)))))
+
+(local
+ (defthm fn-ctg-live-numberp-posp
+   (implies (fn-cat-live-numberp g k c) (posp k))
+   :rule-classes :forward-chaining))
+
+(local
+ (defthm fn-ctg-live-numberp-0
+   (not (fn-cat-live-numberp g 0 c))))
+
+(local
+ (defthm fn-ctg-live-count-top
+   (implies (and (natp k) (natp top) (<= k (+ 1 top)))
+            (equal (fn-cat-live-count-from g k (+ 1 top) c)
+                   (+ (fn-cat-live-count-from g k top c)
+                      (if (fn-cat-live-numberp g (+ 1 top) c) 1 0))))
+   :hints (("Goal" :induct (fn-cat-live-count-from g k top c)
+            :in-theory (disable fn-cat-live-numberp)))))
+
+(local
+ (defthm fn-ctg-live-first-top
+   (implies (and (natp k) (natp top) (<= k (+ 1 top)))
+            (equal (fn-cat-live-first g k (+ 1 top) c)
+                   (if (equal (fn-cat-live-first g k top c) 0)
+                       (if (fn-cat-live-numberp g (+ 1 top) c) (+ 1 top) 0)
+                     (fn-cat-live-first g k top c))))
+   :hints (("Goal" :induct (fn-cat-live-first g k top c)
+            :in-theory (disable fn-cat-live-numberp)))))
+
+; The first live number is 0 or at least K and live; the last is at most K
+; and live.
+(local
+ (defthm fn-ctg-live-first-bounds
+   (implies (and (natp k) (not (equal (fn-cat-live-first g k top c) 0)))
+            (and (<= k (fn-cat-live-first g k top c))
+                 (<= (fn-cat-live-first g k top c) top)
+                 (fn-cat-live-numberp g (fn-cat-live-first g k top c) c)))
+   :hints (("Goal" :induct (fn-cat-live-first g k top c)
+            :in-theory (disable fn-cat-live-numberp)))))
+
+(local
+ (defthm fn-ctg-live-last-bounds
+   (implies (not (equal (fn-cat-live-last g k c) 0))
+            (and (<= (fn-cat-live-last g k c) k)
+                 (fn-cat-live-numberp g (fn-cat-live-last g k c) c)))
+   :hints (("Goal" :induct (fn-cat-live-last g k c)
+            :in-theory (disable fn-cat-live-numberp)))))
+
+(local
+ (defthm fn-ctg-live-types
+   (and (natp (fn-cat-live-count-from g k top c))
+        (natp (fn-cat-live-first g k top c))
+        (natp (fn-cat-live-last g k c)))
+   :rule-classes (:rewrite
+                  (:type-prescription :corollary (natp (fn-cat-live-count-from g k top c)))
+                  (:type-prescription :corollary (natp (fn-cat-live-first g k top c)))
+                  (:type-prescription :corollary (natp (fn-cat-live-last g k c))))))
+
+; A withdrawal: the one number of each group the withdrawn row is the
+; column's answer for stops being live.
+(defun fn-ctg-kstar (g c r)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((k (fn-held-number-in g (nth r c))))
+    (if (and (posp k) (equal (fn-cat-number-seq g k c 0) r)) k 0)))
+
+(local
+ (defthm fn-ctg-live-rowp-of-withdrawn
+   (not (fn-cat-live-rowp g k (fn-held-with-withdrawn h (cons v by))))
+   :hints (("Goal" :in-theory (enable fn-held-with-withdrawn)))))
+
+(local
+ (defthm fn-ctg-mark-withdrawn-is-update
+   (implies (and (< r (len c)) (null (fn-held-withdrawn (nth r c))))
+            (equal (fn-cat-mark-withdrawn r v by c)
+                   (update-nth r (fn-held-with-withdrawn (nth r c) (cons v by)) c)))
+   :hints (("Goal" :in-theory (enable fn-cat-mark-withdrawn)))))
+
+(local
+ (defthm fn-ctg-number-seq-withdrawn
+   (implies (and (natp r) (< r (len c)))
+            (equal (fn-cat-number-seq g n (update-nth r (fn-held-with-withdrawn (nth r c) w) c) i)
+                   (fn-cat-number-seq g n c i)))
+   :hints (("Goal" :in-theory (disable fn-cat-number-seq fn-held-with-withdrawn)
+            :use ((:instance fn-ctg-number-seq-update-nth
+                             (k r) (h (fn-held-with-withdrawn (nth r c) w))))))))
+
+(local
+ (defthm fn-ctg-live-rowp-number
+   (implies (fn-cat-live-rowp g k h)
+            (and (posp k) (equal (fn-held-number-in g h) k)))
+   :rule-classes :forward-chaining))
+
+(local
+ (defthm fn-ctg-live-withdrawn
+   (implies (and (natp r) (< r (len c)) (null (fn-held-withdrawn (nth r c))))
+            (equal (fn-cat-live-numberp g j (fn-cat-mark-withdrawn r v by c))
+                   (and (fn-cat-live-numberp g j c)
+                        (not (equal j (fn-ctg-kstar g c r))))))
+   :hints (("Goal" :in-theory (e/d (fn-cat-live-numberp fn-ctg-kstar)
+                                   (fn-held-with-withdrawn fn-cat-live-rowp fn-cat-number-seq
+                                    fn-held-number-in fn-cat-mark-withdrawn nth update-nth))
+            :cases ((equal (fn-cat-number-seq g j c 0) r))))))
+
+(local
+ (defthm fn-ctg-high-withdrawn
+   (equal (fn-cat-group-high g (fn-cat-mark-withdrawn r v by c))
+          (fn-cat-group-high g c))
+   :hints (("Goal" :in-theory (enable fn-cat-mark-withdrawn)))))
+
+(local
+ (defthm fn-ctg-live-count-withdrawn
+   (implies (and (natp r) (< r (len c)) (null (fn-held-withdrawn (nth r c))) (natp top))
+            (equal (fn-cat-live-count-from g j top (fn-cat-mark-withdrawn r v by c))
+                   (- (fn-cat-live-count-from g j top c)
+                      (if (and (natp j) (<= j (fn-ctg-kstar g c r))
+                               (<= (fn-ctg-kstar g c r) top)
+                               (fn-cat-live-numberp g (fn-ctg-kstar g c r) c))
+                          1 0))))
+   :hints (("Goal" :induct (fn-cat-live-count-from g j top c)
+            :in-theory (disable fn-cat-live-numberp fn-ctg-kstar fn-cat-mark-withdrawn fn-ctg-mark-withdrawn-is-update)))))
+
+(local
+ (defthm fn-ctg-live-first-withdrawn
+   (implies (and (natp r) (< r (len c)) (null (fn-held-withdrawn (nth r c))) (natp j) (natp top))
+            (equal (fn-cat-live-first g j top (fn-cat-mark-withdrawn r v by c))
+                   (if (and (not (equal (fn-ctg-kstar g c r) 0))
+                            (equal (fn-cat-live-first g j top c) (fn-ctg-kstar g c r)))
+                       (fn-cat-live-first g (+ 1 (fn-ctg-kstar g c r)) top c)
+                     (fn-cat-live-first g j top c))))
+   :hints (("Goal" :induct (fn-cat-live-count-from g j top c)
+            :expand ((fn-cat-live-first g j top (fn-cat-mark-withdrawn r v by c))
+                     (fn-cat-live-first g j top c))
+            :in-theory (disable fn-cat-live-numberp fn-ctg-kstar fn-cat-mark-withdrawn fn-ctg-mark-withdrawn-is-update)))))
+
+(local
+ (defun fn-ctg-down-ind (j)
+   (declare (xargs :guard t))
+   (if (posp j) (fn-ctg-down-ind (- j 1)) t)))
+
+(local
+ (defthm fn-ctg-live-last-withdrawn
+   (implies (and (natp r) (< r (len c)) (null (fn-held-withdrawn (nth r c))))
+            (equal (fn-cat-live-last g j (fn-cat-mark-withdrawn r v by c))
+                   (if (and (not (equal (fn-ctg-kstar g c r) 0))
+                            (equal (fn-cat-live-last g j c) (fn-ctg-kstar g c r)))
+                       (fn-cat-live-last g (- (fn-ctg-kstar g c r) 1) c)
+                     (fn-cat-live-last g j c))))
+   :hints (("Goal" :induct (fn-ctg-down-ind j)
+            :expand ((fn-cat-live-last g j (fn-cat-mark-withdrawn r v by c))
+                     (fn-cat-live-last g j c))
+            :in-theory (disable fn-cat-live-numberp fn-ctg-kstar fn-cat-mark-withdrawn fn-ctg-mark-withdrawn-is-update)))))
+
+; The horizon.
+(local
+ (defthm fn-ctg-horizon-append
+   (equal (fn-cat-horizon-of (append c (list x)))
+          (max (fn-cat-horizon-of c)
+               (let ((w (fn-held-withdrawn x))) (if (consp w) (+ 1 (nfix (car w))) 0))))))
+
+(local
+ (defthm fn-ctg-horizon-update-nth
+   (implies (and (natp r) (< r (len c)) (not (consp (fn-held-withdrawn (nth r c)))))
+            (equal (fn-cat-horizon-of (update-nth r x c))
+                   (max (fn-cat-horizon-of c)
+                        (let ((w (fn-held-withdrawn x))) (if (consp w) (+ 1 (nfix (car w))) 0)))))
+   :hints (("Goal" :induct (update-nth r x c) :in-theory (enable update-nth)))))
 
 ; -----------------------------------------------------------------------------
 ; The tables after the commit's writes.  A put conses the pair in front
@@ -1286,7 +1741,10 @@
      fn-cat$c-groups-get fn-cat$c-groups-put fn-cat$c-groups-clear
      update-nth-array fn-cat$c-wfp fn-cat$c-at fn-cat$c-msgid-seqs
      fn-cat$c-group-number fn-cat$c-group-next fn-cat$c-group-count
-     fn-cat$c-total-octets fn-cat$c-visible-at)))
+     fn-cat$c-total-octets fn-cat$c-visible-at
+     fn-cat$c-lives-get fn-cat$c-lives-put fn-cat$c-lives-clear
+     fn-cat$c-hz update-fn-cat$c-hz fn-cat$c-group-live-count
+     fn-cat$c-group-live-low fn-cat$c-group-live-high fn-cat$c-horizon)))
 
 (defthm create-fn-cat{correspondence}
   (fn-cat$corr (create-fn-cat$c) (create-fn-cat$a))
@@ -1472,12 +1930,16 @@
 (local
  (defthm fn-ctg-groups-cover-rowp-monotone
    (implies (fn-cat-groups-cover-rowp ns tab)
-            (fn-cat-groups-cover-rowp ns (fn-cat-gputs plan tab)))))
+            (fn-cat-groups-cover-rowp ns (fn-cat-gputs plan tab)))
+   :hints (("Goal" :induct (fn-cat-groups-cover-rowp ns tab)
+            :in-theory (disable fn-cat-gputs)))))
 
 (local
  (defthm fn-ctg-groups-coverp-monotone
    (implies (fn-cat-groups-coverp c tab)
-            (fn-cat-groups-coverp c (fn-cat-gputs plan tab)))))
+            (fn-cat-groups-coverp c (fn-cat-gputs plan tab)))
+   :hints (("Goal" :induct (fn-cat-groups-coverp c tab)
+            :in-theory (disable fn-cat-gputs fn-cat-groups-cover-rowp)))))
 
 (local
  (defthm fn-ctg-groups-coverp-append
@@ -1541,32 +2003,32 @@
    (implies (fn-cat$cp fn-cat$c)
             (let ((plan (fn-cat$c-plan (fn-record-groups h) fn-cat$c))
                   (count (nth 1 fn-cat$c)))
-              (and (equal (nth 0 (fn-cat$c-commit h fn-cat$c))
+              (and (equal (nth 0 (fn-cat$c-commit-base h fn-cat$c))
                           (update-nth count
                                       (fn-held-with-numbers h (fn-cat-plan-numbers plan))
                                       (if (< count (len (nth 0 fn-cat$c)))
                                           (nth 0 fn-cat$c)
                                         (resize-list (nth 0 fn-cat$c) (+ 1 (* 2 count)) nil))))
-                   (equal (nth 1 (fn-cat$c-commit h fn-cat$c)) (+ 1 count))
-                   (equal (nth 2 (fn-cat$c-commit h fn-cat$c))
+                   (equal (nth 1 (fn-cat$c-commit-base h fn-cat$c)) (+ 1 count))
+                   (equal (nth 2 (fn-cat$c-commit-base h fn-cat$c))
                           (cons (cons (fn-record-msgid h)
                                       (fn-cat-snoc (cdr (hons-assoc-equal (fn-record-msgid h)
                                                                           (nth 2 fn-cat$c)))
                                                    count))
                                 (nth 2 fn-cat$c)))
-                   (equal (nth 3 (fn-cat$c-commit h fn-cat$c))
+                   (equal (nth 3 (fn-cat$c-commit-base h fn-cat$c))
                           (fn-cat-nputs plan count (nth 3 fn-cat$c)))
-                   (equal (nth 4 (fn-cat$c-commit h fn-cat$c))
+                   (equal (nth 4 (fn-cat$c-commit-base h fn-cat$c))
                           (fn-cat-gputs plan (nth 4 fn-cat$c)))
-                   (equal (nth 5 (fn-cat$c-commit h fn-cat$c))
+                   (equal (nth 5 (fn-cat$c-commit-base h fn-cat$c))
                           (+ (nth 5 fn-cat$c) (nfix (fn-hf-octets (fn-held-facts h))))))))
-   :hints (("Goal" :in-theory (e/d (fn-ctg-open fn-cat$c-commit) (nth update-nth))))))
+   :hints (("Goal" :in-theory (e/d (fn-ctg-open fn-cat$c-commit-base) (nth update-nth))))))
 
 (local
  (defthm fn-ctg-cp-of-commit
    (implies (and (fn-cat$cp fn-cat$c) (fn-cat$c-wfp fn-cat$c))
-            (fn-cat$cp (fn-cat$c-commit h fn-cat$c)))
-   :hints (("Goal" :in-theory (enable fn-cat$c-commit fn-cat$c-wfp)))))
+            (fn-cat$cp (fn-cat$c-commit-base h fn-cat$c)))
+   :hints (("Goal" :in-theory (enable fn-cat$c-commit-base fn-cat$c-wfp)))))
 
 (local
  (defthm fn-ctg-len-of-append
@@ -1582,7 +2044,7 @@
 
 (local
  (defthm fn-ctg-wfp-from-corr
-   (implies (fn-cat$corr fn-cat$c fn-cat)
+   (implies (fn-cat$corr-base fn-cat$c fn-cat)
             (fn-cat$c-wfp fn-cat$c))
    :hints (("Goal" :in-theory (enable fn-ctg-open)))))
 
@@ -1602,35 +2064,35 @@
                                      ns (fn-held-withdrawn h))))
    :hints (("Goal" :in-theory (enable fn-cat-rowp fn-record-internals fn-held-internals)))))
 
-(defthm fn-cat-commit{correspondence}
-  (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-held-p h) (fn-cat$ap fn-cat))
-           (fn-cat$corr (fn-cat$c-commit h fn-cat$c) (fn-cat$a-commit h fn-cat)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-cat-assign)
-                                  (fn-cat$c-commit fn-cat$c-plan fn-cat$c-groups-get resize-list))
-           :do-not-induct t
-           :use ((:instance fn-ctg-commit-numbers-new-keys
-                            (groups (fn-record-groups h)) (tab2 (nth 3 fn-cat$c))
-                            (tab (nth 3 fn-cat$c)) (c fn-cat))
-                 (:instance fn-ctg-numbers-okp-old-keys
-                            (keys (nth 3 fn-cat$c)) (tab (nth 3 fn-cat$c)) (c fn-cat))
-                 (:instance fn-ctg-commit-groups-okp-new-keys
-                            (groups (fn-record-groups h)) (tab2 (nth 4 fn-cat$c)) (c fn-cat))
-                 (:instance fn-ctg-commit-groups-okp-keys
-                            (keys (nth 4 fn-cat$c)) (c fn-cat))
-                 (:instance fn-ctg-commit-numbers-coverp (tab (nth 3 fn-cat$c)) (c fn-cat))
-                 (:instance fn-ctg-commit-groups-coverp (c fn-cat))
-                 (:instance fn-ctg-msgids-okp-of-commit
-                            (keys (nth 2 fn-cat$c)) (tab (nth 2 fn-cat$c)) (c fn-cat)
-                            (m0 (fn-record-msgid h))
-                            (v (append (fn-cat-seqs-for (fn-record-msgid h) fn-cat 0)
-                                       (list (len fn-cat)))))
-                 (:instance fn-ctg-rows-corr-extend
-                            (n (len fn-cat)) (c fn-cat)
-                            (rows (if (< (len fn-cat) (len (nth 0 fn-cat$c)))
-                                      (nth 0 fn-cat$c)
-                                    (resize-list (nth 0 fn-cat$c) (+ 1 (* 2 (len fn-cat))) nil)))
-                            (h (fn-cat-assign h fn-cat)))))))
+(local
+ (defthm fn-ctg-commit-base-corr
+   (implies (and (fn-cat$corr-base fn-cat$c fn-cat) (fn-held-p h) (fn-cat$ap fn-cat))
+            (fn-cat$corr-base (fn-cat$c-commit-base h fn-cat$c) (fn-cat$a-commit h fn-cat)))
+   :hints (("Goal" :in-theory (e/d (fn-cat-assign)
+                                   (fn-cat$c-commit-base fn-cat$c-plan fn-cat$c-groups-get resize-list))
+            :do-not-induct t
+            :use ((:instance fn-ctg-commit-numbers-new-keys
+                             (groups (fn-record-groups h)) (tab2 (nth 3 fn-cat$c))
+                             (tab (nth 3 fn-cat$c)) (c fn-cat))
+                  (:instance fn-ctg-numbers-okp-old-keys
+                             (keys (nth 3 fn-cat$c)) (tab (nth 3 fn-cat$c)) (c fn-cat))
+                  (:instance fn-ctg-commit-groups-okp-new-keys
+                             (groups (fn-record-groups h)) (tab2 (nth 4 fn-cat$c)) (c fn-cat))
+                  (:instance fn-ctg-commit-groups-okp-keys
+                             (keys (nth 4 fn-cat$c)) (c fn-cat))
+                  (:instance fn-ctg-commit-numbers-coverp (tab (nth 3 fn-cat$c)) (c fn-cat))
+                  (:instance fn-ctg-commit-groups-coverp (c fn-cat))
+                  (:instance fn-ctg-msgids-okp-of-commit
+                             (keys (nth 2 fn-cat$c)) (tab (nth 2 fn-cat$c)) (c fn-cat)
+                             (m0 (fn-record-msgid h))
+                             (v (append (fn-cat-seqs-for (fn-record-msgid h) fn-cat 0)
+                                        (list (len fn-cat)))))
+                  (:instance fn-ctg-rows-corr-extend
+                             (n (len fn-cat)) (c fn-cat)
+                             (rows (if (< (len fn-cat) (len (nth 0 fn-cat$c)))
+                                       (nth 0 fn-cat$c)
+                                     (resize-list (nth 0 fn-cat$c) (+ 1 (* 2 (len fn-cat))) nil)))
+                             (h (fn-cat-assign h fn-cat))))))))
 
 (defthm fn-cat-commit{guard-thm}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-held-p h) (fn-cat$ap fn-cat))
@@ -1684,34 +2146,34 @@
  (defthm fn-ctg-withdraw-fields
    (implies (fn-cat$cp fn-cat$c)
             (let ((row (nth target (nth 0 fn-cat$c))))
-              (and (equal (nth 0 (fn-cat$c-withdraw target by fn-cat$c))
+              (and (equal (nth 0 (fn-cat$c-withdraw-base target by fn-cat$c))
                           (if (null (fn-held-withdrawn row))
                               (update-nth target
                                           (fn-held-with-withdrawn row (cons (nth 1 fn-cat$c) by))
                                           (nth 0 fn-cat$c))
                             (nth 0 fn-cat$c)))
-                   (equal (nth 1 (fn-cat$c-withdraw target by fn-cat$c)) (nth 1 fn-cat$c))
-                   (equal (nth 2 (fn-cat$c-withdraw target by fn-cat$c)) (nth 2 fn-cat$c))
-                   (equal (nth 3 (fn-cat$c-withdraw target by fn-cat$c)) (nth 3 fn-cat$c))
-                   (equal (nth 4 (fn-cat$c-withdraw target by fn-cat$c)) (nth 4 fn-cat$c))
-                   (equal (nth 5 (fn-cat$c-withdraw target by fn-cat$c)) (nth 5 fn-cat$c)))))
-   :hints (("Goal" :in-theory (e/d (fn-ctg-open fn-cat$c-withdraw) (nth update-nth))))))
+                   (equal (nth 1 (fn-cat$c-withdraw-base target by fn-cat$c)) (nth 1 fn-cat$c))
+                   (equal (nth 2 (fn-cat$c-withdraw-base target by fn-cat$c)) (nth 2 fn-cat$c))
+                   (equal (nth 3 (fn-cat$c-withdraw-base target by fn-cat$c)) (nth 3 fn-cat$c))
+                   (equal (nth 4 (fn-cat$c-withdraw-base target by fn-cat$c)) (nth 4 fn-cat$c))
+                   (equal (nth 5 (fn-cat$c-withdraw-base target by fn-cat$c)) (nth 5 fn-cat$c)))))
+   :hints (("Goal" :in-theory (e/d (fn-ctg-open fn-cat$c-withdraw-base) (nth update-nth))))))
 
 (local
  (defthm fn-ctg-cp-of-withdraw
    (implies (and (fn-cat$cp fn-cat$c) (natp target) (< target (len (nth 0 fn-cat$c))))
-            (fn-cat$cp (fn-cat$c-withdraw target by fn-cat$c)))
-   :hints (("Goal" :in-theory (enable fn-cat$c-withdraw fn-cat$c-rows-length)))))
+            (fn-cat$cp (fn-cat$c-withdraw-base target by fn-cat$c)))
+   :hints (("Goal" :in-theory (enable fn-cat$c-withdraw-base fn-cat$c-rows-length)))))
 
-(defthm fn-cat-withdraw{correspondence}
-  (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp target) (< target (fn-cat$a-count fn-cat))
-                (natp by) (fn-cat$ap fn-cat))
-           (fn-cat$corr (fn-cat$c-withdraw target by fn-cat$c)
-                        (fn-cat$a-withdraw target by fn-cat)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-cat-mark-withdrawn)
-                                  (fn-cat$c-withdraw fn-held-with-withdrawn))
-           :do-not-induct t)))
+(local
+ (defthm fn-ctg-withdraw-base-corr
+   (implies (and (fn-cat$corr-base fn-cat$c fn-cat) (natp target) (< target (fn-cat$a-count fn-cat))
+                 (natp by) (fn-cat$ap fn-cat))
+            (fn-cat$corr-base (fn-cat$c-withdraw-base target by fn-cat$c)
+                         (fn-cat$a-withdraw target by fn-cat)))
+   :hints (("Goal" :in-theory (e/d (fn-cat-mark-withdrawn)
+                                   (fn-cat$c-withdraw-base fn-held-with-withdrawn))
+            :do-not-induct t))))
 
 (defthm fn-cat-withdraw{guard-thm}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp target) (< target (fn-cat$a-count fn-cat))
@@ -1748,14 +2210,14 @@
             (fn-cat$cp (fn-cat$c-redecide seq context fn-cat$c)))
    :hints (("Goal" :in-theory (enable fn-cat$c-redecide fn-cat$c-rows-length)))))
 
-(defthm fn-cat-redecide{correspondence}
-  (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat))
-                (fn-hc-p context) (fn-cat$ap fn-cat))
-           (fn-cat$corr (fn-cat$c-redecide seq context fn-cat$c)
-                        (fn-cat$a-redecide seq context fn-cat)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-cat$c-redecide fn-held-with-context)
-           :do-not-induct t)))
+(local
+ (defthm fn-ctg-redecide-base-corr
+   (implies (and (fn-cat$corr-base fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat))
+                 (fn-hc-p context) (fn-cat$ap fn-cat))
+            (fn-cat$corr-base (fn-cat$c-redecide seq context fn-cat$c)
+                         (fn-cat$a-redecide seq context fn-cat)))
+   :hints (("Goal" :in-theory (disable fn-cat$c-redecide fn-held-with-context)
+            :do-not-induct t))))
 
 (defthm fn-cat-redecide{guard-thm}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat))
@@ -1773,29 +2235,873 @@
 (local
  (defthm fn-ctg-cp-of-clear
    (implies (fn-cat$cp fn-cat$c)
-            (fn-cat$cp (fn-cat$c-clear fn-cat$c)))
-   :hints (("Goal" :in-theory (enable fn-cat$c-clear)))))
+            (fn-cat$cp (fn-cat$c-clear-base fn-cat$c)))
+   :hints (("Goal" :in-theory (enable fn-cat$c-clear-base)))))
 
 (local
  (defthm fn-ctg-clear-fields
    (implies (fn-cat$cp fn-cat$c)
-            (and (equal (nth 1 (fn-cat$c-clear fn-cat$c)) 0)
-                 (equal (nth 2 (fn-cat$c-clear fn-cat$c)) nil)
-                 (equal (nth 3 (fn-cat$c-clear fn-cat$c)) nil)
-                 (equal (nth 4 (fn-cat$c-clear fn-cat$c)) nil)
-                 (equal (nth 5 (fn-cat$c-clear fn-cat$c)) 0)))
-   :hints (("Goal" :in-theory (e/d (fn-ctg-open fn-cat$c-clear) (nth update-nth))))))
+            (and (equal (nth 1 (fn-cat$c-clear-base fn-cat$c)) 0)
+                 (equal (nth 2 (fn-cat$c-clear-base fn-cat$c)) nil)
+                 (equal (nth 3 (fn-cat$c-clear-base fn-cat$c)) nil)
+                 (equal (nth 4 (fn-cat$c-clear-base fn-cat$c)) nil)
+                 (equal (nth 5 (fn-cat$c-clear-base fn-cat$c)) 0)))
+   :hints (("Goal" :in-theory (e/d (fn-ctg-open fn-cat$c-clear-base) (nth update-nth))))))
 
-(defthm fn-cat-clear{correspondence}
-  (implies (fn-cat$corr fn-cat$c fn-cat)
-           (fn-cat$corr (fn-cat$c-clear fn-cat$c) (fn-cat$a-clear fn-cat)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-cat$c-clear) :do-not-induct t)))
+(local
+ (defthm fn-ctg-clear-base-corr
+   (implies (fn-cat$corr-base fn-cat$c fn-cat)
+            (fn-cat$corr-base (fn-cat$c-clear-base fn-cat$c) (fn-cat$a-clear fn-cat)))
+   :hints (("Goal" :in-theory (disable fn-cat$c-clear-base) :do-not-induct t))))
 
 (defthm fn-cat-clear{preserved}
   (implies (fn-cat$ap fn-cat)
            (fn-cat$ap (fn-cat$a-clear fn-cat)))
   :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; The live summary's obligations (sca-join-5).  The table and the horizon
+; cell are written after the base tables, from entries read before any write;
+; the base relation reads fields 0 .. 5 only.
+
+(defun fn-ctg-lputs (plan tab)
+  (declare (xargs :guard t))
+  (if (consp plan)
+      (fn-ctg-lputs (cdr plan) (cons (cons (fn-cbor-ag-car (car plan))
+                                           (fn-cbor-ag-cdr (car plan)))
+                                     tab))
+    tab))
+
+(local
+ (defthm fn-ctg-live-apply-fields
+   (and (equal (nth 0 (fn-cat$c-live-apply plan x)) (nth 0 x))
+        (equal (nth 1 (fn-cat$c-live-apply plan x)) (nth 1 x))
+        (equal (nth 2 (fn-cat$c-live-apply plan x)) (nth 2 x))
+        (equal (nth 3 (fn-cat$c-live-apply plan x)) (nth 3 x))
+        (equal (nth 4 (fn-cat$c-live-apply plan x)) (nth 4 x))
+        (equal (nth 5 (fn-cat$c-live-apply plan x)) (nth 5 x))
+        (equal (nth 6 (fn-cat$c-live-apply plan x)) (fn-ctg-lputs plan (nth 6 x)))
+        (equal (nth 7 (fn-cat$c-live-apply plan x)) (nth 7 x)))
+   :hints (("Goal" :in-theory (enable fn-cat$c-live-apply fn-cat$c-lives-put)))))
+
+(local
+ (defthm fn-ctg-cp-of-live-apply
+   (implies (fn-cat$cp x) (fn-cat$cp (fn-cat$c-live-apply plan x)))
+   :hints (("Goal" :in-theory (enable fn-cat$c-live-apply)))))
+
+(local
+ (defthm fn-ctg-update-hz-fields
+   (and (equal (nth 0 (update-fn-cat$c-hz n x)) (nth 0 x))
+        (equal (nth 1 (update-fn-cat$c-hz n x)) (nth 1 x))
+        (equal (nth 2 (update-fn-cat$c-hz n x)) (nth 2 x))
+        (equal (nth 3 (update-fn-cat$c-hz n x)) (nth 3 x))
+        (equal (nth 4 (update-fn-cat$c-hz n x)) (nth 4 x))
+        (equal (nth 5 (update-fn-cat$c-hz n x)) (nth 5 x))
+        (equal (nth 6 (update-fn-cat$c-hz n x)) (nth 6 x))
+        (equal (nth 7 (update-fn-cat$c-hz n x)) n))
+   :hints (("Goal" :in-theory (enable update-fn-cat$c-hz)))))
+
+(local
+ (defthm fn-ctg-lives-clear-fields
+   (and (equal (nth 0 (fn-cat$c-lives-clear x)) (nth 0 x))
+        (equal (nth 1 (fn-cat$c-lives-clear x)) (nth 1 x))
+        (equal (nth 2 (fn-cat$c-lives-clear x)) (nth 2 x))
+        (equal (nth 3 (fn-cat$c-lives-clear x)) (nth 3 x))
+        (equal (nth 4 (fn-cat$c-lives-clear x)) (nth 4 x))
+        (equal (nth 5 (fn-cat$c-lives-clear x)) (nth 5 x))
+        (equal (nth 6 (fn-cat$c-lives-clear x)) nil)
+        (equal (nth 7 (fn-cat$c-lives-clear x)) (nth 7 x)))
+   :hints (("Goal" :in-theory (enable fn-cat$c-lives-clear)))))
+
+(local
+ (defthm fn-ctg-apply-plan-fields-67
+   (and (equal (nth 6 (fn-cat$c-apply-plan plan seq fn-cat$c)) (nth 6 fn-cat$c))
+        (equal (nth 7 (fn-cat$c-apply-plan plan seq fn-cat$c)) (nth 7 fn-cat$c)))
+   :hints (("Goal" :in-theory (enable fn-cat$c-apply-plan fn-cat$c-numbers-put
+                                      fn-cat$c-groups-put)))))
+
+(local
+ (defthm fn-ctg-base-fields-67
+   (implies (fn-cat$cp fn-cat$c)
+            (and (equal (nth 6 (fn-cat$c-commit-base h fn-cat$c)) (nth 6 fn-cat$c))
+                 (equal (nth 7 (fn-cat$c-commit-base h fn-cat$c)) (nth 7 fn-cat$c))
+                 (equal (nth 6 (fn-cat$c-withdraw-base target by fn-cat$c)) (nth 6 fn-cat$c))
+                 (equal (nth 7 (fn-cat$c-withdraw-base target by fn-cat$c)) (nth 7 fn-cat$c))
+                 (equal (nth 6 (fn-cat$c-redecide seq context fn-cat$c)) (nth 6 fn-cat$c))
+                 (equal (nth 7 (fn-cat$c-redecide seq context fn-cat$c)) (nth 7 fn-cat$c))))
+   :hints (("Goal" :in-theory (e/d (fn-ctg-open fn-cat$c-commit-base fn-cat$c-withdraw-base
+                                    fn-cat$c-redecide)
+                                   (nth update-nth fn-cat$c-apply-plan))))))
+
+; The base relation reads the recognizer and fields 0 .. 5.
+(local
+ (defthm fn-ctg-corr-base-fields
+   (implies (and (fn-cat$cp x) (fn-cat$cp y)
+                 (equal (nth 0 y) (nth 0 x)) (equal (nth 1 y) (nth 1 x))
+                 (equal (nth 2 y) (nth 2 x)) (equal (nth 3 y) (nth 3 x))
+                 (equal (nth 4 y) (nth 4 x)) (equal (nth 5 y) (nth 5 x)))
+            (iff (fn-cat$corr-base y a) (fn-cat$corr-base x a)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (union-theories '(fn-cat$corr-base) (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-ctg-live-okp-bound
+   (implies (and (fn-cat-live-okp keys tab c) (consp (hons-assoc-equal g keys)))
+            (equal (cdr (hons-assoc-equal g tab)) (fn-cat-live-entry g c)))))
+
+(local
+ (defthm fn-ctg-live-at-p-is-live
+   (implies (fn-cat$corr-base x c)
+            (equal (fn-cat$c-live-at-p g k x) (fn-cat-live-numberp g k c)))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-live-at-p fn-cat-live-numberp fn-ctg-open)
+                                   (fn-cat-live-rowp fn-cat-number-seq))))))
+
+(local
+ (defthm fn-ctg-scan-up-is-first
+   (implies (fn-cat$corr-base x c)
+            (equal (fn-cat$c-scan-up g k top x) (fn-cat-live-first g k top c)))
+   :hints (("Goal" :induct (fn-cat-live-first g k top c)
+            :in-theory (e/d (fn-cat$c-scan-up) (fn-cat$corr-base fn-cat$c-live-at-p
+                                                 fn-cat-live-numberp))))))
+
+(local
+ (defthm fn-ctg-scan-down-is-last
+   (implies (fn-cat$corr-base x c)
+            (equal (fn-cat$c-scan-down g k x) (fn-cat-live-last g k c)))
+   :hints (("Goal" :induct (fn-cat-live-last g k c)
+            :in-theory (e/d (fn-cat$c-scan-down) (fn-cat$corr-base fn-cat$c-live-at-p
+                                                   fn-cat-live-numberp))))))
+
+(local
+ (defthm fn-ctg-live-lookup
+   (implies (and (fn-cat-live-okp tab tab c) (fn-cat-groups-coverp c tab))
+            (equal (cdr (hons-assoc-equal g tab))
+                   (if (consp (hons-assoc-equal g tab))
+                       (fn-cat-live-entry g c)
+                     nil)))
+   :hints (("Goal" :in-theory (disable fn-cat-live-entry fn-cat-live-okp fn-cat-groups-coverp)
+            :use ((:instance fn-ctg-live-okp-bound (keys tab)))))))
+
+(local
+ (defthm fn-ctg-live-unbound-high
+   (implies (and (fn-cat-groups-coverp c tab) (not (consp (hons-assoc-equal g tab))))
+            (equal (fn-cat-group-high g c) 0))
+   :hints (("Goal" :use fn-ctg-groups-unbound
+            :in-theory (disable fn-ctg-groups-unbound fn-cat-groups-coverp fn-cat-group-high)))))
+
+(local
+ (defthm fn-ctg-live-readers
+   (implies (and (fn-cat-live-okp (nth 6 x) (nth 6 x) c)
+                 (fn-cat-groups-coverp c (nth 6 x)))
+            (and (equal (fn-cat$c-group-live-count g x)
+                        (fn-cat-live-count-from g 1 (fn-cat-group-high g c) c))
+                 (equal (fn-cat$c-group-live-low g x)
+                        (fn-cat-live-first g 1 (fn-cat-group-high g c) c))
+                 (equal (fn-cat$c-group-live-high g x)
+                        (fn-cat-live-last g (fn-cat-group-high g c) c))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-group-live-count fn-cat$c-group-live-low
+                                    fn-cat$c-group-live-high fn-cat$c-lives-get
+                                    fn-cat-live-entry)
+                                   (fn-cat-live-count-from fn-cat-live-first fn-cat-live-last
+                                    fn-cat-live-okp fn-cat-groups-coverp fn-cat-group-high
+                                    hons-assoc-equal))
+            :expand ((fn-cat-live-last g 0 c))
+            :cases ((consp (hons-assoc-equal g (nth 6 x))))))))
+
+; The commit.
+(defun fn-ctg-commit-entry (g livep c)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((hi (fn-cat-group-high g c))
+         (n (+ 1 hi))
+         (count (fn-cat-live-count-from g 1 hi c))
+         (low (fn-cat-live-first g 1 hi c))
+         (high (fn-cat-live-last g hi c)))
+    (if (and livep (<= n *fn-nntp-max-article-number*))
+        (cons (+ 1 count) (cons (if (equal low 0) n low) n))
+      (cons count (cons low high)))))
+
+(local
+ (defun fn-ctg-lplan-ind (groups livep tab fn-cat$c)
+   (declare (xargs :stobjs fn-cat$c :verify-guards nil))
+   (if (consp groups)
+       (let ((e (car (fn-cat$c-live-plan groups livep fn-cat$c))))
+         (fn-ctg-lplan-ind (cdr groups) livep
+                           (cons (cons (fn-cbor-ag-car e) (fn-cbor-ag-cdr e)) tab)
+                           fn-cat$c))
+     (list tab livep))))
+
+(local
+ (defthm fn-ctg-lplan-lookup
+   (implies (and (fn-cat-groups-okp (nth 4 fn-cat$c) (nth 4 fn-cat$c) c)
+                 (fn-cat-groups-coverp c (nth 4 fn-cat$c))
+                 (fn-cat-live-okp (nth 6 fn-cat$c) (nth 6 fn-cat$c) c)
+                 (fn-cat-groups-coverp c (nth 6 fn-cat$c)))
+            (equal (hons-assoc-equal g (fn-ctg-lputs (fn-cat$c-live-plan groups livep fn-cat$c) tab))
+                   (if (member-equal g groups)
+                       (cons g (fn-ctg-commit-entry g livep c))
+                     (hons-assoc-equal g tab))))
+   :hints (("Goal" :induct (fn-ctg-lplan-ind groups livep tab fn-cat$c)
+            :in-theory (e/d (fn-cat$c-live-plan fn-cat$c-groups-get)
+                            (fn-cat-live-count-from fn-cat-live-first fn-cat-live-last
+                             fn-cat-live-okp fn-cat-groups-coverp fn-cat-groups-okp
+                             fn-cat$c-group-live-count fn-cat$c-group-live-low
+                             fn-cat$c-group-live-high))))))
+
+(local
+ (defthm fn-ctg-live-entry-append-member
+   (implies (and (fn-cat-rowsp c) (member-equal g (fn-record-groups h)))
+            (equal (fn-cat-live-entry g (append c (list (fn-cat-assign h c))))
+                   (fn-ctg-commit-entry g (and (null (fn-held-withdrawn h))
+                                               (fn-scat-msgid-idp (fn-record-msgid h)))
+                                        c)))
+   :hints (("Goal" :in-theory (e/d (fn-cat-live-entry)
+                                   (fn-cat-assign fn-cat-live-count-from fn-cat-live-first
+                                    fn-cat-live-numberp fn-scat-msgid-idp))
+            :expand ((fn-cat-live-last g (+ 1 (fn-cat-group-high g c))
+                                       (append c (list (fn-cat-assign h c)))))))))
+
+(local
+ (defthm fn-ctg-live-entry-append-other
+   (implies (and (fn-cat-rowsp c) (not (member-equal g (fn-record-groups h))))
+            (equal (fn-cat-live-entry g (append c (list (fn-cat-assign h c))))
+                   (fn-cat-live-entry g c)))
+   :hints (("Goal" :in-theory (e/d (fn-cat-live-entry)
+                                   (fn-cat-assign fn-cat-live-count-from fn-cat-live-first
+                                    fn-cat-live-last fn-cat-live-numberp))))))
+
+(local
+ (defthm fn-ctg-commit-live-okp-old
+   (implies (and (fn-cat-rowsp c)
+                 (fn-cat-groups-okp (nth 4 fn-cat$c) (nth 4 fn-cat$c) c)
+                 (fn-cat-groups-coverp c (nth 4 fn-cat$c))
+                 (fn-cat-live-okp (nth 6 fn-cat$c) (nth 6 fn-cat$c) c)
+                 (fn-cat-groups-coverp c (nth 6 fn-cat$c))
+                 (fn-cat-live-okp keys (nth 6 fn-cat$c) c))
+            (fn-cat-live-okp keys
+                             (fn-ctg-lputs (fn-cat$c-live-plan
+                                            (fn-record-groups h)
+                                            (and (null (fn-held-withdrawn h))
+                                                 (fn-scat-msgid-idp (fn-record-msgid h)))
+                                            fn-cat$c)
+                                           (nth 6 fn-cat$c))
+                             (append c (list (fn-cat-assign h c)))))
+   :hints (("Goal" :induct (fn-cat-live-okp keys (nth 6 fn-cat$c) c)
+            :in-theory (disable fn-cat-live-entry fn-ctg-commit-entry fn-cat-assign
+                                fn-cat-groups-okp fn-cat-groups-coverp fn-scat-msgid-idp)))))
+
+(defun fn-ctg-plan-keys-in (plan groups)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp plan)
+      (and (member-equal (fn-cbor-ag-car (car plan)) groups)
+           (fn-ctg-plan-keys-in (cdr plan) groups))
+    t))
+
+(local
+ (defthm fn-ctg-live-plan-keys-in
+   (fn-ctg-plan-keys-in (fn-cat$c-live-plan groups livep fn-cat$c) groups)
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-live-plan)
+                                   (fn-cat$c-group-live-count fn-cat$c-group-live-low
+                                    fn-cat$c-group-live-high fn-cat$c-groups-get))))))
+
+(local
+ (defthm fn-ctg-commit-lookup-member
+   (implies (and (fn-cat-rowsp c)
+                 (fn-cat-groups-okp (nth 4 fn-cat$c) (nth 4 fn-cat$c) c)
+                 (fn-cat-groups-coverp c (nth 4 fn-cat$c))
+                 (fn-cat-live-okp (nth 6 fn-cat$c) (nth 6 fn-cat$c) c)
+                 (fn-cat-groups-coverp c (nth 6 fn-cat$c))
+                 (equal livep (and (null (fn-held-withdrawn h))
+                                   (fn-scat-msgid-idp (fn-record-msgid h))))
+                 (member-equal g (fn-record-groups h)))
+            (equal (cdr (hons-assoc-equal
+                         g (fn-ctg-lputs (fn-cat$c-live-plan (fn-record-groups h) livep fn-cat$c)
+                                         tab)))
+                   (fn-cat-live-entry g (append c (list (fn-cat-assign h c))))))
+   :hints (("Goal" :in-theory (disable fn-cat-live-entry fn-ctg-commit-entry fn-cat-assign
+                                       fn-cat-groups-okp fn-cat-groups-coverp fn-cat-live-okp
+                                       fn-scat-msgid-idp fn-cat$c-live-plan)))))
+
+(local
+ (defthm fn-ctg-commit-live-okp-new
+   (implies (and (fn-cat-rowsp c)
+                 (fn-cat-groups-okp (nth 4 fn-cat$c) (nth 4 fn-cat$c) c)
+                 (fn-cat-groups-coverp c (nth 4 fn-cat$c))
+                 (fn-cat-live-okp (nth 6 fn-cat$c) (nth 6 fn-cat$c) c)
+                 (fn-cat-groups-coverp c (nth 6 fn-cat$c))
+                 (equal livep (and (null (fn-held-withdrawn h))
+                                   (fn-scat-msgid-idp (fn-record-msgid h))))
+                 (fn-ctg-plan-keys-in plan (fn-record-groups h))
+                 (fn-cat-live-okp tab2
+                                  (fn-ctg-lputs (fn-cat$c-live-plan (fn-record-groups h) livep fn-cat$c)
+                                                (nth 6 fn-cat$c))
+                                  (append c (list (fn-cat-assign h c)))))
+            (fn-cat-live-okp (fn-ctg-lputs plan tab2)
+                             (fn-ctg-lputs (fn-cat$c-live-plan (fn-record-groups h) livep fn-cat$c)
+                                           (nth 6 fn-cat$c))
+                             (append c (list (fn-cat-assign h c)))))
+   :hints (("Goal" :induct (fn-ctg-lputs plan tab2)
+            :in-theory (disable fn-cat-live-entry fn-ctg-commit-entry fn-cat-assign
+                                fn-cat-groups-okp fn-cat-groups-coverp fn-scat-msgid-idp
+                                fn-cat$c-live-plan fn-ctg-lplan-lookup)))))
+
+(local
+ (defthm fn-ctg-lputs-keeps-bound
+   (implies (consp (hons-assoc-equal g tab))
+            (consp (hons-assoc-equal g (fn-ctg-lputs plan tab))))))
+
+(local
+ (defthm fn-ctg-cover-rowp-lputs
+   (implies (fn-cat-groups-cover-rowp ns tab)
+            (fn-cat-groups-cover-rowp ns (fn-ctg-lputs plan tab)))
+   :hints (("Goal" :induct (fn-cat-groups-cover-rowp ns tab)
+            :in-theory (disable fn-ctg-lputs)))))
+
+(local
+ (defthm fn-ctg-coverp-lputs
+   (implies (fn-cat-groups-coverp c tab)
+            (fn-cat-groups-coverp c (fn-ctg-lputs plan tab)))
+   :hints (("Goal" :induct (fn-cat-groups-coverp c tab)
+            :in-theory (disable fn-ctg-lputs fn-cat-groups-cover-rowp)))))
+
+(local
+ (defthm fn-ctg-commit-live-cover-row
+   (implies (and (subsetp-equal groups (fn-record-groups h))
+                 (fn-cat-groups-okp (nth 4 fn-cat$c) (nth 4 fn-cat$c) c)
+                 (fn-cat-groups-coverp c (nth 4 fn-cat$c))
+                 (fn-cat-live-okp (nth 6 fn-cat$c) (nth 6 fn-cat$c) c)
+                 (fn-cat-groups-coverp c (nth 6 fn-cat$c)))
+            (fn-cat-groups-cover-rowp
+             (fn-cat-assign-numbers groups c)
+             (fn-ctg-lputs (fn-cat$c-live-plan (fn-record-groups h) livep fn-cat$c) tab)))
+   :hints (("Goal" :induct (len groups)
+            :in-theory (disable fn-ctg-commit-entry fn-cat-live-okp fn-cat-groups-okp
+                                fn-cat-groups-coverp)))))
+
+(local
+ (defthm fn-ctg-commit-live-fields
+   (implies (fn-cat$cp fn-cat$c)
+            (and (equal (nth 6 (fn-cat$c-commit h fn-cat$c))
+                        (fn-ctg-lputs (fn-cat$c-live-plan
+                                       (fn-record-groups h)
+                                       (and (null (fn-held-withdrawn h))
+                                            (fn-scat-msgid-idp (fn-record-msgid h)))
+                                       fn-cat$c)
+                                      (nth 6 fn-cat$c)))
+                 (equal (nth 7 (fn-cat$c-commit h fn-cat$c))
+                        (max (nth 7 fn-cat$c)
+                             (let ((w (fn-held-withdrawn h)))
+                               (if (consp w) (+ 1 (nfix (car w))) 0))))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-commit fn-cat$c-hz)
+                                   (fn-cat$c-live-plan fn-cat$c-commit-base
+                                    fn-cat$c-live-apply fn-scat-msgid-idp))))))
+
+(local
+ (defthm fn-ctg-commit-live-corr
+   (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-held-p h) (fn-cat$ap fn-cat))
+            (fn-cat$corr-live (fn-cat$c-commit h fn-cat$c) (fn-cat$a-commit h fn-cat)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d ()
+                            (fn-cat-assign fn-cat$c-commit fn-cat$c-live-plan fn-cat-live-okp
+                             fn-cat-groups-okp fn-cat-groups-coverp fn-scat-msgid-idp
+                             fn-cat-rows-corr fn-cat-msgids-okp fn-cat-msgids-coverp
+                             fn-cat-numbers-okp fn-cat-numbers-coverp fn-held-with-numbers))
+            :use ((:instance fn-ctg-commit-live-okp-new
+                             (c fn-cat)
+                             (livep (and (null (fn-held-withdrawn h))
+                                         (fn-scat-msgid-idp (fn-record-msgid h))))
+                             (plan (fn-cat$c-live-plan
+                                    (fn-record-groups h)
+                                    (and (null (fn-held-withdrawn h))
+                                         (fn-scat-msgid-idp (fn-record-msgid h)))
+                                    fn-cat$c))
+                             (tab2 (nth 6 fn-cat$c)))
+                  (:instance fn-ctg-live-plan-keys-in
+                             (groups (fn-record-groups h))
+                             (livep (and (null (fn-held-withdrawn h))
+                                         (fn-scat-msgid-idp (fn-record-msgid h)))))
+                  (:instance fn-ctg-commit-live-okp-old (c fn-cat) (keys (nth 6 fn-cat$c)))
+                  (:instance fn-ctg-commit-live-cover-row
+                             (c fn-cat) (groups (fn-record-groups h))
+                             (livep (and (null (fn-held-withdrawn h))
+                                         (fn-scat-msgid-idp (fn-record-msgid h))))
+                             (tab (nth 6 fn-cat$c))))))))
+
+(local
+ (defthm fn-ctg-corr-base-cp
+   (implies (fn-cat$corr-base x a)
+            (and (fn-cat$cp x) (fn-cat$c-wfp x)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-ctg-wfp-is-nth)))))
+
+(local
+ (defthm fn-ctg-commit-base-keeps-corr-base
+   (implies (and (fn-cat$corr-base fn-cat$c fn-cat) (fn-held-p h) (fn-cat$ap fn-cat))
+            (fn-cat$corr-base (fn-cat$c-commit h fn-cat$c) (fn-cat$a-commit h fn-cat)))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-commit)
+                                   (fn-cat$corr-base fn-cat$c-commit-base fn-cat$c-live-apply
+                                    fn-cat$c-live-plan fn-scat-msgid-idp fn-cat$a-commit))
+            :use ((:instance fn-ctg-commit-base-corr)
+                  (:instance fn-ctg-corr-base-fields
+                             (x (fn-cat$c-commit-base h fn-cat$c))
+                             (y (update-fn-cat$c-hz (max (fn-cat$c-hz fn-cat$c)
+                                           (if (consp (fn-held-withdrawn h))
+                                               (+ 1 (nfix (car (fn-held-withdrawn h)))) 0))
+                                 (fn-cat$c-live-apply (fn-cat$c-live-plan (fn-record-groups h)
+                                                        (and (null (fn-held-withdrawn h))
+                                                             (fn-scat-msgid-idp (fn-record-msgid h)))
+                                                        fn-cat$c)
+                                  (fn-cat$c-commit-base h fn-cat$c))))
+                             (a (fn-cat$a-commit h fn-cat))))))))
+
+(defthm fn-cat-commit{correspondence}
+  (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-held-p h) (fn-cat$ap fn-cat))
+           (fn-cat$corr (fn-cat$c-commit h fn-cat$c) (fn-cat$a-commit h fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-cat$corr) (theory 'minimal-theory))
+           :use ((:instance fn-ctg-commit-live-corr)
+                 (:instance fn-ctg-commit-base-corr)
+                 (:instance fn-ctg-commit-base-keeps-corr-base)))))
+
+; The withdrawal.
+(defun fn-ctg-drop-entry-l (g k c)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((hi (fn-cat-group-high g c))
+         (count (fn-cat-live-count-from g 1 hi c))
+         (low (fn-cat-live-first g 1 hi c))
+         (high (fn-cat-live-last g hi c)))
+    (cons (nfix (- count 1))
+          (cons (if (equal low k) (fn-cat-live-first g (+ 1 k) hi c) low)
+                (if (equal high k) (fn-cat-live-last g (- k 1) c) high)))))
+
+(local
+ (defthm fn-ctg-corr-base-facts
+   (implies (fn-cat$corr-base x c)
+            (and (fn-cat-rowsp c)
+                 (equal (nth 1 x) (len c))
+                 (fn-cat-rows-corr (len c) c (nth 0 x))
+                 (fn-cat-numbers-okp (nth 3 x) (nth 3 x) c)
+                 (fn-cat-numbers-coverp c (nth 3 x))
+                 (fn-cat-groups-okp (nth 4 x) (nth 4 x) c)
+                 (fn-cat-groups-coverp c (nth 4 x))))
+   :rule-classes :forward-chaining))
+
+(local
+ (defthm fn-ctg-corr-live-facts
+   (implies (fn-cat$corr-live x c)
+            (and (fn-cat-live-okp (nth 6 x) (nth 6 x) c)
+                 (fn-cat-groups-coverp c (nth 6 x))
+                 (equal (nth 7 x) (fn-cat-horizon-of c))))
+   :rule-classes :forward-chaining))
+
+(local
+ (defthm fn-ctg-drop-entry-is-l
+   (implies (and (fn-cat$corr-base fn-cat$c c) (fn-cat$corr-live fn-cat$c c))
+            (equal (fn-cat$c-drop-entry g k fn-cat$c) (fn-ctg-drop-entry-l g k c)))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-drop-entry fn-cat$c-groups-get)
+                                   (fn-cat$corr-base fn-cat$corr-live fn-cat-live-count-from fn-cat-live-first fn-cat-live-last
+                                    fn-cat$c-scan-up fn-cat$c-scan-down
+                                    fn-cat$c-group-live-count fn-cat$c-group-live-low
+                                    fn-cat$c-group-live-high fn-cat-live-okp
+                                    fn-cat-groups-coverp fn-cat-groups-okp
+                                    fn-cat-rows-corr fn-cat-msgids-okp fn-cat-msgids-coverp
+                                    fn-cat-numbers-okp fn-cat-numbers-coverp))))))
+
+(defun fn-ctg-dhit (g pairs r row c)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp pairs)
+      (or (and (consp (car pairs))
+               (equal (car (car pairs)) g)
+               (equal (fn-cat-number-seq g (cdr (car pairs)) c 0) r)
+               (fn-cat-live-rowp g (cdr (car pairs)) row))
+          (fn-ctg-dhit g (cdr pairs) r row c))
+    nil))
+
+(local
+ (defun fn-ctg-dplan-ind (pairs r row tab fn-cat$c)
+   (declare (xargs :stobjs fn-cat$c :verify-guards nil))
+   (if (consp pairs)
+       (let* ((p (car pairs)) (g (fn-cbor-ag-car p)) (k (fn-cbor-ag-cdr p)))
+         (if (and (consp p)
+                  (equal (fn-cat$c-numbers-get (cons g k) fn-cat$c) r)
+                  (fn-cat-live-rowp g k row))
+             (fn-ctg-dplan-ind (cdr pairs) r row
+                               (cons (cons g (fn-cat$c-drop-entry g k fn-cat$c)) tab)
+                               fn-cat$c)
+           (fn-ctg-dplan-ind (cdr pairs) r row tab fn-cat$c)))
+     (list tab r row))))
+
+(local
+ (defthm fn-ctg-numbers-lookup-pair
+   (implies (and (fn-cat-numbers-okp tab tab c) (fn-cat-numbers-coverp c tab) (consp key))
+            (equal (cdr (hons-assoc-equal key tab))
+                   (fn-cat-number-seq (car key) (cdr key) c 0)))
+   :hints (("Goal" :use ((:instance fn-ctg-numbers-lookup (g (car key)) (n (cdr key))))
+            :in-theory (disable fn-ctg-numbers-lookup fn-cat-numbers-okp fn-cat-numbers-coverp
+                                fn-cat-number-seq)))))
+
+(local
+ (defthm fn-ctg-dplan-lookup
+   (implies (and (fn-cat$corr-base fn-cat$c c) (fn-cat$corr-live fn-cat$c c))
+            (equal (hons-assoc-equal g (fn-ctg-lputs (fn-cat$c-drop-plan pairs r row fn-cat$c) tab))
+                   (if (fn-ctg-dhit g pairs r row c)
+                       (cons g (fn-ctg-drop-entry-l g (fn-held-number-in g row) c))
+                     (hons-assoc-equal g tab))))
+   :hints (("Goal" :induct (fn-ctg-dplan-ind pairs r row tab fn-cat$c)
+            :in-theory (e/d (fn-cat$c-drop-plan fn-cat$c-numbers-get)
+                            (fn-cat$c-drop-entry fn-ctg-drop-entry-l fn-cat-live-rowp
+                             fn-held-number-in fn-cat$corr-base fn-cat$corr-live fn-cat-number-seq
+                             fn-cat-numbers-okp fn-cat-numbers-coverp))))))
+
+(local
+ (defthm fn-ctg-dhit-gives
+   (implies (fn-ctg-dhit g pairs r row c)
+            (and (posp (fn-held-number-in g row))
+                 (equal (fn-cat-number-seq g (fn-held-number-in g row) c 0) r)
+                 (fn-cat-live-rowp g (fn-held-number-in g row) row)))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-ctg-dhit g pairs r row c)
+            :in-theory (disable fn-cat-live-rowp fn-cat-number-seq fn-held-number-in)))))
+
+(local
+ (defthm fn-ctg-dhit-of-member
+   (implies (and (member-equal p pairs) (consp p) (equal (car p) g)
+                 (equal (fn-cat-number-seq g (cdr p) c 0) r)
+                 (fn-cat-live-rowp g (cdr p) row))
+            (fn-ctg-dhit g pairs r row c))
+   :hints (("Goal" :in-theory (disable fn-cat-live-rowp fn-cat-number-seq)))))
+
+(local
+ (defthm fn-ctg-assoc-member
+   (implies (fn-cat-assoc g ns)
+            (and (member-equal (fn-cat-assoc g ns) ns)
+                 (consp (fn-cat-assoc g ns))
+                 (equal (car (fn-cat-assoc g ns)) g)))))
+
+(local
+ (defthm fn-ctg-dhit-is-kstar
+   (implies (and (natp r) (< r (len c)))
+            (iff (fn-ctg-dhit g (fn-held-numbers (nth r c)) r (nth r c) c)
+                 (and (not (equal (fn-ctg-kstar g c r) 0))
+                      (fn-cat-live-numberp g (fn-ctg-kstar g c r) c))))
+   :hints (("Goal" :in-theory (e/d (fn-ctg-kstar fn-cat-live-numberp fn-held-number-in)
+                                   (fn-cat-live-rowp fn-cat-number-seq fn-ctg-dhit))
+            :use ((:instance fn-ctg-dhit-gives (pairs (fn-held-numbers (nth r c))) (row (nth r c)))
+                  (:instance fn-ctg-dhit-of-member
+                             (pairs (fn-held-numbers (nth r c))) (row (nth r c))
+                             (p (fn-cat-assoc g (fn-held-numbers (nth r c))))))))))
+
+(local
+ (defthm fn-ctg-kstar-facts
+   (implies (not (equal (fn-ctg-kstar g c r) 0))
+            (and (posp (fn-ctg-kstar g c r))
+                 (equal (fn-ctg-kstar g c r) (fn-held-number-in g (nth r c)))
+                 (equal (fn-cat-number-seq g (fn-ctg-kstar g c r) c 0) r)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-ctg-kstar)))))
+
+(local
+ (defthm fn-ctg-kstar-below-high
+   (implies (and (fn-cat-rowsp c) (fn-cat-live-numberp g k c))
+            (<= k (fn-cat-group-high g c)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-cat-live-numberp) (fn-cat-live-rowp))))))
+
+(local
+ (defthm fn-ctg-live-range-nonempty
+   (implies (and (natp j) (natp top) (<= j k) (<= k top) (fn-cat-live-numberp g k c))
+            (and (< 0 (fn-cat-live-count-from g j top c))
+                 (not (equal (fn-cat-live-first g j top c) 0))))
+   :hints (("Goal" :induct (fn-cat-live-count-from g j top c)
+            :in-theory (disable fn-cat-live-numberp)))))
+
+(local
+ (defthm fn-ctg-live-last-nonempty
+   (implies (and (natp k) (natp j) (<= k j) (fn-cat-live-numberp g k c))
+            (not (equal (fn-cat-live-last g j c) 0)))
+   :hints (("Goal" :induct (fn-ctg-down-ind j)
+            :in-theory (disable fn-cat-live-numberp)))))
+
+(local
+ (defthm fn-ctg-drop-entry-hit
+   (implies (and (natp r) (< r (len c)) (fn-cat-rowsp c)
+                 (null (fn-held-withdrawn (nth r c)))
+                 (not (equal (fn-ctg-kstar g c r) 0))
+                 (fn-cat-live-numberp g (fn-ctg-kstar g c r) c))
+            (equal (fn-cat-live-entry g (fn-cat-mark-withdrawn r v by c))
+                   (fn-ctg-drop-entry-l g (fn-held-number-in g (nth r c)) c)))
+   :hints (("Goal" :in-theory (e/d (fn-cat-live-entry)
+                                   (fn-cat-live-numberp fn-ctg-kstar fn-cat-mark-withdrawn
+                                    fn-ctg-mark-withdrawn-is-update fn-held-number-in
+                                    fn-cat-live-count-from fn-cat-live-first fn-cat-live-last))
+            :use ((:instance fn-ctg-kstar-facts)
+                  (:instance fn-ctg-kstar-below-high (k (fn-ctg-kstar g c r)))
+                  (:instance fn-ctg-live-range-nonempty (j 1) (k (fn-ctg-kstar g c r))
+                             (top (fn-cat-group-high g c)))
+                  (:instance fn-ctg-live-last-nonempty (k (fn-ctg-kstar g c r))
+                             (j (fn-cat-group-high g c)))
+                  (:instance fn-ctg-live-first-bounds (k 1) (top (fn-cat-group-high g c)))
+                  (:instance fn-ctg-live-last-bounds (k (fn-cat-group-high g c))))))))
+
+(local
+ (defthm fn-ctg-drop-entry-miss
+   (implies (and (natp r) (< r (len c)) (fn-cat-rowsp c)
+                 (null (fn-held-withdrawn (nth r c)))
+                 (not (and (not (equal (fn-ctg-kstar g c r) 0))
+                           (fn-cat-live-numberp g (fn-ctg-kstar g c r) c))))
+            (equal (fn-cat-live-entry g (fn-cat-mark-withdrawn r v by c))
+                   (fn-cat-live-entry g c)))
+   :hints (("Goal" :in-theory (e/d (fn-cat-live-entry)
+                                   (fn-cat-live-numberp fn-ctg-kstar fn-cat-mark-withdrawn
+                                    fn-ctg-mark-withdrawn-is-update fn-held-number-in
+                                    fn-cat-live-count-from fn-cat-live-first fn-cat-live-last))
+            :use ((:instance fn-ctg-live-first-bounds (k 1) (top (fn-cat-group-high g c)))
+                  (:instance fn-ctg-live-last-bounds (k (fn-cat-group-high g c))))))))
+
+(local
+ (defthm fn-ctg-withdraw-live-okp-old
+   (implies (and (fn-cat$corr-base fn-cat$c c) (fn-cat$corr-live fn-cat$c c)
+                 (natp r) (< r (len c)) (null (fn-held-withdrawn (nth r c)))
+                 (fn-cat-live-okp keys (nth 6 fn-cat$c) c))
+            (fn-cat-live-okp keys
+                             (fn-ctg-lputs (fn-cat$c-drop-plan (fn-held-numbers (nth r c)) r (nth r c)
+                                                               fn-cat$c)
+                                           (nth 6 fn-cat$c))
+                             (fn-cat-mark-withdrawn r (len c) by c)))
+   :hints (("Goal" :induct (fn-cat-live-okp keys (nth 6 fn-cat$c) c)
+            :in-theory (disable fn-cat-live-entry fn-ctg-drop-entry-l fn-cat$corr-base
+                                fn-cat$corr-live fn-cat-mark-withdrawn fn-ctg-mark-withdrawn-is-update
+                                fn-ctg-dhit fn-ctg-kstar fn-cat-live-numberp fn-held-number-in)))))
+
+(local
+ (defthm fn-ctg-withdraw-live-okp-new
+   (implies (and (fn-cat$corr-base fn-cat$c c) (fn-cat$corr-live fn-cat$c c)
+                 (natp r) (< r (len c)) (null (fn-held-withdrawn (nth r c)))
+                 (subsetp-equal pairs (fn-held-numbers (nth r c)))
+                 (fn-cat-live-okp tab2
+                                  (fn-ctg-lputs (fn-cat$c-drop-plan (fn-held-numbers (nth r c)) r
+                                                                    (nth r c) fn-cat$c)
+                                                (nth 6 fn-cat$c))
+                                  (fn-cat-mark-withdrawn r (len c) by c)))
+            (fn-cat-live-okp (fn-ctg-lputs (fn-cat$c-drop-plan pairs r (nth r c) fn-cat$c) tab2)
+                             (fn-ctg-lputs (fn-cat$c-drop-plan (fn-held-numbers (nth r c)) r
+                                                               (nth r c) fn-cat$c)
+                                           (nth 6 fn-cat$c))
+                             (fn-cat-mark-withdrawn r (len c) by c)))
+   :hints (("Goal" :induct (fn-ctg-dplan-ind pairs r (nth r c) tab2 fn-cat$c)
+            :in-theory (e/d (fn-cat$c-drop-plan fn-cat$c-numbers-get)
+                            (fn-cat-live-entry fn-ctg-drop-entry-l fn-cat$corr-base
+                             fn-cat$corr-live fn-cat-mark-withdrawn fn-ctg-mark-withdrawn-is-update
+                             fn-ctg-dhit fn-ctg-kstar fn-cat-live-numberp fn-held-number-in
+                             fn-cat$c-drop-entry fn-cat-live-rowp fn-cat-number-seq
+                             fn-cat-numbers-okp fn-cat-numbers-coverp)))
+           (and stable-under-simplificationp
+                '(:use ((:instance fn-ctg-dhit-of-member
+                                   (g (car (car pairs))) (p (car pairs))
+                                   (pairs (fn-held-numbers (nth r c))) (row (nth r c)))))))))
+
+(local
+ (defthm fn-ctg-withdraw-live-fields
+   (implies (fn-cat$cp fn-cat$c)
+            (and (implies (fn-held-withdrawn (fn-cat$c-rowsi target fn-cat$c))
+                          (equal (fn-cat$c-withdraw target by fn-cat$c) fn-cat$c))
+                 (implies (not (fn-held-withdrawn (fn-cat$c-rowsi target fn-cat$c)))
+                          (and (equal (nth 6 (fn-cat$c-withdraw target by fn-cat$c))
+                                      (fn-ctg-lputs (fn-cat$c-drop-plan
+                                                     (fn-held-numbers (fn-cat$c-rowsi target fn-cat$c))
+                                                     target (fn-cat$c-rowsi target fn-cat$c) fn-cat$c)
+                                                    (nth 6 fn-cat$c)))
+                               (equal (nth 7 (fn-cat$c-withdraw target by fn-cat$c))
+                                      (max (nth 7 fn-cat$c) (+ 1 (nth 1 fn-cat$c))))))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-withdraw fn-cat$c-hz fn-cat$c-count)
+                                   (fn-cat$c-drop-plan fn-cat$c-withdraw-base
+                                    fn-cat$c-live-apply))))))
+
+(local
+ (defthm fn-ctg-rowsi-is-nth
+   (implies (and (fn-cat$corr-base fn-cat$c c) (natp r) (< r (len c)))
+            (equal (fn-cat$c-rowsi r fn-cat$c) (nth r c)))
+   :hints (("Goal" :in-theory (enable fn-cat$c-rowsi)))))
+
+(local
+ (defthm fn-ctg-withdrawn-of-with-withdrawn
+   (equal (fn-held-withdrawn (fn-held-with-withdrawn h w)) w)
+   :hints (("Goal" :in-theory (enable fn-held-with-withdrawn)))))
+
+(local
+ (defthm fn-ctg-withdraw-live-corr
+   (implies (and (fn-cat$corr fn-cat$c c) (natp r) (< r (fn-cat$a-count c)) (natp by)
+                 (fn-cat$ap c))
+            (fn-cat$corr-live (fn-cat$c-withdraw r by fn-cat$c) (fn-cat$a-withdraw r by c)))
+   :hints (("Goal" :do-not-induct t
+            :cases ((fn-held-withdrawn (nth r c)))
+            :in-theory (e/d (fn-cat$corr fn-ctg-mark-withdrawn-is-update)
+                            (fn-cat$c-withdraw fn-cat$corr-base fn-cat$c-drop-plan
+                             fn-cat-live-okp fn-cat-groups-coverp fn-ctg-withdraw-live-okp-new
+                             fn-ctg-withdraw-live-okp-old fn-held-with-withdrawn))
+            :use ((:instance fn-ctg-withdraw-live-okp-new
+                             (pairs (fn-held-numbers (nth r c))) (tab2 (nth 6 fn-cat$c)))
+                  (:instance fn-ctg-withdraw-live-okp-old (keys (nth 6 fn-cat$c)))
+                  (:instance fn-ctg-groups-coverp-update-nth
+                             (k r) (h (fn-held-with-withdrawn (nth r c) (cons (len c) by)))
+                             (tab (nth 6 fn-cat$c))))))))
+
+(local
+ (defthm fn-ctg-cp-of-withdraw-base-corr
+   (implies (and (fn-cat$corr-base x c) (natp target) (< target (len c)))
+            (fn-cat$cp (fn-cat$c-withdraw-base target by x)))
+   :hints (("Goal" :in-theory (disable fn-cat$c-withdraw-base)))))
+
+(local
+ (defthm fn-ctg-withdraw-base-when-withdrawn
+   (implies (fn-held-withdrawn (fn-cat$c-rowsi target x))
+            (equal (fn-cat$c-withdraw-base target by x) x))
+   :hints (("Goal" :in-theory (enable fn-cat$c-withdraw-base)))))
+
+(local
+ (defthm fn-ctg-withdraw-keeps-corr-base
+   (implies (and (fn-cat$corr-base fn-cat$c fn-cat) (natp target)
+                 (< target (fn-cat$a-count fn-cat)) (natp by) (fn-cat$ap fn-cat))
+            (fn-cat$corr-base (fn-cat$c-withdraw target by fn-cat$c)
+                              (fn-cat$a-withdraw target by fn-cat)))
+   :hints (("Goal" :in-theory (e/d (fn-cat$c-withdraw)
+                                   (fn-cat$corr-base fn-cat$c-withdraw-base fn-cat$c-live-apply
+                                    fn-cat$c-drop-plan fn-cat$a-withdraw))
+            :cases ((fn-held-withdrawn (fn-cat$c-rowsi target fn-cat$c)))
+            :use ((:instance fn-ctg-withdraw-base-corr)
+                  (:instance fn-ctg-corr-base-fields
+                             (x (fn-cat$c-withdraw-base target by fn-cat$c))
+                             (y (update-fn-cat$c-hz
+                                 (max (fn-cat$c-hz fn-cat$c) (+ 1 (fn-cat$c-count fn-cat$c)))
+                                 (fn-cat$c-live-apply
+                                  (fn-cat$c-drop-plan
+                                   (fn-held-numbers (fn-cat$c-rowsi target fn-cat$c))
+                                   target (fn-cat$c-rowsi target fn-cat$c) fn-cat$c)
+                                  (fn-cat$c-withdraw-base target by fn-cat$c))))
+                             (a (fn-cat$a-withdraw target by fn-cat))))))))
+
+(defthm fn-cat-withdraw{correspondence}
+  (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp target) (< target (fn-cat$a-count fn-cat))
+                (natp by) (fn-cat$ap fn-cat))
+           (fn-cat$corr (fn-cat$c-withdraw target by fn-cat$c)
+                        (fn-cat$a-withdraw target by fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-cat$corr) (theory 'minimal-theory))
+           :use ((:instance fn-ctg-withdraw-live-corr (r target) (c fn-cat))
+                 (:instance fn-ctg-withdraw-keeps-corr-base)))))
+
+; The re-decision keeps every key, the withdrawal and the Message-ID.
+(local
+ (defthm fn-ctg-withdrawn-of-with-context
+   (equal (fn-held-withdrawn (fn-held-with-context h ctx)) (fn-held-withdrawn h))
+   :hints (("Goal" :in-theory (enable fn-held-with-context)))))
+
+(local
+ (defthm fn-ctg-live-numberp-recontext
+   (implies (and (natp s) (< s (len c)))
+            (equal (fn-cat-live-numberp g k (update-nth s (fn-held-with-context (nth s c) ctx) c))
+                   (fn-cat-live-numberp g k c)))
+   :hints (("Goal" :in-theory (e/d (fn-cat-live-numberp fn-cat-live-rowp)
+                                   (fn-held-with-context fn-cat-number-seq fn-held-number-in))
+            :use ((:instance fn-ctg-number-seq-update-nth
+                             (k s) (n k) (i 0) (h (fn-held-with-context (nth s c) ctx)))
+                  (:instance fn-ctg-number-in-same-keys
+                             (h1 (fn-held-with-context (nth s c) ctx)) (h2 (nth s c))))))))
+
+(local
+ (defthm fn-ctg-live-sums-recontext
+   (implies (and (natp s) (< s (len c)))
+            (and (equal (fn-cat-live-count-from g j top (update-nth s (fn-held-with-context (nth s c) ctx) c))
+                        (fn-cat-live-count-from g j top c))
+                 (equal (fn-cat-live-first g j top (update-nth s (fn-held-with-context (nth s c) ctx) c))
+                        (fn-cat-live-first g j top c))))
+   :hints (("Goal" :induct (fn-cat-live-count-from g j top c)
+            :in-theory (disable fn-cat-live-numberp fn-held-with-context)))))
+
+(local
+ (defthm fn-ctg-live-last-recontext
+   (implies (and (natp s) (< s (len c)))
+            (equal (fn-cat-live-last g j (update-nth s (fn-held-with-context (nth s c) ctx) c))
+                   (fn-cat-live-last g j c)))
+   :hints (("Goal" :induct (fn-cat-live-last g j c)
+            :in-theory (disable fn-cat-live-numberp fn-held-with-context)))))
+
+(local
+ (defthm fn-ctg-live-okp-recontext
+   (implies (and (natp s) (< s (len c)))
+            (equal (fn-cat-live-okp keys tab (update-nth s (fn-held-with-context (nth s c) ctx) c))
+                   (fn-cat-live-okp keys tab c)))
+   :hints (("Goal" :induct (fn-cat-live-okp keys tab c)
+            :in-theory (e/d (fn-cat-live-entry)
+                            (fn-cat-live-count-from fn-cat-live-first fn-cat-live-last
+                             fn-held-with-context))))))
+
+(local
+ (defthm fn-ctg-horizon-recontext
+   (implies (and (natp s) (< s (len c)))
+            (equal (fn-cat-horizon-of (update-nth s (fn-held-with-context (nth s c) ctx) c))
+                   (fn-cat-horizon-of c)))
+   :hints (("Goal" :induct (update-nth s x c)
+            :in-theory (e/d (update-nth) (fn-held-with-context))))))
+
+(defthm fn-cat-redecide{correspondence}
+  (implies (and (fn-cat$corr fn-cat$c fn-cat) (natp seq) (< seq (fn-cat$a-count fn-cat))
+                (fn-hc-p context) (fn-cat$ap fn-cat))
+           (fn-cat$corr (fn-cat$c-redecide seq context fn-cat$c)
+                        (fn-cat$a-redecide seq context fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat$corr fn-cat$corr-live)
+                           (fn-cat$c-redecide fn-cat$corr-base fn-held-with-context
+                            fn-cat-live-okp fn-cat-groups-coverp))
+           :use ((:instance fn-ctg-redecide-base-corr)
+                 (:instance fn-ctg-groups-coverp-update-nth
+                            (k seq) (c fn-cat)
+                            (h (fn-held-with-context (nth seq fn-cat) context))
+                            (tab (nth 6 fn-cat$c)))))))
+
+(defthm fn-cat-clear{correspondence}
+  (implies (fn-cat$corr fn-cat$c fn-cat)
+           (fn-cat$corr (fn-cat$c-clear fn-cat$c) (fn-cat$a-clear fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat$corr fn-cat$corr-live fn-cat$c-clear)
+                           (fn-cat$corr-base fn-cat$c-clear-base))
+           :use ((:instance fn-ctg-clear-base-corr)
+                 (:instance fn-ctg-corr-base-fields
+                            (x (fn-cat$c-clear-base fn-cat$c))
+                            (y (update-fn-cat$c-hz 0 (fn-cat$c-lives-clear
+                                                      (fn-cat$c-clear-base fn-cat$c))))
+                            (a (fn-cat$a-clear fn-cat)))))))
+
+(defthm fn-cat-group-live-count{correspondence}
+  (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-group-live-count group fn-cat$c)
+                  (fn-cat$a-group-live-count group fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cat$corr) (fn-cat$corr-base fn-cat$c-group-live-count)))))
+
+(defthm fn-cat-group-live-low{correspondence}
+  (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-group-live-low group fn-cat$c)
+                  (fn-cat$a-group-live-low group fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cat$corr) (fn-cat$corr-base fn-cat$c-group-live-low)))))
+
+(defthm fn-cat-group-live-high{correspondence}
+  (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-group-live-high group fn-cat$c)
+                  (fn-cat$a-group-live-high group fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cat$corr) (fn-cat$corr-base fn-cat$c-group-live-high)))))
+
+(defthm fn-cat-horizon{correspondence}
+  (implies (fn-cat$corr fn-cat$c fn-cat)
+           (equal (fn-cat$c-horizon fn-cat$c) (fn-cat$a-horizon fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cat$corr fn-cat$c-horizon fn-cat$c-hz)
+                                  (fn-cat$corr-base)))))
 
 ; -----------------------------------------------------------------------------
 ; The catalog.  The exports are stated over the list; `:attachable t' lets
@@ -1814,6 +3120,12 @@
             (fn-cat-group-count :logic fn-cat$a-group-count :exec fn-cat$c-group-count)
             (fn-cat-total-octets :logic fn-cat$a-total-octets :exec fn-cat$c-total-octets)
             (fn-cat-visible-at :logic fn-cat$a-visible-at :exec fn-cat$c-visible-at)
+            (fn-cat-group-live-count :logic fn-cat$a-group-live-count
+                                     :exec fn-cat$c-group-live-count)
+            (fn-cat-group-live-low :logic fn-cat$a-group-live-low :exec fn-cat$c-group-live-low)
+            (fn-cat-group-live-high :logic fn-cat$a-group-live-high
+                                    :exec fn-cat$c-group-live-high)
+            (fn-cat-horizon :logic fn-cat$a-horizon :exec fn-cat$c-horizon)
             (fn-cat-commit :logic fn-cat$a-commit :exec fn-cat$c-commit :protect t)
             (fn-cat-withdraw :logic fn-cat$a-withdraw :exec fn-cat$c-withdraw :protect t)
             (fn-cat-redecide :logic fn-cat$a-redecide :exec fn-cat$c-redecide :protect t)
@@ -1869,10 +3181,28 @@
 (defthm fn-cat-clear-is-nil
   (equal (fn-cat-clear fn-cat) nil))
 
+(defthm fn-cat-group-live-count-is-count-from
+  (equal (fn-cat-group-live-count g fn-cat)
+         (fn-cat-live-count-from g 1 (fn-cat-group-high g fn-cat) fn-cat)))
+
+(defthm fn-cat-group-live-low-is-first
+  (equal (fn-cat-group-live-low g fn-cat)
+         (fn-cat-live-first g 1 (fn-cat-group-high g fn-cat) fn-cat)))
+
+(defthm fn-cat-group-live-high-is-last
+  (equal (fn-cat-group-live-high g fn-cat)
+         (fn-cat-live-last g (fn-cat-group-high g fn-cat) fn-cat)))
+
+(defthm fn-cat-horizon-is-horizon-of
+  (equal (fn-cat-horizon fn-cat)
+         (if (fn-cat-rowsp fn-cat) (fn-cat-horizon-of fn-cat) (+ 1 (len fn-cat)))))
+
 (in-theory (disable fn-cat-p fn-cat-count fn-cat-at fn-cat-msgid-seqs
                     fn-cat-group-number fn-cat-group-next fn-cat-group-count
                     fn-cat-total-octets fn-cat-visible-at fn-cat-commit
                     fn-cat-withdraw fn-cat-redecide fn-cat-clear
+                    fn-cat-group-live-count fn-cat-group-live-low fn-cat-group-live-high
+                    fn-cat-horizon
                     fn-cat-p-is-rowsp fn-cat-assign fn-cat-visiblep
                     fn-cat-mark-withdrawn fn-held-with-numbers
                     fn-held-with-withdrawn fn-held-with-context))
