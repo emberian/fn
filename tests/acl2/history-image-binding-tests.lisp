@@ -263,6 +263,7 @@
 (defconst *hibt-rec2* (nth 1 (nth 0 *hibt-b2*)))    ; B's commit (40 records)
 (defconst *hibt-file2* (nth 1 *hibt-b2*))
 (defconst *hibt-hdr2* (nth 2 *hibt-b2*))
+(defconst *hibt-np1* (pgs-rec-npages *hibt-rec1*))
 
 (assert-event (and (eq (car (nth 0 *hibt-b1*)) :plan) (eq (car (nth 3 *hibt-b1*)) :plan)
                    (eq (car (nth 0 *hibt-b2*)) :plan)
@@ -494,7 +495,6 @@
         (mv (fn-hrc-phys p fn-hrecs$c) fn-hrecs$c))
       a)))
 
-(defconst *hibt-np1* (pgs-rec-npages *hibt-rec1*))
 (hibt-defconst *hibt-last-phys* (hibt-phys *hibt-file1* *hibt-rec1* (1- *hibt-np1*)))
 (hibt-defconst *hibt-page0-phys* (hibt-phys *hibt-file1* *hibt-rec1* 0))
 (hibt-defconst *hibt-dmg* (hibt-open *hibt-bind1* *hibt-node* *hibt-salt* *hibt-t1* (list (hibt-slot *hibt-rec1*))
