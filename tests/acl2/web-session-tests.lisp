@@ -177,7 +177,7 @@
 
 ; --- Make an account: XREDEEM, close, AUTHINFO on a new connection.
 (defconst *rd* (wsst-request (wsst-post-req "/redeem" "fnr_pre=abcdefghijklmnopqrstuvwxyz"
-                   "pre=abcdefghijklmnopqrstuvwxyz&code=c0ffee&user=dave&password=pw1&again=pw1")
+                   "pre=abcdefghijklmnopqrstuvwxyz&code=c0ffee&user=dave&password=pw1&again=pw1") ; FAKE-SECRET
                  *cfg* nil 100 nil '(3 4)
                  (list (wsst-crlf (list "381 send the password with XREDEEM PASS"
                                         "281 account bound; authenticate with AUTHINFO on a new connection"))

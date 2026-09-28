@@ -50,6 +50,7 @@
 (in-package "ACL2")
 
 (include-book "served-span")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "served-catalog")
 
 ; -----------------------------------------------------------------------------
@@ -252,14 +253,14 @@
              (null (cdr (cdr wire-event))))
         (let ((line (car (cdr wire-event))))
           (if (not (fn-nntp-command-inputp line))
-              (fn-nntp-single session "501 syntax error")
+              (fn-nntp-single session (fn-proto-text * :syntax))
             (let ((tokens (fn-nntp-tokenize line)))
               (if (and (consp tokens)
                        (fn-nntp-command-arguments-at-mostp tokens))
                   (fn-scr-command
                    session archive index verdicts env tokens v fn-arena fn-cat)
-                (fn-nntp-single session "501 syntax error")))))
-      (fn-nntp-single session "501 syntax error"))))
+                (fn-nntp-single session (fn-proto-text * :syntax))))))
+      (fn-nntp-single session (fn-proto-text * :syntax)))))
 
 (defthm fn-scr-step-is-step-pinned
   (implies (and (fn-scr-catalogp archive index v fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
@@ -291,7 +292,7 @@
                (fn-nntp-result-effects r) nil)
             (fn-post-make-result
              (fn-post-make-session (fn-nntp-result-session r) nil)
-             (fn-post-single ps "440 posting not permitted") nil))
+             (fn-post-single ps (fn-proto-text "POST" :not-permitted)) nil))
         (fn-post-make-result
          (fn-post-make-session (fn-nntp-result-session r) nil)
          (fn-nntp-result-effects r) nil)))))

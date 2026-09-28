@@ -75,6 +75,7 @@
 
 (in-package "ACL2")
 (include-book "public-exposure-rows")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "owner-config")
 (include-book "native-config")
 
@@ -409,13 +410,13 @@
 ; -----------------------------------------------------------------------------
 ; Admission (RFC 3977 section 5.1.1: 400 at the greeting, then close)
 
-(defconst *fn-exp-busy-line* "400 too many connections; try again later")
+(defconst *fn-exp-busy-line* (fn-proto-text "(connection)" :busy))
 (defconst *fn-exp-address-line*
-  "400 too many connections from this address; try again later")
+  (fn-proto-text "(connection)" :busy-address))
 (defconst *fn-exp-auth-line*
-  "400 too many authentication failures from this address; try again later")
+  (fn-proto-text "(connection)" :auth-failures-address))
 (defconst *fn-exp-auth-close-line*
-  "400 too many authentication failures; closing connection")
+  (fn-proto-text "(connection)" :auth-failures))
 
 (defun fn-exp-line (text)
   (declare (xargs :guard t))

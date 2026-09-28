@@ -212,7 +212,8 @@
                  (fn-nntp-command-pinned session archive index verdicts env tokens fn-arena))
                 ',(remove code (cdr (assoc-equal row *fn-proto-reader-alist*)))))
       :hints (("Goal" :in-theory (e/d ,*fn-proto-dispatch-theory*
-                                      ,*fn-proto-token-theory*))))))
+                                      ,(append *fn-proto-token-theory*
+                                               *fn-proto-closed-theory*)))))))
 
 (pct-drop pct-false-capabilities-without-101 "CAPABILITIES" 101)
 (pct-drop pct-false-help-without-100 "HELP" 100)
@@ -278,14 +279,10 @@
           (fn-nntp-command-pinned session archive index verdicts env tokens fn-arena))))))
 
 ; -----------------------------------------------------------------------------
-; teeth: pending-fixture hostile-reader-archive
-; Not witnessed here, by name: 423/430 "article reclaimed" (a tombstoned
-; payload: tests/acl2/hostile-reader-archive.lisp witnesses the arm),
-; 423/430 "withdrawn" (a control pin: tests/acl2/control-served-tests.lisp),
-; 503 "stored article framing unavailable" (an unframed payload), 503
-; "control status unavailable" (HDR :fn-control over an unclean target),
-; for XOVER and XHDR 423 is only "article reclaimed" (an empty range is
-; their legacy 420, witnessed above), 501
-; "unsupported LIST variant", 503 "catch-up log position out of range" (a
-; view of 2^64 entries), and the :unreachable rows (503 "stored article
-; identifier unavailable", MODE's 502).
+; The codes a two-article archive cannot reach -- withdrawn, reclaimed and
+; unframed articles, control messages -- are witnessed over the hostile
+; reader archive in tests/acl2/protocol-codes-hra-tests.lisp (lane
+; defprotocol-2), which also names the ones no archive reaches and why.
+; Still not witnessed here: 501 "unsupported LIST variant", 503 "catch-up log
+; position out of range" (a view of 2^64 entries), and the :unreachable rows
+; (503 "stored article identifier unavailable", MODE's 502).
