@@ -8,11 +8,6 @@
 
 (in-package "ACL2")
 
-(defun fnn-admin-argv-octets (arguments)
-  "Marshal raw process words only.  ACL2 rejects non-ASCII, empty, oversized,
-or syntactically unsupported requests in `fn-native-admin-plan'."
-  (mapcar (lambda (argument) (fnn-ascii-octet-list argument)) arguments))
-
 (defun fnn-admin-plan-acceptedp (plan)
   (eq (fnn-core 'fn-native-admin-host-status plan) :accepted))
 
