@@ -12732,6 +12732,31 @@
           "pending_subject": "Subject is the credit ledger (books/memory-credits.lisp); no host function calls it yet. Its first instance is the article slots (lane zero-copy-commit, books/owner-article-slots.lisp fn-oas-read-span, PRF-377), U + R one reserve a slot; wiring the ledger to the host's allocation sites is the open step."
         }
       ]
+    },
+    {
+      "id": "PRF-374",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-invite-expiry-agrees-across-the-running-and-stopped-paths"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-invite-delta-is-live-at-its-stamp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clock-reading-latest-milliseconds-of-an-owner-reading"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clock-reading-latest-milliseconds-of-a-record-stamp-reading"
+        }
+      ]
     }
   ]
 }

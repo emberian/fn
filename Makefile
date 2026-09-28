@@ -1268,6 +1268,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-reader-read \
 	tests/acl2/owner-reader-read-tests \
 	books/clock-wall-reading \
+	books/clock-unit \
 	books/owner-time-model \
 	books/owner-time-journal \
 	books/owner-time-admission \

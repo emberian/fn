@@ -66,7 +66,7 @@ Coordinator's (ember may reverse):
 | Served reads | OVER 1-2000 332-399 → 70-78 ms; HDR 153-230 → 9.5-14 ms (parse once at intern). HDR :fn-verified whole range at 100k 30+ min → 1.1 s. |
 | Deployed stack | Tests ran with a 64 MiB stack; nodes run 1 MiB. At 1 MiB a node could not restart past ~30k articles, and 26 commands killed the owner at 100k. ~320 walks became mbe loops (logic unchanged); a shrink-only lint now fails any new article-depth recursion. Every protocol command completes at 1M. |
 | Page store | COW page store, FNADTSN2 layout, growth proved, BLAKE3 page digest, 570 crash/power cuts with 0 violations. Prototype-host open: 10.5 ms at 100k AND 1M (served open today: 11.2 s / 135 s). |
-| Format 10 | On dev, with import of every format-9 kind (signed composites carried byte-for-byte, identities re-derived). |
+| Format 10 | On dev. Import covers every format-9 kind EXCEPT signed topic anchors/admissions, which are refused by name (`:signed-format-9-identity`: their signed sources name format-9 identities format 10 cannot interpret). Signed composites carry byte-for-byte, identities re-derived. (Corrected after GPT-6's review.) |
 | Extraction | Chicken Scheme program extracted from ACL2's translated terms serves a real store byte-identically (9 transcripts, 44,960 generated inputs): 5.3 MB, 14 MB RSS at start vs 466 MB; 3.4x slower per command. |
 | Generators | defkeystone (teeth generated from one form; differential clean) and defprotocol (the NNTP table; the dispatcher generated and proved equal to the hand-written one; 342 reply strings from the table). |
 | Web face | The node serves its own HTTP reader; parse/route/render/session decided in ACL2 (every page proved fixed markup or escaped text). 16/16 Chromium checks. Python readers deleted (7,412 lines). |
@@ -158,6 +158,70 @@ them), batch AZ (integration).
 - The book split (logic/exec) that stops wide recertifications.
 - Third-party peering (spwashi, pug) and the fsn1 edge cutover.
 - The v6.6.0 cut itself (held by ember).
+
+## 9b. What we want to undertake next (for your feedback, scouting and planning)
+
+Each item says what it is, why we think it matters, what we know, and the question we
+want you to scout. Items marked RUNNING were started at ~16:00Z on 09-28; the rest are
+not yet undertaken.
+
+1. **The page store becomes the served open** (RUNNING, arena-store-7 and successor).
+   The owner's records become an abstract stobj over the committed image, readers move
+   one at a time with equality theorems, the checkpoint becomes a dirty-page commit.
+   Target: open near-constant in store size (prototype: 10.5 ms at 100k and 1M), the
+   42 s / 33 GB checkpoint gone. *Scout:* is there a cheaper path for the 94 readers
+   than moving them one by one (a generic refinement lemma per access pattern)?
+2. **F8: the admission and reservation model** (RUNNING, f8-reservation: an itemised
+   breakdown and a proposal). Today's model sums worst cases (1.2 GB at init vs a 256 MB
+   bar): core file 204 MiB + 30 thread stacks 150 MiB + heap figure ~833 MiB (records
+   384 MiB). Core and stacks are address space, not resident, so the bar's definition is
+   open. Connections are NOT charged at all: one connection mid-article at an 11 MiB limit
+   holds ~383 MB of lists outside the figure (being fixed by zero-copy-commit). *Scout:* prior art for provable admission control with measured use and a
+   bounded overdraft (servers, databases, real-time allocators)?
+3. **Zero-copy commit** (RUNNING): one per-connection body buffer through the four
+   layers; the buffer becomes the reserve. *Scout:* the right bound when many
+   connections post large articles at once — pooled buffers vs per-connection?
+4. **The served image without ACL2, then the extracted program as the served build.**
+   Plain SBCL without ACL2 is 30 MiB at start (vs 466 MB); the Chicken extraction is
+   14 MB and byte-identical on every transcript, 3.4x slower per command (keyword
+   matching and record accessors). image-strip (RUNNING) removes prover state the image
+   never reads. *Scout:* what would you require before the extracted program serves
+   (A-EXTRACT's differential, a second backend, CakeML)? Is 3.4x worth closing with
+   constant folding and inlining in the extractor, or with a different backend?
+5. **The generators** (defkeystone and defprotocol landed): **defadt** (derive the
+   representation, the codec and the correspondence proofs from an ADT declaration —
+   the page store and history columns are its first hand-derived instance), **defevent**
+   (the log schema, the fold, the replay-determinism obligation), **definterface** (the
+   host boundary: entry guards, stubs, lints from one declaration), **the profile as one
+   source** (init refusals, unit limits, docs, fixtures), **the time model as a table**
+   (disk modes x commands x answers). *Scout:* which order pays back most, and where
+   do generated proofs usually break down in ACL2 (instantiation limits, certification
+   cost)?
+6. **Book split (logic/exec)** (RUNNING, a pilot): dependents include the logic book so
+   an :exec change stops recertifying hundreds of books. *Scout:* is ACL2's
+   abstract-stobj pattern the whole answer, or is there a cheaper convention?
+7. **The Python cut** (native-harness RUNNING: one shared harness for 66 native test
+   modules). Remaining tranches: clients to Mini/DREGG, lints shrunk by the generators,
+   the old Python store retired. Python is 205k lines today. *Scout:* which tests belong
+   as ACL2 witnesses instead of Python harnesses, and which tooling belongs in Lisp?
+8. **Scale by curve** (RUNNING, tools/scale_curve.py): measure 1k..100k in minutes, fit
+   the growth, extrapolate; no 1M runs unless the fit is ambiguous. *Scout:* pitfalls of
+   extrapolating GC-heavy and page-cache-sensitive systems from small N?
+9. **Proof engineering at scale.** Done: rule hygiene (−30% steps), tau tuning (RUNNING
+   tree-wide), near-5 baseline. Next: a theory bisect command, cross-box certificate
+   sync, a report-only farm mode. *Scout:* the next lever for keeping 1,450 books under
+   10 s each as the tree grows?
+10. **Operations.** Migrating both live nodes to format 10 and peering them (RUNNING);
+    third-party peering (spwashi, pug); the fsn1 edge cutover; a downgrade test; an
+    ACL2-decided "upgrade-equivalent" digest verdict across releases that retire a field.
+    *Scout:* what makes a small federated news network trustworthy to join (operator
+    docs, monitoring, abuse handling)?
+11. **Bao-verified extents** for partial reads of large articles, and **compression
+    dictionaries** (1.41x without, 2.54x with a trained one on real Usenet; where the
+    dictionary lives is open). *Scout:* worth it for a news server's article sizes?
+12. **The v6.6.0 cut** (held by ember): the cut script runs end to end; the fundamentals
+    tool judges F1-F8. *Scout:* what should the first tagged release promise, given F8
+    is not met?
 
 ## 10. Questions for your review and recommendation
 
