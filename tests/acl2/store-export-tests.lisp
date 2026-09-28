@@ -353,10 +353,11 @@
 
 ; -----------------------------------------------------------------------------
 ; The archive's profile (fn-sxp-config-decode-archive; proposed D38).  A
-; store's config.json from before batch AS (thirteen u64 fields), octet for
-; octet as tests/acl2/store-profile-open-tests.lisp pins it: the open refuses
-; it by the older layout's name, and the import reads it with the header
-; limits that release parsed under.
+; store's config.json from before batch AS (format 8: thirteen u64 fields,
+; sealed under SHA-256), octet for octet as tests/acl2/store-profile-open-
+; tests.lisp pinned it: the import reads it as the format-9 values it stands
+; for (the header limits at that release's defaults) and translates them to
+; format 10 as a format-9 profile translates.
 (defconst *sxpt-pre-as-octets*
   '(70 78 83 77 1 1 0 0 0 148 0 10 102 110 45 115
     116 111 114 101 45 56 0 30 102 110 45 115 116 111 114 101
@@ -373,15 +374,24 @@
 
 ; Its values, by hand (the u64 fields read off the octets above).
 (defconst *sxpt-pre-as*
-  (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
+  (list *fn-sxp-format-8-word* *fn-f9-frontier-word*
         4294967295 1099511627776 67108864 16777216 4096 256 65536
         1048576 1048576 1048576 1048576 1048576 0))
 
 
 (assert-event (equal (len *sxpt-pre-as-octets*) 190))
 (assert-event (null (fn-bs-config-decode *sxpt-pre-as-octets*)))
+(assert-event (equal (fn-sxp-pre-as-values *sxpt-pre-as-octets*) *sxpt-pre-as*))
+(assert-event (fn-sxp-archive-format-9p *sxpt-pre-as-octets*))
+(defconst *sxpt-pre-as-9*
+  (append (list *fn-bs-meta-format-9*) (cdr *sxpt-pre-as*) (list 64 256 16384)))
+(assert-event (equal (fn-sxp-format-8-values9 *sxpt-pre-as-octets*) *sxpt-pre-as-9*))
+(assert-event (null (fn-f9-profile-refusal *sxpt-pre-as-9*)))
 (assert-event (equal (fn-sxp-config-decode-archive *sxpt-pre-as-octets*)
-                     (append *sxpt-pre-as* (list 64 256 16384))))
+                     (fn-f9-profile-of *sxpt-pre-as-9*)))
+(assert-event (equal (fn-sxp-config-decode-archive *sxpt-pre-as-octets*)
+                     (list* *fn-bs-meta-format-10*
+                            (append (take 12 (nthcdr 2 *sxpt-pre-as*)) (list 64 256 16384)))))
 (assert-event (fn-bs-profile-validp (fn-sxp-config-decode-archive *sxpt-pre-as-octets*)))
 ; The current layout reads as the open's decoder reads it.
 (assert-event (equal (fn-sxp-config-decode-archive (fn-bs-config-encode *fn-bs-profile-scale*))
@@ -391,9 +401,18 @@
 ; The import plan over that archive profile imports it (no request), as a
 ; format-9 profile (fn-sxp-log-profile).
 (assert-event
- (equal (fn-sxp-import-plan (fn-sxp-manifest (fn-sxp-entries *sxpt-pre-as-octets* *sxpt-frontier*
-                                                             *sxpt-configs* *sxpt-records*))
-                            *sxpt-pre-as-octets* *sxpt-frontier* *sxpt-configs* *sxpt-records*
-                            '(:current nil))
-        (list :import (fn-sxp-log-profile (append *sxpt-pre-as* (list 64 256 16384)))
-              *sxpt-frontier* *sxpt-configs* *sxpt-records*)))
+ (equal (fn-sxp-import-plan (fn-sxp-manifest-under
+                             t (fn-sxp-entries *sxpt-pre-as-octets* *sxpt-frontier*
+                                               *sxpt-configs* *sxpt-raw-records*))
+                            *sxpt-pre-as-octets* *sxpt-frontier* *sxpt-configs*
+                            *sxpt-raw-records* '(:current nil))
+        (list :import (fn-f9-profile-of *sxpt-pre-as-9*)
+              *sxpt-frontier* *sxpt-configs* *sxpt-records-10*)))
+; Tooth: its MANIFEST is SHA-256's (format 8 sealed under SHA-256); a
+; MANIFEST under this format's digest is a mismatch.
+(assert-event
+ (equal (car (fn-sxp-import-plan (fn-sxp-manifest (fn-sxp-entries *sxpt-pre-as-octets* *sxpt-frontier*
+                                                                   *sxpt-configs* *sxpt-raw-records*))
+                                 *sxpt-pre-as-octets* *sxpt-frontier* *sxpt-configs*
+                                 *sxpt-raw-records* '(:current nil)))
+        :refused))
