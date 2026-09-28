@@ -232,10 +232,13 @@ def measure(build: str, acl2: str, timeout: int, top: int) -> int:
     driver = (PROBE + prefix + '\n:q\n(format t "~&FNTLS-END ~d ~d~%" sb-vm::*free-tls-index* '
               '(floor (sb-alien:extern-alien "dynamic_values_bytes" (sb-alien:unsigned 32)) 2))\n'
               "(sb-ext:exit)\n")
-    env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
+    import acl2_slots  # noqa: PLC0415 (tools/ is on sys.path above)
+    env = dict(acl2_slots.acl2_environment(), ACL2_CUSTOMIZATION="NONE")
     env.pop("ACL2_SYSTEM_BOOKS", None)
-    done = subprocess.run([acl2], cwd=ROOT, input=driver.encode(), stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT, env=env, timeout=timeout, check=False)
+    # The machine's ACL2 pool and heap cap (PKT-162), as proof_artifacts' load.
+    with acl2_slots.tree_slot("tls_check measure"):
+        done = subprocess.run([acl2], cwd=ROOT, input=driver.encode(), stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, env=env, timeout=timeout, check=False)
     out = done.stdout.decode("utf-8", "replace")
     start = re.search(r"FNTLS-START (\d+)", out)
     end = re.search(r"FNTLS-END (\d+) (\d+)", out)
