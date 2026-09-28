@@ -13486,9 +13486,12 @@
       "status": "uncertified-at-current-digest",
       "evidence": [
         "books/config.lisp",
-        "tests/acl2/config-field-max-tests.lisp"
+        "tests/acl2/config-field-max-tests.lisp",
+        "books/node-config.lisp",
+        "planning/evidence/manifests/certify-20260928T212503Z-2718894.json",
+        "planning/evidence/manifests/certify-20260928T214223Z-2884608.json"
       ],
-      "progress_note": "Lane config-and-legacy (Opus 5.5, 2026-09-28): closes clock-units-2's labelled GAP. REPL-admitted on persvati/hbox. Teeth in tests/acl2/config-field-max-tests.lisp: a :set-peers record over the replayed default configuration at exactly 65,538 octets satisfies every conjunct of acceptance and round-trips (positive witness); the same record one octet longer keeps recordp, generation and admissibility, fails fitsp, is not acceptable, and fn-cfg-decode-exact refuses its octets :limit (removal witness); the former GAP record is now refused at admission.",
+      "progress_note": "Lane config-and-legacy (Opus 5.5, 2026-09-28): closes clock-units-2's labelled GAP. REPL-admitted on persvati/hbox. Teeth in tests/acl2/config-field-max-tests.lisp: a :set-peers record over the replayed default configuration at exactly 65,538 octets satisfies every conjunct of acceptance and round-trips (positive witness); the same record one octet longer keeps recordp, generation and admissibility, fails fitsp, is not acceptable, and fn-cfg-decode-exact refuses its octets :limit (removal witness); the former GAP record is now refused at admission. Certified: persvati run-20260928T212321Z-6912 (affected roots of config, peer-config, node-config, peer-feed, feed-journal, owner-feed, checkpoint-codec, native-admin-peer-budget and the changed tests: 751 passed, 0 failed) and run-20260928T214153Z-3a7e (--recertify-uncited, 595 passed, 0 failed).",
       "events": [
         "fn-cfg-record-fitsp-is-the-decoder-limits",
         "fn-cfg-record-octet-count-is-len-of-encode",
