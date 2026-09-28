@@ -633,7 +633,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "moderation" "article" "consumer")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "moderation" "article" "consumer" "carry")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -688,8 +688,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG keys redecide MSGID (re-decide a stored key statement under the grants in force now; the running owner decides it over the control socket; refused when MSGID is no stored key statement or its change is already made; spec peering 7.4)")
         ((equal subject "tls")
          "usage: fn operator CONFIG tls reload (the running owner re-reads its tls_cert and tls_key and serves them to new connections; sessions already open keep theirs; refused by name, the old certificate still served, when the files do not load, the key does not match, the certificate is not valid now, or it drops a name the served one has)")
+        ((equal subject "carry")
+         "usage: fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK REASON...} (the BP carry obligations in the FNWF workflow journal at the absolute path JOURNAL: list and inspect print each work's message, peer, status, Store pin, hold and last attempt; pause stops the requests for WORK (* every work) until resume; drop stops carrying WORK for REASON, final; the Store pin stays until the receipt releases it; the store must not be served)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer|carry} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -773,6 +775,47 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
            (null (fn-ncfg-rest words)))
       (fn-nop-result :accepted :plan "tls" config (list :tls "reload"))
     (fn-nop-usage :invalid-tls-command "tls" config words)))
+
+; PKT-869: `carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|*
+; | drop WORK REASON...}' over the FNWF workflow journal at the absolute path
+; JOURNAL, beside the configured store (books/bp-carry-control.lisp decides
+; each record; host/native/bp-obligation.lisp executes).  A drop's REASON is
+; its words joined by one space.
+(defun fn-nop-join-words-loop (words acc)
+  (declare (xargs :guard (true-listp acc)))
+  (if (consp words)
+      (fn-nop-join-words-loop
+       (cdr words)
+       (if (stringp (car words))
+           (if acc (append acc (cons #\Space (coerce (car words) 'list)))
+             (coerce (car words) 'list))
+         acc))
+    (coerce acc 'string)))
+
+(defun fn-nop-parse-carry (words config)
+  (declare (xargs :guard t))
+  (let ((journal (fn-ncfg-first words))
+        (verb (fn-ncfg-second words))
+        (more (fn-ncfg-rest (fn-ncfg-rest words))))
+    (cond ((not (fn-nop-archive-pathp journal))
+           (fn-nop-usage :invalid-carry-journal "carry" config words))
+          ((and (equal verb "list") (null more))
+           (fn-nop-result :accepted :plan "carry" config (list :carry journal :list nil nil)))
+          ((and (equal verb "inspect") (consp more) (null (cdr more))
+                (stringp (car more)))
+           (fn-nop-result :accepted :plan "carry" config
+                          (list :carry journal :inspect (car more) nil)))
+          ((and (member-equal verb '("pause" "resume")) (consp more) (null (cdr more))
+                (stringp (car more)))
+           (fn-nop-result :accepted :plan "carry" config
+                          (list :carry journal (if (equal verb "pause") :pause :resume)
+                                (car more) nil)))
+          ((and (equal verb "drop") (consp more) (stringp (car more))
+                (consp (cdr more)) (true-listp more))
+           (fn-nop-result :accepted :plan "carry" config
+                          (list :carry journal :drop (car more)
+                                (fn-nop-join-words-loop (cdr more) nil))))
+          (t (fn-nop-usage :invalid-carry-command "carry" config words)))))
 
 (defun fn-nop-parse-administration (command argv config)
   "Delegate the exact bounded argv vector to the ACL2 durable-admin grammar."
@@ -940,6 +983,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
             ((equal command "keys") (fn-nop-parse-keys rest config))
+            ((equal command "carry") (fn-nop-parse-carry rest config))
             ((equal command "tls") (fn-nop-parse-tls rest config))
             ((equal command "account") (fn-nop-parse-account rest argv config))
             (t (fn-nop-usage :unsupported-command command config rest))))))
@@ -1521,6 +1565,15 @@ formed and the operator asked for something the node declined to do."
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
 
+; PKT-869: the accepted `carry' plan's fields: (JOURNAL VERB WORK REASON).
+(defun fn-native-operator-result-carry-fields (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "carry")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result)) :carry))
+      (fn-ncfg-rest (fn-native-operator-result-arguments result))
+    nil))
+
 (defun fn-native-operator-result-keys-msgid-octets (result)
   "The Message-ID of an accepted `keys redecide MSGID', as octets."
   (declare (xargs :guard t))
@@ -1635,6 +1688,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "account") :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           ((equal (fn-native-operator-result-command result) "keys") :keys)
+          ((equal (fn-native-operator-result-command result) "carry") :carry)
           ((equal (fn-native-operator-result-command result) "tls") :tls)
           ((equal (fn-native-operator-result-command result) "show") :show)
           ((equal (fn-native-operator-result-command result) "mission") :mission)
@@ -2442,7 +2496,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
 (defconst *fn-nop-store-actions*
   '(:run :post :status :health :recover :compact :checkpoint :reclaim
     :reclaim-dry-run :reclaim-recorded :export :admin :inspect
-    :peering :principal :keys :tls))
+    :peering :principal :keys :tls :carry))
 
 (defun fn-native-operator-result-needs-storep (result)
   "An accepted plan whose native action opens the configured store."

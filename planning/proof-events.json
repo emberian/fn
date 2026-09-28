@@ -12818,6 +12818,27 @@
           "name": "fn-ock-requested-word-is-the-next-due"
         }
       ]
+    },
+    {
+      "id": "PRF-914",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-gate-refuses-a-held-work"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-gate-is-the-plan-otherwise"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-drop-is-final"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpcc-admitted-drop-drops"
+        }
+      ]
     }
   ]
 }

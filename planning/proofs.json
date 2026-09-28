@@ -13538,6 +13538,29 @@
         "fn-ock-requested-never-past-a-deferral",
         "fn-ock-requested-word-is-the-next-due"
       ]
+    },
+    {
+      "id": "PRF-914",
+      "title": "A paused or dropped BP carry work's request is refused by name, any other work's request is the request plan itself, and no control record undoes a drop",
+      "statement": "books/bp-carry-control.lisp. KEYSTONE fn-bpcc-gate-refuses-a-held-work: when fn-bpcc-work-state names a hold (paused, by the work or by \"*\", or dropped), fn-bpcc-request-gate answers (:refused :carry-paused) or (:refused :carry-dropped), never a :request. fn-bpcc-gate-is-the-plan-otherwise: with no hold it is books/bp-request-plan.lisp fn-bprq-plan's answer unchanged. fn-bpcc-drop-is-final: after any record the dropped work stays dropped. fn-bpcc-admitted-drop-drops: an admitted drop records the work and its reason. Subject: host/workflow-host.lisp fn-workflow-request-plan (called by host/native/bp-obligation.lisp fnn-bpo-request-publish), which gates fn-bprq-plan through the overlay the journal replays (books/bp-ion-workflow.lisp fn-bpiw-apply, fn-bpiw-carry).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-035"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-carry-control.lisp",
+        "tests/acl2/bp-carry-control-tests.lisp"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox (bp-carry-control and bp-ion-workflow over it); teeth: paused, dropped and all-paused witnesses, the no-hold identity with its must-fail, drop finality over resume * and pause, and the refusals by name.",
+      "events": [
+        "fn-bpcc-gate-refuses-a-held-work",
+        "fn-bpcc-gate-is-the-plan-otherwise",
+        "fn-bpcc-drop-is-final",
+        "fn-bpcc-admitted-drop-drops"
+      ]
     }
   ]
 }

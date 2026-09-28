@@ -157,8 +157,50 @@
 ; (books/bp-request-plan.lisp, keystone fn-bprq-plan-is-the-works-request).
 (defun fn-workflow-request-plan (work-id attempt-id fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
-  (value (fn-bprq-plan (f-get-global 'fn-workflow-state state)
-                       work-id attempt-id fn-arena)))
+  ;; PKT-869: a paused or dropped work's request is refused by name
+  ;; (books/bp-carry-control.lisp fn-bpcc-request-gate).
+  (value (fn-bpcc-request-gate
+          (fn-bpiw-carry (f-get-global 'fn-workflow-ion-state state))
+          work-id
+          (fn-bprq-plan (f-get-global 'fn-workflow-state state)
+                        work-id attempt-id fn-arena))))
+
+; PKT-869: the operator's carry control.  VERB is :pause, :resume or :drop;
+; the answer is the exact record to publish, or (:refused REASON), ACL2's
+; (books/bp-carry-control.lisp fn-bpcc-refusal over the installed image).
+(defun fn-workflow-carry-record (verb work-id reason state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((record (cond ((eq verb :pause) (list :carry-pause work-id))
+                       ((eq verb :resume) (list :carry-resume work-id))
+                       ((eq verb :drop) (list :carry-drop work-id reason))
+                       (t nil)))
+         (refusal (if record
+                      (fn-bpcc-refusal (f-get-global 'fn-workflow-state state)
+                                       (fn-bpiw-carry (f-get-global 'fn-workflow-ion-state state))
+                                       record)
+                    :malformed)))
+    (value (if refusal (list :refused refusal) (list :record record)))))
+
+; PKT-869: `carry list' (WORK-ID nil) or `carry inspect WORK-ID': ACL2's
+; report octets, each work's pin read from the Store image the owner holds.
+(defun fn-workflow-carry-pinned (workflow works acc)
+  (declare (xargs :mode :program))
+  (if (consp works)
+      (fn-workflow-carry-pinned
+       workflow (cdr works)
+       (if (fn-bprl-work-pinnedp workflow (car works))
+           (cons (fn-bp-work-id (car works)) acc)
+         acc))
+    acc))
+
+(defun fn-workflow-carry-report (work-id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((workflow (f-get-global 'fn-workflow-state state))
+         (carry (fn-bpiw-carry (f-get-global 'fn-workflow-ion-state state)))
+         (pinned (fn-workflow-carry-pinned workflow (fn-bp-state-works workflow) nil)))
+    (value (if work-id
+               (fn-bpcc-inspect-report workflow carry pinned work-id)
+             (fn-bpcc-list-report workflow carry pinned)))))
 
 ; `bp-obligation recover': ACL2's decision for a fenced attempt, (:recover
 ; RECORD) or (:refused REASON) (books/bp-request-plan.lisp; keystone

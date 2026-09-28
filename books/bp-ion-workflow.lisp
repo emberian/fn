@@ -5,6 +5,8 @@
 (in-package "ACL2")
 (include-book "bp-ion-observation")
 (include-book "bp-release")
+; PKT-869: the operator's carry control rides in this overlay too.
+(include-book "bp-carry-control")
 
 (defun fn-bpiw-key (record)
   (declare (xargs :guard t :verify-guards nil))
@@ -28,12 +30,18 @@
         (car records)
       (fn-bpiw-find-key key (cdr records)))))
 
-; (routes observations), both lists newest first. The route record is durable
-; before bp_send. Its application peer is checked against the exact ADU rather
-; than copied from a host-computed route table.
+; (routes observations carry), the lists newest first. The route record is
+; durable before bp_send. Its application peer is checked against the exact
+; ADU rather than copied from a host-computed route table.  CARRY is the
+; operator's carry control (books/bp-carry-control.lisp, PKT-869).
 (defun fn-bpiw-routes (ion) (declare (xargs :guard t :verify-guards nil)) (car ion))
 (defun fn-bpiw-observations (ion) (declare (xargs :guard t :verify-guards nil)) (cadr ion))
-(defun fn-bpiw-initial () (declare (xargs :guard t :verify-guards nil)) (list nil nil))
+(defun fn-bpiw-carry (ion)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (consp ion) (consp (cdr ion)) (consp (cddr ion))) (caddr ion) (fn-bpcc-initial)))
+(defun fn-bpiw-initial ()
+  (declare (xargs :guard t :verify-guards nil))
+  (list nil nil (fn-bpcc-initial)))
 
 ; The route and observation gates read the attempt's request through the
 ; payload arena (books/bp-outbound.lisp); every function below that takes
@@ -112,13 +120,22 @@
     (if (fn-bpiw-route-admissiblep bp ion record fn-arena)
         (list t bp nil
               (list (cons record (fn-bpiw-routes ion))
-                    (fn-bpiw-observations ion)))
+                    (fn-bpiw-observations ion)
+                    (fn-bpiw-carry ion)))
       (list nil bp nil ion)))
    ((equal (car record) :ion-observed)
     (if (fn-bpiw-observation-admissiblep bp ion record fn-arena)
         (list t bp nil
               (list (fn-bpiw-routes ion)
-                    (cons record (fn-bpiw-observations ion))))
+                    (cons record (fn-bpiw-observations ion))
+                    (fn-bpiw-carry ion)))
+      (list nil bp nil ion)))
+   ; PKT-869: an operator's carry control record changes only the overlay.
+   ((fn-bpcc-kindp (car record))
+    (if (fn-bpcc-admissiblep bp (fn-bpiw-carry ion) record)
+        (list t bp nil
+              (list (fn-bpiw-routes ion) (fn-bpiw-observations ion)
+                    (fn-bpcc-apply (fn-bpiw-carry ion) record)))
       (list nil bp nil ion)))
    (t (let ((answer (fn-bprl-apply-journal-record bp record)))
         (list (car answer) (nth 1 answer) (nth 2 answer) ion)))))
@@ -171,17 +188,21 @@
                                 fn-arena)))))
 
 (defthm fn-bpiw-ion-record-keeps-bp-state
-  (implies (member-equal (car record) '(:ion-route :ion-observed))
+  (implies (member-equal (car record) '(:ion-route :ion-observed
+                                        :carry-pause :carry-resume :carry-drop))
            (equal (nth 1 (fn-bpiw-apply bp ion record fn-arena)) bp))
   :hints (("Goal" :in-theory
            (e/d (fn-bpiw-apply)
                 (fn-bpiw-route-admissiblep
-                 fn-bpiw-observation-admissiblep)))))
+                 fn-bpiw-observation-admissiblep
+                 fn-bpcc-admissiblep fn-bpcc-apply)))))
 
 (defthm fn-bpiw-ion-record-emits-no-effects
-  (implies (member-equal (car record) '(:ion-route :ion-observed))
+  (implies (member-equal (car record) '(:ion-route :ion-observed
+                                        :carry-pause :carry-resume :carry-drop))
            (equal (nth 2 (fn-bpiw-apply bp ion record fn-arena)) nil))
   :hints (("Goal" :in-theory
            (e/d (fn-bpiw-apply)
                 (fn-bpiw-route-admissiblep
-                 fn-bpiw-observation-admissiblep)))))
+                 fn-bpiw-observation-admissiblep
+                 fn-bpcc-admissiblep fn-bpcc-apply)))))

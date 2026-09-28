@@ -140,7 +140,7 @@ formats, no bound smaller, a ceiling no smaller. Only the preset membership
   (nntp-syntax.lisp:84; RFC 3977 §6).
 - wildmat 497 (wildmat.lisp:33).
 - Feed wire chunk 512 (feed-wire-input.lisp:19).
-- Admin and operator argv (native-admin.lisp:21-22, native-operator.lisp:14-15).
+- (Admin and operator argv: removed 2026-09-28, section 1.4.)
 - Auth name 64 (nntp-auth.lisp:105).
 - Statement item and header caps (statement.lisp:61-68).
 - Key and signature octets 4096 (crypto-seam.lisp:42-43).
@@ -162,6 +162,41 @@ formats, no bound smaller, a ceiling no smaller. Only the preset membership
 - `tools/run_store.py:34` `MAX_TRANSACTION_COUNT = 128`
   (m5-capacity-2026-09-24.md:14-17).
 - `host/native/tcpcl.lisp:45` MRU 1048576.
+
+### 1.4 BP, TCPCL and width caps remaining, 2026-09-28 (lane operations, row N1 item 5)
+
+Re-read at origin/dev 940bc3104 after P5's codec half (PRF-134) moved the
+ADU, bundle and held-image widths to 2^24 and put a BP node profile
+(books/bp-node-profile) in front of them. Kind as in section 1; **A** is an
+admission limit that belongs in a profile (refused by name at the
+boundary that admits the thing it counts), **P** a local policy. deps is
+the defining book's dependents today (tools/shape_books.py).
+
+| Constant | Value | file | What it bounds | deps | Kind | Disposition |
+| --- | --- | --- | --- | --- | --- | --- |
+| `fn-bpn-machine-limitp` (every BP node profile field) | 2^24 | bp-node-machine.lisp:283 | the ceiling of the node profile's ADU, bundle and held octets, so the codec widths below | 162 | D (a store profile may admit an article of up to 2^64-1 octets; BP cannot carry one past 16 MiB) | raise to the frame LENGTH width (2^32-1, frame-octets.lisp) with the codec widths below, and state `fn-bpn-profile ADU >= the store profile's A` as a profile relation (P5's open half) |
+| `*fn-bpa-max-octets*` / `-max-article*` | 2^24 / 2^24-2106 | bp-adu.lisp:31, :37 | ADU codec width | 256 | codec width tied to the line above | moves with it |
+| `*fn-bpb-max-data*` / `*fn-bpb-max-input*` | 2^24 | bp-bundle.lisp:56, :67 | bundle codec width | 171 | codec width tied to the line above | moves with it |
+| `*fn-bpnf-max-held-image*` | 2^24 | bp-node-foundation.lisp:17 | held-image codec width | 153 | codec width tied to the line above | moves with it |
+| `*fn-bpn-machine-max-octets*` | 2^24 | bp-node-machine.lisp:19 | the machine state's octets | 162 | as above | moves with it |
+| `*fn-bpb-max-blocks*` | 32 | bp-bundle.lisp:60 | canonical blocks in one bundle (RFC 9171 4.1 sets none) | 171 | A (a work bound per bundle: the parse is linear in blocks) | a node-profile field, refused by name at receive |
+| `*fn-bpf-max-length*` / `*fn-bpf-max-fragments*` | 65538 / 64 | bp-fragment.lisp:50-51 | reassembly: an ADU of more than 64 fragments of 64 KiB is refused | 109 | D | the reassembled size is the profile's ADU octets and the fragment count follows from it and the TCPCL MRU (P5 row "fragments by MRU") |
+| `*fn-bpn-machine-max-records*` | 4096 | bp-node-machine.lisp:21 | bundles held in custody at once | 162 | D (the 4097th held bundle is refused however much space the profile gives) | a node-profile field (`max_bp_rows`, section 2.1), with the held list walked by loop twins |
+| `*fn-bpnf-received-max-records*` | 2 x 4096 | bp-fnbs-namespace.lisp:12 | received FNBS finals in one journal generation | 70 | W since the rotation (bp-node-rotation.lisp: a generation starts at zero) | stays; its comment says W |
+| `*fn-bpn-machine-max-jobs*` | 64 | bp-node-machine.lisp:18 | concurrent carrier jobs | 162 | W (jobs are work in flight) | stays; comment |
+| `*fn-bpnp-max-routes*` | 64 | bp-node-progress.lisp:14 | routes the progress step accepts | 48 | D, and silent: with a 65th `bp-route add` the step answers nothing and the node stops forwarding without a refusal | an admission limit refused by name at `bp-route add` (the route table is operator data), or no limit with an indexed route lookup; never a silent no-progress |
+| `*fn-bpn-evidence-max-records*` | 4096 | bp-receive-evidence.lisp:19 | receive-evidence identities over the journal's LIFETIME; the startup reads every entry | 2 | D (a lifetime cap) and whole-state work at startup | a retention rule for evidence (released with the bundle's verdict) and a windowed startup scan |
+| `*fn-bpc-max-text*` | 1024 | bp-primary-cbor.lisp:111 | a dtn EID's scheme-specific part (RFC 9171 sets none) | 198 | A | a node-profile field; the local policy comment already says so |
+| `*fn-bpc-max-input*` / `-items*` / `-arity*` / `-bytes*` | 65536 / 128 / 16 / 64 | bp-primary-cbor.lisp:114-121 | one primary block's decode | 198 | W (RFC 9171 4.3.1 fixes the block's shape; the bounds follow from it and the EID bound) | stays; derive `-max-input*` from the EID bound when that moves |
+| `*fn-tcl-node-id-cap*` / `*fn-tcl-ext-cap*` | 1024 / 4096 | tcpcl-octets.lisp:85-86 | a peer's SESS_INIT node ID and extension items (RFC 9174 4.6 widths are u16/u32) | 8 | A (work per session message) | profile fields, refused by name at SESS_INIT |
+| `*fn-tcl-max-u16*` / `-u32*` / `-u64*` | | tcpcl-octets.lisp:82-84 | RFC 9174 field widths | 8 | RFC | stay |
+| `*fn-bpsr-max-signature-octets*` / `*fn-bpsr-max-octets*` | 4096 / 16384 | bp-signed-receipt.lisp:21-22 | a signed receipt (ML-DSA-65 is 3309 octets) | 154 | N | stay |
+| `*fn-bpn-report-max-input*` | 4096 | bp-status-report.lisp:8 | one status report's decode (RFC 9171 6.1 fixes its shape) | 77 | W | stays |
+| `*fn-bpn-lifecycle-max-hidden-stages*` / `-stage-name-chars*` | 16 / 128 | bp-node-machine-codec.lisp:30-31 | node-generated lifecycle stages | 130 | N | stay |
+| `*fn-bpcd-*` | 40 / 36 / 37 | bp-clock-domain.lisp:13-15 | node-generated clock domain fields | | N | stay |
+| `*fn-bpnp-max-forward-retries*` | 3 | bp-forward-attempt.lisp:41 | forwarding retries | 75 | P | stays a policy; section 1.3's work-bound list keeps it |
+| `*fn-nop-max-arguments*` / `-argument-octets*`, `*fn-native-admin-max-arguments*` / `-argument-octets*` | 32 x 512 / 16 x 512 | native-operator.lisp, native-admin-shape.lisp | operator and admin argv | 10 / 526 | D (PKT-867: init could name about 20 groups) | REMOVED by item 1 (HST-032, PRF-902); section 1.3's work-bound list no longer holds them |
+| `*fn-ncfg-max-octets*` / `-max-lines*` | 16384 / 128 | native-config.lisp:21-22 | `fn.toml` | 26 | D (section 1.3) | still open: the file is read whole into ACL2; a streamed line reader bounds the work instead |
 
 ## 2. The design
 

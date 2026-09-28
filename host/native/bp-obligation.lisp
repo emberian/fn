@@ -114,8 +114,13 @@
          (if (eq (fnn-core-state 'fn-workflow-fencedp) t)
              (fnn-refuse "ACL2 refused a request for work ~a attempt ~a: the workflow image is fenced on an uncertain publication (bp-obligation recover)"
                          work-id attempt-id)
-           (fnn-refuse "ACL2 refused a request for work ~a attempt ~a"
-                       work-id attempt-id)))
+           ;; PKT-869: a held work's refusal names its hold (carry-paused,
+           ;; carry-dropped: books/bp-carry-control.lisp).
+           (if (and (consp plan) (eq (first plan) :refused) (keywordp (second plan)))
+               (fnn-refuse "ACL2 refused a request for work ~a attempt ~a reason=~(~a~)"
+                           work-id attempt-id (second plan))
+             (fnn-refuse "ACL2 refused a request for work ~a attempt ~a"
+                         work-id attempt-id))))
        (destructuring-bind (tag attempt outcome key adu destination retry) plan
          (declare (ignore tag))
          ;; The ADU's width is ACL2's (fn-bpa-encoding-bound); the host only
@@ -276,3 +281,52 @@
                                  command))))))
 
 (fnn-register-verb "bp-obligation" (fnn-bp-verb #'fnn-dispatch-bp-obligation))
+
+;;; PKT-869: `fn operator CONFIG carry JOURNAL ...', the operator's verbs over
+;;; the BP carry obligations.  ACL2 plans the command
+;;; (books/native-operator.lisp fn-nop-parse-carry), decides every control
+;;; record and renders every report (books/bp-carry-control.lisp, through
+;;; host/workflow-host.lisp fn-workflow-carry-record / -report); this
+;;; publishes the record it is handed and prints the octets.  The store is
+;;; opened as the other obligation verbs open it (the owner-mode journal
+;;; beside it), so a served store refuses (`already locked').
+(defun fnn-carry-execute (result)
+  (let* ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+         (fields (fnn-core 'fn-native-operator-host-result-carry-fields result)))
+    (handler-case
+        (destructuring-bind (journal verb work reason) fields
+          (let ((code
+                  (if (member verb '(:list :inspect))
+                      (fnn-bpo-call-with-owner-journal
+                       root journal nil
+                       (lambda (opened service)
+                         (declare (ignore opened service))
+                         (let ((report (fnn-core-state 'fn-workflow-carry-report
+                                                       (and (eq verb :inspect) work))))
+                           (unless (fnn-octet-list-p report)
+                             (fnn-fault "ACL2 returned a malformed carry report"))
+                           (when (and (eq verb :inspect) (null report))
+                             (fnn-refuse "carry refused reason=unknown-work work=~a" work))
+                           (write-sequence (fnn-octets report) *fnn-stdout*)
+                           (finish-output *fnn-stdout*)
+                           +fnn-exit-ok+)))
+                    (fnn-bpo-call-with-owner-journal
+                     root journal t
+                     (lambda (opened service)
+                       (declare (ignore service))
+                       (let ((answer (fnn-core-state 'fn-workflow-carry-record verb work reason)))
+                         (unless (and (consp answer) (member (first answer) '(:record :refused)))
+                           (fnn-fault "ACL2 returned a malformed carry decision"))
+                         (when (eq (first answer) :refused)
+                           (fnn-refuse "carry refused reason=~(~a~) work=~a" (second answer) work))
+                         (fnn-app-publish opened (second answer))
+                         (fnn-out "BP carry durable ~(~a~) work=~a" verb work)
+                         +fnn-exit-ok+))))))
+            (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "carry")
+            code))
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "carry" condition)
+          code)))))
+
+(fnn-operator-register-action :carry #'fnn-carry-execute)
