@@ -11277,7 +11277,7 @@
     {
       "id": "PRF-345",
       "title": "The record's octet/string conversions and the article Message-ID walk execute in constant stack: fn-record-octets-chars, fn-record-string-octets-aux and fn-article-msgids run an accumulator loop equal to their definitions",
-      "statement": "books/records-shape.lisp: fn-record-octets-chars (under fn-record-octets-string) and fn-record-string-octets-aux (under fn-record-string-octets) are each (mbe :logic <the per-octet recursion, unchanged> :exec (reverse (<twin> x nil))) with the twins fn-record-octets-chars-rev and fn-record-string-octets-rev, tail-recursive accumulators; their verify-guards events prove exec = logic on every input satisfying the guard (fn-cbor-octet-listp, character-listp), by the local lemmas fn-record-octets-chars-rev-is-revappend and fn-record-string-octets-rev-is-revappend (the twin is revappend of the definition). The host reaches them through every conversion site, e.g. host/store-host.lisp fn-store-octets->string and fn-store-frame-wire-to-logical-values (fn-record-octets-string), host/native-live-status-host.lisp fn-native-live-status-host-answer (fn-nls-buffer). Before, execution recursed once per octet: on a node thread's 1,024 KB control stack 80,000 octets exhausted it (the 5,000-obligation report stopped the owner). Scope: the octet list stays the representation (D27's concrete twin is PKT-864). books/acceptance.lisp fn-article-msgids is the same shape (twin fn-article-msgids-rev, lemma fn-article-msgids-rev-is-revappend); fn-article-listp's :exec calls it over the whole article list, and on a full-replay open (host/store-node-host.lisp fn-store-sn-recover-rows -> fn-store-sn-open-extended -> fn-sco-cpr-finish's fn-cnode-statep) 100,000 articles exhausted the 1,024 KB main-thread stack at 30,526 frames.",
+      "statement": "books/records-shape.lisp: fn-record-octets-chars (under fn-record-octets-string) and fn-record-string-octets-aux (under fn-record-string-octets) are each (mbe :logic <the per-octet recursion, unchanged> :exec (reverse (<twin> x nil))) with the twins fn-record-octets-chars-rev and fn-record-string-octets-rev, tail-recursive accumulators; their verify-guards events prove exec = logic on every input satisfying the guard (fn-cbor-octet-listp, character-listp), by the local lemmas fn-record-octets-chars-rev-is-revappend and fn-record-string-octets-rev-is-revappend (the twin is revappend of the definition). The host reaches them through every conversion site, e.g. host/store-host.lisp fn-store-octets->string and fn-store-frame-wire-to-logical-values (fn-record-octets-string), host/native-live-status-host.lisp fn-native-live-status-host-answer (fn-nls-buffer). Before, execution recursed once per octet: on a node thread's 1,024 KB control stack 80,000 octets exhausted it (the 5,000-obligation report stopped the owner). Scope: the octet list stays the representation (D27's concrete twin is PKT-864). books/acceptance.lisp fn-article-msgids is the same shape (twin fn-article-msgids-rev, lemma fn-article-msgids-rev-is-revappend); fn-article-listp's :exec calls it over the whole article list, and on a full-replay open (host/store-node-host.lisp fn-store-sn-recover-rows and fn-store-sn-recover-from-checkpoint -> fn-store-sn-open-extended -> fn-sco-cpr-finish's fn-cnode-statep) 100,000 articles exhausted the 1,024 KB main-thread stack at 30,526 frames.",
       "milestone": "M5",
       "requirements": [
         "HST-006"
@@ -11307,6 +11307,37 @@
         "fn-record-string-octets-aux",
         "fn-article-msgids"
       ]
+    },
+    {
+      "id": "PRF-352",
+      "title": "The open path's per-article walks execute in constant stack: eleven list recursions over the retained articles run an accumulator or reversed-fold loop equal to their definitions",
+      "statement": "Each function is (mbe :logic <its recursion, unchanged> :exec <loop>) and its verify-guards event proves exec = logic on every input satisfying the guard. Maps and filters (books/retention.lisp fn-retain-obligation-ids, fn-retain-release-ids; books/node.lisp fn-node-binding-msgids, fn-node-binding-ids; books/replay.lisp fn-replay-verdict-pairs): (reverse (<f>-rev xs nil)), lemma <f>-rev-is-revappend. fn-retain-sum: (fn-retain-sum-acc pins 0), lemma fn-retain-sum-acc-is-plus. fn-retain-remove-id: (fn-retain-remove-id-rev id pins nil), lemma fn-retain-remove-id-rev-is-revappend. Right folds (books/stx-index.lisp fn-stx-index-of-store, books/msgid-index-concrete.lisp fn-mxc-build, books/replay-identity-index.lisp fn-rii-kbuild-releases, fn-rii-kbuild-pins): the reversed list (fn-ag-rev-onto xs nil) folded from the left, lemma <f>-loop-of-rev-onto (the loop over (fn-ag-rev-onto xs zs) is the loop over zs from the fold of xs). The host reaches them on every open: host/store-node-host.lisp fn-store-sn-recover-rows and fn-store-sn-recover-from-checkpoint -> fn-store-sn-open-extended -> fn-rii-sco-store-open -> fn-sco-cpr-finish / fn-sco-cpr-resume, whose :exec runs the whole-node recognizer fn-cnode-statep (fn-retain-statep, fn-node-binding-listp) once, and the identity index build (fn-rii-ix-of: fn-mxc-build, fn-rii-kbuild). Before, each recursed once per retained article: at the installed launcher's 1,024 KiB stack a full-replay open of 100,000 articles died in 30,527 frames of fn-retain-obligation-ids, and a checkpoint open of the same store in fn-store-sn-recover-from-checkpoint. Scope: stack depth only; the recognizer still walks the whole node once per open (O(R), PKT-876's carried-invariant remainder), and fn-retain-statep's intersection-equal stays quadratic in pins x releases.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-006"
+      ],
+      "depends_on": [
+        "PRF-345"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/retention.lisp",
+        "books/node.lisp",
+        "books/replay.lisp",
+        "books/stx-index.lisp",
+        "books/msgid-index-concrete.lisp",
+        "books/replay-identity-index.lisp",
+        "tests/acl2/retention-tests.lisp",
+        "tests/acl2/node-tests.lisp",
+        "tests/acl2/replay-tests.lisp",
+        "tests/acl2/msgid-index-concrete-tests.lisp",
+        "tests/acl2/replay-identity-index-tests.lisp",
+        "tests/acl2/stx-transit-tests.lisp",
+        "tests/test_native_open_depth.py",
+        "planning/evidence/open-depth-2026-09-28.md"
+      ],
+      "progress_note": "persvati REPL: every event admitted. Certification and native opens: see the evidence record."
     },
     {
       "id": "PRF-314",

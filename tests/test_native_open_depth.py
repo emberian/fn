@@ -19,7 +19,7 @@ filesystem, and opened by the owner (`operator CONFIG run`):
 Each open's seconds to LISTENING are printed (`OPEN-DEPTH NAME MODE
 seconds=S`).  The fixtures live on hbox (tools/fixtures.py): set
 FN_OPEN_DEPTH_FIXTURES to their directory (/tank/fn/scratch/fixtures) and
-FN_OPEN_DEPTH_NAMES to a comma list (default syn100k-2k; syn1m-2k needs an
+FN_OPEN_DEPTH_NAMES to a comma (or colon) list (default syn100k-2k; syn1m-2k needs an
 80G scope, its init reservation is 57,158 MB).  FN_OPEN_DEPTH_CHECKPOINT_STACK_KB
 writes the checkpoint at another stack (with FN_TEST_CONTROL_STACK_REASON),
 to ask whether an image that cannot full-replay-open can open a checkpoint.
@@ -39,7 +39,7 @@ from tests import test_native_operator_verbs as verbs
 
 
 FIXTURES = os.environ.get("FN_OPEN_DEPTH_FIXTURES")
-NAMES = [n for n in os.environ.get("FN_OPEN_DEPTH_NAMES", "syn100k-2k").split(",") if n]
+NAMES = [n for n in os.environ.get("FN_OPEN_DEPTH_NAMES", "syn100k-2k").replace(":", ",").split(",") if n]
 OPEN_SECONDS = 3600
 
 

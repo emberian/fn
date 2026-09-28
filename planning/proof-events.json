@@ -11041,6 +11041,55 @@
       ]
     },
     {
+      "id": "PRF-352",
+      "events": [
+        {
+          "kind": "guarded-function",
+          "name": "fn-retain-obligation-ids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-retain-release-ids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-retain-sum"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-retain-remove-id"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-node-binding-msgids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-node-binding-ids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-replay-verdict-pairs"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-stx-index-of-store"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-mxc-build"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-rii-kbuild-releases"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-rii-kbuild-pins"
+        }
+      ]
+    },
+    {
       "id": "PRF-314",
       "events": [
         {
