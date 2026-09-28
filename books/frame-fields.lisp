@@ -6,7 +6,7 @@
 
 (in-package "ACL2")
 (include-book "frame-octets")
-(include-book "wildmat")
+(include-book "utf8")
 (local (include-book "arithmetic/top" :dir :system))
 
 (local (in-theory (enable fn-cbor-invariants-vocabulary)))
@@ -62,7 +62,7 @@
            (fn-frame-spec-listp (cdr specs)))
     (null specs)))
 
-; Text is UTF-8 by the wildmat book's RFC 3629 decoder.  The bound in front
+; Text is UTF-8 by the utf8 book's RFC 3629 decoder.  The bound in front
 ; of it is this book's, so no second UTF-8 table exists anywhere in the tree.
 (defun fn-frame-textp (octets)
   (declare (xargs :guard t))
