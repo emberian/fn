@@ -7,6 +7,18 @@
     python3 tools/shape_books.py --json
     python3 tools/shape_books.py --write-doc    # regenerate docs/proof-style.md's table
     python3 tools/shape_books.py --check        # warn (exit 0) when that table is stale
+    python3 tools/shape_books.py --critical     # the longest include chain in the tree
+    python3 tools/shape_books.py --critical --affected-by books/config.lisp
+                                                # ... among what a change to config recertifies
+    python3 tools/shape_books.py --chain books/owner.lisp   # the longest chain through owner
+
+THE CHAIN.  A recertification's wall time is its longest include chain, not
+its size over the core count (planning/architecture-recommendation-
+2026-09-28.md section 4.2: 509 s wall against a 466 s chain, 656 against 642,
+385 against 384).  `--critical` prints that chain, top down, each book with
+its predicted quiet seconds (tools/chain_schedule.py: its last archived wall
+over the slowdown at the load it ran under), and what `--jobs auto` would
+predict on each box.  The "books under 10 s" ratchet pays most on these books.
 
 Lane served-columns spent an hour choosing where a column lives (arena vs
 facts vs a new stobj) because nothing said that books/held-record.lisp is
@@ -42,6 +54,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certify_books  # noqa: E402
+import chain_schedule  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 DOC = ROOT / "docs" / "proof-style.md"
@@ -117,6 +130,67 @@ def replace_region(text: str, region: str) -> str:
     return text[:start] + region + text[end + len(END):]
 
 
+def dependents_set(closure: dict[str, list[str]], targets: list[str]) -> set[str]:
+    """Every book of CLOSURE that is, or transitively includes, a target."""
+    included_by: dict[str, set[str]] = collections.defaultdict(set)
+    for book, includes in closure.items():
+        for dependency in includes:
+            included_by[dependency].add(book)
+    seen = set(targets)
+    stack = list(targets)
+    while stack:
+        for parent in included_by.get(stack.pop(), ()):
+            if parent not in seen:
+                seen.add(parent)
+                stack.append(parent)
+    return seen
+
+
+def chain_report(affected_by: list[str] = (), through: str | None = None,
+                 closure: dict[str, list[str]] | None = None,
+                 boxes: tuple[str, ...] = ("persvati", "hbox"),
+                 limit: int | None = None) -> list[str]:
+    """The critical-chain report: the set, the chain top down, the plans.
+
+    The set is the tree (the Makefile roots' closure), or with AFFECTED_BY
+    the books a change to those recertifies (what an incremental farm run
+    certifies when the cache holds the rest)."""
+    if closure is None:
+        closure = certify_books.local_closure(certify_books.default_books())
+    targets = [certify_books.normalize_book(book) for book in affected_by]
+    for book in targets + ([through] if through else []):
+        if book not in closure:
+            raise SystemExit(f"shape_books: {book}: not in the Makefile roots' closure")
+    members = dependents_set(closure, targets) if targets else set(closure)
+    books = [book for book in chain_schedule.topological(
+        sorted(closure), {b: set(closure[b]) & closure.keys() for b in closure}) if book in members]
+    graph = {book: {d for d in closure[book] if d in members} for book in books}
+    walls = chain_schedule.quiet_walls(books, host=boxes[0])
+    chain = chain_schedule.critical_chain(books, graph, walls.seconds, through)
+    total = sum(walls.seconds[book] for book in chain)
+    work = sum(walls.seconds.values())
+    scope = ("the tree" if not targets else
+             "what " + ", ".join(t + ".lisp" for t in targets) + " recertifies")
+    lines = [f"{scope}: {len(books)} books, {work:.0f} s quiet work; "
+             f"{walls.measured} measured, the rest count the median {walls.fill:.1f} s",
+             f"critical chain{' through ' + through + '.lisp' if through else ''}: "
+             f"{len(chain)} books, {total:.0f} s quiet on {boxes[0]} "
+             f"(top down, predicted quiet seconds):"]
+    shown = chain if limit is None or len(chain) <= limit else chain[-limit:]
+    lines += ["  " + line for line in chain_schedule.chain_lines(shown, walls.seconds)]
+    if shown is not chain:
+        lines.append(f"  ... and {len(chain) - len(shown)} more below")
+    for box in boxes:
+        on_box = walls if box == boxes[0] else chain_schedule.quiet_walls(books, host=box)
+        plan = chain_schedule.choose_jobs(books, graph, on_box.seconds,
+                                          chain_schedule.DEFAULT_CEILING, 24, 0.0, box)
+        at = {j: plan.predicted_by_jobs[j] for j in (4, 8, 12, 16) if j in plan.predicted_by_jobs}
+        lines.append(f"  {box} (quiet, 24 CPUs): --jobs auto -> {plan.jobs} jobs, "
+                     f"predicted {plan.predicted_seconds:.0f} s; "
+                     + ", ".join(f"{s:.0f} s at {j}" for j, s in at.items()))
+    return lines
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--top", type=int, default=40)
@@ -127,8 +201,20 @@ def main(argv: list[str] | None = None) -> int:
                         help="regenerate the table in docs/proof-style.md")
     parser.add_argument("--check", action="store_true",
                         help="warn (exit 0) when docs/proof-style.md's table is stale")
+    parser.add_argument("--critical", action="store_true",
+                        help="print the longest include chain (of the tree, or with "
+                             "--affected-by of what that change recertifies)")
+    parser.add_argument("--chain", metavar="BOOK",
+                        help="print the longest include chain through BOOK")
+    parser.add_argument("--affected-by", action="append", default=[], metavar="BOOK",
+                        help="with --critical/--chain: restrict to the books this "
+                             "change recertifies (repeatable)")
     arguments = parser.parse_args(argv)
 
+    if arguments.critical or arguments.chain:
+        through = certify_books.normalize_book(arguments.chain) if arguments.chain else None
+        print("\n".join(chain_report(arguments.affected_by, through)))
+        return 0
     counts, roots = tree_counts()
     if arguments.write_doc or arguments.check:
         text = DOC.read_text(encoding="utf-8")

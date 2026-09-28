@@ -1380,8 +1380,10 @@ def main(argv: list[str] | None = None) -> int:
                                      "all) picks the one with the lowest load per core")
     parser.add_argument("rest", nargs="*",
                         help="submit: book roots; wait: the run id")
-    parser.add_argument("--jobs", type=int,
-                        default=int(os.environ.get("FN_CERTIFY_JOBS", "8")))
+    parser.add_argument("--jobs", default=os.environ.get("FN_CERTIFY_JOBS", "auto"),
+                        help="concurrent ACL2s on the box: a count, or auto / auto:N "
+                             "(the default: the count that finishes the longest "
+                             "include chain soonest, tools/chain_schedule.py)")
     parser.add_argument("--affected-by", action="append", default=[],
                         help="certify the Makefile roots whose closure contains "
                              "this book (repeatable)")
