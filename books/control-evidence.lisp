@@ -57,7 +57,8 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-ctl-withdrawal-effect))))
+(local (in-theory (enable (:definition fn-ctl-withdrawal-effect)
+                          (:definition fn-ctl-withdrawalp))))
 
 ; -----------------------------------------------------------------------------
 ; Words

@@ -44,6 +44,10 @@
 (include-book "store-log-route-programs")
 (include-book "store-import-publication")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-lgc-take-all))))
+
 (local
  (defthm fn-lgob-make-of-own-fields
    (implies (and (fn-bs-shapep bs) (null (fn-bs-pending bs)))

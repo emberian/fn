@@ -5,7 +5,9 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpnf-offset-zero-source))))
+(local (in-theory (enable (:definition fn-bpnf-heldp)
+                          (:definition fn-bpnf-offset-zero-source))))
+
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpnf-family-issuedp (st)

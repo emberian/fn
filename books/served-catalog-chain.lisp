@@ -1189,4 +1189,5 @@
 ;; enables it where it is used.
 (in-theory (disable (:definition fn-scr-catalogp)
                     (:definition fn-scr-conn-okp)
+                    (:definition fn-scr-fields-catalogp)
                     (:rewrite fn-scr-feed-span-is-scar-feed-span)))

@@ -7,7 +7,9 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-snt-consumerp)
+(local (in-theory (enable (:definition fn-replay-apply-carried-verdict)
+                          (:definition fn-replay-apply-revoked-verdict)
+                          (:definition fn-snt-consumerp)
                           (:rewrite fn-sf-admissible-image-facts)
                           (:rewrite fn-sn-new-success-requires-actual-matching-durable-node-completion))))
 

@@ -41,6 +41,10 @@
 (include-book "crypto-attach")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:linear fn-frame-at-mostp-bounds-len))))
+
 ; The frame cluster's own proof vocabulary, which `frame-octets' withdraws on
 ; export.  Four theorems in this book, all about the frame grammar, so the
 ; narrow re-opening the parts of `frame' already do is the right one here too.

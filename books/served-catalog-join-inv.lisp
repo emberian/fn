@@ -22,7 +22,10 @@
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-midx-branch-get)
+                          (:definition fn-midx-put-chars)
                           (:definition fn-scr-catalogp)
+                          (:definition fn-scr-fields-catalogp)
+                          (:rewrite fn-gidx-refresh-is-build)
                           (:rewrite fn-sn-new-success-requires-actual-matching-durable-node-completion))))
 
 (local (in-theory (disable fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp

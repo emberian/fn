@@ -22,6 +22,10 @@
 (include-book "config-owner-live")
 (include-book "owner-agent")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-cpr-config-firstp-has-config))))
+
 (defun fn-ocl-request-deltas (kind name)
   (declare (xargs :guard t))
   (cond ((equal kind :create-group)

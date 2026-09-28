@@ -28,6 +28,11 @@
 (include-book "nntp-control")
 (include-book "owner-invariants")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-nntp-message-id-token-is-response-text)
+                          (:rewrite fn-nntp-response-text-is-octets))))
+
 ;; The pinned dispatcher's reply to one command line, over connection CONN,
 ;; under the posting configuration the delegate serves it: the connection's
 ;; moderation view (books/nntp-auth.lisp `fn-auth-moderation-config', P3,

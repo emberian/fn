@@ -66,7 +66,8 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-sn-new-success-requires-actual-matching-durable-node-completion))))
+(local (in-theory (enable (:definition fn-scr-fields-catalogp)
+                          (:rewrite fn-sn-new-success-requires-actual-matching-durable-node-completion))))
 
 ; The included world carries recognizer rules whose hypotheses open recursive
 ; predicates on every candidate term (true-listp, stringp, a length bound).

@@ -13,7 +13,11 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-article-next-line-aux))))
+(local (in-theory (enable (:definition fn-article-header-bytes-p)
+                          (:definition fn-article-new-field)
+                          (:definition fn-article-next-line-aux)
+                          (:definition fn-article-parse-lines))))
+
 ;
 ; THE RELATION.  For a stored record `stored' that is this agent's injection
 ; of `source' with neither the Message-ID nor the Date generated (which

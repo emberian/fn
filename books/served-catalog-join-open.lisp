@@ -16,7 +16,10 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-bs-natural-head-is-no-other-wire-event))))
+(local (in-theory (enable (:definition fn-th-exact-octets-p)
+                          (:definition fn-th-source-id-p)
+                          (:rewrite fn-bs-natural-head-is-no-other-wire-event)
+                          (:rewrite fn-cpr-config-firstp-has-config))))
 
 (local (in-theory (disable fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
                            fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp

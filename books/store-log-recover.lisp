@@ -11,6 +11,15 @@
 (in-package "ACL2")
 (include-book "store-log-kernel")
 (local (include-book "arithmetic/top" :dir :system))
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-apply-op)
+                          (:definition fn-lg-declared-len)
+                          (:definition fn-lg-entry-okp)
+                          (:definition fn-lg-scan)
+                          (:rewrite fn-lgc-consp-nthcdr)
+                          (:rewrite fn-lgc-take-all))))
 (local (in-theory (enable fn-bs-invariants-vocabulary)))
 
 (local

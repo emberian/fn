@@ -5,7 +5,9 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-replay-verdict-pairs))))
+(local (in-theory (enable (:definition fn-replay-apply-carried-verdict)
+                          (:definition fn-replay-apply-revoked-verdict)
+                          (:definition fn-replay-verdict-pairs))))
 
 (defun fn-hls-current-enrollment (s requested)
   (declare (xargs :guard t))

@@ -58,6 +58,10 @@
 (include-book "group-bucket-index")
 (include-book "control-served")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nntp-article-idp))))
+
 (local (in-theory (enable fn-statep fn-articlep fn-pendingp)))
 
 ; -----------------------------------------------------------------------------

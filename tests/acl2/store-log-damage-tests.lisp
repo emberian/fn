@@ -33,6 +33,10 @@
 ; reads the record through fn-record-decode-exact (books/store-log-txid.lisp).
 (include-book "../../books/codec-attach")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-lg-declared-len))))
+
 (defun sld-unit () (declare (xargs :guard t)) 4)
 (defun sld-max () (declare (xargs :guard t)) 4096)
 (defun sld-extent () (declare (xargs :guard t)) 2048)

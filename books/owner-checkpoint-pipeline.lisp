@@ -56,6 +56,7 @@
 (local (in-theory (enable (:definition fn-scc-atomp)
                           (:definition fn-scc-frames)
                           (:definition fn-scc-nat-encodablep)
+                          (:definition fn-scc-seal)
                           (:definition fn-scc-treep)
                           (:definition fn-sccb-frame-octets)
                           (:rewrite fn-sccr-cbor-octet-listp-is-scc-octet-listp)

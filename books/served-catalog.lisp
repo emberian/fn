@@ -48,8 +48,12 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scat-msgid-idp)
-                          (:rewrite fn-nntp-article-idp-is-consp))))
+(local (in-theory (enable (:definition fn-nntp-article-idp)
+                          (:definition fn-scat-msgid-idp)
+                          (:rewrite fn-nntp-article-idp-is-consp)
+                          (:rewrite fn-nntp-available-number-article-is-projectable)
+                          (:rewrite fn-nntp-message-id-token-is-response-text)
+                          (:rewrite fn-nntp-response-text-is-octets))))
 
 ; Included rules these proofs try on every string, length and group-number
 ; goal and never use (accumulated-persistence over the whole book,

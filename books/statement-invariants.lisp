@@ -22,7 +22,9 @@
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-cbor-decode)
-                          (:definition fn-cbor-decode-bounded))))
+                          (:definition fn-cbor-decode-bounded)
+                          (:definition fn-digest-octetsp)
+                          (:rewrite fn-digest-octetsp-implies-octet-listp))))
 
 ; cluster-local theory: this book is inside the substrate cluster and opens
 ; the definitions its neighbours withdraw at export (docs/proof-style.md 2).

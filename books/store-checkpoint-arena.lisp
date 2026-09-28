@@ -45,7 +45,12 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scc-frames))))
+(local (in-theory (enable (:definition fn-scc-frames)
+                          (:definition fn-scc-nat-octets)
+                          (:definition fn-scc-seal)
+                          (:rewrite fn-intern-event-arena)
+                          (:rewrite fn-stxa-is-no-other-wire-event))))
+
 ;; The reader's two octet-list rules rewrite into each other, and the
 ;; parameter-record identity lemmas fire on every list: off everywhere here.
 (local (in-theory (disable fn-cp-idp fn-cp-idp-true-listp

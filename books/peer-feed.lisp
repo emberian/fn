@@ -46,6 +46,10 @@
 (include-book "frame-invariants")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:linear fn-frame-at-mostp-bounds-len))))
+
 ; Local vocabulary re-enable (docs/proof-style.md sec. 2), copied from
 ; `books/anchor-record.lisp': the small frame predicates and the spec
 ; machinery, never the field grammar and never the two codec entry points.

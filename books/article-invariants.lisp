@@ -5,8 +5,11 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-article-header-rev-add-line)
+(local (in-theory (enable (:definition fn-article-header-bytes-p)
+                          (:definition fn-article-header-rev-add-line)
+                          (:definition fn-article-new-field)
                           (:definition fn-article-next-line-aux)
+                          (:definition fn-article-parse-lines)
                           (:rewrite fn-article-header-rev-add-line-recomposes))))
 
 (defthm fn-article-append-associative

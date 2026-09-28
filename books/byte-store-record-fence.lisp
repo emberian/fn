@@ -4,6 +4,15 @@
 (in-package "ACL2")
 (include-book "byte-store-stable-prefix")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-apply-op)
+                          (:definition fn-bs-dir-idp)
+                          (:definition fn-bs-dir-tablep)
+                          (:definition fn-bs-entry-valuep)
+                          (:definition fn-bs-op-listp)
+                          (:definition fn-bs-opp))))
+
 (defthm fn-bs-k8-other-directory-ops-survive-filter
   (implies (not (equal kept removed))
            (equal (fn-bs-ops-for-dir (fn-bs-ops-not-for-dir ops removed) kept)

@@ -11,6 +11,10 @@
 (include-book "../../books/payload-commit-extent")
 (include-book "must-fail-checked")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-arn-extent-guardp))))
+
 (assert-event
  (and (eq (symbol-class 'fn-arx-arena-prefixp (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arx-arena-find (w state)) :common-lisp-compliant)

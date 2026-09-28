@@ -51,6 +51,10 @@
 (include-book "store-log-txid")
 (include-book "store-log-decode")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-lgc-take-all))))
+
 ; -----------------------------------------------------------------------------
 ; The append's admission, which the runner and the host share
 ; (fnn-log-append asks it before the write).

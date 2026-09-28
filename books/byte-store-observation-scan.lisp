@@ -3,6 +3,10 @@
 (include-book "byte-store-scan")
 (include-book "store-observed")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-dir-idp))))
+
 ; A source that returned :file octets at a visible name and a target with the
 ; same visible entry give the decoder the same octets, regardless of inode IDs.
 (defthm fn-bso-entry-agreement-preserves-file-kind

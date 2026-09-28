@@ -25,6 +25,10 @@
 
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-nntp-available-number-article-is-projectable))))
+
 ; fn-hist-sync and fn-hist-sync-of-prefix-is-the-history: books/history-columns-relation.lisp.
 
 (local

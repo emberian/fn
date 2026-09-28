@@ -59,8 +59,11 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scc-step)
+(local (in-theory (enable (:definition fn-scc-octet-listp)
+                          (:definition fn-scc-seal)
+                          (:definition fn-scc-step)
                           (:definition fn-sccb-frame-octets)
+                          (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1)
                           (:rewrite fn-scc-octet-listp-true)
                           (:rewrite fn-sccb-scc-octetp-is-cbor-octetp))))
 

@@ -6,6 +6,10 @@
 (include-book "group-bucket-article-invariants")
 (include-book "group-bucket-invariants")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-nntp-available-number-article-is-projectable))))
+
 (defthm fn-nntp-range-parse-aux-ok-has-natural-bounds
   (implies (fn-nntp-range-okp (fn-nntp-range-parse-aux token prefix-rev))
            (and (natp (fn-nntp-range-low

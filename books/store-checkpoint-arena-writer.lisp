@@ -39,8 +39,11 @@
 (local (in-theory (enable (:definition fn-scc-frames)
                           (:definition fn-scc-le-digits)
                           (:definition fn-scc-nat-encodablep)
+                          (:definition fn-scc-nat-octets)
+                          (:definition fn-scc-seal)
                           (:definition fn-sccb-frame-octets)
-                          (:rewrite fn-bs-natural-head-is-no-other-wire-event))))
+                          (:rewrite fn-bs-natural-head-is-no-other-wire-event)
+                          (:rewrite fn-bs-stxa-is-no-other-wire-event))))
 
 (local (in-theory (disable fn-cp-idp fn-cp-idp-true-listp
                            fn-sccr-scc-octet-listp-is-cbor-octet-listp

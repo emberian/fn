@@ -33,7 +33,9 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-article-next-line-aux)
+(local (in-theory (enable (:definition fn-article-new-field)
+                          (:definition fn-article-next-line-aux)
+                          (:definition fn-article-parse-lines)
                           (:definition fn-pa-carrier-kind))))
 
 (local

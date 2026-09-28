@@ -42,6 +42,10 @@
 (include-book "store-open-pre-c1")
 (include-book "control-visible")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-bs-stxa-is-no-other-wire-event))))
+
 ; The recognizers stay closed: the lemmas below dispatch on the row's kind.
 (local (in-theory (disable fn-stxa-p fn-held-p fn-hstxa-p fn-record-p)))
 

@@ -13,6 +13,11 @@
 
 (in-package "ACL2")
 (include-book "owner-offer-indexed")
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-cpr-config-firstp-has-config)
+                          (:rewrite fn-gidx-refresh-is-build))))
 ;
 ; The hypotheses are exactly two of the host's checks before it installs:
 ; (natp max-conns) at owner-host.lisp:184 and the open's kind :ok at :192.

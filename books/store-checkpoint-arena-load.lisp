@@ -18,6 +18,10 @@
 (include-book "store-checkpoint-share")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-scc-nat-octets))))
+
 (local (in-theory (disable fn-cp-idp fn-cp-idp-true-listp
                            fn-sccr-scc-octet-listp-is-cbor-octet-listp
                            fn-sccr-cbor-octet-listp-is-scc-octet-listp)))

@@ -72,7 +72,10 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-lgw-slice-when-not-declared))))
+(local (in-theory (enable (:definition fn-lg-declared-len)
+                          (:definition fn-lg-entry-okp)
+                          (:rewrite fn-lgc-consp-nthcdr)
+                          (:rewrite fn-lgw-slice-when-not-declared))))
 
 ; -----------------------------------------------------------------------------
 ; Vocabulary.

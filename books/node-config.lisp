@@ -33,6 +33,11 @@
 (include-book "nntp-syntax")
 (include-book "records-seam")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-record-ascii-octet-listp)
+                          (:definition fn-record-ascii-octetp))))
+
 ; A record passed to `fn-replay-apply-record' must be a true list; records'
 ; opacity withdrew that fact (board, convergence 2026-09-19), and
 ; `fn-record-uint32p' is withdrawn under the codec vocabulary.

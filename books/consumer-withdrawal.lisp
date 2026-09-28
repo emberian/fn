@@ -60,6 +60,10 @@
 (include-book "consumer-wait")
 (include-book "consumer-reason")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-ctl-withdrawalp))))
+
 ; The progress book's unfolding of the poll (a rewrite rule whose hypothesis
 ; is the poll's page) expands fn-col-poll and its scan inside every goal
 ; that mentions a poll; the lemmas here reason about the two scans instead.

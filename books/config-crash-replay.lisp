@@ -29,6 +29,11 @@
 (in-package "ACL2")
 (include-book "config-owner-publish")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-cpr-config-firstp-has-config)
+                          (:rewrite fn-digest-octetsp-implies-octet-listp))))
+
 ; -----------------------------------------------------------------------------
 ; What the configuration-only replay checks, as a predicate on the list: each
 ; record carries the next sequence and is acceptable, at reservation zero, to

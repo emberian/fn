@@ -21,6 +21,14 @@
 (in-package "ACL2")
 (include-book "owner-commit-carried")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-midx-put-chars)
+                          (:definition fn-replay-apply-carried-verdict)
+                          (:definition fn-replay-apply-revoked-verdict)
+                          (:rewrite fn-gidx-refresh-is-build)
+                          (:rewrite fn-stxa-is-no-other-wire-event))))
+
 (local (in-theory (disable fn-node-statep fn-sn-statep fn-sf-statep)))
 
 ; -----------------------------------------------------------------------------

@@ -35,6 +35,11 @@
 (local (include-book "identity-invariants"))
 (local (include-book "records-canonicality"))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-record-ascii-octet-listp)
+                          (:definition fn-record-ascii-octetp))))
+
 ; -----------------------------------------------------------------------------
 ; The table the configuration holds
 

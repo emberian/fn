@@ -44,7 +44,9 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-scc-octet-listp-facts . 1)
+(local (in-theory (enable (:definition fn-scc-octet-listp)
+                          (:rewrite fn-scc-encode-is-program)
+                          (:rewrite fn-scc-octet-listp-facts . 1)
                           (:rewrite fn-scc-octet-listp-facts . 2)
                           (:rewrite fn-scc-octet-listp-true)
                           (:rewrite fn-sccb-scc-octetp-is-cbor-octetp))))

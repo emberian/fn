@@ -2682,6 +2682,11 @@
 ; executed response to the canonical article-list scan.
 (include-book "msgid-index")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nntp-article-idp)
+                          (:definition fn-nntp-message-id-tokenp))))
+
 (defthm fn-nntp-octets-chars-character-listp
   (character-listp (fn-nntp-octets-chars bytes))
   :hints (("Goal" :induct (fn-nntp-octets-chars bytes)

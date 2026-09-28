@@ -2,6 +2,12 @@
 (in-package "ACL2")
 (include-book "nntp-legacy")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nntp-article-idp)
+                          (:definition fn-nntp-message-id-tokenp)
+                          (:rewrite fn-nntp-available-number-article-is-projectable))))
+
 (local (in-theory (enable fn-nntp-syntax-vocabulary
                           fn-nntp-session-vocabulary
                           fn-nntp-projection-vocabulary

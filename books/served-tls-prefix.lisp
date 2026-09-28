@@ -28,6 +28,10 @@
 (in-package "ACL2")
 (include-book "served")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-nntp-effectp))))
+
 ; (:fn-served-counted consumed served-result).
 (defun fn-served-counted-make (consumed result)
   (declare (xargs :guard t))

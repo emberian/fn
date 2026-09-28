@@ -11,6 +11,10 @@
 (in-package "ACL2")
 (include-book "article")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-article-header-bytes-p))))
+
 ; RFC 5536 §3.1.3.
 (defconst *fn-af-max-message-id-octets* 250)
 ; One field value is part of the header, so the header octets the parse

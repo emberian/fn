@@ -657,4 +657,12 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:definition fn-bs-entriesp)))
+(in-theory (disable (:definition fn-bs-apply-op)
+                    (:definition fn-bs-dir-idp)
+                    (:definition fn-bs-dir-tablep)
+                    (:definition fn-bs-entriesp)
+                    (:definition fn-bs-entry-valuep)
+                    (:definition fn-bs-keys-belowp)
+                    (:definition fn-bs-op-listp)
+                    (:definition fn-bs-opp)
+                    (:definition fn-bs-tear-write)))

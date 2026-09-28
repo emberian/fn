@@ -28,6 +28,14 @@
 (include-book "owner-config")
 (include-book "owner-invariants")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-apply-op)
+                          (:definition fn-bs-dir-idp)
+                          (:definition fn-bs-entry-valuep)
+                          (:definition fn-bs-op-listp)
+                          (:definition fn-bs-opp))))
+
 (defthm fn-bs-k0-owner-io-store-is-node-io
   (equal (fn-own-store
           (fn-ocfg-owner

@@ -51,7 +51,15 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bs-entriesp))))
+(local (in-theory (enable (:definition fn-bs-apply-op)
+                          (:definition fn-bs-dir-idp)
+                          (:definition fn-bs-dir-tablep)
+                          (:definition fn-bs-entriesp)
+                          (:definition fn-bs-entry-valuep)
+                          (:definition fn-bs-keys-belowp)
+                          (:definition fn-bs-op-listp)
+                          (:definition fn-bs-opp)
+                          (:definition fn-bs-tear-write))))
 
 (local (in-theory (enable fn-bs-statep fn-bs-view fn-bs-lookup fn-bs-content
                           fn-bs-names fn-bs-durable-content fn-bs-durable-entry

@@ -875,5 +875,7 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:definition fn-replay-identity-loop)
+(in-theory (disable (:definition fn-replay-apply-carried-verdict)
+                    (:definition fn-replay-apply-revoked-verdict)
+                    (:definition fn-replay-identity-loop)
                     (:definition fn-replay-verdict-pairs)))

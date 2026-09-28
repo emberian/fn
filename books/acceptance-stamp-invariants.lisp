@@ -1,6 +1,11 @@
 ; T2a: the host-called constructor and durable stamp carrier.
 (in-package "ACL2")
 (include-book "store-node-invariants")
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-replay-apply-carried-verdict)
+                          (:definition fn-replay-apply-revoked-verdict))))
 ; These proofs dispatch on the topic kind; opening its payload grammar in
 ; every article replay case obscures that one-bit separation.
 (local (in-theory (disable fn-th-topic-eventp)))

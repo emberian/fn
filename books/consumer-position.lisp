@@ -815,5 +815,6 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-cp-find-consumer-idp)
+(in-theory (disable (:linear fn-cp-id-length-bound)
+                    (:rewrite fn-cp-find-consumer-idp)
                     (:rewrite fn-cp-idp-true-listp)))

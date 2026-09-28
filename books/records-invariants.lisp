@@ -8,6 +8,8 @@
 (local (in-theory (enable (:definition fn-cbor-decode)
                           (:definition fn-cbor-decode-bounded)
                           (:definition fn-cbor-decode-prechecked)
+                          (:definition fn-record-ascii-octet-listp)
+                          (:definition fn-record-ascii-octetp)
                           (:rewrite fn-record-cbor-octet-list-true-listp))))
 
 ; This book proves the codec's round trip, so it opens the codec and the

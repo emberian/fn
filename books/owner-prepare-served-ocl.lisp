@@ -8,6 +8,11 @@
 (include-book "owner-prepare-served")
 (include-book "owner-log-ocl")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-replay-apply-carried-verdict)
+                          (:definition fn-replay-apply-revoked-verdict))))
+
 (defthm fn-psrv-event-servedp-is-cpr-event-servedp
   (equal (fn-cpr-event-servedp cn event)
          (fn-psrv-event-servedp (fn-cnode-config cn) event))

@@ -29,7 +29,8 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scr-conn-okp))))
+(local (in-theory (enable (:definition fn-scr-conn-okp)
+                          (:definition fn-scr-fields-catalogp))))
 
 (defun-nx fn-scj-conn-pinned-index (conn)
   (if (fn-own-conn-group-index conn)

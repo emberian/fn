@@ -10,10 +10,14 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-response-octetp)
+(local (in-theory (enable (:definition fn-nntp-index-entry-available)
+                          (:definition fn-nntp-index-msgid-okp)
+                          (:definition fn-nntp-response-octetp)
                           (:definition fn-nntp-response-textp)
                           (:definition fn-nov-clean-linep)
-                          (:definition fn-nov-line-octetp))))
+                          (:definition fn-nov-line-octetp)
+                          (:rewrite fn-nntp-message-id-token-is-response-text)
+                          (:rewrite fn-nntp-response-text-is-octets))))
 
 (local (defthm fn-pinned-effects-projection-is-state
          (implies (fn-nntp-projectionp archive) (fn-statep archive))

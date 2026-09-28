@@ -41,6 +41,12 @@
 (include-book "nntp-projection")
 (include-book "msgid-index")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-ctl-visible-articles)
+                          (:definition fn-ctl-visible-filter)
+                          (:definition fn-ctl-withdrawalp))))
+
 ; -----------------------------------------------------------------------------
 ; The withdrawn list.
 

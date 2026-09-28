@@ -48,6 +48,10 @@
 (include-book "payload-lz-record")
 (include-book "config")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:linear fn-record-accepted-input-length))))
+
 ; -----------------------------------------------------------------------------
 ; 1. The plan.
 

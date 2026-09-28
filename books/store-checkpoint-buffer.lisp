@@ -53,6 +53,8 @@
                           (:definition fn-scc-atomp)
                           (:definition fn-scc-le-digits)
                           (:definition fn-scc-nat-encodablep)
+                          (:definition fn-scc-nat-octets)
+                          (:definition fn-scc-octet-listp)
                           (:definition fn-scc-program)
                           (:definition fn-scc-string-octets)
                           (:definition fn-scc-treep)

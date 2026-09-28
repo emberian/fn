@@ -3,6 +3,15 @@
 (in-package "ACL2")
 (include-book "byte-store-relation")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-dir-idp)
+                          (:definition fn-bs-dir-tablep)
+                          (:definition fn-bs-entry-valuep)
+                          (:definition fn-bs-keys-belowp)
+                          (:definition fn-bs-op-listp)
+                          (:definition fn-bs-opp))))
+
 (defthm fn-bs-known-inode-list-member-is-known
   (implies (and (fn-bs-inode-list-knownp bs inos) (member-equal ino inos))
            (consp (assoc-equal ino (fn-bs-inodes bs))))

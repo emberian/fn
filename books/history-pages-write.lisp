@@ -16,7 +16,8 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite pgs-true-list-fix-when-true-listp))))
+(local (in-theory (enable (:rewrite pgs-true-list-fix-when-true-listp)
+                          (:rewrite pgs-x-nfix-when-natp))))
 
 ; -----------------------------------------------------------------------------
 ; A. Replacing a block, in octets and in words.

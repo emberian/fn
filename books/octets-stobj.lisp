@@ -1171,4 +1171,5 @@
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
 (in-theory (disable (:rewrite fn-oct-bufp-cell-is-octet . 1)
-                    (:rewrite fn-oct-bufp-true-listp)))
+                    (:rewrite fn-oct-bufp-true-listp)
+                    (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1)))

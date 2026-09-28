@@ -6,6 +6,10 @@
 (include-book "config-store-traces")
 (include-book "store-prepare-correspondence")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-cpr-config-firstp-has-config))))
+
 ; Two rules that backchain into the consumer-id recognizer on every
 ; `true-listp' and `len' (the note in books/store-node-traces-prepare.lisp).
 (local (in-theory (disable fn-cp-idp-true-listp fn-cp-id-length-bound)))

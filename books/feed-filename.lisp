@@ -4,6 +4,11 @@
 (include-book "records")
 (include-book "identity-invariants")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-record-ascii-octet-listp)
+                          (:definition fn-record-ascii-octetp))))
+
 (defconst *fn-ff-max-name* 256)
 (defconst *fn-ff-legacy-max-name* 250)
 (defconst *fn-ff-chunk* 120)

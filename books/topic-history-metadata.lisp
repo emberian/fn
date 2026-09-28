@@ -308,4 +308,6 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:definition fn-th-author-p)))
+(in-theory (disable (:definition fn-th-author-p)
+                    (:definition fn-th-exact-octets-p)
+                    (:definition fn-th-source-id-p)))

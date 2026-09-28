@@ -61,8 +61,11 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-effectsp)
-                          (:rewrite fn-auth-nntp-effects-are-auth-effects))))
+(local (in-theory (enable (:definition fn-nntp-effectp)
+                          (:definition fn-nntp-effectsp)
+                          (:definition fn-wire-octet-listp)
+                          (:rewrite fn-auth-nntp-effects-are-auth-effects)
+                          (:rewrite fn-wire-octet-listp-cdr))))
 
 ; -----------------------------------------------------------------------------
 ; The pin identity and the live view (NNT-042; D33: a reader's view is a

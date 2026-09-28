@@ -4,6 +4,10 @@
 (include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:linear fn-record-accepted-input-length))))
+
 ; Minimum width is padding, not a bound.  The realization covers every
 ; natural, including a 21-digit value outside the allocator's bounded domain.
 (assert-event

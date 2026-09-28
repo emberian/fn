@@ -6,7 +6,10 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-nntp-article-idp-is-consp))))
+(local (in-theory (enable (:definition fn-nntp-effectp)
+                          (:rewrite fn-nntp-article-idp-is-consp)
+                          (:rewrite fn-nntp-message-id-token-is-response-text)
+                          (:rewrite fn-nntp-response-text-is-octets))))
 
 (local
  (defthm fn-auth-fold-authinfo-keeps-the-config

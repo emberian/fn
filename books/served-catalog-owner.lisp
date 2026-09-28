@@ -67,7 +67,9 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-col-poll-nth-past-end-is-nil))))
+(local (in-theory (enable (:rewrite fn-col-poll-nth-past-end-is-nil)
+                          (:rewrite fn-intern-event-arena)
+                          (:rewrite fn-stxa-is-no-other-wire-event))))
 
 ; The row and view lemmas below never reason about a Message-ID's syntax;
 ; these rules fired uselessly through every Message-ID term (815 k prover

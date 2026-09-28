@@ -54,6 +54,10 @@
 (include-book "peer-pull-session")
 (include-book "peer-catchup-serve")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:linear fn-frame-at-mostp-bounds-len))))
+
 ; -----------------------------------------------------------------------------
 ; Policy
 

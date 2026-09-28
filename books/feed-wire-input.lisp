@@ -12,6 +12,11 @@
 (include-book "wire")
 (include-book "nntp-syntax")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-wire-octet-listp)
+                          (:rewrite fn-wire-octet-listp-cdr))))
+
 ; host/native/io.lisp's FNN-RECV uses this many octets per nonblocking read.
 ; The native feed service obtains this limit through its host wrapper; it does
 ; not choose a larger buffer.  A retained suffix is therefore bounded by this

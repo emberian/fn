@@ -28,6 +28,10 @@
 (include-book "byte-store-txn-name")
 (include-book "article-fields")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-bs-stxa-is-no-other-wire-event))))
+
 ; -----------------------------------------------------------------------------
 ; The staged record's transaction name
 

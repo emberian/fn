@@ -11,6 +11,10 @@
 (include-book "../../books/payload-lz-append")
 (include-book "payload-lz-record-tests")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:linear fn-record-accepted-input-length))))
+
 (assert-event
  (and (eq (symbol-class 'fn-lzr-append-plan (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-lzr-append-decide (w state)) :common-lisp-compliant)

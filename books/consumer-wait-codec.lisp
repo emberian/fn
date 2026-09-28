@@ -28,7 +28,8 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-cp-idp-true-listp))))
+(local (in-theory (enable (:linear fn-cp-id-length-bound)
+                          (:rewrite fn-cp-idp-true-listp))))
 
 (defconst *fn-cwait-max-seconds* 3600)
 (defconst *fn-cwait-wait-code* 9)

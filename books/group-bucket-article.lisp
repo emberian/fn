@@ -9,6 +9,8 @@
 (local (in-theory (enable (:definition fn-gnix-add)
                           (:definition fn-gnix-build)
                           (:definition fn-gnix-key)
+                          (:definition fn-nntp-index-entry-available)
+                          (:definition fn-nntp-index-msgid-okp)
                           (:rewrite fn-gidx-bucket-numbers-under-okp))))
 
 (defun fn-gidx-find-number-entry (group number entries)

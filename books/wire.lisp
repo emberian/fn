@@ -1209,3 +1209,11 @@
     fn-wire-outbound-lines fn-wire-render-block fn-wire-render-feed-command))
 
 (in-theory (disable fn-wire-step-vocabulary))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-wire-octet-listp)
+                    (:rewrite fn-wire-octet-listp-cdr)))

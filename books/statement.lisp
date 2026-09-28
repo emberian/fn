@@ -45,6 +45,11 @@
 ; and see them only through the seam's constraints (plan 2026-09-22 §4.1).
 (include-book "statement-seam")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-digest-octetsp)
+                          (:rewrite fn-digest-octetsp-implies-octet-listp))))
+
 
 ;; Convergence: the codecs cluster withdraws its proof vocabulary on export;
 ;; re-open it locally (agreed on the deputy board, codecs ANSWER to substrate).

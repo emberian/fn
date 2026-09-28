@@ -6,6 +6,10 @@
 (include-book "owner-config")
 (include-book "config-store-traces")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-midx-put-chars))))
+
 ; Keep the carried index constructors opaque while proving historical pins.
 ; Their selector theorems expose each field without expanding 11-field lists.
 (in-theory (disable fn-own-conn-make-group-indexed

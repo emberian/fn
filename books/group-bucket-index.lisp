@@ -10,7 +10,10 @@
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-gnix-add)
                           (:definition fn-gnix-build)
-                          (:definition fn-gnix-key))))
+                          (:definition fn-gnix-key)
+                          (:definition fn-midx-put-chars)
+                          (:definition fn-nntp-index-entry-available)
+                          (:definition fn-nntp-index-msgid-okp))))
 
 ; A bucket is (group entries . numbers): the group's entries, newest first,
 ; and NUMBERS, the same entries keyed by available number

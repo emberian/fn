@@ -54,6 +54,11 @@
 (defconst *pct-snp* (fn-nntp-make-session t nil nil nil))
 
 (include-book "arena-lift")
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-nntp-message-id-token-is-response-text)
+                          (:rewrite fn-nntp-response-text-is-octets))))
 (defconst *sr-arena* (list *pct-payload-1* *pct-payload-2*))
 (bpr-lift fn-nntp-command-pinned 6)
 

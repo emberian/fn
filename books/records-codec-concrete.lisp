@@ -102,6 +102,11 @@
 
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-record-ascii-octet-listp)
+                          (:definition fn-record-ascii-octetp))))
+
 (local (defthm fn-rcon-shift-less
   (implies (and (integerp i) (integerp n))
            (equal (< (+ -1 i) n) (< i (+ 1 n))))

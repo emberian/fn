@@ -15,6 +15,10 @@
 ; include of node-config (audit 2026-09-25, packet 2).
 (include-book "node-config")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-article-header-bytes-p))))
+
 (local (in-theory (enable fn-peer-vocabulary fn-path-vocabulary)))
 
 ; -----------------------------------------------------------------------------

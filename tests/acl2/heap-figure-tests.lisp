@@ -10,6 +10,10 @@
 (include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-cpr-config-firstp-has-config))))
+
 (defconst *hft-core* 389141032)              ; the 69046a76 fn-host.core
 (defconst *hft-nursery* (* 64 1024 1024))    ; +fnn-gc-nursery-octets+
 (defconst *hft-2g* (* 2048 *fn-heap-mib*))

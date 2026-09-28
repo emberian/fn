@@ -17,7 +17,8 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scr-conn-okp))))
+(local (in-theory (enable (:definition fn-scr-conn-okp)
+                          (:definition fn-scr-fields-catalogp))))
 
 (local (in-theory (disable fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
                            fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp

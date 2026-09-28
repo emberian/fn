@@ -28,6 +28,10 @@
 (in-package "ACL2")
 (include-book "statement")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-digest-octetsp))))
+
 
 ;; Convergence: the codecs cluster withdraws its proof vocabulary on export;
 ;; re-open it locally (agreed on the deputy board, codecs ANSWER to substrate).

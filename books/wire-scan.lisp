@@ -28,6 +28,10 @@
 (include-book "wire-span")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1))))
+
 ; -----------------------------------------------------------------------------
 ; The run of ordinary octets from I: the first index K >= I that is END, or
 ; where the line would exceed its limit (LEN counts the line so far), or whose
