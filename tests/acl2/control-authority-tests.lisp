@@ -286,3 +286,9 @@
    (and (not (member-equal *cat-t* tc)) (not (member-equal *cat-t* ct))
         (member-equal *cat-other* tc) (member-equal *cat-other* ct)
         (member-equal *cat-c* tc) (member-equal *cat-c* ct))))
+
+; The walk by a loop (PKT-876, PRF-352): the :exec branch runs here, in
+; order, and over 50,000 elements.
+(assert-event (equal (fn-ctl-visible-filter '(1 2 3) nil nil nil) '(1 2 3)))
+(assert-event (equal (len (fn-ctl-visible-filter (make-list 50000 :initial-element 1) nil nil nil))
+                     50000))

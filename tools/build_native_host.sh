@@ -149,4 +149,30 @@ sed "s/--tls-limit 16384 /--tls-limit $FN_TLS_LIMIT /" "$IMAGE" > "$IMAGE.tls" &
     echo "build_native_host: could not set the launcher's --tls-limit" >&2; exit 1; }
 grep -q -- "--tls-limit $FN_TLS_LIMIT " "$IMAGE" || {
     echo "build_native_host: the launcher does not run at --tls-limit $FN_TLS_LIMIT" >&2; exit 1; }
+# The control stack (PKT-876).  ACL2's save-exec launcher passes
+# --control-stack-size 64 (MiB) to every thread, while the installed launcher
+# (packaging/fn) passes the profile's figure (books/heap-reservation.lisp
+# fn-heap-stack-kib, 1,024 KiB): every native test that ran this launcher
+# directly ran with 64 times the deployed stack and could not see a stack
+# death the node dies of (thread-stacks: a full-replay open past ~30,000
+# articles).  The build prints ACL2's figure (FN_NATIVE_STACK_KIB, build.lisp
+# and build-dtn.lisp) and the launcher carries it; SBCL_USER_ARGS at run time
+# still overrides it (the installed launcher's per-command figure; a test's
+# named opt-in, tests/test_native_operator_verbs.py deployed_stack).
+STACK_KIB=$(sed -n 's/.*FN_NATIVE_STACK_KIB \([0-9][0-9]*\).*/\1/p' "$LOG" | tail -1)
+if [ -n "$STACK_KIB" ]; then
+    grep -q -- '--control-stack-size 64 ' "$IMAGE" || {
+        echo "build_native_host: the launcher $IMAGE names no --control-stack-size 64; see $LOG" >&2; exit 1; }
+    sed "s/--control-stack-size 64 /--control-stack-size ${STACK_KIB}KB /" "$IMAGE" > "$IMAGE.stack" && \
+        chmod 755 "$IMAGE.stack" && mv "$IMAGE.stack" "$IMAGE" || {
+        echo "build_native_host: could not set the launcher's --control-stack-size" >&2; exit 1; }
+    grep -q -- "--control-stack-size ${STACK_KIB}KB " "$IMAGE" || {
+        echo "build_native_host: the launcher does not run at ${STACK_KIB} KiB of control stack" >&2; exit 1; }
+else
+    case "$BUILD" in
+        host/native/build.lisp|host/native/build-dtn.lisp)
+            echo "build_native_host: FN_NATIVE_STACK_KIB missing from $LOG" >&2; exit 1 ;;
+    esac
+    echo "build_native_host: $BUILD prints no stack figure; the launcher keeps ACL2's 64 MiB (not a served image)" >&2
+fi
 echo "built $IMAGE profile=$PROFILE world=$WORLD ($(du -h "$IMAGE.core" | cut -f1) core)"

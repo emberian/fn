@@ -252,8 +252,8 @@ class TenMibArticleTests(JoinFixture):
     in execution and exhausted a node thread's stack at about 80,000 octets.
     Here a 10 MiB article is POSTed over NNTP (a connection thread) and
     submitted by `operator post' (the control thread), each re-read over
-    NNTP identical, and the owner is still serving after both.  Run with
-    FN_TEST_CONTROL_STACK_KB=1024: the image's own launcher gives 64 MiB.
+    NNTP identical, and the owner is still serving after both, at the
+    image launcher's stack, the deployed figure (PKT-876).
     """
 
     def test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post(self):

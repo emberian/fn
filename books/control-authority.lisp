@@ -564,14 +564,46 @@
                                    verdicts)))
     nil))
 
-(defun fn-ctl-visible-filter (xs withdrawals articles verdicts)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
+; retained article on the owner's open.  The :logic is the recursion,
+; unchanged; the :exec is a loop, equal by the guard proof.
+(defun fn-ctl-visible-filter-rev (xs withdrawals articles verdicts acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp xs)
-      (if (fn-ctl-withdrawn-by-p (car xs) withdrawals articles verdicts)
-          (fn-ctl-visible-filter (cdr xs) withdrawals articles verdicts)
-        (cons (car xs)
-              (fn-ctl-visible-filter (cdr xs) withdrawals articles verdicts)))
-    nil))
+      (fn-ctl-visible-filter-rev (cdr xs) withdrawals articles verdicts (if (fn-ctl-withdrawn-by-p (car xs) withdrawals articles verdicts) acc (cons (car xs) acc)))
+    acc))
+
+(defun fn-ctl-visible-filter (xs withdrawals articles verdicts)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (if (fn-ctl-withdrawn-by-p (car xs) withdrawals articles verdicts)
+               (fn-ctl-visible-filter (cdr xs) withdrawals articles verdicts)
+             (cons (car xs)
+                   (fn-ctl-visible-filter (cdr xs) withdrawals articles verdicts)))
+         nil)
+       :exec (reverse (fn-ctl-visible-filter-rev xs withdrawals articles verdicts nil))))
+
+(encapsulate ()
+  (local
+   (defthm fn-ctl-visible-filter-rev-is-revappend
+     (equal (fn-ctl-visible-filter-rev xs withdrawals articles verdicts acc)
+            (revappend (fn-ctl-visible-filter xs withdrawals articles verdicts) acc))
+     :hints (("Goal" :in-theory (disable fn-ctl-withdrawn-by-p)))))
+  (local
+   (defthm fn-ctl-visible-filter-true-listp-od
+     (true-listp (fn-ctl-visible-filter xs withdrawals articles verdicts))))
+  (local
+   (defthm fn-ctl-visible-filter-od-revappend-revappend
+     (equal (revappend (revappend x y) z) (revappend y (append x z)))))
+  (local
+   (defthm fn-ctl-visible-filter-od-append-nil-when-true-listp
+     (implies (true-listp x) (equal (append x nil) x))))
+  (local
+   (defthm fn-ctl-visible-filter-od-true-listp-of-revappend
+     (implies (true-listp y) (true-listp (revappend x y)))))
+  (verify-guards fn-ctl-visible-filter
+    :hints (("Goal" :in-theory (disable fn-ctl-withdrawn-by-p)))))
 
 (defun fn-ctl-visible-articles (articles withdrawals verdicts)
   (declare (xargs :guard t))

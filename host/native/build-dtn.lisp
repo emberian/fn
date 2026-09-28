@@ -337,6 +337,10 @@
         (setq *print-startup-banner* nil))
 (defttag nil)
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
+;; Every thread's control stack, ACL2's figure (books/heap-reservation.lisp):
+;; tools/build_native_host.sh writes it into the saved launcher, so a run of
+;; the image outside the installed launcher has the deployed stack (PKT-876).
+(value-triple (prog2$ (cw "FN_NATIVE_STACK_KIB ~x0~%" (fn-heap-stack-kib nil)) :stack))
 
 :q
 ; The saved world (HST-025, host/native/strip-world.lisp).  FN_NATIVE_WORLD

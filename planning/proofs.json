@@ -12020,7 +12020,7 @@
     {
       "id": "PRF-345",
       "title": "The record's octet/string conversions and the article Message-ID walk execute in constant stack: fn-record-octets-chars, fn-record-string-octets-aux and fn-article-msgids run an accumulator loop equal to their definitions",
-      "statement": "books/records-shape.lisp: fn-record-octets-chars (under fn-record-octets-string) and fn-record-string-octets-aux (under fn-record-string-octets) are each (mbe :logic <the per-octet recursion, unchanged> :exec (reverse (<twin> x nil))) with the twins fn-record-octets-chars-rev and fn-record-string-octets-rev, tail-recursive accumulators; their verify-guards events prove exec = logic on every input satisfying the guard (fn-cbor-octet-listp, character-listp), by the local lemmas fn-record-octets-chars-rev-is-revappend and fn-record-string-octets-rev-is-revappend (the twin is revappend of the definition). The host reaches them through every conversion site, e.g. host/store-host.lisp fn-store-octets->string and fn-store-frame-wire-to-logical-values (fn-record-octets-string), host/native-live-status-host.lisp fn-native-live-status-host-answer (fn-nls-buffer). Before, execution recursed once per octet: on a node thread's 1,024 KB control stack 80,000 octets exhausted it (the 5,000-obligation report stopped the owner). Scope: the octet list stays the representation (D27's concrete twin is PKT-864). books/acceptance.lisp fn-article-msgids is the same shape (twin fn-article-msgids-rev, lemma fn-article-msgids-rev-is-revappend); fn-article-listp's :exec calls it over the whole article list, and on a full-replay open (host/store-node-host.lisp fn-store-sn-recover-rows -> fn-store-sn-open-extended -> fn-sco-cpr-finish's fn-cnode-statep) 100,000 articles exhausted the 1,024 KB main-thread stack at 30,526 frames.",
+      "statement": "books/records-shape.lisp: fn-record-octets-chars (under fn-record-octets-string) and fn-record-string-octets-aux (under fn-record-string-octets) are each (mbe :logic <the per-octet recursion, unchanged> :exec (reverse (<twin> x nil))) with the twins fn-record-octets-chars-rev and fn-record-string-octets-rev, tail-recursive accumulators; their verify-guards events prove exec = logic on every input satisfying the guard (fn-cbor-octet-listp, character-listp), by the local lemmas fn-record-octets-chars-rev-is-revappend and fn-record-string-octets-rev-is-revappend (the twin is revappend of the definition). The host reaches them through every conversion site, e.g. host/store-host.lisp fn-store-octets->string and fn-store-frame-wire-to-logical-values (fn-record-octets-string), host/native-live-status-host.lisp fn-native-live-status-host-answer (fn-nls-buffer). Before, execution recursed once per octet: on a node thread's 1,024 KB control stack 80,000 octets exhausted it (the 5,000-obligation report stopped the owner). Scope: the octet list stays the representation (D27's concrete twin is PKT-864). books/acceptance.lisp fn-article-msgids is the same shape (twin fn-article-msgids-rev, lemma fn-article-msgids-rev-is-revappend); fn-article-listp's :exec calls it over the whole article list, and on a full-replay open (host/store-node-host.lisp fn-store-sn-recover-rows and fn-store-sn-recover-from-checkpoint -> fn-store-sn-open-extended -> fn-sco-cpr-finish's fn-cnode-statep) 100,000 articles exhausted the 1,024 KB main-thread stack at 30,526 frames.",
       "milestone": "M5",
       "requirements": [
         "HST-006"
@@ -12463,6 +12463,52 @@
         "third_party/blake3/test_vectors/test_vectors.json"
       ],
       "progress_note": "Lane blake3-digest (2026-09-28): ember, BLAKE3 wherever fn chooses the algorithm; store format 10 with lane format-bump-10."
+    },
+    {
+      "id": "PRF-352",
+      "title": "The open path's per-article walks execute in constant stack: 26 list recursions over the retained articles (store open, owner install, owner start, checkpoint publication) run an accumulator or reversed-fold loop equal to their definitions",
+      "statement": "Each function is (mbe :logic <its recursion, unchanged> :exec <loop>) and its verify-guards event proves exec = logic on every input satisfying the guard. Maps and filters: (reverse (<f>-rev xs ... nil)), lemma <f>-rev-is-revappend: books/retention.lisp fn-retain-obligation-ids, fn-retain-release-ids; books/node.lisp fn-node-binding-msgids, fn-node-binding-ids; books/replay.lisp fn-replay-verdict-pairs; books/control-visible.lisp fn-ctl-drop-via; books/control-authority.lisp fn-ctl-visible-filter; books/store-checkpoint-tables.lisp fn-sct-payloads; books/peer-guard-carried.lisp fn-pgc-obligation-ids, fn-pgc-release-ids. Early exits: fn-retain-remove-id, fn-ctl-subseq-diff (books/control-served.lisp), fn-own-take (books/owner.lisp) and fn-scka-canon-rows (books/store-checkpoint-arena.lisp; a :bad stops it) carry the reversed prefix, lemma <f>-rev-is-revappend ((revappend acc (f ...)), :bad kept). Sums: fn-retain-sum, fn-scka-enc-lens-sum (books/store-checkpoint-arena-writer.lisp), fn-sbud-record-octets (books/store-budget.lisp), fn-sbud-stored-octets (books/store-budget-stored.lisp): an accumulator, lemma <f>-acc-is-plus. Right folds: the reversed list (fn-ag-rev-onto xs nil) folded from the left, lemma <f>-loop-of-rev-onto: books/stx-index.lisp fn-stx-index-of-store, books/msgid-index-concrete.lisp fn-mxc-build, books/msgid-index.lisp fn-midx-build, books/replay-identity-index.lisp fn-rii-kbuild-releases, fn-rii-kbuild-pins, books/control-visible.lisp fn-ctl-articles-withdrawals-in, books/group-bucket-index.lisp fn-gidx-build-entries, books/index.lisp fn-index-build. Host reach: host/store-node-host.lisp fn-store-sn-recover-rows and fn-store-sn-recover-from-checkpoint -> fn-store-sn-open-extended -> fn-rii-sco-store-open -> fn-sco-cpr-finish / fn-sco-cpr-resume (fn-cnode-statep once) and fn-rii-ix-of; host/owner-host.lisp fn-owner-recover-from-store-open -> fn-ock-install -> fn-own-refresh (fn-ctl-*, fn-gidx-*, fn-index-build, fn-midx-build) and fn-owner-install-extended (fn-prc-refresh, fn-sca-load-held-rows, fn-sbud-bytes-used); host/store-node-host.lisp fn-store-sco-publish-setup (fn-scka-canon-rows, fn-sco-capture). Before, each recursed once per retained article: at the installed launcher's 1,024 KiB a full-replay open of 100,000 articles died in 30,527 frames of fn-retain-obligation-ids, a checkpoint open in fn-store-sn-recover-from-checkpoint, then (in turn, as each was fixed) the owner install in 17,447 frames of fn-ctl-articles-withdrawals-in, the checkpoint verb in fn-store-sco-publish-setup and the owner start in fn-sbud-record-octets. Scope: stack depth of the open and the owner's start only. The served reads that walk a group's whole article list per command (LIST ACTIVE, GROUP: fn-nntp-group-low/-high/-count) still recurse (PKT-877); the whole-node recognizer still walks every article once per open (O(R); PKT-876's carried-invariant remainder); fn-retain-statep's intersection-equal stays quadratic in pins x releases.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-006"
+      ],
+      "depends_on": [
+        "PRF-345"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/control-authority.lisp",
+        "books/control-served.lisp",
+        "books/control-visible.lisp",
+        "books/group-bucket-index.lisp",
+        "books/index.lisp",
+        "books/msgid-index-concrete.lisp",
+        "books/msgid-index.lisp",
+        "books/node.lisp",
+        "books/owner.lisp",
+        "books/peer-guard-carried.lisp",
+        "books/replay-identity-index.lisp",
+        "books/replay.lisp",
+        "books/retention.lisp",
+        "books/store-budget-stored.lisp",
+        "books/store-budget.lisp",
+        "books/store-checkpoint-arena-writer.lisp",
+        "books/store-checkpoint-arena.lisp",
+        "books/store-checkpoint-tables.lisp",
+        "books/stx-index.lisp",
+        "planning/evidence/manifests/certify-20260928T045804Z-2021342.json",
+        "planning/evidence/manifests/certify-20260928T045829Z-4075806.json",
+        "planning/evidence/open-depth-2026-09-28.md",
+        "tests/acl2/msgid-index-concrete-tests.lisp",
+        "tests/acl2/node-tests.lisp",
+        "tests/acl2/replay-identity-index-tests.lisp",
+        "tests/acl2/replay-tests.lisp",
+        "tests/acl2/retention-tests.lisp",
+        "tests/acl2/stx-transit-tests.lisp",
+        "tests/test_native_open_depth.py"
+      ],
+      "progress_note": "Certified at the lane head before the last origin/dev merge: persvati certify-20260928T045804Z-2021342 (748 passed) + hbox certify-20260928T045829Z-4075806 (283 passed), 0 failed, the 1,130 affected roots. Native (hbox native-od5, production image at the launcher's 1024KB): syn100k-2k full replay 25.4 s, checkpoint open 11.7 s; syn1m-2k full replay 275.1 s, checkpoint open 143.6 s; each serves DATE and stops cleanly. The served whole-list reads (LIST ACTIVE, GROUP) still die at this stack past ~30k articles: PKT-877."
     }
   ]
 }

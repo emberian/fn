@@ -116,3 +116,13 @@
                     '("comp.lang" 99 "<invented@example.invalid>")
                     *index-articles*)))
 (assert-event (not (fn-index-soundp *index-invented* *index-articles*)))
+
+; The walk by a loop (PKT-876, PRF-352): the :exec branch runs here, in
+; order, and over 50,000 elements.
+(defconst *index-od-arts* (list *index-article-a* *index-article-b* *index-article-c*))
+(assert-event (equal (fn-index-build *index-od-arts*)
+                     (append (fn-index-article-entries *index-article-a*)
+                             (fn-index-article-entries *index-article-b*)
+                             (fn-index-article-entries *index-article-c*))))
+(assert-event (equal (len (fn-index-build (make-list 50000 :initial-element *index-article-a*)))
+                     (* 50000 (len (fn-index-article-entries *index-article-a*)))))

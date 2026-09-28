@@ -539,3 +539,10 @@
         ; non-degenerate: the log position is in the file (it differs from
         ; the file without one)
         (not (equal (sctt-log-file) (sctt-file))))))
+
+; The walk by a loop (PKT-876, PRF-352): the :exec branch runs here, in
+; order, and over 50,000 elements.
+(assert-event (equal (fn-sct-payloads *sctt-events*)
+                     (fn-sct-payloads-rev (reverse *sctt-events*) nil)))
+(assert-event (equal (len (fn-sct-payloads (make-list 50000 :initial-element (car *sctt-events*))))
+                     50000))

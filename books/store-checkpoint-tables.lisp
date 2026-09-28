@@ -465,11 +465,43 @@
 ; -----------------------------------------------------------------------------
 ; The tables of a capture, and the capture of the tables.
 
-(defun fn-sct-payloads (records)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
+; retained article on the owner's open.  The :logic is the recursion,
+; unchanged; the :exec is a loop, equal by the guard proof.
+(defun fn-sct-payloads-rev (records acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp records)
-      (cons (fn-sct-payload-of (car records)) (fn-sct-payloads (cdr records)))
-    nil))
+      (fn-sct-payloads-rev (cdr records) (cons (fn-sct-payload-of (car records)) acc))
+    acc))
+
+(defun fn-sct-payloads (records)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp records)
+           (cons (fn-sct-payload-of (car records)) (fn-sct-payloads (cdr records)))
+         nil)
+       :exec (reverse (fn-sct-payloads-rev records nil))))
+
+(encapsulate ()
+  (local
+   (defthm fn-sct-payloads-rev-is-revappend
+     (equal (fn-sct-payloads-rev records acc)
+            (revappend (fn-sct-payloads records) acc))
+     :hints (("Goal" :in-theory (disable fn-sct-payload-of)))))
+  (local
+   (defthm fn-sct-payloads-true-listp-od
+     (true-listp (fn-sct-payloads records))))
+  (local
+   (defthm fn-sct-payloads-od-revappend-revappend
+     (equal (revappend (revappend x y) z) (revappend y (append x z)))))
+  (local
+   (defthm fn-sct-payloads-od-append-nil-when-true-listp
+     (implies (true-listp x) (equal (append x nil) x))))
+  (local
+   (defthm fn-sct-payloads-od-true-listp-of-revappend
+     (implies (true-listp y) (true-listp (revappend x y)))))
+  (verify-guards fn-sct-payloads
+    :hints (("Goal" :in-theory (disable fn-sct-payload-of)))))
 
 (defthm fn-sct-len-payloads
   (equal (len (fn-sct-payloads records)) (len records)))

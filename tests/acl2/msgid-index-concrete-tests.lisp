@@ -109,3 +109,11 @@
       (mxc-t-get-unguarded msgid (1+ i) (fn-midx-branch-get (char msgid i) trie))
     (fn-midx-branch-get *fn-midx-value-key* trie)))
 (must-fail-checked (verify-guards mxc-t-get-unguarded))
+
+; fn-mxc-build by a loop (PKT-876, PRF-352): the reversed left fold is the
+; trie, node for node, on the three articles above and on 50,000.
+(assert-event (equal (fn-mxc-build-loop (reverse *mxc-t-arts*) nil) *mxc-t-trie*))
+(assert-event (equal (fn-mxc-build (cons *mxc-t-a* 7)) (fn-midx-build (cons *mxc-t-a* 7))))
+(defconst *mxc-t-many*
+  (append (make-list 50000 :initial-element *mxc-t-ab*) *mxc-t-arts*))
+(assert-event (equal (fn-mxc-build *mxc-t-many*) (fn-midx-build *mxc-t-many*)))
