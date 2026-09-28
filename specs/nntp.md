@@ -456,6 +456,18 @@ the owner hands every read its committed view as the live pin
 statement of the same semantics; the retrieval arms read the catalog through
 the view in the next increment (PKT-585).
 
+What a selection costs at the view (PKT-870, PRF-363, 2026-09-28): the
+reader's view is the durable one, so while a batch is in flight a GROUP's
+view is one batch below the catalog's count. The group's count, least and
+greatest number at that view are the catalog's live summary at its count
+(kept by commit and withdrawal) corrected over the numbers of the rows
+appended since the view and of the rows withdrawn at or after it (the
+catalog lists withdrawals per version, `fn-cat-withdrawn-at`), never a
+pass over the group's numbers (`fn-scv-summary`, equal to the pass by
+`fn-scv-count-is-count-p`, `fn-scv-first-is-first-p`,
+`fn-scv-last-is-last-p` and `fn-scat-group-summary-is-pass`). The answer
+is RFC 3977 section 6.1.1's, unchanged.
+
 NNT-007: the session also carries the archive-configuration verdict computed
 when the connection opens. No command recomputes a whole-archive recognizer:
 `fn-nntp-open-session` decides once, `fn-nntp-step` reads the carried value, and

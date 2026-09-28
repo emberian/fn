@@ -12145,6 +12145,31 @@
           "name": "fn-ocp-unstaged-start-issues-no-sync"
         }
       ]
+    },
+    {
+      "id": "PRF-363",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scv-count-is-count-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scv-first-is-first-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scv-last-is-last-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scv-keptp-is-liveq-outside-x"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-withdrawn-at-is-from"
+        }
+      ]
     }
   ]
 }
