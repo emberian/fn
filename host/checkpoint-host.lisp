@@ -240,10 +240,6 @@
                               final-absentp
                               (fn-store-checkpoint-generation-capacity values)))
 
-(defun fn-store-checkpoint-marker-outcome (phase)
-  (declare (xargs :mode :program))
-  (fn-cpp-marker-driver-outcome phase))
-
 ; Decode a selected generation against the live configuration and the
 ; observed durable frontier and record count.  The accepted checkpoint is
 ; installed for the restore call; the reply carries only its sequence and
