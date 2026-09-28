@@ -138,15 +138,12 @@ class NativeBpApplicationTests(unittest.TestCase):
         return int(status[0][0]), int(status[0][1]), int(pins[0])
 
     def recovered_provenance(self):
-        """The provenance the Store's retention pin records for the article.
-        ACL2 decides it (books/provenance-inspect.lisp fn-provi-of-msgid,
-        called by host/store-node-host.lisp fn-store-prov-for-msgid), but no
-        verb of the native image prints it: `store PATH inspect' writes the
-        article's octets only and `status'/`retention' carry no evidence.
-        Decoding the exported records here would re-derive it in Python."""
-        self.fail("no native store verb reports an article's provenance "
-                  "(fn-provi-of-msgid); the check needs one, e.g. "
-                  "`store PATH provenance MSGID'")
+        """The provenance the Store's retention pin records for the article,
+        from the node's own read-only open: `store PATH provenance MSGID'
+        (host/native/io.lisp fnn-command-provenance) relays the octets ACL2
+        describes (books/provenance-inspect.lisp fn-provi-of-msgid, through
+        host/store-node-host.lisp fn-store-prov-for-msgid)."""
+        return self.store_verb("provenance", self.msgid.decode("ascii"))
 
     def prepare_sender_obligation(self):
         sender_store = self.temp / "sender-store"

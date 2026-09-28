@@ -4640,6 +4640,27 @@ in use (lane compression-extents-2)."
                     +fnn-exit-ok+)))
       (fnn-store-close store))))
 
+(defun fnn-command-provenance (root message-id)
+  "`store ROOT provenance MSGID': the provenance the article's retention pin
+records, as ACL2 describes it (host/store-node-host.lisp
+fn-store-prov-for-msgid, books/provenance-inspect.lisp fn-provi-of-msgid),
+then LF; refused when the store binds no such Message-ID or its pin was
+released.  The host decodes nothing: it relays ACL2's octets."
+  (multiple-value-bind (store records) (fnn-open-live-store root nil)
+    (declare (ignore records))
+    (unwind-protect
+         (progn
+           (unless (every (lambda (c) (< (char-code c) 128)) message-id)
+             (error 'fnn-usage-error :message "Message-ID is not ASCII"))
+           (let ((value (fnn-core-state 'fn-store-prov-for-msgid
+                                        (fnn-ascii-octet-list message-id))))
+             (cond ((null value) +fnn-exit-refused+)
+                   (t (write-sequence (fnn-as-octets value) *fnn-stdout*)
+                      (write-byte 10 *fnn-stdout*)
+                      (finish-output *fnn-stdout*)
+                      +fnn-exit-ok+))))
+      (fnn-store-close store))))
+
 (defun fnn-probe-article (sequence size)
   "A well-formed article of exactly SIZE octets for probe record SEQUENCE: a
 head naming its Message-ID, groups and Subject, a blank line, and a body of
@@ -5235,6 +5256,7 @@ connection `fn-reader-reset' opens and projects with
 ;;;   store ROOT init [GROUP...] | recover | status | retention | config
 ;;;   store ROOT post MESSAGE-ID PAYLOAD CHARGE|- FAULT|- GROUP...
 ;;;   store ROOT inspect MESSAGE-ID
+;;;   store ROOT provenance MESSAGE-ID
 ;;;   store ROOT probe COUNT
 ;;;   reader PORT ONCE(0|1) STORE-ROOT|-
 ;;;   model CHUNK-FILE STORE-ROOT|-
@@ -7213,6 +7235,7 @@ observation (the COMPLETE re-signals it under the owner)."
                   (fnn-refuse "~a" (fnn-core 'fn-store-repair-control-text)))
                  ((string= command "config") (fnn-command-config root))
                  ((string= command "inspect") (need 4) (fnn-command-inspect root (first rest)))
+                 ((string= command "provenance") (need 4) (fnn-command-provenance root (first rest)))
                  ((string= command "probe")
                   (need 4)
                   (fnn-command-probe root (parse-integer (first rest))
