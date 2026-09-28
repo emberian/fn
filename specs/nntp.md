@@ -1777,13 +1777,13 @@ and sends, waits or closes as the answer says.
 
 | Slot | Decides | The client sees | Loopback default | Public default |
 | --- | --- | --- | --- | --- |
-| `exposure-connections` | the connection capacity: connections held at once (NNT-043) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | 31 | 31 |
-| `exposure-per-address` | connections held from one source address outside `exposure-trusted` | `400 too many connections from this address; try again later` | the total | 8 |
-| `exposure-steps-per-second` | served steps one address starts per 1000 ms (one step: one host read, D27 work) | nothing: the connection waits for the next quantum (TCP backpressure) | unlimited | 64 |
-| `exposure-first-seconds` | wait for the first command (RFC 3977 §3.1 permits a shorter one) | close, no reply (§3.1) | none | 60 |
-| `exposure-idle-seconds` | autologout after that (§3.1: at least three minutes) | close, no reply | none | 600 |
-| `exposure-auth-failures` | `481` answers one address may draw per minute | `400 too many authentication failures; closing connection`, and at the next accept `400 too many authentication failures from this address` | unlimited | 10 |
-| `exposure-posts-per-minute` | submissions per authenticated principal per minute | nothing: the principal's connections wait for the next minute | unlimited | 60 |
+| `exposure-connections` | the connection capacity: connections held at once (NNT-043) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | <!--limit:max-connections - 1-->31<!--/limit--> | <!--limit:max-connections - 1-->31<!--/limit--> |
+| `exposure-per-address` | connections held from one source address outside `exposure-trusted` | `400 too many connections from this address; try again later` | the total | <!--limit:exposure-per-address-->8<!--/limit--> |
+| `exposure-steps-per-second` | served steps one address starts per 1000 ms (one step: one host read, D27 work) | nothing: the connection waits for the next quantum (TCP backpressure) | unlimited | <!--limit:exposure-steps-per-second-->64<!--/limit--> |
+| `exposure-first-seconds` | wait for the first command (RFC 3977 §3.1 permits a shorter one) | close, no reply (§3.1) | none | <!--limit:exposure-first-seconds-->60<!--/limit--> |
+| `exposure-idle-seconds` | autologout after that (§3.1: at least three minutes) | close, no reply | none | <!--limit:exposure-idle-seconds-->600<!--/limit--> |
+| `exposure-auth-failures` | `481` answers one address may draw per minute | `400 too many authentication failures; closing connection`, and at the next accept `400 too many authentication failures from this address` | unlimited | <!--limit:exposure-auth-failures-->10<!--/limit--> |
+| `exposure-posts-per-minute` | submissions per authenticated principal per minute | nothing: the principal's connections wait for the next minute | unlimited | <!--limit:exposure-posts-per-minute-->60<!--/limit--> |
 | `anonymous` (policy) | what an unauthenticated session may do: `none` or `open` | under `none`, `480 authentication required` for every reader and posting command (RFC 4643 §2.2) | as `[auth] required` | `none` |
 
 Progress that resets the timers is an answered command or 512 octets
