@@ -921,7 +921,19 @@
                                  (fn-own-config o) (fn-own-queue o) nil
                                  (if (equal (fn-own-outcome-completion o word) :durable)
                                      (fn-own-feed-durable o (fn-own-inflight o))
-                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))))))
+                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))
+                 ;; the durable arm advances the next owner (fn-own-outcome):
+                 ;; stated, so the proof does not depend on which rules an
+                 ;; includer's world happens to try first.
+                 (:instance fn-scjs-advance-keeps-invp
+                            (o (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                                   (fn-own-next-id o) (fn-own-max-conns o)
+                                   (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
+                                   (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
+                                   (fn-own-config o) (fn-own-queue o) nil
+                                   (if (equal (fn-own-outcome-completion o word) :durable)
+                                       (fn-own-feed-durable o (fn-own-inflight o))
+                                     (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))))))
 
 (defthm fn-scjs-transit-outcome-keeps-invp
   (implies (fn-scj-invp o fn-arena fn-cat)
