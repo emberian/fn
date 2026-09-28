@@ -1,34 +1,23 @@
-"""Opt-in native case: a store made by another release is refused at open by name (PKT-705, D34).
+"""Opt-in native case: a store of another format is refused at open by name (D34).
 
-A store is synthesized by tests/older_release_store.py: a fresh store made
+A store is synthesized by tests/foreign_format_store.py: a fresh store made
 by the image under test whose config.json is replaced by a profile frame
-another release wrote (literal octets pinned to ACL2 by
-tests/acl2/store-profile-open-tests.lisp):
-
-* older-release: the thirteen-field fn-store-8 layout of every store made
-  before batch AS (header-limits-profile grew the layout to sixteen fields
-  under the same word);
-* format-7: a format-7 store's frame (word fn-store-experiment-7).
-
-Every open refuses it by ACL2's line, exit 1 (specs/host.md "CLI exit
-codes": a refusal), never the generic fault ("ACL2 rejected durable
-configuration frame", exit 4): `store ROOT recover`, `store ROOT status`,
-`store ROOT inspect`, `store ROOT checkpoint`, `operator CONFIG status`,
-`operator CONFIG health` and `operator CONFIG run` (the owner's start).  The
-open is books/store-profile-open.lisp fn-spo-config-open, which
-host/native/io.lisp fnn-metadata-config-decode calls through
-host/store-host.lisp fn-store-metadata-config-open from fnn-load-config;
-the line is fn-spo-refusal-text.  Theorems:
-fn-spo-open-of-another-layout-refuses-by-name and
+naming another format word (literal octets pinned to ACL2 by
+tests/acl2/store-profile-open-tests.lisp).  Every open refuses it by ACL2's
+line, "not an fn store of this release: redeploy fresh", exit 1 (specs/
+host.md "CLI exit codes": a refusal), never the generic fault ("ACL2
+rejected durable configuration frame", exit 4): `store ROOT recover`,
+`store ROOT status`, `store ROOT inspect`, `store ROOT checkpoint`,
+`operator CONFIG status`, `operator CONFIG health` and `operator CONFIG run`
+(the owner's start).  The open is books/store-profile-open.lisp
+fn-spo-config-open, which host/native/io.lisp fnn-metadata-config-decode
+calls through host/store-host.lisp fn-store-metadata-config-open from
+fnn-load-config; the line is fn-spo-refusal-text.  Theorem:
 fn-spo-config-open-store-format-is-exactly-a-foreign-frame.  The refused
 store's files are unchanged.  The control: the same store with its own
 config.json opens.
 
-These cases replace the fixture-backed ones of PKT-695 (the format-7 store
-fixture) and PKT-697 (the pre-C1 control store, whose pre-D34 format is
-refused at the profile open before any replay).
-
-Run: FN_NATIVE_HOST=<launcher> python3 -m unittest -v tests.test_native_older_release_open
+Run: FN_NATIVE_HOST=<launcher> python3 -m unittest -v tests.test_native_foreign_format_open
 """
 
 import hashlib
@@ -39,7 +28,7 @@ import subprocess
 import tempfile
 import unittest
 
-from tests import older_release_store as older
+from tests import foreign_format_store as foreign
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
@@ -58,9 +47,9 @@ def tree(root):
 
 
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST to a saved native image")
-class OlderReleaseOpenTest(unittest.TestCase):
+class ForeignFormatOpenTest(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="fn-older-release-"))
+        self.tmp = Path(tempfile.mkdtemp(prefix="fn-foreign-format-"))
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
@@ -72,13 +61,12 @@ class OlderReleaseOpenTest(unittest.TestCase):
         print("$ fn", *args, "->", r.returncode, "\n" + out.strip())
         return r.returncode, out
 
-    def assert_every_open_refuses(self, kind):
-        store, config, _ = older.make_store(kind, IMAGE, self.tmp, self.env)
+    def test_a_store_of_another_format_is_refused_by_name(self):
+        store, config, _ = foreign.make_store(IMAGE, self.tmp, self.env)
         before = tree(store)
-        line = older.LINES[kind]
         for args in (("store", store, "recover"),
                      ("store", store, "status"),
-                     ("store", store, "inspect", "<older-release@example.invalid>"),
+                     ("store", store, "inspect", "<another-format@example.invalid>"),
                      ("store", store, "checkpoint"),
                      ("operator", config, "status"),
                      ("operator", config, "health"),
@@ -86,25 +74,14 @@ class OlderReleaseOpenTest(unittest.TestCase):
             with self.subTest(args=args[0:1] + args[2:]):
                 rc, out = self.fn(*args)
                 self.assertEqual(rc, REFUSED, out)
-                self.assertIn(line, out)
+                self.assertIn(foreign.LINE, out)
                 self.assertNotIn(GENERIC, out)
         self.assertEqual(tree(store), before)
-
-    def test_a_store_of_the_older_layout_is_refused_by_name(self):
-        self.assert_every_open_refuses("older-release")
-
-    def test_a_format_7_store_is_refused_by_name(self):
-        self.assert_every_open_refuses("format-7")
-
-    def test_a_format_9_store_is_refused_by_name_with_the_way_out(self):
-        # Format 10 (lane format-bump-10): the release before is named, and
-        # the line says export there, import here (D34).
-        self.assert_every_open_refuses("format-9")
 
     def test_the_same_store_with_its_own_profile_opens(self):
         # The control: the builder's store with the config.json this release
         # wrote put back opens.
-        store, config, own = older.make_store("older-release", IMAGE, self.tmp, self.env)
+        store, config, own = foreign.make_store(IMAGE, self.tmp, self.env)
         (store / "config.json").write_bytes(own)
         rc, out = self.fn("store", store, "recover")
         self.assertEqual(rc, 0, out)

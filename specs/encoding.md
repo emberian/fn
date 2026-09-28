@@ -77,8 +77,7 @@ rendered canonically as
 
 with version 1 and algorithm 2 (BLAKE3, 32-octet output; store format 10
 and later). Algorithm 1 (SHA-256) was written by formats up to 9 and is not
-read: a format-10 store holds none (D34, fresh deploys; `store export` and
-import is the migration path, and identities re-derive on import). The kind is carried *inside* the
+read: a format-10 store holds none (D34, fresh deploys, no migrations). The kind is carried *inside* the
 encoded identity rather than as a hex prefix, and the algorithm identifier
 travels in the container, so algorithm agility (D09) changes the algorithm
 octet and does not change the meaning of an identity already written. A
@@ -226,19 +225,14 @@ kind-4 composites round-trip through the actual Store-event dispatcher.
 
 FNST's 196,608-octet ceiling counts its payload, excluding the fixed 42-octet
 frame header and trailer. The store profile (FNSM kind 1, format
-`fn-store-10`, the one format an image opens; `fn-store-9`, the release
-before, is refused at the open by name with the way out, and every older word
-as another format: STO-028, books/byte-store-frame.lisp,
-books/store-profile-open.lisp) is one text (the format) and fifteen
-eight-octet frame naturals
-(a sealed frame of another width is refused `older-release` or
-`newer-release`, fixtures-refresh 2026-09-27), the operator's fields
+`fn-store-10`, the one format an image opens; every other word is refused
+at the open by name, "not an fn store of this release: redeploy fresh":
+STO-028, books/byte-store-frame.lisp, books/store-profile-open.lisp) is one
+text (the format) and fifteen eight-octet frame naturals, the operator's fields
 in the order of `*fn-bs-profile-field-names*`; `fn-bs-profile-validp` states
 the relations between them and the codec ceilings (the per-record field R is
 at most this FNST ceiling and at least every Store event kind's worst case).
-A format-7 profile (six fields, two fixed tuples) is still decoded and runs
-under its translation (R = aggregate / transactions, the other fields at the
-codec widths); format 6 is not decoded. Admission is ACL2's own count and sum:
+Admission is ACL2's own count and sum:
 fewer than T committed records, the prospective record within R, and the
 committed record octets plus it within H (`fn-sbud-verdict-at`). The former
 relation `T x R <= H` is dropped; the octet sum it stood in for is now

@@ -31,12 +31,14 @@ Every served block is checked against the posted octets exactly: the reply
 is the status line, the stored article dot-stuffed (RFC 3977 section
 3.1.1), then ".\\r\\n", and the stored article ends with the posted body.
 """
-import os
 import time
 import unittest
 
 from tests import test_native_bounds_join as join
-from tests import test_native_operator_verbs as verbs
+from tests.native_harness import EXIT_OK, native_image, requires
+
+IMAGE = native_image("FN_NATIVE_HOST")
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 MIB = 1024 * 1024
 PROFILE_OCTETS = 8 * MIB
@@ -62,30 +64,26 @@ def stuffed(data):
                     for ln in data.splitlines(keepends=True))
 
 
-class Client(join.NntpClient):
-    def __init__(self, port):
-        super().__init__(port)
-        self.conn.settimeout(900)
-
-    def raw(self, command):
-        """The whole reply to COMMAND, octet for octet, terminator included."""
-        self.stream.write(command.encode("ascii") + b"\r\n")
-        self.stream.flush()
-        status = self.stream.readline()
-        if not status.startswith((b"220", b"222")):
-            return status
-        out = [status]
-        while True:
-            ln = self.stream.readline()
-            if not ln:
-                raise AssertionError("closed inside the multi-line reply")
-            out.append(ln)
-            if ln == b".\r\n":
-                return b"".join(out)
+def raw(client, command):
+    """The whole reply to COMMAND, octet for octet, terminator included."""
+    status = client.command(command)
+    if not status.startswith((b"220", b"222")):
+        return status
+    out = [status]
+    while True:
+        ln = client.line()
+        out.append(ln)
+        if ln == b".\r\n":
+            return b"".join(out)
 
 
-@unittest.skipUnless(verbs.executable(verbs.IMAGE) and verbs.executable(verbs.DEVELOPER),
-                     "the production and developer images are required")
+def post(client, data):
+    first, final = client.post(data)
+    assert first.startswith(b"340"), first
+    return final.rstrip(b"\r\n").decode("ascii", "replace")
+
+
+@requires(IMAGE, DEVELOPER)
 class ServedLineStackTests(join.JoinFixture):
 
     def check_block(self, reply, code, posted_body):
@@ -103,58 +101,55 @@ class ServedLineStackTests(join.JoinFixture):
 
     def serve(self, image, env, step):
         started = time.monotonic()
-        owner = self.start_owner(image, env)
-        client = Client(self.port)
-        try:
+        owner = self.node.start(image=image, env=env)
+        with self.node.session(timeout=900) as client:
             out = step(client)
-        finally:
-            client.close()
         self.assertIsNone(owner.poll(), "the owner stopped: {}".format(
-            owner.stderr.read()[-4000:].decode("utf-8", "replace")))
-        self.stop(owner)
+            owner.stderr.tail(4000).decode("utf-8", "replace")))
+        self.node.stop(process=owner)
         print("step", image.name, env, round(time.monotonic() - started, 1), "s", flush=True)
         return out
 
     def run_image(self, image):
         self.image = image
         created = self.op("init", "--max-article-octets", str(PROFILE_OCTETS), "fn.test")
-        self.assertEqual(created.returncode, verbs.EXIT_OK, created.stderr.decode())
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         a_id, b_id, c_id = ("<lines-a@example.invalid>", "<line-b@example.invalid>",
                             "<lines-c@example.invalid>")
         a, b, c = many_lines(a_id), one_line(b_id), many_lines(c_id)
         body = lambda data: data.split(b"\r\n\r\n", 1)[1]
 
         def first(client):
-            self.assertTrue(client.post(a).startswith("240"))
-            art_a = client.raw("ARTICLE " + a_id)
+            self.assertTrue(post(client, a).startswith("240"))
+            art_a = raw(client, "ARTICLE " + a_id)
             self.check_block(art_a, b"220", body(a))
-            body_a = client.raw("BODY " + a_id)
+            body_a = raw(client, "BODY " + a_id)
             self.assertEqual(self.check_block(body_a, b"222", body(a)), body(a))
             self.assertEqual(body_a.count(b"\r\n"), 1 + LINES + 1)
-            self.assertTrue(client.post(b).startswith("240"))
-            art_b = client.raw("ARTICLE " + b_id)
+            self.assertTrue(post(client, b).startswith("240"))
+            art_b = raw(client, "ARTICLE " + b_id)
             self.check_block(art_b, b"220", body(b))
             return art_a, art_b
         art_a, art_b = self.serve(image, ONE_MIB_STACK, first)
 
         def second(client):
-            self.assertEqual(client.raw("ARTICLE " + a_id), art_a)
-            self.assertEqual(client.raw("ARTICLE " + b_id), art_b)
-            self.assertTrue(client.post(c).startswith("240"))
-            art_c = client.raw("ARTICLE " + c_id)
+            self.assertEqual(raw(client, "ARTICLE " + a_id), art_a)
+            self.assertEqual(raw(client, "ARTICLE " + b_id), art_b)
+            self.assertTrue(post(client, c).startswith("240"))
+            art_c = raw(client, "ARTICLE " + c_id)
             self.check_block(art_c, b"220", body(c))
             return art_c
         art_c = self.serve(image, None, second)
 
         def third(client):
-            self.assertEqual(client.raw("ARTICLE " + c_id), art_c)
+            self.assertEqual(raw(client, "ARTICLE " + c_id), art_c)
         self.serve(image, ONE_MIB_STACK, third)
 
     def test_production_serves_two_million_lines_at_one_mib_of_stack(self):
-        self.run_image(verbs.IMAGE)
+        self.run_image(IMAGE)
 
     def test_developer_serves_two_million_lines_at_one_mib_of_stack(self):
-        self.run_image(verbs.DEVELOPER)
+        self.run_image(DEVELOPER)
 
 
 if __name__ == "__main__":

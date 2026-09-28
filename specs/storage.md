@@ -1262,23 +1262,17 @@ batch, one barrier per batch of commits; planning/design-2026-09-27-storage-log.
 lane commit-onto-log). Paragraphs of this specification that say "format 9"
 describe the record log's mechanics, which format 10 keeps unchanged: the
 format word, the profile's layout, the genesis and the stored digests are
-what changed. The open the host calls reads config.json through
-`fn-spo-config-open` (books/store-profile-open.lisp, PRF-350) and answers:
+what changed. There are no migrations (D38 withdrawn 2026-09-28: fresh
+deploys, one format). The open the host calls reads config.json through
+`fn-spo-config-open` (books/store-profile-open.lisp) and answers:
 
 - a profile of this format: opened (`fn-spo-open-of-a-valid-profile-opens-it`);
-- a format-9 store (the release before, its frame read under the SHA-256
-  trailer format 9 sealed with, books/store-format-9.lisp): refused BY NAME
-  with the way out, `open refused reason=store-format-9: a format-9 store
-  (made by the release before format 10); export it with that release (store
-  ROOT export DIR), then import it here (store NEWROOT import DIR); no store is
-  upgraded in place (D34)`, exit 1 (`fn-spo-open-of-a-format-9-frame-refuses-by-name`);
-- any other format word (8, 7, ...): `open refused reason=store-format:
-  reinstall from the release and import`, exit 1
+- a sealed profile frame (under this build's digest) naming any other format
+  word: `open refused reason=store-format: not an fn store of this release:
+  redeploy fresh`, exit 1
   (`fn-spo-config-open-store-format-is-exactly-a-foreign-frame`);
-- a format-10 frame of another width: `reason=older-release` or
-  `newer-release` with both counts (PKT-705,
-  `fn-spo-open-of-another-layout-refuses-by-name`);
-- anything else (a corrupted file): the host's fault, as before.
+- anything else (a corrupted file, or a frame sealed under another digest):
+  the host's fault.
 
 Nothing is translated at the open. On the record log `store compact` is the
 log's rotation and drop (STO-034), and `store reclaim` is the log's content
@@ -1309,73 +1303,15 @@ decision is the whole archive's (PRF-369,
 `fn-sxi-stream-plan-is-the-import-plan`), and a second pass that decides
 otherwise (the archive changed under the import) is refused by name
 (`archive-changed`) before anything is published.
-`store import DIR [--FIELD N ...]` builds a new format-10 store from it,
+`store import DIR [--FIELD N ...]` builds a new store of this format from
+an archive of this format (an archive whose profile this format does not
+decode is refused, `reason=profile store-format`; none is translated),
 with its OWN genesis, writing the records into the log through its own append
 and barrier, refusing a MANIFEST mismatch, a record out of sequence and a
 profile the codec cannot represent by name, and admits it by the ordinary
 open before it appears at its path. The import of an export replays the same
 history under the same profile (PRF-205,
 `fn-sxp-import-of-export-replays-the-same-history`).
-
-The migration 9 -> 10 (D38 as proposed 2026-09-27: every format or layout
-change ships the previous one's archive reader, with a witness). `store
-import` reads the archive the format-9 release exported: its MANIFEST under
-SHA-256 (format 9's digest), its profile translated
-(`fn-f9-config-decode`: the word becomes `fn-store-10`, fields 2 to 13 and
-15 to 17 kept in order, the frontier word and the committed-history marker
-dropped; a set marker or a foreign second text is refused by name,
-`:history-marker-required`, `:frontier-format`), the configuration records
-as they are (unframed CBOR, no digest), and the records TRANSLATED then
-replayed (`fn-sxp-import-of-a-format-9-export`,
-`fn-f9-config-decode-of-a-format-9-frame`; books/store-format-9-records.lisp):
-each article record's two identities are re-derived from its own octets under
-BLAKE3, algorithm 2, exactly as a format-10 node derives them at acceptance
-(`fn-f9r-article-identities-are-format-10s`), every other field kept
-(`fn-f9r-article-keeps-every-other-field`); each retention event's obligation
-and subject are rewritten through the map the translated articles define; a
-format-9 identity no earlier article defined is refused by name
-(`reason=record-translation unknown-identity sequence=N`). Every other kind
-is decided in books/store-format-9-records.lisp (PRF-355): an accepted
-composite (signed, carried or schema 0) keeps its authored source, the
-signatures in its article's payload, its verdict, keyring generation and
-profile, and has its embedded article's identities, its content subject and
-its authored-source identity re-derived as replay derives them
-(`fn-f9r-composite-keeps-what-it-binds`,
-`fn-f9r-composite-identities-are-format-10s`; the D09 signed preimage holds
-no identity, so nothing is re-signed), and is imported only if it binds
-(`fn-f9r-step-of-a-composite`, else `composite-binding`); statement verdicts,
-keyring snapshots (enrollment, succession, revocation: the key half of a key
-statement), consumer events and the topic administrator's install carry no
-content identity and import as their exact octets
-(`fn-f9r-step-carries-identity-free-kinds-verbatim`). Topic anchors and
-admissions cannot be translated faithfully and are refused
-(`signed-format-9-identity`): replay re-prepares them from a signed root or
-report whose FN-Topic field names the controller key set, topic, policy and
-parents by format-9 identities, which format 10 neither parses nor can
-re-sign; a store holding one does not migrate by import. A snapshot keeps
-its principal verbatim: a principal a login derived under SHA-256
-(`fn-acct-local-principal`) is no longer the one that login derives, so such
-a key is enrolled again for the login (or named with `--principal`). Derived from secrets the node does not keep,
-some values cannot migrate by construction (lane blake3-digest): AUTHINFO
-credentials must be re-enrolled (an old verifier fails closed), pending
-invitation codes are void, posting-account pseudonyms change (a new
-MAC; the node secret, store/keys/node-secret.key, is not in the archive), and a poster
-cannot cancel a pre-migration article with their own Cancel-Lock (the key
-derivation changed; the lock is in the old article's octets; an operator's
-cancel is unaffected).
-"Identical" across the migration: the store digest (`store ROOT digest`,
-every line up to and including `digest state`) of the format-10 store is
-the digest, under the format-10 digest function, of the records the import
-wrote; while the digest seam is SHA-256 on both sides those records are the
-archive's bytes and the canonical history of the two stores is the same
-octets. When the seam becomes BLAKE3 (lane blake3-digest) the records whose
-content identities are stored in them are re-derived at import under
-algorithm 2 (open, below), and "identical" is: the format-10 node's digest
-of its imported history equals the BLAKE3 digest of the canonical octets of
-the translated records, computed independently of the node (the test's
-job), and every non-identity field of every record is the archive's.
-Format 10 is BLAKE3 now (lane blake3-digest's attachment, merged into this
-lane), so the second reading is the one in force.
 
 The digest streams (lane format10-import, PRF-356): each line's value is
 `fn-sdg-chain` of its canonical octets -- `fn-digest` of them when they are
@@ -1444,10 +1380,8 @@ export (two genesis records, one history) and finds every other line equal.
 Format 10's digest is BLAKE3 everywhere fn chooses (lane blake3-digest,
 merged: frame trailers and the log's chain, content identities of algorithm 2
 `*fn-id-algorithm-blake3*`, the MANIFEST, `store digest`, tombstones, the
-catch-up chain); SHA-256 remains only where RFC 8315 forces it (Cancel-Lock)
-and in the format-9 reader (books/store-format-9.lisp), by name. Every
-record kind a format-9 node writes translates at import or is refused by
-name (PRF-355, above); only topic anchors and admissions are refused.
+catch-up chain); SHA-256 remains only where RFC 8315 forces it (Cancel-Lock,
+books/sha256.lisp).
 
 STO-029: `store import` publishes by an explicit program (P-IMPORT,
 books/store-import-publication.lisp): the staged `ROOT.import-XXXX` is

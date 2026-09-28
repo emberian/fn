@@ -32,22 +32,15 @@ Run: FN_NATIVE_HOST=<developer launcher> python3 -m unittest tests.test_native_s
 import hashlib
 import json
 import os
-from pathlib import Path
-import signal
-import socket
-import subprocess
-import tempfile
 import time
 import unittest
 
-from tests.native_process import wait_for_announcement
-from tools.wire_stream import whole_stream
+from tests.native_harness import (
+    EXIT_OK, ROOT, Client, Node, environment, keep_diagnostics, native_image, requires, run,
+    scratch)
 
-ROOT = Path(__file__).resolve().parent.parent
 CORPUS = ROOT / "tests" / "fixtures" / "source-corpus"
-IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
-IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
-READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
+IMAGE = native_image("FN_NATIVE_HOST")
 ALREADY = b"441 posting failed; this article is already stored here"
 DIFFERENT = b"441 posting failed; a different article with this Message-ID is stored here"
 ELEMENTS = ("supplied-date", "generated-date", "client-path", "xref", "unknown-headers",
@@ -58,12 +51,6 @@ ED_SECRET = "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60" +
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def header(article, name):
@@ -91,136 +78,84 @@ def changed(source):
     return source[:-3] + bytes([source[-3] ^ 1]) + source[-2:]
 
 
-@unittest.skipUnless(READY, "set FN_NATIVE_HOST to a developer native launcher")
+@requires(IMAGE)
 class NativeSourceCorpusTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-source-corpus-")
-        self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.processes = []
-        self.addCleanup(self.stop_all)
+        self.base = scratch(self, "fn-source-corpus-")
+        self.env = environment()
+        self.nodes = []
+        keep_diagnostics(self, self.nodes)
 
     # -- process and protocol helpers ---------------------------------------
-    def command(self, arguments, expected=0):
-        result = subprocess.run(list(map(str, arguments)), cwd=ROOT, env=self.env,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=300, check=False)
+    def command(self, arguments, expected=EXIT_OK):
+        result = run(arguments, env=self.env, timeout=300)
         if expected is not None:
             self.assertEqual(result.returncode, expected, result)
         return result
 
     def initialize(self, name, groups, identity):
-        root = self.base / name
-        root.mkdir()
-        store, control = root / "store", root / "control.sock"
-        port = free_port()
-        self.command([IMAGE, "--fn", "store", store, "init", *groups])
-        config = root / "fn.toml"
-        config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(store, port, control), encoding="ascii")
-        node = {"name": name, "root": root, "store": store, "config": config,
-                "port": port, "control": control, "identity": identity}
-        self.command([IMAGE, "--fn", "operator", config, "policy", "set",
+        """A node whose store `store init` made, with its path identity."""
+        node = Node(self, IMAGE, root=self.base / name, name=name)
+        node.identity = identity
+        self.nodes.append(node)
+        self.command([IMAGE, "--fn", "store", node.store_path, "init", *groups])
+        self.command([IMAGE, "--fn", "operator", node.config, "policy", "set",
                       "path-identity", identity])
         return node
 
     def peer(self, source, target, outbound):
-        self.command([IMAGE, "--fn", "operator", source["config"], "peer", "add",
-                      target["name"], target["identity"], "127.0.0.1", str(target["port"]),
+        self.command([IMAGE, "--fn", "operator", source.config, "peer", "add",
+                      target.name, target.identity, "127.0.0.1", str(target.port),
                       "fn.*", outbound, "127.0.0.1", "true"])
 
     def start(self, node):
-        # The owner's diagnostics go to a regular file (an unread PIPE can
-        # fill and block the service), kept in FN_NATIVE_TEST_DIAGNOSTIC_DIR
-        # when set.
-        keep = os.environ.get("FN_NATIVE_TEST_DIAGNOSTIC_DIR")
-        directory = Path(keep) if keep else node["root"]
-        directory.mkdir(parents=True, exist_ok=True)
-        with (directory / (self.id().rsplit(".", 1)[-1] + "-" + node["name"]
-                           + ".stderr")).open("ab") as stderr:
-            process = subprocess.Popen(
-                [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
-                cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=stderr)
-        self.processes.append(process)
-        node["process"] = process
-        wait_for_announcement(process, b"LISTENING ")
+        node.start()
 
     def stop(self, node, kill=False):
-        process = node.pop("process")
-        if kill:
-            process.send_signal(signal.SIGKILL)
-        else:
-            process.terminate()
-        process.communicate(timeout=60)
-        self.processes.remove(process)
-        return process.returncode
-
-    def stop_all(self):
-        for process in self.processes:
-            if process.poll() is None:
-                process.terminate()
-                process.communicate(timeout=60)
+        """SIGTERM (or SIGKILL) the owner; its exit status."""
+        if not kill:
+            return node.stop(expect=None)
+        node.process.kill()
+        status = node.process.wait(timeout=60)
+        node.process.finish()
+        return status
 
     def connect(self, node):
-        client = socket.create_connection(("127.0.0.1", node["port"]), timeout=30)
-        stream = whole_stream(client)
-        self.assertTrue(stream.readline().startswith(b"200 "))
-        return client, stream
+        return Client(node.port, timeout=30, greeting=(b"200",))
 
     @staticmethod
-    def body(stream):
-        lines = []
-        while True:
-            line = stream.readline()
-            if line in (b".\r\n", b""):
-                return b"".join(lines)
-            lines.append(line[1:] if line.startswith(b"..") else line)
-
-    def ask(self, stream, command):
-        stream.write(command)
-        line = stream.readline()
-        data = self.body(stream) if line[:3] in (b"211", b"220", b"101", b"225") else None
+    def ask(client, command):
+        client.send(command)
+        line = client.line()
+        data = client.block() if line[:3] in (b"211", b"220", b"101", b"225") else None
         if line[:3] == b"211" and not command.startswith(b"LISTGROUP"):
             data = None
         return line.rstrip(b"\r\n"), data
 
     def post(self, node, payload):
-        client, stream = self.connect(node)
-        with client:
-            stream.write(b"POST\r\n")
-            first = stream.readline()
+        with self.connect(node) as client:
+            first, final = client.post(payload)
             self.assertTrue(first.startswith(b"340"), first)
-            for line in payload.split(b"\r\n")[:-1]:
-                stream.write((b"." + line if line.startswith(b".") else line) + b"\r\n")
-            stream.write(b".\r\n")
-            return stream.readline().rstrip(b"\r\n")
+            return final.rstrip(b"\r\n")
 
     def served(self, node, group=b"fn.test"):
         """{Message-ID: (number, octets)} for every article a fresh view serves."""
-        client, stream = self.connect(node)
         view = {}
-        with client:
-            stream.write(b"LISTGROUP " + group + b"\r\n")
-            status = stream.readline()
+        with self.connect(node) as client:
+            status = client.command(b"LISTGROUP " + group)
             if not status.startswith(b"211"):
                 return view
-            numbers = [int(x) for x in self.body(stream).split()]
+            numbers = [int(x) for x in client.block().split()]
             for number in numbers:
-                stream.write(b"ARTICLE %d\r\n" % number)
-                line = stream.readline()
+                line = client.command(b"ARTICLE %d" % number)
                 if line.startswith(b"220"):
-                    octets = self.body(stream)
+                    octets = client.block()
                     view[header(octets, b"Message-ID")] = (number, octets)
         return view
 
     def article(self, node, message_id):
-        client, stream = self.connect(node)
-        with client:
-            line, data = self.ask(stream, b"ARTICLE " + message_id.encode() + b"\r\n")
-            return line, data
+        with self.connect(node) as client:
+            return self.ask(client, b"ARTICLE " + message_id.encode() + b"\r\n")
 
     def await_article(self, node, message_id, timeout=90):
         deadline = time.monotonic() + timeout
@@ -229,15 +164,15 @@ class NativeSourceCorpusTests(unittest.TestCase):
             if line.startswith(b"220"):
                 return data
             time.sleep(0.2)
-        self.fail("{} did not receive {}".format(node["name"], message_id))
+        self.fail("{} did not receive {}".format(node.name, message_id))
 
     def inspect(self, node, message_id):
-        result = self.command([IMAGE, "--fn", "store", node["store"], "inspect", message_id],
+        result = self.command([IMAGE, "--fn", "store", node.store_path, "inspect", message_id],
                               expected=None)
         return result.stdout if result.returncode == 0 else None
 
     def keys(self, node):
-        root = node["root"]
+        root = node.root
         openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
         keys = {"principal": root / "principal.bin", "ed_public": root / "ed-public.bin",
                 "ed_secret": root / "ed-secret.bin", "ml_private": root / "ml-private.pem",
@@ -257,7 +192,7 @@ class NativeSourceCorpusTests(unittest.TestCase):
         hedged (FIPS 204), so signing the same source again yields another
         signature and so another authored carrier: a client's retry reuses
         the signature it persisted, as it reuses its Message-ID."""
-        root = node["root"]
+        root = node.root
         source = root / (stem + ".eml")
         source.write_bytes(source_octets)
         ed_sig, ml_sig = root / (stem + ".ed"), root / (stem + ".ml")
@@ -271,14 +206,14 @@ class NativeSourceCorpusTests(unittest.TestCase):
             parts = dict(line.split() for line in signed.stdout.decode().splitlines())
             ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
             ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
-        done = self.command([IMAGE, "--fn", "hybrid-author", node["control"], "1", source,
+        done = self.command([IMAGE, "--fn", "hybrid-author", node.control, "1", source,
                              ed_sig, ml_sig, keys["ml_public"]], expected=None)
         self.last_author = (done.returncode, done.stdout.decode("utf-8", "replace").strip(),
                             done.stderr.decode("utf-8", "replace").strip()[-400:])
         return done.returncode
 
     def carrier(self, node, keys, stem, source_octets):
-        source, carried = node["root"] / (stem + ".eml"), node["root"] / (stem + ".carrier")
+        source, carried = node.root / (stem + ".eml"), node.root / (stem + ".carrier")
         source.write_bytes(source_octets)
         self.command([IMAGE, "--fn", "hybrid-sign-carrier", keys["principal"],
                       keys["ed_public"], keys["ed_secret"], keys["ml_public"],
@@ -297,7 +232,7 @@ class NativeSourceCorpusTests(unittest.TestCase):
         # D23: a carried signed article is admitted at B on the author's
         # enrollment there, so the author is enrolled at both nodes.
         for node in (a, b):
-            self.command([IMAGE, "--fn", "hybrid-enroll", node["control"], "1",
+            self.command([IMAGE, "--fn", "hybrid-enroll", node.control, "1",
                           keys["principal"], keys["ed_public"], keys["ml_public"]])
         corpus = {name: (CORPUS / (name + ".article")).read_bytes() for name in ELEMENTS}
         corpus["signed"] = (CORPUS / "signed.article").read_bytes()
@@ -344,9 +279,9 @@ class NativeSourceCorpusTests(unittest.TestCase):
 
         # 2. The operator post of the same source under its Message-ID.
         for name in ("supplied-date", "client-path", "mime"):
-            payload = a["root"] / (name + ".operator")
+            payload = a.root / (name + ".operator")
             payload.write_bytes(corpus[name])
-            done = self.command([IMAGE, "--fn", "operator", a["config"], "post",
+            done = self.command([IMAGE, "--fn", "operator", a.config, "post",
                                  "--message-id", facts[name]["message_id"], "--payload",
                                  payload, "--group", "fn.test"], expected=None)
             facts[name]["operator"] = [done.returncode,
@@ -394,10 +329,9 @@ class NativeSourceCorpusTests(unittest.TestCase):
             number, octets = b_view.get(message_id, (None, facts[name]["b"]))
             row(name, "transit", "feed a->b " + name, "220", message_id, "b", octets, number,
                 equality="Message-ID; stored = A's with B's Path prefix")
-            client, stream = self.connect(b)
-            with client:
-                stream.write(b"IHAVE " + message_id.encode() + b"\r\n")
-                facts[name]["b-ihave"] = stream.readline().rstrip(b"\r\n").decode()
+            with self.connect(b) as client:
+                facts[name]["b-ihave"] = client.command(
+                    b"IHAVE " + message_id.encode()).rstrip(b"\r\n").decode()
             row(name, "transit", "re-offer to b " + name, facts[name]["b-ihave"], message_id,
                 "b", equality="Message-ID only")
 
@@ -497,7 +431,7 @@ class NativeSourceCorpusTests(unittest.TestCase):
         a = self.initialize("s", ["fn.test"], "s.corpus.invalid")
         self.start(a)
         keys = self.keys(a)
-        self.command([IMAGE, "--fn", "hybrid-enroll", a["control"], "1", keys["principal"],
+        self.command([IMAGE, "--fn", "hybrid-enroll", a.control, "1", keys["principal"],
                       keys["ed_public"], keys["ml_public"]])
         signed = (CORPUS / "signed.article").read_bytes()
         first = self.author(a, keys, "first", signed)
@@ -541,7 +475,7 @@ class NativeSourceCorpusTests(unittest.TestCase):
         a = self.initialize("c", ["fn.test", "control.cancel"], "c.corpus.invalid")
         self.start(a)
         keys = self.keys(a)
-        self.command([IMAGE, "--fn", "hybrid-enroll", a["control"], "1", keys["principal"],
+        self.command([IMAGE, "--fn", "hybrid-enroll", a.control, "1", keys["principal"],
                       keys["ed_public"], keys["ml_public"]])
 
         def source(message_id, subject, extra=b""):
@@ -557,8 +491,7 @@ class NativeSourceCorpusTests(unittest.TestCase):
         empty = self.served(a)
         # Target then cancel, with a reader pinned before the cancel.
         codes["t1"] = self.author(a, keys, "t1", source(t1, b"t1"))
-        client, pinned = self.connect(a)
-        with client:
+        with self.connect(a) as pinned:
             pinned_before = self.ask(pinned, b"ARTICLE " + t1.encode() + b"\r\n")[0]
             codes["c1"] = self.author(a, keys, "c1", source(
                 c1, b"cancel t1", b"Control: cancel " + t1.encode() + b"\r\n"))

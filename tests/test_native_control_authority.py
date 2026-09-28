@@ -17,14 +17,15 @@ Run: FN_NATIVE_HOST=<launcher> python3 -m unittest -v tests.test_native_control_
 import unittest
 
 from tests import test_native_live_reconfiguration as live
+from tests.native_harness import EXIT_OK, EXIT_REFUSED, native_image, requires
 
-EXIT_OK, EXIT_REFUSED, IMAGE = live.EXIT_OK, live.EXIT_REFUSED, live.IMAGE
+IMAGE = native_image("FN_NATIVE_HOST")
 
 P = "11" * 32
 Q = "22" * 32
 
 
-@unittest.skipUnless(live.executable(IMAGE), "set FN_NATIVE_HOST to a native launcher")
+@requires(IMAGE)
 class NativeControlAuthorityTests(live.LiveReconfigurationImageTests):
     """The live-reconfiguration harness (owner, reader, operator); only the
     cases below run here, the inherited ones in their own module."""
@@ -39,7 +40,7 @@ class NativeControlAuthorityTests(live.LiveReconfigurationImageTests):
         return result.stdout.decode("ascii").splitlines()
 
     def test_grant_and_revoke_through_the_live_path_are_durable(self):
-        owner = self.start_owner()
+        owner = self.node.start()
         granted = self.operator("control", "grant", P, "cancel", "fn.mod.*")
         self.assertEqual(granted.returncode, EXIT_OK, granted.stderr.decode())
         second = self.operator("control", "grant", Q, "cancel", "fn.test")
@@ -55,22 +56,21 @@ class NativeControlAuthorityTests(live.LiveReconfigurationImageTests):
         self.refused_by_name(self.operator("control", "grant", P, "cancel", "fn..*"),
                              "namespace-pattern")
         # The owner keeps serving after every refusal.
-        connection, stream = self.reader()
-        status, _ = self.command(connection, stream, "GROUP fn.test", False)
+        status = self.reader().command("GROUP fn.test")
         self.assertTrue(status.startswith(b"211"), status)
-        self.stop_owner(owner)
+        self.node.stop(process=owner)
         print("NATIVE-CONTROL-AUTHORITY-WITNESS after grants:", self.listed())
         self.assertEqual(self.listed(), ["grant {} cancel fn.mod.*".format(P),
                                          "grant {} cancel fn.test".format(Q)])
 
         # Revoke on a restarted owner; revoking again is refused at admission
         # (no-such-grant) by the live owner, which stages nothing.
-        owner = self.start_owner()
+        owner = self.node.start()
         revoked = self.operator("control", "revoke", P, "cancel", "fn.mod.*")
         self.assertEqual(revoked.returncode, EXIT_OK, revoked.stderr.decode())
         again = self.operator("control", "revoke", P, "cancel", "fn.mod.*")
         self.assertEqual(again.returncode, EXIT_REFUSED, again)
-        self.stop_owner(owner)
+        self.node.stop(process=owner)
         print("NATIVE-CONTROL-AUTHORITY-WITNESS after revoke:", self.listed(),
               "second revoke stderr:", again.stderr.decode("utf-8", "replace").strip())
         self.assertEqual(self.listed(), ["grant {} cancel fn.test".format(Q)])

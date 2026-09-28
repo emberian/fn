@@ -14,7 +14,7 @@ scheduler changes).
   FN_MIXED_OPENSSL  an OpenSSL 3.5 binary for the ML-DSA-65 test keys
   FN_MIXED_AGENTS   "0" drops the two consumer agents (bootstrap, enroll,
                     register, the signed report every 20 s, the wake every
-                    30 s): on a format-9 store at lane commit-onto-log's
+                    30 s): on a store at lane commit-onto-log's
                     ddcaf1d0d the consumer bootstrap faults the owner (the
                     log kernel refuses its record's txid; PKT-825 (e)), so
                     slice 2's hour runs without them, on both images
@@ -46,7 +46,7 @@ from pathlib import Path
 T = Path(os.environ["FN_MIXED_TREE"])
 sys.path.insert(0, str(T / "tools")); sys.path.insert(0, str(T))
 import msgid_measure as m
-from tests.native_process import wait_for_announcement
+from tests.native_harness import wait_for_announcement
 
 IMG = Path(os.environ["FN_MIXED_IMAGE"])
 DTN = Path(os.environ["FN_MIXED_DTN"]) if os.environ.get("FN_MIXED_DTN") else None

@@ -14,17 +14,14 @@ Run on hbox with FN_NATIVE_HOST naming the image under test.
 import hashlib
 import os
 from pathlib import Path
-import shutil
-import signal
-import socket
 import time
 import unittest
 
-from tests import test_native_operator_verbs as verbs
+from tests.native_harness import (
+    EXIT_OK, EXIT_UNCERTAIN, Client, Node, article as make_article, dot_stuff,
+    executable)
 from tests.native_profile_fixture import ProfileFixture as ProfileUpgradeFixture
 
-EXIT_OK, EXIT_REFUSED = verbs.EXIT_OK, verbs.EXIT_REFUSED
-EXIT_UNCERTAIN = verbs.EXIT_UNCERTAIN
 MIB4 = 4 * 1024 * 1024
 # The store these cases need, named: a capacity-free init sizes to the
 # process budget (PKT-582, image-floor), whose 8 MiB of history the 6 MiB of
@@ -58,49 +55,18 @@ def article(message_id, total):
     return data
 
 
-def dot_stuff(data):
-    return b"".join((b"." + ln if ln.startswith(b".") else ln)
-                    for ln in data.splitlines(keepends=True))
+def post(client, data):
+    """POST DATA; the final reply line, decoded (the node may close while an
+    oversize article is still being sent: the reply line is the answer)."""
+    first, final = client.post(data, tolerate_send_error=True)
+    assert first.startswith(b"340"), first
+    return final.rstrip(b"\r\n").decode("ascii", "replace")
 
 
-class NntpClient:
-    def __init__(self, port):
-        self.conn = socket.create_connection(("127.0.0.1", port), timeout=300)
-        self.stream = self.conn.makefile("rwb")
-        assert self.stream.readline().startswith(b"200")
-
-    def post(self, data):
-        self.stream.write(b"POST\r\n")
-        self.stream.flush()
-        assert self.stream.readline().startswith(b"340")
-        try:
-            self.stream.write(dot_stuff(data) + b".\r\n")
-            self.stream.flush()
-        except OSError:
-            pass
-        return self.stream.readline().rstrip(b"\r\n").decode("ascii", "replace")
-
-    def article(self, message_id):
-        self.stream.write(b"ARTICLE " + message_id.encode("ascii") + b"\r\n")
-        self.stream.flush()
-        status = self.stream.readline()
-        if not status.startswith(b"220"):
-            return status, None
-        lines = []
-        while True:
-            ln = self.stream.readline()
-            if ln == b".\r\n":
-                break
-            lines.append(ln[1:] if ln.startswith(b"..") else ln)
-        return status, b"".join(lines)
-
-    def close(self):
-        try:
-            self.stream.write(b"QUIT\r\n")
-            self.stream.flush()
-        except OSError:
-            pass
-        self.conn.close()
+def read_article(client, message_id):
+    """(status line, the served octets or None when not 220)."""
+    status, body = client.multiline(b"ARTICLE " + message_id.encode("ascii"))
+    return status, (body if status.startswith(b"220") else None)
 
 
 class JoinFixture(ProfileUpgradeFixture):
@@ -109,14 +75,14 @@ class JoinFixture(ProfileUpgradeFixture):
         returns the posted octets as the suffix of the stored article (the
         owner prepends Path and injection fields)."""
         rows = {}
-        client = NntpClient(self.port)
+        client = Client(self.port, timeout=300)
         try:
             for n in sizes:
                 msgid = "<join-{}@example.invalid>".format(n)
                 data = article(msgid, n)
-                reply = client.post(data)
+                reply = post(client, data)
                 if reply.startswith("240"):
-                    status, stored = client.article(msgid)
+                    status, stored = read_article(client, msgid)
                     body = data.split(b"\r\n\r\n", 1)[1]
                     rows[n] = (reply, stored is not None and stored.endswith(body))
                 else:
@@ -129,11 +95,8 @@ class JoinFixture(ProfileUpgradeFixture):
         return rows
 
     def reread(self, message_id, total):
-        client = NntpClient(self.port)
-        try:
-            status, stored = client.article(message_id)
-        finally:
-            client.close()
+        with Client(self.port, timeout=300) as client:
+            status, stored = read_article(client, message_id)
         body = article(message_id, total).split(b"\r\n\r\n", 1)[1]
         return stored is not None and stored.endswith(body)
 
@@ -142,9 +105,9 @@ class LargeArticleTests(JoinFixture):
     def test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it(self):
         created = self.op("init", *INIT_PROFILE, "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        owner = self.start_owner(self.image)
+        self.node.start(image=self.image)
         rows = self.post_and_reread([33792, 204800, 3145728, MIB4 + 1])
-        self.stop(owner)
+        self.node.stop()
         for n in (33792, 204800, 3145728):
             self.assertTrue(rows[n][0].startswith("240"), rows)
             self.assertTrue(rows[n][1], "{} did not reread identical".format(n))
@@ -169,12 +132,6 @@ class LargeReplyTests(JoinFixture):
     OVER_ARTICLES = 2000
     OVER_REFERENCES = 2000  # octets of folded References per article
 
-    def stop_serving(self, owner):
-        owner.send_signal(signal.SIGTERM)
-        code = owner.wait(timeout=60)
-        self.assertEqual(code, EXIT_OK, b"".join(owner.stderr.readlines()[-20:])
-                         .decode("utf-8", "replace"))
-
     def references(self, i):
         ids, total, j = [], 0, 0
         while total < self.OVER_REFERENCES:
@@ -182,57 +139,35 @@ class LargeReplyTests(JoinFixture):
             ids.append(mid)
             total += len(mid) + 3
             j += 1
-        return b"References: " + "\r\n ".join(ids).encode("ascii") + b"\r\n"
+        return "References: " + "\r\n ".join(ids)
 
     def test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving(self):
         created = self.op("init", *INIT_PROFILE, "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        owner = self.start_owner(self.image)
+        owner = self.node.start(image=self.image)
         rows = self.post_and_reread([1048576, 2097152, 3145728])
         for n in (1048576, 2097152, 3145728):
             self.assertTrue(rows[n][0].startswith("240"), rows)
             self.assertTrue(rows[n][1], "the ARTICLE of {} octets was not served identical".format(n))
         self.assertIsNone(owner.poll(), "the owner stopped serving the large ARTICLEs")
-        with socket.create_connection(("127.0.0.1", self.port), timeout=300) as conn:
-            stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"200"))
+        with Client(self.port, timeout=300) as client:
             for i in range(self.OVER_ARTICLES):
-                stream.write(b"POST\r\n")
-                stream.flush()
-                self.assertTrue(stream.readline().startswith(b"340"))
-                stream.write(b"From: over@example.invalid\r\nNewsgroups: fn.test\r\n"
-                             b"Subject: large over\r\nMessage-ID: <over-" +
-                             str(i).encode("ascii") + b"@example.invalid>\r\n" +
-                             self.references(i) + b"\r\nbody\r\n.\r\n")
-                stream.flush()
-                reply = stream.readline()
+                first, reply = client.post(make_article(
+                    "<over-{}@example.invalid>".format(i), sender="over@example.invalid",
+                    subject="large over", date=None, headers=(self.references(i),)))
+                self.assertTrue(first.startswith(b"340"), first)
                 self.assertTrue(reply.startswith(b"240"), (i, reply))
-            stream.write(b"GROUP fn.test\r\n")
-            stream.flush()
-            words = stream.readline().split()
+            words = client.command(b"GROUP fn.test").split()
             self.assertEqual(words[0], b"211", words)
-            stream.write(b"OVER " + words[2] + b"-" + words[3] + b"\r\n")
-            stream.flush()
-            self.assertTrue(stream.readline().startswith(b"224"))
-            lines, octets = 0, 0
-            while True:
-                line = stream.readline()
-                self.assertTrue(line, "the OVER reply ended without its terminator")
-                if line == b".\r\n":
-                    break
-                lines += 1
-                octets += len(line)
+            status, overview = client.multiline(b"OVER " + words[2] + b"-" + words[3])
+            self.assertTrue(status.startswith(b"224"), status)
+            lines, octets = overview.count(b"\r\n"), len(overview)
         self.assertEqual(lines, 3 + self.OVER_ARTICLES)
         self.assertGreater(octets, 3 * 1024 * 1024)
         self.assertIsNone(owner.poll(), "the owner stopped serving the large OVER")
-        client = NntpClient(self.port)
-        try:
-            client.stream.write(b"STAT <over-0@example.invalid>\r\n")
-            client.stream.flush()
-            self.assertTrue(client.stream.readline().startswith(b"223"))
-        finally:
-            client.close()
-        self.stop_serving(owner)
+        with Client(self.port, timeout=300) as client:
+            self.assertTrue(client.command(b"STAT <over-0@example.invalid>").startswith(b"223"))
+        self.node.stop()
 
 
 MIB10 = 10 * 1024 * 1024
@@ -259,7 +194,7 @@ class TenMibArticleTests(JoinFixture):
     def test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post(self):
         created = self.op("init", *INIT_PROFILE_16M, "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        owner = self.start_owner(self.image)
+        owner = self.node.start(image=self.image)
         try:
             rows = self.post_and_reread([MIB10])
             msgid = "<ten-mib-op@example.invalid>"
@@ -284,7 +219,7 @@ class TenMibArticleTests(JoinFixture):
                 time.sleep(2)
             alive = owner.poll() is None
         finally:
-            self.stop(owner)
+            self.node.stop()
         self.assertTrue(rows[MIB10][0].startswith("240"), rows)
         self.assertTrue(rows[MIB10][1], "the 10 MiB NNTP POST did not reread identical")
         self.assertIn(posted.returncode, (EXIT_OK, EXIT_UNCERTAIN), posted.stderr.decode())
@@ -326,48 +261,39 @@ class SpanReferenceTests(JoinFixture):
 
     def served(self, image, tag):
         self.image = image
-        base = self.root / tag
-        base.mkdir()
-        self.store, self.config = base / "store", base / "fn.toml"
-        self.control, self.port = base / "control.sock", verbs.free_port()
-        self.config.write_text(
-            '[store]\npath = "{}"\n'
-            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
+        self.node = Node(self, image, root=self.root / tag)
+        self.store, self.config = self.node.store_path, self.node.config
+        self.control, self.port = self.node.control, self.node.port
         created = self.op("init", *INIT_PROFILE, "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        owner = self.start_owner(image)
+        self.node.start(image=image)
         rows = []
-        client = NntpClient(self.port)
+        client = Client(self.port, timeout=300)
         try:
             for n in self.SIZES:
                 msgid = "<span-{}@example.invalid>".format(n)
                 data = article(msgid, n)
-                reply = client.post(data)
-                status, stored = client.article(msgid)
+                reply = post(client, data)
+                status, stored = read_article(client, msgid)
                 rows.append((n, reply, status, self.masked(stored),
                              stored is not None and stored.endswith(data.split(b"\r\n\r\n", 1)[1])))
             msgid = "<span-dotted@example.invalid>"
             data = dot_stuff(self.dotted(msgid)) + b".\r\n"
-            client.stream.write(b"POST\r\n")
-            client.stream.flush()
-            self.assertTrue(client.stream.readline().startswith(b"340"))
+            self.assertTrue(client.command(b"POST").startswith(b"340"))
             for i in range(0, len(data), 7):
-                client.stream.write(data[i:i + 7])
-                client.stream.flush()
-            reply = client.stream.readline().rstrip(b"\r\n").decode("ascii", "replace")
-            status, stored = client.article(msgid)
+                client.send(data[i:i + 7])
+            reply = client.line().rstrip(b"\r\n").decode("ascii", "replace")
+            status, stored = read_article(client, msgid)
             rows.append(("dotted", reply, status, self.masked(stored),
                          stored is not None and stored.endswith(self.dotted(msgid).split(b"\r\n\r\n", 1)[1])))
         finally:
             client.close()
-        self.stop(owner)
+        self.node.stop()
         return rows
 
     def test_span_read_serves_the_reference_images_bytes_at_33k_200k_3m_and_split_dot_lines(self):
         reference = os.environ.get("FN_SPAN_REFERENCE_HOST")
-        if not reference or not verbs.executable(Path(reference)):
+        if not reference or not executable(Path(reference)):
             self.skipTest("FN_SPAN_REFERENCE_HOST (the base image) is required")
         under_test = self.image
         after = self.served(under_test, "after")

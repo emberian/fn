@@ -5,20 +5,12 @@ two preset frames `init --profile development|scale` writes (format 9, the
 record log: the one format init writes), and the operator's `status` profile
 line.  No test lives here.
 """
-import fcntl
 import hashlib
-import os
-from pathlib import Path
-import signal
-import subprocess
-import unittest
 
 from tests import test_native_operator_verbs as verbs
+from tests.native_harness import EXIT_OK, executable, native_image
 
-ROOT = verbs.ROOT
-IMAGE = verbs.IMAGE
-DEVELOPER = verbs.DEVELOPER
-EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = verbs.EXIT_OK, verbs.EXIT_REFUSED, verbs.EXIT_UNCERTAIN
+IMAGE = native_image("FN_NATIVE_HOST")
 
 # The two preset frames `init --profile development|scale` writes in format 10
 # (lane format-bump-10: the word fn-store-10, fifteen u64 fields, the BLAKE3
@@ -38,34 +30,24 @@ BUDGET = {"old": {128}, "new": {4096}, "either": {128, 4096}}
 FRAME = {128: DEVELOPMENT_FRAME, 4096: SCALE_FRAME}
 
 class ProfileFixture(verbs.NativeOperatorVerbFixture):
+    """A node with a listener and control socket (tests/native_harness.py
+    Node) whose verbs run on `self.image`."""
     image = IMAGE
+    listener = True
 
     def setUp(self):
-        if not verbs.executable(self.image):
+        if not executable(self.image):
             self.skipTest("{} is required".format(self.image))
         super().setUp()
-        self.control = self.root / "control.sock"
-        self.port = verbs.free_port()
-        self.config.write_text(
-            '[store]\npath = "{}"\n'
-            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
 
-    start_owner = verbs.NativeOperatorUncertainOutcomeTests.start_owner
-    reap = verbs.NativeOperatorUncertainOutcomeTests.reap
     headroom = verbs.NativeOperatorCapacityTests.headroom
     post_many = verbs.NativeOperatorCapacityTests.post_many
-    stop = verbs.NativeOperatorCapacityTests.stop
 
     def op(self, *words, env=None):
         return self.operator(*words, image=self.image, env=env)
 
     def store_cli(self, *words, env=None):
-        return subprocess.run(
-            [str(self.image), "--fn", "store", str(self.store), *words],
-            cwd=ROOT, env=env or verbs.environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=180, check=False)
+        return self.node.store(*words, image=self.image, env=env)
 
     def frame(self):
         return hashlib.sha256((self.store / "config.json").read_bytes()).hexdigest()

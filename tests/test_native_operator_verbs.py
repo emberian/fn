@@ -18,64 +18,17 @@ rather than a source inspection being reported as runtime evidence.
 import fcntl
 import os
 import re
-from pathlib import Path
-import select
-import signal
-import socket
 import subprocess
-import tempfile
 import unittest
 
 from tests.campaign import native_cuts
-from tests.native_process import next_log_number, start_filed
+from tests.native_harness import (
+    EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_USAGE, ROOT, Node, article,
+    environment, executable, native_image)
 
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
-DEVELOPER = Path(os.environ.get(
-    "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
-
-EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_FAULT, EXIT_USAGE = 0, 1, 3, 4, 5
-
-
-def deployed_stack(env):
-    """PKT-876: every native test runs at the deployed control stack.  The
-    image's own launcher carries ACL2's figure (tools/build_native_host.sh
-    writes books/heap-reservation.lisp fn-heap-stack-kib, 1,024 KiB, where
-    ACL2's save-exec wrote 64 MiB), the figure the installed launcher
-    (packaging/fn) passes a node.  FN_TEST_CONTROL_STACK_KB runs the image at
-    another figure (SBCL_USER_ARGS comes after the launcher's own option, so
-    it wins), and only with FN_TEST_CONTROL_STACK_REASON naming why: a wider
-    stack hides the deaths the deployed node dies of."""
-    kib = os.environ.get("FN_TEST_CONTROL_STACK_KB")
-    if kib:
-        if not kib.isdigit():
-            raise ValueError("FN_TEST_CONTROL_STACK_KB is not a decimal: %r" % kib)
-        if not os.environ.get("FN_TEST_CONTROL_STACK_REASON", "").strip():
-            raise ValueError("FN_TEST_CONTROL_STACK_KB=%s needs FN_TEST_CONTROL_STACK_REASON: "
-                             "the default is the deployed stack" % kib)
-        env["SBCL_USER_ARGS"] = "--control-stack-size {}KB".format(kib)
-    return env
-
-
-def environment():
-    env = deployed_stack(dict(os.environ))
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    env.pop("FN_NATIVE_CONTROL_FAULT", None)
-    env.pop("FN_NATIVE_CONTROL_TEST_STOP", None)
-    return env
-
-
-def executable(image):
-    return image.is_file() and os.access(image, os.X_OK)
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+IMAGE = native_image("FN_NATIVE_HOST")
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 
 class NativeOperatorVerbCompositionTests(unittest.TestCase):
@@ -167,22 +120,17 @@ class NativeOperatorVerbCompositionTests(unittest.TestCase):
 
 
 class NativeOperatorVerbFixture(unittest.TestCase):
-    """A scratch directory and the two commands every witness below runs."""
+    """A scratch node (tests/native_harness.py Node) and its operator verb.
+    LISTENER: whether fn.toml names a loopback listener and control socket."""
+    listener = False
 
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-verbs-")
-        self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
-        self.store = self.root / "store"
-        self.config = self.root / "fn.toml"
-        self.config.write_text(
-            '[store]\npath = "{}"\n'.format(self.store), encoding="ascii")
+        self.node = Node(self, IMAGE, listener=self.listener, control=self.listener)
+        self.root, self.store, self.config = self.node.root, self.node.store_path, self.node.config
+        self.port, self.control = self.node.port, self.node.control
 
     def operator(self, *words, image=None, env=None, timeout=180):
-        return subprocess.run(
-            [str(image or IMAGE), "--fn", "operator", str(self.config), *words],
-            cwd=ROOT, env=env or environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=timeout, check=False)
+        return self.node.operator(*words, image=image, env=env, timeout=timeout)
 
 
 @unittest.skipUnless(executable(IMAGE), "build/fn-host is required")
@@ -218,8 +166,8 @@ class NativeOperatorInitTests(NativeOperatorVerbFixture):
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.assertIn(b"initialized", created.stdout)
         self.assertIn(b"accepted operator init", created.stderr)
-        # Format 9: the history is the record log's segment (the frontier
-        # and transactions/ a format-9 init still leaves are PKT-COL-2's).
+        # the history is the record log's segment (the frontier
+        # and transactions/ a init still leaves are PKT-COL-2's).
         for entry in ("config.json", "writer.lock", "journal/000001.log", "config"):
             self.assertTrue((self.store / entry).exists(), entry)
 
@@ -408,82 +356,29 @@ class NativeOperatorPeerListTests(NativeOperatorVerbFixture):
     "uncertain outcome is a developer-image cut and the production image "
     "refuses the variable that selects it")
 class NativeOperatorUncertainOutcomeTests(NativeOperatorVerbFixture):
+    listener = True
+
     def setUp(self):
         super().setUp()
-        self.control = self.root / "control.sock"
-        self.port = free_port()
-        self.config.write_text(
-            '[store]\npath = "{}"\n'
-            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
         self.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
 
     @staticmethod
     def article(message_id):
-        return (b"From: author@example.invalid\r\n"
-                b"Newsgroups: fn.test\r\n"
-                b"Subject: an outcome nobody learns\r\n"
-                b"Date: Mon, 21 Sep 2026 09:00:00 +0000\r\n"
-                b"Message-ID: " + message_id.encode("ascii") +
-                b"\r\n\r\nexact payload bytes\r\n")
-
-    def start_owner(self, image, extra_env=None):
-        """The owner, ready: its LISTENING line read from stdout.
-
-        Its stderr goes to a file in the test's temporary directory, never a
-        pipe (PKT-505): the owner logs one line per accepted POST under its
-        log mutex, and a pipe nobody reads fills at 64 KiB (about 500 POSTs),
-        after which the logging thread blocks in pipe_write holding the mutex
-        and the owner answers nothing more.  `owner.stderr' is a read handle
-        on that file, so a caller that reads it after the owner stops gets
-        the whole log, as it did from the pipe; `owner.stderr_path' names it.
-        """
-        env = environment()
-        if extra_env:
-            env.update(extra_env)
-        process = start_filed(
-            [str(image), "--fn", "operator", str(self.config), "run"],
-            self.root / "owner-{}.err".format(next_log_number(self)),
-            cwd=ROOT, env=env)
-        self.addCleanup(self.reap, process)
-        for _ in range(4):
-            self.assertTrue(select.select([process.stdout], [], [], 180)[0],
-                            "the owner did not become ready")
-            line = process.stdout.readline()
-            if line.startswith(b"LISTENING "):
-                return process
-            if process.poll() is not None:
-                self.fail("owner failed: {}".format(
-                    process.stderr.read()[-8192:].decode("utf-8", "replace")))
-        self.fail("the owner's readiness output was malformed")
-
-    def reap(self, process):
-        if process.poll() is None:
-            process.send_signal(signal.SIGKILL)
-            process.wait(timeout=10)
-        for stream in (process.stdout, process.stderr):
-            if stream and not stream.closed:
-                stream.close()
+        return article(message_id, subject="an outcome nobody learns",
+                       body=b"exact payload bytes\r\n")
 
     def post(self, message_id, image=None):
-        path = self.root / (message_id.strip("<>").replace("@", "-") + ".eml")
-        path.write_bytes(self.article(message_id))
-        return self.operator("post", "--message-id", message_id,
-                             "--payload", str(path), "--group", "fn.test",
-                             image=image, timeout=120)
+        return self.node.post(message_id, self.article(message_id), image=image, timeout=120)
 
     def test_a_lost_durable_outcome_exits_three_and_recover_resolves_it(self):
-        owner = self.start_owner(
-            DEVELOPER, {"FN_NATIVE_CONTROL_FAULT": "postpublish"})
+        self.node.start(image=DEVELOPER, env={"FN_NATIVE_CONTROL_FAULT": "postpublish"})
         message_id = "<native-operator-uncertain@example.invalid>"
         unsure = self.post(message_id)
         self.assertEqual(unsure.returncode, EXIT_UNCERTAIN, unsure.stderr.decode())
         self.assertIn(b"uncertain operator post", unsure.stderr)
         # The owner fenced itself on the same observation and released the
         # store; that is what makes the recovery below reach it at all.
-        self.assertEqual(owner.wait(timeout=60), EXIT_UNCERTAIN,
-                         owner.stderr.read().decode("utf-8", "replace"))
+        self.node.exited(EXIT_UNCERTAIN)
 
         recovered = self.operator("recover")
         self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr.decode())
@@ -492,15 +387,13 @@ class NativeOperatorUncertainOutcomeTests(NativeOperatorVerbFixture):
         # The three outcomes, from one command, at one boundary (D13).  The
         # article itself is asserted in neither direction here: an
         # indeterminate outcome is evidence about the report.
-        second = self.start_owner(DEVELOPER)
+        self.node.start(image=DEVELOPER)
         accepted = self.post("<native-operator-accepted@example.invalid>")
         self.assertEqual(accepted.returncode, EXIT_OK, accepted.stderr.decode())
         self.assertEqual(
             sorted({EXIT_OK, EXIT_UNCERTAIN}),
             sorted({accepted.returncode, unsure.returncode}))
-        second.send_signal(signal.SIGTERM)
-        self.assertEqual(second.wait(timeout=60), EXIT_OK,
-                         second.stderr.read().decode("utf-8", "replace"))
+        self.node.stop()
 
     def test_the_production_image_refuses_the_selector(self):
         # The production image has no such cut.  It does not quietly ignore
@@ -508,22 +401,16 @@ class NativeOperatorUncertainOutcomeTests(NativeOperatorVerbFixture):
         # usage exit naming the variable, before the store or the control
         # socket is opened.  No request can meet the variable, so no request
         # outcome is spent on it (campaign dabebb84, F4 and F5).
-        env = environment()
-        env["FN_NATIVE_CONTROL_FAULT"] = "postpublish"
-        started = subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=120, check=False)
+        started = self.operator("run", env={"FN_NATIVE_CONTROL_FAULT": "postpublish"},
+                                timeout=120)
         self.assertEqual(started.returncode, EXIT_USAGE, started.stderr.decode())
         self.assertIn(b"FN_NATIVE_CONTROL_FAULT", started.stderr)
         self.assertNotIn(b"LISTENING", started.stdout)
         # And a node started without it serves an ordinary post.
-        owner = self.start_owner(IMAGE)
+        self.node.start()
         answered = self.post("<native-operator-production@example.invalid>")
         self.assertEqual(answered.returncode, EXIT_OK, answered.stderr.decode())
-        owner.send_signal(signal.SIGTERM)
-        self.assertEqual(owner.wait(timeout=60), EXIT_OK,
-                         owner.stderr.read().decode("utf-8", "replace"))
+        self.node.stop()
 
 
 if __name__ == "__main__":
@@ -540,18 +427,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
     `fn-sbud-prepare') and the refusal names its reason on the wire.
     """
 
-    def setUp(self):
-        super().setUp()
-        self.control = self.root / "control.sock"
-        self.port = free_port()
-        self.config.write_text(
-            '[store]\npath = "{}"\n'
-            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
-
-    start_owner = NativeOperatorUncertainOutcomeTests.start_owner
-    reap = NativeOperatorUncertainOutcomeTests.reap
+    listener = True
 
     def headroom(self):
         status = self.operator("status")
@@ -568,30 +444,15 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(int(fields["transactions-used"]), count)
         return {key: int(value) for key, value in fields.items()}
 
-    def post_many(self, message_ids, subject=b"capacity"):
+    def post_many(self, message_ids, subject="capacity"):
+        """POST each Message-ID on one connection; the final reply lines."""
         replies = []
-        with socket.create_connection(("127.0.0.1", self.port), timeout=120) as conn:
-            stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"200"))
+        with self.node.session(timeout=120) as client:
             for message_id in message_ids:
-                stream.write(b"POST\r\n")
-                stream.flush()
-                self.assertTrue(stream.readline().startswith(b"340"))
-                stream.write(b"From: author@example.invalid\r\n"
-                             b"Newsgroups: fn.test\r\n"
-                             b"Subject: " + subject + b"\r\n"
-                             b"Message-ID: " + message_id.encode("ascii") +
-                             b"\r\n\r\nbody\r\n.\r\n")
-                stream.flush()
-                replies.append(stream.readline().rstrip(b"\r\n").decode("ascii"))
-            stream.write(b"QUIT\r\n")
-            stream.flush()
+                first, final = client.post(article(message_id, subject=subject, date=None))
+                self.assertTrue(first.startswith(b"340"), first)
+                replies.append(final.rstrip(b"\r\n").decode("ascii"))
         return replies
-
-    def stop(self, owner):
-        owner.send_signal(signal.SIGTERM)
-        self.assertEqual(owner.wait(timeout=60), EXIT_OK,
-                         owner.stderr.read().decode("utf-8", "replace"))
 
     def test_the_development_profile_budget_is_reported_and_refused_by_name(self):
         self.assertEqual(self.operator("init", "--profile", "development", "fn.test").returncode,
@@ -601,7 +462,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(before["transactions-budget"], 128)
         self.assertEqual(before["charge-reserved"], 0)
 
-        owner = self.start_owner(IMAGE)
+        self.node.start()
         ids = ["<cap-{}@example.invalid>".format(n) for n in range(130)]
         self.assertEqual(self.post_many(ids[:1]), ["240 article received OK"])
         # D25: the Store compares what the poster sent, not the stored copy
@@ -613,15 +474,15 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
             self.post_many(ids[:1]),
             ["441 posting failed; this article is already stored here"])
         self.assertEqual(
-            self.post_many(ids[:1], subject=b"capacitz"),
+            self.post_many(ids[:1], subject="capacitz"),
             ["441 posting failed; a different article with this Message-ID is stored here"])
-        self.stop(owner)
+        self.node.stop()
         after = self.headroom()
         self.assertEqual(after["transactions-used"], 1)
         self.assertEqual(after["transactions-budget"], 128)
         self.assertGreater(after["charge-reserved"], 0)
 
-        owner = self.start_owner(IMAGE)
+        self.node.start()
         # PKT-169 (STO-019): admission keeps the maintenance reservation, one
         # release record, including its transaction.  So an article is
         # admitted while used + 1 < budget: the last one at used = 126, and
@@ -642,9 +503,9 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
             refused[2],
             "441 posting failed; this article is already stored here")
         self.assertEqual(
-            self.post_many(ids[:1], subject=b"capacitz"),
+            self.post_many(ids[:1], subject="capacitz"),
             ["441 posting failed; a different article with this Message-ID is stored here"])
-        self.stop(owner)
+        self.node.stop()
         full = self.headroom()
         self.assertEqual(full["transactions-used"], 127)
         self.assertEqual(full["transactions-budget"], 128)
@@ -658,23 +519,12 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
 
     def post_article(self, message_id, groups, body):
         """POST one article to GROUPS; the reply line and the bytes sent."""
-        article = (b"From: author@example.invalid\r\n"
-                   b"Newsgroups: " + ",".join(groups).encode("ascii") + b"\r\n"
-                   b"Subject: crosspost\r\n"
-                   b"Message-ID: " + message_id.encode("ascii") +
-                   b"\r\n\r\n" + body + b"\r\n")
-        with socket.create_connection(("127.0.0.1", self.port), timeout=120) as conn:
-            stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"200"))
-            stream.write(b"POST\r\n")
-            stream.flush()
-            self.assertTrue(stream.readline().startswith(b"340"))
-            stream.write(article + b".\r\n")
-            stream.flush()
-            reply = stream.readline().rstrip(b"\r\n").decode("ascii")
-            stream.write(b"QUIT\r\n")
-            stream.flush()
-        return reply, len(article)
+        text = article(message_id, groups=",".join(groups), subject="crosspost",
+                       date=None, body=body + b"\r\n")
+        with self.node.session(timeout=120) as client:
+            first, final = client.post(text)
+            self.assertTrue(first.startswith(b"340"), first)
+        return final.rstrip(b"\r\n").decode("ascii"), len(text)
 
     def test_a_crosspost_is_charged_per_group_and_refused_by_name_past_the_budget(self):
         """Lane membership-budget (ember, 2026-09-27): each group an article is
@@ -691,18 +541,18 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
             "--max-record-octets", "196608", "--max-article-octets", "32768",
             "--max-groups-per-article", "16", *groups)
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        owner = self.start_owner(IMAGE)
+        self.node.start()
         # One group, then three: the stored charge is the payload as stored
         # (the owner injects the same Path and Injection-Info into both: the
         # Message-IDs have one length) plus 320 per group.
         reply, one = self.post_article("<xp-a01@example.invalid>", groups[:1], b"body")
         self.assertEqual(reply, "240 article received OK")
-        self.stop(owner)
+        self.node.stop()
         after_one = self.headroom()["bytes-used"]
-        owner = self.start_owner(IMAGE)
+        self.node.start()
         reply, three = self.post_article("<xp-a03@example.invalid>", groups[:3], b"body")
         self.assertEqual(reply, "240 article received OK")
-        self.stop(owner)
+        self.node.stop()
         after_three = self.headroom()["bytes-used"]
         self.assertEqual(after_three - 2 * after_one, (three - one) + 640)
         injected = after_one - 320 - one
@@ -715,7 +565,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         record = target_payload + 1083 + 261 * 10
         want_left = record + 4096 + 1600
         filler_total = room["history-bound"] - room["bytes-used"] - want_left
-        owner = self.start_owner(IMAGE)
+        self.node.start()
         fill, count = 0, 0
         while filler_total - fill > 0:
             size = min(30000, filler_total - fill - 320 - injected - 200)
@@ -727,7 +577,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
             self.assertEqual(reply, "240 article received OK")
             fill += sent + injected + 320
             count += 1
-        self.stop(owner)
+        self.node.stop()
         left = self.headroom()
         # The crosspost's stored payload P: its bytes plus the injected
         # headers.  Choose P so the room is 1,600 octets past its record
@@ -739,7 +589,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
                    b"\r\n\r\n\r\n")
         pad = room_left - (1083 + 261 * 10 + 4096 + 1600) - injected - bare
         self.assertGreater(pad, 0, left)
-        owner = self.start_owner(IMAGE)
+        self.node.start()
         crosspost, _ = self.post_article("<xp-x10@example.invalid>", groups[:10],
                                          self.body_of(pad, b"y"))
         self.assertEqual(
@@ -752,7 +602,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         single, _ = self.post_article("<xp-x01@example.invalid>", groups[:1],
                                       self.body_of(pad, b"y"))
         self.assertEqual(single, "240 article received OK", left)
-        self.stop(owner)
+        self.node.stop()
         # Nothing of the refused crosspost was written.
         final = self.headroom()
         self.assertEqual(final["transactions-used"], left["transactions-used"] + 1)
@@ -790,7 +640,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertFalse(self.store.exists() and any(self.store.iterdir()))
         created = self.operator("init", "--max-transactions", "1000",
                                 "--max-article-octets", "20000", "fn.test",
-                                env=dict(environment(), FN_INIT_BUDGET_MB="99999999"))
+                                env={"FN_INIT_BUDGET_MB": "99999999"})
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.assertIn(b"within-budget=no target-budget=99999999 MB", created.stdout)
         fields = self.profile_line()

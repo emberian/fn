@@ -42,7 +42,6 @@ import os
 import resource
 import re
 import shutil
-import signal
 import socket
 import subprocess
 import tempfile
@@ -50,11 +49,11 @@ import time
 import unittest
 from pathlib import Path
 
-from tests.native_process import node_log_on_failure
+from tests.native_harness import (
+    EXIT_OK, EXIT_REFUSED, ROOT, Client, Node, article, environment, native_image,
+    node_log_on_failure, run)
 
-ROOT = Path(__file__).resolve().parents[1]
-IMAGE = os.environ.get("FN_NATIVE_HOST")
-EXIT_OK, EXIT_REFUSED = 0, 1
+IMAGE = str(native_image("FN_NATIVE_HOST"))
 SMALL_FLAGS = ("--profile", "development", "--max-transactions", "16384",
                "--max-history-octets", "8388608", "--max-record-octets", "196608",
                "--max-groups-per-article", "16", "--max-open-suffix", "128")
@@ -96,14 +95,8 @@ def cgroup_limit():
 
 
 LIMIT = cgroup_limit()
-READY = bool(IMAGE and Path(IMAGE).is_file() and Path(IMAGE + ".core").is_file())
+READY = bool(Path(IMAGE).is_file() and Path(IMAGE + ".core").is_file())
 SMALL = bool(LIMIT and LIMIT <= 2 * 1024 ** 3)
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def text(result):
@@ -132,123 +125,78 @@ class Harness:
         os.symlink(IMAGE, prefix / "libexec" / "fn" / "fn-host")
         os.symlink(IMAGE + ".core", prefix / "libexec" / "fn" / "fn-host.core")
         self.fn = str(prefix / "bin" / "fn")
-        self.owner = None
 
     def config(self, name):
-        store, port = self.tmp / name, free_port()
-        path = self.tmp / (name + ".toml")
+        """The node: the store at tmp/NAME, run through the installed launcher."""
+        self.node = Node(self, IMAGE, root=self.tmp, launcher=self.fn, env=self.stripped())
+        self.node.store_path = self.tmp / name
         # The control socket in a short directory: under a deep scratch tree
         # store/control.sock passes the 103 octets a Unix socket binds whole
         # everywhere, and `run' is refused :control-path-too-long
         # (books/native-operator.lisp; lane ops-fixes).
-        control = Path(tempfile.mkdtemp(prefix="fnh-")) / "c.sock"
-        self.addCleanup(shutil.rmtree, control.parent, True)
-        path.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-                        'port = {}\n[control]\npath = "{}"\n'.format(store, port, control),
-                        encoding="ascii")
-        return path, port
+        self.node.control = Path(tempfile.mkdtemp(prefix="fnh-")) / "c.sock"
+        self.addCleanup(shutil.rmtree, self.node.control.parent, True)
+        self.node.write_config()
+        return self.node.config, self.node.port
+
+    @staticmethod
+    def stripped():
+        """What the launcher must not inherit: every FN_NATIVE_/FN_RUN_/
+        FN_TEST_/FN_INIT_ and SBCL_ variable (the launcher sets the stack)."""
+        names = [name for name in os.environ
+                 if name.startswith(("FN_NATIVE_", "FN_RUN_", "FN_TEST_", "FN_INIT_", "SBCL_"))]
+        return dict.fromkeys(names + ["SBCL_USER_ARGS"])
 
     def env(self, **extra):
-        env = dict(os.environ)
-        for name in list(env):
-            if name.startswith(("FN_NATIVE_", "FN_RUN_", "FN_TEST_", "FN_INIT_",
-                                "SBCL_")):
-                env.pop(name)
-        env.update(extra)
-        return env
+        return environment(dict(self.stripped(), **extra), stack=False)
 
     def run_fn(self, *words, command=None, env=None):
-        result = subprocess.run([*(command or [self.fn]), *map(str, words)],
-                                env=self.env(**(env or {})), stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, timeout=600, check=False)
+        result = run([*(command or [self.fn]), *words], env=self.env(**(env or {})),
+                     timeout=600)
         print("NATIVE-HEAP", " ".join(map(str, words[1:3])), "->", result.returncode,
               text(result).strip().replace("\n", " | ")[-300:])
         return result
 
-    def start(self, config, port, log):
-        """Start the owner and wait for ITS OWN announcement of PORT.  The
-        port came from free_port(), which released it: on a shared box
-        another process's node can take it first, and a greeting read from
-        the port proves only that somebody listens there.  The owner's
-        `LISTENING PORT' on its stdout is the proof that this owner bound it;
-        an owner that exits first fails here with its log."""
-        out = Path(str(log) + ".out")
-        with open(log, "wb") as err, open(out, "wb") as announced:
-            self.owner = subprocess.Popen([self.fn, "operator", str(config), "run"],
-                                          env=self.env(), stdout=announced, stderr=err)
-        self.addCleanup(self.reap)
-        mine = "LISTENING {}".format(port).encode("ascii")
-        deadline = time.monotonic() + 600
-        while time.monotonic() < deadline:
-            self.assertIsNone(self.owner.poll(), Path(log).read_text(errors="replace"))
-            if mine in out.read_bytes().splitlines():
-                with socket.create_connection(("127.0.0.1", port), timeout=5) as conn:
-                    self.assertTrue(conn.makefile("rb").readline().startswith(b"20"))
-                return
-            time.sleep(0.5)
-        self.fail("the owner did not announce {!r} within 600 s".format(mine))
-
-    def reap(self):
-        if self.owner and self.owner.poll() is None:
-            self.owner.kill()
-            self.owner.wait(timeout=60)
+    def start(self):
+        """The owner, once ITS OWN stdout announced `LISTENING PORT' (a
+        greeting read from a released port proves only that somebody
+        listens there) and the port greets."""
+        owner = self.node.start(timeout=600)
+        with Client(self.node.port, timeout=5):
+            pass
+        return owner
 
     def stop(self):
-        hwm = vmhwm(self.owner.pid)
-        self.owner.send_signal(signal.SIGTERM)
-        self.assertEqual(self.owner.wait(timeout=120), EXIT_OK)
+        hwm = vmhwm(self.node.process.pid)
+        self.node.stop(grace=120)
         return hwm
 
     def post(self, port, ids):
         body = ("x" * 72 + "\r\n") * 28  # 2,072 octets
-        with socket.create_connection(("127.0.0.1", port), timeout=300) as conn:
-            stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"20"))
+        with Client(port, timeout=300) as client:
             for message_id in ids:
-                stream.write(b"POST\r\n")
-                stream.flush()
-                self.assertTrue(stream.readline().startswith(b"340"))
-                stream.write(("From: author@example.invalid\r\nNewsgroups: local.test\r\n"
-                              "Subject: heap\r\nMessage-ID: {}\r\n\r\n{}.\r\n"
-                              .format(message_id, body)).encode("ascii"))
-                stream.flush()
-                self.assertEqual(stream.readline().rstrip(b"\r\n"),
-                                 b"240 article received OK")
-            stream.write(b"QUIT\r\n")
-            stream.flush()
+                first, final = client.post(article(message_id, groups="local.test",
+                                                   subject="heap", date=None,
+                                                   body=body.encode("ascii")))
+                self.assertTrue(first.startswith(b"340"), first)
+                self.assertEqual(final.rstrip(b"\r\n"), b"240 article received OK")
 
     def serve(self, port, ids):
-        with socket.create_connection(("127.0.0.1", port), timeout=300) as conn:
-            stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"20"))
+        with Client(port, timeout=300) as client:
             for message_id in (ids[0], ids[-1]):
-                stream.write("ARTICLE {}\r\n".format(message_id).encode("ascii"))
-                stream.flush()
-                self.assertTrue(stream.readline().startswith(b"220"))
-                lines = []
-                while True:
-                    line = stream.readline()
-                    if line == b".\r\n":
-                        break
-                    lines.append(line)
-                self.assertIn(("Message-ID: " + message_id + "\r\n").encode("ascii"), lines)
-            stream.write(b"GROUP local.test\r\n")
-            stream.flush()
-            self.assertTrue(stream.readline().startswith(b"211 100 "))
-            stream.write(b"OVER 1-100\r\n")
-            stream.flush()
-            self.assertTrue(stream.readline().startswith(b"224"))
-            rows = 0
-            while stream.readline() != b".\r\n":
-                rows += 1
-            self.assertEqual(rows, 100)
-            stream.write(b"QUIT\r\n")
-            stream.flush()
+                served = client.article(message_id)
+                self.assertIsNotNone(served, message_id)
+                self.assertIn(("Message-ID: " + message_id + "\r\n").encode("ascii"),
+                              served.splitlines(keepends=True))
+            self.assertTrue(client.command("GROUP local.test").startswith(b"211 100 "))
+            status, rows = client.multiline("OVER 1-100")
+            self.assertTrue(status.startswith(b"224"), status)
+            self.assertEqual(rows.count(b"\r\n"), 100)
 
-    def wait_for(self, log, pattern, port, seconds=300):
+    def wait_for(self, pattern, port, seconds=300):
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:
-            found = re.search(pattern, Path(log).read_bytes())
+            found = re.search(pattern, self.node.process.stderr.since(0))
             if found:
                 return found
             try:  # the owner publishes between accepts
@@ -258,7 +206,6 @@ class Harness:
                 pass
             time.sleep(1)
         self.fail("no {!r} in the owner's log".format(pattern))
-
 
 
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST to the production image")
@@ -299,7 +246,7 @@ class FreshInitTests(Harness, unittest.TestCase):
         self.assertIsNotNone(heap, text(status))
         self.assertEqual(heap.group(2), word)
         ids = ["<fresh-{}@example.invalid>".format(n) for n in range(3)]
-        self.start(config, port, self.tmp / "fresh.log")
+        self.start()
         self.post(port, ids)
         self.stop()
 
@@ -375,7 +322,7 @@ class FreshInitTests(Harness, unittest.TestCase):
         self.assertIsNotNone(left, out)
         self.assertGreaterEqual(int(left.group(1)), 16384)
         ids = ["<mission-{}@example.invalid>".format(n) for n in range(3)]
-        self.start(config, port, self.tmp / "mission.log")
+        self.start()
         self.post(port, ids)
         # PKT-708: the mission's init serves control.cancel, so a poster's
         # own cancel (RFC 8315 Cancel-Lock / Cancel-Key) is filed with no
@@ -387,41 +334,25 @@ class FreshInitTests(Harness, unittest.TestCase):
         key = base64.b64encode(hashlib.sha256(b"friend secret").digest()).decode("ascii")
         lock = base64.b64encode(hashlib.sha256(key.encode("ascii")).digest()).decode("ascii")
         target, cancel = "<mission-own@example.invalid>", "<mission-cancel@example.invalid>"
-        with socket.create_connection(("127.0.0.1", port), timeout=300) as conn:
-            stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"20"))
-            stream.write(b"LIST ACTIVE control.cancel\r\n")
-            stream.flush()
-            self.assertTrue(stream.readline().startswith(b"215"))
-            listed = []
-            while True:
-                line = stream.readline()
-                if line in (b".\r\n", b""):
-                    break
-                listed.append(line.split(b" ")[0])
-            self.assertEqual(listed, [b"control.cancel"])
+        with Client(port, timeout=300) as client:
+            status, listed = client.multiline("LIST ACTIVE control.cancel")
+            self.assertTrue(status.startswith(b"215"), status)
+            self.assertEqual([line.split(b" ")[0] for line in listed.splitlines()],
+                             [b"control.cancel"])
             answers = []
-            for text in (
-                    "From: author@example.invalid\r\nNewsgroups: local.test\r\n"
-                    "Subject: mine\r\nMessage-ID: {}\r\nCancel-Lock: sha256:{}\r\n"
-                    "\r\nbody\r\n.\r\n".format(target, lock),
-                    "From: author@example.invalid\r\nNewsgroups: local.test\r\n"
-                    "Subject: cmsg cancel {0}\r\nMessage-ID: {1}\r\n"
-                    "Control: cancel {0}\r\nCancel-Key: sha256:{2}\r\n"
-                    "\r\ncancel\r\n.\r\n".format(target, cancel, key)):
-                stream.write(b"POST\r\n")
-                stream.flush()
-                self.assertTrue(stream.readline().startswith(b"340"))
-                stream.write(text.encode("ascii"))
-                stream.flush()
-                answers.append(stream.readline().rstrip(b"\r\n"))
+            for posted in (
+                    article(target, groups="local.test", subject="mine", date=None,
+                            headers=("Cancel-Lock: sha256:" + lock,)),
+                    article(cancel, groups="local.test", subject="cmsg cancel " + target,
+                            date=None, body=b"cancel\r\n",
+                            headers=("Control: cancel " + target,
+                                     "Cancel-Key: sha256:" + key))):
+                first, final = client.post(posted)
+                self.assertTrue(first.startswith(b"340"), first)
+                answers.append(final.rstrip(b"\r\n"))
             self.assertTrue(answers[0].startswith(b"240"), answers)
             self.assertTrue(answers[1].startswith(b"240"), answers)
-            stream.write("ARTICLE {}\r\n".format(target).encode("ascii"))
-            stream.flush()
-            after = stream.readline()
-            stream.write(b"QUIT\r\n")
-            stream.flush()
+            after = client.command("ARTICLE {}".format(target))
         return answers[1][:3], after[:3]
 
 
@@ -448,12 +379,11 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         print("NATIVE-HEAP figure={} MB machine={} MB".format(figure, machine))
 
         ids = ["<heap-{}@example.invalid>".format(n) for n in range(100)]
-        log1 = self.tmp / "owner-1.log"
-        self.start(config, port, log1)
+        self.start()
         self.post(port, ids)
         self.serve(port, ids)
         # checkpoint-pipeline's line carries steps= (host/native/owner.lisp).
-        auto = self.wait_for(log1, rb"CHECKPOINT auto sequence=(\d+) suffix=(\d+) "
+        auto = self.wait_for(rb"CHECKPOINT auto sequence=(\d+) suffix=(\d+) "
                                    rb"octets=(\d+) (?:steps=\d+ )?ms=(\d+)", port)
         print("NATIVE-HEAP", auto.group(0).decode())
         hwm1 = self.stop()
@@ -462,8 +392,7 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         reopened = self.run_fn("operator", config, "status")
         self.assertEqual(reopened.returncode, EXIT_OK, text(reopened))
         self.assertRegex(reopened.stdout.decode(), r"open=checkpoint:\d+")
-        log2 = self.tmp / "owner-2.log"
-        self.start(config, port, log2)
+        self.start()
         self.serve(port, ids)
         hwm2 = self.stop()
         print("NATIVE-HEAP vmhwm run=2 kB={}".format(hwm2))
@@ -488,31 +417,23 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertEqual(found.group(5), "yes")
         reservation = int(found.group(3))
         body = ("y" * 72 + "\r\n") * 400  # 29,600 octets
-        log1 = self.tmp / "fill-1.log"
-        self.start(config, port, log1)
+        self.start()
         started = time.monotonic()
         stored, reply = [], b""
-        with socket.create_connection(("127.0.0.1", port), timeout=600) as conn:
-            stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"20"))
+        with Client(port, timeout=600) as client:
             for n in range(20000):
                 message_id = "<fill-{}@example.invalid>".format(n)
-                stream.write(b"POST\r\n")
-                stream.flush()
-                self.assertTrue(stream.readline().startswith(b"340"))
-                stream.write(("From: author@example.invalid\r\nNewsgroups: local.test\r\n"
-                              "Subject: fill\r\nMessage-ID: {}\r\n\r\n{}.\r\n"
-                              .format(message_id, body)).encode("ascii"))
-                stream.flush()
-                reply = stream.readline().rstrip(b"\r\n")
+                first, final = client.post(article(message_id, groups="local.test",
+                                                   subject="fill", date=None,
+                                                   body=body.encode("ascii")))
+                self.assertTrue(first.startswith(b"340"), first)
+                reply = final.rstrip(b"\r\n")
                 if not reply.startswith(b"240"):
                     break
                 stored.append(message_id)
-            stream.write(b"QUIT\r\n")
-            stream.flush()
         print("NATIVE-HEAP fill init-and-start-s={:.1f} fill-s={:.1f} posts={}".format(
             started - began, time.monotonic() - started, len(stored)))
-        with node_log_on_failure(log1):
+        with node_log_on_failure(self.node.process):
             self.assertEqual(reply.decode("ascii"),
                              "441 posting failed; the store is full: no capacity for this "
                              "article (unaffordable); the node's operator can raise it",
@@ -526,19 +447,10 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertIsNotNone(heap, text(status))
         self.assertLessEqual(int(heap.group(1)), int(heap.group(3)))
         print("NATIVE-HEAP full store: {}".format(heap.group(0)))
-        log2 = self.tmp / "fill-2.log"
-        self.start(config, port, log2)
-        with socket.create_connection(("127.0.0.1", port), timeout=300) as conn:
-            stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"20"))
+        self.start()
+        with Client(port, timeout=300) as client:
             for message_id in (stored[0], stored[-1]):
-                stream.write("ARTICLE {}\r\n".format(message_id).encode("ascii"))
-                stream.flush()
-                self.assertTrue(stream.readline().startswith(b"220"))
-                while stream.readline() != b".\r\n":
-                    pass
-            stream.write(b"QUIT\r\n")
-            stream.flush()
+                self.assertIsNotNone(client.article(message_id), message_id)
         hwm2 = self.stop()
         print("NATIVE-HEAP restart vmhwm kB={}".format(hwm2))
         self.assertLess(max(hwm1, hwm2) * 1024, LIMIT)

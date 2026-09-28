@@ -26,10 +26,7 @@ ROOT = Path(__file__).resolve().parent.parent
 FN = ROOT / "bin" / "fn"
 PY312 = "/opt/homebrew/bin/python3.12"
 
-EXIT_OK = 0
-EXIT_REFUSED = 1
-EXIT_UNCERTAIN = 3
-EXIT_FAULT = 4
+from tools.outcome_codes import EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN  # noqa: E402
 
 ARTICLE = (b"From: operator@example.invalid\r\nSubject: first light\r\n"
            b"Newsgroups: fn.letters\r\nMessage-ID: <first@example.invalid>\r\n"

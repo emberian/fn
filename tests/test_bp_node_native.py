@@ -8,23 +8,19 @@ import collections
 import os
 from pathlib import Path
 import re
-import select
-import shutil
-import socket
-import subprocess
-import tempfile
 import time
 import unittest
 
-from tests import native_harness
+from tests.native_harness import (
+    EXIT, Node, acl2_nat, acl2_octets, acl2_result, environment, free_port, native_image,
+    requires, run, scratch, start)
 from tests.test_bp_contact_relay_native import ByteRelay
 from tools import run_bp_ingress, run_store
-from tools.wire_stream import whole_stream
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
-# connection lost after it existed is exit 6 (connection-local: the job stays
-# and is re-offered; no recovery); exit 3 stays the fence.
-LOST = 6
+# connection lost after it existed is EXIT.INTERRUPTED (connection-local:
+# the job stays and is re-offered; no recovery); EXIT.UNCERTAIN stays the fence.
+LOST = EXIT.INTERRUPTED
 
 
 
@@ -33,34 +29,17 @@ ROOT = Path(os.environ.get(
 # The node runs on either developer image: FN_NATIVE_BP_NODE_HOST names the one
 # under test (the DTN developer image, whose profile ships the node), and it
 # falls back to the default developer image.
-IMAGE = Path(os.environ.get(
-    "FN_NATIVE_BP_NODE_HOST",
-    os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer")))
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
+IMAGE = native_image("FN_NATIVE_BP_NODE_HOST", DEVELOPER)
 # The DTN image omits the NNTP surface; a Store's groups are read back through
 # the reader port of an image that has it (the default developer image).
-READER_IMAGE = Path(os.environ.get(
-    "FN_NATIVE_READER_HOST",
-    os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer")))
+READER_IMAGE = native_image("FN_NATIVE_READER_HOST", DEVELOPER)
 
 
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    return env
-
-
+@requires(IMAGE)
 class NativeBpNodeTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        if not os.access(IMAGE, os.X_OK):
-            raise unittest.SkipTest(f"native developer image missing: {IMAGE}")
-
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="fn-bp-node-a3-"))
-        self.addCleanup(shutil.rmtree, self.tmp)
-        self.env = environment()
+        self.tmp = scratch(self, "fn-bp-node-a3-")
         self.relay = ByteRelay()
         self.addCleanup(self.relay.close)
         self.receiver_store = self.tmp / "receiver-store"
@@ -82,16 +61,12 @@ class NativeBpNodeTests(unittest.TestCase):
         )
         for store in (self.receiver_store, self.sender_store):
             initialized = self.invoke("store", store, "init", "fn.test")
-            self.assertEqual(initialized.returncode, 0, initialized.stderr)
+            self.assertEqual(initialized.returncode, EXIT.OK, initialized.stderr)
         self.author_request()
         self.prepare_sender_obligation()
 
     def invoke(self, *args, env=None, timeout=120):
-        return subprocess.run(
-            [str(IMAGE), "--fn", *map(str, args)], cwd=ROOT,
-            env=env or self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=timeout, check=False,
-        )
+        return run([IMAGE, "--fn", *args], cwd=ROOT, env=environment(env), timeout=timeout)
 
     def author_request(self):
         bridge = run_bp_ingress.Acl2BpIngress()
@@ -114,7 +89,7 @@ class NativeBpNodeTests(unittest.TestCase):
                 + " ".join(text(value) for value in fields)
                 + " '" + bridge.literal(self.article) + "))"
             )
-            self.request_path.write_bytes(run_store.acl2_octets(bridge.call(form)))
+            self.request_path.write_bytes(acl2_octets(bridge.call(form)))
         finally:
             bridge.close()
 
@@ -125,7 +100,7 @@ class NativeBpNodeTests(unittest.TestCase):
             "store", self.sender_store, "post", self.msgid.decode(),
             article_path, "-", "-", "fn.test",
         )
-        self.assertEqual(posted.returncode, 0, posted.stderr)
+        self.assertEqual(posted.returncode, EXIT.OK, posted.stderr)
         for args in (
             ("app-journal", "workflow-init", self.sender_store,
              self.sender_workflow, "dtn://sender/", "dtn://receiver/",
@@ -139,7 +114,7 @@ class NativeBpNodeTests(unittest.TestCase):
              self.sender_workflow, "work-bp-node", 3),
         ):
             result = self.invoke(*args)
-            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.returncode, EXIT.OK, result.stderr)
         unrelated_id = b"<bp-node-unrelated@example.invalid>"
         unrelated_article = self.article.replace(self.msgid, unrelated_id)
         unrelated_path = self.tmp / "unrelated-article"
@@ -155,7 +130,7 @@ class NativeBpNodeTests(unittest.TestCase):
              self.sender_workflow, "work-unrelated", 2),
         ):
             result = self.invoke(*args)
-            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.returncode, EXIT.OK, result.stderr)
 
     def start_node(self, receiver, *, once=True, extra_env=None, trust=True,
                    inbound=True, transfer_mru=1048576):
@@ -163,9 +138,7 @@ class NativeBpNodeTests(unittest.TestCase):
         peer = "dtn://sender/" if receiver else "dtn://receiver/"
         journal = self.receiver_journal if receiver else self.sender_journal
         store = self.receiver_store if receiver else self.sender_store
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
-            reservation.bind(("127.0.0.1", 0))
-            listen_port = reservation.getsockname()[1]
+        listen_port = free_port()
         config = self.tmp / ("receiver-fn.toml" if receiver else "sender-fn.toml")
         config.write_text(f'[store]\npath = "{store}"\n', encoding="ascii")
         admitted_name = "sender-boundary" if receiver else "receiver-boundary"
@@ -175,40 +148,33 @@ class NativeBpNodeTests(unittest.TestCase):
             policy = self.invoke(
                 "operator", config, "policy", "set", "path-identity", local_path,
             )
-            self.assertEqual(policy.returncode, 0, policy.stderr)
+            self.assertEqual(policy.returncode, EXIT.OK, policy.stderr)
             installed = self.invoke(
                 "operator", config, "bp-boundary", "add", admitted_name,
                 remote_path, peer, listen_port,
                 *(["fn.test", "32768", "16"] if inbound else []),
                 "contact", self.relay.port,
             )
-            self.assertEqual(installed.returncode, 0, installed.stderr)
+            self.assertEqual(installed.returncode, EXIT.OK, installed.stderr)
             # Spec 4.6: the node forwards held transit only to a boundary
             # the route table names; the peer is reached through the relay.
             routed = self.invoke(
                 "operator", config, "bp-route", "add", peer + "*", admitted_name,
             )
-            self.assertEqual(routed.returncode, 0, routed.stderr)
+            self.assertEqual(routed.returncode, EXIT.OK, routed.stderr)
         receipts = self.receiver_receipts if receiver else self.tmp / "sender-fnrj"
         workflow = self.tmp / "receiver-fnwf" if receiver else self.sender_workflow
-        env = dict(self.env)
-        if extra_env:
-            env.update(extra_env)
-        process = native_harness.start(
+        process = start(
             [IMAGE, "--fn", "bp-node", "serve", str(listen_port),
              str(journal), str(store), str(receipts), str(workflow),
              node, peer, node, "native-policy", node,
              "127.0.0.1", str(self.relay.port),
              "1" if once else "0", "3600000", "2", "32", str(transfer_mru),
              "0", "0"],
-            cwd=ROOT, env=env)
-        self.addCleanup(self.stop_process, process)
+            cwd=ROOT, env=environment(extra_env))
+        self.addCleanup(process.stop, 5)
         line = process.announcement(b"BP NODE LISTENING ", timeout=45)
         return process, int(line.rsplit(b" ", 1)[1])
-
-    @staticmethod
-    def stop_process(process):
-        process.stop(grace=5)
 
     def send_request(self, port, work, *, lifetime=3600000):
         return self.invoke(
@@ -238,14 +204,8 @@ class NativeBpNodeTests(unittest.TestCase):
         ]
 
     def dispatch_receiver(self, *, reports=False, env=None, extra_env=None):
-        env = dict(self.env if env is None else env)
-        if extra_env:
-            env.update(extra_env)
-        return subprocess.run(
-            self.dispatch_receiver_args(reports=reports),
-            cwd=ROOT, env=env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=120, check=False,
-        )
+        return run(self.dispatch_receiver_args(reports=reports), cwd=ROOT,
+                   env=environment({**(env or {}), **(extra_env or {})}), timeout=120)
 
     def deletion_request_bundle(self):
         bridge = run_bp_ingress.Acl2BpIngress()
@@ -268,7 +228,7 @@ class NativeBpNodeTests(unittest.TestCase):
                 "(fn-bpb-encode requested))"
             )
             path = self.tmp / "deletion-request.bundle"
-            path.write_bytes(run_store.acl2_octets(bridge.call(form)))
+            path.write_bytes(acl2_octets(bridge.call(form)))
             return path
         finally:
             bridge.close()
@@ -295,7 +255,7 @@ class NativeBpNodeTests(unittest.TestCase):
                 "(fn-clock-observation 0 0 0 nil)))"
             )
             path = self.tmp / "unrouted-transit.bundle"
-            path.write_bytes(run_store.acl2_octets(bridge.call(form)))
+            path.write_bytes(acl2_octets(bridge.call(form)))
             return path
         finally:
             bridge.close()
@@ -308,16 +268,16 @@ class NativeBpNodeTests(unittest.TestCase):
             self.tmp / "unrouted-sender-spool", "dtn://sender/",
             "dtn://receiver/", 0, 65536, 1048576, 0,
         )
-        self.assertEqual(sent_old.returncode, 0, sent_old.stderr)
+        self.assertEqual(sent_old.returncode, EXIT.OK, sent_old.stderr)
         self.wait_for_output(
             receiver, b"BP node progress waiting reason=route", timeout=120)
 
         sent_new = self.send_request(port, "after-unrouted-transit")
-        self.assertEqual(sent_new.returncode, 0, sent_new.stderr)
+        self.assertEqual(sent_new.returncode, EXIT.OK, sent_new.stderr)
         delivered = self.wait_for_output(
             receiver, b"BP node delivery request-accepted", timeout=120)
         self.assertIn(b"BP application handoff durable", delivered)
-        self.stop_process(receiver)
+        receiver.stop(grace=5)
 
         self.assertEqual(self.receiver_articles(), 1)
         payloads = self.acl2_lifecycle_payloads(self.receiver_journal, 5)
@@ -325,7 +285,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(self.request_path.read_bytes(), payloads)
         self.assertEqual(len(payloads), 2)
         restarted = self.dispatch_receiver()
-        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
         self.assertIn(b"BP FNBS recovered held=2", restarted.stdout)
         self.assertEqual(self.receiver_articles(), 1)
 
@@ -346,7 +306,7 @@ class NativeBpNodeTests(unittest.TestCase):
                 "(fn-clock-observation 0 0 0 nil)))"
             )
             path = self.tmp / "conflicting-transit.bundle"
-            path.write_bytes(run_store.acl2_octets(bridge.call(form)))
+            path.write_bytes(acl2_octets(bridge.call(form)))
             return path
         finally:
             bridge.close()
@@ -378,40 +338,24 @@ class NativeBpNodeTests(unittest.TestCase):
         """`bp-node checkpoint` on the stopped receiver; with STOP, the
         developer cut stops it at that point of the publication program and
         the test kills it there with SIGKILL."""
-        env = dict(self.env)
-        if stop:
-            env["FN_BP_ROTATION_TEST_STOP"] = stop
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "bp-node", "checkpoint",
-             str(self.receiver_journal), "dtn://receiver/"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            bufsize=0)
+        argv = [IMAGE, "--fn", "bp-node", "checkpoint", self.receiver_journal,
+                "dtn://receiver/"]
         if not stop:
-            out, err = process.communicate(timeout=120)
-            return process.returncode, out, err
-        marker = b"BP journal rotation stopped at=" + stop.encode()
-        seen = b""
-        deadline = time.monotonic() + 120
-        while marker not in seen and time.monotonic() < deadline:
-            ready, _, _ = select.select([process.stdout], [], [], 1)
-            if ready:
-                chunk = os.read(process.stdout.fileno(), 65536)
-                if not chunk:
-                    break
-                seen += chunk
-        self.assertIn(marker, seen, (
-            seen, process.poll(),
-            process.stderr.read() if process.poll() is not None else b""))
+            done = run(argv, cwd=ROOT, timeout=120)
+            return done.returncode, done.stdout, done.stderr
+        process = start(argv, cwd=ROOT, env=environment({"FN_BP_ROTATION_TEST_STOP": stop}))
+        self.addCleanup(process.stop, 5)
+        seen = process.output_until(b"BP journal rotation stopped at=" + stop.encode(),
+                                    timeout=120)
         process.kill()
         process.wait(timeout=15)
-        process.stdout.close()
-        process.stderr.close()
+        process.finish()
         return None, seen, b""
 
     def recovered_held(self):
         """Reopen through the node's own recovery and return its held count."""
         reopened = self.dispatch_receiver()
-        self.assertEqual(reopened.returncode, 0, reopened.stderr)
+        self.assertEqual(reopened.returncode, EXIT.OK, reopened.stderr)
         for line in reopened.stdout.splitlines():
             if line.startswith(b"BP FNBS recovered held="):
                 return int(line.split(b"=", 1)[1])
@@ -431,10 +375,10 @@ class NativeBpNodeTests(unittest.TestCase):
         stray staged selection, keeping only the selected generation."""
         receiver, port = self.start_node(True, once=False)
         sent = self.send_transit(port, self.unrouted_transit_bundle(), "r1")
-        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
         self.wait_for_output(
             receiver, b"BP node progress waiting reason=route", timeout=120)
-        self.stop_process(receiver)
+        receiver.stop(grace=5)
         journal = self.receiver_journal
         old_records = sorted(p.name for p in (journal / "lifecycle").glob("*.fnb"))
         self.assertTrue(old_records)
@@ -465,7 +409,7 @@ class NativeBpNodeTests(unittest.TestCase):
         # A clean rotation from the selected generation finishes the
         # retirement first, then retires generation 3 after selecting 4.
         code, out, err = self.rotate_receiver()
-        self.assertEqual(code, 0, (out, err))
+        self.assertEqual(code, EXIT.OK, (out, err))
         self.assertIn(b"BP journal generation selected generation=4", out)
         self.assertIn(b"BP journal generation retired name=lifecycle", out)
         self.assertEqual(self.recovered_held(), 1)
@@ -477,14 +421,14 @@ class NativeBpNodeTests(unittest.TestCase):
         current = journal / "lifecycle-g00000000000000000004"
         receiver, port = self.start_node(True, once=False)
         second = self.send_transit(port, self.conflicting_transit_bundle_free(), "r2")
-        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(second.returncode, EXIT.OK, second.stderr)
         self.wait_for_output(
             receiver, b"BP node progress waiting reason=route", timeout=120)
-        self.stop_process(receiver)
+        receiver.stop(grace=5)
         self.assertTrue(list(current.glob("*.fnb")))
         self.assertEqual(self.recovered_held(), 2)
         code, out, err = self.rotate_receiver()
-        self.assertEqual(code, 0, (out, err))
+        self.assertEqual(code, EXIT.OK, (out, err))
         self.assertEqual(self.recovered_held(), 2)
         self.assertEqual(sorted(p.name for p in journal.glob("lifecycle-g*")),
                          ["lifecycle-g00000000000000000005"])
@@ -504,7 +448,7 @@ class NativeBpNodeTests(unittest.TestCase):
                 "(fn-clock-observation 0 0 0 nil)))"
             )
             path = self.tmp / "unrouted-transit-2.bundle"
-            path.write_bytes(run_store.acl2_octets(bridge.call(form)))
+            path.write_bytes(acl2_octets(bridge.call(form)))
             return path
         finally:
             bridge.close()
@@ -516,7 +460,7 @@ class NativeBpNodeTests(unittest.TestCase):
         accepts the record."""
         receiver, port = self.start_node(True, once=False)
         first = self.send_transit(port, self.unrouted_transit_bundle(), "s1")
-        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(first.returncode, EXIT.OK, first.stderr)
         self.wait_for_output(
             receiver, b"BP node progress waiting reason=route", timeout=120)
 
@@ -524,20 +468,20 @@ class NativeBpNodeTests(unittest.TestCase):
         refused = self.send_transit(port, conflicting, "s2")
         out = self.wait_for_output(receiver, b"reason=identity-conflict", timeout=60)
         self.assertIn(b"BP refused xfer=", out)
-        self.assertEqual(refused.returncode, 1, (refused.stdout, refused.stderr, out))
+        self.assertEqual(refused.returncode, EXIT.REFUSED, (refused.stdout, refused.stderr, out))
         # The same conflict again: refused again, never :busy.
         again = self.send_transit(port, conflicting, "s3")
-        self.assertEqual(again.returncode, 1, again.stderr)
+        self.assertEqual(again.returncode, EXIT.REFUSED, again.stderr)
         out = self.wait_for_output(receiver, b"reason=identity-conflict", timeout=60)
         self.assertNotIn(b"reason=busy", out)
 
         # The node keeps answering: a fresh request is delivered.
         sent = self.send_request(port, "after-identity-conflict")
-        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
         delivered = self.wait_for_output(
             receiver, b"BP node delivery request-accepted", timeout=120)
         self.assertIn(b"BP application handoff durable", delivered)
-        self.stop_process(receiver)
+        receiver.stop(grace=5)
 
         records = self.conflict_records(self.receiver_journal)
         self.assertEqual(len(records), 2, records)
@@ -545,7 +489,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(bytes((1, 2, 3, 4)), payloads)
         self.assertNotIn(bytes((9, 9, 9, 9)), payloads)
         restarted = self.dispatch_receiver()
-        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
         self.assertIn(b"BP FNBS recovered held=2", restarted.stdout)
         self.assertEqual(self.conflict_records(self.receiver_journal), records)
 
@@ -582,7 +526,7 @@ class NativeBpNodeTests(unittest.TestCase):
         receiver, port = self.start_node(
             True, once=False, extra_env={"FN_BP_NODE_TEST_APP_BUSY": "1"})
         sent = self.send_request(port, "busy-request")
-        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
         out = self.wait_for_output(
             receiver, b"BP node delivery deferred busy=1", timeout=120)
         self.assertNotIn(b"request-refused", out)
@@ -596,7 +540,7 @@ class NativeBpNodeTests(unittest.TestCase):
             receiver, b"BP node delivery request-accepted", timeout=120)
         self.assertIn(b"BP application handoff durable", delivered)
         self.assertNotIn(b"request-refused", delivered)
-        self.stop_process(receiver)
+        receiver.stop(grace=5)
         self.assertEqual(self.receiver_articles(), 1)
 
     def test_permanently_busy_application_strands_row_until_resume(self):
@@ -609,7 +553,7 @@ class NativeBpNodeTests(unittest.TestCase):
         receiver, port = self.start_node(
             True, once=False, extra_env={"FN_BP_NODE_TEST_APP_BUSY": "100"})
         sent = self.send_request(port, "stranded-request")
-        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
         seen = self.wait_for_output(
             receiver, b"BP node delivery deferred busy=1", timeout=120)
         transit = self.unrouted_transit_bundle()
@@ -633,7 +577,7 @@ class NativeBpNodeTests(unittest.TestCase):
         arrivals = set()
         for _ in range(2):
             restarted = self.dispatch_receiver()
-            self.assertEqual(restarted.returncode, 0, restarted.stderr)
+            self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
             self.assertNotIn(b"request-accepted", restarted.stdout)
             self.assertNotIn(b"delivery deferred", restarted.stdout)
             line = [x for x in restarted.stdout.splitlines()
@@ -644,10 +588,10 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(len(arrivals), 1, arrivals)
         arrival = arrivals.pop()
         resumed = self.resume_receiver(arrival)
-        self.assertEqual(resumed.returncode, 0, resumed.stdout + resumed.stderr)
+        self.assertEqual(resumed.returncode, EXIT.OK, resumed.stdout + resumed.stderr)
         self.assertIn(b"BP node delivery resumed", resumed.stdout)
         delivered = self.dispatch_receiver()
-        self.assertEqual(delivered.returncode, 0, delivered.stderr)
+        self.assertEqual(delivered.returncode, EXIT.OK, delivered.stderr)
         self.assertIn(b"BP node delivery request-accepted", delivered.stdout)
         self.assertEqual(self.receiver_articles(), 1)
 
@@ -660,7 +604,7 @@ class NativeBpNodeTests(unittest.TestCase):
             bridge.call('(include-book "books/bp-clock-domain")')
             bridge.call('(include-book "books/codec-attach")')
             octets = " ".join(str(b) for b in other.encode("ascii"))
-            return run_store.acl2_octets(bridge.call(f"(fn-bpcd-frame '({octets}))"))
+            return acl2_octets(bridge.call(f"(fn-bpcd-frame '({octets}))"))
         finally:
             bridge.close()
 
@@ -671,10 +615,10 @@ class NativeBpNodeTests(unittest.TestCase):
         the same journal recovers."""
         receiver, port = self.start_node(True, once=False)
         first = self.send_transit(port, self.unrouted_transit_bundle(), "s1")
-        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(first.returncode, EXIT.OK, first.stderr)
         self.wait_for_output(
             receiver, b"BP node progress waiting reason=route", timeout=120)
-        self.stop_process(receiver)
+        receiver.stop(grace=5)
 
         domain = self.receiver_journal / "clock-domain.fnb"
         saved = domain.read_bytes()
@@ -683,7 +627,7 @@ class NativeBpNodeTests(unittest.TestCase):
         domain.write_bytes(self.other_boot_domain_frame())
 
         fenced = self.dispatch_receiver()
-        self.assertEqual(fenced.returncode, 3, fenced.stderr)
+        self.assertEqual(fenced.returncode, EXIT.UNCERTAIN, fenced.stderr)
         self.assertIn(b"restart fenced: clock domain different-boot", fenced.stderr)
         self.assertEqual(
             tuple((p.name, p.read_bytes()) for p in sorted(lifecycle.iterdir())),
@@ -691,7 +635,7 @@ class NativeBpNodeTests(unittest.TestCase):
 
         domain.write_bytes(saved)
         restarted = self.dispatch_receiver()
-        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
         self.assertIn(b"BP FNBS recovered held=1", restarted.stdout)
 
     def forward_mru_bundles(self):
@@ -721,7 +665,7 @@ class NativeBpNodeTests(unittest.TestCase):
                         "(fn-bpb-bundle-blocks bundle) "
                         "(fn-bpb-bundle-payload bundle)))"
                     )
-                wire = run_store.acl2_octets(
+                wire = acl2_octets(
                     bridge.call(f"(fn-bpb-encode {bundle})"))
                 path = self.tmp / f"forward-{label}.bundle"
                 path.write_bytes(wire)
@@ -741,8 +685,8 @@ class NativeBpNodeTests(unittest.TestCase):
                 self.tmp / f"forward-{label}-sender-spool", "dtn://sender/",
                 "dtn://receiver/", 0, 65536, 1048576, 0,
             )
-            self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.stop_process(receiver)
+            self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        receiver.stop(grace=5)
         # The serving node's progress step may already dispatch a routed
         # transit carrier (kind 6 `:forward', specs/bp-node-machine.md §4.2,
         # "the routed transit arm may install a :pending :dispatch"), so the
@@ -759,11 +703,8 @@ class NativeBpNodeTests(unittest.TestCase):
         self.relay.route(peer_port)
         args = self.dispatch_receiver_args()
         args[-4] = "32768"  # Negotiated outbound transfer MRU.
-        dispatched = subprocess.run(
-            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=240, check=False,
-        )
-        self.assertEqual(dispatched.returncode, 0, dispatched.stderr)
+        dispatched = run(args, cwd=ROOT, timeout=240)
+        self.assertEqual(dispatched.returncode, EXIT.OK, dispatched.stderr)
         self.assertIn(b"BP forwarding attempt durable", dispatched.stdout)
         self.assertIn(b"BP forwarding result durable", dispatched.stdout)
         # Both carriers dispatched (two kind-6 in all), and the younger one
@@ -774,13 +715,10 @@ class NativeBpNodeTests(unittest.TestCase):
         forwarded_names = sorted(
             p.name for p in (self.receiver_journal / "lifecycle").glob("*.fnb"))
 
-        self.stop_process(peer)
+        peer.stop(grace=5)
         self.relay.route(None)
-        replayed = subprocess.run(
-            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=120, check=False,
-        )
-        self.assertEqual(replayed.returncode, 0, replayed.stderr)
+        replayed = run(args, cwd=ROOT, timeout=120)
+        self.assertEqual(replayed.returncode, EXIT.OK, replayed.stderr)
         self.assertIn(b"BP FNBS recovered held=2", replayed.stdout)
         self.assertNotIn(b"BP forwarding attempt durable", replayed.stdout)
         self.assertEqual(
@@ -803,20 +741,17 @@ class NativeBpNodeTests(unittest.TestCase):
             self.tmp / "noroute-sender-spool", "dtn://sender/",
             "dtn://receiver/", 0, 65536, 1048576, 0,
         )
-        self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.stop_process(receiver)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        receiver.stop(grace=5)
         config = self.tmp / "receiver-fn.toml"
         removed = self.invoke("operator", config, "bp-route", "remove",
                               "dtn://sender/*", "sender-boundary")
-        self.assertEqual(removed.returncode, 0, removed.stderr)
+        self.assertEqual(removed.returncode, EXIT.OK, removed.stderr)
         peer, peer_port = self.start_node(False, once=False)
         self.relay.route(peer_port)
         args = self.dispatch_receiver_args()
-        held = subprocess.run(
-            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=240, check=False,
-        )
-        self.assertEqual(held.returncode, 0, held.stderr)
+        held = run(args, cwd=ROOT, timeout=240)
+        self.assertEqual(held.returncode, EXIT.OK, held.stderr)
         self.assertIn(b"BP forwarding no-route destination=dtn://sender/ "
                       b"decision=no-route", held.stdout)
         self.assertNotIn(b"BP forwarding attempt durable", held.stdout)
@@ -826,16 +761,13 @@ class NativeBpNodeTests(unittest.TestCase):
 
         added = self.invoke("operator", config, "bp-route", "add",
                             "dtn://sender/*", "sender-boundary")
-        self.assertEqual(added.returncode, 0, added.stderr)
-        routed = subprocess.run(
-            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=240, check=False,
-        )
-        self.assertEqual(routed.returncode, 0, routed.stderr)
+        self.assertEqual(added.returncode, EXIT.OK, added.stderr)
+        routed = run(args, cwd=ROOT, timeout=240)
+        self.assertEqual(routed.returncode, EXIT.OK, routed.stderr)
         self.assertIn(b"BP forwarding route hop=sender-boundary", routed.stdout)
         self.assertIn(b"BP forwarding attempt durable", routed.stdout)
         self.assertIn(b"status=sent", routed.stdout)
-        self.stop_process(peer)
+        peer.stop(grace=5)
 
     @staticmethod
     def acl2_lifecycle_kinds(journal):
@@ -853,7 +785,7 @@ class NativeBpNodeTests(unittest.TestCase):
             kinds = collections.Counter()
             for frame in sorted((journal / "lifecycle").glob("*.fnb")):
                 octets = "'" + bridge.literal(frame.read_bytes())
-                kinds[run_store.acl2_nat(bridge.call(
+                kinds[acl2_nat(bridge.call(
                     f"(cond ((fn-bpnf-stored-record-unframe {octets}) 5) "
                     f"((fn-bpnp-dispatch-unframe {octets}) 6) "
                     f"((fn-bpnp-attempt-unframe {octets}) 8) "
@@ -879,17 +811,16 @@ class NativeBpNodeTests(unittest.TestCase):
             self.tmp / "retry-sender-spool", "dtn://sender/",
             "dtn://receiver/", 0, 65536, 1048576, 0,
         )
-        self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.stop_process(receiver)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        receiver.stop(grace=5)
         payload = self.acl2_lifecycle_payloads(self.receiver_journal, 5)[-1]
 
         peer, peer_port = self.start_node(False, once=False)
         self.relay.route(peer_port)
         args = self.dispatch_receiver_args()
-        env = dict(self.env)
-        env["FN_BP_NODE_TEST_PAUSE_AFTER_KIND_EIGHT_SENT"] = "1"
-        cut = native_harness.start(args, cwd=ROOT, env=env)
-        self.addCleanup(self.stop_process, cut)
+        cut = start(args, cwd=ROOT, env=environment(
+            {"FN_BP_NODE_TEST_PAUSE_AFTER_KIND_EIGHT_SENT": "1"}))
+        self.addCleanup(cut.stop, 5)
         self.wait_for_output(cut, b"BP NODE KIND8 SENT", timeout=240)
         cut.kill()
         cut.wait(timeout=15)
@@ -898,11 +829,8 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(
             self.acl2_lifecycle_payloads(self.sender_journal, 5).count(payload), 1)
 
-        retried = subprocess.run(
-            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=240, check=False,
-        )
-        self.assertEqual(retried.returncode, 0, retried.stderr)
+        retried = run(args, cwd=ROOT, timeout=240)
+        self.assertEqual(retried.returncode, EXIT.OK, retried.stderr)
         self.assertIn(b"BP FNBS recovered", retried.stdout)
         self.assertIn(b"BP forwarding attempt durable", retried.stdout)
         self.assertIn(b"BP forwarding result durable", retried.stdout)
@@ -913,11 +841,8 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(
             self.acl2_lifecycle_payloads(self.sender_journal, 5).count(payload), 1)
 
-        settled = subprocess.run(
-            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=120, check=False,
-        )
-        self.assertEqual(settled.returncode, 0, settled.stderr)
+        settled = run(args, cwd=ROOT, timeout=120)
+        self.assertEqual(settled.returncode, EXIT.OK, settled.stderr)
         self.assertNotIn(b"BP forwarding attempt durable", settled.stdout)
         self.assertEqual(len(tuple(journal.glob("*.fnb"))), after_cut + 2)
 
@@ -951,7 +876,7 @@ class NativeBpNodeTests(unittest.TestCase):
                 0, 65536, 1048576, 0,
             )
 
-        self.assertEqual(send_younger("u-spool-1").returncode, 0)
+        self.assertEqual(send_younger("u-spool-1").returncode, EXIT.OK)
         first = self.wait_for_output(
             receiver, b"BP forwarding result durable", timeout=120)
         self.assertIn(b"BP forwarding attempt durable", first)
@@ -959,25 +884,21 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"status=uncertain", first)
         self.assertIsNone(receiver.poll(), "node stopped after a connection fault")
         # The same process serves again, and re-offers the row in-process.
-        self.assertEqual(send_younger("u-spool-2").returncode, 0)
+        self.assertEqual(send_younger("u-spool-2").returncode, EXIT.OK)
         second = self.wait_for_output(
             receiver, b"BP forwarding result durable", timeout=120)
         self.assertIn(b"BP forwarding attempt durable", second)
         self.assertIn(b"status=uncertain", second)
         self.assertIsNone(receiver.poll())
-        self.stop_process(receiver)
+        receiver.stop(grace=5)
 
         args = self.dispatch_receiver_args()
         for _ in range(2):
-            cut = subprocess.run(args, cwd=ROOT, env=self.env,
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                 timeout=240, check=False)
-            self.assertEqual(cut.returncode, 0, cut.stdout + cut.stderr)
+            cut = run(args, cwd=ROOT, timeout=240)
+            self.assertEqual(cut.returncode, EXIT.OK, cut.stdout + cut.stderr)
             self.assertIn(b"status=uncertain", cut.stdout)
-        stranded = subprocess.run(args, cwd=ROOT, env=self.env,
-                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                  timeout=240, check=False)
-        self.assertEqual(stranded.returncode, 0, stranded.stderr)
+        stranded = run(args, cwd=ROOT, timeout=240)
+        self.assertEqual(stranded.returncode, EXIT.OK, stranded.stderr)
         self.assertNotIn(b"BP forwarding attempt durable", stranded.stdout)
         line = [x for x in stranded.stdout.splitlines()
                 if x.startswith(b"BP forwarding stranded")]
@@ -989,27 +910,25 @@ class NativeBpNodeTests(unittest.TestCase):
         journal = self.receiver_journal / "lifecycle"
         before = len(tuple(journal.glob("*.fnb")))
         unknown = self.resume_receiver(arrival + 99)
-        self.assertEqual(unknown.returncode, 1, unknown.stdout + unknown.stderr)
+        self.assertEqual(unknown.returncode, EXIT.REFUSED, unknown.stdout + unknown.stderr)
         self.assertIn(b"resume refused", unknown.stdout)
         self.assertIn(b"reason=no-row", unknown.stdout)
         self.assertEqual(len(tuple(journal.glob("*.fnb"))), before)
 
         resumed = self.resume_receiver(arrival)
-        self.assertEqual(resumed.returncode, 0, resumed.stdout + resumed.stderr)
+        self.assertEqual(resumed.returncode, EXIT.OK, resumed.stdout + resumed.stderr)
         self.assertIn(b"status=resumed", resumed.stdout)
         self.assertEqual(len(tuple(journal.glob("*.fnb"))), before + 1)
         again = self.resume_receiver(arrival)
-        self.assertEqual(again.returncode, 1, again.stdout)
+        self.assertEqual(again.returncode, EXIT.REFUSED, again.stdout)
         self.assertIn(b"reason=not-attempted", again.stdout)
 
         self.relay.route(peer_port)
-        offered = subprocess.run(args, cwd=ROOT, env=self.env,
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                 timeout=240, check=False)
-        self.assertEqual(offered.returncode, 0, offered.stderr)
+        offered = run(args, cwd=ROOT, timeout=240)
+        self.assertEqual(offered.returncode, EXIT.OK, offered.stderr)
         self.assertIn(b"BP forwarding attempt durable", offered.stdout)
         self.assertIn(b"status=sent", offered.stdout)
-        self.stop_process(peer)
+        peer.stop(grace=5)
         payload = self.acl2_lifecycle_payloads(self.receiver_journal, 5)[-1]
         self.assertEqual(
             self.acl2_lifecycle_payloads(self.sender_journal, 5).count(payload), 1)
@@ -1038,7 +957,7 @@ class NativeBpNodeTests(unittest.TestCase):
                         "(and record (fn-bpb-payload "
                         "(fn-bpnf-held-bundle (fn-bpn-nth 3 record)))))"
                     )
-                payload = run_store.acl2_octets(bridge.call(form))
+                payload = acl2_octets(bridge.call(form))
                 if payload:
                     payloads.append(payload)
             return payloads
@@ -1060,11 +979,11 @@ class NativeBpNodeTests(unittest.TestCase):
     def receiver_articles(self):
         """The receiver Store's article count, from the node's own read-only
         open (`store PATH status`, books/native-live-status.lisp
-        fn-nls-report's `articles=' word): it replays the format-9 record log
+        fn-nls-report's `articles=' word): it replays the record log
         the way the served path does.  The Python Store (tools/run_store.py)
         reads another layout and is not this Store's readback."""
         status = self.invoke("store", self.receiver_store, "status", timeout=300)
-        self.assertEqual(status.returncode, 0, (status.stdout, status.stderr))
+        self.assertEqual(status.returncode, EXIT.OK, (status.stdout, status.stderr))
         counts = re.findall(rb"^transactions=[0-9]+ articles=([0-9]+) ",
                             status.stdout, re.MULTILINE)
         self.assertEqual(len(counts), 1, status.stdout)
@@ -1075,36 +994,21 @@ class NativeBpNodeTests(unittest.TestCase):
         (`store PATH inspect MSGID`)."""
         inspected = self.invoke("store", self.receiver_store, "inspect",
                                 msgid.decode("ascii"), timeout=300)
-        self.assertEqual(inspected.returncode, 0, inspected.stderr[-4000:])
+        self.assertEqual(inspected.returncode, EXIT.OK, inspected.stderr[-4000:])
         return inspected.stdout
 
     def receiver_listgroups(self, *groups):
         """GROUP replies of the receiver's Store, read through a reader port
         of `operator run' (ACL2's served GROUP) on READER_IMAGE, one line
         per group."""
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
-            reservation.bind(("127.0.0.1", 0))
-            port = reservation.getsockname()[1]
-        config = self.tmp / "receiver-reader.toml"
-        config.write_text(
-            f'[store]\npath = "{self.receiver_store}"\n'
-            f'[listener]\nhost = "127.0.0.1"\nport = {port}\n'
-            f'[control]\npath = "{self.tmp / "reader-control.sock"}"\n',
-            encoding="ascii")
-        process = native_harness.start(
-            [READER_IMAGE, "--fn", "operator", config, "run"], cwd=ROOT, env=self.env)
-        try:
-            process.announcement(b"LISTENING ", timeout=60)
-            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                stream = whole_stream(client)
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                replies = []
-                for group in groups:
-                    stream.write(b"GROUP " + group.encode() + b"\r\n")
-                    replies.append(stream.readline())
-                return replies
-        finally:
-            self.stop_process(process)
+        reader = Node(self, READER_IMAGE, root=self.tmp / "receiver-reader")
+        reader.store_path = self.receiver_store
+        reader.write_config()
+        reader.start(timeout=60)
+        with reader.session(timeout=30, greeting=(b"200",)) as client:
+            replies = [client.command("GROUP " + group) for group in groups]
+        reader.stop(expect=None, grace=5)
+        return replies
 
     def test_control_article_through_bp_transit_is_filed_not_executed(self):
         """PKT-070 (control-c1 finding 5).  A control article carried in a BP
@@ -1118,7 +1022,7 @@ class NativeBpNodeTests(unittest.TestCase):
                           encoding="ascii")
         created = self.invoke("operator", config, "group", "create",
                               "control.cancel")
-        self.assertEqual(created.returncode, 0, created.stderr)
+        self.assertEqual(created.returncode, EXIT.OK, created.stderr)
         self.msgid = b"<bp-node-control@example.invalid>"
         self.article = (
             b"Path: sender.bp.gate.invalid!not-for-mail\r\n"
@@ -1134,8 +1038,8 @@ class NativeBpNodeTests(unittest.TestCase):
         receiver, port = self.start_node(True)
         sent = self.send_request(port, "control-transit")
         out, err = receiver.communicate(timeout=120)
-        self.assertEqual(receiver.returncode, 0, err)
-        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(receiver.returncode, EXIT.OK, err)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
         self.assertIn(b"BP node delivery request-accepted", out)
         control, fn_test = self.receiver_listgroups("control.cancel", "fn.test")
         # Filed once in control.cancel; never in fn.test (its Newsgroups).
@@ -1157,7 +1061,7 @@ class NativeBpNodeTests(unittest.TestCase):
         mru = 160 + size // 3
         receiver, port = self.start_node(True, once=False, transfer_mru=mru)
         sent = self.send_request(port, "fragmented")
-        self.assertEqual(sent.returncode, 0, sent.stdout + sent.stderr)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stdout + sent.stderr)
         self.assertIn(b"BP fragmenting length=", sent.stdout)
         planned = [line for line in sent.stdout.splitlines()
                    if line.startswith(b"BP fragmenting")][0]
@@ -1168,20 +1072,20 @@ class NativeBpNodeTests(unittest.TestCase):
             self.assertIn(b"BP fragment %d transfer accepted" % index, sent.stdout)
         out = self.wait_for_output(
             receiver, b"BP application handoff durable", timeout=120)
-        self.stop_process(receiver)
+        receiver.stop(grace=5)
         self.assertIn(b"BP fragment family durable", out)
         self.assertEqual(self.receiver_articles(), 1)
 
     def test_request_retry_queues_distinct_receipt_carriers_and_releases_pin(self):
         before = self.sender_status()
-        self.assertEqual(before.returncode, 0, before.stderr)
+        self.assertEqual(before.returncode, EXIT.OK, before.stderr)
         self.assertIn(b"pinned=yes", before.stdout)
 
         first, port = self.start_node(True)
         sent = self.send_request(port, "carrier-one")
         out, err = first.communicate(timeout=120)
-        self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.assertEqual(first.returncode, 0, err)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        self.assertEqual(first.returncode, EXIT.OK, err)
         self.assertIn(b"BP application handoff durable", out)
         self.assertIn(b"BP node receipt queued", out)
         first_count = len(tuple((self.receiver_journal / "lifecycle").glob("*.fnb")))
@@ -1189,8 +1093,8 @@ class NativeBpNodeTests(unittest.TestCase):
         second, port = self.start_node(True)
         retry = self.send_request(port, "carrier-two")
         out, err = second.communicate(timeout=120)
-        self.assertEqual(retry.returncode, 0, retry.stderr)
-        self.assertEqual(second.returncode, 0, err)
+        self.assertEqual(retry.returncode, EXIT.OK, retry.stderr)
+        self.assertEqual(second.returncode, EXIT.OK, err)
         self.assertIn(b"BP node receipt queued", out)
         self.assertGreater(
             len(tuple((self.receiver_journal / "lifecycle").glob("*.fnb"))),
@@ -1206,16 +1110,16 @@ class NativeBpNodeTests(unittest.TestCase):
         sender, port = self.start_node(False, once=False)
         self.relay.route(port)
         delivered = self.tick_receiver()
-        self.assertEqual(delivered.returncode, 0, delivered.stderr)
+        self.assertEqual(delivered.returncode, EXIT.OK, delivered.stderr)
         self.assertIn(b"BP contact open", delivered.stdout)
         self.wait_for_output(
             sender, b"BP node delivery receipt-accepted", timeout=120)
-        self.stop_process(sender)
+        sender.stop(grace=5)
         after = self.sender_status()
-        self.assertEqual(after.returncode, 0, after.stderr)
+        self.assertEqual(after.returncode, EXIT.OK, after.stderr)
         self.assertIn(b"pinned=no", after.stdout)
         unrelated = self.unrelated_status()
-        self.assertEqual(unrelated.returncode, 0, unrelated.stderr)
+        self.assertEqual(unrelated.returncode, EXIT.OK, unrelated.stderr)
         self.assertIn(b"pinned=yes", unrelated.stdout)
 
     def test_dropped_receipt_contact_is_reoffered_by_the_next_pass(self):
@@ -1239,9 +1143,9 @@ class NativeBpNodeTests(unittest.TestCase):
             "dtn://sender/", "dtn://receiver/", "carrier-drop",
             "carrier-drop-attempt", 0, 3600000, 2, 32, 1048576, 0, 0,
         )
-        self.assertEqual(sent.returncode, 0, sent.stdout + sent.stderr)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stdout + sent.stderr)
         out, err = receiver.communicate(timeout=120)
-        self.assertEqual(receiver.returncode, 0, out + err)
+        self.assertEqual(receiver.returncode, EXIT.OK, out + err)
         self.assertIn(b"BP node receipt queued", out)
         self.assertIn(b"BP node receipt contact peer=dtn://sender/", out)
         self.assertIn(b"BP node receipt transfer uncertain", out)
@@ -1253,7 +1157,7 @@ class NativeBpNodeTests(unittest.TestCase):
 
         self.relay.route(sender_port)
         again = self.dispatch_receiver()
-        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertEqual(again.returncode, EXIT.OK, again.stdout + again.stderr)
         self.assertIn(b"BP node receipt contact peer=dtn://sender/", again.stdout)
         self.assertNotIn(b"BP node receipt transfer", again.stdout)
         delivered = [x for x in again.stdout.splitlines()
@@ -1263,9 +1167,9 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"status=forwarded", delivered[0])
         self.wait_for_output(
             sender, b"BP node delivery receipt-accepted", timeout=120)
-        self.stop_process(sender)
+        sender.stop(grace=5)
         after = self.sender_status()
-        self.assertEqual(after.returncode, 0, after.stderr)
+        self.assertEqual(after.returncode, EXIT.OK, after.stderr)
         self.assertIn(b"pinned=no", after.stdout)
 
     def test_absent_bp_trust_refuses_custody_with_the_policy_reason(self):
@@ -1277,8 +1181,8 @@ class NativeBpNodeTests(unittest.TestCase):
         receiver, port = self.start_node(True, trust=False)
         sent = self.send_request(port, "untrusted-request")
         out, err = receiver.communicate(timeout=120)
-        self.assertEqual(sent.returncode, 1, sent.stderr)
-        self.assertEqual(receiver.returncode, 1, err)
+        self.assertEqual(sent.returncode, EXIT.REFUSED, sent.stderr)
+        self.assertEqual(receiver.returncode, EXIT.REFUSED, err)
         self.assertIn(b"BP channel admission refused reason=no-trust-profile", out)
         self.assertIn(b"BP refused xfer=0 reason=no-trust-profile", out)
         self.assertNotIn(b"BP accepted", out)
@@ -1290,8 +1194,8 @@ class NativeBpNodeTests(unittest.TestCase):
         receiver, port = self.start_node(True, inbound=False)
         sent = self.send_request(port, "no-inbound-scope")
         out, err = receiver.communicate(timeout=120)
-        self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.assertEqual(receiver.returncode, 0, out + err)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        self.assertEqual(receiver.returncode, EXIT.OK, out + err)
         self.assertIn(b"BP node delivery request-refused", out)
         # PRF-224: the durable kind 7 of a refusal is reported refused by
         # name, never as a durable handoff.
@@ -1309,16 +1213,16 @@ class NativeBpNodeTests(unittest.TestCase):
         receiver, port = self.start_node(True)
         sent = self.send_request(port, "untrusted-return")
         out, err = receiver.communicate(timeout=120)
-        self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.assertEqual(receiver.returncode, 0, err)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        self.assertEqual(receiver.returncode, EXIT.OK, err)
         self.assertIn(b"BP node receipt queued", out)
         sender, port = self.start_node(False, once=False, trust=False)
         self.relay.route(port)
         delivered = self.tick_receiver()
-        self.assertEqual(delivered.returncode, 1, delivered.stderr)
+        self.assertEqual(delivered.returncode, EXIT.REFUSED, delivered.stderr)
         self.wait_for_output(
             sender, b"BP refused xfer=0 reason=no-trust-profile", timeout=120)
-        self.stop_process(sender)
+        sender.stop(grace=5)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
 
     @staticmethod
@@ -1340,8 +1244,8 @@ class NativeBpNodeTests(unittest.TestCase):
         receiver, port = self.start_node(True)
         sent = self.send_request(port, "conflict-request")
         out, err = receiver.communicate(timeout=120)
-        self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.assertEqual(receiver.returncode, 3, (out, err))
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        self.assertEqual(receiver.returncode, EXIT.UNCERTAIN, (out, err))
         self.assertIn(b"conflicting durable bytes", err)
         self.assertIn(b"BP application handoff durable", out)
         self.assertEqual(self.receiver_articles(), 1)
@@ -1355,7 +1259,7 @@ class NativeBpNodeTests(unittest.TestCase):
             "app-journal", "receipt-replay", self.receiver_store,
             self.receiver_receipts, self.request_path,
         )
-        self.assertEqual(replay.returncode, 0, replay.stderr)
+        self.assertEqual(replay.returncode, EXIT.OK, replay.stderr)
         receipt = self.tmp / "exact-receipt-wrong-peer.adu"
         receipt.write_bytes(bytes.fromhex(
             replay.stdout.split(b"hex=", 1)[1].strip().decode("ascii")))
@@ -1367,14 +1271,14 @@ class NativeBpNodeTests(unittest.TestCase):
         )
         self.assertIn(b"BP queue accepted", planted.stdout)
         restarted = self.dispatch_receiver()
-        self.assertEqual(restarted.returncode, 3, restarted.stderr)
+        self.assertEqual(restarted.returncode, EXIT.UNCERTAIN, restarted.stderr)
         self.assertIn(b"conflicting durable bytes", restarted.stderr)
         self.assertEqual(self.receiver_articles(), 1)
 
     def kill_at_durable_cut(self, selector, marker):
         receiver, port = self.start_node(True, extra_env={selector: "1"})
         sent = self.send_request(port, "cut-request")
-        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
         self.wait_for_output(receiver, marker, timeout=120)
         receiver.kill()
         receiver.wait(timeout=15)
@@ -1386,7 +1290,7 @@ class NativeBpNodeTests(unittest.TestCase):
             b"BP APP DECISION DURABLE",
         )
         restarted = self.dispatch_receiver()
-        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
         self.assertIn(b"BP application handoff durable", restarted.stdout)
         self.assertIn(b"BP node receipt queued", restarted.stdout)
         self.assertEqual(self.receiver_articles(), 1)
@@ -1397,7 +1301,7 @@ class NativeBpNodeTests(unittest.TestCase):
             b"BP NODE KIND7 DURABLE",
         )
         restarted = self.dispatch_receiver()
-        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
         self.assertIn(b"BP node receipt queued", restarted.stdout)
         self.assertEqual(self.receiver_articles(), 1)
 
@@ -1411,7 +1315,7 @@ class NativeBpNodeTests(unittest.TestCase):
         frontier = self.receiver_journal / "sequence" / "frontier.fnb"
         before_frontier = frontier.read_bytes()
         restarted = self.dispatch_receiver()
-        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
         self.assertNotIn(b"BP node receipt queued", restarted.stdout)
         self.assertEqual(frontier.read_bytes(), before_frontier)
         # The pass sends the one owed receipt itself (spec 9.4); the harness
@@ -1429,10 +1333,9 @@ class NativeBpNodeTests(unittest.TestCase):
             "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_SEVEN",
             b"BP NODE KIND7 DURABLE",
         )
-        fault_env = dict(self.env)
-        fault_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "namespace"
+        fault_env = {"FN_IMMUTABLE_PUBLISH_TEST_FAIL": "namespace"}
         ambiguous = self.dispatch_receiver(env=fault_env)
-        self.assertEqual(ambiguous.returncode, 3,
+        self.assertEqual(ambiguous.returncode, EXIT.UNCERTAIN,
                          (ambiguous.stdout, ambiguous.stderr))
         self.assertIn(b"uncertain", ambiguous.stderr.lower())
         self.assertNotIn(b"BP node receipt queued", ambiguous.stdout)
@@ -1443,22 +1346,22 @@ class NativeBpNodeTests(unittest.TestCase):
         frontier = self.receiver_journal / "sequence" / "frontier.fnb"
         after_fault_frontier = frontier.read_bytes()
         recovered = self.dispatch_receiver()
-        self.assertEqual(recovered.returncode, 0,
+        self.assertEqual(recovered.returncode, EXIT.OK,
                          (recovered.stdout, recovered.stderr))
         self.assertEqual(frontier.read_bytes(), after_fault_frontier)
         self.assertEqual(self.receiver_articles(), 1)
 
     def test_kind_five_ambiguous_publication_never_delivers_to_store(self):
         seed = self.dispatch_receiver()
-        self.assertEqual(seed.returncode, 0, seed.stderr)
+        self.assertEqual(seed.returncode, EXIT.OK, seed.stderr)
         receiver, port = self.start_node(
             True, extra_env={"FN_IMMUTABLE_PUBLISH_TEST_FAIL": "namespace"})
         sent = self.send_request(port, "kind-five-cut")
         out, err = receiver.communicate(timeout=120)
-        self.assertEqual(receiver.returncode, 3, (out, err))
+        self.assertEqual(receiver.returncode, EXIT.UNCERTAIN, (out, err))
         self.assertNotIn(b"BP application handoff durable", out)
         self.assertEqual(self.receiver_articles(), 0)
-        self.assertIn(sent.returncode, (1, LOST), sent.stderr)
+        self.assertIn(sent.returncode, (EXIT.REFUSED, LOST), sent.stderr)
 
     def test_ambiguous_fnrj_decision_fences_until_cold_replay(self):
         receiver, port = self.start_node(
@@ -1469,14 +1372,14 @@ class NativeBpNodeTests(unittest.TestCase):
         )
         sent = self.send_request(port, "fnrj-uncertain")
         out, err = receiver.communicate(timeout=120)
-        self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.assertEqual(receiver.returncode, 3, (out, err))
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        self.assertEqual(receiver.returncode, EXIT.UNCERTAIN, (out, err))
         self.assertIn(b"BP node application uncertain", out)
         self.assertNotIn(b"BP application handoff durable", out)
         self.assertEqual(self.receiver_articles(), 1)
 
         restarted = self.dispatch_receiver()
-        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
         self.assertIn(b"BP application handoff durable", restarted.stdout)
         self.assertIn(b"BP node receipt queued", restarted.stdout)
         self.assertEqual(self.receiver_articles(), 1)
@@ -1487,13 +1390,13 @@ class NativeBpNodeTests(unittest.TestCase):
             extra_env={"FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE": "1"},
         )
         sent = self.send_request(port, "short-lived", lifetime=1500)
-        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
         self.wait_for_output(receiver, b"BP NODE KIND5 DURABLE", timeout=120)
         receiver.kill()
         receiver.wait(timeout=15)
         time.sleep(1.8)
         restarted = self.dispatch_receiver()
-        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
         self.assertNotIn(b"BP application handoff durable", restarted.stdout)
         self.assertNotIn(b"BP node receipt queued", restarted.stdout)
         self.assertEqual(self.receiver_articles(), 0)
@@ -1503,18 +1406,16 @@ class NativeBpNodeTests(unittest.TestCase):
             True, extra_env={"FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE": "1"},
         )
         sent = self.send_deletion_request(port)
-        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
         self.wait_for_output(receiver, b"BP NODE KIND5 DURABLE", timeout=120)
         receiver.kill()
         receiver.wait(timeout=15)
         time.sleep(1.8)
 
         # The kind-10 record is durable before the outbound sequence/job cut.
-        env = dict(self.env)
-        env["FN_BP_NODE_TEST_PAUSE_AFTER_KIND_TEN"] = "1"
-        candidate = native_harness.start(
-            self.dispatch_receiver_args(reports=True), cwd=ROOT, env=env)
-        self.addCleanup(self.stop_process, candidate)
+        candidate = start(self.dispatch_receiver_args(reports=True), cwd=ROOT,
+                          env=environment({"FN_BP_NODE_TEST_PAUSE_AFTER_KIND_TEN": "1"}))
+        self.addCleanup(candidate.stop, 5)
         self.wait_for_output(candidate, b"BP NODE KIND10 DURABLE", timeout=120)
         candidate.kill()
         candidate.wait(timeout=15)
@@ -1530,7 +1431,7 @@ class NativeBpNodeTests(unittest.TestCase):
             bridge.call('(include-book "books/bp-status-report")')
             literal = bridge.literal(report_payload)
             self.assertEqual(
-                run_store.acl2_result(bridge.call(
+                acl2_result(bridge.call(
                     "(let ((parsed (fn-bpn-report-decode '" + literal + "))) "
                     "(and (fn-cbor-result-okp parsed) "
                     "(equal (fn-bpn-report-encode "
@@ -1540,7 +1441,7 @@ class NativeBpNodeTests(unittest.TestCase):
             bridge.close()
 
         restarted = self.dispatch_receiver(reports=True)
-        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
         self.assertIn(b"BP queue accepted", restarted.stdout)
         self.assertEqual(self.receiver_articles(), 0)
         frontier = self.receiver_journal / "sequence" / "frontier.fnb"
@@ -1550,7 +1451,7 @@ class NativeBpNodeTests(unittest.TestCase):
             frame.name: frame.read_bytes() for frame in lifecycle.glob("*.fnb")
         }
         repeated = self.dispatch_receiver(reports=True)
-        self.assertEqual(repeated.returncode, 0, repeated.stderr)
+        self.assertEqual(repeated.returncode, EXIT.OK, repeated.stderr)
         self.assertEqual(frontier.read_bytes(), frontier_bytes)
         # Every durable frame is kept byte for byte.  The repeated pass offers
         # the owed report job on the node's own base contact (spec 9.4); the
@@ -1576,21 +1477,21 @@ class NativeBpNodeTests(unittest.TestCase):
         interrupted = self.tick_receiver()
         self.assertEqual(interrupted.returncode, LOST, interrupted.stderr)
         self.assertIn(b"reason=uncertain", interrupted.stdout)
-        self.stop_process(sender)
+        sender.stop(grace=5)
         pinned = self.sender_status()
-        self.assertEqual(pinned.returncode, 0, pinned.stderr)
+        self.assertEqual(pinned.returncode, EXIT.OK, pinned.stderr)
         self.assertIn(b"pinned=yes", pinned.stdout)
 
         sender, port = self.start_node(False, once=False)
         self.relay.route(port)
         delivered = self.tick_receiver()
-        self.assertEqual(delivered.returncode, 0, delivered.stderr)
+        self.assertEqual(delivered.returncode, EXIT.OK, delivered.stderr)
         self.wait_for_output(sender, b"BP status report observed", timeout=120)
         self.assertIn(
             report_payload,
             self.acl2_lifecycle_payloads(self.sender_journal, 5),
         )
-        self.stop_process(sender)
+        sender.stop(grace=5)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
         self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
 

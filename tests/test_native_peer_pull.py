@@ -53,32 +53,25 @@ import shutil
 import signal
 import socket
 import subprocess
-import tempfile
 import threading
 import time
 import unittest
 
-from tests.native_process import wait_for_announcement
+from tests.native_harness import EXIT_OK, Client, Node, free_port, native_image, scratch
 from tools.wire_stream import whole_stream
 
-ROOT = Path(__file__).resolve().parent.parent
+# The images must be named explicitly (a production and a developer image).
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
-IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
+IMAGE = native_image("FN_NATIVE_HOST") if IMAGE_TEXT else None
 READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
 # FN_PULL_TEST_KILL is a developer-image selector (host/native/pull-service.lisp
 # through fnn-developer-selector); a production image refuses to start with
 # it by name, so an owner started with a cut runs the developer image.
 DEVELOPER_TEXT = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
-DEVELOPER = Path(DEVELOPER_TEXT) if DEVELOPER_TEXT else None
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST") if DEVELOPER_TEXT else None
 INN_SRC = os.environ.get("FN_INN_SRC")
 INN_READY = bool(INN_SRC and (Path(INN_SRC) / "bin" / "innd").is_file())
 INTERVAL = "2"
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def port_open(port):
@@ -318,13 +311,9 @@ class ScriptedPeer:
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native launcher")
 class NativePeerPullTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-pull-")
-        self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.processes = []
-        self.addCleanup(self.stop_all)
+        self.base = scratch(self, "fn-native-pull-")
+        # Variables for the next owner start only (a developer cut).
+        self.env = {}
         self.evidence = Path(os.environ.get("FN_PULL_EVIDENCE", self.base / "evidence"))
         self.evidence.mkdir(parents=True, exist_ok=True)
         self.nodes = []
@@ -332,106 +321,83 @@ class NativePeerPullTests(unittest.TestCase):
 
     def keep_logs(self):
         for node in self.nodes:
-            for name in ("fn.log", "stderr.log"):
-                source = node["root"] / name
-                if source.exists():
-                    shutil.copyfile(source, self.evidence / "{}-{}-{}".format(
-                        self._testMethodName, node["name"], name))
+            prefix = "{}-{}-".format(self._testMethodName, node.name)
+            if node.log.exists():
+                shutil.copyfile(node.log, self.evidence / (prefix + "fn.log"))
+            if node.processes:
+                (self.evidence / (prefix + "stderr.log")).write_bytes(
+                    b"".join(process.stderr.since(0) for process in node.processes))
 
     # ------------------------------------------------------------ nodes
 
-    def command(self, arguments, expected=0):
-        result = subprocess.run(list(map(str, arguments)), cwd=ROOT, env=self.env,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=180, check=False)
-        self.assertEqual(result.returncode, expected, result)
-        return result
+    def node(self, name, groups):
+        """A node NAME, its store made by `store init GROUPS`; NODE.log is
+        where its fn.toml's [log] will point."""
+        node = Node(self, IMAGE, root=self.base / name, name=name)
+        node.log = node.root / "fn.log"
+        node.store("init", *groups, expect=EXIT_OK)
+        return node
 
     def initialize(self, name, groups, identity):
-        root = self.base / name
-        root.mkdir()
-        store, control = root / "store", root / "control.sock"
-        port = free_port()
-        self.command([IMAGE, "--fn", "store", store, "init", *groups])
-        config = root / "fn.toml"
-        config.write_text(
+        node = self.node(name, groups)
+        node.config.write_text(
             '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
             '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
-                store, port, control, root / "fn.log"), encoding="ascii")
-        node = {"name": name, "root": root, "config": config, "port": port,
-                "store": store, "log": root / "fn.log"}
+                node.store_path, node.port, node.control, node.log), encoding="ascii")
         self.nodes.append(node)
-        self.command([IMAGE, "--fn", "operator", config, "policy", "set",
-                      "path-identity", identity])
+        node.operator("policy", "set", "path-identity", identity, expect=EXIT_OK)
         return node
 
     def pull_from(self, node, name, identity, port):
         """NAME is a peer B dials only: inbound fn.*, outbound none.  Its
         source address is one no socket here uses, so the test's own reader
         sessions from 127.0.0.1 are readers, not that peer's transit."""
-        self.command([IMAGE, "--fn", "operator", node["config"], "peer", "add",
+        node.operator("peer", "add",
                       name, identity, "127.0.0.1", str(port), "fn.*", "-",
-                      "127.0.0.9", "true"])
-        self.command([IMAGE, "--fn", "operator", node["config"], "peer", "pull",
-                      name, INTERVAL])
+                      "127.0.0.9", "true", expect=EXIT_OK)
+        node.operator("peer", "pull",
+                      name, INTERVAL, expect=EXIT_OK)
 
     def start(self, node):
-        image = IMAGE
+        image = None
         if "FN_PULL_TEST_KILL" in self.env:
             if DEVELOPER is None or not os.access(DEVELOPER, os.X_OK):
                 self.skipTest("set FN_NATIVE_DEVELOPER_HOST: the FN_PULL_TEST_KILL cuts")
             image = DEVELOPER
-        err = open(node["root"] / "stderr.log", "ab")
-        process = subprocess.Popen(
-            [str(image), "--fn", "operator", str(node["config"]), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=err)
-        self.processes.append(process)
-        node["process"] = process
-        wait_for_announcement(process, b"LISTENING ")
+        node.start(image=image, env=dict(self.env))
 
     def stop(self, node):
-        process = node.pop("process")
-        process.terminate()
-        process.communicate(timeout=60)
-        self.processes.remove(process)
+        node.stop(expect=None)
 
     def kill(self, node):
-        process = node.pop("process")
-        process.send_signal(signal.SIGKILL)
-        process.communicate(timeout=60)
-        self.processes.remove(process)
+        node.process.kill()
+        node.process.wait(timeout=60)
+        node.process.finish()
 
-    def stop_all(self):
-        for process in self.processes:
-            if process.poll() is None:
-                process.terminate()
-                try:
-                    process.communicate(timeout=60)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.communicate(timeout=60)
+    def died(self, node, timeout=120):
+        """The exit status of NODE's owner, started at a cut that kills it."""
+        code = node.process.wait(timeout=timeout)
+        node.process.finish()
+        return code
 
     # ------------------------------------------------------------ NNTP
 
     def session(self, port, lines):
-        with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-            stream = whole_stream(client)
-            greeting = stream.readline()
-            self.assertTrue(greeting.startswith(b"200 ") or greeting.startswith(b"201 "),
-                            greeting)
+        """Send each of LINES and read one reply line after it."""
+        with Client(port, timeout=30) as client:
             replies = []
             for item in lines:
-                stream.write(item)
-                replies.append(stream.readline())
+                client.send(item)
+                replies.append(client.line())
             return replies
 
     def post(self, node, payload):
-        first, second = self.session(node["port"], [b"POST\r\n", payload + b".\r\n"])
+        first, second = self.session(node.port, [b"POST\r\n", payload + b".\r\n"])
         self.assertTrue(first.startswith(b"340"), first)
         self.assertTrue(second.startswith(b"240"), second)
 
     def article_code(self, node, message_id):
-        return self.session(node["port"],
+        return self.session(node.port,
                             [b"STAT " + message_id.encode("ascii") + b"\r\n"])[0][:3]
 
     def await_article(self, node, message_id, timeout=90):
@@ -441,17 +407,17 @@ class NativePeerPullTests(unittest.TestCase):
                 return True
             time.sleep(0.25)
         self.fail("{} did not store {}; log: {}".format(
-            node["name"], message_id, self.log_tail(node)))
+            node.name, message_id, self.log_tail(node)))
 
     def log_tail(self, node):
         try:
-            return node["log"].read_text(errors="replace")[-2000:]
+            return node.log.read_text(errors="replace")[-2000:]
         except OSError:
             return ""
 
     def pull_lines(self, node):
         try:
-            return [l for l in node["log"].read_text(errors="replace").splitlines()
+            return [l for l in node.log.read_text(errors="replace").splitlines()
                     if l.startswith("pull peer=")]
         except OSError:
             return []
@@ -463,20 +429,20 @@ class NativePeerPullTests(unittest.TestCase):
                 return
             time.sleep(0.25)
         self.fail("{}: fewer than {} '{}' lines; log: {}".format(
-            node["name"], count, needle, self.log_tail(node)))
+            node.name, count, needle, self.log_tail(node)))
 
     def fnpl_files(self, node):
-        top = node["store"] / "pull"
+        top = node.store_path / "pull"
         return sorted(str(p.relative_to(top)) for p in top.rglob("*") if p.is_file()) \
             if top.exists() else []
 
     def witness(self, kind, data, nodes):
         data = dict(data, kind=kind)
         for node in nodes:
-            keep = self.evidence / "{}-{}.log".format(kind, node["name"])
-            if node["log"].exists():
-                shutil.copyfile(node["log"], keep)
-            data["log_sha256_" + node["name"]] = sha256_of(node["log"])
+            keep = self.evidence / "{}-{}.log".format(kind, node.name)
+            if node.log.exists():
+                shutil.copyfile(node.log, keep)
+            data["log_sha256_" + node.name] = sha256_of(node.log)
         data["image_sha256"] = sha256_of(IMAGE)
         data["core_sha256"] = sha256_of(str(IMAGE) + ".core")
         (self.evidence / (kind + ".witness.json")).write_text(
@@ -487,7 +453,7 @@ class NativePeerPullTests(unittest.TestCase):
         a = self.initialize("A", ["fn.test"], "a.pull.example.invalid")
         b = self.initialize("B", ["fn.test"], "b.pull.example.invalid")
         self.start(a)
-        proxy = RecordingProxy(a["port"])
+        proxy = RecordingProxy(a.port)
         self.addCleanup(proxy.close)
         self.pull_from(b, "A", "a.pull.example.invalid", proxy.port)
         return a, b, proxy
@@ -579,11 +545,7 @@ class NativePeerPullTests(unittest.TestCase):
                     pass
                 finally:
                     del self.env["FN_PULL_TEST_KILL"]
-                process = b["process"]
-                code = process.wait(timeout=120)
-                b.pop("process")
-                process.communicate(timeout=60)
-                self.processes.remove(process)
+                code = self.died(b)
                 self.assertEqual(code, -signal.SIGKILL, label)
                 mark = proxy.mark()
                 self.start(b)
@@ -610,7 +572,7 @@ class NativePeerPullTests(unittest.TestCase):
         a = self.initialize(name_a, ["fn.test"], "a.pull.example.invalid")
         b = self.initialize(name_b, ["fn.test"], "b.pull.example.invalid")
         self.start(a)
-        proxy = RecordingProxy(a["port"])
+        proxy = RecordingProxy(a.port)
         self.addCleanup(proxy.close)
         self.pull_from(b, "A", "a.pull.example.invalid", proxy.port)
         return a, b, proxy
@@ -620,20 +582,10 @@ class NativePeerPullTests(unittest.TestCase):
 
     def count_article(self, node, message_id):
         """How many local articles of fn.test carry MESSAGE_ID (XOVER 1-)."""
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
-            stream = whole_stream(client)
-            stream.readline()
-            stream.write(b"GROUP fn.test\r\n")
-            stream.readline()
-            stream.write(b"XOVER 1-\r\n")
-            head = stream.readline()
-            lines = []
-            if head.startswith(b"224"):
-                while True:
-                    line = stream.readline()
-                    if not line or line == b".\r\n":
-                        break
-                    lines.append(line)
+        with Client(node.port, timeout=30, greeting=None) as client:
+            client.command(b"GROUP fn.test")
+            _, body = client.multiline(b"XOVER 1-")
+        lines = body.split(b"\r\n")
         return sum(1 for line in lines if message_id.encode("ascii") in line)
 
     # ------------------------------------------------------------ protected
@@ -652,42 +604,28 @@ class NativePeerPullTests(unittest.TestCase):
         """A serving node: STARTTLS, authentication required and AUTHINFO only
         on a protected channel; LOGIN/PASSWORD is the principal it holds for
         the pulling node."""
-        root = self.base / name
-        root.mkdir()
-        store, control = root / "store", root / "control.sock"
-        port = free_port()
-        certificate, key = self.certificate(root, name)
-        self.command([IMAGE, "--fn", "store", store, "init", "fn.test"])
-        config = root / "fn.toml"
-        config.write_text(
+        node = self.node(name, ["fn.test"])
+        certificate, key = self.certificate(node.root, name)
+        node.config.write_text(
             '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
             'tls_cert = "{}"\ntls_key = "{}"\n[control]\npath = "{}"\n[log]\npath = "{}"\n'
             '[auth]\nrequired = true\nprotected_only = {}\npath = "{}"\n'.format(
-                store, port, certificate, key, control, root / "fn.log",
+                node.store_path, node.port, certificate, key, node.control, node.log,
                 "true" if protected_only else "false",
-                root / "auth.toml"), encoding="ascii")
-        enrolled = subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(config), "principal", "set-password",
-             login], cwd=ROOT, env=self.env,
-            input=(password + "\n" + password + "\n").encode(),
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180)
-        self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
-        node = {"name": name, "root": root, "config": config, "port": port,
-                "store": store, "log": root / "fn.log", "certificate": certificate}
+                node.root / "auth.toml"), encoding="ascii")
+        node.operator("principal", "set-password", login,
+                      input=(password + "\n" + password + "\n").encode(), expect=EXIT_OK)
+        node.certificate = certificate
         self.nodes.append(node)
-        self.command([IMAGE, "--fn", "operator", config, "policy", "set",
-                      "path-identity", "a.pull.example.invalid"])
+        node.operator("policy", "set", "path-identity", "a.pull.example.invalid",
+                      expect=EXIT_OK)
         return node
 
     def operator_post(self, node, message_id, subject):
-        payload = node["root"] / (subject + ".article")
-        payload.write_bytes(article(message_id, subject))
-        self.command([IMAGE, "--fn", "operator", node["config"], "post",
-                      "--message-id", message_id, "--payload", payload,
-                      "--group", "fn.test"])
+        node.post(message_id, article(message_id, subject), expect=EXIT_OK)
 
     def profile(self, node, login, password):
-        path = node["root"] / "A.fnauth"
+        path = node.root / "A.fnauth"
         path.write_bytes("FNAUTH1\n{}\n{}\n".format(login, password).encode("ascii"))
         path.chmod(0o600)
         return path
@@ -696,20 +634,20 @@ class NativePeerPullTests(unittest.TestCase):
         """B's record for A: inbound and outbound fn.*, source-address auth on
         an address no socket here uses, B's credential PROFILE, and STARTTLS
         against A's certificate as the only anchor (or a clear transport)."""
-        security = ["starttls", "localhost", str(a["certificate"])] if tls else []
-        self.command([IMAGE, "--fn", "operator", b["config"], "peer", "add", "A",
-                      "a.pull.example.invalid", "127.0.0.1", str(port), "fn.*", "fn.*",
-                      "source-address", "127.0.0.9", str(profile),
-                      "true" if allow_clear else "false", "false", *security])
-        self.command([IMAGE, "--fn", "operator", b["config"], "peer", "pull", "A",
-                      INTERVAL])
+        security = ["starttls", "localhost", str(a.certificate)] if tls else []
+        b.operator("peer", "add", "A",
+                   "a.pull.example.invalid", "127.0.0.1", str(port), "fn.*", "fn.*",
+                   "source-address", "127.0.0.9", str(profile),
+                   "true" if allow_clear else "false", "false", *security, expect=EXIT_OK)
+        b.operator("peer", "pull", "A",
+                   INTERVAL, expect=EXIT_OK)
 
     def protected_pair(self, name_a="A", name_b="B", login="nodeB", password="b-secret",
                        presented=None, tls=True):
         a = self.initialize_protected(name_a, login, password)
         b = self.initialize(name_b, ["fn.test"], "b.pull.example.invalid")
         self.start(a)
-        proxy = RecordingProxy(a["port"])
+        proxy = RecordingProxy(a.port)
         self.addCleanup(proxy.close)
         self.pull_protected(b, a, proxy.port,
                             self.profile(b, *(presented or (login, password))), tls=tls)
@@ -723,7 +661,7 @@ class NativePeerPullTests(unittest.TestCase):
                     if c.upper().startswith(("AUTHINFO", "DATE", "NEWNEWS", "ARTICLE"))]
 
     def fnpl_size(self, node):
-        top = node["store"] / "pull"
+        top = node.store_path / "pull"
         return sum(p.stat().st_size for p in top.rglob("*") if p.is_file()) \
             if top.exists() else 0
 
@@ -825,11 +763,7 @@ class NativePeerPullTests(unittest.TestCase):
                     pass
                 finally:
                     del self.env["FN_PULL_TEST_KILL"]
-                process = b["process"]
-                code = process.wait(timeout=120)
-                b.pop("process")
-                process.communicate(timeout=60)
-                self.processes.remove(process)
+                code = self.died(b)
                 self.assertEqual(code, -signal.SIGKILL, label)
                 self.start(b)
                 for message_id in ids:
@@ -856,11 +790,11 @@ class NativePeerPullTests(unittest.TestCase):
                              for m in real})
         self.addCleanup(peer.close)
         b = self.initialize("B" + name, ["fn.test"], "b.pull.example.invalid")
-        self.command([IMAGE, "--fn", "operator", b["config"], "peer", "add",
-                      "S", "s.pull.example.invalid", "127.0.0.1", str(peer.port),
-                      "fn.*", "-", "127.0.0.9", "true"])
-        self.command([IMAGE, "--fn", "operator", b["config"], "peer", "pull",
-                      "S", INTERVAL, str(bound)])
+        b.operator("peer", "add",
+                   "S", "s.pull.example.invalid", "127.0.0.1", str(peer.port),
+                   "fn.*", "-", "127.0.0.9", "true", expect=EXIT_OK)
+        b.operator("peer", "pull",
+                   "S", INTERVAL, str(bound), expect=EXIT_OK)
         return peer, b, ghost, real
 
     def test_unavailable_id_is_dropped_at_the_bound(self):
@@ -920,11 +854,7 @@ class NativePeerPullTests(unittest.TestCase):
                 pass
             finally:
                 del self.env["FN_PULL_TEST_KILL"]
-            process = b["process"]
-            code = process.wait(timeout=120)
-            b.pop("process")
-            process.communicate(timeout=60)
-            self.processes.remove(process)
+            code = self.died(b)
             self.assertEqual(code, -signal.SIGKILL, cut)
             before = peer.count("ARTICLE " + ghost)
             self.start(b)
@@ -936,7 +866,7 @@ class NativePeerPullTests(unittest.TestCase):
             self.stop(b)
             results[cut] = {"ghost_before_kill": before, "ghost_total": ghost_articles,
                             "counts": counts, "pull_lines": lines,
-                            "log_sha256": sha256_of(b["log"])}
+                            "log_sha256": sha256_of(b.log)}
             self.assertEqual(before, 1, (cut, before))
             self.assertEqual(ghost_articles, total, (cut, ghost_articles, lines))
             for m in real:
@@ -965,12 +895,12 @@ class NativePeerPullTests(unittest.TestCase):
                                       for m in ids}, tls=(certificate, key))
             self.addCleanup(peer.close)
             b = self.initialize("B" + name, ["fn.test"], "b.pull.example.invalid")
-            self.command([IMAGE, "--fn", "operator", b["config"], "peer", "add", "S",
-                          "s.pull.example.invalid", "127.0.0.1", str(peer.port), "fn.*",
-                          "-", "source-address", "127.0.0.9", "true", "starttls",
-                          "localhost", str(certificate)])
-            self.command([IMAGE, "--fn", "operator", b["config"], "peer", "pull", "S",
-                          INTERVAL])
+            b.operator("peer", "add", "S",
+                       "s.pull.example.invalid", "127.0.0.1", str(peer.port), "fn.*",
+                       "-", "source-address", "127.0.0.9", "true", "starttls",
+                       "localhost", str(certificate), expect=EXIT_OK)
+            b.operator("peer", "pull", "S",
+                       INTERVAL, expect=EXIT_OK)
             self.env["FN_PULL_TEST_KILL"] = cut
             try:
                 self.start(b)
@@ -980,11 +910,7 @@ class NativePeerPullTests(unittest.TestCase):
                 pass
             finally:
                 del self.env["FN_PULL_TEST_KILL"]
-            process = b["process"]
-            code = process.wait(timeout=120)
-            b.pop("process")
-            process.communicate(timeout=60)
-            self.processes.remove(process)
+            code = self.died(b)
             self.assertEqual(code, -signal.SIGKILL, cut)
             with peer.lock:
                 mark = len(peer.commands)
@@ -1004,7 +930,7 @@ class NativePeerPullTests(unittest.TestCase):
                             "article_after_restart": fetched_after,
                             "starttls": sum(c == "STARTTLS" for c in before + after),
                             "counts": counts, "pull_lines": lines,
-                            "log_sha256": sha256_of(b["log"])}
+                            "log_sha256": sha256_of(b.log)}
             self.assertTrue(all("transport=tls" in l for l in lines if "round=" in l), lines)
             self.assertEqual(sorted(fetched_before), sorted("ARTICLE " + m for m in ids))
             # The bound: after the restart no id is fetched twice, and none
@@ -1026,7 +952,7 @@ class NativePeerPullTests(unittest.TestCase):
         a = self.initialize_protected("A", "nodeB", "b-secret", protected_only=False)
         b = self.initialize("B", ["fn.test"], "b.pull.example.invalid")
         self.start(a)
-        proxy = RecordingProxy(a["port"])
+        proxy = RecordingProxy(a.port)
         self.addCleanup(proxy.close)
         self.pull_protected(b, a, proxy.port, self.profile(b, "nodeB", "b-secret"),
                             tls=False, allow_clear=True)
@@ -1068,12 +994,10 @@ class NativePeerPullTests(unittest.TestCase):
         a = self.initialize("A", ["fn.test"], "a.pull.example.invalid")
         self.start(a)
         peer, b, ghost, real = self.unavailable_pair("soak", bound)
-        self.command([IMAGE, "--fn", "operator", b["config"], "peer", "add", "A",
-                      "a.pull.example.invalid", "127.0.0.1", str(a["port"]), "fn.*",
-                      "-", "127.0.0.8", "true"])
+        b.operator("peer", "add", "A", "a.pull.example.invalid", "127.0.0.1", str(a.port),
+                   "fn.*", "-", "127.0.0.8", "true", expect=EXIT_OK)
         for name in ("A", "S"):
-            self.command([IMAGE, "--fn", "operator", b["config"], "peer", "pull",
-                          name, "60", str(bound)])
+            b.operator("peer", "pull", name, "60", str(bound), expect=EXIT_OK)
         self.start(b)
         posted, rss, restarted = [], [], False
         begin = time.monotonic()
@@ -1084,7 +1008,7 @@ class NativePeerPullTests(unittest.TestCase):
                 self.post(a, article(mid, "soak-{}".format(k)))
                 posted.append(mid)
             try:
-                rss.append(int(Path("/proc/{}/status".format(b["process"].pid)).read_text()
+                rss.append(int(Path("/proc/{}/status".format(b.process.pid)).read_text()
                                .split("VmRSS:")[1].split()[0]))
             except (OSError, IndexError, ValueError):
                 pass
@@ -1129,7 +1053,7 @@ class NativePeerPullTests(unittest.TestCase):
         self.await_article(b, message_id)
         self.await_log(b, "cursor=advanced", 1)
         newnews = proxy.newnews()
-        stored = self.session(b["port"], [b"HEAD " + message_id.encode() + b"\r\n"])[0]
+        stored = self.session(b.port, [b"HEAD " + message_id.encode() + b"\r\n"])[0]
         self.stop(b)
         self.witness("inn", {"newnews": newnews, "pull_lines": self.pull_lines(b),
                              "inn_ihave": reply.decode().strip(),

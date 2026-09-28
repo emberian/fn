@@ -1107,6 +1107,46 @@ filing group, a stronger fn guarantee that keeps a peer which asked for
 (`fn-own-sub-feed-groups-of-an-ordinary-article`). The keystones, over the
 host's `fn-own-submission-targets`, are in books/owner-feed-subject.lisp.
 
+### 3.2.2 A dropped link: its line and its redial delay (defect M3)
+
+A feed survives a peer's partial behaviour (requirement NNT-035, section
+12.8).  A TLS 1.3 server sends
+NewSessionTicket records after the handshake and before its greeting
+(RFC 8446 section 4.6.1).  An `SSL_read` that consumes only such a record
+(or a KeyUpdate, or part of a record) answers `WANT_READ`/`WANT_WRITE`: no
+application data yet.  `fnn-tls-read` (host/native/tls.lisp) answers
+`:timeout` for it at its deadline, as `fnn-recv` answers an idle socket;
+it is never an I/O error (before this, the feed's zero-second read dropped
+every implicit-TLS link to an fn peer after the tickets, silently).
+
+Every dropped link writes one ACL2-rendered service-log line,
+`feed peer=NAME link=dropped reason=WORD retry-ms=N`
+(books/feed-link-backoff.lisp `fn-flb-drop-line`; WORD is the pull's
+vocabulary, `fn-peer-lost-word`: lost-dial, lost-tls, lost-eof, lost-read,
+lost-send, plus lost-peer when the reply machine ended the connection and
+logged its own line, and lost-unsendable).  N is `fn-flb-lost`'s delay
+before the next dial: the peer record's backoff base doubled per
+consecutive failure since the link was last ready, clamped to five minutes
+(local policy; the feed machine's one-hour ceiling stays for offers).  The
+streak restarts at `:ready` (`fn-flb-ready`) and is per process, not
+durable: a restarted node's first failure waits the base.  Keystone
+`fn-flb-lost-advances-the-backoff`: a second consecutive failure never
+waits less, and waits strictly longer while the first delay is positive and
+below the ceiling; `fn-flb-lost-doubles-below-the-ceiling`.  A base of 0
+(an operator's explicit choice) stays 0.
+
+An operator contains one peer's push without `peer remove` by
+`peer feed NAME pause` (and undoes it by `peer feed NAME resume`): one
+configuration row of the peer's group, `(NAME "outbound-paused" "" 1|0)`,
+applied live and replayed like every peer change (books/feed-pause.lisp).
+`fn-fps-deltas` adds the requested row and removes the other, so the group
+never holds both (`fn-fps-deltas-set-the-pause`); the outbound worker links
+`fn-fps-live-names`, the feed table without the paused peers
+(`fn-fps-live-names-are-the-unpaused-feeds`), so a paused peer's link is
+closed and not dialled.  Its pull, its inbound admission and its queue stay;
+a resume delivers what queued meanwhile (within the peer's max-queue).
+Health still names a paused peer with pending work `unavailable-peer`.
+
 ### 3.3 The feed journal: a record kind
 
 Frame family `FNFD` (schema 1) has one file per peer at

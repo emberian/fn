@@ -24,27 +24,19 @@ import os
 from pathlib import Path
 import socket
 import statistics
-import subprocess
 import sys
-import tempfile
 import threading
 import time
 import unittest
 
-from tests.native_process import wait_for_announcement
+from tests.native_harness import EXIT, ROOT, Node, executable, native_image
 from tools.wire_stream import whole_stream
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST") or os.environ.get(
-    "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
-READY = IMAGE.is_file() and os.access(IMAGE, os.X_OK)
+# FN_NATIVE_HOST when set, else the developer image (tools/native_env.py FALLBACK).
+IMAGE = (Path(os.environ["FN_NATIVE_HOST"]) if os.environ.get("FN_NATIVE_HOST")
+         else native_image("FN_NATIVE_DEVELOPER_HOST"))
+READY = executable(IMAGE)
 LOGIN, PASSWORD = "legit", "correct-horse-battery"
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def first_line(sock, timeout):
@@ -130,41 +122,24 @@ class Legit(threading.Thread):
 @unittest.skipUnless(READY, "no native image (FN_NATIVE_HOST or build/fn-host-developer)")
 class NativePublicExposureTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-exposure-")
-        self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.process = None
+        self.node = Node(self, IMAGE)
+        self.base, self.port, self.config = self.node.root, self.node.port, self.node.config
         self.addCleanup(self.stop)
         self.evidence = Path(os.environ.get(
             "FN_EXPOSURE_EVIDENCE", ROOT / "build" / "public-exposure-evidence"))
         self.evidence.mkdir(parents=True, exist_ok=True)
 
-    def command(self, arguments, expected=0, stdin=None):
-        result = subprocess.run(list(map(str, arguments)), cwd=ROOT, env=self.env,
-                                input=stdin, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, timeout=180, check=False)
-        if expected is not None:
-            self.assertEqual(result.returncode, expected, result)
-        return result
-
     def policy(self, slot, value):
-        self.command([IMAGE, "--fn", "operator", self.config, "policy", "set",
-                      slot, value])
+        self.node.operator("policy", "set", slot, value, expect=EXIT.OK)
 
     def stop(self):
-        if self.process is not None and self.process.poll() is None:
-            self.process.terminate()
-            try:
-                self.process.communicate(timeout=60)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.communicate(timeout=60)
-        for name in ("fn.log", "stderr.log"):
-            source = self.base / name
-            if source.exists():
-                (self.evidence / name).write_bytes(source.read_bytes())
+        process = self.node.process
+        if process is not None:
+            self.node.stop(expect=None)
+            (self.evidence / "stderr.log").write_bytes(process.stderr.since(0))
+        source = self.base / "fn.log"
+        if source.exists():
+            (self.evidence / "fn.log").write_bytes(source.read_bytes())
 
     def dump_report(self):
         print("EXPOSURE-REPORT " + json.dumps(self.report, sort_keys=True),
@@ -209,22 +184,15 @@ class NativePublicExposureTests(unittest.TestCase):
         return counts, held
 
     def assert_alive(self):
-        self.assertIsNone(self.process.poll(), "the owner exited")
+        self.assertIsNone(self.node.process.poll(), "the owner exited")
 
     def test_flood_campaign(self):
-        store = self.base / "store"
-        self.port = free_port()
-        self.command([IMAGE, "--fn", "store", store, "init", "fn.test"])
-        self.config = self.base / "fn.toml"
-        self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n[log]\npath = "{}"\n'
-            '[auth]\nrequired = false\nprotected_only = false\npath = "{}"\n'.format(
-                store, self.port, self.base / "control.sock", self.base / "fn.log",
-                self.base / "auth.toml"), encoding="ascii")
-        self.command([IMAGE, "--fn", "operator", self.config, "principal",
-                      "set-password", LOGIN],
-                     stdin=(PASSWORD + "\n" + PASSWORD + "\n").encode())
+        self.node.store("init", "fn.test", expect=EXIT.OK)
+        self.node.write_config(extra='[log]\npath = "{}"\n'
+                               '[auth]\nrequired = false\nprotected_only = false\npath = "{}"\n'
+                               .format(self.base / "fn.log", self.base / "auth.toml"))
+        self.node.operator("principal", "set-password", LOGIN,
+                           input=(PASSWORD + "\n" + PASSWORD + "\n").encode(), expect=EXIT.OK)
         # Rows before the start: the test's timers are short so the campaign
         # runs in minutes; the public defaults are the record's table.
         # PRF-211: the row is now the capacity itself; 31 is the figure the
@@ -237,11 +205,7 @@ class NativePublicExposureTests(unittest.TestCase):
                             ("exposure-auth-failures", "10"),
                             ("anonymous", "none")):
             self.policy(slot, value)
-        err = open(self.base / "stderr.log", "ab")
-        self.process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=err)
-        wait_for_announcement(self.process, b"LISTENING ")
+        self.node.start()
         report = self.report = {"port": self.port}
         self.addCleanup(self.dump_report)
 
@@ -435,8 +399,7 @@ class NativePublicExposureTests(unittest.TestCase):
         self.assert_alive()
 
         # --- health reports the pressure
-        health = self.command([IMAGE, "--fn", "operator", self.config, "health"],
-                              expected=None)
+        health = self.node.operator("health")
         text = health.stdout.decode("ascii", "replace")
         report["health"] = {"exit": health.returncode,
                             "exposure_lines": [line for line in text.splitlines()

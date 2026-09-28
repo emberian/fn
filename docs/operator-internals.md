@@ -326,7 +326,7 @@ is already locked`) while an owner runs; DIR must not exist (`export refused
 reason=archive-exists`). The archive is a directory: `profile` (config.json's
 exact octets), `frontier`, `config/NAME` (each configuration record's
 octets), `records/NAME` (each committed record's octets, in sequence
-order) and `MANIFEST` (one `sha256  name` line per file, `sha256sum
+order) and `MANIFEST` (one BLAKE3 `digest  name` line per file, `b3sum
 -c` reads it); ACL2 renders every name and the MANIFEST
 (`books/store-export.lisp`). `store import DIR [--FIELD N ...]` makes a NEW
 store: the configured store must not exist (`import refused
@@ -339,12 +339,9 @@ The import then publishes the store in the order of the byte program
 `fn-bs-imp-program` (`books/store-import-publication.lisp`): it stages the
 store in a new directory `ROOT.import-XXXX` beside the configured store ROOT
 (each file created exclusively, written and fenced, then the subdirectories
-and the staged directory fenced; the store is always written as format 9,
-whatever format word the archive's profile carries (`fn-sxp-log-profile`),
-its records appended to `journal/000001.log` through the log's own take,
-append and barrier, so an archive the previous release exported from a
-format-8 store imports as a format-9 store with the same history: the
-migration across a reinstall), opens the staged store the ordinary way
+and the staged directory fenced; its own genesis written, its records
+appended to `journal/000001.log` through the log's own take, append and
+barrier), opens the staged store the ordinary way
 (full replay), renames it onto ROOT with a rename that never replaces an
 existing ROOT (`renameat2` with `RENAME_NOREPLACE` on Linux; on OpenBSD, which
 has no such rename, see below), and fences ROOT's parent directory.
@@ -2230,16 +2227,17 @@ file.
 # start the unit                                   # the store directory stays
 ```
 
-Only when the store itself must be rebuilt (a store of another format is
-refused at open, below: every store made before 2026-09-27 is format 8)
-does its history go through an archive, exported with the release that made
-the store, before the new one is installed. The archive is
-Store history, not a node backup: it never carries `STORE/keys/`, so the key
-files are moved into the new store directory before its first start:
+A release opens only a store of its own format; there are no migrations
+(D38 withdrawn, 2026-09-28). A store of another format is refused at open,
+below: the node is set up again with `init`. `store export` and `store
+import` move a store between installs of the same format (a larger profile
+field, a new disk). The archive is Store history, not a node backup: it
+never carries `STORE/keys/`, so the key files are moved into the new store
+directory before its first start:
 
 ```text
 fn operator NODE/fn.toml store export ARCHIVE
-# stop the unit; install the release
+# stop the unit
 mv NODE/store/keys NODE/keys.keep && rm -r NODE/store
 fn operator NODE/fn.toml store import ARCHIVE
 mv NODE/keys.keep NODE/store/keys
@@ -2280,13 +2278,12 @@ identity, history salt, creation reading and image revision, recorded at
 `init`; specs/storage.md STO-036), then `journal/NNNNNN.log` segments (six digits, the highest present the active
 one), one fsync per batch of POSTs; a checkpoint names the first segment it
 does not cover and the covered ones are dropped (`store compact` above).
-A format-9 store (every store made before format 10) is refused at open
-by name with the way out (`open refused reason=store-format-9: ... export it
-with that release (store ROOT export DIR), then import it here (store
-NEWROOT import DIR)`, exit 1), a store of any older format as another
-format (`reason=store-format`); a format-9 archive, exported by the release
-that made it, imports here as format 10 with a new genesis
-(`fn-sxp-import-of-a-format-9-export`). The archive carries the committed records,
+A sealed profile frame whose format word is not this build's is refused at
+open by name, `open refused reason=store-format: not an fn store of this
+release: redeploy fresh`, exit 1 (books/store-profile-open.lisp,
+`fn-spo-config-open-store-format-is-exactly-a-foreign-frame`); an archive of
+another format is refused at import (`import refused reason=profile
+store-format`). The archive carries the committed records,
 the configuration records, the profile and the frontier; the store identity
 and consumer state are records, so they travel with them. Feed journals and
 BP spools do not: a reinstalled node re-peers. It is a Store-history
@@ -2295,43 +2292,6 @@ credentials, the HKDF and pseudonym roots), peer journals and the BP and
 TCPCL stores are kept separately, and the MANIFEST does not
 say the archive is the node's newest history. Keep the archive until the new
 node serves; it is the only copy of that history.
-
-What an older release refuses of this store's records (facts about releases, not a rollback procedure: under D34 a deploy is a fresh install and an older release is never started over a newer store):
-
-Once an account code is redeemed on a release with accounts, releases before
-it cannot open the store; roll back only from the pre-upgrade snapshot (PKT-440:
-an older image refuses configuration delta kinds 15 and 16 at decode; a store
-that never issued a code is unaffected).
-
-The same rule covers the login-binding rows (delta code 17, `principal
-bind|unbind` applied live through the running node since 2026-09-26): a store
-that ever published a binding is refused by releases before it; roll back only
-from the pre-upgrade snapshot.
-
-The published checkpoint names its event index only by its shape, and the
-shape changed at dev a249a699 (a Message-ID trie beside the sequence trie)
-and again at d0df09ed (the record count). A checkpoint published by an image
-from a249a699 up to d0df09ed is refused by name by every later image with
-this check: `status` and `store recover` say `open=full-replay
-reason=checkpoint-index-shape`, and the first open after the upgrade is a
-full replay of the history (at 20,000 articles about 170 s on hbox under
-load). Never deploy an image from d0df09ed up to this check over such a
-node: it opens that checkpoint as `open=checkpoint:S` with a record count of
-0 and a Message-ID index that misses committed articles (PKT-395). A
-checkpoint published before a249a699 is refused too, today as
-`reason=checkpoint-open-refused`. In a rollback the same holds in the other
-direction: older images reject a newer checkpoint file and fall back to a
-full replay.
-
-And the incremental peer rows (delta codes 18 and 19, `peer carries` and
-`peer budget` since 2026-09-26, offline or live): a store whose
-configuration log holds either is refused at open by releases before them
-(the deployed bbf52159 image exits 4; rehearsed on a copy, planning/evidence/
-caps-to-profile-2026-09-26.md), so roll back only from the pre-upgrade
-snapshot. A store that never extended a peer after the upgrade is unaffected.
-The same held for a checkpoint or (format-8) pack directory that published
-generation 4096 or more (the numbering is a uint32 since then): an older
-release refuses that directory.
 
 ## Back up
 

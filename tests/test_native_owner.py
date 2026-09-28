@@ -1,33 +1,18 @@
 """Developer-image owner diagnostic: writable NNTP POST with no Python peer."""
 import os
-from pathlib import Path
 import re
-import select
-import shutil
 import socket
 import struct
 import subprocess
 import sys
-import tempfile
-
-from tests.native_process import native_peer_add
 import time
 import unittest
 
-from tests.native_process import runtime_sbcl
-from tools.wire_stream import whole_stream
+from tests.native_harness import (
+    EXIT, ROOT, Client, Node, dot_stuff, environment, native_image, native_peer_add,
+    runtime_sbcl)
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get(
-    "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    return env
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 
 class NativeOwnerHandlerStructureTests(unittest.TestCase):
@@ -183,72 +168,35 @@ class NativeOwnerTests(unittest.TestCase):
                 "(FN_NATIVE_PROFILE=developer tools/build_native_host.sh)".format(IMAGE))
 
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-owner-")
-        self.addCleanup(self.temporary.cleanup)
-        self.store = Path(self.temporary.name) / "store"
-        initialized = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(self.store), "init", "fn.test"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment(), timeout=180, check=False)
-        self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
-
-    def start_owner(self, once=True, fault=None):
-        command = [str(IMAGE), "--fn", "owner", "run", str(self.store),
-                   "0", "1" if once else "0", "8"]
-        if fault is not None:
-            command.append(fault)
-        process = subprocess.Popen(
-            command, cwd=ROOT, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, env=environment())
-        ready = select.select([process.stdout], [], [], 180)[0]
-        self.assertTrue(ready, "native owner did not announce its port")
-        line = process.stdout.readline()
-        if not line.startswith(b"LISTENING "):
-            self.fail("native owner failed: {} {}".format(
-                line, process.stderr.read().decode("utf-8", "replace")))
-        return process, int(line.split()[1])
+        self.node = Node(self, IMAGE, listener=False, control=False)
+        self.store = self.node.store_path
+        self.node.store("init", "fn.test", expect=EXIT.OK)
 
     def connect_owner(self, port):
-        client = socket.create_connection(("127.0.0.1", port), timeout=30)
-        self.addCleanup(client.close)
-        stream = whole_stream(client)
-        self.addCleanup(stream.close)
-        self.assertTrue(stream.readline().startswith(b"200 "))
-        return client, stream
+        client = Client(port, timeout=30, greeting=(b"200",))
+        self.addCleanup(client.close, False)
+        return client
+
+    def inspect(self, message_id):
+        return self.node.store("inspect", message_id)
 
     def assert_live_writer_and_reader(self, port, writer, reader, message_id):
-        article = self.article(message_id, b"surviving native owner body\r\n")
-        writer.write(b"POST\r\n")
-        self.assertTrue(writer.readline().startswith(b"340 "))
-        writer.write(article + b".\r\n")
-        self.assertTrue(writer.readline().startswith(b"240 "))
+        first, final = writer.post(self.article(message_id, b"surviving native owner body\r\n"))
+        self.assertTrue(first.startswith(b"340 "))
+        self.assertTrue(final.startswith(b"240 "))
 
         # This connection predates the post and deliberately retains its
         # pinned archive snapshot.  Prove it is still served without asking
         # that old snapshot to expose a later commit.
-        reader.write(b"CAPABILITIES\r\n")
-        self.assertTrue(reader.readline().startswith(b"101 "))
-        while True:
-            line = reader.readline()
-            self.assertNotEqual(line, b"", "owner closed the surviving reader")
-            if line == b".\r\n":
-                break
+        status, _ = reader.multiline(b"CAPABILITIES")
+        self.assertTrue(status.startswith(b"101 "))
 
         # A fresh reader pins the post-commit archive and proves the healthy
         # writer's article became visible without restarting the service.
-        _, current_reader = self.connect_owner(port)
-        current_reader.write(b"GROUP fn.test\r\n")
-        self.assertTrue(current_reader.readline().startswith(b"211 "))
-        current_reader.write(b"ARTICLE " + message_id + b"\r\n")
-        answer = current_reader.readline()
+        current_reader = self.connect_owner(port)
+        self.assertTrue(current_reader.command(b"GROUP fn.test").startswith(b"211 "))
+        answer, received = current_reader.multiline(b"ARTICLE " + message_id)
         self.assertTrue(answer.startswith(b"220 "), answer)
-        received = bytearray()
-        while True:
-            line = current_reader.readline()
-            self.assertNotEqual(line, b"", "owner closed the current reader")
-            if line == b".\r\n":
-                break
-            received.extend(line)
         self.assertIn(b"Message-ID: " + message_id + b"\r\n", received)
         self.assertIn(b"surviving native owner body\r\n", received)
 
@@ -261,84 +209,51 @@ class NativeOwnerTests(unittest.TestCase):
                 b"Message-ID: " + message_id + b"\r\n\r\n" + body)
 
     def test_client_disconnect_is_not_a_global_owner_fault(self):
-        process, port = self.start_owner(once=False)
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                self.assertTrue(client.makefile("rb", buffering=0).readline().startswith(b"200 "))
-            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                stream = whole_stream(client)
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"QUIT\r\n")
-                self.assertTrue(stream.readline().startswith(b"205 "))
-            self.assertIsNone(process.poll(), "owner stopped after an ordinary disconnect")
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                process.wait(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
+        process, port = self.node.start_store_owner(once=False)
+        with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
+            self.assertTrue(client.makefile("rb", buffering=0).readline().startswith(b"200 "))
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            self.assertTrue(client.command(b"QUIT").startswith(b"205 "))
+        self.assertIsNone(process.poll(), "owner stopped after an ordinary disconnect")
 
     def test_reset_peer_does_not_stop_concurrent_writer_or_reader(self):
-        process, port = self.start_owner(once=False)
-        resetter, reset_stream = self.connect_owner(port)
-        _, reader = self.connect_owner(port)
-        _, writer = self.connect_owner(port)
-        try:
-            # Force an attributable transport reset.  The peer owns this
-            # socket and no shared owner transition is in progress.
-            resetter.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
-                                struct.pack("ii", 1, 0))
-            reset_stream.close()
-            resetter.close()
-            time.sleep(0.1)
-            self.assert_live_writer_and_reader(
-                port, writer, reader, b"<after-native-reset@example.invalid>")
-            self.assertIsNone(process.poll(), "peer reset stopped the owner")
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                process.wait(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
+        process, port = self.node.start_store_owner(once=False)
+        resetter = self.connect_owner(port)
+        reader = self.connect_owner(port)
+        writer = self.connect_owner(port)
+        # Force an attributable transport reset.  The peer owns this
+        # socket and no shared owner transition is in progress.
+        resetter.sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+        resetter.close(quit=False)
+        time.sleep(0.1)
+        self.assert_live_writer_and_reader(
+            port, writer, reader, b"<after-native-reset@example.invalid>")
+        self.assertIsNone(process.poll(), "peer reset stopped the owner")
 
     def test_local_handler_fault_uses_core_fault_and_preserves_other_clients(self):
-        process, port = self.start_owner(once=False, fault="connectionhandler")
-        _, faulted = self.connect_owner(port)
-        _, reader = self.connect_owner(port)
-        _, writer = self.connect_owner(port)
-        try:
-            faulted.write(b"CAPABILITIES\r\n")
-            self.assertEqual(
-                faulted.readline(),
-                b"403 internal fault; this connection is closed and the server continues\r\n")
-            self.assert_live_writer_and_reader(
-                port, writer, reader, b"<after-native-handler-fault@example.invalid>")
-            self.assertIsNone(process.poll(), "local handler fault stopped the owner")
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                process.wait(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
+        process, port = self.node.start_store_owner(once=False, fault="connectionhandler")
+        faulted = self.connect_owner(port)
+        reader = self.connect_owner(port)
+        writer = self.connect_owner(port)
+        self.assertEqual(
+            faulted.command(b"CAPABILITIES"),
+            b"403 internal fault; this connection is closed and the server continues\r\n")
+        self.assert_live_writer_and_reader(
+            port, writer, reader, b"<after-native-handler-fault@example.invalid>")
+        self.assertIsNone(process.poll(), "local handler fault stopped the owner")
 
     def test_invalid_complete_feed_evidence_is_process_fault(self):
         feed = self.store / "feed"
         feed.mkdir()
         (feed / "bad.fnfd").write_bytes(b"not-a-valid-complete-feed-frame")
-        result = subprocess.run(
-            [str(IMAGE), "--fn", "owner", "run", str(self.store),
-             "0", "1", "8"], cwd=ROOT, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, env=environment(), timeout=180, check=False)
-        self.assertEqual(result.returncode, 4, result.stderr.decode())
+        result = self.node.invoke("owner", "run", self.store, "0", "1", "8",
+                                  expect=EXIT.FAULT)
         self.assertIn(b"invalid complete FNFD evidence", result.stderr)
 
     def test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence(self):
         (self.store / "feed" / "v1").mkdir(parents=True)
-        result = subprocess.run(
-            [str(IMAGE), "--fn", "owner", "run", str(self.store),
-             "0", "1", "8"], cwd=ROOT, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, env=environment(), timeout=180, check=False)
-        self.assertEqual(result.returncode, 4, result.stderr.decode())
+        result = self.node.invoke("owner", "run", self.store, "0", "1", "8",
+                                  expect=EXIT.FAULT)
         self.assertIn(b"empty FNFD v1 namespace", result.stderr)
         self.assertTrue((self.store / "feed" / "v1").is_dir())
 
@@ -348,109 +263,55 @@ class NativeOwnerTests(unittest.TestCase):
                                 "127.0.0.1", "true"], environment(), ROOT)
         self.assertEqual(configured.returncode, 0, configured.stderr.decode())
 
-        process, port = self.start_owner()
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                stream = whole_stream(client)
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"CAPABILITIES\r\n")
-                self.assertTrue(stream.readline().startswith(b"101 "))
-                capabilities = []
-                while True:
-                    line = stream.readline()
-                    if line == b".\r\n":
-                        break
-                    capabilities.append(line)
-                self.assertIn(b"IHAVE\r\n", capabilities)
-                stream.write(b"IHAVE <native-transit@example.invalid>\r\n")
-                self.assertTrue(stream.readline().startswith(b"335 "))
-                # makefile owns a descriptor reference independently of the
-                # socket context manager; close both to actually deliver EOF.
-                stream.close()
-            self.assertEqual(process.wait(timeout=60), 0,
-                             process.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                process.wait(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
+        process, port = self.node.start_store_owner()
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            status, capabilities = client.multiline(b"CAPABILITIES")
+            self.assertTrue(status.startswith(b"101 "))
+            self.assertIn(b"IHAVE\r\n", capabilities.splitlines(keepends=True))
+            self.assertTrue(client.command(b"IHAVE <native-transit@example.invalid>")
+                            .startswith(b"335 "))
+            # EOF, not QUIT: the once-owner finishes on the closed connection.
+            client.close(quit=False)
+        self.node.exited(EXIT.OK, process=process)
 
     def test_once_sigterm_closes_client_with_incomplete_post(self):
-        process, port = self.start_owner()
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                with whole_stream(client) as stream:
-                    self.assertTrue(stream.readline().startswith(b"200 "))
-                    stream.write(b"POST\r\n")
-                    self.assertTrue(stream.readline().startswith(b"340 "))
-                    stream.write(b"From: incomplete")
-                    # Keep the client's descriptor open: this is SIGTERM,
-                    # not the easier ordinary-EOF shutdown path.
-                    process.terminate()
-                    _out, err = process.communicate(timeout=15)
-                    self.assertEqual(process.returncode, 0, err.decode())
-        finally:
-            if process.poll() is None:
-                process.kill()
-                process.communicate(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
+        process, port = self.node.start_store_owner()
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            self.assertTrue(client.command(b"POST").startswith(b"340 "))
+            client.send(b"From: incomplete")
+            # Keep the client's descriptor open: this is SIGTERM,
+            # not the easier ordinary-EOF shutdown path.
+            process.terminate()
+            _out, err = process.communicate(timeout=15)
+            self.assertEqual(process.returncode, EXIT.OK, err.decode())
 
     def test_two_client_uncertainty_fences_before_later_mutation(self):
-        process, port = self.start_owner(once=False, fault="postpublish")
-        first = socket.create_connection(("127.0.0.1", port), timeout=30)
-        second = socket.create_connection(("127.0.0.1", port), timeout=30)
-        self.addCleanup(first.close)
-        self.addCleanup(second.close)
-        one = whole_stream(first)
-        two = whole_stream(second)
+        process, port = self.node.start_store_owner(once=False, fault="postpublish")
+        one = self.connect_owner(port)
+        two = self.connect_owner(port)
+        first, final = one.post(self.article(b"<uncertain-native-owner@example.invalid>"))
+        self.assertTrue(first.startswith(b"340 "))
+        # The poster is told, before the fence closes its connection
+        # (campaign W1, 2026-09-24: it read a bare close).
+        self.assertEqual(
+            final, b"441 posting failed; the outcome is uncertain, do not repost\r\n")
         try:
-            self.assertTrue(one.readline().startswith(b"200 "))
-            self.assertTrue(two.readline().startswith(b"200 "))
-            one.write(b"POST\r\n")
-            self.assertTrue(one.readline().startswith(b"340 "))
-            one.write(self.article(b"<uncertain-native-owner@example.invalid>")
-                      + b".\r\n")
-            # The poster is told, before the fence closes its connection
-            # (campaign W1, 2026-09-24: it read a bare close).
-            self.assertEqual(
-                one.readline(),
-                b"441 posting failed; the outcome is uncertain, do not repost\r\n")
-            try:
-                two.write(b"POST\r\n")
-            except (BrokenPipeError, ConnectionResetError, OSError):
-                pass
-            self.assertEqual(process.wait(timeout=60), 3,
-                             process.stderr.read().decode("utf-8", "replace"))
-            # The already-open second session was shut down by the fence; it
-            # cannot enter fn-owner-chunk after the ambiguous publication.
-            try:
-                later = two.readline()
-            except (BrokenPipeError, ConnectionResetError, OSError):
-                later = b""
-            self.assertFalse(later.startswith(b"340 "), later)
-        finally:
-            one.close()
-            two.close()
-            if process.poll() is None:
-                process.terminate()
-                process.wait(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
+            two.send(b"POST\r\n")
+        except OSError:
+            pass
+        self.node.exited(EXIT.UNCERTAIN, process=process)
+        # The already-open second session was shut down by the fence; it
+        # cannot enter fn-owner-chunk after the ambiguous publication.
+        try:
+            later = two.line()
+        except (OSError, EOFError):
+            later = b""
+        self.assertFalse(later.startswith(b"340 "), later)
 
-        committed = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(self.store), "inspect",
-             "<uncertain-native-owner@example.invalid>"], cwd=ROOT,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment(), timeout=180, check=False)
-        self.assertEqual(committed.returncode, 0, committed.stderr.decode())
-        missing = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(self.store), "inspect",
-             "<later-native-owner@example.invalid>"], cwd=ROOT,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment(), timeout=180, check=False)
-        self.assertNotEqual(missing.returncode, 0)
+        committed = self.inspect("<uncertain-native-owner@example.invalid>")
+        self.assertEqual(committed.returncode, EXIT.OK, committed.stderr.decode())
+        self.assertNotEqual(self.inspect("<later-native-owner@example.invalid>").returncode,
+                            EXIT.OK)
 
     def test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart(self):
         configured = native_peer_add(
@@ -460,22 +321,12 @@ class NativeOwnerTests(unittest.TestCase):
 
         msgid = b"<native-owner-feed-recovery@example.invalid>"
         article = self.article(msgid)
-        process, port = self.start_owner(once=False, fault="postpublish")
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                stream = whole_stream(client)
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"POST\r\n")
-                self.assertTrue(stream.readline().startswith(b"340 "))
-                stream.write(article + b".\r\n")
-            self.assertEqual(process.wait(timeout=60), 3,
-                             process.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                process.wait(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
+        process, port = self.node.start_store_owner(once=False, fault="postpublish")
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            self.assertTrue(client.command(b"POST").startswith(b"340 "))
+            client.send(dot_stuff(article) + b".\r\n")
+            client.close(quit=False)
+        self.node.exited(EXIT.UNCERTAIN, process=process)
 
         journal = self.store / "feed" / "sink.fnfd"
         self.assertTrue(journal.is_file())
@@ -484,62 +335,34 @@ class NativeOwnerTests(unittest.TestCase):
 
         # Opening the same native owner resolves the retained intent against
         # the physically committed Store record before it serves a client.
-        restarted, port = self.start_owner()
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                stream = whole_stream(client)
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"QUIT\r\n")
-                self.assertTrue(stream.readline().startswith(b"205 "))
-            self.assertEqual(restarted.wait(timeout=60), 0,
-                             restarted.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if restarted.poll() is None:
-                restarted.terminate()
-                restarted.wait(timeout=10)
-            restarted.stdout.close()
-            restarted.stderr.close()
+        restarted, port = self.node.start_store_owner()
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            self.assertTrue(client.command(b"QUIT").startswith(b"205 "))
+            client.close(quit=False)
+        self.node.exited(EXIT.OK, process=restarted)
         self.assertGreater(journal.stat().st_size, intent_size)
 
-        inspected = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(self.store), "inspect",
-             msgid.decode("ascii")], cwd=ROOT, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, env=environment(), timeout=180, check=False)
-        self.assertEqual(inspected.returncode, 0, inspected.stderr.decode())
+        inspected = self.inspect(msgid.decode("ascii"))
+        self.assertEqual(inspected.returncode, EXIT.OK, inspected.stderr.decode())
         self.assertTrue(inspected.stdout.endswith(article), inspected.stdout[-80:])
 
     def test_post_is_committed_and_readable_after_owner_exit(self):
-        process, port = self.start_owner()
+        process, port = self.node.start_store_owner()
         article = self.article(
             b"<native-owner@example.invalid>",
             (b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\r\n"
              * 145))
         self.assertGreater(len(article), 8192)
         self.assertLessEqual(len(article), 32768)
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                stream = whole_stream(client)
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"POST\r\n")
-                self.assertTrue(stream.readline().startswith(b"340 "))
-                stream.write(article + b".\r\n")
-                self.assertTrue(stream.readline().startswith(b"240 "))
-                stream.write(b"QUIT\r\n")
-                self.assertTrue(stream.readline().startswith(b"205 "))
-            self.assertEqual(process.wait(timeout=60), 0,
-                             process.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                process.wait(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
-        inspected = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(self.store), "inspect",
-             "<native-owner@example.invalid>"], cwd=ROOT,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment(), timeout=180, check=False)
-        self.assertEqual(inspected.returncode, 0, inspected.stderr.decode())
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            first, final = client.post(article)
+            self.assertTrue(first.startswith(b"340 "))
+            self.assertTrue(final.startswith(b"240 "))
+            self.assertTrue(client.command(b"QUIT").startswith(b"205 "))
+            client.close(quit=False)
+        self.node.exited(EXIT.OK, process=process)
+        inspected = self.inspect("<native-owner@example.invalid>")
+        self.assertEqual(inspected.returncode, EXIT.OK, inspected.stderr.decode())
         # The injection transition prepends the ACL2-produced Path field.  The
         # accepted source article, including the 9 KiB body, remains exact.
         self.assertTrue(inspected.stdout.startswith(
@@ -561,68 +384,44 @@ class NativeOwnerTests(unittest.TestCase):
         # below (books/nntp-post.lisp fn-nntp-post-step, on the :reject event
         # fn-wire-close raised).  That run is in
         # planning/evidence/owner-defects-2026-09-22.md.
-        process, port = self.start_owner(once=False)
+        process, port = self.node.start_store_owner(once=False)
         oversize = self.article(b"<native-owner-oversize@example.invalid>",
                                 b"z" * 70 + b"\r\n")
         oversize += b"y" * 70 + b"\r\n"
         while len(oversize) < 40960:
             oversize += b"y" * 70 + b"\r\n"
         self.assertGreater(len(oversize), 32768)
+        client = self.connect_owner(port)
+        self.assertTrue(client.command(b"POST").startswith(b"340 "))
         try:
-            client = socket.create_connection(("127.0.0.1", port), timeout=30)
-            self.addCleanup(client.close)
-            stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
-            stream.write(b"POST\r\n")
-            self.assertTrue(stream.readline().startswith(b"340 "))
-            try:
-                stream.write(oversize + b".\r\n")
-            except OSError:
-                # The node refused and closed while the body was still going
-                # out.  That is the refusal arriving early, not a failure.
-                pass
-            try:
-                answer = stream.readline()
-            except OSError:
-                answer = b""
-            self.assertEqual(
-                answer,
-                b"441 posting failed; the article exceeds the configured size\r\n",
-                "an oversize article got {!r}".format(answer))
-            client.close()
+            client.send(dot_stuff(oversize) + b".\r\n")
+        except OSError:
+            # The node refused and closed while the body was still going
+            # out.  That is the refusal arriving early, not a failure.
+            pass
+        try:
+            answer = client.line()
+        except (OSError, EOFError):
+            answer = b""
+        self.assertEqual(
+            answer,
+            b"441 posting failed; the article exceeds the configured size\r\n",
+            "an oversize article got {!r}".format(answer))
+        client.close(quit=False)
 
-            # The listener is still there and still serves, which is the whole
-            # point: one long article is not a reason to stop the node.
-            with socket.create_connection(("127.0.0.1", port), timeout=30) as later:
-                after = whole_stream(later)
-                self.assertTrue(after.readline().startswith(b"200 "))
-                after.write(b"QUIT\r\n")
-                self.assertTrue(after.readline().startswith(b"205 "))
-            self.assertIsNone(process.poll(),
-                              "an oversize article stopped the owner")
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                process.wait(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
+        # The listener is still there and still serves, which is the whole
+        # point: one long article is not a reason to stop the node.
+        with Client(port, timeout=30, greeting=(b"200",)) as later:
+            self.assertTrue(later.command(b"QUIT").startswith(b"205 "))
+        self.assertIsNone(process.poll(), "an oversize article stopped the owner")
 
         # Nothing durable came of a refused article.
-        missing = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(self.store), "inspect",
-             "<native-owner-oversize@example.invalid>"], cwd=ROOT,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment(), timeout=180, check=False)
-        self.assertNotEqual(missing.returncode, 0)
+        self.assertNotEqual(self.inspect("<native-owner-oversize@example.invalid>").returncode,
+                            EXIT.OK)
 
     def date_reading(self, port):
-        with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-            stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
-            stream.write(b"DATE\r\n")
-            line = stream.readline()
-            stream.write(b"QUIT\r\n")
-            stream.readline()
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            line = client.command(b"DATE")
         self.assertTrue(line.startswith(b"111 "), line)
         return line.split()[1]
 
@@ -633,22 +432,14 @@ class NativeOwnerTests(unittest.TestCase):
         article = self.article(message_id)
         if not dated:
             article = article.replace(b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n", b"")
-        with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-            stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
-            stream.write(b"POST\r\n")
-            self.assertTrue(stream.readline().startswith(b"340 "))
-            stream.write(article + b".\r\n")
-            self.assertTrue(stream.readline().startswith(b"240 "))
-            stream.write(b"QUIT\r\n")
-            stream.readline()
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            first, final = client.post(article)
+            self.assertTrue(first.startswith(b"340 "))
+            self.assertTrue(final.startswith(b"240 "))
 
     def injection_date(self, message_id):
-        inspected = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(self.store), "inspect",
-             message_id.decode("ascii")], cwd=ROOT, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, env=environment(), timeout=180, check=False)
-        self.assertEqual(inspected.returncode, 0, inspected.stderr.decode())
+        inspected = self.inspect(message_id.decode("ascii"))
+        self.assertEqual(inspected.returncode, EXIT.OK, inspected.stderr.decode())
         found = re.search(br"^Injection-Date: (.*)\r$", inspected.stdout,
                           re.MULTILINE)
         self.assertIsNotNone(found, inspected.stdout[:400])
@@ -663,26 +454,17 @@ class NativeOwnerTests(unittest.TestCase):
         # the owner's CURRENT reading per read, so each submission is injected
         # at its own time (RFC 5537 section 3.4): supplying them is the host's
         # job, and tools/run_owner.py already did it at both points.
-        process, port = self.start_owner(once=False)
-        try:
-            first = self.date_reading(port)
-            self.post_article(port, b"<native-owner-clock-one@example.invalid>",
-                              dated=False)
-            # Past the one-second resolution of the rendered value, so a fresh
-            # reading cannot be mistaken for the pinned one.
-            time.sleep(1.2)
-            second = self.date_reading(port)
-            self.post_article(port, b"<native-owner-clock-two@example.invalid>",
-                              dated=False)
-            self.assertLess(first, second,
-                            "DATE answered {!r} twice".format(first))
-            self.assertIsNone(process.poll(), "the owner stopped mid-run")
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                process.wait(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
+        process, port = self.node.start_store_owner(once=False)
+        first = self.date_reading(port)
+        self.post_article(port, b"<native-owner-clock-one@example.invalid>", dated=False)
+        # Past the one-second resolution of the rendered value, so a fresh
+        # reading cannot be mistaken for the pinned one.
+        time.sleep(1.2)
+        second = self.date_reading(port)
+        self.post_article(port, b"<native-owner-clock-two@example.invalid>", dated=False)
+        self.assertLess(first, second, "DATE answered {!r} twice".format(first))
+        self.assertIsNone(process.poll(), "the owner stopped mid-run")
+        self.node.stop(expect=None, process=process)
 
         one = self.injection_date(b"<native-owner-clock-one@example.invalid>")
         two = self.injection_date(b"<native-owner-clock-two@example.invalid>")

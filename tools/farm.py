@@ -562,6 +562,41 @@ def record_path(root: Path, identifier: str) -> Path:
     return root / "build" / "farm" / f"{identifier}.json"
 
 
+def refuse_a_running_run_in_the_same_tree(host: str, root: Path, remote: Path,
+                                          runner=None) -> None:
+    """Refuse a submit whose mirror would overwrite a tree a run on the same
+    box is still certifying: the push rewrites the sources under the running
+    ACL2 processes (batch AZ, 2026-09-28: a second submit from the same
+    worktree mid-run turned 375 books of the first into include-book errors).
+    The runs are this worktree's records from the last 12 hours on HOST at
+    REMOTE; one whose status file the box has not written is running."""
+    import time
+    horizon = time.time() - 12 * 3600
+    candidates = []
+    for path in sorted((root / "build" / "farm").glob("run-*.json")):
+        try:
+            if path.stat().st_mtime < horizon:
+                continue
+            record = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if (isinstance(record, dict) and record.get("host") == host
+                and str(record.get("remote_path")) == str(remote)):
+            candidates.append(record.get("run_id") or path.stem)
+    if not candidates:
+        return
+    where = remote_quote(remote)
+    script = "; ".join(f"test -s {where}/build/farm/{name}.status || echo RUNNING {name}"
+                       for name in candidates)
+    done = (runner or ssh)(host, script, check=False)
+    running = [line.split()[1] for line in (done.stdout or "").splitlines()
+               if line.startswith("RUNNING ")]
+    if running:
+        raise FarmError(f"no farm run started: {', '.join(running)} is still certifying "
+                        f"in {host}:{remote}; a new push would rewrite its sources "
+                        f"(wait for it, or submit to the other box)")
+
+
 def run_record(root: Path, identifier: str) -> dict:
     """What `submit` recorded for this run, or an empty mapping."""
     try:
@@ -716,6 +751,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
     refuse_unbalanced_sources(root)
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
+    refuse_a_running_run_in_the_same_tree(host, root, remote)
     push(host, root, remote)
     if prepare is not None:
         prepare(host, remote)

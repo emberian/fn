@@ -9,17 +9,14 @@ import hashlib
 import os
 from pathlib import Path
 import subprocess
-import tempfile
 import unittest
 
-from tests.native_process import wait_for_announcement
+from tests.native_harness import EXIT_UNCERTAIN, ROOT, Node, native_image
 
 
-ROOT = Path(__file__).resolve().parent.parent
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
 IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
-DEVELOPER = Path(os.environ.get(
-    "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 CORE = Path(str(IMAGE) + ".core") if IMAGE is not None else None
 IMAGE_SOURCE_SHA = os.environ.get("FN_NATIVE_IMAGE_SOURCE_SHA")
 LAUNCHER_SHA256 = os.environ.get("FN_NATIVE_LAUNCHER_SHA256")
@@ -57,11 +54,8 @@ class NativeAdminTests(unittest.TestCase):
             ACTUAL_LAUNCHER_SHA256, ACTUAL_CORE_SHA256, IMAGE_SOURCE_SHA))
 
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-admin-")
-        self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
-        self.store = self.base / "store"
-        self.config = self.base / "fn.toml"
+        self.node = Node(self, IMAGE, listener=False, control=False)
+        self.base, self.store, self.config = self.node.root, self.node.store_path, self.node.config
         self.payload = self.base / "article"
         self.payload.write_bytes(
             b"From: admin@example.invalid\r\n"
@@ -69,47 +63,16 @@ class NativeAdminTests(unittest.TestCase):
             b"Subject: native admin retained article\r\n"
             b"Message-ID: <native-admin-retained@example.invalid>\r\n"
             b"\r\nnative admin retained article\r\n")
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.env.pop("ACL2_SYSTEM_BOOKS", None)
-        self.env.pop("FN_HOST", None)
         self.native("store", self.store, "init", "fn.letters")
-        self.config.write_text('[store]\npath = "{}"\n'.format(self.store),
-                               encoding="ascii")
 
     def native(self, *args, expected=0, env=None, timeout=60, image=None):
-        result = subprocess.run(
-            [str(image or IMAGE), "--fn", *map(str, args)], cwd=ROOT,
-            env=env or self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=timeout, check=False)
-        self.assertEqual(result.returncode, expected,
-                         "native {} returned {}\nstdout={}\nstderr={}".format(
-                             args, result.returncode, result.stdout.decode("utf-8", "replace"),
-                             result.stderr.decode("utf-8", "replace")))
-        return result
+        return self.node.invoke(*args, expect=expected, env=env, timeout=timeout, image=image)
 
     def operator(self, *words, **kwargs):
         return self.native("operator", self.config, *words, **kwargs)
 
     def config_report(self):
         return self.native("store", self.store, "config").stdout.decode("ascii")
-
-    def start_owner(self, env=None, image=None):
-        process = subprocess.Popen(
-            [str(image or IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=env or self.env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        wait_for_announcement(process, b"LISTENING ", timeout=60)
-        self.addCleanup(self.stop_owner, process)
-        return process
-
-    @staticmethod
-    def stop_owner(process):
-        if process.poll() is None:
-            process.terminate()
-            process.wait(timeout=15)
-        process.stdout.close()
-        process.stderr.close()
 
     def test_create_capacity_retire_reopen_preserves_history(self):
         created = self.operator("group", "create", "fn.admin")
@@ -120,10 +83,10 @@ class NativeAdminTests(unittest.TestCase):
                       capacity.stdout)
 
         message_id = "<native-admin-retained@example.invalid>"
-        owner = self.start_owner()
+        self.node.start(timeout=60)
         self.operator("post", "--message-id", message_id, "--payload",
                       self.payload, "--group", "fn.admin")
-        self.stop_owner(owner)
+        self.node.stop()
         retired = self.operator("group", "retire", "fn.admin")
         self.assertIn(b"configured generation=4 record=00000004.cfg verification=VERIFIED",
                       retired.stdout)
@@ -150,10 +113,10 @@ class NativeAdminTests(unittest.TestCase):
         self.assertIn("generation=2", self.config_report())
 
     def test_running_owner_applies_policy_set_path_identity(self):
-        process = self.start_owner()
+        self.node.start(timeout=60)
         written = self.operator("policy", "set", "path-identity", "live.gate.example.invalid")
         self.assertIn(b"accepted operator policy", written.stderr)
-        self.stop_owner(process)
+        self.node.stop()
         self.assertIn("generation=2", self.config_report())
 
     def test_peer_add_and_remove_use_public_native_admin(self):
@@ -169,37 +132,36 @@ class NativeAdminTests(unittest.TestCase):
         self.assertIn("generation=3", self.config_report())
 
     def test_running_owner_applies_durable_administration(self):
-        process = self.start_owner()
+        self.node.start(timeout=60)
         changed = self.operator("group", "create", "fn.live")
         self.assertIn(b"accepted operator group", changed.stderr)
-        self.stop_owner(process)
+        self.node.stop()
         self.assertIn("generation=2", self.config_report())
 
     def test_running_owner_applies_symmetric_peer_add_and_remove(self):
-        process = self.start_owner()
+        self.node.start(timeout=60)
         added = self.operator("peer", "add", "near", "path-id",
                               "host.example", "119", "*", "*",
                               "198.51.100.5", "true")
         self.assertIn(b"accepted operator peer", added.stderr)
         removed = self.operator("peer", "remove", "near")
         self.assertIn(b"accepted operator peer", removed.stderr)
-        self.stop_owner(process)
+        self.node.stop()
         self.assertIn("generation=3", self.config_report())
 
     def test_live_uncertain_publication_fences_and_recovers(self):
-        fault_env = dict(self.env)
-        fault_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "namespace"
-        process = self.start_owner(env=fault_env, image=DEVELOPER)
-        uncertain = self.operator("group", "create", "fn.live-recover", expected=3)
+        self.node.start(env={"FN_IMMUTABLE_PUBLISH_TEST_FAIL": "namespace"},
+                        image=DEVELOPER, timeout=60)
+        uncertain = self.operator("group", "create", "fn.live-recover",
+                                  expected=EXIT_UNCERTAIN)
         self.assertIn(b"uncertain operator group", uncertain.stderr)
-        self.assertEqual(process.wait(timeout=15), 3)
+        self.node.exited(EXIT_UNCERTAIN, timeout=15)
         self.assertIn("generation=2", self.config_report())
 
     def test_uncertain_publication_recovers_and_sweeps_admitted_stage_residue(self):
-        uncertain_env = dict(self.env)
-        uncertain_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "namespace"
-        uncertain = self.operator("group", "create", "fn.recover",
-                                  expected=3, env=uncertain_env, image=DEVELOPER)
+        uncertain = self.operator("group", "create", "fn.recover", expected=EXIT_UNCERTAIN,
+                                  env={"FN_IMMUTABLE_PUBLISH_TEST_FAIL": "namespace"},
+                                  image=DEVELOPER)
         self.assertIn(b"publication is uncertain", uncertain.stderr)
         self.assertTrue((self.store / "config" / "00000002.cfg").is_file())
 
@@ -220,11 +182,11 @@ class NativeAdminTests(unittest.TestCase):
         # after the first command relinquishes its authority.
         first = subprocess.Popen(
             [str(IMAGE), "--fn", "operator", str(self.config),
-             "group", "create", "fn.race"], cwd=ROOT, env=self.env,
+             "group", "create", "fn.race"], cwd=ROOT, env=self.node.environment(),
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         second = subprocess.Popen(
             [str(IMAGE), "--fn", "operator", str(self.config), "capacity", "4096"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            cwd=ROOT, env=self.node.environment(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         first_stdout, first_stderr = first.communicate(timeout=60)
         second_stdout, second_stderr = second.communicate(timeout=60)
         self.assertIn(first.returncode, (0, 1), first_stderr.decode("utf-8", "replace"))

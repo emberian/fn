@@ -40,13 +40,12 @@ import signal
 import unittest
 
 from tests.campaign import native_cuts
-from tests import test_native_operator_verbs as verbs
+from tests.native_harness import (
+    EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, native_image)
 from tests.native_profile_fixture import ProfileFixture
 
-ROOT = verbs.ROOT
-IMAGE = verbs.IMAGE
-DEVELOPER = verbs.DEVELOPER
-EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = verbs.EXIT_OK, verbs.EXIT_REFUSED, verbs.EXIT_UNCERTAIN
+IMAGE = native_image("FN_NATIVE_HOST")
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 LEFTOVER = "store.init-deadbeef0000"
 
 
@@ -72,7 +71,7 @@ class InitFixture(ProfileFixture):
         self.assertIn(b"transactions=0", status.stdout)
         segment = self.store / "journal" / "000001.log"
         if segment.exists():
-            # Format 9 (books/store-init-log-publication.lisp): the segment is
+            # The record log (books/store-init-log-publication.lisp): the segment is
             # the plan's third file, its ACL2 extent of zeros; no allocator
             # file and no transactions/ are written.
             data = segment.read_bytes()
@@ -133,8 +132,7 @@ class InitCutTests(InitFixture):
     image = DEVELOPER
 
     def run_cut(self, cut, action):
-        env = verbs.environment()
-        env["FN_NATIVE_INIT_FAULT"] = "{}:{}".format(cut.name, action)
+        env = {"FN_NATIVE_INIT_FAULT": "{}:{}".format(cut.name, action)}
         died = self.init_words(env=env)
         text = (died.stdout + died.stderr).decode()
         if action == "kill":
@@ -176,8 +174,7 @@ class InitCutTests(InitFixture):
         init processes killed at the same cut leave differently named
         stages."""
         cut = next(c for c in native_cuts.INIT_PUB_CUTS if c.candidate == "absent")
-        env = verbs.environment()
-        env["FN_NATIVE_INIT_FAULT"] = "{}:kill".format(cut.name)
+        env = {"FN_NATIVE_INIT_FAULT": "{}:kill".format(cut.name)}
         names = []
         for _ in range(2):
             died = self.init_words(env=env)

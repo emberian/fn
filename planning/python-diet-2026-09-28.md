@@ -297,6 +297,46 @@ red in both is `host_check --load` NOT RUN (exit 2, no FN_ACL2 in the
 shell), so the step table is identical before and after.  The lane-head
 timings are longer because hbox was at load 66 to 78 during that run.
 
+## 4b. T2, executed (lane native-harness, 2026-09-28)
+
+One harness, `tests/native_harness.py` (1,153 lines; it absorbed
+`tests/native_process.py`, deleted), and `tools/outcome_codes.py`, the one
+Python copy of the exit classes, read from books/outcome-class.lisp
+`*fn-outcome-codes*` (run_store's constants and the seven hand copies now
+import it).  Layers: drained processes (`start`, `NativeProcess`:
+`announcement`, `next_line`, `stop`, `communicate` that refuses a truncated
+stream); outcomes (`EXIT`, `assert_outcome`, the `acl2_*` value parsers);
+`Node` (scratch tree, fn.toml, operator/store verbs, `start`,
+`start_store_owner`, `try_start`, `stop`, `exited`, `use_tls`, an installed
+launcher, `log_on_failure`); `Client` (octet NNTP, STARTTLS, implicit TLS,
+no line ceiling, linear reads).  Every module now runs at the deployed
+control stack and scrubs every developer selector unless it measures the
+stack itself.  Independent oracles stayed experiments (hand-built
+ClientHello, pipelined STARTTLS, held and flood sockets, scripted transit
+peers, the unread-pipe control, real-process cuts, differentials).
+
+Net Python lines, from base aa52ba4d6 (git diff --numstat per commit):
+
+| group | modules | net |
+|---|---|---:|
+| M0 | the harness itself (+ native_process folded in, 55 importers) | +579 |
+| 1 | operator-verbs family (16) | -416 |
+| 2 | owner / live / friends (13) | -782 |
+| 3 | TLS and control (15) | -970 |
+| 4 | profile, commit log, filing, key statements, mux ... (13) | -849 |
+| 5 | peering and consumer exchange (13) | -865 |
+| 6 | owner, web, public limits, differentials ... (13) | -626 |
+| 7 | the run_store importers and the BP natives (14) | -652 |
+| fixes | hbox-found harness and conversion fixes, outcome_codes | +46 |
+| | **total** | **-4,535** |
+
+Left for T5: the ACL2 bridge session (run_store.Acl2Store,
+frame_bridge, run_bp_ingress.Acl2BpIngress) is still how bp_app, bp_node,
+bp_fragment_node, app_journal, consumer_e2 and recovery derive a content
+identity or a BP frame; no image verb does it yet (an open registry item,
+not a Python function).  deploy_gate and twonode_gate drive the Python host
+and retire with it.
+
 ## 5. Tool obstructions other lanes named (rows of this inventory)
 
 Collected from the `## Obstructions and asks` sections present at

@@ -1,5 +1,5 @@
 """The served POST's process-death and EIO cuts observed at the NNTP wire,
-on the record log (format 9; lane ack-before-barrier, restoring the per-cut
+on the record log (lane ack-before-barrier, restoring the per-cut
 wire probe log-recovery-2 deleted with the per-file route).
 
 A served POST on the record log is a member of the owner's batch quantum
@@ -182,7 +182,7 @@ DUPLICATE = "441 posting failed; this article is already stored here\r\n"
 CONFLICT = ("441 posting failed; a different article with this Message-ID is "
             "stored here\r\n")
 NO_FROM = "441 posting failed; From is required\r\n"
-EXIT_UNCERTAIN = 3
+from tools.outcome_codes import EXIT_UNCERTAIN  # noqa: E402
 
 # The served commit's programs in the host's order (START: the member's
 # reservation, its record's place, its finish; then the batch's append and

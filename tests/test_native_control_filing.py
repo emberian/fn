@@ -14,28 +14,17 @@ Run: FN_NATIVE_HOST=<launcher> python3 -m unittest tests.test_native_control_fil
 
 import json
 import os
-from pathlib import Path
 import shutil
-import socket
 import subprocess
 import sys
-import tempfile
-import time
 import unittest
 
-from tests.native_process import wait_for_announcement
-from tools.wire_stream import whole_stream
+from tests.native_harness import (
+    ROOT, Client, EXIT_OK, Node, environment, executable, free_port, native_image, run,
+    scratch)
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
-IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
-READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+IMAGE = native_image("FN_NATIVE_HOST")
+READY = executable(IMAGE)
 
 
 def article(message_id, subject, control=None, path=None):
@@ -54,68 +43,38 @@ def article(message_id, subject, control=None, path=None):
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native launcher")
 class NativeControlFilingTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-control-")
-        self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.processes = []
-        self.addCleanup(self.stop_all)
+        self.env = environment()
+        self.base = scratch(self)
 
-    def command(self, arguments, expected=0):
-        result = subprocess.run(list(map(str, arguments)), cwd=ROOT, env=self.env,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=180, check=False)
+    def command(self, arguments, expected=EXIT_OK):
+        result = run(arguments, env=self.env)
         self.assertEqual(result.returncode, expected, result)
         return result
 
     def initialize(self, name, groups):
-        root = self.base / name
-        root.mkdir()
-        store, control = root / "store", root / "control.sock"
-        port = free_port()
-        self.command([IMAGE, "--fn", "store", store, "init", *groups])
-        config = root / "fn.toml"
-        config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(store, port, control), encoding="ascii")
-        return {"name": name, "root": root, "config": config, "port": port}
-
-    def start(self, node):
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self.processes.append(process)
-        node["process"] = process
-        wait_for_announcement(process, b"LISTENING ")
+        node = Node(self, IMAGE, name=name)
+        node.store("init", *groups, expect=EXIT_OK)
+        return node
 
     def stop(self, node):
-        process = node.pop("process")
-        process.terminate()
-        _, err = process.communicate(timeout=60)
-        self.processes.remove(process)
-        return err.decode("utf-8", "replace")
-
-    def stop_all(self):
-        for process in self.processes:
-            if process.poll() is None:
-                process.terminate()
-                process.communicate(timeout=60)
+        """Stop NODE's owner; its stderr."""
+        process = node.process
+        node.stop(expect=None)
+        return process.stderr.since(0).decode("utf-8", "replace")
 
     def session(self, node, lines):
-        """One connection: send each command, collect its first reply line."""
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
-            stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
+        """One connection: send each command, collect its first reply line
+        (and a 211/220 block's lines, CRLF removed, dots as served)."""
+        with Client(node.port, timeout=30, greeting=(b"200",)) as client:
             replies = []
             for item in lines:
-                stream.write(item)
-                replies.append(stream.readline())
+                client.send(item)
+                replies.append(client.line())
                 if replies[-1][:3] in (b"211", b"220"):
                     body = []
                     while True:
-                        line = stream.readline()
-                        if line in (b".\r\n", b""):
+                        line = client.line()
+                        if line == b".\r\n":
                             break
                         body.append(line.rstrip(b"\r\n"))
                     replies.append(body)
@@ -134,7 +93,7 @@ class NativeControlFilingTests(unittest.TestCase):
 
     def test_served_post(self):
         node = self.initialize("post", ["fn.test"])
-        self.start(node)
+        node.start()
         cancel = "<c1-cancel-1@example.invalid>"
         refused = self.post(node, article(cancel, "cmsg cancel <t@example.invalid>",
                                           control="cancel <t@example.invalid>"))
@@ -143,9 +102,9 @@ class NativeControlFilingTests(unittest.TestCase):
         refused_absent = self.article_reply(node, cancel)
         fn_test_before = self.listgroup(node, b"fn.test")
         self.stop(node)
-        self.command([IMAGE, "--fn", "operator", node["config"], "group", "create",
+        self.command([IMAGE, "--fn", "operator", node.config, "group", "create",
                       "control.cancel"])
-        self.start(node)
+        node.start()
         cancel2 = "<c1-cancel-2@example.invalid>"
         filed = self.post(node, article(cancel2, "x", control="cancel <t@example.invalid>"))
         in_control = self.listgroup(node, b"control.cancel")
@@ -178,10 +137,10 @@ class NativeControlFilingTests(unittest.TestCase):
 
     def test_transit_ihave(self):
         target = self.initialize("target", ["fn.test"])
-        self.command([IMAGE, "--fn", "operator", target["config"], "peer", "add",
+        self.command([IMAGE, "--fn", "operator", target.config, "peer", "add",
                       "source", "source.example.invalid", "127.0.0.1",
                       str(free_port()), "fn.*", "-", "127.0.0.1", "true"])
-        self.start(target)
+        target.start()
         path = "source.example.invalid!not-for-mail"
 
         def offer(message_id, payload):
@@ -194,18 +153,18 @@ class NativeControlFilingTests(unittest.TestCase):
         cmsg = "<c1-transit-cmsg@example.invalid>"
         ordinary = offer(cmsg, article(cmsg, "cmsg cancel <t@x.invalid>", path=path))
         log_without = self.stop(target)
-        self.command([IMAGE, "--fn", "operator", target["config"], "group", "create",
+        self.command([IMAGE, "--fn", "operator", target.config, "group", "create",
                       "control.cancel"])
-        self.start(target)
+        target.start()
         cancel2 = "<c1-transit-cancel-2@example.invalid>"
         filed = offer(cancel2, article(cancel2, "x", control="cancel <t@x.invalid>",
                                        path=path))
         log_with = self.stop(target)
         # The target's groups are read back through a reader port: a peer
         # address is not a reader, so reopen the same store without the peer.
-        self.command([IMAGE, "--fn", "operator", target["config"], "peer", "remove",
+        self.command([IMAGE, "--fn", "operator", target.config, "peer", "remove",
                       "source"])
-        self.start(target)
+        target.start()
         in_control = self.listgroup(target, b"control.cancel")
         fn_test = self.listgroup(target, b"fn.test")
         absent = self.article_reply(target, cancel)
@@ -256,7 +215,7 @@ class NativeControlFilingTests(unittest.TestCase):
         is accepted into fn.test."""
         openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
         node = self.initialize("author", ["fn.test", "control.cancel"])
-        root = node["root"]
+        root = node.root
         principal, ed_public, ed_secret = (root / "principal.bin",
                                            root / "ed-public.bin", root / "ed-secret.bin")
         principal.write_bytes(bytes([85]) * 32)
@@ -269,7 +228,7 @@ class NativeControlFilingTests(unittest.TestCase):
         self.command([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out", ml_private])
         self.command([openssl, "pkey", "-in", ml_private, "-pubout", "-out", ml_public])
         control = root / "control.sock"
-        self.start(node)
+        node.start()
 
         def author(stem, message_id, control_field):
             source = root / (stem + ".eml")
@@ -281,10 +240,9 @@ class NativeControlFilingTests(unittest.TestCase):
             ed_sig, ml_sig = root / (stem + ".ed"), root / (stem + ".ml")
             ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
             ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
-            return subprocess.run(
-                [str(IMAGE), "--fn", "hybrid-author", str(control), "1", str(source),
-                 str(ed_sig), str(ml_sig), str(ml_public)], cwd=ROOT, env=self.env,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180, check=False)
+            return run(
+                [IMAGE, "--fn", "hybrid-author", str(control), "1", str(source),
+                 str(ed_sig), str(ml_sig), str(ml_public)], env=self.env)
 
         self.command([IMAGE, "--fn", "hybrid-enroll", control, "1", principal,
                       ed_public, ml_public])
@@ -298,7 +256,7 @@ class NativeControlFilingTests(unittest.TestCase):
         self.stop(node)
         # Restart: replay's schema-1 binding (fn-hsig-carried-record-
         # metadatap) must admit the signed cancel's record in control.cancel.
-        self.start(node)
+        node.start()
         replayed = self.listgroup(node, b"control.cancel")
         self.stop(node)
         witness = {
@@ -337,7 +295,7 @@ class NativeControlFilingTests(unittest.TestCase):
         a restart (a discontinuous refresh) publishes the same state."""
         openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
         node = self.initialize("withdraw", ["fn.test", "control.cancel"])
-        root = node["root"]
+        root = node.root
         principal, ed_public, ed_secret = (root / "principal.bin",
                                            root / "ed-public.bin", root / "ed-secret.bin")
         principal.write_bytes(bytes([85]) * 32)
@@ -350,7 +308,7 @@ class NativeControlFilingTests(unittest.TestCase):
         self.command([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out", ml_private])
         self.command([openssl, "pkey", "-in", ml_private, "-pubout", "-out", ml_public])
         control = root / "control.sock"
-        self.start(node)
+        node.start()
 
         def author(stem, message_id, control_field):
             source = root / (stem + ".eml")
@@ -362,32 +320,25 @@ class NativeControlFilingTests(unittest.TestCase):
             ed_sig, ml_sig = root / (stem + ".ed"), root / (stem + ".ml")
             ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
             ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
-            done = subprocess.run(
-                [str(IMAGE), "--fn", "hybrid-author", str(control), "1", str(source),
-                 str(ed_sig), str(ml_sig), str(ml_public)], cwd=ROOT, env=self.env,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180, check=False)
+            done = run(
+                [IMAGE, "--fn", "hybrid-author", str(control), "1", str(source),
+                 str(ed_sig), str(ml_sig), str(ml_public)], env=self.env)
             return done.returncode
 
-        def first_line(stream, command):
-            stream.write(command)
-            line = stream.readline()
-            if line[:3] in (b"211", b"220"):
-                while stream.readline() not in (b".\r\n", b""):
-                    pass
+        def first_line(client, command):
+            line, _ = client.multiline(command)
             return line.decode().strip()
 
         self.command([IMAGE, "--fn", "hybrid-enroll", control, "1", principal,
                       ed_public, ml_public])
         target = "<c3b-target@example.invalid>"
         codes = {"target": author("target", target, None)}
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
-            pinned = whole_stream(client)
-            self.assertTrue(pinned.readline().startswith(b"200 "))
-            pinned_before = first_line(pinned, b"ARTICLE " + target.encode() + b"\r\n")
+        with Client(node.port, timeout=30, greeting=(b"200",)) as pinned:
+            pinned_before = first_line(pinned, b"ARTICLE " + target.encode())
             codes["cancel"] = author("cancel", "<c3b-cancel@example.invalid>",
                                      "cancel " + target)
             fresh = self.article_reply(node, target).decode().strip()
-            pinned_after = first_line(pinned, b"ARTICLE " + target.encode() + b"\r\n")
+            pinned_after = first_line(pinned, b"ARTICLE " + target.encode())
         late = "<c3b-late@example.invalid>"
         codes["early-cancel"] = author("early", "<c3b-early@example.invalid>",
                                        "cancel " + late)
@@ -400,7 +351,7 @@ class NativeControlFilingTests(unittest.TestCase):
         unsigned_reply = self.article_reply(node, unsigned).decode().strip()
         listed = self.listgroup(node, b"fn.test")
         self.stop(node)
-        self.start(node)
+        node.start()
         restarted = {m: self.article_reply(node, m).decode().strip()
                      for m in (target, late, unsigned)}
         listed_after = self.listgroup(node, b"fn.test")
@@ -410,18 +361,10 @@ class NativeControlFilingTests(unittest.TestCase):
                                         b"STAT 1\r\n"])
         withdrawn_numbered = [by_number[2].decode().strip(), by_number[3].decode().strip()]
         withdrawn_msgid = self.article_reply(node, target).decode().strip()
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
-            stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
-            stream.write(b"HDR :fn-control <c3b-cancel@example.invalid>\r\n")
-            hdr_status = stream.readline().decode().strip()
-            hdr_lines = []
-            if hdr_status.startswith("225"):
-                while True:
-                    line = stream.readline()
-                    if line in (b".\r\n", b""):
-                        break
-                    hdr_lines.append(line.decode().rstrip("\r\n"))
+        with Client(node.port, timeout=30, greeting=(b"200",)) as client:
+            status, block = client.multiline(b"HDR :fn-control <c3b-cancel@example.invalid>")
+            hdr_status = status.decode().strip()
+            hdr_lines = block.decode().split("\r\n")[:-1] if hdr_status.startswith("225") else []
         keyring = root / "keyring.json"
         entry = subprocess.run([sys.executable, str(ROOT / "tools" / "fn_verify.py"),
                                 "keyring-entry", str(principal), str(ed_public),
@@ -430,7 +373,7 @@ class NativeControlFilingTests(unittest.TestCase):
         keyring.write_text(json.dumps({"format": "fn-verify-keyring-v1",
                                        "principals": [json.loads(entry.stdout)]}))
         verify_cmd = [str(ROOT / "tools" / "fn_verify.py"), target,
-                      "--node", "127.0.0.1:" + str(node["port"]), "--plain",
+                      "--node", "127.0.0.1:" + str(node.port), "--plain",
                       "--keyring", str(keyring),
                       "--withdrawal", "<c3b-cancel@example.invalid>", "--json"]
         uv = shutil.which("uv")
@@ -492,10 +435,9 @@ class NativeControlFilingTests(unittest.TestCase):
         groups = ["fn.test", "fn.mod.a", "control.cancel"]
         a, b = self.initialize("a", groups), self.initialize("b", groups)
         for node in (a, b):
-            self.command([IMAGE, "--fn", "operator", node["config"], "peer", "add",
+            self.command([IMAGE, "--fn", "operator", node.config, "peer", "add",
                           "source", "source.example.invalid", "127.0.0.1",
                           str(free_port()), "fn.*", "-", "127.0.0.1", "true"])
-            node["control"] = node["root"] / "control.sock"
 
         def signer(label, principal_byte, ed_public_hex, ed_seed_hex):
             root = self.base / ("signer-" + label)
@@ -540,27 +482,17 @@ class NativeControlFilingTests(unittest.TestCase):
             ed_sig, ml_sig = path.with_suffix(".ed"), path.with_suffix(".ml")
             ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
             ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
-            done = subprocess.run(
-                [str(IMAGE), "--fn", "hybrid-author", str(node["control"]),
+            done = run(
+                [IMAGE, "--fn", "hybrid-author", str(node.control),
                  keys["generation"], str(path),
-                 str(ed_sig), str(ml_sig), str(keys["ml_public"])], cwd=ROOT, env=self.env,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180, check=False)
-            codes[node["name"] + " " + message_id] = done.returncode
+                 str(ed_sig), str(ml_sig), str(keys["ml_public"])], env=self.env)
+            codes[node.name + " " + message_id] = done.returncode
 
         def fetch(node, message_id):
-            with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as c:
-                stream = whole_stream(c)
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"ARTICLE " + message_id.encode() + b"\r\n")
-                status = stream.readline()
-                self.assertTrue(status.startswith(b"220"), (node["name"], message_id, status))
-                lines = []
-                while True:
-                    line = stream.readline()
-                    if line in (b".\r\n", b""):
-                        break
-                    lines.append(line[1:] if line.startswith(b".") else line)
-                return b"".join(lines)
+            with Client(node.port, timeout=30, greeting=(b"200",)) as client:
+                status, body = client.multiline("ARTICLE " + message_id)
+                self.assertTrue(status.startswith(b"220"), (node.name, message_id, status))
+                return body
 
         def relay(origin, destination, message_id):
             octets = fetch(origin, message_id)
@@ -575,19 +507,19 @@ class NativeControlFilingTests(unittest.TestCase):
                                for line in relayed.splitlines(keepends=True))
             first, second = self.session(destination, [
                 b"IHAVE " + message_id.encode() + b"\r\n", stuffed + b".\r\n"])
-            codes["relay {}->{} {}".format(origin["name"], destination["name"],
+            codes["relay {}->{} {}".format(origin.name, destination.name,
                                             message_id)] = (first + second).decode().strip()
 
         def reply(node, message_id):
             return self.article_reply(node, message_id).decode().strip()[:3]
 
         for node in (a, b):
-            self.start(node)
+            node.start()
             for keys in (p, q):
-                self.command([IMAGE, "--fn", "hybrid-enroll", node["control"],
+                self.command([IMAGE, "--fn", "hybrid-enroll", node.control,
                               keys["generation"], keys["principal"], keys["ed_public"],
                               keys["ml_public"]])
-        granted = self.command([IMAGE, "--fn", "operator", b["config"], "control", "grant",
+        granted = self.command([IMAGE, "--fn", "operator", b.config, "control", "grant",
                                 "66" * 32, "cancel", "fn.mod.*"])
         witness = {"grant-q-on-b": granted.returncode}
 
@@ -595,16 +527,10 @@ class NativeControlFilingTests(unittest.TestCase):
         t1, c1 = "<cd-t1@example.invalid>", "<cd-c1@example.invalid>"
         author(a, p, t1, "fn.test")
         relay(a, b, t1)
-        with socket.create_connection(("127.0.0.1", b["port"]), timeout=30) as client:
-            pinned = whole_stream(client)
-            self.assertTrue(pinned.readline().startswith(b"200 "))
+        with Client(b.port, timeout=30, greeting=(b"200",)) as pinned:
 
             def pinned_article(message_id):
-                pinned.write(b"ARTICLE " + message_id.encode() + b"\r\n")
-                line = pinned.readline()
-                if line.startswith(b"220"):
-                    while pinned.readline() not in (b".\r\n", b""):
-                        pass
+                line, _ = pinned.multiline("ARTICLE " + message_id)
                 return line.decode().strip()[:3]
             witness["b-pinned-before"] = pinned_article(t1)
             author(a, p, c1, "fn.test", "Control: cancel " + t1)
@@ -626,10 +552,10 @@ class NativeControlFilingTests(unittest.TestCase):
         t2, c2 = "<cd-t2@example.invalid>", "<cd-c2@example.invalid>"
         author(a, p, c2, "fn.test", "Control: cancel " + t2)
         relay(a, b, c2)
-        b["process"].kill()
-        b["process"].communicate(timeout=60)
-        self.processes.remove(b.pop("process"))
-        self.start(b)
+        b.process.kill()
+        b.process.wait(timeout=60)
+        b.process.finish()
+        b.start()
         # A withdraws T2 on arrival, so it cannot serve T2 to relay: the
         # same signed source reaches B through B's own author ingress.
         author(a, p, t2, "fn.test")
@@ -647,11 +573,11 @@ class NativeControlFilingTests(unittest.TestCase):
         witness["b-t3-superseded"], witness["b-s3"] = reply(b, t3), reply(b, s3)
 
         # 5. Revoke Q on B, restart B: the decided record stands.
-        revoked = self.command([IMAGE, "--fn", "operator", b["config"], "control", "revoke",
+        revoked = self.command([IMAGE, "--fn", "operator", b.config, "control", "revoke",
                                 "66" * 32, "cancel", "fn.mod.*"])
         witness["revoke-q-on-b"] = revoked.returncode
         self.stop(b)
-        self.start(b)
+        b.start()
         witness["b-after-revoke-and-restart"] = {
             m: reply(b, m) for m in (t1, u, t2, t3, s3)}
         witness["b-listgroup-fn.mod.a"] = self.listgroup(b, b"fn.mod.a")[0].decode().strip()

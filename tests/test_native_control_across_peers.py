@@ -40,19 +40,15 @@ import itertools
 import json
 import os
 from pathlib import Path
-import socket
 import subprocess
-import tempfile
 import unittest
 
-from tests.native_process import wait_for_announcement
-from tools.wire_stream import whole_stream
+from tests.native_harness import EXIT_OK, ROOT, Client, Node, free_port, native_image, run, scratch
 
-ROOT = Path(__file__).resolve().parent.parent
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
 # tools/hbox_native.sh sets no FN_NATIVE_HOST: take the developer image it
 # built, else the production one.
-IMAGE = (Path(IMAGE_TEXT) if IMAGE_TEXT else
+IMAGE = (native_image("FN_NATIVE_HOST") if IMAGE_TEXT else
          next((p for p in (ROOT / "build" / "fn-host-developer", ROOT / "build" / "fn-host")
                if p.is_file()), None))
 READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
@@ -87,12 +83,6 @@ ORDERS = ("tc", "ct")
 KILLS = ("run", "kill")
 
 
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
-
-
 def source(message_id, newsgroups, extra=None):
     lines = ["From: poster@example.invalid", "Newsgroups: " + newsgroups,
              "Subject: across-peers " + message_id,
@@ -101,72 +91,33 @@ def source(message_id, newsgroups, extra=None):
     return ("\r\n".join(lines) + "\r\n\r\nbody\r\n").encode("ascii")
 
 
-def stuffed(octets):
-    return b"".join((b"." + line if line.startswith(b".") else line)
-                    for line in octets.splitlines(keepends=True))
-
-
 @unittest.skipUnless(READY and OPENSSL, "set FN_NATIVE_HOST and an OpenSSL with ML-DSA-65")
 class NativeControlAcrossPeersTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-across-")
-        self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.processes = []
-        self.addCleanup(self.stop_all)
+        self.base = scratch(self, "fn-native-across-")
 
     # -- nodes -------------------------------------------------------------
-    def command(self, arguments, expected=0):
-        result = subprocess.run(list(map(str, arguments)), cwd=ROOT, env=self.env,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=180, check=False)
+    def command(self, arguments, expected=EXIT_OK):
+        result = run(arguments)
         self.assertEqual(result.returncode, expected, result)
         return result
 
     def initialize(self, name):
-        root = self.base / name
-        root.mkdir()
-        store = root / "store"
-        port = free_port()
-        self.command([IMAGE, "--fn", "store", store, "init", *GROUPS])
-        config = root / "fn.toml"
-        config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(store, port, root / "control.sock"),
-            encoding="ascii")
-        node = {"name": name, "root": root, "config": config, "port": port,
-                "control": root / "control.sock", "starts": 0}
+        node = Node(self, IMAGE, root=self.base / name, name=name)
+        node.store("init", *GROUPS, expect=EXIT_OK)
         if name != "h":
-            self.command([IMAGE, "--fn", "operator", config, "peer", "add", "source",
-                          "source.example.invalid", "127.0.0.1", str(free_port()),
-                          "fn.*", "-", "127.0.0.1", "true"])
+            node.operator("peer", "add", "source", "source.example.invalid", "127.0.0.1",
+                          str(free_port()), "fn.*", "-", "127.0.0.1", "true", expect=EXIT_OK)
         return node
 
     def start(self, node):
-        node["starts"] += 1
-        log = open(node["root"] / "node-{}.log".format(node["starts"]), "wb")
-        self.addCleanup(log.close)
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=log)
-        self.processes.append(process)
-        node["process"] = process
-        wait_for_announcement(process, b"LISTENING ")
+        node.start()
 
     def kill(self, node):
         """SIGKILL: no shutdown path runs; the restart is a recovery."""
-        process = node.pop("process")
-        process.kill()
-        process.communicate(timeout=60)
-        self.processes.remove(process)
-
-    def stop_all(self):
-        for process in self.processes:
-            if process.poll() is None:
-                process.terminate()
-                process.communicate(timeout=60)
+        node.process.kill()
+        node.process.wait(timeout=60)
+        node.process.finish()
 
     # -- signers -----------------------------------------------------------
     def signer(self, label, principal_byte, ed_public_hex, ed_seed_hex, generation):
@@ -195,49 +146,35 @@ class NativeControlAcrossPeersTests(unittest.TestCase):
         ed_sig, ml_sig = path.with_suffix(".ed"), path.with_suffix(".ml")
         ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
         ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
-        self.command([IMAGE, "--fn", "hybrid-author", node["control"], keys["generation"],
+        self.command([IMAGE, "--fn", "hybrid-author", node.control, keys["generation"],
                       path, ed_sig, ml_sig, keys["ml_public"]])
 
     # -- NNTP --------------------------------------------------------------
     def connect(self, node):
-        client = socket.create_connection(("127.0.0.1", node["port"]), timeout=30)
+        client = Client(node.port, timeout=30, greeting=(b"200",))
         self.addCleanup(client.close)
-        stream = whole_stream(client)
-        self.assertTrue(stream.readline().startswith(b"200 "))
-        return stream
+        return client
 
     @staticmethod
-    def first_line(stream, command):
-        stream.write(command)
-        line = stream.readline()
+    def first_line(client, command):
+        client.send(command)
+        line = client.line()
         if line[:3] == b"220" or (line[:3] == b"211" and command.startswith(b"LISTGROUP")):
-            while stream.readline() not in (b".\r\n", b""):
-                pass
+            client.block()
         return line.decode().strip()
 
     def answer(self, node, message_id):
-        stream = self.connect(node)
-        return self.first_line(stream, b"ARTICLE " + message_id.encode() + b"\r\n")
+        return self.first_line(self.connect(node), b"ARTICLE " + message_id.encode() + b"\r\n")
 
     def fetch(self, node, message_id):
-        stream = self.connect(node)
-        stream.write(b"ARTICLE " + message_id.encode() + b"\r\n")
-        status = stream.readline()
-        self.assertTrue(status.startswith(b"220"), (node["name"], message_id, status))
-        lines = []
-        while True:
-            line = stream.readline()
-            if line in (b".\r\n", b""):
-                break
-            lines.append(line[1:] if line.startswith(b".") else line)
-        return b"".join(lines)
+        status, body = self.connect(node).multiline(b"ARTICLE " + message_id.encode())
+        self.assertTrue(status.startswith(b"220"), (node.name, message_id, status))
+        return body
 
-    def post(self, stream, payload):
-        stream.write(b"POST\r\n")
-        first = stream.readline()
+    def post(self, client, payload):
+        first, final = client.post(payload)
         self.assertTrue(first.startswith(b"340"), first)
-        stream.write(stuffed(payload) + b".\r\n")
-        return stream.readline().decode().strip()
+        return final.decode().strip()
 
     def relay(self, octets, destination, message_id, codes):
         head, _, body = octets.partition(b"\r\n\r\n")
@@ -247,13 +184,12 @@ class NativeControlAcrossPeersTests(unittest.TestCase):
         tail = old[0].split(b":", 1)[1].strip() if old else b"not-for-mail"
         relayed = (b"\r\n".join([b"Path: source.example.invalid!" + tail] + rest)
                    + b"\r\n\r\n" + body)
-        stream = self.connect(destination)
-        stream.write(b"IHAVE " + message_id.encode() + b"\r\n")
-        first = stream.readline().decode().strip()
-        if first.startswith("335"):
-            stream.write(stuffed(relayed) + b".\r\n")
-            first += " / " + stream.readline().decode().strip()
-        codes["relay {} {}".format(destination["name"], message_id)] = first
+        offer, final = self.connect(destination).post(
+            relayed, verb=b"IHAVE " + message_id.encode())
+        first = offer.decode().strip()
+        if final is not None:
+            first += " / " + final.decode().strip()
+        codes["relay {} {}".format(destination.name, message_id)] = first
 
     # -- the matrix --------------------------------------------------------
     def run_matrix(self, basis):
@@ -270,13 +206,13 @@ class NativeControlAcrossPeersTests(unittest.TestCase):
         for node in (h, a, b):
             self.start(node)
             for keys in (p, q):
-                self.command([IMAGE, "--fn", "hybrid-enroll", node["control"],
+                self.command([IMAGE, "--fn", "hybrid-enroll", node.control,
                               keys["generation"], keys["principal"], keys["ed_public"],
                               keys["ml_public"]])
         for name, namespaces in GRANTS.items():
             for namespace in namespaces:
-                self.command([IMAGE, "--fn", "operator", nodes[name]["config"], "control",
-                              "grant", "66" * 32, "cancel", namespace])
+                nodes[name].operator("control", "grant", "66" * 32, "cancel", namespace,
+                                     expect=EXIT_OK)
 
         # Every case's two articles are authored on H and fetched before any
         # relay: H always takes the target first, and its answers are not
@@ -351,8 +287,8 @@ class NativeControlAcrossPeersTests(unittest.TestCase):
         # Every grant revoked, both receivers SIGKILLed and restarted.
         for name, namespaces in GRANTS.items():
             for namespace in namespaces:
-                self.command([IMAGE, "--fn", "operator", nodes[name]["config"], "control",
-                              "revoke", "66" * 32, "cancel", namespace])
+                nodes[name].operator("control", "revoke", "66" * 32, "cancel", namespace,
+                                     expect=EXIT_OK)
         for node in (a, b):
             self.kill(node)
             self.start(node)
@@ -411,7 +347,7 @@ class NativeControlAcrossPeersTests(unittest.TestCase):
                         "1")
         node = self.initialize("h")
         self.start(node)
-        self.command([IMAGE, "--fn", "hybrid-enroll", node["control"], p["generation"],
+        self.command([IMAGE, "--fn", "hybrid-enroll", node.control, p["generation"],
                       p["principal"], p["ed_public"], p["ml_public"]])
         return node, p
 

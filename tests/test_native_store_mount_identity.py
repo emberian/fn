@@ -16,37 +16,17 @@ decides what the node should answer.
 """
 import os
 from pathlib import Path
-import select
 import shutil
-import signal
-import socket
 import subprocess
 import tempfile
 import unittest
 
+from tests.native_harness import (
+    EXIT_OK, EXIT_REFUSED, ROOT, Node, environment, native_image, requires, run)
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
-EXIT_OK, EXIT_REFUSED = 0, 1
+
+IMAGE = native_image("FN_NATIVE_HOST")
 RECORD = "filesystem-identity.fnmi"
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    return env
-
-
-def executable(image):
-    return image.is_file() and os.access(image, os.X_OK)
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def same_filesystem(a, b):
@@ -74,7 +54,7 @@ class MountIdentitySourceTests(unittest.TestCase):
                         install.index("(fnn-owner-recover-core store "))
 
 
-@unittest.skipUnless(executable(IMAGE), "native image not built")
+@requires(IMAGE)
 class MountIdentityNativeTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-mount-identity-")
@@ -86,9 +66,7 @@ class MountIdentityNativeTests(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.other, True)
 
     def fn(self, *words, timeout=180):
-        return subprocess.run([str(IMAGE), "--fn", *map(str, words)], cwd=ROOT,
-                              env=environment(), stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, timeout=timeout, check=False)
+        return run([IMAGE, "--fn", *words], timeout=timeout)
 
     def expect(self, result, code, what):
         self.assertEqual(result.returncode, code, "%s: %s%s" % (
@@ -107,7 +85,7 @@ class MountIdentityNativeTests(unittest.TestCase):
         self.expect(self.fn("store", copy, "recover"), EXIT_OK, "recover the copy")
 
     def test_rebind_on_the_same_filesystem_opens_a_log_store(self):
-        # Every store init makes is a format-9 log store, which has no
+        # Every store init makes is a log store, which has no
         # allocation-frontier file (its frontier is derived from the log).
         # The rebind loaded one unconditionally and faulted on every such
         # store (lane catalog-scan, 2026-09-27: the hbox fixtures could not
@@ -221,13 +199,7 @@ class MountIdentityNativeTests(unittest.TestCase):
         # it opens offline with a warning, and its owner does not start.
         text = self.expect(self.fn("store", store, "recover"), EXIT_OK, "removed")
         self.assertIn("warning: store filesystem unrecorded: ", text)
-        config = self.tmp / "fn.toml"
-        config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-                          '[control]\npath = "{}"\n'.format(store, free_port(), self.tmp / "c.sock"),
-                          encoding="ascii")
-        started = subprocess.run([str(IMAGE), "--fn", "operator", str(config), "run"],
-                                 cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, timeout=180, check=False)
+        started = Node(self, IMAGE, root=self.tmp).operator("run")
         text = self.expect(started, EXIT_REFUSED, "start without a record")
         self.assertIn("store filesystem unrecorded: ", text)
         rebound = self.expect(self.fn("store", store, "rebind-filesystem"), EXIT_OK, "rebind")
@@ -238,41 +210,9 @@ class MountIdentityNativeTests(unittest.TestCase):
     # --- PKT-648: the durability policy at the owner's start -----------------
 
     def operator_node(self, where):
-        store = where / "store"
-        config = where / "fn.toml"
-        config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-                          '[control]\npath = "{}"\n'.format(store, free_port(), where / "c.sock"),
-                          encoding="ascii")
-        self.expect(self.fn("operator", config, "init", "fn.test"), EXIT_OK, "operator init")
-        return config
-
-    def start(self, config):
-        process = subprocess.Popen([str(IMAGE), "--fn", "operator", str(config), "run"],
-                                   cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE, bufsize=0)
-        self.addCleanup(self.reap, process)
-        for _ in range(4):
-            if not select.select([process.stdout], [], [], 180)[0]:
-                break
-            line = process.stdout.readline()
-            if line.startswith(b"LISTENING "):
-                return process, None
-            if process.poll() is not None or not line:
-                break
-        process.wait(timeout=60)
-        return process, process.stderr.read().decode(errors="replace")
-
-    def reap(self, process):
-        if process.poll() is None:
-            process.send_signal(signal.SIGTERM)
-            try:
-                process.wait(timeout=30)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=10)
-        for stream in (process.stdout, process.stderr):
-            if stream and not stream.closed:
-                stream.close()
+        node = Node(self, IMAGE, root=where)
+        self.expect(node.operator("init", "fn.test"), EXIT_OK, "operator init")
+        return node
 
     def memory_filesystem(self):
         with open("/proc/self/mountinfo", "rb") as table:
@@ -293,28 +233,28 @@ class MountIdentityNativeTests(unittest.TestCase):
     def test_a_policy_store_on_a_memory_filesystem_is_refused_at_start_then_allowed(self):
         if not os.path.exists("/proc/self/mountinfo") or not self.memory_filesystem():
             self.skipTest("the temporary directory is not on tmpfs here")
-        config = self.operator_node(self.tmp)
+        node = self.operator_node(self.tmp)
         # status and health warn; an ordinary open does not.  An operator
         # store made without a mission has policy 0.
-        status = self.expect(self.fn("operator", config, "status"), EXIT_OK, "status")
+        status = self.expect(node.operator("status"), EXIT_OK, "status")
         self.assertIn("warning: store filesystem tmpfs at ", status)
-        recovered = self.expect(self.fn("operator", config, "recover"), EXIT_OK, "recover")
+        recovered = self.expect(node.operator("recover"), EXIT_OK, "recover")
         self.assertNotIn("warning: store filesystem", recovered)
-        process, err = self.start(config)
+        process, err = node.try_start()
         self.assertIsNone(err, "a policy-0 store on tmpfs starts")
-        self.reap(process)
+        node.stop(expect=None, process=process)
         # The operator requires durability: the start is refused by name.
-        on = self.expect(self.fn("operator", config, "store", "rebind-filesystem",
-                                 "--storage-require-durable", "on"), EXIT_OK, "policy on")
+        on = self.expect(node.operator("store", "rebind-filesystem",
+                                       "--storage-require-durable", "on"), EXIT_OK, "policy on")
         self.assertIn("storage-require-durable=on", on)
-        process, err = self.start(config)
+        process, err = node.try_start()
         self.assertEqual(process.returncode, EXIT_REFUSED, err)
         self.assertIn("start refused: store filesystem tmpfs at ", err)
         self.assertIn("this store requires durable storage (storage-require-durable)", err)
         # And accepts the risk again.
-        self.expect(self.fn("operator", config, "store", "rebind-filesystem",
-                            "--storage-require-durable", "off"), EXIT_OK, "policy off")
-        process, err = self.start(config)
+        self.expect(node.operator("store", "rebind-filesystem",
+                                  "--storage-require-durable", "off"), EXIT_OK, "policy off")
+        process, err = node.try_start()
         self.assertIsNone(err, "policy 0 again starts")
 
 

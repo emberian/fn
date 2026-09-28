@@ -303,6 +303,22 @@
                                             (fn-heap-machine-octets observations))))
   :hints (("Goal" :in-theory (disable fn-heap-storeless-decide fn-bs-profile-admittedp))))
 
+; An accepted decision's megabytes are the figure's, within the machine.
+(local
+ (defthm fn-heap-decide-heap-is-the-figure-within-the-machine
+   (implies (and (fn-bs-profile-admittedp profile)
+                 (equal (car (fn-heap-decide profile core nursery observations)) :heap))
+            (and (equal (fn-heap-decision-mb (fn-heap-decide profile core nursery observations))
+                        (fn-heap-mb-of (fn-heap-figure-octets profile core nursery)))
+                 (<= (* *fn-heap-mib* (fn-heap-decision-mb (fn-heap-decide profile core nursery
+                                                                           observations)))
+                     (fn-heap-machine-octets observations))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-heap-decide)
+                                   (fn-heap-figure-octets fn-heap-mb-of fn-heap-machine-octets
+                                    fn-bs-profile-admittedp fn-heap-profile-word
+                                    fn-heap-storeless-decide))))))
+
 ; KEYSTONE (PRF-198, re-derived by reservation-after-flip).  An accepted
 ; figure holds every store the profile admits: in the dynamic space the
 ; launcher passes (the decision's megabytes), any store of USED payload
@@ -316,26 +332,28 @@
          (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
     (implies (and (fn-bs-profile-admittedp profile)
                   (equal (car decision) :heap)
-                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
-                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
-                  (<= (* *fn-sbud-membership-octets* (nfix m))
+                  (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
                       (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
                   (<= (nfix ou) (nfix (fn-bs-profile-max-history-octets profile)))
                   (<= (nfix on) (nfix (fn-bs-profile-max-transactions profile))))
              (and (<= (fn-heap-store-need profile core used n m ou on
                                           (fn-heap-nursery-trigger d nursery))
                       d)
                   (<= d (fn-heap-machine-octets observations)))))
-  :hints (("Goal" :in-theory (e/d () (fn-heap-profile-word fn-bs-profile-admittedp
-                                      fn-bs-profile-max-history-octets
-                                      fn-bs-profile-max-transactions
-                                      fn-heap-machine-octets fn-heap-storeless-decide))
-           :use ((:instance fn-heap-mb-of-covers
+  :hints (("Goal" :in-theory (e/d (fn-heap-figure-octets)
+                                  (fn-heap-decide fn-heap-store-need fn-heap-nursery-trigger
+                                   fn-heap-mb-of fn-heap-store-figure-octets fn-heap-machine-octets
+                                   fn-heap-decision-mb fn-bs-profile-admittedp
+                                   fn-bs-profile-max-history-octets fn-bs-profile-max-transactions))
+           :use (fn-heap-decide-heap-is-the-figure-within-the-machine
+                 (:instance fn-heap-mb-of-covers
                             (octets (fn-heap-figure-octets profile core nursery)))
                  (:instance fn-heap-store-figure-holds-every-store
                             (observed nil)
                             (d (* *fn-heap-mib*
-                                  (fn-heap-mb-of (fn-heap-figure-octets profile core nursery)))))))))
+                                  (fn-heap-decision-mb
+                                   (fn-heap-decide profile core nursery observations)))))))))
 
 ; The refusal is exact and names both numbers: an admitted profile is refused
 ; exactly when its figure exceeds the observed machine.
@@ -595,10 +613,9 @@
          (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
     (implies (and (fn-bs-profile-admittedp profile)
                   (equal (car decision) :heap)
-                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
-                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
-                  (<= (* *fn-sbud-membership-octets* (nfix m))
+                  (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
                       (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
                   (<= (nfix ou) (fn-heap-open-octets-bound
                                  profile (fn-heap-operation-observation action observed)))
                   (<= (nfix on) (fn-heap-open-records-bound
@@ -662,8 +679,10 @@
 ;; per-record state and the streamed open (lane reservation-figure), and the
 ;; memberships charged to the history budget (lane membership-budget: at
 ;; most H / 320 = 26,214 of them, 16 MiB, where 16 groups a record counted
-;; 160 MiB).  At its bounds (T = 16,384 records, H = 8 MiB) the retained
-;; state alone is 401 MiB (2 x 16,384 x 12 KiB + 2 x 320 x 26,214), and a
+;; 160 MiB), and since lane f8-reservation the payload and the memberships
+;; charged against the one H together (at most 2 H, not 3 H).  At its bounds
+;; (T = 16,384 records, H = 8 MiB) the retained state alone is 401 MiB
+;; (2 x 16,384 x 12 KiB + 2 H, the empty arena's page, the handles), and a
 ;; full replay of such a store adds 108 MiB (one chunk and one record as
 ;; lists, the input's vectors, 1 KiB a record); a `run' sizes the open by the
 ;; store on disk (`fn-heap-operation-decide', :run).  The articles in flight
@@ -675,7 +694,7 @@
 ;; (OpenBSD's default login class; the friend's machine has about 2 GB).
 (defthm fn-heap-small-run-base-of-an-empty-store
   (equal (fn-heap-store-base-octets *fn-heap-small-profile* core '(0 . 0))
-         (+ (fn-heap-core-dynamic core) 618005418))
+         (+ (fn-heap-core-dynamic core) 609616074))
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 

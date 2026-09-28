@@ -1,24 +1,20 @@
 """Native FNWF handler: real Store binding, restart replay, and EIO cuts."""
 
-import os
-from pathlib import Path
-import shutil
 import subprocess
-import tempfile
 import unittest
 
-from tools import run_store
+from tests.native_harness import (
+    acl2_octets, environment, executable, native_image, run, scratch)
+from tools import run_store  # the ACL2 bridge session (Acl2Store, metadata): no image verb yet
 
-
-ROOT = Path(__file__).resolve().parent.parent
+IMAGE = native_image("FN_NATIVE_DTN_DEVELOPER_HOST")
 
 
 class NativeApplicationJournalTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.image = Path(os.environ.get("FN_NATIVE_DTN_DEVELOPER_HOST",
-                                        ROOT / "build" / "fn-host-dtn-developer"))
-        if not os.access(cls.image, os.X_OK):
+        cls.image = IMAGE
+        if not executable(cls.image):
             raise unittest.SkipTest(
                 f"DTN developer native image missing: {cls.image} "
                 "(FN_NATIVE_PROFILE=developer FN_NATIVE_BUILD=host/native/build-dtn.lisp "
@@ -26,7 +22,7 @@ class NativeApplicationJournalTests(unittest.TestCase):
             )
 
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="fn-native-app-journal-"))
+        self.tmp = scratch(self, "fn-native-app-journal-")
         self.store = self.tmp / "store"
         self.payload = self.tmp / "payload"
         self.msgid = "<native-workflow@example.invalid>"
@@ -34,9 +30,6 @@ class NativeApplicationJournalTests(unittest.TestCase):
             (f"Message-ID: {self.msgid}\r\nNewsgroups: fn.test\r\n\r\n"
              "native workflow application payload\r\n").encode("ascii")
         )
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.env.pop("ACL2_SYSTEM_BOOKS", None)
         initialized = self.invoke("store", self.store, "init", "fn.test")
         self.assertEqual(initialized.returncode, 0, initialized.stderr)
         posted = self.invoke(
@@ -45,20 +38,12 @@ class NativeApplicationJournalTests(unittest.TestCase):
         )
         self.assertEqual(posted.returncode, 0, posted.stderr)
 
-    def tearDown(self):
-        shutil.rmtree(self.tmp)
-
     def invoke(self, *args, env=None):
-        return subprocess.run(
-            [str(self.image), "--fn", *map(str, args)],
-            cwd=ROOT,
-            env=env or self.env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=30,
-            check=False,
-            text=True,
-        )
+        """`IMAGE --fn ARGS...`; ENV names extra variables (a cut's selector)."""
+        result = run([self.image, "--fn", *args], env=environment(env), timeout=30)
+        return subprocess.CompletedProcess(
+            result.args, result.returncode, result.stdout.decode("utf-8", "replace"),
+            result.stderr.decode("utf-8", "replace"))
 
     def initialize_workflow(self, journal):
         result = self.invoke(
@@ -160,7 +145,7 @@ class NativeApplicationJournalTests(unittest.TestCase):
     def test_stage_eio_is_refused_before_namespace_attempt(self):
         journal = self.tmp / "stage-eio"
         self.initialize_workflow(journal)
-        injected = dict(self.env)
+        injected = {}
         injected["FN_APP_JOURNAL_TEST_FAIL"] = "stage"
         cut = self.enqueue(journal, env=injected)
         self.assertEqual(cut.returncode, 1, cut.stderr)
@@ -173,7 +158,7 @@ class NativeApplicationJournalTests(unittest.TestCase):
     def test_locked_but_fenced_store_cannot_publish(self):
         journal = self.tmp / "store-fenced"
         self.initialize_workflow(journal)
-        injected = dict(self.env)
+        injected = {}
         injected["FN_APP_JOURNAL_TEST_FENCE_STORE"] = "before-publish"
         cut = self.enqueue(journal, env=injected)
         self.assertEqual(cut.returncode, 3, cut.stderr)
@@ -190,7 +175,7 @@ class NativeApplicationJournalTests(unittest.TestCase):
     def test_read_only_store_lock_cannot_publish(self):
         journal = self.tmp / "store-read-only"
         self.initialize_workflow(journal)
-        injected = dict(self.env)
+        injected = {}
         injected["FN_APP_JOURNAL_TEST_READ_ONLY_STORE"] = "1"
         cut = self.enqueue(journal, env=injected)
         self.assertEqual(cut.returncode, 1, cut.stderr)
@@ -203,7 +188,7 @@ class NativeApplicationJournalTests(unittest.TestCase):
     def test_publication_observer_sees_reported_acl2_state(self):
         journal = self.tmp / "observer-order"
         self.initialize_workflow(journal)
-        injected = dict(self.env)
+        injected = {}
         injected["FN_APP_JOURNAL_TEST_OBSERVER"] = "assert-reported"
         accepted = self.enqueue(journal, env=injected)
         self.assertEqual(accepted.returncode, 0, accepted.stderr)
@@ -213,7 +198,7 @@ class NativeApplicationJournalTests(unittest.TestCase):
     def test_namespace_eio_is_uncertain_despite_visible_final(self):
         journal = self.tmp / "namespace-eio"
         self.initialize_workflow(journal)
-        injected = dict(self.env)
+        injected = {}
         injected["FN_APP_JOURNAL_TEST_FAIL"] = "namespace"
         cut = self.enqueue(journal, env=injected)
         self.assertEqual(cut.returncode, 3, cut.stderr)
@@ -260,7 +245,7 @@ class NativeApplicationJournalTests(unittest.TestCase):
             form = "(fn-bpa-encode (fn-bpa-make-request "
             form += " ".join(self.text_form(field) for field in fields)
             form += " '(" + " ".join(map(str, article)) + ")))"
-            request = run_store.acl2_octets(bridge.call(form))
+            request = acl2_octets(bridge.call(form))
         finally:
             bridge.close()
 

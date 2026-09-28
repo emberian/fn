@@ -81,6 +81,11 @@
 (include-book "../books/owner-commit-ocl")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
+; Defect M3: host/native/feed-service.lisp fnn-feed-drop-link asks
+; fn-flb-lost for the redial delay and logs fn-flb-drop-line for every drop.
+(include-book "../books/feed-link-backoff")
+; `peer feed NAME pause|resume': fn-owner-feed-peers answers fn-fps-live-names.
+(include-book "../books/feed-pause")
 ; Step 8 (catalog slice): the served read over the catalog and the catalog at
 ; the owner's entries (books/served-catalog-chain, books/served-catalog-owner).
 (include-book "../books/served-catalog-owner")
@@ -717,7 +722,7 @@
 ; and of the file (fn-scka-publication-setup: the
 ; decision by name over the whole file's octets before anything is
 ; allocated).  LOG is the record log's position at the capture's S (a
-; format-9 owner rotated the log there; NIL otherwise): the F row carries it.
+; owner rotated the log there; NIL otherwise): the F row carries it.
 ; (list SETUP NEXT N ARUN), N the canonical payload count (the
 ; next base's H0), ARUN (N COUNT STATE0) for fnn-checkpoint-write-steps.
 ; The arena is read at handles below the count the capture saw: the owner
@@ -1059,7 +1064,7 @@
 ;; (fn-rcon-ocfg-io-is-ocfg-step, no hypothesis): its :record-directory arm
 ;; pairs the staged record's sequence and transaction id through the
 ;; concrete record dispatchers instead of fn-record-p's octet lists.
-;; On a format-9 store the member's reservation and its place in the log are
+;; On a store the member's reservation and its place in the log are
 ;; the two composite steps of books/owner-log-route.lisp (fn-olr-ocfg-reserve,
 ;; fn-olr-ocfg-order: the file route's success sequences, by definition).
 (defun fn-owner-io (operation result state)
@@ -3481,9 +3486,16 @@
   (let ((state (fn-owner-step (list :feeds (fn-owner-config state)) fn-arena state)))
     (value (fn-own-feed-names (fn-own-feeds (fn-owner-core state))))))
 
+; The peers the outbound feed worker links (host/native/feed-service.lisp
+; fnn-feed-refresh-links): the owner's feed table without the peers whose
+; feed the operator paused (`peer feed NAME pause', books/feed-pause.lisp
+; `fn-fps-live-names' over the live configuration).  A paused peer's link is
+; closed and not dialled; its queue, pull and inbound admission stay.
 (defun fn-owner-feed-peers (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-own-feed-names (fn-own-feeds (fn-owner-core state)))))
+  (value (fn-fps-live-names
+          (fn-own-feed-names (fn-own-feeds (fn-owner-core state)))
+          (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))
 
 (defun fn-owner-feed-record (peer-octets state)
   (declare (xargs :stobjs state :mode :program))

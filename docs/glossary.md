@@ -17,8 +17,8 @@
 | Pin | A reason an object is presently ineligible for reclamation. |
 | Commit | Atomic publication of a local transaction after the required durable barrier. |
 | Transaction | One local state change containing all of its allocation and obligation effects. |
-| Journal | Authoritative local sequence of transaction records. In store format 9, the only format, it is the record log: chained segment files `journal/NNNNNN.log`, the highest the active one. |
-| Checkpoint | A recoverable committed state tied to a journal frontier and format version. In format 9 it names the first log segment it does not cover; the segments below it are dropped once it is installed (`store compact`, `store checkpoint`, the owner's automatic checkpoint). |
+| Journal | Authoritative local sequence of transaction records. In the one store format it is the record log: chained segment files `journal/NNNNNN.log`, the highest the active one. |
+| Checkpoint | A recoverable committed state tied to a journal frontier and format version. It names the first log segment it does not cover; the segments below it are dropped once it is installed (`store compact`, `store checkpoint`, the owner's automatic checkpoint). |
 | Projection | A view computed from retained facts and local policy, such as an NNTP group. |
 | Incarnation | An origin's sequence namespace; prevents a restored node from silently reusing sequence identities. |
 | Fact-set convergence | Same validated portable facts after receiving the same inputs under stated validation assumptions. |

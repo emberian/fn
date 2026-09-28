@@ -24,29 +24,21 @@ checks the code against that table's class, never against a family table:
 import os
 from pathlib import Path
 import re
-import signal
-import socket
-import subprocess
 import time
 import unittest
 
-try:
-    from tests import test_native_operator_verbs as verbs
-except ImportError:
-    import test_native_operator_verbs as verbs
+from tests import test_native_operator_verbs as verbs
+from tests.native_harness import EXIT, Node, free_port, native_image, requires
 
-DEVELOPER, IMAGE, ROOT = verbs.DEVELOPER, verbs.IMAGE, verbs.ROOT
-environment, executable, free_port = verbs.environment, verbs.executable, verbs.free_port
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
+IMAGE = native_image("FN_NATIVE_HOST")
+ROOT = verbs.ROOT
 
-# specs/host.md "CLI exit codes": one code per class.
-ACCEPTED, REFUSED, FENCED, FAULT, USAGE, INTERRUPTED, NOT_CONNECTED = 0, 1, 3, 4, 5, 6, 7
+# specs/host.md "CLI exit codes": one code per class, ACL2's table.
+ACCEPTED, REFUSED, FENCED, FAULT, USAGE, INTERRUPTED, NOT_CONNECTED = (
+    EXIT.OK, EXIT.REFUSED, EXIT.UNCERTAIN, EXIT.FAULT, EXIT.USAGE, EXIT.INTERRUPTED,
+    EXIT.NOT_CONNECTED)
 OLD = Path(os.environ["FN_OLD_NATIVE_HOST"]) if os.environ.get("FN_OLD_NATIVE_HOST") else None
-
-
-def run(*argv, image=None, timeout=180):
-    return subprocess.run([str(image or IMAGE), "--fn", *map(str, argv)],
-                          cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, timeout=timeout, check=False)
 
 
 def _cbor_head(major, n):
@@ -115,8 +107,7 @@ class OutcomeAlgebraSourceTests(unittest.TestCase):
         self.assertNotIn("*fn-nop-no-store-exit*", book)
 
 
-@unittest.skipUnless(executable(IMAGE) and executable(DEVELOPER),
-                     "build/fn-host and build/fn-host-developer are required")
+@requires(IMAGE, DEVELOPER)
 class OutcomeAlgebraNativeTests(verbs.NativeOperatorUncertainOutcomeTests):
     """One case per class per family, on the production and developer images.
 
@@ -135,14 +126,11 @@ class OutcomeAlgebraNativeTests(verbs.NativeOperatorUncertainOutcomeTests):
         self.expect(self.operator("init", "fn.test"), REFUSED, "refused operator init")
         self.expect(self.operator("init"), USAGE, "usage operator init")
         self.expect(self.operator("status"), ACCEPTED)
-        empty = self.root / "empty.toml"
-        empty.write_text('[store]\npath = "{}"\n'.format(self.root / "never"), encoding="ascii")
-        absent = subprocess.run([str(IMAGE), "--fn", "operator", str(empty), "status"],
-                                cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, timeout=180, check=False)
+        empty = Node(self, IMAGE, root=self.root.parent / "empty", listener=False, control=False)
+        absent = empty.operator("status")
         self.expect(absent, REFUSED, "refused operator status NO-STORE", "run: fn operator")
         # A durable authority file that is no frame: the host's fault class.
-        # (Format 9 holds no allocation frontier file; the profile frame is
+        # (The store holds no allocation frontier file; the profile frame is
         # read at every open, and octets that are no sealed frame are the
         # open's (:rejected), never a named refusal.)
         (self.store / "config.json").write_bytes(b"not a frame\n")
@@ -150,19 +138,21 @@ class OutcomeAlgebraNativeTests(verbs.NativeOperatorUncertainOutcomeTests):
 
     # -- store ------------------------------------------------------------
     def test_store_family(self):
-        self.expect(run("store", self.store, "status", image=DEVELOPER), ACCEPTED)
-        self.expect(run("store", self.store, "inspect", "<absent@example.invalid>",
-                        image=DEVELOPER), REFUSED)
-        self.expect(run("store", self.store, "bogus", image=DEVELOPER), USAGE)
-        self.expect(run("store", self.root / "nowhere", "status", image=DEVELOPER), FAULT)
+        self.expect(self.node.store("status", image=DEVELOPER), ACCEPTED)
+        self.expect(self.node.store("inspect", "<absent@example.invalid>",
+                                    image=DEVELOPER), REFUSED)
+        self.expect(self.node.store("bogus", image=DEVELOPER), USAGE)
+        self.expect(self.node.invoke("store", self.root / "nowhere", "status",
+                                     image=DEVELOPER), FAULT)
         payload = self.root / "fenced.eml"
         payload.write_bytes(self.article("<outcome-fenced@example.invalid>"))
-        self.expect(run("store", self.store, "post", "<outcome-fenced@example.invalid>",
-                        payload, "-", "postpublish", "fn.test", image=DEVELOPER), FENCED)
+        self.expect(self.node.store("post", "<outcome-fenced@example.invalid>",
+                                    payload, "-", "postpublish", "fn.test", image=DEVELOPER),
+                    FENCED)
 
     # -- control: the D25 conflict word over the owner's socket -------------
     def conflict_case(self, client_image, expected_code, *words):
-        owner = self.start_owner(IMAGE)
+        self.node.start()
         message_id = "<outcome-conflict@example.invalid>"
         self.expect(self.post(message_id), ACCEPTED, "accepted operator post")
         self.expect(self.post(message_id), ACCEPTED, "DUPLICATE")
@@ -171,15 +161,13 @@ class OutcomeAlgebraNativeTests(verbs.NativeOperatorUncertainOutcomeTests):
         answer = self.operator("post", "--message-id", message_id, "--payload", str(changed),
                                "--group", "fn.test", image=client_image, timeout=120)
         text = self.expect(answer, expected_code, *words)
-        owner.send_signal(signal.SIGTERM)
-        self.assertEqual(owner.wait(timeout=60), ACCEPTED,
-                         owner.stderr.read().decode("utf-8", "replace"))
+        self.node.stop()
         return text
 
     def test_control_conflict_is_a_refusal_named_conflict(self):
         self.conflict_case(IMAGE, REFUSED, "refused operator post CONFLICT")
 
-    @unittest.skipUnless(OLD and executable(OLD), "FN_OLD_NATIVE_HOST names an image before :conflict")
+    @unittest.skipUnless(OLD and verbs.executable(OLD), "FN_OLD_NATIVE_HOST names an image before :conflict")
     def test_an_old_client_reads_conflict_as_uncertain(self):
         self.conflict_case(OLD, FENCED, "uncertain operator post")
 
@@ -190,12 +178,12 @@ class OutcomeAlgebraNativeTests(verbs.NativeOperatorUncertainOutcomeTests):
         adu.write_bytes(b"an application data unit\n")
         port = free_port()
         wall = str(int((time.time() - 946684800) * 1000))
-        sent = run("bp", "send", "127.0.0.1", port, adu, journal, "-", "-", "-", "-",
+        sent = self.node.invoke("bp", "send", "127.0.0.1", port, adu, journal, "-", "-", "-", "-",
                    "-", "-", "-", wall, "0")
         self.expect(sent, NOT_CONNECTED)
         wires = sorted(journal.rglob("*.wire"))
         self.assertTrue(wires, "bp send kept no authored wire under %s" % journal)
-        decoded = run("bp", "decode", wires[0])
+        decoded = self.node.invoke("bp", "decode", wires[0])
         text = decoded.stdout.decode("utf-8", "replace")
         match = re.search(r"BP decode outcome=(\S+) reason=(\S+)", text)
         self.assertIsNotNone(match, text + decoded.stderr.decode("utf-8", "replace"))
@@ -214,7 +202,7 @@ class OutcomeAlgebraNativeTests(verbs.NativeOperatorUncertainOutcomeTests):
         path = self.root / "clockless.bundle"
         created = int((time.time() - 946684800) * 1000)
         path.write_bytes(bundle_without_age(created, 3600 * 1000))
-        decoded = run("bp", "decode", path)
+        decoded = self.node.invoke("bp", "decode", path)
         text = decoded.stdout.decode("utf-8", "replace") + decoded.stderr.decode("utf-8", "replace")
         self.assertIn("BP decode outcome=uncertain", text)
         self.assertEqual(decoded.returncode, REFUSED, text)

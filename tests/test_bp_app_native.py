@@ -1,57 +1,31 @@
 """Two native endpoints exercise BP request -> owner Store -> FNRJ receipt."""
 
-import os
 import re
-from pathlib import Path
-import select
-import shutil
-import socket
-import subprocess
-import tempfile
-import time
 import unittest
 
+from tests.native_harness import (
+    EXIT, ROOT, Node, acl2_octets, environment, free_port, native_image, requires,
+    run, scratch, start)
 from tools import run_bp_ingress, run_store
 
-
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
-from tools.wire_stream import whole_stream
-
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
-# connection lost after it existed is exit 6 (connection-local: the job stays
-# and is re-offered; no recovery); exit 3 stays the fence.
-LOST = 6
+# connection lost after it existed is EXIT.INTERRUPTED (connection-local:
+# the job stays and is re-offered; no recovery); EXIT.UNCERTAIN stays the fence.
+LOST = EXIT.INTERRUPTED
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    return env
-
-
+@requires(IMAGE)
 class NativeBpApplicationTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        if not os.access(IMAGE, os.X_OK):
-            raise unittest.SkipTest(f"native host image missing: {IMAGE}")
-
     def setUp(self):
-        self.temp = Path(tempfile.mkdtemp(prefix="fn-native-bp-app-"))
-        self.addCleanup(shutil.rmtree, self.temp)
+        self.temp = scratch(self, "fn-native-bp-app-")
         self.store = self.temp / "store"
         self.receiver_spool = self.temp / "receiver-spool"
         self.sender_spool = self.temp / "sender-spool"
         self.receipts = self.temp / "receipts"
         self.request_path = self.temp / "request.adu"
-        self.env = environment()
         initialized = self.invoke("store", self.store, "init", "fn.test")
-        self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
+        self.assertEqual(initialized.returncode, EXIT.OK, initialized.stderr.decode())
         self.enroll_sender_boundary()
 
         self.msgid = b"<native-bp-app@example.invalid>"
@@ -83,7 +57,7 @@ class NativeBpApplicationTests(unittest.TestCase):
                 + " ".join(text(value) for value in fields)
                 + " '" + bridge.literal(self.article) + "))"
             )
-            self.request_path.write_bytes(run_store.acl2_octets(bridge.call(form)))
+            self.request_path.write_bytes(acl2_octets(bridge.call(form)))
         finally:
             bridge.close()
 
@@ -98,72 +72,58 @@ class NativeBpApplicationTests(unittest.TestCase):
         (books/bp-session-admission.lisp) binds the boundary to the port
         the receiver listens on, so every receiver listens on `self.port'.
         """
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
-            reservation.bind(("127.0.0.1", 0))
-            self.port = reservation.getsockname()[1]
+        self.port = free_port()
         config = self.temp / "receiver-fn.toml"
         config.write_text(f'[store]\npath = "{self.store}"\n', encoding="ascii")
         policy = self.invoke("operator", config, "policy", "set",
                              "path-identity", "receiver.bp.gate.invalid")
-        self.assertEqual(policy.returncode, 0, policy.stderr.decode())
+        self.assertEqual(policy.returncode, EXIT.OK, policy.stderr.decode())
         trusted = self.invoke(
             "operator", config, "bp-boundary", "add", "sender-boundary",
             "sender.bp.gate.invalid", "dtn://sender/", self.port,
             "fn.test", 32768, 16)
-        self.assertEqual(trusted.returncode, 0, trusted.stderr.decode())
+        self.assertEqual(trusted.returncode, EXIT.OK, trusted.stderr.decode())
 
     def invoke(self, *args, env=None, timeout=180):
-        return subprocess.run(
-            [str(IMAGE), "--fn", *map(str, args)], cwd=ROOT,
-            env=env or self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=timeout, check=False,
-        )
+        return run([IMAGE, "--fn", *args], env=environment(env), timeout=timeout)
 
     def start_receiver(self, pause=False, fail_decision_namespace=False,
                        port=None):
         port = self.port if port is None else port
-        env = dict(self.env)
+        env = {}
         if pause:
             env["FN_BP_APP_TEST_PAUSE_AFTER_DECISION"] = "1"
         if fail_decision_namespace:
             env["FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE"] = "1"
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "bp-app", "receive", str(port),
-             str(self.receiver_spool), str(self.store), str(self.receipts),
-             "dtn://receiver/", "dtn://sender/", "dtn://receiver/",
+        process = start(
+            [IMAGE, "--fn", "bp-app", "receive", port, self.receiver_spool, self.store,
+             self.receipts, "dtn://receiver/", "dtn://sender/", "dtn://receiver/",
              "native-policy", "dtn://receiver/", "1", "8"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0,
-        )
-        line = wait_for_announcement(process, b"BP APP LISTENING ")
-        if not line.startswith(b"BP APP LISTENING "):
-            self.fail(
-                f"receiver failed: {line!r} "
-                f"{stop_and_diagnostics(process)}"
-            )
+            cwd=ROOT, env=environment(env))
+        self.addCleanup(process.stop, 10)
+        line = process.announcement(b"BP APP LISTENING ")
         actual_port = int(line.rsplit(b" ", 1)[1])
         if port:
             self.assertEqual(actual_port, port)
         return process, actual_port
 
     def start_sender(self, port):
-        return subprocess.Popen(
-            [str(IMAGE), "--fn", "bp", "send", "127.0.0.1", str(port),
-             str(self.request_path), str(self.sender_spool), "dtn://sender/",
-             "dtn://receiver/", "3600000", "2", "32", "1048576", "1",
-             "-", "0"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        process = start(
+            [IMAGE, "--fn", "bp", "send", "127.0.0.1", port, self.request_path,
+             self.sender_spool, "dtn://sender/", "dtn://receiver/", "3600000", "2", "32",
+             "1048576", "1", "-", "0"],
+            cwd=ROOT, env=environment())
+        self.addCleanup(process.stop, 10)
+        return process
 
     def store_verb(self, *args):
         done = self.invoke("store", self.store, *args)
-        self.assertEqual(done.returncode, 0, (done.stdout, done.stderr))
+        self.assertEqual(done.returncode, EXIT.OK, (done.stdout, done.stderr))
         return done.stdout
 
     def recovered_counts(self):
         """(committed transactions, articles, retention pins) of the Store,
-        from the node's own read-only opens of the format-9 record log:
+        from the node's own read-only opens of the record log:
         `store PATH status' (fn-nls-report's transactions= word is
         fn-sbud-used, the file kernel's records; articles= the accepted
         articles) and `store PATH retention' (pins=, the replayed ledger's
@@ -192,32 +152,32 @@ class NativeBpApplicationTests(unittest.TestCase):
         sender_store = self.temp / "sender-store"
         workflow = self.temp / "sender-workflow"
         initialized = self.invoke("store", sender_store, "init", "fn.test")
-        self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
+        self.assertEqual(initialized.returncode, EXIT.OK, initialized.stderr.decode())
         payload = self.temp / "sender-article"
         payload.write_bytes(self.article)
         posted = self.invoke(
             "store", sender_store, "post", self.msgid.decode("ascii"),
             payload, "-", "-", "fn.test",
         )
-        self.assertEqual(posted.returncode, 0, posted.stderr.decode())
+        self.assertEqual(posted.returncode, EXIT.OK, posted.stderr.decode())
         workflow_init = self.invoke(
             "app-journal", "workflow-init", sender_store, workflow,
             "dtn://sender/", "dtn://receiver/", "native-policy",
             "dtn://receiver/", "3600000", "origin-native", "wire-auth",
         )
-        self.assertEqual(workflow_init.returncode, 0, workflow_init.stderr.decode())
+        self.assertEqual(workflow_init.returncode, EXIT.OK, workflow_init.stderr.decode())
         enqueued = self.invoke(
             "app-journal", "workflow-enqueue", sender_store, workflow,
             "1", "0", "work-native-bp", self.msgid.decode("ascii"),
             "forward-native-bp", "dtn://receiver/", "native-policy",
             "terms-native",
         )
-        self.assertEqual(enqueued.returncode, 0, enqueued.stderr.decode())
+        self.assertEqual(enqueued.returncode, EXIT.OK, enqueued.stderr.decode())
         undertaken = self.invoke(
             "bp-obligation", "undertake", sender_store, workflow,
             "work-native-bp", "3",
         )
-        self.assertEqual(undertaken.returncode, 0, undertaken.stderr.decode())
+        self.assertEqual(undertaken.returncode, EXIT.OK, undertaken.stderr.decode())
         return sender_store, workflow
 
     def test_application_receipt_releases_forward_pin_only_after_durable_record(self):
@@ -225,45 +185,32 @@ class NativeBpApplicationTests(unittest.TestCase):
         before = self.invoke(
             "bp-obligation", "status", sender_store, workflow, "work-native-bp",
         )
-        self.assertEqual(before.returncode, 0, before.stderr.decode())
+        self.assertEqual(before.returncode, EXIT.OK, before.stderr.decode())
         self.assertIn(b"pinned=yes", before.stdout)
 
         receiver, port = self.start_receiver()
         sender = self.start_sender(port)
-        try:
-            sender_out, sender_err = sender.communicate(timeout=180)
-            receiver_out, receiver_err = receiver.communicate(timeout=180)
-            self.assertEqual(sender.returncode, 0, sender_err.decode())
-            self.assertEqual(receiver.returncode, 0, receiver_err.decode())
-            self.assertIn(b"BP application accepted", receiver_out)
-            self.assertIn(b"BP summary accepted=1", sender_out)
-        finally:
-            if receiver.poll() is None:
-                receiver.kill()
-                receiver.wait(timeout=10)
-            if sender.poll() is None:
-                sender.kill()
-                sender.wait(timeout=10)
-            receiver.stdout.close()
-            receiver.stderr.close()
-            sender.stdout.close()
-            sender.stderr.close()
+        sender_out, sender_err = sender.communicate(timeout=180)
+        receiver_out, receiver_err = receiver.communicate(timeout=180)
+        self.assertEqual(sender.returncode, EXIT.OK, sender_err.decode())
+        self.assertEqual(receiver.returncode, EXIT.OK, receiver_err.decode())
+        self.assertIn(b"BP application accepted", receiver_out)
+        self.assertIn(b"BP summary accepted=1", sender_out)
 
         receipts = sorted((self.sender_spool / "receive-evidence").glob("*.adu"))
         self.assertEqual(len(receipts), 1)
-        fault_env = dict(self.env)
-        fault_env["FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE"] = "1"
+        fault_env = {"FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE": "1"}
         uncertain = self.invoke(
             "bp-obligation", "receipt", sender_store, workflow, receipts[0],
             "2", "0", "trusted-local-observation-v0", env=fault_env,
         )
-        self.assertEqual(uncertain.returncode, 3, uncertain.stderr.decode())
+        self.assertEqual(uncertain.returncode, EXIT.UNCERTAIN, uncertain.stderr.decode())
         self.assertIn(b"publication is uncertain", uncertain.stderr)
 
         recovered = self.invoke(
             "bp-obligation", "status", sender_store, workflow, "work-native-bp",
         )
-        self.assertEqual(recovered.returncode, 0, recovered.stderr.decode())
+        self.assertEqual(recovered.returncode, EXIT.OK, recovered.stderr.decode())
         self.assertIn(b"status=receipted", recovered.stdout)
         self.assertIn(b"pinned=no", recovered.stdout)
 
@@ -278,23 +225,15 @@ class NativeBpApplicationTests(unittest.TestCase):
         receiver, port = self.start_receiver(port=0)
         self.assertNotEqual(port, self.port)
         sender = self.start_sender(port)
-        try:
-            sender_out, sender_err = sender.communicate(timeout=180)
-            receiver_out, receiver_err = receiver.communicate(timeout=180)
-            self.assertEqual(sender.returncode, 1, sender_err.decode())
-            self.assertEqual(receiver.returncode, 1, receiver_err.decode())
-            self.assertIn(
-                b"refused bp-application xfer=0 result=refused "
-                b"reason=no-principal\n", receiver_err)
-            self.assertIn(b"BP summary accepted=0", sender_out)
-            self.assertNotIn(b"BP application accepted", receiver_out)
-        finally:
-            for process in (receiver, sender):
-                if process.poll() is None:
-                    process.kill()
-                    process.wait(timeout=10)
-                process.stdout.close()
-                process.stderr.close()
+        sender_out, sender_err = sender.communicate(timeout=180)
+        receiver_out, receiver_err = receiver.communicate(timeout=180)
+        self.assertEqual(sender.returncode, EXIT.REFUSED, sender_err.decode())
+        self.assertEqual(receiver.returncode, EXIT.REFUSED, receiver_err.decode())
+        self.assertIn(
+            b"refused bp-application xfer=0 result=refused "
+            b"reason=no-principal\n", receiver_err)
+        self.assertIn(b"BP summary accepted=0", sender_out)
+        self.assertNotIn(b"BP application accepted", receiver_out)
         self.assertEqual(self.recovered_counts()[1], 0)
 
     def request_for(self, article, msgid):
@@ -317,23 +256,15 @@ class NativeBpApplicationTests(unittest.TestCase):
                 + " ".join(text(value) for value in fields)
                 + " '" + bridge.literal(article) + "))"
             )
-            return run_store.acl2_octets(bridge.call(form))
+            return acl2_octets(bridge.call(form))
         finally:
             bridge.close()
 
     def exchange(self):
         receiver, port = self.start_receiver()
         sender = self.start_sender(port)
-        try:
-            sender_out, sender_err = sender.communicate(timeout=180)
-            receiver_out, receiver_err = receiver.communicate(timeout=180)
-        finally:
-            for process in (receiver, sender):
-                if process.poll() is None:
-                    process.kill()
-                    process.wait(timeout=10)
-                process.stdout.close()
-                process.stderr.close()
+        sender_out, sender_err = sender.communicate(timeout=180)
+        receiver_out, receiver_err = receiver.communicate(timeout=180)
         return (sender.returncode, receiver.returncode, sender_out, receiver_out,
                 receiver_err)
 
@@ -365,38 +296,23 @@ class NativeBpApplicationTests(unittest.TestCase):
         refused = self.exchange()
         config = self.temp / "receiver-fn.toml"
         created = self.invoke("operator", config, "group", "create", "control.cancel")
-        self.assertEqual(created.returncode, 0, created.stderr.decode())
+        self.assertEqual(created.returncode, EXIT.OK, created.stderr.decode())
         filed_id = b"<native-bp-cancel-2@example.invalid>"
         self.request_path.write_bytes(self.request_for(control_article(filed_id),
                                                        filed_id))
         self.sender_spool = self.temp / "sender-spool-2"
         filed = self.exchange()
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
-            reservation.bind(("127.0.0.1", 0))
-            reader_port = reservation.getsockname()[1]
-        reader_config = self.temp / "reader-fn.toml"
-        reader_config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, reader_port,
-                                              self.temp / "reader-control.sock"),
-            encoding="ascii")
-        reader = subprocess.Popen([str(IMAGE), "--fn", "operator", str(reader_config),
-                                   "run"], cwd=ROOT, env=self.env,
-                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        try:
-            wait_for_announcement(reader, b"LISTENING ")
-            with socket.create_connection(("127.0.0.1", reader_port), timeout=30) as c:
-                stream = whole_stream(c)
-                stream.readline()
-                answers = {}
-                for group in (b"control.cancel", b"fn.test"):
-                    stream.write(b"GROUP " + group + b"\r\n")
-                    answers[group.decode()] = stream.readline().decode().strip()
-                for msgid in (cancel_id, filed_id):
-                    stream.write(b"STAT " + msgid + b"\r\n")
-                    answers[msgid.decode()] = stream.readline().decode().strip()
-        finally:
-            stop_and_diagnostics(reader)
+        reader = Node(self, IMAGE, root=self.temp / "reader")
+        reader.store_path = self.store
+        reader.write_config()
+        reader.start()
+        answers = {}
+        with reader.session(timeout=30, greeting=None) as client:
+            for group in (b"control.cancel", b"fn.test"):
+                answers[group.decode()] = client.command(b"GROUP " + group).decode().strip()
+            for msgid in (cancel_id, filed_id):
+                answers[msgid.decode()] = client.command(b"STAT " + msgid).decode().strip()
+        reader.stop(expect=None)
         witness = {"refused": [refused[0], refused[1],
                                refused[4].decode("utf-8", "replace")[-400:]],
                    "filed": [filed[0], filed[1],
@@ -406,9 +322,9 @@ class NativeBpApplicationTests(unittest.TestCase):
         # Refused, and nothing stored (the STAT below).  The receiver's
         # refusal line does not yet carry the filing plan's reason (it reads
         # reason=none): test_bp_filing_refusal_names_its_reason, PKT-443.
-        self.assertEqual((refused[0], refused[1]), (1, 1), witness)
+        self.assertEqual((refused[0], refused[1]), (EXIT.REFUSED, EXIT.REFUSED), witness)
         self.assertIn(b"refused bp-application", refused[4], witness)
-        self.assertEqual((filed[0], filed[1]), (0, 0), witness)
+        self.assertEqual((filed[0], filed[1]), (EXIT.OK, EXIT.OK), witness)
         self.assertIn(b"BP application accepted", filed[3], witness)
         self.assertTrue(answers["control.cancel"].startswith("211 1 "), witness)
         self.assertTrue(answers["fn.test"].startswith("211 0 "), witness)
@@ -432,7 +348,7 @@ class NativeBpApplicationTests(unittest.TestCase):
                    b"\r\nbody over BP\r\n")
         self.request_path.write_bytes(self.request_for(article, msgid))
         refused = self.exchange()
-        self.assertEqual(refused[1], 1)
+        self.assertEqual(refused[1], EXIT.REFUSED)
         self.assertIn(b"reason=control-not-filed", refused[4])
 
     def test_unsupported_receipt_profile_refuses_before_file_read(self):
@@ -444,7 +360,7 @@ class NativeBpApplicationTests(unittest.TestCase):
             "bp-obligation", "receipt", sender_store, workflow,
             missing_receipt, "2", "0", "unsigned-lab",
         )
-        self.assertEqual(refused.returncode, 1, refused.stderr.decode())
+        self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stderr.decode())
         self.assertIn(b"authentication profile is unsupported", refused.stderr)
         self.assertEqual(before, {p.name: p.read_bytes()
                                   for p in (workflow / "records").glob("*.wf")})
@@ -452,71 +368,33 @@ class NativeBpApplicationTests(unittest.TestCase):
             "bp-obligation", "status", sender_store, workflow,
             "work-native-bp",
         )
-        self.assertEqual(status.returncode, 0, status.stderr.decode())
+        self.assertEqual(status.returncode, EXIT.OK, status.stderr.decode())
         self.assertIn(b"pinned=yes", status.stdout)
 
     def test_lost_receipt_restart_replays_without_second_acceptance(self):
         receiver, port = self.start_receiver(pause=True)
         sender = self.start_sender(port)
-        try:
-            deadline = time.time() + 180
-            saw_decision = False
-            while time.time() < deadline:
-                ready = select.select([receiver.stdout], [], [], 1)[0]
-                if ready:
-                    line = receiver.stdout.readline()
-                    if b"BP APP DECISION DURABLE" in line:
-                        saw_decision = True
-                        break
-                if receiver.poll() is not None:
-                    break
-            if not saw_decision:
-                receiver.kill()
-                receiver.wait(timeout=30)
-                self.fail(receiver.stderr.read().decode("utf-8", "replace"))
-            receiver.kill()
-            receiver.wait(timeout=30)
-            sender.wait(timeout=60)
-        finally:
-            if receiver.poll() is None:
-                receiver.kill()
-                receiver.wait(timeout=10)
-            if sender.poll() is None:
-                sender.kill()
-                sender.wait(timeout=10)
-            receiver.stdout.close()
-            receiver.stderr.close()
-            sender.stdout.close()
-            sender.stderr.close()
+        receiver.output_until(b"BP APP DECISION DURABLE", timeout=180)
+        receiver.kill()
+        receiver.wait(timeout=30)
+        sender.wait(timeout=60)
 
         before = self.recovered_counts()
         self.assertEqual(before, (1, 1, 1))
 
         receiver2, port2 = self.start_receiver()
         sender2 = self.start_sender(port2)
-        try:
-            sender_out, sender_err = sender2.communicate(timeout=180)
-            receiver_out, receiver_err = receiver2.communicate(timeout=180)
-            self.assertEqual(sender2.returncode, 0, sender_err.decode())
-            self.assertEqual(receiver2.returncode, 0, receiver_err.decode())
-            self.assertIn(b"BP application accepted", receiver_out)
-            self.assertIn(b"BP summary accepted=1", sender_out)
-        finally:
-            if receiver2.poll() is None:
-                receiver2.kill()
-                receiver2.wait(timeout=10)
-            if sender2.poll() is None:
-                sender2.kill()
-                sender2.wait(timeout=10)
-            receiver2.stdout.close()
-            receiver2.stderr.close()
-            sender2.stdout.close()
-            sender2.stderr.close()
+        sender_out, sender_err = sender2.communicate(timeout=180)
+        receiver_out, receiver_err = receiver2.communicate(timeout=180)
+        self.assertEqual(sender2.returncode, EXIT.OK, sender_err.decode())
+        self.assertEqual(receiver2.returncode, EXIT.OK, receiver_err.decode())
+        self.assertIn(b"BP application accepted", receiver_out)
+        self.assertIn(b"BP summary accepted=1", sender_out)
 
         self.assertEqual(self.recovered_counts(), before)
         inspected = self.invoke("store", self.store, "inspect",
                                 self.msgid.decode("ascii"))
-        self.assertEqual(inspected.returncode, 0, inspected.stderr.decode())
+        self.assertEqual(inspected.returncode, EXIT.OK, inspected.stderr.decode())
         self.assertEqual(inspected.stdout, self.article)
 
         result_files = sorted(
@@ -527,7 +405,7 @@ class NativeBpApplicationTests(unittest.TestCase):
             "app-journal", "receipt-replay", self.store, self.receipts,
             self.request_path,
         )
-        self.assertEqual(replay.returncode, 0, replay.stderr.decode())
+        self.assertEqual(replay.returncode, EXIT.OK, replay.stderr.decode())
         receipt = result_files[0].read_bytes()
         self.assertIn(("hex=" + receipt.hex()).encode("ascii"), replay.stdout)
         # A BP request is peer transit (specs/bp-node-machine.md, the
@@ -543,23 +421,11 @@ class NativeBpApplicationTests(unittest.TestCase):
     def test_visible_decision_namespace_eio_fences_before_receipt(self):
         receiver, port = self.start_receiver(fail_decision_namespace=True)
         sender = self.start_sender(port)
-        try:
-            sender_out, sender_err = sender.communicate(timeout=180)
-            receiver_out, receiver_err = receiver.communicate(timeout=180)
-            self.assertEqual(receiver.returncode, 3, receiver_err.decode())
-            self.assertEqual(sender.returncode, LOST, sender_err.decode())
-            self.assertNotIn(b"BP application accepted", receiver_out)
-        finally:
-            if receiver.poll() is None:
-                receiver.kill()
-                receiver.wait(timeout=10)
-            if sender.poll() is None:
-                sender.kill()
-                sender.wait(timeout=10)
-            receiver.stdout.close()
-            receiver.stderr.close()
-            sender.stdout.close()
-            sender.stderr.close()
+        sender_out, sender_err = sender.communicate(timeout=180)
+        receiver_out, receiver_err = receiver.communicate(timeout=180)
+        self.assertEqual(receiver.returncode, EXIT.UNCERTAIN, receiver_err.decode())
+        self.assertEqual(sender.returncode, LOST, sender_err.decode())
+        self.assertNotIn(b"BP application accepted", receiver_out)
 
         # link(2) succeeded before the injected directory barrier EIO, so the
         # exact decision is visible even though this process cannot call it
@@ -578,24 +444,12 @@ class NativeBpApplicationTests(unittest.TestCase):
         # without a second Store acceptance or retention pin.
         receiver2, port2 = self.start_receiver()
         sender2 = self.start_sender(port2)
-        try:
-            sender_out, sender_err = sender2.communicate(timeout=180)
-            receiver_out, receiver_err = receiver2.communicate(timeout=180)
-            self.assertEqual(sender2.returncode, 0, sender_err.decode())
-            self.assertEqual(receiver2.returncode, 0, receiver_err.decode())
-            self.assertIn(b"BP application accepted", receiver_out)
-            self.assertIn(b"BP summary accepted=1", sender_out)
-        finally:
-            if receiver2.poll() is None:
-                receiver2.kill()
-                receiver2.wait(timeout=10)
-            if sender2.poll() is None:
-                sender2.kill()
-                sender2.wait(timeout=10)
-            receiver2.stdout.close()
-            receiver2.stderr.close()
-            sender2.stdout.close()
-            sender2.stderr.close()
+        sender_out, sender_err = sender2.communicate(timeout=180)
+        receiver_out, receiver_err = receiver2.communicate(timeout=180)
+        self.assertEqual(sender2.returncode, EXIT.OK, sender_err.decode())
+        self.assertEqual(receiver2.returncode, EXIT.OK, receiver_err.decode())
+        self.assertIn(b"BP application accepted", receiver_out)
+        self.assertIn(b"BP summary accepted=1", sender_out)
 
         self.assertEqual(self.recovered_counts(), before)
         result_files = sorted(
@@ -606,7 +460,7 @@ class NativeBpApplicationTests(unittest.TestCase):
             "app-journal", "receipt-replay", self.store, self.receipts,
             self.request_path,
         )
-        self.assertEqual(replay.returncode, 0, replay.stderr.decode())
+        self.assertEqual(replay.returncode, EXIT.OK, replay.stderr.decode())
         receipt = result_files[0].read_bytes()
         self.assertIn(("hex=" + receipt.hex()).encode("ascii"), replay.stdout)
 

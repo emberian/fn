@@ -39,20 +39,18 @@ qualification), and the non-Linux lstat-then-rename path (OpenBSD evidence
 is scoped separately).  Runs on hbox with FN_NATIVE_HOST and
 FN_NATIVE_DEVELOPER_HOST naming the images under test.
 """
-from pathlib import Path
 import os
 import shutil
 import signal
 import unittest
 
 from tests.campaign import native_cuts
-from tests import test_native_operator_verbs as verbs
+from tests.native_harness import (
+    EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, native_image)
 from tests.native_profile_fixture import ProfileFixture
 
-ROOT = verbs.ROOT
-IMAGE = verbs.IMAGE
-DEVELOPER = verbs.DEVELOPER
-EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = verbs.EXIT_OK, verbs.EXIT_REFUSED, verbs.EXIT_UNCERTAIN
+IMAGE = native_image("FN_NATIVE_HOST")
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 COUNT = int(os.environ.get("FN_IMPORT_ARTICLES", "5"))
 LEFTOVER = "store2.import-deadbeef0000"
 
@@ -77,12 +75,12 @@ class ImportPublicationSourceTests(unittest.TestCase):
 class ImportFixture(ProfileFixture):
     def served_store(self, count=COUNT):
         self.init()
-        owner = self.start_owner(self.image)
+        self.node.start(image=self.image)
         try:
             ids = ["<ip{}@example.invalid>".format(i) for i in range(count)]
-            self.post_many(ids, subject=b"import")
+            self.post_many(ids, subject="import")
         finally:
-            self.stop(owner)
+            self.node.stop()
         return ids
 
     def second_config(self, store):
@@ -92,12 +90,7 @@ class ImportFixture(ProfileFixture):
         return config
 
     def operator_with(self, config, *words, env=None):
-        saved = self.config
-        try:
-            self.config = config
-            return self.op(*words, env=env)
-        finally:
-            self.config = saved
+        return self.node.invoke("operator", config, *words, image=self.image, env=env)
 
     def exported(self):
         archive = self.root / "archive"
@@ -173,8 +166,7 @@ class ImportCutTests(ImportFixture):
 
     def run_cut(self, cut, action, archive, config2, ids):
         store2 = self.root / "store2"
-        env = verbs.environment()
-        env["FN_NATIVE_IMPORT_FAULT"] = "{}:{}".format(cut.name, action)
+        env = {"FN_NATIVE_IMPORT_FAULT": "{}:{}".format(cut.name, action)}
         died = self.operator_with(config2, "store", "import", str(archive), env=env)
         text = (died.stdout + died.stderr).decode()
         if action == "kill":

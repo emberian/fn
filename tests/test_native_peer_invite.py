@@ -17,21 +17,16 @@ Run: FN_NATIVE_HOST=<launcher> FN_OPENSSL=<openssl> \
 """
 
 import os
-from pathlib import Path
-import select
 import shutil
-import signal
 import subprocess
-import tempfile
 import unittest
 
-from tests import test_native_live_reconfiguration as live
+from tests import native_harness
+from tests.native_harness import EXIT_OK, EXIT_REFUSED, Node, native_image, run, scratch
 
-ROOT = live.ROOT
-IMAGE = live.IMAGE
+IMAGE = native_image("FN_NATIVE_HOST")
 DEVELOPER_TEXT = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
-DEVELOPER = Path(DEVELOPER_TEXT) if DEVELOPER_TEXT else None
-EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = 0, 1, 3
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST") if DEVELOPER_TEXT else None
 OPENSSL = os.environ.get("FN_OPENSSL", "openssl")
 
 
@@ -61,76 +56,28 @@ def out(result):
     return (result.stdout + result.stderr).decode("utf-8", "replace").strip()
 
 
-class Node:
-    def __init__(self, test, root, name, env=None, image=None):
-        self.test, self.name = test, name
-        self.image = IMAGE if image is None else image
-        self.root = root / name
-        self.root.mkdir()
-        self.store = self.root / "store"
-        self.control = self.root / "control.sock"
-        self.port = live.free_port()
-        self.config = self.root / "fn.toml"
-        self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
-        self.env = dict(live.environment(), **(env or {}))
-        self.process = None
-        test.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
+class InviteNode(Node):
+    """A node NAME under ROOT on IMAGE (default the production image), its
+    store initialized; verbs run on its image with a 240 s bound."""
 
-    def operator(self, *words, timeout=240):
-        return subprocess.run([str(self.image), "--fn", "operator", str(self.config), *words],
-                              cwd=ROOT, env=live.environment(), stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, timeout=timeout, check=False)
+    def __init__(self, test, root, name, image=None):
+        super().__init__(test, IMAGE if image is None else image, root=root / name, name=name)
+        self.init(timeout=240)
 
-    def start(self, env=None):
-        self.process = subprocess.Popen(
-            [str(self.image), "--fn", "operator", str(self.config), "run"], cwd=ROOT,
-            env=dict(self.env, **(env or {})), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0)
-        self.test.addCleanup(self.reap)
-        for _ in range(4):
-            self.test.assertTrue(select.select([self.process.stdout], [], [], 240)[0],
-                                 "owner {} did not become ready".format(self.name))
-            if self.process.stdout.readline().startswith(b"LISTENING "):
-                return self
-            if self.process.poll() is not None:
-                self.test.fail("owner {} failed: {}".format(
-                    self.name, self.process.stderr.read().decode("utf-8", "replace")))
-        self.test.fail("owner {} readiness output was malformed".format(self.name))
-
-    def stop(self):
-        self.process.send_signal(signal.SIGTERM)
-        self.test.assertEqual(self.process.wait(timeout=60), EXIT_OK)
-        self.reap()
-
-    def reap(self):
-        process, self.process = self.process, None
-        if process is None:
-            return
-        if process.poll() is None:
-            process.send_signal(signal.SIGKILL)
-            process.wait(timeout=10)
-        for stream in (process.stdout, process.stderr):
-            if stream and not stream.closed:
-                stream.close()
+    def operator(self, *words, timeout=240, **options):
+        return super().operator(*words, timeout=timeout, **options)
 
     def key_history(self):
-        result = subprocess.run([str(IMAGE), "--fn", "hybrid-key-history", str(self.store)],
-                                cwd=ROOT, env=live.environment(), stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, timeout=240, check=False)
-        self.test.assertEqual(result.returncode, EXIT_OK, out(result))
+        result = self.invoke("hybrid-key-history", self.store_path, image=IMAGE,
+                             timeout=240, expect=EXIT_OK)
         return result.stdout.decode("ascii").splitlines()
 
 
-@unittest.skipUnless(live.executable(IMAGE) and shutil.which(OPENSSL),
+@unittest.skipUnless(native_harness.executable(IMAGE) and shutil.which(OPENSSL),
                      "set FN_NATIVE_HOST to a native launcher and FN_OPENSSL to openssl 3.5")
 class NativePeerInviteTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-peer-invite-")
-        self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
+        self.root = scratch(self, "fn-peer-invite-")
 
     def keys(self, name, node):
         directory = keygen(self.root / ("keys-" + name))
@@ -154,10 +101,10 @@ class NativePeerInviteTests(unittest.TestCase):
         return result
 
     def owner_log(self, node):
-        return node.process.stderr.read().decode("utf-8", "replace")
+        return node.process.stderr.since(0).decode("utf-8", "replace")
 
     def test_invite_accept_confirm_and_the_refusals(self):
-        a, b, c = (Node(self, self.root, n) for n in ("A", "B", "C"))
+        a, b, c = (InviteNode(self, self.root, n) for n in ("A", "B", "C"))
         keys_a, pa = self.keys("a", a)
         keys_b, pb = self.keys("b", b)
         keys_c, pc = self.keys("c", c)
@@ -211,7 +158,7 @@ class NativePeerInviteTests(unittest.TestCase):
                          ["generation=1 state=active principal={}".format(pa)])
 
     def test_an_acceptance_of_an_invitation_this_node_never_issued(self):
-        a, d, e = (Node(self, self.root, n) for n in ("A", "D", "E"))
+        a, d, e = (InviteNode(self, self.root, n) for n in ("A", "D", "E"))
         keys_a, _ = self.keys("a", a)
         keys_f, _ = self.keys("f", d)
         keys_e, _ = self.keys("e", e)
@@ -229,14 +176,14 @@ class NativePeerInviteTests(unittest.TestCase):
             node.stop()
 
     def developer(self):
-        if DEVELOPER is None or not live.executable(DEVELOPER):
+        if DEVELOPER is None or not native_harness.executable(DEVELOPER):
             self.skipTest("set FN_NATIVE_DEVELOPER_HOST to a developer launcher "
                           "(the stop selectors)")
         return DEVELOPER
 
     def test_a_crash_between_consumption_and_enrolment_enrols_once(self):
-        a2 = Node(self, self.root, "A2", image=self.developer())
-        b2 = Node(self, self.root, "B2")
+        a2 = InviteNode(self, self.root, "A2", image=self.developer())
+        b2 = InviteNode(self, self.root, "B2")
         keys_g, _ = self.keys("g", a2)
         keys_h, ph = self.keys("h", b2)
         a2.start(env={"FN_PEER_TEST_STOP_AFTER_CONSUME": "1"})
@@ -250,7 +197,7 @@ class NativePeerInviteTests(unittest.TestCase):
         print("NATIVE-PEER-INVITE A2 confirm with the stop ->", died.returncode)
         self.assertNotEqual(died.returncode, EXIT_OK, out(died))
         self.assertEqual(a2.process.wait(timeout=60), 137)
-        a2.reap()
+        a2.process.finish()
         self.assertFalse([line for line in a2.key_history() if ph in line])
         a2.start()
         # The one record is durable: the peer exists before the enrolment.
@@ -270,8 +217,8 @@ class NativePeerInviteTests(unittest.TestCase):
         inviter as a peer at the accepting node in one configuration record
         before the enrolment; a death between the two leaves the peer and no
         enrolment, and the next accept enrols once without a second record."""
-        a = Node(self, self.root, "A3")
-        b = Node(self, self.root, "B3", image=self.developer())
+        a = InviteNode(self, self.root, "A3")
+        b = InviteNode(self, self.root, "B3", image=self.developer())
         keys_a, pa = self.keys("a3", a)
         keys_b, pb = self.keys("b3", b)
         a.start()
@@ -288,7 +235,7 @@ class NativePeerInviteTests(unittest.TestCase):
         print("NATIVE-PEER-INVITE B3 accept with the stop ->", died.returncode)
         self.assertNotEqual(died.returncode, EXIT_OK, out(died))
         self.assertEqual(b.process.wait(timeout=60), 137)
-        b.reap()
+        b.process.finish()
         self.assertFalse(acc.exists())
         self.assertFalse([line for line in b.key_history() if pa in line])
         b.start()
@@ -315,18 +262,13 @@ class NativePeerInviteTests(unittest.TestCase):
                          ["generation=1 state=active principal={}".format(pa)])
 
     def hybrid(self, *words):
-        result = subprocess.run([str(IMAGE), "--fn", *words], cwd=ROOT,
-                                env=live.environment(), stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, timeout=240, check=False)
+        result = run([IMAGE, "--fn", *words], timeout=240)
         self.assertEqual(result.returncode, EXIT_OK, out(result))
         return result
 
     def stop_with_log(self, node):
-        node.process.send_signal(signal.SIGTERM)
-        self.assertEqual(node.process.wait(timeout=60), EXIT_OK)
-        log = node.process.stderr.read().decode("utf-8", "replace")
-        node.reap()
-        return log
+        node.stop()
+        return node.process.stderr.since(0).decode("utf-8", "replace")
 
     def test_a_succeeded_friend_is_confirmed_under_its_current_keys(self):
         """PKT-211 (PRF-179): B enrolled at A under its genesis keys and then
@@ -336,7 +278,7 @@ class NativePeerInviteTests(unittest.TestCase):
         current at those keys).  B's superseded genesis keys are refused
         `not-current-keys` at A, and a node that never enrolled B refuses the
         current keys `genesis`."""
-        a, b, c = (Node(self, self.root, n) for n in ("A4", "B4", "C4"))
+        a, b, c = (InviteNode(self, self.root, n) for n in ("A4", "B4", "C4"))
         keys_a, _ = self.keys("a4", a)
         keys_b, pb = self.keys("b4", b)
         keys_c, _ = self.keys("c4", c)
@@ -370,7 +312,7 @@ class NativePeerInviteTests(unittest.TestCase):
         self.assertTrue(budgeted[0].endswith(" budget-octets=1048576 budget-count=16"))
         # The superseded keys: a fresh node D accepts another invitation of A
         # under B's genesis key set; A refuses it.
-        d = Node(self, self.root, "D4")
+        d = InviteNode(self, self.root, "D4")
         d.start()
         inv_old = self.root / "inv-old-keys"
         self.run_ok(a, "peer", "invite", "nodeD4", "fn.*", "127.0.0.1", str(d.port),
@@ -410,7 +352,7 @@ class NativePeerInviteTests(unittest.TestCase):
         the owner's plan verified, never a `genesis` check of its own).  A
         confirms it.  The same invitation again at B is refused
         `already-enrolled` (a replay: the peer is configured, nothing to do)."""
-        a, b = (Node(self, self.root, n) for n in ("A5", "B5"))
+        a, b = (InviteNode(self, self.root, n) for n in ("A5", "B5"))
         keys_a, pa = self.keys("a5", a)
         keys_b, pb = self.keys("b5", b)
         keys_a2 = keygen(self.root / "keys-a5-next")

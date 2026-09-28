@@ -31,41 +31,21 @@ launcher> python3 -m unittest -v tests.test_native_agent_wait
 
 import json
 import os
-from pathlib import Path
 import re
-import select
-import signal
-import socket
-import ssl
 import subprocess
 import sys
-import tempfile
 import time
 import unittest
-from tools.wire_stream import whole_stream
 
-ROOT = Path(__file__).resolve().parent.parent
-PRODUCTION = os.environ.get("FN_NATIVE_HOST")
-DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
-IMAGES = [(name, Path(value)) for name, value in
-          (("production", PRODUCTION), ("developer", DEVELOPER)) if value]
-READY = bool(IMAGES) and all(p.is_file() and os.access(p, os.X_OK) for _, p in IMAGES)
+from tests.native_harness import (
+    ROOT, Client, Node, article, client_context, environment, executable, native_image)
+
+IMAGES = [("production", native_image("FN_NATIVE_HOST")),
+          ("developer", native_image("FN_NATIVE_DEVELOPER_HOST"))]
+READY = all(executable(p) for _, p in IMAGES)
 # The wake bound: from the post's 240 to the waiting process's exit.
 WAKE_BOUND = 5.0
 CAPACITY = 12
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    return env
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def text(result):
@@ -93,14 +73,13 @@ class Wait:
 
     def __init__(self, test, node, name, secret, seconds):
         tag = name + "-" + os.urandom(4).hex()
-        self.cursor = node["root"] / ("cursor-" + tag)
-        self.report = node["root"] / ("report-" + tag)
-        words = [str(node["image"]), "--fn", "consumer"]
+        self.cursor = node.root / ("cursor-" + tag)
+        self.report = node.root / ("report-" + tag)
+        words = [str(node.image), "--fn", "consumer"]
         if secret is None:
-            words += ["wait", str(node["control"]), name]
+            words += ["wait", str(node.control), name]
         else:
-            words += ["bound-wait", str(node["control"]), name,
-                      str(node["secrets"][secret])]
+            words += ["bound-wait", str(node.control), name, str(node.secrets[secret])]
         words += [str(self.cursor), str(self.report), "--timeout", str(seconds)]
         self.started = time.monotonic()
         self.process = subprocess.Popen(words, cwd=ROOT, env=environment(),
@@ -125,138 +104,78 @@ class Wait:
         return 0, (found[0].decode("ascii") if found else None), elapsed
 
 
-@unittest.skipUnless(READY, "set FN_NATIVE_HOST and/or FN_NATIVE_DEVELOPER_HOST")
+@unittest.skipUnless(READY, "the production and developer images are required")
 class NativeAgentWaitTests(unittest.TestCase):
     def node(self, image):
-        root = Path(tempfile.mkdtemp(prefix="fn-agent-wait-"))
-        self.addCleanup(subprocess.run, ["rm", "-rf", str(root)], check=False)
-        port, tls_port = free_port(), free_port()
-        cert, key = root / "cert.pem", root / "key.pem"
-        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout",
-                        str(key), "-out", str(cert), "-days", "2", "-nodes",
-                        "-subj", "/CN=127.0.0.1",
-                        "-addext", "subjectAltName=IP:127.0.0.1"], check=True,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        config = root / "fn.toml"
-        control = root / "control.sock"
-        config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            'tls_port = {}\ntls_cert = "{}"\ntls_key = "{}"\n[control]\npath = "{}"\n'
-            '[auth]\nprotected_only = true\n'.format(
-                root / "store", port, tls_port, cert, key, control),
-            encoding="ascii")
-        secrets = {}
+        node = Node(self, image).use_tls(alt_name=True)
+        node.secrets = {}
         for login in ("alice", "bob"):
-            path = root / ("secret-" + login)
+            path = node.root / ("secret-" + login)
             path.write_bytes(("pw-" + login + "\n").encode("ascii"))
             os.chmod(path, 0o600)
-            secrets[login] = path
-        return {"image": image, "config": config, "port": port, "tls_port": tls_port,
-                "cert": cert, "control": control, "root": root, "secrets": secrets,
-                "process": None}
+            node.secrets[login] = path
+        return node
 
     def native(self, node, *words):
-        result = subprocess.run(
-            [str(node["image"]), "--fn", *map(str, words)],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=240, check=False)
+        result = node.invoke(*words, timeout=240)
         print("NATIVE-AGENT-WAIT", " ".join(map(str, words[:3])), "->",
               result.returncode)
         return result
 
     def ok(self, node, *words):
-        result = self.native(node, "operator", node["config"], *words)
+        result = self.native(node, "operator", node.config, *words)
         self.assertEqual(result.returncode, 0, text(result))
         return result
 
     def consumer(self, node, verb, *args):
-        return self.native(node, "consumer", verb, node["control"], *args)
-
-    def start(self, node):
-        process = subprocess.Popen(
-            [str(node["image"]), "--fn", "operator", str(node["config"]), "run"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0)
-        node["process"] = process
-        self.addCleanup(self.reap, node)
-        seen = 0
-        for _ in range(6):
-            self.assertTrue(select.select([process.stdout], [], [], 240)[0])
-            if process.stdout.readline().startswith(b"LISTENING"):
-                seen += 1
-                if seen == 2:
-                    return
-        self.fail("owner readiness output was malformed")
-
-    def stop(self, node):
-        process = node["process"]
-        process.send_signal(signal.SIGTERM)
-        self.assertEqual(process.wait(timeout=60), 0)
-        self.reap(node)
-
-    def reap(self, node):
-        process, node["process"] = node["process"], None
-        if process is None:
-            return
-        if process.poll() is None:
-            process.send_signal(signal.SIGKILL)
-            process.wait(timeout=10)
-        for stream in (process.stdout, process.stderr):
-            if stream and not stream.closed:
-                stream.close()
+        return self.native(node, "consumer", verb, node.control, *args)
 
     def tls(self, node):
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
-        raw = socket.create_connection(("127.0.0.1", node["tls_port"]), timeout=60)
-        stream = whole_stream(context.wrap_socket(raw))
-        self.addCleanup(stream.close)
-        stream.readline()
-        return stream
+        client = Client(node.tls_port, timeout=60, implicit_tls=client_context(),
+                        greeting=None)
+        self.addCleanup(client.close)
+        return client
 
     @staticmethod
-    def line(stream, command):
-        stream.write(command.encode("ascii") + b"\r\n")
-        return stream.readline().decode("ascii", "replace").rstrip("\r\n")
+    def line(client, command):
+        return client.command(command).decode("ascii", "replace").rstrip("\r\n")
 
     def account(self, node, login):
         result = self.ok(node, "account", "invite", "--expires", "3600")
         codes = re.findall(rb"^[0-9a-f]{32}$", result.stdout, re.M)
         self.assertEqual(len(codes), 1, text(result))
-        stream = self.tls(node)
-        self.assertTrue(self.line(stream, "XREDEEM {} {}".format(
+        client = self.tls(node)
+        self.assertTrue(self.line(client, "XREDEEM {} {}".format(
             codes[0].decode("ascii"), login)).startswith("381"))
-        self.assertTrue(self.line(stream, "XREDEEM PASS pw-" + login).startswith("281"))
+        self.assertTrue(self.line(client, "XREDEEM PASS pw-" + login).startswith("281"))
 
     def post(self, node, group, tag, login="alice"):
         """Post one article; the monotonic time of its 240."""
-        stream = self.tls(node)
-        self.assertTrue(self.line(stream, "AUTHINFO USER " + login).startswith("381"))
-        self.assertTrue(self.line(stream, "AUTHINFO PASS pw-" + login).startswith("281"))
-        self.assertTrue(self.line(stream, "POST").startswith("340"))
-        stream.write(("From: {0}@example.invalid\r\nNewsgroups: {1}\r\n"
-                      "Subject: {2}\r\nMessage-ID: <{2}@example.invalid>\r\n\r\n"
-                      "what is the news?\r\n.\r\n".format(login, group, tag))
-                     .encode("ascii"))
-        reply = stream.readline().decode("ascii", "replace")
+        client = self.tls(node)
+        self.assertTrue(self.line(client, "AUTHINFO USER " + login).startswith("381"))
+        self.assertTrue(self.line(client, "AUTHINFO PASS pw-" + login).startswith("281"))
+        first, final = client.post(article(
+            "<{}@example.invalid>".format(tag), groups=group, subject=tag,
+            sender=login + "@example.invalid", date=None, body=b"what is the news?\r\n"))
+        self.assertTrue(first.startswith(b"340"), first)
+        reply = final.decode("ascii", "replace")
         accepted = time.monotonic()
         self.assertTrue(reply.startswith("240"), (tag, reply))
         return accepted
 
     def ack(self, node, cursor, secret):
         return self.consumer(node, "bound-ack", cursor,
-                             node["secrets"][secret]).returncode
+                             node.secrets[secret]).returncode
 
     def agent(self, node, login, *words, stdin=b""):
-        config = node["root"] / ("agent-" + login + ".json")
+        config = node.root / ("agent-" + login + ".json")
         if not config.exists():
             config.write_text(json.dumps({
-                "image": str(node["image"]), "control": str(node["control"]),
-                "consumer": login + "-inbox", "secret_file": str(node["secrets"][login]),
+                "image": str(node.image), "control": str(node.control),
+                "consumer": login + "-inbox", "secret_file": str(node.secrets[login]),
                 "login": login, "from": "{0} <{0}@example.invalid>".format(login),
-                "node": "127.0.0.1:{}".format(node["port"]), "cafile": str(node["cert"]),
-                "state": str(node["root"] / ("agent-state-" + login))}), encoding="utf-8")
+                "node": "127.0.0.1:{}".format(node.port), "cafile": str(node.cert),
+                "state": str(node.root / ("agent-state-" + login))}), encoding="utf-8")
         result = subprocess.run([sys.executable, str(ROOT / "tools" / "fn_agent.py"),
                                  str(config), *words], input=stdin, cwd=ROOT,
                                 env=environment(), stdout=subprocess.PIPE,
@@ -271,7 +190,7 @@ class NativeAgentWaitTests(unittest.TestCase):
         self.ok(node, "init", "local.general")
         for group in ("fn.alice", "fn.bob"):
             self.ok(node, "group", "create", group)
-        self.start(node)
+        node.start(timeout=240)
         for login in ("alice", "bob"):
             self.account(node, login)
             self.ok(node, "account", "access", login, "--read", "fn." + login,
@@ -280,7 +199,7 @@ class NativeAgentWaitTests(unittest.TestCase):
         for login in ("alice", "bob"):
             name = login + "-inbox"
             result = self.consumer(node, "register", name, "fn." + login,
-                                   node["root"] / ("registered-" + name))
+                                   node.root / ("registered-" + name))
             self.assertEqual(result.returncode, 0, text(result))
             self.ok(node, "consumer", "bind", name, "--account", login)
 
@@ -337,8 +256,8 @@ class NativeAgentWaitTests(unittest.TestCase):
         self.assertEqual(self.ack(node, waits[0].cursor, "bob"), 0)
 
         # 4. Restart keeps both cursors.
-        self.stop(node)
-        self.start(node)
+        node.stop()
+        node.start(timeout=240)
         code, tag, elapsed = Wait(self, node, "bob-inbox", "bob", 3).finish(timeout=60)
         self.assertEqual((code, tag), (0, None))
         code, tag, elapsed = Wait(self, node, "alice-inbox", "alice", 30).finish(timeout=60)
@@ -374,7 +293,7 @@ class NativeAgentWaitTests(unittest.TestCase):
         self.assertEqual(self.agent(node, "alice", "ack")[0], 0)
         code, empty_event, _ = self.agent(node, "bob", "next", "--timeout", "1")
         self.assertEqual((code, empty_event), (0, {"kind": "empty"}))
-        self.stop(node)
+        node.stop()
 
     def test_two_agents_wait_for_their_own_news(self):
         for name, image in IMAGES:

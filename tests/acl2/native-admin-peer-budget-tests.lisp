@@ -130,3 +130,44 @@
           (append (take (1- (len older)) older)
                   (fn-native-admin-peer-budget-octets *napbt-group*)
                   (list 10)))))
+
+; A grown row group (lane peer-list-depth): 1,200 carried principals, past
+; the old 1,024-row cap, rendered by the loops the report now executes
+; (fn-napb-before-last, fn-native-admin-peer-list-octets,
+; fn-native-admin-peer-slot-values, fn-native-admin-peer-budget-report-rows).
+; The expected line is built here, independently of the book's render: the
+; older words, one ` carries-principal=VALUE' word per row in row order,
+; the budget words, the newline.  The control stack itself is the native
+; module's to show (tests/test_native_peer_rows_growth.py): this session's
+; stack is not the deployed 1,024 KiB.
+(defun napbt-principal (k)
+  (coerce (cons #\p (explode-nonnegative-integer k 10 nil)) 'string))
+
+(defun napbt-grown-rows (k acc)
+  (if (zp k)
+      acc
+    (napbt-grown-rows (1- k)
+                      (cons (fn-cfg-row-make "far" "carries-principal"
+                                             (napbt-principal (1- k)) 0)
+                            acc))))
+
+(defun napbt-grown-words (k acc)
+  (if (zp k)
+      acc
+    (napbt-grown-words (1- k)
+                       (append (fn-record-string-octets " carries-principal=")
+                               (fn-record-string-octets (napbt-principal (1- k)))
+                               acc))))
+
+(defconst *napbt-grown-peers* (append *napbt-peers* (napbt-grown-rows 1200 nil)))
+(assert-event
+ (equal (fn-native-admin-peer-budget-report *napbt-grown-peers*)
+        (append (fn-record-string-octets
+                 "far path-identity=far.example address=192.0.2.44 port=1119 security=starttls inbound=fn.* outbound=fn.* auth=source-address:192.0.2.44")
+                (napbt-grown-words 1200 nil)
+                (fn-record-string-octets " budget-octets=1048576 budget-count=16")
+                (list 10))))
+(assert-event
+ (equal (len (fn-native-admin-peer-slot-values
+              (fn-cfg-rows-with-key *napbt-grown-peers* "far") "carries-principal"))
+        1200))

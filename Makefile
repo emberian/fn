@@ -245,10 +245,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-profile-facts-tests \
 	books/store-genesis \
 	tests/acl2/store-genesis-tests \
-	books/store-format-9 \
-	books/store-format-9-records \
-	tests/acl2/store-format-9-tests \
-	tests/acl2/store-format-9-records-tests \
 	books/store-profile-open \
 	tests/acl2/store-profile-open-tests \
 	books/store-profile-namespace \
@@ -268,6 +264,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/heap-open-nursery-tests \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
+	books/heap-breakdown \
+	tests/acl2/heap-breakdown-tests \
+	books/memory-credits \
+	tests/acl2/memory-credits-tests \
 	tests/acl2/heap-figure-tests \
 	books/connection-budget \
 	tests/acl2/connection-budget-tests \
@@ -372,6 +372,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-reclaim-holders-tests \
 	tests/acl2/native-status-columns-tests \
 	tests/acl2/native-live-pages-tests \
+	books/feed-link-backoff \
+	tests/acl2/feed-link-backoff-tests \
+	books/feed-pause \
+	tests/acl2/feed-pause-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
 	books/store-reclaim-stream \
@@ -853,6 +857,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-prepare-carried \
 	books/records-concrete \
 	books/records-concrete-owner \
+	books/records-exec \
 	books/records-attach-concrete \
 	books/msgid-index-concrete \
 	books/octets-stobj \
@@ -1235,6 +1240,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/account-list-tests \
 	tests/acl2/accounts-snapshot-tests \
 	tests/acl2/accounts-tests \
+	tests/acl2/config-field-max-tests \
 	tests/acl2/feed-totality-tests \
 	tests/acl2/group-access-tests \
 	tests/acl2/group-status-tests \
@@ -1795,7 +1801,7 @@ model-test: certify
 # landed in whichever module was running then, before the later modules ran
 # (PKT-305).  No module or test is over its budget.
 TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
-	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_native_process tests.test_fixture_init_refusal \
+	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_fixture_init_refusal \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_rule_cost tests.test_tau_cost tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \

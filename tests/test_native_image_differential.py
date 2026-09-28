@@ -45,17 +45,16 @@ import shutil
 import socket
 import subprocess
 import tempfile
-import time
 import unittest
 from pathlib import Path
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import EXIT, free_port, native_image, start, stop_and_diagnostics
 
 ROOT = Path(__file__).resolve().parent.parent
-STRIPPED = os.environ.get("FN_NATIVE_HOST")
-REFERENCE = os.environ.get("FN_NATIVE_REFERENCE_HOST")
-DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
-DEVELOPER_STRIPPED = os.environ.get("FN_NATIVE_DEVELOPER_STRIPPED_HOST")
+STRIPPED = str(native_image("FN_NATIVE_HOST"))
+REFERENCE = str(native_image("FN_NATIVE_REFERENCE_HOST"))
+DEVELOPER = str(native_image("FN_NATIVE_DEVELOPER_HOST"))
+DEVELOPER_STRIPPED = str(native_image("FN_NATIVE_DEVELOPER_STRIPPED_HOST"))
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 CHECK = ROOT / "tools" / "runtime_image" / "world-deps-check.lisp"
 REPORT = {}
@@ -63,12 +62,6 @@ REPORT = {}
 
 def ready(*images):
     return all(i and Path(i).is_file() and Path(i + ".core").is_file() for i in images)
-
-
-def free_port():
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
 
 
 def tree(root):
@@ -123,8 +116,7 @@ class Image:
                               timeout=timeout, check=False)
 
     def start(self, args, **extra):
-        return subprocess.Popen(self.argv(args), env=self.env(**extra), cwd=self.work,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return start(self.argv(args), env=self.env(**extra), cwd=self.work)
 
     def reads(self):
         """(kind, text) of every classified first read the check wrote."""
@@ -237,7 +229,7 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
         assert made.returncode == 0, made.stderr.decode()
         owner = cls.full.start(["operator", cfg, "run"])
         try:
-            wait_for_announcement(owner, b"LISTENING ")
+            owner.announcement(b"LISTENING ")
             s = Session(port)
             for n in range(20):
                 assert s.post(article(n)).startswith(b"240")
@@ -247,7 +239,7 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
         assert owner.returncode == 0, diagnostics
         # The same history with no checkpoint yet: `store checkpoint' below
         # rotates the log and drops the segments the checkpoint covers
-        # (format 9), after which a store without its checkpoint is refused
+        #, after which a store without its checkpoint is refused
         # by name (checkpoint-damaged), not replayed.  The full replay runs
         # on this copy (lane fitness, for release-machinery's native-rm1).
         cls.base_log = cls.tmp / "base-log"
@@ -311,7 +303,7 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
     def test_ordinary_traffic(self):
         def act(image, cfg, store, port):
             owner = image.start(["operator", cfg, "run"])
-            wait_for_announcement(owner, b"LISTENING ")
+            owner.announcement(b"LISTENING ")
             s = Session(port)
             for n in range(20, 25):
                 s.post(article(n))
@@ -333,7 +325,7 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
     def test_malformed_input(self):
         def act(image, cfg, store, port):
             owner = image.start(["operator", cfg, "run"])
-            wait_for_announcement(owner, b"LISTENING ")
+            owner.announcement(b"LISTENING ")
             s = Session(port)
             replies = []
             for raw in (b"\x00\xff\xfe junk\r\n", b"X" * 20000 + b"\r\n",
@@ -354,7 +346,7 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
     def test_capacity_refusal(self):
         def act(image, cfg, store, port):
             owner = image.start(["operator", cfg, "run"])
-            wait_for_announcement(owner, b"LISTENING ")
+            owner.announcement(b"LISTENING ")
             s = Session(port)
             big = s.post(article(99, octets=("y" * 78 + "\r\n") * 30000))
             transcript = s.close()
@@ -393,7 +385,7 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
             status = self.status(image, cfg)
             owner = image.start(["operator", cfg, "run"])
             try:
-                wait_for_announcement(owner, b"LISTENING ", timeout=300)
+                owner.announcement(b"LISTENING ", timeout=300)
                 s = Session(port)
                 s.command("ARTICLE <diff-7@example.invalid>", multi=True)
                 transcript = s.close()
@@ -413,7 +405,7 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
                              "the uncompacted base has no checkpoint")
             status = self.status(image, cfg)
             owner = image.start(["operator", cfg, "run"])
-            wait_for_announcement(owner, b"LISTENING ", timeout=300)
+            owner.announcement(b"LISTENING ", timeout=300)
             s = Session(port)
             s.command("GROUP local.test")
             s.command("OVER 1-20", multi=True)
@@ -497,7 +489,7 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
             bad = image.run(["hybrid-verify-carrier", altered, ml_public])
             rows[label] = ([ok.returncode, ok.stdout, ok.stderr,
                             bad.returncode, bad.stdout, bad.stderr], {}, work)
-        self.assertEqual(rows["full"][0][3], 1, rows["full"][0][5])
+        self.assertEqual(rows["full"][0][3], EXIT.REFUSED, rows["full"][0][5])
         self.compare("failed-signature", rows)
 
     def test_missing_runtime_dependency(self):
@@ -602,7 +594,7 @@ class GuardViolationTests(unittest.TestCase):
         full = Image(DEVELOPER, False, tmp)
         stripped = Image(DEVELOPER_STRIPPED, True, tmp)
         a, b = full.run(["guard-probe"]), stripped.run(["guard-probe"])
-        self.assertEqual(a.returncode, 4, a.stderr.decode())
+        self.assertEqual(a.returncode, EXIT.FAULT, a.stderr.decode())
         self.assertEqual((a.returncode, a.stdout, a.stderr), (b.returncode, b.stdout, b.stderr))
         omitted = [r for k, r in stripped.reads() if k == "OMITTED"]
         REPORT["guard-violation"] = {"exit": a.returncode, "stderr": a.stderr.decode()[-300:],
