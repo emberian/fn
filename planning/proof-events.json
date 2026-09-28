@@ -7111,6 +7111,16 @@
         {
           "kind": "theorem",
           "name": "fn-heap-arena-octets-slope"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-records-retained-within-the-terms",
+          "note": "KEYSTONE (lane heap-bounds, B2): the state retained by records admissible under the profile (Message-ID within 250, header within max-header-octets and a part of the payload) is within the figure's record terms: *fn-heap-record-octets* a record and the header term fn-heap-record-headers-octets of min(USED, N x HDR). Per-octet costs named in books/heap-store-figure.lisp from the retained structures; teeth tests/acl2/heap-figure-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-small-profile-run-fits-a-two-gib-machine",
+          "note": "Lane heap-bounds: the small run holds any core up to 512 MiB on 2,048 MiB; on 1,536 MiB only up to 192 MiB (fn-heap-small-profile-run-fits-a-small-machine, restated)."
         }
       ]
     },
@@ -9315,7 +9325,7 @@
         {
           "kind": "theorem",
           "name": "fn-srs-steps-are-one-step-of-the-concatenation",
-          "note": "KEYSTONE (PKT-823). Host: host/native/io.lisp fnn-bridge-recover makes fn-srs-step's two calls per chunk (fn-store-decode-records = fn-srs-decode, then fn-srs-intern-step). Teeth: tests/acl2/store-recover-stream-tests.lisp (four chunkings of real records; a corrupted record; the dotted-chunk hypothesis removal)."
+          "note": "KEYSTONE (PKT-823). Host: host/native/io.lisp fnn-bridge-recover makes fn-srs-step's two calls per chunk (fn-store-decode-records = fn-srs-decode, then fn-srs-intern-step). Teeth: tests/acl2/store-recover-stream-tests.lisp (four chunkings of real records; a corrupted record; the dotted-chunk hypothesis removal). Also the open over a checkpoint (lane heap-bounds, B3): host/native/io.lisp fnn-recover-suffix-intern decodes and interns the suffix a chunk at a time on top of the loaded arena (fnn-recover-suffix-rows, the log-checkpoint scan in fnn-recover-log)."
         },
         {
           "kind": "theorem",

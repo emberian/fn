@@ -34,8 +34,14 @@
           (cons :state-history (fn-heap-store-history-octets profile))
           (cons :state-handles (* *fn-heap-handle-octets* tt))
           (cons :state-records (* 2 tt *fn-heap-record-octets*))
+          ;; the records' header columns (lane heap-bounds, B2): the header
+          ;; octets' cost, at most min(H, T x HDR) of them
+          (cons :state-record-headers
+                (* 2 (fn-heap-record-headers-octets
+                      profile (fn-bs-profile-max-history-octets profile)
+                      (fn-bs-profile-max-transactions profile))))
           (cons :open-chunk-lists (* 2 *fn-heap-list-octets-per-octet* *fn-heap-open-list-copies*
-                                     (+ *fn-heap-open-chunk-octets* r)))
+                                     (fn-heap-open-chunk-bound profile ou)))
           (cons :open-suffix-vectors (* 2 ou))
           (cons :open-per-record (* 2 *fn-heap-open-record-octets* on))
           (cons :inflight-lists (* 2 *fn-heap-list-octets-per-octet*
@@ -85,7 +91,7 @@
           (fn-heap-store-base-octets profile core observed))
    :hints (("Goal" :in-theory (e/d (fn-heap-store-base-octets fn-heap-store-state-bound
                                     fn-heap-store-open-octets fn-heap-store-inflight-octets)
-                                   (fn-ock-capture-budget fn-heap-store-history-octets
+                                   (fn-ock-capture-budget fn-heap-store-history-octets fn-heap-open-chunk-bound
                                     fn-heap-articles-octets fn-heap-core-dynamic
                                     fn-heap-open-octets-bound fn-heap-open-records-bound
                                     fn-bs-profile-max-history-octets

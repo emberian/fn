@@ -253,8 +253,10 @@ class FreshInitTests(Harness, unittest.TestCase):
     def test_largest_within_the_budget_on_request(self):
         """FN_INIT_SIZING=largest takes the first of scale, development and
         small the budget holds; an operator budget below the machine
-        (FN_INIT_BUDGET_MB=1500) takes small, or the friend rung whose
-        first run it holds (the word is `custom')."""
+        (FN_INIT_BUDGET_MB=2000) takes small, or the friend rung whose
+        first run it holds (the word is `custom').  (1,500 until lane
+        heap-bounds: the small floor's first run is 1,906 MB since the
+        records' term is derived from the profile's limits.)"""
         config, _ = self.config("largest")
         made = self.run_fn("operator", config, "init", "local.test",
                            env={"FN_INIT_SIZING": "largest"})
@@ -267,17 +269,17 @@ class FreshInitTests(Harness, unittest.TestCase):
             self.assertEqual(word, "small")
         config, _ = self.config("budget")
         made = self.run_fn("operator", config, "init", "local.test",
-                           env={"FN_INIT_BUDGET_MB": "1500"})
+                           env={"FN_INIT_BUDGET_MB": "2000"})
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         word, _, _, budget = self.init_line(made)
         self.assertIn(word, ("small", "custom"))
-        self.assertEqual(budget, 1500)
-        # The machine gives more than the named 1,500 MB (under 2 GiB or not):
+        self.assertEqual(budget, 2000)
+        # The machine gives more than the named 2,000 MB (2 GiB or more):
         # init says so by name with both figures, on stderr, and still writes.
         below = INIT_NAMED_BELOW.search(made.stderr.decode())
         self.assertIsNotNone(below, text(made))
-        self.assertEqual(int(below.group(1)), 1500)
-        self.assertGreater(int(below.group(2)), 1500)
+        self.assertEqual(int(below.group(1)), 2000)
+        self.assertGreater(int(below.group(2)), 2000)
         if LIMIT:
             self.assertLessEqual(int(below.group(2)), LIMIT // (1024 * 1024))
         config, _ = self.config("badbudget")
