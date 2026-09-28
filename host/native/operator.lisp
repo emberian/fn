@@ -476,14 +476,25 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
          (liveness (if (and live control-path)
                        (funcall (fnn-olo-admin-observe live) root path-list nil)
                      :offline)))
-    (if (member liveness '(:live :held))
-        (multiple-value-bind (exit detail)
-            (funcall (fnn-olo-admin live) control-path
-                     (fnn-core 'fn-native-operator-host-result-compaction-argv result)
-                     liveness)
-          (when detail (fnn-out "~a" detail))
-          exit)
-      (funcall offline))))
+    (cond ((eq liveness :live)
+           ;; The owner's answer word (books/owner-compact-request.lisp
+           ;; fn-ock-request-word: requested, coalesced, nothing-to-compact,
+           ;; or the refusal's blocked), printed as ACL2 rendered it.
+           (multiple-value-bind (status word)
+               (fnn-control-admin control-path
+                                  (fnn-core 'fn-native-operator-host-result-compaction-argv
+                                            result))
+             (when (fnn-octet-list-p word)
+               (fnn-out "compaction ~a" (fnn-octets-string (fnn-octets word))))
+             (fnn-core 'fn-native-control-host-status-exit-code status)))
+          ((eq liveness :held)
+           (multiple-value-bind (exit detail)
+               (funcall (fnn-olo-admin live) control-path
+                        (fnn-core 'fn-native-operator-host-result-compaction-argv result)
+                        liveness)
+             (when detail (fnn-out "~a" detail))
+             exit))
+          (t (funcall offline)))))
 
 (defun fnn-operator-execute-store-action (result action)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
