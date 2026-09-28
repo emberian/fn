@@ -662,7 +662,7 @@
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
          ((and (consp (cdr words))
                (member-equal (cadr words) '("budget" "carries" "pull" "distributions"
-                                            "catch-up")))
+                                            "catch-up" "feed")))
           (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
        ; PRF-164 (PKT-439): invitation-code accounts.  `account list' is a
@@ -873,10 +873,17 @@
       ; :remove-peer-rows of a superseded single-valued slot), which apply
       ; as the whole-group `fn-pcb-extend-delta'
       ; (`fn-pcb-extend-deltas-apply-as-the-extend-delta').
-      (fn-pcb-extend-deltas
-       (fn-record-octets-string (fn-native-admin-result-name plan))
-       (fn-native-admin-result-value plan)
-       peers)
+      ; `peer feed NAME pause|resume' (books/feed-pause.lisp): the deltas
+      ; that set the one pause row, removing the other.
+      (if (fn-fps-plan-rowsp (fn-native-admin-result-value plan))
+          (fn-fps-deltas
+           (fn-record-octets-string (fn-native-admin-result-name plan))
+           (fn-fps-plan-pausep (fn-native-admin-result-value plan))
+           peers)
+        (fn-pcb-extend-deltas
+         (fn-record-octets-string (fn-native-admin-result-name plan))
+         (fn-native-admin-result-value plan)
+         peers))
     (fn-native-admin-plan-deltas plan)))
 
 (defthm fn-native-admin-plan-deltas-over-other-plans-by-definition

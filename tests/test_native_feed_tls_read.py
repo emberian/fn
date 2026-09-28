@@ -113,42 +113,27 @@ class TicketingTlsPeer(peer.ScriptedTransitPeer):
                     stream.write(b"500 unknown command\r\n")
 
 
-_P = protected.NativeProtectedPeeringTests
-
-
 @unittest.skipUnless(READY, "set explicit native image/source and matching launcher/core SHA-256 values")
 class NativeFeedTlsReadTests(unittest.TestCase):
     """Scratch nodes only; never the live nodes.  The protected module's
     helpers are borrowed, never its tests."""
 
-    setUp = _P.setUp
-    command = _P.command
-    process_identity = _P.process_identity
-    verify_process_identity = _P.verify_process_identity
+    # Bound through the module, never as a module-level TestCase name, so
+    # the loader does not collect the protected module's tests here.
+    setUp = protected.NativeProtectedPeeringTests.setUp
+    command = protected.NativeProtectedPeeringTests.command
+    process_identity = protected.NativeProtectedPeeringTests.process_identity
+    verify_process_identity = protected.NativeProtectedPeeringTests.verify_process_identity
     article = staticmethod(peer.NativePeeringTests.article)
-    post = _P.post
-    await_article = _P.await_article
-    article_from = _P.article_from
-    make_certificate = _P.make_certificate
-    initialize = _P.initialize
-    profile = _P.profile
-    start = _P.start
+    post = protected.NativeProtectedPeeringTests.post
+    await_article = protected.NativeProtectedPeeringTests.await_article
+    article_from = protected.NativeProtectedPeeringTests.article_from
+    make_certificate = protected.NativeProtectedPeeringTests.make_certificate
+    initialize = protected.NativeProtectedPeeringTests.initialize
+    profile = protected.NativeProtectedPeeringTests.profile
+    start = protected.NativeProtectedPeeringTests.start
 
-    def stop_all(self):
-        # Plain sources are NativeProcess (drained pipes); protected owners
-        # are a Popen whose stderr is a file.
-        for process in self.processes:
-            process.terminate()
-        for process in self.processes:
-            if hasattr(process, "stop"):
-                process.stop()
-            else:
-                try:
-                    process.wait(timeout=30)
-                except Exception:
-                    process.kill()
-                    process.wait(timeout=15)
-        self.processes = []
+    stop_all = protected.NativeProtectedPeeringTests.stop_all
 
     def plain_source(self, name):
         node = peer.NativePeeringTests.initialize(self, name, peer.free_port())
@@ -229,6 +214,34 @@ class NativeFeedTlsReadTests(unittest.TestCase):
         print("NATIVE-FEED-TLS-READ-WITNESS " + json.dumps({
             "kind": "drop-lines-and-backoff", "gaps": [round(g, 3) for g in gaps],
             "drops": drops[:6]}, sort_keys=True), flush=True)
+
+    def test_a_paused_feed_is_not_dialled_until_resumed(self):
+        """`peer feed NAME pause' closes the peer's link and stops dialling
+        it without removing the peer; `resume' delivers what queued."""
+        scripted, certificate = self.scripted("pausable")
+        source = self.plain_source("pause-source")
+        self.configure_tls_peer(source, "pausable", scripted.port, certificate)
+        self.start_plain(source)
+        first = "<before-pause@example.invalid>"
+        self.post(source, first, "before-pause")
+        self.assertIsNotNone(scripted.await_article(first, timeout=30))
+        self.command([IMAGE, "--fn", "operator", source["config"], "peer", "feed",
+                      "pausable", "pause"])
+        with scripted.lock:
+            accepted = len(scripted.accepted)
+        held = "<while-paused@example.invalid>"
+        self.post(source, held, "while-paused")
+        time.sleep(5)
+        with scripted.lock:
+            self.assertNotIn(held, scripted.articles)
+            self.assertEqual(len(scripted.accepted), accepted, scripted.accepted)
+        self.command([IMAGE, "--fn", "operator", source["config"], "peer", "feed",
+                      "pausable", "resume"])
+        got = scripted.await_article(held, timeout=30)
+        self.assertIsNotNone(got, self.stderr_text(source)[-4000:])
+        print("NATIVE-FEED-TLS-READ-WITNESS " + json.dumps({
+            "kind": "feed-pause-resume", "held_delivered_after_resume": True,
+            "connections": len(scripted.accepted)}, sort_keys=True), flush=True)
 
     def initialize_implicit(self, name, login, password):
         node = self.initialize(name, peer.free_port(), login, password)
