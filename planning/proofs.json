@@ -13631,6 +13631,27 @@
         "fn-ocf-start-next-while-control-waits-is-within-the-budget",
         "fn-ocp-no-start-next-while-a-shut-out-class-waits"
       ]
+    },
+    {
+      "id": "PRF-906",
+      "title": "An acknowledged BP custody is delivered within one quiet read timeout of an open session, never held until the session ends (PKT-873)",
+      "statement": "Subjects fn-tcl-delivery-plan and fn-tcl-delivery-plan-progress-p (books/tcpcl-delivery.lisp), which host/native/tcpcl.lisp fnn-tcl-act calls on every completed inbound transfer; fnn-tcl-session marks the custody when the plan names the progress point and calls *fnn-tcl-progress* at its first quiet read timeout after it (at most max(1, keepalive/4) s; a session the peer ends first is delivered by the between-sessions pass), and host/native/bp-node.lisp fnn-command-bp-node binds it to fnn-bpnode-dispatch-pending. KEYSTONE fn-tcl-acknowledged-custody-is-progressed-in-its-turn: if the plan's released messages carry the transfer's final END XFER_ACK, the callback's result was (:accepted PATH) (kind-5 custody durable, spec 9.2) and the plan names the progress point; fn-tcl-unaccepted-delivery-names-no-progress: a refusal, an uncertain publication or a fault names none. Crash scope: the in-session turn adds no durable write; a process death between the ACK and the delivery is the existing kind-5 cut, recovered by the open's delivery pass. Teeth: tests/acl2/tcpcl-delivery-tests.lisp (fn-tcl-complete's held END ACK with (:accepted nil): final ACK released, progress named; removal of the final-ACK hypothesis by a refusal, an uncertain publication and a fault: no progress). Native: tests/test_native_source_corpus_bp.py (B SIGKILLed mid-receive; the relay restarted after B keeps its session open; the verdict precedes that session's end).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/tcpcl-delivery.lisp",
+        "books/tcpcl-delivery-invariants.lisp",
+        "tests/acl2/tcpcl-delivery-tests.lisp",
+        "host/native/tcpcl.lisp",
+        "host/native/bp-node.lisp",
+        "tests/test_native_source_corpus_bp.py"
+      ],
+      "events": []
     }
   ]
 }

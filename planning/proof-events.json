@@ -12918,6 +12918,19 @@
           "name": "fn-ocp-no-start-next-while-a-shut-out-class-waits"
         }
       ]
+    },
+    {
+      "id": "PRF-906",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-acknowledged-custody-is-progressed-in-its-turn"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-unaccepted-delivery-names-no-progress"
+        }
+      ]
     }
   ]
 }
