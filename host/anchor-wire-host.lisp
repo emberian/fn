@@ -45,8 +45,5 @@
         (list :refused (fn-anchor-wire-result-reason result))
       (list :request (fn-anchor-wire-result-value result)))))
 
-(defun fn-anchor-wire-host-max-response ()
-  *fn-anchor-wire-max-response*)
-
 ; Restore the prompt expected by persistent native bridge sessions.
 (logic)
