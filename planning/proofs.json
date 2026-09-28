@@ -12706,6 +12706,38 @@
         "planning/evidence/manifests/certify-20260928T095103Z-512720.json"
       ],
       "progress_note": "Lane f1-bisect (2026-09-28): both books certified on persvati (certify-20260928T095103Z-512720, 2 passed, none over 10 s). Teeth: positive witnesses at the F1 store (17,553,520), past the cap, unobserved and fresh; the hypothesis-removal witness for NATP HISTORY; one must-fail. F1 before/after on hbox in the lane's LANEDUMP."
+    },
+    {
+      "id": "PRF-368",
+      "title": "The running owner's status reads each article's tombstone flag from the catalog column in one walk, and the status client joins its pages linearly (lane scale-reads: status and obligations at 1,000,000 articles)",
+      "statement": "Subjects: books/native-status-columns.lisp fn-nsc-answer-report, which host/native-live-status-host.lisp fn-native-live-status-host-answer calls for every FNLS report the running owner renders (host/native/control.lisp fnn-control-live-status-answer, with the live catalog fnn-live-cat), and fn-nsc-client-step, which host/native/control.lisp fnn-control-live-status folds pages through (fn-native-live-status-host-client-step-chunks). fn-nsc-verdict-is-verdict-in: under the column relation F (books/served-columns.lisp fn-scol-okp), an article's verdict with its tombstone flag read from the column (fn-scol-tombstonep) is fn-rcl-verdict-in's, which reads the payload through the arena. KEYSTONE fn-nsc-store-tally-is-counts-and-classes: under F, the one walk fn-nsc-store-tally (a guard-verified loop, fn-nsc-tally-loop) is (append (fn-rcl-store-counts rule now s fn-arena) (fn-rcl-store-classes rule now s fn-arena)): the seven reclaim figures of the four walks before. fn-nsc-reclaim-words-is-reclaim-words and fn-nsc-report-is-report lift it; KEYSTONE fn-nsc-answer-report-is-answer-report: under F, (fn-nsc-answer-report kind profile oc cache obs min fn-arena fn-cat) = (fn-nh-answer-report kind profile oc cache obs min fn-arena) for every kind, so PRF-089's, PRF-361's and the health verdict's theorems speak of the words the owner sends. KEYSTONE fn-nsc-client-step-is-client-step: with N the length of the joined pages (fn-nsc-join, pages newest first), (fn-nsc-client-view (fn-nsc-client-step chunks n total digest reply)) = (fn-nls-client-step (fn-nsc-join chunks) total digest reply); fn-nsc-client-step-carries-its-length: a :next's length is its pages' joined length, so the hypothesis holds from (nil, 0) at every page. The cost measured: the reclaim line realized and digest-checked every payload four times under the owner mutex (sb-sprof: 98% under fn-durable-realize-octet); in a raw Lisp over the production core the reclaim words took 66 s at syn100k-2k and 518 s at syn1m-2k; the client's (append acc chunk) per page took 69.2 s to join the 24,400,035-octet obligations report of syn100k-2k against 3.4 s for the owner's pages (planning/evidence/scale-reads-status-2026-09-28.md). F is the served column readers' assumption; its owner-level establishment at the opens is the open obligation sca-join-4.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-006"
+      ],
+      "depends_on": [
+        "PRF-089",
+        "PRF-361",
+        "PRF-332"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/native-status-columns.lisp",
+        "tests/acl2/native-status-columns-tests.lisp",
+        "tests/test_native_status_scale.py",
+        "planning/evidence/scale-reads-status-2026-09-28.md"
+      ],
+      "progress_note": "Lane scale-reads-status (2026-09-28). Open: the obligations report is still rendered whole under the owner mutex as octet lists (fn-nls-obligation-lines, fn-nls-buffer): 244,000,037 octets at syn1m-2k, 28 s to render in a raw Lisp; its concrete (string) twin, or a render off the gate, is PKT-470's. The offline `store status' still reads payloads through the arena (it has no catalog).",
+      "events": [
+        "fn-nsc-verdict-is-verdict-in",
+        "fn-nsc-store-tally-is-counts-and-classes",
+        "fn-nsc-reclaim-words-is-reclaim-words",
+        "fn-nsc-report-is-report",
+        "fn-nsc-answer-report-is-answer-report",
+        "fn-nsc-client-step-is-client-step",
+        "fn-nsc-client-step-carries-its-length"
+      ]
     }
   ]
 }

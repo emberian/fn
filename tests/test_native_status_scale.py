@@ -11,11 +11,12 @@ Opt-in: FN_STATUS_SCALE_FIXTURES names the fixture directory
 (hbox:/tank/fn/scratch/fixtures) and FN_STATUS_SCALE_NAMES a comma (or colon)
 list (default syn100k-2k; syn1m-2k needs an 80G scope).  For each store the
 owner opens it, answers `status' (asserted: exit 0, inside the control
-client's deadline), `health' and `obligations' (recorded), then `obligations'
-again with the stop requested one second later: the stop is asserted to end,
-exit 0, within FN_STATUS_SCALE_STOP_SECONDS (default 120).  Prints
+client's deadline), `health' and `obligations' (recorded).
+The owner is stopped (idle), reopened, and stopped again one second
+after an `obligations' request: each stop is asserted to end, exit 0,
+within FN_STATUS_SCALE_STOP_SECONDS (default 120).  Prints
 `STATUS-SCALE NAME VERB exit=E bytes=B seconds=S' and
-`STATUS-SCALE NAME stop exit=E seconds=S'.
+`STATUS-SCALE NAME stop-idle|stop-in-flight exit=E seconds=S'.
 """
 import os
 from pathlib import Path
@@ -58,6 +59,22 @@ class StatusScaleTests(unittest.TestCase):
             name, " ".join(words), done.returncode, len(done.stdout), seconds), flush=True)
         return done, seconds
 
+    def stop(self, name, owner, err_path, what):
+        started = time.monotonic()
+        if owner.poll() is None:
+            owner.terminate()
+        try:
+            owner.wait(3600)
+        finally:
+            seconds = time.monotonic() - started
+            print("STATUS-SCALE {} stop-{} exit={} seconds={:.2f}".format(
+                name, what, owner.returncode, seconds), flush=True)
+            # What the owner said last (a publication or drain it waited for).
+            for line in err_path.read_text("utf-8", "replace").splitlines()[-12:]:
+                print("STATUS-SCALE {} stop-{} | {}".format(name, what, line[:200]), flush=True)
+        self.assertEqual(owner.returncode, 0, err_path.read_text("utf-8", "replace")[-3000:])
+        self.assertLessEqual(seconds, STOP_SECONDS)
+
     def test_status_and_stop(self):
         for name in NAMES:
             with self.subTest(name=name):
@@ -65,7 +82,6 @@ class StatusScaleTests(unittest.TestCase):
                 err_path = root / "owner.err"
                 owner, listening, _ = self.start_owner(name, "scale", root, config, err_path)
                 self.state = {"owner": owner, "err_at": 0}
-                late = None
                 print("STATUS-SCALE {} open seconds={:.1f}".format(name, listening), flush=True)
                 try:
                     status, _ = self.verb(name, config, ["status"])
@@ -73,29 +89,24 @@ class StatusScaleTests(unittest.TestCase):
                     self.assertIn(b"reclaim rule=", status.stdout)
                     self.verb(name, config, ["health"])
                     self.verb(name, config, ["obligations"])
-                    # The stop with a report in flight.
-                    late = subprocess.Popen([str(verbs.IMAGE), "--fn", "operator", str(config),
-                                             "obligations"], env=verbs.environment(),
-                                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                finally:
+                    self.stop(name, owner, err_path, "idle")
+                # Again with a report in flight when the stop comes.
+                owner, listening, _ = self.start_owner(name, "scale-2", root, config, err_path)
+                self.state = {"owner": owner, "err_at": 0}
+                late = subprocess.Popen([str(verbs.IMAGE), "--fn", "operator", str(config),
+                                         "obligations"], env=verbs.environment(),
+                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                try:
                     time.sleep(1.0)
                 finally:
-                    started = time.monotonic()
-                    if owner.poll() is None:
-                        owner.terminate()
                     try:
-                        owner.wait(3600)
+                        self.stop(name, owner, err_path, "in-flight")
                     finally:
-                        stop = time.monotonic() - started
-                        print("STATUS-SCALE {} stop exit={} seconds={:.2f}".format(
-                            name, owner.returncode, stop), flush=True)
-                if late is not None:
-                    try:
-                        late.wait(60)
-                    except subprocess.TimeoutExpired:
-                        late.kill()
-                self.assertEqual(owner.returncode, 0,
-                                 err_path.read_text("utf-8", "replace")[-3000:])
-                self.assertLessEqual(stop, STOP_SECONDS)
+                        try:
+                            late.wait(60)
+                        except subprocess.TimeoutExpired:
+                            late.kill()
 
 
 if __name__ == "__main__":

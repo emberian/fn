@@ -3693,8 +3693,17 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                    (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
                                    (unwind-protect
                                         (setq made (sb-thread:make-thread
-                                                    (lambda () (fnn-owner-publish-captured
-                                                                service captured position))
+                                                    (lambda ()
+                                                      ;; Lane scale-reads: the stop ends the
+                                                      ;; publication at its next batch
+                                                      ;; (io.lisp fnn-checkpoint-yield).
+                                                      (let ((*fnn-checkpoint-stop-test*
+                                                              (lambda ()
+                                                                (fnn-with-roster (service)
+                                                                  (fnn-owner-service-stopping
+                                                                   service)))))
+                                                        (fnn-owner-publish-captured
+                                                         service captured position)))
                                                     :name "fn owner checkpoint"))
                                      (unless made
                                        (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*))))))))
