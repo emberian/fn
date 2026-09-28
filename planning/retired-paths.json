@@ -99,6 +99,7 @@
     "tools/fn9p.py": "retired with the Python host by python-diet T5: the native image is the host (tests/native_harness.py, the native modules); what this file established about the Python host is not evidence about the image",
     "tools/fn_native.py": "retired with the Python host by python-diet T5: the native image is the host (tests/native_harness.py, the native modules); what this file established about the Python host is not evidence about the image",
     "tools/frame_bridge.py": "retired with the Python host by python-diet T5: the native image is the host (tests/native_harness.py, the native modules); what this file established about the Python host is not evidence about the image",
+    "tools/fundamentals/f8_curve.py": "folded into tools/scale_curve.py as the opt-in `--probes heap` probe by python-diet-2-g3 (b74c5a74c); tools/f8_breakdown.py --curve reads its curve.json",
     "tools/heap_peak_measure.py": "retired by python-diet T1b (one-shot measurement or rewrite tool); its evidence records name its runs",
     "tools/lift_stobj_tests.py": "retired by python-diet T1b (one-shot measurement or rewrite tool); its evidence records name its runs",
     "tools/media.py": "retired with the Python host by python-diet T5: the native image is the host (tests/native_harness.py, the native modules); what this file established about the Python host is not evidence about the image",
