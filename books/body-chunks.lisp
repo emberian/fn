@@ -23,153 +23,28 @@
 ; span step stay EQUAL to the per-byte fold with the body in this form.
 ;
 ; KEYSTONES
-;   fn-bch-unpack-of-pack        the codec round trip, for octet lists;
 ;   fn-bch-octets-of-push-list   the store's octets after appending XS are
 ;                                its octets and XS (the abstraction);
 ;   fn-bch-wf-is-of-octets       canonicity;
 ;   fn-bch-lines-of-join         the lines split back out of lines each
 ;                                followed by CR LF are those lines.
 ;
+;   fn-bch-body-okp-*            the held body (below): what the wire's
+;                                article mode keeps, and its lines.
+;
 ; Every executable here is guard-verified with guard t.  The per-octet
-; append costs one block's copy (at most 65 digits); the codec's loops are
-; divide and conquer within one block (depth log2 of *fn-bch-block*).
+; append costs one block's copy (at most 65 digits); a block is read by the
+; codec's divide and conquer (depth log2 of *fn-bch-block*).
 
 (in-package "ACL2")
 (include-book "rev-onto")
+(include-book "packed-octets")
 (local (include-book "arithmetic-5/top" :dir :system))
 (local (include-book "std/lists/revappend" :dir :system))
 (local (include-book "std/lists/rev" :dir :system))
 (local (include-book "std/lists/append" :dir :system))
 
 (defconst *fn-bch-block* 512)
-
-
-; -----------------------------------------------------------------------------
-; Octets and the packed natural.
-
-(defun fn-bch-octetp (x)
-  (declare (xargs :guard t))
-  (and (natp x) (< x 256)))
-
-(defun fn-bch-octetsp (xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (and (fn-bch-octetp (car xs))
-           (fn-bch-octetsp (cdr xs)))
-    (null xs)))
-
-(defun fn-bch-byte (x)
-  (declare (xargs :guard t))
-  (if (fn-bch-octetp x) x 0))
-
-(defthm fn-bch-byte-natp
-  (natp (fn-bch-byte x))
-  :rule-classes :type-prescription)
-
-(defthm fn-bch-byte-bound
-  (< (fn-bch-byte x) 256)
-  :rule-classes :linear)
-
-; The logical packing (a specification: no host path executes it; the
-; executables below pack from a buffer span or by one octet).
-(defun fn-bch-pack (xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (+ (fn-bch-byte (car xs)) (* 256 (fn-bch-pack (cdr xs))))
-    1))
-
-(defun fn-bch-unpack (n)
-  (declare (xargs :guard t :measure (nfix n)))
-  (if (and (natp n) (<= 256 n))
-      (cons (mod n 256) (fn-bch-unpack (floor n 256)))
-    nil))
-
-(defun fn-bch-packedp (n)
-  (declare (xargs :guard t :measure (nfix n)))
-  (and (natp n)
-       (if (< n 256)
-           (equal n 1)
-         (fn-bch-packedp (floor n 256)))))
-
-(defthm fn-bch-pack-posp
-  (posp (fn-bch-pack xs))
-  :rule-classes :type-prescription)
-
-(defthm fn-bch-pack-of-consp-at-least-256
-  (implies (consp xs) (<= 256 (fn-bch-pack xs)))
-  :rule-classes :linear)
-
-(defthm fn-bch-unpack-of-pack
-  (implies (fn-bch-octetsp xs)
-           (equal (fn-bch-unpack (fn-bch-pack xs)) xs)))
-
-; Packing reads each element as an octet (fn-bch-byte), so it round-trips
-; any list to its octets.
-(defun fn-bch-bytes (xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (cons (fn-bch-byte (car xs)) (fn-bch-bytes (cdr xs)))
-    nil))
-
-(defthm fn-bch-unpack-of-pack-is-bytes
-  (equal (fn-bch-unpack (fn-bch-pack xs)) (fn-bch-bytes xs)))
-
-(defthm fn-bch-bytes-when-octetsp
-  (implies (fn-bch-octetsp xs) (equal (fn-bch-bytes xs) xs)))
-
-(defthm fn-bch-pack-of-bytes
-  (equal (fn-bch-pack (fn-bch-bytes xs)) (fn-bch-pack xs)))
-
-(defthm fn-bch-bytes-of-append
-  (equal (fn-bch-bytes (append xs ys))
-         (append (fn-bch-bytes xs) (fn-bch-bytes ys))))
-
-(defthm fn-bch-pack-of-cons-byte
-  (equal (fn-bch-pack (cons (fn-bch-byte x) ys))
-         (fn-bch-pack (cons x ys))))
-
-(defthm fn-bch-pack-of-append-cons-byte
-  (equal (fn-bch-pack (append a (cons (fn-bch-byte x) ys)))
-         (fn-bch-pack (append a (cons x ys)))))
-
-(defthm fn-bch-packedp-of-pack
-  (fn-bch-packedp (fn-bch-pack xs)))
-
-(defthm fn-bch-octetsp-of-unpack
-  (fn-bch-octetsp (fn-bch-unpack n)))
-
-(defthm fn-bch-pack-of-unpack
-  (implies (fn-bch-packedp n)
-           (equal (fn-bch-pack (fn-bch-unpack n)) n)))
-
-; 256^K, by its own recursion so the arithmetic library's normalization of
-; `expt' never meets it.
-(defun fn-bch-pow (k)
-  (declare (xargs :guard t))
-  (if (and (natp k) (< 0 k)) (* 256 (fn-bch-pow (- k 1))) 1))
-
-(defthm fn-bch-pow-posp
-  (posp (fn-bch-pow k))
-  :rule-classes :type-prescription)
-
-(defthm fn-bch-pow-of-1+
-  (implies (natp k) (equal (fn-bch-pow (+ 1 k)) (* 256 (fn-bch-pow k)))))
-
-(defthm fn-bch-pow-of-plus
-  (implies (and (natp j) (natp k))
-           (equal (fn-bch-pow (+ j k)) (* (fn-bch-pow j) (fn-bch-pow k)))))
-
-(in-theory (disable fn-bch-pow))
-
-; The packing of a concatenation: the second part's digits shifted past the
-; first's (the first's sentinel is replaced by the second's value).
-(defthm fn-bch-pack-of-append
-  (equal (fn-bch-pack (append xs ys))
-         (+ (fn-bch-pack xs)
-            (* (fn-bch-pow (len xs)) (- (fn-bch-pack ys) 1)))))
-
-(defthm fn-bch-pack-of-singleton
-  (equal (fn-bch-pack (list b)) (+ 256 (fn-bch-byte b))))
 
 ; -----------------------------------------------------------------------------
 ; The store: (COUNT TAIL-LEN TAIL . BLOCKS), BLOCKS the COUNT full blocks
@@ -327,23 +202,8 @@
           (fn-bch-unpack (fn-bch-tail s))))
 
 ; -----------------------------------------------------------------------------
-; Appending one octet: the tail gains a digit under its sentinel; a full tail
-; becomes the newest block.  Executes by a shift (one copy of the tail).
-
-(local (defthm fn-bch-pow-is-expt
-         (implies (natp k) (equal (fn-bch-pow k) (expt 256 k)))
-         :hints (("Goal" :in-theory (enable fn-bch-pow)))))
-(local (in-theory (disable fn-bch-pow-is-expt)))
-
-(local (defthm fn-bch-ash-is-times-pow
-         (implies (and (natp x) (natp k))
-                  (equal (ash x (* 8 k)) (* x (fn-bch-pow k))))
-         :hints (("Goal" :in-theory (enable fn-bch-pow-is-expt)))))
-
-(defun fn-bch-digit (b k)
-  (declare (xargs :guard (natp k)))
-  (mbe :logic (* (+ 255 (fn-bch-byte b)) (fn-bch-pow k))
-       :exec (ash (+ 255 (fn-bch-byte b)) (* 8 k))))
+; Appending one octet: the tail gains a digit under its sentinel (fn-bch-digit,
+; books/packed-octets.lisp); a full tail becomes the newest block.
 
 (defun fn-bch-push (s b)
   (declare (xargs :guard t))
@@ -437,6 +297,19 @@
 (defthm fn-bch-wfp-of-empty
   (fn-bch-wfp (fn-bch-empty)))
 
+(defthm fn-bch-octets-true-listp
+  (true-listp (fn-bch-octets s))
+  :rule-classes :type-prescription)
+
+(local (defthm fn-bch-len-of-blocks-octets
+         (implies (fn-bch-blocksp bl)
+                  (equal (len (fn-bch-blocks-octets bl))
+                         (* *fn-bch-block* (len bl))))))
+
+(defthm fn-bch-len-of-octets
+  (implies (fn-bch-wfp s)
+           (equal (len (fn-bch-octets s)) (fn-bch-length s))))
+
 (defthm fn-bch-octets-of-empty
   (equal (fn-bch-octets (fn-bch-empty)) nil))
 
@@ -496,94 +369,6 @@
   :hints (("Goal" :use ((:instance fn-bch-wf-is-of-octets (s s1))
                         (:instance fn-bch-wf-is-of-octets (s s2)))
                   :in-theory (disable fn-bch-wf-is-of-octets fn-bch-of fn-bch-octets))))
-
-; -----------------------------------------------------------------------------
-; Reading the octets back: the low LEN base-256 digits of N.  Total, so the
-; readers below need only the wire's scalar guard; under a well-formed store
-; they are the unpacking (fn-bch-unpack-is-digits).  Executes divide and
-; conquer: two shifts a level, depth log2 of LEN.
-
-(defun fn-bch-digits (n len)
-  (declare (xargs :guard (and (natp n) (natp len))))
-  (if (zp len)
-      nil
-    (cons (mod n 256) (fn-bch-digits (floor n 256) (- len 1)))))
-
-(defthm fn-bch-unpack-is-digits
-  (implies (fn-bch-packedp n)
-           (equal (fn-bch-digits n (len (fn-bch-unpack n)))
-                  (fn-bch-unpack n))))
-
-(local
- (defthm fn-bch-floor-floor-256
-   (implies (and (natp n) (natp h))
-            (equal (floor (floor n 256) (fn-bch-pow h))
-                   (floor n (fn-bch-pow (+ 1 h)))))))
-
-(defthm fn-bch-digits-of-plus
-  (implies (and (natp n) (natp a) (natp b))
-           (equal (fn-bch-digits n (+ a b))
-                  (append (fn-bch-digits n a)
-                          (fn-bch-digits (floor n (fn-bch-pow a)) b))))
-  :hints (("Goal" :induct (fn-bch-digits n a))))
-
-(local
- (defthm fn-bch-floor-of-mod-256
-   (implies (and (natp n) (posp q))
-            (equal (floor (mod n (* 256 q)) 256)
-                   (mod (floor n 256) q)))))
-
-(local
- (defthm fn-bch-mod-of-mod-256
-   (implies (and (natp n) (posp q))
-            (equal (mod (mod n (* 256 q)) 256)
-                   (mod n 256)))))
-
-(defthm fn-bch-digits-of-mod
-  (implies (and (natp n) (natp h))
-           (equal (fn-bch-digits (mod n (fn-bch-pow h)) h)
-                  (fn-bch-digits n h)))
-  :hints (("Goal" :induct (fn-bch-digits n h)
-                  :in-theory (enable fn-bch-pow))))
-
-; The executable reader: the digits consed before ACC, divide and conquer.
-; Depth log2 of LEN (a block: 7 levels); each level two shifts of its part.
-(defun fn-bch-low (n h)
-  (declare (xargs :guard (and (natp n) (natp h))
-                  :guard-hints (("Goal" :in-theory (enable fn-bch-pow-is-expt mod)))))
-  (mbe :logic (mod n (fn-bch-pow h))
-       :exec (- n (ash (ash n (- (* 8 h))) (* 8 h)))))
-
-(defun fn-bch-high (n h)
-  (declare (xargs :guard (and (natp n) (natp h))
-                  :guard-hints (("Goal" :in-theory (enable fn-bch-pow-is-expt)))))
-  (mbe :logic (floor n (fn-bch-pow h))
-       :exec (ash n (- (* 8 h)))))
-
-(defun fn-bch-digits-onto (n len acc)
-  (declare (xargs :guard (and (natp n) (natp len))
-                  :measure (nfix len)
-                  :verify-guards nil))
-  (if (or (zp len) (<= len 8))
-      (append (fn-bch-digits n len) acc)
-    (let ((h (floor len 2)))
-      (fn-bch-digits-onto (fn-bch-low n h) h
-                          (fn-bch-digits-onto (fn-bch-high n h) (- len h) acc)))))
-
-(defthm fn-bch-digits-onto-is-digits
-  (implies (and (natp n) (natp len))
-           (equal (fn-bch-digits-onto n len acc)
-                  (append (fn-bch-digits n len) acc)))
-  :hints (("Goal" :induct (fn-bch-digits-onto n len acc)
-                  :in-theory (disable fn-bch-digits fn-bch-digits-of-plus))
-          ("Subgoal *1/2" :use ((:instance fn-bch-digits-of-plus
-                                           (a (floor len 2)) (b (- len (floor len 2))))))))
-
-(defthm fn-bch-digits-true-listp
-  (true-listp (fn-bch-digits n len))
-  :rule-classes :type-prescription)
-
-(verify-guards fn-bch-digits-onto)
 
 ; -----------------------------------------------------------------------------
 ; The lines.  The body held is its lines, each followed by CR LF; a line
@@ -728,22 +513,10 @@
   :hints (("Goal" :use ((:instance fn-bch-unpack-is-digits (n (fn-bch-tail s))))
                   :in-theory (disable fn-bch-unpack-is-digits))))
 
-; -----------------------------------------------------------------------------
-; The fast path's test, in constant work: the tail is packed with exactly its
-; length's octets exactly when its digits above them are the sentinel 1.
-
-(local
- (defthm fn-bch-packed-len-is-top-digit
-   (implies (and (posp n) (natp k))
-            (equal (and (fn-bch-packedp n) (equal (len (fn-bch-unpack n)) k))
-                   (equal (floor n (fn-bch-pow k)) 1)))
-   :hints (("Goal" :induct (fn-bch-digits n k)
-                   :in-theory (enable fn-bch-pow)))))
-
 (defun fn-bch-tail-okp (s)
   (declare (xargs :guard t
-                  :guard-hints (("Goal" :in-theory (enable fn-bch-tail-ok-logic fn-bch-pow-is-expt)
-                                 :use ((:instance fn-bch-packed-len-is-top-digit
+                  :guard-hints (("Goal" :in-theory (e/d (fn-bch-tail-ok-logic) (ash fn-bch-packedp fn-bch-unpack))
+                                 :use ((:instance fn-bch-top-digit-test
                                                   (n (fn-bch-tail s)) (k (fn-bch-tail-len s))))))))
   (mbe :logic (fn-bch-tail-ok-logic s)
        :exec (and (consp s) (consp (cdr s)) (consp (cddr s))
@@ -751,8 +524,426 @@
                   (< (fn-bch-tail-len s) *fn-bch-block*)
                   (equal (ash (fn-bch-tail s) (- (* 8 (fn-bch-tail-len s)))) 1))))
 
-; X shifted past K octets.
-(defun fn-bch-shift (x k)
-  (declare (xargs :guard (and (natp x) (natp k))))
-  (mbe :logic (* x (fn-bch-pow k))
-       :exec (ash x (* 8 k))))
+; -----------------------------------------------------------------------------
+; THE HELD BODY (books/wire.lisp, article mode).  A store B holds the decoded
+; body so far: its completed lines each followed by CR LF (N octets, the
+; TEXT), then the current line's decoded octets (the PARTIAL).  L is the
+; current line's length as it arrived; it is one more than the partial's
+; exactly when the line began with a dot, which the wire dropped.
+
+; Octets none of which is a CR or an LF: a line's content.
+(defun fn-bch-plain-octetsp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (fn-bch-octetp (car xs))
+           (not (equal (car xs) 13))
+           (not (equal (car xs) 10))
+           (fn-bch-plain-octetsp (cdr xs)))
+    (null xs)))
+
+(defun fn-bch-plain-linesp (lines)
+  (declare (xargs :guard t))
+  (if (consp lines)
+      (and (fn-bch-plain-octetsp (car lines))
+           (fn-bch-plain-linesp (cdr lines)))
+    (null lines)))
+
+; The lines of CR LF text, first first.
+(defun fn-bch-lines-of (text)
+  (declare (xargs :guard t))
+  (fn-ag-rev-onto (cdr (fn-bch-split-onto text nil nil)) nil))
+
+; TEXT is lines each followed by CR LF.
+(defun fn-bch-framedp (text)
+  (declare (xargs :guard t))
+  (let ((lines (fn-bch-lines-of text)))
+    (and (fn-bch-plain-linesp lines)
+         (equal (fn-bch-join lines) text))))
+
+(defun fn-bch-held-text (b n)
+  (declare (xargs :guard t))
+  (let ((o (fn-bch-octets b)))
+    (take (min (nfix n) (len o)) o)))
+
+(defun fn-bch-held-partial (b n)
+  (declare (xargs :guard t))
+  (nthcdr (nfix n) (fn-bch-octets b)))
+
+; The current line's decoded length: constant work.
+(defun fn-bch-partial-len (b n)
+  (declare (xargs :guard t))
+  (nfix (- (fn-bch-length b) (nfix n))))
+
+; The completed lines (the abstraction the wire's article event is).
+(defun fn-bch-held-lines (b n)
+  (declare (xargs :guard t))
+  (fn-bch-lines-of (fn-bch-held-text b n)))
+
+(defun fn-bch-body-okp (b n l)
+  (declare (xargs :guard t))
+  (let ((p (fn-bch-held-partial b n)))
+    (and (fn-bch-wfp b)
+         (natp n)
+         (<= n (fn-bch-length b))
+         (fn-bch-framedp (fn-bch-held-text b n))
+         (fn-bch-plain-octetsp p)
+         (or (equal l (len p)) (equal l (+ 1 (len p))))
+         (or (not (equal l (len p))) (not (equal (car p) 46))))))
+
+(local (defthm fn-bch-take-of-append
+         (implies (and (natp n) (<= n (len x)))
+                  (equal (take n (append x y)) (take n x)))))
+
+(local (defthm fn-bch-nthcdr-of-append
+         (implies (and (natp n) (<= n (len x)))
+                  (equal (nthcdr n (append x y)) (append (nthcdr n x) y)))))
+
+(local (defthm fn-bch-true-listp-of-nthcdr
+         (implies (true-listp x) (true-listp (nthcdr n x)))))
+
+(local (defthm fn-bch-len-of-nthcdr
+         (implies (and (natp n) (<= n (len x)))
+                  (equal (len (nthcdr n x)) (- (len x) n)))))
+
+(local (defthm fn-bch-take-at-len
+         (implies (and (true-listp x) (equal n (len x)))
+                  (equal (take n x) x))))
+
+(local (defthm fn-bch-take-zero (equal (take 0 x) nil)))
+
+(local (defthm fn-bch-nthcdr-of-nil
+         (equal (nthcdr n nil) nil)
+         :hints (("Goal" :in-theory (enable nthcdr)))))
+
+(local (defthm fn-bch-consp-of-nthcdr
+         (equal (consp (nthcdr n x)) (< (nfix n) (len x)))
+         :hints (("Goal" :in-theory (enable nthcdr)))))
+
+(local (in-theory (disable take nthcdr)))
+
+(defthm fn-bch-plain-octetsp-true-listp
+  (implies (fn-bch-plain-octetsp xs) (true-listp xs))
+  :rule-classes :forward-chaining)
+
+(defthm fn-bch-plain-octetsp-of-append
+  (equal (fn-bch-plain-octetsp (append xs ys))
+         (and (fn-bch-plain-octetsp (true-list-fix xs))
+              (fn-bch-plain-octetsp ys))))
+
+(defthm fn-bch-plain-linesp-of-append
+  (equal (fn-bch-plain-linesp (append xs ys))
+         (and (fn-bch-plain-linesp (true-list-fix xs))
+              (fn-bch-plain-linesp ys))))
+
+(local (defthm fn-bch-plain-octetsp-no-lf
+         (implies (fn-bch-plain-octetsp xs) (fn-bch-no-lf-p xs))))
+
+(local (defthm fn-bch-plain-linesp-clean
+         (implies (fn-bch-plain-linesp ls) (fn-bch-clean-linesp ls))))
+
+(local (defthm fn-bch-plain-linesp-true-listp
+         (implies (fn-bch-plain-linesp ls) (true-listp ls))
+         :rule-classes :forward-chaining))
+
+(defthm fn-bch-lines-of-of-join
+  (implies (fn-bch-plain-linesp ls)
+           (equal (fn-bch-lines-of (fn-bch-join ls)) ls)))
+
+(defthm fn-bch-framedp-of-join
+  (implies (fn-bch-plain-linesp ls)
+           (fn-bch-framedp (fn-bch-join ls))))
+
+(defthm fn-bch-framedp-facts
+  (implies (fn-bch-framedp text)
+           (and (fn-bch-plain-linesp (fn-bch-lines-of text))
+                (equal (fn-bch-join (fn-bch-lines-of text)) text))))
+
+(in-theory (disable fn-bch-lines-of fn-bch-framedp))
+
+(defthm fn-bch-join-of-append
+  (implies (true-listp p)
+           (equal (fn-bch-join (append ls (list p)))
+                  (append (fn-bch-join ls) p (list 13 10)))))
+
+(defthm fn-bch-framedp-append-line
+  (implies (and (fn-bch-framedp text) (fn-bch-plain-octetsp p))
+           (and (fn-bch-framedp (append text p (list 13 10)))
+                (equal (fn-bch-lines-of (append text p (list 13 10)))
+                       (append (fn-bch-lines-of text) (list p)))))
+  :hints (("Goal" :in-theory (disable fn-bch-framedp-of-join fn-bch-lines-of-of-join
+                                      fn-bch-join-of-append fn-bch-framedp-facts)
+                  :use ((:instance fn-bch-framedp-facts)
+                        (:instance fn-bch-framedp-of-join
+                                   (ls (append (fn-bch-lines-of text) (list p))))
+                        (:instance fn-bch-lines-of-of-join
+                                   (ls (append (fn-bch-lines-of text) (list p))))
+                        (:instance fn-bch-join-of-append
+                                   (ls (fn-bch-lines-of text)))))))
+
+(defthm fn-bch-body-okp-of-empty
+  (fn-bch-body-okp (fn-bch-empty) 0 0))
+
+(local (in-theory (disable fn-bch-octets fn-bch-push fn-bch-push-of-tail-ok fn-bch-length)))
+
+(defthm fn-bch-held-text-of-push
+  (implies (and (fn-bch-wfp b) (fn-bch-octetp x) (natp n) (<= n (fn-bch-length b)))
+           (equal (fn-bch-held-text (fn-bch-push b x) n)
+                  (fn-bch-held-text b n))))
+
+(defthm fn-bch-held-partial-of-push
+  (implies (and (fn-bch-wfp b) (fn-bch-octetp x) (natp n) (<= n (fn-bch-length b)))
+           (equal (fn-bch-held-partial (fn-bch-push b x) n)
+                  (append (fn-bch-held-partial b n) (list x)))))
+
+(defthm fn-bch-len-of-held-partial
+  (implies (and (fn-bch-wfp b) (natp n) (<= n (fn-bch-length b)))
+           (equal (len (fn-bch-held-partial b n))
+                  (fn-bch-partial-len b n))))
+
+(defthm fn-bch-length-of-push
+  (implies (fn-bch-wfp b)
+           (equal (fn-bch-length (fn-bch-push b x))
+                  (+ 1 (fn-bch-length b))))
+  :hints (("Goal" :in-theory (enable fn-bch-push-of-tail-ok fn-bch-length))))
+
+(defthm fn-bch-octets-at-length-zero
+  (implies (and (fn-bch-wfp b) (equal (fn-bch-length b) 0))
+           (equal (fn-bch-octets b) nil))
+  :hints (("Goal" :use ((:instance fn-bch-len-of-octets (s b)))
+                  :expand ((len (fn-bch-octets b)))
+                  :in-theory (disable fn-bch-len-of-octets))))
+
+(defthm fn-bch-held-text-at-length
+  (implies (fn-bch-wfp b)
+           (equal (fn-bch-held-text b (fn-bch-length b))
+                  (fn-bch-octets b))))
+
+(local (defthm fn-bch-append-take-nthcdr
+         (implies (and (natp n) (<= n (len x)) (true-listp x))
+                  (equal (append (take n x) (nthcdr n x)) x))
+         :hints (("Goal" :in-theory (enable take nthcdr)))))
+
+(defthm fn-bch-held-text-and-partial
+  (implies (and (fn-bch-wfp b) (natp n) (<= n (fn-bch-length b)))
+           (equal (append (fn-bch-held-text b n) (fn-bch-held-partial b n))
+                  (fn-bch-octets b)))
+  :hints (("Goal" :use ((:instance fn-bch-append-take-nthcdr (x (fn-bch-octets b)))
+                        (:instance fn-bch-len-of-octets (s b)))
+                  :in-theory (disable fn-bch-append-take-nthcdr fn-bch-len-of-octets))))
+
+(defthm fn-bch-consp-of-held-partial
+  (implies (and (fn-bch-wfp b) (natp n) (<= n (fn-bch-length b)))
+           (equal (consp (fn-bch-held-partial b n))
+                  (not (equal (fn-bch-partial-len b n) 0))))
+  :hints (("Goal" :use ((:instance fn-bch-len-of-held-partial))
+                  :expand ((len (fn-bch-held-partial b n)))
+                  :in-theory (disable fn-bch-len-of-held-partial))))
+
+(defthm fn-bch-partial-len-plus
+  (implies (and (natp n) (<= n (fn-bch-length b)))
+           (equal (+ n (fn-bch-partial-len b n)) (fn-bch-length b)))
+  :hints (("Goal" :in-theory (enable fn-bch-partial-len))))
+
+(local (defthm fn-bch-nthcdr-at-len
+         (implies (and (true-listp x) (equal n (len x)))
+                  (equal (nthcdr n x) nil))
+         :hints (("Goal" :in-theory (enable nthcdr)))))
+
+(defthm fn-bch-held-partial-at-length
+  (implies (fn-bch-wfp b)
+           (equal (fn-bch-held-partial b (fn-bch-length b)) nil)))
+
+(defthm fn-bch-line-end-held
+  (implies (fn-bch-wfp b)
+           (let ((b2 (fn-bch-push (fn-bch-push b 13) 10))
+                 (m (+ 2 (fn-bch-length b))))
+             (and (equal (fn-bch-held-text b2 m)
+                         (append (fn-bch-octets b) (list 13 10)))
+                  (equal (fn-bch-held-partial b2 m) nil)
+                  (equal (fn-bch-partial-len b2 m) 0)
+                  (equal (fn-bch-length b2) m))))
+  :hints (("Goal" :use ((:instance fn-bch-held-text-at-length (b (fn-bch-push (fn-bch-push b 13) 10)))
+                        (:instance fn-bch-held-partial-at-length (b (fn-bch-push (fn-bch-push b 13) 10))))
+                  :in-theory (disable fn-bch-held-text-at-length
+                                      fn-bch-held-partial-at-length
+                                      fn-bch-held-text fn-bch-held-partial))))
+
+(defthm fn-bch-partial-len-at-length
+  (equal (fn-bch-partial-len b (fn-bch-length b)) 0)
+  :hints (("Goal" :in-theory (enable fn-bch-partial-len))))
+
+(defthm fn-bch-held-partial-true-listp
+  (true-listp (fn-bch-held-partial b n))
+  :rule-classes :type-prescription)
+
+(defthm fn-bch-held-partial-empty
+  (implies (and (fn-bch-wfp b) (natp n) (<= n (fn-bch-length b))
+                (equal (fn-bch-partial-len b n) 0))
+           (equal (fn-bch-held-partial b n) nil))
+  :hints (("Goal" :use ((:instance fn-bch-consp-of-held-partial))
+                  :in-theory (disable fn-bch-consp-of-held-partial fn-bch-held-partial
+                                      fn-bch-partial-len))))
+
+(in-theory (disable fn-bch-held-text fn-bch-held-partial fn-bch-partial-len))
+
+(defthm fn-bch-body-okp-dot
+  (implies (fn-bch-body-okp b n 0)
+           (fn-bch-body-okp b n 1)))
+
+(defthm fn-bch-body-okp-octet
+  (implies (and (fn-bch-body-okp b n l)
+                (fn-bch-octetp x)
+                (not (equal x 13))
+                (not (equal x 10))
+                (not (and (equal l 0) (equal x 46))))
+           (fn-bch-body-okp (fn-bch-push b x) n (+ 1 l))))
+
+(defthm fn-bch-body-okp-line
+  (implies (fn-bch-body-okp b n l)
+           (fn-bch-body-okp (fn-bch-push (fn-bch-push b 13) 10)
+                            (+ 2 n (fn-bch-partial-len b n))
+                            0))
+  :hints (("Goal" :use ((:instance fn-bch-held-text-and-partial)
+                        (:instance fn-bch-framedp-append-line
+                                   (text (fn-bch-held-text b n))
+                                   (p (fn-bch-held-partial b n))))
+                  :in-theory (disable fn-bch-held-text-and-partial fn-bch-framedp-append-line))))
+
+(defthm fn-bch-body-okp-facts
+  (implies (fn-bch-body-okp b n l)
+           (and (fn-bch-wfp b)
+                (natp n)
+                (<= n (fn-bch-length b))
+                (fn-bch-framedp (fn-bch-held-text b n))
+                (fn-bch-plain-octetsp (fn-bch-held-partial b n))
+                (or (equal l (fn-bch-partial-len b n))
+                    (equal l (+ 1 (fn-bch-partial-len b n))))))
+  :rule-classes nil)
+
+; The lines the terminator reads out of the store are the completed lines.
+(defthm fn-bch-body-okp-terminator-lines
+  (implies (and (fn-bch-body-okp b n l)
+                (equal (fn-bch-partial-len b n) 0))
+           (equal (fn-ag-rev-onto (fn-bch-lines-rev b) nil)
+                  (fn-bch-held-lines b n)))
+  :hints (("Goal" :use ((:instance fn-bch-partial-len-plus)
+                        (:instance fn-bch-held-text-at-length))
+                  :in-theory (e/d (fn-bch-lines-of)
+                                  (fn-bch-partial-len-plus fn-bch-held-text-at-length)))))
+
+(defthm fn-bch-held-lines-of-empty
+  (equal (fn-bch-held-lines (fn-bch-empty) 0) nil))
+
+(defthm fn-bch-held-lines-of-push
+  (implies (and (fn-bch-wfp b) (fn-bch-octetp x) (natp n) (<= n (fn-bch-length b)))
+           (equal (fn-bch-held-lines (fn-bch-push b x) n)
+                  (fn-bch-held-lines b n))))
+
+(defthm fn-bch-held-lines-of-line
+  (implies (fn-bch-body-okp b n l)
+           (equal (fn-bch-held-lines (fn-bch-push (fn-bch-push b 13) 10)
+                                     (+ 2 n (fn-bch-partial-len b n)))
+                  (append (fn-bch-held-lines b n)
+                          (list (fn-bch-held-partial b n)))))
+  :hints (("Goal" :use ((:instance fn-bch-held-text-and-partial)
+                        (:instance fn-bch-framedp-append-line
+                                   (text (fn-bch-held-text b n))
+                                   (p (fn-bch-held-partial b n))))
+                  :in-theory (disable fn-bch-held-text-and-partial fn-bch-framedp-append-line))))
+
+(defthm fn-bch-body-okp-length-bound
+  (implies (fn-bch-body-okp b n l)
+           (<= (fn-bch-length b) (+ n l)))
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-bch-body-okp-facts)
+                        (:instance fn-bch-partial-len-plus))
+                  :in-theory (disable fn-bch-partial-len-plus))))
+
+; -----------------------------------------------------------------------------
+; A run of a line's octets appended at once (the wire's article lines, the
+; outbound round trip).
+
+(defthm fn-bch-length-of-push-list
+  (implies (fn-bch-wfp b)
+           (equal (fn-bch-length (fn-bch-push-list b xs))
+                  (+ (fn-bch-length b) (len xs))))
+  :hints (("Goal" :induct (fn-bch-push-list b xs))))
+
+(defthm fn-bch-held-lines-of-push-list
+  (implies (and (fn-bch-wfp b) (fn-bch-octetsp xs) (natp n) (<= n (fn-bch-length b)))
+           (equal (fn-bch-held-lines (fn-bch-push-list b xs) n)
+                  (fn-bch-held-lines b n)))
+  :hints (("Goal" :induct (fn-bch-push-list b xs))))
+
+(defthm fn-bch-held-partial-of-push-list
+  (implies (and (fn-bch-wfp b) (fn-bch-octetsp xs) (natp n) (<= n (fn-bch-length b)))
+           (equal (fn-bch-held-partial (fn-bch-push-list b xs) n)
+                  (append (fn-bch-held-partial b n) xs)))
+  :hints (("Goal" :induct (fn-bch-push-list b xs))))
+
+(defthm fn-bch-plain-octetsp-implies-octetsp
+  (implies (fn-bch-plain-octetsp xs) (fn-bch-octetsp xs)))
+
+(defthm fn-bch-partial-len-of-push-list
+  (implies (and (fn-bch-wfp b) (natp n) (<= n (fn-bch-length b)))
+           (equal (fn-bch-partial-len (fn-bch-push-list b xs) n)
+                  (+ (fn-bch-partial-len b n) (len xs))))
+  :hints (("Goal" :in-theory (enable fn-bch-partial-len))))
+
+(local
+ (defun fn-bch-push-list-l-induction (b xs l)
+   (if (consp xs)
+       (fn-bch-push-list-l-induction (fn-bch-push b (car xs)) (cdr xs) (+ 1 l))
+     (list b l))))
+
+(defthm fn-bch-body-okp-of-push-list
+  (implies (and (fn-bch-body-okp b n l)
+                (fn-bch-plain-octetsp xs)
+                (natp l)
+                (not (and (equal l 0) (consp xs) (equal (car xs) 46))))
+           (fn-bch-body-okp (fn-bch-push-list b xs) n (+ l (len xs))))
+  :hints (("Goal" :induct (fn-bch-push-list-l-induction b xs l)
+                  :in-theory (disable fn-bch-body-okp))))
+
+(defthm fn-bch-body-okp-line-start
+  (implies (fn-bch-body-okp b n 0)
+           (equal (fn-bch-partial-len b n) 0))
+  :hints (("Goal" :use ((:instance fn-bch-body-okp-facts (l 0))))))
+
+; A whole line received from a line start: its octets, then CR LF.
+(defthm fn-bch-body-okp-whole-line
+  (implies (and (fn-bch-body-okp b n 0)
+                (fn-bch-plain-octetsp xs))
+           (let ((b2 (fn-bch-push (fn-bch-push (fn-bch-push-list b xs) 13) 10)))
+             (and (fn-bch-body-okp b2 (+ 2 n (len xs)) 0)
+                  (equal (fn-bch-held-lines b2 (+ 2 n (len xs)))
+                         (append (fn-bch-held-lines b n) (list xs))))))
+  :hints (("Goal"
+           :use ((:instance fn-bch-body-okp-facts (l 0))
+                 (:instance fn-bch-body-okp-line-start)
+                 (:instance fn-bch-body-okp-dot)
+                 (:instance fn-bch-body-okp-of-push-list
+                            (l (if (and (consp xs) (equal (car xs) 46)) 1 0)))
+                 (:instance fn-bch-body-okp-line (b (fn-bch-push-list b xs))
+                            (l (+ (len xs) (if (and (consp xs) (equal (car xs) 46)) 1 0))))
+                 (:instance fn-bch-held-lines-of-line (b (fn-bch-push-list b xs))
+                            (l (+ (len xs) (if (and (consp xs) (equal (car xs) 46)) 1 0)))))
+           :in-theory (disable fn-bch-body-okp-line-start
+                               fn-bch-body-okp-dot fn-bch-body-okp-of-push-list
+                               fn-bch-body-okp-line fn-bch-held-lines-of-line
+                               fn-bch-body-okp fn-bch-held-lines))))
+
+(defthm fn-bch-body-okp-forward
+  (implies (fn-bch-body-okp b n l)
+           (and (natp n) (fn-bch-wfp b)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :use ((:instance fn-bch-body-okp-facts)))))
+
+(defthm fn-bch-held-lines-true-listp
+  (true-listp (fn-bch-held-lines b n))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-bch-held-lines fn-bch-lines-of))))
+
+(in-theory (disable fn-bch-held-lines fn-bch-body-okp fn-bch-length
+                    fn-bch-push-of-tail-ok fn-bch-push-list-fills-the-tail
+                    fn-bch-lines-rev fn-bch-lines-rev-is-split))

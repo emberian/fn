@@ -162,288 +162,104 @@
                       (fn-wire-state-line-limit wire-state)
                       (fn-wire-state-body-limit wire-state)))
 
-; Once CRLF has been recognized, fn-wire-after-line reads the accumulated
-; line argument and the article body fields, never the transient line-rev or
-; pending-CR fields.  This keeps the byte proof from re-opening the whole
-; state recognizer merely to erase those transient fields.
-(defthm fn-wire-after-line-ignores-line-accumulator
-  (implies (and (fn-wire-statep wire-state)
-                (fn-wire-octet-listp line))
-           (equal (fn-wire-after-line wire-state line)
-                  (fn-wire-after-line
-                   (fn-wire-clear-line-state wire-state) line)))
-  :hints (("Goal"
-           :in-theory (enable fn-wire-after-line
-                              fn-wire-clear-line-state
-                              fn-wire-statep
-                              fn-wire-make-state
-                              fn-wire-result-state
-                              fn-wire-result-events
-                              fn-wire-make-result))))
+(defun fn-wire-clean-article-induction (xs l body)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count xs)))
+  (if (consp xs)
+      (fn-wire-clean-article-induction
+       (cdr xs) (+ 1 (nfix l))
+       (if (and (equal l 0) (equal (car xs) 46)) body (fn-bch-push body (car xs))))
+    (list l body)))
 
-(defthm fn-wire-after-line-recomposes-result
-  (implies (and (fn-wire-statep wire-state)
-                (fn-wire-octet-listp line))
-           (equal
-            (fn-wire-make-result
-             (fn-wire-result-state (fn-wire-after-line wire-state line))
-             (append (fn-wire-result-events
-                      (fn-wire-after-line wire-state line)) nil))
-            (fn-wire-after-line wire-state line)))
-  :hints (("Goal"
-           :in-theory (enable fn-wire-after-line
-                              fn-wire-clear-line-state
-                              fn-wire-statep
-                              fn-wire-make-state
-                              fn-wire-result-state
-                              fn-wire-result-events
-                              fn-wire-make-result))))
+(defthm fn-wire-line-contentp-is-plain-octetsp
+  (equal (fn-wire-line-contentp line)
+         (fn-bch-plain-octetsp line)))
 
-; The two preceding facts in the exact record shape the byte feeder leaves:
-; after CRLF, reconstructing its result record with no later events is the
-; same result as dispatching the completed line from the quiescent state.
-(defthm fn-wire-after-line-cleared-recomposes-result
-  (implies (fn-wire-statep wire-state)
-           (equal
-            (fn-wire-make-result
-             (fn-wire-result-state (fn-wire-after-line wire-state line))
-             (append (fn-wire-result-events
-                      (fn-wire-after-line wire-state line)) nil))
-            (fn-wire-after-line
-             (fn-wire-clear-line-state wire-state) line)))
-  :hints (("Goal"
-           :in-theory (enable fn-wire-after-line
-                              fn-wire-clear-line-state
-                              fn-wire-statep
-                              fn-wire-make-state
-                              fn-wire-result-state
-                              fn-wire-result-events
-                              fn-wire-make-result))))
+; -----------------------------------------------------------------------------
+; An article line through the byte machine (lane chunked-body, B6).  In
+; article mode a line's ordinary octets go into the store as they arrive --
+; all of them but a leading dot -- and CR LF completes the line.
 
-; The CR branch of fn-wire-feed-byte reconstructs this exact state shape
-; before passing a completed line to fn-wire-after-line.  State it in that
-; shape so the byte induction can use it without a record-extensionality
-; detour through WIRE-STATE.
-(defthm fn-wire-after-line-canonical-recomposes-result
-  (implies (and (fn-wire-statep wire-state)
-                (equal (fn-wire-state-mode wire-state) :article)
-                (null (fn-wire-state-pending-crp wire-state)))
-           (equal
-            (fn-wire-make-result
-             (fn-wire-result-state
-              (fn-wire-after-line
-               (fn-wire-make-state :article
-                                   (fn-wire-state-line-rev wire-state)
-                                   (fn-wire-state-line-len wire-state)
-                                   (fn-wire-state-body-rev wire-state) nil
-                                   (fn-wire-state-body-size wire-state)
-                                   (fn-wire-state-line-limit wire-state)
-                                   (fn-wire-state-body-limit wire-state))
-               line))
-             (append (fn-wire-result-events
-                      (fn-wire-after-line
-                       (fn-wire-make-state :article
-                                           (fn-wire-state-line-rev wire-state)
-                                           (fn-wire-state-line-len wire-state)
-                                           (fn-wire-state-body-rev wire-state) nil
-                                           (fn-wire-state-body-size wire-state)
-                                           (fn-wire-state-line-limit wire-state)
-                                           (fn-wire-state-body-limit wire-state))
-                       line)) nil))
-            (fn-wire-after-line (fn-wire-clear-line-state wire-state) line)))
-  :hints (("Goal"
-           :in-theory (enable fn-wire-after-line
-                              fn-wire-clear-line-state
-                              fn-wire-statep
-                              fn-wire-make-state
-                              fn-wire-result-state
-                              fn-wire-result-events
-                              fn-wire-make-result))))
-
-; The induction base has this reconstructed shape, not WIRE-STATE itself.
-; Keeping the fields explicit is the record-extensionality bridge: after-line
-; cannot observe line-rev or line-len once the completed line is supplied.
-(defthm fn-wire-after-line-rebuilt-article-line-recomposes
-  (equal
-   (fn-wire-make-result
-    (fn-wire-result-state
-     (fn-wire-after-line
-      (fn-wire-make-state :article line-rev line-len body-rev nil
-                          body-size line-limit body-limit)
-      (revappend line-rev nil)))
-    (append (fn-wire-result-events
-             (fn-wire-after-line
-              (fn-wire-make-state :article line-rev line-len body-rev nil
-                                  body-size line-limit body-limit)
-              (revappend line-rev nil))) nil))
-   (fn-wire-after-line
-    (fn-wire-make-state :article nil 0 body-rev nil
-                        body-size line-limit body-limit)
-    (revappend line-rev nil)))
-  :hints (("Goal"
-           :in-theory (enable fn-wire-after-line
-                              fn-wire-make-state
-                              fn-wire-result-state
-                              fn-wire-result-events
-                              fn-wire-make-result))))
-
-; fn-wire-after-line is total and always constructs its result record.  Keep
-; this guard-free form for the induction after its IH has already reduced a
-; recursive feed to an after-line result.
-(defthm fn-wire-after-line-recomposes
-  (equal
-   (fn-wire-make-result
-    (fn-wire-result-state (fn-wire-after-line wire-state line))
-    (fn-wire-result-events (fn-wire-after-line wire-state line)))
-   (fn-wire-after-line wire-state line))
-  :hints (("Goal"
-           :in-theory (enable fn-wire-after-line
-                              fn-wire-result-state
-                              fn-wire-result-events
-                              fn-wire-make-result))))
-
-(defthm fn-wire-feed-byte-starts-clean-article-line
-  (implies
-   (and (fn-wire-statep wire-state)
-        (equal (fn-wire-state-mode wire-state) :article)
-        (null (fn-wire-state-pending-crp wire-state))
-        (fn-wire-octetp byte)
-        (not (equal byte 13))
-        (not (equal byte 10))
-        (< (fn-wire-state-line-len wire-state)
-           (fn-wire-state-line-limit wire-state)))
-   (equal (fn-wire-feed-byte wire-state byte)
-          (fn-wire-make-result
-           (fn-wire-make-state :article
-                               (cons byte (fn-wire-state-line-rev wire-state))
-                               (+ 1 (fn-wire-state-line-len wire-state))
-                               (fn-wire-state-body-rev wire-state)
-                               nil
-                               (fn-wire-state-body-size wire-state)
-                               (fn-wire-state-line-limit wire-state)
-                               (fn-wire-state-body-limit wire-state))
-           nil)))
-  :hints (("Goal"
-           :in-theory (enable fn-wire-feed-byte
-                              fn-wire-result-state
-                              fn-wire-result-events
-                              fn-wire-make-result
-                              fn-wire-make-state))))
-
-(defthm fn-wire-clean-byte-next-statep
-  (implies
-   (and (fn-wire-statep wire-state)
-        (equal (fn-wire-state-mode wire-state) :article)
-        (null (fn-wire-state-pending-crp wire-state))
-        (fn-wire-octetp byte)
-        (not (equal byte 13))
-        (not (equal byte 10))
-        (< (fn-wire-state-line-len wire-state)
-           (fn-wire-state-line-limit wire-state)))
-   (fn-wire-statep
-    (fn-wire-make-state
-     :article (cons byte (fn-wire-state-line-rev wire-state))
-     (+ 1 (fn-wire-state-line-len wire-state))
-     (fn-wire-state-body-rev wire-state) nil
-     (fn-wire-state-body-size wire-state)
-     (fn-wire-state-line-limit wire-state)
-     (fn-wire-state-body-limit wire-state))))
-  :hints (("Goal"
-           :use ((:instance fn-wire-feed-byte-preserves-statep))
-           :in-theory (e/d (fn-wire-result-state fn-wire-make-result)
-                           (fn-wire-feed-byte-preserves-statep
-                            fn-wire-feed-byte
-                            fn-wire-statep
-                            fn-wire-make-state)))))
-
-; The same source capacity hypothesis, normalized after the physical byte is
-; consed to line-rev.  The line theorem uses this rather than reopening LEN
-; and arithmetic under the state recognizer.
-(defthm fn-wire-clean-cons-preserves-line-capacity
-  (implies (<= (+ line-len (len (cons byte remaining))) line-limit)
-           (<= (+ (+ 1 line-len) (len remaining)) line-limit))
-  :hints (("Goal" :in-theory (enable len))))
-
-; An induction scheme over the real byte transition.  Unlike induction on
-; APPEND, its hypothesis has the post-byte state that fn-wire-feed-proper
-; actually recurs on.
-(defun fn-wire-clean-line-byte-induction (wire-state remaining)
-  (declare (xargs :guard t :verify-guards nil :measure (acl2-count remaining)))
-  (if (consp remaining)
-      (fn-wire-clean-line-byte-induction
-       (fn-wire-result-state
-        (fn-wire-feed-byte wire-state (car remaining)))
-       (cdr remaining))
-    wire-state))
-
-(defthm fn-wire-feed-proper-completes-clean-article-line
-  (implies
-   (and (fn-wire-statep wire-state)
-        (equal (fn-wire-state-mode wire-state) :article)
-        (null (fn-wire-state-pending-crp wire-state))
-        (fn-wire-line-contentp remaining)
-        (<= (+ (fn-wire-state-line-len wire-state) (len remaining))
-            (fn-wire-state-line-limit wire-state)))
-   (equal (fn-wire-feed-proper wire-state (append remaining '(13 10)))
-          (fn-wire-after-line
-           (fn-wire-clear-line-state wire-state)
-           (revappend (fn-wire-state-line-rev wire-state) remaining))))
-  :hints (("Goal"
-           :induct (fn-wire-clean-line-byte-induction wire-state remaining)
-           :in-theory (e/d (fn-wire-feed-proper
-                              fn-wire-line-contentp
-                              fn-wire-clear-line-state
-                              fn-wire-clean-line-byte-induction
-                              revappend)
-                           (fn-wire-feed-proper-append
-                            fn-wire-after-line
-                            fn-wire-statep
-                            fn-wire-close
-                            fn-wire-make-state
-                            (:d fn-wire-make-result)
-                            (:d fn-wire-result-state)
-                            (:d fn-wire-result-events)
-                            (:d fn-wire-state-mode)
-                            (:d fn-wire-state-line-rev)
-                            (:d fn-wire-state-line-len)
-                            (:d fn-wire-state-body-rev)
-                            (:d fn-wire-state-pending-crp)
-                            (:d fn-wire-state-body-size)
-                            (:d fn-wire-state-line-limit)
-                            (:d fn-wire-state-body-limit)
-                            )))))
-
-; The receive transition that consumes one complete outbound-rendered line.
-; `fn-wire-after-line' is below fn-wire-next and fn-wire-drive, the framing
-; path the reader host calls.  The theorem says the only data transformation
-; on a nonterminating outbound line is the inverse of fn-wire-stuff-line:
-; its exact source octets become the next retained source line.  The bound is
-; necessary: without room for this line and its CRLF the real transition
-; closes with :body-overlimit instead.
-(defthm fn-wire-after-line-unstuffs-rendered-source-line
-  (implies (and (fn-wire-statep wire-state)
-                (equal (fn-wire-state-mode wire-state) :article)
-                (fn-wire-octet-listp source)
-                (<= (+ (fn-wire-state-body-size wire-state)
-                       (fn-wire-line-cost source))
-                    (fn-wire-state-body-limit wire-state)))
-           (equal (fn-wire-after-line wire-state (fn-wire-stuff-line source))
+; A line's content fed from an article state with no pending CR: the line
+; grows by the octets, and the store by all of them but a leading dot.
+(defthm fn-wire-feed-proper-of-article-line-content
+  (implies (and (fn-wire-line-contentp xs)
+                (natp l)
+                (<= (+ l (len xs)) line-limit))
+           (equal (fn-wire-feed-proper
+                   (fn-wire-make-state :article nil l body nil body-size
+                                       line-limit body-limit)
+                   xs)
                   (fn-wire-make-result
-                   (fn-wire-make-state
-                    :article nil 0
-                    (cons source (fn-wire-state-body-rev wire-state)) nil
-                    (+ (fn-wire-state-body-size wire-state)
-                       (fn-wire-line-cost source))
-                    (fn-wire-state-line-limit wire-state)
-                    (fn-wire-state-body-limit wire-state))
+                   (fn-wire-make-state :article nil (+ l (len xs))
+                                       (fn-bch-push-list
+                                        body
+                                        (if (and (equal l 0) (consp xs) (equal (car xs) 46))
+                                            (cdr xs)
+                                          xs))
+                                       nil body-size line-limit body-limit)
                    nil)))
-  :hints (("Goal"
-           :in-theory (enable fn-wire-after-line
-                              fn-wire-statep
-                              fn-wire-result-state
-                              fn-wire-result-events
-                              fn-wire-make-result
-                              fn-wire-make-state))))
+  :hints (("Goal" :induct (fn-wire-clean-article-induction xs l body)
+                  :in-theory (e/d (fn-wire-feed-proper fn-wire-feed-byte fn-wire-take-octet
+                                   fn-wire-line-contentp-is-plain-octetsp)
+                                  (fn-wire-line-contentp)))))
+
+; The same from a line start: the store takes the line unstuffed.
+(defthm fn-wire-feed-proper-of-article-line-start
+  (implies (and (fn-wire-line-contentp xs)
+                (<= (len xs) line-limit))
+           (equal (fn-wire-feed-proper
+                   (fn-wire-make-state :article nil 0 body nil body-size
+                                       line-limit body-limit)
+                   xs)
+                  (fn-wire-make-result
+                   (fn-wire-make-state :article nil (len xs)
+                                       (fn-bch-push-list body (fn-wire-unstuff-line xs))
+                                       nil body-size line-limit body-limit)
+                   nil)))
+  :hints (("Goal" :use ((:instance fn-wire-feed-proper-of-article-line-content (l 0)))
+                  :in-theory (e/d (fn-wire-unstuff-line)
+                                  (fn-wire-feed-proper-of-article-line-content
+                                   fn-wire-feed-proper fn-wire-line-contentp)))))
+
+; CR LF after a line in article mode: the line completes (fn-wire-after-line).
+(defthm fn-wire-feed-proper-of-article-crlf
+  (equal (fn-wire-feed-proper
+          (fn-wire-make-state :article nil l body nil body-size line-limit body-limit)
+          '(13 10))
+         (fn-wire-after-line
+          (fn-wire-make-state :article nil l body nil body-size line-limit body-limit)
+          nil))
+  :hints (("Goal" :in-theory (enable fn-wire-feed-proper fn-wire-feed-byte
+                                     fn-wire-reverse-octets fn-wire-reverse-octets-aux))))
+
+; A completed article line that is not the terminator, within the body limit.
+(defthm fn-wire-after-line-completes-article-line
+  (implies (and (not (and (equal l 1)
+                          (equal (fn-bch-partial-len body body-size) 0)))
+                (<= (+ body-size (fn-bch-partial-len body body-size) 2) body-limit))
+           (equal (fn-wire-after-line
+                   (fn-wire-make-state :article nil l body nil body-size line-limit body-limit)
+                   line)
+                  (fn-wire-make-result
+                   (fn-wire-make-state :article nil 0
+                                       (fn-bch-push (fn-bch-push body 13) 10)
+                                       nil
+                                       (+ body-size (fn-bch-partial-len body body-size) 2)
+                                       line-limit body-limit)
+                   nil)))
+  :hints (("Goal" :in-theory (enable fn-wire-after-line fn-wire-partial-len))))
+
+; The terminator: the line "." with nothing held of it.
+(defthm fn-wire-after-line-terminates-article
+  (implies (equal (fn-bch-partial-len body body-size) 0)
+           (equal (fn-wire-after-line
+                   (fn-wire-make-state :article nil 1 body nil body-size line-limit body-limit)
+                   line)
+                  (fn-wire-make-result
+                   (fn-wire-make-state :command nil 0 nil nil 0 line-limit body-limit)
+                   (list (fn-wire-article-event
+                          (fn-wire-reverse-lines (fn-bch-lines-rev body)))))))
+  :hints (("Goal" :in-theory (enable fn-wire-after-line fn-wire-partial-len))))
 
 (defthm fn-wire-feed-byte-silent-step-stays-open
   (implies (and (fn-wire-statep wire-state)

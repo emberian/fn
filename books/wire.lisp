@@ -17,6 +17,7 @@
 
 (in-package "ACL2")
 (include-book "rev-onto") ; the loop twins' step (PKT-877)
+(include-book "body-chunks") ; the body held in article mode (B6)
 
 ; ---------------------------------------------------------------------------
 ; Total selectors.  The records below are positional lists; these two helpers
@@ -507,28 +508,59 @@
   (equal (fn-wire-lines-size (cons line lines))
          (+ (fn-wire-line-cost line) (fn-wire-lines-size lines))))
 
+; ---------------------------------------------------------------------------
+; The body held in article mode (lane chunked-body, row B6 of
+; COMPLETE-BEFORE-6.6.0; D27, D35 F8).
+;
+; In article mode the body-rev field holds a STORE (books/body-chunks.lisp):
+; the decoded body so far as packed blocks -- each completed line followed
+; by CR LF, then the decoded part of the current line -- about one octet of
+; heap an octet, where the octet lists it replaced cost sixteen (a cons
+; each) for the completed lines and sixteen more for the partial line, which
+; the article line limit lets be as long as the article.  line-rev is empty
+; in article mode; line-len counts the current line as it arrived, its
+; leading dot included; body-size counts the completed lines with their
+; CR LF.  So the store's last (length - body-size) octets are the current
+; line's decoded octets (`fn-wire-partial-len'), and the line began with a
+; dot (removed, RFC 3977 section 3.1.1) exactly when line-len is one more.
+; The article event is still the list of lines, read out of the store once,
+; at the terminator (`fn-bch-lines-rev').  In command mode the fields keep
+; their meaning: the command line reversed in line-rev (at most 512 octets).
+
+(defun fn-wire-partial-len (x)
+  (declare (xargs :guard t))
+  (fn-bch-partial-len (fn-wire-state-body-rev x) (fn-wire-state-body-size x)))
+
+; THE ABSTRACTION of an article-mode state: the lines it has completed
+; (books/body-chunks.lisp fn-bch-held-lines).
+(defun fn-wire-body-lines (x)
+  (declare (xargs :guard t))
+  (fn-bch-held-lines (fn-wire-state-body-rev x) (fn-wire-state-body-size x)))
+
 (defun fn-wire-statep (x)
-(and (fn-wire-state-shapep x)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-wire-state-shapep x)
        (fn-wire-modep (fn-wire-state-mode x))
-       (fn-wire-octet-listp (fn-wire-state-line-rev x))
-       (fn-wire-octet-linesp (fn-wire-state-body-rev x))
        (or (equal (fn-wire-state-pending-crp x) t)
            (null (fn-wire-state-pending-crp x)))
        (natp (fn-wire-state-line-len x))
        (natp (fn-wire-state-body-size x))
        (posp (fn-wire-state-line-limit x))
        (posp (fn-wire-state-body-limit x))
-       (equal (fn-wire-state-line-len x)
-              (len (fn-wire-state-line-rev x)))
        (<= (fn-wire-state-line-len x)
            (fn-wire-state-line-limit x))
-       (equal (fn-wire-state-body-size x)
-              (fn-wire-lines-size (fn-wire-state-body-rev x)))
        (<= (fn-wire-state-body-size x)
            (fn-wire-state-body-limit x))
-       (or (equal (fn-wire-state-mode x) :article)
-           (and (null (fn-wire-state-body-rev x))
-                (equal (fn-wire-state-body-size x) 0)))
+       (if (equal (fn-wire-state-mode x) :article)
+           (and (null (fn-wire-state-line-rev x))
+                (fn-bch-body-okp (fn-wire-state-body-rev x)
+                                 (fn-wire-state-body-size x)
+                                 (fn-wire-state-line-len x)))
+         (and (fn-wire-octet-listp (fn-wire-state-line-rev x))
+              (equal (fn-wire-state-line-len x)
+                     (len (fn-wire-state-line-rev x)))
+              (null (fn-wire-state-body-rev x))
+              (equal (fn-wire-state-body-size x) 0)))
        (or (not (equal (fn-wire-state-mode x) :closed))
            (and (null (fn-wire-state-line-rev x))
                 (null (fn-wire-state-pending-crp x))))))
@@ -674,7 +706,7 @@
   (if (fn-wire-begin-article-admissiblep wire-state)
       (if (posp article-line-limit)
           (fn-wire-make-result
-           (fn-wire-make-state :article nil 0 nil nil 0
+           (fn-wire-make-state :article nil 0 (fn-bch-empty) nil 0
                                article-line-limit
                                (fn-wire-state-body-limit wire-state))
            nil)
@@ -723,7 +755,7 @@
                   (equal (fn-wire-state-mode next) :article)
                   (null (fn-wire-state-line-rev next))
                   (equal (fn-wire-state-line-len next) 0)
-                  (null (fn-wire-state-body-rev next))
+                  (equal (fn-wire-state-body-rev next) (fn-bch-empty))
                   (equal (fn-wire-state-body-size next) 0)
                   (equal (fn-wire-state-line-limit next)
                          (fn-wire-state-line-limit wire-state))
@@ -755,7 +787,7 @@
                   (equal (fn-wire-state-body-limit next)
                          (fn-wire-state-body-limit wire-state))
                   (null (fn-wire-state-line-rev next))
-                  (null (fn-wire-state-body-rev next)))))
+                  (equal (fn-wire-state-body-rev next) (fn-bch-empty)))))
   :hints (("Goal"
            :in-theory (enable fn-wire-begin-article-with-line-limit
                               fn-wire-begin-article-admissiblep
@@ -792,6 +824,10 @@
 ; -----------------------------------------------------------------------------
 ; One-byte input and incremental feeding
 
+; A line ended (CR LF).  In command mode LINE is the command.  In article
+; mode the line is already in the store (LINE is not read): the line "." ends
+; the article, and any other line is completed -- its CR LF appended and
+; charged -- within the body limit, else the connection closes.
 (defun fn-wire-after-line (wire-state line)
   (declare (xargs :guard (fn-wire-fast-statep wire-state)
                   :verify-guards nil))
@@ -801,28 +837,52 @@
                            (fn-wire-state-line-limit wire-state)
                            (fn-wire-state-body-limit wire-state))
        (list (fn-wire-command-event line)))
-    (if (equal line '(46))
-        (fn-wire-make-result
-         (fn-wire-make-state :command nil 0 nil nil 0
-                             (fn-wire-state-line-limit wire-state)
-                             (fn-wire-state-body-limit wire-state))
-         (list (fn-wire-article-event
-                (fn-wire-reverse-lines
-                 (fn-wire-state-body-rev wire-state)))))
-      (let ((decoded (fn-wire-unstuff-line line)))
-        (if (<= (+ (fn-wire-state-body-size wire-state)
-                   (fn-wire-line-cost decoded))
+    (let ((p (fn-wire-partial-len wire-state)))
+      (if (and (equal (fn-wire-state-line-len wire-state) 1) (equal p 0))
+          (fn-wire-make-result
+           (fn-wire-make-state :command nil 0 nil nil 0
+                               (fn-wire-state-line-limit wire-state)
+                               (fn-wire-state-body-limit wire-state))
+           (list (fn-wire-article-event
+                  (fn-wire-reverse-lines
+                   (fn-bch-lines-rev (fn-wire-state-body-rev wire-state))))))
+        (if (<= (+ (fn-wire-state-body-size wire-state) p 2)
                 (fn-wire-state-body-limit wire-state))
             (fn-wire-make-result
              (fn-wire-make-state :article nil 0
-                                 (cons decoded (fn-wire-state-body-rev wire-state))
+                                 (fn-bch-push (fn-bch-push (fn-wire-state-body-rev wire-state) 13) 10)
                                  nil
-                                 (+ (fn-wire-state-body-size wire-state)
-                                    (fn-wire-line-cost decoded))
+                                 (+ (fn-wire-state-body-size wire-state) p 2)
                                  (fn-wire-state-line-limit wire-state)
                                  (fn-wire-state-body-limit wire-state))
              nil)
           (fn-wire-close wire-state :body-overlimit))))))
+
+; One ordinary octet (not CR, not LF) with room on the line.  In command mode
+; it is consed onto the line; in article mode a line's leading dot is counted
+; and dropped, and any other octet is appended to the store.
+(defun fn-wire-take-octet (wire-state byte)
+  (declare (xargs :guard (fn-wire-fast-statep wire-state)
+                  :verify-guards nil))
+  (if (equal (fn-wire-state-mode wire-state) :article)
+      (fn-wire-make-state :article nil
+                          (+ 1 (fn-wire-state-line-len wire-state))
+                          (if (and (equal (fn-wire-state-line-len wire-state) 0)
+                                   (equal byte 46))
+                              (fn-wire-state-body-rev wire-state)
+                            (fn-bch-push (fn-wire-state-body-rev wire-state) byte))
+                          nil
+                          (fn-wire-state-body-size wire-state)
+                          (fn-wire-state-line-limit wire-state)
+                          (fn-wire-state-body-limit wire-state))
+    (fn-wire-make-state (fn-wire-state-mode wire-state)
+                        (cons byte (fn-wire-state-line-rev wire-state))
+                        (+ 1 (fn-wire-state-line-len wire-state))
+                        (fn-wire-state-body-rev wire-state)
+                        nil
+                        (fn-wire-state-body-size wire-state)
+                        (fn-wire-state-line-limit wire-state)
+                        (fn-wire-state-body-limit wire-state))))
 
 ; The per-byte step of the served path.  Every branch reads carried scalars and
 ; conses at most one octet: it runs no recognizer over the retained line, the
@@ -864,16 +924,7 @@
               (fn-wire-close wire-state :malformed)
             (if (< (fn-wire-state-line-len wire-state)
                    (fn-wire-state-line-limit wire-state))
-                (fn-wire-make-result
-                 (fn-wire-make-state (fn-wire-state-mode wire-state)
-                                     (cons byte (fn-wire-state-line-rev wire-state))
-                                     (+ 1 (fn-wire-state-line-len wire-state))
-                                     (fn-wire-state-body-rev wire-state)
-                                     nil
-                                     (fn-wire-state-body-size wire-state)
-                                     (fn-wire-state-line-limit wire-state)
-                                     (fn-wire-state-body-limit wire-state))
-                 nil)
+                (fn-wire-make-result (fn-wire-take-octet wire-state byte) nil)
               (fn-wire-close wire-state :line-overlimit))))))))
 
 (defthm fn-wire-feed-byte-preserves-statep
@@ -909,81 +960,104 @@
            :in-theory (e/d (fn-wire-result-state)
                            (fn-wire-feed-byte fn-wire-statep)))))
 
+; What a connection retains: in command mode the partial command line; in
+; article mode the store, which is the completed lines (body-size, within the
+; body limit) and the current line's decoded octets (within line-len, within
+; the line limit).
+(defun fn-wire-held-octets (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (+ (len (fn-wire-state-line-rev x))
+     (if (equal (fn-wire-state-mode x) :article)
+         (fn-bch-length (fn-wire-state-body-rev x))
+       0)))
+
+(defthm fn-wire-statep-held-octets-bound
+  (implies (fn-wire-statep x)
+           (and (<= (fn-wire-held-octets x)
+                    (+ (fn-wire-state-body-size x) (fn-wire-state-line-len x)))
+                (<= (fn-wire-state-body-size x) (fn-wire-state-body-limit x))
+                (<= (fn-wire-state-line-len x) (fn-wire-state-line-limit x))))
+  :hints (("Goal" :in-theory (enable fn-wire-statep))))
+
 (defthm fn-wire-feed-byte-retained-input-is-bounded
   (implies (fn-wire-statep wire-state)
            (let ((next (fn-wire-result-state
                         (fn-wire-feed-byte wire-state byte))))
-             (and (<= (len (fn-wire-state-line-rev next))
-                      (fn-wire-state-line-limit next))
-                  (<= (fn-wire-lines-size (fn-wire-state-body-rev next))
+             (and (<= (fn-wire-held-octets next)
+                      (+ (fn-wire-state-body-limit next)
+                         (fn-wire-state-line-limit next)))
+                  (<= (fn-wire-state-body-size next)
                       (fn-wire-state-body-limit next)))))
   :hints (("Goal"
-           :use ((:instance fn-wire-feed-byte-preserves-statep))
-           :in-theory (e/d (fn-wire-statep)
-                           (fn-wire-feed-byte
-                            fn-wire-feed-byte-preserves-statep)))))
+           :use ((:instance fn-wire-feed-byte-preserves-statep)
+                 (:instance fn-wire-statep-held-octets-bound
+                            (x (fn-wire-result-state (fn-wire-feed-byte wire-state byte)))))
+           :in-theory (disable fn-wire-feed-byte fn-wire-statep
+                               fn-wire-feed-byte-preserves-statep
+                               fn-wire-statep-held-octets-bound
+                               fn-wire-held-octets))))
 
 ; The earlier per-byte step, retained as the reference for the equality
-; theorem below.  It re-runs fn-wire-statep on every byte and measures the
-; retained line with `len`; on an article that makes a chunk of B octets cost
-; work quadratic in B.
+; theorem below: it re-measures the carried counters from the retained input
+; (`fn-wire-remeasure': the command line's length, and outside article mode
+; the size of no body) and re-runs fn-wire-statep on every byte, which made a
+; chunk of B octets cost work quadratic in B.  In article mode the counters
+; are the representation (the line's dropped dot is only in line-len), so
+; they are the measurement.
+(defun fn-wire-remeasure (wire-state)
+  (if (equal (fn-wire-state-mode wire-state) :article)
+      wire-state
+    (fn-wire-make-state (fn-wire-state-mode wire-state)
+                        (fn-wire-state-line-rev wire-state)
+                        (len (fn-wire-state-line-rev wire-state))
+                        (fn-wire-state-body-rev wire-state)
+                        (fn-wire-state-pending-crp wire-state)
+                        0
+                        (fn-wire-state-line-limit wire-state)
+                        (fn-wire-state-body-limit wire-state))))
+
 (defun fn-wire-feed-byte-reference (wire-state byte)
   (if (not (fn-wire-statep wire-state))
       (fn-wire-make-result wire-state nil)
-    (if (equal (fn-wire-state-mode wire-state) :closed)
-        (fn-wire-make-result wire-state nil)
-      (if (not (fn-wire-octetp byte))
-          (fn-wire-close wire-state :malformed)
-        (if (equal (fn-wire-state-pending-crp wire-state) t)
-            (if (equal byte 10)
-                (fn-wire-after-line
-                 (fn-wire-make-state (fn-wire-state-mode wire-state)
-                                     (fn-wire-state-line-rev wire-state)
-                                     (len (fn-wire-state-line-rev wire-state))
-                                     (fn-wire-state-body-rev wire-state)
-                                     nil
-                                     (fn-wire-lines-size
-                                      (fn-wire-state-body-rev wire-state))
-                                     (fn-wire-state-line-limit wire-state)
-                                     (fn-wire-state-body-limit wire-state))
-                 (fn-wire-reverse-octets (fn-wire-state-line-rev wire-state)))
-              (fn-wire-close wire-state :malformed))
-          (if (equal byte 13)
-              (fn-wire-make-result
-               (fn-wire-make-state (fn-wire-state-mode wire-state)
-                                   (fn-wire-state-line-rev wire-state)
-                                   (len (fn-wire-state-line-rev wire-state))
-                                   (fn-wire-state-body-rev wire-state)
-                                   t
-                                   (fn-wire-lines-size
-                                    (fn-wire-state-body-rev wire-state))
-                                   (fn-wire-state-line-limit wire-state)
-                                   (fn-wire-state-body-limit wire-state))
-               nil)
-            (if (equal byte 10)
-                (fn-wire-close wire-state :malformed)
-              (if (< (len (fn-wire-state-line-rev wire-state))
-                     (fn-wire-state-line-limit wire-state))
-                  (fn-wire-make-result
-                   (fn-wire-make-state
-                    (fn-wire-state-mode wire-state)
-                    (cons byte (fn-wire-state-line-rev wire-state))
-                    (len (cons byte (fn-wire-state-line-rev wire-state)))
-                    (fn-wire-state-body-rev wire-state)
-                    nil
-                    (fn-wire-lines-size (fn-wire-state-body-rev wire-state))
-                    (fn-wire-state-line-limit wire-state)
-                    (fn-wire-state-body-limit wire-state))
-                   nil)
-                (fn-wire-close wire-state :line-overlimit)))))))))
+    (fn-wire-feed-byte (fn-wire-remeasure wire-state) byte)))
+
+(local
+ (defthm fn-wire-make-state-of-fields
+   (implies (fn-wire-state-shapep x)
+            (equal (fn-wire-make-state (fn-wire-state-mode x)
+                                       (fn-wire-state-line-rev x)
+                                       (fn-wire-state-line-len x)
+                                       (fn-wire-state-body-rev x)
+                                       (fn-wire-state-pending-crp x)
+                                       (fn-wire-state-body-size x)
+                                       (fn-wire-state-line-limit x)
+                                       (fn-wire-state-body-limit x))
+                   x))
+   :hints (("Goal" :in-theory (enable fn-wire-state-shapep fn-wire-make-state
+                                      fn-wire-state-mode fn-wire-state-line-rev
+                                      fn-wire-state-line-len fn-wire-state-body-rev
+                                      fn-wire-state-pending-crp
+                                      fn-wire-state-body-size
+                                      fn-wire-state-line-limit
+                                      fn-wire-state-body-limit
+                                      fn-wire-ag-car fn-wire-ag-cdr)
+            :expand ((len x) (len (cdr x)) (len (cddr x)) (len (cdddr x))
+                     (len (cddddr x)) (len (cdr (cddddr x)))
+                     (len (cddr (cddddr x))) (len (cdddr (cddddr x)))
+                     (len (cddddr (cddddr x))))))))
+
+(defthm fn-wire-remeasure-of-statep
+  (implies (fn-wire-statep wire-state)
+           (equal (fn-wire-remeasure wire-state) wire-state))
+  :hints (("Goal" :use ((:instance fn-wire-make-state-of-fields (x wire-state)))
+                  :in-theory (e/d (fn-wire-statep) (fn-wire-make-state-of-fields)))))
 
 (defthm fn-wire-feed-byte-reference-is-feed-byte
   (implies (fn-wire-statep wire-state)
            (equal (fn-wire-feed-byte-reference wire-state byte)
                   (fn-wire-feed-byte wire-state byte)))
-  :hints (("Goal" :in-theory (enable fn-wire-feed-byte
-                                      fn-wire-feed-byte-reference
-                                      fn-wire-statep))))
+  :hints (("Goal" :in-theory (e/d (fn-wire-feed-byte-reference)
+                                  (fn-wire-feed-byte fn-wire-statep fn-wire-remeasure)))))
 
 (defthm fn-wire-feed-byte-matches-reference
   (implies (fn-wire-statep wire-state)
@@ -1249,6 +1323,7 @@
                                                                   (executable-counterpart-theory :here)))
                   :use ((:instance fn-wire-lines-size-loop-of-rev-onto (zs nil))))))
 (verify-guards fn-wire-statep)
+(verify-guards fn-wire-held-octets)
 (verify-guards fn-wire-initial-state)
 (verify-guards fn-wire-make-result)
 (verify-guards fn-wire-command-event)
@@ -1261,7 +1336,9 @@
 (verify-guards fn-wire-begin-article)
 (verify-guards fn-wire-begin-article-refusedp)
 (verify-guards fn-wire-after-line)
+(verify-guards fn-wire-take-octet)
 (verify-guards fn-wire-feed-byte)
+(verify-guards fn-wire-remeasure)
 (verify-guards fn-wire-feed-byte-reference)
 (verify-guards fn-wire-feed-proper)
 (verify-guards fn-wire-feed)
@@ -1296,7 +1373,9 @@
     fn-wire-command-event fn-wire-article-event fn-wire-reject-event
     fn-wire-stuff-line fn-wire-unstuff-line
     fn-wire-outbound-okp fn-wire-outbound-octets fn-wire-outbound-reason
-    fn-wire-outbound-lines fn-wire-render-block fn-wire-render-feed-command))
+    fn-wire-outbound-lines fn-wire-render-block fn-wire-render-feed-command
+    fn-wire-take-octet fn-wire-remeasure fn-wire-partial-len
+    fn-wire-held-octets))
 
 (in-theory (disable fn-wire-step-vocabulary))
 
