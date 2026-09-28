@@ -64,6 +64,9 @@ class BoxesTests(unittest.TestCase):
             self.assertIn("hbox reserved by curve-lane", self.run_boxes(answers).stdout)
         self.assertEqual(self.run_boxes(answers, "reserve", "hbox", "--why", "x").returncode, 2)
 
+    # waiver-ok: capability -- the lease uses flock(1) and GNU date's -d @N;
+    # the laptop (BSD date, no flock) is a machine this tree has not built
+    # them for, so the case runs on the build boxes only.
     @unittest.skipUnless(shutil.which("flock") and subprocess.run(
         ["date", "-d", "@0"], capture_output=True).returncode == 0, "needs flock and GNU date")
     def test_reserve_and_release_are_a_lease_on_the_box(self):
