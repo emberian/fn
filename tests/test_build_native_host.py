@@ -19,7 +19,7 @@ printf '%s\\n' "$FAKE_LINE"
 echo "mldsa=$FN_MLDSA_LIBRARY openssl=${FN_OPENSSL_PREFIX:-unset}"
 echo FN_NATIVE_BUILD_LOADED
 echo FN_NATIVE_WORLD_STRIPPED
-echo 'fn-world-deps 1' > "$FN_NATIVE_IMAGE.world-deps"
+echo 'fn-world-deps 2' > "$FN_NATIVE_IMAGE.world-deps"
 printf '#!/bin/sh\\nexec "/sbcl" --tls-limit 16384 --dynamic-space-size 32000 --core "c"\\n' > "$FN_NATIVE_IMAGE"
 chmod +x "$FN_NATIVE_IMAGE"
 echo core > "$FN_NATIVE_IMAGE.core"

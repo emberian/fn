@@ -7,9 +7,21 @@
 ;       --eval (acl2::sbcl-restart) --disable-debugger --end-toplevel-options --fn ARGS
 ;
 ; FN_WORLD_DEPS names IMAGE.world-deps (host/native/strip-world.lisp
-; fnn-write-world-deps, version 1).  At load the check first proves the file
+; fnn-write-world-deps, version 2).  At load the check first proves the file
 ; describes this image: every (symbol . property) pair the live world holds is
-; a K line, and every K line is held (else it stops the process, exit 70).
+; a K line, every K line is held, and every S line's item (the prover state
+; fnn-strip-prover-state replaced, lane image-strip) holds its trap (else it
+; stops the process, exit 70).  At exit it writes `STRIPPED intact=N
+; rebuilt=M', naming each S item no longer holding its trap as `REBUILT KIND
+; NAME' (something rebuilt prover state the image was saved without).  Every
+; ACL2 function whose source reads that state (the census in
+; *wdc-prover-state-readers*: ACL2 8.7's every definition naming the global
+; enabled structure, an enabled array or a type-set table, and ens's own
+; callers' funnel, ens) is traced: its first call is written `PROVER-READ FN
+; <- CALLER', a failure (the served program never calls the prover).  ACL2's
+; system code is compiled at safety 0, so a use of a trap there is not
+; guaranteed to signal; the trace is the check, the trap the backstop in code
+; compiled with safety.
 ; Then every read through fgetprop and sgetprop (the functions every
 ; getprop/getpropc/global-val reaches in raw Lisp) is classified once:
 ;
@@ -24,7 +36,11 @@
 ; exit.  FN_WORLD_DEPS_DROP="S P" (a K line's pair) deliberately removes that
 ; property from the live world before start and re-files it as omitted: the
 ; mutation witness that the check catches a required property the strip
-; dropped.
+; dropped.  FN_WORLD_DEPS_USE=ens or type-set-table makes a prover read of a
+; stripped item before start (the global enabled structure's array name;
+; aref2 of the type-set table): the witness that such a read fails loudly,
+; naming the item.  It writes `TRAPPED <the error>' (or `UNTRAPPED') and exits
+; 72.
 (in-package "ACL2")
 
 (defvar *wdc-kept* (make-hash-table :test 'equal))
@@ -33,6 +49,7 @@
 (defvar *wdc-lock* (sb-thread:make-mutex :name "world-deps-check"))
 (defvar *wdc-counts* (list 0 0 0))
 (defvar *wdc-out* nil)
+(defvar *wdc-stripped* nil)
 
 (defun wdc-die (fmt &rest args)
   (format *error-output* "~&world-deps-check: ~?~%" fmt args)
@@ -42,14 +59,72 @@
 (defun wdc-load (path)
   (with-open-file (s path :external-format :utf-8)
     (let ((head (read-line s nil)))
-      (unless (equal head "fn-world-deps 1")
-        (wdc-die "~a is not a version-1 dependency set: ~s" path head)))
+      (unless (equal head "fn-world-deps 2")
+        (wdc-die "~a is not a version-2 dependency set: ~s" path head)))
     (loop for line = (read-line s nil)
           while line
           do (cond ((and (> (length line) 2) (string= "K " line :end2 2))
                     (setf (gethash (subseq line 2) *wdc-kept*) t))
                    ((and (> (length line) 2) (string= "O " line :end2 2))
-                    (setf (gethash (subseq line 2) *wdc-omitted*) t))))))
+                    (setf (gethash (subseq line 2) *wdc-omitted*) t))
+                   ((and (> (length line) 2) (string= "S " line :end2 2))
+                    (with-input-from-string (in line :start 2)
+                      (let* ((*package* (find-package "ACL2"))
+                             (kind (read in)) (name (read in)))
+                        (push (cons kind name) *wdc-stripped*))))))))
+
+(defun wdc-use (what)
+  "The trace and the trap together: ens is traced (PROVER-READ) and its
+value is the trap; the check's own code has safety, so the use signals."
+  (let ((result
+          (handler-case
+              (cond ((equal what "ens")
+                     (access enabled-structure (ens *the-live-state*) :array-name))
+                    ((equal what "type-set-table")
+                     (aref2 'type-set-binary-+-table *type-set-binary-+-table* 0 0))
+                    (t (wdc-die "FN_WORLD_DEPS_USE ~s is neither ens nor type-set-table" what)))
+            (error (c)
+              (wdc-write (substitute #\Space #\Newline
+                                     (format nil "TRAPPED ~a: ~a" (type-of c) c)))
+              (sb-ext:exit :code 72 :abort t)))))
+    (wdc-write (format nil "UNTRAPPED ~s" result))
+    (sb-ext:exit :code 72 :abort t)))
+
+(defparameter *wdc-prover-state-readers*
+  '(ens install-global-enabled-structure recompress-global-enabled-structure
+    initial-global-enabled-structure update-wrld-structures set-w
+    with-useless-runes-aux type-set-binary-+ type-set-binary-* type-set-<
+    type-set-finish-1 initialize-pc-acl2 proof-builder-cl-proc-1)
+  "The functions whose ACL2 8.7 source reads the stripped prover state
+(lane image-strip's census; set-w and update-wrld-structures install a world
+and recompute the enabled structure; with-useless-runes-aux is the
+with-useless-runes macro's reader).")
+
+(defvar *wdc-prover-reads* (make-hash-table :test 'eq))
+
+(defun wdc-prover-read (fn)
+  (unless (gethash fn *wdc-prover-reads*)
+    (sb-thread:with-recursive-lock (*wdc-lock*)
+      (unless (gethash fn *wdc-prover-reads*)
+        (setf (gethash fn *wdc-prover-reads*) t)
+        (wdc-write (fnn-with-world-key-printing
+                    (format nil "PROVER-READ ~s <- ~a" fn (wdc-caller))))))))
+
+(defun wdc-trace-prover-readers ()
+  (dolist (fn *wdc-prover-state-readers*)
+    (unless (fboundp fn) (wdc-die "the prover-state reader ~s is not defined" fn))
+    (let ((fn fn))
+      (sb-int:encapsulate fn 'world-deps-check-prover
+        (lambda (f &rest args) (wdc-prover-read fn) (apply f args))))))
+
+(defun wdc-stripped-report ()
+  (let ((rebuilt (remove-if (lambda (item) (fnn-stripped-item-trapped-p (car item) (cdr item)))
+                            *wdc-stripped*)))
+    (dolist (item rebuilt)
+      (wdc-write (fnn-with-world-key-printing
+                  (format nil "REBUILT ~s ~s" (car item) (cdr item)))))
+    (wdc-write (format nil "STRIPPED intact=~d rebuilt=~d"
+                       (- (length *wdc-stripped*) (length rebuilt)) (length rebuilt)))))
 
 (defun wdc-live-pairs ()
   "Every (symbol . property) pair with a current value in the live world."
@@ -141,11 +216,22 @@
                (unless (gethash text held)
                  (wdc-die "the dependency set lists ~a, which the live world lacks" text)))
              *wdc-kept*)
-    (wdc-write (format nil "LOADED kept=~d omitted=~d (the kept pairs match the image)"
-                       (hash-table-count *wdc-kept*) (hash-table-count *wdc-omitted*))))
+    (unless *wdc-stripped*
+      (wdc-die "the dependency set lists no stripped prover state"))
+    (dolist (item *wdc-stripped*)
+      (unless (fnn-stripped-item-trapped-p (car item) (cdr item))
+        (wdc-die "the dependency set lists ~s ~s as stripped; the image holds it"
+                 (car item) (cdr item))))
+    (wdc-write (format nil "LOADED kept=~d omitted=~d stripped=~d (the kept pairs and the stripped items match the image)"
+                       (hash-table-count *wdc-kept*) (hash-table-count *wdc-omitted*)
+                       (length *wdc-stripped*))))
   (let ((drop (sb-ext:posix-getenv "FN_WORLD_DEPS_DROP")))
     (when (and drop (plusp (length drop))) (wdc-drop drop)))
+  (wdc-trace-prover-readers)
+  (let ((use (sb-ext:posix-getenv "FN_WORLD_DEPS_USE")))
+    (when (and use (plusp (length use))) (wdc-use use)))
   (push #'wdc-summary sb-ext:*exit-hooks*)
+  (push #'wdc-stripped-report sb-ext:*exit-hooks*)
   (sb-int:encapsulate 'fgetprop 'world-deps-check
     (lambda (f sym prop &rest more) (wdc-note sym prop) (apply f sym prop more)))
   (sb-int:encapsulate 'sgetprop 'world-deps-check

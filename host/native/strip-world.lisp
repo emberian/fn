@@ -181,6 +181,92 @@ Returns the counts it printed."
     (list channels discriminators)))
 
 ;;; ---------------------------------------------------------------------------
+;;; The prover's session state (lane image-strip).  Outside the world, the
+;;; certified session leaves the prover's own state in the saved image: the
+;;; global enabled structure (every rune's status, its compressed array under
+;;; ENABLED-ARRAY-n) and the type-set tables (ACL2's boot constants, as the
+;;; defconst value, its -LIST source and the compressed array).  Their only
+;;; readers are event and prover functions (ens, install-global-enabled-
+;;; structure through set-w and update-wrld-structures, type-set's aref2),
+;;; which the stripped world above already cannot serve (it holds no theory,
+;;; no rules).  Each is replaced by a trap, an fnn-stripped instance naming it:
+;;; a read that uses the value signals a type error that names what was
+;;; stripped, never a silently different answer.  Two self-growing buffers
+;;; (the #n= reader's array, ACL2's own grow path) are reset small, and the
+;;; memoization tables (caches, ACL2's own clear) are cleared.  The strip
+;;; writes an `S' line per item into IMAGE.world-deps; the qualification check
+;;; (tools/runtime_image/world-deps-check.lisp) proves at load that each holds
+;;; its trap and at exit that each still does.
+
+(defstruct (fnn-stripped (:constructor fnn-make-stripped (name)) (:copier nil))
+  (name nil :read-only t))
+
+(defparameter *fnn-stripped-globals* '(global-enabled-structure)
+  "State globals the prover alone reads.")
+
+(defparameter *fnn-stripped-constants*
+  '(*type-set-binary-+-table* *type-set-binary-*-table* *type-set-<-table*
+    *type-set-binary-+-table-list* *type-set-binary-*-table-list*
+    *type-set-<-table-list*)
+  "Boot constants (defparameter values in raw Lisp) type-set alone reads.")
+
+(defparameter *fnn-stripped-array-names*
+  '(type-set-binary-+-table type-set-binary-*-table type-set-<-table)
+  "ACL2 array names whose compressed array (the acl2-array property) the
+prover alone reads, besides every enabled structure's array.")
+
+(defun fnn-enabled-array-name-p (s)
+  "ENABLED-ARRAY-n and ARITHMETIC-ENABLED-ARRAY-n: the arrays of the global
+and arithmetic enabled structures (initial-global-enabled-structure's root
+strings, suffixed by a number)."
+  (let* ((n (symbol-name s)) (i (search "ENABLED-ARRAY-" n)))
+    (and i
+         (or (= i 0) (and (= i 11) (string= "ARITHMETIC-" n :end2 11)))
+         (< (+ i 14) (length n))
+         (every #'digit-char-p (subseq n (+ i 14))))))
+
+(defun fnn-strip-prover-state ()
+  "Replace the prover's session state by traps (see above).  Returns the
+stripped items as (kind . name): kind :global, :constant or :array."
+  (let ((state *the-live-state*) (items nil) (acl2 (find-package "ACL2")))
+    (dolist (g *fnn-stripped-globals*)
+      (f-put-global g (fnn-make-stripped g) state)
+      (push (cons :global g) items))
+    (dolist (c *fnn-stripped-constants*)
+      (unless (boundp c) (error "fnn-strip-prover-state: ~s is unbound" c))
+      (setf (symbol-value c) (fnn-make-stripped c))
+      (push (cons :constant c) items))
+    (let ((arrays (copy-list *fnn-stripped-array-names*)))
+      (do-symbols (s acl2)
+        (when (and (eq (symbol-package s) acl2) (fnn-enabled-array-name-p s)
+                   (get s 'acl2-array))
+          (pushnew s arrays)))
+      (dolist (a arrays)
+        (unless (get a 'acl2-array) (error "fnn-strip-prover-state: no array ~s" a))
+        ;; The one-slot array cache may hold this array (Essay on Array Caching).
+        (when (eq (car *acl2-array-cache*) a)
+          (setf (car *acl2-array-cache*) nil (cdr *acl2-array-cache*) nil))
+        (remprop a 'acl2-array)
+        (push (cons :array a) items)))
+    ;; The #n= reader's buffer: ACL2 grows it past its size on demand
+    ;; (update-sharp-reader-max-index); nothing is held between reads.
+    (setq *sharp-reader-array* (make-array 128)
+          *sharp-reader-array-size* 128
+          *sharp-reader-max-index* 0)
+    (clear-memoize-tables)
+    (sb-ext:gc :full t)
+    (nreverse items)))
+
+(defun fnn-stripped-item-trapped-p (kind name)
+  "Whether the stripped item still holds what the strip left."
+  (ecase kind
+    (:global (let ((v (f-get-global name *the-live-state*)))
+               (and (fnn-stripped-p v) (eq (fnn-stripped-name v) name))))
+    (:constant (and (boundp name) (fnn-stripped-p (symbol-value name))
+                    (eq (fnn-stripped-name (symbol-value name)) name)))
+    (:array (null (get name 'acl2-array)))))
+
+;;; ---------------------------------------------------------------------------
 ;;; The dependency set (gpt-6's wave-5 review s.4).  The stripped image keeps
 ;;; exactly the (symbol . property) pairs the rule above selects from the
 ;;; certified session's world; the build writes that set beside the image,
@@ -189,15 +275,17 @@ Returns the counts it printed."
 ;;; and tell a property the full image never had (the default answer is the
 ;;; full image's too) from one this strip removed (the answers differ).
 ;;;
-;;;   fn-world-deps 1
+;;;   fn-world-deps 2
 ;;;   rule-properties P ...          *fnn-world-execution-properties*
 ;;;   rule-pairs (S . P) ...         *fnn-world-read-pairs*
 ;;;   kept N
 ;;;   omitted M
 ;;;   K S P                          N lines, sorted
 ;;;   O S P                          M lines, sorted
+;;;   stripped J                     (version 2, lane image-strip)
+;;;   S KIND NAME                    J lines: fnn-strip-prover-state's items
 
-(defconstant +fnn-world-deps-version+ 1)
+(defconstant +fnn-world-deps-version+ 2)
 
 (defmacro fnn-with-world-key-printing (&body body)
   `(let ((*package* (find-package "ACL2")) (*print-pretty* nil)
@@ -210,7 +298,7 @@ Returns the counts it printed."
 the check compares."
   (fnn-with-world-key-printing (format nil "~s ~s" sym prop)))
 
-(defun fnn-write-world-deps (path kept omitted)
+(defun fnn-write-world-deps (path kept omitted stripped)
   (let ((k (sort (mapcar (lambda (c) (fnn-world-key-string (car c) (cdr c))) kept)
                  #'string<))
         (o (sort (mapcar (lambda (c) (fnn-world-key-string (car c) (cdr c))) omitted)
@@ -223,8 +311,10 @@ the check compares."
        (format s "rule-pairs~{ ~s~}~%" *fnn-world-read-pairs*)
        (format s "kept ~d~%omitted ~d~%" (length k) (length o))
        (dolist (line k) (format s "K ~a~%" line))
-       (dolist (line o) (format s "O ~a~%" line))))
-    (list (length k) (length o))))
+       (dolist (line o) (format s "O ~a~%" line))
+       (format s "stripped ~d~%" (length stripped))
+       (dolist (item stripped) (format s "S ~s ~s~%" (car item) (cdr item)))))
+    (list (length k) (length o) (length stripped))))
 
 (defun fnn-save-world-flavor (flavor image)
   "The world build.lisp saves: FLAVOR `full' keeps the certified session's
@@ -235,9 +325,10 @@ tools/build_native_host.sh checks it against the flavor it asked for."
          (format t "~&FN_NATIVE_WORLD_FULL triples=~d~%" (length (w *the-live-state*))))
         ((or (null flavor) (equal flavor "stripped"))
          (multiple-value-bind (n kept omitted) (fnn-strip-world)
-           (let ((counts (fnn-write-world-deps (concatenate 'string image ".world-deps")
-                                               kept omitted))
-                 (residue (fnn-strip-build-residue)))
-             (format t "~&FN_NATIVE_WORLD_STRIPPED triples=~d residue=~s deps=~d kept ~d omitted~%"
-                     n residue (first counts) (second counts)))))
+           (let* ((stripped (fnn-strip-prover-state))
+                  (counts (fnn-write-world-deps (concatenate 'string image ".world-deps")
+                                                kept omitted stripped))
+                  (residue (fnn-strip-build-residue)))
+             (format t "~&FN_NATIVE_WORLD_STRIPPED triples=~d residue=~s deps=~d kept ~d omitted prover-state=~d stripped~%"
+                     n residue (first counts) (second counts) (third counts)))))
         (t (error "FN_NATIVE_WORLD must be full or stripped: ~s" flavor))))
