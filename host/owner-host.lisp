@@ -2597,11 +2597,6 @@
          (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
     (value (list (fn-sn-identity-next s) txid txid))))
 
-(defun fn-owner-keyring-snapshot (generation state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-stxk-find generation
-                       (fn-sn-keyring-snapshots (fn-owner-store state)))))
-
 (defun fn-owner-hybrid-snapshots (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-sn-keyring-snapshots (fn-owner-store state))))
