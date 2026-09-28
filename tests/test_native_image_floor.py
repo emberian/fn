@@ -294,32 +294,39 @@ class DeepInputStackTests(unittest.TestCase):
                 self.stop(owner)
 
     def test_a_long_history_reopens_and_replays_at_the_decided_stack(self):
-        """2,000 articles; reopened from the checkpoint and by full replay
-        (no checkpoint) at the probe's stack."""
+        """2,000 articles; reopened from the checkpoint, and by full replay
+        (no checkpoint) of a store whose log holds the whole history, at the
+        probe's stack.  The full replay needs a store the owner never
+        compacted: deleting the checkpoint of a compacted store leaves the log
+        short of the history, which the open refuses by name
+        (checkpoint-damaged; batch AY, as lane fitness found for
+        test_native_image_differential)."""
         # The small preset (T = 16,384) on any machine: a 1,500 MB budget.
-        cfg, port, stack = self.store("long", ["--profile", "default"],
-                                      FN_INIT_BUDGET_MB="1500")
-        print("NATIVE-DEEP long-history stack={} KB".format(stack))
-        owner = self.start(cfg, stack)
-        try:
-            c = Nntp(port)
-            for n in range(2000):
-                self.assertTrue(c.post(headers(n), 3).startswith(b"240"), n)
-            c.close()
-        finally:
-            self.stop(owner)
-        for phase in ("reopen", "replay"):
-            if phase == "replay":
-                for p in sorted((self.tmp / "long").rglob("*"), reverse=True):
+        # The replay store keeps its whole history in one segment: its open
+        # suffix (the automatic checkpoint's period) is above 2,000 records.
+        for name, extra in (("long", []), ("long-replay", ["--max-open-suffix", "4096"])):
+            cfg, port, stack = self.store(name, ["--profile", "default"] + extra,
+                                          FN_INIT_BUDGET_MB="1500")
+            print("NATIVE-DEEP {} stack={} KB".format(name, stack))
+            owner = self.start(cfg, stack)
+            try:
+                c = Nntp(port)
+                for n in range(2000):
+                    self.assertTrue(c.post(headers(n), 3).startswith(b"240"), (name, n))
+                c.close()
+            finally:
+                self.stop(owner)
+            if name == "long-replay":
+                for p in sorted((self.tmp / name).rglob("*"), reverse=True):
                     if p.is_file() and "checkpoint" in p.name:
                         p.unlink()
             owner = self.start(cfg, stack)
             try:
                 c = Nntp(port)
-                self.assertTrue(c.command("GROUP local.test").startswith(b"211 2000 "))
+                self.assertTrue(c.command("GROUP local.test").startswith(b"211 2000 "), name)
                 for n in (0, 1999):
                     self.assertTrue(c.command("ARTICLE <deep-%d@example.invalid>" % n)
-                                    .startswith(b"220"), (phase, n))
+                                    .startswith(b"220"), (name, n))
                     c.body()
                 c.close()
             finally:
