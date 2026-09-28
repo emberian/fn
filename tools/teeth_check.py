@@ -31,6 +31,12 @@ imports the ledger's reader and adds the evaluation the ledger may not do.
     python3 tools/teeth_check.py --summary        # the counts `make check` prints
     python3 tools/teeth_check.py --table          # macro-generated teeth, marked apart
 
+DEFKEYSTONE.  `(defkeystone NAME ...)` (books/defkeystone.lisp) is the one
+macro from another book this tool expands, through the ledger's
+`defkeystone_expansion`: its positive, removal, mutant and corrupted-state
+witnesses are read as the assert-events they expand to, and `--table` lists
+its keystone and its must-fails with MACRO `defkeystone`.
+
 MACRO-GENERATED TEETH.  A book may write its witnesses through a `defmacro`
 that expands to one `defthm` -- `feed-connection-teeth-tests.lisp` admits a
 keystone once through such a macro and then calls it again under `must-fail`,
@@ -349,6 +355,12 @@ def read_book(path: Path) -> tuple[list[Assertion], list[str], str | None]:
                     predicate=head(claim)))
             assertions.append(record)
             return
+        if name == "defkeystone" and isinstance(form, list):
+            # books/defkeystone.lisp: its witnesses are assert-events of the
+            # expansion, which the ledger reads without evaluating anything.
+            for item in ledger.defkeystone_expansion(form):
+                walk(item, line)
+            return
         if name in TRANSPARENT and isinstance(form, list):
             for item in form[1:]:
                 walk(item, line)
@@ -526,6 +538,19 @@ def macro_teeth_for_book(path: Path) -> tuple[list[MacroTooth], dict[str, MacroI
         if head(form) == "defmacro":
             continue
         call, wrapped = unwrap_call(form)
+        if head(call) == "defkeystone" and not wrapped:
+            # The one macro from ANOTHER book this reader expands: its
+            # expansion is ledger.defkeystone_expansion, pinned to the Lisp
+            # macro's by tests/acl2/defkeystone-tests.lisp.
+            parts = ledger.defkeystone_parts(call)
+            if parts is not None:
+                names = ledger.defkeystone_names(parts)
+                teeth.append(MacroTooth(book=book, line=line, macro="defkeystone",
+                                        theorem=names["keystone"][0], kind="witness"))
+                for theorem in names["without"] + names["mutant"]:
+                    teeth.append(MacroTooth(book=book, line=line, macro="defkeystone",
+                                            theorem=theorem, kind="must-fail"))
+            continue
         info = macros.get(head(call))
         if info is None or call is None:
             continue

@@ -580,8 +580,8 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
 class DatasizeTests(Harness, unittest.TestCase):
     """The process's datasize limit (RLIMIT_DATA; OpenBSD's login classes:
     `default' 1536M, `daemon' 4096M) and the launcher (lane
-    openbsd-datasize).  `--version' names no store: its figure is the
-    store-less heap (books/heap-figure.lisp fn-heap-storeless-decide), so it
+    openbsd-datasize).  A command naming no store (--version, help)
+    gets the store-less heap (books/heap-figure.lisp fn-heap-storeless-decide), so it
     runs under both stock classes.  Under a limit below the image's own
     mappings the runtime stops before the probe reaches ACL2: the launcher
     reports that as a fault by name (exit 4), never as ACL2's refusal
@@ -598,12 +598,16 @@ class DatasizeTests(Harness, unittest.TestCase):
             text(result).strip().replace("\n", " | ")[-300:]))
         return result
 
-    def test_version_runs_under_both_stock_classes(self):
+    def test_a_storeless_command_runs_under_both_stock_classes(self):
+        # `operator CONFIG help VERB' names no store, as --version does (which
+        # a build tree cannot answer: its image records no source revision;
+        # cut_release gate 13 checks --version itself on the installed release).
+        config = self.tmp / "absent.toml"
         for mib in (1536, 4096):
             with self.subTest(datasize_mib=mib):
-                result = self.under(mib, "--version")
+                result = self.under(mib, "operator", str(config), "help", "run")
                 self.assertEqual(result.returncode, EXIT_OK, text(result))
-                self.assertRegex(result.stdout.decode(), r"^fn \S+ \(")
+                self.assertIn("usage: fn operator CONFIG run", result.stdout.decode())
 
     def test_a_limit_below_the_image_is_a_named_fault_not_a_refusal(self):
         result = self.under(64, "--version")

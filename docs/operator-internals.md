@@ -276,7 +276,12 @@ the public-node rehearsal). The
 small preset has no `--profile` word (PKT-581); name its fields:
 `--max-transactions 16384 --max-history-octets 8388608 --max-record-octets
 196608 --max-article-octets 32768 --max-groups-per-article 16
---max-open-suffix 128`. A store's bounds rise only through `store export`
+--max-open-suffix 128`. A native test node that must hold more than
+1,024 articles inside a 24 GiB test scope: `--max-transactions 20000
+--max-history-octets 67108864` (reservation 8,579 MB at ea2cc5121); naming
+T alone keeps the default H and R, whose full store asks 11,542,339 MB and
+is refused (planning/evidence/init-reservation-2026-09-28.md has the table,
+and the synthesized fixtures' profiles). A store's bounds rise only through `store export`
 and `store import --FIELD N`; each command's launcher re-sizes the heap from
 the store it opens, and refuses by name one whose replay the machine cannot
 hold.
@@ -948,6 +953,8 @@ which answers nothing on a production image.
 | `FN_NATIVE_TEST_DISK_STALL_FILE` | a path | while the file exists each batch's barrier waits before its fdatasync (`fnn-owner-commit-sync`): a stalled device for the slow-disk native case; removing the file is the device coming back |
 | `FN_NATIVE_OWNER_TEST_PIPELINE_TRACE` | any value | one stderr line per START (`start: seal=S bmax=N members=K`) and per batch prepared behind a barrier (`pipeline: K members prepared behind the barrier`) |
 | `FN_NATIVE_FAULT_BACKTRACE` | any value | a diagnostic, not a fault: a serious condition other than a store error inside an owner action (`fnn-owner-shared-action-locked`) prints `fault backtrace: CONDITION` and 80 frames to stderr where it is signalled, before the handler unwinds it into exit 4; a control-stack exhaustion on any thread prints `fault backtrace (thread NAME): control stack exhausted` and every frame as run-length rows `frames FUNCTION xDEPTH`, innermost first (a per-line recursion is one deep row; the rows under it are its callers) |
+| `FN_NATIVE_COUNT_LOOKUPS` | any value | a diagnostic, not a fault (release row F2): the catalog and index lookup functions of `+fnn-lookup-functions+` (host/native/io.lisp: the pinned view's bisection probes `fn-scr-mid`, the catalog tables `fn-cat$c-*`, the finders `fn-cnx-view-seq` and `fn-cat-view-last-visible`, the trie `fn-midx-lookup`, and the entries of every archive walk) are wrapped with counters at startup, and each served read (`fn-owner-chunk-span`) first prints `lookups window K: NAME=N ...` to stderr, the counts of the read before it; `planning/evidence/fundamentals-2026-09-27/harness/f2_lookups.py` reads them per command |
+| `FN_NATIVE_IMPORT_COMPRESS_MIN_TEST` | N | `store ROOT import` appends the archive's records through the compressed append at threshold N (books/payload-lz-append.lisp: ACL2 plans, the LZ4 encoder offers a candidate, the proved decoder checks it) instead of as they are; tools/fixtures.py's compressed fixtures |
 | `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |
 
 `FN_NATIVE_FAULT_BACKTRACE` changes no outcome: the fence, the exit code and

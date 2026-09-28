@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 
@@ -957,6 +958,42 @@ class FrictionTests(unittest.TestCase):
         self.assertIn("form starting at host/io.lisp:1 never closes", text)
         self.assertEqual(fake.commands, [])
 
+    def test_a_selection_the_runner_refuses_is_refused_before_the_sync(self):
+        # shared-books: a book in no Makefile root's closure cost a whole mirror.
+        fake = Fake([])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            seed_books(root)
+            (root / "tools").mkdir(exist_ok=True)
+            (root / "tools" / "certify_books.py").write_text(
+                "import sys\nprint('certify_books: in no Makefile root closure: '"
+                " + sys.argv[-1], file=sys.stderr)\nsys.exit(2)\n")
+            with driving(fake, root / "cache"):
+                with self.assertRaises(farm.FarmError) as refused:
+                    farm.submit("persvati", root, [], jobs=2, timeout_seconds=60,
+                                affected_by=["books/alpha"])
+        text = str(refused.exception)
+        self.assertIn("before any sync", text)
+        self.assertIn("in no Makefile root closure: books/alpha", text)
+        self.assertEqual(fake.commands, [])
+
+    def test_submit_with_no_box_picks_the_least_loaded(self):
+        picked = farm.pick_host(lambda *a, **k: SimpleNamespace(returncode=0,
+                                                               stdout="persvati\n"))
+        self.assertEqual(picked, "persvati")
+        with self.assertRaises(farm.FarmError):
+            farm.pick_host(lambda *a, **k: SimpleNamespace(returncode=3, stdout=""))
+        calls = []
+        with mock.patch.object(farm, "pick_host", lambda: "hbox"), \
+                mock.patch.object(farm, "submit",
+                                  lambda host, root, books, *a, **k: calls.append(
+                                      (host, books)) or "run-x"), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(farm.main(["submit", "books/wire", "books/x"]), 0)
+            self.assertEqual(farm.main(["submit", "auto", "books/y"]), 0)
+        self.assertEqual(calls, [("hbox", ["books/wire", "books/x"]), ("hbox", ["books/y"])])
+
     def test_valid_words_with_lisp_suffix_pass_validation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
@@ -1014,6 +1051,31 @@ class FrictionTests(unittest.TestCase):
         self.assertIn("FAILED tests/acl2/beta-tests: timed out after 300 s", text)
         self.assertIn("12.5 s  books/alpha  (at 2 jobs)", text)
         self.assertNotIn("books/beta  (at", text)
+
+    def test_verdict_names_installed_books_no_committed_manifest_certified(self):
+        # Batch AY, 2026-09-28: a union cite installed books from the cache
+        # whose certifying run was never committed; green_check owed them.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / "books").mkdir()
+            for name in ("cited", "uncited", "top"):
+                (root / f"books/{name}.lisp").write_text(f'(in-package "ACL2")\n; {name}\n')
+            digest = farm.certs.content_hash(root / "books/cited.lisp")
+            archive = root / "planning/evidence/manifests"
+            archive.mkdir(parents=True)
+            (archive / "certify-20260925T000000Z-9.json").write_text(json.dumps({
+                "book_results": {"books/cited": "passed"},
+                "source_digests_sha256": {"books/cited.lisp": digest}}))
+            self.write_run(root, {
+                "status": "passed", "book_results": {"books/top": "passed"},
+                "book_provenance": {"books/top": "certified", "books/cited": "installed",
+                                    "books/uncited": "installed"}}, {})
+            text = "\n".join(farm.verdict_lines(root, "run-v", 0))
+            self.assertIn("installed-without-cited-manifest: 1: books/uncited", text)
+            self.assertIn("--recertify-uncited", text)
+            import certified_claims
+            self.assertEqual(certified_claims.uncited_books(
+                root, ["books/cited", "books/uncited"]), ["books/uncited"])
 
     def test_a_signal_exit_is_killed_not_failed(self):
         manifest = {

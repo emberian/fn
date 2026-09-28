@@ -136,22 +136,18 @@ class SubjectRuleTests(unittest.TestCase):
 
     def test_a_hypothesis_recognizer_does_not_host(self):
         """G3-1: the LZ codec passed on `(fn-cbor-octet-listp x)'.  The LZ
-        codec is hosted now (compressed extents), so the witness is the
-        NNTP trace model: its hypothesis `fn-nntp-session-consistentp' is
-        hosted, its subject `fn-nntp-run-session' is not."""
-        self.assertIn("fn-nntp-session-consistentp", self.graph.reachable)
-        self.assertNotIn("fn-nntp-run-session", self.graph.reachable)
-        s = self.subject("fn-nntp-finite-trace-preserves-consistent-session")
-        self.assertNotIn("fn-nntp-session-consistentp", s.functions)
-        self.assertIn("fn-nntp-run-session", s.functions)
+        codec is host-reached since compression-extents, so the witness is
+        now the byte store's write, whose theorem has the same hypothesis."""
+        s = self.subject("fn-bs-write-preserves-statep")
+        self.assertNotIn("fn-cbor-octet-listp", s.functions)
         self.assertFalse(s.hosted(self.graph))
 
     def test_hints_do_not_host(self):
-        form = ("(defthm t1 (equal (fn-nntp-run-session s a e evs fn-arena) c) "
+        form = ("(defthm t1 (equal (fn-bs-write s ino off octets outcome) c) "
                 ":hints ((\"Goal\" :use ((:instance fn-own-read-preserves-relation)) "
                 ":in-theory (enable fn-own-read))))")
         s = reach_check.Subject(self.graph, "t1", form)
-        self.assertEqual(s.functions, ["fn-nntp-run-session"])
+        self.assertEqual(s.functions, ["fn-bs-write"])
         self.assertFalse(s.hosted(self.graph))
 
     def test_a_hosted_function_over_a_models_state_is_the_model(self):

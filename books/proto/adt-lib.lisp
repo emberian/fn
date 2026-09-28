@@ -999,7 +999,7 @@
 (defun adt-shape-p (s c)
   (let ((p (adt-ncols s)))
     (and (true-listp c)
-         (equal (len c) (+ 3 p))
+         (< (+ 2 p) (len c))
          (adt-cols-shape s 0 c)
          (adt-all-elt-p '(:ub 8) (nth p c))
          (natp (nth (+ 1 p) c))

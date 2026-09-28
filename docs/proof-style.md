@@ -357,6 +357,11 @@ definition book when its theorems discharge the definitions' guards
 (`replay-invariants` into `replay`); leave a two-line include shim behind
 for includers outside the cluster and say who should delete it.
 
+A book that is a data table read by tools as well as by ACL2
+(`books/protocol-table.lisp`) writes every number as ACL2 reads it: a
+probability is a rational (`1/5`), never `0.2`, which ACL2 refuses as input;
+the tool's reader converts.
+
 ## 7. Naming
 
 - `fn-<field>-of-fn-make-<rec>`: accessor of constructor. `fn-<rec>-shapep`:
@@ -710,3 +715,6 @@ The check does not see everything:
 
 The tool's silence is not a proof. The scaling rows that confirm or refute a
 find are `tools/scale_probe.py`'s.
+
+- A `:linear` rule with `:trigger-terms` and a `:rewrite` class on the same conclusion crashed SBCL with a memory fault (lane shared-books, 2026-09-28). Split it into a type rule and a plain `:linear` rule.
+- For base64, arithmetic-5 was about 10 times slower than a few fixed-modulus lemmas (lane shared-books). Prefer the small lemmas for fixed moduli.

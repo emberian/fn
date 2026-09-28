@@ -358,6 +358,10 @@
 (local (defthm fn-cfg-rows-without-consumer-bind-is-row-listp
   (implies (fn-cfg-row-listp rows)
            (fn-cfg-row-listp (fn-cfg-rows-without-consumer-bind rows a)))))
+;; public-node-2: an account's deletion rewrites its redeemed rows in place.
+(local (defthm fn-cfg-rows-deleting-account-is-row-listp
+  (implies (fn-cfg-row-listp rows)
+           (fn-cfg-row-listp (fn-cfg-rows-deleting-account rows login)))))
 (local (defthm fn-cfg-row-listp-of-append
   (implies (and (fn-cfg-row-listp a) (fn-cfg-row-listp b))
            (fn-cfg-row-listp (append a b)))))

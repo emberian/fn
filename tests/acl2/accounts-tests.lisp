@@ -345,3 +345,161 @@
                            (fix (fn-acct-invite-expiry 60 *at-stamp-no-wall*))))))
 ; `account list' (books/account-list.lisp, tests/acl2/account-list-tests.lisp)
 ; names logins and principals, never a digest.
+
+; -----------------------------------------------------------------------------
+; public-node-2: `account delete LOGIN' (code 27) and the once-only keystone
+; restated over the tombstone.
+
+(defmacro at-del () '(fn-cfg-account-delete "robin"))
+(defmacro at-v-del () '(fn-cfg-apply-delta (at-v2) 3 *at-stamp* (at-del)))
+(defmacro at-tomb () '(fn-cfg-account-deleted-row (at-row (at-v2) (at-digest))))
+
+; The redeemed row, then its tombstone: same digest and login, no verifier.
+(assert-event (fn-cfg-account-redeemedp (fn-cfg-accounts (at-v2)) (at-digest)))
+(assert-event (equal (fn-cfg-row-b (at-row (at-v2) (at-digest))) "robin"))
+(assert-event (null (fn-cfg-delta-reason (at-v2) 3 *at-stamp* 0 0 (at-del))))
+(assert-event (equal (at-row (at-v-del) (at-digest))
+                     (fn-cfg-row-make (at-digest) "robin" "" 7)))
+
+; KEYSTONE fn-acct-bound-row-succeeds-by-a-delta: reachable, non-degenerate
+; witness (the successor is the tombstone, not the row itself).
+(assert-event (fn-acct-boundp (fn-cfg-accounts (at-v2)) (at-digest)))
+(assert-event (fn-acct-row-successorp (at-row (at-v2) (at-digest))
+                                      (at-row (at-v-del) (at-digest))))
+(assert-event (not (equal (at-row (at-v-del) (at-digest))
+                          (at-row (at-v2) (at-digest)))))
+; A tombstone's successor is itself only: a second delete is admitted (the
+; resume) and changes nothing.
+(assert-event (fn-acct-boundp (fn-cfg-accounts (at-v-del)) (at-digest)))
+(assert-event (null (fn-cfg-delta-reason (at-v-del) 4 *at-stamp* 0 0 (at-del))))
+(assert-event (equal (at-row (fn-cfg-apply-delta (at-v-del) 4 *at-stamp* (at-del))
+                             (at-digest))
+                     (at-row (at-v-del) (at-digest))))
+; Removal of boundp: a pending row's admitted redeem is no successor.
+(assert-event (not (fn-acct-boundp (fn-cfg-accounts (at-v1)) (at-digest))))
+(assert-event (null (fn-cfg-delta-reason (at-v1) 2 *at-stamp* 0 0
+                                         (fn-acct-plan-delta (at-plan1)))))
+(must-fail-checked (assert-event
+                    (fn-acct-row-successorp (at-row (at-v1) (at-digest))
+                                            (at-row (at-v2) (at-digest)))))
+; Removal of admission: an invite of the digest is refused, and applied
+; anyway it overwrites the bound row with a pending one.
+(assert-event (fn-cfg-delta-reason (at-v2) 3 *at-stamp* 0 0 (at-invite)))
+(must-fail-checked (assert-event
+                    (fn-acct-row-successorp
+                     (at-row (at-v2) (at-digest))
+                     (at-row (fn-cfg-apply-delta (at-v2) 3 *at-stamp* (at-invite))
+                             (at-digest)))))
+
+; KEYSTONE fn-acct-bound-row-succeeds-across-replay: the fold the owner
+; replays at open, from the initial configuration, through the deletion.
+(defmacro at-r4-del () '(fn-cfg-record-make 3 3 3 (list (at-del)) *at-stamp*))
+(assert-event (not (equal (fn-config-replay-loop (at-cfg2) 0 1000 (list (at-r4-del)))
+                          :fault)))
+(assert-event (equal (at-row (fn-cfg-value (fn-config-replay-loop
+                                            (at-cfg2) 0 1000 (list (at-r4-del))))
+                             (at-digest))
+                     (at-tomb)))
+(assert-event (fn-acct-row-successorp
+               (at-row (fn-cfg-value (at-cfg2)) (at-digest))
+               (at-row (fn-cfg-value (fn-config-replay-loop
+                                      (at-cfg2) 0 1000 (list (at-r4-del))))
+                       (at-digest))))
+; Removal of the :fault hypothesis: as before, a re-issue faults.
+(assert-event (equal (fn-config-replay-loop (at-cfg2) 0 1000 (list (at-r3-bad)))
+                     :fault))
+; The replaced statement (the row's equality) is what `account delete'
+; falsifies, by design.
+(must-fail-checked (assert-event
+                    (equal (at-row (fn-cfg-value (fn-config-replay-loop
+                                                  (at-cfg2) 0 1000 (list (at-r4-del))))
+                                   (at-digest))
+                           (at-row (fn-cfg-value (at-cfg2)) (at-digest)))))
+
+; A deleted account's code is never redeemed again, by anyone: its row is
+; a tombstone, so the redeem is refused :account-row.
+(assert-event (equal (fn-acct-redeem-plan (at-v-del) *at-stamp* *at-code*
+                                          *at-login* *at-password* *at-salt* nil)
+                     '(:refused :account-row)))
+
+; KEYSTONE fn-acct-delete-keeps-the-login-taken: witness and removal.
+(assert-event (fn-cfg-account-login-takenp (fn-cfg-accounts (at-v2)) "robin"))
+(assert-event (fn-cfg-account-login-takenp
+               (fn-cfg-rows-deleting-account (fn-cfg-accounts (at-v2)) "robin")
+               "robin"))
+; A second code's redeem under the deleted login is refused.
+(defmacro at-v-del-2 () '(fn-cfg-apply-delta (at-v-del) 4 *at-stamp* (at-invite-2)))
+(assert-event (equal (fn-acct-redeem-plan (at-v-del-2) *at-stamp* *at-code-2*
+                                          *at-login* *at-password* *at-salt* nil)
+                     '(:refused :account-login-taken)))
+; Removal of the hypothesis: a login no row holds is not taken afterwards.
+(assert-event (not (fn-cfg-account-login-takenp (fn-cfg-accounts (at-v2)) "mallory")))
+(must-fail-checked (assert-event
+                    (fn-cfg-account-login-takenp
+                     (fn-cfg-rows-deleting-account (fn-cfg-accounts (at-v2)) "robin")
+                     "mallory")))
+
+; KEYSTONE fn-acct-delete-is-admitted-exactly-when-held-and-unobligated.
+; All three conjuncts hold: admitted (above).  Each fails alone:
+;   the login is not well formed,
+(assert-event (equal (fn-cfg-delta-reason (at-v2) 3 *at-stamp* 0 0
+                                          (fn-cfg-account-delete "no spaces"))
+                     :account-login))
+;   no account holds it,
+(assert-event (equal (fn-cfg-delta-reason (at-v2) 3 *at-stamp* 0 0
+                                          (fn-cfg-account-delete "mallory"))
+                     :account-unknown))
+;   an obligation names it: a consumer bound to robin, a signing binding,
+;   a moderator role.
+(defmacro at-v-bound (d) `(fn-cfg-apply-delta (at-v2) 3 *at-stamp* ,d))
+(assert-event (equal (fn-cfg-delta-reason
+                      (at-v-bound (fn-cfg-consumer-bind "robin-inbox" "robin"))
+                      4 *at-stamp* 0 0 (at-del))
+                     :account-obligations))
+(assert-event (equal (fn-cfg-delta-reason
+                      (at-v-bound (fn-cfg-login-binding
+                                   "robin"
+                                   "0000000000000000000000000000000000000000000000000000000000000000"))
+                      4 *at-stamp* 0 0 (at-del))
+                     :account-obligations))
+(assert-event (equal (fn-cfg-delta-reason
+                      (fn-cfg-value-make-full
+                       (fn-cfg-groups (at-v2)) (fn-cfg-capacity (at-v2))
+                       (fn-cfg-quotas (at-v2)) (fn-cfg-policies (at-v2))
+                       (fn-cfg-listeners (at-v2)) (fn-cfg-peers (at-v2))
+                       (fn-cfg-limits (at-v2)) (fn-cfg-authorities (at-v2))
+                       (fn-cfg-invitations (at-v2))
+                       (append (fn-cfg-accounts (at-v2))
+                               (fn-cfg-moderator-rows "local.mod" '("robin")))
+                       (fn-cfg-descriptions (at-v2)))
+                      4 *at-stamp* 0 0 (at-del))
+                     :account-obligations))
+; An access rule is no obligation.
+(assert-event (null (fn-cfg-delta-reason
+                     (at-v-bound (fn-cfg-account-access "robin" "local.*" "local.*"))
+                     4 *at-stamp* 0 0 (at-del))))
+; Each conjunct dropped from the right-hand side: the iff fails.
+(defmacro at-delete-iff-without (rhs)
+  `(defthm at-delete-iff-weakened
+     (iff (fn-cfg-delta-reason v gen stamp reserved ceiling
+                               (fn-cfg-account-delete login))
+          (not ,rhs))
+     :hints (("Goal" :in-theory (e/d (fn-cfg-delta-reason
+                                      fn-cfg-account-delete-reason)
+                                     (fn-cfg-account-loginp
+                                      fn-cfg-account-heldp
+                                      fn-cfg-account-obligation))
+              :expand ((fn-cfg-account-delete login))))))
+(must-fail-checked
+ (at-delete-iff-without
+  (and (fn-cfg-account-heldp (fn-cfg-accounts v) login)
+       (not (fn-cfg-account-obligation (fn-cfg-accounts v) login)))))
+(must-fail-checked
+ (at-delete-iff-without
+  (and (fn-cfg-account-loginp login)
+       (not (fn-cfg-account-obligation (fn-cfg-accounts v) login)))))
+(must-fail-checked
+ (at-delete-iff-without
+  (and (fn-cfg-account-loginp login)
+       (fn-cfg-account-heldp (fn-cfg-accounts v) login))))
+

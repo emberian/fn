@@ -84,6 +84,7 @@ class ReleaseTarballTests(unittest.TestCase):
         for rel in ("SHA256SUMS", "install.sh", "bin/fn", "libexec/fn/fn-host",
                     "libexec/fn/fn-host.core", "libexec/fn/source-revision",
                     "libexec/fn/runtime/sbcl", "libexec/fn/lib/libfn-mldsa65.so",
+                    "libexec/fn/lib/libfn-lz4.so",
                     "share/fn/fn.toml.example", "share/fn/docs/fn-faq-3.txt",
                     "share/fn/release-gate.txt", "share/fn/runpath-check.txt"):
             self.assertTrue((self.top / rel).exists(), rel)
@@ -111,9 +112,13 @@ class ReleaseTarballTests(unittest.TestCase):
                         python)
         record = (self.top / "share/fn/runpath-check.txt").read_text()
         self.assertIn("clients/: 7 Python programs", record)
-        if shutil.which("python3"):
+        # A client runs under the login PATH, which on OpenBSD holds the
+        # package's python3 in /usr/local/bin (CLEAN_ENV's PATH does not):
+        # the precondition and the run use the same PATH.
+        client_env = dict(CLEAN_ENV, PATH=CLEAN_ENV["PATH"] + ":/usr/local/bin")
+        if shutil.which("python3", path=client_env["PATH"]):
             shown = subprocess.run([str(self.top / "clients/bin/fn-reader"), "--help"],
-                                   env=CLEAN_ENV, capture_output=True, text=True, timeout=60)
+                                   env=client_env, capture_output=True, text=True, timeout=60)
             self.assertEqual(shown.returncode, 0, shown.stderr)
             self.assertIn("--settings", shown.stdout)
 
@@ -174,6 +179,7 @@ class ReleaseTarballTests(unittest.TestCase):
         self.assertIn("libexec/fn/runtime/sbcl", elves)
         self.assertIn("libexec/fn/lib/libsodium.so.23", elves)
         self.assertIn("libexec/fn/lib/libfn-mldsa65.so", elves)
+        self.assertIn("libexec/fn/lib/libfn-lz4.so", elves)
         self.assertEqual(above, [])
 
     def install(self, prefix: Path, node: Path) -> subprocess.CompletedProcess:

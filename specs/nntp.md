@@ -1447,8 +1447,9 @@ gives them.
   a stamp without a wall clock) `:account-expired`, under a login a redeemed
   row holds `:account-login-taken`, and of a redeemed row
   `:account-redeemed` unless it is the identical row.
-- **Once only** (PRF-164): a redeemed row is the same row after every later
-  acceptable record the owner replays (`fn-acct-redeemed-row-stays-across-replay`);
+- **Once only** (PRF-164): a redeemed row is the same row, or its tombstone
+  once `account delete` names its login, after every later acceptable record
+  the owner replays (`fn-acct-bound-row-succeeds-across-replay`);
   the redeem plan (`fn-acct-redeem-plan`, a pure function of the
   configuration value and the request) plans a redeem only of a delta the
   configuration admits (`fn-acct-redeem-plan-is-admitted-and-redeems`), and

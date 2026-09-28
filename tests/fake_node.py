@@ -104,6 +104,13 @@ class FakeNode(threading.Thread):
 
     def stop(self):
         self.stopping = True
+        # On Linux close() alone leaves a thread blocked in accept() holding
+        # the listening socket, which then accepts one more connection;
+        # shutdown() wakes it (the reader's "unreachable node" test on hbox).
+        try:
+            self.listener.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
         self.listener.close()
 
     # ---- the article table ---------------------------------------------

@@ -1394,6 +1394,11 @@
           "kind": "theorem",
           "name": "fn-scar-auth-step-pinned-is-auth-step-pinned",
           "note": "The AUTHINFO/STARTTLS step the carried served fold runs (fn-scar-auth-step-pinned, reached from fn-owner-chunk through fn-scar-dispatch) equals fn-auth-step-pinned whenever the node it is given satisfies fn-node-statep, so every PRF-031 theorem over fn-auth-step-pinned holds of the host's call on owner-reachable states. Teeth: tests/acl2/owner-served-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-authinfo-is-advertised-exactly-when-a-login-is-offered-on-any-connection",
+          "note": "KEYSTONE (public-node D1). Subject fn-auth-access-capability-lines, rendered by the CAPABILITIES arm the served dispatch calls. Teeth: tests/acl2/nntp-auth-teeth-tests.lisp; transcript tests/acl2/served-implicit-tls-tests.lisp; native tests.test_native_friends_accounts."
         }
       ]
     },
@@ -5660,11 +5665,13 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-acct-redeemed-row-stays"
+          "name": "fn-acct-bound-row-succeeds",
+          "note": "KEYSTONE (restated by account delete). A bound row is kept, or tombstoned by an account delete, by every admitted delta list. Teeth: tests/acl2/accounts-tests.lisp."
         },
         {
           "kind": "theorem",
-          "name": "fn-acct-redeemed-row-stays-across-replay"
+          "name": "fn-acct-bound-row-succeeds-across-replay",
+          "note": "KEYSTONE (restated by account delete). The same across the owner's replay fold fn-config-replay-loop. Teeth: tests/acl2/accounts-tests.lisp."
         },
         {
           "kind": "theorem",
@@ -5733,6 +5740,21 @@
         {
           "kind": "theorem",
           "name": "fn-acct-redeem-bounded-plan-after-its-redeem-is-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-delete-is-admitted-exactly-when-held-and-unobligated",
+          "note": "KEYSTONE. account delete LOGIN (config delta code 27): admitted exactly when the login is held and no signing binding, moderator role or consumer binding names it. Host host/native-admin-host.lisp. Teeth: tests/acl2/accounts-tests.lisp, native-admin-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-delete-keeps-the-login-taken",
+          "note": "KEYSTONE. After a delete the login stays taken: no later redeem binds it. Teeth: tests/acl2/accounts-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential",
+          "note": "KEYSTONE. Every later credential snapshot offers only auth.toml's credential under the deleted login. Teeth: tests/acl2/accounts-snapshot-tests.lisp."
         }
       ]
     },
@@ -7860,6 +7882,11 @@
         {
           "kind": "theorem",
           "name": "fn-redeem-done-only-on-281-after-the-password"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-redeem-lost-is-fenced-and-server-answers-are-not",
+          "note": "KEYSTONE. Subjects fn-redeem-lost and fn-redeem-outcome-class; host host/native/io.lisp fnn-command-redeem (the lost connection, the exit code). Teeth: tests/acl2/peer-host-tests.lisp; native tests.test_native_friends_accounts."
         }
       ]
     },
@@ -10539,6 +10566,66 @@
           "kind": "theorem",
           "name": "fn-scj-identity-finish-owner-is-article-finish-owner",
           "note": "fn-rix-ocfg-complete is the article finish's owner with no staged record and the event index carried. Teeth: tests/acl2/served-catalog-join-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-ocfg-read-span-is-reference-under-invp",
+          "note": "KEYSTONE. The served chain over the catalog is the reference read under fn-scj-invp (fn-scr-owner-catalogp replaced by the carried invariant). Subject fn-scr-ocfg-read-span, called through fn-otm-read-span / fn-orr-read-span by host/owner-host.lisp fn-owner-chunk-span."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-at-recover",
+          "note": "KEYSTONE (E). The owner fn-owner-install-extended installs and the catalog it loads satisfy fn-scj-invp. Teeth: tests/acl2/served-catalog-join-inv-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-at-full-open",
+          "note": "KEYSTONE (E). The same at the full open over the interned journal."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-of-otm-read-span",
+          "note": "KEYSTONE. The host's read entry fn-otm-read-span keeps fn-scj-invp (a captured reader view live over the catalog)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-of-orr-read-span",
+          "note": "KEYSTONE. The reader read (with or without a captured view) keeps fn-scj-invp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-of-refresh",
+          "note": "KEYSTONE. The idle refresh keeps fn-scj-invp with the catalog untouched: under VV it takes fn-ctl-refresh-visible's first arm (no verdict-only divergence). Teeth: tests/acl2/served-catalog-join-inv-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-identity-finish-keeps-verdicts",
+          "note": "A keyring snapshot or standalone verdict completion adds no verdict pair."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-of-ocfg-step-conn-event",
+          "note": "KEYSTONE. fn-ocfg-step's connection events keep fn-scj-invp (books/served-catalog-join-frame-conns.lisp). Teeth: tests/acl2/served-catalog-join-frame-conns-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scjs-invp-of-store-frame",
+          "note": "KEYSTONE. Every store step that completes no article keeps fn-scj-invp (books/served-catalog-join-frame-store.lisp). Teeth: tests/acl2/served-catalog-join-frame-store-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-owner-catalogp-at-host-finish",
+          "note": "KEYSTONE. Pinned connections and the live view stay over the catalog across the host's finish (rows sorted by sequence). Teeth: tests/acl2/served-catalog-join-pinned-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-at-host-article-finish-carried",
+          "note": "KEYSTONE. The host's article finish keeps fn-scj-invp; PRF-202's two equations derived; named hypotheses listed in planning/evidence/sca-join-2026-09-27.md. Teeth: the hypotheses on the T2 owner in tests/acl2/served-catalog-join-pinned-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-at-identity-finish",
+          "note": "KEYSTONE. The same at the identity finish (fn-rix-ocfg-complete); the composite's equations named."
         }
       ]
     },
@@ -10936,6 +11023,67 @@
         {
           "kind": "theorem",
           "name": "fn-oii-publication-group-count-is-the-rows"
+        }
+      ]
+    },
+    {
+      "id": "PRF-344",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "pgs-open-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-open-after-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-crash-isolates-other-roots"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-fork-denotes"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-alloc-fresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-plan-commit-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-tables-after-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-keeps-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-alloc-inv-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-cycle-inv-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-reclaim-never-frees-live"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-commit-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-g-reclaim-sound"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-words-digest-is-sha256"
         }
       ]
     },
@@ -11381,6 +11529,130 @@
         {
           "kind": "theorem",
           "name": "fn-nls-octets-string-is-record-octets-string"
+        }
+      ]
+    },
+    {
+      "id": "PRF-342",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hp-decode-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-page-digest-is-leaf"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-append-changes-only-dirty"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-append-dirty-bound"
+        }
+      ]
+    },
+    {
+      "id": "PRF-348",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ot-nat-parse-of-nat-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-nat-parse-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-hex-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-b64-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-b64-accepted-is-canonical"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-b64-refuses-outside-alphabet"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-ci-equal-is-downcase-equal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-split-wsp-loses-nothing"
+        }
+      ]
+    },
+    {
+      "id": "PRF-341",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-framed-expands"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-framed-is-the-seal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-refuses-exactly-a-bad-candidate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-keeps-only-without-gain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-decide-framed-is-shorter"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-record-is-not-a-frame"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-replay-reads-the-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-append-plan-off"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-config-min-without-a-row-is-off"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-config-decode-archive-is-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-config-decode-archive-of-a-current-frame"
+        }
+      ]
+    },
+    {
+      "id": "PRF-343",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-proto-command-pinned-replies-are-in-the-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-proto-command-pinned-offers-only-article-framing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-proto-offers-only-post-by-table"
         }
       ]
     }
