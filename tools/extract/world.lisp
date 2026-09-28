@@ -248,6 +248,7 @@
 (include-book "../../books/accounts")
 (include-book "../../books/native-health")
 (include-book "../../books/native-status-columns")
+(include-book "../../books/native-live-pages")
 (include-book "../../books/native-control-launch")
 (include-book "../../books/consumer-local-control")
 (include-book "../../books/consumer-wait-codec")
