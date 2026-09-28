@@ -3,7 +3,7 @@
 ; Direction (coordinator, 2026-09-28): the host is byte primitives, sockets
 ; and an event loop; the open sequence belongs in ACL2 so the extractor
 ; extracts it instead of anyone rewriting host/native by hand.  This file is
-; the first pass: the reader's open of a format-9 store over its record log,
+; the first pass: the reader's open of a store over its record log,
 ; READ-ONLY and by FULL REPLAY (no state checkpoint), as host/native/io.lisp
 ; does it today in fnn-reader-prepare -> fnn-acquire, fnn-bridge-reset,
 ; fnn-recover -> fnn-recover-log (the full-replay arm), the recovery barriers,

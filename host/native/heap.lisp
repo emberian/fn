@@ -219,7 +219,7 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
 (defun fnn-heap-listing-bound (profile)
   (fnn-core 'fn-heap-history-listing-bound profile))
 
-;; Format 9 (the record log; lane log-recovery): the records a full replay
+;; The record log (lane log-recovery): the records a full replay
 ;; reads are the log's entries, each at least one write unit on disk
 ;; (books/store-log-route.lisp fn-olr-entry-octets pads every entry to the
 ;; unit), so the segments' octets over the unit bound them.  A state

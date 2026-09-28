@@ -609,7 +609,7 @@ reopen predicate, writer-lock observation and observed final namespace."
         ; the 7-tuple the open extends, its event index rebuilt from E.
         (let* ((checkpoint (fn-sct-capture-of-tables (cadr loaded)))
                (state (f-put-global 'fn-store-sco-checkpoint checkpoint state))
-               ; The F row's log position and frontier (a format-9 store's
+               ; The F row's log position and frontier (a store's
                ; open starts its scan there: books/store-log-segments.lisp).
                (state (f-put-global 'fn-store-sco-log-position
                                     (list (fn-sct-tables-log (cadr loaded))
@@ -811,7 +811,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; tables) into the same staged file.  KEYSTONES:
 ; fn-scka-write-run-is-run-segments (the run's octets) and the pipeline's
 ; fn-ockp-run-writes-the-file (the tables').  LOG: the record log's
-; position at S (a format-9 store rotated at this capture; NIL otherwise),
+; position at S (a store rotated at this capture; NIL otherwise),
 ; the F row's (fn-sct-log-positionp).
 (defun fn-store-sco-publish-setup (segment-octets budget free revision log fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
@@ -1169,7 +1169,7 @@ reopen predicate, writer-lock observation and observed final namespace."
   ; concrete record dispatchers.
   ; :log-reserve and :log-order are the record log's two composite steps
   ; (books/store-log-route.lisp fn-olr-sn-reserve / fn-olr-sn-order: the file
-  ; route's success sequences, by definition), called on a format-9 store.
+  ; route's success sequences, by definition), called on a store.
   (let* ((s (f-get-global 'fn-store-sn state))
          (next (case operation
                  (:log-reserve (fn-olr-sn-reserve s))

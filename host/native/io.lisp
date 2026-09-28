@@ -186,8 +186,8 @@ whose own failure would raise a new condition here."
 
 ;;; ---------------------------------------------------------------------------
 ;;; The digest has one owner, and it is ACL2.  books/crypto-attach.lisp
-;;; attaches BLAKE3 (`fn-blake3-stobj', books/blake3-stobj.lisp; SHA-256 up
-;;; to store format 9) to the digest seams, and the diagnostic `blake3' verb
+;;; attaches BLAKE3 (`fn-blake3-stobj', books/blake3-stobj.lisp) to the
+;;; digest seams, and the diagnostic `blake3' verb
 ;;; hands ACL2 the file in the octet buffer (`fn-blake3-of-prefixed-buffer').
 ;;; In the saved images host/native/digest.lisp swaps the vendored C BLAKE3
 ;;; in for those functions after a start-up check against them
@@ -1340,7 +1340,7 @@ unread, and decides nothing about them."
     (fnn-bridge-recover-end replay frontier config-records)))
 
 ;; fnn-bridge-recover's three parts, in its order, for a history that arrives
-;; a record at a time (the format-9 open, fnn-recover-log-stream-replay): the
+;; a record at a time (the open, fnn-recover-log-stream-replay): the
 ;; arena cleared, each decoded chunk interned by the guard-verified
 ;; fn-srs-intern-step (the accumulated rows in a one-slot cell), then the open
 ;; over the rows.
@@ -1736,7 +1736,7 @@ resolves the names against `domain' and the host carries that list verbatim."
   (fault-point nil) (fault-class nil) (fault-message nil)
   ;; The open answers the history's record COUNT and keeps no records
   ;; (PKT-823); a verb that needs them reads them after the open
-  ;; (fnn-history-records).  On format 9 the open records here how the log
+  ;; (fnn-history-records).  The open records here how the log
   ;; holds the history (fnn-recover-log): (PREFIXP CLOSED GENESIS ACTIVE):
   ;; whether a checkpoint covers dropped segments (the prefix is then its
   ;; rows'), the closed segments scanned and the genesis the scan started
@@ -1750,7 +1750,7 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; 1.3 s of a 40k open and 33 s of a 10k x 32 KiB one).
   (log-last nil)
   ;; Lane commit-onto-log: the commit route ACL2 names from the profile
-  ;; (fn-store-profile-logp: format 9) and, on that route, the open record
+  ;; (fn-store-profile-logp) and, on that route, the open record
   ;; log (an fnn-log: the segment's descriptor and the log kernel).
   (logp nil) (log nil))
 
@@ -1824,7 +1824,7 @@ route's point and the record log's, lane commit-onto-log)."
   (when (and (fnn-lstat (fnn-clone-fence-path s))
              (not *fnn-clone-activation*))
     (fnn-refuse "clone is fenced pending durable incarnation rollover")))
-;; The record log's directory and its one segment (format 9).  The name is
+;; The record log's directory and its one segment.  The name is
 ;; ACL2's (books/owner-log-route.lisp fn-olr-segment-name).
 (defun fnn-journal-dir (s) (fnn-join (fnn-store-root s) "journal"))
 (defun fnn-segment-path (s)
@@ -2090,7 +2090,7 @@ store; anything else is left to the ordinary open."
   ;; One durable configuration record at generation 1, built and admitted by
   ;; the core from the operator's group names.  The program is ACL2's:
   ;; books/byte-store-log-initializer.lisp fn-bsi-log-init-program (journal/
-  ;; and the segment; every profile is format 9, fn-store-profile-logp).
+  ;; and the segment; every profile is on the record log, fn-store-profile-logp).
   (let ((logp (fnn-core 'fn-store-profile-logp
                         (fnn-metadata-config-decode (fnn-metadata-config-frame profile)))))
     (unless logp
@@ -2146,7 +2146,7 @@ store; anything else is left to the ordinary open."
   (fnn-require-clone-activated store)
   ;; Format 10 (lane format-bump-10): a store of another format is named
   ;; first.  Its filesystem record is a frame of its own release's digest, so
-  ;; the record check below would call a format-9 store's record undecodable
+  ;; the record check below would call a store's record undecodable
   ;; and point at `rebind-filesystem'; the profile's open (ACL2's
   ;; fn-spo-config-open) names the format and the way out instead.
   (fnn-refuse-another-format store)
@@ -2159,7 +2159,7 @@ store; anything else is left to the ordinary open."
         (setf (fnn-store-lock-fd store)
               (fnn-open-lock store (fnn-store-writable store) (fnn-store-writable store)))
         (fnn-load-config store)
-        ;; The commit route is ACL2's reading of the profile (format 9: the
+        ;; The commit route is ACL2's reading of the profile (the
         ;; record log); the host keeps the answer and decides nothing.
         (setf (fnn-store-logp store)
               (and (fnn-core 'fn-store-profile-logp (fnn-store-config store)) t))
@@ -2745,8 +2745,8 @@ open that follows checks it."
   "`store ROOT rebind-filesystem [on|off]': record the filesystem the store
 is on now, for a deliberate move or a restored backup.  The store's writer
 lock is taken (a running owner refuses this) and its profile and frontier
-load, but the identity is not checked: that is what this replaces.  A
-format-9 store (ACL2's fn-store-profile-logp) has no frontier file: its
+load, but the identity is not checked: that is what this replaces.  The
+store (ACL2's fn-store-profile-logp) has no frontier file: its
 frontier is derived from the log at recovery, as fnn-acquire reads it.
 REQUESTED is 1, 0 or NIL (keep the store's policy)."
   (let ((store (make-fnn-store root :writable t)))
@@ -2922,7 +2922,7 @@ builds the schema-3 tables of it and decides by name before anything is
 allocated (fn-store-sco-publish-setup, books/owner-checkpoint-pipeline.lisp:
 the estimate against the profile's checkpoint budget and the free space);
 then the same batch loop as the owner's thread writes the file through the
-publication buffer, one step's rows at a time.  On a format-9 store the log
+publication buffer, one step's rows at a time.  On a store the log
 is rotated first (fnn-log-rotate: the checkpoint's F row names the new
 segment and its genesis), and once the checkpoint is installed the segments
 it covers are dropped (fnn-log-drop; T8)."
@@ -3027,7 +3027,7 @@ lock, so a running owner refuses this) and publish its exact-state checkpoint
       (fnn-store-close store))))
 
 (defun fnn-recover (store)
-  "The open's recovery.  Every store an image opens is format 9 (the record
+  "The open's recovery.  Every store an image opens is on the record
 log; a format-8 profile is refused by name at the open,
 books/store-profile-open.lisp fn-spo-open-of-a-format-8-profile-refuses-by-name):
 fnn-recover-log.  Answers the history's record COUNT; the records themselves
@@ -3036,7 +3036,7 @@ open, a record at a time (`fnn-log-history-each')."
   (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil
         (fnn-store-open-mode store) '(:full-replay :absent))
   ;; the collector's trigger for the open (no effect on the store; before the
-  ;; format-9 guard, whose arm is the one call native_program_check reads)
+  ;; record-log guard, whose arm is the one call native_program_check reads)
   (fnn-open-nursery store)
   (unless (fnn-store-logp store)
     (fnn-fault "a store that is not on the record log opened"))
@@ -3546,7 +3546,7 @@ groups is refused, never created as a group."
 history (a work quantum per call, never a bound on the store).")
 
 (defun fnn-log-history-each (store fn)
-  "Call FN on each record of a format-9 STORE's history, in log order, as
+  "Call FN on each record of a STORE's history, in log order, as
 octets, read as the open read it (fnn-recover-log, its plan in
 fnn-store-log-history): when a checkpoint covers dropped segments, the
 covered prefix encoded from the loaded checkpoint's rows a chunk at a time
@@ -3582,7 +3582,7 @@ else a closed segment changed since the open, refused by name."
     (error 'fnn-store-open-refusal :message (fnn-core 'fn-lgdm-history-break-text))))
 
 (defun fnn-log-history-records (store)
-  "A format-9 STORE's history as a list, each record's exact octets in log
+  "A STORE's history as a list, each record's exact octets in log
 order (`fnn-log-history-each' collected), for the verbs that take the whole
 list (checkpoint publish, export, the offline configure's fallback)."
   (let ((records nil))
@@ -3594,7 +3594,7 @@ list (checkpoint publish, export, the offline configure's fallback)."
 before the open or after a rotation in this process."
   (let ((log (fnn-store-log store)) (plan (fnn-store-log-history store)))
     (unless (and log plan)
-      (fnn-fault "a format-9 store's history was read before its open"))
+      (fnn-fault "a store's history was read before its open"))
     (unless (eql (fnn-log-index log) (fourth plan))
       (fnn-fault "the log rotated since the open; its history is the new checkpoint's"))
     (when (eq (first plan) :released)
@@ -3622,8 +3622,8 @@ vectors, in order)."
 
 (defun fnn-history-records (store)
   "The history of the acquired and opened STORE as the open reads it, each
-record's exact octets in sequence order.  Format 9 (the one store format,
-D34): the record log as the open read it (`fnn-log-history-records'); the
+record's exact octets in sequence order (the one store format, D34): the
+record log as the open read it (`fnn-log-history-records'); the
 per-file branch went with the per-file layout (PKT-838).  The open no longer keeps them
 (PKT-823): a verb that needs the records' octets after `fnn-open-live-store'
 reads them here, under the lock the open took, which no writer shares, so
@@ -3794,7 +3794,7 @@ MANIFEST over every entry with its octets."
     (unwind-protect
          (let* ((fault (fnn-export-test-fault))
                 (profile (fnn-octet-list (fnn-read-regular-bounded (fnn-config-path store) 16384)))
-                ;; Format 9 holds no frontier file: the archive carries the
+                ;; The store holds no frontier file: the archive carries the
                 ;; frontier the log derived at this open (ACL2's frame of
                 ;; fn-store-log-next-txid), so the entry means what a
                 ;; format-8 archive's does.
@@ -4223,7 +4223,7 @@ the same steps, init's cut names).  An OS error before the rename is a known
 failure (exit 1, the staged directory named); at or after it the outcome is
 uncertain (exit 3) and the observed presence of the two names is classified
 by fn-bs-imp-classify.  SUBDIRS are the staged tree's subdirectories in
-the plan's order (a format-9 init's are ACL2's fn-bs-init-log-subdir-names:
+the plan's order (init's are ACL2's fn-bs-init-log-subdir-names:
 books/store-init-log-publication.lisp)."
   (let* ((stage-root (fnn-store-root stage))
          (parent (fnn-parent root-path))
@@ -4303,7 +4303,7 @@ books/store-init-log-publication.lisp)."
 (defparameter +fnn-post-model-cuts+
   '(:frontier-reserved :record-completing :finish-consumed :finish-durable))
 
-;; The log route's commit cuts (format 9; tests/campaign/native_cuts.py
+;; The log route's commit cuts (tests/campaign/native_cuts.py
 ;; POST_LOG_CUTS), in a served batch's order: each member's place
 ;; (fnn-log-publish's record-completing) and finish (its in-memory
 ;; completion, fnn-finish's two cuts), then P-BATCH's append and barrier
@@ -6141,11 +6141,11 @@ one ack window, kernel-concrete-2's first rig run)."
     n))
 
 ;;; ---------------------------------------------------------------------------
-;;; The store's commit through the record log (format 9; lane commit-onto-log,
+;;; The store's commit through the record log (lane commit-onto-log,
 ;;; planning/design-2026-09-27-storage-log.md sections 3.3 and 4).
 ;;;
 ;;; The member step keeps its calls (fnn-advance-frontier, the prepare,
-;;; fnn-publish, fnn-mark-committed, fnn-finish); on a format-9 store:
+;;; fnn-publish, fnn-mark-committed, fnn-finish); on a store:
 ;;;   fnn-log-reserve   the owner's :log-reserve (books/owner-log-route.lisp
 ;;;                     fn-olr-ocfg-reserve): the allocation is derived, no
 ;;;                     frontier file exists.  The log kernel first consumes the
@@ -6618,7 +6618,7 @@ refused by name."
     (+ s (length suffix))))
 
 (defun fnn-recover-log (store)
-  "The open of a format-9 store.  The checkpoint first: its F row names where
+  "The open of a store.  The checkpoint first: its F row names where
 the log's suffix starts (books/store-log-segments.lisp: the first suffix
 segment and its genesis) and the txid frontier at S.  ACL2's plan over
 journal/ (fn-lgs-open-plan) names the segments to scan and the covered ones

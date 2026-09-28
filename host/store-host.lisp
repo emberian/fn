@@ -437,7 +437,7 @@
   (fn-bs-initial-config-octets))
 
 ;; The commit route of an opened store (lane commit-onto-log): T for a
-;; format-9 profile, whose commits go through the record log.
+;; profile, whose commits go through the record log.
 (defun fn-store-profile-logp (values)
   (fn-bs-profile-logp values))
 
@@ -459,7 +459,7 @@
                                      (if (natp txid) (max acc (+ 1 txid)) acc)))
     acc))
 
-;; The same fold one record at a time (the format-9 open streams its records,
+;; The same fold one record at a time (the open streams its records,
 ;; host/native/io.lisp fnn-recover-log): (fn-store-log-next-txid-loop R ACC)
 ;; is the steps over R in order, by its definition; and the join of two
 ;; frontiers (the fold's, the checkpoint's, the log kernel's next).

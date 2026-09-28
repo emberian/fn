@@ -728,7 +728,7 @@
 ; and of the file (fn-scka-publication-setup: the
 ; decision by name over the whole file's octets before anything is
 ; allocated).  LOG is the record log's position at the capture's S (a
-; format-9 owner rotated the log there; NIL otherwise): the F row carries it.
+; owner rotated the log there; NIL otherwise): the F row carries it.
 ; (list SETUP NEXT N ARUN), N the canonical payload count (the
 ; next base's H0), ARUN (N COUNT STATE0) for fnn-checkpoint-write-steps.
 ; The arena is read at handles below the count the capture saw: the owner
@@ -1061,7 +1061,7 @@
 ;; (fn-rcon-ocfg-io-is-ocfg-step, no hypothesis): its :record-directory arm
 ;; pairs the staged record's sequence and transaction id through the
 ;; concrete record dispatchers instead of fn-record-p's octet lists.
-;; On a format-9 store the member's reservation and its place in the log are
+;; On a store the member's reservation and its place in the log are
 ;; the two composite steps of books/owner-log-route.lisp (fn-olr-ocfg-reserve,
 ;; fn-olr-ocfg-order: the file route's success sequences, by definition).
 (defun fn-owner-io (operation result state)
