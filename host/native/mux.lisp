@@ -435,7 +435,7 @@ the same octets are handed to the next step."
                                                  (fnn-owner-peer-read-class service)
                                                (fnn-mux-conn-class conn))
                                              peerp)))))
-    ;; Format 9 (lane commit-onto-log): the step queued its submission for the
+    ;; Lane commit-onto-log: the step queued its submission for the
     ;; next commit quantum.  The rest is the submitted step's handling, with
     ;; the plan built when the completion arrives (fnn-mux-await-done).
     (when (eq (first results) :await)
@@ -887,7 +887,7 @@ whatever the descriptor says."
     (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
       (setf (fnn-mux-loop-unsent loop) owed)))
   ;; A pass is complete: every connection ready in it was stepped.  A
-  ;; committer waiting for the passes (format 9) looks again.
+  ;; committer waiting for the passes looks again.
   (incf (fnn-mux-loop-passes loop))
   (fnn-mux-signal-committer loop))
 
@@ -902,7 +902,7 @@ pass, and the completions handed to it and not yet taken."
                  (length (fnn-mux-loop-inbox loop))))))
 
 (defun fnn-mux-signal-committer (loop)
-  "Wake a committer waiting on this loop's pass (format 9, a submission
+  "Wake a committer waiting on this loop's pass (a submission
 queued); nothing otherwise."
   (let ((service (fnn-mux-service loop)))
     (when (and (fnn-owner-service-batching service)

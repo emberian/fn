@@ -213,12 +213,16 @@ restart the node. Then follow [Read it in your browser](web.md).
 
 fn is never upgraded in place. A new release is a fresh install, and the
 store folder stays where it is. See
-[new releases](operator.md#new-releases). Only when a release cannot open
-the old store do you move the data through an export. That is the case for
-every store made before 27 September 2026: the store format changed then.
-Export with the **old** release, before you remove it:
+[new releases](operator.md#new-releases). A release opens only a store of
+its own format; there are no migrations. A store of another format is
+refused (`open refused reason=store-format: not an fn store of this
+release: redeploy fresh`): set the node up again with `init`.
 
-1. Stop the service and export the store, with the old release still
+`store export` and `store import` move a store between installs of the same
+format, for example to raise a limit fixed at `init`. Export before you
+remove the installed release:
+
+1. Stop the service and export the store, with the release still
    installed. The export runs as root, because the service account cannot
    make a folder in `/var/lib`; the `chown` lets the service account read it:
 
@@ -280,11 +284,10 @@ checks each file, but cannot tell you whether it is the newest export.
 If an import was interrupted, the next one refuses and names the folder it
 left: `reason=interrupted-import` (nothing was set up: remove that folder
 and import again) or `reason=publication-uncertain` (a store is there: run
-`recover`, then remove that folder). A release refuses a store of another
-format (`reason=store-format`) or one made by an older release
-(`reason=older-release`): export it with the release that made it, then
-import it here. `install.sh` asks the new release about the
-existing node folder before copying anything.
+`recover`, then remove that folder). An archive of another format is
+refused (`reason=profile store-format`). `install.sh` asks the new release
+about the existing node folder before copying anything, and refuses a store
+of another format: redeploy fresh.
 
 To remove fn: stop and disable the service. Then remove `/opt/fn`, the
 service file (`/etc/systemd/system/fn.service` or `/etc/rc.d/fn`), the node

@@ -6978,16 +6978,6 @@
           "kind": "theorem",
           "name": "fn-sxp-import-of-export-replays-the-same-history",
           "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-import calls fn-sxp-import-plan; fnn-command-store-export writes fn-sxp-entries and fn-sxp-manifest a chunk at a time (PRF-366, fn-sxp-stream-is-the-export). Teeth: tests/acl2/store-export-tests.lisp."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sxp-log-profile-is-a-valid-log-profile",
-          "note": "The migration (D34): every valid archive profile, format 8 included, imports as a valid format-9 profile with the archive fields. Host: host/native/io.lisp fnn-command-store-import through fn-sxp-import-plan. Teeth: tests/acl2/store-export-tests.lisp (lane log-recovery)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
-          "note": "KEYSTONE (D34, one format). Host: host/native/io.lisp fnn-metadata-config-decode via fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp."
         }
       ]
     },
@@ -9307,12 +9297,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-spo-open-of-another-layout-refuses-by-name",
-          "note": "KEYSTONE (PKT-705). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (a real pre-AS config.json; one witness per hypothesis)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-layout-fields-of-a-layout-frame"
+          "name": "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
         }
       ]
     },
@@ -11797,14 +11782,6 @@
         {
           "kind": "theorem",
           "name": "fn-lzr-config-min-without-a-row-is-off"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sxp-config-decode-archive-is-valid"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sxp-config-decode-archive-of-a-current-frame"
         }
       ]
     },
@@ -12123,43 +12100,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-spo-open-of-a-format-9-frame-refuses-by-name",
-          "note": "KEYSTONE (D34, the release before, by name). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (a real format-9 config.json)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-open-of-a-valid-profile-opens-it",
-          "note": "KEYSTONE. Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
-          "note": "KEYSTONE (one format). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-f9-config-decode-of-a-format-9-frame",
-          "note": "KEYSTONE (D38's witness). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan. Teeth: tests/acl2/store-format-9-tests.lisp."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-f9-format-9-frame-does-not-decode",
-          "note": "The two formats never meet, under any attachment."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sxp-import-of-a-format-9-export",
-          "note": "KEYSTONE (the migration). Host: host/native/io.lisp fnn-command-store-import. Teeth: tests/acl2/store-export-tests.lisp."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-f9r-article-identities-are-format-10s",
-          "note": "KEYSTONE (identical across the migration: the identities are format 10's). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan. Teeth: tests/acl2/store-export-tests.lisp; native tests/test_native_format_9_migration.py."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-f9r-article-keeps-every-other-field",
-          "note": "KEYSTONE (the translation keeps the article)."
+          "name": "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
         }
       ]
     },
@@ -12198,28 +12139,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-f9r-composite-keeps-what-it-binds",
-          "note": "KEYSTONE (a composite keeps its signed source, verdict, keyring generation and article). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-f9r-composite-identities-are-format-10s",
-          "note": "KEYSTONE (a composite's identities are the ones replay derives). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-f9r-step-of-a-composite",
-          "note": "KEYSTONE (a composite imports bound or is refused by name). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-f9r-step-carries-identity-free-kinds-verbatim",
-          "note": "KEYSTONE (verdicts, keyring snapshots, consumer events, topic install: verbatim). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-f9r-loop-keeps-sequences",
-          "note": "The translated history keeps the archive's sequences in order."
+          "name": "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
         }
       ]
     },
@@ -12541,7 +12461,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-sxp-manifest-under-of-append",
+          "name": "fn-sxp-manifest-of-append",
           "note": "Lemma: MANIFEST lines distribute over append."
         }
       ]
@@ -12552,7 +12472,7 @@
         {
           "kind": "theorem",
           "name": "fn-sxi-stream-plan-is-the-import-plan",
-          "note": "KEYSTONE (no hypotheses). Host: host/native/io.lisp fnn-import-pass calls fn-sxi-head, fn-sxi-start, fn-sxi-want and fn-sxi-step per chunk, fn-sxi-final; fnn-command-store-import runs it twice. Teeth: tests/acl2/store-import-stream-tests.lisp (every chunking, format 9, each refusal by name incl. a cross-chunk sequence and a later MANIFEST mismatch outranking an earlier translation refusal; mutation witnesses: swapped and dropped chunks, an uncarried sequence)."
+          "note": "KEYSTONE (no hypotheses). Host: host/native/io.lisp fnn-import-pass calls fn-sxi-head, fn-sxi-start, fn-sxi-want and fn-sxi-step per chunk, fn-sxi-final; fnn-command-store-import runs it twice. Teeth: tests/acl2/store-import-stream-tests.lisp (every chunking, each refusal by name incl. a cross-chunk sequence; mutation witnesses: swapped and dropped chunks, an uncarried sequence)."
         }
       ]
     },
@@ -12809,6 +12729,21 @@
         {
           "kind": "theorem",
           "name": "fn-fps-live-names-are-the-unpaused-feeds"
+        }
+      ]
+    },
+    {
+      "id": "PRF-382",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
+          "note": "KEYSTONE (D34, one format; no hypotheses). Host: host/native/io.lisp fnn-metadata-config-decode (every open, from fnn-load-config; and fnn-refuse-another-format) via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (fn-store-9 and fn-store-11 words sealed here refused by name, the native frame pinned; right side false: a decoded frame, this word over refused fields and over another layout, a damaged foreign frame, garbage; the conclusion fails without the right side). Native: tests/test_native_foreign_format_open.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-open-of-a-valid-profile-opens-it",
+          "note": "KEYSTONE (what init and store import write opens as itself). Host: host/native/io.lisp fnn-metadata-config-decode (every open, from fnn-load-config; and fnn-refuse-another-format) via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (the presets and init's frame; validp removed: H below R is the generic fault)."
         }
       ]
     }

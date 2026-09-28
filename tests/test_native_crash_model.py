@@ -1,5 +1,5 @@
 """Actual native process death on the record log, checked through the image's scan
-of the segment, the open, and the served octets (format 9)."""
+of the segment, the open, and the served octets."""
 import os
 from pathlib import Path
 import subprocess
@@ -38,7 +38,7 @@ class NativeCrashFaultSurfaceTests(unittest.TestCase):
 
 
 class NativeCampaignMixin:
-    """Process deaths on the record log (format 9; lane log-recovery-mod).
+    """Process deaths on the record log (lane log-recovery-mod).
 
     The per-file POST programs (fn-bs-frontier-program, fn-bs-record-program,
     fn-bs-marker-program) and their 23 cuts are not reachable on a format-9

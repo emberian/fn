@@ -7,7 +7,7 @@ upgraded in place with its store kept, the sixth such upgrade
 ([record](../../planning/evidence/node-hbox-bbf52159-2026-09-25.md),
 [qualification](../../planning/evidence/qual-bbf52159-2026-09-25.md)). Its
 store is at format 8, the per-file layout. The current `dev` release keeps
-its store as a record log (format 9) and refuses a format-8 store by name,
+its store as a record log and refuses a store of another format by name,
 so the next deploy is a fresh install from the release (decision D34),
 not an upgrade in place. This page says what the node is, how to
 reach it, and which of the plan's properties hold on it; it changes at every

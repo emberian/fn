@@ -81,7 +81,7 @@
   (wait-lock (sb-thread:make-mutex :name "fn consumer wait"))
   (wait-queue (sb-thread:make-waitqueue :name "fn consumer commit"))
   (commits 0) (waiters 0)
-  ;; Lane commit-onto-log (format 9): BATCHING when the store commits
+  ;; Lane commit-onto-log: BATCHING when the store commits
   ;; through the record log.  A served read step then queues its submission
   ;; and returns :await; the committer thread (fnn-owner-committer-loop)
   ;; admitted as the :commit class drains every queued submission in one
@@ -817,7 +817,7 @@ checkpoint's S, or NIL."
                      :start-hooks *fnn-owner-start-hooks*
                      :stop-hooks *fnn-owner-stop-hooks*
                      :close-hooks *fnn-owner-close-hooks*
-                     ;; Format 9: served submissions are committed in
+                     ;; Served submissions are committed in
                      ;; batches by the committer thread.
                      :batching (fnn-store-logp store)
                      :stopping nil))
@@ -838,7 +838,7 @@ checkpoint's S, or NIL."
               ;; base is the open's extension, fn-owner-sco-base): release it,
               ;; so the reopened owner does not hold the checkpoint's capture
               ;; beside the extension (checkpoint-arena-2's reopen heap).  A
-              ;; later read of a format-9 history whose prefix was the
+              ;; later read of a history whose prefix was the
               ;; checkpoint's then faults by name (fnn-log-history-plan).
               (fnn-core-state 'fn-store-sco-clear)
               (fnn-log-history-release-prefix store)
@@ -2316,7 +2316,7 @@ which books/owner-commit-steps.lisp fn-ocs-member-releases reads."
                             (eq word :uncertain) word)))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; The commit quantum (format 9; lane commit-onto-log, design 2026-09-27
+;;; The commit quantum (lane commit-onto-log, design 2026-09-27
 ;;; section 3.3; PKT-688 (4)).
 ;;;
 ;;; A served POST's read queues its submission and returns :await
@@ -2935,7 +2935,7 @@ timer)."
       (fnn-owner-fault-service service nil e))))
 
 (defun fnn-owner-start-committer (service)
-  "Start the committer on a batching service (format 9)."
+  "Start the committer on a batching service."
   (when (fnn-owner-service-batching service)
     (setf (fnn-owner-service-committer service)
           (sb-thread:make-thread (lambda () (fnn-owner-committer-loop service))
@@ -3413,7 +3413,7 @@ EPIPE and the client saw a bare close)."
                (redeem nil))
            (unless (and (integerp consumed) (<= 0 consumed (length incoming)))
              (fnn-fault "owner returned malformed receive-prefix count"))
-           ;; Format 9 (lane commit-onto-log): the submission stays queued
+           ;; Lane commit-onto-log: the submission stays queued
            ;; for the next commit quantum, which drains it with every other
            ;; queued one and fences the log once; this connection's reply
            ;; is built when its completion arrives (fnn-owner-await-done).
@@ -3713,7 +3713,7 @@ reads run as a :control quantum; the thread's registration is the roster's."
         (when (eq (fnn-owner-core 'fn-owner-sco-due
                                   (fnn-checkpoint-budget-test-override nil) free)
                   :due)
-          ;; Format 9: the capture rotates the log (fnn-log-rotate, under
+          ;; The capture rotates the log (fnn-log-rotate, under
           ;; the owner mutex: no batch is open in a :control quantum), so
           ;; the captured history is exactly the closed segments' records
           ;; and the checkpoint's F row names the new segment.  A failed

@@ -1,6 +1,6 @@
-"""The committed history of a format-9 store, as the image reads it.
+"""The committed history of a store, as the image reads it.
 
-A format-9 store keeps its history in the record log (journal/NNNNNN.log,
+A store keeps its history in the record log (journal/NNNNNN.log,
 books/store-log*.lisp); there are no transaction files to list.  A test that
 asked "did a commit happen?" by listing transactions/ asks the image's own
 read-only scan instead: `fn log scan SEGMENT EXTENT UNIT MAX SIZE` (both

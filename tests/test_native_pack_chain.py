@@ -1,6 +1,6 @@
 """Compaction of a scale store over the record log (P5, SCN-046; format 9).
 
-On format 9 there are no packs (design 2026-09-27 storage-log section 6,
+On the record log there are no packs (design 2026-09-27 storage-log section 6,
 section 9 row 5): `operator CONFIG store compact' publishes a state
 checkpoint with the log ROTATED and DROPS the segments it covers
 (books/store-log-stream.lisp, T8 fn-lgw-segment-drop-preserves-the-open).
@@ -19,9 +19,9 @@ in lane log-recovery's pack deletion):
   tests.test_native_log_compaction);
 * test_pack_chain_link_cut_leaves_exactly_the_selected_links -- chain links;
 * test_eio_at_each_link_publication_cut_from_both_entries -- a link's
-  immutable publication and the selection marker (no such files on format 9);
+  immutable publication and the selection marker (no such files on the record log);
 * test_chain_reclaim_retire_and_suffix_cuts_resume -- pack-reclaim and
-  pack-retire (`checkpoint pack*' refuses reason=record-log on format 9).
+  pack-retire (`checkpoint pack*' refuses reason=record-log on the record log).
 
 FN_P5_TIMEOUT (default 1800 s) bounds each native call.  Articles are 2 KiB:
 the profile's max-article-octets, which the in-process `probe N article'

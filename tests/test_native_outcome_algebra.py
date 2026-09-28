@@ -130,7 +130,7 @@ class OutcomeAlgebraNativeTests(verbs.NativeOperatorUncertainOutcomeTests):
         absent = empty.operator("status")
         self.expect(absent, REFUSED, "refused operator status NO-STORE", "run: fn operator")
         # A durable authority file that is no frame: the host's fault class.
-        # (Format 9 holds no allocation frontier file; the profile frame is
+        # (The store holds no allocation frontier file; the profile frame is
         # read at every open, and octets that are no sealed frame are the
         # open's (:rejected), never a named refusal.)
         (self.store / "config.json").write_bytes(b"not a frame\n")

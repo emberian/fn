@@ -15,7 +15,6 @@
 (include-book "../books/replay")
 (include-book "../books/store-intern")
 (include-book "../books/store-recover-stream")
-(include-book "../books/store-format-9-records")
 ; The open's extent seals and the served read's trailer check (PRF-294);
 ; the commit's extent reseat (PRF-309; it includes payload-extent).
 (include-book "../books/payload-commit-extent")
@@ -141,19 +140,6 @@
   (declare (xargs :mode :program
                   :guard (fn-cbor-octet-listp octets)))
   (fn-srs-record-sequence octets))
-
-; An archive record's sequence at `store import': the journal record's, or,
-; for a format-9 topic anchor or admission (which format 10 does not decode),
-; the sequence its envelope names (books/store-format-9-records.lisp
-; fn-f9r-signed-topic-sequence), so the MANIFEST check names the right entry
-; and the translation then refuses it by name.
-(defun fn-store-archive-record-sequence (octets)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (let ((sequence (fn-srs-record-sequence octets)))
-    (if (natp sequence)
-        sequence
-      (fn-f9r-signed-topic-sequence octets))))
 
 (defun fn-store-record-txid (octets)
   (declare (xargs :mode :program
@@ -346,13 +332,13 @@
   (fn-bs-config-frame-for-profile profile))
 
 (defun fn-store-metadata-config-decode (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-bs-config-decode octets))
 
 ;; The open of config.json every open path reads (PKT-471,
-;; books/store-profile-open.lisp): (:opened VALUES), (:refused REASON) for a
-;; saved profile whose record bound the poll reply cannot carry or a profile
-;; frame of another format (D34), or (:rejected) for a frame that is no saved
-;; profile.  The refusal's line is ACL2's and names the reinstall and import.
+;; books/store-profile-open.lisp): (:opened VALUES), (:refused :store-format)
+;; for a profile frame of another format word (D34), or (:rejected) for a
+;; frame that is no saved profile.  The refusal's line is ACL2's.
 (defun fn-store-metadata-config-open (octets)
   (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-spo-config-open octets))
@@ -373,7 +359,7 @@
   (fn-bs-initial-config-octets))
 
 ;; The commit route of an opened store (lane commit-onto-log): T for a
-;; format-9 profile, whose commits go through the record log.
+;; profile, whose commits go through the record log.
 (defun fn-store-profile-logp (values)
   (fn-bs-profile-logp values))
 
@@ -395,7 +381,7 @@
                                      (if (natp txid) (max acc (+ 1 txid)) acc)))
     acc))
 
-;; The same fold one record at a time (the format-9 open streams its records,
+;; The same fold one record at a time (the open streams its records,
 ;; host/native/io.lisp fnn-recover-log): (fn-store-log-next-txid-loop R ACC)
 ;; is the steps over R in order, by its definition; and the join of two
 ;; frontiers (the fold's, the checkpoint's, the log kernel's next).

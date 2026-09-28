@@ -36,7 +36,7 @@ power-loss behavior.
 | NNTP | RFC clause checklist; independent transcripts and a real reader; all forms/ranges/errors; fragmented/coalesced input |
 | Replication | Duplicate/reordered batches, missing dependencies, long contact gaps, carried media, replayed receipts |
 | Retention/GC | Reservation exhaustion, multiple independent roots, release evidence, old-media reimport, interrupted compaction |
-| Operations | Restart, checkpoint migration, corruption handling, backup restore/incarnation rules, concrete resource limits |
+| Operations | Restart, corruption handling, backup restore/incarnation rules, concrete resource limits |
 
 Use simulation seeds and bounded exploration parameters in reproducible evidence.
 When a scenario is only partially executable, report the modeled boundary and

@@ -154,7 +154,7 @@ if __name__ == "__main__":
 
 
 class LogRouteArmTests(unittest.TestCase):
-    """Lane log-2: each format-9 arm against books/store-log-route-programs.lisp
+    """Lane log-2: each record-log arm against books/store-log-route-programs.lisp
     and the log's own programs; every mutation below is a process-death cut
     that no model program has, or a step out of the programs' order."""
 

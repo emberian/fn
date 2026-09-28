@@ -196,7 +196,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         fnn-advance-frontier stages, the content what a staged frontier holds.
         """
         store = self.initialized("allocation-orphans")
-        # Format 9 holds no allocator file (the log derives the frontier):
+        # The store holds no allocator file (the log derives the frontier):
         # the orphans' bytes are what a per-file store's staged frontier held,
         # and the recovery must leave the history (the segment) as it was.
         segment = (store / "journal" / "000001.log").read_bytes()
@@ -279,7 +279,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
     def test_atomic_hybrid_article_without_enrollment_faults_and_retains_bytes(self):
         """ACL2 emits kind-4 history whose missing kind-3 predecessor is fatal.
 
-        Format 9 (the record log): a history reaches the log only through a
+        The record log: a history reaches the log only through a
         commit, which ACL2 checks, or `store import', whose ordinary open
         replays the archive before anything is published at the store's
         path.  An archive whose history is that kind-4 record without its

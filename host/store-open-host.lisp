@@ -3,7 +3,7 @@
 ; Direction (coordinator, 2026-09-28): the host is byte primitives, sockets
 ; and an event loop; the open sequence belongs in ACL2 so the extractor
 ; extracts it instead of anyone rewriting host/native by hand.  This file is
-; the first pass: the reader's open of a format-9 store over its record log,
+; the first pass: the reader's open of a store over its record log,
 ; READ-ONLY and by FULL REPLAY (no state checkpoint), as host/native/io.lisp
 ; does it today in fnn-reader-prepare -> fnn-acquire, fnn-bridge-reset,
 ; fnn-recover -> fnn-recover-log (the full-replay arm), the recovery barriers,
@@ -242,8 +242,6 @@
         (cond ((eq (car raw) :overbound)
                (fn-xo-fault (concatenate 'string "store file exceeds bound: " path)))
               ((not (fn-xo-okp raw)) raw)
-              ((and (consp (cadr raw)) (equal (car (cadr raw)) 123))
-               (list :open-refusal (fn-store-metadata-config-refusal-text '(:refused :store-format))))
               (t (let ((verdict (fn-store-metadata-config-open (cadr raw))))
                    (cond ((and (consp verdict) (eq (car verdict) :opened)
                                (fn-store-profile-admittedp (cadr verdict)))

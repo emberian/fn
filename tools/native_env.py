@@ -155,14 +155,8 @@ MANUAL = {
     "FN_NATIVE_READER_HOST": "falls back to FN_NATIVE_DEVELOPER_HOST",
     "FN_NATIVE_SOURCE_ROOT": "defaults to the tree the module runs from",
     "FN_OLD_NATIVE_HOST": "an older image (upgrade cases)",
-    "FN_FORMAT9_HOST": "a format-9 developer image (the format-9 migration modules; "
-                       "hbox:/tank/fn/scratch/batch-ay/native-n2-d7504da0b/tree/build/fn-host-developer "
-                       "with FN_FORMAT9_STORE=/tank/fn/scratch/fixtures/format9/n1k-2k/store)",
     "FN_SPAN_REFERENCE_HOST": "the base image of the ingress-span differential (SCN-110; built from the lane base, by --env)",
     "FN_OLD_IMAGE": "an older image (upgrade cases)",
-    "FN_PRE_T2_NATIVE_DEVELOPER_HOST": "a pre-T2 developer image (migration)",
-    "FN_T2_NATIVE_DEVELOPER_HOST": "a T2 developer image (migration)",
-    "FN_T2B_NATIVE_DEVELOPER_HOST": "a T2b developer image (migration)",
     "FN_NATIVE_TOPIC_V1_HOST": "a topic-v1 image (legacy topic cases)",
     "FN_INN_SRC": "an installed INN 2.7 tree",
     "FN_DTN7_REPO": "a dtn7-rs checkout",
