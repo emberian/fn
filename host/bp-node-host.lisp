@@ -45,9 +45,6 @@
   (let ((c (fn-bpn-config node-id lifetime crc-type hop-limit transfer-limit)))
     (if (fn-bpn-configp c) c nil)))
 
-(defun fn-bpn-host-configp (c)
-  (and (fn-bpn-configp c) t))
-
 ; -----------------------------------------------------------------------------
 ; The clock observation.  The host has a monotonic millisecond reading and,
 ; when the operator supplied one, a DTN wall reading with its error bound.
