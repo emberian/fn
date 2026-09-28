@@ -95,9 +95,7 @@ publishes and reads it back (fnn-admin-publish-record).  A refusal or a
 record that does not read back refuses the reclaim before any rewrite.
 Answers the report line's field."
   (let* ((stamp (fnn-admin-clock-plan))
-         (status (fnn-core-state 'fn-store-reclaim-instant-record clock
-                                 (fnn-core 'fn-native-admin-host-clock-monotonic stamp)
-                                 (fnn-core 'fn-native-admin-host-clock-wall stamp))))
+         (status (fnn-core-state 'fn-store-reclaim-instant-record clock stamp)))
     (unless (eq status :ok)
       (fnn-refuse "reclaim refused: its instant's configuration record: ~(~a~)"
                   (fnn-core-state 'fn-store-cfg-last-reason)))

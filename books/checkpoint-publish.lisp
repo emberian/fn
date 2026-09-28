@@ -29,6 +29,12 @@
 (include-book "journal-publish")
 (include-book "byte-store-txn-name")
 (include-book "defrecord")
+
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; The checkpoint codec's reader and encoder vocabulary stays closed here
 ; (plan 2026-09-22 §4.1): the proofs below reason about the codec through
 ; `fn-cpc-frame-decode-of-encode' and the frame and summary shapes, never
@@ -352,6 +358,7 @@
 (defconst *fn-cpp-selection-name*
   '(#\s #\e #\l #\e #\c #\t #\e #\d #\. #\f #\n #\c #\p))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defun fn-cpp-next-generation-from (names expected capacity)
   (declare (xargs :guard t))
   (cond ((or (not (fn-record-uint32p expected))
@@ -362,6 +369,7 @@
         ((equal (car names) expected)
          (fn-cpp-next-generation-from (cdr names) (+ 1 expected) capacity))
         (t :bad)))
+(local (in-theory (disable (tau-system))))
 
 (defun fn-cpp-next-generation (names capacity)
   (declare (xargs :guard t))
@@ -477,6 +485,7 @@
       (fn-cpp-namespace-plan-aux names nil)
     '(:error :bound)))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defthm fn-cpp-generation-name-decode-of-render
   (implies (fn-record-uint32p generation)
            (equal (fn-cpp-generation-name-decode
@@ -504,6 +513,7 @@
                            (fn-bs-txn-natural-digits
                             fn-bs-txn-natural-digits-rev
                             fn-bs-txn-reverse)))))
+(local (in-theory (disable (tau-system))))
 
 ; Authorize the shared immutable publication machine only when the caller's
 ; boundary observations establish exclusive authority, a gap-free generation

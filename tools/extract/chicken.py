@@ -29,6 +29,21 @@ import sys
 NIL = "COMMON-LISP::NIL"
 T = "COMMON-LISP::T"
 FIX_LO, FIX_HI = -(1 << 62), (1 << 62) - 1   # CHICKEN 5, 64-bit fixnums
+# The target data model (runtime.scm's representation, scm_datum's quoting),
+# recorded in the inventory and the gate's extraction manifest.
+DATA_MODEL = {
+    "target": "CHICKEN Scheme 5, 64-bit",
+    "nil": "the empty list '() (the one false value)",
+    "symbols": "interned Scheme symbols named PKG::NAME by their home package",
+    "characters": "Scheme characters of code 0-255",
+    "strings": "CHICKEN byte strings read as Latin-1, one byte per ACL2 character",
+    "numbers": "CHICKEN's exact numeric tower (integers, ratios, exact complex)",
+    "conses": "Scheme pairs",
+    "multiple_values": "Scheme values / call-with-values",
+    "stobjs": "mutable records; arrays as Scheme vectors or SRFI-4 u8vectors",
+    "fixnum_range": [FIX_LO, FIX_HI],
+    "fixnum_erasure": "guard-derived intervals inside [fixnum_range] emit unchecked fx operations (erased.json)",
+}
 INF = float("inf")
 
 
@@ -1046,6 +1061,7 @@ class Backend:
                                      if f["kind"] == "defun" and f.get("class") == "program"
                                      and f.get("invariant_risk", False)]
         inventory["boundary"] = [b["name"] for b in self.ir.get("boundary", [])]
+        inventory["data_model"] = DATA_MODEL
         out.extend(self.const_defs)
         out.extend(prims_out)
         out.extend(defs)

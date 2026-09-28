@@ -18,6 +18,7 @@
 (in-package "ACL2")
 (include-book "../books/nntp-index")
 
+;; test-only (tools/host_callers.py): only through fn-index-host-fold, fn-index-host-observe, fn-index-host-open
 (defun fn-index-host-archive (state)
   (declare (xargs :stobjs state :mode :program))
   (if (boundp-global 'fn-reader-archive state)
@@ -27,6 +28,7 @@
 ; Called once per selection/recovery, alongside FN-READER-USE-STORE.  This is
 ; the one place the archive configuration is read; the served path below
 ; compares the recorded digest and never rescans the archive.
+;; test-only (tools/host_callers.py): tests/test_index_cache.py
 (defun fn-index-host-observe (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((archive (fn-index-host-archive state)))
@@ -40,6 +42,7 @@
 ; Build the index over the selected archive's committed articles, tagged with
 ; GENERATION (the store's durable record count at the recovery that produced
 ; this archive) and the archive's configuration digest.
+;; test-only (tools/host_callers.py): tests/test_index_cache.py
 (defun fn-index-host-open (generation state)
   (declare (xargs :stobjs state :mode :program))
   (let ((archive (fn-index-host-archive state)))
@@ -51,6 +54,7 @@
       (let ((state (f-put-global 'fn-index-cache nil state)))
         (value :refused)))))
 
+;; test-only (tools/host_callers.py): only through fn-index-host-fold, fn-index-host-query
 (defun fn-index-host-install (answer state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-index-status (car answer) state))
@@ -63,6 +67,7 @@
 ; when the caller's generation or the last observed configuration is not the
 ; one the cache was built for, or :UNKNOWN for a kind this cache does not
 ; answer.  There is no fourth outcome, and in particular no stale answer.
+;; test-only (tools/host_callers.py): tests/test_index_cache.py
 (defun fn-index-host-query (generation kind group low high current state)
   (declare (xargs :stobjs state :mode :program))
   (let ((cache (if (boundp-global 'fn-index-cache state)
@@ -79,6 +84,7 @@
 ; The fold arm.  This is the oracle and the measurement baseline: the
 ; books/nntp.lisp enumeration run directly over the selected archive, with no
 ; index.  It is not a served path; FN-INDEX-HOST-QUERY is.
+;; test-only (tools/host_callers.py): tests/test_index_cache.py
 (defun fn-index-host-fold (kind group low high current state)
   (declare (xargs :stobjs state :mode :program))
   (let ((articles (fn-state-articles (fn-index-host-archive state))))

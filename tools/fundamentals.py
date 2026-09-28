@@ -45,7 +45,12 @@ leaves a number open, the reading named here and in the record):
       says which is missing.  --f4-client-deadline-ms 10000: every control
       request answered within it (the qualification's observable).
   F5  a stated figure per idle connection and tests.test_native_mux OK
-  F6  --f6-bar-s 10 (every open at 20,000 and 40,000, both modes)
+  F6  --f6-bar-s 10 (every open at 20,000 and 40,000, both modes): from the
+      scale curve when step f6c ran (tools/scale_curve.py: full replay and
+      checkpoint opens at 1k .. 100k, judged at the next point up, 25k and
+      50k, with the fit's 1M extrapolation named; F8 names the curve's
+      memory extrapolation beside its own bars), else from step f6's
+      fixtures (chain-20000, t40k-2k-cp5)
   F7  --f7-reading as-written (the module wholly OK on dtn and on
       dtn-developer) or scn077-on-dtn (SCN-077's case OK on dtn, the module
       wholly OK on dtn-developer: F7.md's alternative reading, ember's call)
@@ -57,6 +62,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import math
 import re
 import shlex
 import subprocess
@@ -335,7 +341,60 @@ def f5(out: Path, a) -> Row:
     return r
 
 
+# tools/scale_curve.py's models (the fitted curve's g(N)).
+CURVE_G = {"constant": lambda n: 0.0, "log N": math.log, "N": float,
+           "N log N": lambda n: n * math.log(n), "N^2": lambda n: float(n) * n}
+CURVE_OPENS = (("open_replay.s", "full replay"), ("open_checkpoint.s", "from its checkpoint"))
+
+
+def f6_curve(curve: dict, a) -> Row:
+    """F6 from the scale curve (tools/scale_curve.py, step f6c): the owner's open
+    by full replay and from a checkpoint at N = 1k .. 100k.  A bar size is judged
+    by the MEASURED point at the least curve N at or above it (25k for 20k, 50k
+    for 40k: an open that grows with N is no faster at the smaller store); the
+    fitted model's value at the bar size and its extrapolation to 1M are named
+    beside it, and a flagged fit (ambiguous, bend, steepens, failed) is named."""
+    r = Row("F6")
+    r.measured = True
+    meta = curve.get("meta", {})
+    r.commands.append("python3 tools/scale_curve.py run --image build/fn-host --probes "
+                      "open_replay,checkpoint,open_checkpoint --jobs 1 --cores 4 (the curve "
+                      "fixture's copies on /dev/shm, MemoryMax per point)")
+    ns = sorted(int(n) for n in curve.get("points", {}))
+    r.raw += ["| open | " + " | ".join(f"{n // 1000}k" for n in ns) + " | fit | resid | at 1M | flags |",
+              "|---|" + "---|" * (len(ns) + 4)]
+    for series, mode in CURVE_OPENS:
+        f = (curve.get("fits") or {}).get(series, {})
+        vals = [curve["points"][str(n)].get("values", {}).get(series) for n in ns]
+        r.raw.append(f"| {mode} | " + " | ".join("-" if v is None else f"{v:.2f}" for v in vals)
+                     + f" | {f.get('best', '-')} | {f.get('residual', float('nan')):.3f} | "
+                     + (f"{f['at_1M']:.1f} s" if f.get("at_1M") is not None else "-")
+                     + f" | {'; '.join(f.get('flags') or []) or '-'} |")
+    for size in (20000, 40000):
+        at = next((n for n in ns if n >= size), None)
+        values, where = [], []
+        for series, mode in CURVE_OPENS:
+            v = curve["points"][str(at)].get("values", {}).get(series) if at else None
+            values.append(v)
+            text = f"{mode}: {v:.2f} s measured at {at // 1000}k" if v is not None else f"{mode}: not measured"
+            f = (curve.get("fits") or {}).get(series, {})
+            if f.get("best") in CURVE_G:
+                m = f["models"][f["best"]]
+                text += f" (fit {f['best']}: {m['a'] + m['b'] * CURVE_G[f['best']](size):.2f} s at {size // 1000}k)"
+            where.append(text)
+        worst = None if None in values else max(values)
+        r.clause(f"the owner's open at {size // 1000}k under {a.f6_bar_s:g} s (both modes; the curve's "
+                 f"next point up)", worst is not None and worst < a.f6_bar_s, "; ".join(where))
+    r.notes.append(f"the scale curve, one point per N on 4 cores; load {' '.join(meta.get('load_start', []))} "
+                   f"at the start, {' '.join(meta.get('load_end', []))} at the end; wall {meta.get('wall_s')} s; "
+                   "the extrapolation to 1M is the fitted model's, not a measurement")
+    return r
+
+
 def f6(out: Path, a) -> Row:
+    curve = load(out, "f6-curve/curve.json")
+    if curve:
+        return f6_curve(curve, a)
     r = Row("F6")
     runs = {(fx, mode): load(out, f"f6-{fx}-{mode}.json") for fx in ("chain-20000", "t40k-2k-cp5") for mode in ("asis", "reckpt")}
     if not any(runs.values()):
@@ -412,6 +471,14 @@ def f8(out: Path, a) -> Row:
     r.clause(f"a reopen of that store under {a.f8_reopen_mb} MB (least heap that reopens, serves and takes 50 POSTs)",
              fl is not None and fl < a.f8_reopen_mb, f"{fl} MB (failed at {(d.get('reopen_post_floor') or {}).get('failed_at_mb')} MB)")
     r.notes.append(f"load {load_of(out, 'f8')}; the small preset: {d.get('flags')}")
+    curve = load(out, "f6-curve/curve.json")
+    for series in ("open_checkpoint.rss_kib", "open_checkpoint.hwm_kib", "open_checkpoint.anon_peak_kib"):
+        f = ((curve or {}).get("fits") or {}).get(series)
+        if f and f.get("at_1M") is not None:
+            # Information, not a clause: F8's bars are at 1,000 posts.
+            r.raw.append(f"- scale curve (F6's step f6c): {series} fits {f['best']} (residual "
+                         f"{f['residual']:.3f}); extrapolated {mib(f['at_1M'])} at 1M, "
+                         f"{mib(f['at_10M'])} at 10M{'; FLAGGED: ' + '; '.join(f['flags']) if f['flags'] else ''}")
     return r
 
 
@@ -608,7 +675,7 @@ def main(argv=None) -> int:
     p = sub.add_parser("run", parents=[bars])
     p.add_argument("--revision", required=True)
     p.add_argument("--label", default=None)
-    p.add_argument("--steps", default=None, help='rows.sh steps (default "heap f4 f5 f5n f8 f1 f6 f3 f2 f7 wait f4s")')
+    p.add_argument("--steps", default=None, help='rows.sh steps (default "heap f4 f5 f5n f8 f1 f6c f3 f2 f7 wait f4s")')
     p.add_argument("--f4-seconds", type=int, default=3600)
     p.add_argument("--f2-before", default=None)
     p.add_argument("--edge-ssh", default=None)

@@ -42,6 +42,11 @@
 (include-book "owner-invariants")
 (include-book "config-stream")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; -----------------------------------------------------------------------------
 ; The record
 
@@ -326,14 +331,16 @@
 ; existing outcome path and never inferred here.
 
 (defun fn-ocfg-config-stamp (observation)
-  ; Schema-0 configuration records have uint32 stamp fields, while the
-  ; owner's clock uses milliseconds.  The durable record carries the ACL2
-  ; seconds projection of that observation; no host clock conversion or
+  ; The durable record carries the owner's clock observation in its own
+  ; unit, milliseconds (books/config.lisp fn-cfg-stampp,
+  ; books/clock-unit.lisp *fn-clock-record-stamp-unit*; PRF-378).  It was
+  ; the seconds projection, which made an account expiry (milliseconds)
+  ; unreachable at admission and replay.  No host clock conversion or
   ; alternate configuration timestamp exists.
   (declare (xargs :guard t))
-  (fn-clock-observation (floor (nfix (fn-clock-monotonic observation)) 1000)
-                        (floor (nfix (fn-clock-wall observation)) 1000)
-                        (floor (nfix (fn-clock-wall-error observation)) 1000)
+  (fn-clock-observation (nfix (fn-clock-monotonic observation))
+                        (nfix (fn-clock-wall observation))
+                        (nfix (fn-clock-wall-error observation))
                         (fn-clock-has-wall observation)))
 
 (defun fn-ocfg-reconfig-record (oc deltas)

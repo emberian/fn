@@ -5626,6 +5626,32 @@
         "planning/evidence/format10-import-2026-09-28/native-m4-format_9_every_kind.log",
         "planning/evidence/format10-import-2026-09-28.md"
       ]
+    },
+    {
+      "id": "SCN-193",
+      "title": "Concurrent posters of the profile's largest articles are each answered accepted or refused by name and the node never faults; partial uploads holding the whole pool of article credits all complete",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "HST-024"
+      ],
+      "steps": [
+        "A = 4 MiB (one credit): `operator init --profile development --max-transactions 1024 --max-history-octets 64MiB --max-record-octets 4199563 --max-article-octets 4194304 --max-groups-per-article 16 fn.test`; `run`; six NNTP connections; POST on the first and half its 4 MiB article; POST on the other five; the rest of the first article in pieces; then each of the five posts in turn (asking again while a 440 names the memory).",
+        "A = 600,000 (three credits): the same init with --max-article-octets 600000; five connections; three POSTs each followed by half its article; POST on the other two; the three finish, last admitted first; then the two post."
+      ],
+      "expected": [
+        "The five are answered `440 posting not permitted now; the articles in flight fill the memory, try again later` while the first is mid-article; the first is answered 240; each of the five is then offered 340 and answered 240; the node never exits and stops cleanly (exit 0) with 6 transactions.",
+        "The two are answered the memory 440 while three partial uploads hold the pool; each of the three is answered 240 without waiting for another (no completion deadlock: reserve-to-finish); the two are then accepted; exit 0 with 5 transactions."
+      ],
+      "implementation": {
+        "test": "tests.test_native_article_slots",
+        "cases": [
+          "ArticleSlotsTests.test_concurrent_large_posters_are_answered_by_name_and_the_node_lives",
+          "ArticleSlotsTests.test_partial_uploads_holding_the_pool_all_complete"
+        ],
+        "native": true,
+        "record": "planning/evidence/zero-copy-commit-2026-09-28.md"
+      }
     }
   ]
 }

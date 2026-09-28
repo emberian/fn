@@ -1269,6 +1269,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-journal \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
+	books/owner-article-slots \
+	tests/acl2/owner-article-slots-tests \
 	books/owner-time-journal-writer \
 	tests/acl2/owner-time-journal-writer-tests \
 	books/owner-stop-drain \
@@ -1606,6 +1608,12 @@ check:
 # lane serve-depth's head.
 	@$(CHECK_STEP) $(PYTHON) tools/depth_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_depth_check
+# Clock arithmetic goes through books/clock-unit.lisp (PRF-374, PRF-378):
+# arithmetic on an observation's fields at a call site assumed a unit twice
+# (bug M1; the vacuous record-level expiry).  tools/clock_unit_baseline.json
+# counts the sites left per file and only shrinks.
+	@$(CHECK_STEP) $(PYTHON) tools/clock_unit_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_clock_unit_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make
@@ -1644,6 +1652,12 @@ check:
 # no ACL2 (lane lane-tools-2, after payload-lz-record was outside the world).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --world
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_world
+# Every host/ definition some file reaches (a raw file, a book, a bridge, a
+# launcher, a registry row): a new one nothing calls is WARNED, not refused,
+# unless tools/host_callers_baseline.json names why it stays (lane
+# uncalled-host-defuns; a later lane makes it a refusal).  Static, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/host_callers.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_callers
 # Every launcher path (packaging/'s shell launchers, host/'s process spawns)
 # classifies a child's failure: an unknown one is a fault (4) or uncertain,
 # never forwarded as the refusal code 1 (lane lane-tools-2; openbsd-datasize's
@@ -1786,10 +1800,11 @@ model-test: certify
 TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_native_process tests.test_fixture_init_refusal \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
-	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_rule_cost tests.test_proof_repl tests.test_native_raw_scripts \
+	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_rule_cost tests.test_tau_cost tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
-	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync
+	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \
+	    tests.test_extract_gate
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 

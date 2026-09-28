@@ -170,6 +170,9 @@
 ;; host/native/owner.lisp fnn-owner-drain-service calls in every image.
 (include-book "../books/owner-stop-drain")
 (include-book "../books/owner-time-admission")
+;; Lane zero-copy-commit: the articles in flight within the slots the figure
+;; holds (fn-oas-read-span, over fn-otm-read-span).
+(include-book "../books/owner-article-slots")
 ; lane health-truth-journal (PKT-872, PRF-360): the journal writer never keeps a torn line.
 (include-book "../books/owner-time-journal-writer")
 (include-book "../books/owner-reader-read")
@@ -201,12 +204,6 @@
   ; Internal, single-valued accessor for host wrappers.
   (declare (xargs :stobjs state :mode :program))
   (f-get-global 'fn-owner state))
-
-(defun fn-owner-ocfg-state (state)
-  ; External ACL2 bridge accessor.  `value' is intentionally only at this
-  ; boundary; host functions use fn-owner-ocfg above as a single value.
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-owner-ocfg state)))
 
 ; `fn-owner' has one canonical value: the configured owner.  These are the
 ; only host accessors for its raw owner component.  A wrapper that changes
@@ -286,10 +283,6 @@
   (let ((oc (f-get-global 'fn-owner state)))
     (fn-owner-install-ocfg (fn-ocfg-with-owner oc owner) state)))
 
-(defun fn-owner-state (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-owner-core state)))
-
 ;; SEC-006 (PRF-210): the node's key ring the native host read from
 ;; STORE/keys/ (host/native/owner.lisp fnn-owner-load-node-secret: the
 ;; current entry, then each retained older epoch), installed into the
@@ -304,10 +297,6 @@
                     state)))
         (value :installed))
     (value :refused)))
-
-(defun fn-owner-node-secret-width (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value *fn-ns-secret-octets*))
 
 ; The served read's install (fn-owner-chunk, the bridge's list read): every
 ; projection `fn-owner-install-effects' makes EXCEPT the reply octets, which
@@ -899,11 +888,6 @@
                      (fn-oii-publication-group-count event) debt)
                 fn-hist state)))))))
 
-; The carried profile as the operator reads it (field names and values).
-(defun fn-owner-profile-report (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bs-profile-report (fn-owner-store-profile state))))
-
 (defun fn-owner-node (state)
   (declare (xargs :stobjs state :mode :program))
   (fn-sn-node (fn-owner-store state)))
@@ -958,6 +942,14 @@
         (value (fn-ores-config-refused memory))
       (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state))))
 
+(defun fn-owner-article-slots (state)
+  ; The slots the run installed (fn-owner-connection-budget), or one before
+  ; any run has: a node always admits one article in flight.
+  (declare (xargs :stobjs state :mode :program))
+  (let ((slots (and (boundp-global 'fn-owner-article-slots state)
+                    (f-get-global 'fn-owner-article-slots state))))
+    (if (posp slots) slots 1)))
+
 (defun fn-owner-connection-budget (machine dynamic core threads stack nursery profile
                                            tlsp state)
   ; Once per run, after recovery and before listen (host/native/mux.lisp
@@ -974,6 +966,12 @@
                                  article tlsp))
          (state (f-put-global 'fn-owner-connection-bound
                               (and (equal (car d) :hold) (fn-cbud-held-bound d))
+                              state))
+         ;; The articles in flight the dynamic space holds (books/heap-store-
+         ;; figure.lisp fn-heap-article-slots), which every served read admits
+         ;; within (fn-owner-chunk-span-at).
+         (state (f-put-global 'fn-owner-article-slots
+                              (fn-heap-article-slots profile)
                               state))
          (state (f-put-global 'fn-owner-connection-budget-line
                               (fn-record-string-octets
@@ -1115,15 +1113,6 @@
 (defun fn-owner-compress-min-octets (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-lzr-config-min (fn-cfg-value (fn-owner-config state)))))
-
-;; Lane time-model (PRF-311): the barrier's deadline from the live
-;; configuration, the `barrier-deadline-ms' limit row read like the batch
-;; bounds (books/owner-log-route.lisp fn-olr-bmax), ACL2's default when the
-;; row is absent (books/owner-time-model.lisp fn-otm-deadline-of-limit).
-(defun fn-owner-barrier-deadline (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-otm-deadline-of-limit
-          (fn-cfg-limit (fn-cfg-value (fn-owner-config state)) "barrier-deadline-ms"))))
 
 ;; Lane time-model-2: the three disk rows, (D H C) as the operator set them
 ;; (`policy set barrier-deadline-ms|barrier-stall-ms|clock-event-ms N'); the
@@ -2597,11 +2586,6 @@
          (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
     (value (list (fn-sn-identity-next s) txid txid))))
 
-(defun fn-owner-keyring-snapshot (generation state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-stxk-find generation
-                       (fn-sn-keyring-snapshots (fn-owner-store state)))))
-
 (defun fn-owner-hybrid-snapshots (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-sn-keyring-snapshots (fn-owner-store state))))
@@ -3207,14 +3191,6 @@
          (state (f-put-global 'fn-owner-exposure-public publicp state)))
     (value (if publicp :public :loopback))))
 
-(defun fn-owner-exposure-install (family address state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))
-         (state (f-put-global 'fn-owner-exposure-close nil state))
-         (state (f-put-global 'fn-owner-exposure-public
-                              (fn-exp-address-publicp family address) state)))
-    (value (if (fn-exp-address-publicp family address) :public :loopback))))
-
 ;; The accept.  PEER-OCTETS is fn-owner-peer-for-socket-address's answer.
 ;; The result is the new connection id, or NIL; `fn-owner-output' holds the
 ;; greeting, or the 400 a refused connection is sent before it is closed
@@ -3377,9 +3353,17 @@
         ;; disk-slow posture (PKT-858: 436 / 431) (books/owner-time-
         ;; admission.lisp fn-otm-read-span; admitted it is fn-orr-read-span,
         ;; fn-otm-read-span-when-admitted-unfolds).
-        (let* ((result (fn-otm-read-span
+        ;; Lane zero-copy-commit (books/owner-article-slots.lisp): a read that
+        ;; would put this connection into article mode past the slots the
+        ;; dynamic space holds is refused by name (POST 440; IHAVE, TAKETHIS
+        ;; 400 and close); within them it is fn-otm-read-span exactly
+        ;; (fn-oas-read-span-when-held-unfolds).  The slots are the run's
+        ;; (fn-owner-connection-budget); before a run installs them, one.
+        (let* ((result (fn-oas-read-span
                         (fn-owner-ocfg state) (fn-owner-reader-views state)
-                        id start end sched fn-octets fn-arena fn-cat))
+                        id start end sched
+                        (fn-owner-article-slots state)
+                        fn-octets fn-arena fn-cat))
                (effects (fn-own-tls-result-effects result))
                (consumed (fn-own-tls-result-consumed result))
                (state (fn-owner-install-ocfg

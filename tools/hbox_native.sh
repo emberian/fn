@@ -79,6 +79,9 @@
 # and the per-module environment show there).  Options may come before or
 # after REV and the modules.
 #
+# A box reserved for a measurement (tools/boxes.sh reserve) is waited for before
+# anything ships (the holder's own worktree passes).
+#
 # Replaces the hand-rolled rsync + image.sh + OpenSSL exports 145 lanes wrote
 # (friction review 2026-09-26 section 5).  Never touches /tank/fn/node.
 set -eu
@@ -92,7 +95,7 @@ if [ -z "${FN_HBOX_NATIVE_COPY:-}" ]; then
     FN_HBOX_NATIVE_HERE=$(cd "$(dirname "$0")/.." && pwd)
     FN_HBOX_NATIVE_COPY=$(mktemp -d "${TMPDIR:-/tmp}/hbox_native.XXXXXX") || exit 3
     cp "$FN_HBOX_NATIVE_HERE/tools/hbox_native.sh" "$FN_HBOX_NATIVE_HERE/tools/wait_for.sh" \
-        "$FN_HBOX_NATIVE_COPY/" || exit 3
+        "$FN_HBOX_NATIVE_HERE/tools/boxes.sh" "$FN_HBOX_NATIVE_COPY/" || exit 3
     export FN_HBOX_NATIVE_COPY FN_HBOX_NATIVE_HERE
     exec sh "$FN_HBOX_NATIVE_COPY/hbox_native.sh" "$@"
 fi
@@ -354,6 +357,9 @@ if [ $DRY -eq 1 ]; then
     exit 0
 fi
 
+# A box reserved for a measurement (tools/boxes.sh reserve) waits here, printing
+# who holds it and until when; the holder's own runs (this worktree) pass.
+FN_BOX_AS=${FN_BOX_AS:-$(basename "$HERE")} sh "$FN_HBOX_NATIVE_COPY/boxes.sh" wait "$HOST" || exit 3
 echo "hbox_native: $SOURCE -> $HOST:$S"
 ssh -n "$HOST" "mkdir -p $S/tree $S/logs" || { echo "hbox_native: cannot create $S on $HOST" >&2; exit 3; }
 if [ "$REV" = . ]; then

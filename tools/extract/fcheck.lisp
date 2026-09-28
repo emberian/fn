@@ -4,7 +4,8 @@
 ; evaluates FN's guard on ARGS; when the guard holds it evaluates FN on ARGS
 ; (magic-ev-fncall: the *1* function, guard checked, exactly what a call at
 ; the top level does) and writes the vector {fn, args, result} as JSON with
-; frontend.lisp's datum encoder.  The CHICKEN side runs the extracted
+; frontend.lisp's datum encoder; the file ends with a completion trailer
+; {done, candidates, ok, guard_false, error}.  The CHICKEN side runs the extracted
 ; function on the same ARGS and compares.  Load after frontend.lisp.
 (in-package "ACL2")
 (program)
@@ -86,7 +87,20 @@
           (mv-let (och state) (open-output-channel out :character state)
             (mv-let (counts state)
               (xt-fcheck-loop entries och 0 0 0 state)
-              (let ((state (close-output-channel och state)))
+              ; The completion trailer: the gate (fcheck.py scheme) refuses a
+              ; vector file without it, or whose counts do not add up to the
+              ; candidates tools/extract/fcheck.py gen wrote.
+              (let* ((state (princ$ "{\"done\":1,\"candidates\":" och state))
+                     (state (princ$ (len entries) och state))
+                     (state (princ$ ",\"ok\":" och state))
+                     (state (princ$ (first counts) och state))
+                     (state (princ$ ",\"guard_false\":" och state))
+                     (state (princ$ (second counts) och state))
+                     (state (princ$ ",\"error\":" och state))
+                     (state (princ$ (third counts) och state))
+                     (state (princ$ "}" och state))
+                     (state (newline och state))
+                     (state (close-output-channel och state)))
                 (value counts)))))))))
 
 ; The session settings a run needs: a guard of an unused formal is a LET

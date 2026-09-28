@@ -65,6 +65,11 @@
 (include-book "outcome-class")
 (include-book "heap-store-figure")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 (defconst *fn-heap-mib* 1048576)
 (defconst *fn-heap-octets-per-list-octet* 16)
 
@@ -661,13 +666,16 @@
 ;; state alone is 401 MiB (2 x 16,384 x 12 KiB + 2 x 320 x 26,214), and a
 ;; full replay of such a store adds 108 MiB (one chunk and one record as
 ;; lists, the input's vectors, 1 KiB a record); a `run' sizes the open by the
-;; store on disk (`fn-heap-operation-decide', :run).  With any
+;; store on disk (`fn-heap-operation-decide', :run).  The articles in flight
+;; (lane zero-copy-commit) add 48.5 MiB: 32 slots of 1,589,248 octets (an
+;; article of A = 32 KiB, its header bound and a line, as lists, twice for
+;; the collector).  With any
 ;; image up to 512 MiB of dynamic content and any nursery cap, the run
 ;; of an empty small store is accepted on every machine of at least 1,536 MiB
 ;; (OpenBSD's default login class; the friend's machine has about 2 GB).
 (defthm fn-heap-small-run-base-of-an-empty-store
   (equal (fn-heap-store-base-octets *fn-heap-small-profile* core '(0 . 0))
-         (+ (fn-heap-core-dynamic core) 567149482))
+         (+ (fn-heap-core-dynamic core) 618005418))
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 

@@ -1430,7 +1430,7 @@ then the genesis record, the frame-field record
 | 3 | schema digest | blob, 32 octets | `fn-digest` of this format's schema text (`*fn-gen-schema-octets*`: the profile's fields, the entry kinds, the record envelopes, the identity profile, the digest) |
 | 4 | profile digest | blob, 32 octets | `fn-digest` of config.json's frame |
 | 5 | history salt | u64 field below 2^32 | four CSPRNG octets read big-endian |
-| 6 | created-at | u64 field | the wall-clock reading at `init`, DTN seconds (the configuration stamps' unit) |
+| 6 | created-at | u64 field | the wall-clock reading at `init`, DTN seconds (a configuration record's stamp is milliseconds since PRF-378) |
 | 7 | image revision | text | the creating image's source revision, or `unknown` |
 
 (books/store-genesis.lisp, PRF-349). Byte for byte the file is the frame

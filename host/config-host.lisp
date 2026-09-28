@@ -65,16 +65,17 @@
   (declare (xargs :mode :program))
   (fn-cfg-host-initial-octets-stamped name-octets-list *fn-cfg-default-stamp*))
 
-(defun fn-cfg-host-initial-octets-at (name-octets-list monotonic wall)
+(defun fn-cfg-host-initial-octets-at (name-octets-list monotonic wall has-wall)
   ; PKT-665 (PRF-243): the native `init' stamps its record with the host's
-  ; clock (MONOTONIC and WALL, DTN seconds), so each initial group's
+  ; clock (MONOTONIC and WALL, milliseconds, PRF-378; HAS-WALL whether the
+  ; wall reading is usable, PRF-379), so each initial group's
   ; creation time is the record's commit time, durable with the record
   ; (NEWGROUPS, LIST ACTIVE.TIMES).  The codec decides whether the reading
   ; fits its schema (`fn-native-admin-clock-observation'); one that does not
   ; stamps the record with the zero observation, as before.
   (declare (xargs :mode :program
                   :guard (fn-octet-list-listp name-octets-list)))
-  (let ((clock (fn-native-admin-clock-observation monotonic wall)))
+  (let ((clock (fn-native-admin-clock-observation monotonic wall has-wall)))
     (fn-cfg-host-initial-octets-stamped
      name-octets-list
      (if (equal (fn-native-admin-clock-status clock) :accepted)

@@ -20,6 +20,9 @@ ENV = dict(os.environ, GIT_AUTHOR_NAME="cut-release-test", GIT_AUTHOR_EMAIL="cut
            GIT_COMMITTER_NAME="cut-release-test", GIT_COMMITTER_EMAIL="cut-release-test@invalid")
 
 
+PREHISTORY = ["v1.0.0", "v2.0.0", "v3.0.0", "v4.0.0", "v5.0.0"]
+
+
 class CutReleaseDryRunTests(unittest.TestCase):
     def test_the_local_prefix(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "build") as out:
@@ -67,7 +70,12 @@ class CutReleaseDryRunTests(unittest.TestCase):
                  ("6.7.0", ["v6.6.5"], "GREEN"),
                  ("6.6.6.6", ["v6.6.5", "v6.7.0", "v6.7.3"], "RED"),
                  ("6.6.6", ["v6.6.5", "v6.7.0", "v6.7.3"], "GREEN"),
-                 ("6.6.6.6", ["v6.6.5", "v6.7.0", "v6.7.3", "v6.6.6"], "GREEN")]
+                 ("6.6.6.6", ["v6.6.5", "v6.7.0", "v6.7.3", "v6.6.6"], "GREEN"),
+                 # The prehistory tags (DEVHIST.md) are not releases: 6.6.0 is still first.
+                 ("6.6.0", PREHISTORY, "GREEN"),
+                 ("6.6.1", PREHISTORY, "RED"),
+                 ("6.6.1", PREHISTORY + ["v6.6.0"], "GREEN"),
+                 ("5.0.0", PREHISTORY[:4], "RED")]
         for version, tags, want in cases:
             word, line = self.gate01(version, tags)
             self.assertEqual(word, want, f"{version} after {tags}: {line}")

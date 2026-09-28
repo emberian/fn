@@ -54,6 +54,11 @@
 ; PRF-237: the peer's distribution row's slot name (`peer distributions').
 (include-book "peer-carriage-rows")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; -----------------------------------------------------------------------------
 ; The peer names a configuration value holds
 ;

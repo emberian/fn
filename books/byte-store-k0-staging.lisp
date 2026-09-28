@@ -24,6 +24,11 @@
 (in-package "ACL2")
 (include-book "byte-store-k0")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ;; byte-store-k0's local list helpers, restated (they are local there).
 (local
  (defthm fn-bs-k0t-pending-entry-targets-of-append

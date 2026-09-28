@@ -442,6 +442,30 @@ the native case is `tests/test_native_image_floor.py`. The heap a profile
 needs is still heap-from-profile's derivation (HST-013), which the list
 representation of the retained history dominates.
 
+The prover's session state outside the world goes too (lane image-strip,
+`fnn-strip-prover-state`): the global enabled structure (a state global) and
+the compressed arrays of every enabled structure (`ENABLED-ARRAY-n`,
+`ARITHMETIC-ENABLED-ARRAY-n`), and the type-set tables (ACL2's boot constants:
+each value, its `-LIST` source and its compressed array). Their readers in the
+ACL2 8.7 source are event and prover functions only (`ens`, `set-w`,
+`update-wrld-structures`, the enabled-structure installers,
+`with-useless-runes-aux`, `type-set-binary-+`, `type-set-binary-*`,
+`type-set-<`, `type-set-finish-1`, the proof builder's), which the stripped
+world already cannot serve. Each value becomes an `fnn-stripped` instance
+naming it; the arrays lose their `acl2-array` property; the `#n=` reader's
+buffer is reset small (ACL2 grows it on demand) and the memoization tables,
+caches, are cleared. The strip lists what it replaced as the `S` lines of
+`IMAGE.world-deps` (version 2). The qualification check
+(`tools/runtime_image/world-deps-check.lisp`, loaded by
+`tests/test_native_image_differential.py` into every stripped run) proves at
+load that each item holds its trap, traces every reader above (a call is a
+`PROVER-READ`, a failure) and reports at exit whether anything rebuilt an
+item. ACL2's system code is compiled at safety 0, so a prover read of a trap
+is not guaranteed to signal (one faulted at address 0); the trace, not the
+trap, is the check. A use from code compiled with safety signals a type error
+naming the item (the module's witness). The size gained is measured at
+convergence.
+
 The thread stacks are the reservation's second part
 (`books/heap-reservation.lisp` `fn-heap-reserve-decide`, called by
 `host/native/heap.lisp` `fnn-heap-reservation` from the `heap -- ARGV` probe).
@@ -802,7 +826,7 @@ one ACL2-visible symbol whose raw definition that file replaces.
 | Locks | `fnn-flock` (alien `flock(2)`), `fnn-open-lock` | `LOCK_EX`/`LOCK_SH` with `LOCK_NB`, the same refusal and fault classes |
 | Cryptography | `fnn-trailer` calls `fn-frame-trailer`; the diagnostic `blake3` verb asks ACL2 (`fn-blake3-of-prefixed-buffer-any`) | Store and metadata trailers are BLAKE3 (`books/blake3.lisp`, attached by `books/crypto-attach.lisp`; the C BLAKE3 in the saved images after its start-up check, A-CRYPTO-NATIVE). `python3 tools/fn_native.py blake3-selftest` compares the image's verb with `tools/blake3_ref.py`'s pure-Python BLAKE3. |
 | Store metadata | `fnn-metadata-config-frame/-decode`, `fnn-metadata-frontier-frame/-decode/-next`, `fnn-transaction-name`, `fnn-load-config`, `fnn-load-frontier` | `config.json` and `allocation-frontier.json` contain the same ACL2-sealed `FNSM` frames that the Python adapter uses. `books/byte-store-frame.lisp` owns profile values, framing, parsing, integrity and the frontier successor; `books/byte-store-txn-name.lisp` owns the published transaction name. The native host moves octets and retains format-5 JSON in place while refusing normal open pending offline migration. |
-| Core calls | `fnn-call`, `fnn-core`, `fnn-core-state`, `fnn-global` | Counterparts of `fn-store-sn-reset/-recover-records/-recover-rows/-io/-prepare/-existing-action/-pending-octets/-known-abort/-refuse-reservation/-finish/-article-count/-next-txid/-group-next/-pin-count/-reserved/-lookup/-lookup-foundp`, `fn-store-record-sequence/-txid`, `fn-store-frame-constants/-store-protected/-store-decode`, `fn-store-metadata-config-frame/-decode`, `fn-store-metadata-frontier-frame/-decode/-next`, `fn-store-txn-name`, `fn-store-subject-id`, `fn-store-obligation-preimage/-id`, `fn-sbud-post-boundary`, `fn-store-charge`, `fn-store-group-codes` (names against the replayed domain), `fn-store-cfg-generation/-served/-domain`, `fn-cfg-host-initial-octets`, `fn-reader-use-seed/-use-store/-set-posting/-reset/-chunk/-outcome`, `fn-reader-model-octets`, and the payload-arena updates the host performs itself (`fn-intern-events` at the open after emptying the arena; the seal of the octets a prepare's `(:seal OCTETS)` or `:seal-buffer` names, through the arena's exports in `books/payload-arena.lisp`), because a `:program` entry that updated the arena would carry ACL2's invariant-risk; the globals `fn-reader-output`, `fn-reader-closep`, `fn-reader-submit-octets/-msgid`, `guard-checking-on`. A `raw-ev-fncall` throw, Lisp error, core error flag or malformed result is a fault; a returned semantic refusal remains a refusal |
+| Core calls | `fnn-call`, `fnn-core`, `fnn-core-state`, `fnn-global` | Counterparts of `fn-store-sn-reset/-recover-records/-recover-rows/-io/-prepare/-existing-action/-pending-octets/-known-abort/-refuse-reservation/-finish/-article-count/-next-txid/-group-next/-pin-count/-reserved/-lookup/-lookup-foundp`, `fn-store-record-sequence/-txid`, `fn-store-frame-constants/-store-protected/-store-decode`, `fn-store-metadata-config-frame/-decode`, `fn-store-metadata-frontier-frame/-decode/-next`, `fn-store-txn-name`, `fn-sbud-post-boundary`, `fn-store-charge`, `fn-store-group-codes` (names against the replayed domain), `fn-store-cfg-generation/-served/-domain`, `fn-cfg-host-initial-octets`, `fn-reader-use-seed/-use-store/-set-posting/-reset/-chunk/-outcome`, `fn-reader-model-octets`, and the payload-arena updates the host performs itself (`fn-intern-events` at the open after emptying the arena; the seal of the octets a prepare's `(:seal OCTETS)` or `:seal-buffer` names, through the arena's exports in `books/payload-arena.lisp`), because a `:program` entry that updated the arena would carry ACL2's invariant-risk; the globals `fn-reader-output`, `fn-reader-closep`, `fn-reader-submit-octets/-msgid`, `guard-checking-on`. A `raw-ev-fncall` throw, Lisp error, core error flag or malformed result is a fault; a returned semantic refusal remains a refusal |
 | Sockets | `fnn-listen` (`sb-bsd-sockets` `inet-socket`/`inet6-socket`, loopback unless an address is passed), `fnn-connect` (one nonblocking `connect(2)` and `SO_ERROR` completion under its caller deadline), `fnn-accept-loop`, `fnn-socket-fd`, `fnn-socket-shut`; `fnn-recv`, `fnn-send-all` (`sb-sys:wait-until-fd-usable` with absolute deadlines over nonblocking read/write retries), `fnn-graceful-close` (alien `shutdown(fd, SHUT_WR)` then a one-second drain), `fnn-serve-client`; AF_UNIX bind/connect in `host/native/control.lisp` | The feed gets its TCP completion timeout from ACL2. Synchronous DNS remains a separate availability boundary: the host does not claim that this deadline bounds `getaddrinfo`, and it never terminates a resolver thread. The served reader loop and bounded FNCT local-control transport use the same raw socket surface. Control accepts one sealed request and returns one sealed reply per connection; ACL2 owns both frames and their caps. Raw Lisp transports the bytes and never opens the Store from the control module. |
 | Entry | `fnn-main`, `fnn-dispatch`, `fnn-select-image-profile`, `fn-native-entry` | The fixed positional protocol behind `--fn`, the build-time production/developer entry split, and the outcome-to-exit-code map. Production owner start is only the registered public `operator`; raw owner/reader diagnostics exist only in the developer image. |
 
@@ -1317,9 +1341,8 @@ named in the service log (`tls refused reason=... connection=N`, PKT-640).
 
 The memory (books/connection-budget.lisp): a connection costs a heap part
 (the record, its input, the one reply of the stated workload -- the
-profile's largest article rendered, 2A + 1,024 octets -- and a parser in the
-middle of an article, 32 octets of heap per octet of the line and body
-bounds) and a native part (the kernel's socket buffers; the TLS session when
+profile's largest article rendered, 2A + 1,024 octets -- and the parser's
+command line, 32 octets of heap per octet of a 512-octet line) and a native part (the kernel's socket buffers; the TLS session when
 a context is loaded). The base is heap-figure's figure for the store, the
 core outside the dynamic space and the fixed threads (12 + the loops + the
 control clients) with their stacks and 4 MiB of runtime each. The bound is
@@ -1336,10 +1359,45 @@ on ` base-exceeds-machine heap-figure=F MB dynamic=D MB fixed=R MB`
 run held is refused `:connections-exceed-memory` before anything is staged
 (`fn-owner-reconfigure-deltas`). Trusted sources count in the capacity like
 every other (the trusted range exempts a source from the per-address rule
-only, PRF-211). The launcher's heap probe adds room in the dynamic space for
-the heap parts of the connections the machine holds, at most 1,024
-(`fn-cbud-launch-decide`): it runs before the configuration journal is
-read, so it cannot see the capacity row (PKT-644).
+only, PRF-211).
+
+The articles in flight (lane zero-copy-commit, 2026-09-28; PRF-377, SCN-193).
+An article's body retained mid-article, and its submission until the commit
+answers it, are the per-connection terms that grow with the profile's A;
+until this lane the dynamic space held none of them (they were charged to
+the machine), so enough concurrent posters of large articles exhausted the
+heap and the node exited 4. The store's heap figure (books/heap-store-figure.lisp)
+now holds a POOL of `fn-heap-article-slots` credits, each
+`fn-heap-article-reserve-octets` (2 x 16 x (512 + A + HDR): the body as
+wire lists, then the injected article and its groups as lists, the
+collector's copy included), the pool `fn-heap-articles-octets` = max(one,
+min(32, the 64 MiB budget)) credits. A credit is taken BEFORE the body is
+retained: every served read is `fn-oas-read-span`
+(books/owner-article-slots.lisp, host `fn-owner-chunk-span-at`, the slots
+installed by `fn-owner-connection-budget` from the store's profile), which
+admits a connection into article mode only while the owner then holds at
+most the slots (`fn-oas-held`: connections in article mode, queued
+submissions, the batch in flight; KEYSTONE
+`fn-oas-read-span-admits-within-the-slots`). Past them a POST is answered
+`440 posting not permitted now; the articles in flight fill the memory, try
+again later` at the command (RFC 3977 section 6.3.1: no article is sent),
+and an IHAVE or TAKETHIS that enters article mode is answered `400 the
+articles in flight fill the memory; try again later` and closed (RFC 3977
+section 3.2.1) with its wire dropped. The credit moves with the request:
+held in article mode, then in the owner's queue, then in the batch in
+flight, and released when the commit answers; a client that disconnects
+mid-article drops its wire (nothing else owns it), a queued submission stays
+counted. The completion policy is RESERVE-TO-FINISH: a credit is the whole
+article's worst case (past the body limit the wire closes with 441), so an
+admitted connection's reads are never refused by the slots (KEYSTONE
+`fn-oas-read-span-never-blocks-an-admitted-article`) and partial uploads
+cannot hold the pool while each needs more of it; a stalled upload holds
+its credit until the idle timeout closes its connection. The launcher's
+former room (connection-budget's launch figure, 1,024 connections' heap
+parts, no caller since lane reservation-figure) is gone. Not yet: the body in bounded
+pooled chunks (one octet a byte) instead of wire lists, which lowers the
+credit about 32-fold; the frame theorem that a read of one connection leaves
+every other connection's wire mode as it was.
 
 Not claimed: a reply larger than the stated workload's (an OVER or LISTGROUP
 over a large range) is outside the figure until replies are rendered in

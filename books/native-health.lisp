@@ -76,6 +76,11 @@
 ; PKT-508: the owner's service-log sink, whose counts health prints.
 (include-book "log-sink")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 (defconst *fn-nh-states*
   '(:fenced :exhausted :unqualified-profile :space-pressure
     :no-route :stranded-transfer :unavailable-peer :receipt-debt :disk))

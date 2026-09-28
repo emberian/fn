@@ -13,6 +13,9 @@ CHICKEN=${CHICKEN:-/tank/fn/toolchains/chicken-5.4.0}
 OUT=$TREE/build/extract
 X=$TREE/tools/extract
 mkdir -p "$OUT"
+# No product of an earlier build survives to stand in for this one's.
+rm -f "$OUT/served.json" "$OUT/served.scm" "$OUT/erased.json" "$OUT/inventory.json" \
+      "$OUT/fntable.scm" "$OUT/probes.scm" "$OUT/served" "$OUT/csc-served.args"
 # The boundary: every function the driver calls (host/native/io.lisp calls
 # each through fnn-call).  The reader's served path, its store selection, the
 # durable-extent realizers' ACL2 calls (host/native/extent.lisp), the exit
@@ -44,7 +47,10 @@ cp "$X/runtime.scm" "$X/served-main.scm" "$X/native.scm" "$X/hostio.scm" .
 # the run path; libcrypto is for the Cancel-Lock SHA-256.
 sh "$TREE/tools/build_blake3.sh" "$OUT/lib" > blake3.log 2>&1 || {
     echo "extract: tools/build_blake3.sh failed; see $OUT/blake3.log" >&2; exit 1; }
-PATH=$CHICKEN/bin:$PATH swarm-build csc -O3 -d0 -block -inline-global -lfa2 \
+# The compiler options, recorded for the gate's extraction manifest (check.sh).
+CSC_OPTS="-O3 -d0 -block -inline-global -lfa2"
+printf '%s\n' "csc $CSC_OPTS served-main.scm -o served -L -lcrypto -L -L$OUT/lib -lfn-blake3 -Wl,-rpath,$OUT/lib" > csc-served.args
+PATH=$CHICKEN/bin:$PATH swarm-build csc $CSC_OPTS \
     served-main.scm -o served -L -lcrypto -L "-L$OUT/lib -lfn-blake3 -Wl,-rpath,$OUT/lib" > csc.log 2>&1 || {
     echo "extract: csc failed; see $OUT/csc.log" >&2; tail -20 csc.log >&2; exit 1; }
 echo "extract: built $OUT/served"
