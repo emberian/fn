@@ -370,3 +370,12 @@
 (assert-event (and (fn-wss-no-dot-line (fn-wss-stuff (fn-wrq-urldecode *evil*) t nil) t)
                    (fn-wss-ends-lf (fn-wss-stuff (fn-wrq-urldecode *evil*) t nil))
                    (not (fn-wss-no-dot-line (fn-wrq-urldecode *evil*) t))))
+
+; A refused form never echoes the request: the trouble page's detail is
+; the node's status line only (the native run found the request line
+; "POST /remove HTTP/1.1" shown as a detail; fixed).
+(defconst *rm-bad* (wsst-request (wsst-post-req "/remove" (concatenate 'string "fnr_session=" (wsst-str *tok*))
+  (concatenate 'string "csrf=" (wsst-str *csrf*) "&g=local.general&id=nope"))
+  *cfg* *ss* 300 nil nil nil))
+(assert-event (and (equal (cadr (car (car *rm-bad*))) 400)
+                   (not (search "HTTP/1.1" (wsst-str (nth 2 *rm-bad*))))))

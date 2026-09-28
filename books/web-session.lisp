@@ -1314,8 +1314,13 @@
 (defun fn-wss-trouble (code title message ctx config sessions fn-web-in fn-web-out)
   (declare (xargs :stobjs (fn-web-in fn-web-out) :guard t))
   (mv-let (a fn-web-out)
-    (fn-wss-outcome code :no title message (fn-wss-status-text 0 fn-web-in) nil ctx config
-                    fn-web-in fn-web-out)
+    ; The node's own line, when fn-web-in holds a reply; while it still
+    ; holds the request (whose first line is never a status line: its
+    ; method is GET, HEAD or POST) nothing of the request is echoed.
+    (fn-wss-outcome code :no title message
+                    (and (fn-wss-reply-code (fn-wss-reply 0 fn-web-in))
+                         (fn-wss-status-text 0 fn-web-in))
+                    nil ctx config fn-web-in fn-web-out)
     (mv a sessions fn-web-out)))
 
 ; --- The groups (GET /): LIST ACTIVE (RFC 3977 7.6.3).

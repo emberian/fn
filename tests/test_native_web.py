@@ -13,6 +13,7 @@ the browser and the node.
 Set FN_NATIVE_DEVELOPER_HOST to a developer image and FN_NATIVE_TEST_ROOT to
 its source snapshot.  The test creates and removes only its own Store.
 """
+import html
 import http.client
 import os
 from pathlib import Path
@@ -88,7 +89,8 @@ class Browser:
         return answer
 
     def form_value(self, page, name):
-        return re.search(r"name='%s' value='([^']*)'" % name, page).group(1)
+        # As a browser reads an attribute: its character references decoded.
+        return html.unescape(re.search(r"name='%s' value='([^']*)'" % name, page).group(1))
 
 
 @unittest.skipUnless(os.access(IMAGE, os.X_OK), "native developer image required")
@@ -274,6 +276,54 @@ class NativeWebFaceTests(unittest.TestCase):
             "password": PASSWORD, "again": PASSWORD})
         self.assertEqual(status, 403, page)
         self.assertIn("didn&#39;t work", page)
+
+
+    def test_4_fuzzed_requests_are_answered_or_closed(self):
+        """A bounded grammar fuzz over the request parser (tests/fuzz_nntp.py's
+        approach, for HTTP): every mutated request is answered with a status
+        line or closed, and the face keeps serving."""
+        import random
+        rng = random.Random(20260928)
+        methods = [b"GET", b"POST", b"HEAD", b"PUT", b"G ET", b"", b"get", b"POST\x00"]
+        targets = [b"/", b"/g?name=local.general", b"http://a/signin", b"*", b"//x",
+                   b"/\xff", b"/" + b"a" * 5000, b"/a?g=%zz&n=-1", b""]
+        versions = [b"HTTP/1.1", b"HTTP/1.0", b"HTTP/9.9", b"HTTP/1", b"http/1.1", b""]
+        fields = [b"Host: a", b"Host: a\r\nHost: b", b"Content-Length: 5",
+                  b"Content-Length: 99999999999999999999", b"Content-Length: 3\r\nContent-Length: 4",
+                  b"Transfer-Encoding: chunked", b" folded", b"Cookie: fnr_session=" + b"A" * 43,
+                  b"X-Forwarded-For: 1.2.3.4", b"Bad Header: x", b"Origin: http://evil",
+                  b"Cookie: ;;;==;", b"Host:" + b"x" * 20000]
+        for _ in range(120):
+            head = (rng.choice(methods) + b" " + rng.choice(targets) + b" " +
+                    rng.choice(versions) + b"\r\n")
+            for _ in range(rng.randrange(0, 4)):
+                head += rng.choice(fields) + b"\r\n"
+            raw = head + b"\r\n" + (b"a=b&" * rng.randrange(0, 3))
+            if rng.random() < 0.2:
+                raw = raw[:rng.randrange(0, len(raw) + 1)]
+            if rng.random() < 0.1:
+                raw = raw.replace(b"\r\n", b"\n")
+            with socket.create_connection(("127.0.0.1", self.web_port), timeout=60) as s:
+                if self.TLS:
+                    context = ssl.create_default_context()
+                    context.check_hostname = False
+                    context.verify_mode = ssl.CERT_NONE
+                    s = context.wrap_socket(s)
+                try:
+                    s.sendall(raw)
+                    s.shutdown(socket.SHUT_WR)
+                    answer = b""
+                    while True:
+                        chunk = s.recv(65536)
+                        if not chunk:
+                            break
+                        answer += chunk
+                except (ConnectionError, ssl.SSLError):
+                    answer = b""
+            self.assertTrue(answer == b"" or re.match(rb"HTTP/1\.1 [1-5]\d\d ", answer),
+                            (raw[:120], answer[:120]))
+        status, _, _, _, _ = self.browser().request("GET", "/signin")
+        self.assertEqual(status, 200)
 
 
 @unittest.skipUnless(os.access(IMAGE, os.X_OK), "native developer image required")
