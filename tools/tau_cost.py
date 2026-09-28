@@ -309,8 +309,8 @@ def parse_log(text: str) -> dict:
     tags: dict[str, set[str]] = {}
     for tag, kind, name in ERROR.findall(text):
         tags.setdefault(f"{kind} {name}".strip().lower(), set()).add(tag or "")
-    errors = sorted(tags)
-    primary = sorted(form for form, seen in tags.items()
+    errors = list(tags)  # log order: the first is the one the rest may follow from
+    primary = list(form for form, seen in tags.items()
                      if "Translate" not in seen and form.split()[0] not in CASCADE_KINDS)
     return {
         "book": book.group(1) if book else None,
@@ -354,7 +354,7 @@ def rank(logs: list[Path], slower_seconds: float) -> dict:
             if before is not None and f["seconds"] - before >= slower_seconds:
                 slower.append([f["form"], before, f["seconds"]])
         failing = [e for e in off["primary"] if e not in on["errors"]]
-        cascaded = [e for e in off["errors"] if e not in on["errors"] and e not in failing]
+        cascaded = sorted(e for e in off["errors"] if e not in on["errors"] and e not in failing)
         saved = round(on["runtime"] - off["runtime"], 3)
         rows.append({
             "book": book, "on_runtime": on["runtime"], "off_runtime": off["runtime"],
@@ -363,6 +363,7 @@ def rank(logs: list[Path], slower_seconds: float) -> dict:
             "on_realtime": on["realtime"], "off_realtime": off["realtime"],
             "on_steps": on["steps"], "off_steps": off["steps"],
             "failing": failing, "cascaded": cascaded, "slower": slower,
+            "on_errors": on["errors"],
             "timed_out": off["exit"] == 124, "load": [on["load"], off["load"]],
         })
     rows.sort(key=lambda row: -row["saved"])
@@ -398,11 +399,14 @@ def summary_lines(result: dict, top: int, min_seconds: float,
 
 def apply(result: dict, min_seconds: float, min_fraction: float,
           root: Path = ROOT) -> list[str]:
+    """Tau off in each selected book; tau on around its FIRST failing form
+    (the others usually fail because that one did: `repair` takes the next
+    after a `run --variant local`) and around every slower form."""
     out = []
     for row in selected(result, min_seconds, min_fraction):
         path = root / (row["book"] + ".lisp")
         text = tau_off(path.read_text(encoding="utf-8"))
-        wanted = {form.split()[1] for form in row["failing"] if len(form.split()) > 1}
+        wanted = {form.split()[1] for form in row["failing"][:1] if len(form.split()) > 1}
         wanted |= {form[0].split()[1] for form in row["slower"]
                    if len(form[0].split()) > 1}
         text, found = enable_around(text, wanted)
@@ -411,6 +415,24 @@ def apply(result: dict, min_seconds: float, min_fraction: float,
         out.append(f"{row['book']}: tau off, saved {row['saved']:.2f} s"
                    + (f"; tau on around {', '.join(sorted(found))}" if found else "")
                    + (f"; NOT FOUND {', '.join(missing)}" if missing else ""))
+    return out
+
+
+def repair(result: dict, ranking: dict, root: Path = ROOT) -> list[str]:
+    """After `run --variant local`: tau on around each book's first failing
+    form that did not fail with tau on too (a must-fail)."""
+    expected = {row["book"]: set(row.get("on_errors", [])) for row in ranking["books"]}
+    out = []
+    for book, value in result.get("local", {}).items():
+        new = [form for form in value["errors"] if form not in expected.get(book, set())]
+        first = [form for form in new[:1] if len(form.split()) > 1]
+        if not first:
+            continue
+        path = root / (book + ".lisp")
+        text, found = enable_around(path.read_text(encoding="utf-8"),
+                                    {first[0].split()[1]})
+        path.write_text(text, encoding="utf-8")
+        out.append(f"{book}: tau on around {first[0]}" + ("" if found else " NOT FOUND"))
     return out
 
 
@@ -441,6 +463,9 @@ def main(argv: list[str] | None = None) -> int:
     put.add_argument("ranking", type=Path)
     put.add_argument("--min-seconds", type=float, default=1.0)
     put.add_argument("--min-fraction", type=float, default=0.2)
+    fix = sub.add_parser("repair", help="tau on around each first local failure")
+    fix.add_argument("ranking", type=Path, help="the pair ranking (its on-errors are expected)")
+    fix.add_argument("logs", nargs="+", type=Path)
     args = parser.parse_args(argv)
     try:
         if args.action == "run":
@@ -463,6 +488,13 @@ def main(argv: list[str] | None = None) -> int:
                                           args.min_fraction)))
             if args.json:
                 args.json.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
+            return 0
+        if args.action == "repair":
+            files = []
+            for item in args.logs:
+                files += sorted(item.glob("*.log")) if item.is_dir() else [item]
+            ranking = json.loads(args.ranking.read_text(encoding="utf-8"))
+            print("\n".join(repair(rank(files, 0.5), ranking)))
             return 0
         result = json.loads(args.ranking.read_text(encoding="utf-8"))
         print("\n".join(apply(result, args.min_seconds, args.min_fraction)))
