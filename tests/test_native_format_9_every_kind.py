@@ -298,6 +298,9 @@ class FormatNineEveryKindTest(unittest.TestCase):
         witness("import", rc, out.strip()[-400:])
         self.assertEqual(rc, 0, out)
         self.assertNotIn("Guard-checking", out)
+        # The node secret is not in the archive (it keys the posting-account
+        # value): a migration creates a new one (or copies the old file).
+        self.fn("store", c["store"], "node-secret", "create")
         history10 = self.fn("hybrid-key-history", c["store"])[1]
         self.assertEqual(history10, history9)
         self.assertEqual(len(history9.splitlines()), 3, history9)

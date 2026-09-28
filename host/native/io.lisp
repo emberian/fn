@@ -3848,7 +3848,7 @@ presence of the two names is classified by fn-bs-imp-classify."
                                  (let ((octets (fnn-archive-entry
                                                 dir (fnn-join "records" name)
                                                 record-bound)))
-                                   (cons (fnn-core 'fn-store-record-sequence
+                                   (cons (fnn-core 'fn-store-archive-record-sequence
                                                    (fnn-octet-list octets))
                                          (fnn-octet-list octets))))
                                record-names)))

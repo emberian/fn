@@ -313,6 +313,21 @@
                 (equal (car items) (cons :bytes *fn-th-topic-magic*))
                 (member-equal (caddr items) (list (cons :uint 0) (cons :uint 1))))))))
 
+; The sequence a format-9 topic anchor or admission names (its envelope's
+; fourth item), or nil: `store import' names an archive record by the
+; sequence ACL2 reads off it (host/store-host.lisp
+; fn-store-archive-record-sequence), and format 10 cannot decode these.
+(defun fn-f9r-signed-topic-sequence (octets)
+  (declare (xargs :guard t))
+  (if (fn-f9r-signed-topic-octetsp octets)
+      (let ((items (fn-stmt-value (fn-stmt-decode-items *fn-th-topic-max-items* octets))))
+        (if (and (consp (cdddr items)) (consp (cadddr items))
+                 (equal (car (cadddr items)) :uint)
+                 (natp (cdr (cadddr items))))
+            (cdr (cadddr items))
+          nil))
+    nil))
+
 ;; -----------------------------------------------------------------------------
 ;; One record
 

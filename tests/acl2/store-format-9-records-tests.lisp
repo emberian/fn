@@ -218,6 +218,10 @@
 (assert-event (fn-f9r-signed-topic-octetsp *f9rt-anchor-9-octets*))
 (assert-event (equal (fn-f9r-step *f9rt-anchor-9-octets* nil)
                      '(:refused :signed-format-9-identity)))
+; The import names it by the sequence its envelope carries (the anchor's
+; coordinates, 8), so the MANIFEST check reads the right entry.
+(assert-event (equal (fn-f9r-signed-topic-sequence *f9rt-anchor-9-octets*) 8))
+(assert-event (null (fn-f9r-signed-topic-sequence *f9rt-install-octets*)))
 ; Tooth: octets that are no record at all are a codec refusal, not a topic.
 (assert-event (not (fn-f9r-signed-topic-octetsp '(1 2 3))))
 (assert-event (equal (fn-f9r-step '(1 2 3) nil) '(:refused :record-codec)))
