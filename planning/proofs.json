@@ -4848,7 +4848,8 @@
         "planning/evidence/manifests/certify-20260926T004042Z-3226778.json",
         "planning/evidence/manifests/certify-20260926T013116Z-3680360.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
-        "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
+        "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
+        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json"
       ],
       "progress_note": "Certified on hbox (planning/evidence/reader-daily-2026-09-25.md names the manifest); the native walk and tin session are in the same record.",
       "events": [
@@ -8288,7 +8289,8 @@
         "tests/test_native_peer_by_name.py",
         "planning/evidence/peers-by-name-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T013235Z-1440473.json",
-        "planning/evidence/manifests/certify-20260927T012133Z-4014708.json"
+        "planning/evidence/manifests/certify-20260927T012133Z-4014708.json",
+        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json"
       ],
       "progress_note": "Lane peers-by-name 2026-09-27 (PKT-613): books/peer-host REPL-admitted on persvati (session pbn); the changed chain (16 books: peer-config, peer-host, peer-pull, peer-pull-session, native-admin-peer, peer-invite, owner-feed, feed-connection(-invariants), native-admin(-peer-budget) and the test books) certified on persvati at 2 jobs, max 8.2 s (manifest certify-20260927T013235Z-1440473); hbox certified the image's 116 affected books at 8 jobs (certify-20260927T012133Z-4014708). Native: tests.test_native_peer_by_name 4 of 4 OK on the production and the developer image (native-pbn2).",
       "events": [
@@ -12204,7 +12206,8 @@
         "planning/evidence/web-native-2026-09-28.md",
         "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
         "planning/evidence/manifests/certify-20260928T040154Z-3932533.json",
-        "planning/evidence/manifests/certify-20260928T042412Z-1705234.json"
+        "planning/evidence/manifests/certify-20260928T042412Z-1705234.json",
+        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json"
       ],
       "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
@@ -12319,7 +12322,8 @@
         "books/web-render.lisp",
         "tests/acl2/web-render-tests.lisp",
         "planning/evidence/web-native-2-2026-09-28.md",
-        "planning/evidence/manifests/certify-20260928T043449Z-1806205.json"
+        "planning/evidence/manifests/certify-20260928T043449Z-1806205.json",
+        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json"
       ],
       "progress_note": "Lane web-native-2 (Opus 5.5, 2026-09-28): certified on persvati with tests/acl2/web-render-tests (certify-20260928T043449Z-1806205, 9 passed at 2 jobs; web-render 4.2 s).",
       "events": [
