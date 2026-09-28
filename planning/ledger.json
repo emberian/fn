@@ -1406,29 +1406,31 @@
     "tests/acl2/history-pages-step-tests",
     "tests/acl2/history-pages-import-tests",
     "books/history-pages-owner",
-    "tests/acl2/history-pages-owner-tests"
+    "tests/acl2/history-pages-owner-tests",
+    "books/history-records",
+    "tests/acl2/history-records-tests"
   ],
   "totals": {
-    "books": 1436,
-    "books_in_root_closure": 1433,
-    "roots": 1405,
-    "theorems": 23100,
-    "functions": 15622,
-    "assert_events": 20326,
+    "books": 1438,
+    "books_in_root_closure": 1435,
+    "roots": 1407,
+    "theorems": 23248,
+    "functions": 15680,
+    "assert_events": 20331,
     "must_fails": 2264,
     "prover_refusals": 0,
     "encapsulates": 139,
     "guards": {
       "verified": 2966,
-      "declared-off": 1829,
-      "default-guarded": 8554,
-      "default-unguarded": 2273
+      "declared-off": 1836,
+      "default-guarded": 8582,
+      "default-unguarded": 2296
     },
     "suspect_theorems": 1100,
     "export_hygiene_warnings": 277,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 246,
-    "include_hygiene_warnings": 1756,
+    "include_hygiene_warnings": 1758,
     "host_names_warnings": 1784,
     "hand_written_record_warnings": 18
   },
@@ -11477,6 +11479,36 @@
       "system_includes": [
         "arithmetic-5/top",
         "arithmetic-5/top",
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-records.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 141,
+      "functions": 46,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 28,
+        "default-unguarded": 18
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "assumptions",
+        "history-pages-import",
+        "history-pages-view"
+      ],
+      "system_includes": [
         "arithmetic/top"
       ],
       "suspects": [],
@@ -32863,6 +32895,33 @@
       "encapsulates": 0,
       "includes": [
         "../../books/history-pages-write-keys",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-records-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 7,
+        "default-guarded": 0,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 10,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-records",
         "must-fail-checked"
       ],
       "system_includes": [],
@@ -57039,6 +57098,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/history-records.lisp",
+        "line": 50,
+        "include": "history-pages-view",
+        "included": "books/history-pages-view.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/hybrid-carrier.lisp",
         "line": 10,
         "include": "rev-onto",
@@ -62788,6 +62854,13 @@
       {
         "book": "tests/acl2/history-pages-write-tests.lisp",
         "line": 19,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/history-records-tests.lisp",
+        "line": 4,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

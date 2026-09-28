@@ -12549,6 +12549,63 @@
           "note": "Lemma: MANIFEST lines distribute over append."
         }
       ]
+    },
+    {
+      "id": "PRF-372",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-at-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-read-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-get-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-get-fuel-enough"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-serve-keeps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-fill-keeps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-flush-keeps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-append-appends"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-load-is-events"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-count-is-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrc-at-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrc-flush-one-rel"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrs-loop-placement"
+        }
+      ]
     }
   ]
 }
