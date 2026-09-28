@@ -94,10 +94,6 @@
         (state (f-put-global 'fn-sched-state next state)))
   (value :ready)))
 
-(defun fn-sched-host-decision-count (state)
- (declare (xargs :stobjs state :mode :program))
- (value (len (fn-sched-decisions (f-get-global 'fn-sched-state state)))))
-
 (defun fn-sched-host-queue-ids (state)
  (declare (xargs :stobjs state :mode :program))
  (value (fn-sched-queue (f-get-global 'fn-sched-state state))))
