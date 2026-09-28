@@ -11638,6 +11638,23 @@
           "name": "fn-sxp-config-decode-archive-of-a-current-frame"
         }
       ]
+    },
+    {
+      "id": "PRF-343",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-proto-command-pinned-replies-are-in-the-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-proto-command-pinned-offers-only-article-framing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-proto-offers-only-post-by-table"
+        }
+      ]
     }
   ]
 }
