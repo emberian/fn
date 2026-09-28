@@ -1236,8 +1236,8 @@ segment index (`fn-lgs-segment-index` is positive), so rotation and the
 checkpoint's drop never name it.
 
 Recorded, not secret: the node identity is a generated id; the salt keys the
-history stobj's Message-ID hash (books/history-columns.lisp `fn-hist-hash`,
-PKT-774: the constant 0 before format 10), a node-local derived index no
+history stobj's Message-ID hash (books/history-columns.lisp `fn-hist-hash`;
+the constant 0 before format 10, packet PKT-774), a node-local derived index no
 answer depends on; created-at and the revision are provenance. Never in the
 log: the node secret and the credential salts (host/native/admin.lisp
 `fnn-csprng-octets` "credential salt"): account and key material, node-local.

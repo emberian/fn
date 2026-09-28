@@ -3994,11 +3994,11 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-sha256-of-prefixed-buffer-is-sha256"
+          "name": "fn-blake3-of-prefixed-buffer-is-blake3"
         },
         {
           "kind": "theorem",
-          "name": "fn-shb-subject-id-is-id-subject-of-sha256-preimage"
+          "name": "fn-sidb-subject-id-is-id-subject-of-payload"
         }
       ]
     },
@@ -8276,10 +8276,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ns-expand-input-separates-info"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-ns-cancel-lock-and-posting-account-inputs-differ"
         },
         {
@@ -9290,11 +9286,6 @@
           "kind": "theorem",
           "name": "fn-spo-open-of-another-layout-refuses-by-name",
           "note": "KEYSTONE (PKT-705). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (a real pre-AS config.json; one witness per hypothesis)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-config-open-refuses-no-decoded-frame",
-          "note": "KEYSTONE (the refinement, format 10): every decoded frame is opened. Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open."
         },
         {
           "kind": "theorem",
@@ -10993,7 +10984,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-sha256-of-prefixed-range-is-sha256"
+          "name": "fn-blake3-of-prefixed-range-is-blake3"
         },
         {
           "kind": "theorem",
@@ -11432,6 +11423,36 @@
           "kind": "theorem",
           "name": "fn-f9r-article-keeps-every-other-field",
           "note": "KEYSTONE (the translation keeps the article)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-347",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-b3x-hash-is-hash",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-blake3-stobj-is-blake3",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-blake3-of-prefixed-buffer-is-blake3",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-blake3-of-prefixed-range-is-blake3",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-blake3-shape",
+          "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
         }
       ]
     }

@@ -621,8 +621,6 @@
     "specs/substrate-transport.md"
    ],
    "fn-store-8": [
-    "docs/operator-internals.md",
-    "specs/encoding.md",
     "specs/storage.md"
    ],
    "fn-store-experiment-4": [

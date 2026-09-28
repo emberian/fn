@@ -207,7 +207,7 @@
 (assert-event (not (fn-frame-values-okp (fn-spo-layout-spec 13) *spot-bad-field*)))
 
 ; -----------------------------------------------------------------------------
-; fn-spo-config-open-refuses-no-decoded-frame
+; fn-spo-config-open-of-a-decoded-frame-by-definition
 
 (assert-event (fn-bs-config-decode (fn-bs-config-encode *fn-bs-profile-scale*)))
 (assert-event (equal (fn-spo-config-open (fn-bs-config-encode *fn-bs-profile-scale*))

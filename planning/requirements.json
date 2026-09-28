@@ -264,7 +264,8 @@
       "proof_targets": [
         "PRF-005",
         "PRF-035",
-        "PRF-048"
+        "PRF-048",
+        "PRF-347"
       ],
       "verification": [
         "proof",
@@ -630,7 +631,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-035",
-        "PRF-043"
+        "PRF-043",
+        "PRF-347"
       ],
       "verification": [
         "integration",
@@ -1591,7 +1593,8 @@
         "PRF-276",
         "PRF-278",
         "PRF-283",
-        "PRF-293"
+        "PRF-293",
+        "PRF-347"
       ],
       "verification": [
         "proof",
@@ -4860,7 +4863,7 @@
       "title": "Position 0 of a store's log is its genesis: the node identity, format, schema digest, profile digest, history salt, created-at and image revision, recorded at init and checked at every open by name",
       "specification": "specs/storage.md#one-format-and-the-archive",
       "milestone": "M5",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-349"
       ],
@@ -4871,7 +4874,8 @@
       "evidence": [
         "books/store-genesis.lisp",
         "host/native/io.lisp",
-        "tests/test_native_replay_determinism.py"
+        "tests/test_native_replay_determinism.py",
+        "planning/evidence/format-bump-10-2026-09-28.md"
       ],
       "implementation_note": "Lane format-bump-10. Non-determinism recorded (ember 2026-09-27): the CSPRNG node identity and salt, the clock reading. Never recorded: the node secret, credential salts."
     }

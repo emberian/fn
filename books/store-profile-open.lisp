@@ -591,9 +591,9 @@
                             fn-spo-layout-spec fn-bs-config-decode
                             fn-frame-values-okp fn-frame-fields-octets)))))
 
-; KEYSTONE (the refinement, PKT-705).  No refusal is a frame the decoder
-; decodes: every store the open opens is opened, whatever its word or layout.
-(defthm fn-spo-config-open-refuses-no-decoded-frame
+; The refinement (PKT-705), by definition: no refusal is a frame the decoder
+; decodes; every store the decoder decodes is opened.
+(defthm fn-spo-config-open-of-a-decoded-frame-by-definition
   (implies (fn-bs-config-decode octets)
            (equal (fn-spo-config-open octets)
                   (list :opened (fn-bs-config-decode octets))))
