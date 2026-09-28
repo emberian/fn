@@ -18,40 +18,15 @@ Subjects:
 The source checks are always active.  The executable witnesses need the saved
 image; when it is absent they skip and name the image they wanted.
 """
-import os
-from pathlib import Path
-import select
-import signal
-import socket
-import subprocess
-import tempfile
 import unittest
 
+from tests.native_harness import EXIT_OK, EXIT_REFUSED, ROOT, Node, native_image, requires
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 
-EXIT_OK, EXIT_REFUSED = 0, 1
+IMAGE = native_image("FN_NATIVE_HOST")
+
 READ_ONLY = (b"441 posting failed; a group this article names is read-only here "
              b"(LIST ACTIVE status n)")
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    return env
-
-
-def executable(image):
-    return image.is_file() and os.access(image, os.X_OK)
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 class GroupPolicySourceTests(unittest.TestCase):
@@ -80,98 +55,36 @@ class GroupPolicySourceTests(unittest.TestCase):
         self.assertIn("((equal code 21) :set-group-status)", config)
 
 
-@unittest.skipUnless(executable(IMAGE),
-                     "build/fn-host (or FN_NATIVE_HOST) is required: the served "
-                     "POST and LIST ACTIVE run only in a saved image")
+@requires(IMAGE)
 class GroupPolicyImageTests(unittest.TestCase):
+    """The served POST and LIST ACTIVE run only in a saved image."""
+
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-group-policy-")
-        self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
-        self.store = self.root / "store"
-        self.control = self.root / "control.sock"
-        self.port = free_port()
-        self.config = self.root / "fn.toml"
-        self.config.write_text(
-            '[store]\npath = "{}"\n'
-            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
-        self.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
-        created = self.operator("group", "create", "fn.ro")
-        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        self.node = Node(self, IMAGE)
+        self.node.init()
+        self.node.operator("group", "create", "fn.ro", expect=EXIT_OK)
 
     def operator(self, *words, timeout=180):
-        return subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(self.config), *words],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=timeout, check=False)
-
-    def start_owner(self):
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0)
-        self.addCleanup(self.reap, process)
-        for _ in range(4):
-            self.assertTrue(select.select([process.stdout], [], [], 180)[0],
-                            "the owner did not become ready")
-            line = process.stdout.readline()
-            if line.startswith(b"LISTENING "):
-                return process
-            if process.poll() is not None:
-                self.fail("owner failed: {}".format(
-                    process.stderr.read().decode("utf-8", "replace")))
-        self.fail("the owner's readiness output was malformed")
-
-    def stop_owner(self, process):
-        process.send_signal(signal.SIGTERM)
-        self.assertEqual(process.wait(timeout=60), EXIT_OK,
-                         process.stderr.read().decode("utf-8", "replace"))
-
-    def reap(self, process):
-        if process.poll() is None:
-            process.send_signal(signal.SIGKILL)
-            process.wait(timeout=10)
-        for stream in (process.stdout, process.stderr):
-            if stream and not stream.closed:
-                stream.close()
+        return self.node.operator(*words, timeout=timeout)
 
     def reader(self):
-        connection = socket.create_connection(("127.0.0.1", self.port), timeout=60)
-        self.addCleanup(connection.close)
-        stream = connection.makefile("rb")
-        self.addCleanup(stream.close)
-        greeting = stream.readline()
-        self.assertTrue(greeting.startswith(b"20"), greeting)
-        return connection, stream
+        client = self.node.session()
+        self.addCleanup(client.close)
+        return client
 
-    @staticmethod
-    def command(connection, stream, line, multiline):
-        connection.sendall(line.encode("ascii") + b"\r\n")
-        status = stream.readline()
-        lines = []
-        if multiline and status[:1] == b"2":
-            while True:
-                row = stream.readline()
-                if row in (b".\r\n", b""):
-                    break
-                lines.append(row)
-        return status, lines
-
-    def active(self, connection, stream):
-        status, rows = self.command(connection, stream, "LIST ACTIVE", True)
+    def active(self, client):
+        status, rows = client.multiline("LIST ACTIVE")
         self.assertTrue(status.startswith(b"215"), status)
-        return {row.split()[0]: row.split()[3] for row in rows}
+        return {row.split()[0]: row.split()[3] for row in rows.splitlines()}
 
-    def post(self, connection, stream, group, tag):
-        status, _ = self.command(connection, stream, "POST", False)
-        self.assertTrue(status.startswith(b"340"), status)
+    def post(self, client, group, tag):
+        # Subject before Newsgroups: the octets this witness has always sent.
         article = ("From: poster@example.invalid\r\nSubject: {}\r\n"
                    "Newsgroups: {}\r\nMessage-ID: <{}@example.invalid>\r\n\r\n"
-                   "Hello.\r\n.\r\n").format(tag, group, tag)
-        connection.sendall(article.encode("ascii"))
-        return stream.readline().rstrip(b"\r\n")
+                   "Hello.\r\n").format(tag, group, tag)
+        first, final = client.post(article.encode("ascii"))
+        self.assertTrue(first.startswith(b"340"), first)
+        return final.rstrip(b"\r\n")
 
     def test_read_only_group_offline_live_and_after_restart(self):
         # Offline: refused by name for an unknown group and an unserved value.
@@ -182,44 +95,43 @@ class GroupPolicyImageTests(unittest.TestCase):
         closed = self.operator("group", "policy", "fn.ro", "n")
         self.assertEqual(closed.returncode, EXIT_OK, closed.stderr.decode())
 
-        owner = self.start_owner()
-        pinned, pinned_stream = self.reader()
-        self.assertEqual(self.active(pinned, pinned_stream),
+        owner = self.node.start()
+        pinned = self.reader()
+        self.assertEqual(self.active(pinned),
                          {b"fn.ro": b"n", b"fn.test": b"y"})
         # POST to the closed group, alone and cross-posted: 441 by name.
-        self.assertEqual(self.post(pinned, pinned_stream, "fn.ro", "ro-1"), READ_ONLY)
-        self.assertEqual(self.post(pinned, pinned_stream, "fn.test,fn.ro", "ro-2"),
+        self.assertEqual(self.post(pinned, "fn.ro", "ro-1"), READ_ONLY)
+        self.assertEqual(self.post(pinned, "fn.test,fn.ro", "ro-2"),
                          READ_ONLY)
         # The open group accepts, and nothing of the refused posts is stored.
-        self.assertTrue(self.post(pinned, pinned_stream, "fn.test", "ok-1")
+        self.assertTrue(self.post(pinned, "fn.test", "ok-1")
                         .startswith(b"240"))
-        status, _ = self.command(pinned, pinned_stream,
-                                 "STAT <ro-1@example.invalid>", False)
+        status = pinned.command("STAT <ro-1@example.invalid>")
         self.assertTrue(status.startswith(b"430"), status)
 
         # Live: reopen the group.  A new connection sees "y" and posts; the
         # connection that pinned the old configuration keeps its answer.
         opened = self.operator("group", "policy", "fn.ro", "y")
         self.assertEqual(opened.returncode, EXIT_OK, opened.stderr.decode())
-        fresh, fresh_stream = self.reader()
-        self.assertEqual(self.active(fresh, fresh_stream),
+        fresh = self.reader()
+        self.assertEqual(self.active(fresh),
                          {b"fn.ro": b"y", b"fn.test": b"y"})
-        self.assertTrue(self.post(fresh, fresh_stream, "fn.ro", "ro-3")
+        self.assertTrue(self.post(fresh, "fn.ro", "ro-3")
                         .startswith(b"240"))
         # Live again: close it; a new connection is refused.
         closed = self.operator("group", "policy", "fn.ro", "n")
         self.assertEqual(closed.returncode, EXIT_OK, closed.stderr.decode())
-        third, third_stream = self.reader()
-        self.assertEqual(self.post(third, third_stream, "fn.ro", "ro-4"), READ_ONLY)
-        self.stop_owner(owner)
+        third = self.reader()
+        self.assertEqual(self.post(third, "fn.ro", "ro-4"), READ_ONLY)
+        self.node.stop(process=owner)
 
         # A restart replays the last record: fn.ro is "n".
-        restarted = self.start_owner()
-        after, after_stream = self.reader()
-        self.assertEqual(self.active(after, after_stream),
+        restarted = self.node.start()
+        after = self.reader()
+        self.assertEqual(self.active(after),
                          {b"fn.ro": b"n", b"fn.test": b"y"})
-        self.assertEqual(self.post(after, after_stream, "fn.ro", "ro-5"), READ_ONLY)
-        self.stop_owner(restarted)
+        self.assertEqual(self.post(after, "fn.ro", "ro-5"), READ_ONLY)
+        self.node.stop(process=restarted)
 
 
 if __name__ == "__main__":

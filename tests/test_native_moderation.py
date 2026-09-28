@@ -44,37 +44,21 @@ launcher> python3 -m unittest -v tests.test_native_moderation
 import os
 from pathlib import Path
 import re
-import select
-import signal
 import socket
 import ssl
 import subprocess
-import tempfile
 import unittest
+from tests.native_harness import ROOT, Node, executable, free_port
 from tools.wire_stream import whole_stream
 
-ROOT = Path(__file__).resolve().parent.parent
 PRODUCTION = os.environ.get("FN_NATIVE_HOST")
 DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
 IMAGES = [(name, Path(value)) for name, value in
           (("production", PRODUCTION), ("developer", DEVELOPER)) if value]
-READY = bool(IMAGES) and all(p.is_file() and os.access(p, os.X_OK) for _, p in IMAGES)
+READY = bool(IMAGES) and all(executable(p) for _, p in IMAGES)
 
 FORGED = ("441 posting failed; Approved is accepted only from a moderator of "
           "each moderated group named (LIST ACTIVE status m)")
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    return env
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def text(result):
@@ -104,28 +88,27 @@ class ModerationSourceTests(unittest.TestCase):
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST and/or FN_NATIVE_DEVELOPER_HOST")
 class NativeModerationTests(unittest.TestCase):
     def node(self, image):
-        root = Path(tempfile.mkdtemp(prefix="fn-moderation-"))
-        self.addCleanup(subprocess.run, ["rm", "-rf", str(root)], check=False)
-        port, tls_port = free_port(), free_port()
-        cert, key = root / "cert.pem", root / "key.pem"
+        node = Node(self, image)
+        node.tls_port = free_port()
+        cert, key = node.root / "cert.pem", node.root / "key.pem"
         subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout",
                         str(key), "-out", str(cert), "-days", "2", "-nodes",
                         "-subj", "/CN=127.0.0.1"], check=True,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        config = root / "fn.toml"
-        config.write_text(
+        node.config.write_text(
             '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
             'tls_port = {}\ntls_cert = "{}"\ntls_key = "{}"\n[control]\npath = "{}"\n'
             '[auth]\nprotected_only = true\n'.format(
-                root / "store", port, tls_port, cert, key, root / "control.sock"),
+                node.store_path, node.port, node.tls_port, cert, key, node.control),
             encoding="ascii")
-        return {"image": image, "config": config, "tls_port": tls_port, "process": None}
+        # The owner's log, for a failure's diagnosis (its refusal lines).
+        self.addCleanup(lambda: print("NATIVE-MODERATION owner log tail:", b"".join(
+            process.stderr.tail(4000) for process in node.processes).decode(
+                "ascii", "replace").replace("\n", " | ")))
+        return node
 
     def operator(self, node, *words):
-        result = subprocess.run(
-            [str(node["image"]), "--fn", "operator", str(node["config"]), *words],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=240, check=False)
+        result = node.operator(*words, timeout=240)
         print("NATIVE-MODERATION", " ".join(words[:4]), "->", result.returncode,
               text(result)[:160].replace("\n", " | "))
         return result
@@ -136,47 +119,19 @@ class NativeModerationTests(unittest.TestCase):
         return result
 
     def start(self, node):
-        process = subprocess.Popen(
-            [str(node["image"]), "--fn", "operator", str(node["config"]), "run"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0)
-        node["process"] = process
-        self.addCleanup(self.reap, node)
-        seen = 0
-        for _ in range(6):
-            self.assertTrue(select.select([process.stdout], [], [], 240)[0])
-            if process.stdout.readline().startswith(b"LISTENING"):
-                seen += 1
-                if seen == 2:
-                    return
-        self.fail("owner readiness output was malformed")
+        # Two readiness lines: LISTENING and LISTENING-TLS, in either order.
+        process = node.start(ready=None, timeout=240)
+        for _ in range(2):
+            process.announcement(b"LISTENING", timeout=240)
 
     def stop(self, node):
-        process = node["process"]
-        process.send_signal(signal.SIGTERM)
-        self.assertEqual(process.wait(timeout=60), 0)
-        self.reap(node)
-
-    def reap(self, node):
-        process, node["process"] = node["process"], None
-        if process is None:
-            return
-        if process.poll() is None:
-            process.send_signal(signal.SIGKILL)
-            process.wait(timeout=10)
-        if process.stderr and not process.stderr.closed:
-            # The owner's log, for a failure's diagnosis (its refusal lines).
-            tail = process.stderr.read()[-4000:].decode("ascii", "replace")
-            print("NATIVE-MODERATION owner log tail:", tail.replace("\n", " | "))
-        for stream in (process.stdout, process.stderr):
-            if stream and not stream.closed:
-                stream.close()
+        node.stop()
 
     def tls(self, node, source=None):
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
-        raw = socket.create_connection(("127.0.0.1", node["tls_port"]), timeout=60,
+        raw = socket.create_connection(("127.0.0.1", node.tls_port), timeout=60,
                                        source_address=(source, 0) if source else None)
         stream = whole_stream(context.wrap_socket(raw))
         self.addCleanup(stream.close)

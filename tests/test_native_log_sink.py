@@ -14,41 +14,17 @@ is answered 240, `health' answers with its exit and the log-sink line shows
 lines pending behind the full pipe.  Then it drains stderr and reads the sink
 empty, every offered line written, and the owner stops cleanly on SIGTERM.
 """
-import os
-from pathlib import Path
 import re
-import select
-import signal
-import socket
 import subprocess
-import tempfile
 import threading
 import time
 import unittest
 
+from tests.native_harness import ROOT, Node, article, native_image, requires, wait_for_announcement
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
+IMAGE = native_image("FN_NATIVE_HOST")
 POSTS = 2000
 SINK = re.compile(rb"^log-sink pending=(\d+) dropped=(\d+) written=(\d+)$", re.M)
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    return env
-
-
-def executable(image):
-    return image.is_file() and os.access(image, os.X_OK)
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 class LogSinkSourceTests(unittest.TestCase):
@@ -72,72 +48,43 @@ class LogSinkSourceTests(unittest.TestCase):
         self.assertIn("(fnn-log-writer-stop)", run)
 
 
-@unittest.skipUnless(executable(IMAGE), "build/fn-host is required (FN_NATIVE_HOST)")
+@requires(IMAGE)
 class LogSinkNativeTests(unittest.TestCase):
     def setUp(self):
-        self.directory = tempfile.TemporaryDirectory(prefix="fn-log-sink-")
-        self.addCleanup(self.directory.cleanup)
-        self.root = Path(self.directory.name)
-        self.store = self.root / "store"
-        self.control = self.root / "control.sock"
-        self.config = self.root / "fn.toml"
-        self.port = free_port()
-        self.config.write_text(
-            '[store]\npath = "{}"\n'
-            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
-        init = self.operator("init", "fn.test")
-        self.assertEqual(init.returncode, 0, init.stderr.decode())
+        self.node = Node(self, IMAGE)
+        self.node.init(timeout=60)
 
     def operator(self, *words, timeout=60):
-        return subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(self.config), *words],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=timeout, check=False)
+        return self.node.operator(*words, timeout=timeout)
 
     def start_owner(self):
-        # stderr is a pipe this test does not read until it chooses to.
+        # The subject: stderr is a pipe this test does not read until it
+        # chooses to, so the harness's draining start is deliberately not used.
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
+            [str(IMAGE), "--fn", "operator", str(self.node.config), "run"],
+            cwd=ROOT, env=self.node.environment(), stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, bufsize=0)
         self.addCleanup(self.reap, process)
-        for _ in range(4):
-            self.assertTrue(select.select([process.stdout], [], [], 180)[0],
-                            "the owner did not become ready")
-            line = process.stdout.readline()
-            if line.startswith(b"LISTENING "):
-                return process
-            self.assertIsNone(process.poll(), "the owner exited before listening")
-        self.fail("the owner's readiness output was malformed")
+        wait_for_announcement(process, b"LISTENING ")
+        return process
 
-    def reap(self, process):
+    @staticmethod
+    def reap(process):
         if process.poll() is None:
-            process.send_signal(signal.SIGKILL)
+            process.kill()
             process.wait(timeout=10)
         for stream in (process.stdout, process.stderr):
-            if stream and not stream.closed:
-                stream.close()
+            stream.close()
 
     def post_many(self, count):
         replies = []
-        with socket.create_connection(("127.0.0.1", self.port), timeout=60) as conn:
-            stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"200"))
+        with self.node.session() as client:
             for n in range(count):
-                stream.write(b"POST\r\n")
-                stream.flush()
-                self.assertTrue(stream.readline().startswith(b"340"))
-                stream.write(b"From: author@example.invalid\r\n"
-                             b"Newsgroups: fn.test\r\n"
-                             b"Subject: an undrained log\r\n"
-                             b"Message-ID: <log-sink-%d@example.invalid>\r\n"
-                             b"\r\nbody\r\n.\r\n" % n)
-                stream.flush()
-                replies.append(stream.readline().rstrip(b"\r\n"))
-            stream.write(b"QUIT\r\n")
-            stream.flush()
+                first, final = client.post(article(
+                    "<log-sink-%d@example.invalid>" % n, subject="an undrained log",
+                    date=None))
+                self.assertTrue(first.startswith(b"340"), first)
+                replies.append(final.rstrip(b"\r\n"))
         return replies
 
     def sink(self):
@@ -179,7 +126,7 @@ class LogSinkNativeTests(unittest.TestCase):
         self.assertEqual(dropped, 0)
         self.assertGreaterEqual(written, POSTS)
 
-        owner.send_signal(signal.SIGTERM)
+        owner.terminate()
         self.assertEqual(owner.wait(timeout=60), 0)
         reader.join(timeout=10)
         self.assertGreaterEqual(len(lines), written)

@@ -26,49 +26,24 @@ Run: FN_NATIVE_HOST=<developer launcher> python3 -m unittest -v tests.test_nativ
 """
 
 import os
-from pathlib import Path
 import re
-import select
-import signal
-import socket
 import ssl
 import subprocess
-import tempfile
 import unittest
-from tools.wire_stream import whole_stream
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
-IMAGE = (Path(IMAGE_TEXT) if IMAGE_TEXT else
-         next((p for p in (ROOT / "build" / "fn-host-developer", ROOT / "build" / "fn-host")
-               if p.is_file()), None))
+from tests.native_harness import (
+    ROOT, Client, Node, article, client_context, free_port, native_image, run)
+
+IMAGE = native_image("FN_NATIVE_HOST", "build/fn-host-developer")
+if not os.environ.get("FN_NATIVE_HOST") and not IMAGE.is_file():
+    IMAGE = ROOT / "build" / "fn-host"
 FRIEND_FN = os.environ.get("FN_FRIEND_FN")
-# An installed bin/fn runs under the heap figure of its store's profile
-# (PKT-016, books/heap-figure.lisp): the D27 default profile (H = 1 TiB) is
-# refused by name on every machine, so the friend's node takes the small
-# preset's fields (the preset has no --profile word yet, PKT-581).
 SMALL_PROFILE = ("--max-transactions", "16384", "--max-history-octets", "8388608",
                  "--max-record-octets", "196608", "--max-article-octets", "32768",
                  "--max-groups-per-article", "16", "--max-open-suffix", "128")
 OLD_IMAGE = os.environ.get("FN_OLD_IMAGE")
-READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
-DEVELOPER = bool(IMAGE is not None and "developer" in IMAGE.name)
-
-
-def environment(command, extra=None):
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    if FRIEND_FN and command[0] == FRIEND_FN:
-        env.pop("FN_NATIVE_HOST", None)
-    env.update(extra or {})
-    return env
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+READY = bool(IMAGE.is_file() and os.access(IMAGE, os.X_OK))
+DEVELOPER = "developer" in IMAGE.name
 
 
 def text(result):
@@ -78,87 +53,32 @@ def text(result):
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native launcher")
 class NativeFriendsAccountsTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-accounts-")
-        self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
-        self.image = [str(IMAGE), "--fn"]
-        self.node = [FRIEND_FN] if FRIEND_FN else self.image
-        self.store = self.root / "store"
-        self.port, self.tls_port = free_port(), free_port()
-        cert, key = self.root / "cert.pem", self.root / "key.pem"
-        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout",
-                        str(key), "-out", str(cert), "-days", "2", "-nodes",
-                        "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1"], check=True,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self.config = self.root / "fn.toml"
-        self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            'tls_port = {}\ntls_cert = "{}"\ntls_key = "{}"\n[control]\npath = "{}"\n'
-            '[auth]\nprotected_only = true\n'.format(
-                self.store, self.port, self.tls_port, cert, key,
-                self.root / "control.sock"), encoding="ascii")
-        self.process = None
+        self.node = Node(self, IMAGE, launcher=FRIEND_FN).use_tls(alt_name=True)
+        self.root, self.store, self.port = self.node.root, self.node.store_path, self.node.port
+        self.tls_port = self.node.tls_port
         small = SMALL_PROFILE if FRIEND_FN else ()
-        self.ok(self.node, "init", *small, "local.general")
+        self.ok("init", *small, "local.general")
 
-    def operator(self, command, *words):
-        result = subprocess.run([*command, "operator", str(self.config), *words],
-                                cwd=ROOT, env=environment(command),
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=240, check=False)
+    def operator(self, *words, image=None):
+        result = self.node.operator(*words, image=image, timeout=240)
         print("NATIVE-ACCOUNTS", " ".join(words[:2]), "->", result.returncode)
         return result
 
-    def ok(self, command, *words):
-        result = self.operator(command, *words)
+    def ok(self, *words):
+        result = self.operator(*words)
         self.assertEqual(result.returncode, 0, text(result))
         return result
 
-    def start(self, command, extra=None):
-        self.process = subprocess.Popen(
-            [*command, "operator", str(self.config), "run"], cwd=ROOT,
-            env=environment(command, extra), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0)
-        self.addCleanup(self.reap)
-        seen = 0
-        for _ in range(6):
-            self.assertTrue(select.select([self.process.stdout], [], [], 240)[0])
-            if self.process.stdout.readline().startswith(b"LISTENING"):
-                seen += 1
-                if seen == 2:
-                    return
-        self.fail("owner readiness output was malformed")
-
     def stop(self):
-        self.process.send_signal(signal.SIGTERM)
-        self.assertEqual(self.process.wait(timeout=60), 0)
-        log = self.process.stderr.read().decode("utf-8", "replace")
-        self.reap()
-        return log
-
-    def reap(self):
-        process, self.process = self.process, None
-        if process is None:
-            return
-        if process.poll() is None:
-            process.send_signal(signal.SIGKILL)
-            process.wait(timeout=10)
-        for stream in (process.stdout, process.stderr):
-            if stream and not stream.closed:
-                stream.close()
+        process = self.node.process
+        self.node.stop()
+        return process.stderr.since(0).decode("utf-8", "replace")
 
     def tls(self):
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
-        raw = socket.create_connection(("127.0.0.1", self.tls_port), timeout=60)
-        stream = whole_stream(context.wrap_socket(raw))
-        stream.readline()
-        return stream
+        return Client(self.tls_port, implicit_tls=client_context(), greeting=None)
 
-    def exchange(self, stream, line):
-        stream.write(line.encode("ascii") + b"\r\n")
-        reply = stream.readline().decode("ascii", "replace").strip()
+    def exchange(self, client, line):
+        reply = client.command(line).decode("ascii", "replace").strip()
         print("NATIVE-ACCOUNTS", line.split()[0], line.split()[1] if " " in line else "",
               "->", reply[:3])
         return reply
@@ -171,19 +91,19 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         return self.exchange(stream, "XREDEEM PASS " + password)
 
     def login_and_post(self, login, password, message_id):
-        stream = self.tls()
-        self.assertTrue(self.exchange(stream, "AUTHINFO USER " + login).startswith("381"))
-        reply = self.exchange(stream, "AUTHINFO PASS " + password)
-        if not reply.startswith("281"):
-            return reply
-        self.assertTrue(self.exchange(stream, "POST").startswith("340"))
-        stream.write(("From: {}@friend.example\r\nNewsgroups: local.general\r\n"
-                      "Subject: hello\r\nMessage-ID: {}\r\n\r\nbody\r\n.\r\n"
-                      .format(login, message_id)).encode("ascii"))
-        return stream.readline().decode("ascii", "replace").strip()
+        with self.tls() as client:
+            self.assertTrue(self.exchange(client, "AUTHINFO USER " + login).startswith("381"))
+            reply = self.exchange(client, "AUTHINFO PASS " + password)
+            if not reply.startswith("281"):
+                return reply
+            first, final = client.post(article(
+                message_id, sender=login + "@friend.example", groups="local.general",
+                subject="hello", date=None))
+            self.assertTrue(first.startswith(b"340"), first)
+            return final.decode("ascii", "replace").strip()
 
-    def invite(self, command):
-        result = self.ok(command, "account", "invite", "--expires", "3600")
+    def invite(self):
+        result = self.ok("account", "invite", "--expires", "3600")
         codes = re.findall(rb"^[0-9a-f]{32}$", result.stdout, re.M)
         self.assertEqual(len(codes), 1, text(result))
         return codes[0].decode("ascii")
@@ -191,24 +111,24 @@ class NativeFriendsAccountsTests(unittest.TestCase):
     def fn_redeem(self, *words, password="correct-horse"):  # FAKE-SECRET: a test fixture's password
         # `fn redeem` (the stranger rehearsal's stop 10): no openssl, no
         # hand-typed XREDEEM.  The password comes on standard input.
-        return subprocess.run([*self.image, "redeem", *words], cwd=ROOT,
-                              env=environment(self.image), input=(password + "\n").encode(),
+        return subprocess.run([str(IMAGE), "--fn", "redeem", *words], cwd=ROOT,
+                              env=self.node.environment(), input=(password + "\n").encode(),
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               timeout=120, check=False, start_new_session=True)
 
     def test_fn_redeem_over_starttls_and_tls(self):
-        self.start(self.node)
+        self.node.start()
         cert = str(self.root / "cert.pem")
         # STARTTLS on the reader port (the default), the node's own
         # self-signed certificate trusted by --cafile.
-        code = self.invite(self.node)
+        code = self.invite()
         done = self.fn_redeem("127.0.0.1:{}".format(self.port), code, "wren", "--cafile", cert)
         self.assertEqual(done.returncode, 0, text(done))
         self.assertIn(b"redeemed: the account wren is ready", done.stdout)
         self.assertTrue(self.login_and_post("wren", "correct-horse",
                                             "<wren-1@friend.example>").startswith("240"))
         # Implicit TLS on the TLS port.
-        code = self.invite(self.node)
+        code = self.invite()
         done = self.fn_redeem("127.0.0.1:{}".format(self.tls_port), code, "finch",
                               "--tls", "--cafile", cert)
         self.assertEqual(done.returncode, 0, text(done))
@@ -226,16 +146,10 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         self.assertNotIn(b"redeemed", untrusted.stdout)
         self.stop()
 
-    def capabilities(self, stream):
-        stream.write(b"CAPABILITIES\r\n")
-        first = stream.readline()
+    def capabilities(self, client):
+        first, body = client.multiline(b"CAPABILITIES")
         self.assertTrue(first.startswith(b"101"), first)
-        lines = []
-        while True:
-            line = stream.readline().rstrip(b"\r\n")
-            if line == b".":
-                return lines
-            lines.append(line)
+        return body.split(b"\r\n")[:-1]
 
     def test_authinfo_is_offered_after_starttls_before_any_account(self):
         # The public node's deploy finding D1 (RFC 4643 s2.2), in its
@@ -244,21 +158,15 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         # AUTHINFO; after STARTTLS, and on the TLS port, AUTHINFO USER
         # (books/nntp-auth.lisp fn-auth-access-capability-lines: a login is
         # required, so the mechanism is offered with no credential yet).
-        self.ok(self.node, "policy", "set", "anonymous", "none")
-        self.start(self.node)
-        raw = socket.create_connection(("127.0.0.1", self.port), timeout=60)
-        clear = raw.makefile("rwb", buffering=0)
-        clear.readline()
+        self.ok("policy", "set", "anonymous", "none")
+        self.node.start()
+        clear = self.node.session(greeting=None)
+        self.addCleanup(clear.close)
         listed = self.capabilities(clear)
         self.assertIn(b"STARTTLS", listed)
         self.assertNotIn(b"AUTHINFO USER", listed)
-        clear.write(b"STARTTLS\r\n")
-        self.assertTrue(clear.readline().startswith(b"382"))
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
-        secured = whole_stream(context.wrap_socket(raw))
-        listed = self.capabilities(secured)
+        self.assertTrue(clear.starttls().startswith(b"382"))
+        listed = self.capabilities(clear)
         self.assertIn(b"AUTHINFO USER", listed)
         self.assertNotIn(b"STARTTLS", listed)
         self.assertIn(b"AUTHINFO USER", self.capabilities(self.tls()))
@@ -279,12 +187,10 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         self.assertEqual(lost.stdout, b"")
 
     def test_a_friend_redeems_a_code_once_across_a_crash(self):
-        self.start(self.node)
-        code = self.invite(self.node)
+        self.node.start()
+        code = self.invite()
         # Cleartext on the protected listener: 483, nothing taken.
-        with socket.create_connection(("127.0.0.1", self.port), timeout=60) as raw:
-            plain = whole_stream(raw)
-            plain.readline()
+        with self.node.session(greeting=None) as plain:
             self.assertTrue(self.exchange(plain, "XREDEEM {} robin".format(code))
                             .startswith("483"))
         self.assertTrue(self.redeem(code, "robin", "correct-horse").startswith("281"))
@@ -293,28 +199,30 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         self.assertTrue(self.redeem(code, "mallory", "x").startswith("482"))
         self.assertTrue(self.redeem(code, "robin", "correct-horse").startswith("281"))
         self.assertTrue(self.redeem("0" * 32, "eve", "x").startswith("482"))
-        listed = self.ok(self.node, "account", "list").stdout.decode("ascii")
+        listed = self.ok("account", "list").stdout.decode("ascii")
         self.assertIn("redeemed robin ", listed)
         self.assertNotIn(code, listed)
         # The crash cut between the publication and the reply (developer image).
-        second = self.invite(self.node)
+        second = self.invite()
         log = self.stop()
         self.assertNotIn(code, log)
         self.assertNotIn(second, log)
         if DEVELOPER:
-            self.start(self.image, {"FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH": "1"})
-            stream = self.tls()
-            self.assertTrue(self.exchange(stream, "XREDEEM {} robin2".format(second))
+            crashed = self.node.start(image=IMAGE,
+                                      env={"FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH": "1"})
+            client = self.tls()
+            self.addCleanup(client.close, quit=False)
+            self.assertTrue(self.exchange(client, "XREDEEM {} robin2".format(second))
                             .startswith("381"))
-            stream.write(b"XREDEEM PASS battery-staple\r\n")
+            client.send(b"XREDEEM PASS battery-staple\r\n")
             try:
-                lost = stream.readline()
-            except (OSError, ssl.SSLError):
+                lost = client.line()
+            except (OSError, ssl.SSLError, EOFError):
                 lost = b""
             self.assertEqual(lost, b"")
-            self.assertEqual(self.process.wait(timeout=60), 137)
-            self.reap()
-            self.start(self.node)
+            self.assertEqual(crashed.wait(timeout=60), 137)
+            crashed.finish()
+            self.node.start()
             self.assertTrue(self.redeem(second, "robin2", "battery-staple")
                             .startswith("281"))
             reply = self.login_and_post("robin2", "battery-staple",
@@ -329,21 +237,15 @@ class NativeFriendsAccountsTests(unittest.TestCase):
                 config = self.root / (name + ".toml")
                 config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
                                   'port = {}\n'.format(store, free_port()), encoding="ascii")
-                result = subprocess.run([OLD_IMAGE, "--fn", "operator", str(config),
-                                         "status"], cwd=ROOT, env=environment([OLD_IMAGE]),
-                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                        timeout=240, check=False)
+                result = run([OLD_IMAGE, "--fn", "operator", config, "status"], timeout=240)
                 print("NATIVE-ACCOUNTS old-image status", name, "->", result.returncode,
                       text(result)[-160:].replace("\n", " "))
                 return result
-            fresh = self.root / "fresh"
-            fresh_config = self.root / "fresh-new.toml"
-            fresh_config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-                                    'port = {}\n'.format(fresh, free_port()), encoding="ascii")
-            made = subprocess.run([*self.node, "operator", str(fresh_config), "init",
-                                   *(SMALL_PROFILE if FRIEND_FN else ()), "local.general"], cwd=ROOT, env=environment(self.node),
-                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                  timeout=240, check=False)
+            fresh_node = Node(self, IMAGE, launcher=FRIEND_FN, root=self.root / "fresh",
+                                    control=False)
+            fresh = fresh_node.store_path
+            made = fresh_node.operator("init", *(SMALL_PROFILE if FRIEND_FN else ()),
+                                       "local.general", timeout=240)
             self.assertEqual(made.returncode, 0, text(made))
             self.assertEqual(old_status(fresh, "fresh").returncode, 0)
             refused = old_status(self.store, "redeemed")

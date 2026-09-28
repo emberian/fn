@@ -798,12 +798,17 @@ class Node:
     ROOT/fn.toml names ROOT/store, a loopback listener on a free port and
     ROOT/control.sock (LISTENER/CONTROL False leave a section out; TLS is
     the text of a [tls] section; EXTRA is appended verbatim).  Every process
-    `start` makes is stopped when CASE's test ends."""
+    `start` makes is stopped when CASE's test ends.  LAUNCHER is an
+    installed `bin/fn` (it supplies `--fn` itself) run in place of the image
+    when a verb names no image; `use_tls` adds an implicit-TLS listener."""
 
     def __init__(self, case, image, *, root=None, name="node", listener=True,
-                 control=True, tls=None, extra="", env=None, port=None):
+                 control=True, tls=None, extra="", env=None, port=None, launcher=None):
         self.case = case
         self.image = Path(image)
+        self.launcher = launcher
+        self.listening = 1 if listener else 0
+        self.tls_port = None
         self.name = name
         self.root = Path(root) if root is not None else scratch(case) / name
         self.root.mkdir(parents=True, exist_ok=True)
@@ -817,25 +822,51 @@ class Node:
         self.write_config(listener=listener, tls=tls, extra=extra)
         case.addCleanup(self.stop_all)
 
-    def write_config(self, *, listener=True, tls=None, extra=""):
+    def write_config(self, *, listener=True, tls=None, extra="", protected_only=False):
+        """fn.toml; EXTRA follows the [listener] fields (inside that table)."""
         text = '[store]\npath = "{}"\n'.format(self.store_path)
         if listener:
             text += '[listener]\nhost = "127.0.0.1"\nport = {}\n'.format(self.port)
+            text, extra = text + extra, ""
         if self.control is not None:
             text += '[control]\npath = "{}"\n'.format(self.control)
         if tls:
             text += "[tls]\n" + tls.rstrip("\n") + "\n"
+        if protected_only:
+            text += "[auth]\nprotected_only = true\n"
         text += extra
         self.config.write_text(text, encoding="utf-8")
 
+    def use_tls(self, *, alt_name=False, protected_only=True):
+        """A second, implicit-TLS listener (`tls_port`) with a fresh
+        self-signed certificate for 127.0.0.1 (with the IP SAN when
+        ALT_NAME), and `[auth] protected_only` as asked."""
+        self.tls_port = free_port()
+        self.cert, key = self.root / "cert.pem", self.root / "key.pem"
+        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout",
+                        str(key), "-out", str(self.cert), "-days", "2", "-nodes",
+                        "-subj", "/CN=127.0.0.1",
+                        *(("-addext", "subjectAltName=IP:127.0.0.1") if alt_name else ())],
+                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.listening = 2
+        self.write_config(extra='tls_port = {}\ntls_cert = "{}"\ntls_key = "{}"\n'.format(
+            self.tls_port, self.cert, key), protected_only=protected_only)
+        return self
+
     def environment(self, extra=None):
-        merged = dict(self.env)
+        merged = {"FN_NATIVE_HOST": None} if self.launcher else {}
+        merged.update(self.env)
         merged.update(extra or {})
         return environment(merged)
 
+    def argv(self, image, words):
+        if self.launcher and image is None:
+            return [self.launcher, *words]
+        return [image or self.image, "--fn", *words]
+
     def invoke(self, *words, image=None, env=None, timeout=180, input=None, expect=None):
         """`IMAGE --fn WORDS...` to completion; with EXPECT, assert its class."""
-        result = run([image or self.image, "--fn", *words], env=self.environment(env),
+        result = run(self.argv(image, words), env=self.environment(env),
                      timeout=timeout, input=input)
         if expect is not None:
             assert_outcome(self.case, result, expect,
@@ -857,11 +888,15 @@ class Node:
               limit=DEFAULT_LIMIT):
         """`operator CONFIG run`, drained (LIMIT octets kept per stream),
         returned once READY is on stdout."""
-        process = start([image or self.image, "--fn", "operator", self.config, *verb],
+        process = start(self.argv(image, ("operator", self.config, *verb)),
                         cwd=ROOT, env=self.environment(env), limit=limit)
         self.processes.append(process)
         self.process = process
-        if ready:
+        if ready and self.listening > 1:
+            # Several listeners announce in either order.
+            for _ in range(self.listening):
+                process.announcement(b"LISTENING", timeout=timeout)
+        elif ready:
             line = process.announcement(ready, timeout=timeout)
             if ready == b"LISTENING " and self.port is not None:
                 self.case.assertEqual(line, "LISTENING {}\n".format(self.port).encode(),
@@ -932,8 +967,10 @@ class Client:
     greeting (RFC 8143); `starttls()` upgrades after a 382 (RFC 4642)."""
 
     def __init__(self, port, *, host="127.0.0.1", timeout=60, implicit_tls=None,
-                 greeting=(b"200", b"201")):
-        self.sock = socket.create_connection((host, port), timeout=timeout)
+                 greeting=(b"200", b"201"), source=None):
+        self.sock = socket.create_connection(
+            (host, port), timeout=timeout,
+            source_address=(source, 0) if source else None)
         self.sock.settimeout(timeout)
         self.host = host
         self.buffer = b""

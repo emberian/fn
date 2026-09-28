@@ -25,10 +25,10 @@ import subprocess
 import tempfile
 import unittest
 
-from tests import test_native_live_reconfiguration as live
+from tests import native_harness
+from tests.native_harness import ROOT, native_image
 
-ROOT = live.ROOT
-IMAGE = live.IMAGE
+IMAGE = native_image("FN_NATIVE_HOST")
 DEVELOPER_TEXT = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
 DEVELOPER = Path(DEVELOPER_TEXT) if DEVELOPER_TEXT else None
 EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = 0, 1, 3
@@ -69,19 +69,19 @@ class Node:
         self.root.mkdir()
         self.store = self.root / "store"
         self.control = self.root / "control.sock"
-        self.port = live.free_port()
+        self.port = native_harness.free_port()
         self.config = self.root / "fn.toml"
         self.config.write_text(
             '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
             '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
             encoding="ascii")
-        self.env = dict(live.environment(), **(env or {}))
+        self.env = dict(native_harness.environment(), **(env or {}))
         self.process = None
         test.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
 
     def operator(self, *words, timeout=240):
         return subprocess.run([str(self.image), "--fn", "operator", str(self.config), *words],
-                              cwd=ROOT, env=live.environment(), stdout=subprocess.PIPE,
+                              cwd=ROOT, env=native_harness.environment(), stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, timeout=timeout, check=False)
 
     def start(self, env=None):
@@ -118,13 +118,13 @@ class Node:
 
     def key_history(self):
         result = subprocess.run([str(IMAGE), "--fn", "hybrid-key-history", str(self.store)],
-                                cwd=ROOT, env=live.environment(), stdout=subprocess.PIPE,
+                                cwd=ROOT, env=native_harness.environment(), stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, timeout=240, check=False)
         self.test.assertEqual(result.returncode, EXIT_OK, out(result))
         return result.stdout.decode("ascii").splitlines()
 
 
-@unittest.skipUnless(live.executable(IMAGE) and shutil.which(OPENSSL),
+@unittest.skipUnless(native_harness.executable(IMAGE) and shutil.which(OPENSSL),
                      "set FN_NATIVE_HOST to a native launcher and FN_OPENSSL to openssl 3.5")
 class NativePeerInviteTests(unittest.TestCase):
     def setUp(self):
@@ -229,7 +229,7 @@ class NativePeerInviteTests(unittest.TestCase):
             node.stop()
 
     def developer(self):
-        if DEVELOPER is None or not live.executable(DEVELOPER):
+        if DEVELOPER is None or not native_harness.executable(DEVELOPER):
             self.skipTest("set FN_NATIVE_DEVELOPER_HOST to a developer launcher "
                           "(the stop selectors)")
         return DEVELOPER
@@ -316,7 +316,7 @@ class NativePeerInviteTests(unittest.TestCase):
 
     def hybrid(self, *words):
         result = subprocess.run([str(IMAGE), "--fn", *words], cwd=ROOT,
-                                env=live.environment(), stdout=subprocess.PIPE,
+                                env=native_harness.environment(), stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, timeout=240, check=False)
         self.assertEqual(result.returncode, EXIT_OK, out(result))
         return result
