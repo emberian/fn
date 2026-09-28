@@ -44,7 +44,7 @@
 ;                     submission at the same credit); growth is admitted
 ;                     only within the budget, and past it the read is
 ;                     refused by name -- a POST 440 at the command
-;                     (fn-oas-refused-read), else the read is not run at
+;                     (fn-mca-refused-read), else the read is not run at
 ;                     all and the connection is answered 400 and closed
 ;                     (`fn-mca-shut-read': RFC 3977 section 3.2.1) -- so
 ;                     the ledger is never over-committed;
@@ -143,6 +143,21 @@
                           (fn-oas-owner-closed oc id)
                           nil))
 
+;; The read refused at the command: posting switched off for it (a POST
+;; answered 440), and, when it still leaves ID in article mode, ID's wire
+;; closed and answered 400 (books/owner-article-slots.lisp
+;; fn-oas-posting-off-read, fn-oas-close-result; lane admission-gap split the
+;; former fn-oas-refused-read into those two, batch BB 2026-09-28).
+(defun fn-mca-refused-read (oc views id i end s fn-octets fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                  :guard (and (natp i) (natp end) (<= i end)
+                              (<= end (fn-octets-len fn-octets))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
+  (let ((r (fn-oas-posting-off-read oc views id i end s fn-octets fn-arena fn-cat)))
+    (if (fn-oas-articlep (fn-own-tls-result-owner r) id)
+        (fn-oas-close-result r id)
+      r)))
+
 ; THE READ THE HOST CALLS (host/owner-host.lisp fn-owner-chunk-span-at):
 ; (RESULT . CREDITS').
 (defun fn-mca-read-span (credits oc views id i end s slots reserve fn-octets fn-arena fn-cat)
@@ -156,7 +171,7 @@
                             (fn-mca-need (fn-own-tls-result-owner r0) id reserve))))
     (if (equal (car d0) :ok)
         (cons r0 (cadr d0))
-      (let* ((r1 (fn-oas-refused-read oc views id i end s fn-octets fn-arena fn-cat))
+      (let* ((r1 (fn-mca-refused-read oc views id i end s fn-octets fn-arena fn-cat))
              (d1 (fn-mcr-resize credits key
                                 (fn-mca-need (fn-own-tls-result-owner r1) id reserve))))
         (if (equal (car d1) :ok)
@@ -300,7 +315,7 @@
            (equal (car (fn-mca-read-span credits oc views id i end s slots reserve
                                          fn-octets fn-arena fn-cat))
                   (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat)))
-  :hints (("Goal" :in-theory (e/d () (fn-oas-read-span fn-oas-refused-read fn-mca-need
+  :hints (("Goal" :in-theory (e/d () (fn-oas-read-span fn-mca-refused-read fn-mca-need
                                       fn-mcr-resize fn-mca-shut-read)))))
 
 ;; RESERVE TO FINISH.  A read that leaves connection ID needing no more
@@ -316,7 +331,7 @@
                                          fn-octets fn-arena fn-cat))
                   (fn-oas-read-span oc views id i end s slots fn-octets fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-mca-held)
-                                  (fn-oas-read-span fn-oas-refused-read fn-mca-need
+                                  (fn-oas-read-span fn-mca-refused-read fn-mca-need
                                    fn-mcr-resize fn-mca-shut-read fn-mca-read-span
                                    fn-mcr-total))
            :use (fn-mca-read-span-within-the-credit-unfolds
@@ -360,7 +375,7 @@
              (equal (fn-mca-held (cdr rc) id)
                     (fn-mca-need (fn-own-tls-result-owner (car rc)) id reserve))))
   :hints (("Goal" :in-theory (e/d (fn-mca-held)
-                                  (fn-oas-read-span fn-oas-refused-read fn-mca-need
+                                  (fn-oas-read-span fn-mca-refused-read fn-mca-need
                                    fn-mcr-resize fn-mca-shut-read fn-mcr-total))
            :use ((:instance fn-mcr-resize-sets-the-credit (l credits) (a nil)
                             (id (fn-mca-conn-key id))
@@ -371,7 +386,7 @@
                  (:instance fn-mcr-resize-sets-the-credit (l credits) (a nil)
                             (id (fn-mca-conn-key id))
                             (n (fn-mca-need (fn-own-tls-result-owner
-                                             (fn-oas-refused-read oc views id i end s
+                                             (fn-mca-refused-read oc views id i end s
                                                                   fn-octets fn-arena fn-cat))
                                             id reserve)))
                  (:instance fn-mcr-resize-sets-the-credit (l credits) (a nil)
