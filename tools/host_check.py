@@ -54,7 +54,11 @@ and its siblings are build.lisp's calls, not the files'), and translate
 errors in the ACL2-mode host files (tools/host_translate_check.py).  Exit 0
 clean, 1 with each finding named, 2 NOT RUN (no ACL2).
 
-    python3 tools/host_check.py --load [--build host/native/build-dtn.lisp] [FILE ...]
+    FN_ACL2=/path/to/acl2 python3 tools/host_check.py --load [--build host/native/build-dtn.lisp] [FILE ...]
+
+FN_ACL2 is REQUIRED (an `acl2` on PATH is the fallback): without an ACL2 the
+check prints NOT RUN and exits 2, which `make check' reports as a failed
+step, never a pass (host-lints' check-lane skipped it for lack of FN_ACL2).
 
 with FILEs, the order is loaded through the last of them.
 
@@ -855,7 +859,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--load", action="store_true",
                         help="load the raw host/native files in the build's order into one "
                              "bare ACL2 and report errors, arity, macro order and names "
-                             "nothing defines (seconds; no image build)")
+                             "nothing defines (seconds; no image build).  Requires FN_ACL2 "
+                             "(or acl2 on PATH): exit 2 NOT RUN without it")
     parser.add_argument("--tables", action="store_true",
                         help="static: refuse a global make-hash-table in host/ that is "
                              "neither :synchronized t nor declared thread-confined or "
@@ -879,7 +884,9 @@ def main(argv: list[str] | None = None) -> int:
             acl2 = Path(found).resolve() if found else None
         if acl2 is None:
             print("host_check --load: NOT RUN -- no ACL2 (FN_ACL2 unset and no acl2 on "
-                  "PATH)", file=sys.stderr)
+                  "PATH).  Set FN_ACL2 to the ACL2 executable (on persvati "
+                  "/home/ember/fn-gates/toolchains/w25/acl2-literal); make check "
+                  "counts this as a failed step", file=sys.stderr)
             return 2
         order = raw_load_order(args.build)
         unknown = [name for name in args.files if name not in order]
