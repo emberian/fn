@@ -11086,6 +11086,66 @@
         {
           "kind": "guarded-function",
           "name": "fn-rii-kbuild-pins"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-ctl-articles-withdrawals-in"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-ctl-drop-via"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-ctl-visible-filter"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-ctl-subseq-diff"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-own-take"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-gidx-build-entries"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-index-build"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-midx-build"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-scka-canon-rows"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-scka-enc-lens-sum"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-sct-payloads"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-sbud-record-octets"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-sbud-stored-octets"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-pgc-obligation-ids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-pgc-release-ids"
         }
       ]
     },
