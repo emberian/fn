@@ -55,6 +55,13 @@ FIXTURES = os.environ.get("FN_OPEN_DEPTH_FIXTURES")
 NAMES = [n for n in os.environ.get("FN_OPEN_DEPTH_NAMES", "syn100k-2k").replace(":", ",").split(",") if n]
 OPEN_SECONDS = 3600
 SERVED = os.environ.get("FN_OPEN_DEPTH_SERVED", "1") != "0"
+CONTROL = SERVED and os.environ.get("FN_OPEN_DEPTH_CONTROL", "1") != "0"
+# Every report the running owner renders on its control thread.
+CONTROL_REPORTS = [["status"], ["health"], ["pins"], ["obligations"], ["peer", "list"],
+                   ["account", "list"], ["account", "access", "show"], ["consumer", "show"],
+                   ["show"], ["store", "reclaim", "--dry-run"]]
+# The store verbs an operator runs with no owner (host/native/io.lisp's store dispatch).
+OFFLINE_VERBS = [["status"], ["digest"], ["journal"], ["retention"], ["compression"], ["config"]]
 # The reply codes after which a multi-line block follows (RFC 3977 3.1.1),
 # and 211 only for LISTGROUP.
 MULTI = {b"100", b"101", b"215", b"220", b"221", b"222", b"224", b"225", b"230", b"231"}
@@ -207,6 +214,11 @@ class OpenDepthTests(unittest.TestCase):
         try:
             if SERVED:
                 self.serve_every_command(name, mode, root, config, port, err_path)
+                if CONTROL:
+                    self.control_reports(name, mode, root, config, err_path)
+                self.assertEqual([(t, e) for t, e, _ in self.deaths], [],
+                                 "commands or reports that stopped the owner at {} ({})".format(
+                                     name, mode))
             else:
                 with socket.create_connection(("127.0.0.1", port), timeout=600) as conn:
                     f = conn.makefile("rwb")
@@ -325,20 +337,76 @@ class OpenDepthTests(unittest.TestCase):
         first = run("HEAD {}".format(high if high else low), None)
         if first and first.startswith(b"221") and len(first.split()) > 2:
             msgid = first.split()[2].decode("ascii")
+        self.msgid = msgid
         print("OPEN-DEPTH {} {} group={} low={} high={} msgid={}".format(
             name, mode, group, low, high, msgid), flush=True)
         for text, body in served_commands(group, low, high, msgid):
             if run(text, body) is not None and text == "QUIT":
                 break
         conn.close()
-        self.assertEqual([(t, e) for t, e, _ in deaths], [], "commands that stopped the owner at {} ({}): {}".format(
-            name, mode, "; ".join("{} (exit {})".format(t, e) for t, e, _ in deaths)))
+
+    def control_reports(self, name, mode, root, config, err_path):
+        """Every live report the control thread renders, against the open store.
+
+        The owner renders them on the control socket's thread (1,024 KiB like
+        every other): status and health stopped it at 20,000 and 60,000
+        articles (lane health-truth).  A death is recorded and the owner
+        reopened, as for a served command."""
+        msgid = getattr(self, "msgid", "<serve-depth-none@fn.invalid>")
+        for words in CONTROL_REPORTS + [["store", "inspect", msgid]]:
+            started = time.monotonic()
+            done = subprocess.run([str(verbs.IMAGE), "--fn", "operator", str(config)] + words,
+                                  env=verbs.environment(), stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, timeout=OPEN_SECONDS)
+            seconds = time.monotonic() - started
+            proc = self.state["owner"]
+            text = (done.stdout + done.stderr).decode("utf-8", "replace")
+            try:
+                proc.wait(2)
+            except subprocess.TimeoutExpired:
+                pass
+            if proc.poll() is not None or "Control stack exhausted" in text:
+                frames = dying_frames(err_path.read_bytes()[self.state["err_at"]:])
+                self.deaths.append((" ".join(words), proc.returncode, frames))
+                print("OPEN-DEPTH {} {} CONTROL {} OWNER-DIED exit={} seconds={:.1f} {} | {}".format(
+                    name, mode, " ".join(words), proc.returncode, seconds, " | ".join(frames),
+                    text.strip()[-200:]), flush=True)
+                if proc.poll() is None:
+                    proc.terminate()
+                    proc.wait(600)
+                self.state["owner"], _, _ = self.start_owner(name, mode + "-reopen", root, config,
+                                                             err_path)
+                continue
+            print("OPEN-DEPTH {} {} CONTROL {} exit={} bytes={} seconds={:.1f} {}".format(
+                name, mode, " ".join(words), done.returncode, len(done.stdout), seconds,
+                text.strip().splitlines()[-1][:100] if text.strip() else ""), flush=True)
+
+    def offline_store_verbs(self, name, root):
+        """The store verbs, with no owner, over the whole store."""
+        store = root / "store"
+        failures = []
+        for words in OFFLINE_VERBS + [["export", str(root / "export")]]:
+            started = time.monotonic()
+            done = subprocess.run([str(verbs.IMAGE), "--fn", "store", str(store)] + words,
+                                  env=verbs.environment(), stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, timeout=OPEN_SECONDS)
+            text = (done.stdout + done.stderr).decode("utf-8", "replace")
+            print("OPEN-DEPTH {} STORE {} exit={} bytes={} seconds={:.1f} {}".format(
+                name, " ".join(words[:1]), done.returncode, len(done.stdout),
+                time.monotonic() - started,
+                text.strip().splitlines()[-1][:100] if text.strip() else ""), flush=True)
+            if done.returncode != 0 or "Control stack exhausted" in text:
+                failures.append((words[0], done.returncode, text.strip()[-300:]))
+        shutil.rmtree(root / "export", ignore_errors=True)
+        self.assertEqual(failures, [], "store verbs that failed at {}".format(name))
 
     def test_full_replay_open_at_the_deployed_stack(self):
         for name in NAMES:
             with self.subTest(fixture=name):
                 root, config, port = self.prepare(name)
                 line = self.open_and_serve(name, "full-replay", root, config, port)
+                if CONTROL:
+                    self.offline_store_verbs(name, root)
                 self.assertIn("open=full-replay", line)
 
     def test_checkpoint_open_at_the_deployed_stack(self):
