@@ -39,6 +39,7 @@
 
 (in-package "ACL2")
 (include-book "nntp-effects")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "injection")
 (include-book "group-status")
 ; P3 (PRF-228): the moderated-group gate.
@@ -158,41 +159,41 @@
 (defun fn-post-refusal-line (reason)
   (declare (xargs :guard t))
   (cond
-   ((equal reason :unparsable) "441 posting failed; the article is not valid syntax")
+   ((equal reason :unparsable) (fn-proto-text "POST" :refused-unparsable))
    ;; PRF-230: the store profile's header limits, each by its field name.
-   ((equal reason :header-fields-limit) "441 posting failed; the header has more fields than the profile's max-header-fields")
-   ((equal reason :header-lines-limit) "441 posting failed; the header has more lines than the profile's max-header-lines")
-   ((equal reason :header-octets-limit) "441 posting failed; the header has more octets than the profile's max-header-octets")
+   ((equal reason :header-fields-limit) (fn-proto-text "POST" :refused-header-fields-limit))
+   ((equal reason :header-lines-limit) (fn-proto-text "POST" :refused-header-lines-limit))
+   ((equal reason :header-octets-limit) (fn-proto-text "POST" :refused-header-octets-limit))
    ;; O2 (books/group-status.lisp): RFC 3977 section 7.6.3 status "n".
-   ((equal reason :group-read-only) "441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)")
+   ((equal reason :group-read-only) (fn-proto-text "POST" :refused-group-read-only))
    ;; P3 (books/moderation.lisp): RFC 5537 section 3.5 item 7 and section 7.
-   ((equal reason :approval-not-moderator) "441 posting failed; Approved is accepted only from a moderator of each moderated group named (LIST ACTIVE status m)")
-   ((equal reason :moderation-unavailable) "441 posting failed; a moderated group is named and the article could not be forwarded to its moderation queue")
-   ((equal reason :injection-info) "441 posting failed; Injection-Info must not be supplied")
-   ((equal reason :xref) "441 posting failed; Xref must not be supplied")
-   ((equal reason :injection-date-present) "441 posting failed; Injection-Date must not be supplied")
-   ((equal reason :path-present) "441 posting failed; Path must not be supplied")
-   ((equal reason :path-malformed) "441 posting failed; Path is not a valid path")
-   ((equal reason :path-duplicate) "441 posting failed; Path appears more than once")
-   ((equal reason :path-posted) "441 posting failed; Path must not carry a POSTED diagnostic")
-   ((equal reason :newsgroups-missing) "441 posting failed; Newsgroups is required")
-   ((equal reason :newsgroups-duplicate) "441 posting failed; Newsgroups appears more than once")
-   ((equal reason :newsgroups-invalid) "441 posting failed; Newsgroups is not a valid newsgroup list")
-   ((equal reason :message-id-duplicate) "441 posting failed; Message-ID appears more than once")
-   ((equal reason :message-id-invalid) "441 posting failed; Message-ID is not a valid identifier")
-   ((equal reason :from-missing) "441 posting failed; From is required")
-   ((equal reason :from-duplicate) "441 posting failed; From appears more than once")
-   ((equal reason :from-invalid) "441 posting failed; From is not a valid mailbox list")
-   ((equal reason :subject-missing) "441 posting failed; Subject is required")
-   ((equal reason :subject-duplicate) "441 posting failed; Subject appears more than once")
-   ((equal reason :date-duplicate) "441 posting failed; Date appears more than once")
-   ((equal reason :no-groups) "441 posting failed; no newsgroup was named")
-   ((equal reason :unknown-group) "441 posting failed; a named newsgroup is not carried here")
-   ((equal reason :oversize) "441 posting failed; the article exceeds the configured size")
-   ((equal reason :clock-unusable) "441 posting failed; this server has no usable clock reading")
-   ((equal reason :clock-out-of-range) "441 posting failed; this server clock is outside the modelled range")
-   ((equal reason :posting-disallowed) "441 posting failed; posting is not permitted")
-   (t "441 posting failed")))
+   ((equal reason :approval-not-moderator) (fn-proto-text "POST" :refused-approval-not-moderator))
+   ((equal reason :moderation-unavailable) (fn-proto-text "POST" :refused-moderation-unavailable))
+   ((equal reason :injection-info) (fn-proto-text "POST" :refused-injection-info))
+   ((equal reason :xref) (fn-proto-text "POST" :refused-xref))
+   ((equal reason :injection-date-present) (fn-proto-text "POST" :refused-injection-date-present))
+   ((equal reason :path-present) (fn-proto-text "POST" :refused-path-present))
+   ((equal reason :path-malformed) (fn-proto-text "POST" :refused-path-malformed))
+   ((equal reason :path-duplicate) (fn-proto-text "POST" :refused-path-duplicate))
+   ((equal reason :path-posted) (fn-proto-text "POST" :refused-path-posted))
+   ((equal reason :newsgroups-missing) (fn-proto-text "POST" :refused-newsgroups-missing))
+   ((equal reason :newsgroups-duplicate) (fn-proto-text "POST" :refused-newsgroups-duplicate))
+   ((equal reason :newsgroups-invalid) (fn-proto-text "POST" :refused-newsgroups-invalid))
+   ((equal reason :message-id-duplicate) (fn-proto-text "POST" :refused-message-id-duplicate))
+   ((equal reason :message-id-invalid) (fn-proto-text "POST" :refused-message-id-invalid))
+   ((equal reason :from-missing) (fn-proto-text "POST" :refused-from-missing))
+   ((equal reason :from-duplicate) (fn-proto-text "POST" :refused-from-duplicate))
+   ((equal reason :from-invalid) (fn-proto-text "POST" :refused-from-invalid))
+   ((equal reason :subject-missing) (fn-proto-text "POST" :refused-subject-missing))
+   ((equal reason :subject-duplicate) (fn-proto-text "POST" :refused-subject-duplicate))
+   ((equal reason :date-duplicate) (fn-proto-text "POST" :refused-date-duplicate))
+   ((equal reason :no-groups) (fn-proto-text "POST" :refused-no-groups))
+   ((equal reason :unknown-group) (fn-proto-text "POST" :refused-unknown-group))
+   ((equal reason :oversize) (fn-proto-text "POST" :refused-oversize))
+   ((equal reason :clock-unusable) (fn-proto-text "POST" :refused-clock-unusable))
+   ((equal reason :clock-out-of-range) (fn-proto-text "POST" :refused-clock-out-of-range))
+   ((equal reason :posting-disallowed) (fn-proto-text "POST" :refused-posting-disallowed))
+   (t (fn-proto-text "POST" :refused-unnamed))))
 
 ; books/wire.lisp delivers an (:article lines) event, where each line is its
 ; octets without CRLF and dot-stuffing has already been undone.  Reassembling
@@ -458,7 +459,7 @@
            (fn-post-make-session (fn-post-session-base ps) nil)
            (fn-post-single ps (if (equal wire-event '(:reject :body-overlimit))
                                   (fn-post-refusal-line :oversize)
-                                "441 posting failed; the article was not received"))
+                                (fn-proto-text "POST" :not-received)))
            nil))
       ; The reader environment is built here, where the dispatcher is called:
       ; the connection's pinned clock observation and the persisted
@@ -479,7 +480,7 @@
                  (fn-nntp-result-effects r) nil)
               (fn-post-make-result
                (fn-post-make-session (fn-nntp-result-session r) nil)
-               (fn-post-single ps "440 posting not permitted")
+               (fn-post-single ps (fn-proto-text "POST" :not-permitted))
                nil))
           (fn-post-make-result
            (fn-post-make-session (fn-nntp-result-session r) nil)
@@ -599,10 +600,10 @@
   (string-append "441 posting failed; " (fn-post-store-refusal-text kind)))
 
 (defconst *fn-post-malformed-session-line*
-  "403 internal fault; the posting session is malformed")
+  (fn-proto-text "POST" :malformed-session))
 
 (defconst *fn-post-durable-key-change-refused-line*
-  "240 article received OK; the key change it carries was refused (key-change-refused)")
+  (fn-proto-text "POST" :key-change-refused))
 
 (defun fn-nntp-post-outcome (ps completion)
   (declare (xargs :guard t))
@@ -613,7 +614,7 @@
      ps
      (fn-post-single
       ps
-      (cond ((equal completion :durable) "240 article received OK")
+      (cond ((equal completion :durable) (fn-proto-text "POST" :received))
             ;; PKT-473 (PRF-184): durable, and the key change the article
             ;; carried was refused by the Store (books/owner.lisp
             ;; fn-own-post-rendering).  RFC 3977 section 6.3.1: 240, its
@@ -624,7 +625,7 @@
              (fn-post-refusal-line :clock-unusable))
             ((fn-post-store-refusalp completion)
              (fn-post-store-refusal-line completion))
-            (t "441 posting failed; the outcome is uncertain, do not repost")))
+            (t (fn-proto-text "POST" :uncertain))))
      nil)))
 
 (verify-guards fn-post-session-shapep)
@@ -1079,7 +1080,7 @@
                (fn-nntp-result-effects r) nil)
             (fn-post-make-result
              (fn-post-make-session (fn-nntp-result-session r) nil)
-             (fn-post-single ps "440 posting not permitted") nil))
+             (fn-post-single ps (fn-proto-text "POST" :not-permitted)) nil))
         (fn-post-make-result
          (fn-post-make-session (fn-nntp-result-session r) nil)
          (fn-nntp-result-effects r) nil)))))

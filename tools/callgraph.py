@@ -22,7 +22,9 @@ in a file's forms (inside `local', `encapsulate', `mutual-recursion',
 `progn', `defsection', `when' ... ), except inside another definition (a
 macro's template that writes `(defun ...)' is the macro's body, not a
 definition) and except under `quote'.  `fn-defrecord' forms contribute the
-functions the ledger's own expansion generates (books/defrecord.lisp).
+functions the ledger's own expansion generates (books/defrecord.lisp), and
+the `defprotocol' form the macro `fn-nntp-command-dispatch' it defines
+(ledger.defprotocol_expansion).
 
 AN EDGE is a MENTION: A -> B when the symbol B occurs anywhere in A's
 definition and B is itself defined somewhere in the tree.  That is
@@ -153,6 +155,10 @@ def collect(forms: list[tuple[object, int]], path: str, records: bool = True) ->
                 found.append(Definition(defined, "macro" if name in MACRO_HEADS else "function",
                                         path, line, form))
                 return
+        if name == "defprotocol":  # books/protocol-table.lisp: the generated macro
+            for item in ledger.defprotocol_expansion(form):
+                found.append(Definition(definition_name(item), "macro", path, line, item))
+            return
         if records and name in RECORD_HEADS:
             try:
                 expansion = (ledger.defrecord_expansion(form) if name == "fn-defrecord"

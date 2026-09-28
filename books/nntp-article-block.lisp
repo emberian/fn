@@ -24,6 +24,7 @@
 
 (in-package "ACL2")
 (include-book "nntp-responses")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 
 (local (in-theory (enable fn-nntp-crlf-lines fn-nntp-stuff-lines fn-nntp-crlf)))
 

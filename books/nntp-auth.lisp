@@ -57,6 +57,7 @@
 
 (in-package "ACL2")
 (include-book "peer-inbound")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 ; PRF-222: the restricted view a login's access rule serves.
 (include-book "group-access")
 (include-book "principal")
@@ -1010,16 +1011,16 @@
      ; Already authenticated: section 2.3.1 note [2], the command is not
      ; available to this client.  Never 480: section 2.3.2 forbids it.
      ((fn-auth-session-subject as)
-      (fn-post-make-result as (fn-auth-single as "502 already authenticated") nil))
+      (fn-post-make-result as (fn-auth-single as (fn-proto-text * :already)) nil))
      ; Section 2.3.2: a cleartext mechanism on an unprotected connection is
      ; 483, and the client is told to protect the channel first.
      ((and (fn-auth-config-protected-onlyp acfg) (not (fn-auth-session-tlsp as)))
       (fn-post-make-result
-       as (fn-auth-single as "483 a protected channel is required; use STARTTLS")
+       as (fn-auth-single as (fn-proto-text * :protect))
        nil))
      ((and (consp args) (fn-nntp-keywordp (car args) "USER"))
       (if (not (fn-auth-token-argp (cdr args)))
-          (fn-post-make-result as (fn-auth-single as "501 syntax error") nil)
+          (fn-post-make-result as (fn-auth-single as (fn-proto-text * :syntax)) nil)
         ; Section 2.3.2: "MUST return a 381 response to AUTHINFO USER".
         ; Unconditionally: whether the name is known is not disclosed here.
         (fn-post-make-result
@@ -1027,16 +1028,16 @@
                                (car (cdr args)) nil
                                (fn-auth-session-tlsp as)
                                (fn-auth-session-handshakingp as))
-         (fn-auth-single as "381 password required")
+         (fn-auth-single as (fn-proto-text "AUTHINFO" :password))
          nil)))
      ((and (consp args) (fn-nntp-keywordp (car args) "PASS"))
       (if (not (fn-auth-token-argp (cdr args)))
-          (fn-post-make-result as (fn-auth-single as "501 syntax error") nil)
+          (fn-post-make-result as (fn-auth-single as (fn-proto-text * :syntax)) nil)
         (if (not (fn-auth-session-pending as))
             ; Section 2.3.2: "MUST give a 482 response to AUTHINFO PASS if
             ; there is no cached username."
             (fn-post-make-result
-             as (fn-auth-single as "482 authentication commands issued out of sequence")
+             as (fn-auth-single as (fn-proto-text "AUTHINFO" :sequence))
              nil)
           (let ((cred (fn-auth-find-cred (fn-auth-session-pending as)
                                          (fn-auth-config-creds acfg))))
@@ -1051,7 +1052,7 @@
                                authenticated (fn-auth-cred-principal cred))))
                 (fn-post-make-result
                  bound
-                 (fn-auth-single as "281 authentication accepted")
+                 (fn-auth-single as (fn-proto-text "AUTHINFO" :accepted))
                  nil))
               ; The cached name is cleared on failure, so a failed PASS
               ; cannot be retried without a fresh USER.
@@ -1059,15 +1060,15 @@
                (fn-auth-make-session (fn-auth-session-base as) acfg nil nil
                                      (fn-auth-session-tlsp as)
                                      (fn-auth-session-handshakingp as))
-               (fn-auth-single as "481 authentication failed")
+               (fn-auth-single as (fn-proto-text "AUTHINFO" :failed))
                nil))))))
      ; SASL (section 2.4) is DEFERRED, not refused: no mechanism is
      ; implemented, so section 2.4.1 note [2]'s 502 is the honest answer and
      ; the SASL capability argument is never advertised.
      ((and (consp args) (fn-nntp-keywordp (car args) "SASL"))
-      (fn-post-make-result as (fn-auth-single as "502 no SASL mechanism is offered")
+      (fn-post-make-result as (fn-auth-single as (fn-proto-text "AUTHINFO" :no-sasl))
                            nil))
-     (t (fn-post-make-result as (fn-auth-single as "501 syntax error") nil)))))
+     (t (fn-post-make-result as (fn-auth-single as (fn-proto-text * :syntax)) nil)))))
 
 ;; XREDEEM (an fn extension; specs/nntp.md "Invitation-code accounts",
 ;; NNT-034).  Not RFC 4643's AUTHINFO, which nothing here overloads; the
@@ -1093,19 +1094,19 @@
         (pending (fn-auth-session-pending as)))
     (cond
      ((fn-auth-session-subject as)
-      (fn-post-make-result as (fn-auth-single as "502 already authenticated") nil))
+      (fn-post-make-result as (fn-auth-single as (fn-proto-text * :already)) nil))
      ((and (fn-auth-config-protected-onlyp acfg) (not (fn-auth-session-tlsp as)))
       (fn-post-make-result
-       as (fn-auth-single as "483 a protected channel is required; use STARTTLS")
+       as (fn-auth-single as (fn-proto-text * :protect))
        nil))
      ((and (consp args) (fn-nntp-keywordp (car args) "PASS"))
       (cond
        ((not (fn-auth-token-argp (cdr args)))
-        (fn-post-make-result as (fn-auth-single as "501 syntax error") nil))
+        (fn-post-make-result as (fn-auth-single as (fn-proto-text * :syntax)) nil))
        ((not (and (fn-auth-redeem-statep pending)
                   (equal (car pending) :xredeem)))
         (fn-post-make-result
-         as (fn-auth-single as "482 redemption commands issued out of sequence")
+         as (fn-auth-single as (fn-proto-text "XREDEEM" :sequence))
          nil))
        (t
         (fn-post-make-result
@@ -1122,9 +1123,9 @@
                              (list :xredeem (car args) (car (cdr args)))
                              nil (fn-auth-session-tlsp as)
                              (fn-auth-session-handshakingp as))
-       (fn-auth-single as "381 send the password with XREDEEM PASS")
+       (fn-auth-single as (fn-proto-text "XREDEEM" :password))
        nil))
-     (t (fn-post-make-result as (fn-auth-single as "501 syntax error") nil)))))
+     (t (fn-post-make-result as (fn-auth-single as (fn-proto-text * :syntax)) nil)))))
 
 (defun fn-auth-redeem-waitp (as)
   (declare (xargs :guard t))
@@ -1154,8 +1155,8 @@
                              nil nil (fn-auth-session-tlsp as) nil)
        (if (equal (cadr wire-event) :bound)
            (fn-auth-single
-            as "281 account bound; authenticate with AUTHINFO on a new connection")
-         (fn-auth-single as "482 invitation code refused"))
+            as (fn-proto-text "XREDEEM" :bound))
+         (fn-auth-single as (fn-proto-text "XREDEEM" :refused)))
        nil)
     (fn-post-make-result as nil nil)))
 
@@ -1169,19 +1170,19 @@
                   (("Goal" :in-theory (disable fn-auth-single fn-nntp-single
                                                fn-nntp-result-effects)
                     :use ((:instance fn-auth-single-is-true-listp
-                                     (text "382 continue with TLS negotiation")))))))
+                                     (text (fn-proto-text "STARTTLS" :continue))))))))
   (cond
    ((not (null args))
-    (fn-post-make-result as (fn-auth-single as "501 syntax error") nil))
+    (fn-post-make-result as (fn-auth-single as (fn-proto-text * :syntax)) nil))
    ; Section 2.2.2: once a TLS layer is active, STARTTLS is not a valid
    ; command.  Never 480 or 483: the section forbids both here.
    ((fn-auth-session-tlsp as)
-    (fn-post-make-result as (fn-auth-single as "502 a TLS layer is already active")
+    (fn-post-make-result as (fn-auth-single as (fn-proto-text "STARTTLS" :active))
                          nil))
    ; Section 2.2.2: unable to initiate, for a configuration reason, is 580.
    ((not (fn-auth-config-tls-availablep (fn-auth-session-config as)))
     (fn-post-make-result
-     as (fn-auth-single as "580 can not initiate TLS negotiation") nil))
+     as (fn-auth-single as (fn-proto-text "STARTTLS" :cannot)) nil))
    (t
     ; 382 and then the handshake.  The session becomes HANDSHAKING, not
     ; TLS: section 2.2 forbids pipelining STARTTLS and puts the handshake's
@@ -1196,7 +1197,7 @@
     (fn-post-make-result
      (fn-auth-make-session (fn-auth-session-base cleared)
                            (fn-auth-session-config as) nil nil nil t)
-     (append (fn-auth-single as "382 continue with TLS negotiation")
+     (append (fn-auth-single as (fn-proto-text "STARTTLS" :continue))
              (list (fn-auth-starttls-effect)))
      nil)))))
 
@@ -1237,7 +1238,7 @@
   (cond
    ((fn-auth-gatedp as keyword)
     ; RFC 4643 section 2.2: 480, and the command is not performed.
-    (fn-post-make-result as (fn-auth-single as "480 authentication required")
+    (fn-post-make-result as (fn-auth-single as (fn-proto-text * :auth-required))
                          nil))
    ; RFC 3977 section 3.2.1 / 6.3.1.1: 440 is "posting not permitted", and
    ; it is the answer when the authenticated principal was enrolled without
@@ -1249,7 +1250,7 @@
    ; AUTHINFO, STARTTLS or CAPABILITIES.
    ((and (fn-nntp-keywordp keyword "POST") (not (fn-auth-postingp as)))
     (fn-post-make-result
-     as (fn-auth-single as "440 posting not permitted for this principal") nil))
+     as (fn-auth-single as (fn-proto-text "POST" :principal)) nil))
    ((fn-nntp-keywordp keyword "AUTHINFO") (fn-auth-authinfo as args))
    ((fn-nntp-keywordp keyword "XREDEEM") (fn-auth-xredeem as args))
    ((fn-nntp-keywordp keyword "STARTTLS") (fn-auth-starttls as args))
@@ -1261,7 +1262,7 @@
      as
       (fn-nntp-result-effects
       (fn-nntp-multi (fn-auth-reader-session as)
-                     "101 capability list follows"
+                     (fn-proto-text "CAPABILITIES" :list)
                      (fn-auth-capability-lines-for-peer
                       (fn-auth-session-config as)
                       (fn-auth-session-subject as)

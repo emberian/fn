@@ -1164,9 +1164,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-catchup-tests \
 	books/protocol-table \
 	books/protocol-builders \
+	books/protocol-codes-rows \
 	books/protocol-codes \
 	books/protocol-framing \
+	books/protocol-dispatch \
 	tests/acl2/protocol-codes-tests \
+	tests/acl2/protocol-dispatch-tests \
+	tests/acl2/protocol-codes-hra-tests \
+	tests/acl2/protocol-text-tests \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \

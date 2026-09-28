@@ -39,6 +39,7 @@
 
 (in-package "ACL2")
 (include-book "nntp-range-indexed")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 
 
 ; -----------------------------------------------------------------------------
@@ -288,7 +289,7 @@
   (let ((group (fn-nntp-session-group session))
         (range (fn-nntp-parse-range token)))
     (if (null group)
-        (fn-nntp-single session "412 no newsgroup selected")
+        (fn-nntp-single session (fn-proto-text * :no-group-selected))
       (let* ((entries (fn-gidx-bucket group buckets))
              (numbers (fn-nntp-index-group-range-numbers
                        entries group (fn-nntp-range-low range)
@@ -297,10 +298,10 @@
                      numbers (fn-gidx-bucket-numbers group buckets) trie
                      server fn-arena)))
         (if (consp lines)
-            (fn-nntp-multi session "224 overview information follows" lines)
+            (fn-nntp-multi session (fn-proto-text * :overview) lines)
           (fn-nntp-single
-           session (if legacyp "420 no article(s) selected"
-                     "423 no articles in that range")))))))
+           session (if legacyp (fn-proto-text * :none-selected)
+                     (fn-proto-text * :empty-range))))))))
 
 (defthm fn-nntp-over-range-served-without-a-server
   (equal (fn-nntp-over-range-served session buckets trie token legacyp nil fn-arena)
@@ -319,22 +320,22 @@
   (let ((group (fn-nntp-session-group session))
         (current (fn-nntp-session-current session)))
     (if (null group)
-        (fn-nntp-single session "412 no newsgroup selected")
+        (fn-nntp-single session (fn-proto-text * :no-group-selected))
       (if (null current)
-          (fn-nntp-single session "420 no current article")
+          (fn-nntp-single session (fn-proto-text * :no-current))
         (let ((article (fn-nntp-available-article
                         group current (fn-state-articles archive))))
           (if (not (consp article))
-              (fn-nntp-single session "420 no current article")
+              (fn-nntp-single session (fn-proto-text * :no-current))
             (if (fn-nntp-article-tombstonep article fn-arena)
-                (fn-nntp-single session "423 article reclaimed")
+                (fn-nntp-single session (fn-proto-text * :reclaimed))
               (let ((over (fn-nov-overview article fn-arena)))
                 (if (fn-nov-okp over)
-                    (fn-nntp-multi session "224 overview information follows"
+                    (fn-nntp-multi session (fn-proto-text * :overview)
                                    (list (fn-nov-served-line current over
                                                              server article)))
                   (fn-nntp-single
-                   session "503 stored article framing unavailable"))))))))))
+                   session (fn-proto-text * :no-framing)))))))))))
 
 (defthm fn-nntp-over-current-served-without-a-server
   (equal (fn-nntp-over-current-served session archive nil fn-arena)
@@ -350,15 +351,15 @@
   (let ((article (fn-find-article (fn-nntp-token-string token)
                                   (fn-state-articles archive))))
     (if (not (consp article))
-        (fn-nntp-single session "430 no article with that message-id")
+        (fn-nntp-single session (fn-proto-text * :no-msgid))
       (if (fn-nntp-article-tombstonep article fn-arena)
-          (fn-nntp-single session "430 article reclaimed")
+          (fn-nntp-single session (fn-proto-text * :reclaimed-msgid))
         (let ((over (fn-nov-overview article fn-arena)))
           (if (fn-nov-okp over)
-              (fn-nntp-multi session "224 overview information follows"
+              (fn-nntp-multi session (fn-proto-text * :overview)
                              (list (fn-nov-served-line 0 over server article)))
             (fn-nntp-single session
-                            "503 stored article framing unavailable")))))))
+                            (fn-proto-text * :no-framing))))))))
 
 (defthm fn-nntp-over-msgid-served-without-a-server
   (equal (fn-nntp-over-msgid-served session archive token nil fn-arena)
@@ -382,7 +383,7 @@
 (defun fn-nntp-list-overview-fmt-served (session)
   (declare (xargs :guard t :verify-guards nil))
   (fn-nntp-multi-octets
-   session (fn-nntp-string-octets "215 order of fields in overview database")
+   session (fn-nntp-string-octets (fn-proto-text "LIST" :overview-fmt))
    (fn-nov-fmt-octet-lines *fn-nov-fmt-xref-lines*)))
 
 ; -----------------------------------------------------------------------------

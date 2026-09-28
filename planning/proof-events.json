@@ -11665,6 +11665,15 @@
       ]
     },
     {
+      "id": "PRF-351",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-proto-command-pinned-is-command-pinned"
+        }
+      ]
+    },
+    {
       "id": "PRF-345",
       "events": [
         {
