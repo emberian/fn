@@ -17,11 +17,6 @@
 (include-book "stx-policy")
 (include-book "membership-epochs-invariants")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-me-commitp)
-                          (:definition fn-me-commitsp))))
-
 (local (in-theory (enable (:d fn-stx-delta) (:d fn-stx-batch-delta))))
 
 ; -----------------------------------------------------------------------------

@@ -42,14 +42,6 @@
 (include-book "payload-extent")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-lg-entry-okp)
-                          (:linear fn-cp-id-length-bound)
-                          (:linear fn-record-accepted-input-length)
-                          (:rewrite fn-lgc-consp-nthcdr)
-                          (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1))))
-
 (local (in-theory (disable floor mod)))
 
 ; The walk's buffer: its own live object, congruent to fn-octets (the served

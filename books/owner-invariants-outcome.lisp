@@ -13,10 +13,6 @@
 ; fn-inj-injection-requires-posting-allowed: the operator keystones below.
 (local (include-book "injection-invariants"))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:linear fn-record-accepted-input-length))))
-
 (local (in-theory (enable fn-own-vocabulary fn-ag-append fn-ag-member)))
 
 ; List-recursive vocabulary of other clusters that must stay closed here so

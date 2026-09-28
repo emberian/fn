@@ -31,10 +31,6 @@
 (include-book "principal")
 (include-book "statement-invariants")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-digest-octetsp))))
-
 ;; Convergence: the codecs cluster withdraws its proof vocabulary on export;
 ;; re-open it locally (agreed on the deputy board, codecs ANSWER to substrate).
 (local (in-theory (enable fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary fn-record-invariants-vocabulary)))

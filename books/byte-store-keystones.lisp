@@ -27,10 +27,6 @@
 (include-book "store-sweep")
 (include-book "consumer-store-invariants")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-csi-full-relationp))))
-
 ; -----------------------------------------------------------------------------
 ; K3.  The constructor as a corollary: fn-sf-image-crash, applied to the
 ; image the scan reads, reproduces it exactly, and lands the kernel in

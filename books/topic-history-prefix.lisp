@@ -3,10 +3,6 @@
 (in-package "ACL2")
 (include-book "store-events")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-th-exact-octets-p))))
-
 ;
 ; A retained accepted statement (fn-hstxa-p, three wide) is never a topic
 ; event (eight or nine wide, or a six-wide local install): the prefix step's

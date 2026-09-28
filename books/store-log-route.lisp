@@ -9,10 +9,6 @@
 (include-book "records-concrete")
 (include-book "store-log-programs")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-lgc-consp-nthcdr))))
-
 ; -----------------------------------------------------------------------------
 ; The store node (the developer store bridge: host/store-node-host.lisp
 ; fn-store-sn-io's :log-reserve and :log-order arms).

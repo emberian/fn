@@ -33,12 +33,6 @@
 (include-book "byte-store-programs")
 (include-book "byte-store-invariants")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bs-dir-idp)
-                          (:definition fn-bs-keys-belowp)
-                          (:rewrite fn-bs-keys-belowp-excludes-bound))))
-
 ; -----------------------------------------------------------------------------
 ; The directory rename.  byte-store's fn-bs-rename moves a file entry; a
 ; directory entry (a directory id) moves the same way: ONE :set-entry on the

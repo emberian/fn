@@ -4,15 +4,6 @@
 (in-package "ACL2")
 (include-book "group-bucket-index")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-gnix-add)
-                          (:definition fn-gnix-build)
-                          (:definition fn-gnix-key)
-                          (:definition fn-nntp-index-entry-available)
-                          (:definition fn-nntp-index-msgid-okp)
-                          (:rewrite fn-gidx-bucket-numbers-under-okp))))
-
 (defun fn-gidx-find-number-entry (group number entries)
   (declare (xargs :guard t))
   (if (consp entries)

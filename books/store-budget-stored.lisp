@@ -20,10 +20,6 @@
 (include-book "store-budget")
 (include-book "store-intern")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-stxa-is-no-other-wire-event))))
-
 ; One row's stored charge, read from the arena: a held row's handle extent
 ; (0 for a handle outside the arena), a composite row's wire composite, any
 ; other row its wire encoding; and an article row (held or composite) its

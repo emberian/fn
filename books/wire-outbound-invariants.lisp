@@ -4,11 +4,6 @@
 (in-package "ACL2")
 (include-book "wire-invariants")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-wire-octet-listp)
-                          (:rewrite fn-wire-octet-listp-cdr))))
-
 ; Reattach source CRLF delimiters to forward-order source lines.  The second
 ; form takes a tail and consumes a reverse-order accumulator; its continuation
 ; shape is what the scanner's ordinary octet branch preserves by definition.

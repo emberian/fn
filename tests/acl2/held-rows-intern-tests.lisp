@@ -6,11 +6,6 @@
 (include-book "held-rows-tests")
 (include-book "../../books/store-intern")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-intern-event-arena)
-                          (:rewrite fn-stxa-is-no-other-wire-event))))
-
 (defthm fn-hrt-event-is-intern-event-by-definition
   (equal (fn-hrt-event w keyring generation fn-arena)
          (fn-intern-event w keyring generation fn-arena))

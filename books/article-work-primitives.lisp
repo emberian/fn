@@ -3,11 +3,6 @@
 (include-book "article-properties")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-article-header-bytes-p)
-                          (:rewrite fn-ap-at-most-is-length-bound))))
-
 ; Cost units count list-walk visits and fixed-size scalar/control blocks.
 ; Fixed-tag comparisons never compare two arbitrary trees in this call graph.
 ; Big-integer bit costs, compiler/runtime bookkeeping and GC are not counted.

@@ -38,14 +38,6 @@
 ; The held row from one parse of the article (lane snapshot-open-3).
 (include-book "store-intern-once")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-arn-extent-guardp)
-                          (:definition fn-arn-extentp)
-                          (:rewrite fn-arn-payload-listp-true-listp)
-                          (:rewrite fn-bs-stxa-is-no-other-wire-event)
-                          (:rewrite fn-intern-event-arena))))
-
 ; -----------------------------------------------------------------------------
 ; 1. Octets as a big-endian natural (the trailer, 32 octets: one bignum).
 

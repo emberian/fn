@@ -4,11 +4,6 @@
 (include-book "group-bucket-article")
 (include-book "nntp-index")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-index-entry-available)
-                          (:definition fn-nntp-index-msgid-okp))))
-
 (defthm fn-gidx-find-number-entry-of-memberships
   (implies (and (fn-membership-listp groups memberships)
                 (fn-no-duplicatesp groups))

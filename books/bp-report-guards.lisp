@@ -4,10 +4,6 @@
 (include-book "bp-node-fragment-guards")
 (include-book "bp-report-observe")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpn-report-held-delete-pendingp))))
-
 (verify-guards fn-bpn-report-delete-record)
 (verify-guards fn-bpn-report-delete-with-intent)
 (verify-guards fn-bpnf-delete-values)

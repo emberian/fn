@@ -26,10 +26,6 @@
 ; fn-sn-io-preserves-state and fn-sn-finish-preserves-state.
 (local (include-book "store-node-invariants"))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-article-successful-parse-input-octets))))
-
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary

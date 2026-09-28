@@ -33,10 +33,6 @@
 ; PKT-597: the injected octets carry the Injection-Info parameters.
 (include-book "injection-info-params-invariants")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-ipp-addr-specp))))
-
 (local (in-theory (disable fn-inj-decide fn-inj-injectedp fn-inj-source-of
                            fn-inj-decision-octets fn-inj-decision-msgid
                            fn-find-article fn-cl-served-payload

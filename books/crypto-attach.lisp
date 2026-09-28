@@ -45,10 +45,6 @@
 (include-book "blake3")
 (include-book "blake3-stobj")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-digest-octetsp))))
-
 (local (in-theory (enable fn-cbor-codec-vocabulary
                           fn-cbor-invariants-vocabulary
                           fn-crypto-seam-internals)))

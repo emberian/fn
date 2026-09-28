@@ -9,11 +9,6 @@
 (include-book "wire-invariants")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-wire-octet-listp)
-                          (:rewrite fn-wire-octet-listp-cdr))))
-
 (defun fn-fc-table-initial-state ()
   (declare (xargs :guard t))
   nil)

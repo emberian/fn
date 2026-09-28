@@ -29,11 +29,6 @@
 (in-package "ACL2")
 (include-book "owner-control-read")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-nntp-message-id-token-is-response-text)
-                          (:rewrite fn-nntp-response-text-is-octets))))
-
 ;; The dispatcher arm: over a Message-ID the pinned trie holds, the pinned
 ;; dispatcher answers the enrollment line.
 (defthm fn-nntp-hdr-fn-enrollment-is-the-pinned-enrollment

@@ -52,10 +52,6 @@
 (in-package "ACL2")
 (include-book "served")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-effectp))))
-
 (local (in-theory (enable fn-nntp-syntax-vocabulary
                           fn-nntp-session-vocabulary
                           fn-nntp-responses-vocabulary)))

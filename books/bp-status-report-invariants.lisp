@@ -4,12 +4,6 @@
 (include-book "bp-status-report")
 (include-book "bp-primary-invariants")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpp-name-delim-at)
-                          (:definition fn-bpp-vcharp)
-                          (:rewrite fn-bpp-vchar-listp-implies-octet-listp))))
-
 (defthm fn-bpn-report-read-source-of-encode
   (implies (and (fn-bpp-eidp source)
                 (fn-cbor-octet-listp rest)

@@ -29,10 +29,6 @@
 (include-book "frame-invariants")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:linear fn-frame-at-mostp-bounds-len))))
-
 ; Local vocabulary re-enable (docs/proof-style.md sec. 2).  This is the ONLY
 ; book of the anchor cluster that opens anything of frame's, and it opens the
 ; small predicates and the two result records, never the field grammar

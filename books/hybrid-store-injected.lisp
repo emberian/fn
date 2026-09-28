@@ -17,11 +17,6 @@
 (include-book "injection")
 (local (include-book "injection-invariants"))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-af-atextp)
-                          (:definition fn-af-dot-atom-text-aux))))
-
 ; The portable carrier is not yet a locally injected news article.  Route it
 ; through the same ACL2 injecting agent used by POST and operator post, so
 ; Path, Injection-Date and Injection-Info are the node's trace projection and

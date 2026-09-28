@@ -59,10 +59,6 @@
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "nntp-article-block")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-article-idp))))
-
 ; -----------------------------------------------------------------------------
 ; NEWGROUPS and LIST ACTIVE.TIMES over the facts the view holds
 

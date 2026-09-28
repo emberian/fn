@@ -29,10 +29,6 @@
 
 (include-book "bp-bundle")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpb-block-listp))))
-
 ;; This book opens `books/bp-bundle`'s own definitions, and nothing else.
 ;; The records stay opaque: `fn-bpb-block-internals` and
 ;; `fn-bpb-bundle-internals` are NOT enabled, so no goal here is ever about

@@ -20,12 +20,6 @@
 (include-book "nntp-responses")
 (include-book "nntp-range-indexed")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-index-entry-available)
-                          (:definition fn-nntp-index-msgid-okp)
-                          (:definition fn-nntp-message-id-tokenp))))
-
 ;  KEYSTONE.  By Message-ID: when the served index corresponds to the
 ; archive (the invariant the connection carries) and the article the token
 ; names is a tombstone, the answer is 430 article reclaimed.

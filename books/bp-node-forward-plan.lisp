@@ -14,10 +14,6 @@
 (in-package "ACL2")
 (include-book "bp-node-progress-guards")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpnf-find-arrival))))
-
 ; The fragment, report and wire-text recognizers the included books leave
 ; enabled are never what a plan or dispatch goal is about, and rewriting
 ; through them (true-listp backchains over every held row) was most of this

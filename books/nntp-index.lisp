@@ -23,13 +23,6 @@
 (include-book "index")
 (include-book "nntp-index-runtime")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-article-idp)
-                          (:definition fn-nntp-index-entry-available)
-                          (:definition fn-nntp-index-msgid-okp)
-                          (:definition fn-nntp-message-id-tokenp))))
-
 ; This book reasons about the NNTP transitions themselves, so it opens the
 ; vocabularies the five books of the nntp cluster withdraw at their export
 ; events (2026-09-19 split of books/nntp.lisp).

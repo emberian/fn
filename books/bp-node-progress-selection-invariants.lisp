@@ -3,10 +3,6 @@
 (in-package "ACL2")
 (include-book "bp-node-progress")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpnp-busy-count))))
-
 ; Selection scans all held rows; a blocked older row cannot replace an
 ; eligible newer row.  The N03 teeth book supplies the reachable route-wait
 ; and local-ready antecedent through the actual outer transition.

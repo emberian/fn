@@ -65,10 +65,6 @@
 (include-book "outcome-class")
 (include-book "heap-store-figure")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-sccr-scc-octet-listp-is-cbor-octet-listp))))
-
 (defconst *fn-heap-mib* 1048576)
 (defconst *fn-heap-octets-per-list-octet* 16)
 

@@ -41,13 +41,6 @@
 (in-package "ACL2")
 (include-book "records-shape")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-cbor-decode)
-                          (:definition fn-cbor-decode-bounded)
-                          (:definition fn-cbor-decode-prechecked)
-                          (:rewrite fn-record-cbor-octet-list-true-listp))))
-
 ; This book is the schema-0 codec over the CBOR primitives, so it opens their
 ; definitions locally.  CBOR results stay opaque: the record lemmas exported
 ; by `cbor' are what close the goals about them.

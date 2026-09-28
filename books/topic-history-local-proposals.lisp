@@ -4,10 +4,6 @@
 (in-package "ACL2")
 (include-book "topic-history-prefix")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-th-exact-octets-p))))
-
 (defun fn-th-prefix-find-accepted-sequence (sequence accepted)
   (declare (xargs :guard t :measure (len accepted)))
   (if (consp accepted)

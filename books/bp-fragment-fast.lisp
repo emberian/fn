@@ -13,12 +13,6 @@
 (in-package "ACL2")
 (include-book "bp-fragment")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpf-canvas)
-                          (:definition fn-bpf-fragment-listp)
-                          (:rewrite fn-bpf-fragment-listp-car-and-cdr))))
-
 (defun fn-bpf-prefix (xs n)
   (declare (xargs :guard (and (true-listp xs) (natp n))
                   :measure (nfix n)))

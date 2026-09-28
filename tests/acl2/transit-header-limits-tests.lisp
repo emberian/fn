@@ -9,10 +9,6 @@
 (include-book "peer-inbound-tests")
 (include-book "must-fail-checked")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-ap-at-most-is-length-bound))))
-
 (defconst *thlt-stored* (fn-peer-relayed-octets *pt-cfg* "innA" *pt-noloop*))
 ; The census: the stored article (Path grown by this node's identity) has 6
 ; fields, 6 lines and 200 header octets; the received one 185.

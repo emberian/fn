@@ -9,12 +9,6 @@
 (include-book "wildmat")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:linear fn-frame-at-mostp-bounds-len)
-                          (:rewrite fn-frame-len-2-conses)
-                          (:rewrite fn-frame-len-4-conses))))
-
 (local (in-theory (enable fn-cbor-invariants-vocabulary)))
 (local (in-theory (enable fn-frame-octet-vocabulary)))
 

@@ -3,11 +3,6 @@
 (include-book "article-work-primitives")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-article-next-line-aux)
-                          (:rewrite fn-aw-reverse-value))))
-
 (local (in-theory (disable fn-aw-r fn-aw-v fn-aw-c)))
 
 ; ---------------------------------------------------------------------------

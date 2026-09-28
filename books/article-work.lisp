@@ -3,13 +3,6 @@
 (include-book "article-work-scanners")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-article-header-rev-add-line)
-                          (:definition fn-article-new-field)
-                          (:rewrite fn-ap-at-most-is-length-bound)
-                          (:rewrite fn-aw-reverse-value))))
-
 (local (in-theory (disable fn-aw-r fn-aw-v fn-aw-c)))
 
 (defthm fn-aw-at-most-cost-natural

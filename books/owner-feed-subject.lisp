@@ -23,11 +23,6 @@
 (in-package "ACL2")
 (include-book "owner")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-ctl-classify-octets)
-                          (:rewrite fn-own-feed-never-offers-a-loop))))
-
 ; The filter keeps a sublist of what it is given.
 (defthm fn-own-feed-new-targets-are-among-the-names
   (implies (member-equal name (fn-own-feed-new-targets names tbl msgid))

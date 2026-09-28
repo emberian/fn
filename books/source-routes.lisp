@@ -37,11 +37,6 @@
 ; records-flip: the host's verdict reads the held bytes through the arena.
 (include-book "store-intern")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-inj-generated-identity-is-the-clock-identity)
-                          (:rewrite fn-inj-supplied-message-id-is-retained-exactly))))
-
 (local (in-theory (disable fn-hsig-injected-carrier-octets fn-hsig-injected-carrier-plan
                            fn-inj-decide fn-inj-injectedp fn-inj-source-of
                            fn-inj-decision-octets fn-inj-decision-msgid

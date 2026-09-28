@@ -39,22 +39,6 @@
 (include-book "store-maintenance-reserve")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scc-atomp)
-                          (:definition fn-scc-frames)
-                          (:definition fn-scc-nat-encodablep)
-                          (:definition fn-scc-nat-octets)
-                          (:definition fn-scc-octet-listp)
-                          (:definition fn-scc-program)
-                          (:definition fn-scc-seal)
-                          (:definition fn-scc-treep)
-                          (:definition fn-sccb-treep)
-                          (:rewrite fn-sccb-cons-ops-is-append-repeat)
-                          (:rewrite fn-sccb-scc-octetp-is-cbor-octetp)
-                          (:rewrite fn-sccr-cbor-octet-listp-is-scc-octet-listp)
-                          (:rewrite fn-sccr-scc-octet-listp-is-cbor-octet-listp))))
-
 (local
  (defthm fn-ockp-len-append
    (equal (len (append a b)) (+ (len a) (len b)))))

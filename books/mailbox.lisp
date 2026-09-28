@@ -46,10 +46,6 @@
 (in-package "ACL2")
 (include-book "article-fields")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-af-atextp))))
-
 (defconst *fn-mbx-max-octets* 8192)
 
 ; -----------------------------------------------------------------------------

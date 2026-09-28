@@ -44,11 +44,6 @@
 (include-book "web-request")
 (include-book "web-2047")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-ot-hex-decode)
-                          (:rewrite fn-ot-hex-decode-length))))
-
 ; -----------------------------------------------------------------------------
 ; Escaping (HTML 13.1.2.4: text and quoted attribute values).
 

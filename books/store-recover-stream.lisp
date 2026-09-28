@@ -27,11 +27,6 @@
 (include-book "store-intern")
 (include-book "records-concrete")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-bs-stxa-is-no-other-wire-event)
-                          (:rewrite fn-intern-event-arena))))
-
 ; -----------------------------------------------------------------------------
 ; 1. The decode of a list of record octets (the host's fn-store-decode-records,
 ; now this function): every record decodes exactly to a wire event, else :bad.

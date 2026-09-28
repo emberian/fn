@@ -3,10 +3,6 @@
 (in-package "ACL2")
 (include-book "native-control")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1))))
-
 (defconst *fn-thlc-request-kind* 7)
 (defconst *fn-thlc-reply-kind* 8)
 

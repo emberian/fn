@@ -16,11 +16,6 @@
 (include-book "posting-account")
 (include-book "article-fields")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-af-atextp)
-                          (:definition fn-af-dot-atom-text-aux))))
-
 ; The octets of a text, a string's character codes or an octet list as is.
 (defun fn-ipp-codes (chars)
   (declare (xargs :guard (character-listp chars)))

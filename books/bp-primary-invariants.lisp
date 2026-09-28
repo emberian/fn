@@ -18,13 +18,6 @@
 
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpp-block-value)
-                          (:definition fn-bpp-crc-octets)
-                          (:definition fn-bpp-name-delim-at)
-                          (:definition fn-bpp-vcharp))))
-
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19),
 ; and this book keeps them withdrawn: each theorem that reads a CBOR result
 ; opens `fn-cbor-record-vocabulary` in its own hint, and the CRC field's octet

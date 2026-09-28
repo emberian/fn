@@ -31,13 +31,6 @@
 (include-book "peer-authored-accept")
 (include-book "stx-lace")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-article-new-field)
-                          (:definition fn-article-next-line-aux)
-                          (:definition fn-article-parse-lines)
-                          (:definition fn-pa-carrier-kind))))
-
 (local
  (defthm fn-rca-car-append
    (equal (car (append a b)) (if (consp a) (car a) (car b)))))

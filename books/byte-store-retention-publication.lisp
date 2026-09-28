@@ -6,11 +6,6 @@
 (include-book "byte-store-record-provenance")
 (include-book "byte-store-record-fence")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bs-apply-op)
-                          (:definition fn-bs-tear-write))))
-
 (local
  (defthm fn-bsrp-retention-is-a-store-event
    (implies (fn-store-retention-event-p event)

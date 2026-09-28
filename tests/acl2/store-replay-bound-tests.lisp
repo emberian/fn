@@ -8,10 +8,6 @@
 (include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-digest-octetsp-implies-octet-listp))))
-
 ; The small preset (books/heap-figure.lisp *fn-heap-small-request*, the same
 ; fields; heap-figure is not included: its closure was most of this book's
 ; certification time, 11.4 s at 2 jobs; lane reservation-figure).

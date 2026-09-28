@@ -6,11 +6,6 @@
 (include-book "nntp-session")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-article-idp)
-                          (:definition fn-nntp-message-id-tokenp))))
-
 ; The books below this one withdraw their definitions at their export events
 ; (2026-09-19 split of books/nntp.lisp).  This book is the continuation of
 ; that single file, so it re-enables exactly them, locally: within the

@@ -22,11 +22,6 @@
 (include-book "owner")
 (include-book "store-budget-naming")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-af-atextp)
-                          (:definition fn-af-dot-atom-text-aux))))
-
 (defun fn-osb-config (cfg profile)
   "CFG with its article bound replaced by PROFILE's payload bound."
   (declare (xargs :guard t))

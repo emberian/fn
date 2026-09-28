@@ -7,10 +7,6 @@
 (include-book "config")
 (include-book "control-classify")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-ctl-classify-octets))))
-
 ; The classifier prevents a malformed or unauthorized FN-Authorship field
 ; from falling through to the legacy article-only Store path.  An article
 ; that cannot be parsed is invalid here too, never carrier-absent.

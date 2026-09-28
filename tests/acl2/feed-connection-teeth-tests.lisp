@@ -44,11 +44,6 @@
 (include-book "../../books/defkeystone")
 (include-book "must-fail-checked")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-wire-octet-listp)
-                          (:rewrite fn-wire-octet-listp-cdr))))
-
 ; -----------------------------------------------------------------------------
 ; The scenario.  A profile file `FNAUTH1\nnode\nsecret\n', the replies a peer
 ; sends, and the connections `fn-owner-feed-dial-open' installs for it.

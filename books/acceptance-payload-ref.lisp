@@ -35,12 +35,6 @@
 (include-book "store-node-traces-prepare")
 (include-book "owner")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-th-exact-octets-p)
-                          (:definition fn-th-source-id-p)
-                          (:rewrite fn-nntp-response-text-true-listp))))
-
 ; -----------------------------------------------------------------------------
 ; The reference.
 

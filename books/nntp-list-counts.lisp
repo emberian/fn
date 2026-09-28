@@ -26,11 +26,6 @@
 (include-book "nntp-range-indexed-invariants")
 (include-book "acceptance-invariants")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-article-idp)
-                          (:rewrite fn-nntp-available-number-article-is-projectable))))
-
 (local (in-theory (enable fn-nntp-responses-vocabulary
                           fn-nntp-projection-vocabulary
                           fn-nntp-session-vocabulary)))

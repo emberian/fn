@@ -45,12 +45,6 @@
 (include-book "store-events-carried")
 (include-book "owner-prepare-carried")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-replay-apply-carried-verdict)
-                          (:definition fn-replay-apply-revoked-verdict)
-                          (:rewrite fn-stxa-is-no-other-wire-event))))
-
 ; -----------------------------------------------------------------------------
 ; The lookup.
 

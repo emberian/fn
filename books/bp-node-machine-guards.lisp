@@ -5,10 +5,6 @@
 (include-book "bp-node-machine-invariants")
 (include-book "bp-node-foundation")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpnf-heldp))))
-
 (verify-guards fn-bpn-eventp)
 (verify-guards fn-bpn-machine-eventp)
 (verify-guards fn-bpn-existing-sequence

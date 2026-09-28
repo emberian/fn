@@ -14,12 +14,6 @@
 (include-book "nntp-overview")
 (include-book "group-bucket-cursor-invariants")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-article-idp)
-                          (:definition fn-nntp-message-id-tokenp)
-                          (:rewrite fn-nntp-available-number-article-is-projectable))))
-
 ; This book reasons about the NNTP transitions themselves, so it opens the
 ; vocabularies the five books of the nntp cluster withdraw at their export
 ; events (2026-09-19 split of books/nntp.lisp).

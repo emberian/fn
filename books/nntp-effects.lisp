@@ -14,13 +14,6 @@
 (include-book "nntp-newnews")
 (include-book "nntp-overview")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-article-idp)
-                          (:definition fn-nntp-message-id-tokenp)
-                          (:definition fn-nov-clean-linep)
-                          (:definition fn-nov-line-octetp))))
-
 ; The five books of the nntp cluster withdraw their definitions at their
 ; export events (2026-09-19 split of books/nntp.lisp); this book reasons
 ; about the transitions, so it re-enables exactly them, locally.

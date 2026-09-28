@@ -6,11 +6,6 @@
 (include-book "bp-node-forward-lower-guards")
 (include-book "bp-fnbs-conflict-invariants")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpnp-busy-count)
-                          (:definition fn-bpnp-busy-strandedp))))
-
 (verify-guards fn-bpnp-attempt-values)
 (verify-guards fn-bpnp-result-values)
 (verify-guards fn-bpnp-forward-frame-with)

@@ -6,10 +6,6 @@
 (include-book "bp-fnbs-byte-publisher")
 (include-book "bp-fnbs-codec-invariants")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpnf-heldp))))
-
 (defthm fn-bpnf-ops-for-name-of-append
   (equal (fn-bs-ops-for-name (append a b) dir name)
          (append (fn-bs-ops-for-name a dir name)

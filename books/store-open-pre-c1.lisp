@@ -31,11 +31,6 @@
 (include-book "history-wire")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-ctl-classify-octets)
-                          (:definition fn-replay-identity-loop))))
-
 ; -----------------------------------------------------------------------------
 ; The record
 

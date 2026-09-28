@@ -49,10 +49,6 @@
 (in-package "ACL2")
 (include-book "bp-native-app-fast")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-bs-stxa-is-no-other-wire-event))))
-
 ;; The Message-ID the dispatcher's lookup reads: the relaying agent's check
 ;; (every intent is a transit intent, D34, PKT-646).
 (defun fn-bpaj-dispatch-msgid (joined request-octets)

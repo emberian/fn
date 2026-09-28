@@ -63,12 +63,6 @@
 (include-book "control-authority")
 (include-book "identity")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-ns-entryp)
-                          (:definition fn-ns-ring-entriesp)
-                          (:definition fn-ns-ringp))))
-
 ; -----------------------------------------------------------------------------
 ; RFC 8315 section 4's shape over an explicit secret: Base64(MAC(SEC, UID ||
 ; MID)), the MAC BLAKE3's keyed_hash.  Section 5.2's lock-of-key example (the

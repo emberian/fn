@@ -57,10 +57,6 @@
 (include-book "frame-invariants")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bs-tear-write))))
-
 (local (in-theory (enable fn-bs-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------

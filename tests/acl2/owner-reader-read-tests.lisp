@@ -13,12 +13,6 @@
 (include-book "arena-lift")
 (include-book "must-fail-checked")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scr-catalogp)
-                          (:definition fn-scr-conn-okp)
-                          (:definition fn-scr-fields-catalogp))))
-
 (assert-event
  (equal (list (symbol-class 'fn-orr-read-span (w state))
               (symbol-class 'fn-ocs-publication-class (w state)))

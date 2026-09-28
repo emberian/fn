@@ -4,11 +4,6 @@
 (in-package "ACL2")
 (include-book "store-events")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-th-exact-octets-p)
-                          (:definition fn-th-source-id-p))))
-
 (defthm fn-th-topic-event-has-topic-tag
   (implies (fn-th-topic-eventp event)
            (member-equal (car event)

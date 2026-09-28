@@ -64,10 +64,6 @@
 (include-book "accounts")
 (include-book "auth-secret")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-effectsp))))
-
 (local (in-theory (enable fn-nntp-syntax-vocabulary
                           fn-nntp-session-vocabulary
                           fn-nntp-projection-vocabulary

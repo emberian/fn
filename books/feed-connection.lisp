@@ -11,11 +11,6 @@
 (include-book "owner-feed")
 (include-book "feed-auth-profile")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-wire-octet-listp)
-                          (:rewrite fn-wire-octet-listp-cdr))))
-
 (defconst *fn-fc-mode-stream-command*
   '(77 79 68 69 32 83 84 82 69 65 77 13 10))
 (defconst *fn-fc-starttls-command* '(83 84 65 82 84 84 76 83 13 10))

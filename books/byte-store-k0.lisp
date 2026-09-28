@@ -27,15 +27,6 @@
 (include-book "byte-store-record-provenance")
 (include-book "byte-store-record-fence")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bs-dir-idp)
-                          (:definition fn-bs-dir-tablep)
-                          (:definition fn-bs-entry-valuep)
-                          (:definition fn-bs-keys-belowp)
-                          (:definition fn-bs-op-listp)
-                          (:definition fn-bs-opp))))
-
 (defun fn-bs-k0c-ind (k bs ks steps outs g c)
   (declare (xargs :measure (acl2-count steps) :verify-guards nil))
   (if (or (zp k) (atom steps)) (list bs ks outs g c)

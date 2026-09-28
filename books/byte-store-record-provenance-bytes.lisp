@@ -9,16 +9,6 @@
 (include-book "frame-trailer")
 (include-book "byte-store-frame")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bs-apply-op)
-                          (:definition fn-bs-dir-idp)
-                          (:definition fn-bs-dir-tablep)
-                          (:definition fn-bs-entry-valuep)
-                          (:definition fn-bs-keys-belowp)
-                          (:definition fn-bs-op-listp)
-                          (:definition fn-bs-opp))))
-
 (defthm fn-bs-k6-take-all
          (implies (true-listp xs)
                   (equal (fn-bs-take (len xs) xs) xs))

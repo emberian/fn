@@ -33,10 +33,6 @@
 (in-package "ACL2")
 (include-book "payload-extent")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-arn-extent-guardp))))
-
 (local (in-theory (disable fn-arx-prefixp)))
 
 ; -----------------------------------------------------------------------------

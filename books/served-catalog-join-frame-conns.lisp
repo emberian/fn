@@ -27,10 +27,6 @@
 (include-book "served-catalog-join-pinned")
 (include-book "served-catalog-join-read")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scr-fields-catalogp))))
-
 (defun-nx fn-scj-view-pinned-connp (conn view)
   (and (equal (fn-own-conn-version conn) (fn-own-view-version view))
        (equal (fn-own-conn-archive conn) (fn-own-view-archive view))

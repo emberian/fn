@@ -3,11 +3,6 @@
 (in-package "ACL2")
 (include-book "topic-history-local-admin")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-th-exact-octets-p)
-                          (:definition fn-th-source-id-p))))
-
 (defconst *fn-th-topic-magic* '(102 110 116 111)) ; "fnto"
 (defconst *fn-th-topic-version* 1)
 (defconst *fn-th-topic-anchor-v2-version* 2)

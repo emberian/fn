@@ -2,10 +2,6 @@
 (in-package "ACL2")
 (include-book "bp-node-machine")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-frame-textp))))
-
 ; Reachable machine states never combine an uncertainty fence with an
 ; outstanding persistence proposal.  A live proposal is for the state's
 ; current token and is applicable to the exact state it will update after the

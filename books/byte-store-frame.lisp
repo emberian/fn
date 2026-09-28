@@ -23,10 +23,6 @@
 (include-book "frame-trailer")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:linear fn-cp-id-length-bound))))
-
 ; FNSM = fn store metadata.  It is deliberately a separate frame family from
 ; FNST transactions, so a metadata file cannot be accepted as a transaction.
 (defconst *fn-bs-meta-magic* '(70 78 83 77))

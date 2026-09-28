@@ -7,10 +7,6 @@
 (include-book "bp-fragment-invariants")
 (include-book "bp-fragment-sweep")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpnf-heldp))))
-
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpnf-family-member (x xs)

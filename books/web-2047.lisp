@@ -37,11 +37,6 @@
 (in-package "ACL2")
 (include-book "octet-text")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-ot-hex-decode)
-                          (:rewrite fn-ot-hex-decode-length))))
-
 (defconst *fn-w47-max* 4096)
 (defconst *fn-w47-word-max* 75)
 

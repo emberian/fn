@@ -9,17 +9,6 @@
 (include-book "article")
 (include-book "article-invariants")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-article-header-bytes-p)
-                          (:definition fn-article-header-rev-add-line)
-                          (:definition fn-article-new-field)
-                          (:definition fn-article-next-line-aux)
-                          (:definition fn-article-parse-lines)
-                          (:rewrite fn-article-extended-header-is-list)
-                          (:rewrite fn-article-finish-fields-is-append)
-                          (:rewrite fn-article-octets-are-proper-list))))
-
 ; -----------------------------------------------------------------------------
 ; Field construction preserves the article view recognizers.
 

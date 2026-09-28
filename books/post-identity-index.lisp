@@ -72,12 +72,6 @@
 (include-book "msgid-index-concrete")
 (include-book "store-intern")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-ctl-visible-articles)
-                          (:definition fn-ctl-visible-filter)
-                          (:definition fn-ctl-withdrawn-by-p))))
-
 ; -----------------------------------------------------------------------------
 ; The lookup
 

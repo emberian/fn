@@ -43,15 +43,6 @@
 (include-book "bp-fragment-sweep")
 (include-book "bp-bundle-invariants")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpf-canvas)
-                          (:definition fn-bpf-cell-at)
-                          (:definition fn-bpf-fragment-listp)
-                          (:definition fn-bpf-fragmentp)
-                          (:definition fn-bpp-block-value)
-                          (:definition fn-bpp-crc-octets))))
-
 ; -----------------------------------------------------------------------------
 ; One fragment
 

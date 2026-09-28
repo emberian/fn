@@ -23,13 +23,6 @@
 (include-book "store-checkpoint-reader")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-sccb-frame-octets)
-                          (:definition fn-sccr-plan-segments)
-                          (:rewrite fn-sccr-cbor-octet-listp-is-scc-octet-listp)
-                          (:rewrite fn-sccr-scc-octet-listp-is-cbor-octet-listp))))
-
 ; -----------------------------------------------------------------------------
 ; The slice, opened once (the reader's local facts, restated).
 

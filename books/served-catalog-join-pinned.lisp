@@ -33,12 +33,6 @@
 
 (include-book "served-catalog-join-conns")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scr-catalogp)
-                          (:definition fn-scr-fields-catalogp)
-                          (:rewrite fn-col-poll-nth-past-end-is-nil))))
-
 ; -----------------------------------------------------------------------------
 ; The rows' sequences, as naturals.
 

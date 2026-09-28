@@ -32,11 +32,6 @@
 (include-book "store-intern")
 (include-book "owner-commit-carried")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-bs-stxa-is-no-other-wire-event)
-                          (:rewrite fn-intern-event-arena))))
-
 ; The row fn-intern-event makes of W at handle H, without sealing.
 (defun fn-oii-identity-row (w keyring generation h)
   (declare (xargs :guard (and (fn-prin-keyringp keyring) (natp generation) (natp h))))

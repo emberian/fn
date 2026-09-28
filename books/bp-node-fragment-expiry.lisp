@@ -6,10 +6,6 @@
 (include-book "bp-node-fragment-plan")
 (include-book "bp-app-handoff-time")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-bpnf-heldp))))
-
 (defun fn-bpnf-family-rows-livep (rows observation)
   (declare (xargs :guard t :measure (acl2-count rows)))
   (if (consp rows)

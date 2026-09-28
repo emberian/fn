@@ -83,13 +83,6 @@
 ; fn-arena: the transit entry interns the relayed octets (records-flip).
 (include-book "payload-arena")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-effectp)
-                          (:definition fn-nntp-effectsp)
-                          (:rewrite fn-nntp-printable-token-is-response-text)
-                          (:rewrite fn-nntp-response-text-is-octets))))
-
 ; fn-cfg-peer-vocabulary (books/peer-config) stays closed here: no proof in
 ; this book needs the peer table open, and with it open the guard proof of
 ; fn-peer-command expanded fn-cfg-peer-find into fn-cfg-peer-of-rows, fourteen

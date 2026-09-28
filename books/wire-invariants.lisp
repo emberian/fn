@@ -13,11 +13,6 @@
 (in-package "ACL2")
 (include-book "wire")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-wire-octet-listp)
-                          (:rewrite fn-wire-octet-listp-cdr))))
-
 ; books/wire.lisp made its three records opaque and withdrew its step
 ; vocabulary at its export event.  This book is the one place that reasons
 ; about how a step composes -- how the result record's state and events and the

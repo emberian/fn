@@ -5,11 +5,6 @@
 (include-book "bp-primary-invariants")
 (include-book "frame-trailer")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-frame-textp)
-                          (:rewrite fn-bpp-vchar-listp-implies-octet-listp))))
-
 (defthm fn-bpnf-peer-octets-reconstruct-eid
   (implies (and (fn-bpp-eidp peer)
                 (equal (fn-bpc-decode-exact

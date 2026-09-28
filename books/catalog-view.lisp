@@ -37,11 +37,6 @@
 (include-book "catalog-relation")
 (include-book "group-bucket-article")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-nntp-index-entry-available)
-                          (:definition fn-nntp-index-msgid-okp))))
-
 ; -----------------------------------------------------------------------------
 ; A row as the acceptance article; the view at a version.
 

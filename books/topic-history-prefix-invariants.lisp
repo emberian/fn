@@ -3,10 +3,6 @@
 (in-package "ACL2")
 (include-book "topic-history-prefix")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-th-exact-octets-p))))
-
 (defthm fn-sti-prefix-loop-append-one
   (implies (true-listp records)
            (equal (fn-th-prefix-loop projection

@@ -40,11 +40,6 @@
 (include-book "node-config")
 (include-book "owner-tls-prefix")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-article-header-bytes-p)
-                          (:definition fn-nntp-effectp))))
-
 ; -----------------------------------------------------------------------------
 ; The injecting agent
 

@@ -3,11 +3,6 @@
 (in-package "ACL2")
 (include-book "nntp-syntax")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-wire-octet-listp)
-                          (:rewrite fn-wire-octet-listp-cdr))))
-
 (defconst *fn-fap-max-octets* 1024)
 (defconst *fn-fap-magic* '(70 78 65 85 84 72 49 10))
 ; AUTHINFO USER/PASS share the 14-octet prefix and CRLF.  The command passed

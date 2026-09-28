@@ -3,12 +3,6 @@
 (include-book "topic-history-metadata")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-article-header-bytes-p)
-                          (:definition fn-th-exact-octets-p)
-                          (:definition fn-th-source-id-p))))
-
 (local (defthm fn-th-encoded-32-length
   (implies (fn-th-exact-octets-p xs 32)
            (equal (len (fn-cbor-encode (cons :bytes xs))) 34))

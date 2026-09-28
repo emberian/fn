@@ -4,10 +4,6 @@
 (include-book "consumer-event-index")
 (include-book "history-columns")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-digest-octetsp-implies-octet-listp))))
-
 ; A poll inspects at most sixteen consecutive committed Store events and
 ; stops at its first group-matching accepted article.  Its cursor names the
 ; last inspected prefix, never an omitted matching article.  The selected

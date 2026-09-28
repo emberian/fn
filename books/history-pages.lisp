@@ -42,14 +42,6 @@
 (include-book "pagestore-words-blake3")
 (local (include-book "arithmetic/top" :dir :system))
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scc-octet-listp)
-                          (:rewrite fn-scc-octet-listp-facts . 1)
-                          (:rewrite fn-scc-octet-listp-facts . 2)
-                          (:rewrite fn-scc-octet-listp-true)
-                          (:rewrite fn-sccb-scc-octetp-is-cbor-octetp))))
-
 ; -----------------------------------------------------------------------------
 ; A. The rows and the schema.
 

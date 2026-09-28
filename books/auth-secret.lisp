@@ -45,11 +45,6 @@
 (in-package "ACL2")
 (include-book "crypto-attach")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-digest-octetsp)
-                          (:rewrite fn-digest-octetsp-implies-octet-listp))))
-
 (local (in-theory (enable fn-cbor-codec-vocabulary
                           fn-cbor-invariants-vocabulary
                           fn-crypto-seam-internals)))

@@ -42,10 +42,6 @@
 (include-book "store-log-segments")
 (include-book "store-log-extend")
 
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-lgc-octets-true-listp))))
-
 ;; -----------------------------------------------------------------------------
 ;; The executable framing (lane kernel-concrete-2, PRF-282).  The logical
 ;; framing (books/store-log.lisp fn-lg-log, fn-lg-entry, fn-lg-frame,
