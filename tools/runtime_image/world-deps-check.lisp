@@ -94,6 +94,33 @@ guaranteed, which is why the trace is the check.)"
     (wdc-write (format nil "UNTRAPPED ~s" result))
     (sb-ext:exit :code 72 :abort t)))
 
+(defparameter *wdc-prover-state-readers*
+  '(ens install-global-enabled-structure recompress-global-enabled-structure
+    initial-global-enabled-structure update-wrld-structures set-w
+    with-useless-runes-aux type-set-binary-+ type-set-binary-* type-set-<
+    type-set-finish-1 initialize-pc-acl2 proof-builder-cl-proc-1)
+  "The functions whose ACL2 8.7 source reads the stripped prover state
+(lane image-strip's census; set-w and update-wrld-structures install a world
+and recompute the enabled structure; with-useless-runes-aux is the
+with-useless-runes macro's reader).")
+
+(defvar *wdc-prover-reads* (make-hash-table :test 'eq))
+
+(defun wdc-prover-read (fn)
+  (unless (gethash fn *wdc-prover-reads*)
+    (sb-thread:with-recursive-lock (*wdc-lock*)
+      (unless (gethash fn *wdc-prover-reads*)
+        (setf (gethash fn *wdc-prover-reads*) t)
+        (wdc-write (fnn-with-world-key-printing
+                    (format nil "PROVER-READ ~s <- ~a" fn (wdc-caller))))))))
+
+(defun wdc-trace-prover-readers ()
+  (dolist (fn *wdc-prover-state-readers*)
+    (unless (fboundp fn) (wdc-die "the prover-state reader ~s is not defined" fn))
+    (let ((fn fn))
+      (sb-int:encapsulate fn 'world-deps-check-prover
+        (lambda (f &rest args) (wdc-prover-read fn) (apply f args))))))
+
 (defvar *wdc-finished* nil)
 
 (defun wdc-finish ()
