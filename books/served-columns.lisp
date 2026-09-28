@@ -47,6 +47,9 @@
 (include-book "nntp-xref")
 
 (local (in-theory (disable fn-article-parse)))
+; A row's column is read through fn-hf-nov-of-held-facts-of, never by
+; opening the control list.
+(local (in-theory (disable fn-hf-nov)))
 
 ; -----------------------------------------------------------------------------
 ; The relation F.
@@ -215,15 +218,26 @@
               (fn-hf-body-lines facts))
       (list :error))))
 
+(defthm fn-scol-body-lines-of-held-facts-of
+  (equal (fn-hf-body-lines (fn-held-facts-of bytes))
+         (fn-hf-body-lines-of bytes))
+  :hints (("Goal" :in-theory (e/d (fn-held-facts-of fn-hf-internals)
+                                  (fn-hf-body-lines-of fn-hnov-of fn-ctl-control-of
+                                   fn-hf-split-index)))))
+
+; The column's facts are read through fn-hf-nov-of-held-facts-of and the
+; line count above: the facts' record and its control list stay closed
+; (opened, the control list's constructor took this proof to 4.8 million
+; steps).
 (defthm fn-scol-nov-overview-of-bytes-facts
   (implies (and (fn-arena-p fn-arena) (natp (fn-article-payload article)))
            (equal (fn-scol-nov-overview
                    article (fn-held-facts-of (fn-nntp-article-bytes article fn-arena)) fn-arena)
                   (fn-nov-overview article fn-arena)))
-  :hints (("Goal" :in-theory (e/d (fn-nov-overview fn-held-facts-of fn-hnov-of fn-hnov-of-parsed
-                                   fn-hnov-parsed-okp fn-hf-internals fn-hnov-internals fn-hf-control-with-nov
+  :hints (("Goal" :in-theory (e/d (fn-nov-overview fn-hnov-of fn-hnov-of-parsed
+                                   fn-hnov-parsed-okp fn-hnov-internals
                                    fn-nov-body-line-count fn-hf-body-lines-of-is-nov-body-line-count-by-definition)
-                                  (fn-nov-header-content fn-hnov-field fn-nntp-article-bytes
+                                  (fn-held-facts-of fn-nov-header-content fn-hnov-field fn-nntp-article-bytes
                                    fn-rcl-tombstonep fn-ctl-control-of fn-hf-split-index
                                    fn-hf-body-lines-of fn-nntp-split-article fn-nntp-crlf-lines
                                    fn-nntp-article-length)))))
@@ -249,9 +263,8 @@
   (implies (fn-scol-okp fn-arena fn-cat)
            (equal (fn-scol-tombstonep article fn-arena fn-cat)
                   (fn-nntp-article-tombstonep article fn-arena)))
-  :hints (("Goal" :in-theory (e/d (fn-held-facts-of fn-hnov-of fn-hnov-of-parsed
-                                   fn-hf-internals fn-hnov-internals fn-hf-control-with-nov)
-                                  (fn-scol-okp fn-nntp-article-bytes fn-hnov-field
+  :hints (("Goal" :in-theory (e/d (fn-hnov-of fn-hnov-of-parsed fn-hnov-internals)
+                                  (fn-held-facts-of fn-scol-okp fn-nntp-article-bytes fn-hnov-field
                                    fn-rcl-tombstonep fn-ctl-control-of fn-hf-split-index
                                    fn-hf-body-lines-of fn-hnov-parsed-okp)))))
 
@@ -368,11 +381,11 @@
                              (list :error)))
                           (t (fn-nntp-hdr-content field article fn-arena))))
                   (fn-nntp-hdr-content field article fn-arena)))
-  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-content fn-held-facts-of fn-hnov-of fn-hnov-of-parsed
-                                   fn-hnov-parsed-okp fn-hf-internals fn-hnov-internals fn-hf-control-with-nov
+  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-content fn-hnov-of fn-hnov-of-parsed
+                                   fn-hnov-parsed-okp fn-hnov-internals
                                    fn-nov-body-line-count
                                    fn-hf-body-lines-of-is-nov-body-line-count-by-definition)
-                                  (fn-nov-header-content fn-hnov-field fn-nntp-article-bytes
+                                  (fn-held-facts-of fn-nov-header-content fn-hnov-field fn-nntp-article-bytes
                                    fn-rcl-tombstonep fn-ctl-control-of fn-hf-split-index
                                    fn-hf-body-lines-of fn-nntp-split-article fn-nntp-crlf-lines
                                    fn-nntp-article-length fn-scol-field-index-names
