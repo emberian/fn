@@ -64,7 +64,10 @@ this image loaded (fnn-operator-register-action).")
   admin-observe
   ;; (control-path argv liveness) -> exit code and the detail word of an
   ;; administrative vector the live owner (:live) or its lock (:held) answered.
-  admin)
+  admin
+  ;; (control-path argv) -> exit code, the owner's answer word printed: the
+  ;; compaction request (PKT-868).
+  request)
 
 (defvar *fnn-operator-live-owner* nil)
 
@@ -478,14 +481,10 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
     (cond ((eq liveness :live)
            ;; The owner's answer word (books/owner-compact-request.lisp
            ;; fn-ock-request-word: requested, coalesced, nothing-to-compact,
-           ;; or the refusal's blocked), printed as ACL2 rendered it.
-           (multiple-value-bind (status word)
-               (fnn-control-admin control-path
-                                  (fnn-core 'fn-native-operator-host-result-compaction-argv
-                                            result))
-             (when (fnn-octet-list-p word)
-               (fnn-out "compaction ~a" (fnn-octets-string (fnn-octets word))))
-             (fnn-core 'fn-native-control-host-status-exit-code status)))
+           ;; or the refusal's blocked), printed as ACL2 rendered it
+           ;; (host/native/operator-live.lisp fnn-operator-live-request).
+           (funcall (fnn-olo-request live) control-path
+                    (fnn-core 'fn-native-operator-host-result-compaction-argv result)))
           ((eq liveness :held)
            (multiple-value-bind (exit detail)
                (funcall (fnn-olo-admin live) control-path
