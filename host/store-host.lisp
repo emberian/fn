@@ -23,6 +23,12 @@
 (include-book "../books/store-config")
 (include-book "../books/identity")
 (include-book "../books/crypto-attach")
+;; The compressed extent's realizer (host/native/extent.lisp
+;; fn-durable-realize-lz) runs ACL2's decoder fn-lzr-lz-read by name; without
+;; this include the image had no counterpart for it (latent until a compressed
+;; handle exists; lane compression-extents-2 found it by reading, and
+;; `host_check --world' now refuses it).
+(include-book "../books/payload-lz-record")
 (include-book "../books/frame-trailer")
 (include-book "../books/byte-store-frame")
 (include-book "../books/byte-store-txn-name")

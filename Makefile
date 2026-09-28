@@ -1482,6 +1482,11 @@ check:
 # host-lints, after entry-guards-2's owner stop on an unsynchronized table).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --tables
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_tables
+# Every name a raw host/native file hands to fnn-core*/fnn-call is defined in
+# the world of the image that loads it (build.lisp, build-dtn.lisp): static,
+# no ACL2 (lane lane-tools-2, after payload-lz-record was outside the world).
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --world
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_world
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
