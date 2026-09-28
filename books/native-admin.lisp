@@ -459,8 +459,20 @@
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t
                   :guard-hints
+                  ;; The arms' tests stay closed: the guard needs their
+                  ;; types, not their bodies (5.0 -> 2.6 s, 1.34M -> 460k
+                  ;; steps, persvati REPL 2026-09-28).
                   (("Goal" :in-theory (disable fn-native-admin-decimalp
                                                fn-native-admin-decimal-value
+                                               fn-native-admin-words
+                                               fn-record-octets-string
+                                               fn-cbor-octet-listp
+                                               fn-exp-limit-slotp fn-rck-limit-slotp
+                                               fn-exp-trusted-wordp
+                                               fn-exp-anonymous-wordp
+                                               default-car default-cdr
+                                               default-+-1 default-+-2
+                                               default-<-1 default-<-2 len
                                                (tau-system))))))
   (if (or (not (fn-native-admin-argvp argv))
           (< *fn-native-admin-max-arguments* (len argv)))
@@ -947,6 +959,22 @@
   :hints (("Goal" :in-theory (enable fn-native-admin-result-kind
                                      fn-native-admin-result)))))
 
+;; The peer-extend arm, closed: the theorems below that open the plan
+;; would otherwise open it at every one of its occurrences (404 openings,
+;; 1.0 s of fn-native-admin-plan-group-name-is-a-group-name's 2.3 s).
+(local (defthm fn-native-admin-peer-extend-plan-neither-create-nor-retire
+  (and (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-peer-extend-plan words))
+                   :create-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-peer-extend-plan words))
+                   :remove-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-peer-extend-plan words))
+                   :set-bp-boundary)))
+  :hints (("Goal" :in-theory (enable fn-native-admin-result-kind
+                                     fn-native-admin-result)))))
+
 (encapsulate ()
 (local (defthm kind-of-result
   (equal (fn-native-admin-result-kind (fn-native-admin-result s r k n c p v)) k)))
@@ -1010,7 +1038,8 @@
                                    fn-native-admin-moderate-plan
                                    fn-native-admin-describe-plan
                                    fn-native-admin-motd-plan
-                                   fn-native-admin-access-plan))
+                                   fn-native-admin-access-plan
+                                   fn-native-admin-peer-extend-plan))
            :use ((:instance fn-native-admin-peer-plan-kind
                             (words (fn-native-admin-words argv)))
                  (:instance accepted-bp-boundary-plan-is-a-boundary
