@@ -113,9 +113,26 @@ class TicketingTlsPeer(peer.ScriptedTransitPeer):
                     stream.write(b"500 unknown command\r\n")
 
 
+_P = protected.NativeProtectedPeeringTests
+
+
 @unittest.skipUnless(READY, "set explicit native image/source and matching launcher/core SHA-256 values")
-class NativeFeedTlsReadTests(protected.NativeProtectedPeeringTests):
-    """Scratch nodes only; never the live nodes."""
+class NativeFeedTlsReadTests(unittest.TestCase):
+    """Scratch nodes only; never the live nodes.  The protected module's
+    helpers are borrowed, never its tests."""
+
+    setUp = _P.setUp
+    command = _P.command
+    process_identity = _P.process_identity
+    verify_process_identity = _P.verify_process_identity
+    article = staticmethod(peer.NativePeeringTests.article)
+    post = _P.post
+    await_article = _P.await_article
+    article_from = _P.article_from
+    make_certificate = _P.make_certificate
+    initialize = _P.initialize
+    profile = _P.profile
+    start = _P.start
 
     def stop_all(self):
         # Plain sources are NativeProcess (drained pipes); protected owners
