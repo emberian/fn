@@ -329,6 +329,9 @@ transition."
                              ;; the owner's arena: the reclaim line reads each
                              ;; article's stored length through it.
                              (fnn-live-arena)
+                             ;; lane scale-reads: and each article's tombstone
+                             ;; flag from the catalog's column.
+                             (fnn-live-cat)
                              *the-live-state*)))
        (unless (and (consp answer) (consp (cdr answer))
                     (fnn-octet-list-p (first answer)))

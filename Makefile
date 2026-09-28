@@ -364,6 +364,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/visibility-join-tests \
 	books/store-reclaim-holders \
 	tests/acl2/store-reclaim-holders-tests \
+	tests/acl2/native-status-columns-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
 	books/store-reclaim-stream \

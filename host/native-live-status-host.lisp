@@ -6,6 +6,9 @@
 ; octets and prints them; it renders no field.
 (in-package "ACL2")
 (include-book "../books/native-health")
+; lane scale-reads: the owner's reclaim line reads the catalog's tombstone
+; column, one walk (books/native-status-columns.lisp fn-nsc-answer-report).
+(include-book "../books/native-status-columns")
 ; HST-023: the owner's scheduler lines on `health' (books/owner-scheduler.lisp);
 ; HST-026 (lane time-model): the disk line on `health' and `status'
 ; (books/owner-time-model.lisp fn-otm-health-lines, fn-otm-disk-lines).
@@ -25,7 +28,7 @@
                            (f-get-global 'fn-store-cfg state)
                            obs fn-arena)))
 
-(defun fn-native-live-status-host-answer (request cached obs min log-sink sched fn-arena state)
+(defun fn-native-live-status-host-answer (request cached obs min log-sink sched fn-arena fn-cat state)
   ; The running owner's page for one FNLS request, under its mutex
   ; (host/native/control.lisp `fnn-control-live-status-answer'): (REPLY
   ; CACHED').  A request from offset 0 renders the report once into a
@@ -37,7 +40,7 @@
   ; the owner's service-log sink (books/log-sink.lisp, PKT-508), NIL when no
   ; writer runs; SCHED the owner's scheduler value (books/owner-scheduler.lisp,
   ; HST-023): `health' ends with the sink's line and the scheduler's.
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
   ;; PKT-209: FNLS frame kind 3 carries a control report kind and its
   ;; argument (fn-cev-any-request-decode reads either frame).
   (let ((decoded (fn-cev-any-request-decode request)))
@@ -64,7 +67,9 @@
                        ;; owner's committed view carries.
                        (fn-cev-live-report kind (fn-owner-ocfg state))
                    (append
-                    (fn-nh-answer-report kind
+                    ;; fn-nsc-answer-report-is-answer-report: under the
+                    ;; column relation F this is fn-nh-answer-report.
+                    (fn-nsc-answer-report kind
                                          (fn-owner-store-profile state)
                                          (fn-owner-ocfg state)
                                          (if (boundp-global 'fn-owner-record-octets state)
@@ -80,7 +85,7 @@
                                          ;; fnn-store-observation.
                                          (append (take 5 obs)
                                                  (list (fn-owner-sco-deferred state)))
-                                         min fn-arena)
+                                         min fn-arena fn-cat)
                     (cond ((equal kind :health)
                            ;; PKT-508 (PRF-187): the log sink's line last;
                            ;; fn-nh-report-exit-of-render-and-more: the exit is
