@@ -651,17 +651,29 @@ is true (ACL2 decides: a DNS name, never an address literal, RFC 6066 s3)."
         (error condition)))))
 
 (defun fnn-tls-read (channel seconds &optional (limit +fnn-max-read+))
-  "Read decrypted bytes.  SSL_pending is checked before fd readiness so
-plaintext already buffered inside OpenSSL cannot be stranded.  A zero-second
-call still performs one nonblocking readiness poll, as FNN-RECV does."
+  "Read decrypted bytes, an empty vector at close_notify, or :timeout.
+SSL_pending is checked before fd readiness so plaintext already buffered
+inside OpenSSL cannot be stranded.  A zero-second call still performs one
+nonblocking readiness poll, as FNN-RECV does.
+
+An SSL_read that answers WANT_READ or WANT_WRITE has made no application data
+available yet: it consumed a record that carries none (a TLS 1.3
+NewSessionTicket or KeyUpdate), or part of a record.  That is FNN-RECV's
+EAGAIN, not a failure: the call waits for the direction OpenSSL names until
+its deadline and then answers :timeout, exactly as an idle socket does.  The
+record layer keeps what it consumed, so the next call resumes it (defect M3:
+the feed's zero-second read met the tickets fn's own TLS 1.3 server sends
+after the handshake, signalled an I/O error, and dropped every link)."
   (let* ((ssl (fnn-tls-channel-pointer channel))
          (fd (fnn-tls-channel-fd channel))
          (deadline (fnn-tls-deadline seconds))
          (buffer (fnn-make-octets limit))
          (initialp t)
          (zero-poll-p (zerop seconds)))
-    ;; SSL_read retries keep the identical pinned pointer/count for the whole
-    ;; operation, including WANT_READ changing to WANT_WRITE.
+    ;; Within one call, SSL_read retries keep the identical pinned
+    ;; pointer/count, including WANT_READ changing to WANT_WRITE.  A later
+    ;; call may use a fresh buffer: SSL_read keeps no reference to it across
+    ;; a WANT_* return (fnn-tls-read-now relies on the same).
     (sb-sys:with-pinned-objects (buffer)
       (loop
         (when (and initialp (zerop (fnn-%ssl-pending ssl)))
@@ -682,7 +694,11 @@ call still performs one nonblocking readiness poll, as FNN-RECV does."
           (let ((disposition (fnn-tls-retry-direction ssl result)))
             (cond ((eq disposition :closed) (return (fnn-make-octets 0)))
                   ((member disposition '(:input :output))
-                   (fnn-tls-wait fd disposition deadline 'fnn-tls-io-error))
+                   (let ((remaining (fnn-seconds-to-deadline deadline)))
+                     (unless (and (> remaining 0)
+                                  (funcall *fnn-fd-waiter* fd disposition
+                                           remaining))
+                       (return :timeout))))
                   (t (fnn-tls-operation-error 'fnn-tls-io-error
                                               "read" disposition)))))))))
 

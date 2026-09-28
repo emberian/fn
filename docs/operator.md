@@ -856,6 +856,12 @@ with `store export` and `store import --max-... N`.
 - `fn operator CONFIG help VERB`: explains any command.
 - `peer pull NAME SECONDS [ROUNDS]`: fetch from a peer every SECONDS
   (0 stops).
+- `peer feed NAME pause` and `peer feed NAME resume`: stop and restart
+  sending to one peer without removing it. Its pull and what it sends you
+  are unchanged; articles queue for it meanwhile (spec peering 3.2.2).
+  Every dropped outbound link names its reason in the service log,
+  `feed peer=NAME link=dropped reason=lost-eof retry-ms=4000`; the retry
+  delay doubles after each consecutive failure, up to five minutes.
 - `peer catch-up NAME SECONDS`: every SECONDS (0 stops), copy the peer's articles
   in batches (XFNCATCHUP), each batch checked against the peer's digest before
   any article is offered to this node's own verdict; the round resumes after a

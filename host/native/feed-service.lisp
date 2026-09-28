@@ -24,8 +24,17 @@
 
 (define-condition fnn-feed-auth-error (error) ())
 
+;;; STREAK is the value books/feed-link-backoff.lisp `fn-flb-lost' last
+;;; answered (consecutive link failures since the link was last ready): the
+;;; host carries it and hands it back, and never computes it.
 (defstruct (fnn-feed-link (:constructor %make-fnn-feed-link))
-  peer peer-octets socket fd tls-context tls-channel (ready nil) (next-dial 0))
+  peer peer-octets socket fd tls-context tls-channel (ready nil) (next-dial 0)
+  (streak 0))
+
+;;; What the pump was doing when an I/O condition arrived, so a dropped link
+;;; names it (fn-flb-drop-line): :read or :send.  Each feed worker binds it
+;;; (fnn-feed-worker), so the assignments below are that thread's own.
+(defvar *fnn-feed-io-phase* :read)
 
 (defstruct (fnn-feed-runtime (:constructor %make-fnn-feed-runtime))
   service links lock worker (stopping nil) limit)
@@ -220,7 +229,7 @@ closed by this worker, preserving the one-closer rule."
           (multiple-value-bind (word command)
               (fnn-feed-tls-established-core (fnn-feed-runtime-service runtime) link)
             (when (> (length command) 0) (fnn-tls-send-all channel command 10))
-            (when (eq word :ready) (setf (fnn-feed-link-ready link) t))))
+            (when (eq word :ready) (fnn-feed-link-became-ready link))))
       (error (condition)
         (when (fnn-feed-link-tls-context link)
           (fnn-tls-close-context (fnn-feed-link-tls-context link))
@@ -228,11 +237,16 @@ closed by this worker, preserving the one-closer rule."
         (error condition)))))
 
 (defun fnn-feed-send (link octets)
+  (setq *fnn-feed-io-phase* :send)
   (if (fnn-feed-link-tls-channel link)
       (fnn-tls-send-all (fnn-feed-link-tls-channel link) octets 10)
     (fnn-send-all (fnn-feed-link-fd link) octets 10)))
 
 (defun fnn-feed-recv (link limit)
+  "A zero-second read: octets, an empty vector at EOF, or :timeout when the
+socket (or, over TLS, OpenSSL: a record with no application data such as a
+TLS 1.3 NewSessionTicket) has nothing for the feed yet."
+  (setq *fnn-feed-io-phase* :read)
   (if (fnn-feed-link-tls-channel link)
       (fnn-tls-read (fnn-feed-link-tls-channel link) 0 limit)
     (fnn-recv (fnn-feed-link-fd link) 0 limit)))
@@ -352,14 +366,35 @@ has made the kernel free to reuse it."
       (setf (fnn-feed-link-tls-context link) nil))
     (when socket (ignore-errors (fnn-socket-shut socket)))))
 
-(defun fnn-feed-drop-link (runtime link now backoff)
-  "A peer socket failed.  The core records the loss before the next retry."
+(defun fnn-feed-link-became-ready (link)
+  "The reply machine reported :ready: ACL2 restarts the redial streak."
+  (setf (fnn-feed-link-ready link) t)
+  (let ((streak (fnn-core 'fn-flb-ready (fnn-feed-link-streak link))))
+    (unless (and (integerp streak) (>= streak 0))
+      (fnn-fault "feed core returned a malformed link streak: ~s" streak))
+    (setf (fnn-feed-link-streak link) streak)))
+
+(defun fnn-feed-drop-link (runtime link now base cause)
+  "A peer link failed for CAUSE (books/feed-link-backoff.lisp *fn-flb-causes*).
+The core records the loss before the next retry; ACL2's `fn-flb-lost' answers
+the delay before the next dial from the peer record's BASE and the link's
+streak, and the drop is logged by ACL2's line, whatever its cause."
   ;; A failed dial is still a named loss: it advances the ACL2-owned retry
   ;; state even though no descriptor was established to close.
-  (unless (fnn-feed-stoppingp runtime)
-    (fnn-feed-lost (fnn-feed-runtime-service runtime) link now))
-  (fnn-feed-close-link runtime link)
-  (setf (fnn-feed-link-next-dial link) (+ now backoff)))
+  (let ((stopping (fnn-feed-stoppingp runtime)))
+    (unless stopping
+      (fnn-feed-lost (fnn-feed-runtime-service runtime) link now))
+    (fnn-feed-close-link runtime link)
+    (let* ((answer (fnn-core 'fn-flb-lost base (fnn-feed-link-streak link)))
+           (delay (first answer))
+           (streak (second answer)))
+      (unless (and (integerp delay) (>= delay 0) (integerp streak) (>= streak 0))
+        (fnn-fault "feed core returned a malformed link backoff: ~s" answer))
+      (setf (fnn-feed-link-streak link) streak
+            (fnn-feed-link-next-dial link) (+ now delay))
+      (unless stopping
+        (fnn-log-line (fnn-core 'fn-flb-drop-line (fnn-feed-link-peer-octets link)
+                                cause delay))))))
 
 (defun fnn-feed-dial (runtime link now)
   "Dial an ACL2-projected endpoint when its core queue and delay allow it.
@@ -400,7 +435,8 @@ the shared link table."
               ;; A failed open has no outgoing bytes, but it is still the
               ;; named peer-loss observation that advances the ACL2 backoff.
               (unless (fnn-feed-stoppingp runtime)
-                (fnn-feed-drop-link runtime link now backoff)))))))))
+                (fnn-feed-drop-link runtime link now backoff
+                                    (if (typep condition 'fnn-tls-error) :tls :dial))))))))))
 
 (defun fnn-feed-consume (runtime link octets eofp now)
   "Drain a received chunk through one ACL2 event at a time.
@@ -428,22 +464,23 @@ ACL2 framer."
         (case word
           (:need-input
            (when eofp
-             (fnn-log-line (fnn-core 'fn-peer-feed-lost-line
-                                     (fnn-octets-string (fnn-feed-link-peer-octets link))
-                                     :eof))
+             ;; The drop line (fn-flb-drop-line, reason=lost-eof) names it.
              (multiple-value-bind (ignored host port backoff timeout security auth)
                  (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
                (declare (ignore ignored host port timeout security auth))
-               (fnn-feed-drop-link runtime link now backoff)))
+               (fnn-feed-drop-link runtime link now backoff :eof)))
            (return))
           ((:closed :invalid :connection-refused :streaming-refused :unsendable)
+           ;; The reply step logged ACL2's line naming the peer's answer; the
+           ;; drop line names the retry.
            (multiple-value-bind (ignored host port backoff timeout security auth)
                (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
              (declare (ignore ignored host port timeout security auth))
-             (fnn-feed-drop-link runtime link now backoff))
+             (fnn-feed-drop-link runtime link now backoff
+                                 (if (eq word :unsendable) :unsendable :peer)))
            (return))
           (:ready
-           (setf (fnn-feed-link-ready link) t)
+           (fnn-feed-link-became-ready link)
            (setq input nil))
           (:tls
            (multiple-value-bind (ignored host port backoff timeout security auth)
@@ -458,6 +495,7 @@ ACL2 framer."
 
 (defun fnn-feed-pump-link (runtime link now)
   (when (and (not (fnn-feed-stoppingp runtime)) (fnn-feed-link-socket link))
+    (setq *fnn-feed-io-phase* :read)
     (handler-case
         (progn
           (when (fnn-feed-link-ready link)
@@ -470,7 +508,7 @@ ACL2 framer."
                     (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
                                         (fnn-feed-link-peer-octets link))
                   (declare (ignore ignored host port timeout security auth))
-                  (fnn-feed-drop-link runtime link now backoff))
+                  (fnn-feed-drop-link runtime link now backoff :unsendable))
                 (return-from fnn-feed-pump-link nil))))
           (unless (fnn-feed-stoppingp runtime)
             ;; The ACL2-projected limit sizes this buffer before read(2); a
@@ -493,9 +531,19 @@ ACL2 framer."
             ;; later I/O loss on an established link is not a dial.
             (when (typep condition '(or fnn-tls-handshake-error fnn-peer-dial-error))
               (fnn-peer-dial-report :feed (fnn-feed-link-peer-octets link) host condition))
-            (fnn-feed-drop-link runtime link now backoff)))))))
+            ;; Every drop names its cause in ACL2's line (defect M3: a TLS
+            ;; read error on an established link used to drop it silently).
+            (fnn-feed-drop-link runtime link now backoff
+                                (typecase condition
+                                  (fnn-tls-handshake-error :tls)
+                                  (fnn-peer-dial-error :dial)
+                                  (t *fnn-feed-io-phase*)))))))))
 
 (defun fnn-feed-worker (runtime)
+  (let ((*fnn-feed-io-phase* :read))
+    (fnn-feed-worker-loop runtime)))
+
+(defun fnn-feed-worker-loop (runtime)
   (unwind-protect
        (loop until (fnn-feed-stoppingp runtime) do
          (fnn-feed-refresh-links runtime)

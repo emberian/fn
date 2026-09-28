@@ -19,6 +19,8 @@
 (include-book "nntp-syntax")
 ; PRF-099: the opaque-carriage budget rows and the row extension.
 (include-book "peer-carriage-rows")
+; `peer feed NAME pause|resume' (books/feed-pause.lisp).
+(include-book "feed-pause")
 ; PKT-613 (PRF-231): the host's syntax and the TLS check the words select.
 (include-book "peer-host")
 
@@ -289,6 +291,19 @@ decoded as source-address for durable command compatibility."
            (list (fn-cfg-row-make (nth 2 words) *fn-pcb-distributions-slot*
                                   (nth 3 words) 0)))
         (fn-native-admin-result :refused :distributions nil nil 0 nil nil)))
+     ; `peer feed NAME pause|resume': contain one peer's outbound feed
+     ; without `peer remove' (books/feed-pause.lisp); its pull and inbound
+     ; admission are untouched.  The row rides like an extension's, and
+     ; books/native-admin.lisp `fn-native-admin-plan-deltas-over' builds
+     ; `fn-fps-deltas' for it, so the slot stays single-valued.
+     ((equal (nth 1 words) "feed")
+      (if (and (equal (len words) 4)
+               (member-equal (nth 3 words) '("pause" "resume")))
+          (fn-native-admin-result
+           :accepted nil :extend-peer
+           (fn-record-string-octets (nth 2 words)) 0 nil
+           (list (fn-fps-row (nth 2 words) (equal (nth 3 words) "pause"))))
+        (fn-native-admin-result :refused :feed nil nil 0 nil nil)))
      ((equal (nth 1 words) "carries")
       (let ((rows (fn-native-admin-carries-rows (nth 2 words)
                                                 (nthcdr 3 words))))

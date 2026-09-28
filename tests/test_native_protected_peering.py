@@ -44,7 +44,23 @@ DEVELOPER_LAUNCHER_SHA256 = os.environ.get("FN_NATIVE_DEVELOPER_LAUNCHER_SHA256"
 class NativeProtectedPeeringTests(unittest.TestCase):
     command = peer.NativePeeringTests.command
     process_identity = peer.NativePeeringTests.process_identity
-    stop_all = peer.NativePeeringTests.stop_all
+    def stop_all(self):
+        # This module's owners are a Popen whose stderr is a file (start
+        # below); peer.NativePeeringTests.stop_all expects the drained
+        # NativeProcess and failed every test here with AttributeError
+        # 'stop' (seen by lane feed-tls-read, 2026-09-28).
+        for process in self.processes:
+            process.terminate()
+        for process in self.processes:
+            if hasattr(process, "stop"):
+                process.stop()
+                continue
+            try:
+                process.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=15)
+        self.processes = []
     article = staticmethod(peer.NativePeeringTests.article)
     post = peer.NativePeeringTests.post
     await_article = peer.NativePeeringTests.await_article

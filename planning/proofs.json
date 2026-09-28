@@ -11452,7 +11452,7 @@
     {
       "id": "PRF-318",
       "title": "Every failed peer connection names its reason: the pull round's first failing step and the feed's refused connection",
-      "statement": "books/peer-pull-session.lisp fn-pull-session-failure (host/native/pull-service.lisp fnn-pull-round through fn-pull-session-step-triple; the round's line is fn-pull-session-log-line-why): KEYSTONE fn-pull-session-failure-names-every-failed-step: the failure is non-nil exactly when the step moved a round that had not ended to :failed, and its words then begin ` reason='. The words: the feed-connection machine's refusal in its phase (login-refused, starttls-refused, greeting-refused, clear-login-refused, mode-refused, peer-closed, invalid-reply) with the peer's reply code, or the host's cause of a lost connection (lost-dial, lost-tls, lost-send, lost-timeout, lost-eof, lost-read, lost-local). fn-peer-feed-failure-line (host/owner-host.lisp fn-owner-feed-reply-chunk) and fn-peer-feed-lost-line (host/native/feed-service.lisp) give the outbound feed the same words (text; the test book's witnesses).",
+      "statement": "books/peer-pull-session.lisp fn-pull-session-failure (host/native/pull-service.lisp fnn-pull-round through fn-pull-session-step-triple; the round's line is fn-pull-session-log-line-why): KEYSTONE fn-pull-session-failure-names-every-failed-step: the failure is non-nil exactly when the step moved a round that had not ended to :failed, and its words then begin ` reason='. The words: the feed-connection machine's refusal in its phase (login-refused, starttls-refused, greeting-refused, clear-login-refused, mode-refused, peer-closed, invalid-reply) with the peer's reply code, or the host's cause of a lost connection (lost-dial, lost-tls, lost-send, lost-timeout, lost-eof, lost-read, lost-local). fn-peer-feed-failure-line (host/owner-host.lisp fn-owner-feed-reply-chunk) and books/feed-link-backoff.lisp fn-flb-drop-line (host/native/feed-service.lisp fnn-feed-drop-link, through fn-peer-lost-word) give the outbound feed the same words (text; the test book's witnesses); fn-peer-feed-lost-line is no longer host-called.",
       "milestone": "M3",
       "requirements": [
         "NNT-018"
@@ -13368,6 +13368,59 @@
         "planning/evidence/peer-list-depth-2026-09-28.md"
       ],
       "events": []
+    },
+    {
+      "id": "PRF-376",
+      "title": "A dropped outbound feed link is named in one ACL2 line, and consecutive link failures wait ACL2's doubling redial delay (defect M3)",
+      "statement": "Subjects: books/feed-link-backoff.lisp fn-flb-lost, which host/native/feed-service.lisp fnn-feed-drop-link calls with the peer record's backoff base (fn-owner-feed-backoff-ms) and the streak the link carries, for every drop (the dial's, the pump's I/O conditions, EOF, the reply machine's ending words, :unsendable); fn-flb-ready, which fnn-feed-link-became-ready calls on :ready; fn-flb-drop-line, the line fnn-feed-drop-link logs. KEYSTONE fn-flb-lost-advances-the-backoff: for any base and streak, the delay of a second consecutive failure (from the streak the first answered) is at least the first's, and strictly greater when the first is positive and below *fn-flb-max-delay* (300000 ms, local policy). fn-flb-lost-doubles-below-the-ceiling: when twice the first delay is at most the ceiling, the second is exactly twice the first. fn-flb-first-loss-after-ready-waits-the-base: after fn-flb-ready the delay is min(base, ceiling). fn-flb-delay-is-bounded. The streak is per process (not journaled): a restart waits the base. The TLS half of the defect (host/native/tls.lisp fnn-tls-read: WANT_READ/WANT_WRITE at the deadline answers :timeout, never fnn-tls-io-error) is host I/O and is witnessed by tests/test_native_tls_transport.py (session tickets before a greeting) and tests/test_native_feed_tls_read.py, not by a theorem.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-035"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/feed-link-backoff.lisp",
+        "tests/acl2/feed-link-backoff-tests.lisp",
+        "host/native/feed-service.lisp",
+        "host/native/tls.lisp",
+        "tests/native_feed_service_raw.lisp",
+        "tests/test_native_tls_transport.py",
+        "tests/test_native_feed_tls_read.py"
+      ],
+      "progress_note": "Lane feed-tls-read (2026-09-28), defect M3 from lane node-migrate.",
+      "events": [
+        "fn-flb-lost-advances-the-backoff",
+        "fn-flb-lost-doubles-below-the-ceiling",
+        "fn-flb-first-loss-after-ready-waits-the-base",
+        "fn-flb-delay-is-bounded"
+      ]
+    },
+    {
+      "id": "PRF-381",
+      "title": "An operator pauses and resumes one peer's outbound feed without removing the peer: the configuration deltas set exactly the requested pause, and the outbound worker links exactly the unpaused feeds",
+      "statement": "Subjects: books/feed-pause.lisp fn-fps-deltas, which books/native-admin.lisp fn-native-admin-plan-deltas-over builds for a `peer feed NAME pause|resume' plan (books/native-admin-peer.lisp fn-native-admin-peer-extend-plan; host/native-admin-host.lisp fn-native-admin-host-owner-reconfigure, live, and fn-native-admin-host-apply, replayed); fn-fps-live-names, which host/owner-host.lisp fn-owner-feed-peers answers and host/native/feed-service.lisp fnn-feed-refresh-links follows. KEYSTONE fn-fps-deltas-set-the-pause: for a configuration value V whose peer table holds NAME, applying (fn-cfg-apply) the deltas leaves (fn-fps-pausedp NAME) equal to PAUSEP; the deltas add the one (NAME \"outbound-paused\" \"\" 1|0) row and remove every other row of that slot. KEYSTONE fn-fps-live-names-are-the-unpaused-feeds: N is a live name exactly when it is a feed-table name and not paused. fn-fps-deltas-of-an-absent-peer (an arm of the definition, not cited): nothing is published for a peer the table does not hold. Scope: the pause gates the dial (the link is closed and not redialled); the owner still enqueues for a paused peer within its max-queue; health still reports a paused peer with pending work as unavailable-peer.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-035"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/feed-pause.lisp",
+        "tests/acl2/feed-pause-tests.lisp",
+        "books/native-admin.lisp",
+        "books/native-admin-peer.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_feed_tls_read.py"
+      ],
+      "progress_note": "Lane feed-tls-read (2026-09-28), the coordinator's containment ask from lane node-migrate (PKT-882).",
+      "events": [
+        "fn-fps-deltas-set-the-pause",
+        "fn-fps-live-names-are-the-unpaused-feeds"
+      ]
     }
   ]
 }
