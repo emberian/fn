@@ -281,3 +281,51 @@
               (symbol-class 'fn-rcl-held-count-in (w state))
               (symbol-class 'fn-rcl-class-count-in (w state)))
         '(:common-lisp-compliant :common-lisp-compliant :common-lisp-compliant)))
+
+; -----------------------------------------------------------------------------
+; PRF-361 (PKT-878, lane health-truth-status): the counts ask the verdict test
+; of the held verdicts only.  *rht-signed*'s list is the fixture's :absent
+; entries (one per accepted article) with one :unverified entry in front.
+(defconst *rht-held* (fn-rcl-held-verdicts (fn-sn-verdicts *rht-signed*)))
+; Witness: the filter keeps exactly the :unverified entry and drops every
+; :absent one (the list shrinks: this is the work the render no longer does).
+(assert-event
+ (and (equal *rht-held* (list (cons *rht-msgid* '(:unverified :signature 0))))
+      (< (len *rht-held*) (len (fn-sn-verdicts *rht-signed*)))
+      (fn-rcl-verdict-heldp *rht-msgid* *rht-held*)
+      (equal (fn-rcl-verdict-heldp *rht-msgid* *rht-held*)
+             (fn-rcl-verdict-heldp *rht-msgid* (fn-sn-verdicts *rht-signed*)))))
+; Tooth (the filter keeps the held entry): dropping every entry -- a filter
+; that also removed the :unverified one -- changes the answer, so
+; fn-rcl-verdict-heldp-of-held-verdicts is not true of any shrinking.
+(must-fail-checked
+ (assert-event (equal (fn-rcl-verdict-heldp *rht-msgid* nil)
+                      (fn-rcl-verdict-heldp *rht-msgid* (fn-sn-verdicts *rht-signed*)))))
+; Tooth (an :absent entry holds nothing): the filter does drop it.
+(must-fail-checked
+ (assert-event (member-equal (car (fn-sn-verdicts *rht-caught*))
+                             (fn-rcl-held-verdicts (fn-sn-verdicts *rht-caught*)))))
+; The class count over EVERY verdict of *rht-signed* (the keystone's right
+; side), in the arena the fixture's payloads seal.
+(defun rht-cc-a (payloads class h verdicts arts fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((fn-arena (fn-arn-seal-many payloads fn-arena)))
+    (mv (fn-rcl-class-count-in class *rht-rule* 0 h verdicts arts fn-arena) fn-arena)))
+(defun rht-class-count-full (class h arts)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (rht-cc-a *rht-payloads* class h (fn-sn-verdicts *rht-signed*) arts fn-arena)
+      r)))
+; KEYSTONE fn-rcl-store-classes-over-every-verdict, witness: the classes the
+; host reads (over the held verdicts) are the classes over every verdict,
+; and they are not degenerate: the signed article is counted.
+(assert-event
+ (let ((h (fn-rcl-store-holders *rht-signed*))
+       (arts (fn-state-articles (fn-node-acceptance (fn-sn-node *rht-signed*)))))
+   (and (equal (in-arena-fn-rcl-store-classes *rht-payloads* *rht-rule* 0 *rht-signed*)
+               (list (rht-class-count-full :signed h arts)
+                     (rht-class-count-full :kept h arts)))
+        (equal (nth 0 (in-arena-fn-rcl-store-classes *rht-payloads* *rht-rule* 0
+                                                     *rht-signed*))
+               1))))
