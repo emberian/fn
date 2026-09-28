@@ -252,3 +252,51 @@
  (equal (fn-sxp-import-plan *sxpt-manifest* *sxpt-profile* *sxpt-frontier*
                             *sxpt-configs* *sxpt-records* '(:current ((2 . 1000))))
         (list :import *sxpt-raised* *sxpt-frontier* *sxpt-configs* *sxpt-records*)))
+
+
+; -----------------------------------------------------------------------------
+; The archive's profile (fn-sxp-config-decode-archive; proposed D38).  A
+; store's config.json from before batch AS (thirteen u64 fields), octet for
+; octet as tests/acl2/store-profile-open-tests.lisp pins it: the open refuses
+; it by the older layout's name, and the import reads it with the header
+; limits that release parsed under.
+(defconst *sxpt-pre-as-octets*
+  '(70 78 83 77 1 1 0 0 0 148 0 10 102 110 45 115
+    116 111 114 101 45 56 0 30 102 110 45 115 116 111 114 101
+    45 97 108 108 111 99 97 116 105 111 110 45 102 114 111 110
+    116 105 101 114 45 50 0 0 0 0 255 255 255 255 0 0
+    1 0 0 0 0 0 0 0 0 0 4 0 0 0 0 0
+    0 0 1 0 0 0 0 0 0 0 0 0 16 0 0 0
+    0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0
+    0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
+    0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
+    0 0 0 16 0 0 0 0 0 0 0 0 0 0 70 112
+    111 138 38 173 76 99 249 65 234 23 184 118 203 76 223 145
+    252 221 169 197 118 171 16 149 10 151 172 203 171 232))
+
+; Its values, by hand (the u64 fields read off the octets above).
+(defconst *sxpt-pre-as*
+  (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
+        4294967295 1099511627776 67108864 16777216 4096 256 65536
+        1048576 1048576 1048576 1048576 1048576 0))
+
+
+(assert-event (equal (len *sxpt-pre-as-octets*) 190))
+(assert-event (null (fn-bs-config-decode *sxpt-pre-as-octets*)))
+(assert-event (equal (fn-sxp-config-decode-archive *sxpt-pre-as-octets*)
+                     (append *sxpt-pre-as* (list 64 256 16384))))
+(assert-event (fn-bs-profile-validp (fn-sxp-config-decode-archive *sxpt-pre-as-octets*)))
+; The current layout reads as the open's decoder reads it.
+(assert-event (equal (fn-sxp-config-decode-archive (fn-bs-config-encode *fn-bs-profile-scale*))
+                     *fn-bs-profile-scale*))
+; Anything else is nothing.
+(assert-event (null (fn-sxp-config-decode-archive '(1 2 3))))
+; The import plan over that archive profile imports it (no request), as a
+; format-9 profile (fn-sxp-log-profile).
+(assert-event
+ (equal (fn-sxp-import-plan (fn-sxp-manifest (fn-sxp-entries *sxpt-pre-as-octets* *sxpt-frontier*
+                                                             *sxpt-configs* *sxpt-records*))
+                            *sxpt-pre-as-octets* *sxpt-frontier* *sxpt-configs* *sxpt-records*
+                            '(:current nil))
+        (list :import (fn-sxp-log-profile (append *sxpt-pre-as* (list 64 256 16384)))
+              *sxpt-frontier* *sxpt-configs* *sxpt-records*)))

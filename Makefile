@@ -408,6 +408,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-lz-record \
 	books/payload-lz-replay \
 	tests/acl2/payload-lz-record-tests \
+	books/payload-lz-append \
+	tests/acl2/payload-lz-append-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
