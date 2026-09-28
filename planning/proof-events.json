@@ -12817,18 +12817,6 @@
         {
           "kind": "theorem",
           "name": "fn-inj-decide-line-length-is-a-long-header-line"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-article-parse-under-limit-is-a-long-header-line"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-article-parse-limit-is-a-long-header-line"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-article-next-line-limit-is-a-long-line"
         }
       ]
     },

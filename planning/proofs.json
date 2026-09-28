@@ -6452,7 +6452,7 @@
         "fn-lb-binding-delta-keeps-other-logins",
         "fn-lb-binding-delta-is-admitted",
         "fn-lb-pairs-deltas-set-exactly-their-logins",
-        "fn-lb-sync-binds-every-login-as-the-file-does",
+        "fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings",
         "fn-lb-pairs-deltas-ignore-the-record-coordinates",
         "fn-lb-a-publication-keeps-every-open-connections-table",
         "fn-lb-an-open-session-is-decided-under-its-pinned-table",
@@ -7539,7 +7539,9 @@
         "fn-heap-status-decide-is-the-launchers-run-reservation",
         "fn-heap-reserve-full-store-accepted-is-within-the-machine",
         "fn-heap-store-history-holds-payload-and-memberships",
-        "fn-heap-arena-octets-slope"
+        "fn-heap-arena-octets-slope",
+        "fn-heap-records-retained-within-the-terms",
+        "fn-heap-small-profile-run-fits-a-two-gib-machine"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -13236,8 +13238,12 @@
       "progress_note": "Lane zero-copy-commit (Opus 5.5, 2026-09-28). REPL-admitted on persvati (books/owner-article-slots 28 forms, tests/acl2/owner-article-slots-tests). Teeth (tests/acl2/owner-article-slots-tests.lisp, prefix oast-, the host's call on live stobjs over owner-reader-read-tests' owner): reachable positive witness for the admission keystone (one slot, a POST offered 340, one held); a CONSTRUCTED state (a queued submission) where the read before this lane offers the POST with two held in one slot (MUTATION: the old host call violates the conclusion) and the host's call answers the memory 440; hypothesis removal (a connection already mid-article with zero slots: held 1 > 0); the never-blocks keystone's witness and its hypothesis removal; the slots at the small preset (32 of 1,589,248) and at A = 4 MiB (1) and 600,000 (3). SCN-193 is the native case. Certified: persvati certify-20260928T170547Z-326567 (11 passed: the affected roots). Record: planning/evidence/zero-copy-commit-2026-09-28.md. Recertified after the loop twins: persvati certify-20260928T173234Z-581479 (owner-article-slots and its tests). Native (hbox native-s1, 0132d90b8, developer and production): tests.test_native_article_slots 2/2 OK (SCN-193), tests.test_native_mux 4/4 OK (SCN-153). Lane admission-gap (Opus 5.5, 2026-09-28): the gap above closed; books/owner-article-held.lisp (new, includes owner-article-slots); teeth in tests/acl2/owner-article-slots-tests.lisp (prefix oahx-): the TAKETHIS in one read on a CONSTRUCTED state (a peer connection opened under a configuration naming it, a queued submission, one slot) where fn-otm-read-span -- the old host call's result for any read not ending newly mid-article -- leaves two held in one slot (MUTATION) and the host's call refuses the whole read 400 and close with one held; the pipelined POST the same (tier a, the memory 440); positive and hypothesis-removal witnesses for the invariant, the frame (taken and refused TAKETHIS beside a connection mid-article; id2 = id) and never-blocks (the read completing an admitted article stops after its submission, PKT-600, and is the old read at zero slots). SCN-193 gains the native TAKETHIS case. Certified: hbox certify-20260928T204358Z-2060786 (3 passed: books/owner-article-slots, books/owner-article-held, tests/acl2/owner-article-slots-tests, the affected roots). Native (hbox native-wt-20260928T204601Z, lane tree 1e85b75fd+dirty, developer and production): tests.test_native_article_slots 3/3 OK (SCN-193 incl. the TAKETHIS in one read: 400 and close, then 235 and the retried 239; rerun on the same images after the test's transit articles gained a Date line), tests.test_native_mux 4/4 OK, tests.test_native_nntp_post_probe 10/10 OK.",
       "events": [
         "fn-oas-read-span-admits-within-the-slots",
+        "fn-oah-read-span-keeps-held-within-the-slots",
+        "fn-oah-read-span-leaves-the-others-article-mode",
         "fn-oas-read-span-never-blocks-an-admitted-article",
-        "fn-oas-refused-read-is-not-article",
+        "fn-oah-admitted-read-keeps-what-it-completed",
+        "fn-oas-read-span-held-step",
+        "fn-oas-refusals-are-not-article",
         "fn-heap-article-slots-are-held",
         "fn-heap-article-slots-bounds",
         "fn-heap-articles-octets-monotone"
@@ -13350,8 +13356,8 @@
         "planning/evidence/peer-list-depth-2026-09-28.md"
       ],
       "events": [
-        "fn-napb-rows-with-key-loop-is-rev-onto",
-        "fn-napb-peer-names-loop-is-rev-onto"
+        "fn-cfg-rows-with-key-loop-is-rev-onto",
+        "fn-cfg-peer-names-loop-is-rev-onto"
       ]
     },
     {
@@ -13483,7 +13489,21 @@
         "tests/acl2/owner-credits-tests.lisp",
         "tests/test_native_credits.py"
       ],
-      "progress_note": "Lane f8-reservation (2026-09-28): books/memory-credits.lisp and its test book are certified (persvati certify-20260928T171227Z-391318, hbox certify-20260928T173440Z-1769341): fn-mcr-transitions-keep-funded, fn-mcr-acquire-refuses-exactly-past-the-budget, fn-mcr-grow-within-the-reserve-is-admitted, fn-mcr-retain-moves-the-credit, fn-mcr-evict-returns-what-was-evicted, fn-mcr-overdraw-is-within-the-completion-reserve. NO EVENTS ARE CITED: no host line calls the ledger yet (reach_check), so the running server exercises none of it. The events are cited when an allocation site calls it; the first is the article slots (lane zero-copy-commit, fn-oas-read-span, PRF-377), U + R one reserve a slot. Teeth: tests/acl2/memory-credits-tests.lisp. Lane credits (Opus 5.5, 2026-09-28, B5): wired to the served path (books/owner-credits.lisp); REPL-admitted on hbox (owner-credits 50 forms; owner-credits-tests 88 forms). Teeth: tests/acl2/owner-credits-tests.lisp (prefix mcat-)."
+      "progress_note": "Lane f8-reservation (2026-09-28): books/memory-credits.lisp and its test book are certified (persvati certify-20260928T171227Z-391318, hbox certify-20260928T173440Z-1769341): fn-mcr-transitions-keep-funded, fn-mcr-acquire-refuses-exactly-past-the-budget, fn-mcr-grow-within-the-reserve-is-admitted, fn-mcr-retain-moves-the-credit, fn-mcr-evict-returns-what-was-evicted, fn-mcr-overdraw-is-within-the-completion-reserve. NO EVENTS ARE CITED: no host line calls the ledger yet (reach_check), so the running server exercises none of it. The events are cited when an allocation site calls it; the first is the article slots (lane zero-copy-commit, fn-oas-read-span, PRF-377), U + R one reserve a slot. Teeth: tests/acl2/memory-credits-tests.lisp. Lane credits (Opus 5.5, 2026-09-28, B5): wired to the served path (books/owner-credits.lisp); REPL-admitted on hbox (owner-credits 50 forms; owner-credits-tests 88 forms). Teeth: tests/acl2/owner-credits-tests.lisp (prefix mcat-).",
+      "events": [
+        "fn-mcr-resize-and-move-keep-funded",
+        "fn-mcr-resize-refuses-exactly-past-the-budget",
+        "fn-mcr-total-of-move",
+        "fn-mca-read-span-keeps-funded",
+        "fn-mca-read-span-covers-the-connection",
+        "fn-mca-read-span-within-the-credit-unfolds",
+        "fn-mca-read-span-never-blocks-what-is-held",
+        "fn-mca-close-keeps-what-the-commit-owns",
+        "fn-mca-commit-steps-keep-funded",
+        "fn-mca-take-and-seal-keep-the-total",
+        "fn-mca-seal-and-batch-done-move-the-batch",
+        "fn-mca-initial-funds-exactly-the-articles"
+      ]
     },
     {
       "id": "PRF-904",
@@ -13542,10 +13562,7 @@
         "tests/test_native_header_lines.py"
       ],
       "events": [
-        "fn-inj-decide-line-length-is-a-long-header-line",
-        "fn-article-parse-under-limit-is-a-long-header-line",
-        "fn-article-parse-limit-is-a-long-header-line",
-        "fn-article-next-line-limit-is-a-long-line"
+        "fn-inj-decide-line-length-is-a-long-header-line"
       ]
     },
     {
