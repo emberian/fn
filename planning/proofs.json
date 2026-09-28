@@ -13243,7 +13243,7 @@
         "PRF-164"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/clock-unit.lisp",
         "books/accounts.lisp",

@@ -98,11 +98,6 @@ closed by this worker, preserving the one-closer rule."
     (fnn-fault "feed core returned ~s from ~a" word where))
   word)
 
-(defun fnn-feed-octets (value where)
-  (unless (fnn-octet-list-p value)
-    (fnn-fault "feed core returned non-octets for ~a" where))
-  (fnn-octets value))
-
 (defun fnn-feed-peer-list (service)
   (fnn-owner-transit-serialized
    service nil
