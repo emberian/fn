@@ -39,6 +39,11 @@
 ; Prefix `fn-log-sink-' (docs/prefixes.md).
 (in-package "ACL2")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; The backlog a wedged sink may leave queued: 1 MiB of log octets, about
 ; ten thousand of the owner's outcome lines.  A work and allocation bound of
 ; the log writer (D27), not a bound on a datum: see `fn-log-sink-offer'.

@@ -46,6 +46,11 @@
                                   ; fn-cat-redecide-count, -keeps-handles, fn-cat-handles-inp-of-redecide
 (include-book "owner-invariants")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; -----------------------------------------------------------------------------
 ; The article sub-history, and the catalog materialized.
 
@@ -98,6 +103,7 @@
 ; -----------------------------------------------------------------------------
 ; The load: entries 2, 3 and 4 are this fold over the records they decode.
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defun fn-cat-load-row (w keyring generation fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (and (fn-record-p w) (fn-prin-keyringp keyring) (natp generation))))
@@ -105,6 +111,7 @@
     (fn-cat-intern-list w keyring generation fn-arena)
     (let ((fn-cat (fn-cat-commit held fn-cat)))
       (mv fn-arena fn-cat))))
+(local (in-theory (disable (tau-system))))
 
 (defun fn-cat-load (records keyring generation fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)

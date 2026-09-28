@@ -5,6 +5,11 @@
 (include-book "store-identity-sequence-invariants")
 (include-book "store-observed")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 (defun fn-csi-completed-prefixp (s)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((n (fn-sn-identity-next s))
@@ -413,6 +418,7 @@
            :induct (fn-cpe-projection-replay s records expected)
            :in-theory (enable fn-cpe-projection-replay))))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defthm fn-csi-successful-recover-reconstructs-completed-prefix
   (let ((after (fn-sn-recover s)))
     (implies (and (fn-sn-statep s)
@@ -436,6 +442,7 @@
                             fn-sf-completion-phasep)
                            (fn-sn-recover fn-cpe-projection-replay
                             fn-sn-statep fn-sf-statep)))))
+(local (in-theory (disable (tau-system))))
 
 ; The file-kernel's :completing phase has one already appended event beyond
 ; the carried cursor.  This equation is about the event selected by the
@@ -1287,6 +1294,7 @@
                             fn-sn-io fn-sn-finish
                             fn-sn-refuse-reservation fn-sn-known-abort)))))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defthm fn-csi-normal-step-preserves-full-relation
   (implies (and (fn-csi-full-relationp s)
                 (not (member-equal
@@ -1304,6 +1312,7 @@
                            (fn-snrt-step fn-snt-relation
                             fn-snt-consumerp fn-sn-statep
                             fn-sn-identity-sequencep)))))
+(local (in-theory (disable (tau-system))))
 
 (defthm fn-csi-replaying-crash-preserves-full-relation
   (implies (and (fn-csi-full-relationp s)

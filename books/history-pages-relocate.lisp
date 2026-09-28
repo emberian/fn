@@ -3,6 +3,12 @@
 (in-package "ACL2")
 (include-book "history-pages-grow")
 (local (include-book "arithmetic/top" :dir :system))
+
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 (local (in-theory (disable floor mod pgs-true-list-fix-when-true-listp pgs-ptab-p-true-listp fn-cp-id-length-bound adt-nth-0
                           adt-nth-1+ fn-hp-lens-col-sizes fn-hp-okp fn-scc-octet-listp-facts)))
 

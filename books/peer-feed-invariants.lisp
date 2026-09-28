@@ -33,6 +33,11 @@
 (include-book "peer-feed")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 (local (in-theory (enable fn-feed-vocabulary)))
 
 ; -----------------------------------------------------------------------------
@@ -803,6 +808,7 @@
 ; the arms read come from `fn-feed-feedp-forward-queue', and the rebuilt
 ; record is answered by `fn-feed-feedp-of-make-with-queue-and-attempt' and
 ; `fn-feed-feedp-of-with-queue'.
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defthm fn-feed-apply-record-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-apply-record f kind values)))
   :hints (("Goal"
@@ -840,6 +846,7 @@
                             (xs (fn-feed-queue f))
                             (n (fn-feed-next-attempt f))
                             (msgid (fn-frame-item 1 values)))))))
+(local (in-theory (disable (tau-system))))
 
 ; The fold over the journal, and the same discipline as the three composite
 ; theorems above: the fold stays OPEN (it is the induction) and the record

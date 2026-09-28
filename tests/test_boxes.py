@@ -64,6 +64,9 @@ class BoxesTests(unittest.TestCase):
             self.assertIn("hbox reserved by curve-lane", self.run_boxes(answers).stdout)
         self.assertEqual(self.run_boxes(answers, "reserve", "hbox", "--why", "x").returncode, 2)
 
+    # waiver-ok: capability -- the lease uses flock(1) and GNU date's -d @N;
+    # the laptop (BSD date, no flock) is a machine this tree has not built
+    # them for, so the case runs on the build boxes only.
     @unittest.skipUnless(shutil.which("flock") and subprocess.run(
         ["date", "-d", "@0"], capture_output=True).returncode == 0, "needs flock and GNU date")
     def test_reserve_and_release_are_a_lease_on_the_box(self):
@@ -91,6 +94,19 @@ class BoxesTests(unittest.TestCase):
             self.assertEqual(boxes("b", "reserve", "hbox", "--for", "1", "--why", "z").returncode, 0)
             self.assertEqual(boxes("a", "release", "hbox", "--force").returncode, 0)
             self.assertFalse((Path(directory) / ".fn-box-reservation").exists())
+            # A named token (closeout-common's `wide'): the same lease, kept on
+            # the token host under its own file; a box's lease is untouched.
+            took = boxes("a", "reserve", "wide", "--for", "5", "--why", "config.lisp")
+            self.assertEqual(took.returncode, 0, took.stderr)
+            self.assertIn("config.lisp",
+                          (Path(directory) / ".fn-box-reservation-token-wide").read_text())
+            self.assertEqual(boxes("b", "check", "wide").returncode, 4)
+            self.assertEqual(boxes("b", "check", "hbox").returncode, 0)
+            self.assertEqual(boxes("b", "reserve", "wide", "--for", "5", "--why", "y").returncode, 4)
+            self.assertEqual(boxes("a", "release", "wide").returncode, 0)
+            self.assertEqual(boxes("b", "check", "wide").returncode, 0)
+            self.assertEqual(boxes("b", "reserve", "Not A Token", "--for", "1",
+                                   "--why", "z").returncode, 2)
 
 
 class mock_env:

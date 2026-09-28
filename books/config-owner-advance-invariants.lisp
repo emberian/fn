@@ -6,6 +6,11 @@
 (in-package "ACL2")
 (include-book "config-owner-live")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; The native recovery caller starts with no open connection IDs.  Ordinary
 ; open/read/close/complete preserve the strengthened relation in the base
 ; book, hence carry uniqueness into this advance step.

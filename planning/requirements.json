@@ -4127,9 +4127,11 @@
         "books/heap-reservation.lisp",
         "host/native/heap.lisp",
         "packaging/fn",
-        "tests/acl2/heap-reservation-tests.lisp"
+        "tests/acl2/heap-reservation-tests.lisp",
+        "tools/runtime_image/world-deps-check.lisp",
+        "tests/test_native_image_differential.py"
       ],
-      "implementation_note": "Before save-exec the build keeps, at their current value, the twelve execution properties on every symbol and the other world pairs a node was recorded reading (lane image-anatomy), over a bottom of command 0, event 0 and project-dir-alist; it drops the build residue (channel symbols, documentation, defconst discriminators, the build-sized hons space and memoize array). A re-save of the stripped core was measured worse and is not taken. Core dynamic content 271.4 -> 105.6 MiB (hbox), 265.9 -> 106.2 (OpenBSD). The owner collects every 64 MiB during recovery and a publication (a sixteenth of a reservation under 1 GiB), once fully after recovery, and every 8 MiB while serving. The reservation a profile needs is still heap-from-profile's derivation (HST-013), which the list representation of the retained history dominates: see the record's packets. The thread stacks: books/heap-reservation.lisp fn-heap-reserve-decide (PRF-198's extension) adds the core once more and THREADS x (STACK + 4 MiB) to heap-figure's heap, STACK a constant 1,024 KiB (seven times the 142 KiB the node needs whatever the article since lane served-line-iterative made the served path's per-line recursions loops; before, a per-line term, 1,192 KiB for the 32 KiB-article presets; the image's launcher passed 64 MiB), and refuses a total past the machine by name; the installed launcher passes --control-stack-size."
+      "implementation_note": "Before save-exec the build keeps, at their current value, the twelve execution properties on every symbol and the other world pairs a node was recorded reading (lane image-anatomy), over a bottom of command 0, event 0 and project-dir-alist; it drops the build residue (channel symbols, documentation, defconst discriminators, the build-sized hons space and memoize array). A re-save of the stripped core was measured worse and is not taken. Core dynamic content 271.4 -> 105.6 MiB (hbox), 265.9 -> 106.2 (OpenBSD). The owner collects every 64 MiB during recovery and a publication (a sixteenth of a reservation under 1 GiB), once fully after recovery, and every 8 MiB while serving. The reservation a profile needs is still heap-from-profile's derivation (HST-013), which the list representation of the retained history dominates: see the record's packets. The thread stacks: books/heap-reservation.lisp fn-heap-reserve-decide (PRF-198's extension) adds the core once more and THREADS x (STACK + 4 MiB) to heap-figure's heap, STACK a constant 1,024 KiB (seven times the 142 KiB the node needs whatever the article since lane served-line-iterative made the served path's per-line recursions loops; before, a per-line term, 1,192 KiB for the 32 KiB-article presets; the image's launcher passed 64 MiB), and refuses a total past the machine by name; the installed launcher passes --control-stack-size. The prover's session state outside the world (the global enabled structure, every enabled array, the type-set tables) is replaced by named traps (lane image-strip, fnn-strip-prover-state), listed as S lines of IMAGE.world-deps version 2; the qualification check traces its ACL2 readers and requires none to run. Its size is measured at convergence."
     },
     {
       "id": "HST-024",
@@ -4138,7 +4140,8 @@
       "milestone": "M6",
       "status": "specified",
       "proof_targets": [
-        "PRF-223"
+        "PRF-223",
+        "PRF-377"
       ],
       "verification": [
         "proof",
@@ -4155,9 +4158,13 @@
         "tests/test_native_mux.py",
         "tools/mux_measure.py",
         "specs/host.md",
-        "planning/evidence/connection-multiplexing-2026-09-26.md"
+        "planning/evidence/connection-multiplexing-2026-09-26.md",
+        "books/owner-article-slots.lisp",
+        "books/heap-store-figure.lisp",
+        "tests/acl2/owner-article-slots-tests.lisp",
+        "tests/test_native_article_slots.py"
       ],
-      "implementation_note": "PKT-605 closed for the stated workload: the capacity row (NNT-043) is checked against the machine by ACL2 at run and at every live reconfiguration; trusted sources count. No wire or delta code, no store format, no fn.toml key. PKT-639 (implicit TLS admitted before the handshake) and PKT-640 (TLS refusals in the service log) are folded in. SCN-153 is the native case on both images."
+      "implementation_note": "PKT-605 closed for the stated workload: the capacity row (NNT-043) is checked against the machine by ACL2 at run and at every live reconfiguration; trusted sources count. No wire or delta code, no store format, no fn.toml key. PKT-639 (implicit TLS admitted before the handshake) and PKT-640 (TLS refusals in the service log) are folded in. SCN-153 is the native case on both images. Lane zero-copy-commit (2026-09-28): the articles in flight are a pool of credits in the store's heap figure (books/heap-store-figure.lisp fn-heap-articles-octets), admitted by every served read (books/owner-article-slots.lisp fn-oas-read-span: POST 440, IHAVE/TAKETHIS 400 and close past the slots; reserve-to-finish, so an admitted upload is never blocked); SCN-193 is its native case. fn-cbud-launch-decide is gone."
     },
     {
       "id": "NNT-046",

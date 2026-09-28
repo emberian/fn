@@ -61,6 +61,11 @@
 (include-book "post-identity-index")
 (include-book "replay-identity-index")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-ctl-visible-articles)
@@ -809,6 +814,7 @@
 ; 5. The prepare chain: fn-pidx-* (books/post-identity-index.lisp) with the
 ; admission through the carry.
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defun fn-prc-node-prepare (s generation msgid payload groups
                               obligation-id subject evidence charge stamp
                               view carry)
@@ -838,6 +844,7 @@
                      (fn-retain-pins retention))
                (fn-retain-releases retention)))
              (fn-node-bindings s))))))))
+(local (in-theory (disable (tau-system))))
 
 (defthm fn-prc-node-prepare-is-pidx-node-prepare
   (implies (fn-prc-carryp carry)
@@ -853,10 +860,14 @@
                                    fn-retain-make-obligation
                                    fn-node-make-state fn-node-make-stage)))))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (verify-guards fn-prc-node-prepare
   :hints (("Goal" :in-theory (enable fn-node-statep))))
+(local (in-theory (disable (tau-system))))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (in-theory (disable fn-prc-node-prepare))
+(local (in-theory (disable (tau-system))))
 
 (defun fn-prc-sn-prepare-node (node record view carry)
   (declare (xargs :guard (and (fn-node-statep node) (true-listp record))

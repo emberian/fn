@@ -133,7 +133,7 @@ if [ "$WORLD" = stripped ]; then
         echo "build_native_host: world-strip marker missing from $LOG" >&2
         exit 1
     fi
-    if ! head -1 "$IMAGE.world-deps" 2>/dev/null | grep -q '^fn-world-deps 1$'; then
+    if ! head -1 "$IMAGE.world-deps" 2>/dev/null | grep -q '^fn-world-deps 2$'; then
         echo "build_native_host: the stripped image has no dependency set $IMAGE.world-deps" >&2
         exit 1
     fi
