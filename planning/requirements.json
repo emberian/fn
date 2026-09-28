@@ -3527,7 +3527,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-181",
-        "PRF-348"
+        "PRF-348",
+        "PRF-346"
       ],
       "verification": [
         "proof",
@@ -3937,7 +3938,8 @@
       "proof_targets": [
         "PRF-203",
         "PRF-202",
-        "PRF-302"
+        "PRF-302",
+        "PRF-346"
       ],
       "verification": [
         "proof",
