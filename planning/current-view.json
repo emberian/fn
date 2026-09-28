@@ -68,22 +68,22 @@
         "host/owner-host.lisp": "3984db58fd316e4ab047750bd3d96dbd77db323f2c6806008cf19a58fa9a8117"
       }
     },
-    "18a7137a": {
-      "source": "18a7137a379456b942721bdad14d4c6193c41f0f",
+    "902de488": {
+      "source": "902de48824120056127b525e67be266d366b3484",
       "qualification": null,
       "closure_manifest": null,
-      "release": "fn-6.7.0-linux-x86_64.tar.gz sha256 54e6a3630e2d1ceff3918dad9e788ecfca94a725715bef099a247a681d7d2b13 (release-gate green-check 574/574 on hbox, planning/evidence/public-node-deploy-2026-09-27.md; not a qualified image)",
+      "release": "fn-6.6.0-linux-x86_64.tar.gz sha256 08553f3fc211bb5c06957a9619b709e663c950845e4b0e9f89a4a31ff7fb6af5 (source 957d43dd7 plus two certification manifests; release-gate green-check 585/585 on hbox, planning/evidence/public-node-deploy-2026-09-27.md; not a qualified image)",
       "host_sha256": {
-        "host/bp-native-app-host.lisp": "2d4c4bb9e1e3cfd9ca93206463ba02db21fcfb6bf17492cf432d37abb836bf31",
-        "host/checkpoint-host.lisp": "fbeb2542747f2cf4505ddb2fc1bfb49ea9219972b3f62556b792fbd913ceb952",
-        "host/native/bp-service.lisp": "c2cdf3422cb8779584ac9db90271c53839f13f042ab7e16ca98e07fac6b0834c",
-        "host/owner-host.lisp": "1e763be4927b39740a3721f4b887ec36fb109959c81db1051c829a47ace34857"
+        "host/bp-native-app-host.lisp": "ec5f8a19934fff5da14979340cc80e685ff8b50e1da9fb2414035922a130ce4e",
+        "host/checkpoint-host.lisp": "fe7c5bd15cde4bc9a5e60124b3bc520d90c4b6813c78f447acc865072e1af7bc",
+        "host/native/bp-service.lisp": "5c2c0e2beeb980cd7d619ebd6229b5cd28d53c56bd9120544f2e41a01682b081",
+        "host/owner-host.lisp": "6823984d56e6ddf67e217db6e7a69a0a122da51e76b6be1aa5b1078a88c2b02d"
       },
       "book_sha256": {
         "books/bp-node-forward-retry.lisp": "5ea9cb4daf6e3f2777dea2073bceb41dda0baddc1e7bd2c798e793d94e1c95ff",
         "books/bp-node-job-offer.lisp": "e5aa4ab48e12702780e1010c270436d874fc87c371cb052b31d3d4b8f09ee644",
         "books/bp-transit-join.lisp": "69130d3184083186e9301bd1ebcb2a4e9a3b2b9d70de39a0bc815dbf2bae00bd",
-        "books/byte-store-k0-recovery.lisp": "0796b4a844c17d3e18c325ee08620b2a6d77b89f89a5b0908fec62cfe1ed04fa",
+        "books/byte-store-k0-recovery.lisp": "890ba98e7b22b2bb03764400fcb131d743392288757d2abacb65e01c6772ac53",
         "books/config-owner-carried.lisp": "16d19afdfb23e9d0f8d980c7994c437a91910fca369575fdba8dc66547b60900",
         "books/config-owner-publish.lisp": "935975930d3c12512667f151386006bb8fb0c99fa200dde35b3913a483ef76ef",
         "books/nntp-auth-invariants.lisp": "be238aac84aa00ff0e5d4b9eb2f28b4de11e5ffc1aedb92d285a671694d1608b",
@@ -91,30 +91,36 @@
         "books/owner-feed-subject.lisp": "deb165aa130ef597c8c5653f94aa10b80e82d8094e30f4bc8d3bf40144696006",
         "books/owner-invariants-served.lisp": "310186d671106c2a0f75d26105143451d6877cac27c642ddc3887dc5d0f2f73e",
         "books/owner-list-counts-read.lisp": "c698a1367060237e75730a8b73d901e8877c18f8b2be18dd898b2a4b4097db86",
-        "books/owner-parse-carried.lisp": "951f9cfca10086822d34daab4bbc4803cbdbf45c14863ec0d9721aa1997d2f97",
-        "books/owner-prepare-outcome.lisp": "3991c7c1f3094f7072987c56c687304baa95e1b4fbeab88549fe168201dcb418",
+        "books/owner-parse-carried.lisp": "3e11867aa57c388924571f750050d964ab6eea4630f009b2fa669bfc8d7e0a5a",
+        "books/owner-prepare-outcome.lisp": "05423388d7e9866b28500f076362efc5c9ba81e761af811f36e8149d845375d8",
         "books/owner-served-carried.lisp": "557dff89f3965cbc76d8e80ff1ba56a380ce8019d0b959facec0fa902a0bbf33",
         "books/owner-served-invariants.lisp": "7704cdaaf2925aa922da10d856b49b32874c474c73d1944822a30663e1d1d69d",
         "books/owner-store-budget.lisp": "603ae8f9267a3e3c0d30164b3393151ff76ff45c23dde6cb3d18229bc095b1c1",
         "books/owner-tls-prefix.lisp": "dedddbb5d016bf3ae3ab28518bc2aa6a12cc0c1a91905ee28a60313df42da40b",
         "books/owner-verdict-read.lisp": "d55cac809049917dc82119a06d289f78b271849cd691d492d36aaf846386ea5d",
-        "books/poster-bytes-invariants.lisp": "a2975002b3ccd1ade4c0c9d126b22d7ee3c6426667bf0a42cf69f5c36c4aa6d5",
+        "books/poster-bytes-invariants.lisp": "4fc4e0c087aef5e7d8b3cbf234b06a6850cd07b260539d16666bf52a7572a067",
         "books/served-carried.lisp": "40c402cc92a6dd89e72b2d390022c5b6b7103857f749652086da1aded7f7675e",
-        "books/store-intern.lisp": "ac6acc4dae31fda023e7720c65c79ff0985ae80114c1f09d5df8cc12801c5489",
-        "books/store-log-reclaim.lisp": "907ac16890659fb81caf6960aa973f085b34aca9e4a2a32fccd3ef360b1998de"
+        "books/store-intern.lisp": "cf17b055b161f763a1875f963f4c79bbee2e615f98ce333640aafa7faee52a1b",
+        "books/store-log-reclaim.lisp": "a9fa795fbf725fc33ced121ac72c0ceabfbd7518d08a502d7f16274530ff99ce"
       }
     }
   },
   "deployment": {
     "where": "`fn.fg-goose.online` on the fsn1 anchor `dregg-anchor-fsn1` (floating IP 88.99.126.35; 119 STARTTLS and 563 implicit TLS, Let's Encrypt certificate)",
-    "image": "18a7137a",
+    "image": "902de488",
     "record": "planning/evidence/public-node-deploy-2026-09-27.md",
     "profiles": [
       "default"
     ],
-    "profile_text": "release `fn-6.7.0-linux-x86_64.tar.gz` (sha256 `54e6a3630e2d1ceff3918dad9e788ecfca94a725715bef099a247a681d7d2b13`), native under systemd with MemoryMax=2G, a fresh store at format 9 (max-transactions 32,768), small-community mission plus the edge exposure policy, logins by invitation only, no peers, DTN profile not deployed; deployed 2026-09-27 21:49Z"
+    "profile_text": "release `fn-6.6.0-linux-x86_64.tar.gz` (sha256 `08553f3fc211bb5c06957a9619b709e663c950845e4b0e9f89a4a31ff7fb6af5`, source `957d43dd7` plus two manifests), native under systemd with MemoryMax=2G, the format-9 store kept across the upgrade (max-transactions 32,768), small-community mission plus the edge exposure policy, logins by invitation only, no peers (peer add lines ready in the record), DTN profile not deployed; first deployed 2026-09-27 21:49Z on `18a7137a`, redeployed 2026-09-28 03:29Z"
   },
   "earlier_deployments": [
+    {
+      "where": "`fn.fg-goose.online` on the fsn1 anchor `dregg-anchor-fsn1` (floating IP 88.99.126.35; 119 STARTTLS and 563 implicit TLS, Let's Encrypt certificate)",
+      "image": "18a7137a",
+      "record": "planning/evidence/public-node-deploy-2026-09-27.md",
+      "state": "release `fn-6.7.0-linux-x86_64.tar.gz` (sha256 `54e6a3630e2d1ceff3918dad9e788ecfca94a725715bef099a247a681d7d2b13`), deployed 2026-09-27 21:49Z, replaced in place 2026-09-28 03:29Z by `902de488` (kept at `/opt/fn-18a7137a3`; it refuses the store the new build has written: the record's rollback finding)"
+    },
     {
       "where": "hbox `/tank/fn/node-old-format8-20260928` (was `/tank/fn/node`)",
       "image": "bbf52159",
