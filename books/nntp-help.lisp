@@ -186,10 +186,11 @@
   :hints (("Goal" :in-theory (enable fn-auth-session-shapep fn-auth-session-base
                                      fn-auth-session-config fn-auth-session-pending
                                      fn-auth-session-subject fn-auth-session-tlsp
-                                     fn-auth-session-handshakingp fn-auth-with-base
-                                     fn-auth-make-session
+                                     fn-auth-session-handshakingp fn-auth-session-ctx
+                                     fn-auth-with-base fn-auth-make-session
                                      fn-inj-nth fn-inj-car fn-inj-cdr)
-           :expand ((len (cdr (cddddr as))) (len (cddr (cddddr as)))))))
+           :expand ((len (cdr (cddddr as))) (len (cddr (cddddr as)))
+                    (len (cdddr (cddddr as)))))))
 
 ; KEYSTONE (PRF-194).  A keyword HELP does not list is not served: the
 ; served step answers it exactly RFC 3977 section 3.2.1's "500 command not

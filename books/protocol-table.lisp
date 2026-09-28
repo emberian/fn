@@ -1109,7 +1109,7 @@
    :faq "A streaming peer sends an article (peers only).")
 
   ("AUTHINFO"
-   :rfc "RFC 4643 2.3" :dispatch :auth
+   :rfc "RFC 4643 2.3, 2.4" :dispatch :auth
    :parser (fn-auth-token-argp)
    :model (fn-auth-authinfo) :cat nil :xref nil
    :live (("any" fn-auth-authinfo))
@@ -1117,7 +1117,9 @@
    :fuzz ((:cases (("USER" (:choice "fuzz" "nobody" "" (:rep "u" 600)))
                    ("PASS" (:choice "fuzz-password" "wrong" "" (:rep "p" 600))))
                   (("PASS" "fuzz-password"))
-                  (("SASL" (:choice "PLAIN" "PLAIN AGZ1enoAZnV6ei1wYXNzd29yZA==" "X")))
+                  (("SASL" (:choice "PLAIN" "PLAIN AGZ1enoAZnV6ei1wYXNzd29yZA==" "X"
+                                    "SCRAM-SHA-256" "SCRAM-SHA-256 biwsbj1mdXp6LHI9ZnV6eg=="
+                                    "SCRAM-SHA-256-PLUS" "PLAIN =" "PLAIN !!!!")))
                   (((:choice "GENERIC" "SIMPLE" "" "user")))
                   (("USER" "fuzz"))))
    :replies ((381 :accepted :auth :password "381 password required")
@@ -1127,8 +1129,12 @@
              (483 :refused :auth :protect "483 a protected channel is required; use STARTTLS")
              (501 :refused :auth :syntax "501 syntax error")
              (502 :refused :auth :already "502 already authenticated")
-             (502 :refused :auth :no-sasl "502 no SASL mechanism is offered"))
-   :faq "Logs in: AUTHINFO USER name, then AUTHINFO PASS password.")
+             (383 :accepted :auth :sasl-continue "383 CHALLENGE" :computed)
+             (283 :accepted :auth :sasl-accepted "283 CHALLENGE" :computed)
+             (481 :refused :auth :cancelled "481 authentication cancelled")
+             (503 :refused :auth :no-mechanism "503 mechanism not recognized")
+             (504 :refused :auth :base64 "504 base64 encoding error"))
+   :faq "Logs in: AUTHINFO SASL SCRAM-SHA-256 (or PLAIN over TLS), or AUTHINFO USER name, then AUTHINFO PASS password.")
 
   ("STARTTLS"
    :rfc "RFC 4642 2.2" :dispatch :auth

@@ -653,7 +653,9 @@
 (defconst *fn-t-served-cred*
   (fn-auth-make-cred *fn-t-served-cred-name* (make-list 32 :initial-element 7)
                      (fn-authsec-verifier *fn-t-served-cred-salt*
-                                          *fn-t-served-cred-digest*)
+                                          *fn-t-served-cred-digest*
+                     (car (fn-scram-keys *fn-t-served-cred-secret* *fn-t-served-cred-salt* 4096))
+                     (cadr (fn-scram-keys *fn-t-served-cred-secret* *fn-t-served-cred-salt* 4096)))
                      t))
 (assert-event (equal (fn-auth-cred-secret *fn-t-served-cred*)
                      (fn-authsec-enrol *fn-t-served-cred-salt*

@@ -42,7 +42,7 @@
 ; THE SECRET IS A SALTED DIGEST.  RFC 4643 section 2.3 AUTHINFO USER/PASS is
 ; a cleartext password mechanism ON THE WIRE, and nothing here changes that.
 ; What the configuration holds is a verifier: books/auth-secret.lisp's
-; (:fn-authsec-v1 salt digest) over the tagged digest of salt || secret, and
+; (:fn-authsec-v2 salt digest stored-key server-key): the tagged digest of salt || secret, and SCRAM-SHA-256's keys; and
 ; fn-auth-checkp is fn-authsec-checkp on it.  The digest is the crypto
 ; seam's, executable since books/crypto-attach.lisp attached a realiser (BLAKE3,
 ; books/blake3.lisp, since store format 10; SHA-256 before), so the comparison runs on the served path and Python
@@ -1183,8 +1183,6 @@
 ;; (`fn-auth-sasl-line-okp').  RFC 5802 bounds no nonce; clients send 18 to
 ;; 32 octets.
 
-(defmacro fn-auth-tmp-text (x) x) ; TEMPORARY: until protocol-table carries the rows
-
 (defun fn-auth-sasl-decode (token)
   ; A client response: "=" is the empty response, anything else must be
   ; canonical base64 (books/octet-text.lisp fn-ot-b64-decode refuses a
@@ -1334,7 +1332,7 @@
      ; RFC 4643 section 2.4.2: an unsupported mechanism is 503.
      ((not (fn-sasl-offeredp mech tlsp (fn-auth-ctx-seed ctx)
                              (fn-auth-ctx-binding ctx)))
-      (fn-auth-sasl-refuse as (fn-auth-tmp-text "503 mechanism not recognized")))
+      (fn-auth-sasl-refuse as (fn-proto-text "AUTHINFO" :no-mechanism)))
      ((null (cdr margs))
       ; RFC 4422 section 5.1: the mechanisms are client-first; the empty
       ; challenge is "383 =" (RFC 4643 section 2.4.2).
@@ -1349,7 +1347,7 @@
       (mv-let (okp response) (fn-auth-sasl-decode (cadr margs))
         (if okp
             (fn-auth-sasl-finish as (fn-sasl-initial-state mech) response)
-          (fn-auth-sasl-refuse as (fn-auth-tmp-text "504 base64 encoding error"))))))))
+          (fn-auth-sasl-refuse as (fn-proto-text "AUTHINFO" :base64))))))))
 
 (defun fn-auth-sasl-waitingp (as)
   ; An exchange is kept: the next command line is its response.
@@ -1370,11 +1368,11 @@
               (not (fn-auth-session-tlsp as)))
          (fn-auth-sasl-refuse as (fn-proto-text * :protect)))
         ((equal line (list 42))
-         (fn-auth-sasl-refuse as (fn-auth-tmp-text "481 authentication cancelled")))
+         (fn-auth-sasl-refuse as (fn-proto-text "AUTHINFO" :cancelled)))
         (t (mv-let (okp response) (fn-auth-sasl-decode line)
              (if okp
                  (fn-auth-sasl-finish as (fn-auth-session-pending as) response)
-               (fn-auth-sasl-refuse as (fn-auth-tmp-text "504 base64 encoding error")))))))
+               (fn-auth-sasl-refuse as (fn-proto-text "AUTHINFO" :base64)))))))
 
 ;; The host's (:sasl-context SEED BINDING) event: what SASL needs of the
 ;; connection and no client octet supplies.  SEED that is not 32 octets
@@ -2010,6 +2008,30 @@
 
 (in-theory (disable fn-auth-starttls-lines fn-auth-authinfo-lines
                     fn-auth-sasl-lines))
+
+;; EXPORTED: the reader and transit labels of the block are exactly the peer
+;; list's; the access labels (STARTTLS, AUTHINFO, SASL) are none of them.
+;; books/served.lisp (POST) and books/nntp-xpat.lisp (XPAT) read these.
+(defthm fn-auth-capability-lines-for-peer-reader-labels
+  (and (iff (member-equal (fn-scram-text "POST")
+                          (fn-auth-capability-lines-for-peer
+                           acfg subject tlsp postingp record ctx))
+            (member-equal (fn-scram-text "POST")
+                          (fn-peer-capability-lines record postingp)))
+       (iff (member-equal (fn-scram-text "XPAT")
+                          (fn-auth-capability-lines-for-peer
+                           acfg subject tlsp postingp record ctx))
+            (member-equal (fn-scram-text "XPAT")
+                          (fn-peer-capability-lines record postingp))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
+                                   fn-auth-access-capability-lines
+                                   fn-auth-starttls-lines fn-auth-authinfo-lines
+                                   fn-auth-sasl-lines
+                                   fn-auth-sasl-capability-line)
+                                  (fn-peer-capability-lines
+                                   fn-auth-sasl-mechanisms
+                                   fn-auth-user-offeredp
+                                   fn-auth-sasl-offeredp)))))
 
 (defthm fn-auth-capability-lines-for-peer-are-block-text
   (fn-nntp-block-textp

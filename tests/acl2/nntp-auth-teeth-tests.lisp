@@ -98,7 +98,9 @@
 (defconst *aut-digest*
   '(42 82 187 10 181 221 230 125 199 188 135 91 193 55 205 245
     177 50 208 139 71 236 67 86 54 24 223 76 55 144 61 51))
-(defconst *aut-verifier* (fn-authsec-verifier *aut-salt* *aut-digest*))
+(defconst *aut-verifier* (fn-authsec-verifier *aut-salt* *aut-digest*
+                     (car (fn-scram-keys *aut-secret* *aut-salt* 4096))
+                     (cadr (fn-scram-keys *aut-secret* *aut-salt* 4096))))
 (assert-event (equal *aut-verifier* (fn-authsec-enrol *aut-salt* *aut-secret*)))
 (defconst *aut-cred*
   (fn-auth-make-cred *aut-name* *aut-principal* *aut-verifier* t))
@@ -828,20 +830,20 @@
 ; neither statement is vacuous.
 (assert-event (member-equal (fn-nntp-string-octets "STARTTLS")
                             (fn-auth-capability-lines-for-peer
-                             *aut-required* nil nil t nil)))
+                             *aut-required* nil nil t nil nil)))
 (assert-event (member-equal (fn-nntp-string-octets "STARTTLS")
                             (fn-auth-capability-lines-for-peer
-                             *aut-required* nil nil t *aut-peer-record*)))
+                             *aut-required* nil nil t *aut-peer-record* nil)))
 (assert-event (not (member-equal (fn-nntp-string-octets "STARTTLS")
                                  (fn-auth-capability-lines-for-peer
-                                  *aut-required* nil t t *aut-peer-record*))))
+                                  *aut-required* nil t t *aut-peer-record* nil))))
 
 (local
  (must-fail-checked
   (defthm aut-starttls-never-advertised
     (not (member-equal (fn-nntp-string-octets "STARTTLS")
                        (fn-auth-capability-lines-for-peer
-                        acfg subject tlsp postingp record)))
+                        acfg subject tlsp postingp record nil)))
     :hints (("Goal"
              :do-not-induct t
              :in-theory (e/d (fn-auth-capability-lines-for-peer
@@ -857,18 +859,18 @@
 ; and the channel the policy permits, AUTHINFO USER IS advertised.
 (assert-event (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                             (fn-auth-capability-lines-for-peer
-                             *aut-required* nil nil t *aut-peer-record*)))
+                             *aut-required* nil nil t *aut-peer-record* nil)))
 (assert-event (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                                  (fn-auth-capability-lines-for-peer
                                   *aut-required* *aut-principal* nil t
-                                  *aut-peer-record*))))
+                                  *aut-peer-record* nil))))
 
 (local
  (must-fail-checked
   (defthm aut-authinfo-never-advertised
     (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                        (fn-auth-capability-lines-for-peer
-                        acfg subject tlsp postingp record)))
+                        acfg subject tlsp postingp record nil)))
     :hints (("Goal"
              :do-not-induct t
              :in-theory (e/d (fn-auth-capability-lines-for-peer
@@ -886,14 +888,14 @@
 ; policy advertises it once TLS is up.
 (assert-event (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                             (fn-auth-capability-lines-for-peer
-                             *aut-required* nil nil t *aut-peer-record*)))
+                             *aut-required* nil nil t *aut-peer-record* nil)))
 (assert-event (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                             (fn-auth-capability-lines-for-peer
-                             *aut-protected* nil t t *aut-peer-record*)))
+                             *aut-protected* nil t t *aut-peer-record* nil)))
 (assert-event (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                                  (fn-auth-capability-lines-for-peer
                                   *aut-protected* nil nil t
-                                  *aut-peer-record*))))
+                                  *aut-peer-record* nil))))
 
 (local
  (must-fail-checked
@@ -901,7 +903,7 @@
     (implies (fn-auth-config-protected-onlyp acfg)
              (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                                 (fn-auth-capability-lines-for-peer
-                                 acfg subject tlsp postingp record))))
+                                 acfg subject tlsp postingp record nil))))
     :hints (("Goal"
              :do-not-induct t
              :in-theory (e/d (fn-auth-capability-lines-for-peer
@@ -919,7 +921,7 @@
     (implies (not tlsp)
              (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                                 (fn-auth-capability-lines-for-peer
-                                 acfg subject tlsp postingp record))))
+                                 acfg subject tlsp postingp record nil))))
     :hints (("Goal"
              :do-not-induct t
              :in-theory (e/d (fn-auth-capability-lines-for-peer
@@ -944,36 +946,36 @@
 ;; Both sides true, on a peer record and on a reader: after TLS, no subject.
 (assert-event (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                             (fn-auth-capability-lines-for-peer
-                             *aut-invite-only* nil t nil nil)))
+                             *aut-invite-only* nil t nil nil nil)))
 (assert-event (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                             (fn-auth-capability-lines-for-peer
-                             *aut-invite-only* nil t nil *aut-peer-record*)))
+                             *aut-invite-only* nil t nil *aut-peer-record* nil)))
 ;; Each conjunct false, the others true, the label absent:
 ;; authenticated,
 (assert-event (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                                  (fn-auth-capability-lines-for-peer
-                                  *aut-invite-only* *aut-principal* t nil nil))))
+                                  *aut-invite-only* *aut-principal* t nil nil nil))))
 ;; the channel protected-only refuses,
 (assert-event (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                                  (fn-auth-capability-lines-for-peer
-                                  *aut-invite-only* nil nil nil nil))))
+                                  *aut-invite-only* nil nil nil nil nil))))
 ;; no login to offer: requires nothing and holds no credential.
 (defconst *aut-open-tls* (fn-auth-make-config nil t t nil))
 (assert-event (fn-auth-configp *aut-open-tls*))
 (assert-event (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                                  (fn-auth-capability-lines-for-peer
-                                  *aut-open-tls* nil t t nil))))
+                                  *aut-open-tls* nil t t nil nil))))
 ;; A credential alone offers it where nothing is required.
 (assert-event (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                             (fn-auth-capability-lines-for-peer
                              (fn-auth-make-config nil t t (list *aut-cred*))
-                             nil t t nil)))
+                             nil t t nil nil)))
 
 (defmacro aut-authinfo-exactly-without (rhs)
   `(defthm aut-authinfo-exactly-weakened
      (iff (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                         (fn-auth-capability-lines-for-peer
-                         acfg subject tlsp postingp record))
+                         acfg subject tlsp postingp record nil))
           ,rhs)
      :hints (("Goal"
               :do-not-induct t
@@ -1027,7 +1029,7 @@
                          (fn-auth-session-tlsp *aut-s-req*)
                          (and (fn-inj-config-allow *aut-config*)
                               (fn-auth-postingp *aut-s-req*))
-                         (fn-auth-peer-record *aut-s-req*))))))
+                         (fn-auth-peer-record *aut-s-req*) nil)))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE 4: the greeting (PRF-039)
@@ -1101,7 +1103,7 @@
                                                 acfg nil))
     (and (fn-inj-config-allow config)
          (fn-auth-postingp (fn-auth-open-session *aut-archive* nil nil nil
-                                                 acfg nil))))))
+                                                 acfg nil))) nil)))
 (assert-event (and (aut-open-label *aut-config* *aut-open*) t))
 (assert-event (not (aut-open-label *aut-config* *aut-required*)))
 (assert-event (not (aut-open-label *aut-config-no-post* *aut-open*)))
@@ -1459,7 +1461,9 @@
     173 125 217 47 2 249 4 17 4 12 204 53 48 56 55 153))
 (defconst *aut-cred-guest*
   (fn-auth-make-cred (fn-nntp-string-octets "guest") *aut-principal-guest*
-                     (fn-authsec-verifier *aut-salt-guest* *aut-digest-guest*)
+                     (fn-authsec-verifier *aut-salt-guest* *aut-digest-guest*
+                     (car (fn-scram-keys (fn-nntp-string-octets "guest-pass") *aut-salt-guest* 4096))
+                     (cadr (fn-scram-keys (fn-nntp-string-octets "guest-pass") *aut-salt-guest* 4096)))
                      nil))
 (assert-event (equal (fn-auth-cred-secret *aut-cred-guest*)
                      (fn-authsec-enrol *aut-salt-guest*

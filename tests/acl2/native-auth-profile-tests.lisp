@@ -29,6 +29,11 @@
   "00000000000000000000000000000000")
 (defconst *fn-native-auth-test-digest*
   "1111111111111111111111111111111111111111111111111111111111111111")
+; SCRAM-SHA-256's two keys (verifier v2, NNT-056).
+(defconst *fn-native-auth-test-stored*
+  "2222222222222222222222222222222222222222222222222222222222222222")
+(defconst *fn-native-auth-test-server*
+  "3333333333333333333333333333333333333333333333333333333333333333")
 (defconst *fn-native-auth-test-file*
   (fn-native-auth-test-lines
    (list "# canonical writer output"
@@ -36,7 +41,23 @@
          (concatenate 'string "principal = \"" *fn-native-auth-test-principal* "\"")
          (concatenate 'string "salt = \"" *fn-native-auth-test-salt* "\"")
          (concatenate 'string "digest = \"" *fn-native-auth-test-digest* "\"")
+         (concatenate 'string "scram_stored_key = \"" *fn-native-auth-test-stored* "\"")
+         (concatenate 'string "scram_server_key = \"" *fn-native-auth-test-server* "\"")
          "posting = false")))
+
+; A v1 entry (no SCRAM keys) is refused as a malformed credential: one
+; format, no migration (fresh deploy).
+(assert-event
+ (equal (fn-native-auth-result-reason
+         (fn-native-auth-load
+          (fn-native-auth-test-lines
+           (list "[login.\"reader\"]"
+                 (concatenate 'string "principal = \"" *fn-native-auth-test-principal* "\"")
+                 (concatenate 'string "salt = \"" *fn-native-auth-test-salt* "\"")
+                 (concatenate 'string "digest = \"" *fn-native-auth-test-digest* "\"")
+                 "posting = false"))
+          t nil nil nil 128))
+        :credential-shape))
 
 (defconst *fn-native-auth-test-result*
   (fn-native-auth-load *fn-native-auth-test-file* t t nil nil 128))

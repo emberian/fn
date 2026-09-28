@@ -21,11 +21,12 @@
 ; `fn-bs-profile-max-credentials'), which the host reads from the store and
 ; passes as MAX-CREDENTIALS (pre-D27: 128).  The file's octet and line
 ; bounds follow it.  The two constants below bound work per credential, not
-; data: one canonical table (`fn-native-auth-admin-serialize-cred') is six
-; lines and under 320 octets, and the per-credential figure leaves room for
-; the operator's comments; one extra unit covers the writer's header.
-(defconst *fn-native-auth-octets-per-credential* 512)
-(defconst *fn-native-auth-lines-per-credential* 8)
+; data: one canonical table (`fn-native-auth-admin-serialize-cred') is at
+; most nine lines and under 560 octets (verifier v2 carries SCRAM's two keys,
+; books/auth-secret.lisp), and the per-credential figure leaves room for the
+; operator's comments; one extra unit covers the writer's header.
+(defconst *fn-native-auth-octets-per-credential* 768)
+(defconst *fn-native-auth-lines-per-credential* 12)
 
 (defun fn-native-auth-max-octets (max-credentials)
   (declare (xargs :guard t))
@@ -119,7 +120,8 @@
                      (fn-ncfg-trim (fn-ncfg-second split)))))
         (if (and (fn-ncfg-identp key-octets)
                  (member-equal key '("principal" "salt" "digest" "posting"
-                                     "signing" "secret"))
+                                     "signing" "secret" "scram_stored_key"
+                                     "scram_server_key"))
                  (not (equal value :bad)))
             (list key value)
           :bad)))))
@@ -157,11 +159,16 @@
       (let* ((principal-text (fn-native-auth-string-field "principal" fields))
              (salt-text (fn-native-auth-string-field "salt" fields))
              (digest-text (fn-native-auth-string-field "digest" fields))
+             (stored-text (fn-native-auth-string-field "scram_stored_key" fields))
+             (server-text (fn-native-auth-string-field "scram_server_key" fields))
              (posting (fn-native-auth-bool-field "posting" fields))
              (principal (fn-native-auth-hex principal-text 32))
              (salt (fn-native-auth-hex salt-text 16))
-             (digest (fn-native-auth-hex digest-text 32)))
+             (digest (fn-native-auth-hex digest-text 32))
+             (stored-key (fn-native-auth-hex stored-text 32))
+             (server-key (fn-native-auth-hex server-text 32)))
         (if (or (equal principal :bad) (equal salt :bad) (equal digest :bad)
+                (equal stored-key :bad) (equal server-key :bad)
                 (equal posting :bad)
                 ; The optional login binding (`fn principal bind'): when the
                 ; table carries one it is a 32-octet principal in lowercase
@@ -172,7 +179,9 @@
                             :bad)))
             (list :refused :credential-shape)
           (let ((cred (fn-auth-make-cred
-                       name principal (fn-authsec-verifier salt digest) posting)))
+                       name principal
+                       (fn-authsec-verifier salt digest stored-key server-key)
+                       posting)))
             (if (fn-auth-credp cred) (list :credential cred)
               (list :refused :credential-shape))))))))
 

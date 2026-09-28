@@ -119,8 +119,7 @@
 (defthm fn-auth-capability-lines-advertise-xpat
   (member-equal (fn-nntp-string-octets "XPAT")
                 (fn-auth-capability-lines-for-peer acfg subject tlsp postingp
-                                                   record))
-  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
-                                   fn-peer-capability-lines
+                                                   record ctx))
+  :hints (("Goal" :in-theory (e/d (fn-peer-capability-lines
                                    fn-nntp-capability-lines)
-                                  (fn-auth-access-capability-lines)))))
+                                  (fn-auth-capability-lines-for-peer)))))
