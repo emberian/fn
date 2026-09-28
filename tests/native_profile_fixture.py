@@ -27,8 +27,11 @@ EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = verbs.EXIT_OK, verbs.EXIT_REFUSED, verbs
 # codec-ceiling G and R = the article record; since header-limits-profile,
 # PRF-230, fields 15 to 17 the header limits: re-measured on batch AS's
 # image, `operator init --profile development|scale`).
-DEVELOPMENT_FRAME = "226969fe1866a247f4a7316df3b9c2e0d24feb7ee55f6b9029ddb3f881d05697"
-SCALE_FRAME = "d11edbf6c9688800495e24a6035ce4231203f3443053ac239220bf3c600f7bb8"
+# Store format 10 (BLAKE3 trailer; lane blake3-digest, measured with the
+# image of 0b6e4b074): the format-9 SHA-256-trailered frames were 226969fe...
+# and d11edbf6....
+DEVELOPMENT_FRAME = "460b945b8ad278b7114ef96349241ef494d246801e9d493b8a6d36dd20e47db5"
+SCALE_FRAME = "6fa2bd87cfd8f393602a4ffbf931ab33fcf0c317667e3cb2a40ddc74cd1219f4"
 BUDGET = {"old": {128}, "new": {4096}, "either": {128, 4096}}
 FRAME = {128: DEVELOPMENT_FRAME, 4096: SCALE_FRAME}
 

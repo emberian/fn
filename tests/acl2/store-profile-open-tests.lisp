@@ -138,9 +138,9 @@
     0 0 0 0 0 1 128 0 0 0 0 0 0 0 0 0
     128 0 30 102 110 45 115 116 111 114 101 45 97 108 108 111
     99 97 116 105 111 110 45 102 114 111 110 116 105 101 114 45
-    50 236 231 127 192 153 44 184 72 173 60 49 58 185 189 124
-    69 192 134 19 202 227 175 86 144 55 35 230 236 93 118 46
-    173))
+    50 102 177 157 234 172 191 177 0 3 129 153 66 61 224 22
+    20 107 156 138 118 216 246 141 42 153 24 73 254 146 20 81
+    25))
 (assert-event (equal (spot-format-7-frame) *spot-format-7-octets*))
 
 ; Reachable witness, the right side true: not in the window, not decoded,
@@ -205,6 +205,7 @@
 ; synthesized format-8 store's config.json.
 (defconst *spot-format-8-octets*
   '(
+ 
     70 78 83 77 1 1 0 0 0 172 0 10 102 110 45 115
     116 111 114 101 45 56 0 30 102 110 45 115 116 111 114 101
     45 97 108 108 111 99 97 116 105 111 110 45 102 114 111 110
@@ -216,9 +217,9 @@
     0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
     0 0 0 16 0 0 0 0 0 0 0 0 0 0 0 0
     0 0 0 0 0 64 0 0 0 0 0 0 1 0 0 0
-    0 0 0 0 64 0 111 175 234 85 87 2 35 102 237 1
-    113 126 80 157 84 219 244 161 139 149 192 230 72 133 110 142
-    218 91 176 40 45 100))
+    0 0 0 0 64 0 123 31 128 106 35 84 122 224 35 74
+    166 80 157 26 54 56 29 193 170 83 101 193 151 69 31 245
+    47 129 249 126 185 238))
 (assert-event (equal (len *spot-format-8-octets*) 214))
 (assert-event (equal (fn-bs-config-encode (spot-as-format-8 *fn-bs-profile-development*))
                      *spot-format-8-octets*))
@@ -290,9 +291,9 @@
     0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0
     0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
     0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
-    0 0 0 16 0 0 0 0 0 0 0 0 0 0 70 112
-    111 138 38 173 76 99 249 65 234 23 184 118 203 76 223 145
-    252 221 169 197 118 171 16 149 10 151 172 203 171 232))
+    0 0 0 16 0 0 0 0 0 0 0 0 0 0 136 176
+    118 144 82 72 204 58 96 20 212 48 210 2 95 83 103 66
+    108 90 139 29 190 247 101 86 143 162 114 82 219 148))
 
 ; Its values, by hand (the u64 fields read off the octets above).
 (defconst *spot-pre-as*
@@ -425,3 +426,23 @@
 (assert-event (null (fn-spo-layout-fields *spot-garbage*)))
 (assert-event (equal (fn-spo-layout-fields (fn-spo-saved-frame *spot-short-history*)) 16))
 (assert-event (null (fn-spo-layout-fields *spot-corrupted*)))
+
+; fn-spo-sha256-sealed-profilep (lane blake3-digest): the same saved profile
+; frame as the format-8 encoder sealed it, with the SHA-256 trailer of a store
+; before format 10.  Under the BLAKE3 attachment it is no sealed frame, and
+; the open refuses it by name (:store-format), never the generic fault.
+(defconst *spot-window-sha256-octets*
+  (let ((prefix (take (- (len *spot-window-octets*) 32) *spot-window-octets*)))
+    (append prefix (fn-sha256 prefix))))
+(assert-event (fn-spo-sha256-sealed-profilep *spot-window-sha256-octets*))
+(assert-event (null (fn-bs-config-decode *spot-window-sha256-octets*)))
+(assert-event (not (fn-spo-foreign-formatp *spot-window-sha256-octets*)))
+(assert-event (equal (fn-spo-config-open *spot-window-sha256-octets*)
+                     (list :refused :store-format)))
+; Removal: a trailer that is neither digest leaves the file :rejected (a
+; damaged file stays the fault).
+(defconst *spot-window-torn-octets*
+  (append (take (- (len *spot-window-octets*) 32) *spot-window-octets*)
+          (make-list 32 :initial-element 0)))
+(assert-event (not (fn-spo-sha256-sealed-profilep *spot-window-torn-octets*)))
+(assert-event (equal (fn-spo-config-open *spot-window-torn-octets*) (list :rejected)))

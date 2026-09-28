@@ -28,7 +28,8 @@
 ;     offline `health').  It answers (:opened VALUES), the profile the store
 ;     runs under; (:refused :max-record-octets-above-the-poll-reply), a
 ;     saved profile in the window; (:refused :store-format), a sealed
-;     profile frame of another format; or (:rejected), a frame that is no
+;     profile frame of another format, or a profile frame sealed with
+;     SHA-256 (a store before format 10); or (:rejected), a frame that is no
 ;     saved profile at all (a corrupted file: the host's fault, as before).
 ;
 ; The saved profiles are those the format-8 encoder wrote under the relation
@@ -41,6 +42,7 @@
 (in-package "ACL2")
 (include-book "store-profile-facts")
 (include-book "byte-store-profile-v1")
+(include-book "sha256") ; the trailer of stores before format 10
 (local (include-book "frame-invariants"))
 (local (include-book "cbor-invariants"))
 
@@ -209,6 +211,21 @@
                   (floor width 8)
                 nil))))))))
 
+; A store written before format 10 (lane blake3-digest, 2026-09-28): its
+; frames' trailers are SHA-256, and under the BLAKE3 attachment its
+; config.json is no sealed frame at all, so the arms above cannot name it.
+; This recognizes a profile frame (the FNSM magic) whose last 32 octets are
+; SHA-256 of the rest: such a store is refused by name (:store-format), the
+; way out being `store export' on the release that made it (D34), never a
+; fault.  A damaged file matches neither digest and stays :rejected.
+(defun fn-spo-sha256-sealed-profilep (octets)
+  (declare (xargs :guard t))
+  (and (fn-cbor-octet-listp octets)
+       (< 36 (len octets))
+       (equal (fn-sha256-firstn 4 octets) *fn-bs-meta-magic*)
+       (equal (fn-sha256 (fn-sha256-firstn (- (len octets) 32) octets))
+              (fn-sha256-nthcdrx (- (len octets) 32) octets))))
+
 ; The open the host calls (host/native/io.lisp `fnn-metadata-config-decode').
 (defun fn-spo-config-open (octets)
   (declare (xargs :guard t))
@@ -224,6 +241,7 @@
                        (list :opened decoded)
                      (list :refused :store-format)))
                   ((fn-spo-foreign-formatp octets) (list :refused :store-format))
+                  ((fn-spo-sha256-sealed-profilep octets) (list :refused :store-format))
                   (t (list :rejected)))))))))
 
 (local
@@ -934,15 +952,22 @@
 ; frame outside the window that either the profile decoder decodes to a
 ; profile of the per-file layout (not fn-bs-profile-logp: a format-8 store) or
 ; the decoder does not decode and is a sealed profile frame naming a format
-; other than fn-store-8 and fn-store-9.  So the open opens one format (9) and
-; names every other; nothing is translated.
+; other than fn-store-8 and fn-store-9, or a profile frame sealed with
+; SHA-256 (a store before format 10) that names no other layout.  So the open
+; opens one format and names every other; nothing is translated.
 (defthm fn-spo-config-open-store-format-is-exactly-a-foreign-frame
   (equal (equal (fn-spo-config-open octets) (list :refused :store-format))
          (and (not (and (fn-spo-saved-format-8 octets)
                         (fn-spo-in-the-windowp (fn-spo-saved-format-8 octets))))
               (if (fn-bs-config-decode octets)
                   (not (fn-bs-profile-logp (fn-bs-config-decode octets)))
-                (fn-spo-foreign-formatp octets))))
+                (or (fn-spo-foreign-formatp octets)
+                    ; a store before format 10, sealed with SHA-256, whose
+                    ; octets name no other layout
+                    (and (fn-spo-sha256-sealed-profilep octets)
+                         (or (not (fn-spo-layout-fields octets))
+                             (equal (fn-spo-layout-fields octets)
+                                    *fn-spo-release-layout-fields*)))))))
   :hints (("Goal" :use (fn-spo-decoded-is-valid
                         fn-spo-foreign-frame-has-no-layout
                         fn-spo-layout-fields-of-a-decoded-frame)
@@ -953,7 +978,8 @@
                             fn-bs-profile-validp fn-spo-decoded-is-valid
                             fn-spo-foreign-frame-has-no-layout
                             fn-spo-layout-fields-of-a-decoded-frame
-                            fn-spo-layout-fields fn-bs-profile-logp)))))
+                            fn-spo-layout-fields fn-bs-profile-logp
+                            fn-spo-sha256-sealed-profilep)))))
 
 ; KEYSTONE (D34 after PKT-COL-1).  Every valid profile of the per-file layout
 ; -- the frame a format-8 store's init or import wrote -- is refused at the

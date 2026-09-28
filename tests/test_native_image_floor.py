@@ -51,8 +51,12 @@ DEVELOPER = Path(os.environ.get(
 MEASURE = ROOT / "tools" / "runtime_image" / "node_measure.py"
 
 EXIT_FAULT, EXIT_USAGE = 4, 5
-GUARD_LINE = (b"store: ACL2 error in fn-b3-left-chunks: "
-              b"(EV-FNCALL-GUARD-ER FN-B3-LEFT-CHUNKS (42 -1) (AND (NATP P) (NATP N)) (NIL NIL) NIL)\n")
+# The entry is caught by the host's entry guard (io.lisp fnn-call's
+# host-entry-guard) before ACL2 evaluates it: still one fault line, exit 4.
+# (Until store format 10 the probe called fn-sha256-of-string, which the
+# entry guard did not describe, and the line was ACL2's EV-FNCALL-GUARD-ER.)
+GUARD_LINE = (b"store: host-entry-guard: fn-b3-left-chunks argument 2 (n) must be a "
+              b"natural (natp); the host passed the integer -1\n")
 CORE_CEILING_KIB = 128 * 1024
 SMALL_STACK_KIB = 1024          # fn-heap-stack-kib: the constant (served-line-iterative)
 
