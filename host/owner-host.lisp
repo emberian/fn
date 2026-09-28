@@ -202,12 +202,6 @@
   (declare (xargs :stobjs state :mode :program))
   (f-get-global 'fn-owner state))
 
-(defun fn-owner-ocfg-state (state)
-  ; External ACL2 bridge accessor.  `value' is intentionally only at this
-  ; boundary; host functions use fn-owner-ocfg above as a single value.
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-owner-ocfg state)))
-
 ; `fn-owner' has one canonical value: the configured owner.  These are the
 ; only host accessors for its raw owner component.  A wrapper that changes
 ; connection membership must use fn-owner-step's fn-ocfg transition; a core
