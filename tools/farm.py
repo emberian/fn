@@ -80,6 +80,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certs
 from certify_books import BOOK_NAME
+DEPENDENCY_NAME = re.compile(r"[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)+")
 import evidence_manifests
 import native_program_check
 
@@ -418,7 +419,15 @@ def book_name_problem(root: Path, word: str, kind: str) -> str | None:
     if word.startswith("-"):
         return f"{kind} {word!r} is an option, not a book name"
     name = word[:-len(".lisp")] if word.endswith(".lisp") else word
-    if not BOOK_NAME.fullmatch(name):
+    if kind == "--recertify":
+        # A book to recertify is any book of the closure, and the closure
+        # reaches host/ (host/native-operator-host): the box's runner takes
+        # it (certify_books.normalize_book) and refuses one outside the
+        # closure itself.  Only roots are held to books/ or tests/acl2/.
+        if not DEPENDENCY_NAME.fullmatch(name):
+            return (f"{kind} {word!r} is not a repository-relative book "
+                    "(e.g. books/wire or host/native-operator-host)")
+    elif not BOOK_NAME.fullmatch(name):
         return (f"{kind} {word!r} is not a repository-relative book below books/ "
                 "or tests/acl2/ (e.g. books/wire or books/wire.lisp)")
     if not (root / f"{name}.lisp").is_file():

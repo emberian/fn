@@ -1434,7 +1434,8 @@
         "fn-served-dispatch-of-authinfo-on-a-clear-connection-is-483-and-changes-nothing",
         "fn-auth-step-pinned-post-by-a-principal-without-the-flag-is-440",
         "fn-auth-step-pinned-post-by-a-principal-with-the-flag-is-delegated",
-        "fn-scar-auth-step-pinned-is-auth-step-pinned"
+        "fn-scar-auth-step-pinned-is-auth-step-pinned",
+        "fn-auth-authinfo-is-advertised-exactly-when-a-login-is-offered-on-any-connection"
       ]
     },
     {
@@ -6241,8 +6242,8 @@
       "progress_note": "friends-accounts (2026-09-26): slot, admission, plan, once-only keystones and the credential snapshot. friends-accounts-2 (2026-09-26): the XREDEEM wire keystones over fn-auth-step-pinned, the bounded plan and the word, the host publication before the reply, operator account invite/list.",
       "events": [
         "fn-acct-text-verifier-of-verifier-text",
-        "fn-acct-redeemed-row-stays",
-        "fn-acct-redeemed-row-stays-across-replay",
+        "fn-acct-bound-row-succeeds",
+        "fn-acct-bound-row-succeeds-across-replay",
         "fn-acct-redeemed-refuses-another-redeem",
         "fn-acct-redeem-plan-is-admitted-and-redeems",
         "fn-acct-redeem-plan-after-its-redeem-is-already-redeemed",
@@ -6259,7 +6260,10 @@
         "fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound",
         "fn-acct-redeem-word-is-bound-only-after-a-durable-redeem",
         "fn-acct-redeem-word-of-an-unknown-code-is-refused",
-        "fn-acct-redeem-bounded-plan-after-its-redeem-is-bound"
+        "fn-acct-redeem-bounded-plan-after-its-redeem-is-bound",
+        "fn-acct-delete-is-admitted-exactly-when-held-and-unobligated",
+        "fn-acct-delete-keeps-the-login-taken",
+        "fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential"
       ]
     },
     {
@@ -8287,7 +8291,8 @@
         "fn-peer-tls-select-named-default",
         "fn-peer-tls-select-is-a-check",
         "fn-peer-host-name-is-not-an-ipv4-literal",
-        "fn-redeem-done-only-on-281-after-the-password"
+        "fn-redeem-done-only-on-281-after-the-password",
+        "fn-redeem-lost-is-fenced-and-server-answers-are-not"
       ]
     },
     {
@@ -10746,7 +10751,19 @@
         "fn-scj-join-of-finish-lists",
         "fn-scj-joinp-gives-sca-join",
         "fn-scj-ocl-relation-of-identity-finish",
-        "fn-scj-identity-finish-owner-is-article-finish-owner"
+        "fn-scj-identity-finish-owner-is-article-finish-owner",
+        "fn-scj-ocfg-read-span-is-reference-under-invp",
+        "fn-scj-invp-at-recover",
+        "fn-scj-invp-at-full-open",
+        "fn-scj-invp-of-otm-read-span",
+        "fn-scj-invp-of-orr-read-span",
+        "fn-scj-invp-of-refresh",
+        "fn-scj-identity-finish-keeps-verdicts",
+        "fn-scj-invp-of-ocfg-step-conn-event",
+        "fn-scjs-invp-of-store-frame",
+        "fn-scj-owner-catalogp-at-host-finish",
+        "fn-scj-invp-at-host-article-finish-carried",
+        "fn-scj-invp-at-identity-finish"
       ]
     },
     {
@@ -12029,7 +12046,11 @@
         "fn-hp-append-changes-only-dirty",
         "fn-hp-append-dirty-bound",
         "fn-hp-x-header-is-image",
-        "fn-hp-x-at-is-nth"
+        "fn-hp-x-at-is-nth",
+        "fn-hp-x-append-refines",
+        "fn-hp-x-header-is-placed",
+        "fn-hp-x-at-is-nth-placed",
+        "fn-hp-x-append-refines-placed"
       ]
     },
     {
@@ -12118,7 +12139,7 @@
         "PRF-325"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-builders.lisp",
@@ -12133,7 +12154,8 @@
         "planning/evidence/manifests/certify-20260928T034446Z-1337917.json",
         "tests/acl2/protocol-text-tests.lisp",
         "planning/evidence/manifests/certify-20260928T041204Z-1591020.json",
-        "planning/evidence/manifests/certify-20260928T041318Z-3967241.json"
+        "planning/evidence/manifests/certify-20260928T041318Z-3967241.json",
+        "planning/evidence/manifests/certify-20260928T072421Z-3380332.json"
       ],
       "progress_note": "Lane defprotocol (Opus 5.5, 2026-09-28). Certified on hbox: the 484 affected roots of books/nntp, books/protocol-table and books/protocol-builders (506 books, certify-20260928T001508Z-3191332, passed). Teeth: 120 witnesses asserting the keystone's conclusion and the exact code per row, 25 must-fail row theorems with a witnessed code removed, the framing witnesses and a must-fail without the :article exclusion; the codes a two-article archive cannot reach are named at the end of the test book (pending-fixture hostile-reader-archive). The keystones made literal defthms: hbox certify-20260928T032046Z-3695293 (protocol-codes, protocol-framing, the test book: passed). Open: books/protocol-codes 18.6 s at 3 jobs (D26 debt; the per-row theorems, HDR 2.2M steps and OVER 0.9M; split the row theorems into their own book).",
       "events": [
@@ -12191,7 +12213,7 @@
         "PRF-302"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-rcompat-reply-cat-is-rcompat-reply",
         "fn-rcompat-retrieval-cat-is-retrieval",
@@ -12212,7 +12234,8 @@
         "planning/evidence/manifests/certify-20260928T003941Z-3754893.json",
         "planning/evidence/sca-join-2026-09-27.md",
         "planning/evidence/manifests/certify-20260928T041204Z-1591020.json",
-        "planning/evidence/manifests/certify-20260928T041318Z-3967241.json"
+        "planning/evidence/manifests/certify-20260928T041318Z-3967241.json",
+        "planning/evidence/manifests/certify-20260928T072421Z-3380332.json"
       ],
       "progress_note": "Lane sca-join-5 (2026-09-28): REPL-admitted and certified on persvati (affected roots of catalog, served-catalog, served-catalog-chain, served-catalog-tests: certify-20260928T003009Z-3659350, 172 passed; served-catalog-join-inv re-proved over batch AY's fn-otm-read-span: certify-20260928T003941Z-3754893). Lookup counts before/after in planning/evidence/sca-join-2026-09-27.md. Native on hbox (709b2824a, /tank/fn/scratch/sca-join-5/native-f2): served_differential OK 7, reader_index OK 7, reader_freshness OK 2; served_cost FAILED 1 (test_owner_calls_fast_span_entry: its static text check expects the pre-batch-AY host call shape; host code not changed by this lane). f2_lookups at 1k/10k/100k: every measured command O(1) + the O(log N) bisection, LISTGROUP/OVER proportional to their output; VERDICT MET."
     },
@@ -12523,7 +12546,35 @@
         "tests/acl2/stx-transit-tests.lisp",
         "tests/test_native_open_depth.py"
       ],
-      "progress_note": "Certified at the lane head before the last origin/dev merge: persvati certify-20260928T045804Z-2021342 (748 passed) + hbox certify-20260928T045829Z-4075806 (283 passed), 0 failed, the 1,130 affected roots. Native (hbox native-od5, production image at the launcher's 1024KB): syn100k-2k full replay 25.4 s, checkpoint open 11.7 s; syn1m-2k full replay 275.1 s, checkpoint open 143.6 s; each serves DATE and stops cleanly. The served whole-list reads (LIST ACTIVE, GROUP) still die at this stack past ~30k articles: PKT-877."
+      "progress_note": "Certified at the lane head before the last origin/dev merge: persvati certify-20260928T045804Z-2021342 (748 passed) + hbox certify-20260928T045829Z-4075806 (283 passed), 0 failed, the 1,130 affected roots. Native (hbox native-od5, production image at the launcher's 1024KB): syn100k-2k full replay 25.4 s, checkpoint open 11.7 s; syn1m-2k full replay 275.1 s, checkpoint open 143.6 s; each serves DATE and stops cleanly. The served whole-list reads (LIST ACTIVE, GROUP) still die at this stack past ~30k articles: PKT-877.",
+      "events": [
+        "fn-retain-obligation-ids",
+        "fn-retain-release-ids",
+        "fn-retain-sum",
+        "fn-retain-remove-id",
+        "fn-node-binding-msgids",
+        "fn-node-binding-ids",
+        "fn-replay-verdict-pairs",
+        "fn-stx-index-of-store",
+        "fn-mxc-build",
+        "fn-rii-kbuild-releases",
+        "fn-rii-kbuild-pins",
+        "fn-ctl-articles-withdrawals-in",
+        "fn-ctl-drop-via",
+        "fn-ctl-visible-filter",
+        "fn-ctl-subseq-diff",
+        "fn-own-take",
+        "fn-gidx-build-entries",
+        "fn-index-build",
+        "fn-midx-build",
+        "fn-scka-canon-rows",
+        "fn-scka-enc-lens-sum",
+        "fn-sct-payloads",
+        "fn-sbud-record-octets",
+        "fn-sbud-stored-octets",
+        "fn-pgc-obligation-ids",
+        "fn-pgc-release-ids"
+      ]
     },
     {
       "id": "PRF-354",
@@ -12579,6 +12630,35 @@
       "events": [
         "fn-sdg-canon-rev-sink-is-the-chain-of-the-canon",
         "fn-sdg-chain-of-one-block"
+      ]
+    },
+    {
+      "id": "PRF-361",
+      "title": "The reclaim counts `status' prints read only the held verdicts and run as loops, and are the counts over every verdict the Store carries (PKT-878: the live status was O(articles x acceptances) and, past ~8,000 articles, exhausted the owner's control-thread stack)",
+      "statement": "Subjects: fn-rcl-store-counts and fn-rcl-store-classes (books/store-reclaim-holders.lisp), which books/native-live-status.lisp fn-nls-reclaim-words calls inside fn-nls-report, reached by the running owner through host/native-live-status-host.lisp fn-native-live-status-host-answer (host/native/control.lisp fnn-control-live-status-answer) and offline through fn-native-live-status-host-offline (host/native/io.lisp fnn-command-live-report). Both now read (fn-rcl-held-verdicts (fn-sn-verdicts s)): the entries whose verdict is not :absent. fn-rcl-verdict-heldp-of-held-verdicts: for every MSGID and list, (fn-rcl-verdict-heldp msgid (fn-rcl-held-verdicts v)) = (fn-rcl-verdict-heldp msgid v), no hypothesis. KEYSTONE fn-rcl-store-classes-over-every-verdict: the classes the host reads equal fn-rcl-class-count-in :signed / :kept over the Store's FULL verdict list, no hypothesis; fn-rcl-store-counts-is-the-model-over-alpha (PRF-088) keeps its statement over the full list and is re-proved over the filtered implementation. The cost: the verdict list gains one :absent entry per acceptance since the open, and the per-article scan went to its end for every unsigned article; measured on hbox over 101,274 articles (the syn100k-2k fixture after a 16-client probe), the status render took 0.03 s at V = 0, 10.8 s at V = 5,000 and 50.6 s at V = 20,000 live acceptances (planning/evidence/health-truth-status-2026-09-28.md). The per-article counts fn-rcl-summary-in, fn-rcl-held-count-in and fn-rcl-class-count-in keep their recursive logical definitions and execute accumulator loops (mbe: fn-rcl-summary-acc, fn-rcl-held-count-acc, fn-rcl-class-count-acc), each equation proved as the function's guard obligation (fn-rcl-class-in and fn-rcl-class-count-in are now guard-verified): as recursions they took one frame per article, and a live `status' of 20,000 articles exhausted the owner's 1 MiB control-thread stack and stopped the owner (`control request fault; owner stopped', hbox, the merged dev image). The same for `health': books/native-health.lisp fn-nh-forward-count and fn-nh-forward-charge (one frame per retention pin; a live `health' of 60,000 articles stopped the owner) execute fn-nh-forward-count-acc / fn-nh-forward-charge-acc under mbe, guard-verified.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-006",
+        "STO-014"
+      ],
+      "depends_on": [
+        "PRF-088",
+        "PRF-089"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-reclaim-holders.lisp",
+        "books/native-health.lisp",
+        "tests/acl2/store-reclaim-holders-tests.lisp",
+        "tests/test_native_status_live_posts.py",
+        "planning/evidence/health-truth-status-2026-09-28.md"
+      ],
+      "progress_note": "Lane health-truth-status (2026-09-28). Open: the render still walks every article (O(N)) under the owner gate as an :inspect quantum, so a long reader quantum (fitness f1: reader hold-max 12.4 s) still delays it; a snapshot render off the gate, or carried counts, is the next step. The offline `store reclaim` context (books/store-reclaim-pack.lisp fn-rclp-ctx) still scans the full list; offline replay leaves the list empty, so it does not grow there.",
+      "events": [
+        "fn-rcl-verdict-heldp-of-held-verdicts",
+        "fn-rcl-store-classes-over-every-verdict",
+        "fn-rcl-store-counts-is-the-model-over-alpha"
       ]
     }
   ]
