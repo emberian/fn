@@ -143,7 +143,7 @@ class SubjectRuleTests(unittest.TestCase):
         self.assertFalse(s.hosted(self.graph))
 
     def test_hints_do_not_host(self):
-        form = ("(defthm t1 (equal (fn-bs-write a b k) c) "
+        form = ("(defthm t1 (equal (fn-bs-write a b k d e) c) "
                 ":hints ((\"Goal\" :use ((:instance fn-own-read-preserves-relation)) "
                 ":in-theory (enable fn-own-read))))")
         s = reach_check.Subject(self.graph, "t1", form)

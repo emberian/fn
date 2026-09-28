@@ -280,7 +280,7 @@
 ; -----------------------------------------------------------------------------
 ; teeth: pending-fixture hostile-reader-archive
 ; Not witnessed here, by name: 423/430 "article reclaimed" (a tombstoned
-; payload: tests/acl2/nntp-reclaimed-tests.lisp witnesses the arm),
+; payload: tests/acl2/hostile-reader-archive.lisp witnesses the arm),
 ; 423/430 "withdrawn" (a control pin: tests/acl2/control-served-tests.lisp),
 ; 503 "stored article framing unavailable" (an unframed payload), 503
 ; "control status unavailable" (HDR :fn-control over an unclean target),
