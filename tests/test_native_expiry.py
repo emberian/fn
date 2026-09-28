@@ -148,7 +148,7 @@ class ExpiryMixin:
             node.stop(expect=None, grace=300)
         # A rerun expires nothing more; `clear' removes the policy.
         again = self.reclaim(node)
-        self.assertEqual(words(again.stdout)["reclaimed"], "0", again.stdout)
+        self.assertTrue(again.stdout.startswith(b"reclaimed=0 expired=0 "), again.stdout)
         node.operator("retention", "expire", GROUP, "clear", expect=EXIT.OK)
         dry = self.reclaim(node, "--dry-run")
         self.assertTrue(dry.stdout.startswith(b"reclaimed=0 expired=0 "), dry.stdout)

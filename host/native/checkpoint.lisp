@@ -201,7 +201,12 @@ the report line."
   ;; MODE :reclaim, :dry-run or :recorded (host/native/operator.lisp's
   ;; actions).  The open answers the history's count; the reclaim streams the
   ;; history after it, as the open read it (fnn-log-history-each).
-  (multiple-value-bind (store count) (fnn-open-live-store root (not (eq mode :dry-run)))
+  ;; The developer image's FN_NATIVE_STATE_CHECKPOINT_FAULT cuts the
+  ;; reclaim's checkpoint as it cuts `store checkpoint's (lane expiry: before,
+  ;; the reclaim opened without it, so no cut of a reclaim was ever taken).
+  (multiple-value-bind (store count)
+      (fnn-open-live-store root (not (eq mode :dry-run))
+                           (and (not (eq mode :dry-run)) (fnn-state-checkpoint-test-fault)))
     (declare (ignore count))
     (unwind-protect
          (progn (unless (fnn-store-logp store)
