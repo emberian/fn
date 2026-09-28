@@ -207,6 +207,10 @@ def build(root: Path = ROOT) -> str:
                       "; its image is a release build of that source, not a qualified image")
     earlier_nodes = [f"{n['where']} on `{n['image']}` ({record_link(root, n['record'], n['image'])}), "
                f"{n['state']}" for n in view.get("earlier_deployments", [])]
+    # Further live nodes beside the one the deployed column is computed against
+    # (node #2 on hbox, planning/evidence/hbox-node-2026-09-28.md).
+    other_nodes = [f"{n['where']} on `{n['image']}` ({record_link(root, n['record'], n['image'])}), "
+                   f"{n['state']}" for n in view.get("other_deployments", [])]
 
     summary, records = [], []
     for cap in view["capabilities"]:
@@ -304,6 +308,7 @@ def build(root: Path = ROOT) -> str:
         "",
         f"Live node: {node['where']} on `{node['image']}` ({node_link}), "
         f"{node['profile_text']}{node_qualified}.",
+        *([f"Also live: {line}." for line in other_nodes]),
         *([f"Earlier node: {line}." for line in earlier_nodes]),
         f"Superseded image records: {superseded}.",
         "",
