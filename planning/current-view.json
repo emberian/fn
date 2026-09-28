@@ -116,10 +116,10 @@
   },
   "earlier_deployments": [
     {
-      "where": "hbox `/tank/fn/node`",
+      "where": "hbox `/tank/fn/node-old-format8-20260928` (was `/tank/fn/node`)",
       "image": "bbf52159",
       "record": "planning/evidence/node-hbox-bbf52159-2026-09-25.md",
-      "state": "fn-node.service inactive when the public node was deployed (checked 2026-09-27 21:45Z and 21:52Z, planning/evidence/public-node-deploy-2026-09-27.md section 6); its store is format 8, which the current release refuses by name (D34)"
+      "state": "found running as a user unit on 2026-09-28 (not inactive, as recorded 2026-09-27), stopped and moved aside at 03:12Z; its store is format 8, which the current release refuses by name (reason=older-release, D34; planning/evidence/hbox-node-2026-09-28.md section 1)"
     }
   ],
   "superseded": [
@@ -423,6 +423,14 @@
       "latest": "reader_index 4/4, served_differential 7/7, the peering duplicate rows ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
       "obstruction": "the per-event `fn-peer-sessionp` evaluation, not the history scan, is the served cost at the N the CLI reaches (ember's decision); the fast path's reuse after refresh is not a theorem.",
       "next": "the measured cost sentence for the indexed read and the IHAVE/CHECK path at the scale profile, with its exponent and distance from the bound."
+    }
+  ],
+  "other_deployments": [
+    {
+      "where": "node #2, hbox `/tank/fn/node` (LAN 192.168.50.39 only, behind NAT; 119 STARTTLS and 563 implicit TLS, self-signed hbox.ember.software)",
+      "image": "6702ff8b",
+      "record": "planning/evidence/hbox-node-2026-09-28.md",
+      "state": "release `fn-6.6.0-linux-x86_64.tar.gz` (sha256 `14c962e8bf61c00f31d2697026b94a34ca92ff1833a246ac689cdae9cb6e8373`, source `5e064ad83` plus one manifest), system unit fn-node.service with MemoryMax=2G, a fresh store at format 9 (max-transactions 32,768), small-community mission plus the exposure policy, logins by invitation only, no peers (peer add commands ready in the record); deployed 2026-09-28 03:14Z; a release build, not a qualified image"
     }
   ]
 }
