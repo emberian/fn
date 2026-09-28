@@ -62,6 +62,7 @@
 ; books/node-config.lisp's own includes, not node-config: this book names
 ; none of node-config's definitions (audit 2026-09-25, packet 2).
 (include-book "node-invariants")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "config-invariants")
 (include-book "config-records")
 (include-book "nntp-syntax")
@@ -918,8 +919,8 @@
   ; 335 / 435 duplicate / 436 retry later / 435 not wanted
   (declare (xargs :guard t))
   (let ((kind (fn-peer-decision-kind d)))
-    (cond ((equal kind :want) "335 send it; end with <CR-LF>.<CR-LF>")
-          ((equal kind :have) "435 duplicate")
+    (cond ((equal kind :want) (fn-proto-text "IHAVE" :send))
+          ((equal kind :have) (fn-proto-text "IHAVE" :duplicate))
           ((equal kind :defer)
            (string-append "436 retry later; "
                           (fn-peer-reason-text (fn-peer-decision-reason d))))
@@ -984,7 +985,7 @@
 (defun fn-peer-transit-refusal-line (completion)
   (declare (xargs :guard t))
   (if (equal completion :refused)
-      "437 transfer rejected; refused by acceptance"
+      (fn-proto-text "IHAVE" :rejected-by-acceptance)
     (string-append "437 transfer rejected; "
                    (fn-post-store-refusal-text completion))))
 
@@ -995,12 +996,12 @@
          (code (fn-peer-transit-code kind d completion))
          (reason (fn-peer-reason-text (fn-peer-decision-reason d))))
     (if (equal kind :ihave)
-        (cond ((equal code 235) (fn-peer-single ps "235 article transferred OK"))
+        (cond ((equal code 235) (fn-peer-single ps (fn-proto-text "IHAVE" :transferred)))
               ((equal completion :uncertain)
-               (append (fn-peer-single ps "436 transfer failed; the outcome is uncertain")
+               (append (fn-peer-single ps (fn-proto-text "IHAVE" :uncertain))
                        (list (fn-nntp-close-effect))))
               ((equal completion :clock-unusable)
-               (fn-peer-single ps "436 retry later; no usable clock reading"))
+               (fn-peer-single ps (fn-proto-text "IHAVE" :retry-no-clock)))
               ((member-equal completion '(:unaffordable :memberships :feed-queue-full))
                (fn-peer-single ps (string-append "436 retry later; "
                                                  (fn-post-store-refusal-text completion))))
@@ -1036,8 +1037,8 @@
   (append (cond ((not (equal wire-event '(:reject :body-overlimit)))
                  (fn-peer-single
                   ps (if (equal (fn-ag-car transfer) :ihave)
-                         "436 transfer failed; the article was not received"
-                       "436 the article was not received; closing")))
+                         (fn-proto-text "IHAVE" :not-received)
+                       (fn-proto-text "IHAVE" :closing))))
                 ((equal (fn-ag-car transfer) :ihave)
                  (fn-peer-single
                   ps (string-append "437 transfer rejected; "
@@ -1139,7 +1140,7 @@
     (cond
      ((fn-nntp-keywordp keyword "IHAVE")
       (if (not (fn-peer-msgid-argp args))
-          (fn-post-make-result ps (fn-peer-single ps "501 syntax error") nil)
+          (fn-post-make-result ps (fn-peer-single ps (fn-proto-text * :syntax)) nil)
         (let ((d (fn-peer-decide-offer node cfg peer ps (car args) nil inflight)))
           (if (equal (fn-peer-decision-kind d) :want)
               (fn-post-make-result
@@ -1151,7 +1152,7 @@
                                  nil)))))
      ((fn-nntp-keywordp keyword "CHECK")
       (if (not (fn-peer-msgid-argp args))
-          (fn-post-make-result ps (fn-peer-single ps "501 syntax error") nil)
+          (fn-post-make-result ps (fn-peer-single ps (fn-proto-text * :syntax)) nil)
         (let ((d (fn-peer-decide-offer node cfg peer ps (car args) nil inflight)))
           (fn-post-make-result
            (if (equal (fn-peer-decision-kind d) :want)
@@ -1163,7 +1164,7 @@
       ; The article always follows (RFC 4644 section 2.5.2); no decision
       ; until it has arrived.  Each TAKETHIS retires one outstanding 238.
       (if (not (fn-peer-msgid-argp args))
-          (fn-post-make-result ps (fn-peer-single ps "501 syntax error") nil)
+          (fn-post-make-result ps (fn-peer-single ps (fn-proto-text * :syntax)) nil)
         (fn-post-make-result
          (fn-peer-with-transfer ps (list :takethis (car args))
                                 (nfix (- (nfix inflight) 1)))
@@ -1173,7 +1174,7 @@
            (consp args) (null (cdr args))
            (fn-nntp-keywordp (car args) "STREAM"))
       ; RFC 4644 section 2.3: 203, stateless.
-      (fn-post-make-result ps (fn-peer-single ps "203 streaming permitted") nil))
+      (fn-post-make-result ps (fn-peer-single ps (fn-proto-text "MODE" :streaming)) nil))
      ((and (fn-nntp-keywordp keyword "CAPABILITIES")
            (or (null args)
                (and (consp args) (null (cdr args))
@@ -1182,7 +1183,7 @@
        ps
        (fn-nntp-result-effects
         (fn-nntp-multi (fn-peer-reader-session ps)
-                       "101 capability list follows"
+                       (fn-proto-text "CAPABILITIES" :list)
                        (fn-peer-capability-lines
                         (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))
                         nil)))

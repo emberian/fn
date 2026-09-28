@@ -36,6 +36,7 @@
 
 (in-package "ACL2")
 (include-book "nntp-responses")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 
 (local (in-theory (enable fn-nntp-crlf-lines fn-nntp-stuff-lines fn-nntp-crlf)))
 
@@ -272,11 +273,11 @@
                                  :use ((:instance fn-nntp-block-rev-is-the-block
                                                   (bytes bytes)))))))
   (if (not (fn-nntp-article-idp article))
-      (fn-nntp-single session "503 stored article identifier unavailable")
+      (fn-nntp-single session (fn-proto-text * :no-identifier))
     (if (fn-rcl-tombstonep bytes)
         (fn-nntp-single session (if updatep
-                                    "423 article reclaimed"
-                                  "430 article reclaimed"))
+                                    (fn-proto-text * :reclaimed)
+                                  (fn-proto-text * :reclaimed-msgid)))
       (let ((next-session (if updatep
                               (fn-nntp-set-cursor session group number)
                             session)))
@@ -295,14 +296,14 @@
                              (append (fn-nntp-crlf (fn-nntp-retrieval-initial kind number article))
                                      (fn-nntp-stuff-lines (car (cdr section)))
                                      '(46 13 10)))))
-                   (fn-nntp-single session "503 stored article framing unavailable")))
+                   (fn-nntp-single session (fn-proto-text * :no-framing))))
                :exec
                (if (equal kind :article)
                    (let ((acc (if (and (fn-octet-listp bytes) (fn-nntp-blank-linep bytes))
                                   (fn-nntp-block-rev bytes t nil)
                                 :error)))
                      (if (equal acc :error)
-                         (fn-nntp-single session "503 stored article framing unavailable")
+                         (fn-nntp-single session (fn-proto-text * :no-framing))
                        (fn-nntp-make-result
                         next-session
                         (list (fn-nntp-reply-effect
@@ -317,7 +318,7 @@
                                (append (fn-nntp-crlf (fn-nntp-retrieval-initial kind number article))
                                        (fn-nntp-stuff-lines (car (cdr section)))
                                        '(46 13 10)))))
-                     (fn-nntp-single session "503 stored article framing unavailable"))))))))))
+                     (fn-nntp-single session (fn-proto-text * :no-framing)))))))))))
 
 ; KEYSTONE (the host-reached response).  fn-nntp-article-response, which
 ; the served ARTICLE/HEAD/BODY/STAT arms call with the arena, is the

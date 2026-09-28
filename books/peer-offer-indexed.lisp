@@ -21,6 +21,7 @@
 
 (in-package "ACL2")
 (include-book "peer-inbound")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "msgid-index")
 (include-book "msgid-index-concrete")
 
@@ -200,7 +201,7 @@
     (cond
      ((fn-nntp-keywordp keyword "IHAVE")
       (if (not (fn-peer-msgid-argp args))
-          (fn-post-make-result ps (fn-peer-single ps "501 syntax error") nil)
+          (fn-post-make-result ps (fn-peer-single ps (fn-proto-text * :syntax)) nil)
         (let ((d (fn-pix-decide-offer node cfg peer ps (car args) nil inflight
                                       trie arts)))
           (if (equal (fn-peer-decision-kind d) :want)
@@ -213,7 +214,7 @@
                                  nil)))))
      ((fn-nntp-keywordp keyword "CHECK")
       (if (not (fn-peer-msgid-argp args))
-          (fn-post-make-result ps (fn-peer-single ps "501 syntax error") nil)
+          (fn-post-make-result ps (fn-peer-single ps (fn-proto-text * :syntax)) nil)
         (let ((d (fn-pix-decide-offer node cfg peer ps (car args) nil inflight
                                       trie arts)))
           (fn-post-make-result
@@ -331,7 +332,7 @@
 (defun fn-pix-msgid-retrieval-indexed (session archive index kind token fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (not (fn-nntp-message-id-tokenp token))
-      (fn-nntp-single session "501 syntax error")
+      (fn-nntp-single session (fn-proto-text * :syntax))
     ; A raw direct caller can supply a dotted token accepted by the older
     ; token predicate.  Wire tokenization never does, but retaining the old
     ; answer on that malformed shape makes this refinement unconditional.
@@ -342,7 +343,7 @@
             (fn-nntp-article-response
              session article (fn-nntp-msgid-local-number session article)
              kind nil nil fn-arena)
-          (fn-nntp-single session "430 no article with that message-id"))))))
+          (fn-nntp-single session (fn-proto-text * :no-msgid)))))))
 
 (defthm fn-pix-msgid-retrieval-indexed-is-msgid-retrieval-indexed
   (equal (fn-pix-msgid-retrieval-indexed session archive index kind token fn-arena)
@@ -397,14 +398,14 @@
              (null (cdr (cdr wire-event))))
         (let ((line (car (cdr wire-event))))
           (if (not (fn-nntp-command-inputp line))
-              (fn-nntp-single session "501 syntax error")
+              (fn-nntp-single session (fn-proto-text * :syntax))
             (let ((tokens (fn-nntp-tokenize line)))
               (if (and (consp tokens)
                        (fn-nntp-command-arguments-at-mostp tokens))
                   (fn-pix-command-pinned
                    session archive index verdicts env tokens fn-arena)
-                (fn-nntp-single session "501 syntax error")))))
-      (fn-nntp-single session "501 syntax error"))))
+                (fn-nntp-single session (fn-proto-text * :syntax))))))
+      (fn-nntp-single session (fn-proto-text * :syntax)))))
 
 (defthm fn-pix-step-pinned-is-step-pinned
   (equal (fn-pix-step-pinned session archive index verdicts env wire-event fn-arena)
@@ -432,7 +433,7 @@
                (fn-nntp-result-effects r) nil)
             (fn-post-make-result
              (fn-post-make-session (fn-nntp-result-session r) nil)
-             (fn-post-single ps "440 posting not permitted") nil))
+             (fn-post-single ps (fn-proto-text "POST" :not-permitted)) nil))
         (fn-post-make-result
          (fn-post-make-session (fn-nntp-result-session r) nil)
          (fn-nntp-result-effects r) nil)))))

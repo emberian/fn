@@ -21,6 +21,7 @@
 
 (in-package "ACL2")
 (include-book "peer-offer-indexed")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 
 ; -----------------------------------------------------------------------------
 ; The retention test, guard t
@@ -161,7 +162,7 @@
     (cond
      ((fn-nntp-keywordp keyword "IHAVE")
       (if (not (fn-peer-msgid-argp args))
-          (fn-post-make-result ps (fn-peer-single ps "501 syntax error") nil)
+          (fn-post-make-result ps (fn-peer-single ps (fn-proto-text * :syntax)) nil)
         (let ((d (fn-pgc-decide-offer node cfg peer ps (car args) nil inflight
                                       trie arts)))
           (if (equal (fn-peer-decision-kind d) :want)
@@ -174,7 +175,7 @@
                                  nil)))))
      ((fn-nntp-keywordp keyword "CHECK")
       (if (not (fn-peer-msgid-argp args))
-          (fn-post-make-result ps (fn-peer-single ps "501 syntax error") nil)
+          (fn-post-make-result ps (fn-peer-single ps (fn-proto-text * :syntax)) nil)
         (let ((d (fn-pgc-decide-offer node cfg peer ps (car args) nil inflight
                                       trie arts)))
           (fn-post-make-result
@@ -185,7 +186,7 @@
            nil))))
      ((fn-nntp-keywordp keyword "TAKETHIS")
       (if (not (fn-peer-msgid-argp args))
-          (fn-post-make-result ps (fn-peer-single ps "501 syntax error") nil)
+          (fn-post-make-result ps (fn-peer-single ps (fn-proto-text * :syntax)) nil)
         (fn-post-make-result
          (fn-peer-with-transfer ps (list :takethis (car args))
                                 (nfix (- (nfix inflight) 1)))
@@ -194,7 +195,7 @@
      ((and (fn-nntp-keywordp keyword "MODE")
            (consp args) (null (cdr args))
            (fn-nntp-keywordp (car args) "STREAM"))
-      (fn-post-make-result ps (fn-peer-single ps "203 streaming permitted") nil))
+      (fn-post-make-result ps (fn-peer-single ps (fn-proto-text "MODE" :streaming)) nil))
      ((and (fn-nntp-keywordp keyword "CAPABILITIES")
            (or (null args)
                (and (consp args) (null (cdr args))
@@ -203,7 +204,7 @@
        ps
        (fn-nntp-result-effects
         (fn-nntp-multi (fn-peer-reader-session ps)
-                       "101 capability list follows"
+                       (fn-proto-text "CAPABILITIES" :list)
                        (fn-peer-capability-lines
                         (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))
                         nil)))

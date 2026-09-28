@@ -44,6 +44,7 @@
 
 (in-package "ACL2")
 (include-book "owner")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 
 ; LOCAL, deliberately.  books/owner-invariants owns the connection-list
 ; algebra this book reasons with (`fn-own-find-conn-of-remove-conn-other');
@@ -65,7 +66,7 @@
 ; exactly as for every other close.
 
 (defconst *fn-own-fault-line*
-  "403 internal fault; this connection is closed and the server continues")
+  (fn-proto-text "(connection)" :fault))
 
 (defun fn-own-fault-effects ()
   (declare (xargs :guard t))
