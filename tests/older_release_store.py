@@ -56,16 +56,31 @@ FORMAT_8_CONFIG = bytes.fromhex(
     "0000001000000000000000100000000000000010000000000000000000000000"
     "000000000040000000000000010000000000000040006fafea5557022366ed01"
     "717e509d54dbf4a18b95c0e648856e8eda5bb0282d64")
+# A format-9 store's config.json (the release before format 10): hbox
+# /tank/fn/scratch/fixtures/chain-20000/store/config.json.  Pinned:
+# `(equal (fn-f9-config-frame *spot-scale-9*) *spot-format-9-octets*)'; the
+# open answers (:refused :store-format-9) with the way out
+# (fn-spo-open-of-a-format-9-frame-refuses-by-name).
+FORMAT_9_CONFIG = bytes.fromhex(
+    "464e534d0101000000ac000a666e2d73746f72652d39001e666e2d73746f7265"
+    "2d616c6c6f636174696f6e2d66726f6e746965722d3200000000001000000000"
+    "00003000000000000000010583360000000000000800000000000000ffff0000"
+    "0000000001000000000000001000000000000010000000000000001000000000"
+    "0000001000000000000000100000000000000010000000000000000000000000"
+    "00000000004000000000000001000000000000004000af1d18d04944686594ec"
+    "d77a7a1e48a0d034ac6934519ca7a6432524d7f73412")
 FRAMES = {"older-release": OLDER_RELEASE_CONFIG, "format-7": FORMAT_7_CONFIG,
-          "format-8": FORMAT_8_CONFIG}
+          "format-8": FORMAT_8_CONFIG, "format-9": FORMAT_9_CONFIG}
 
-# The lines ACL2 renders for the two refusals (fn-spo-refusal-text).
-OLDER_RELEASE_LINE = ("open refused reason=older-release: store made by an older release "
-                      "(profile layout 13 fields, this release expects 16): export it with "
-                      "the release that made it, then import it here")
+# The lines ACL2 renders for the refusals (fn-spo-refusal-text).  Format 10
+# reads every format-8 frame (of either layout) as another format.
 FORMAT_7_LINE = "open refused reason=store-format: reinstall from the release and import"
-LINES = {"older-release": OLDER_RELEASE_LINE, "format-7": FORMAT_7_LINE,
-         "format-8": FORMAT_7_LINE}
+FORMAT_9_LINE = ("open refused reason=store-format-9: a format-9 store (made by the release "
+                 "before format 10); export it with that release (store ROOT export DIR), "
+                 "then import it here (store NEWROOT import DIR); no store is upgraded in "
+                 "place (D34)")
+LINES = {"older-release": FORMAT_7_LINE, "format-7": FORMAT_7_LINE,
+         "format-8": FORMAT_7_LINE, "format-9": FORMAT_9_LINE}
 
 
 def write_config(root, store, name="fn"):

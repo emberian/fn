@@ -96,6 +96,11 @@ class OlderReleaseOpenTest(unittest.TestCase):
     def test_a_format_7_store_is_refused_by_name(self):
         self.assert_every_open_refuses("format-7")
 
+    def test_a_format_9_store_is_refused_by_name_with_the_way_out(self):
+        # Format 10 (lane format-bump-10): the release before is named, and
+        # the line says export there, import here (D34).
+        self.assert_every_open_refuses("format-9")
+
     def test_the_same_store_with_its_own_profile_opens(self):
         # The control: the builder's store with the config.json this release
         # wrote put back opens.
