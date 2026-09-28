@@ -12145,6 +12145,27 @@
           "name": "fn-ocp-unstaged-start-issues-no-sync"
         }
       ]
+    },
+    {
+      "id": "PRF-357",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osd-stops-only-when-nothing-is-owed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-releases-only-at-the-deadline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-drain-ends-by-the-deadline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-deadline-is-past-the-slow-deadline"
+        }
+      ]
     }
   ]
 }

@@ -12541,6 +12541,29 @@
         "fn-ocs-told-at-drain-p-by-definition",
         "fn-ocp-unstaged-start-issues-no-sync"
       ]
+    },
+    {
+      "id": "PRF-357",
+      "title": "A graceful stop drains the POSTs in flight: the fence comes only when every member was told its reply (240 after a fenced barrier) or, past the drain deadline H, told uncertain by the stall's rule, and the drain ends within H plus the send grace",
+      "statement": "Subject: fn-osd-drain-step (books/owner-stop-drain.lisp), which host/native/owner.lisp fnn-owner-drain-service calls once per observation after a SIGTERM (fnn-owner-run: the drain, then fnn-owner-stop-service), with S0 and S the gate's scheduler values after a clock event (fnn-owner-sched-snapshot) at the drain's start and at the observation, LIMITS the configuration's (D H C) (fn-owner-barrier-limits), AWAITING the connections registered for a completion plus the queued submissions, UNSENT the connections holding a completion's reply not yet written (host/native/mux.lisp fnn-mux-unsent), RELEASED whether its :release was acted on. KEYSTONE fn-osd-stops-only-when-nothing-is-owed: :stop only when fn-osd-quiet-p (no member awaits, no reply unsent, and no batch in flight unless released by this drain or by the stall, fn-otm-disk-stalled) or released and H + 10,000 ms have passed since S0. KEYSTONE fn-osd-releases-only-at-the-deadline: :release only unreleased, at or past H, and not quiet; the committer then answers every member of the batches in flight by fn-otm-stall-releases (fn-otm-stall-tells-no-member-its-outcome: uncertain, never accepted or refused) and sheds the queued POSTs (refused try-later, nothing stored). KEYSTONE fn-osd-drain-ends-by-the-deadline: unreleased, at or past H and not quiet is :release; released and past H + grace is :stop. fn-osd-deadline-is-past-the-slow-deadline: H is at least D. With fn-ocs-members-told-only-after-the-barrier (PRF-267) a member is told 240 only in the COMPLETE after its fenced barrier, which the drain lets run before the fence. Not covered: the fence (fnn-owner-stop-service, a :control quantum) waits for a barrier that does not return; a command read but not yet stepped at the SIGTERM is not answered (nothing stored).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-026"
+      ],
+      "depends_on": [
+        "PRF-267",
+        "PRF-311"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-stop-drain.lisp",
+        "tests/acl2/owner-stop-drain-tests.lisp",
+        "host/native/owner.lisp",
+        "host/native/mux.lisp",
+        "tests/test_native_slow_disk.py"
+      ],
+      "progress_note": "Lane health-truth-stop (Opus 5.5, 2026-09-28; PKT-875 from planning/evidence/fitness-2026-09-28.md f2: 4 of 4 in-flight POSTs closed without a reply at one SIGTERM though committed). REPL-admitted on persvati (book 0.07 s, 16,639 steps; test book with every must-fail). Record planning/evidence/health-truth-stop-2026-09-28.md."
     }
   ]
 }
