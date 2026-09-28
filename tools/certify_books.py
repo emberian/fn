@@ -1115,6 +1115,11 @@ def main() -> int:
         print(f"Certification evidence: {run_dir.relative_to(ROOT)}", file=sys.stderr)
         return 2
     manifest["source_digests_sha256"] = source_digests
+    # The same closure by read forms (`certs.form_hash`): a later comment-only
+    # edit keeps ACL2's book-hash, and `certs.manifest_sources` lets this run
+    # keep vouching for the edited bytes.
+    manifest["source_form_digests_sha256"] = {
+        path: certs.form_hash(ROOT / path) for path in source_digests}
     manifest["local_source_audit"] = {
         "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
         "forbidden_facilities": sorted(FORBIDDEN_FACILITIES),
