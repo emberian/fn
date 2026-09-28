@@ -230,11 +230,7 @@ class NativeCapacityVectorTests(_Bp):
             r_out, r_err = receiver.communicate(timeout=600)
         finally:
             for p in (receiver, bp_sender):
-                if p.poll() is None:
-                    p.kill()
-                    p.wait(timeout=10)
-                p.stdout.close()
-                p.stderr.close()
+                p.stop(grace=10)
         self.out(tag="bp-exchange", sender=bp_sender.returncode,
                  receiver=receiver.returncode,
                  accepted=b"BP summary accepted=1" in s_out)
