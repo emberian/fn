@@ -10657,6 +10657,26 @@
           "kind": "theorem",
           "name": "fn-sjh-okp-at-full-open",
           "note": "KEYSTONE (join-f2). The full open: fn-sjh-okp from the intern alone."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-prepare-identity-sealed",
+          "note": "KEYSTONE (join-f2). A signed composite's prepare (fn-pout-prepare-identity at the arena's count, the seal of its article payload, fn-cat-prepare-sealed of the composite's held row): fn-sjh-okp with that pending row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-prepare-identity-unsealed",
+          "note": "KEYSTONE (join-f2). A keyring snapshot's prepare loads no row: fn-sjh-okp with no pending row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-at-owner-finish-no-row",
+          "note": "KEYSTONE (join-f2). fn-owner-finish over fn-rix-ocfg-complete with no pending row: the completing record loads no catalog row; fn-sjh-okp after."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sjh-okp-of-other-prepare",
+          "note": "KEYSTONE (join-f2). The retention, consumer and topic prepares stage events that load no row: fn-sjh-okp with no pending row."
         }
       ]
     },
