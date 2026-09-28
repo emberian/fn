@@ -8,7 +8,8 @@ here, so a farm run is not a separate world: it is the same certification with
 the evidence and the certificate pairs rsynced back and published to the local
 cache.
 
-    python3 tools/farm.py submit persvati --jobs 12 --affected-by books/wire.lisp
+    python3 tools/farm.py submit persvati --affected-by books/wire.lisp
+                            # --jobs auto (the default): tools/chain_schedule.py
     python3 tools/farm.py wait persvati run-20260919T101500Z-4f2a
     python3 tools/farm.py status hbox --remote-root /tank/fn/gates/my-run
 
@@ -80,6 +81,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certs
 from certify_books import BOOK_NAME
+import chain_schedule
 DEPENDENCY_NAME = re.compile(r"[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)+")
 import evidence_manifests
 import native_program_check
@@ -654,7 +656,7 @@ def publishes(script: str) -> bool:
 
 
 def remote_script(host: str, root: Path, identifier: str, books: list[str],
-                  jobs: int, timeout_seconds: int, affected_by: list[str],
+                  jobs: int | str, timeout_seconds: int, affected_by: list[str],
                   closure: bool = False, cache: str | None = None,
                   acl2: str | None = None, no_publish: bool = False,
                   pcert: bool = False, budget_seconds: int | None = None,
@@ -721,7 +723,7 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
     )
 
 
-def submit(host: str, root: Path, books: list[str], jobs: int,
+def submit(host: str, root: Path, books: list[str], jobs: int | str,
            timeout_seconds: int, affected_by: list[str],
            remote: Path | None = None, closure: bool = False,
            cache: str | None = None, acl2: str | None = None,
@@ -837,14 +839,17 @@ def progress_script(root: Path, identifier: str) -> str:
         f"2>/dev/null | wc -l | tr -d ' ')\"; "
         f"printf 'STARTED %s\\n' \"$(ls \"$d\"*.certify.log 2>/dev/null | wc -l "
         f"| tr -d ' ')\"; "
-        f"printf 'TAIL %s\\n' \"$(tail -c 300 {log} 2>/dev/null | tr '\\n' ' ')\""
+        f"printf 'TAIL %s\\n' \"$(tail -c 300 {log} 2>/dev/null | tr '\\n' ' ')\"; "
+        # The runner's plan (certify_books: the critical chain of what it
+        # certifies and the job count it chose), once it has printed it.
+        f"printf 'PLAN %s\\n' \"$(grep -m1 '^Critical chain: ' {log} 2>/dev/null)\""
     )
 
 
 def parse_progress(output: str) -> dict[str, str]:
     fields: dict[str, str] = {}
     for line in output.splitlines():
-        for key in ("STATUS", "MARKERS", "STARTED", "TAIL"):
+        for key in ("STATUS", "MARKERS", "STARTED", "TAIL", "PLAN"):
             if line.startswith(key + " "):
                 fields[key] = line[len(key) + 1:].strip()
     return fields
@@ -877,9 +882,13 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
     # that did not exist there, so it reported the run running forever.
     remote = remote_root(root, identifier, remote)
     cache = cache or run_record(root, identifier).get("cache")
+    planned = False
     while True:
         progress = parse_progress(ssh(host, progress_script(remote, identifier),
                                       check=False).stdout)
+        if progress.get("PLAN") and not planned:
+            print(f"{identifier} on {host}: {progress['PLAN']}", flush=True)
+            planned = True
         state = progress.get("STATUS", "running")
         if state != "running":
             break
@@ -1373,6 +1382,23 @@ def cache_summary(record: dict) -> str:
     return f"{found.get('installed', 0)}+{found.get('kept', 0)}/{count}"
 
 
+def recertify_list(paths: list[str]) -> list[str]:
+    """The books named in each --recertify-from FILE, in order, once each.
+
+    Words are separated by whitespace or commas and `#' starts a comment, so
+    green_check's "installed-without-cited-manifest: N: a, b" line pasted
+    after its colon, or a one-per-line list, both read.  The file exists
+    because a list held in one shell variable reached farm.py as a single
+    argument under zsh (batch BB, 2026-09-28)."""
+    books: list[str] = []
+    for path in paths:
+        text = sys.stdin.read() if path == "-" else Path(path).read_text()
+        for line in text.splitlines():
+            line = line.split("#", 1)[0]
+            books.extend(word for word in line.replace(",", " ").split() if word)
+    return list(dict.fromkeys(books))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=("submit", "wait", "status"))
@@ -1380,8 +1406,10 @@ def main(argv: list[str] | None = None) -> int:
                                      "all) picks the one with the lowest load per core")
     parser.add_argument("rest", nargs="*",
                         help="submit: book roots; wait: the run id")
-    parser.add_argument("--jobs", type=int,
-                        default=int(os.environ.get("FN_CERTIFY_JOBS", "8")))
+    parser.add_argument("--jobs", default=os.environ.get("FN_CERTIFY_JOBS", "auto"),
+                        help="concurrent ACL2s on the box: a count, or auto / auto:N "
+                             "(the default: the count that finishes the longest "
+                             "include chain soonest, tools/chain_schedule.py)")
     parser.add_argument("--affected-by", action="append", default=[],
                         help="certify the Makefile roots whose closure contains "
                              "this book (repeatable)")
@@ -1399,6 +1427,13 @@ def main(argv: list[str] | None = None) -> int:
                         help="certify this book of the closure afresh instead of "
                              "installing its cached pair (repeatable; passed to "
                              "the cache preflight and the runner)")
+    parser.add_argument("--recertify-from", action="append", default=[], metavar="FILE",
+                        help="add to --recertify every book named in FILE (words "
+                             "separated by whitespace or commas; `#' starts a "
+                             "comment; `-' reads standard input), so a list "
+                             "never has to survive a shell's word splitting; "
+                             "when the submit names no other book and no "
+                             "--affected-by, these books are also its roots")
     parser.add_argument("--recertify-uncited", action="store_true",
                         help="add to --recertify every book of the closure no "
                              "committed manifest certified at its current digest "
@@ -1427,6 +1462,22 @@ def main(argv: list[str] | None = None) -> int:
                              "selection is refused without it)")
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
+    if arguments.recertify_from:
+        if arguments.action != "submit":
+            parser.error("--recertify-from belongs to submit")
+        try:
+            listed = recertify_list(arguments.recertify_from)
+        except OSError as error:
+            parser.error(f"--recertify-from: {error}")
+        if not listed:
+            parser.error("--recertify-from names no book: refusing rather than "
+                         "certifying nothing (or, as roots, everything)")
+        arguments.recertify = list(dict.fromkeys(list(arguments.recertify) + listed))
+        named_roots = list(arguments.rest) + ([arguments.host] if arguments.host
+                                              not in HOSTS and arguments.host != "auto"
+                                              else [])
+        if not named_roots and not arguments.affected_by and not arguments.all:
+            arguments.rest.extend(listed)
     if arguments.action == "submit":
         named = list(arguments.rest) + ([arguments.host] if arguments.host not in HOSTS
                                         and arguments.host != "auto" else [])
@@ -1446,6 +1497,12 @@ def main(argv: list[str] | None = None) -> int:
     elif arguments.host == "auto":
         parser.error(f"{arguments.action} needs the box the run is on (its submit "
                      "printed it); auto picks a box only for submit")
+    if arguments.action == "submit":
+        try:
+            chain_schedule.parse_jobs(arguments.jobs)
+        except ValueError:
+            parser.error(f"--jobs takes a positive count, auto or auto:N, "
+                         f"not {arguments.jobs!r}")
     if arguments.action == "submit" and arguments.recertify_uncited:
         arguments.recertify = sorted(set(arguments.recertify)
                                      | set(uncited_in_selection(
