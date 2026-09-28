@@ -217,21 +217,89 @@
         (car waits)
       (fn-bpnp-wait-for key (cdr waits)))))
 
-(defun fn-bpnp-remove-wait (key waits)
-  (declare (xargs :guard t :measure (acl2-count waits)))
-  (if (atom waits) nil
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpnp-remove-wait-loop (key waits acc)
+  (declare (xargs :measure (acl2-count waits) :guard (true-listp acc) :verify-guards nil))
+  (if (atom waits)
+      (revappend acc nil)
     (if (equal key (fn-bpn-nth 1 (car waits)))
-        (fn-bpnp-remove-wait key (cdr waits))
-      (cons (car waits) (fn-bpnp-remove-wait key (cdr waits))))))
+        (fn-bpnp-remove-wait-loop key (cdr waits) acc)
+      (fn-bpnp-remove-wait-loop key (cdr waits) (cons (car waits) acc)))))
 
-(defun fn-bpnp-prune-waits (waits held)
-  (declare (xargs :guard t :measure (acl2-count waits)))
-  (if (atom waits) nil
+(defun fn-bpnp-remove-wait (key waits)
+  (declare (xargs :verify-guards nil :guard t :measure (acl2-count waits)))
+  (mbe :logic
+       (if (atom waits) nil
+         (if (equal key (fn-bpn-nth 1 (car waits)))
+             (fn-bpnp-remove-wait key (cdr waits))
+           (cons (car waits) (fn-bpnp-remove-wait key (cdr waits)))))
+       :exec (fn-bpnp-remove-wait-loop key waits nil)))
+
+(local
+ (defthm fn-bpnp-remove-wait-loop-is-revappend
+   (equal (fn-bpnp-remove-wait-loop key waits acc)
+          (revappend acc (fn-bpnp-remove-wait key waits)))
+   :hints (("Goal" :induct (fn-bpnp-remove-wait-loop key waits acc)
+                   :in-theory (union-theories '(fn-bpnp-remove-wait-loop fn-bpnp-remove-wait revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpnp-remove-wait-loop)
+
+(verify-guards fn-bpnp-remove-wait
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpnp-remove-wait)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpnp-remove-wait-loop-is-revappend (acc nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpnp-prune-waits-loop (waits held acc)
+  (declare (xargs :measure (acl2-count waits) :guard (true-listp acc) :verify-guards nil))
+  (if (atom waits)
+      (revappend acc nil)
     (let* ((row (car waits))
            (key (fn-bpn-nth 1 row)))
       (if (fn-bpnf-find-held key held)
-          (cons row (fn-bpnp-prune-waits (cdr waits) held))
-        (fn-bpnp-prune-waits (cdr waits) held)))))
+          (fn-bpnp-prune-waits-loop (cdr waits) held (cons row acc))
+        (fn-bpnp-prune-waits-loop (cdr waits) held acc)))))
+
+(defun fn-bpnp-prune-waits (waits held)
+  (declare (xargs :verify-guards nil :guard t :measure (acl2-count waits)))
+  (mbe :logic
+       (if (atom waits) nil
+         (let* ((row (car waits))
+                (key (fn-bpn-nth 1 row)))
+           (if (fn-bpnf-find-held key held)
+               (cons row (fn-bpnp-prune-waits (cdr waits) held))
+             (fn-bpnp-prune-waits (cdr waits) held))))
+       :exec (fn-bpnp-prune-waits-loop waits held nil)))
+
+(local
+ (defthm fn-bpnp-prune-waits-loop-is-revappend
+   (equal (fn-bpnp-prune-waits-loop waits held acc)
+          (revappend acc (fn-bpnp-prune-waits waits held)))
+   :hints (("Goal" :induct (fn-bpnp-prune-waits-loop waits held acc)
+                   :in-theory (union-theories '(fn-bpnp-prune-waits-loop fn-bpnp-prune-waits revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpnp-prune-waits-loop)
+
+(verify-guards fn-bpnp-prune-waits
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpnp-prune-waits)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpnp-prune-waits-loop-is-revappend (acc nil))))))
+
 
 (defun fn-bpnp-wait-key (h)
   (declare (xargs :guard t))
@@ -1703,13 +1771,46 @@
   (declare (xargs :guard t))
   (fn-bpaj-eid-text (fn-bpn-nth 3 (fn-bpnp-primary h))))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpnp-routed-rows-loop (ordered via acc)
+  (declare (xargs :measure (acl2-count ordered) :guard (true-listp acc) :verify-guards nil))
+  (if (atom ordered)
+      (revappend acc nil)
+    (if (equal (fn-bprt-offer-decision (fn-bpnp-held-dest (car ordered)) via) :offer)
+        (fn-bpnp-routed-rows-loop (cdr ordered) via (cons (car ordered) acc))
+      (fn-bpnp-routed-rows-loop (cdr ordered) via acc))))
+
 (defun fn-bpnp-routed-rows (ordered via)
-  (declare (xargs :guard t :measure (acl2-count ordered)))
-  (if (atom ordered) nil
-    (if (equal (fn-bprt-offer-decision (fn-bpnp-held-dest (car ordered)) via)
-               :offer)
-        (cons (car ordered) (fn-bpnp-routed-rows (cdr ordered) via))
-      (fn-bpnp-routed-rows (cdr ordered) via))))
+  (declare (xargs :verify-guards nil :guard t :measure (acl2-count ordered)))
+  (mbe :logic
+       (if (atom ordered) nil
+         (if (equal (fn-bprt-offer-decision (fn-bpnp-held-dest (car ordered)) via)
+                    :offer)
+             (cons (car ordered) (fn-bpnp-routed-rows (cdr ordered) via))
+           (fn-bpnp-routed-rows (cdr ordered) via)))
+       :exec (fn-bpnp-routed-rows-loop ordered via nil)))
+
+(local
+ (defthm fn-bpnp-routed-rows-loop-is-revappend
+   (equal (fn-bpnp-routed-rows-loop ordered via acc)
+          (revappend acc (fn-bpnp-routed-rows ordered via)))
+   :hints (("Goal" :induct (fn-bpnp-routed-rows-loop ordered via acc)
+                   :in-theory (union-theories '(fn-bpnp-routed-rows-loop fn-bpnp-routed-rows revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpnp-routed-rows-loop)
+
+(verify-guards fn-bpnp-routed-rows
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpnp-routed-rows)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpnp-routed-rows-loop-is-revappend (acc nil))))))
+
 
 (defun fn-bpnp-routed-start (st peer session mru observation via budget)
   (declare (xargs :guard (and (natp mru)

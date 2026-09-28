@@ -4,12 +4,44 @@
 (include-book "bp-fnbs-family-codec")
 (set-verify-guards-eagerness 0)
 
-(defun fn-bpnf-arrival-count (arrival held)
-  (declare (xargs :guard t :measure (acl2-count held)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-bpnf-arrival-count-loop (arrival held acc)
+  (declare (xargs :measure (acl2-count held) :guard (acl2-numberp acc) :verify-guards nil))
   (if (consp held)
-      (+ (if (equal (fn-bpn-nth 3 (car held)) arrival) 1 0)
-         (fn-bpnf-arrival-count arrival (cdr held)))
-    0))
+      (fn-bpnf-arrival-count-loop arrival
+                                  (cdr held)
+                                  (+ (if (equal (fn-bpn-nth 3 (car held)) arrival) 1 0)
+                                     acc))
+    (+ acc 0)))
+
+(defun fn-bpnf-arrival-count (arrival held)
+  (declare (xargs :verify-guards nil :guard t :measure (acl2-count held)))
+  (mbe :logic
+       (if (consp held)
+           (+ (if (equal (fn-bpn-nth 3 (car held)) arrival) 1 0)
+              (fn-bpnf-arrival-count arrival (cdr held)))
+         0)
+       :exec (fn-bpnf-arrival-count-loop arrival held 0)))
+
+(local
+ (defthm fn-bpnf-arrival-count-loop-is-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-bpnf-arrival-count-loop arrival held acc)
+                   (+ acc (fn-bpnf-arrival-count arrival held))))
+   :hints (("Goal" :induct (fn-bpnf-arrival-count-loop arrival held acc)
+                   :in-theory (disable fn-bpn-nth)))))
+
+(verify-guards fn-bpnf-arrival-count-loop)
+
+(verify-guards fn-bpnf-arrival-count
+  :hints (("Goal"
+           :in-theory
+           (disable fn-bpnf-arrival-count-loop fn-bpn-nth)
+           :use
+           ((:instance fn-bpnf-arrival-count-loop-is-plus (acc 0))))))
+
 
 (defun fn-bpnf-find-arrival (arrival held)
   (declare (xargs :guard t :measure (acl2-count held)))
@@ -19,14 +51,49 @@
         (fn-bpnf-find-arrival arrival (cdr held)))
     nil))
 
-(defun fn-bpnf-family-retain-other-rows (held consumed)
-  (declare (xargs :guard t :measure (acl2-count held)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpnf-family-retain-other-rows-loop (held consumed acc)
+  (declare (xargs :measure (acl2-count held) :guard (true-listp acc) :verify-guards nil))
   (if (consp held)
       (if (fn-ag-member (car held) consumed)
-          (fn-bpnf-family-retain-other-rows (cdr held) consumed)
-        (cons (car held)
-              (fn-bpnf-family-retain-other-rows (cdr held) consumed)))
-    nil))
+          (fn-bpnf-family-retain-other-rows-loop (cdr held) consumed acc)
+        (fn-bpnf-family-retain-other-rows-loop (cdr held)
+                                               consumed
+                                               (cons (car held) acc)))
+    (revappend acc nil)))
+
+(defun fn-bpnf-family-retain-other-rows (held consumed)
+  (declare (xargs :verify-guards nil :guard t :measure (acl2-count held)))
+  (mbe :logic
+       (if (consp held)
+           (if (fn-ag-member (car held) consumed)
+               (fn-bpnf-family-retain-other-rows (cdr held) consumed)
+             (cons (car held)
+                   (fn-bpnf-family-retain-other-rows (cdr held) consumed)))
+         nil)
+       :exec (fn-bpnf-family-retain-other-rows-loop held consumed nil)))
+
+(local
+ (defthm fn-bpnf-family-retain-other-rows-loop-is-revappend
+   (equal (fn-bpnf-family-retain-other-rows-loop held consumed acc)
+          (revappend acc (fn-bpnf-family-retain-other-rows held consumed)))
+   :hints (("Goal" :induct (fn-bpnf-family-retain-other-rows-loop held consumed acc)
+                   :in-theory (union-theories '(fn-bpnf-family-retain-other-rows-loop fn-bpnf-family-retain-other-rows revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpnf-family-retain-other-rows-loop)
+
+(verify-guards fn-bpnf-family-retain-other-rows
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpnf-family-retain-other-rows)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpnf-family-retain-other-rows-loop-is-revappend (acc nil))))))
+
 
 (defun fn-bpnf-family-apply (st record expected-arrival)
   (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))

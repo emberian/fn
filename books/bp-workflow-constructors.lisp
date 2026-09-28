@@ -52,12 +52,44 @@
 ; A native inbound receipt has no operator-supplied transaction pair.  The
 ; recovered FNWF image owns the entire used-pair history, including aborted
 ; preparations, so choose above every previously used transaction id.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-bprl-max-used-txid-loop (rev maximum acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-bprl-max-used-txid-loop (cdr rev)
+                                  maximum
+                                  (max (nfix (fn-bp-nth 0 (car rev))) acc))
+    acc))
+
 (defun fn-bprl-max-used-txid (used maximum)
-  (declare (xargs :guard t))
-  (if (atom used)
-      (nfix maximum)
-    (max (nfix (fn-bp-nth 0 (car used)))
-         (fn-bprl-max-used-txid (cdr used) maximum))))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (atom used)
+           (nfix maximum)
+         (max (nfix (fn-bp-nth 0 (car used)))
+              (fn-bprl-max-used-txid (cdr used) maximum)))
+       :exec (fn-bprl-max-used-txid-loop (fn-ag-rev-onto used nil) maximum (nfix maximum))))
+
+(local
+ (defthm fn-bprl-max-used-txid-loop-of-rev-onto
+   (equal (fn-bprl-max-used-txid-loop (fn-ag-rev-onto used zs) maximum (nfix maximum))
+          (fn-bprl-max-used-txid-loop zs maximum (fn-bprl-max-used-txid used maximum)))
+   :hints (("Goal" :induct (fn-ag-rev-onto used zs)
+                   :in-theory (union-theories '(fn-bprl-max-used-txid-loop fn-bprl-max-used-txid fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bprl-max-used-txid-loop)
+
+(verify-guards fn-bprl-max-used-txid
+  :hints (("Goal" :in-theory (union-theories '(fn-bprl-max-used-txid fn-bprl-max-used-txid-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-bprl-max-used-txid-loop-of-rev-onto (zs nil))))))
+
 
 (defun fn-bprl-receipt-auto-record (s octets authorizedp)
   (declare (xargs :guard t :verify-guards nil))

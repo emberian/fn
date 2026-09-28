@@ -20,19 +20,13 @@
 ; -----------------------------------------------------------------------------
 ; A group of N articles: article I (from 1) is <aI@example.invalid> at number I.
 
-(defun sdt-digits (n acc)
-  (declare (xargs :guard (and (natp n) (character-listp acc))))
-  (if (zp n)
-      (if (consp acc) acc (list #\0))
-    (sdt-digits (floor n 10) (cons (code-char (+ 48 (mod n 10))) acc))))
-
 (defun sdt-msgid (i)
-  (declare (xargs :guard (natp i)))
-  (concatenate 'string "<a" (coerce (sdt-digits i nil) 'string) "@example.invalid>"))
+  (declare (xargs :mode :program))
+  (concatenate 'string "<a" (coerce (fn-nntp-octets-chars (fn-nntp-decimal-field i)) 'string) "@example.invalid>"))
 
 (defun sdt-articles (i acc)
   ; Articles I down to 1 consed onto ACC: the list comes out 1..N, oldest first.
-  (declare (xargs :guard (natp i)))
+  (declare (xargs :mode :program))
   (if (zp i)
       acc
     (sdt-articles (1- i)
@@ -96,10 +90,10 @@
 ; line each, in the configured order.
 
 (defun sdt-groups (i acc)
-  (declare (xargs :guard (natp i)))
+  (declare (xargs :mode :program))
   (if (zp i)
       acc
-    (sdt-groups (1- i) (cons (concatenate 'string "fn.g" (coerce (sdt-digits i nil) 'string))
+    (sdt-groups (1- i) (cons (concatenate 'string "fn.g" (coerce (fn-nntp-octets-chars (fn-nntp-decimal-field i)) 'string))
                              acc))))
 
 (defconst *sdt-groups* (sdt-groups 50000 nil))

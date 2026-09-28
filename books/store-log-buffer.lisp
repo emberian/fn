@@ -343,8 +343,7 @@
    (equal (fn-lgb-unpack-loop i end fn-octets acc)
           (revappend acc (fn-lgb-unpack i end fn-octets)))
    :hints (("Goal" :induct (fn-lgb-unpack-loop i end fn-octets acc)
-                   :in-theory (union-theories '(fn-lgb-unpack-loop fn-lgb-unpack revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
+                   :in-theory (disable fn-lgb-u32-at fn-lgb-slice-acc)))))
 
 (verify-guards fn-lgb-unpack-loop)
 

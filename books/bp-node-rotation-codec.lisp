@@ -30,17 +30,85 @@
   (declare (xargs :guard t))
   (+ 4096 (* 4 (nfix max-jobs))))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpnr-codes-loop (chars acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (atom chars)
+      (revappend acc nil)
+    (fn-bpnr-codes-loop (cdr chars)
+                        (cons (if (characterp (car chars)) (char-code (car chars)) 0)
+                              acc))))
+
 (defun fn-bpnr-codes (chars)
-  (declare (xargs :guard t))
-  (if (atom chars) nil
-    (cons (if (characterp (car chars)) (char-code (car chars)) 0)
-          (fn-bpnr-codes (cdr chars)))))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (atom chars) nil
+         (cons (if (characterp (car chars)) (char-code (car chars)) 0)
+               (fn-bpnr-codes (cdr chars))))
+       :exec (fn-bpnr-codes-loop chars nil)))
+
+(local
+ (defthm fn-bpnr-codes-loop-is-revappend
+   (equal (fn-bpnr-codes-loop chars acc)
+          (revappend acc (fn-bpnr-codes chars)))
+   :hints (("Goal" :induct (fn-bpnr-codes-loop chars acc)
+                   :in-theory (union-theories '(fn-bpnr-codes-loop fn-bpnr-codes revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpnr-codes-loop)
+
+(verify-guards fn-bpnr-codes
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpnr-codes)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpnr-codes-loop-is-revappend (acc nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpnr-chars-loop (codes acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (atom codes)
+      (revappend acc nil)
+    (fn-bpnr-chars-loop (cdr codes)
+                        (cons (if (fn-cbor-octetp (car codes))
+                                  (code-char (car codes))
+                                (code-char 0))
+                              acc))))
 
 (defun fn-bpnr-chars (codes)
-  (declare (xargs :guard t))
-  (if (atom codes) nil
-    (cons (if (fn-cbor-octetp (car codes)) (code-char (car codes)) (code-char 0))
-          (fn-bpnr-chars (cdr codes)))))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (atom codes) nil
+         (cons (if (fn-cbor-octetp (car codes)) (code-char (car codes)) (code-char 0))
+               (fn-bpnr-chars (cdr codes))))
+       :exec (fn-bpnr-chars-loop codes nil)))
+
+(local
+ (defthm fn-bpnr-chars-loop-is-revappend
+   (equal (fn-bpnr-chars-loop codes acc)
+          (revappend acc (fn-bpnr-chars codes)))
+   :hints (("Goal" :induct (fn-bpnr-chars-loop codes acc)
+                   :in-theory (union-theories '(fn-bpnr-chars-loop fn-bpnr-chars revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpnr-chars-loop)
+
+(verify-guards fn-bpnr-chars
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpnr-chars)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpnr-chars-loop-is-revappend (acc nil))))))
+
 
 (defun fn-bpnr-counted (tag codes)
   (declare (xargs :guard t))
