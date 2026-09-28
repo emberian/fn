@@ -25,6 +25,8 @@
 #      then runs `make T` there (T = check-lane by default) with the box's own
 #      FN_ACL2 and FN_CERT_CACHE (tools/farm.py HOSTS), under swarm-build on
 #      hbox, logging to <base>/LANE-check.log;
+#      a `make certify` there plans its job count (FN_CERTIFY_JOBS, default
+#      auto: tools/chain_schedule.py) unless this shell sets FN_CERTIFY_JOBS;
 #   6. prints the log's step table, copies the log to
 #      build/remote-check/BOX-T.log here, rsyncs each --fetch PATH (a file or
 #      directory of the tree, e.g. planning/ledger.json) back into this
@@ -167,7 +169,7 @@ echo "remote_check: make $TARGET in $BOX:$TREE (log $LOG)"
 # reported as make's status while make kept running (scale-latency,
 # 2026-09-28).  A poll that cannot reach the box is retried.
 remote "cat > $LOG.run.sh" <<RUNSCRIPT || { echo "remote_check: cannot write the run script on $BOX" >&2; exit 3; }
-cd $TREE && $ENVS; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ $INSTALL = 1 ]; then echo "== certs install: \$(python3 tools/certs.py install 2>&1 | grep -E '^ *installed' | tail -n 1)"; fi; $WRAP make $TARGET 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
+cd $TREE && $ENVS; export FN_CERTIFY_JOBS=${FN_CERTIFY_JOBS:-auto}; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ $INSTALL = 1 ]; then echo "== certs install: \$(python3 tools/certs.py install 2>&1 | grep -E '^ *installed' | tail -n 1)"; fi; $WRAP make $TARGET 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
 RUNSCRIPT
 remote "rm -f $LOG; nohup sh $LOG.run.sh > $LOG 2>&1 < /dev/null &" || {
     echo "remote_check: cannot start make on $BOX" >&2; exit 3; }
