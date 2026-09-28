@@ -889,11 +889,6 @@
                      (fn-oii-publication-group-count event) debt)
                 fn-hist state)))))))
 
-; The carried profile as the operator reads it (field names and values).
-(defun fn-owner-profile-report (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bs-profile-report (fn-owner-store-profile state))))
-
 (defun fn-owner-node (state)
   (declare (xargs :stobjs state :mode :program))
   (fn-sn-node (fn-owner-store state)))
