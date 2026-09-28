@@ -31,6 +31,7 @@ import unittest
 
 from tests import test_native_peering as peer
 from tests import test_native_protected_peering as protected
+from tests import native_harness
 from tools.wire_stream import whole_stream
 
 IMAGE = peer.IMAGE
@@ -121,7 +122,19 @@ class NativeFeedTlsReadTests(unittest.TestCase):
     # Bound through the module, never as a module-level TestCase name, so
     # the loader does not collect the protected module's tests here.
     setUp = protected.NativeProtectedPeeringTests.setUp
-    command = protected.NativeProtectedPeeringTests.command
+    def command(self, arguments, expected=0, timeout=180):
+        # The peering modules' command helper (native-harness group 5a
+        # replaced it there with the harness's own verbs; this module keeps
+        # the one call shape it needs).
+        result = native_harness.run(list(map(str, arguments)),
+                                    env=native_harness.environment(), timeout=timeout)
+        self.assertEqual(result.returncode, expected,
+                         "command {} returned {}\nstdout={}\nstderr={}".format(
+                             arguments, result.returncode,
+                             result.stdout.decode("utf-8", "replace"),
+                             result.stderr.decode("utf-8", "replace")))
+        return result
+
     process_identity = protected.NativeProtectedPeeringTests.process_identity
     verify_process_identity = protected.NativeProtectedPeeringTests.verify_process_identity
     article = staticmethod(peer.NativePeeringTests.article)
