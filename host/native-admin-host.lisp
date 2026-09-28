@@ -70,6 +70,8 @@
              (value :refused)))
           ((member-equal kind '(:set-bp-boundary :set-bp-route :remove-bp-route
                                 :grant-control :revoke-control :set-retention
+                                ;; Q14: a group's expiry policy (quota rows).
+                                :set-expiry
                                 ;; PRF-161: an exposure limit row.
                                 :set-exposure
                                 ;; PRF-235/236: a transit hygiene limit row.

@@ -5614,6 +5614,32 @@
         "native": true,
         "record": "planning/evidence/zero-copy-commit-2026-09-28.md"
       }
+    },
+    {
+      "id": "SCN-204",
+      "title": "A per-group expiry policy releases what it expires through `store reclaim`, keeps expired distinct from absent, never resurrects or renumbers, and a death mid-expiry completes the same expiry",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "steps": [
+        "Post to fn.test articles with a past Expires:, none, and a future one, and one cross-posted to fn.keep with a past Expires:.",
+        "`store reclaim --dry-run` with no policy; `retention expire fn.test purge 30`; dry run; `store reclaim`.",
+        "Serve ARTICLE/STAT by Message-ID and number, GROUP; re-POST an expired article; POST a new one.",
+        "`retention expire fn.test octets N` over four equal articles (N a little over two).",
+        "Developer image: on a copy per state-checkpoint cut, kill the expiring reclaim; `status`; `store reclaim --recorded` (or a rerun)."
+      ],
+      "expected": [
+        "Nothing expires without a policy; the two past-Expires fn.test articles expire; the future one, the one without Expires: and the cross-post stay.",
+        "430/423 article reclaimed for the expired; 430 no article for a never-held Message-ID; GROUP's high water unchanged; the re-POST refused; the new POST takes the next number.",
+        "The two oldest leave.",
+        "Every copy reopens and ends with the same two articles expired."
+      ],
+      "evidence": [
+        "tests/test_native_expiry.py"
+      ]
     }
   ]
 }

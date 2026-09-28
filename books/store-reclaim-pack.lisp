@@ -36,6 +36,7 @@
 (in-package "ACL2")
 (include-book "store-reclaim-holders")
 (include-book "checkpoint-compaction")
+(include-book "expiry-verdict")
 
 ; The record an article record becomes: the same fields with the tombstone
 ; of its payload in place of the payload, and the retention charge of its
@@ -61,11 +62,16 @@
                   (fn-record-content-subject r) (fn-record-release-evidence r)
                   *fn-rclp-history-unit* (fn-record-stamp r)))
 
-; CTX is (RULE NOW HOLDERS VERDICTS ARTICLES) of the opened store.
+; CTX is (RULE NOW HOLDERS VERDICTS ARTICLES EXPIRED) of the opened store:
+; EXPIRED the Message-IDs the operator's expiry policy expires at NOW
+; (books/expiry `fn-xpy-expired-set'; nil, or absent, when there is none).
+; An article is released by the rule or by the policy, and kept by every
+; holder either way (books/expiry-verdict
+; `fn-xpy-releasablep-is-rule-or-expired-and-unheld').
 (defun fn-rclp-ctx-reclaimable (ctx msgid)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-rcl-reclaimable (fn-rcl-nth 0 ctx) (fn-rcl-nth 1 ctx) (fn-rcl-nth 2 ctx)
-                      (fn-rcl-nth 3 ctx)
+  (fn-xpy-releasablep (fn-rcl-nth 0 ctx) (fn-rcl-nth 1 ctx) (fn-rcl-nth 2 ctx)
+                      (fn-rcl-nth 3 ctx) (fn-rcl-nth 5 ctx)
                       (fn-find-article msgid (fn-rcl-nth 4 ctx))))
 
 ; Whether the event OCTETS is rewritten: a legacy article record, not already
@@ -331,8 +337,8 @@
 
 (local
  (defthm rewrites-p-means-reclaimable
-   (implies (fn-rclp-rewrites-p octets (list rule now h verdicts articles))
-            (fn-rcl-reclaimable rule now h verdicts
+   (implies (fn-rclp-rewrites-p octets (list rule now h verdicts articles expired))
+            (fn-xpy-releasablep rule now h verdicts expired
                                 (fn-find-article
                                  (fn-record-msgid (fn-record-result-record
                                                    (fn-record-decode-exact octets)))
@@ -351,8 +357,10 @@
 ; the event list the host publishes.  If the I-th committed event is an
 ; article record whose article any obligation of the lifetimes table names
 ; (reader pin, consumer cursor, undelivered feed, BP obligation), or whose
-; Store verdict needs its payload, or the rule is keep-forever, the I-th
-; event of the rewritten history is the same octets.
+; Store verdict needs its payload, or the rule is keep-forever and the
+; expiry policy has not expired it, the I-th event of the rewritten history
+; is the same octets.  Under every expiry policy (Q14): expiry releases no
+; held article.
 (defthm fn-rclp-events-never-touch-a-held-article
   (let* ((o (nth i events))
          (m (fn-record-msgid (fn-record-result-record (fn-record-decode-exact o))))
@@ -361,8 +369,10 @@
                                       (fn-article-msgid article)
                                       (fn-article-memberships article))
                  (fn-rcl-verdict-heldp (fn-article-msgid article) verdicts)
-                 (equal rule '(:keep-forever)))
-             (equal (nth i (fn-rclp-events events (list rule now h verdicts articles)))
+                 (and (equal rule '(:keep-forever))
+                      (not (fn-xpy-expiredp (fn-article-msgid article) expired))))
+             (equal (nth i (fn-rclp-events events
+                                           (list rule now h verdicts articles expired)))
                     (nth i events))))
   :hints (("Goal" :in-theory (disable fn-rclp-event fn-rclp-rewrites-p
                                       fn-rcl-some-names-p fn-rcl-obligations
@@ -370,6 +380,12 @@
                                       rewrites-p-means-reclaimable)
                   :use ((:instance rewrites-p-means-reclaimable
                                    (octets (nth i events)))
+                        (:instance fn-xpy-releasablep-is-rule-or-expired-and-unheld
+                                   (article (fn-find-article
+                                             (fn-record-msgid
+                                              (fn-record-result-record
+                                               (fn-record-decode-exact (nth i events))))
+                                             articles)))
                         (:instance fn-rcl-reclaimable-is-no-obligation-names-it
                                    (article (fn-find-article
                                              (fn-record-msgid
@@ -491,7 +507,15 @@
 ; instant the rule is measured at (the clock observation's stamp, nil when
 ; the clock is unusable, which reclaims nothing under release-after).  S:
 ; the Store state the open replayed (holders, verdicts, articles).
-(defun fn-rclp-ctx (rule now s)
+; EXPIRED: the Message-IDs the expiry policy expires at NOW
+; (books/expiry `fn-xpy-ctx' builds it); `fn-rclp-ctx' is the context
+; without one.
+(defun fn-rclp-ctx-expiring (rule now s expired)
   (declare (xargs :guard t :verify-guards nil))
   (list rule now (fn-rcl-store-holders s) (fn-sn-verdicts s)
-        (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
+        (fn-state-articles (fn-node-acceptance (fn-sn-node s)))
+        expired))
+
+(defun fn-rclp-ctx (rule now s)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-rclp-ctx-expiring rule now s nil))

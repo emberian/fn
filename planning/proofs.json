@@ -5033,7 +5033,7 @@
     {
       "id": "PRF-119",
       "title": "`store reclaim` rewrites only unheld legacy article records to their tombstones, converges, and frees exactly the octets admission counts",
-      "statement": "Subject: the per-record rewrite fn-rclp-event (host/checkpoint-host.lisp fn-store-log-reclaim-event, called per record by host/native/checkpoint.lisp fnn-log-reclaim-steps) under the context fn-rclp-ctx (fn-store-reclaim-context); fn-rclp-events is its map over the history (books/store-log-reclaim.lisp fn-lgr-rewrites-are-the-events), and PRF-271 (fn-lgr-decide-checkpoints-the-rewrite) makes it the history the log's checkpoint holds. fn-rclp-events-keep-the-summary-shape: fn-cc-octet-event-listp of the rewrite equals fn-cc-octet-event-listp of the history, for every sequence, lower and upper, no hypothesis. fn-rclp-event-decodes-to-the-tombstoned-record: a rewritten event decodes to the record with every field equal but the payload, which is fn-rcl-tombstone-of the old payload, and the charge, which is the history unit *fn-rclp-history-unit* (1). fn-rclp-rewritten-charge-is-the-history-unit: the charge a rewritten event carries into the ledger is the history unit, an unrewritten event carries its own; fn-rclp-freed-charge-account sums the released charge over the list. fn-rclp-events-never-touch-a-held-article: if the I-th event's record's article is named by an obligation of fn-rcl-obligations h, or its verdict needs its payload (fn-rcl-verdict-heldp), or the rule is keep-forever, the I-th event is byte-identical. fn-rclp-events-keep-every-other-kind: an event that does not decode as a legacy record (accepted-statement composites and every other kind) is byte-identical. fn-rclp-a-reclaimed-event-stays-reclaimed: a rewritten event is not rewritten again under any context; fn-rclp-events-idempotent under the same context. fn-rclp-freed-is-the-admission-count: for a rewritten event the fn-store-event-encode lengths the admission gate sums (fn-sbud-record-octets) fall by exactly the event's length less its replacement's; fn-rclp-freed-octets-account sums it over the list. The operator keystones: `store reclaim` and `store reclaim --dry-run` are exactly the :reclaim and :reclaim-dry-run native actions.",
+      "statement": "Subject: the per-record rewrite fn-rclp-event (host/checkpoint-host.lisp fn-store-log-reclaim-event, called per record by host/native/checkpoint.lisp fnn-log-reclaim-steps) under the context fn-rclp-ctx (fn-store-reclaim-context); fn-rclp-events is its map over the history (books/store-log-reclaim.lisp fn-lgr-rewrites-are-the-events), and PRF-271 (fn-lgr-decide-checkpoints-the-rewrite) makes it the history the log's checkpoint holds. fn-rclp-events-keep-the-summary-shape: fn-cc-octet-event-listp of the rewrite equals fn-cc-octet-event-listp of the history, for every sequence, lower and upper, no hypothesis. fn-rclp-event-decodes-to-the-tombstoned-record: a rewritten event decodes to the record with every field equal but the payload, which is fn-rcl-tombstone-of the old payload, and the charge, which is the history unit *fn-rclp-history-unit* (1). fn-rclp-rewritten-charge-is-the-history-unit: the charge a rewritten event carries into the ledger is the history unit, an unrewritten event carries its own; fn-rclp-freed-charge-account sums the released charge over the list. fn-rclp-events-never-touch-a-held-article: if the I-th event's record's article is named by an obligation of fn-rcl-obligations h, or its verdict needs its payload (fn-rcl-verdict-heldp), or the rule is keep-forever and the expiry policy's set (the context's sixth element, PRF-918) does not name it, the I-th event is byte-identical. fn-rclp-events-keep-every-other-kind: an event that does not decode as a legacy record (accepted-statement composites and every other kind) is byte-identical. fn-rclp-a-reclaimed-event-stays-reclaimed: a rewritten event is not rewritten again under any context; fn-rclp-events-idempotent under the same context. fn-rclp-freed-is-the-admission-count: for a rewritten event the fn-store-event-encode lengths the admission gate sums (fn-sbud-record-octets) fall by exactly the event's length less its replacement's; fn-rclp-freed-octets-account sums it over the list. The operator keystones: `store reclaim` and `store reclaim --dry-run` are exactly the :reclaim and :reclaim-dry-run native actions.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -13468,6 +13468,53 @@
         "planning/evidence/f8-reservation-2026-09-28.md"
       ],
       "progress_note": "Lane f8-reservation (2026-09-28): books/memory-credits.lisp and its test book are certified (persvati certify-20260928T171227Z-391318, hbox certify-20260928T173440Z-1769341): fn-mcr-transitions-keep-funded, fn-mcr-acquire-refuses-exactly-past-the-budget, fn-mcr-grow-within-the-reserve-is-admitted, fn-mcr-retain-moves-the-credit, fn-mcr-evict-returns-what-was-evicted, fn-mcr-overdraw-is-within-the-completion-reserve. NO EVENTS ARE CITED: no host line calls the ledger yet (reach_check), so the running server exercises none of it. The events are cited when an allocation site calls it; the first is the article slots (lane zero-copy-commit, fn-oas-read-span, PRF-377), U + R one reserve a slot. Teeth: tests/acl2/memory-credits-tests.lisp."
+    },
+    {
+      "id": "PRF-918",
+      "title": "The per-group expiry policy: what the operator sets reads back, the age instant honours Expires: within keep and purge, the walk is its specification, a group that keeps an article keeps it, and expiry releases no held article",
+      "statement": "Subject: the reclaim context host/checkpoint-host.lisp fn-store-reclaim-context = books/expiry.lisp fn-xpy-ctx (called by host/native/checkpoint.lisp fnn-log-reclaim-steps), whose sixth element is fn-xpy-expired-set, read per record by books/store-reclaim-pack.lisp fn-rclp-ctx-reclaimable through fn-xpy-releasablep. fn-xpy-rows-policy-after-expire-set: staging fn-xpy-deltas through fn-cfg-apply on any value reads back the policy's four fields (no hypothesis); fn-xpy-rows-policy-of-other-target-after-expire-set: other targets unchanged; fn-xpy-group-policy-without-rows-keeps-forever (D03). fn-xpy-age-instant-is-within-the-bounds (keep at most purge: never before stamp+keep days, never after stamp+purge days); fn-xpy-age-instant-honours-expires-within-the-bounds (an Expires: instant within them is the instant exactly); fn-xpy-age-instant-without-expires; fn-xpy-no-age-rule-never-expires-by-age. fn-xpy-expired-set-is-the-spec: membership in the set the walk builds (one running octet sum per group) is membership in fn-xpy-spec, which recomputes each size window from the articles accepted at or after the article. fn-xpy-a-group-that-keeps-it-keeps-it: an article one of whose groups does not expire it is not expired. fn-xpy-releasablep-is-rule-or-expired-and-unheld: released iff the rule releases it, or the policy expired it and no authorship verdict needs its payload and no obligation of fn-rcl-obligations names it; fn-xpy-expired-verdict-is-the-policys; fn-xpy-held-article-is-not-expired; fn-xpy-releasablep-without-expiry (no policy: the rule's verdict). fn-rclp-events-never-touch-a-held-article (PRF-119) over the expiring context. fn-xpy-classes-partition-the-articles: the six classes the verb reports sum to the article count. fn-xpy-rci-recorded-context-is-the-decided-context: `store reclaim --recorded` derives the same expiring context from the recorded configuration.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-088",
+        "PRF-119"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/expiry-policy.lisp",
+        "books/expiry-verdict.lisp",
+        "books/expiry.lisp",
+        "books/expiry-instant.lisp",
+        "books/store-reclaim-pack.lisp",
+        "tests/acl2/expiry-tests.lisp",
+        "tests/test_native_expiry.py"
+      ],
+      "progress_note": "Lane expiry (2026-09-28). Open: expiry while serving (the owner's checkpoint publication); GROUP/LISTGROUP exclusion of reclaimed articles; transaction capacity (Q11: needs history compaction under D13).",
+      "events": [
+        "fn-xpy-rows-policy-after-expire-set",
+        "fn-xpy-rows-policy-of-other-target-after-expire-set",
+        "fn-xpy-group-policy-without-rows-keeps-forever",
+        "fn-xpy-deltas-are-deltas",
+        "fn-xpy-words-policy-is-an-admitted-policy",
+        "fn-xpy-age-instant-is-within-the-bounds",
+        "fn-xpy-age-instant-honours-expires-within-the-bounds",
+        "fn-xpy-age-instant-without-expires",
+        "fn-xpy-no-age-rule-never-expires-by-age",
+        "fn-xpy-a-group-that-keeps-it-keeps-it",
+        "fn-xpy-expired-set-is-the-spec",
+        "fn-xpy-classes-partition-the-articles",
+        "fn-xpy-standing-verdict-without-expiry",
+        "fn-xpy-releasablep-without-expiry",
+        "fn-xpy-releasablep-is-rule-or-expired-and-unheld",
+        "fn-xpy-expired-verdict-is-the-policys",
+        "fn-xpy-held-article-is-not-expired",
+        "fn-xpy-rci-recorded-config-keeps-the-policy",
+        "fn-xpy-rci-recorded-context-is-the-decided-context"
+      ]
     }
   ]
 }

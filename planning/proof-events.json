@@ -12759,6 +12759,87 @@
           "name": "fn-heap-breakdown-is-inits-reservation"
         }
       ]
+    },
+    {
+      "id": "PRF-918",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-rows-policy-after-expire-set"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-rows-policy-of-other-target-after-expire-set"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-group-policy-without-rows-keeps-forever"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-deltas-are-deltas"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-words-policy-is-an-admitted-policy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-age-instant-is-within-the-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-age-instant-honours-expires-within-the-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-age-instant-without-expires"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-no-age-rule-never-expires-by-age"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-a-group-that-keeps-it-keeps-it"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-expired-set-is-the-spec"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-classes-partition-the-articles"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-standing-verdict-without-expiry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-releasablep-without-expiry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-releasablep-is-rule-or-expired-and-unheld"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-expired-verdict-is-the-policys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-held-article-is-not-expired"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-rci-recorded-config-keeps-the-policy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xpy-rci-recorded-context-is-the-decided-context"
+        }
+      ]
     }
   ]
 }

@@ -34,6 +34,9 @@
 (include-book "bp-route")
 ; D13: `retention set RULE [DAYS]' (books/reclaim-rule).
 (include-book "reclaim-rule")
+; Q14: `retention expire TARGET ...', the per-group expiry policy
+; (books/expiry-policy).
+(include-book "expiry-policy")
 (include-book "injection-info-policy")
 
 ;; Rules withdrawn at their source that this book's proofs use
@@ -470,6 +473,7 @@
                                                fn-exp-limit-slotp fn-rck-limit-slotp
                                                fn-exp-trusted-wordp
                                                fn-exp-anonymous-wordp
+                                               fn-xpy-targetp fn-xpy-words-policy
                                                default-car default-cdr
                                                default-+-1 default-+-2
                                                default-<-1 default-<-2 len
@@ -645,6 +649,19 @@
         (fn-native-admin-result :accepted nil :set-retention (caddr argv)
                                 (nfix (fn-native-admin-retention-days words))
                                 nil nil))
+       ; Q14 (books/expiry-policy): the operator's per-group expiry policy,
+       ; `retention expire TARGET clear' or `retention expire TARGET [keep
+       ; DAYS] [default DAYS] [purge DAYS] [octets N]', TARGET a group name
+       ; or "*" (every group without its own).  Five quota rows keyed
+       ; (SCOPE, TARGET), staged, published and replayed as every other
+       ; configuration record; `clear' writes the unset policy.
+       ((and (<= 4 (len words))
+             (equal (car words) "retention")
+             (equal (cadr words) "expire")
+             (fn-xpy-targetp (caddr words))
+             (fn-xpy-words-policy (cdddr words)))
+        (fn-native-admin-result :accepted nil :set-expiry (caddr argv) 0 nil
+                                (fn-xpy-words-policy (cdddr words))))
        ((and (consp words) (equal (car words) "retention"))
         (fn-native-admin-result :refused :retention nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "peer"))
@@ -802,6 +819,8 @@
                (if (equal name "release-after")
                    (fn-native-admin-result-capacity plan)
                  nil))))
+            ((equal kind :set-expiry)
+             (fn-xpy-deltas name (fn-native-admin-result-value plan)))
             ((member-equal kind '(:set-exposure :set-transit-limit))
              (list (fn-cfg-set-limit name (fn-native-admin-result-capacity plan))))
             ((equal kind :consumer-bind)

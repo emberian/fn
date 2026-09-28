@@ -134,6 +134,14 @@ the report line."
          (ctx (if recorded
                   (fnn-core-state 'fn-store-reclaim-context-recorded)
                 (fnn-core-state 'fn-store-reclaim-context clock)))
+         ;; The classes before anything is rewritten (books/expiry.lisp
+         ;; fn-xpy-ctx-classes): (reclaimable expired held reclaimed signed
+         ;; kept); the report names the expiry policy's share (Q14).
+         (classes (fnn-core-state 'fn-store-reclaim-ctx-classes ctx))
+         (expired (if (and (listp classes) (= (length classes) 6)
+                           (every (lambda (n) (and (integerp n) (>= n 0))) classes))
+                      (second classes)
+                    (fnn-fault "ACL2 returned malformed reclaim classes")))
          (acc (fnn-core 'fn-store-reclaim-init))
          (count 0)
          (rewritten nil))
@@ -157,11 +165,12 @@ the report line."
         (fnn-fault "ACL2 returned no reclaim decision"))
       (case (first decision)
         (:refused (fnn-refuse "reclaim refused: ~(~a~)" (second decision)))
-        (:none (format nil "reclaimed=0 ~a" (fnn-reclaim-counts-line (second decision))))
+        (:none (format nil "reclaimed=0 expired=~d ~a" expired
+                       (fnn-reclaim-counts-line (second decision))))
         (:dry-run
          (destructuring-bind (msgids freed counts) (rest decision)
-           (format nil "dry-run would-reclaim=~d freed-octets=~d ~a~{~%would-reclaim ~a~}"
-                   (length msgids) freed (fnn-reclaim-counts-line counts)
+           (format nil "dry-run would-reclaim=~d would-expire=~d freed-octets=~d ~a~{~%would-reclaim ~a~}"
+                   (length msgids) expired freed (fnn-reclaim-counts-line counts)
                    (mapcar (lambda (m) (if (stringp m) m (fnn-fault "malformed msgid")))
                            msgids))))
         (:reclaim
@@ -182,8 +191,8 @@ the report line."
                (fnn-bridge-reset)
                (fnn-recover-log-replay store history (fnn-config-records store))
                (setf (fnn-store-open-mode store) (list :full-replay :reclaim))
-               (format nil "reclaimed=~d freed-octets=~d ~a ~a~{~%reclaimed ~a~}"
-                       (length msgids) freed
+               (format nil "reclaimed=~d expired=~d freed-octets=~d ~a ~a~{~%reclaimed ~a~}"
+                       (length msgids) expired freed
                        (fnn-state-checkpoint-publish-steps store count)
                        instant msgids)))))
         (otherwise (fnn-fault "ACL2 returned an unknown reclaim decision"))))))

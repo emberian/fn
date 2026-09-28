@@ -415,6 +415,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-reclaim-tests \
 	books/reclaim-instant \
 	tests/acl2/reclaim-instant-tests \
+	books/expiry-policy \
+	books/expiry-verdict \
+	books/expiry \
+	books/expiry-instant \
+	tests/acl2/expiry-tests \
 	books/store-log-route-phases \
 	books/store-log-extend \
 	tests/acl2/store-log-extend-tests \
