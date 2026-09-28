@@ -19,10 +19,6 @@
                               (fn-sched-initial-state config next-tx) state)))
     (value :ready))))
 
-(defun fn-sched-host-retries (state)
- (declare (xargs :stobjs state :mode :program))
- (value (fn-sched-retries (f-get-global 'fn-sched-state state))))
-
 ; One non-tick observation.  ACL2 refuses a malformed event by leaving the
 ; state alone, and the host learns nothing it did not already know.
 (defun fn-sched-host-observe (event state)
