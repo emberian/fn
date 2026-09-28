@@ -2945,9 +2945,11 @@ are not kept (PKT-823): a caller that needs their octets reads them with
 `fnn-committed-history'."
   (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil
         (fnn-store-open-mode store) '(:full-replay :absent))
+  ;; the collector's trigger for the open (no effect on the store; before the
+  ;; format-9 guard, whose arm is the one call native_program_check reads)
+  (fnn-open-nursery store)
   (unless (fnn-store-logp store)
     (fnn-fault "a store that is not on the record log opened"))
-  (fnn-open-nursery store)
   (fnn-recover-log store))
 
 (defun fnn-require-writer (store)

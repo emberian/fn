@@ -12300,6 +12300,24 @@
           "name": "fn-hpo-snapshot-image-is-next-checkpoint"
         }
       ]
+    },
+    {
+      "id": "PRF-364",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-heap-open-nursery-trigger-bounds",
+          "note": "KEYSTONE (the open's collector trigger: at least 8 MiB, at most 4 x the history on disk, never above the figure's trigger). Teeth: tests/acl2/heap-open-nursery-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-store-figure-holds-every-store-at-the-open-trigger"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-open-nursery-trigger-natp"
+        }
+      ]
     }
   ]
 }

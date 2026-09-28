@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1423 |
-| Certification roots in the Makefile | 1394 |
-| Books inside the root closure | 1421 |
-| `defthm` and `defthmd` events | 22739 |
+| Books read | 1421 |
+| Certification roots in the Makefile | 1392 |
+| Books inside the root closure | 1419 |
+| `defthm` and `defthmd` events | 22713 |
 | `defun` events | 15434 |
 | Functions with verified guards | 2956 |
 | Functions declared `:verify-guards nil` and never verified | 1791 |
 | Functions left at the default with an explicit guard | 8448 |
 | Functions left at the default with no guard | 2239 |
 | `assert-event` checks | 20206 |
-| `must-fail` checks | 2243 |
+| `must-fail` checks | 2239 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 139 |
 | Theorems flagged SUSPECT by shape | 1098 |
 | Export-hygiene warnings | 277 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 240 |
-| Include-hygiene warnings | 1939 |
-| Host-names warnings | 1773 |
+| Include-hygiene warnings | 1935 |
+| Host-names warnings | 1772 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -427,7 +427,6 @@ that `make certify` requests.
 | `books/history-pages-grow.lisp` | root | 36 | 10 | 0/1/5/4 | 0 | 0 | 0 |
 | `books/history-pages-import.lisp` | root | 25 | 4 | 0/0/1/3 | 0 | 0 | 0 |
 | `books/history-pages-nest.lisp` | root | 13 | 7 | 0/6/0/1 | 0 | 0 | 0 |
-| `books/history-pages-owner.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/history-pages-placed-write.lisp` | root | 18 | 5 | 0/5/0/0 | 0 | 0 | 0 |
 | `books/history-pages-placed.lisp` | root | 58 | 17 | 0/3/10/4 | 0 | 0 | 0 |
 | `books/history-pages-read.lisp` | root | 31 | 7 | 0/1/5/1 | 0 | 0 | 0 |
@@ -1158,7 +1157,6 @@ that `make certify` requests.
 | `tests/acl2/history-pages-grow-five-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 1 | 0 | 0 |
 | `tests/acl2/history-pages-grow-then-append-tests.lisp` | root | 7 | 2 | 0/0/0/2 | 1 | 1 | 0 |
 | `tests/acl2/history-pages-import-tests.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `tests/acl2/history-pages-owner-tests.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 4 | 0 |
 | `tests/acl2/history-pages-placed-tests.lisp` | root | 20 | 1 | 0/0/0/1 | 1 | 0 | 0 |
 | `tests/acl2/history-pages-read-tests.lisp` | root | 11 | 1 | 0/0/0/1 | 1 | 8 | 0 |
 | `tests/acl2/history-pages-relocate-tests.lisp` | root | 7 | 1 | 0/0/0/1 | 1 | 0 | 0 |
