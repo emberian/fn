@@ -40,49 +40,9 @@ class Recorder(deploy_gate.Host):
         return subprocess.CompletedProcess([], 0, b"", b"")
 
 
-class CertificateChoiceTests(unittest.TestCase):
-    """A load-checked set is used; its bounded fallback stays explicit."""
-
+class DeployIdentityTests(unittest.TestCase):
     def gate(self, host, tree="dev"):
         return deploy_gate.DeployGate(host, ROOT, "a" * 40, "abc1234", tree)
-
-    def test_a_coherent_cache_set_supplies_the_certificates(self):
-        summary = ("profile=default image=build/fn-host artifact-set=set-a "
-                   "origin=/farm/run-a books=83 source=src toolchain=acl2 rejected=0\n")
-        host = Recorder({"proof_artifacts.py acquire": (0, summary)})
-        gate = self.gate(host)
-        gate.certificates()
-        self.assertIn("proof_artifacts.py acquire", host.scripts[-1])
-        self.assertIn("artifact-set=set-a", gate.facts["certificates"])
-        self.assertEqual(gate.facts["native artifact profile"], "default")
-        self.assertFalse(any("NEIGHBOUR" in script for script in host.scripts))
-
-    def test_a_rejected_cache_set_falls_back_to_the_declared_closure(self):
-        host = Recorder({
-            "proof_artifacts.py acquire": (1, "attempt bad absolute sub-book name\n"),
-            "certify_books.py": (0, "83 books passed\n"),
-            "proof_artifacts.py validate": (0, "profile=default result=loaded\n"),
-        })
-        gate = self.gate(host)
-        gate.certificates()
-        certification = next(script for script in host.scripts
-                             if "certify_books.py" in script)
-        self.assertIn("--closure $(python3 tools/proof_artifacts.py roots "
-                      "--profile default)", certification)
-        self.assertIn("export FN_CERT_CACHE=$HOME/.cache/fn-certs", certification)
-        self.assertIn("export FN_CERT_ORIGIN_KIND=gate", certification)
-        self.assertTrue(gate.certificates_ok)
-
-    def test_an_uncertified_fallback_stops_the_gate(self):
-        host = Recorder({
-            "proof_artifacts.py acquire": (1, "no coherent set\n"),
-            "certify_books.py": (1, "failed\n"),
-            "proof_artifacts.py validate": (1, "Uncertified\n"),
-        })
-        gate = self.gate(host)
-        with self.assertRaises(deploy_gate.GateError):
-            gate.certificates()
-        self.assertFalse(gate.certificates_ok)
 
     def test_tree_and_revision_name_both_the_directory_and_lock(self):
         first = self.gate(Recorder(), "dev")
@@ -208,7 +168,7 @@ class RepoRootTests(unittest.TestCase):
     """Evidence goes to the tree the command was invoked from.
 
     The defect: a lane working in `build/lanes/w6-peering-inbound-2` ran
-    `tools/twonode_gate.py` and `planning/evidence/twonode-<rev>-<date>.md`
+    a two-node gate and `planning/evidence/twonode-<rev>-<date>.md`
     was written into the MAIN checkout `/Users/ember/dev/fn`, where it sat
     untracked and blocked a merge.  The cause is that every harness anchored
     its evidence on `Path(__file__).resolve().parents[1]` -- the tree the
@@ -311,7 +271,7 @@ class RepoRootTests(unittest.TestCase):
     def test_every_harness_anchors_its_evidence_on_the_invoking_tree(self):
         """No harness may reintroduce `--repo default=str(ROOT)`."""
         tools = Path(__file__).resolve().parent.parent / "tools"
-        for name in ("deploy_gate", "twonode_gate", "inn_lab", "verdict"):
+        for name in ("deploy_gate", "inn_lab", "verdict"):
             text = (tools / f"{name}.py").read_text()
             self.assertNotIn('"--repo", default=str(ROOT)', text, name)
             self.assertIn("if args.repo else repo_root()", text, name)

@@ -32,9 +32,9 @@ promised behaviour fail, write the sentence into `gaps`, and exit 0; see
 `Finding` below and planning/review-2026-09-20-astra-followup.md F1.
 
 The Python host this gate first drove (tools/run_store.py, run_owner.py,
-run_reader.py, bin/fn) retired in python-diet T5; `fn()`, `server_command`
-and `certificates` below remain only for tools/twonode_gate.py and
-tools/v0_matrix.py, which subclass this gate and retire with the v0 matrix.
+run_reader.py, bin/fn) retired in python-diet T5, and with it the gate's
+certificate acquisition (the image is consumed as named) and the two-node
+gate that subclassed it (its successor is tests/test_native_peering.py).
 
 Dry run.  ``--dry-run --home DIR`` runs every one of these scripts through
 bash on this machine with ``HOME`` pointed at DIR and no ssh at all, so the
@@ -578,9 +578,6 @@ class DeployGate:
         "post-capability": (
             "CAPABILITIES lists POST exactly when posting is permitted "
             "(RFC 3977 5.2.2)", ("",)),
-        "certificates-match": (
-            "every certificate pair installed hashes to this revision's source",
-            ("",)),
         "entry-point-listening": (
             "the server entry point this gate selected reached LISTENING", ("",)),
     }
@@ -596,7 +593,7 @@ class DeployGate:
     def __init__(self, host: Host, repo: Path, commit: str, rev: str, tree: str,
                  overlay: Path | None = None, jobs: int = 16, keep: bool = False,
                  nntplib_python: str = "auto", acl2: str = "acl2",
-                 artifact_profile: str = "default", native_image: str = "",
+                 native_image: str = "",
                  developer_image: str = "", native_openssl_prefix: str = ""):
         self.host = host
         self.repo = repo
@@ -608,7 +605,6 @@ class DeployGate:
         self.keep = keep
         self.nntplib_python = nntplib_python
         self.acl2 = acl2
-        self.artifact_profile = artifact_profile
         self.native_image = native_image
         self.developer_image = developer_image
         self.native_openssl_prefix = native_openssl_prefix
@@ -630,11 +626,6 @@ class DeployGate:
         self.post_enabled = False
         # The symptom of the last `start_server` that did not reach LISTENING.
         self.server_failure = ""
-        # Whether this deploy tree ended up holding certificates.  It decides
-        # whether a phase that needs a certified tree -- the native image,
-        # which `tools/build_native_host.sh` refuses to build over an
-        # uncertified book -- reports an absence or a failure.
-        self.certificates_ok = False
 
     # -- plumbing ---------------------------------------------------------
     def sh(self, name, script, timeout=600, note="", expect=0) -> Step:
@@ -802,17 +793,6 @@ class DeployGate:
     def cd(self, script: str) -> str:
         return "cd {} || exit 9\n".format(self.deploy) + script
 
-    def fn(self, args: str) -> str:
-        """The store CLI.
-
-        `bin/fn` (w5/fn-cli) is the service wrapper, not a second store CLI:
-        its store surface is `fn status` and `fn group`, a different shape
-        with its own exit codes, and it wraps `tools/run_store.py` for the
-        rest.  The gate drives the wrapped entry point, so the exit codes it
-        records are the ones the assurance rules are about.
-        """
-        return "python3 tools/run_store.py {}".format(args)
-
     # -- phases -----------------------------------------------------------
     def preflight(self):
         step = self.sh("preflight", """
@@ -893,61 +873,6 @@ fi
         if step.rc == 0:
             self.deploy_lock_acquired = False
         return step
-
-    def certificates(self):
-        """Acquire one coherent set and prove that ACL2 can load it."""
-        cache = FARM_HOSTS.get(self.host.label, {}).get(
-            "cache", "$HOME/.cache/fn-certs")
-        acquire = self.sh(
-            "acquire certificate artifact set",
-            self.cd("python3 tools/proof_artifacts.py acquire "
-                    "--profile {profile} --root {deploy} --cache {cache} "
-                    "--acl2 \"$FN_ACL2\"".format(
-                        profile=self.artifact_profile, deploy=self.deploy,
-                        cache=cache)), timeout=3600, expect=None,
-            note="one absolute origin, one ACL2 executable digest, then an actual ACL2 load")
-        if acquire.rc == 0:
-            self.facts["certificates"] = acquire.output.strip().splitlines()[-1]
-            self.facts["native artifact profile"] = self.artifact_profile
-            self.check("certificates-match", True, "", observed=acquire.first_line,
-                       held_detail="one current origin/toolchain artifact set loaded "
-                                   "without ACL2 errors or uncertified warnings")
-            self.certificates_ok = True
-            return acquire
-
-        roots = "$(python3 tools/proof_artifacts.py roots --profile {profile})".format(
-            profile=self.artifact_profile)
-        certified = self.sh(
-            "certify declared artifact closure",
-            self.cd("export FN_CERT_CACHE={cache}\n"
-                    "export FN_CERT_ORIGIN_KIND=gate\n"
-                    "python3 tools/certify_books.py --jobs {jobs} --closure {roots}".format(
-                        cache=cache, jobs=self.jobs, roots=roots)), timeout=6 * 3600,
-            note="bounded to the selected native image and deployed entry points")
-        loaded = self.sh(
-            "load declared artifact closure",
-            self.cd("python3 tools/proof_artifacts.py validate --profile {profile} "
-                    "--root {deploy} --acl2 \"$FN_ACL2\"".format(
-                        profile=self.artifact_profile, deploy=self.deploy)),
-            timeout=3600)
-        self.facts["native artifact profile"] = self.artifact_profile
-        self.facts["certificates"] = (
-            "cache acquisition rc={}; bounded certification rc={}; load rc={}: {}"
-            .format(acquire.rc, certified.rc, loaded.rc, loaded.first_line))
-        ok = certified.rc == 0 and loaded.rc == 0
-        self.check(
-            "certificates-match", ok,
-            "no current coherent cache set loaded and the bounded certification/load "
-            "failed: acquire rc={}, certify rc={}, load rc={}".format(
-                acquire.rc, certified.rc, loaded.rc),
-            observed=self.facts["certificates"],
-            held_detail="the selected native image and deployed entry-point closure "
-                        "was certified on this host and then loaded without ACL2 "
-                        "errors or uncertified warnings")
-        self.certificates_ok = ok
-        if not ok:
-            raise GateError("declared certificate artifact closure did not load")
-        return loaded
 
     # -- the native node ----------------------------------------------------
     def native(self, *words, image=None, env="") -> str:
@@ -1036,48 +961,6 @@ echo STILL-RUNNING; exit 1
                    "the three outcomes did not stay distinct in the exit codes: "
                    "observed {}, expected {} (D13)".format(observed, expected),
                    observed="accepted={} refused={} uncertain={}".format(*observed))
-
-    def server_command(self, store=None, run=None) -> tuple[str, str]:
-        """(tools/twonode_gate.py and tools/v0_matrix.py only: their Python-host
-        entry points.)  bin/fn when it can be pointed at this store, else the
-        owner, else the reader.
-
-        `store` and `run` default to this gate's single store and run directory;
-        a gate that runs more than one node passes one pair per node."""
-        store = store or self.store
-        run = run or self.run
-        probe = self.sh("server selection", self.cd("""
-if [ -x bin/fn ]; then
-  if ./bin/fn run --help 2>&1 | grep -q -- '--store'; then echo fn
-  else echo fn-config; fi
-elif [ -f tools/run_owner.py ]; then echo owner
-else echo reader; fi
-"""))
-        kind = probe.output.strip().splitlines()[-1] if probe.output.strip() else "reader"
-        if kind == "fn":
-            return kind, "./bin/fn run --store {} --port 0 --control {}/control.sock".format(
-                store, run)
-        if kind == "fn-config":
-            self.limitation(
-                "bin-fn-config-driven",
-                "bin/fn is in this tree but its `run` is configuration-file driven and "
-                "takes no --store, and this gate does not author a configuration for it. "
-                "The gate drove tools/run_owner.py, the entry point bin/fn wraps, so the "
-                "service wrapper's own argument handling and logging are not exercised.")
-            kind = "owner"
-        if kind == "owner":
-            # 32, not the owner's default 8. A two-node run holds a
-            # persistent feed connection in each direction, a wire tap's
-            # backend session per feed dial, and the harness's own probes;
-            # on gate run `ea76826` node B reached the bound and closed
-            # four steps' connections at accept, which reads as
-            # "server closed the connection". That the bound is reachable
-            # at all in a two-node run is a finding, recorded on the board;
-            # this is the harness giving itself room, not a fix for it.
-            return kind, ("python3 tools/run_owner.py --store {} --port 0 "
-                          "--max-connections 32 --control {}/control.sock".format(
-                              store, run))
-        return kind, "python3 tools/run_reader.py --store {} --port 0 --post".format(store)
 
     def start_server(self, kind: str, command: str, tag: str, run=None) -> bool:
         run = run or self.run
