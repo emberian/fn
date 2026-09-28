@@ -102,10 +102,6 @@
   (let ((n (fn-tcl-session-negotiated s)))
     (if n (fn-tcl-negotiated-keepalive n) 0)))
 
-(defun fn-tcl-host-transfer-mtu (s)
-  (let ((n (fn-tcl-session-negotiated s)))
-    (if n (fn-tcl-negotiated-transfer-mtu n) 0)))
-
 ; -----------------------------------------------------------------------------
 ; Event digests.  A session log line must be bounded, so the bulk octets of a
 ; message or a received bundle are replaced by their length -- computed here,
