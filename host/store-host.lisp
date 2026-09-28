@@ -599,6 +599,7 @@
   (fn-gen-octets-for node salt created revision profile))
 
 (defun fn-store-genesis-open (octets profile)
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-gen-open octets profile))
 
 (defun fn-store-genesis-refusal-text (verdict)

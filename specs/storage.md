@@ -191,8 +191,7 @@ its bytes, and a store written under schemas 0 and 1 opens to the same
 records (`fn-record-v1-bytes-decode-identically`,
 `fn-record-v1-bytes-are-their-translation`). A profile's record bound R is
 checked against the record ceiling at the widths the runtime produces (u32
-heads, 1 083 octets of fixed overhead), so a format-8 profile saved before
-P6 is admitted unchanged (`fn-bs-profile-v1-valid-stays-valid`); a schema-2
+heads, 1 083 octets of fixed overhead); a schema-2
 record is at most 28 octets past that ceiling and the publish gate refuses
 it. The frontier and the profile's T field still cap transaction IDs at
 2^32 - 1. The widths are a stronger fn guarantee; no RFC requires them.

@@ -3986,14 +3986,6 @@
         {
           "kind": "theorem",
           "name": "fn-record-impl-encode-narrow-length-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-profile-v1-valid-is-valid"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-profile-v1-valid-stays-valid"
         }
       ]
     },
@@ -6016,27 +6008,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-profile-v1-valid-stays-valid"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-col-poll-report-of-an-admitted-payload-fits"
         },
         {
           "kind": "theorem",
           "name": "fn-nls-page-refuses-exactly-past-the-total-width"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-config-open-refuses-only-what-the-old-open-rejected"
         }
       ]
     },
@@ -9317,8 +9293,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-spo-config-open-layout-refusal-is-never-a-decoded-frame",
-          "note": "KEYSTONE (the refinement). Host: as above."
+          "name": "fn-spo-config-open-refuses-no-decoded-frame",
+          "note": "KEYSTONE (the refinement, format 10): every decoded frame is opened. Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open."
         },
         {
           "kind": "theorem",
@@ -11381,6 +11357,71 @@
         {
           "kind": "theorem",
           "name": "fn-nls-octets-string-is-record-octets-string"
+        }
+      ]
+    },
+    {
+      "id": "PRF-349",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-gen-open-of-octets-for",
+          "note": "KEYSTONE (init, then open, over the host's call). Host: host/native/io.lisp fnn-genesis-open via host/store-host.lisp fn-store-genesis-open (every open); fnn-genesis-octets via fn-store-genesis-octets (init, import). Teeth: tests/acl2/store-genesis-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gen-open-of-the-genesis-init-writes",
+          "note": "KEYSTONE (the record form). Host: host/native/io.lisp fnn-genesis-open via host/store-host.lisp fn-store-genesis-open (every open); fnn-genesis-octets via fn-store-genesis-octets (init, import). Teeth: tests/acl2/store-genesis-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gen-decode-of-frame",
+          "note": "The genesis codec's round trip."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gen-verdict-salt-is-32-bits",
+          "note": "The salt host/owner-host.lisp hands fn-hist-load is a u32."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bsi-log-init-program-establishes-the-empty-log",
+          "note": "KEYSTONE (init's program, now with the genesis durable). Host: host/native/io.lisp fnn-initialize. Teeth: tests/acl2/byte-store-log-initializer-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-350",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-spo-open-of-a-format-9-frame-refuses-by-name",
+          "note": "KEYSTONE (D34, the release before, by name). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (a real format-9 config.json)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-open-of-a-valid-profile-opens-it",
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
+          "note": "KEYSTONE (one format). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9-config-decode-of-a-format-9-frame",
+          "note": "KEYSTONE (D38's witness). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan. Teeth: tests/acl2/store-format-9-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9-format-9-frame-does-not-decode",
+          "note": "The two formats never meet, under any attachment."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-import-of-a-format-9-export",
+          "note": "KEYSTONE (the migration). Host: host/native/io.lisp fnn-command-store-import. Teeth: tests/acl2/store-export-tests.lisp."
         }
       ]
     }
