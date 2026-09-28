@@ -5886,7 +5886,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lb-sync-binds-every-login-as-the-file-does"
+          "name": "fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings"
         },
         {
           "kind": "theorem",
@@ -12802,6 +12802,36 @@
         {
           "kind": "theorem",
           "name": "fn-sfr-nth-is-nth"
+        }
+      ]
+    },
+    {
+      "id": "PRF-387",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tlsr-start-decide-accepts-exactly-loaded-matching-current-material"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tlsr-decide-is-the-start-decision-unless-names-dropped"
+        }
+      ]
+    },
+    {
+      "id": "PRF-388",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lb-account-bind-plan-admits-exactly-a-held-account-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lb-account-bind-plan-binds-exactly-the-account-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lb-an-account-binding-survives-the-next-start"
         }
       ]
     }

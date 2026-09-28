@@ -468,16 +468,20 @@ production image, which refuses to start with the variable set."
               (fnn-native-auth-admin-core
                'fn-native-auth-admin-host-action-signing-text plan-result)
               max-credentials)))
-       (if (not (eq (fnn-native-auth-admin-core
-                     'fn-native-auth-admin-host-result-status result)
-                    :accepted))
-           (fnn-native-auth-admin-result-code result :bind)
-         (fnn-native-auth-admin-result-code
-          result :bind
-          (fnn-native-auth-admin-publish
-           stage final directory
-           (fnn-native-auth-admin-core
-            'fn-native-auth-admin-host-result-octets result))))))
+       (case (fnn-native-auth-admin-core
+              'fn-native-auth-admin-host-result-status result)
+         ;; PRF-388 (PKT-560): not a login of this file; the operator sends
+         ;; ACL2's `account bind|unbind' vector after the file lock is
+         ;; released (host/native/operator-live.lisp).  Nothing was written.
+         (:account :account)
+         (:accepted
+          (fnn-native-auth-admin-result-code
+           result :bind
+           (fnn-native-auth-admin-publish
+            stage final directory
+            (fnn-native-auth-admin-core
+             'fn-native-auth-admin-host-result-octets result))))
+         (t (fnn-native-auth-admin-result-code result :bind)))))
     (t (fnn-fault "ACL2 returned no executable principal action"))))
 
 (defun fnn-native-auth-admin-execute (plan-result auth-path max-credentials)

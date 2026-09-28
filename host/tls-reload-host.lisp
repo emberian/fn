@@ -12,6 +12,15 @@
   (declare (xargs :mode :program))
   (fn-tlsr-decide facts served))
 
+(defun fn-tlsr-host-start-decide (facts)
+  ; PRF-387 (PKT-606): `run''s decision, fnn-tls-start-context.
+  (declare (xargs :mode :program))
+  (fn-tlsr-start-decide facts))
+
+(defun fn-tlsr-host-start-refusal-line (decision)
+  (declare (xargs :mode :program))
+  (fn-tlsr-start-refusal-line decision))
+
 (defun fn-tlsr-host-acceptp (decision)
   (declare (xargs :mode :program))
   (fn-tlsr-acceptp decision))
