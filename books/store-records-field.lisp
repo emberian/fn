@@ -36,8 +36,7 @@
 (include-book "store-checkpoint-buffer")
 (deftheory fn-sfr-theory-before-disk (current-theory :here))
 (include-book "history-records-disk")
-(deftheory fn-sfr-disk-rules
-  (set-difference-theories (current-theory :here) (theory 'fn-sfr-theory-before-disk)))
+(deftheory fn-sfr-theory-after-disk (current-theory :here))
 
 (defun fn-sfr-basedp (f)
   (declare (xargs :guard t))
@@ -163,8 +162,13 @@
 (in-theory (disable fn-sfr-basedp fn-sfr-based fn-sfr-handle fn-sfr-suffix fn-sfr-list fn-sfr-snoc
                     fn-sfr-canonp fn-sfr-count fn-sfr-last fn-sfr-nth))
 
-; The exported theory: what was enabled before the decode's books, with
-; this book's rules; of the decode's, only what reading the list needs.
-(in-theory (union-theories (set-difference-theories (current-theory :here) (theory 'fn-sfr-disk-rules))
-                           '(fn-hrs-disk-history-len fn-hrs-true-listp-disk-history
-                             fn-hrs-true-listp-disk-history-tp)))
+; The exported theory: exactly what was enabled before the decode's books
+; (their own in-theory events undone: pagestore-words disables
+; fn-cbor-octet-listp, for one), with this book's rules as it left them;
+; of the decode's rules, only what reading the list needs.
+(in-theory (union-theories
+            (theory 'fn-sfr-theory-before-disk)
+            (union-theories
+             (set-difference-theories (current-theory :here) (universal-theory 'fn-sfr-theory-after-disk))
+             '(fn-hrs-disk-history-len fn-hrs-true-listp-disk-history
+               fn-hrs-true-listp-disk-history-tp))))
