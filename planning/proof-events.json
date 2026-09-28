@@ -11235,6 +11235,22 @@
         {
           "kind": "theorem",
           "name": "pgs-x-words-digest-is-blake3"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-commit-refines-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-commit-refines-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-commit-refines-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-fork-refines"
         }
       ]
     },
@@ -12461,6 +12477,27 @@
         {
           "kind": "theorem",
           "name": "fn-osd-deadline-is-past-the-slow-deadline"
+        }
+      ]
+    },
+    {
+      "id": "PRF-365",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hpo-installed-records-are-checkpoint-then-suffix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hpo-records-at-is-installed-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hpo-records-at-is-nth-of-extension"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hpo-snapshot-image-is-next-checkpoint"
         }
       ]
     }

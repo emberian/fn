@@ -60,7 +60,10 @@ is the function the host calls"):
   hosted H: a conclusion `(equal (U ..) (H x ..))' whose H side applies H to
   variables and constants only (not a commutation, not an unfolding into a
   constructor), or a refinement square `(equal (H .. (A x) ..) (A (U x ..)))'
-  (store-log-kernel-concrete's fn-lgc-*-refines).  `--explain' names it.
+  (store-log-kernel-concrete's fn-lgc-*-refines), or the square read with
+  the abstraction the other way, `(equal (A .. (C ..) ..) (L .. (A ..) ..))'
+  (A of what the hosted C leaves is L of A of the state before; the page
+  store's pgs-x-commit-refines-commit).  `--explain' names it.
 
 WHAT IT CANNOT SEE.  A function reached only through a macro this reader
 does not expand, or named in a Python string it does not recognize as a
@@ -684,6 +687,42 @@ def equality_bridges(graph: "Graph", theorems: dict) -> dict[str, list]:
                     and conc[0] in graph.book_defs and absn[1][0] in graph.book_defs
                     and conc[0] != absn[1][0] and conc[0] != absn[0]):
                 bridges[absn[1][0]].append((conc[0], tname))
+        # The same square read the other way, with the abstraction A from
+        # the concrete state to the logical one (books/pagestore-refine.lisp,
+        # lane arena-store-5): `(equal (A .. (C ..) ..) (L .. (A ..) ..))',
+        # A of what the concrete C leaves is the logical L applied to A of
+        # the state before.  C is a direct argument of A (or its `mv-nth'
+        # when C returns several values); every call L on the other side
+        # with a direct argument (A ..) is tied to C.  A is the same
+        # function on both sides, so a commutation of two unrelated calls
+        # does not qualify, and neither does C = L.
+        for absd, logical in ((conclusion[1], conclusion[2]), (conclusion[2], conclusion[1])):
+            a_head = absd[0]
+            if a_head not in graph.book_defs:
+                continue
+            concretes = set()
+            for arg in absd[1:]:
+                call = arg
+                if (isinstance(call, list) and len(call) == 3 and call[0] == "mv-nth"
+                        and isinstance(call[2], list) and call[2]):
+                    call = call[2]
+                if (isinstance(call, list) and call and isinstance(call[0], str)
+                        and call[0] in graph.book_defs and call[0] != a_head):
+                    concretes.add(call[0])
+            if not concretes:
+                continue
+            work = [logical]
+            while work:
+                term = work.pop()
+                if not isinstance(term, list) or not term or term[0] == "quote":
+                    continue
+                work.extend(term[1:])
+                head = term[0]
+                if (isinstance(head, str) and head in graph.book_defs and head != a_head
+                        and any(isinstance(arg, list) and arg and arg[0] == a_head
+                                for arg in term[1:])):
+                    for c in concretes - {head}:
+                        bridges[head].append((c, tname))
         left, right = heads
         # A commutation `(equal (f (g x)) (g (f x)))' ties neither to the
         # other: each side must be free of the other side's head.

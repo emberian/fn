@@ -39,7 +39,8 @@ import subprocess
 import sys
 import time
 
-ROOT = Path("/tank/fn/scratch/arena-store-host")
+# FNPS_ROOT: another scratch root (its own tree, image and lib/).
+ROOT = Path(os.environ.get("FNPS_ROOT", "/tank/fn/scratch/arena-store-host"))
 TREE = ROOT / "tree"
 CORE = ROOT / "fnps-image.core"
 SBCL = "/tank/fn/sbcl/bin/sbcl"
@@ -70,7 +71,7 @@ def ship(_a):
 # the history image's host-called ones (m4).  Certified by the project's
 # runner against the box's certificate cache (--incremental: what the cache
 # holds at its digest is installed, the rest certified), under swarm-build.
-ROOTS = ("books/pagestore-gc", "books/history-pages-import", "books/history-pages-view")
+ROOTS = ("books/pagestore-gc", "books/pagestore-refine", "books/history-pages-import", "books/history-pages-view")
 FARM_ACL2 = "/tank/fn/toolchains/w28/acl2-literal-4g"   # tools/farm.py HOSTS["hbox"]
 CERT_CACHE = "/tank/fn/certcache"
 
@@ -89,23 +90,40 @@ def build(_a):
     if p.returncode != 0 or not ok:
         out.close()
         return 1
+    # The page digest's native BLAKE3 (host/native/digest.lisp, the served
+    # images' binding): lib/libfn-blake3 beside the core, checked at build
+    # (FNPS-BUILD-ERROR, exit 3, when missing or wrong) and at every start.
+    out.write("== tools/build_blake3.sh " + str(ROOT / "lib") + "\n"); out.flush()
+    p = subprocess.run(["sh", "tools/build_blake3.sh", str(ROOT / "lib")], stdout=out,
+                       stderr=subprocess.STDOUT, cwd=TREE)
+    if p.returncode != 0:
+        out.close()
+        print("build_blake3 rc", p.returncode, "(see", log, ")")
+        return 1
     script = f"""(set-cbd "{TREE}/books/")
 (include-book "pagestore-gc")
+(include-book "pagestore-refine")
 (include-book "history-pages-import")
 (include-book "history-pages-view")
 :q
 (load "{TREE}/host/native/proto-pagestore.lisp")
 (load "{TREE}/host/native/proto-history-pages.lisp")
+(fnps-digest-build-check)
 (save-exec "{ROOT}/fnps-image" "arena-store-host")
 """
     CORE.unlink(missing_ok=True)
     out.write("== image\n"); out.flush()
-    env = dict(os.environ, ACL2_BOOK_HASH_ALISTP="NIL", ACL2_CUSTOMIZATION="NONE")
+    # During the build the running core is ACL2's, so the library is named
+    # (tools/build_native_host.sh's FN_BLAKE3_LIBRARY); the saved image finds
+    # lib/ beside its own core.
+    env = dict(os.environ, ACL2_BOOK_HASH_ALISTP="NIL", ACL2_CUSTOMIZATION="NONE",
+               FN_BLAKE3_LIBRARY=str(ROOT / "lib" / "libfn-blake3.so"))
     p = subprocess.run(["swarm-build"] + sbcl_argv(ACL2_CORE), input=script, text=True,
                        stdout=out, stderr=subprocess.STDOUT, cwd=TREE, env=env)
     out.close()
     text = log.read_text()
-    bad = [l for l in text.splitlines() if "ACL2 Error" in l or "debugger invoked" in l]
+    bad = [l for l in text.splitlines()
+           if "ACL2 Error" in l or "debugger invoked" in l or "FNPS-BUILD-ERROR" in l]
     print("build rc", p.returncode, "core", CORE.exists(), "errors", bad[:5])
     return 0 if CORE.exists() and not bad else 1
 

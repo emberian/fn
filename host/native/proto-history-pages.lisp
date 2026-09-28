@@ -279,6 +279,8 @@
   (let ((cmd (first args)) (a (rest args))
         (digest (equal (sb-ext:posix-getenv "FNPS_DIGEST") "1")))
     (handler-case
+        (progn
+          (fnps-digest-startup)
         (cond
           ((string= cmd "import")
            (fnhp-import (first a) (second a) (parse-integer (third a)) (parse-integer (fourth a))
@@ -290,7 +292,7 @@
           ((string= cmd "append")
            (fnhp-cmd-append (first a) (second a) (parse-integer (third a)) (parse-integer (fourth a))
                             (parse-integer (fifth a)) (fnps-kw (sixth a)) digest))
-          (t (error "unknown command ~a" cmd)))
+          (t (error "unknown command ~a" cmd))))
       (fnps-io-error (e)
         (fnps-emit :event :io-error :call (fnps-io-error-call e) :errno (fnps-io-error-errno e)
                    :detail (fnps-io-error-detail e))

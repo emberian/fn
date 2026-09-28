@@ -1096,6 +1096,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/pagestore-exec \
 	books/pagestore-gc \
 	tests/acl2/pagestore-tests \
+	books/pagestore-refine \
+	tests/acl2/pagestore-refine-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \
 	books/snapshot-segments \
@@ -1403,7 +1405,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-pages-import \
 	books/history-pages-view \
 	tests/acl2/history-pages-step-tests \
-	tests/acl2/history-pages-import-tests
+	tests/acl2/history-pages-import-tests \
+	books/history-pages-owner \
+	tests/acl2/history-pages-owner-tests
 
 .PHONY: extract-check site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
