@@ -4936,6 +4936,32 @@
         "planning/evidence/format-bump-10-2026-09-28.md"
       ],
       "implementation_note": "Lane format-bump-10. Non-determinism recorded (ember 2026-09-27): the CSPRNG node identity and salt, the clock reading. Never recorded: the node secret, credential salts."
+    },
+    {
+      "id": "HST-030",
+      "title": "The decision journal never keeps a torn line: a failed append is undone, a loss is named as a gap at the first missing sequence number, and a run's start cuts a torn tail",
+      "specification": "specs/host.md#the-disk-as-an-adversarial-environment",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-360"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-time-journal-writer.lisp",
+        "books/owner-time-journal.lisp",
+        "tests/acl2/owner-time-journal-writer-tests.lisp",
+        "tests/acl2/owner-time-model-tests.lisp",
+        "host/native/io.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_journal_torn.py",
+        "planning/evidence/health-truth-journal-2026-09-28.md"
+      ],
+      "implementation_note": "Lane health-truth-journal (PKT-872). ENOSPC mid-line used to leave torn octets the next entry was appended after (fitness f2-full: malformed-at-18416 forever). The writer's rule is ACL2's (books/owner-time-journal-writer.lisp); the host truncates with ftruncate, which needs no free space. A developer selector FN_NATIVE_TEST_JOURNAL_FAIL_FILE injects the failure."
     }
   ]
 }

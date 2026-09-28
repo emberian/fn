@@ -23,6 +23,7 @@
 (include-book "../../books/owner-time-model")
 (include-book "../../books/owner-time-journal")
 (include-book "../../books/owner-time-admission")
+(include-book "../../books/owner-time-journal-writer")
 (include-book "../../books/owner-open-carried")
 (include-book "../../books/reader-open-carried")
 (include-book "../../books/consumer-poll-projection")

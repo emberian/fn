@@ -5534,6 +5534,36 @@
         "planning/evidence/format-bump-10-2026-09-28/native-n4-format_9_migration.log",
         "planning/evidence/format-bump-10-2026-09-28.md"
       ]
+    },
+    {
+      "id": "SCN-192",
+      "title": "The decision journal after failed appends and a torn tail: POSTs keep being accepted while every journal append fails, the journal keeps whole entries and a mark and replays to a gap naming the first missing sequence number, never malformed; a torn tail is cut at the next run's start and the journal replays to agreement",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-030"
+      ],
+      "steps": [
+        "tests/test_native_journal_torn.py on the developer image with FN_NATIVE_TEST_JOURNAL_FAIL_FILE naming a file: 3 POSTs (each followed by GROUP); the file created (every journal append writes half its octets and fails); 4 POSTs; the file removed; 3 POSTs; SIGTERM; `store ROOT journal'.",
+        "A fresh store: 2 POSTs, SIGTERM; `12 1 45' appended to decisions.fnj (half an entry); `store ROOT journal'; the owner started again, 2 POSTs, SIGTERM; the service log read; `store ROOT journal'."
+      ],
+      "expected": [
+        "Every POST 240 (the owner keeps serving); every line of the journal a whole entry of seven numbers, the mark `0 6 0 0 0 0 0' among them; `store ROOT journal' exits 1 with `status=whole' and `replay=gap-at-N', N one past the sequence number of the entry before the mark; no `malformed'.",
+        "Before the restart `status=torn'; after it the file is the first run's whole entries then the second run's start entry, the service log says `decision journal: the previous run's torn last entry (7 octets) was cut', and `store ROOT journal' exits 0 with `status=whole', `segments=2', `replay=agrees'."
+      ],
+      "evidence": [
+        "tests/test_native_journal_torn.py",
+        "planning/evidence/health-truth-journal-2026-09-28.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_journal_torn",
+        "cases": [
+          "JournalWriterSourceTests",
+          "JournalWriterNativeTests"
+        ],
+        "native": true,
+        "record": "planning/evidence/health-truth-journal-2026-09-28.md"
+      }
     }
   ]
 }

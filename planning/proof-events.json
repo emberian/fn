@@ -12145,6 +12145,43 @@
           "name": "fn-ocp-unstaged-start-issues-no-sync"
         }
       ]
+    },
+    {
+      "id": "PRF-360",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-file-reads-agrees-or-gap"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-gap-is-the-first-lost"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-gap-names-the-first-missing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-segment-agrees"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-open-step-is-the-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-open-cut-of-a-written-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-sim-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-replay-of-pm"
+        }
+      ]
     }
   ]
 }

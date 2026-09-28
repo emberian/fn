@@ -409,8 +409,13 @@ clock regressed: readings=1
                                         (list (car *t2-entries*) (cadr *t2-entries*)
                                               '(3 1 12000 0 0 0 7)))
                      '(:diverged 3)))
+; PKT-872: the gap names the FIRST missing sequence (entry 2 was dropped).
 (assert-event (equal (t2-replay-verdict (fn-otm-init) (cons (car *t2-entries*) (cddr *t2-entries*)))
-                     '(:gap 3)))
+                     '(:gap 2)))
+; The writer's mark (a lost stretch it recorded) is a gap at the next sequence.
+(assert-event (equal (t2-replay-verdict (fn-otm-init) (list (car *t2-entries*) *fn-otm-mark-entry*
+                                                            (cadr *t2-entries*)))
+                     '(:gap 2)))
 (defconst *t2-bad-steps* (list (list :event :bogus 5 nil)))
 (assert-event (and (not (fn-otm-run-okp *t2-bad-steps*))
                    (equal (t2-replay-verdict (fn-otm-init) (t2-run-entries (fn-otm-init) *t2-bad-steps*))
