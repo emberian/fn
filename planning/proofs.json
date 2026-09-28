@@ -12721,6 +12721,12 @@
       ],
       "assumptions": [],
       "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-nntp-verdict-hdr-response-cat-is-archive",
+        "fn-nntp-verdict-hdr-range-cat-is-archive",
+        "fn-scat-vh-lines-is-verdict-hdr-lines",
+        "fn-scat-vh-fill-lookup"
+      ],
       "evidence": [
         "books/served-catalog.lisp",
         "tests/acl2/served-catalog-tests.lisp",
