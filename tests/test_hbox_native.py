@@ -28,6 +28,15 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertNotIn("--profile dtn", answer.stdout)
         self.assertNotIn("FN_NATIVE_BP_HOST", answer.stdout)
 
+    def test_a_big_memory_scope_waits_on_the_box_wide_lock(self):
+        big = dry("--mem", "80G", "HEAD", "tests.test_native_owner")
+        self.assertEqual(big.returncode, 0, big.stderr)
+        line = [l for l in big.stdout.splitlines() if l.startswith("tstep test-")][0]
+        self.assertIn("flock /tank/fn/scratch/.hbox-native-bigmem.lock env", line)
+        small = dry("--mem", "24G", "HEAD", "tests.test_native_owner")
+        self.assertNotIn("flock", [l for l in small.stdout.splitlines()
+                                   if l.startswith("tstep test-")][0])
+
     def test_each_image_gets_the_runbooks_triple(self):
         answer = dry("--images", "production,developer,dtn,dtn-developer",
                      "HEAD", "tests.test_bp_service_native")
