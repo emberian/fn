@@ -56,7 +56,6 @@
                           fn-record-canonicality-vocabulary)))
 
 (defconst *fn-cpc-magic* '(102 110 45 99))          ; "fn-c"
-(defconst *fn-cpc-legacy-schema-version* 0)
 (defconst *fn-cpc-schema-version* 1)
 (defconst *fn-cpc-header-uints* 5)
 (defconst *fn-cpc-symbols* '(t :archive :forward :legacy))
@@ -1096,50 +1095,6 @@
   (declare (xargs :guard t))
   (list :fn-checkpoint 1 groups capacity frontier sequence node))
 
-; Schema 0 stored the five-field article before acceptance stamps existed.
-; Only a ready checkpoint can be migrated: capture replays a committed prefix,
-; so it cannot persist an in-flight pending transaction.  The reconstructed
-; checkpoint still passes the full current recognizer below before acceptance.
-(defun fn-cpc-legacy-articlesp (articles)
-  (declare (xargs :guard t))
-  (if (consp articles)
-      (and (true-listp (car articles)) (equal (len (car articles)) 5)
-           (fn-cpc-legacy-articlesp (cdr articles)))
-    (null articles)))
-
-(defun fn-cpc-upgrade-legacy-articles (articles)
-  (declare (xargs :guard (fn-cpc-legacy-articlesp articles)))
-  (if (consp articles)
-      (cons (append (car articles) (list :legacy))
-            (fn-cpc-upgrade-legacy-articles (cdr articles)))
-    nil))
-
-(defun fn-cpc-upgrade-legacy-node (node)
-  (declare (xargs :guard t))
-  (let ((state (fn-node-acceptance node)))
-    (if (and (true-listp node) (equal (len node) 4)
-             (true-listp state) (equal (len state) 6)
-             (null (fn-state-pending state))
-             (fn-cpc-legacy-articlesp (fn-state-articles state)))
-        (fn-node-make-state
-         (fn-make-state (fn-state-groups state) (fn-state-nexts state)
-                        (fn-cpc-upgrade-legacy-articles
-                         (fn-state-articles state))
-                        (fn-state-next-txid state) nil
-                        (fn-state-fenced state))
-         (fn-node-retention node) (fn-node-stage node)
-         (fn-node-bindings node))
-      nil)))
-
-(defun fn-cpc-current-headerp (octets)
-  (declare (xargs :guard t :verify-guards nil))
-  (equal (fn-frame-item 0
-                        (fn-record-parse-value
-                         (fn-cpc-read-uints *fn-cpc-header-uints*
-                                             (fn-record-parse-rest
-                                              (fn-cpc-read-bytes octets)))))
-         *fn-cpc-schema-version*))
-
 ; The host entry point.  GROUPS and CAPACITY are the live configuration;
 ; MAX-FRONTIER and MAX-SEQUENCE are the observed durable allocator frontier
 ; and the number of durable records.  The header is compared with all four
@@ -1167,9 +1122,7 @@
                     (cap (fn-frame-item 3 (fn-record-parse-value fields)))
                     (count (fn-frame-item 4 (fn-record-parse-value fields))))
                 (cond
-                 ((not (member-equal version
-                                     (list *fn-cpc-legacy-schema-version*
-                                           *fn-cpc-schema-version*)))
+                 ((not (equal version *fn-cpc-schema-version*))
                   (fn-record-parse-error :version))
                  ((not (and (natp max-sequence) (<= sequence max-sequence)))
                   (fn-record-parse-error :sequence))
@@ -1193,18 +1146,10 @@
                               node
                             (if (fn-record-parse-rest node)
                                 (fn-record-parse-error :trailing)
-                              (let* ((raw
-                                      (fn-cpc-assemble
-                                       groups capacity frontier sequence
-                                       (fn-record-parse-value node)))
-                                     (checkpoint
-                                      (if (or (equal version *fn-cpc-schema-version*)
-                                              (fn-checkpointp raw))
-                                          raw
-                                        (fn-cpc-assemble
-                                         groups capacity frontier sequence
-                                         (fn-cpc-upgrade-legacy-node
-                                          (fn-record-parse-value node))))))
+                              (let ((checkpoint
+                                     (fn-cpc-assemble
+                                      groups capacity frontier sequence
+                                      (fn-record-parse-value node))))
                                 (if (not (fn-checkpointp checkpoint))
                                     (fn-record-parse-error :invalid)
                                   (list :ok checkpoint))))))))))))))))))))
@@ -1442,9 +1387,8 @@
             :in-theory (disable fn-cpc-read-strings-reencode)))))
 
 (defthm fn-cpc-accepted-input-is-canonical
-  (implies (and (fn-cpc-current-headerp octets)
-                (fn-cpc-result-okp
-                 (fn-cpc-decode octets groups capacity max-frontier max-sequence)))
+  (implies (fn-cpc-result-okp
+            (fn-cpc-decode octets groups capacity max-frontier max-sequence))
            (equal (fn-cpc-encode
                    (fn-cpc-result-value
                     (fn-cpc-decode octets groups capacity max-frontier
@@ -1960,9 +1904,6 @@
 
 (defthm fn-cpc-frame-accepted-is-canonical
   (implies (and (fn-cbor-octet-listp octets)
-                (fn-cpc-current-headerp
-                 (fn-frame-result-payload
-                  (fn-frame-decode octets digest *fn-cpc-max-payload*)))
                 (fn-cpc-result-okp
                  (fn-cpc-frame-decode octets digest groups capacity
                                       max-frontier max-sequence))

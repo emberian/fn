@@ -406,6 +406,7 @@
   (declare (xargs :guard t))
   (let ((cfg (fn-cnode-config cn)))
     (and (fn-cfg-recordp record)
+         (fn-cfg-record-fitsp record)
          (equal (fn-cfg-record-generation record)
                 (+ 1 (nfix (fn-cfg-generation cfg))))
          (fn-cfg-admissiblep (fn-cfg-value cfg)

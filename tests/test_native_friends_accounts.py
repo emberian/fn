@@ -22,6 +22,17 @@ FN_FRIEND_FN, when set, is `bin/fn` from an unpacked release tarball
 (tests/friends_tarball.sh): the node then runs that installed image for
 every step except the developer-image crash cut.
 
+PRF-388 (PKT-560): a redeemed login is bound to a signing principal with
+the same verb as a credential-file login, `principal bind LOGIN HEX', live
+and offline.  Under `posting-policy bound-logins' its unsigned post is then
+441 (login-unsigned); the binding survives a restart (the start publication
+of the credential file's table leaves an account's binding); `account
+delete' is refused while it holds; `principal unbind' ends it (240 again);
+and `principal bind' of a login that is neither the file's nor an account's
+is refused `unknown-login' (exit 1).  Refuted: a refusal of the redeemed
+login, an unsigned 240 while bound, a binding lost at restart, or a binding
+of a login nobody holds.
+
 Run: FN_NATIVE_HOST=<developer launcher> python3 -m unittest -v tests.test_native_friends_accounts
 """
 
@@ -203,6 +214,44 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         self.assertNotIn(b"refused redeem", lost.stderr)
         self.assertNotIn(b"Password for the new account", lost.stderr)
         self.assertEqual(lost.stdout, b"")
+
+    def test_a_redeemed_login_is_bound_and_keeps_its_binding(self):
+        principal = "55" * 32
+        self.node.start()
+        self.assertTrue(self.redeem(self.invite(), "robin", "correct-horse").startswith("281"))
+        self.ok("policy", "set", "posting-policy", "bound-logins")
+        # Live: the owner publishes the account's binding.
+        bound = self.ok("principal", "bind", "robin", principal)
+        self.assertIn(b"accepted operator account", bound.stderr)
+        reply = self.login_and_post("robin", "correct-horse", "<robin-b1@friend.example>")
+        self.assertTrue(reply.startswith("441"), reply)
+        self.assertIn("signed by its bound principal", reply)
+        self.assertIn("binding robin " + principal,
+                      self.ok("account", "list").stdout.decode("ascii"))
+        # The binding is an obligation: the account cannot be deleted.
+        held = self.operator("account", "delete", "robin")
+        self.assertEqual(held.returncode, 1, text(held))
+        # Neither the file's login nor an account's: refused by name.
+        nobody = self.operator("principal", "bind", "nobody", principal)
+        self.assertEqual(nobody.returncode, 1, text(nobody))
+        self.assertIn(b"unknown-login", nobody.stderr)
+        # A restart keeps it: the start publication leaves an account's binding.
+        self.stop()
+        self.node.start()
+        reply = self.login_and_post("robin", "correct-horse", "<robin-b2@friend.example>")
+        self.assertTrue(reply.startswith("441"), reply)
+        # Unbind (live), then the unsigned post is accepted again.
+        self.ok("principal", "unbind", "robin")
+        reply = self.login_and_post("robin", "correct-horse", "<robin-b3@friend.example>")
+        self.assertTrue(reply.startswith("240"), reply)
+        # Offline: bound while no owner runs, in force at the next start.
+        self.stop()
+        offline = self.ok("principal", "bind", "robin", principal)
+        self.assertIn(b"accepted operator account", offline.stderr)
+        self.node.start()
+        reply = self.login_and_post("robin", "correct-horse", "<robin-b4@friend.example>")
+        self.assertTrue(reply.startswith("441"), reply)
+        self.stop()
 
     def test_a_code_invited_while_the_node_is_stopped_redeems(self):
         # PRF-374, bug M1 (lane node-migrate): an invitation made while no

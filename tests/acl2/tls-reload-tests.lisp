@@ -167,3 +167,102 @@
  (equal (fn-tlsr-log-line (list :refuse :key-mismatch) (tlst-facts :match nil))
         (fn-record-string-octets
          "tls reload refused key-mismatch: the served certificate is unchanged")))
+
+; -----------------------------------------------------------------------------
+; PRF-387 (PKT-606): the start's decision.
+;
+; fn-tlsr-start-decide-accepts-exactly-loaded-matching-current-material:
+; a positive witness asserting every conjunct and the acceptance, per
+; conjunct a witness where it alone fails and the start refuses by its name,
+; and a must-fail of the acceptance with each conjunct omitted.
+
+(assert-event
+ (let ((f (tlst-facts)))
+   (and (fn-tlsr-chain-loadedp f) (fn-tlsr-key-loadedp f) (fn-tlsr-key-matchesp f)
+        (fn-tlsr-currentp f)
+        (not (equal (fn-tlsr-names f) :malformed))
+        (fn-tlsr-acceptp (fn-tlsr-start-decide f))
+        (equal (fn-tlsr-start-decide f)
+               (list :accept (list *tlst-fn* *tlst-alt*) '(2026 12 25 22 23 43))))))
+
+(defmacro tlst-start-refuses (facts reason)
+  `(assert-event (equal (fn-tlsr-start-decide ,facts) (list :refuse ,reason))))
+(tlst-start-refuses (tlst-facts :chain nil) :chain-unreadable)
+(tlst-start-refuses (tlst-facts :key nil) :key-unreadable)
+(tlst-start-refuses (tlst-facts :match nil) :key-mismatch)
+(tlst-start-refuses (tlst-facts :now (- *tlst-nb-seconds* 1)) :not-yet-valid)
+(tlst-start-refuses (tlst-facts :now *tlst-na-seconds*) :expired)
+(tlst-start-refuses (tlst-facts :na (fn-record-string-octets "261325222343Z"))
+                    :validity-malformed)
+(tlst-start-refuses (tlst-facts :now "soon") :clock-unusable)
+(tlst-start-refuses (tlst-facts :san (butlast *tlst-san* 1)) :names-malformed)
+; In each, every other conjunct holds (the mismatch, the expiry and the
+; unreadable names, the three a start used to take or leave to OpenSSL).
+(assert-event (let ((f (tlst-facts :now *tlst-na-seconds*)))
+                (and (fn-tlsr-chain-loadedp f) (fn-tlsr-key-loadedp f)
+                     (fn-tlsr-key-matchesp f)
+                     (not (equal (fn-tlsr-names f) :malformed))
+                     (not (fn-tlsr-currentp f)))))
+(assert-event (let ((f (tlst-facts :san (butlast *tlst-san* 1))))
+                (and (fn-tlsr-chain-loadedp f) (fn-tlsr-key-loadedp f)
+                     (fn-tlsr-key-matchesp f) (fn-tlsr-currentp f)
+                     (equal (fn-tlsr-names f) :malformed))))
+; A CN-only pair (no subjectAltName) starts: no names is readable.
+(assert-event (fn-tlsr-acceptp (fn-tlsr-start-decide (tlst-facts :san nil))))
+
+(defmacro tlst-start-without (&rest conjuncts)
+  `(must-fail-checked
+    (with-prover-step-limit
+     100000
+     (defthm tlst-start-accept-without
+       (implies (and ,@conjuncts)
+                (fn-tlsr-acceptp (fn-tlsr-start-decide facts)))
+       :rule-classes nil))))
+(tlst-start-without (fn-tlsr-key-loadedp facts) (fn-tlsr-key-matchesp facts)
+                    (fn-tlsr-currentp facts)
+                    (not (equal (fn-tlsr-names facts) :malformed)))
+(tlst-start-without (fn-tlsr-chain-loadedp facts) (fn-tlsr-key-matchesp facts)
+                    (fn-tlsr-currentp facts)
+                    (not (equal (fn-tlsr-names facts) :malformed)))
+(tlst-start-without (fn-tlsr-chain-loadedp facts) (fn-tlsr-key-loadedp facts)
+                    (fn-tlsr-currentp facts)
+                    (not (equal (fn-tlsr-names facts) :malformed)))
+(tlst-start-without (fn-tlsr-chain-loadedp facts) (fn-tlsr-key-loadedp facts)
+                    (fn-tlsr-key-matchesp facts)
+                    (not (equal (fn-tlsr-names facts) :malformed)))
+(tlst-start-without (fn-tlsr-chain-loadedp facts) (fn-tlsr-key-loadedp facts)
+                    (fn-tlsr-key-matchesp facts) (fn-tlsr-currentp facts))
+
+; fn-tlsr-decide-is-the-start-decision-unless-names-dropped.  Positive: a
+; reload's acceptance and a reload's key-mismatch are the start's decisions.
+(assert-event
+ (and (not (equal (fn-tlsr-decide (tlst-facts) *tlst-served*)
+                  (list :refuse :names-dropped)))
+      (equal (fn-tlsr-decide (tlst-facts) *tlst-served*)
+             (fn-tlsr-start-decide (tlst-facts)))
+      (equal (fn-tlsr-decide (tlst-facts :match nil) *tlst-served*)
+             (fn-tlsr-start-decide (tlst-facts :match nil)))
+      (equal (fn-tlsr-start-decide (tlst-facts :match nil))
+             (list :refuse :key-mismatch))))
+; Hypothesis removal: material that drops a served name is refused by the
+; reload and taken by the start, so the equation needs its hypothesis.
+(assert-event
+ (let ((f (tlst-facts :san (append '(#x30 #x17 #x82 #x15) *tlst-other*))))
+   (and (equal (fn-tlsr-decide f *tlst-served*) (list :refuse :names-dropped))
+        (fn-tlsr-acceptp (fn-tlsr-start-decide f))
+        (not (equal (fn-tlsr-decide f *tlst-served*) (fn-tlsr-start-decide f))))))
+(must-fail-checked
+ (with-prover-step-limit
+  100000
+  (defthm tlst-start-equation-without-its-hypothesis
+    (equal (fn-tlsr-decide facts served) (fn-tlsr-start-decide facts))
+    :rule-classes nil)))
+
+; The operator's line for a refused start.
+(assert-event
+ (equal (fn-tlsr-start-refusal-line (fn-tlsr-start-decide (tlst-facts :match nil)))
+        (fn-record-string-octets "tls key-mismatch")))
+(assert-event
+ (equal (fn-tlsr-start-refusal-line (fn-tlsr-start-decide
+                                     (tlst-facts :now *tlst-na-seconds*)))
+        (fn-record-string-octets "tls expired")))

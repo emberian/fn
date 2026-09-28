@@ -586,7 +586,7 @@
         "planning/evidence/checkpoint-auxiliary-e2-t10-2026-09-23.md",
         "planning/evidence/checkpoint-clone-source-2026-09-23.md"
       ],
-      "implementation_note": "Logical checkpoint equivalence and concrete codec/publication are implemented. Native capture/select/status validate selected checkpoints after authoritative full journal replay; private restored state is never installed as the live node. ACL2 owns canonical namespace and observation/allocation bounds. Mismatch is always corruption, and uncertain mutation leaves the Store fenced. Schema-0 pre-stamp selected checkpoints migrate five-field ready articles to :legacy in ACL2, then pass the current checkpoint recognizer; schema-1 captures keep the new shape. A pre-T2 physical checkpoint exposed a T2 decode failure before this repair; patched ACL2 decodes its exact frame with :legacy, while an exact-source repaired native image remains to be run. Source-pinned component tests do not establish suffix-only recovery, shared-owner/index integration, full physical correspondence or freshness qualification. Selected-pack exact-history reopen now has a version-two recovery-only ACL2 differential for E2 consumer state, completed dense sequence, historical verdicts, keyring snapshots, topic projection, and the rebuilt consumer sequence index; the source-pinned ACL2 witness covers a reclaimed E2 prefix and a bound hybrid composite. The native caller is wired but awaits a combined image witness. Cold writable clone activation remains unimplemented and must not be inferred from copying a store directory. The native source adds fenced cold clone/clone-resume with an ACL2-proposed durable E2 rollover event and no-replace directory publication. Its ACL2 phase tests certify; a combined saved-image crash/reopen run has not yet qualified this physical path.",
+      "implementation_note": "Logical checkpoint equivalence and concrete codec/publication are implemented. Native capture/select/status validate selected checkpoints after authoritative full journal replay; private restored state is never installed as the live node. ACL2 owns canonical namespace and observation/allocation bounds. Mismatch is always corruption, and uncertain mutation leaves the Store fenced. Checkpoints have one schema (1): a schema-0 pre-stamp header is refused :version and never migrated (lane config-and-legacy 2026-09-28; no migrations: fresh deploys at 6.6.0), and fn-cpc-accepted-input-is-canonical holds without the current-header hypothesis. Source-pinned component tests do not establish suffix-only recovery, shared-owner/index integration, full physical correspondence or freshness qualification. Selected-pack exact-history reopen now has a version-two recovery-only ACL2 differential for E2 consumer state, completed dense sequence, historical verdicts, keyring snapshots, topic projection, and the rebuilt consumer sequence index; the source-pinned ACL2 witness covers a reclaimed E2 prefix and a bound hybrid composite. The native caller is wired but awaits a combined image witness. Cold writable clone activation remains unimplemented and must not be inferred from copying a store directory. The native source adds fenced cold clone/clone-resume with an ACL2-proposed durable E2 rollover event and no-replace directory publication. Its ACL2 phase tests certify; a combined saved-image crash/reopen run has not yet qualified this physical path.",
       "keystones": [
         "fn-checkpoint-plus-suffix-equals-full-replay",
         "fn-checkpoint-admissible-capture-is-exact",
@@ -1940,8 +1940,8 @@
         "planning/evidence/manifests/certify-20260924T054048Z-760063.json",
         "tests/fixtures/topic-history/matched-second-root.source"
       ],
-      "implementation_note": "The bounded experimental fixed-controller model carries administrator installation, root anchor and report admission in Store slot 12, binds earlier T10 exact source and historical key context, and checks finite quota, roster and same-topic parents. Fresh version-2 anchors additionally bind the exact earlier administrator-install event generation; historical version-1 anchors retain ID-only replay meaning and cannot be freshly staged. The owner-called report selector returns retained admission on exact historical retry without another Store event. Scoped v2 codec, proposal and Store prepare evidence passed; dual-image native migration and maintained topic/crash relation remain open.",
-      "note": "This local experiment is not a universal governance contract. The pre-v2 b074 image is retained for a disposable migration witness, but no v2 saved image or source-matched dual-image run exists yet. The maintained Store topic relation needed to derive topic-valid physical crash images is still open; BP and byte reopen remain conditional. No succession, fork healing or automatic policy adoption is inferred."
+      "implementation_note": "The bounded experimental fixed-controller model carries administrator installation, root anchor and report admission in Store slot 12, binds earlier T10 exact source and historical key context, and checks finite quota, roster and same-topic parents. Fresh version-2 anchors additionally bind the exact earlier administrator-install event generation; historical version-1 anchors retain ID-only replay meaning and cannot be freshly staged. The owner-called report selector returns retained admission on exact historical retry without another Store event. Scoped v2 codec, proposal and Store prepare evidence passed; the maintained topic/crash relation remains open. No dual-image migration: no store of another release is opened (fresh deploys at 6.6.0); tests/test_native_topic_local.py's v1-image cases became one single-image reopen-and-compaction case (lane config-and-legacy 2026-09-28).",
+      "note": "This local experiment is not a universal governance contract. The maintained Store topic relation needed to derive topic-valid physical crash images is still open; BP and byte reopen remain conditional. No succession, fork healing or automatic policy adoption is inferred."
     },
     {
       "id": "WEB-001",
@@ -3070,7 +3070,8 @@
         "PRF-166",
         "PRF-175",
         "PRF-179",
-        "PRF-184"
+        "PRF-184",
+        "PRF-388"
       ],
       "verification": [
         "proof",
@@ -3223,7 +3224,8 @@
         "PRF-164",
         "PRF-374",
         "PRF-378",
-        "PRF-379"
+        "PRF-379",
+        "PRF-388"
       ],
       "verification": [
         "proof",
@@ -4026,7 +4028,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-212"
+        "PRF-212",
+        "PRF-387"
       ],
       "verification": [
         "proof",
@@ -4175,7 +4178,7 @@
         "tests/acl2/owner-article-slots-tests.lisp",
         "tests/test_native_article_slots.py"
       ],
-      "implementation_note": "PKT-605 closed for the stated workload: the capacity row (NNT-043) is checked against the machine by ACL2 at run and at every live reconfiguration; trusted sources count. No wire or delta code, no store format, no fn.toml key. PKT-639 (implicit TLS admitted before the handshake) and PKT-640 (TLS refusals in the service log) are folded in. SCN-153 is the native case on both images. Lane zero-copy-commit (2026-09-28): the articles in flight are a pool of credits in the store's heap figure (books/heap-store-figure.lisp fn-heap-articles-octets), admitted by every served read (books/owner-article-slots.lisp fn-oas-read-span: POST 440, IHAVE/TAKETHIS 400 and close past the slots; reserve-to-finish, so an admitted upload is never blocked); SCN-193 is its native case. fn-cbud-launch-decide is gone."
+      "implementation_note": "PKT-605 closed for the stated workload: the capacity row (NNT-043) is checked against the machine by ACL2 at run and at every live reconfiguration; trusted sources count. No wire or delta code, no store format, no fn.toml key. PKT-639 (implicit TLS admitted before the handshake) and PKT-640 (TLS refusals in the service log) are folded in. SCN-153 is the native case on both images. Lane zero-copy-commit (2026-09-28): the articles in flight are a pool of credits in the store's heap figure (books/heap-store-figure.lisp fn-heap-articles-octets), admitted by every served read (books/owner-article-slots.lisp fn-oas-read-span: POST 440, IHAVE/TAKETHIS 400 and close past the slots; reserve-to-finish, so an admitted upload is never blocked); SCN-193 is its native case. Lane admission-gap (2026-09-28): the admission holds across every read, including one that enters and completes an article (a TAKETHIS in one read), and a read leaves the other connections as they were (books/owner-article-held.lisp). fn-cbud-launch-decide is gone."
     },
     {
       "id": "NNT-046",
@@ -5015,6 +5018,30 @@
         "planning/evidence/health-truth-journal-2026-09-28.md"
       ],
       "implementation_note": "Lane health-truth-journal (PKT-872). ENOSPC mid-line used to leave torn octets the next entry was appended after (fitness f2-full: malformed-at-18416 forever). The writer's rule is ACL2's (books/owner-time-journal-writer.lisp); the host truncates with ftruncate, which needs no free space. A developer selector FN_NATIVE_TEST_JOURNAL_FAIL_FILE injects the failure."
+    },
+    {
+      "id": "NNT-056",
+      "title": "AUTHINFO SASL: SCRAM-SHA-256 (and -PLUS over TLS 1.3 with tls-exporter) and PLAIN over TLS, with ACL2 deciding the whole exchange and the server never storing the password",
+      "specification": "specs/nntp.md#authinfo-sasl-nnt-056",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-915",
+        "PRF-916",
+        "PRF-917"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/hmac-sha256.lisp",
+        "books/scram.lisp",
+        "tests/acl2/hmac-sha256-tests.lisp",
+        "tests/acl2/scram-tests.lisp"
+      ],
+      "implementation_note": "RFC 4643 section 2.4 with PLAIN (RFC 4616), SCRAM-SHA-256 (RFC 5802, RFC 7677) and SCRAM-SHA-256-PLUS (RFC 9266 tls-exporter). DIGEST-MD5 (RFC 4643's mandatory mechanism) is not implemented: RFC 6331 made it Historic. Increment 1 (lane sasl): the HMAC-SHA-256/PBKDF2 and SCRAM mechanism books. Increment 2: the exchange (books/sasl.lisp), verifier v2 and the served AUTHINFO SASL arm."
     }
   ]
 }

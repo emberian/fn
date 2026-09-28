@@ -351,6 +351,10 @@
 ;; tools/build_native_host.sh writes it into the saved launcher, so a run of
 ;; the image outside the installed launcher has the deployed stack (PKT-876).
 (value-triple (prog2$ (cw "FN_NATIVE_STACK_KIB ~x0~%" (fn-heap-stack-kib nil)) :stack))
+;; Every thread's thread-local storage, the profile's row
+;; (books/profile-limits.lisp :tls-limit): tools/build_native_host.sh writes it
+;; into the saved launcher as --tls-limit.
+(value-triple (prog2$ (cw "FN_NATIVE_TLS_LIMIT ~x0~%" (fn-profile-limit :tls-limit)) :tls))
 
 :q
 ; The saved world (HST-025, host/native/strip-world.lisp).  FN_NATIVE_WORLD
