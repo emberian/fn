@@ -111,7 +111,7 @@
 ; (fn-rcon-wire-event-p-is-wire-event-p, -sequence-is-, -txid-is-): the
 ; journal's and the checkpoint's bytes.  The store machine never holds one:
 ; the entry interns the decoded events into the arena first
-; (fn-store-intern-records below; books/store-intern.lisp fn-intern-events).
+; (books/store-intern.lisp fn-intern-events).
 (defun fn-store-decode-records (octet-records)
   ; books/store-recover-stream.lisp fn-srs-decode: the chunked open's step
   ; decodes with the same function.
@@ -119,21 +119,11 @@
                   :guard (fn-octet-list-listp octet-records)))
   (fn-srs-decode octet-records))
 
-; THE INTERN AT THE OPEN (records-flip; PKT-635): the decoded wire events
-; become the store's rows, every article's payload sealed once into the
-; arena (fn-intern-events; KEYSTONES fn-intern-events-materializes,
-; -keep-coordinates, -contexts-okp).  The keyring at open is nil and the
-; generation 0 (the host installs the operator's keyring afterwards through
-; fn-store-sn-set-keyring, which recontexts every row through the arena).
-; :bad when any event is refused (a composite whose article does not decode).
-(defun fn-store-intern-records (records fn-arena)
-  (declare (xargs :mode :program :stobjs fn-arena))
-  (fn-intern-events records nil 0 fn-arena))
-
-; The same intern into a LOCAL arena, for a decision over a history that is
-; not the live Store's (the administrative candidate reopen, the checkpoint
-; generation capture): the rows are the replay's domain; the arena is dropped
-; with the answer, so nothing is retained.
+; The intern (fn-intern-events; KEYSTONES fn-intern-events-materializes,
+; -keep-coordinates, -contexts-okp) into a LOCAL arena, for a decision over
+; a history that is not the live Store's (the administrative candidate
+; reopen, the checkpoint generation capture): the rows are the replay's
+; domain; the arena is dropped with the answer, so nothing is retained.
 (defun fn-store-intern-records-local (records)
   (declare (xargs :mode :program))
   (with-local-stobj fn-arena
