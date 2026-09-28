@@ -877,6 +877,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/octet-text-tests \
+	tests/acl2/hostile-reader-archive \
 	tests/acl2/octets-bulk-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/payload-arena-paged-tests \
