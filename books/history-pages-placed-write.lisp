@@ -121,6 +121,8 @@
                             fn-hp-bb-list fn-hp-ds-words adt-lens adt-zeros (:e adt-zeros)
                             fn-hp-block-apart)))))
 
+(local (in-theory (disable fn-hp-consp-when-len-5 fn-scc-encode-is-program)))
+
 ; -----------------------------------------------------------------------------
 ; C. The writer over a placed image.
 
