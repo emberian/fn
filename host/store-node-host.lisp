@@ -1467,22 +1467,6 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (value (len (fn-sn-keyring (f-get-global 'fn-store-sn state)))))
 
-; Acceptance evidence carried by the ACL2 state.  Kind-4 results are durable
-; historical evidence.  A legacy fn-r result is only a current-process
-; observation and disappears on recovery because fn-r has no verdict bytes.
-; This wrapper performs only Message-ID conversion and a carried-index lookup;
-; it neither parses article bytes nor verifies a signature.  Present results
-; are the reader-safe :fn-verified item octets.
-(defun fn-store-sn-verdict (msgid-octets state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (not (fn-af-message-idp msgid-octets))
-      (value nil)
-    (let ((verdict
-           (fn-sn-verdict-lookup
-            (f-get-global 'fn-store-sn state)
-            (fn-store-octets->string msgid-octets))))
-      (value (if verdict (fn-stx-verified-item verdict) nil)))))
-
 ; The query.  Absent is nil; present is the statement's canonical octets.
 (defun fn-store-sn-statement (id-octets state)
   (declare (xargs :stobjs state :mode :program))
