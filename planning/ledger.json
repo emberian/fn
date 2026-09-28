@@ -1430,19 +1430,19 @@
     "books": 1455,
     "books_in_root_closure": 1452,
     "roots": 1423,
-    "theorems": 23589,
-    "functions": 15860,
-    "assert_events": 20440,
+    "theorems": 23591,
+    "functions": 15862,
+    "assert_events": 20447,
     "must_fails": 2259,
     "prover_refusals": 0,
     "encapsulates": 139,
     "guards": {
       "verified": 2990,
       "declared-off": 1879,
-      "default-guarded": 8660,
-      "default-unguarded": 2331
+      "default-guarded": 8661,
+      "default-unguarded": 2332
     },
-    "suspect_theorems": 1119,
+    "suspect_theorems": 1120,
     "export_hygiene_warnings": 277,
     "enabled_projection_warnings": 50,
     "teeth_form_warnings": 247,
@@ -14726,7 +14726,7 @@
       "book": "books/owner-article-held.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 59,
+      "theorems": 60,
       "functions": 8,
       "guards": {
         "verified": 0,
@@ -14762,12 +14762,12 @@
       "book": "books/owner-article-slots.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
-      "functions": 16,
+      "theorems": 23,
+      "functions": 17,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 15,
+        "default-guarded": 16,
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
@@ -14783,6 +14783,7 @@
       "system_includes": [],
       "suspects": [
         "fn-oas-conns-of-set-conns",
+        "fn-oas-inflight-count-of-set-conns",
         "fn-oas-ocfg-owner-of-with-owner",
         "fn-oas-queue-of-set-conns",
         "fn-oas-read-span-when-held-unfolds"
@@ -35562,18 +35563,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 7,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 7
+        "default-unguarded": 8
       },
       "verify_guards_events": 0,
-      "assert_events": 56,
+      "assert_events": 63,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 31,
+      "defconsts": 34,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -46530,7 +46531,7 @@
     {
       "theorem": "fn-oah-steps-bound",
       "book": "books/owner-article-held.lisp",
-      "line": 578,
+      "line": 585,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-oah-steps"
       ]
@@ -46562,7 +46563,15 @@
     {
       "theorem": "fn-oas-conns-of-set-conns",
       "book": "books/owner-article-slots.lisp",
-      "line": 264,
+      "line": 273,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-oas-inflight-count-of-set-conns",
+      "book": "books/owner-article-slots.lisp",
+      "line": 371,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -46570,7 +46579,7 @@
     {
       "theorem": "fn-oas-ocfg-owner-of-with-owner",
       "book": "books/owner-article-slots.lisp",
-      "line": 259,
+      "line": 268,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -46578,7 +46587,7 @@
     {
       "theorem": "fn-oas-queue-of-set-conns",
       "book": "books/owner-article-slots.lisp",
-      "line": 356,
+      "line": 365,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -46586,7 +46595,7 @@
     {
       "theorem": "fn-oas-read-span-when-held-unfolds",
       "book": "books/owner-article-slots.lisp",
-      "line": 250,
+      "line": 259,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-oas-read-span and the conclusion is that arm's value"
       ]

@@ -13,17 +13,17 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1455 |
 | Certification roots in the Makefile | 1423 |
 | Books inside the root closure | 1452 |
-| `defthm` and `defthmd` events | 23589 |
-| `defun` events | 15860 |
+| `defthm` and `defthmd` events | 23591 |
+| `defun` events | 15862 |
 | Functions with verified guards | 2990 |
 | Functions declared `:verify-guards nil` and never verified | 1879 |
-| Functions left at the default with an explicit guard | 8660 |
-| Functions left at the default with no guard | 2331 |
-| `assert-event` checks | 20440 |
+| Functions left at the default with an explicit guard | 8661 |
+| Functions left at the default with no guard | 2332 |
+| `assert-event` checks | 20447 |
 | `must-fail` checks | 2259 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 139 |
-| Theorems flagged SUSPECT by shape | 1119 |
+| Theorems flagged SUSPECT by shape | 1120 |
 | Export-hygiene warnings | 277 |
 | Enabled-projection warnings | 50 |
 | Teeth-form warnings | 247 |
@@ -549,8 +549,8 @@ that `make certify` requests.
 | `books/owner-ack-after-barrier.lisp` | root | 34 | 27 | 0/1/26/0 | 0 | 0 | 3 |
 | `books/owner-advance-carried.lisp` | root | 23 | 7 | 0/2/5/0 | 0 | 0 | 0 |
 | `books/owner-agent.lisp` | root | 40 | 13 | 0/0/13/0 | 0 | 0 | 3 |
-| `books/owner-article-held.lisp` | root | 59 | 8 | 0/0/6/2 | 0 | 0 | 9 |
-| `books/owner-article-slots.lisp` | root | 22 | 16 | 0/0/15/1 | 0 | 0 | 4 |
+| `books/owner-article-held.lisp` | root | 60 | 8 | 0/0/6/2 | 0 | 0 | 9 |
+| `books/owner-article-slots.lisp` | root | 23 | 17 | 0/0/16/1 | 0 | 0 | 5 |
 | `books/owner-batch.lisp` | root | 61 | 31 | 0/14/17/0 | 0 | 0 | 4 |
 | `books/owner-bound-commit.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-checkpoint-open.lisp` | root | 21 | 7 | 4/0/3/0 | 0 | 0 | 1 |
@@ -1266,7 +1266,7 @@ that `make certify` requests.
 | `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 47 | 11 | 0 |
 | `tests/acl2/owner-agent-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 3 | 0 |
-| `tests/acl2/owner-article-slots-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 56 | 0 | 0 |
+| `tests/acl2/owner-article-slots-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 63 | 0 | 0 |
 | `tests/acl2/owner-batch-tests.lisp` | root | 0 | 35 | 0/25/7/3 | 17 | 0 | 0 |
 | `tests/acl2/owner-bound-commit-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 5 | 3 | 0 |
 | `tests/acl2/owner-cancel-lock-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 20 | 4 | 0 |
@@ -1952,14 +1952,15 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-oah-ocfg-owner-of-with-owner` | `books/owner-article-held.lisp` | 421 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-oah-owner-accessors-of-make` | `books/owner-article-held.lisp` | 195 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-oah-set-conns-fields` | `books/owner-article-held.lisp` | 282 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-oah-steps-bound` | `books/owner-article-held.lisp` | 578 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-oah-steps |
+| `fn-oah-steps-bound` | `books/owner-article-held.lisp` | 585 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-oah-steps |
 | `fn-oah-steps-refl` | `books/owner-article-held.lisp` | 192 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-oah-tls-accessors` | `books/owner-article-held.lisp` | 213 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-oah-with-read-owner-owner` | `books/owner-article-held.lisp` | 265 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-oas-conns-of-set-conns` | `books/owner-article-slots.lisp` | 264 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-oas-ocfg-owner-of-with-owner` | `books/owner-article-slots.lisp` | 259 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-oas-queue-of-set-conns` | `books/owner-article-slots.lisp` | 356 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-oas-read-span-when-held-unfolds` | `books/owner-article-slots.lisp` | 250 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oas-read-span and the conclusion is that arm's value |
+| `fn-oas-conns-of-set-conns` | `books/owner-article-slots.lisp` | 273 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-oas-inflight-count-of-set-conns` | `books/owner-article-slots.lisp` | 371 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-oas-ocfg-owner-of-with-owner` | `books/owner-article-slots.lisp` | 268 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-oas-queue-of-set-conns` | `books/owner-article-slots.lisp` | 365 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-oas-read-span-when-held-unfolds` | `books/owner-article-slots.lisp` | 259 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oas-read-span and the conclusion is that arm's value |
 | `fn-obi-seal-range-is-seal-of-slice` | `books/catalog-load-index.lisp` | 38 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-obi-seal-range; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-ocfg-config-of-fn-ocfg-make` | `books/owner-config.lisp` | 86 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ocfg-fault-is-own-fault` | `books/owner-served-invariants.lisp` | 485 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
