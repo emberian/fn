@@ -6,7 +6,7 @@
 ; an EXTENT of a durable file (a log segment the host holds open) instead of
 ; octets the process holds.  The arena's logical value does not change: it
 ; is the list of sealed payloads, and an extent handle's payload is
-; `fn-durable-octets' of its extent (books/assumptions.lisp, A-DURABLE-EXTENT).
+; `fn-durable-octets' of its extent (books/assumptions-durable.lisp, A-DURABLE-EXTENT).
 ;
 ; This book is the logical side the generic (books/payload-arena.lisp) and
 ; the extent implementation (books/payload-arena-extent.lisp) share:
@@ -21,7 +21,7 @@
 
 (in-package "ACL2")
 (include-book "payload-arena-bytes")
-(include-book "assumptions")
+(include-book "assumptions-durable")
 
 (defun fn-arn-extentp (e)
   (declare (xargs :guard t))
