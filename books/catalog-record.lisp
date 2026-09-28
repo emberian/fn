@@ -200,30 +200,55 @@
 ; materialization opened it into the article grammar: 17 million steps).
 (in-theory (disable fn-hnov-of fn-hnov-of-parsed fn-hnov-field fn-hnov-parsed-okp))
 
+; The control position: the control vocabulary's three facts, then the
+; overview column (books/held-record.lisp fn-hf-nov: the fourth element).
+(defun fn-hf-control-with-nov (control nov)
+  (declare (xargs :guard t))
+  (list (fn-ctl-control-target control) (fn-ctl-control-keys control)
+        (fn-ctl-control-locks control) nov))
+
+(defthm fn-hf-control-with-nov-fields
+  (and (equal (fn-ctl-control-target (fn-hf-control-with-nov c nov)) (fn-ctl-control-target c))
+       (equal (fn-ctl-control-keys (fn-hf-control-with-nov c nov)) (fn-ctl-control-keys c))
+       (equal (fn-ctl-control-locks (fn-hf-control-with-nov c nov)) (fn-ctl-control-locks c)))
+  :hints (("Goal" :in-theory (enable fn-ctl-control-target fn-ctl-control-keys
+                                     fn-ctl-control-locks fn-ctl-at))))
+
+(defthm fn-hf-control-with-nov-true-listp
+  (true-listp (fn-hf-control-with-nov c nov))
+  :rule-classes :type-prescription)
+
+(in-theory (disable fn-hf-control-with-nov))
+
 (defun fn-held-facts-of (bytes)
   (declare (xargs :guard (true-listp bytes)))
   (fn-hf-make (len bytes) (fn-hf-split-index bytes 0) (fn-hf-body-lines-of bytes)
-              (fn-ctl-control-of bytes) (fn-hnov-of bytes)))
+              (fn-hf-control-with-nov (fn-ctl-control-of bytes) (fn-hnov-of bytes))))
 
 (defthm fn-hf-p-of-held-facts-of
   (fn-hf-p (fn-held-facts-of bytes))
-  :hints (("Goal" :in-theory (e/d (fn-held-facts-of fn-hf-p fn-hf-internals fn-hf-startp
-                                   fn-hf-novp)
-                                  (fn-hnov-of fn-ctl-control-of fn-hnov-p)))))
+  :hints (("Goal" :in-theory (e/d (fn-held-facts-of fn-hf-p fn-hf-internals fn-hf-startp)
+                                  (fn-hnov-of fn-ctl-control-of)))))
 
 ; The column of a row's bytes is fn-hnov-of of them.
 (defthm fn-hf-nov-of-held-facts-of
   (equal (fn-hf-nov (fn-held-facts-of bytes))
          (fn-hnov-of bytes))
-  :hints (("Goal" :in-theory (e/d (fn-hf-internals) (fn-hnov-of)))))
+  :hints (("Goal" :in-theory (e/d (fn-hf-internals fn-hf-control-with-nov) (fn-hnov-of)))))
 
-; The control fact of a row's bytes is what the control vocabulary reads
+; The control facts of a row's bytes are what the control vocabulary reads
 ; from them (books/control-authority.lisp fn-ctl-control-of-fields): the
-; refresh that reads it from the row reads what it read from the octets.
+; refresh that reads them from the row reads what it read from the octets.
 (defthm fn-hf-control-of-held-facts-of
-  (equal (fn-hf-control (fn-held-facts-of bytes))
-         (fn-ctl-control-of bytes))
-  :hints (("Goal" :in-theory (enable fn-hf-internals))))
+  (and (equal (fn-ctl-control-target (fn-hf-control (fn-held-facts-of bytes)))
+              (fn-ctl-control-target (fn-ctl-control-of bytes)))
+       (equal (fn-ctl-control-keys (fn-hf-control (fn-held-facts-of bytes)))
+              (fn-ctl-control-keys (fn-ctl-control-of bytes)))
+       (equal (fn-ctl-control-locks (fn-hf-control (fn-held-facts-of bytes)))
+              (fn-ctl-control-locks (fn-ctl-control-of bytes))))
+  :hints (("Goal" :in-theory (e/d (fn-hf-internals fn-held-facts-of)
+                                  (fn-hnov-of fn-ctl-control-of fn-ctl-control-target
+                                   fn-ctl-control-keys fn-ctl-control-locks)))))
 
 ; -----------------------------------------------------------------------------
 ; The equations with the served machine's definitions (books/nntp-session).
@@ -411,7 +436,7 @@
            (fn-held-p (mv-nth 0 (fn-cat-intern-list w keyring generation fn-arena))))
   :hints (("Goal" :in-theory (enable fn-record-p fn-held-p fn-record-internals
                                      fn-held-internals fn-hf-p fn-hc-p
-                                     fn-hf-startp fn-hf-novp fn-hc-verdictp))))
+                                     fn-hf-startp fn-hc-verdictp))))
 
 (defthm fn-intern-list-handle
   (equal (fn-record-payload (mv-nth 0 (fn-cat-intern-list w keyring generation fn-arena)))

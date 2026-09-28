@@ -33,11 +33,13 @@
          (fields (if (and okp (true-listp article)) (fn-article-fields article) nil))
          (a (if (and (true-listp r) okp (fn-article-syntax-p article)) article nil)))
     (mv (fn-hf-make (len bytes) (fn-hf-split-index bytes 0) (fn-hf-body-lines-of bytes)
-                    (list (fn-ctl-article-target fields)
-                          (fn-ctl-cancel-keys fields)
-                          (fn-ctl-cancel-locks fields))
-                    ;; The overview column from the same parse (lane served-columns).
-                    (fn-hnov-of-parsed bytes r))
+                    ;; The control facts, then the overview column from the
+                    ;; same parse (lane served-columns).
+                    (fn-hf-control-with-nov
+                     (list (fn-ctl-article-target fields)
+                           (fn-ctl-cancel-keys fields)
+                           (fn-ctl-cancel-locks fields))
+                     (fn-hnov-of-parsed bytes r)))
         (fn-hc-make (if a
                         (fn-stx-verdict a keyring generation)
                       (fn-stx-make-verdict :unverified :malformed generation))

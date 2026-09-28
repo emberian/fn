@@ -78,7 +78,9 @@
 
 ; The rows carry the control facts of their bytes.
 (assert-event
- (and (equal (fn-hf-control (fn-held-facts *ocr-rt0*)) (fn-ctl-control-of *ocr-t-bytes*))
+ (and (equal (fn-hf-control (fn-held-facts *ocr-rt0*))
+             (fn-hf-control-with-nov (fn-ctl-control-of *ocr-t-bytes*)
+                                     (fn-hnov-of *ocr-t-bytes*)))
       (equal (fn-ctl-control-locks (fn-hf-control (fn-held-facts *ocr-rt0*)))
              (list (fn-ctl-lock-of-key (fn-record-string-octets *ocr-key*))))
       (equal (fn-ctl-control-target (fn-hf-control (fn-held-facts *ocr-rc1*)))

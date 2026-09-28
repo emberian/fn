@@ -47,14 +47,31 @@
 ; Cancel-Lock entries.  Decided once at intern like the others, so the owner's
 ; refresh, which holds no arena, reads a cancel's target and a target's locks
 ; from the rows (flip-L8-2, 2026-09-27).
+(fn-defrecord fn-hf
+  :constructor (fn-hf-make octets body-start body-lines control)
+  :fields ((fn-hf-octets natp)
+           (fn-hf-body-start fn-hf-startp)
+           (fn-hf-body-lines natp)
+           (fn-hf-control true-listp))
+  :recognizer fn-hf-p
+  :car-fn fn-cbor-ag-car
+  :cdr-fn fn-cbor-ag-cdr)
+
 ;
 ; NOV is the overview COLUMN (lane served-columns, 2026-09-27): what the
 ; served OVER/XOVER, HDR/XHDR and XPAT read of an article instead of its
 ; octets, decided at the same intern from the same parse
 ; (books/catalog-record.lisp fn-hnov-of; books/served-columns.lisp says the
-; served replies built from it are the replies built from the bytes).  Nil
-; means "not decided" (fn-held-plain, a row made by an entry that reads no
-; bytes): a served reader then reads the bytes, as before.
+; served replies built from it are the replies built from the bytes).  It
+; is the FOURTH element of the control position, not a field of its own:
+; the facts' shape is persisted in a state checkpoint's event table, and a
+; fifth field made an older checkpoint unreadable, which a store whose log
+; segments below it were dropped cannot fall back from (measured
+; 2026-09-28: "open refused reason=checkpoint-damaged").  CONTROL is a true
+; list whose first three elements the control vocabulary reads
+; (fn-ctl-at 0..2), so both images read both shapes.  Absent (a
+; three-element control, an older checkpoint's row, fn-held-plain's nil):
+; the column is not decided and a served reader reads the bytes, as before.
 (defun fn-hnov-flagp (x)
   (declare (xargs :guard t))
   (booleanp x))
@@ -72,20 +89,9 @@
   :car-fn fn-cbor-ag-car
   :cdr-fn fn-cbor-ag-cdr)
 
-(defun fn-hf-novp (x)
+(defun fn-hf-nov (facts)
   (declare (xargs :guard t))
-  (or (null x) (fn-hnov-p x)))
-
-(fn-defrecord fn-hf
-  :constructor (fn-hf-make octets body-start body-lines control nov)
-  :fields ((fn-hf-octets natp)
-           (fn-hf-body-start fn-hf-startp)
-           (fn-hf-body-lines natp)
-           (fn-hf-control true-listp)
-           (fn-hf-nov fn-hf-novp))
-  :recognizer fn-hf-p
-  :car-fn fn-cbor-ag-car
-  :cdr-fn fn-cbor-ag-cdr)
+  (fn-cbor-ag-car (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-hf-control facts))))))
 
 ; -----------------------------------------------------------------------------
 ; The context's shape: what the finish decides from the bytes, decided at
@@ -308,7 +314,7 @@
                 (fn-record-obligation-id w) (fn-record-content-subject w)
                 (fn-record-release-evidence w) (fn-record-charge w)
                 (fn-record-stamp w)
-                (fn-hf-make (len (fn-record-payload w)) nil 0 nil nil)
+                (fn-hf-make (len (fn-record-payload w)) nil 0 nil)
                 (fn-hc-make (fn-stx-make-verdict :absent nil 0) nil 0)
                 nil nil))
 
@@ -316,7 +322,7 @@
   (implies (and (fn-record-p w) (natp handle))
            (fn-held-p (fn-held-plain w handle)))
   :hints (("Goal" :in-theory (enable fn-held-p fn-record-p fn-record-internals fn-held-internals
-                                     fn-hf-p fn-hc-p fn-hf-startp fn-hf-novp fn-hc-verdictp
+                                     fn-hf-p fn-hc-p fn-hf-startp fn-hc-verdictp
                                      fn-held-numbersp fn-held-withdrawnp
                                      fn-stx-make-verdict fn-stx-verdict-token
                                      fn-stx-verdict-generation))))

@@ -221,7 +221,7 @@
                    article (fn-held-facts-of (fn-nntp-article-bytes article fn-arena)) fn-arena)
                   (fn-nov-overview article fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nov-overview fn-held-facts-of fn-hnov-of fn-hnov-of-parsed
-                                   fn-hnov-parsed-okp fn-hf-internals fn-hnov-internals
+                                   fn-hnov-parsed-okp fn-hf-internals fn-hnov-internals fn-hf-control-with-nov
                                    fn-nov-body-line-count fn-hf-body-lines-of-is-nov-body-line-count-by-definition)
                                   (fn-nov-header-content fn-hnov-field fn-nntp-article-bytes
                                    fn-rcl-tombstonep fn-ctl-control-of fn-hf-split-index
@@ -250,7 +250,7 @@
            (equal (fn-scol-tombstonep article fn-arena fn-cat)
                   (fn-nntp-article-tombstonep article fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-held-facts-of fn-hnov-of fn-hnov-of-parsed
-                                   fn-hf-internals fn-hnov-internals)
+                                   fn-hf-internals fn-hnov-internals fn-hf-control-with-nov)
                                   (fn-scol-okp fn-nntp-article-bytes fn-hnov-field
                                    fn-rcl-tombstonep fn-ctl-control-of fn-hf-split-index
                                    fn-hf-body-lines-of fn-hnov-parsed-okp)))))
@@ -369,7 +369,7 @@
                           (t (fn-nntp-hdr-content field article fn-arena))))
                   (fn-nntp-hdr-content field article fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-content fn-held-facts-of fn-hnov-of fn-hnov-of-parsed
-                                   fn-hnov-parsed-okp fn-hf-internals fn-hnov-internals
+                                   fn-hnov-parsed-okp fn-hf-internals fn-hnov-internals fn-hf-control-with-nov
                                    fn-nov-body-line-count
                                    fn-hf-body-lines-of-is-nov-body-line-count-by-definition)
                                   (fn-nov-header-content fn-hnov-field fn-nntp-article-bytes

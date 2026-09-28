@@ -35,7 +35,7 @@
 
 (defun hct-held (seq msgid octets)
   (fn-held-make seq (+ 1 seq) 0 msgid seq '("fn.test") "o" "s" "e" 1 5
-                (fn-hf-make octets 14 2 nil nil)
+                (fn-hf-make octets 14 2 nil)
                 (fn-hc-make (fn-stx-make-verdict :unverified nil 0) nil 0)
                 nil nil))
 

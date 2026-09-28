@@ -1381,7 +1381,7 @@
                                   (fn-nntp-response-block-rev fn-nntp-section-of-bytes
                                    fn-nntp-framed-of-bytes fn-nntp-stuff-lines
                                    fn-nntp-retrieval-initial fn-rcl-tombstonep
-                                   fn-nntp-tombstonep-unfolds revappend-removal
+                                   revappend-removal
                                    fn-nntp-response-block-rev-is-the-block
                                    fn-nntp-article-idp fn-nntp-set-cursor))
            :cases ((equal (fn-nntp-response-block-rev bytes kind) :error))

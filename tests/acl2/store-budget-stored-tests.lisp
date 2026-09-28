@@ -89,8 +89,7 @@
                 (fn-record-charge *sbst-row0*) (fn-record-stamp *sbst-row0*)
                 (fn-hf-make 7 (fn-hf-body-start (fn-held-facts *sbst-row0*))
                             (fn-hf-body-lines (fn-held-facts *sbst-row0*))
-                            (fn-hf-control (fn-held-facts *sbst-row0*))
-                            (fn-hf-nov (fn-held-facts *sbst-row0*)))
+                            (fn-hf-control (fn-held-facts *sbst-row0*)))
                 (fn-held-context *sbst-row0*) nil nil))
 (assert-event (fn-held-p *sbst-lying*))
 
