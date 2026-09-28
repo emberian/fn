@@ -34,6 +34,10 @@
 # cloned by hand on 2026-09-27, and batch AX lost a make check to a dirty
 # box tree that refused a push.
 set -u
+# The whole script is one compound command, so the shell parses all of it
+# before running any: editing this file during a run (sh reads a script as
+# it goes) broke two runs mid-way on 2026-09-28.
+{
 
 usage() {
     sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//' >&2
@@ -164,3 +168,4 @@ for path in $FETCH; do
 done
 echo "remote_check: $BOX make $TARGET exit $MAKE_EXIT at $HEAD_SHA; log build/remote-check/$BOX-$TARGET.log"
 exit "$MAKE_EXIT"
+}
