@@ -29,10 +29,6 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpaj-listener-ports (fn-owner-config state))))
 
-(defun fn-owner-bp-receipt-trustedp (view state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bpah-receipt-trustedp view (fn-owner-config state))))
-
 (defun fn-owner-bp-request-trustedp (view state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-request-trustedp view (fn-owner-config state))))
