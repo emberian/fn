@@ -113,10 +113,6 @@
         (state (f-put-global 'fn-store-cfg-open-configs nil state)))
     (value :ready)))
 
-(defun fn-store-sn-state (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (f-get-global 'fn-store-sn state)))
-
 ; The committed record octets and the completion debt of the standalone
 ; Store, carried as (K . VALUE) and advanced over the records committed since
 ; through the Store's derived event index, as the owner carries them
