@@ -1744,6 +1744,18 @@ start it publishes the file's bindings as configuration records, and when
 `bind` or `unbind` runs against a running node (the configuration names a
 `[control] path`) the verb asks the owner to re-read the file and publish
 the change at once (PKT-221; `books/login-binding-live.lisp`).
+A login `auth.toml` does not hold (a redeemed invitation's, PKT-560,
+PRF-388) is answered `:account` by `fn-native-auth-admin-bind`, nothing
+written; the verb then sends the administrative vector `account bind LOGIN
+HEX` (`account unbind LOGIN`) the operator planned from the same words
+(`fn-native-operator-result-principal-account-result`), live to the owner
+or offline into the store, where `fn-lb-account-bind-plan` stages one
+`:login-binding` record only while LOGIN holds a redeemed account, else
+refuses `unknown-login`. The start publication leaves the binding of a
+redeemed account the file does not name as the configuration holds it
+(`fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings`),
+so it survives restarts (`fn-lb-an-account-binding-survives-the-next-start`);
+a file login's binding stays the file's.
 `principal set-password` asks the same (control request 14): the owner
 rebuilds its credential table from the file with the load it ran at start
 (`host/native/auth.lisp` `fnn-native-auth-reload-config`, ACL2's
@@ -2047,7 +2059,7 @@ durable; the node keeps only its digest, so a lost code is issued again, never
 recovered. Without `--expires` a code lives 604800 seconds. The friend, on a TLS
 connection, sends `XREDEEM CODE LOGIN`, then `XREDEEM PASS PASSWORD`, and is
 answered `281` once the account is durable; from the next connection they log
-in with AUTHINFO USER/PASS as LOGIN, bound to the login's local principal, with
+in with AUTHINFO USER/PASS as LOGIN, authenticated as the login's local principal (a signing binding is `principal bind`'s, above), with
 no auth.toml edit and no restart. A code redeems once; the same exchange after a
 lost reply answers `281` again and binds nothing new. `account list` shows
 `redeemed LOGIN PRINCIPAL-HEX` and `pending expires EXPIRY` lines, never a code,

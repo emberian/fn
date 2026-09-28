@@ -412,7 +412,14 @@ The parts:
   books/native-auth-admin.lisp, through the same writer lock and replacement
   machine as `set-password`, which keeps every binding). A malformed
   `signing` value refuses the whole profile. `principal list` prints
-  `signing=HEX` for a bound login. The credential record
+  `signing=HEX` for a bound login. A login redeemed from an invitation
+  (specs/nntp.md, "Invitation-code accounts") has no table in the file; its
+  binding is the configuration's own row (mark 2 of the accounts slot,
+  where its account row is), written by the same verb as the administrative
+  record `account bind|unbind` and admitted only while the login holds a
+  redeemed account (`fn-lb-account-bind-plan`, PRF-388); a login that is
+  neither the file's nor an account's is refused `unknown-login`. The start
+  publication leaves such a binding in place. The credential record
   (`fn-auth-cred`) is unchanged; the table is
   `fn-native-auth-load-bindings` (books/native-auth-profile.lisp), read at
   start-up like the credentials.
