@@ -243,7 +243,7 @@
 ;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
 ;; fnn-command-store-import call fn-sxp-export-head and fn-sxp-export-chunk
 ;; (books/store-export-stream: the streamed export IS fn-sxp-entries and
-;; fn-sxp-manifest, fn-sxp-stream-is-the-export) and fn-sxp-import-plan; fnn-command-store-import follows fn-bs-imp-program's
+;; fn-sxp-manifest, fn-sxp-stream-is-the-export) and fn-sxp-import-plan (streamed: fn-sxi-*, PRF-369); fnn-command-store-import follows fn-bs-imp-program's
 ;; publication (staged, validated, no-replace rename, parent fenced) and
 ;; classifies a leftover staged directory through fn-bs-imp-classify.
 (include-book "books/store-export")

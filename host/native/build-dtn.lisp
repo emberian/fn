@@ -133,7 +133,7 @@
 
 ;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
 ;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
-;; fn-sxp-import-plan; fnn-command-store-import follows fn-bs-imp-program's
+;; fn-sxp-import-plan (streamed: fn-sxi-*, PRF-369); fnn-command-store-import follows fn-bs-imp-program's
 ;; publication (staged, validated, no-replace rename, parent fenced) and
 ;; classifies a leftover staged directory through fn-bs-imp-classify.
 (include-book "books/store-export")
