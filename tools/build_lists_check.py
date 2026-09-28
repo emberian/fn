@@ -321,6 +321,13 @@ def include_findings(root: Path, dtn_text: str, index: BookIndex | None = None,
     def visit(text: str, base: str) -> None:
         for kind, target, rest in ORDER.findall(strip_code_keep_strings(text)):
             if kind.lower() == "include-book":
+                # The image's umbrella (tools/extract/world.py) is the union
+                # of the script's and its host files' includes, loaded first
+                # so each compiled file loads once; counting it would make
+                # this order rule vacuous.  The rule reads the declared
+                # includes, in order, as before the umbrella.
+                if os.path.normpath(os.path.join(base, target)).startswith("books/image-world"):
+                    continue
                 if ":dir" not in rest.lower():
                     index.close(available, [os.path.normpath(os.path.join(base, target))
                                             + ".lisp"])

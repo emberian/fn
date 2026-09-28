@@ -255,6 +255,23 @@ static int fnx_statfs(const char *p, unsigned char *buf) {
     (let loop ((i (+ start plen -1)) (acc '()))
       (if (< i start) acc (loop (- i 1) (cons (u8vector-ref entry i) acc))))))
 
+;; A-PGS-HOST-IO's page fill (host/native/extent.lisp fn-pgs-fill-realize):
+;; the 2048 little-endian u64 words page ADDR of the page file FILE holds
+;; (FILE a handle), one pread; a short read refused by name.  ACL2's digest
+;; check decides whether they are the page the committed table names.
+(define (a-pgs-fill-realize file addr)
+  (let* ((buf (make-u8vector 16384 0))
+         (got (%pread (hx-fd file) buf 16384 (* addr 16384))))
+    (unless (= got 16384)
+      (error (sprintf "history-page-read: page ~a of ~a: ~a of 16384 octets" addr (hx-path file) got)))
+    (let loop ((k 2047) (acc '()))
+      (if (< k 0)
+          acc
+          (loop (- k 1)
+                (cons (let wl ((b 7) (w 0))
+                        (if (< b 0) w (wl (- b 1) (+ (* w 256) (u8vector-ref buf (+ (* 8 k) b))))))
+                      acc))))))
+
 ;; A-DURABLE-LZ's realizer (host/native/extent.lisp fn-durable-realize-lz):
 ;; the block read through the extent realizer (trailer checked), ACL2's
 ;; decoder fn-lzr-lz-read over it (called as the host calls it, through the
