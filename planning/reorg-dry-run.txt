@@ -1,0 +1,1686 @@
+reorg dry run (nothing written): 1462 files would move
+  collisions: none; unassigned: none
+  include-book edges rewritten: 3552 in 1433 books
+  path references outside books/ and tests/acl2/ (file: count; planning/ledger.json, ledger.md and current.md are regenerated, not rewritten):
+    planning/ledger.json: 10029
+    planning/proofs.json: 2813
+    Makefile: 1446
+    planning/requirements.json: 641
+    planning/proof-events.json: 288
+    tools/extract/world.lisp: 272
+    host/owner-host.lisp: 251
+    host/native/build.lisp: 160
+    host/native/io.lisp: 132
+    specs/peering.md: 124
+    specs/bp-node-machine.md: 112
+    host/native/build-dtn.lisp: 105
+    host/store-node-host.lisp: 95
+    specs/nntp.md: 86
+    specs/node-functionality.md: 83
+    host/native/owner.lisp: 81
+    docs/proof-style.md: 79
+    planning/proof-cost-baseline.json: 67
+    host/store-host.lisp: 52
+    planning/reach-baseline.json: 52
+    specs/nntp-audit.md: 50
+    specs/reconfiguration.md: 49
+    specs/storage.md: 49
+    docs/operator-internals.md: 48
+    specs/crash-model-v2.md: 48
+    host/native/build-store-test.lisp: 41
+    specs/host.md: 41
+    tools/v0_matrix.py: 38
+    docs/implementation.md: 36
+    specs/acceptance-stamp.md: 31
+    specs/substrate-transport.md: 29
+    planning/current-view.json: 22
+    tools/run_owner.py: 22
+    host/native-live-status-host.lisp: 21
+    specs/encoding.md: 21
+    specs/bp-evolving-store.md: 20
+    specs/store-node.md: 20
+    planning/v0-matrix.json: 19
+    specs/identity.md: 18
+    specs/anchor.md: 16
+    specs/bp-design.md: 16
+    tools/bridge_image.py: 16
+    specs/store-refinement.md: 15
+    tools/ledger.py: 15
+    host/native-control-host.lisp: 14
+    tools/docs_check.py: 14
+    docs/architecture.md: 13
+    specs/scheduler.md: 13
+    tools/run_store.py: 13
+    specs/failures.md: 12
+    specs/owner.md: 12
+    host/bp-ingress-host.lisp: 11
+    host/reader-host.lisp: 11
+    specs/human-client.md: 11
+    host/bp-native-app-host.lisp: 10
+    host/bp-node-host.lisp: 10
+    host/native/bp-service.lisp: 10
+    specs/bp-primary.md: 10
+    specs/store-experiment.md: 10
+    tools/native_program_check.py: 10
+    host/checkpoint-host.lisp: 9
+    host/native/admin.lisp: 9
+    host/native/mux.lisp: 9
+    host/native/operator.lisp: 9
+    host/workflow-host.lisp: 9
+    planning/hot-path-findings.json: 9
+    specs/bp-workflow.md: 9
+    specs/consumer-progress.md: 9
+    tools/session_depth.py: 9
+    tools/stx.py: 9
+    docs/proofs.md: 8
+    host/native/heap.lisp: 8
+    host/native-admin-host.lisp: 8
+    specs/retention.md: 8
+    host/native/control.lisp: 7
+    host/native/digest.lisp: 7
+    host/native/proto-history-pages.lisp: 7
+    specs/bp-workflow-host.md: 7
+    specs/checkpoint.md: 7
+    specs/privacy.md: 7
+    specs/transfer-journal.md: 7
+    tools/fn_client.py: 7
+    tools/fn_verify.py: 7
+    host/native/extent.lisp: 6
+    host/tcpcl-host.lisp: 6
+    specs/container.md: 6
+    specs/topic-history.md: 6
+    specs/transfer-experiment.md: 6
+    tools/build_lists_check.py: 6
+    tools/cite_check.py: 6
+    tools/frame_bridge.py: 6
+    tools/run_reader.py: 6
+    tools/scale_curve.py: 6
+    tools/synth_log_store.py: 6
+    tools/teeth_check.py: 6
+    docs/client-internals.md: 5
+    host/anchor-host.lisp: 5
+    host/config-host.lisp: 5
+    host/native/bp-node.lisp: 5
+    host/native/checkpoint.lisp: 5
+    host/native/proto-pagestore.lisp: 5
+    host/web-host.lisp: 5
+    specs/bp-receiver-proofs.md: 5
+    specs/index.md: 5
+    specs/policy.md: 5
+    specs/relay.md: 5
+    specs/statement.md: 5
+    specs/tcpcl.md: 5
+    tools/auth_secret.py: 5
+    tools/harness_check.py: 5
+    tools/twonode_gate.py: 5
+    host/bp-receipt-journal-host.lisp: 4
+    host/index-host.lisp: 4
+    host/ninep-host.lisp: 4
+    host/scheduler-host.lisp: 4
+    specs/article-work.md: 4
+    specs/store-exploration.md: 4
+    specs/wildmat.md: 4
+    tools/farm.py: 4
+    tools/feed_wire.py: 4
+    tools/reach_check.py: 4
+    tools/roughtime.py: 4
+    host/bp-release-owner-host.lisp: 3
+    host/hybrid-signature-host.lisp: 3
+    host/native/bp.lisp: 3
+    host/native/hybrid-control.lisp: 3
+    host/native/peer-invite.lisp: 3
+    host/native/pull-service.lisp: 3
+    host/native/tls.lisp: 3
+    host/native-operator-host.lisp: 3
+    specs/article-fields.md: 3
+    specs/bp-ingress.md: 3
+    specs/bp-outbound.md: 3
+    specs/lace.md: 3
+    specs/native-config.md: 3
+    specs/time.md: 3
+    specs/transfer-public-bound.md: 3
+    tools/ascii_check.py: 3
+    tools/callgraph.py: 3
+    tools/frame_literal.py: 3
+    tools/inn_lab.py: 3
+    tools/payload_kind_check.py: 3
+    tools/power_loss.py: 3
+    tools/proof_profile.py: 3
+    tools/protocol_emit.py: 3
+    docs/cbor-interop.md: 2
+    host/bp-receipt-host.lisp: 2
+    host/bp-receive-host.lisp: 2
+    host/journal-publish-host.lisp: 2
+    host/native/auth.lisp: 2
+    host/native/login-bindings.lisp: 2
+    host/native/tcpcl.lisp: 2
+    host/native/web-host.lisp: 2
+    host/native-auth-admin-host.lisp: 2
+    host/native-config-host.lisp: 2
+    host/peer-invite-host.lisp: 2
+    host/tls-reload-host.lisp: 2
+    specs/article-parser.md: 2
+    specs/store-fault-matrix.md: 2
+    specs/transfer-work.md: 2
+    specs/wildmat-work.md: 2
+    tools/blake3_ref.py: 2
+    tools/certs.py: 2
+    tools/checkpoint.py: 2
+    tools/depth_check.py: 2
+    tools/fitness.py: 2
+    tools/fixtures.py: 2
+    tools/keystone_emit.py: 2
+    tools/scale_gate.py: 2
+    tools/scheduler.py: 2
+    tools/shape_books.py: 2
+    tools/theory_check.py: 2
+    tools/throughput_gate.py: 2
+    tools/triage.py: 2
+    docs/prefixes.md: 1
+    host/anchor-server-host.lisp: 1
+    host/anchor-wire-host.lisp: 1
+    host/bp-outbound-host.lisp: 1
+    host/bp-receive-evidence-host.lisp: 1
+    host/feed-filename-host.lisp: 1
+    host/native/bp-obligation.lisp: 1
+    host/native/feed-filename.lisp: 1
+    host/native/feed-service.lisp: 1
+    host/native/immutable-publish.lisp: 1
+    host/native/keys.lisp: 1
+    host/native/lz4.lisp: 1
+    host/native/reader-model-host.lisp: 1
+    host/native/tls-reload.lisp: 1
+    host/native/workflow.lisp: 1
+    host/native-auth-host.lisp: 1
+    host/native-hybrid-control-host.lisp: 1
+    host/simulator.lisp: 1
+    host/topic-history-metadata-host.lisp: 1
+    specs/bp-adu.md: 1
+    specs/bp-path.md: 1
+    specs/native-admin.md: 1
+    specs/replication.md: 1
+    specs/transfer-public-work.md: 1
+    specs/views-9p.md: 1
+    tools/build_lz4.sh: 1
+    tools/build_native_host.sh: 1
+    tools/bundle_bridge.py: 1
+    tools/crypto_host.py: 1
+    tools/fn9p.py: 1
+    tools/hbox_native.sh: 1
+    tools/heap_peak_measure.py: 1
+    tools/launcher_exit_check.py: 1
+    tools/must_fail_check.py: 1
+    tools/node_probe.py: 1
+    tools/proof_artifacts.py: 1
+    tools/proof_repl.py: 1
+    tools/repl_census.py: 1
+    tools/rule_cost.py: 1
+    tools/run_bp_ingress.py: 1
+    tools/run_simulator.py: 1
+    tools/scale_probe.py: 1
+    tools/spec_cite_check.py: 1
+  books per subsystem: {'store': 441, 'nntp': 139, 'crypto': 68, 'bp': 283, 'text': 80, 'lib': 35, 'codec': 82, 'time': 12, 'config': 40, 'peer': 92, 'owner': 190}
+  subsystem/role: {'bp/mixed': 140, 'bp/proofs': 27, 'bp/test': 116, 'codec/attach': 3, 'codec/mixed': 36, 'codec/proofs': 7, 'codec/test': 36, 'config/mixed': 16, 'config/proofs': 7, 'config/test': 17, 'crypto/attach': 1, 'crypto/mixed': 34, 'crypto/proofs': 7, 'crypto/test': 26, 'lib/mixed': 20, 'lib/proofs': 2, 'lib/test': 13, 'nntp/mixed': 70, 'nntp/proofs': 7, 'nntp/test': 62, 'owner/mixed': 85, 'owner/proofs': 16, 'owner/test': 89, 'peer/mixed': 52, 'peer/proofs': 7, 'peer/test': 33, 'store/attach': 3, 'store/mixed': 219, 'store/proofs': 23, 'store/test': 196, 'text/mixed': 50, 'text/proofs': 5, 'text/test': 25, 'time/mixed': 6, 'time/proofs': 2, 'time/test': 4}
+  floating books (need a per-book decision): 341 {'bp->owner': 70, 'store->owner': 46, 'nntp->owner': 41, 'store->nntp': 22, 'crypto->store': 19, 'nntp->peer': 19, 'text->store': 16, 'config->owner': 13, 'peer->owner': 11, 'peer->bp': 10, 'crypto->text': 7, 'text->nntp': 7, 'text->owner': 7, 'codec->nntp': 7, 'codec->store': 6, 'config->nntp': 6, 'codec->text': 5, 'text->peer': 4, 'crypto->peer': 4, 'lib->store': 3, 'lib->codec': 3, 'codec->owner': 3, 'time->bp': 3, 'lib->config': 2, 'config->store': 1, 'codec->crypto': 1, 'lib->crypto': 1, 'store->peer': 1, 'codec->time': 1, 'crypto->nntp': 1, 'crypto->owner': 1}
+  books/acceptance.lisp -> books/store/acceptance.lisp
+  books/acceptance-alloc.lisp -> books/store/acceptance-alloc.lisp
+  books/acceptance-invariants.lisp -> books/store/acceptance-invariants.lisp
+  books/acceptance-payload-ref.lisp -> books/store/acceptance-payload-ref.lisp
+  books/acceptance-stamp-invariants.lisp -> books/store/acceptance-stamp-invariants.lisp
+  books/account-list.lisp -> books/nntp/account-list.lisp
+  books/accounts.lisp -> books/nntp/accounts.lisp
+  books/anchor.lisp -> books/crypto/anchor.lisp
+  books/anchor-invariants.lisp -> books/crypto/anchor-invariants.lisp
+  books/anchor-record.lisp -> books/crypto/anchor-record.lisp
+  books/anchor-replace.lisp -> books/crypto/anchor-replace.lisp
+  books/anchor-servers.lisp -> books/crypto/anchor-servers.lisp
+  books/anchor-wire.lisp -> books/crypto/anchor-wire.lisp
+  books/app-journal.lisp -> books/bp/app-journal.lisp
+  books/article.lisp -> books/text/article.lisp
+  books/article-arena-reads.lisp -> books/text/article-arena-reads.lisp
+  books/article-fields.lisp -> books/text/article-fields.lisp
+  books/article-header-census.lisp -> books/text/article-header-census.lisp
+  books/article-header-limits.lisp -> books/text/article-header-limits.lisp
+  books/article-invariants.lisp -> books/text/article-invariants.lisp
+  books/article-properties.lisp -> books/text/article-properties.lisp
+  books/article-public-bound.lisp -> books/text/article-public-bound.lisp
+  books/article-public-work.lisp -> books/text/article-public-work.lisp
+  books/article-work.lisp -> books/text/article-work.lisp
+  books/article-work-budget.lisp -> books/text/article-work-budget.lisp
+  books/article-work-primitives.lisp -> books/text/article-work-primitives.lisp
+  books/article-work-scanners.lisp -> books/text/article-work-scanners.lisp
+  books/assumptions.lisp -> books/lib/assumptions.lisp
+  books/auth-secret.lisp -> books/nntp/auth-secret.lisp
+  books/blake3.lisp -> books/crypto/blake3.lisp
+  books/blake3-stobj.lisp -> books/crypto/blake3-stobj.lisp
+  books/bp-adu.lisp -> books/bp/bp-adu.lisp
+  books/bp-app-handoff.lisp -> books/bp/bp-app-handoff.lisp
+  books/bp-app-handoff-time.lisp -> books/bp/bp-app-handoff-time.lisp
+  books/bp-authored-wire.lisp -> books/bp/bp-authored-wire.lisp
+  books/bp-bundle.lisp -> books/bp/bp-bundle.lisp
+  books/bp-bundle-invariants.lisp -> books/bp/bp-bundle-invariants.lisp
+  books/bp-channel-ingress.lisp -> books/bp/bp-channel-ingress.lisp
+  books/bp-clock-domain.lisp -> books/bp/bp-clock-domain.lisp
+  books/bp-contact-service.lisp -> books/bp/bp-contact-service.lisp
+  books/bp-eid-shape.lisp -> books/bp/bp-eid-shape.lisp
+  books/bp-fnbs-byte-invariants.lisp -> books/bp/bp-fnbs-byte-invariants.lisp
+  books/bp-fnbs-byte-publisher.lisp -> books/bp/bp-fnbs-byte-publisher.lisp
+  books/bp-fnbs-codec.lisp -> books/bp/bp-fnbs-codec.lisp
+  books/bp-fnbs-codec-invariants.lisp -> books/bp/bp-fnbs-codec-invariants.lisp
+  books/bp-fnbs-conflict-codec.lisp -> books/bp/bp-fnbs-conflict-codec.lisp
+  books/bp-fnbs-conflict-invariants.lisp -> books/bp/bp-fnbs-conflict-invariants.lisp
+  books/bp-fnbs-conflict-publication.lisp -> books/bp/bp-fnbs-conflict-publication.lisp
+  books/bp-fnbs-deletion-codec.lisp -> books/bp/bp-fnbs-deletion-codec.lisp
+  books/bp-fnbs-deletion-publication.lisp -> books/bp/bp-fnbs-deletion-publication.lisp
+  books/bp-fnbs-delivery-codec.lisp -> books/bp/bp-fnbs-delivery-codec.lisp
+  books/bp-fnbs-delivery-publication.lisp -> books/bp/bp-fnbs-delivery-publication.lisp
+  books/bp-fnbs-delivery-replay.lisp -> books/bp/bp-fnbs-delivery-replay.lisp
+  books/bp-fnbs-dispatch-codec.lisp -> books/bp/bp-fnbs-dispatch-codec.lisp
+  books/bp-fnbs-dispatch-invariants.lisp -> books/bp/bp-fnbs-dispatch-invariants.lisp
+  books/bp-fnbs-dispatch-publication.lisp -> books/bp/bp-fnbs-dispatch-publication.lisp
+  books/bp-fnbs-family-codec.lisp -> books/bp/bp-fnbs-family-codec.lisp
+  books/bp-fnbs-family-publication.lisp -> books/bp/bp-fnbs-family-publication.lisp
+  books/bp-fnbs-family-replay.lisp -> books/bp/bp-fnbs-family-replay.lisp
+  books/bp-fnbs-forward-codec.lisp -> books/bp/bp-fnbs-forward-codec.lisp
+  books/bp-fnbs-forward-publication.lisp -> books/bp/bp-fnbs-forward-publication.lisp
+  books/bp-fnbs-inspect.lisp -> books/bp/bp-fnbs-inspect.lisp
+  books/bp-fnbs-namespace.lisp -> books/bp/bp-fnbs-namespace.lisp
+  books/bp-fnbs-publication.lisp -> books/bp/bp-fnbs-publication.lisp
+  books/bp-fnbs-replay.lisp -> books/bp/bp-fnbs-replay.lisp
+  books/bp-fnbs-replay-append.lisp -> books/bp/bp-fnbs-replay-append.lisp
+  books/bp-fnbs-replay-invariants.lisp -> books/bp/bp-fnbs-replay-invariants.lisp
+  books/bp-forward-attempt.lisp -> books/bp/bp-forward-attempt.lisp
+  books/bp-forward-image.lisp -> books/bp/bp-forward-image.lisp
+  books/bp-fragment.lisp -> books/bp/bp-fragment.lisp
+  books/bp-fragment-fast.lisp -> books/bp/bp-fragment-fast.lisp
+  books/bp-fragment-invariants.lisp -> books/bp/bp-fragment-invariants.lisp
+  books/bp-fragment-resume.lisp -> books/bp/bp-fragment-resume.lisp
+  books/bp-fragment-send.lisp -> books/bp/bp-fragment-send.lisp
+  books/bp-fragment-sweep.lisp -> books/bp/bp-fragment-sweep.lisp
+  books/bp-handoff-report.lisp -> books/bp/bp-handoff-report.lisp
+  books/bp-handoff-status.lisp -> books/bp/bp-handoff-status.lisp
+  books/bp-held-payload.lisp -> books/bp/bp-held-payload.lisp
+  books/bp-held-projection.lisp -> books/bp/bp-held-projection.lisp
+  books/bp-ingress.lisp -> books/bp/bp-ingress.lisp
+  books/bp-ingress-carried.lisp -> books/bp/bp-ingress-carried.lisp
+  books/bp-ion-observation.lisp -> books/bp/bp-ion-observation.lisp
+  books/bp-ion-workflow.lisp -> books/bp/bp-ion-workflow.lisp
+  books/bp-ion-workflow-replay.lisp -> books/bp/bp-ion-workflow-replay.lisp
+  books/bp-limits.lisp -> books/bp/bp-limits.lisp
+  books/bp-listener-set.lisp -> books/bp/bp-listener-set.lisp
+  books/bp-native-app.lisp -> books/bp/bp-native-app.lisp
+  books/bp-native-app-fast.lisp -> books/bp/bp-native-app-fast.lisp
+  books/bp-node.lisp -> books/bp/bp-node.lisp
+  books/bp-node-busy-delivery.lisp -> books/bp/bp-node-busy-delivery.lisp
+  books/bp-node-contact-driver.lisp -> books/bp/bp-node-contact-driver.lisp
+  books/bp-node-debt.lisp -> books/bp/bp-node-debt.lisp
+  books/bp-node-debt-cache-invariants.lisp -> books/bp/bp-node-debt-cache-invariants.lisp
+  books/bp-node-dispatch.lisp -> books/bp/bp-node-dispatch.lisp
+  books/bp-node-forward-lower-guards.lisp -> books/bp/bp-node-forward-lower-guards.lisp
+  books/bp-node-forward-plan.lisp -> books/bp/bp-node-forward-plan.lisp
+  books/bp-node-forward-resume.lisp -> books/bp/bp-node-forward-resume.lisp
+  books/bp-node-forward-retry.lisp -> books/bp/bp-node-forward-retry.lisp
+  books/bp-node-foundation.lisp -> books/bp/bp-node-foundation.lisp
+  books/bp-node-fragment-expiry.lisp -> books/bp/bp-node-fragment-expiry.lisp
+  books/bp-node-fragment-family.lisp -> books/bp/bp-node-fragment-family.lisp
+  books/bp-node-fragment-guards.lisp -> books/bp/bp-node-fragment-guards.lisp
+  books/bp-node-fragment-jobs.lisp -> books/bp/bp-node-fragment-jobs.lisp
+  books/bp-node-fragment-plan.lisp -> books/bp/bp-node-fragment-plan.lisp
+  books/bp-node-fragment-replacement.lisp -> books/bp/bp-node-fragment-replacement.lisp
+  books/bp-node-fragment-step.lisp -> books/bp/bp-node-fragment-step.lisp
+  books/bp-node-job-cursor.lisp -> books/bp/bp-node-job-cursor.lisp
+  books/bp-node-job-offer.lisp -> books/bp/bp-node-job-offer.lisp
+  books/bp-node-job-offer-progress.lisp -> books/bp/bp-node-job-offer-progress.lisp
+  books/bp-node-machine.lisp -> books/bp/bp-node-machine.lisp
+  books/bp-node-machine-authorization.lisp -> books/bp/bp-node-machine-authorization.lisp
+  books/bp-node-machine-codec.lisp -> books/bp/bp-node-machine-codec.lisp
+  books/bp-node-machine-gaps.lisp -> books/bp/bp-node-machine-gaps.lisp
+  books/bp-node-machine-guards.lisp -> books/bp/bp-node-machine-guards.lisp
+  books/bp-node-machine-invariants.lisp -> books/bp/bp-node-machine-invariants.lisp
+  books/bp-node-profile.lisp -> books/bp/bp-node-profile.lisp
+  books/bp-node-profile-admission.lisp -> books/bp/bp-node-profile-admission.lisp
+  books/bp-node-profile-replay.lisp -> books/bp/bp-node-profile-replay.lisp
+  books/bp-node-progress.lisp -> books/bp/bp-node-progress.lisp
+  books/bp-node-progress-bridge.lisp -> books/bp/bp-node-progress-bridge.lisp
+  books/bp-node-progress-guards.lisp -> books/bp/bp-node-progress-guards.lisp
+  books/bp-node-progress-invariants.lisp -> books/bp/bp-node-progress-invariants.lisp
+  books/bp-node-progress-premises.lisp -> books/bp/bp-node-progress-premises.lisp
+  books/bp-node-progress-selection-invariants.lisp -> books/bp/bp-node-progress-selection-invariants.lisp
+  books/bp-node-receipt-send.lisp -> books/bp/bp-node-receipt-send.lisp
+  books/bp-node-receive-boundary.lisp -> books/bp/bp-node-receive-boundary.lisp
+  books/bp-node-records.lisp -> books/bp/bp-node-records.lisp
+  books/bp-node-report-step.lisp -> books/bp/bp-node-report-step.lisp
+  books/bp-node-retire.lisp -> books/bp/bp-node-retire.lisp
+  books/bp-node-rotation.lisp -> books/bp/bp-node-rotation.lisp
+  books/bp-node-rotation-buffer.lisp -> books/bp/bp-node-rotation-buffer.lisp
+  books/bp-node-rotation-codec.lisp -> books/bp/bp-node-rotation-codec.lisp
+  books/bp-node-rotation-due.lisp -> books/bp/bp-node-rotation-due.lisp
+  books/bp-node-rotation-slice.lisp -> books/bp/bp-node-rotation-slice.lisp
+  books/bp-node-rotation-step.lisp -> books/bp/bp-node-rotation-step.lisp
+  books/bp-node-run-class.lisp -> books/bp/bp-node-run-class.lisp
+  books/bp-outbound.lisp -> books/bp/bp-outbound.lisp
+  books/bp-primary.lisp -> books/bp/bp-primary.lisp
+  books/bp-primary-cbor.lisp -> books/bp/bp-primary-cbor.lisp
+  books/bp-primary-invariants.lisp -> books/bp/bp-primary-invariants.lisp
+  books/bp-receipt.lisp -> books/bp/bp-receipt.lisp
+  books/bp-receipt-alpha.lisp -> books/bp/bp-receipt-alpha.lisp
+  books/bp-receipt-records.lisp -> books/bp/bp-receipt-records.lisp
+  books/bp-receive-evidence.lisp -> books/bp/bp-receive-evidence.lisp
+  books/bp-receiver-context-invariants.lisp -> books/bp/bp-receiver-context-invariants.lisp
+  books/bp-receiver-evolving-history-invariants.lisp -> books/bp/bp-receiver-evolving-history-invariants.lisp
+  books/bp-receiver-evolving-node-invariants.lisp -> books/bp/bp-receiver-evolving-node-invariants.lisp
+  books/bp-receiver-evolving-store-invariants.lisp -> books/bp/bp-receiver-evolving-store-invariants.lisp
+  books/bp-receiver-invariants.lisp -> books/bp/bp-receiver-invariants.lisp
+  books/bp-receiver-journal-invariants.lisp -> books/bp/bp-receiver-journal-invariants.lisp
+  books/bp-receiver-retention-invariants.lisp -> books/bp/bp-receiver-retention-invariants.lisp
+  books/bp-receiver-state-invariants.lisp -> books/bp/bp-receiver-state-invariants.lisp
+  books/bp-receiver-store-invariants.lisp -> books/bp/bp-receiver-store-invariants.lisp
+  books/bp-receiver-trace-invariants.lisp -> books/bp/bp-receiver-trace-invariants.lisp
+  books/bp-release.lisp -> books/bp/bp-release.lisp
+  books/bp-release-authority.lisp -> books/bp/bp-release-authority.lisp
+  books/bp-release-invariants.lisp -> books/bp/bp-release-invariants.lisp
+  books/bp-release-replay-status.lisp -> books/bp/bp-release-replay-status.lisp
+  books/bp-report-author.lisp -> books/bp/bp-report-author.lisp
+  books/bp-report-deletion.lisp -> books/bp/bp-report-deletion.lisp
+  books/bp-report-guards.lisp -> books/bp/bp-report-guards.lisp
+  books/bp-report-observe.lisp -> books/bp/bp-report-observe.lisp
+  books/bp-report-outbox.lisp -> books/bp/bp-report-outbox.lisp
+  books/bp-request-plan.lisp -> books/bp/bp-request-plan.lisp
+  books/bp-request-recovery.lisp -> books/bp/bp-request-recovery.lisp
+  books/bp-request-ref.lisp -> books/bp/bp-request-ref.lisp
+  books/bp-request-reference.lisp -> books/bp/bp-request-reference.lisp
+  books/bp-route.lisp -> books/bp/bp-route.lisp
+  books/bp-route-jobs.lisp -> books/bp/bp-route-jobs.lisp
+  books/bp-route-step.lisp -> books/bp/bp-route-step.lisp
+  books/bp-run-class.lisp -> books/bp/bp-run-class.lisp
+  books/bp-sequence-fidelity.lisp -> books/bp/bp-sequence-fidelity.lisp
+  books/bp-sequence-persistence.lisp -> books/bp/bp-sequence-persistence.lisp
+  books/bp-session-admission.lisp -> books/bp/bp-session-admission.lisp
+  books/bp-signed-binding.lisp -> books/bp/bp-signed-binding.lisp
+  books/bp-signed-receipt.lisp -> books/bp/bp-signed-receipt.lisp
+  books/bp-status-report.lisp -> books/bp/bp-status-report.lisp
+  books/bp-status-report-invariants.lisp -> books/bp/bp-status-report-invariants.lisp
+  books/bp-transit-join.lisp -> books/bp/bp-transit-join.lisp
+  books/bp-workflow.lisp -> books/bp/bp-workflow.lisp
+  books/bp-workflow-binding-core.lisp -> books/bp/bp-workflow-binding-core.lisp
+  books/bp-workflow-binding-invariants.lisp -> books/bp/bp-workflow-binding-invariants.lisp
+  books/bp-workflow-constructors.lisp -> books/bp/bp-workflow-constructors.lisp
+  books/bp-workflow-invariants.lisp -> books/bp/bp-workflow-invariants.lisp
+  books/bp-workflow-records.lisp -> books/bp/bp-workflow-records.lisp
+  books/bp-workflow-records-invariants.lisp -> books/bp/bp-workflow-records-invariants.lisp
+  books/bp-workflow-replay-status.lisp -> books/bp/bp-workflow-replay-status.lisp
+  books/bp-workflow-transport-invariants.lisp -> books/bp/bp-workflow-transport-invariants.lisp
+  books/byte-store.lisp -> books/store/byte-store.lisp
+  books/byte-store-arena.lisp -> books/store/byte-store-arena.lisp
+  books/byte-store-fault-keystones.lisp -> books/store/byte-store-fault-keystones.lisp
+  books/byte-store-frame.lisp -> books/store/byte-store-frame.lisp
+  books/byte-store-initializer.lisp -> books/store/byte-store-initializer.lisp
+  books/byte-store-invariants.lisp -> books/store/byte-store-invariants.lisp
+  books/byte-store-k0.lisp -> books/store/byte-store-k0.lisp
+  books/byte-store-k0-recovery.lisp -> books/store/byte-store-k0-recovery.lisp
+  books/byte-store-k0-staging.lisp -> books/store/byte-store-k0-staging.lisp
+  books/byte-store-keystones.lisp -> books/store/byte-store-keystones.lisp
+  books/byte-store-log-initializer.lisp -> books/store/byte-store-log-initializer.lisp
+  books/byte-store-native-correspondence.lisp -> books/store/byte-store-native-correspondence.lisp
+  books/byte-store-observation.lisp -> books/store/byte-store-observation.lisp
+  books/byte-store-observation-scan.lisp -> books/store/byte-store-observation-scan.lisp
+  books/byte-store-program-invariants.lisp -> books/store/byte-store-program-invariants.lisp
+  books/byte-store-programs.lisp -> books/store/byte-store-programs.lisp
+  books/byte-store-range-read.lisp -> books/store/byte-store-range-read.lisp
+  books/byte-store-record-fence.lisp -> books/store/byte-store-record-fence.lisp
+  books/byte-store-record-provenance.lisp -> books/store/byte-store-record-provenance.lisp
+  books/byte-store-record-provenance-bytes.lisp -> books/store/byte-store-record-provenance-bytes.lisp
+  books/byte-store-record-provenance-node.lisp -> books/store/byte-store-record-provenance-node.lisp
+  books/byte-store-record-provenance-owner.lisp -> books/store/byte-store-record-provenance-owner.lisp
+  books/byte-store-relation.lisp -> books/store/byte-store-relation.lisp
+  books/byte-store-retention-publication.lisp -> books/store/byte-store-retention-publication.lisp
+  books/byte-store-scan.lisp -> books/store/byte-store-scan.lisp
+  books/byte-store-stable-prefix.lisp -> books/store/byte-store-stable-prefix.lisp
+  books/byte-store-state-checkpoint-program.lisp -> books/store/byte-store-state-checkpoint-program.lisp
+  books/byte-store-txn-name.lisp -> books/store/byte-store-txn-name.lisp
+  books/cancel-lock.lisp -> books/text/cancel-lock.lisp
+  books/cancel-lock-d25.lisp -> books/text/cancel-lock-d25.lisp
+  books/cancel-lock-lines.lisp -> books/text/cancel-lock-lines.lisp
+  books/catalog.lisp -> books/store/catalog.lisp
+  books/catalog-commit.lisp -> books/store/catalog-commit.lisp
+  books/catalog-delta.lisp -> books/store/catalog-delta.lisp
+  books/catalog-entries.lisp -> books/store/catalog-entries.lisp
+  books/catalog-load-index.lisp -> books/store/catalog-load-index.lisp
+  books/catalog-number-index.lisp -> books/store/catalog-number-index.lisp
+  books/catalog-record.lisp -> books/store/catalog-record.lisp
+  books/catalog-refresh.lisp -> books/store/catalog-refresh.lisp
+  books/catalog-relation.lisp -> books/store/catalog-relation.lisp
+  books/catalog-view.lisp -> books/store/catalog-view.lisp
+  books/cbor.lisp -> books/codec/cbor.lisp
+  books/cbor-invariants.lisp -> books/codec/cbor-invariants.lisp
+  books/checkpoint.lisp -> books/store/checkpoint.lisp
+  books/checkpoint-auxiliary.lisp -> books/store/checkpoint-auxiliary.lisp
+  books/checkpoint-codec.lisp -> books/store/checkpoint-codec.lisp
+  books/checkpoint-compaction.lisp -> books/store/checkpoint-compaction.lisp
+  books/checkpoint-publish.lisp -> books/store/checkpoint-publish.lisp
+  books/clock.lisp -> books/time/clock.lisp
+  books/clock-invariants.lisp -> books/time/clock-invariants.lisp
+  books/clock-reading.lisp -> books/time/clock-reading.lisp
+  books/clock-unit.lisp -> books/time/clock-unit.lisp
+  books/clock-wall-reading.lisp -> books/time/clock-wall-reading.lisp
+  books/codec-attach.lisp -> books/codec/codec-attach.lisp
+  books/config.lisp -> books/config/config.lisp
+  books/config-carried-candidate.lisp -> books/config/config-carried-candidate.lisp
+  books/config-carried-open.lisp -> books/config/config-carried-open.lisp
+  books/config-crash-replay.lisp -> books/config/config-crash-replay.lisp
+  books/config-descriptions.lisp -> books/config/config-descriptions.lisp
+  books/config-invariants.lisp -> books/config/config-invariants.lisp
+  books/config-observed.lisp -> books/config/config-observed.lisp
+  books/config-owner-advance-invariants.lisp -> books/config/config-owner-advance-invariants.lisp
+  books/config-owner-advance-reader-invariants.lisp -> books/config/config-owner-advance-reader-invariants.lisp
+  books/config-owner-carried.lisp -> books/config/config-owner-carried.lisp
+  books/config-owner-live.lisp -> books/config/config-owner-live.lisp
+  books/config-owner-live-authorize.lisp -> books/config/config-owner-live-authorize.lisp
+  books/config-owner-live-complete.lisp -> books/config/config-owner-live-complete.lisp
+  books/config-owner-live-open.lisp -> books/config/config-owner-live-open.lisp
+  books/config-owner-live-read.lisp -> books/config/config-owner-live-read.lisp
+  books/config-owner-publish.lisp -> books/config/config-owner-publish.lisp
+  books/config-owner-read-invariants.lisp -> books/config/config-owner-read-invariants.lisp
+  books/config-physical-replay.lisp -> books/config/config-physical-replay.lisp
+  books/config-policy-delta.lisp -> books/config/config-policy-delta.lisp
+  books/config-records.lisp -> books/config/config-records.lisp
+  books/config-store-steps.lisp -> books/config/config-store-steps.lisp
+  books/config-store-traces.lisp -> books/config/config-store-traces.lisp
+  books/config-stream.lisp -> books/config/config-stream.lisp
+  books/connection-budget.lisp -> books/nntp/connection-budget.lisp
+  books/consumer-artifact-retry.lisp -> books/store/consumer-artifact-retry.lisp
+  books/consumer-bound.lisp -> books/store/consumer-bound.lisp
+  books/consumer-event-index.lisp -> books/store/consumer-event-index.lisp
+  books/consumer-local-control.lisp -> books/store/consumer-local-control.lisp
+  books/consumer-owner-index-invariants.lisp -> books/store/consumer-owner-index-invariants.lisp
+  books/consumer-owner-local.lisp -> books/store/consumer-owner-local.lisp
+  books/consumer-owner-local-progress.lisp -> books/store/consumer-owner-local-progress.lisp
+  books/consumer-poll-index.lisp -> books/store/consumer-poll-index.lisp
+  books/consumer-poll-projection.lisp -> books/store/consumer-poll-projection.lisp
+  books/consumer-position.lisp -> books/store/consumer-position.lisp
+  books/consumer-reason.lisp -> books/store/consumer-reason.lisp
+  books/consumer-store-events.lisp -> books/store/consumer-store-events.lisp
+  books/consumer-store-invariants.lisp -> books/store/consumer-store-invariants.lisp
+  books/consumer-store-projection.lisp -> books/store/consumer-store-projection.lisp
+  books/consumer-wait.lisp -> books/store/consumer-wait.lisp
+  books/consumer-wait-codec.lisp -> books/store/consumer-wait-codec.lisp
+  books/consumer-withdrawal.lisp -> books/store/consumer-withdrawal.lisp
+  books/container.lisp -> books/store/container.lisp
+  books/container-invariants.lisp -> books/store/container-invariants.lisp
+  books/control-authority.lisp -> books/text/control-authority.lisp
+  books/control-classify.lisp -> books/text/control-classify.lisp
+  books/control-evidence.lisp -> books/text/control-evidence.lisp
+  books/control-evidence-grammar.lisp -> books/text/control-evidence-grammar.lisp
+  books/control-served.lisp -> books/text/control-served.lisp
+  books/control-visible.lisp -> books/text/control-visible.lisp
+  books/control-visible-indexed.lisp -> books/text/control-visible-indexed.lisp
+  books/crypto-attach.lisp -> books/crypto/crypto-attach.lisp
+  books/crypto-seam.lisp -> books/crypto/crypto-seam.lisp
+  books/defkeystone.lisp -> books/lib/defkeystone.lisp
+  books/defrecord.lisp -> books/lib/defrecord.lisp
+  books/deftransition.lisp -> books/lib/deftransition.lisp
+  books/exchange.lisp -> books/peer/exchange.lisp
+  books/exchange-invariants.lisp -> books/peer/exchange-invariants.lisp
+  books/feed-auth-profile.lisp -> books/peer/feed-auth-profile.lisp
+  books/feed-connection.lisp -> books/peer/feed-connection.lisp
+  books/feed-connection-invariants.lisp -> books/peer/feed-connection-invariants.lisp
+  books/feed-correspondence.lisp -> books/peer/feed-correspondence.lisp
+  books/feed-events.lisp -> books/peer/feed-events.lisp
+  books/feed-filename.lisp -> books/peer/feed-filename.lisp
+  books/feed-journal.lisp -> books/peer/feed-journal.lisp
+  books/feed-port-replay.lisp -> books/peer/feed-port-replay.lisp
+  books/feed-totality.lisp -> books/peer/feed-totality.lisp
+  books/feed-wire-input.lisp -> books/peer/feed-wire-input.lisp
+  books/frame.lisp -> books/codec/frame.lisp
+  books/frame-digest-buffer.lisp -> books/codec/frame-digest-buffer.lisp
+  books/frame-fields.lisp -> books/codec/frame-fields.lisp
+  books/frame-invariants.lisp -> books/codec/frame-invariants.lisp
+  books/frame-journal.lisp -> books/codec/frame-journal.lisp
+  books/frame-octets.lisp -> books/codec/frame-octets.lisp
+  books/frame-trailer.lisp -> books/codec/frame-trailer.lisp
+  books/group-access.lisp -> books/text/group-access.lisp
+  books/group-bucket-article.lisp -> books/text/group-bucket-article.lisp
+  books/group-bucket-article-invariants.lisp -> books/text/group-bucket-article-invariants.lisp
+  books/group-bucket-cursor-invariants.lisp -> books/text/group-bucket-cursor-invariants.lisp
+  books/group-bucket-index.lisp -> books/text/group-bucket-index.lisp
+  books/group-bucket-invariants.lisp -> books/text/group-bucket-invariants.lisp
+  books/group-number-index.lisp -> books/text/group-number-index.lisp
+  books/group-status.lisp -> books/text/group-status.lisp
+  books/heap-figure.lisp -> books/store/heap-figure.lisp
+  books/heap-open-nursery.lisp -> books/store/heap-open-nursery.lisp
+  books/heap-reservation.lisp -> books/store/heap-reservation.lisp
+  books/heap-store-figure.lisp -> books/store/heap-store-figure.lisp
+  books/held-record.lisp -> books/codec/held-record.lisp
+  books/history-columns.lisp -> books/store/history-columns.lisp
+  books/history-columns-relation.lisp -> books/store/history-columns-relation.lisp
+  books/history-columns-store.lisp -> books/store/history-columns-store.lisp
+  books/history-fold-refinement.lisp -> books/store/history-fold-refinement.lisp
+  books/history-pages.lisp -> books/store/history-pages.lisp
+  books/history-pages-append-grown.lisp -> books/store/history-pages-append-grown.lisp
+  books/history-pages-arith.lisp -> books/store/history-pages-arith.lisp
+  books/history-pages-exec.lisp -> books/store/history-pages-exec.lisp
+  books/history-pages-grow.lisp -> books/store/history-pages-grow.lisp
+  books/history-pages-grow-append.lisp -> books/store/history-pages-grow-append.lisp
+  books/history-pages-grow-cap.lisp -> books/store/history-pages-grow-cap.lisp
+  books/history-pages-grow-then-append.lisp -> books/store/history-pages-grow-then-append.lisp
+  books/history-pages-import.lisp -> books/store/history-pages-import.lisp
+  books/history-pages-nest.lisp -> books/store/history-pages-nest.lisp
+  books/history-pages-owner.lisp -> books/store/history-pages-owner.lisp
+  books/history-pages-placed.lisp -> books/store/history-pages-placed.lisp
+  books/history-pages-placed-write.lisp -> books/store/history-pages-placed-write.lisp
+  books/history-pages-read.lisp -> books/store/history-pages-read.lisp
+  books/history-pages-relocate.lisp -> books/store/history-pages-relocate.lisp
+  books/history-pages-row.lisp -> books/store/history-pages-row.lisp
+  books/history-pages-step.lisp -> books/store/history-pages-step.lisp
+  books/history-pages-view.lisp -> books/store/history-pages-view.lisp
+  books/history-pages-words.lisp -> books/store/history-pages-words.lisp
+  books/history-pages-write.lisp -> books/store/history-pages-write.lisp
+  books/history-pages-write-exec.lisp -> books/store/history-pages-write-exec.lisp
+  books/history-pages-write-keys.lisp -> books/store/history-pages-write-keys.lisp
+  books/history-records.lisp -> books/store/history-records.lisp
+  books/history-wire.lisp -> books/store/history-wire.lisp
+  books/hybrid-carrier.lisp -> books/crypto/hybrid-carrier.lisp
+  books/hybrid-lifecycle.lisp -> books/crypto/hybrid-lifecycle.lisp
+  books/hybrid-lifecycle-store-invariants.lisp -> books/crypto/hybrid-lifecycle-store-invariants.lisp
+  books/hybrid-profile.lisp -> books/crypto/hybrid-profile.lisp
+  books/hybrid-signature.lisp -> books/crypto/hybrid-signature.lisp
+  books/hybrid-signature-invariants.lisp -> books/crypto/hybrid-signature-invariants.lisp
+  books/hybrid-store.lisp -> books/crypto/hybrid-store.lisp
+  books/hybrid-store-injected.lisp -> books/crypto/hybrid-store-injected.lisp
+  books/hybrid-store-invariants.lisp -> books/crypto/hybrid-store-invariants.lisp
+  books/ideal.lisp -> books/store/ideal.lisp
+  books/identity.lisp -> books/crypto/identity.lisp
+  books/identity-invariants.lisp -> books/crypto/identity-invariants.lisp
+  books/index.lisp -> books/store/index.lisp
+  books/injection.lisp -> books/text/injection.lisp
+  books/injection-info-params.lisp -> books/text/injection-info-params.lisp
+  books/injection-info-params-invariants.lisp -> books/text/injection-info-params-invariants.lisp
+  books/injection-info-policy.lisp -> books/text/injection-info-policy.lisp
+  books/injection-invariants.lisp -> books/text/injection-invariants.lisp
+  books/injection-path.lisp -> books/text/injection-path.lisp
+  books/injection-shape.lisp -> books/text/injection-shape.lisp
+  books/journal.lisp -> books/store/journal.lisp
+  books/journal-publish.lisp -> books/store/journal-publish.lisp
+  books/key-statements.lisp -> books/crypto/key-statements.lisp
+  books/lace.lisp -> books/crypto/lace.lisp
+  books/lace-invariants.lisp -> books/crypto/lace-invariants.lisp
+  books/log-sink.lisp -> books/store/log-sink.lisp
+  books/login-binding.lisp -> books/nntp/login-binding.lisp
+  books/login-binding-live.lisp -> books/nntp/login-binding-live.lisp
+  books/mailbox.lisp -> books/store/mailbox.lisp
+  books/membership-epochs.lisp -> books/peer/membership-epochs.lisp
+  books/membership-epochs-invariants.lisp -> books/peer/membership-epochs-invariants.lisp
+  books/moderation.lisp -> books/text/moderation.lisp
+  books/moderation-verbs.lisp -> books/text/moderation-verbs.lisp
+  books/msgid-index.lisp -> books/text/msgid-index.lisp
+  books/msgid-index-concrete.lisp -> books/text/msgid-index-concrete.lisp
+  books/native-admin.lisp -> books/owner/native-admin.lisp
+  books/native-admin-peer.lisp -> books/owner/native-admin-peer.lisp
+  books/native-admin-peer-budget.lisp -> books/owner/native-admin-peer-budget.lisp
+  books/native-admin-shape.lisp -> books/owner/native-admin-shape.lisp
+  books/native-auth-admin.lisp -> books/owner/native-auth-admin.lisp
+  books/native-auth-profile.lisp -> books/owner/native-auth-profile.lisp
+  books/native-config.lisp -> books/owner/native-config.lisp
+  books/native-config-observation.lisp -> books/owner/native-config-observation.lisp
+  books/native-config-show.lisp -> books/owner/native-config-show.lisp
+  books/native-control.lisp -> books/owner/native-control.lisp
+  books/native-control-launch.lisp -> books/owner/native-control-launch.lisp
+  books/native-control-reason.lisp -> books/owner/native-control-reason.lisp
+  books/native-health.lisp -> books/owner/native-health.lisp
+  books/native-hybrid-control.lisp -> books/owner/native-hybrid-control.lisp
+  books/native-live-pages.lisp -> books/owner/native-live-pages.lisp
+  books/native-live-status.lisp -> books/owner/native-live-status.lisp
+  books/native-mission.lisp -> books/owner/native-mission.lisp
+  books/native-operator.lisp -> books/owner/native-operator.lisp
+  books/native-status-columns.lisp -> books/owner/native-status-columns.lisp
+  books/nntp.lisp -> books/nntp/nntp.lisp
+  books/nntp-article-block.lisp -> books/nntp/nntp-article-block.lisp
+  books/nntp-article-pass.lisp -> books/nntp/nntp-article-pass.lisp
+  books/nntp-auth.lisp -> books/nntp/nntp-auth.lisp
+  books/nntp-auth-fold.lisp -> books/nntp/nntp-auth-fold.lisp
+  books/nntp-auth-invariants.lisp -> books/nntp/nntp-auth-invariants.lisp
+  books/nntp-control.lisp -> books/nntp/nntp-control.lisp
+  books/nntp-effects.lisp -> books/nntp/nntp-effects.lisp
+  books/nntp-enrollment.lisp -> books/nntp/nntp-enrollment.lisp
+  books/nntp-help.lisp -> books/nntp/nntp-help.lisp
+  books/nntp-index.lisp -> books/nntp/nntp-index.lisp
+  books/nntp-index-runtime.lisp -> books/nntp/nntp-index-runtime.lisp
+  books/nntp-invariants.lisp -> books/nntp/nntp-invariants.lisp
+  books/nntp-legacy.lisp -> books/nntp/nntp-legacy.lisp
+  books/nntp-list-counts.lisp -> books/nntp/nntp-list-counts.lisp
+  books/nntp-newnews.lisp -> books/nntp/nntp-newnews.lisp
+  books/nntp-overview.lisp -> books/nntp/nntp-overview.lisp
+  books/nntp-pinned-effects.lisp -> books/nntp/nntp-pinned-effects.lisp
+  books/nntp-pinned-msgid.lisp -> books/nntp/nntp-pinned-msgid.lisp
+  books/nntp-post.lisp -> books/nntp/nntp-post.lisp
+  books/nntp-projection.lisp -> books/nntp/nntp-projection.lisp
+  books/nntp-range-indexed.lisp -> books/nntp/nntp-range-indexed.lisp
+  books/nntp-range-indexed-invariants.lisp -> books/nntp/nntp-range-indexed-invariants.lisp
+  books/nntp-reader-compat.lisp -> books/nntp/nntp-reader-compat.lisp
+  books/nntp-reclaimed.lisp -> books/nntp/nntp-reclaimed.lisp
+  books/nntp-responses.lisp -> books/nntp/nntp-responses.lisp
+  books/nntp-search-scope.lisp -> books/nntp/nntp-search-scope.lisp
+  books/nntp-session.lisp -> books/nntp/nntp-session.lisp
+  books/nntp-syntax.lisp -> books/nntp/nntp-syntax.lisp
+  books/nntp-verdict.lisp -> books/nntp/nntp-verdict.lisp
+  books/nntp-verdict-effects.lisp -> books/nntp/nntp-verdict-effects.lisp
+  books/nntp-xpat.lisp -> books/nntp/nntp-xpat.lisp
+  books/nntp-xref.lisp -> books/nntp/nntp-xref.lisp
+  books/nntp-xref-invariants.lisp -> books/nntp/nntp-xref-invariants.lisp
+  books/node.lisp -> books/store/node.lisp
+  books/node-config.lisp -> books/store/node-config.lisp
+  books/node-invariants.lisp -> books/store/node-invariants.lisp
+  books/node-retention-transitions.lisp -> books/store/node-retention-transitions.lisp
+  books/node-secret.lisp -> books/store/node-secret.lisp
+  books/node-traces.lisp -> books/store/node-traces.lisp
+  books/nov-fields.lisp -> books/text/nov-fields.lisp
+  books/octet-text.lisp -> books/lib/octet-text.lisp
+  books/octet-window.lisp -> books/lib/octet-window.lisp
+  books/octets-stobj.lisp -> books/lib/octets-stobj.lisp
+  books/outcome-class.lisp -> books/store/outcome-class.lisp
+  books/owner.lisp -> books/owner/owner.lisp
+  books/owner-ack-after-barrier.lisp -> books/owner/owner-ack-after-barrier.lisp
+  books/owner-advance-carried.lisp -> books/owner/owner-advance-carried.lisp
+  books/owner-agent.lisp -> books/owner/owner-agent.lisp
+  books/owner-batch.lisp -> books/owner/owner-batch.lisp
+  books/owner-bound-commit.lisp -> books/owner/owner-bound-commit.lisp
+  books/owner-checkpoint-open.lisp -> books/owner/owner-checkpoint-open.lisp
+  books/owner-checkpoint-pipeline.lisp -> books/owner/owner-checkpoint-pipeline.lisp
+  books/owner-checkpoint-writer.lisp -> books/owner/owner-checkpoint-writer.lisp
+  books/owner-commit-carried.lisp -> books/owner/owner-commit-carried.lisp
+  books/owner-commit-class.lisp -> books/owner/owner-commit-class.lisp
+  books/owner-commit-ocl.lisp -> books/owner/owner-commit-ocl.lisp
+  books/owner-commit-pipeline.lisp -> books/owner/owner-commit-pipeline.lisp
+  books/owner-commit-steps.lisp -> books/owner/owner-commit-steps.lisp
+  books/owner-config.lisp -> books/owner/owner-config.lisp
+  books/owner-config-observe.lisp -> books/owner/owner-config-observe.lisp
+  books/owner-control-read.lisp -> books/owner/owner-control-read.lisp
+  books/owner-descriptions-read.lisp -> books/owner/owner-descriptions-read.lisp
+  books/owner-enrollment-read.lisp -> books/owner/owner-enrollment-read.lisp
+  books/owner-fault.lisp -> books/owner/owner-fault.lisp
+  books/owner-feed.lisp -> books/owner/owner-feed.lisp
+  books/owner-feed-article.lisp -> books/owner/owner-feed-article.lisp
+  books/owner-feed-port.lisp -> books/owner/owner-feed-port.lisp
+  books/owner-feed-subject.lisp -> books/owner/owner-feed-subject.lisp
+  books/owner-feed-txid-reuse.lisp -> books/owner/owner-feed-txid-reuse.lisp
+  books/owner-identity-intern.lisp -> books/owner/owner-identity-intern.lisp
+  books/owner-identity-served.lisp -> books/owner/owner-identity-served.lisp
+  books/owner-injection-info.lisp -> books/owner/owner-injection-info.lisp
+  books/owner-intent-carried.lisp -> books/owner/owner-intent-carried.lisp
+  books/owner-invariants.lisp -> books/owner/owner-invariants.lisp
+  books/owner-invariants-outcome.lisp -> books/owner/owner-invariants-outcome.lisp
+  books/owner-invariants-relation.lisp -> books/owner/owner-invariants-relation.lisp
+  books/owner-invariants-served.lisp -> books/owner/owner-invariants-served.lisp
+  books/owner-invariants-step.lisp -> books/owner/owner-invariants-step.lisp
+  books/owner-list-counts-read.lisp -> books/owner/owner-list-counts-read.lisp
+  books/owner-log.lisp -> books/owner/owner-log.lisp
+  books/owner-log-ocl.lisp -> books/owner/owner-log-ocl.lisp
+  books/owner-log-reopen.lisp -> books/owner/owner-log-reopen.lisp
+  books/owner-log-route.lisp -> books/owner/owner-log-route.lisp
+  books/owner-numbering.lisp -> books/owner/owner-numbering.lisp
+  books/owner-offer-indexed.lisp -> books/owner/owner-offer-indexed.lisp
+  books/owner-open-carried.lisp -> books/owner/owner-open-carried.lisp
+  books/owner-parse-carried.lisp -> books/owner/owner-parse-carried.lisp
+  books/owner-prepare-carried.lisp -> books/owner/owner-prepare-carried.lisp
+  books/owner-prepare-correspondence.lisp -> books/owner/owner-prepare-correspondence.lisp
+  books/owner-prepare-outcome.lisp -> books/owner/owner-prepare-outcome.lisp
+  books/owner-prepare-outcome-topic.lisp -> books/owner/owner-prepare-outcome-topic.lisp
+  books/owner-prepare-served.lisp -> books/owner/owner-prepare-served.lisp
+  books/owner-prepare-served-ocl.lisp -> books/owner/owner-prepare-served-ocl.lisp
+  books/owner-reader-read.lisp -> books/owner/owner-reader-read.lisp
+  books/owner-reader-view.lisp -> books/owner/owner-reader-view.lisp
+  books/owner-recover-ocl.lisp -> books/owner/owner-recover-ocl.lisp
+  books/owner-refresh-indexed.lisp -> books/owner/owner-refresh-indexed.lisp
+  books/owner-results.lisp -> books/owner/owner-results.lisp
+  books/owner-retention-preparation.lisp -> books/owner/owner-retention-preparation.lisp
+  books/owner-scheduler.lisp -> books/owner/owner-scheduler.lisp
+  books/owner-served-bound.lisp -> books/owner/owner-served-bound.lisp
+  books/owner-served-carried.lisp -> books/owner/owner-served-carried.lisp
+  books/owner-served-invariants.lisp -> books/owner/owner-served-invariants.lisp
+  books/owner-signed-post.lisp -> books/owner/owner-signed-post.lisp
+  books/owner-stop-drain.lisp -> books/owner/owner-stop-drain.lisp
+  books/owner-store-budget.lisp -> books/owner/owner-store-budget.lisp
+  books/owner-store-indexed.lisp -> books/owner/owner-store-indexed.lisp
+  books/owner-time-admission.lisp -> books/owner/owner-time-admission.lisp
+  books/owner-time-journal.lisp -> books/owner/owner-time-journal.lisp
+  books/owner-time-journal-writer.lisp -> books/owner/owner-time-journal-writer.lisp
+  books/owner-time-model.lisp -> books/owner/owner-time-model.lisp
+  books/owner-tls-prefix.lisp -> books/owner/owner-tls-prefix.lisp
+  books/owner-verdict-read.lisp -> books/owner/owner-verdict-read.lisp
+  books/owner-xref-read.lisp -> books/owner/owner-xref-read.lisp
+  books/pagestore.lisp -> books/store/pagestore.lisp
+  books/pagestore-exec.lisp -> books/store/pagestore-exec.lisp
+  books/pagestore-gc.lisp -> books/store/pagestore-gc.lisp
+  books/pagestore-keystones.lisp -> books/store/pagestore-keystones.lisp
+  books/pagestore-reclaim.lisp -> books/store/pagestore-reclaim.lisp
+  books/pagestore-refine.lisp -> books/store/pagestore-refine.lisp
+  books/pagestore-words.lisp -> books/store/pagestore-words.lisp
+  books/pagestore-words-blake3.lisp -> books/store/pagestore-words-blake3.lisp
+  books/path.lisp -> books/peer/path.lisp
+  books/path-update.lisp -> books/peer/path-update.lisp
+  books/path-update-tail.lisp -> books/peer/path-update-tail.lisp
+  books/payload-arena.lisp -> books/codec/payload-arena.lisp
+  books/payload-arena-attach.lisp -> books/codec/payload-arena-attach.lisp
+  books/payload-arena-bytes.lisp -> books/codec/payload-arena-bytes.lisp
+  books/payload-arena-extent.lisp -> books/codec/payload-arena-extent.lisp
+  books/payload-arena-extent-logic.lisp -> books/codec/payload-arena-extent-logic.lisp
+  books/payload-arena-paged.lisp -> books/codec/payload-arena-paged.lisp
+  books/payload-commit-extent.lisp -> books/codec/payload-commit-extent.lisp
+  books/payload-extent.lisp -> books/codec/payload-extent.lisp
+  books/payload-extent-read.lisp -> books/codec/payload-extent-read.lisp
+  books/payload-kinds.lisp -> books/codec/payload-kinds.lisp
+  books/payload-lz.lisp -> books/codec/payload-lz.lisp
+  books/payload-lz-append.lisp -> books/codec/payload-lz-append.lisp
+  books/payload-lz-record.lisp -> books/codec/payload-lz-record.lisp
+  books/payload-lz-replay.lisp -> books/codec/payload-lz-replay.lisp
+  books/payload-lz-value.lisp -> books/codec/payload-lz-value.lisp
+  books/peer-authored-accept.lisp -> books/peer/peer-authored-accept.lisp
+  books/peer-carriage.lisp -> books/peer/peer-carriage.lisp
+  books/peer-carriage-rows.lisp -> books/peer/peer-carriage-rows.lisp
+  books/peer-catchup.lisp -> books/peer/peer-catchup.lisp
+  books/peer-catchup-effects.lisp -> books/peer/peer-catchup-effects.lisp
+  books/peer-catchup-serve.lisp -> books/peer/peer-catchup-serve.lisp
+  books/peer-config.lisp -> books/peer/peer-config.lisp
+  books/peer-feed.lisp -> books/peer/peer-feed.lisp
+  books/peer-feed-invariants.lisp -> books/peer/peer-feed-invariants.lisp
+  books/peer-guard-carried.lisp -> books/peer/peer-guard-carried.lisp
+  books/peer-host.lisp -> books/peer/peer-host.lisp
+  books/peer-inbound.lisp -> books/peer/peer-inbound.lisp
+  books/peer-inbound-invariants.lisp -> books/peer/peer-inbound-invariants.lisp
+  books/peer-invite.lisp -> books/peer/peer-invite.lisp
+  books/peer-offer-indexed.lisp -> books/peer/peer-offer-indexed.lisp
+  books/peer-pull.lisp -> books/peer/peer-pull.lisp
+  books/peer-pull-session.lisp -> books/peer/peer-pull-session.lisp
+  books/peer-refused-offers.lisp -> books/peer/peer-refused-offers.lisp
+  books/peer-transit-forms.lisp -> books/peer/peer-transit-forms.lisp
+  books/policy.lisp -> books/peer/policy.lisp
+  books/policy-invariants.lisp -> books/peer/policy-invariants.lisp
+  books/post-fields.lisp -> books/text/post-fields.lisp
+  books/post-identity-index.lisp -> books/text/post-identity-index.lisp
+  books/post-retain-carried.lisp -> books/text/post-retain-carried.lisp
+  books/poster-bytes.lisp -> books/text/poster-bytes.lisp
+  books/poster-bytes-buffer.lisp -> books/text/poster-bytes-buffer.lisp
+  books/poster-bytes-invariants.lisp -> books/text/poster-bytes-invariants.lisp
+  books/posting-account.lisp -> books/text/posting-account.lisp
+  books/principal.lisp -> books/crypto/principal.lisp
+  books/principal-invariants.lisp -> books/crypto/principal-invariants.lisp
+  books/proto/adt.lisp -> books/lib/adt.lisp
+  books/proto/adt-bytes.lisp -> books/lib/adt-bytes.lisp
+  books/proto/adt-bytes-lib.lisp -> books/lib/adt-bytes-lib.lisp
+  books/proto/adt-compact-lib.lisp -> books/lib/adt-compact-lib.lisp
+  books/proto/adt-config-groups.lisp -> books/lib/adt-config-groups.lisp
+  books/proto/adt-config-policy.lisp -> books/lib/adt-config-policy.lisp
+  books/proto/adt-consumer-position.lisp -> books/lib/adt-consumer-position.lisp
+  books/proto/adt-key-lib.lisp -> books/lib/adt-key-lib.lisp
+  books/proto/adt-keyed.lisp -> books/lib/adt-keyed.lisp
+  books/proto/adt-lib.lisp -> books/lib/adt-lib.lisp
+  books/proto/adt-nest-lib.lisp -> books/lib/adt-nest-lib.lisp
+  books/proto/adt-topic-accepted.lisp -> books/lib/adt-topic-accepted.lisp
+  books/proto/adt-topic-accepted-type.lisp -> books/lib/adt-topic-accepted-type.lisp
+  books/protocol-builders.lisp -> books/nntp/protocol-builders.lisp
+  books/protocol-codes.lisp -> books/nntp/protocol-codes.lisp
+  books/protocol-codes-rows.lisp -> books/nntp/protocol-codes-rows.lisp
+  books/protocol-dispatch.lisp -> books/nntp/protocol-dispatch.lisp
+  books/protocol-framing.lisp -> books/nntp/protocol-framing.lisp
+  books/protocol-table.lisp -> books/nntp/protocol-table.lisp
+  books/provenance.lisp -> books/store/provenance.lisp
+  books/provenance-codec.lisp -> books/store/provenance-codec.lisp
+  books/provenance-inspect.lisp -> books/store/provenance-inspect.lisp
+  books/public-exposure.lisp -> books/nntp/public-exposure.lisp
+  books/public-exposure-reply.lisp -> books/nntp/public-exposure-reply.lisp
+  books/public-exposure-rows.lisp -> books/nntp/public-exposure-rows.lisp
+  books/reader-open-carried.lisp -> books/nntp/reader-open-carried.lisp
+  books/reclaim-admission.lisp -> books/store/reclaim-admission.lisp
+  books/reclaim-instant.lisp -> books/store/reclaim-instant.lisp
+  books/reclaim-rule.lisp -> books/store/reclaim-rule.lisp
+  books/reclaim-tombstone.lisp -> books/store/reclaim-tombstone.lisp
+  books/record-width-producers.lisp -> books/codec/record-width-producers.lisp
+  books/records.lisp -> books/codec/records.lisp
+  books/records-attach.lisp -> books/codec/records-attach.lisp
+  books/records-attach-concrete.lisp -> books/codec/records-attach-concrete.lisp
+  books/records-canonicality.lisp -> books/codec/records-canonicality.lisp
+  books/records-codec-concrete.lisp -> books/codec/records-codec-concrete.lisp
+  books/records-concrete.lisp -> books/codec/records-concrete.lisp
+  books/records-concrete-owner.lisp -> books/codec/records-concrete-owner.lisp
+  books/records-exec.lisp -> books/codec/records-exec.lisp
+  books/records-freeze.lisp -> books/codec/records-freeze.lisp
+  books/records-invariants.lisp -> books/codec/records-invariants.lisp
+  books/records-schema-v1.lisp -> books/codec/records-schema-v1.lisp
+  books/records-seam.lisp -> books/codec/records-seam.lisp
+  books/records-shape.lisp -> books/codec/records-shape.lisp
+  books/records-stamp.lisp -> books/codec/records-stamp.lisp
+  books/refused-offers.lisp -> books/peer/refused-offers.lisp
+  books/relay.lisp -> books/peer/relay.lisp
+  books/relay-checks.lisp -> books/peer/relay-checks.lisp
+  books/relay-crash-invariants.lisp -> books/peer/relay-crash-invariants.lisp
+  books/relay-invariants.lisp -> books/peer/relay-invariants.lisp
+  books/relay-source.lisp -> books/peer/relay-source.lisp
+  books/relay-source-routes.lisp -> books/peer/relay-source-routes.lisp
+  books/replay.lisp -> books/store/replay.lisp
+  books/replay-identity-index.lisp -> books/store/replay-identity-index.lisp
+  books/replay-invariants.lisp -> books/store/replay-invariants.lisp
+  books/retention.lisp -> books/store/retention.lisp
+  books/retention-figures.lisp -> books/store/retention-figures.lisp
+  books/retention-invariants.lisp -> books/store/retention-invariants.lisp
+  books/rev-onto.lisp -> books/lib/rev-onto.lisp
+  books/scheduler.lisp -> books/time/scheduler.lisp
+  books/scheduler-invariants.lisp -> books/time/scheduler-invariants.lisp
+  books/scheduler-peers.lisp -> books/time/scheduler-peers.lisp
+  books/served.lisp -> books/nntp/served.lisp
+  books/served-carried.lisp -> books/nntp/served-carried.lisp
+  books/served-catalog.lisp -> books/nntp/served-catalog.lisp
+  books/served-catalog-chain.lisp -> books/nntp/served-catalog-chain.lisp
+  books/served-catalog-join.lisp -> books/nntp/served-catalog-join.lisp
+  books/served-catalog-join-conns.lisp -> books/nntp/served-catalog-join-conns.lisp
+  books/served-catalog-join-entry.lisp -> books/nntp/served-catalog-join-entry.lisp
+  books/served-catalog-join-finish.lisp -> books/nntp/served-catalog-join-finish.lisp
+  books/served-catalog-join-frame.lisp -> books/nntp/served-catalog-join-frame.lisp
+  books/served-catalog-join-frame-conns.lisp -> books/nntp/served-catalog-join-frame-conns.lisp
+  books/served-catalog-join-frame-store.lisp -> books/nntp/served-catalog-join-frame-store.lisp
+  books/served-catalog-join-inv.lisp -> books/nntp/served-catalog-join-inv.lisp
+  books/served-catalog-join-number.lisp -> books/nntp/served-catalog-join-number.lisp
+  books/served-catalog-join-open.lisp -> books/nntp/served-catalog-join-open.lisp
+  books/served-catalog-join-pinned.lisp -> books/nntp/served-catalog-join-pinned.lisp
+  books/served-catalog-join-read.lisp -> books/nntp/served-catalog-join-read.lisp
+  books/served-catalog-join-refresh.lisp -> books/nntp/served-catalog-join-refresh.lisp
+  books/served-catalog-join-step.lisp -> books/nntp/served-catalog-join-step.lisp
+  books/served-catalog-owner.lisp -> books/nntp/served-catalog-owner.lisp
+  books/served-catalog-view.lisp -> books/nntp/served-catalog-view.lisp
+  books/served-columns.lisp -> books/nntp/served-columns.lisp
+  books/served-implicit-tls.lisp -> books/nntp/served-implicit-tls.lisp
+  books/served-plan.lisp -> books/nntp/served-plan.lisp
+  books/served-reply-buffer.lisp -> books/nntp/served-reply-buffer.lisp
+  books/served-scan.lisp -> books/nntp/served-scan.lisp
+  books/served-span.lisp -> books/nntp/served-span.lisp
+  books/served-tls-prefix.lisp -> books/nntp/served-tls-prefix.lisp
+  books/sha256.lisp -> books/crypto/sha256.lisp
+  books/snapshot-segments.lisp -> books/store/snapshot-segments.lisp
+  books/snoc-list.lisp -> books/lib/snoc-list.lisp
+  books/source-projection-bridge.lisp -> books/peer/source-projection-bridge.lisp
+  books/source-routes.lisp -> books/peer/source-routes.lisp
+  books/state-digest.lisp -> books/store/state-digest.lisp
+  books/statement.lisp -> books/store/statement.lisp
+  books/statement-attach.lisp -> books/store/statement-attach.lisp
+  books/statement-codec.lisp -> books/store/statement-codec.lisp
+  books/statement-invariants.lisp -> books/store/statement-invariants.lisp
+  books/statement-items.lisp -> books/store/statement-items.lisp
+  books/statement-seam.lisp -> books/store/statement-seam.lisp
+  books/store-budget.lisp -> books/store/store-budget.lisp
+  books/store-budget-article.lisp -> books/store/store-budget-article.lisp
+  books/store-budget-naming.lisp -> books/store/store-budget-naming.lisp
+  books/store-budget-stored.lisp -> books/store/store-budget-stored.lisp
+  books/store-budget-stored-post.lisp -> books/store/store-budget-stored-post.lisp
+  books/store-capacity-config.lisp -> books/store/store-capacity-config.lisp
+  books/store-capacity-vector.lisp -> books/store/store-capacity-vector.lisp
+  books/store-carried-folds.lisp -> books/store/store-carried-folds.lisp
+  books/store-checkpoint-arena.lisp -> books/store/store-checkpoint-arena.lisp
+  books/store-checkpoint-arena-load.lisp -> books/store/store-checkpoint-arena-load.lisp
+  books/store-checkpoint-arena-writer.lisp -> books/store/store-checkpoint-arena-writer.lisp
+  books/store-checkpoint-buffer.lisp -> books/store/store-checkpoint-buffer.lisp
+  books/store-checkpoint-codec.lisp -> books/store/store-checkpoint-codec.lisp
+  books/store-checkpoint-open.lisp -> books/store/store-checkpoint-open.lisp
+  books/store-checkpoint-reader.lisp -> books/store/store-checkpoint-reader.lisp
+  books/store-checkpoint-share.lisp -> books/store/store-checkpoint-share.lisp
+  books/store-checkpoint-tables.lisp -> books/store/store-checkpoint-tables.lisp
+  books/store-checkpoint-tables-reader.lisp -> books/store/store-checkpoint-tables-reader.lisp
+  books/store-config.lisp -> books/store/store-config.lisp
+  books/store-event-fields.lisp -> books/store/store-event-fields.lisp
+  books/store-events.lisp -> books/store/store-events.lisp
+  books/store-events-carried.lisp -> books/store/store-events-carried.lisp
+  books/store-existing-alpha.lisp -> books/store/store-existing-alpha.lisp
+  books/store-export.lisp -> books/store/store-export.lisp
+  books/store-export-durability.lisp -> books/store/store-export-durability.lisp
+  books/store-export-stream.lisp -> books/store/store-export-stream.lisp
+  books/store-files.lisp -> books/store/store-files.lisp
+  books/store-files-invariants.lisp -> books/store/store-files-invariants.lisp
+  books/store-files-traces.lisp -> books/store/store-files-traces.lisp
+  books/store-format-9.lisp -> books/store/store-format-9.lisp
+  books/store-format-9-records.lisp -> books/store/store-format-9-records.lisp
+  books/store-genesis.lisp -> books/store/store-genesis.lisp
+  books/store-identity-sequence-invariants.lisp -> books/store/store-identity-sequence-invariants.lisp
+  books/store-import-publication.lisp -> books/store/store-import-publication.lisp
+  books/store-import-stream.lisp -> books/store/store-import-stream.lisp
+  books/store-init-log-publication.lisp -> books/store/store-init-log-publication.lisp
+  books/store-init-publication.lisp -> books/store/store-init-publication.lisp
+  books/store-intern.lisp -> books/store/store-intern.lisp
+  books/store-intern-once.lisp -> books/store/store-intern-once.lisp
+  books/store-log.lisp -> books/store/store-log.lisp
+  books/store-log-buffer.lisp -> books/store/store-log-buffer.lisp
+  books/store-log-crash.lisp -> books/store/store-log-crash.lisp
+  books/store-log-damage.lisp -> books/store/store-log-damage.lisp
+  books/store-log-decode.lisp -> books/store/store-log-decode.lisp
+  books/store-log-extend.lisp -> books/store/store-log-extend.lisp
+  books/store-log-kernel.lisp -> books/store/store-log-kernel.lisp
+  books/store-log-kernel-concrete.lisp -> books/store/store-log-kernel-concrete.lisp
+  books/store-log-open-barriers.lisp -> books/store/store-log-open-barriers.lisp
+  books/store-log-programs.lisp -> books/store/store-log-programs.lisp
+  books/store-log-reclaim.lisp -> books/store/store-log-reclaim.lisp
+  books/store-log-recover.lisp -> books/store/store-log-recover.lisp
+  books/store-log-route.lisp -> books/store/store-log-route.lisp
+  books/store-log-route-phases.lisp -> books/store/store-log-route-phases.lisp
+  books/store-log-route-programs.lisp -> books/store/store-log-route-programs.lisp
+  books/store-log-segments.lisp -> books/store/store-log-segments.lisp
+  books/store-log-stream.lisp -> books/store/store-log-stream.lisp
+  books/store-log-txid.lisp -> books/store/store-log-txid.lisp
+  books/store-log-walk-once.lisp -> books/store/store-log-walk-once.lisp
+  books/store-maintenance-reserve.lisp -> books/store/store-maintenance-reserve.lisp
+  books/store-mount-identity.lisp -> books/store/store-mount-identity.lisp
+  books/store-node.lisp -> books/store/store-node.lisp
+  books/store-node-existing-invariants.lisp -> books/store/store-node-existing-invariants.lisp
+  books/store-node-invariants.lisp -> books/store/store-node-invariants.lisp
+  books/store-node-invariants-base.lisp -> books/store/store-node-invariants-base.lisp
+  books/store-node-resolution.lisp -> books/store/store-node-resolution.lisp
+  books/store-node-retention.lisp -> books/store/store-node-retention.lisp
+  books/store-node-traces.lisp -> books/store/store-node-traces.lisp
+  books/store-node-traces-prepare.lisp -> books/store/store-node-traces-prepare.lisp
+  books/store-observed.lisp -> books/store/store-observed.lisp
+  books/store-observed-traces.lisp -> books/store/store-observed-traces.lisp
+  books/store-open-bridge.lisp -> books/store/store-open-bridge.lisp
+  books/store-open-node-bridge.lisp -> books/store/store-open-node-bridge.lisp
+  books/store-open-pre-c1.lisp -> books/store/store-open-pre-c1.lisp
+  books/store-open-replay-refusal.lisp -> books/store/store-open-replay-refusal.lisp
+  books/store-prepare-carried.lisp -> books/store/store-prepare-carried.lisp
+  books/store-prepare-correspondence.lisp -> books/store/store-prepare-correspondence.lisp
+  books/store-prepare-served.lisp -> books/store/store-prepare-served.lisp
+  books/store-profile-carried.lisp -> books/store/store-profile-carried.lisp
+  books/store-profile-facts.lisp -> books/store/store-profile-facts.lisp
+  books/store-profile-namespace.lisp -> books/store/store-profile-namespace.lisp
+  books/store-profile-open.lisp -> books/store/store-profile-open.lisp
+  books/store-reclaim.lisp -> books/store/store-reclaim.lisp
+  books/store-reclaim-buffer.lisp -> books/store/store-reclaim-buffer.lisp
+  books/store-reclaim-holders.lisp -> books/store/store-reclaim-holders.lisp
+  books/store-reclaim-pack.lisp -> books/store/store-reclaim-pack.lisp
+  books/store-reclaim-stream.lisp -> books/store/store-reclaim-stream.lisp
+  books/store-recover-stream.lisp -> books/store/store-recover-stream.lisp
+  books/store-replay-bound.lisp -> books/store/store-replay-bound.lisp
+  books/store-retention-codec-invariants.lisp -> books/store/store-retention-codec-invariants.lisp
+  books/store-sweep.lisp -> books/store/store-sweep.lisp
+  books/stx-accept-records.lisp -> books/crypto/stx-accept-records.lisp
+  books/stx-authority.lisp -> books/crypto/stx-authority.lisp
+  books/stx-carrier.lisp -> books/crypto/stx-carrier.lisp
+  books/stx-epochs.lisp -> books/crypto/stx-epochs.lisp
+  books/stx-evidence-records.lisp -> books/crypto/stx-evidence-records.lisp
+  books/stx-index.lisp -> books/crypto/stx-index.lisp
+  books/stx-invariants.lisp -> books/crypto/stx-invariants.lisp
+  books/stx-keyring-records.lisp -> books/crypto/stx-keyring-records.lisp
+  books/stx-lace.lisp -> books/crypto/stx-lace.lisp
+  books/stx-lace-rows.lisp -> books/crypto/stx-lace-rows.lisp
+  books/stx-policy.lisp -> books/crypto/stx-policy.lisp
+  books/stx-reader.lisp -> books/crypto/stx-reader.lisp
+  books/stx-verify.lisp -> books/crypto/stx-verify.lisp
+  books/subject-id-buffer.lisp -> books/crypto/subject-id-buffer.lisp
+  books/tcpcl-delivery.lisp -> books/bp/tcpcl-delivery.lisp
+  books/tcpcl-delivery-invariants.lisp -> books/bp/tcpcl-delivery-invariants.lisp
+  books/tcpcl-host-drive.lisp -> books/bp/tcpcl-host-drive.lisp
+  books/tcpcl-invariants.lisp -> books/bp/tcpcl-invariants.lisp
+  books/tcpcl-octets.lisp -> books/bp/tcpcl-octets.lisp
+  books/tcpcl-records.lisp -> books/bp/tcpcl-records.lisp
+  books/tcpcl-session.lisp -> books/bp/tcpcl-session.lisp
+  books/tcpcl-spool.lisp -> books/bp/tcpcl-spool.lisp
+  books/tls-reload.lisp -> books/crypto/tls-reload.lisp
+  books/topic-history-admission.lisp -> books/store/topic-history-admission.lisp
+  books/topic-history-authorship.lisp -> books/store/topic-history-authorship.lisp
+  books/topic-history-identity-disjoint.lisp -> books/store/topic-history-identity-disjoint.lisp
+  books/topic-history-local-admin.lisp -> books/store/topic-history-local-admin.lisp
+  books/topic-history-local-control.lisp -> books/store/topic-history-local-control.lisp
+  books/topic-history-local-proposals.lisp -> books/store/topic-history-local-proposals.lisp
+  books/topic-history-metadata.lisp -> books/store/topic-history-metadata.lisp
+  books/topic-history-metadata-invariants.lisp -> books/store/topic-history-metadata-invariants.lisp
+  books/topic-history-prefix.lisp -> books/store/topic-history-prefix.lisp
+  books/topic-history-prefix-invariants.lisp -> books/store/topic-history-prefix-invariants.lisp
+  books/topic-history-recovery-invariants.lisp -> books/store/topic-history-recovery-invariants.lisp
+  books/topic-history-store-events.lisp -> books/store/topic-history-store-events.lisp
+  books/topic-history-store-invariants.lisp -> books/store/topic-history-store-invariants.lisp
+  books/transfer.lisp -> books/peer/transfer.lisp
+  books/transfer-assembly-invariants.lisp -> books/peer/transfer-assembly-invariants.lisp
+  books/transfer-invariants.lisp -> books/peer/transfer-invariants.lisp
+  books/transfer-journal.lisp -> books/peer/transfer-journal.lisp
+  books/transfer-journal-invariants.lisp -> books/peer/transfer-journal-invariants.lisp
+  books/transfer-public-bound.lisp -> books/peer/transfer-public-bound.lisp
+  books/transfer-public-work.lisp -> books/peer/transfer-public-work.lisp
+  books/transfer-reservation.lisp -> books/peer/transfer-reservation.lisp
+  books/transfer-union.lisp -> books/peer/transfer-union.lisp
+  books/transfer-work.lisp -> books/peer/transfer-work.lisp
+  books/transit-bound.lisp -> books/peer/transit-bound.lisp
+  books/transit-header-limits.lisp -> books/peer/transit-header-limits.lisp
+  books/visibility-join.lisp -> books/store/visibility-join.lisp
+  books/web-2047.lisp -> books/owner/web-2047.lisp
+  books/web-config.lisp -> books/owner/web-config.lisp
+  books/web-render.lisp -> books/owner/web-render.lisp
+  books/web-render-keystones.lisp -> books/owner/web-render-keystones.lisp
+  books/web-request.lisp -> books/owner/web-request.lisp
+  books/web-session.lisp -> books/owner/web-session.lisp
+  books/web-session-keystones.lisp -> books/owner/web-session-keystones.lisp
+  books/wildmat.lisp -> books/text/wildmat.lisp
+  books/wildmat-matcher-invariants.lisp -> books/text/wildmat-matcher-invariants.lisp
+  books/wildmat-parser-invariants.lisp -> books/text/wildmat-parser-invariants.lisp
+  books/wildmat-utf8-invariants.lisp -> books/text/wildmat-utf8-invariants.lisp
+  books/wildmat-work.lisp -> books/text/wildmat-work.lisp
+  books/wire.lisp -> books/codec/wire.lisp
+  books/wire-invariants.lisp -> books/codec/wire-invariants.lisp
+  books/wire-outbound-invariants.lisp -> books/codec/wire-outbound-invariants.lisp
+  books/wire-scan.lisp -> books/codec/wire-scan.lisp
+  books/wire-span.lisp -> books/codec/wire-span.lisp
+  host/bp-node-host.lisp -> books/bp/bp-node-host.lisp
+  host/native-auth-admin-host.lisp -> books/owner/native-auth-admin-host.lisp
+  host/native-auth-host.lisp -> books/owner/native-auth-host.lisp
+  host/native-config-host.lisp -> books/owner/native-config-host.lisp
+  host/native-control-host.lisp -> books/owner/native-control-host.lisp
+  host/native-operator-host.lisp -> books/owner/native-operator-host.lisp
+  tests/acl2/acceptance-payload-ref-tests.lisp -> tests/acl2/store/acceptance-payload-ref-tests.lisp
+  tests/acl2/acceptance-stamp-tests.lisp -> tests/acl2/store/acceptance-stamp-tests.lisp
+  tests/acl2/acceptance-tests.lisp -> tests/acl2/store/acceptance-tests.lisp
+  tests/acl2/account-list-tests.lisp -> tests/acl2/nntp/account-list-tests.lisp
+  tests/acl2/accounts-snapshot-tests.lisp -> tests/acl2/nntp/accounts-snapshot-tests.lisp
+  tests/acl2/accounts-tests.lisp -> tests/acl2/nntp/accounts-tests.lisp
+  tests/acl2/anchor-replace-tests.lisp -> tests/acl2/crypto/anchor-replace-tests.lisp
+  tests/acl2/anchor-server-tests.lisp -> tests/acl2/crypto/anchor-server-tests.lisp
+  tests/acl2/anchor-teeth-tests.lisp -> tests/acl2/lib/anchor-teeth-tests.lisp
+  tests/acl2/anchor-tests.lisp -> tests/acl2/crypto/anchor-tests.lisp
+  tests/acl2/anchor-wire-tests.lisp -> tests/acl2/crypto/anchor-wire-tests.lisp
+  tests/acl2/arena-hist-lift.lisp -> tests/acl2/store/arena-hist-lift.lisp
+  tests/acl2/arena-lift.lisp -> tests/acl2/codec/arena-lift.lisp
+  tests/acl2/article-fields-tests.lisp -> tests/acl2/text/article-fields-tests.lisp
+  tests/acl2/article-header-limits-tests.lisp -> tests/acl2/text/article-header-limits-tests.lisp
+  tests/acl2/article-teeth-tests.lisp -> tests/acl2/text/article-teeth-tests.lisp
+  tests/acl2/article-tests.lisp -> tests/acl2/text/article-tests.lisp
+  tests/acl2/article-work-tests.lisp -> tests/acl2/text/article-work-tests.lisp
+  tests/acl2/assumptions-tests.lisp -> tests/acl2/lib/assumptions-tests.lisp
+  tests/acl2/auth-secret-tests.lisp -> tests/acl2/nntp/auth-secret-tests.lisp
+  tests/acl2/blake3-stobj-tests.lisp -> tests/acl2/crypto/blake3-stobj-tests.lisp
+  tests/acl2/blake3-tests.lisp -> tests/acl2/crypto/blake3-tests.lisp
+  tests/acl2/bp-adu-tests.lisp -> tests/acl2/bp/bp-adu-tests.lisp
+  tests/acl2/bp-app-handoff-tests.lisp -> tests/acl2/bp/bp-app-handoff-tests.lisp
+  tests/acl2/bp-app-handoff-time-tests.lisp -> tests/acl2/bp/bp-app-handoff-time-tests.lisp
+  tests/acl2/bp-authored-wire-tests.lisp -> tests/acl2/bp/bp-authored-wire-tests.lisp
+  tests/acl2/bp-bundle-tests.lisp -> tests/acl2/bp/bp-bundle-tests.lisp
+  tests/acl2/bp-channel-ingress-tests.lisp -> tests/acl2/bp/bp-channel-ingress-tests.lisp
+  tests/acl2/bp-clock-domain-tests.lisp -> tests/acl2/bp/bp-clock-domain-tests.lisp
+  tests/acl2/bp-contact-service-tests.lisp -> tests/acl2/bp/bp-contact-service-tests.lisp
+  tests/acl2/bp-fnbs-byte-counterexamples.lisp -> tests/acl2/bp/bp-fnbs-byte-counterexamples.lisp
+  tests/acl2/bp-fnbs-byte-publisher-tests.lisp -> tests/acl2/bp/bp-fnbs-byte-publisher-tests.lisp
+  tests/acl2/bp-fnbs-codec-tests.lisp -> tests/acl2/bp/bp-fnbs-codec-tests.lisp
+  tests/acl2/bp-fnbs-deletion-codec-tests.lisp -> tests/acl2/bp/bp-fnbs-deletion-codec-tests.lisp
+  tests/acl2/bp-fnbs-deletion-publication-tests.lisp -> tests/acl2/bp/bp-fnbs-deletion-publication-tests.lisp
+  tests/acl2/bp-fnbs-delivery-codec-tests.lisp -> tests/acl2/bp/bp-fnbs-delivery-codec-tests.lisp
+  tests/acl2/bp-fnbs-delivery-publication-tests.lisp -> tests/acl2/bp/bp-fnbs-delivery-publication-tests.lisp
+  tests/acl2/bp-fnbs-delivery-replay-tests.lisp -> tests/acl2/bp/bp-fnbs-delivery-replay-tests.lisp
+  tests/acl2/bp-fnbs-dispatch-codec-tests.lisp -> tests/acl2/bp/bp-fnbs-dispatch-codec-tests.lisp
+  tests/acl2/bp-fnbs-family-codec-tests.lisp -> tests/acl2/bp/bp-fnbs-family-codec-tests.lisp
+  tests/acl2/bp-fnbs-family-publication-tests.lisp -> tests/acl2/bp/bp-fnbs-family-publication-tests.lisp
+  tests/acl2/bp-fnbs-family-replay-tests.lisp -> tests/acl2/bp/bp-fnbs-family-replay-tests.lisp
+  tests/acl2/bp-fnbs-forward-codec-tests.lisp -> tests/acl2/bp/bp-fnbs-forward-codec-tests.lisp
+  tests/acl2/bp-fnbs-forward-replay-tests.lisp -> tests/acl2/bp/bp-fnbs-forward-replay-tests.lisp
+  tests/acl2/bp-fnbs-inspect-tests.lisp -> tests/acl2/bp/bp-fnbs-inspect-tests.lisp
+  tests/acl2/bp-fnbs-namespace-tests.lisp -> tests/acl2/bp/bp-fnbs-namespace-tests.lisp
+  tests/acl2/bp-fnbs-publication-tests.lisp -> tests/acl2/bp/bp-fnbs-publication-tests.lisp
+  tests/acl2/bp-fnbs-replay-tests.lisp -> tests/acl2/bp/bp-fnbs-replay-tests.lisp
+  tests/acl2/bp-forward-attempt-tests.lisp -> tests/acl2/bp/bp-forward-attempt-tests.lisp
+  tests/acl2/bp-forward-image-tests.lisp -> tests/acl2/bp/bp-forward-image-tests.lisp
+  tests/acl2/bp-forward-live-tests.lisp -> tests/acl2/bp/bp-forward-live-tests.lisp
+  tests/acl2/bp-fragment-fast-tests.lisp -> tests/acl2/bp/bp-fragment-fast-tests.lisp
+  tests/acl2/bp-fragment-resume-tests.lisp -> tests/acl2/bp/bp-fragment-resume-tests.lisp
+  tests/acl2/bp-fragment-send-tests.lisp -> tests/acl2/bp/bp-fragment-send-tests.lisp
+  tests/acl2/bp-fragment-sweep-tests.lisp -> tests/acl2/bp/bp-fragment-sweep-tests.lisp
+  tests/acl2/bp-fragment-tests.lisp -> tests/acl2/bp/bp-fragment-tests.lisp
+  tests/acl2/bp-handoff-report-tests.lisp -> tests/acl2/bp/bp-handoff-report-tests.lisp
+  tests/acl2/bp-handoff-status-tests.lisp -> tests/acl2/bp/bp-handoff-status-tests.lisp
+  tests/acl2/bp-held-payload-tests.lisp -> tests/acl2/bp/bp-held-payload-tests.lisp
+  tests/acl2/bp-held-projection-tests.lisp -> tests/acl2/bp/bp-held-projection-tests.lisp
+  tests/acl2/bp-ingress-carried-tests.lisp -> tests/acl2/bp/bp-ingress-carried-tests.lisp
+  tests/acl2/bp-ingress-guards-tests.lisp -> tests/acl2/bp/bp-ingress-guards-tests.lisp
+  tests/acl2/bp-ingress-tests.lisp -> tests/acl2/bp/bp-ingress-tests.lisp
+  tests/acl2/bp-ion-observation-tests.lisp -> tests/acl2/bp/bp-ion-observation-tests.lisp
+  tests/acl2/bp-ion-workflow-replay-tests.lisp -> tests/acl2/bp/bp-ion-workflow-replay-tests.lisp
+  tests/acl2/bp-ion-workflow-tests.lisp -> tests/acl2/bp/bp-ion-workflow-tests.lisp
+  tests/acl2/bp-limits-tests.lisp -> tests/acl2/bp/bp-limits-tests.lisp
+  tests/acl2/bp-listener-set-tests.lisp -> tests/acl2/bp/bp-listener-set-tests.lisp
+  tests/acl2/bp-native-app-fast-tests.lisp -> tests/acl2/bp/bp-native-app-fast-tests.lisp
+  tests/acl2/bp-native-app-tests.lisp -> tests/acl2/bp/bp-native-app-tests.lisp
+  tests/acl2/bp-node-contact-driver-tests.lisp -> tests/acl2/bp/bp-node-contact-driver-tests.lisp
+  tests/acl2/bp-node-counterexamples-tests.lisp -> tests/acl2/bp/bp-node-counterexamples-tests.lisp
+  tests/acl2/bp-node-debt-cache-tests.lisp -> tests/acl2/bp/bp-node-debt-cache-tests.lisp
+  tests/acl2/bp-node-debt-tests.lisp -> tests/acl2/bp/bp-node-debt-tests.lisp
+  tests/acl2/bp-node-forward-plan-tests.lisp -> tests/acl2/bp/bp-node-forward-plan-tests.lisp
+  tests/acl2/bp-node-forward-resume-tests.lisp -> tests/acl2/bp/bp-node-forward-resume-tests.lisp
+  tests/acl2/bp-node-forward-retry-tests.lisp -> tests/acl2/bp/bp-node-forward-retry-tests.lisp
+  tests/acl2/bp-node-forwarding-teeth-tests.lisp -> tests/acl2/bp/bp-node-forwarding-teeth-tests.lisp
+  tests/acl2/bp-node-foundation-tests.lisp -> tests/acl2/bp/bp-node-foundation-tests.lisp
+  tests/acl2/bp-node-fragment-expiry-tests.lisp -> tests/acl2/bp/bp-node-fragment-expiry-tests.lisp
+  tests/acl2/bp-node-fragment-family-tests.lisp -> tests/acl2/bp/bp-node-fragment-family-tests.lisp
+  tests/acl2/bp-node-fragment-jobs-tests.lisp -> tests/acl2/bp/bp-node-fragment-jobs-tests.lisp
+  tests/acl2/bp-node-fragment-plan-tests.lisp -> tests/acl2/bp/bp-node-fragment-plan-tests.lisp
+  tests/acl2/bp-node-fragment-replacement-tests.lisp -> tests/acl2/bp/bp-node-fragment-replacement-tests.lisp
+  tests/acl2/bp-node-fragment-step-tests.lisp -> tests/acl2/bp/bp-node-fragment-step-tests.lisp
+  tests/acl2/bp-node-host-tests.lisp -> tests/acl2/codec/bp-node-host-tests.lisp
+  tests/acl2/bp-node-job-cursor-tests.lisp -> tests/acl2/bp/bp-node-job-cursor-tests.lisp
+  tests/acl2/bp-node-job-offer-tests.lisp -> tests/acl2/bp/bp-node-job-offer-tests.lisp
+  tests/acl2/bp-node-machine-authorization-tests.lisp -> tests/acl2/bp/bp-node-machine-authorization-tests.lisp
+  tests/acl2/bp-node-machine-teeth-tests.lisp -> tests/acl2/bp/bp-node-machine-teeth-tests.lisp
+  tests/acl2/bp-node-machine-tests.lisp -> tests/acl2/bp/bp-node-machine-tests.lisp
+  tests/acl2/bp-node-profile-admission-tests.lisp -> tests/acl2/bp/bp-node-profile-admission-tests.lisp
+  tests/acl2/bp-node-profile-tests.lisp -> tests/acl2/bp/bp-node-profile-tests.lisp
+  tests/acl2/bp-node-progress-premises-tests.lisp -> tests/acl2/bp/bp-node-progress-premises-tests.lisp
+  tests/acl2/bp-node-receipt-send-tests.lisp -> tests/acl2/bp/bp-node-receipt-send-tests.lisp
+  tests/acl2/bp-node-receive-boundary-tests.lisp -> tests/acl2/bp/bp-node-receive-boundary-tests.lisp
+  tests/acl2/bp-node-records-tests.lisp -> tests/acl2/bp/bp-node-records-tests.lisp
+  tests/acl2/bp-node-report-step-tests.lisp -> tests/acl2/bp/bp-node-report-step-tests.lisp
+  tests/acl2/bp-node-retire-tests.lisp -> tests/acl2/bp/bp-node-retire-tests.lisp
+  tests/acl2/bp-node-rotation-buffer-tests.lisp -> tests/acl2/bp/bp-node-rotation-buffer-tests.lisp
+  tests/acl2/bp-node-rotation-due-tests.lisp -> tests/acl2/bp/bp-node-rotation-due-tests.lisp
+  tests/acl2/bp-node-tests.lisp -> tests/acl2/bp/bp-node-tests.lisp
+  tests/acl2/bp-outbound-guards-tests.lisp -> tests/acl2/bp/bp-outbound-guards-tests.lisp
+  tests/acl2/bp-outbound-tests.lisp -> tests/acl2/bp/bp-outbound-tests.lisp
+  tests/acl2/bp-primary-tests.lisp -> tests/acl2/bp/bp-primary-tests.lisp
+  tests/acl2/bp-receipt-alpha-tests.lisp -> tests/acl2/bp/bp-receipt-alpha-tests.lisp
+  tests/acl2/bp-receipt-records-tests.lisp -> tests/acl2/bp/bp-receipt-records-tests.lisp
+  tests/acl2/bp-receipt-tests.lisp -> tests/acl2/bp/bp-receipt-tests.lisp
+  tests/acl2/bp-receive-evidence-tests.lisp -> tests/acl2/bp/bp-receive-evidence-tests.lisp
+  tests/acl2/bp-receiver-evolving-tests.lisp -> tests/acl2/bp/bp-receiver-evolving-tests.lisp
+  tests/acl2/bp-receiver-invariants-tests.lisp -> tests/acl2/bp/bp-receiver-invariants-tests.lisp
+  tests/acl2/bp-receiver-teeth-tests.lisp -> tests/acl2/bp/bp-receiver-teeth-tests.lisp
+  tests/acl2/bp-release-authority-tests.lisp -> tests/acl2/bp/bp-release-authority-tests.lisp
+  tests/acl2/bp-release-tests.lisp -> tests/acl2/bp/bp-release-tests.lisp
+  tests/acl2/bp-report-author-tests.lisp -> tests/acl2/bp/bp-report-author-tests.lisp
+  tests/acl2/bp-report-deletion-tests.lisp -> tests/acl2/bp/bp-report-deletion-tests.lisp
+  tests/acl2/bp-report-observe-tests.lisp -> tests/acl2/bp/bp-report-observe-tests.lisp
+  tests/acl2/bp-report-outbox-tests.lisp -> tests/acl2/bp/bp-report-outbox-tests.lisp
+  tests/acl2/bp-request-plan-tests.lisp -> tests/acl2/bp/bp-request-plan-tests.lisp
+  tests/acl2/bp-request-recovery-tests.lisp -> tests/acl2/bp/bp-request-recovery-tests.lisp
+  tests/acl2/bp-request-reference-tests.lisp -> tests/acl2/bp/bp-request-reference-tests.lisp
+  tests/acl2/bp-route-jobs-tests.lisp -> tests/acl2/bp/bp-route-jobs-tests.lisp
+  tests/acl2/bp-route-tests.lisp -> tests/acl2/bp/bp-route-tests.lisp
+  tests/acl2/bp-run-class-tests.lisp -> tests/acl2/bp/bp-run-class-tests.lisp
+  tests/acl2/bp-sequence-fidelity-tests.lisp -> tests/acl2/bp/bp-sequence-fidelity-tests.lisp
+  tests/acl2/bp-sequence-persistence-tests.lisp -> tests/acl2/bp/bp-sequence-persistence-tests.lisp
+  tests/acl2/bp-session-admission-tests.lisp -> tests/acl2/bp/bp-session-admission-tests.lisp
+  tests/acl2/bp-signed-binding-tests.lisp -> tests/acl2/bp/bp-signed-binding-tests.lisp
+  tests/acl2/bp-status-report-tests.lisp -> tests/acl2/bp/bp-status-report-tests.lisp
+  tests/acl2/bp-transit-join-tests.lisp -> tests/acl2/bp/bp-transit-join-tests.lisp
+  tests/acl2/bp-workflow-binding-invariants-tests.lisp -> tests/acl2/bp/bp-workflow-binding-invariants-tests.lisp
+  tests/acl2/bp-workflow-records-guards-tests.lisp -> tests/acl2/bp/bp-workflow-records-guards-tests.lisp
+  tests/acl2/bp-workflow-records-tests.lisp -> tests/acl2/bp/bp-workflow-records-tests.lisp
+  tests/acl2/bp-workflow-teeth-tests.lisp -> tests/acl2/bp/bp-workflow-teeth-tests.lisp
+  tests/acl2/bp-workflow-tests.lisp -> tests/acl2/bp/bp-workflow-tests.lisp
+  tests/acl2/byte-store-fault-keystones-tests.lisp -> tests/acl2/store/byte-store-fault-keystones-tests.lisp
+  tests/acl2/byte-store-frame-tests.lisp -> tests/acl2/store/byte-store-frame-tests.lisp
+  tests/acl2/byte-store-initializer-tests.lisp -> tests/acl2/store/byte-store-initializer-tests.lisp
+  tests/acl2/byte-store-k0-recovery-tests.lisp -> tests/acl2/store/byte-store-k0-recovery-tests.lisp
+  tests/acl2/byte-store-k0-tests.lisp -> tests/acl2/store/byte-store-k0-tests.lisp
+  tests/acl2/byte-store-log-initializer-tests.lisp -> tests/acl2/store/byte-store-log-initializer-tests.lisp
+  tests/acl2/byte-store-native-correspondence-tests.lisp -> tests/acl2/store/byte-store-native-correspondence-tests.lisp
+  tests/acl2/byte-store-observation-scan-tests.lisp -> tests/acl2/store/byte-store-observation-scan-tests.lisp
+  tests/acl2/byte-store-observation-tests.lisp -> tests/acl2/store/byte-store-observation-tests.lisp
+  tests/acl2/byte-store-program-invariants-tests.lisp -> tests/acl2/store/byte-store-program-invariants-tests.lisp
+  tests/acl2/byte-store-record-fence-tests.lisp -> tests/acl2/store/byte-store-record-fence-tests.lisp
+  tests/acl2/byte-store-record-provenance-tests.lisp -> tests/acl2/store/byte-store-record-provenance-tests.lisp
+  tests/acl2/byte-store-relation-tests.lisp -> tests/acl2/store/byte-store-relation-tests.lisp
+  tests/acl2/byte-store-retention-publication-tests.lisp -> tests/acl2/store/byte-store-retention-publication-tests.lisp
+  tests/acl2/byte-store-scan-tests.lisp -> tests/acl2/store/byte-store-scan-tests.lisp
+  tests/acl2/byte-store-stable-prefix-tests.lisp -> tests/acl2/store/byte-store-stable-prefix-tests.lisp
+  tests/acl2/byte-store-state-checkpoint-program-tests.lisp -> tests/acl2/store/byte-store-state-checkpoint-program-tests.lisp
+  tests/acl2/byte-store-sweep-tests.lisp -> tests/acl2/store/byte-store-sweep-tests.lisp
+  tests/acl2/byte-store-tests.lisp -> tests/acl2/store/byte-store-tests.lisp
+  tests/acl2/byte-store-txn-name-tests.lisp -> tests/acl2/store/byte-store-txn-name-tests.lisp
+  tests/acl2/cancel-lock-d25-tests.lisp -> tests/acl2/text/cancel-lock-d25-tests.lisp
+  tests/acl2/cancel-lock-tests.lisp -> tests/acl2/text/cancel-lock-tests.lisp
+  tests/acl2/catalog-commit-tests.lisp -> tests/acl2/store/catalog-commit-tests.lisp
+  tests/acl2/catalog-delta-tests.lisp -> tests/acl2/store/catalog-delta-tests.lisp
+  tests/acl2/catalog-entries-tests.lisp -> tests/acl2/store/catalog-entries-tests.lisp
+  tests/acl2/catalog-load-index-tests.lisp -> tests/acl2/store/catalog-load-index-tests.lisp
+  tests/acl2/catalog-number-index-tests.lisp -> tests/acl2/store/catalog-number-index-tests.lisp
+  tests/acl2/catalog-record-tests.lisp -> tests/acl2/store/catalog-record-tests.lisp
+  tests/acl2/catalog-refresh-tests.lisp -> tests/acl2/store/catalog-refresh-tests.lisp
+  tests/acl2/catalog-relation-tests.lisp -> tests/acl2/store/catalog-relation-tests.lisp
+  tests/acl2/catalog-tests.lisp -> tests/acl2/store/catalog-tests.lisp
+  tests/acl2/catalog-view-tests.lisp -> tests/acl2/store/catalog-view-tests.lisp
+  tests/acl2/cbor-teeth-tests.lisp -> tests/acl2/codec/cbor-teeth-tests.lisp
+  tests/acl2/cbor-tests.lisp -> tests/acl2/codec/cbor-tests.lisp
+  tests/acl2/checkpoint-auxiliary-tests.lisp -> tests/acl2/store/checkpoint-auxiliary-tests.lisp
+  tests/acl2/checkpoint-codec-tests.lisp -> tests/acl2/store/checkpoint-codec-tests.lisp
+  tests/acl2/checkpoint-compaction-tests.lisp -> tests/acl2/store/checkpoint-compaction-tests.lisp
+  tests/acl2/checkpoint-publish-tests.lisp -> tests/acl2/store/checkpoint-publish-tests.lisp
+  tests/acl2/checkpoint-tests.lisp -> tests/acl2/store/checkpoint-tests.lisp
+  tests/acl2/clock-reading-tests.lisp -> tests/acl2/time/clock-reading-tests.lisp
+  tests/acl2/clock-tests.lisp -> tests/acl2/time/clock-tests.lisp
+  tests/acl2/codec-seam-tests.lisp -> tests/acl2/codec/codec-seam-tests.lisp
+  tests/acl2/config-carried-candidate-tests.lisp -> tests/acl2/config/config-carried-candidate-tests.lisp
+  tests/acl2/config-carried-open-tests.lisp -> tests/acl2/config/config-carried-open-tests.lisp
+  tests/acl2/config-carried-readback-tests.lisp -> tests/acl2/config/config-carried-readback-tests.lisp
+  tests/acl2/config-crash-replay-tests.lisp -> tests/acl2/config/config-crash-replay-tests.lisp
+  tests/acl2/config-observed-tests.lisp -> tests/acl2/config/config-observed-tests.lisp
+  tests/acl2/config-owner-advance-invariants-tests.lisp -> tests/acl2/config/config-owner-advance-invariants-tests.lisp
+  tests/acl2/config-owner-advance-reader-invariants-tests.lisp -> tests/acl2/config/config-owner-advance-reader-invariants-tests.lisp
+  tests/acl2/config-owner-carried-tests.lisp -> tests/acl2/config/config-owner-carried-tests.lisp
+  tests/acl2/config-owner-live-authorize-tests.lisp -> tests/acl2/config/config-owner-live-authorize-tests.lisp
+  tests/acl2/config-owner-live-tests.lisp -> tests/acl2/config/config-owner-live-tests.lisp
+  tests/acl2/config-owner-publish-tests.lisp -> tests/acl2/config/config-owner-publish-tests.lisp
+  tests/acl2/config-owner-read-invariants-tests.lisp -> tests/acl2/config/config-owner-read-invariants-tests.lisp
+  tests/acl2/config-physical-replay-tests.lisp -> tests/acl2/config/config-physical-replay-tests.lisp
+  tests/acl2/config-policy-delta-tests.lisp -> tests/acl2/config/config-policy-delta-tests.lisp
+  tests/acl2/config-store-traces-tests.lisp -> tests/acl2/config/config-store-traces-tests.lisp
+  tests/acl2/config-stream-tests.lisp -> tests/acl2/config/config-stream-tests.lisp
+  tests/acl2/config-tests.lisp -> tests/acl2/config/config-tests.lisp
+  tests/acl2/connection-budget-tests.lisp -> tests/acl2/nntp/connection-budget-tests.lisp
+  tests/acl2/consumer-artifact-retry-tests.lisp -> tests/acl2/store/consumer-artifact-retry-tests.lisp
+  tests/acl2/consumer-bound-tests.lisp -> tests/acl2/store/consumer-bound-tests.lisp
+  tests/acl2/consumer-event-index-tests.lisp -> tests/acl2/store/consumer-event-index-tests.lisp
+  tests/acl2/consumer-local-control-tests.lisp -> tests/acl2/store/consumer-local-control-tests.lisp
+  tests/acl2/consumer-owner-index-invariants-tests.lisp -> tests/acl2/store/consumer-owner-index-invariants-tests.lisp
+  tests/acl2/consumer-owner-local-progress-tests.lisp -> tests/acl2/store/consumer-owner-local-progress-tests.lisp
+  tests/acl2/consumer-owner-local-tests.lisp -> tests/acl2/store/consumer-owner-local-tests.lisp
+  tests/acl2/consumer-poll-index-tests.lisp -> tests/acl2/store/consumer-poll-index-tests.lisp
+  tests/acl2/consumer-poll-projection-tests.lisp -> tests/acl2/store/consumer-poll-projection-tests.lisp
+  tests/acl2/consumer-position-tests.lisp -> tests/acl2/store/consumer-position-tests.lisp
+  tests/acl2/consumer-reason-tests.lisp -> tests/acl2/store/consumer-reason-tests.lisp
+  tests/acl2/consumer-store-events-tests.lisp -> tests/acl2/store/consumer-store-events-tests.lisp
+  tests/acl2/consumer-store-invariants-tests.lisp -> tests/acl2/store/consumer-store-invariants-tests.lisp
+  tests/acl2/consumer-store-node-tests.lisp -> tests/acl2/store/consumer-store-node-tests.lisp
+  tests/acl2/consumer-store-projection-tests.lisp -> tests/acl2/store/consumer-store-projection-tests.lisp
+  tests/acl2/consumer-topic-store-tests.lisp -> tests/acl2/store/consumer-topic-store-tests.lisp
+  tests/acl2/consumer-wait-codec-tests.lisp -> tests/acl2/store/consumer-wait-codec-tests.lisp
+  tests/acl2/consumer-wait-tests.lisp -> tests/acl2/store/consumer-wait-tests.lisp
+  tests/acl2/consumer-withdrawal-tests.lisp -> tests/acl2/store/consumer-withdrawal-tests.lisp
+  tests/acl2/container-tests.lisp -> tests/acl2/store/container-tests.lisp
+  tests/acl2/control-authority-tests.lisp -> tests/acl2/text/control-authority-tests.lisp
+  tests/acl2/control-evidence-tests.lisp -> tests/acl2/text/control-evidence-tests.lisp
+  tests/acl2/control-served-tests.lisp -> tests/acl2/text/control-served-tests.lisp
+  tests/acl2/control-tests.lisp -> tests/acl2/peer/control-tests.lisp
+  tests/acl2/control-visible-indexed-tests.lisp -> tests/acl2/text/control-visible-indexed-tests.lisp
+  tests/acl2/control-visible-tests.lisp -> tests/acl2/text/control-visible-tests.lisp
+  tests/acl2/crypto-seam-tests.lisp -> tests/acl2/crypto/crypto-seam-tests.lisp
+  tests/acl2/defkeystone-tests.lisp -> tests/acl2/lib/defkeystone-tests.lisp
+  tests/acl2/defrecord-tests.lisp -> tests/acl2/lib/defrecord-tests.lisp
+  tests/acl2/docs-operator-grammar-tests.lisp -> tests/acl2/owner/docs-operator-grammar-tests.lisp
+  tests/acl2/exchange-tests.lisp -> tests/acl2/peer/exchange-tests.lisp
+  tests/acl2/feed-auth-profile-tests.lisp -> tests/acl2/peer/feed-auth-profile-tests.lisp
+  tests/acl2/feed-connection-invariants-tests.lisp -> tests/acl2/peer/feed-connection-invariants-tests.lisp
+  tests/acl2/feed-connection-teeth-tests.lisp -> tests/acl2/peer/feed-connection-teeth-tests.lisp
+  tests/acl2/feed-connection-tests.lisp -> tests/acl2/peer/feed-connection-tests.lisp
+  tests/acl2/feed-correspondence-tests.lisp -> tests/acl2/peer/feed-correspondence-tests.lisp
+  tests/acl2/feed-filename-tests.lisp -> tests/acl2/peer/feed-filename-tests.lisp
+  tests/acl2/feed-journal-tests.lisp -> tests/acl2/peer/feed-journal-tests.lisp
+  tests/acl2/feed-port-replay-tests.lisp -> tests/acl2/peer/feed-port-replay-tests.lisp
+  tests/acl2/feed-totality-tests.lisp -> tests/acl2/peer/feed-totality-tests.lisp
+  tests/acl2/feed-wire-input-tests.lisp -> tests/acl2/peer/feed-wire-input-tests.lisp
+  tests/acl2/frame-digest-buffer-tests.lisp -> tests/acl2/codec/frame-digest-buffer-tests.lisp
+  tests/acl2/frame-tests.lisp -> tests/acl2/codec/frame-tests.lisp
+  tests/acl2/frame-trailer-tests.lisp -> tests/acl2/codec/frame-trailer-tests.lisp
+  tests/acl2/group-access-tests.lisp -> tests/acl2/nntp/group-access-tests.lisp
+  tests/acl2/group-bucket-index-tests.lisp -> tests/acl2/text/group-bucket-index-tests.lisp
+  tests/acl2/group-descriptions-tests.lisp -> tests/acl2/owner/group-descriptions-tests.lisp
+  tests/acl2/group-number-index-tests.lisp -> tests/acl2/nntp/group-number-index-tests.lisp
+  tests/acl2/group-status-tests.lisp -> tests/acl2/owner/group-status-tests.lisp
+  tests/acl2/heap-figure-tests.lisp -> tests/acl2/store/heap-figure-tests.lisp
+  tests/acl2/heap-open-nursery-tests.lisp -> tests/acl2/store/heap-open-nursery-tests.lisp
+  tests/acl2/heap-reservation-tests.lisp -> tests/acl2/store/heap-reservation-tests.lisp
+  tests/acl2/held-rows-intern-tests.lisp -> tests/acl2/store/held-rows-intern-tests.lisp
+  tests/acl2/held-rows-tests.lisp -> tests/acl2/store/held-rows-tests.lisp
+  tests/acl2/history-columns-relation-tests.lisp -> tests/acl2/store/history-columns-relation-tests.lisp
+  tests/acl2/history-columns-store-tests.lisp -> tests/acl2/store/history-columns-store-tests.lisp
+  tests/acl2/history-columns-tests.lisp -> tests/acl2/store/history-columns-tests.lisp
+  tests/acl2/history-fold-refinement-tests.lisp -> tests/acl2/store/history-fold-refinement-tests.lisp
+  tests/acl2/history-pages-digest-tests.lisp -> tests/acl2/store/history-pages-digest-tests.lisp
+  tests/acl2/history-pages-grow-five-tests.lisp -> tests/acl2/store/history-pages-grow-five-tests.lisp
+  tests/acl2/history-pages-grow-then-append-tests.lisp -> tests/acl2/store/history-pages-grow-then-append-tests.lisp
+  tests/acl2/history-pages-import-tests.lisp -> tests/acl2/store/history-pages-import-tests.lisp
+  tests/acl2/history-pages-owner-tests.lisp -> tests/acl2/store/history-pages-owner-tests.lisp
+  tests/acl2/history-pages-placed-tests.lisp -> tests/acl2/store/history-pages-placed-tests.lisp
+  tests/acl2/history-pages-read-tests.lisp -> tests/acl2/store/history-pages-read-tests.lisp
+  tests/acl2/history-pages-relocate-tests.lisp -> tests/acl2/store/history-pages-relocate-tests.lisp
+  tests/acl2/history-pages-step-tests.lisp -> tests/acl2/store/history-pages-step-tests.lisp
+  tests/acl2/history-pages-tests.lisp -> tests/acl2/store/history-pages-tests.lisp
+  tests/acl2/history-pages-write-tests.lisp -> tests/acl2/store/history-pages-write-tests.lisp
+  tests/acl2/history-records-tests.lisp -> tests/acl2/store/history-records-tests.lisp
+  tests/acl2/hostile-reader-archive.lisp -> tests/acl2/nntp/hostile-reader-archive.lisp
+  tests/acl2/hybrid-carrier-tests.lisp -> tests/acl2/crypto/hybrid-carrier-tests.lisp
+  tests/acl2/hybrid-lifecycle-store-invariants-tests.lisp -> tests/acl2/crypto/hybrid-lifecycle-store-invariants-tests.lisp
+  tests/acl2/hybrid-lifecycle-tests.lisp -> tests/acl2/crypto/hybrid-lifecycle-tests.lisp
+  tests/acl2/hybrid-signature-invariants-tests.lisp -> tests/acl2/crypto/hybrid-signature-invariants-tests.lisp
+  tests/acl2/hybrid-signature-tests.lisp -> tests/acl2/crypto/hybrid-signature-tests.lisp
+  tests/acl2/hybrid-store-tests.lisp -> tests/acl2/crypto/hybrid-store-tests.lisp
+  tests/acl2/identity-tests.lisp -> tests/acl2/crypto/identity-tests.lisp
+  tests/acl2/index-tests.lisp -> tests/acl2/store/index-tests.lisp
+  tests/acl2/injection-info-params-tests.lisp -> tests/acl2/text/injection-info-params-tests.lisp
+  tests/acl2/injection-tests.lisp -> tests/acl2/text/injection-tests.lisp
+  tests/acl2/journal-publish-tests.lisp -> tests/acl2/store/journal-publish-tests.lisp
+  tests/acl2/journal-tests.lisp -> tests/acl2/store/journal-tests.lisp
+  tests/acl2/key-statements-tests.lisp -> tests/acl2/crypto/key-statements-tests.lisp
+  tests/acl2/lace-tests.lisp -> tests/acl2/crypto/lace-tests.lisp
+  tests/acl2/linear-recognizers-tests.lisp -> tests/acl2/store/linear-recognizers-tests.lisp
+  tests/acl2/log-sink-tests.lisp -> tests/acl2/store/log-sink-tests.lisp
+  tests/acl2/login-binding-live-tests.lisp -> tests/acl2/nntp/login-binding-live-tests.lisp
+  tests/acl2/login-binding-tests.lisp -> tests/acl2/nntp/login-binding-tests.lisp
+  tests/acl2/membership-epochs-tests.lisp -> tests/acl2/peer/membership-epochs-tests.lisp
+  tests/acl2/moderation-tests.lisp -> tests/acl2/nntp/moderation-tests.lisp
+  tests/acl2/moderation-verbs-tests.lisp -> tests/acl2/owner/moderation-verbs-tests.lisp
+  tests/acl2/msgid-index-concrete-tests.lisp -> tests/acl2/text/msgid-index-concrete-tests.lisp
+  tests/acl2/msgid-index-tests.lisp -> tests/acl2/text/msgid-index-tests.lisp
+  tests/acl2/must-fail-checked.lisp -> tests/acl2/lib/must-fail-checked.lisp
+  tests/acl2/native-admin-peer-budget-tests.lisp -> tests/acl2/owner/native-admin-peer-budget-tests.lisp
+  tests/acl2/native-admin-tests.lisp -> tests/acl2/owner/native-admin-tests.lisp
+  tests/acl2/native-auth-admin-host-tests.lisp -> tests/acl2/codec/native-auth-admin-host-tests.lisp
+  tests/acl2/native-auth-admin-tests.lisp -> tests/acl2/owner/native-auth-admin-tests.lisp
+  tests/acl2/native-auth-host-tests.lisp -> tests/acl2/codec/native-auth-host-tests.lisp
+  tests/acl2/native-auth-profile-tests.lisp -> tests/acl2/owner/native-auth-profile-tests.lisp
+  tests/acl2/native-config-observation-tests.lisp -> tests/acl2/owner/native-config-observation-tests.lisp
+  tests/acl2/native-config-show-tests.lisp -> tests/acl2/owner/native-config-show-tests.lisp
+  tests/acl2/native-config-tests.lisp -> tests/acl2/owner/native-config-tests.lisp
+  tests/acl2/native-control-host-tests.lisp -> tests/acl2/codec/native-control-host-tests.lisp
+  tests/acl2/native-control-launch-tests.lisp -> tests/acl2/owner/native-control-launch-tests.lisp
+  tests/acl2/native-control-reason-tests.lisp -> tests/acl2/owner/native-control-reason-tests.lisp
+  tests/acl2/native-control-tests.lisp -> tests/acl2/owner/native-control-tests.lisp
+  tests/acl2/native-health-tests.lisp -> tests/acl2/owner/native-health-tests.lisp
+  tests/acl2/native-hybrid-control-tests.lisp -> tests/acl2/owner/native-hybrid-control-tests.lisp
+  tests/acl2/native-live-pages-tests.lisp -> tests/acl2/owner/native-live-pages-tests.lisp
+  tests/acl2/native-live-status-tests.lisp -> tests/acl2/owner/native-live-status-tests.lisp
+  tests/acl2/native-mission-tests.lisp -> tests/acl2/owner/native-mission-tests.lisp
+  tests/acl2/native-operator-host-tests.lisp -> tests/acl2/codec/native-operator-host-tests.lisp
+  tests/acl2/native-operator-tests.lisp -> tests/acl2/owner/native-operator-tests.lisp
+  tests/acl2/native-status-columns-tests.lisp -> tests/acl2/owner/native-status-columns-tests.lisp
+  tests/acl2/nntp-article-block-tests.lisp -> tests/acl2/nntp/nntp-article-block-tests.lisp
+  tests/acl2/nntp-auth-fold-tests.lisp -> tests/acl2/nntp/nntp-auth-fold-tests.lisp
+  tests/acl2/nntp-auth-teeth-tests.lisp -> tests/acl2/nntp/nntp-auth-teeth-tests.lisp
+  tests/acl2/nntp-auth-tests.lisp -> tests/acl2/nntp/nntp-auth-tests.lisp
+  tests/acl2/nntp-control-tests.lisp -> tests/acl2/nntp/nntp-control-tests.lisp
+  tests/acl2/nntp-help-tests.lisp -> tests/acl2/nntp/nntp-help-tests.lisp
+  tests/acl2/nntp-index-tests.lisp -> tests/acl2/nntp/nntp-index-tests.lisp
+  tests/acl2/nntp-legacy-tests.lisp -> tests/acl2/nntp/nntp-legacy-tests.lisp
+  tests/acl2/nntp-list-counts-tests.lisp -> tests/acl2/owner/nntp-list-counts-tests.lisp
+  tests/acl2/nntp-newnews-tests.lisp -> tests/acl2/nntp/nntp-newnews-tests.lisp
+  tests/acl2/nntp-pinned-index-tests.lisp -> tests/acl2/nntp/nntp-pinned-index-tests.lisp
+  tests/acl2/nntp-pinned-msgid-tests.lisp -> tests/acl2/nntp/nntp-pinned-msgid-tests.lisp
+  tests/acl2/nntp-post-tests.lisp -> tests/acl2/nntp/nntp-post-tests.lisp
+  tests/acl2/nntp-range-indexed-tests.lisp -> tests/acl2/nntp/nntp-range-indexed-tests.lisp
+  tests/acl2/nntp-reader-compat-tests.lisp -> tests/acl2/owner/nntp-reader-compat-tests.lisp
+  tests/acl2/nntp-reader-profile-tests.lisp -> tests/acl2/nntp/nntp-reader-profile-tests.lisp
+  tests/acl2/nntp-search-scope-tests.lisp -> tests/acl2/nntp/nntp-search-scope-tests.lisp
+  tests/acl2/nntp-teeth-tests.lisp -> tests/acl2/nntp/nntp-teeth-tests.lisp
+  tests/acl2/nntp-tests.lisp -> tests/acl2/nntp/nntp-tests.lisp
+  tests/acl2/nntp-verdict-tests.lisp -> tests/acl2/nntp/nntp-verdict-tests.lisp
+  tests/acl2/nntp-xpat-tests.lisp -> tests/acl2/nntp/nntp-xpat-tests.lisp
+  tests/acl2/nntp-xref-tests.lisp -> tests/acl2/owner/nntp-xref-tests.lisp
+  tests/acl2/node-secret-tests.lisp -> tests/acl2/store/node-secret-tests.lisp
+  tests/acl2/node-tests.lisp -> tests/acl2/store/node-tests.lisp
+  tests/acl2/octet-text-tests.lisp -> tests/acl2/lib/octet-text-tests.lisp
+  tests/acl2/octets-bulk-tests.lisp -> tests/acl2/lib/octets-bulk-tests.lisp
+  tests/acl2/octets-stobj-tests.lisp -> tests/acl2/lib/octets-stobj-tests.lisp
+  tests/acl2/open-one-pass-tests.lisp -> tests/acl2/owner/open-one-pass-tests.lisp
+  tests/acl2/outcome-class-tests.lisp -> tests/acl2/bp/outcome-class-tests.lisp
+  tests/acl2/owner-ack-after-barrier-tests.lisp -> tests/acl2/owner/owner-ack-after-barrier-tests.lisp
+  tests/acl2/owner-advance-carried-tests.lisp -> tests/acl2/owner/owner-advance-carried-tests.lisp
+  tests/acl2/owner-agent-tests.lisp -> tests/acl2/owner/owner-agent-tests.lisp
+  tests/acl2/owner-batch-tests.lisp -> tests/acl2/owner/owner-batch-tests.lisp
+  tests/acl2/owner-bound-commit-tests.lisp -> tests/acl2/owner/owner-bound-commit-tests.lisp
+  tests/acl2/owner-cancel-lock-tests.lisp -> tests/acl2/owner/owner-cancel-lock-tests.lisp
+  tests/acl2/owner-cancel-refresh-tests.lisp -> tests/acl2/lib/owner-cancel-refresh-tests.lisp
+  tests/acl2/owner-checkpoint-open-tests.lisp -> tests/acl2/owner/owner-checkpoint-open-tests.lisp
+  tests/acl2/owner-commit-carried-tests.lisp -> tests/acl2/owner/owner-commit-carried-tests.lisp
+  tests/acl2/owner-commit-class-tests.lisp -> tests/acl2/owner/owner-commit-class-tests.lisp
+  tests/acl2/owner-commit-pipeline-tests.lisp -> tests/acl2/owner/owner-commit-pipeline-tests.lisp
+  tests/acl2/owner-commit-steps-tests.lisp -> tests/acl2/owner/owner-commit-steps-tests.lisp
+  tests/acl2/owner-config-observe-tests.lisp -> tests/acl2/owner/owner-config-observe-tests.lisp
+  tests/acl2/owner-config-tests.lisp -> tests/acl2/owner/owner-config-tests.lisp
+  tests/acl2/owner-enrollment-read-tests.lisp -> tests/acl2/owner/owner-enrollment-read-tests.lisp
+  tests/acl2/owner-fault-tests.lisp -> tests/acl2/lib/owner-fault-tests.lisp
+  tests/acl2/owner-feed-article-tests.lisp -> tests/acl2/owner/owner-feed-article-tests.lisp
+  tests/acl2/owner-feed-form-tests.lisp -> tests/acl2/owner/owner-feed-form-tests.lisp
+  tests/acl2/owner-feed-port-tests.lisp -> tests/acl2/owner/owner-feed-port-tests.lisp
+  tests/acl2/owner-feed-tests.lisp -> tests/acl2/owner/owner-feed-tests.lisp
+  tests/acl2/owner-feed-txid-reuse-tests.lisp -> tests/acl2/owner/owner-feed-txid-reuse-tests.lisp
+  tests/acl2/owner-identity-intern-tests.lisp -> tests/acl2/owner/owner-identity-intern-tests.lisp
+  tests/acl2/owner-identity-served-tests.lisp -> tests/acl2/owner/owner-identity-served-tests.lisp
+  tests/acl2/owner-injection-info-tests.lisp -> tests/acl2/owner/owner-injection-info-tests.lisp
+  tests/acl2/owner-intent-carried-tests.lisp -> tests/acl2/owner/owner-intent-carried-tests.lisp
+  tests/acl2/owner-log-ocl-tests.lisp -> tests/acl2/owner/owner-log-ocl-tests.lisp
+  tests/acl2/owner-log-reopen-tests.lisp -> tests/acl2/owner/owner-log-reopen-tests.lisp
+  tests/acl2/owner-log-route-tests.lisp -> tests/acl2/owner/owner-log-route-tests.lisp
+  tests/acl2/owner-log-tests.lisp -> tests/acl2/owner/owner-log-tests.lisp
+  tests/acl2/owner-numbering-tests.lisp -> tests/acl2/owner/owner-numbering-tests.lisp
+  tests/acl2/owner-open-carried-tests.lisp -> tests/acl2/owner/owner-open-carried-tests.lisp
+  tests/acl2/owner-operator-tests.lisp -> tests/acl2/owner/owner-operator-tests.lisp
+  tests/acl2/owner-parse-carried-tests.lisp -> tests/acl2/owner/owner-parse-carried-tests.lisp
+  tests/acl2/owner-prepare-carried-tests.lisp -> tests/acl2/owner/owner-prepare-carried-tests.lisp
+  tests/acl2/owner-prepare-correspondence-tests.lisp -> tests/acl2/owner/owner-prepare-correspondence-tests.lisp
+  tests/acl2/owner-prepare-outcome-tests.lisp -> tests/acl2/owner/owner-prepare-outcome-tests.lisp
+  tests/acl2/owner-prepare-outcome-topic-tests.lisp -> tests/acl2/owner/owner-prepare-outcome-topic-tests.lisp
+  tests/acl2/owner-prepare-served-abort-tests.lisp -> tests/acl2/lib/owner-prepare-served-abort-tests.lisp
+  tests/acl2/owner-prepare-served-events-tests.lisp -> tests/acl2/store/owner-prepare-served-events-tests.lisp
+  tests/acl2/owner-prepare-served-tests.lisp -> tests/acl2/owner/owner-prepare-served-tests.lisp
+  tests/acl2/owner-reader-read-tests.lisp -> tests/acl2/owner/owner-reader-read-tests.lisp
+  tests/acl2/owner-reader-view-tests.lisp -> tests/acl2/owner/owner-reader-view-tests.lisp
+  tests/acl2/owner-recover-ocl-tests.lisp -> tests/acl2/owner/owner-recover-ocl-tests.lisp
+  tests/acl2/owner-refresh-indexed-tests.lisp -> tests/acl2/owner/owner-refresh-indexed-tests.lisp
+  tests/acl2/owner-results-tests.lisp -> tests/acl2/owner/owner-results-tests.lisp
+  tests/acl2/owner-retention-preparation-tests.lisp -> tests/acl2/owner/owner-retention-preparation-tests.lisp
+  tests/acl2/owner-scheduler-tests.lisp -> tests/acl2/owner/owner-scheduler-tests.lisp
+  tests/acl2/owner-served-bound-tests.lisp -> tests/acl2/owner/owner-served-bound-tests.lisp
+  tests/acl2/owner-served-carried-tests.lisp -> tests/acl2/owner/owner-served-carried-tests.lisp
+  tests/acl2/owner-served-invariants-tests.lisp -> tests/acl2/owner/owner-served-invariants-tests.lisp
+  tests/acl2/owner-signed-post-tests.lisp -> tests/acl2/owner/owner-signed-post-tests.lisp
+  tests/acl2/owner-stop-drain-tests.lisp -> tests/acl2/owner/owner-stop-drain-tests.lisp
+  tests/acl2/owner-store-budget-tests.lisp -> tests/acl2/owner/owner-store-budget-tests.lisp
+  tests/acl2/owner-store-indexed-tests.lisp -> tests/acl2/owner/owner-store-indexed-tests.lisp
+  tests/acl2/owner-tests.lisp -> tests/acl2/owner/owner-tests.lisp
+  tests/acl2/owner-time-journal-writer-tests.lisp -> tests/acl2/owner/owner-time-journal-writer-tests.lisp
+  tests/acl2/owner-time-model-tests.lisp -> tests/acl2/owner/owner-time-model-tests.lisp
+  tests/acl2/owner-tls-pin-tests.lisp -> tests/acl2/owner/owner-tls-pin-tests.lisp
+  tests/acl2/owner-verdict-read-tests.lisp -> tests/acl2/owner/owner-verdict-read-tests.lisp
+  tests/acl2/owner-verdict-tests.lisp -> tests/acl2/owner/owner-verdict-tests.lisp
+  tests/acl2/pagestore-refine-tests.lisp -> tests/acl2/store/pagestore-refine-tests.lisp
+  tests/acl2/pagestore-tests.lisp -> tests/acl2/store/pagestore-tests.lisp
+  tests/acl2/payload-arena-extent-tests.lisp -> tests/acl2/codec/payload-arena-extent-tests.lisp
+  tests/acl2/payload-arena-paged-tests.lisp -> tests/acl2/codec/payload-arena-paged-tests.lisp
+  tests/acl2/payload-arena-tests.lisp -> tests/acl2/codec/payload-arena-tests.lisp
+  tests/acl2/payload-commit-extent-tests.lisp -> tests/acl2/codec/payload-commit-extent-tests.lisp
+  tests/acl2/payload-extent-tests.lisp -> tests/acl2/codec/payload-extent-tests.lisp
+  tests/acl2/payload-kinds-tests.lisp -> tests/acl2/codec/payload-kinds-tests.lisp
+  tests/acl2/payload-lz-append-tests.lisp -> tests/acl2/codec/payload-lz-append-tests.lisp
+  tests/acl2/payload-lz-record-tests.lisp -> tests/acl2/codec/payload-lz-record-tests.lisp
+  tests/acl2/payload-lz-tests.lisp -> tests/acl2/codec/payload-lz-tests.lisp
+  tests/acl2/peer-authored-accept-tests.lisp -> tests/acl2/peer/peer-authored-accept-tests.lisp
+  tests/acl2/peer-carriage-tests.lisp -> tests/acl2/peer/peer-carriage-tests.lisp
+  tests/acl2/peer-catchup-tests.lisp -> tests/acl2/peer/peer-catchup-tests.lisp
+  tests/acl2/peer-feed-tests.lisp -> tests/acl2/peer/peer-feed-tests.lisp
+  tests/acl2/peer-guard-carried-tests.lisp -> tests/acl2/nntp/peer-guard-carried-tests.lisp
+  tests/acl2/peer-host-tests.lisp -> tests/acl2/peer/peer-host-tests.lisp
+  tests/acl2/peer-inbound-tests.lisp -> tests/acl2/peer/peer-inbound-tests.lisp
+  tests/acl2/peer-invite-tests.lisp -> tests/acl2/peer/peer-invite-tests.lisp
+  tests/acl2/peer-offer-indexed-tests.lisp -> tests/acl2/owner/peer-offer-indexed-tests.lisp
+  tests/acl2/peer-pull-session-tests.lisp -> tests/acl2/peer/peer-pull-session-tests.lisp
+  tests/acl2/peer-pull-tests.lisp -> tests/acl2/peer/peer-pull-tests.lisp
+  tests/acl2/peer-transit-forms-tests.lisp -> tests/acl2/peer/peer-transit-forms-tests.lisp
+  tests/acl2/policy-tests.lisp -> tests/acl2/peer/policy-tests.lisp
+  tests/acl2/post-fields-tests.lisp -> tests/acl2/text/post-fields-tests.lisp
+  tests/acl2/post-identity-index-tests.lisp -> tests/acl2/text/post-identity-index-tests.lisp
+  tests/acl2/post-retain-carried-tests.lisp -> tests/acl2/text/post-retain-carried-tests.lisp
+  tests/acl2/poster-bytes-tests.lisp -> tests/acl2/text/poster-bytes-tests.lisp
+  tests/acl2/posting-account-tests.lisp -> tests/acl2/text/posting-account-tests.lisp
+  tests/acl2/principal-tests.lisp -> tests/acl2/crypto/principal-tests.lisp
+  tests/acl2/profile-monotonicity-tests.lisp -> tests/acl2/store/profile-monotonicity-tests.lisp
+  tests/acl2/proto-adt-2-tests.lisp -> tests/acl2/lib/proto-adt-2-tests.lisp
+  tests/acl2/proto-adt-tests.lisp -> tests/acl2/lib/proto-adt-tests.lisp
+  tests/acl2/protocol-codes-hra-tests.lisp -> tests/acl2/nntp/protocol-codes-hra-tests.lisp
+  tests/acl2/protocol-codes-tests.lisp -> tests/acl2/nntp/protocol-codes-tests.lisp
+  tests/acl2/protocol-dispatch-tests.lisp -> tests/acl2/nntp/protocol-dispatch-tests.lisp
+  tests/acl2/protocol-text-tests.lisp -> tests/acl2/nntp/protocol-text-tests.lisp
+  tests/acl2/provenance-inspect-tests.lisp -> tests/acl2/store/provenance-inspect-tests.lisp
+  tests/acl2/provenance-tests.lisp -> tests/acl2/store/provenance-tests.lisp
+  tests/acl2/public-exposure-reply-tests.lisp -> tests/acl2/nntp/public-exposure-reply-tests.lisp
+  tests/acl2/public-exposure-tests.lisp -> tests/acl2/nntp/public-exposure-tests.lisp
+  tests/acl2/reader-open-carried-tests.lisp -> tests/acl2/nntp/reader-open-carried-tests.lisp
+  tests/acl2/reclaim-admission-tests.lisp -> tests/acl2/store/reclaim-admission-tests.lisp
+  tests/acl2/reclaim-instant-tests.lisp -> tests/acl2/store/reclaim-instant-tests.lisp
+  tests/acl2/record-width-producers-tests.lisp -> tests/acl2/codec/record-width-producers-tests.lisp
+  tests/acl2/records-ceiling-tests.lisp -> tests/acl2/codec/records-ceiling-tests.lisp
+  tests/acl2/records-concrete-tests.lisp -> tests/acl2/codec/records-concrete-tests.lisp
+  tests/acl2/records-freeze-tests.lisp -> tests/acl2/codec/records-freeze-tests.lisp
+  tests/acl2/records-schema-v1-teeth-tests.lisp -> tests/acl2/codec/records-schema-v1-teeth-tests.lisp
+  tests/acl2/records-shape-tests.lisp -> tests/acl2/codec/records-shape-tests.lisp
+  tests/acl2/records-teeth-tests.lisp -> tests/acl2/codec/records-teeth-tests.lisp
+  tests/acl2/records-tests.lisp -> tests/acl2/codec/records-tests.lisp
+  tests/acl2/relay-source-routes-tests.lisp -> tests/acl2/peer/relay-source-routes-tests.lisp
+  tests/acl2/relay-tests.lisp -> tests/acl2/peer/relay-tests.lisp
+  tests/acl2/replay-identity-index-tests.lisp -> tests/acl2/store/replay-identity-index-tests.lisp
+  tests/acl2/replay-tests.lisp -> tests/acl2/store/replay-tests.lisp
+  tests/acl2/retention-tests.lisp -> tests/acl2/store/retention-tests.lisp
+  tests/acl2/scheduler-peers-tests.lisp -> tests/acl2/time/scheduler-peers-tests.lisp
+  tests/acl2/scheduler-tests.lisp -> tests/acl2/time/scheduler-tests.lisp
+  tests/acl2/serve-depth-tests.lisp -> tests/acl2/nntp/serve-depth-tests.lisp
+  tests/acl2/served-catalog-chain-tests.lisp -> tests/acl2/nntp/served-catalog-chain-tests.lisp
+  tests/acl2/served-catalog-join-entry-tests.lisp -> tests/acl2/nntp/served-catalog-join-entry-tests.lisp
+  tests/acl2/served-catalog-join-finish-tests.lisp -> tests/acl2/nntp/served-catalog-join-finish-tests.lisp
+  tests/acl2/served-catalog-join-frame-conns-tests.lisp -> tests/acl2/nntp/served-catalog-join-frame-conns-tests.lisp
+  tests/acl2/served-catalog-join-frame-store-tests.lisp -> tests/acl2/nntp/served-catalog-join-frame-store-tests.lisp
+  tests/acl2/served-catalog-join-inv-tests.lisp -> tests/acl2/nntp/served-catalog-join-inv-tests.lisp
+  tests/acl2/served-catalog-join-open-tests.lisp -> tests/acl2/nntp/served-catalog-join-open-tests.lisp
+  tests/acl2/served-catalog-join-pinned-tests.lisp -> tests/acl2/nntp/served-catalog-join-pinned-tests.lisp
+  tests/acl2/served-catalog-join-tests.lisp -> tests/acl2/nntp/served-catalog-join-tests.lisp
+  tests/acl2/served-catalog-owner-tests.lisp -> tests/acl2/nntp/served-catalog-owner-tests.lisp
+  tests/acl2/served-catalog-scan-tests.lisp -> tests/acl2/nntp/served-catalog-scan-tests.lisp
+  tests/acl2/served-catalog-tests.lisp -> tests/acl2/nntp/served-catalog-tests.lisp
+  tests/acl2/served-catalog-view-tests.lisp -> tests/acl2/nntp/served-catalog-view-tests.lisp
+  tests/acl2/served-columns-tests.lisp -> tests/acl2/nntp/served-columns-tests.lisp
+  tests/acl2/served-implicit-tls-tests.lisp -> tests/acl2/nntp/served-implicit-tls-tests.lisp
+  tests/acl2/served-line-iterative-tests.lisp -> tests/acl2/nntp/served-line-iterative-tests.lisp
+  tests/acl2/served-pipelining-tests.lisp -> tests/acl2/nntp/served-pipelining-tests.lisp
+  tests/acl2/served-plan-tests.lisp -> tests/acl2/nntp/served-plan-tests.lisp
+  tests/acl2/served-reply-buffer-tests.lisp -> tests/acl2/nntp/served-reply-buffer-tests.lisp
+  tests/acl2/served-scan-tests.lisp -> tests/acl2/nntp/served-scan-tests.lisp
+  tests/acl2/served-span-tests.lisp -> tests/acl2/nntp/served-span-tests.lisp
+  tests/acl2/served-tests.lisp -> tests/acl2/nntp/served-tests.lisp
+  tests/acl2/served-tls-prefix-tests.lisp -> tests/acl2/nntp/served-tls-prefix-tests.lisp
+  tests/acl2/sha256-tests.lisp -> tests/acl2/crypto/sha256-tests.lisp
+  tests/acl2/snapshot-segments-tests.lisp -> tests/acl2/store/snapshot-segments-tests.lisp
+  tests/acl2/snoc-list-tests.lisp -> tests/acl2/owner/snoc-list-tests.lisp
+  tests/acl2/source-projection-bridge-tests.lisp -> tests/acl2/peer/source-projection-bridge-tests.lisp
+  tests/acl2/source-routes-tests.lisp -> tests/acl2/peer/source-routes-tests.lisp
+  tests/acl2/state-digest-tests.lisp -> tests/acl2/store/state-digest-tests.lisp
+  tests/acl2/statement-tests.lisp -> tests/acl2/store/statement-tests.lisp
+  tests/acl2/store-budget-article-tests.lisp -> tests/acl2/store/store-budget-article-tests.lisp
+  tests/acl2/store-budget-naming-tests.lisp -> tests/acl2/store/store-budget-naming-tests.lisp
+  tests/acl2/store-budget-stored-post-tests.lisp -> tests/acl2/store/store-budget-stored-post-tests.lisp
+  tests/acl2/store-budget-stored-tests.lisp -> tests/acl2/store/store-budget-stored-tests.lisp
+  tests/acl2/store-budget-tests.lisp -> tests/acl2/store/store-budget-tests.lisp
+  tests/acl2/store-capacity-config-tests.lisp -> tests/acl2/store/store-capacity-config-tests.lisp
+  tests/acl2/store-capacity-vector-tests.lisp -> tests/acl2/store/store-capacity-vector-tests.lisp
+  tests/acl2/store-carried-folds-tests.lisp -> tests/acl2/store/store-carried-folds-tests.lisp
+  tests/acl2/store-checkpoint-arena-tests.lisp -> tests/acl2/store/store-checkpoint-arena-tests.lisp
+  tests/acl2/store-checkpoint-open-tests.lisp -> tests/acl2/store/store-checkpoint-open-tests.lisp
+  tests/acl2/store-checkpoint-tables-tests.lisp -> tests/acl2/owner/store-checkpoint-tables-tests.lisp
+  tests/acl2/store-event-replay-tests.lisp -> tests/acl2/store/store-event-replay-tests.lisp
+  tests/acl2/store-events-carried-tests.lisp -> tests/acl2/owner/store-events-carried-tests.lisp
+  tests/acl2/store-events-tests.lisp -> tests/acl2/store/store-events-tests.lisp
+  tests/acl2/store-existing-alpha-tests.lisp -> tests/acl2/store/store-existing-alpha-tests.lisp
+  tests/acl2/store-export-durability-tests.lisp -> tests/acl2/store/store-export-durability-tests.lisp
+  tests/acl2/store-export-stream-tests.lisp -> tests/acl2/store/store-export-stream-tests.lisp
+  tests/acl2/store-export-tests.lisp -> tests/acl2/store/store-export-tests.lisp
+  tests/acl2/store-files-exploration-tests.lisp -> tests/acl2/store/store-files-exploration-tests.lisp
+  tests/acl2/store-files-teeth-tests.lisp -> tests/acl2/store/store-files-teeth-tests.lisp
+  tests/acl2/store-files-tests.lisp -> tests/acl2/store/store-files-tests.lisp
+  tests/acl2/store-files-traces-tests.lisp -> tests/acl2/store/store-files-traces-tests.lisp
+  tests/acl2/store-format-9-records-tests.lisp -> tests/acl2/store/store-format-9-records-tests.lisp
+  tests/acl2/store-format-9-tests.lisp -> tests/acl2/store/store-format-9-tests.lisp
+  tests/acl2/store-genesis-tests.lisp -> tests/acl2/store/store-genesis-tests.lisp
+  tests/acl2/store-identity-replay-tests.lisp -> tests/acl2/store/store-identity-replay-tests.lisp
+  tests/acl2/store-identity-sequence-invariants-tests.lisp -> tests/acl2/store/store-identity-sequence-invariants-tests.lisp
+  tests/acl2/store-identity-traces-tests.lisp -> tests/acl2/crypto/store-identity-traces-tests.lisp
+  tests/acl2/store-import-publication-tests.lisp -> tests/acl2/store/store-import-publication-tests.lisp
+  tests/acl2/store-import-stream-tests.lisp -> tests/acl2/store/store-import-stream-tests.lisp
+  tests/acl2/store-init-log-publication-tests.lisp -> tests/acl2/store/store-init-log-publication-tests.lisp
+  tests/acl2/store-init-publication-tests.lisp -> tests/acl2/store/store-init-publication-tests.lisp
+  tests/acl2/store-intern-once-tests.lisp -> tests/acl2/store/store-intern-once-tests.lisp
+  tests/acl2/store-intern-tests.lisp -> tests/acl2/store/store-intern-tests.lisp
+  tests/acl2/store-log-buffer-tests.lisp -> tests/acl2/store/store-log-buffer-tests.lisp
+  tests/acl2/store-log-damage-tests.lisp -> tests/acl2/store/store-log-damage-tests.lisp
+  tests/acl2/store-log-decode-tests.lisp -> tests/acl2/store/store-log-decode-tests.lisp
+  tests/acl2/store-log-extend-tests.lisp -> tests/acl2/store/store-log-extend-tests.lisp
+  tests/acl2/store-log-kernel-concrete-tests.lisp -> tests/acl2/store/store-log-kernel-concrete-tests.lisp
+  tests/acl2/store-log-kernel-tests.lisp -> tests/acl2/store/store-log-kernel-tests.lisp
+  tests/acl2/store-log-open-barriers-tests.lisp -> tests/acl2/store/store-log-open-barriers-tests.lisp
+  tests/acl2/store-log-programs-tests.lisp -> tests/acl2/codec/store-log-programs-tests.lisp
+  tests/acl2/store-log-reclaim-tests.lisp -> tests/acl2/store/store-log-reclaim-tests.lisp
+  tests/acl2/store-log-route-programs-tests.lisp -> tests/acl2/store/store-log-route-programs-tests.lisp
+  tests/acl2/store-log-route-tests.lisp -> tests/acl2/store/store-log-route-tests.lisp
+  tests/acl2/store-log-segments-tests.lisp -> tests/acl2/codec/store-log-segments-tests.lisp
+  tests/acl2/store-log-stream-tests.lisp -> tests/acl2/store/store-log-stream-tests.lisp
+  tests/acl2/store-log-tests.lisp -> tests/acl2/store/store-log-tests.lisp
+  tests/acl2/store-log-txid-tests.lisp -> tests/acl2/codec/store-log-txid-tests.lisp
+  tests/acl2/store-log-walk-once-tests.lisp -> tests/acl2/store/store-log-walk-once-tests.lisp
+  tests/acl2/store-maintenance-reserve-tests.lisp -> tests/acl2/store/store-maintenance-reserve-tests.lisp
+  tests/acl2/store-mount-identity-tests.lisp -> tests/acl2/store/store-mount-identity-tests.lisp
+  tests/acl2/store-node-composite-index-tests.lisp -> tests/acl2/crypto/store-node-composite-index-tests.lisp
+  tests/acl2/store-node-existing-tests.lisp -> tests/acl2/store/store-node-existing-tests.lisp
+  tests/acl2/store-node-guards-tests.lisp -> tests/acl2/store/store-node-guards-tests.lisp
+  tests/acl2/store-node-index-tests.lisp -> tests/acl2/store/store-node-index-tests.lisp
+  tests/acl2/store-node-resolution-tests.lisp -> tests/acl2/store/store-node-resolution-tests.lisp
+  tests/acl2/store-node-resolution-traces-tests.lisp -> tests/acl2/store/store-node-resolution-traces-tests.lisp
+  tests/acl2/store-node-retention-tests.lisp -> tests/acl2/store/store-node-retention-tests.lisp
+  tests/acl2/store-node-teeth-tests.lisp -> tests/acl2/store/store-node-teeth-tests.lisp
+  tests/acl2/store-node-tests.lisp -> tests/acl2/store/store-node-tests.lisp
+  tests/acl2/store-node-traces-tests.lisp -> tests/acl2/store/store-node-traces-tests.lisp
+  tests/acl2/store-observed-tests.lisp -> tests/acl2/store/store-observed-tests.lisp
+  tests/acl2/store-observed-traces-tests.lisp -> tests/acl2/store/store-observed-traces-tests.lisp
+  tests/acl2/store-open-bridge-tests.lisp -> tests/acl2/store/store-open-bridge-tests.lisp
+  tests/acl2/store-open-node-bridge-tests.lisp -> tests/acl2/store/store-open-node-bridge-tests.lisp
+  tests/acl2/store-open-pre-c1-tests.lisp -> tests/acl2/codec/store-open-pre-c1-tests.lisp
+  tests/acl2/store-open-replay-refusal-tests.lisp -> tests/acl2/store/store-open-replay-refusal-tests.lisp
+  tests/acl2/store-prepare-carried-tests.lisp -> tests/acl2/store/store-prepare-carried-tests.lisp
+  tests/acl2/store-prepare-correspondence-tests.lisp -> tests/acl2/store/store-prepare-correspondence-tests.lisp
+  tests/acl2/store-prepare-served-tests.lisp -> tests/acl2/store/store-prepare-served-tests.lisp
+  tests/acl2/store-profile-carried-tests.lisp -> tests/acl2/store/store-profile-carried-tests.lisp
+  tests/acl2/store-profile-facts-tests.lisp -> tests/acl2/store/store-profile-facts-tests.lisp
+  tests/acl2/store-profile-namespace-tests.lisp -> tests/acl2/store/store-profile-namespace-tests.lisp
+  tests/acl2/store-profile-open-tests.lisp -> tests/acl2/store/store-profile-open-tests.lisp
+  tests/acl2/store-reclaim-buffer-tests.lisp -> tests/acl2/store/store-reclaim-buffer-tests.lisp
+  tests/acl2/store-reclaim-holders-tests.lisp -> tests/acl2/store/store-reclaim-holders-tests.lisp
+  tests/acl2/store-reclaim-pack-tests.lisp -> tests/acl2/store/store-reclaim-pack-tests.lisp
+  tests/acl2/store-reclaim-stream-tests.lisp -> tests/acl2/store/store-reclaim-stream-tests.lisp
+  tests/acl2/store-reclaim-tests.lisp -> tests/acl2/store/store-reclaim-tests.lisp
+  tests/acl2/store-recover-stream-tests.lisp -> tests/acl2/store/store-recover-stream-tests.lisp
+  tests/acl2/store-replay-bound-tests.lisp -> tests/acl2/store/store-replay-bound-tests.lisp
+  tests/acl2/store-retention-codec-invariants-tests.lisp -> tests/acl2/store/store-retention-codec-invariants-tests.lisp
+  tests/acl2/store-sweep-tests.lisp -> tests/acl2/store/store-sweep-tests.lisp
+  tests/acl2/stx-accept-records-tests.lisp -> tests/acl2/store/stx-accept-records-tests.lisp
+  tests/acl2/stx-evidence-records-tests.lisp -> tests/acl2/crypto/stx-evidence-records-tests.lisp
+  tests/acl2/stx-keyring-records-tests.lisp -> tests/acl2/store/stx-keyring-records-tests.lisp
+  tests/acl2/stx-reader-tests.lisp -> tests/acl2/crypto/stx-reader-tests.lisp
+  tests/acl2/stx-tests.lisp -> tests/acl2/crypto/stx-tests.lisp
+  tests/acl2/stx-transit-tests.lisp -> tests/acl2/crypto/stx-transit-tests.lisp
+  tests/acl2/subject-id-buffer-tests.lisp -> tests/acl2/crypto/subject-id-buffer-tests.lisp
+  tests/acl2/tcpcl-delivery-tests.lisp -> tests/acl2/bp/tcpcl-delivery-tests.lisp
+  tests/acl2/tcpcl-spool-tests.lisp -> tests/acl2/bp/tcpcl-spool-tests.lisp
+  tests/acl2/tcpcl-tests.lisp -> tests/acl2/bp/tcpcl-tests.lisp
+  tests/acl2/tls-reload-tests.lisp -> tests/acl2/crypto/tls-reload-tests.lisp
+  tests/acl2/topic-history-admission-tests.lisp -> tests/acl2/store/topic-history-admission-tests.lisp
+  tests/acl2/topic-history-authorship-tests.lisp -> tests/acl2/store/topic-history-authorship-tests.lisp
+  tests/acl2/topic-history-identity-disjoint-tests.lisp -> tests/acl2/store/topic-history-identity-disjoint-tests.lisp
+  tests/acl2/topic-history-local-admin-tests.lisp -> tests/acl2/store/topic-history-local-admin-tests.lisp
+  tests/acl2/topic-history-local-control-tests.lisp -> tests/acl2/store/topic-history-local-control-tests.lisp
+  tests/acl2/topic-history-local-proposals-tests.lisp -> tests/acl2/store/topic-history-local-proposals-tests.lisp
+  tests/acl2/topic-history-metadata-tests.lisp -> tests/acl2/store/topic-history-metadata-tests.lisp
+  tests/acl2/topic-history-native-vector-tests.lisp -> tests/acl2/store/topic-history-native-vector-tests.lisp
+  tests/acl2/topic-history-prefix-invariants-tests.lisp -> tests/acl2/store/topic-history-prefix-invariants-tests.lisp
+  tests/acl2/topic-history-prefix-tests.lisp -> tests/acl2/store/topic-history-prefix-tests.lisp
+  tests/acl2/topic-history-recovery-invariants-tests.lisp -> tests/acl2/store/topic-history-recovery-invariants-tests.lisp
+  tests/acl2/topic-history-store-events-tests.lisp -> tests/acl2/store/topic-history-store-events-tests.lisp
+  tests/acl2/topic-history-store-invariants-tests.lisp -> tests/acl2/store/topic-history-store-invariants-tests.lisp
+  tests/acl2/topic-history-store-node-tests.lisp -> tests/acl2/store/topic-history-store-node-tests.lisp
+  tests/acl2/topic-history-store-union-tests.lisp -> tests/acl2/store/topic-history-store-union-tests.lisp
+  tests/acl2/topic-history-v2-crash-tests.lisp -> tests/acl2/store/topic-history-v2-crash-tests.lisp
+  tests/acl2/transfer-journal-tests.lisp -> tests/acl2/peer/transfer-journal-tests.lisp
+  tests/acl2/transfer-tests.lisp -> tests/acl2/peer/transfer-tests.lisp
+  tests/acl2/transit-header-limits-tests.lisp -> tests/acl2/peer/transit-header-limits-tests.lisp
+  tests/acl2/transit-hygiene-tests.lisp -> tests/acl2/peer/transit-hygiene-tests.lisp
+  tests/acl2/visibility-join-tests.lisp -> tests/acl2/store/visibility-join-tests.lisp
+  tests/acl2/web-config-tests.lisp -> tests/acl2/owner/web-config-tests.lisp
+  tests/acl2/web-render-tests.lisp -> tests/acl2/owner/web-render-tests.lisp
+  tests/acl2/web-request-tests.lisp -> tests/acl2/owner/web-request-tests.lisp
+  tests/acl2/web-session-tests.lisp -> tests/acl2/owner/web-session-tests.lisp
+  tests/acl2/wildmat-parser-invariants-tests.lisp -> tests/acl2/text/wildmat-parser-invariants-tests.lisp
+  tests/acl2/wildmat-teeth-tests.lisp -> tests/acl2/text/wildmat-teeth-tests.lisp
+  tests/acl2/wildmat-tests.lisp -> tests/acl2/text/wildmat-tests.lisp
+  tests/acl2/wire-bounds-tests.lisp -> tests/acl2/peer/wire-bounds-tests.lisp
+  tests/acl2/wire-outbound-tests.lisp -> tests/acl2/codec/wire-outbound-tests.lisp
+  tests/acl2/wire-span-tests.lisp -> tests/acl2/codec/wire-span-tests.lisp
+  tests/acl2/wire-tests.lisp -> tests/acl2/codec/wire-tests.lisp
