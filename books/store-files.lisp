@@ -286,12 +286,15 @@
                                             record-candidate completion successes barriers))
          (fn-sl-of successes))
   :hints (("Goal" :in-theory (enable fn-sf-make))))
-(defthm fn-sf-make-fields-of-fn-sl-of-is-make
-  (equal (fn-sf-make-fields phase frontier frontier-candidate (fn-sl-of records)
-                            record-candidate completion (fn-sl-of successes) barriers)
-         (fn-sf-make phase frontier frontier-candidate records record-candidate completion
-                     successes barriers))
-  :hints (("Goal" :in-theory (enable fn-sf-make))))
+(defthm fn-sf-make-fields-canonical-is-make
+  ; any two canonical unbased fields, (fn-sl-of X) or a constant such as
+  ; (:snoc 0) alike
+  (implies (and (fn-sl-canonp rf) (not (fn-sfr-basedp rf)) (fn-sl-canonp sf))
+           (equal (fn-sf-make-fields phase frontier frontier-candidate rf
+                                     record-candidate completion sf barriers)
+                  (fn-sf-make phase frontier frontier-candidate (fn-sl-list rf) record-candidate
+                              completion (fn-sl-list sf) barriers)))
+  :hints (("Goal" :in-theory (enable fn-sf-make fn-sl-canonp fn-sfr-list))))
 
 ; A transition that keeps both histories keeps their fields.
 (defmacro fn-sf-remake (phase frontier frontier-candidate record-candidate
