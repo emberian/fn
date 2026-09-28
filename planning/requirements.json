@@ -4867,6 +4867,7 @@
       "evidence": [
         "books/web-request.lisp",
         "books/web-render.lisp",
+        "books/web-render-keystones.lisp",
         "books/web-session.lisp",
         "books/web-session-keystones.lisp",
         "books/web-config.lisp",

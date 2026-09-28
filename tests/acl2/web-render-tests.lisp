@@ -1,6 +1,6 @@
 ; Witnesses and teeth for books/web-render.lisp (lane web-native, PRF-338).
 (in-package "ACL2")
-(include-book "../../books/web-render")
+(include-book "../../books/web-render-keystones")
 (include-book "must-fail-checked")
 
 (defun wrnt-octs (s)
@@ -89,7 +89,7 @@
    :rule-classes nil
    :hints (("Goal" :do-not-induct t :in-theory (disable fn-wr-unescape fn-wr-escape)))))
 
-; KEYSTONE fn-wr-pieces-are-vocabulary-or-escaped: a reached page (the
+; fn-wr-pieces-okp-of-okp-segs (the model form of the keystone below): a reached page (the
 ; group page over a reply buffer) is accepted and its pieces are the
 ; vocabulary's or safe; tooth: a segment list with foreign markup.
 (defconst *wrnt-group*
@@ -114,3 +114,75 @@
 ; The page contains the site's markup and the escaped spans, and the CSS
 ; is ASCII octets.
 (assert-event (fn-cbor-octet-listp *fn-web-css*))
+
+; KEYSTONE fn-wr-emit-writes-vocabulary-or-escaped.  Reached witness: the
+; group page emitted over the reply buffer, both hypotheses holding.
+(assert-event (and (true-listp nil) (fn-wr-segs-okp *wrnt-group*)
+                   (equal (wrnt-emit *wrnt-group* *wrnt-in*)
+                          (append nil (fn-wr-flat (fn-wr-pieces *wrnt-group* *wrnt-in*))))
+                   (fn-wr-pieces-okp (fn-wr-pieces *wrnt-group* *wrnt-in*))))
+; Without true-listp of the page buffer: 5 and no segments.
+(thm (and (fn-wr-segs-okp nil) (not (true-listp 5))
+          (not (equal (fn-wr-emit nil in 5) (append 5 (fn-wr-flat (fn-wr-pieces nil in)))))))
+(must-fail-checked
+ (defthm wrnt-tooth-writes-needs-true-listp
+   (implies (fn-wr-segs-okp segs)
+            (equal (fn-wr-emit segs fn-web-in fn-web-out)
+                   (append fn-web-out (fn-wr-flat (fn-wr-pieces segs fn-web-in)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t :in-theory (disable fn-wr-emit fn-wr-pieces fn-wr-flat)))))
+; Without segs-okp: markup outside the vocabulary is written, and it is no
+; vocabulary piece and no escaped text.
+(assert-event (and (true-listp nil)
+                   (not (fn-wr-segs-okp (list (cons :m (wrnt-octs "<script>")))))
+                   (not (fn-wr-pieces-okp (fn-wr-pieces (list (cons :m (wrnt-octs "<script>"))) nil)))))
+(must-fail-checked
+ (defthm wrnt-tooth-writes-needs-okp
+   (implies (true-listp fn-web-out)
+            (fn-wr-pieces-okp (fn-wr-pieces segs fn-web-in)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t :in-theory (disable fn-wr-pieces fn-wr-pieces-okp)))))
+
+; KEYSTONE fn-wr-emit-reads-only-its-spans.  Reached witness: the group
+; page over the reply and over the reply with garbage after it.
+(defconst *wrnt-garbage* (append *wrnt-in* (wrnt-octs "<garbage>")))
+(assert-event (and (fn-wr-segsp *wrnt-group*) (fn-wr-segs-within *wrnt-group* (len *wrnt-in*))
+                   (equal (take (len *wrnt-in*) *wrnt-garbage*) *wrnt-in*)
+                   (equal (wrnt-emit *wrnt-group* (take (len *wrnt-in*) *wrnt-garbage*))
+                          (wrnt-emit *wrnt-group* *wrnt-garbage*))))
+; Without segsp: a segment of no kind is written as a span, past N.
+; (The buffer's reads, stated as theorems, need the slice as take/nthcdr.)
+(defthm wrnt-car-nthcdr (equal (car (nthcdr i x)) (nth i x))
+  :hints (("Goal" :in-theory (enable nth nthcdr))))
+(defthm wrnt-cdr-nthcdr (implies (natp i) (equal (cdr (nthcdr i x)) (nthcdr (1+ i) x)))
+  :hints (("Goal" :in-theory (enable nthcdr))))
+(defthm wrnt-slice-take
+  (implies (and (natp i) (natp n) (<= i n))
+           (equal (fn-oct-slice-list i n st) (take (- n i) (nthcdr i st))))
+  :hints (("Goal" :induct (fn-oct-slice-list i n st) :in-theory (enable fn-oct-slice-list))
+          ("Subgoal *1/2" :expand ((take (+ n (- i)) (nthcdr i st))))))
+(thm (and (not (fn-wr-segsp '((:x 0 . 3)))) (fn-wr-segs-within '((:x 0 . 3)) 0)
+          (equal (take 0 '(65 66 67)) nil)
+          (not (equal (fn-wr-emit '((:x 0 . 3)) nil nil)
+                      (fn-wr-emit '((:x 0 . 3)) '(65 66 67) nil))))
+     :hints (("Goal" :expand ((:free (x) (hide x))))))
+(must-fail-checked
+ (defthm wrnt-tooth-spans-need-segsp
+   (implies (fn-wr-segs-within segs n)
+            (equal (fn-wr-emit segs (take n fn-web-in) fn-web-out)
+                   (fn-wr-emit segs fn-web-in fn-web-out)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t :in-theory (disable fn-wr-emit fn-wr-segs-within)))))
+; Without the span bound: a span past N reads what TAKE removed.
+(thm (and (fn-wr-segsp '((:s 0 . 3))) (not (fn-wr-segs-within '((:s 0 . 3)) 1))
+          (equal (take 1 '(65 66 67)) '(65))
+          (not (equal (fn-wr-emit '((:s 0 . 3)) '(65) nil)
+                      (fn-wr-emit '((:s 0 . 3)) '(65 66 67) nil))))
+     :hints (("Goal" :expand ((:free (x) (hide x))))))
+(must-fail-checked
+ (defthm wrnt-tooth-spans-need-within
+   (implies (fn-wr-segsp segs)
+            (equal (fn-wr-emit segs (take n fn-web-in) fn-web-out)
+                   (fn-wr-emit segs fn-web-in fn-web-out)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t :in-theory (disable fn-wr-emit fn-wr-segsp)))))

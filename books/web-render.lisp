@@ -339,6 +339,12 @@
   (implies (true-listp out)
            (equal (fn-wr-emit-list xs out) (append out (fn-wr-escape xs)))))
 
+(defthm fn-wr-escape-is-emit-list
+  ; The model's escape is what the host-reached writer appends to an empty
+  ; page (the escaping keystones are about what the host runs).
+  (equal (fn-wr-escape xs) (fn-wr-emit-list xs nil))
+  :rule-classes nil)
+
 (defthm fn-wr-emit-span-is-append
   (implies (true-listp fn-web-out)
            (equal (fn-wr-emit-span s e fn-web-in fn-web-out)
@@ -539,9 +545,9 @@
    :hints (("Goal" :in-theory (disable member-equal fn-wr-escape fn-wr-safe-textp
                                        fn-wr-pct-encode fn-wr-unstuff)))))
 
-(defthm fn-wr-pieces-are-vocabulary-or-escaped
-  ; KEYSTONE (PRF-338): every piece of an accepted page is the renderer's
-  ; own markup or escaped text.
+(defthm fn-wr-pieces-okp-of-okp-segs
+  ; Every piece of an accepted page is the renderer's own markup or escaped
+  ; text (the emitter's form below is the keystone).
   (implies (fn-wr-segs-okp segs)
            (fn-wr-pieces-okp (fn-wr-pieces segs in)))
   :hints (("Goal" :in-theory (e/d (fn-wr-segsp) (member-equal fn-wr-piece fn-wr-piece-okp)))))
@@ -906,7 +912,7 @@
             (equal (take k (nthcdr s (take n in)))
                    (take k (nthcdr s in))))))
 
-(defthm fn-wr-seq-reads-only-its-spans
+(defthm fn-wr-seq-reads-only-its-spans-model
   (implies (and (fn-wr-segsp segs) (natp n) (fn-wr-segs-within segs n) (<= n (len in)))
            (equal (fn-wr-seq segs (take n in)) (fn-wr-seq segs in)))
   :hints (("Goal" :in-theory (e/d (fn-wr-segsp fn-wr-segs-within)
@@ -962,3 +968,4 @@ footer{margin-top:24px}footer p{margin:0 0 4px}footer form{display:inline}
 ")
 
 (defconst *fn-web-css* (fn-wrq-chars-octets (coerce *fn-web-css-text* 'list)))
+

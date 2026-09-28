@@ -11329,6 +11329,14 @@
       "events": [
         {
           "kind": "theorem",
+          "name": "fn-wr-emit-writes-vocabulary-or-escaped"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wr-emit-reads-only-its-spans"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-wr-emit-is-seq"
         },
         {
@@ -11341,15 +11349,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-wr-pieces-are-vocabulary-or-escaped"
+          "name": "fn-wr-escape-is-emit-list"
         },
         {
           "kind": "theorem",
           "name": "fn-wr-page-segs-ok"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wr-seq-reads-only-its-spans"
         }
       ]
     },

@@ -11704,7 +11704,7 @@
     {
       "id": "PRF-338",
       "title": "Every page of the web face is its segments emitted: the renderer's own markup from a fixed vocabulary, and escaped text in which no <, >, \" or ' appears and every & opens an entity; escaping is faithful, and a page reads its reply only at the spans it names",
-      "statement": "books/web-render.lisp. Subject: fn-wr-emit (fn-wss-page, called by every page fn-web-step answers). KEYSTONES fn-wr-emit-is-seq (for a true-list page buffer and well-formed segments, the emitter appends fn-wr-seq of the segments over the reply buffer's logical value), fn-wr-escape-is-safe, fn-wr-unescape-escape, fn-wr-pieces-are-vocabulary-or-escaped with fn-wr-page-segs-ok (fn-wm refuses at macro expansion any markup not in *fn-wr-vocabulary*), fn-wr-seq-reads-only-its-spans.",
+      "statement": "books/web-render.lisp, books/web-render-keystones.lisp. Subject: fn-wr-emit (books/web-session.lisp fn-wss-page, called for every page fn-web-step answers; host/native/web-host.lisp writes the buffer). KEYSTONES fn-wr-emit-writes-vocabulary-or-escaped (for a true-list page buffer and segments fn-wr-segs-okp accepts, the emitter appends the flattening of fn-wr-pieces, and every piece is a member of *fn-wr-vocabulary* or fn-wr-safe-textp: no <, >, \\\" or ', every & an entity; fn-wm refuses at macro expansion any markup not in the vocabulary and fn-wr-page-segs-ok accepts every page), fn-wr-emit-reads-only-its-spans (well-formed segments whose spans end at or below N write the same octets over the first N octets of the reply as over the whole: identical input, identical octets), fn-wr-emit-is-seq, fn-wr-escape-is-safe and fn-wr-unescape-escape (escaping is faithful), tied to the host-run writer by fn-wr-escape-is-emit-list.",
       "milestone": "M6",
       "requirements": [
         "WEB-005"
@@ -11714,17 +11714,19 @@
       "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-render.lisp",
+        "books/web-render-keystones.lisp",
         "tests/acl2/web-render-tests.lisp",
         "planning/evidence/web-native-2026-09-28.md"
       ],
       "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): admitted with its test book in the hbox REPL; certified by the batch.",
       "events": [
+        "fn-wr-emit-writes-vocabulary-or-escaped",
+        "fn-wr-emit-reads-only-its-spans",
         "fn-wr-emit-is-seq",
         "fn-wr-escape-is-safe",
         "fn-wr-unescape-escape",
-        "fn-wr-pieces-are-vocabulary-or-escaped",
-        "fn-wr-page-segs-ok",
-        "fn-wr-seq-reads-only-its-spans"
+        "fn-wr-escape-is-emit-list",
+        "fn-wr-page-segs-ok"
       ]
     },
     {

@@ -93,8 +93,7 @@ class Browser:
         return html.unescape(re.search(r"name='%s' value='([^']*)'" % name, page).group(1))
 
 
-@unittest.skipUnless(os.access(IMAGE, os.X_OK), "native developer image required")
-class NativeWebFaceTests(unittest.TestCase):
+class FaceCases:
     """A friend's first visit to the node's own web face: make the account
     with an invitation code, read, post, see the post, remove it; the checks
     fn_reader's rehearsal made (planning/evidence/release-web-reader-2026-09-27.md)."""
@@ -233,7 +232,7 @@ class NativeWebFaceTests(unittest.TestCase):
         # A route that needs a session: sent to sign in, the page kept.
         status, where, _, _, _ = b.request("GET", "/g?name=local.general")
         self.assertEqual((status, where), (303, "/signin?next=%2Fg%3Fname%3Dlocal.general"))
-        # A form from another site: 403, nothing done.
+        # A sign-in form without its sign-in token (fnr_pre): 400, re-shown, nothing opened.
         status, _, _, _, _ = b.request("POST", "/signin", {"user": "x"}, origin=False)
         self.assertEqual(status, 400)            # no sign-in token: the form is re-shown
         # Malformed requests: the parser's refusals.
@@ -278,10 +277,11 @@ class NativeWebFaceTests(unittest.TestCase):
         self.assertIn("didn&#39;t work", page)
 
 
-    def test_4_fuzzed_requests_are_answered_or_closed(self):
+    def fuzz_requests_are_answered_or_closed(self):
         """A bounded grammar fuzz over the request parser (tests/fuzz_nntp.py's
         approach, for HTTP): every mutated request is answered with a status
-        line or closed, and the face keeps serving."""
+        line or closed, and the face keeps serving.  Plain HTTP (the parser is
+        the same behind TLS; a half-closed TLS stream is not a client's)."""
         import random
         rng = random.Random(20260928)
         methods = [b"GET", b"POST", b"HEAD", b"PUT", b"G ET", b"", b"get", b"POST\x00"]
@@ -304,11 +304,6 @@ class NativeWebFaceTests(unittest.TestCase):
             if rng.random() < 0.1:
                 raw = raw.replace(b"\r\n", b"\n")
             with socket.create_connection(("127.0.0.1", self.web_port), timeout=60) as s:
-                if self.TLS:
-                    context = ssl.create_default_context()
-                    context.check_hostname = False
-                    context.verify_mode = ssl.CERT_NONE
-                    s = context.wrap_socket(s)
                 try:
                     s.sendall(raw)
                     s.shutdown(socket.SHUT_WR)
@@ -327,7 +322,16 @@ class NativeWebFaceTests(unittest.TestCase):
 
 
 @unittest.skipUnless(os.access(IMAGE, os.X_OK), "native developer image required")
-class NativeWebFaceTlsTests(NativeWebFaceTests):
+class NativeWebFaceTests(FaceCases, unittest.TestCase):
+    """Plain HTTP from loopback (the way a TLS proxy on the machine reaches it)."""
+    TLS = False
+
+    def test_4_fuzzed_requests_are_answered_or_closed(self):
+        self.fuzz_requests_are_answered_or_closed()
+
+
+@unittest.skipUnless(os.access(IMAGE, os.X_OK), "native developer image required")
+class NativeWebFaceTlsTests(FaceCases, unittest.TestCase):
     """The same visit with the face serving HTTPS itself ([web] tls = true,
     [listener]'s certificate): the session cookie is Secure."""
     TLS = True
