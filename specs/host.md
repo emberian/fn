@@ -769,6 +769,23 @@ sequence number of the first entry lost). A journal that cannot be written
 costs replay of decisions that stored nothing, never service: the owner
 keeps serving and `health`'s log-sink line counts what was dropped.
 
+HST-031: The adopted F4 bars (PRF-384, PRF-385; planning/design-time-model-2026-09-27.md
+section 4b): D 5 s, H 30 s with at most 1 s notification slack, a cold read's
+declared 5 s page-dependency deadline. A deadline is a notification, never a
+cancellation. The barrier's late completion is consumed exactly once, into
+the generation it was issued under, answering only the members not told at
+the stall (`fn-otb-a-member-is-answered-once`,
+`fn-otb-a-late-completion-is-consumed-once`); what the I/O owns is kept until
+then (`fn-otb-a-deadline-keeps-the-io-owned`). A read whose page does not come
+by its deadline is answered `403 article temporarily unavailable ... it is
+not absent`, never 430 or 423 (`fn-otb-a-late-page-is-unavailable-never-absent`;
+its host call site is the asynchronous page fault still to come). A restart
+is a new clock domain: the decision journal's start entry records the wall
+observation and no monotonic origin, and no decision of a run reads an
+earlier run's reading (`fn-otb-a-restart-forgets-the-previous-clock-domain`);
+the push feed's restart forgets the previous process's back-off deadline
+(`fn-feed-restart-forgets-the-previous-clock-domain`). Scenario SCN-202.
+
 ### The owner submission path
 
 Served POST, inbound transit and a running owner's control `POST` all enter

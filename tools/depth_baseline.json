@@ -184,7 +184,9 @@
   "fn-wss-put-span": "sets slot k of a found-fields list; k is at most 5 (*fn-wss-shown-fields*).",
   "fn-wss-slices": "walks a status line's space-separated fields; a handful of fixed fields.",
   "fn-xref-locations": "walks Xref pairs (memberships); bounded by *fn-record-max-groups*",
-  "fn-xref-pairs-of": "walks an article's memberships; bounded by *fn-record-max-groups*"
+  "fn-xref-pairs-of": "walks an article's memberships; bounded by *fn-record-max-groups*",
+  "fn-otb-minus": "walks a batch's member connection ids (or the ledger's told ids): at most two batches in flight, each at most the operator's log-batch-records row (a profile field, D27), never store data",
+  "fn-otb-dedup": "walks a batch's member connection ids (or the ledger's told ids): at most two batches in flight, each at most the operator's log-batch-records row (a profile field, D27), never store data"
  },
  "debt": {
   "fn-acct-kinds-lines": "D27: walks fn-cfg-accounts, the operator's account config rows; bounded by the profile, not traffic",

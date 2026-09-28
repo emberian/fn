@@ -72,8 +72,8 @@ not peer until the fix lands. Until then, what is posted here stays here.
   kept across both.
 - A post is either accepted (saved), refused (with the reason), or, rarely,
   uncertain: then send the same article again, with the same Message-ID
-  (your newsreader's "send again" of the saved draft, or
-  `fn_client.py reconcile`): the node answers that it already has it, or
+  (your newsreader's "send again" of the saved draft, or `reconcile` in
+  [the agents' client](agents.md)): the node answers that it already has it, or
   takes it once. Do not post a new copy, and do not trust a "no such
   article" while the node says its disk is slow: the write may still land.
 - You can cancel your own posts from your reader.
