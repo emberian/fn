@@ -115,8 +115,9 @@ fi
 # 3. The check tree at exactly that commit.
 # A dirty check tree is named, then discarded: it belongs to this script, and
 # keeping it is what left AX's make check silently on the old head.
-remote "set -e; [ -d $TREE/.git ] || git clone -q --no-checkout $MIRROR $TREE
-cd $TREE && D=\$(git status --porcelain --untracked-files=all -- . ':!build' | head -20)
+remote "set -e; D=; if [ -d $TREE/.git ]; then cd $TREE
+  D=\$(git status --porcelain --untracked-files=all -- . ':!build' | head -20)
+else git clone -q --no-checkout $MIRROR $TREE; cd $TREE; fi
 [ -z \"\$D\" ] || { echo 'remote_check: the box tree was dirty; discarding:'; echo \"\$D\" | sed 's/^/  /'; }
 git fetch -q origin '+$REF:$REF' && git checkout -q -f --detach $HEAD_SHA \
   && git clean -fdq -e build/ && test \"\$(git rev-parse HEAD)\" = $HEAD_SHA" \

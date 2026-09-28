@@ -54,6 +54,7 @@ class RemoteCheckTests(unittest.TestCase):
     def test_committed_head_runs_there_and_make_status_is_the_exit(self):
         done = self.run_check()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("dirty", done.stdout)  # a fresh clone is not a dirty tree
         tree = self.box / "my-lane-check"
         self.assertEqual((tree / "marker.txt").read_text(), "one\n")
         self.assertIn("exit 0", done.stdout)
