@@ -45,6 +45,20 @@ the book is at or over the near line and is dropped (IMPROVED) below it.
 Growth under the near line is free: a row for every book would make any
 added theorem fail make check.  `--allow-regression` then records every
 book conclusively over the near line, not only over the threshold.
+
+The AGGREGATE budget (GPT-6 review 2026-09-28; release-v6.6.0.md §2b row 3)
+sits beside the near line.  Per-book rows cannot see a tree whose every book
+stays under 5 s while the whole grows: the budget is the sum of prover steps
+over every current root-closure book and the heaviest include chain by steps
+(the chain sets recertification wall time: architecture-recommendation-
+2026-09-28.md), with the matching 2-job seconds recorded beside them.  Steps,
+not seconds, are compared: they are load-free.  The figure is conclusive only
+when every current book has a passed 2-job measurement at its current bytes,
+which is the prerelease convergence run (qualify once); otherwise it prints
+AGGREGATE PARTIAL and never fails.  `--write-aggregate` records a complete
+figure as `aggregate` in the baseline and refuses one more than
+`aggregate.tolerance` over the recorded convergence unless
+`--allow-regression` is given; a complete figure over it fails the ratchet.
 """
 
 from __future__ import annotations
@@ -76,6 +90,10 @@ LOAD_FACTOR = 3.0
 # A book not in the baseline fails only above threshold * (1 + NEAR_BAND); between
 # the threshold and that line it prints NEAR (D30, 2026-09-25).
 NEAR_BAND = 0.10
+# The aggregate budget's tolerance over the previous convergence's figure
+# (GPT-6's proposal, 10 percent; ember sets it: `aggregate.tolerance` in the
+# baseline overrides this default once recorded).
+AGGREGATE_TOLERANCE = 0.10
 # D26: the ten-second rule is measured at this many concurrent jobs or fewer.
 RATCHET_JOBS = 2
 SCOPED, WIDE, UNKNOWN = "scoped", "wide", "unknown"
@@ -732,6 +750,141 @@ def ratchet(selected: dict[tuple[str, str, str, str], Measurement], books: set[s
     return result
 
 
+@dataclass(frozen=True)
+class Aggregate:
+    """The whole tree's certification cost at its current bytes."""
+    books: int
+    measured: int
+    steps: int
+    seconds: float
+    chain_steps: int
+    chain_seconds: float
+    chain: tuple[str, ...]
+
+    @property
+    def complete(self) -> bool:
+        return self.books > 0 and self.measured == self.books
+
+    def value(self, tolerance: float) -> dict:
+        return {"books": self.books, "steps": self.steps,
+                "seconds": round(self.seconds, 3),
+                "chain_steps": self.chain_steps,
+                "chain_seconds": round(self.chain_seconds, 3),
+                "chain_depth": len(self.chain),
+                "chain": list(self.chain), "tolerance": tolerance}
+
+
+def include_edges(root: Path, books: set[str]) -> dict[str, list[str]]:
+    """Each current book's local includes (certs' resolution, cached)."""
+    base = root.resolve()
+    edges: dict[str, list[str]] = {}
+    for book in books:
+        source = base / f"{book}.lisp"
+        if not source.is_file():
+            edges[book] = []  # current_books names only real books; a stub has none
+            continue
+        digest, references = certs.book_facts(source)
+        edges[book] = [target for target in certs._include_targets(
+            base, book, source, digest, references) if target in books]
+    return edges
+
+
+def aggregate(best: dict[str, Measurement], books: set[str],
+              edges: dict[str, list[str]]) -> Aggregate:
+    """Sum and heaviest include chain of the D26 measurements over `books`.
+
+    A book without a passed 2-job measurement counts zero steps and makes
+    the figure partial (never a verdict).  The chain is the include path
+    whose summed steps are largest: a book waits for everything it includes,
+    so recertifying the tree takes at least that chain.
+    """
+    cost: dict[str, tuple[int, float, tuple[str, ...]]] = {}
+
+    def heaviest(book: str) -> tuple[int, float, tuple[str, ...]]:
+        known = cost.get(book)
+        if known is not None:
+            return known
+        # Iterative post-order: include chains run 60+ deep.
+        stack = [(book, False)]
+        while stack:
+            name, expanded = stack.pop()
+            if name in cost:
+                continue
+            below = [child for child in edges.get(name, []) if child not in cost]
+            if below and not expanded:
+                stack.append((name, True))
+                stack.extend((child, False) for child in below)
+                continue
+            record = best.get(name)
+            own_steps = (record.steps or 0) if record else 0
+            own_seconds = record.seconds if record else 0.0
+            tail = max((cost[child] for child in edges.get(name, []) if child in cost),
+                       key=lambda item: (item[0], item[1], item[2]),
+                       default=(0, 0.0, ()))
+            cost[name] = (own_steps + tail[0], own_seconds + tail[1], (name,) + tail[2])
+        return cost[book]
+
+    measured = [best[book] for book in books if book in best]
+    chain = max((heaviest(book) for book in sorted(books)),
+                key=lambda item: (item[0], item[1], item[2]), default=(0, 0.0, ()))
+    return Aggregate(books=len(books),
+                     measured=sum(1 for record in measured if record.steps is not None),
+                     steps=sum(record.steps or 0 for record in measured),
+                     seconds=sum(record.seconds for record in measured),
+                     chain_steps=chain[0], chain_seconds=chain[1], chain=chain[2])
+
+
+def load_aggregate(path: Path) -> dict | None:
+    """The baseline's recorded convergence aggregate, or None."""
+    if not path.is_file():
+        return None
+    value = json.loads(path.read_text(encoding="utf-8"))
+    recorded = value.get("aggregate") if isinstance(value, dict) else None
+    if recorded is None:
+        return None
+    if not isinstance(recorded, dict) or not all(
+            isinstance(recorded.get(key), int) and not isinstance(recorded.get(key), bool)
+            and recorded[key] >= 0 for key in ("books", "steps", "chain_steps")):
+        raise ValueError(f"{path}: aggregate needs nonnegative integer books, "
+                         "steps and chain_steps")
+    tolerance = recorded.get("tolerance", AGGREGATE_TOLERANCE)
+    if not isinstance(tolerance, (int, float)) or isinstance(tolerance, bool) or tolerance < 0:
+        raise ValueError(f"{path}: aggregate.tolerance must be a nonnegative number")
+    return recorded
+
+
+def aggregate_verdict(current: Aggregate, recorded: dict | None
+                      ) -> tuple[list[str], list[str]]:
+    """(lines, failing): the budget's report; failing only on a complete
+    figure over the recorded convergence's by more than its tolerance."""
+    words = (f"steps={current.steps:,} over {current.measured} of {current.books} "
+             f"books (2-job seconds {current.seconds:,.1f}); heaviest chain "
+             f"steps={current.chain_steps:,} depth={len(current.chain)} "
+             f"seconds={current.chain_seconds:,.1f}"
+             + (f" top={current.chain[0]}" if current.chain else ""))
+    if not current.complete:
+        return ([f"AGGREGATE PARTIAL: {words}; {current.books - current.measured} "
+                 "book(s) have no passed 2-job measurement with steps at their current "
+                 "bytes; not a verdict (the budget is judged at the prerelease "
+                 "convergence run)"], [])
+    if recorded is None:
+        return ([f"AGGREGATE: {words}; no convergence figure recorded: "
+                 "python3 tools/proof_cost.py --write-aggregate"], [])
+    tolerance = float(recorded.get("tolerance", AGGREGATE_TOLERANCE))
+    failing = []
+    for label, now, then in (("steps", current.steps, recorded["steps"]),
+                             ("chain_steps", current.chain_steps, recorded["chain_steps"])):
+        limit = then * (1 + tolerance)
+        if now > limit:
+            failing.append(f"FAIL AGGREGATE {label}={now:,} > recorded {then:,} "
+                           f"+{tolerance:.0%} = {limit:,.0f} ({words})")
+    if failing:
+        return ([], failing)
+    return ([f"AGGREGATE: {words}; within {tolerance:.0%} of the recorded "
+             f"convergence (steps {recorded['steps']:,}, chain "
+             f"{recorded['chain_steps']:,})"], [])
+
+
 def regression_baseline(selected: dict[tuple[str, str, str, str], Measurement],
                         threshold: float) -> dict[str, dict]:
     """Rows for every book conclusively over the threshold (never UNQUIET)."""
@@ -741,7 +894,8 @@ def regression_baseline(selected: dict[tuple[str, str, str, str], Measurement],
 
 
 def write_baseline(path: Path, entries: dict[str, dict], threshold: float,
-                   near: float | None = None) -> None:
+                   near: float | None = None,
+                   aggregate_value: dict | None = None) -> None:
     value = {
         "about": ("Books over the ten-second rule (D26): each row's prover "
                   "steps (the ratchet) and its fastest passed measurement at "
@@ -758,6 +912,7 @@ def write_baseline(path: Path, entries: dict[str, dict], threshold: float,
         "quiet_load_fraction": QUIET_LOAD_FRACTION,
         "load_factor": LOAD_FACTOR,
         "max_jobs": RATCHET_JOBS,
+        **({"aggregate": aggregate_value} if aggregate_value is not None else {}),
         "books": dict(sorted(entries.items())),
     }
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
@@ -783,15 +938,30 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--allow-regression", action="store_true",
                         help="with --write-baseline: record every current book over the "
                              "threshold at its current worst measurement")
+    parser.add_argument("--write-aggregate", action="store_true",
+                        help="record the whole tree's aggregate (steps sum and heaviest "
+                             "include chain) as the convergence figure; refuses a partial "
+                             "figure, and one over the recorded figure's tolerance without "
+                             "--allow-regression")
+    parser.add_argument("--aggregate-tolerance", type=float, default=None,
+                        help="with --write-aggregate: the tolerance to record "
+                             f"(default: the recorded one, else {AGGREGATE_TOLERANCE:g})")
     args = parser.parse_args(argv)
     if args.threshold < 0:
         parser.error("--threshold must be nonnegative")
     if args.near is not None and args.near < 0:
         parser.error("--near must be nonnegative")
-    if args.allow_regression and not args.write_baseline:
-        parser.error("--allow-regression applies only with --write-baseline")
-    if args.write_baseline and (args.manifest or args.toolchain or args.host):
-        parser.error("--write-baseline reads the whole unfiltered history")
+    if args.allow_regression and not (args.write_baseline or args.write_aggregate):
+        parser.error("--allow-regression applies only with --write-baseline "
+                     "or --write-aggregate")
+    if (args.write_baseline or args.write_aggregate) and (
+            args.manifest or args.toolchain or args.host):
+        parser.error("--write-baseline/--write-aggregate read the whole unfiltered history")
+    if args.write_baseline and args.write_aggregate:
+        parser.error("--write-baseline and --write-aggregate are separate steps")
+    if args.aggregate_tolerance is not None and (
+            not args.write_aggregate or args.aggregate_tolerance < 0):
+        parser.error("--aggregate-tolerance is a nonnegative figure for --write-aggregate")
     try:
         if args.manifest:
             if args.toolchain or args.host:
@@ -807,7 +977,14 @@ def main(argv: list[str] | None = None) -> int:
             print("ratchet: not applied to a filtered view")
             return 0
         baseline = load_baseline(args.baseline)
+        recorded = load_aggregate(args.baseline)
         near = args.near if args.near is not None else load_near(args.baseline)
+        current = aggregate(decisive(computed[0])[0], books, include_edges(ROOT, books))
+        budget_lines, budget_failing = aggregate_verdict(current, recorded)
+        if args.write_aggregate:
+            return write_aggregate(args.baseline, baseline, near, args.threshold, current,
+                                   recorded, budget_failing, args.allow_regression,
+                                   args.aggregate_tolerance)
         verdict = ratchet(computed[0], books, baseline, args.threshold, near=near,
                           add_near=args.write_baseline and near is not None)
         unmeasured = len(books - {record.book for record in computed[0].values()})
@@ -829,10 +1006,12 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             else:
                 entries = verdict.proposed
-            write_baseline(args.baseline, entries, args.threshold, near)
+            write_baseline(args.baseline, entries, args.threshold, near, recorded)
             print(f"proof_cost: wrote {args.baseline} with {len(entries)} book(s) "
                   f"(was {len(baseline)})")
             return 0
+        for line in budget_lines + budget_failing:
+            print(line)
         print(f"ratchet: scope=runs at <= {RATCHET_JOBS} jobs (D26); "
               f"baseline={len(baseline)} books; failing={len(verdict.failing)}; "
               f"improved={len(verdict.improved)}; within-tolerance={len(verdict.kept)}; "
@@ -840,10 +1019,35 @@ def main(argv: list[str] | None = None) -> int:
               f"failed-attempts={len(verdict.failed)} (no cost; green_check owns red); "
               f"unmeasured={unmeasured} (warning only); step-tolerance="
               f"{STEP_TOLERANCE:.0%}; seconds-tolerance={TOLERANCE:.0%} (rows without steps)")
-        return 1 if verdict.failing else 0
+        return 1 if verdict.failing or budget_failing else 0
     except (OSError, ValueError, KeyError, certs.UnreadableBook) as error:
         print(f"proof_cost: {error}")
         return 2
+
+
+def write_aggregate(path: Path, baseline: dict[str, dict], near: float | None,
+                    threshold: float, current: Aggregate, recorded: dict | None,
+                    failing: list[str], allow_regression: bool,
+                    tolerance: float | None) -> int:
+    """Record `current` as the convergence aggregate, rows unchanged."""
+    if not current.complete:
+        print(f"proof_cost: refusing to record a partial aggregate: {current.measured} "
+              f"of {current.books} books measured with steps at 2 jobs")
+        return 1
+    if failing and not allow_regression:
+        for line in failing:
+            print(line)
+        print("proof_cost: refusing to record an aggregate over the recorded "
+              "convergence's tolerance; rerun with --allow-regression to accept it")
+        return 1
+    if tolerance is None:
+        tolerance = float(recorded.get("tolerance", AGGREGATE_TOLERANCE)) if recorded \
+            else AGGREGATE_TOLERANCE
+    write_baseline(path, baseline, threshold, near, current.value(tolerance))
+    print(f"proof_cost: recorded aggregate steps={current.steps:,} "
+          f"chain_steps={current.chain_steps:,} over {current.books} books "
+          f"(tolerance {tolerance:.0%}) in {path}")
+    return 0
 
 
 if __name__ == "__main__":

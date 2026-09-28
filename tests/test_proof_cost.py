@@ -301,6 +301,89 @@ class ProofCostTests(unittest.TestCase):
             proof_cost.write_baseline(path, {}, 10.0)
             self.assertIsNone(proof_cost.load_near(path))
 
+    def aggregate_fixture(self, steps: dict[str, int]):
+        # a <- b <- c (c includes b includes a) and d includes a: the heaviest
+        # chain is the include path with the most summed steps.
+        edges = {"books/a": [], "books/b": ["books/a"], "books/c": ["books/b"],
+                 "books/d": ["books/a"]}
+        selected = {}
+        for book, count in steps.items():
+            selected.update(self.measurement(book, 2.0, steps=count))
+        best = proof_cost.decisive(selected)[0]
+        return proof_cost.aggregate(best, set(edges), edges)
+
+    def test_aggregate_sums_steps_and_finds_the_heaviest_include_chain(self):
+        current = self.aggregate_fixture({"books/a": 100, "books/b": 10,
+                                          "books/c": 1, "books/d": 50})
+        self.assertTrue(current.complete)
+        self.assertEqual(current.steps, 161)
+        self.assertEqual(current.seconds, 8.0)
+        # d -> a (150) outweighs c -> b -> a (111) although it is shallower.
+        self.assertEqual((current.chain_steps, current.chain), (150, ("books/d", "books/a")))
+        self.assertEqual(current.chain_seconds, 4.0)
+
+    def test_aggregate_is_partial_and_never_fails_with_an_unmeasured_book(self):
+        current = self.aggregate_fixture({"books/a": 100, "books/b": 10, "books/c": 1})
+        self.assertFalse(current.complete)
+        lines, failing = proof_cost.aggregate_verdict(
+            current, {"books": 4, "steps": 1, "chain_steps": 1})
+        self.assertEqual(failing, [])
+        self.assertIn("AGGREGATE PARTIAL", lines[0])
+        self.assertIn("not a verdict", lines[0])
+
+    def test_aggregate_fails_over_its_recorded_tolerance_and_passes_within(self):
+        current = self.aggregate_fixture({"books/a": 100, "books/b": 10,
+                                          "books/c": 1, "books/d": 50})
+        within = {"books": 4, "steps": 150, "chain_steps": 140, "tolerance": 0.10}
+        lines, failing = proof_cost.aggregate_verdict(current, within)
+        self.assertEqual(failing, [])
+        self.assertIn("within 10%", lines[0])
+        over = {"books": 4, "steps": 140, "chain_steps": 150, "tolerance": 0.10}
+        lines, failing = proof_cost.aggregate_verdict(current, over)
+        self.assertEqual(lines, [])
+        self.assertEqual(len(failing), 1)
+        self.assertIn("FAIL AGGREGATE steps=161 > recorded 140 +10% = 154", failing[0])
+        # No recorded convergence: reported, never failing.
+        lines, failing = proof_cost.aggregate_verdict(current, None)
+        self.assertEqual(failing, [])
+        self.assertIn("--write-aggregate", lines[0])
+
+    def test_write_aggregate_refuses_partial_and_over_tolerance_and_keeps_rows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "b.json"
+            rows = {"books/a": {"seconds": 6.0, "steps": 5}}
+            partial = self.aggregate_fixture({"books/a": 100})
+            self.assertEqual(proof_cost.write_aggregate(
+                path, rows, 5.0, 10.0, partial, None, [], False, None), 1)
+            self.assertFalse(path.exists())
+            current = self.aggregate_fixture({"books/a": 100, "books/b": 10,
+                                              "books/c": 1, "books/d": 50})
+            self.assertEqual(proof_cost.write_aggregate(
+                path, rows, 5.0, 10.0, current, None, [], False, None), 0)
+            recorded = proof_cost.load_aggregate(path)
+            self.assertEqual((recorded["steps"], recorded["chain_steps"],
+                              recorded["tolerance"]), (161, 150, 0.10))
+            self.assertEqual(proof_cost.load_baseline(path), rows)
+            self.assertEqual(proof_cost.load_near(path), 5.0)
+            # --write-baseline keeps the recorded aggregate.
+            proof_cost.write_baseline(path, {}, 10.0, 5.0, recorded)
+            self.assertEqual(proof_cost.load_aggregate(path)["steps"], 161)
+            # Over tolerance: refused without --allow-regression, taken with it.
+            _, failing = proof_cost.aggregate_verdict(
+                current, {"books": 4, "steps": 100, "chain_steps": 100})
+            self.assertEqual(proof_cost.write_aggregate(
+                path, {}, 5.0, 10.0, current, recorded, failing, False, None), 1)
+            self.assertEqual(proof_cost.write_aggregate(
+                path, {}, 5.0, 10.0, current, recorded, failing, True, 0.05), 0)
+            self.assertEqual(proof_cost.load_aggregate(path)["tolerance"], 0.05)
+
+    def test_a_malformed_recorded_aggregate_is_refused_by_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "b.json"
+            path.write_text(json.dumps({"books": {}, "aggregate": {"steps": "many"}}))
+            with self.assertRaisesRegex(ValueError, "aggregate needs"):
+                proof_cost.load_aggregate(path)
+
     def test_ratchet_lowers_a_faster_baseline_number(self):
         selected = self.measurement("books/held", 20.0, run="certify-new")
         verdict = proof_cost.ratchet(selected, {"books/held"},
