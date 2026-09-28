@@ -25,8 +25,7 @@
                           (:definition fn-scc-string-octets)
                           (:linear fn-cp-id-length-bound)
                           (:rewrite fn-scc-octet-listp-facts . 1)
-                          (:rewrite fn-sccb-scc-octetp-is-cbor-octetp)
-                          (:rewrite pgs-x-nfix-when-natp))))
+                          (:rewrite fn-sccb-scc-octetp-is-cbor-octetp))))
 
 ; -----------------------------------------------------------------------------
 ; D. The reads as the host calls them: need-verdicts, never a fill.

@@ -15,8 +15,7 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-scc-octet-listp-facts . 2)
-                          (:rewrite pgs-x-nfix-when-natp))))
+(local (in-theory (enable (:rewrite fn-scc-octet-listp-facts . 2))))
 
 (local (in-theory (disable floor mod pgs-true-list-fix-when-true-listp pgs-ptab-p-true-listp fn-cp-id-length-bound)))
 

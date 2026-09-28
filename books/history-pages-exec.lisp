@@ -8,8 +8,7 @@
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scc-octet-listp)
-                          (:rewrite pgs-x-nfix-when-natp))))
+(local (in-theory (enable (:definition fn-scc-octet-listp))))
 
 ; -----------------------------------------------------------------------------
 ; A. What the image holds at a row: its cells and its pool entry.

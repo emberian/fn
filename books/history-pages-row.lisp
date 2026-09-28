@@ -12,8 +12,7 @@
                           (:rewrite fn-scc-octet-listp-facts . 1)
                           (:rewrite fn-scc-octet-listp-facts . 2)
                           (:rewrite fn-scc-octet-listp-true)
-                          (:rewrite fn-sccb-scc-octetp-is-cbor-octetp)
-                          (:rewrite pgs-x-nfix-when-natp))))
+                          (:rewrite fn-sccb-scc-octetp-is-cbor-octetp))))
 
 (local
  (defun fn-hp-tt-ind (n l y)
