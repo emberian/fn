@@ -7,6 +7,11 @@
 (include-book "config")
 (include-book "control-classify")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; The classifier prevents a malformed or unauthorized FN-Authorship field
 ; from falling through to the legacy article-only Store path.  An article
 ; that cannot be parsed is invalid here too, never carrier-absent.

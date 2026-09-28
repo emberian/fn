@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1444 |
-| Certification roots in the Makefile | 1412 |
-| Books inside the root closure | 1441 |
-| `defthm` and `defthmd` events | 23489 |
-| `defun` events | 15795 |
+| Books read | 1445 |
+| Certification roots in the Makefile | 1413 |
+| Books inside the root closure | 1442 |
+| `defthm` and `defthmd` events | 23494 |
+| `defun` events | 15805 |
 | Functions with verified guards | 2975 |
 | Functions declared `:verify-guards nil` and never verified | 1890 |
-| Functions left at the default with an explicit guard | 8620 |
+| Functions left at the default with an explicit guard | 8630 |
 | Functions left at the default with no guard | 2310 |
-| `assert-event` checks | 20458 |
+| `assert-event` checks | 20467 |
 | `must-fail` checks | 2266 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 140 |
 | Theorems flagged SUSPECT by shape | 1104 |
 | Export-hygiene warnings | 277 |
-| Enabled-projection warnings | 49 |
+| Enabled-projection warnings | 50 |
 | Teeth-form warnings | 246 |
 | Include-hygiene warnings | 1763 |
-| Host-names warnings | 1785 |
+| Host-names warnings | 1777 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -92,7 +92,7 @@ that `make certify` requests.
 | `books/acceptance-stamp-invariants.lisp` | root | 24 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/acceptance.lisp` | root | 69 | 53 | 40/1/12/0 | 0 | 0 | 1 |
 | `books/account-list.lisp` | closure | 1 | 7 | 0/0/7/0 | 0 | 0 | 0 |
-| `books/accounts.lisp` | closure | 52 | 18 | 0/0/18/0 | 0 | 0 | 1 |
+| `books/accounts.lisp` | closure | 54 | 20 | 0/0/20/0 | 0 | 0 | 1 |
 | `books/anchor-invariants.lisp` | root | 31 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-record.lisp` | root | 5 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-replace.lisp` | root | 6 | 10 | 0/0/10/0 | 0 | 0 | 0 |
@@ -324,6 +324,7 @@ that `make certify` requests.
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 5 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock-reading.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/clock-unit.lisp` | root | 3 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/clock-wall-reading.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 4 |
 | `books/codec-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -915,7 +916,7 @@ that `make certify` requests.
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 249 | 0 | 0 |
 | `tests/acl2/account-list-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/accounts-snapshot-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 2 | 0 |
-| `tests/acl2/accounts-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 82 | 17 | 0 |
+| `tests/acl2/accounts-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 91 | 17 | 0 |
 | `tests/acl2/accounts-wire-tests.lisp` | - | 0 | 5 | 0/1/0/4 | 26 | 0 | 0 |
 | `tests/acl2/anchor-replace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/anchor-server-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -1543,7 +1544,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `bpcd-job-key-of-with-status` | `books/bp-node-contact-driver.lisp` | 334 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `bpgap-uncertain-issued-is-inert` | `books/bp-node-machine-gaps.lisp` | 104 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnp-step and the conclusion is that arm's value |
 | `bprsend-job-with-status-fields` | `books/bp-node-receipt-send.lisp` | 278 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-acct-redeem-bounded-plan-is-the-plan-unless-it-redeems` | `books/accounts.lisp` | 711 | arm-of-definition: the hypotheses select one IF/COND arm of fn-acct-redeem-bounded-plan and the conclusion is that arm's value |
+| `fn-acct-redeem-bounded-plan-is-the-plan-unless-it-redeems` | `books/accounts.lisp` | 712 | arm-of-definition: the hypotheses select one IF/COND arm of fn-acct-redeem-bounded-plan and the conclusion is that arm's value |
 | `fn-af-message-id-equalp-is-exact` | `books/article-fields.lisp` | 346 | definition-restated: the conclusion is the body of fn-af-message-id-equalp with the conjuncts the hypotheses already assert struck out |
 | `fn-ag-less-is-less` | `books/acceptance-alloc.lisp` | 81 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-ag-less; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-anchor-octets-of-lengthp-forward` | `books/anchor.lisp` | 130 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp |

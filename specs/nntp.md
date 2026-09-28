@@ -1463,7 +1463,9 @@ gives them.
 - **Admission** (`fn-cfg-delta-reason`): an invite of a digest that keys a row
   is `:account-digest-reused`; a redeem of no row is `:account-unknown`, of a
   pending row whose expiry the record's stamp does not lie wholly before (or
-  a stamp without a wall clock) `:account-expired`, under a login a redeemed
+  a stamp without a wall clock) `:account-expired` (both milliseconds since
+  PRF-378, so this fires at admission and at replay:
+  `fn-cfg-record-redeeming-an-expired-code-is-refused-and-faults-replay`), under a login a redeemed
   row holds `:account-login-taken`, and of a redeemed row
   `:account-redeemed` unless it is the identical row.
 - **Once only** (PRF-164): a redeemed row is the same row, or its tombstone
@@ -1526,8 +1528,19 @@ gives them.
   bound auth.toml is loaded under
   (`fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound`); a
   resume adds no row and is never refused by it. Pending rows are bounded by
-  their expiry, in the record clock's unit (books/clock.lisp: wall
-  milliseconds since 2000-01-01).
+  their expiry, in DTN milliseconds (books/clock.lisp: wall milliseconds since
+  2000-01-01), the unit of the owner's clock the redeem plan compares it
+  with: now + expires, where now is the upper end of the issuing reading
+  converted from its own named unit (books/clock-unit.lisp): the running
+  node's owner clock or the stopped node's configuration record stamp, both
+  milliseconds (PRF-378). PRF-374
+  (`fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths`,
+  `fn-acct-invite-expiry-agrees-across-the-running-and-stopped-paths`):
+  the two paths agree exactly. A stopped node whose wall clock cannot be
+  read stamps its record with no wall claim, and `account invite` refuses
+  `no-clock` instead of printing a code (PRF-379,
+  `fn-acct-offline-invite-refusal-is-no-clock-exactly-without-a-wall`,
+  `fn-native-admin-clock-observation-keeps-the-wall-claim`).
 - **The operator.** `operator CONFIG account invite [--expires SECONDS]`
   (default 604800): the host reads 16 CSPRNG octets, ACL2 renders the code
   (`fn-acct-code-text`) and its digest, and only the digest is sent (to the

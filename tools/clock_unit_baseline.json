@@ -1,0 +1,12 @@
+{
+ "_doc": "tools/clock_unit_check.py: raw arithmetic on a clock observation's fields outside books/clock-unit.lisp, counted per file (PRF-378). Only shrinks: route a site through fn-clock-reading and lower its count.",
+ "sites": {
+  "books/bp-contact-service.lisp": 4,
+  "books/bp-node-progress.lisp": 2,
+  "books/injection.lisp": 1,
+  "books/nntp-responses.lisp": 1,
+  "books/peer-feed.lisp": 1,
+  "books/records-stamp.lisp": 2,
+  "books/scheduler.lisp": 2
+ }
+}

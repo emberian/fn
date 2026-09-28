@@ -2531,6 +2531,12 @@ def run_remote(args, argv: list[str]) -> int:
     extra: list[str] = []
     command = args.command
     if command == "start":
+        # A box reserved for a measurement (tools/boxes.sh reserve) is waited
+        # for before a session starts there; `--host auto` already skipped it.
+        waited = subprocess.run(["sh", str(ROOT / "tools" / "boxes.sh"), "wait", host],
+                                check=False)
+        if waited.returncode != 0:
+            raise SystemExit(f"proof-repl: {host} is reserved (tools/boxes.sh); no session started")
         books = [args.book, *(getattr(args, "ld", None) or [])]
         source_deps = getattr(args, "source_deps", None)
         if source_deps and source_deps != "*":

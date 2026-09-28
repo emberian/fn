@@ -186,6 +186,25 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         self.assertNotIn(b"Password for the new account", lost.stderr)
         self.assertEqual(lost.stdout, b"")
 
+    def test_a_code_invited_while_the_node_is_stopped_redeems(self):
+        # PRF-374, bug M1 (lane node-migrate): an invitation made while no
+        # owner runs is stamped by the offline configuration record, whose
+        # clock is in SECONDS; the expiry was computed as if it were
+        # milliseconds, so the code was born expired and XREDEEM answered
+        # 482.  books/accounts.lisp fn-acct-offline-invite-reading names the
+        # unit; the expiry is now + expires in milliseconds on both paths,
+        # and since PRF-378 the record stamp is milliseconds too, so the
+        # redeem record is admitted by the same comparison the plan made.
+        stopped = self.invite()
+        self.node.start()
+        running = self.invite()
+        self.assertTrue(self.redeem(stopped, "sparrow", "correct-horse").startswith("281"))
+        self.assertTrue(self.redeem(running, "starling", "battery-staple").startswith("281"))
+        listed = self.ok("account", "list").stdout.decode("ascii")
+        self.assertIn("redeemed sparrow ", listed)
+        self.assertIn("redeemed starling ", listed)
+        self.stop()
+
     def test_a_friend_redeems_a_code_once_across_a_crash(self):
         self.node.start()
         code = self.invite()

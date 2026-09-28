@@ -163,7 +163,8 @@ def version_at(rev: str) -> str:
 
 def previous_release(version: str, tags: list[str]) -> str | None:
     """The newest v* tag before VERSION in the release sequence (D37), or
-    None.  Tags outside the sequence are not releases and are ignored."""
+    None.  Tags outside the sequence, and prehistory tags (v1.0.0 to v5.0.0,
+    DEVHIST.md), are not releases and are ignored."""
     try:
         here = release_sequence.position(version)
     except ValueError:
@@ -175,6 +176,8 @@ def previous_release(version: str, tags: list[str]) -> str | None:
         try:
             p = release_sequence.position(t[1:])
         except ValueError:
+            continue
+        if release_sequence.is_prehistory(t[1:]):
             continue
         if here is None or p < here:
             before.append(t[1:])

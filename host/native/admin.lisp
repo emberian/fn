@@ -8,14 +8,6 @@
 
 (in-package "ACL2")
 
-(defun fnn-admin-argv-octets (arguments)
-  "Marshal raw process words only.  ACL2 rejects non-ASCII, empty, oversized,
-or syntactically unsupported requests in `fn-native-admin-plan'."
-  (mapcar (lambda (argument) (fnn-ascii-octet-list argument)) arguments))
-
-(defun fnn-admin-plan (arguments)
-  (fnn-core 'fn-native-admin-host-plan (fnn-admin-argv-octets arguments)))
-
 (defun fnn-admin-plan-acceptedp (plan)
   (eq (fnn-core 'fn-native-admin-host-status plan) :accepted))
 
@@ -26,26 +18,30 @@ or syntactically unsupported requests in `fn-native-admin-plan'."
   "Raw Lisp observes clock values but does not coerce or wrap them.  ACL2
 builds the record stamp and refuses values that its durable schema cannot
 represent."
-  ;; The wall reading is DTN seconds, the unit of the live owner's
-  ;; configuration stamps (books/owner-config.lisp `fn-ocfg-config-stamp').
-  ;; It was get-universal-time (seconds since 1900), so an offline record's
-  ;; stamp was 3155673600 s ahead of a live one's (PKT-665, 2026-09-27).
-  (let ((result (fnn-core 'fn-native-admin-host-clock-observation
-                          (floor (fnn-now) internal-time-units-per-second)
-                          (floor (fnn-owner-wall-milliseconds) 1000))))
-    (unless (eq (fnn-core 'fn-native-admin-host-clock-status result) :accepted)
-      (fnn-refuse "ACL2 refused an unrepresentable clock observation"))
-    (fnn-core 'fn-native-admin-host-clock-stamp result)))
+  ;; Both readings are MILLISECONDS, the owner clock's unit and the
+  ;; configuration record stamp's (books/clock-unit.lisp; PRF-378): the
+  ;; monotonic reading as fnn-owner-monotonic-ms reads it, the wall reading
+  ;; DTN milliseconds.  Whether the wall reading is usable is ACL2's
+  ;; (fnn-owner-wall-milliseconds's second value, books/owner-time-model.lisp
+  ;; fn-otm-wall-reading) and the stamp keeps it: an unreadable wall clock
+  ;; stamps a record with no wall claim, and a stopped `account invite'
+  ;; refuses :no-clock (PRF-379).  It was floored to seconds and the claim
+  ;; dropped, so such a record claimed 2000-01-01.
+  (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
+    (let ((result (fnn-core 'fn-native-admin-host-clock-observation
+                            (floor (* (get-internal-real-time) 1000)
+                                   internal-time-units-per-second)
+                            wall has-wall)))
+      (unless (eq (fnn-core 'fn-native-admin-host-clock-status result) :accepted)
+        (fnn-refuse "ACL2 refused an unrepresentable clock observation"))
+      (fnn-core 'fn-native-admin-host-clock-stamp result))))
 
 (defun fnn-admin-reconfigure (plan stamp)
-  "Invoke the existing ACL2 configuration transaction constructor.
-On :ok it returns the exact record octets the core admitted; on refusal it
-returns NIL and the core's named reason."
-  (let* ((status
-           (fnn-core-state
-            'fn-native-admin-host-apply plan
-            (fnn-core 'fn-native-admin-host-clock-monotonic stamp)
-            (fnn-core 'fn-native-admin-host-clock-wall stamp))))
+  "Invoke the existing ACL2 configuration transaction constructor with the
+record stamp ACL2 built (fnn-admin-clock-plan).  On :ok it returns the exact
+record octets the core admitted; on refusal it returns NIL and the core's
+named reason."
+  (let* ((status (fnn-core-state 'fn-native-admin-host-apply plan stamp)))
     (if (eq status :ok)
         (let ((octets (fnn-core-state 'fn-store-cfg-last-octets)))
           (unless (fnn-octet-list-p octets)
@@ -409,8 +405,3 @@ turning a refusal into a physical mutation."
                           generation name verification)
                  +fnn-exit-ok+)))
         (when store (fnn-store-close store)))))
-
-(defun fnn-command-admin (root arguments)
-  "Unregistered internal test helper.  Production reaches fnn-admin-execute
-only through the ACL2 native-operator action plan."
-  (fnn-admin-execute root (fnn-admin-plan arguments)))

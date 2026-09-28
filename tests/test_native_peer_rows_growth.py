@@ -24,6 +24,11 @@ import time
 import unittest
 
 from tests.native_harness import EXIT_FAULT, EXIT_OK, Node, native_image, requires
+# The harness stores' init budget (tools/native_env.py): init refuses a
+# store without FN_INIT_BUDGET_MB on a large machine (batch AZ, 2026-09-28).
+from tools.native_env import HARNESS_INIT_BUDGET_MB  # noqa: E402
+
+BUDGET = {"FN_INIT_BUDGET_MB": HARNESS_INIT_BUDGET_MB}
 
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 REQUESTS = int(os.environ.get("FN_PEER_ROWS_REQUESTS", "1100"))
@@ -54,8 +59,14 @@ class NativePeerRowsGrowthTests(unittest.TestCase):
 
     def test_a_peer_carries_more_than_the_old_row_cap(self):
         room = str(REQUESTS + 64)
+        # The small preset's record, article and group bounds (tools/fixtures.py
+        # SYNTH_SMALL_BOUNDS): with the defaults, init's reservation for this
+        # profile is 11.5 TB and the budget check refuses it (batch AZ).
         self.ok("init", "--max-transactions", room,
-                "--max-config-generations", room, "fn.test")
+                "--max-config-generations", room,
+                "--max-record-octets", "196608", "--max-article-octets", "32768",
+                "--max-groups-per-article", "16",
+                "--max-history-octets", "67108864", "fn.test")
         self.ok("peer", "add", "far", "far.example.invalid", "192.0.2.44",
                 "1119", "fn.*", "-", "192.0.2.44", "true")
         started = time.monotonic()
@@ -131,15 +142,17 @@ class NativePeerRowsLiveTests(unittest.TestCase):
         print("peer-rows-live:", listed.strip()[:300])
         if OLD_IMAGE:
             def old_status(node, name):
-                result = node.operator("status", image=OLD_IMAGE, timeout=240)
+                result = node.operator("status", image=OLD_IMAGE, env=BUDGET, timeout=240)
                 print("peer-rows-old-image", name, "->", result.returncode,
                       (result.stdout + result.stderr).decode(
                           "utf-8", "replace")[-200:].replace("\n", " "))
                 return result
-            fresh = Node(self, DEVELOPER, root=self.root.parent / "fresh", control=False)
+            fresh = Node(self, DEVELOPER, root=self.root.parent / "fresh", control=False,
+                         env=BUDGET)
             fresh.init(timeout=240)
             self.assertEqual(old_status(fresh, "fresh").returncode, EXIT_OK)
             self.assertEqual(old_status(self.node, "extended").returncode, EXIT_FAULT)
+
 
 if __name__ == "__main__":
     unittest.main()

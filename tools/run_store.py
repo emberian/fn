@@ -662,6 +662,22 @@ class Acl2Store:
                 "t" if verdict else "nil", "t" if one_nonce else "nil"))
         return str(status), (str(reason) if reason else None), next_incarnation
 
+    @staticmethod
+    def record_stamp_form():
+        """One environmental reading as the ACL2 form of a configuration
+        record's stamp: milliseconds on both counters (the record stamp's
+        unit, books/clock-unit.lisp; PRF-378), the wall on the DTN epoch, and
+        whether a wall was read (PRF-379).  ACL2 decides what it admits."""
+        try:
+            monotonic_ms = max(0, time.monotonic_ns() // 1_000_000)
+            wall_ms = (time.time_ns() - 946684800 * 1_000_000_000) // 1_000_000
+            has_wall = wall_ms >= 0
+        except OSError:
+            monotonic_ms, wall_ms, has_wall = 0, 0, False
+        return "(fn-clock-observation {} {} 0 {})".format(
+            monotonic_ms, max(0, wall_ms) if has_wall else 0,
+            "t" if has_wall else "nil")
+
     def io(self, operation, result="ok"):
         return acl2_symbol(self.call("(fn-store-sn-io :{} :{} state)".format(operation, result)))
 
@@ -761,7 +777,7 @@ class Acl2Store:
             " ".join(self.literal(name) for name in held))
         return self._names(form)
 
-    def reconfigure(self, kind, name, monotonic, wall, n=0):
+    def reconfigure(self, kind, name, stamp, n=0):
         """One reconfiguration request.  Returns ("ok", octets) or ("refused", reason).
 
         The kind, the name and the number go in; the deltas, the admissibility
@@ -769,9 +785,8 @@ class Acl2Store:
         capacity is above the reservation total: books/config does, through
         fn-cnode-record-acceptablep against the live node.
         """
-        form = "(fn-store-cfg-reconfigure {} '{} {} {} {} state)".format(
-            kind, self.literal(name.encode("utf-8", "strict")), int(n),
-            int(monotonic), int(wall))
+        form = "(fn-store-cfg-reconfigure {} '{} {} {} state)".format(
+            kind, self.literal(name.encode("utf-8", "strict")), int(n), stamp)
         status = acl2_keyword(self.call(form))
         if status == "ok":
             return status, acl2_octets(self.call("(fn-store-cfg-last-octets state)"))
@@ -779,7 +794,7 @@ class Acl2Store:
             raise StoreFault("unexpected reconfiguration outcome: {}".format(status))
         return "refused", acl2_keyword(self.call("(fn-store-cfg-last-reason state)"))
 
-    def set_peer(self, peer, monotonic, wall):
+    def set_peer(self, peer, stamp):
         """One `peer add': the record, the delta and the octets are ACL2's.
 
         `peer' is the operator's words (name, path identity, endpoint, port,
@@ -790,7 +805,7 @@ class Acl2Store:
         """
         form = ("(fn-store-cfg-set-peer '{name} '{path} '{host} {port} "
                 "'{ing} {inmax} {inflight} '{outg} {stream} {maxq} {backoff} "
-                ":{authkind} '{auth} '{carries} {monotonic} {wall} state)").format(
+                ":{authkind} '{auth} '{carries} {stamp} state)").format(
             carries="(" + " ".join(self.literal(c) for c in peer.get("carries", ())) + ")",
             name=self.literal(peer["name"]), path=self.literal(peer["path_identity"]),
             host=self.literal(peer["endpoint"]), port=int(peer["port"]),
@@ -800,7 +815,7 @@ class Acl2Store:
             stream="t" if peer["streaming"] else "nil",
             maxq=int(peer["max_queue"]), backoff=int(peer["backoff_ms"]),
             authkind=peer["auth_kind"], auth=self.literal(peer["auth_value"]),
-            monotonic=int(monotonic), wall=int(wall))
+            stamp=stamp)
         status = acl2_keyword(self.call(form))
         if status == "ok":
             return status, acl2_octets(self.call("(fn-store-cfg-last-octets state)"))
@@ -808,11 +823,11 @@ class Acl2Store:
             raise StoreFault("unexpected peer outcome: {}".format(status))
         return "refused", acl2_keyword(self.call("(fn-store-cfg-last-reason state)"))
 
-    def set_policy(self, slot, value, monotonic, wall):
+    def set_policy(self, slot, value, stamp):
         """One `policy set': the delta, its admissibility and the octets are
         ACL2's (`fn-store-cfg-set-policy'). Nothing here decides a slot."""
-        form = "(fn-store-cfg-set-policy '{} '{} {} {} state)".format(
-            self.literal(slot), self.literal(value), int(monotonic), int(wall))
+        form = "(fn-store-cfg-set-policy '{} '{} {} state)".format(
+            self.literal(slot), self.literal(value), stamp)
         status = acl2_keyword(self.call(form))
         if status == "ok":
             return status, acl2_octets(self.call("(fn-store-cfg-last-octets state)"))
@@ -824,10 +839,10 @@ class Acl2Store:
         return acl2_octets(self.call("(fn-store-cfg-policy '{} state)".format(
             self.literal(slot))))
 
-    def remove_peer(self, name, monotonic, wall):
+    def remove_peer(self, name, stamp):
         """One `peer remove': `:no-such-peer' is ACL2's refusal, not a lookup here."""
-        form = "(fn-store-cfg-remove-peer '{} {} {} state)".format(
-            self.literal(name), int(monotonic), int(wall))
+        form = "(fn-store-cfg-remove-peer '{} {} state)".format(
+            self.literal(name), stamp)
         status = acl2_keyword(self.call(form))
         if status == "ok":
             return status, acl2_octets(self.call("(fn-store-cfg-last-octets state)"))
@@ -1764,7 +1779,7 @@ def command_group(args):
     kind = {"create": ":create-group", "retire": ":remove-group"}[args.action]
     store, bridge, unused_records = open_live_store(args.store, writable=True)
     try:
-        status, payload = bridge.reconfigure(kind, args.name, time.monotonic(), time.time())
+        status, payload = bridge.reconfigure(kind, args.name, bridge.record_stamp_form())
         if status != "ok":
             print("store: refused group {}: {}".format(args.action, payload), file=sys.stderr)
             return EXIT_REFUSED
@@ -1798,7 +1813,7 @@ def command_capacity(args):
     store, bridge, unused_records = open_live_store(args.store, writable=True)
     try:
         status, payload = bridge.reconfigure(
-            ":set-capacity", "", time.monotonic(), time.time(), n=args.capacity)
+            ":set-capacity", "", bridge.record_stamp_form(), n=args.capacity)
         if status != "ok":
             print("store: refused capacity: {}".format(payload), file=sys.stderr)
             return EXIT_REFUSED
@@ -1840,10 +1855,10 @@ def command_peer(args):
                 print(line)
             return EXIT_OK
         if args.action == "add":
-            status, payload = bridge.set_peer(peer_arguments(args), time.monotonic(), time.time())
+            status, payload = bridge.set_peer(peer_arguments(args), bridge.record_stamp_form())
         else:
             status, payload = bridge.remove_peer(
-                args.name.encode("utf-8"), time.monotonic(), time.time())
+                args.name.encode("utf-8"), bridge.record_stamp_form())
         if status != "ok":
             print("store: refused peer {}: {}".format(args.action, payload), file=sys.stderr)
             return EXIT_REFUSED
@@ -1898,7 +1913,7 @@ def command_policy(args):
             return EXIT_OK
         status, payload = bridge.set_policy(
             args.slot.encode("utf-8"), (args.value or "").encode("utf-8"),
-            time.monotonic(), time.time())
+            bridge.record_stamp_form())
         if status != "ok":
             print("store: refused policy set: {}".format(payload), file=sys.stderr)
             return EXIT_REFUSED

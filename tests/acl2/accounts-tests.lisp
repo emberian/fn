@@ -8,6 +8,8 @@
 (in-package "ACL2")
 (include-book "../../books/accounts")
 (include-book "../../books/crypto-attach")
+; PRF-374: the witnesses reach the plan the host builds (fn-native-admin-plan).
+(include-book "../../books/native-admin")
 (include-book "must-fail-checked")
 
 (defconst *at-code* (fn-record-string-octets "k3y-friend-0001-7f3a"))
@@ -325,24 +327,137 @@
 (assert-event (equal (fn-acct-code-text *at-entropy*)
                      "000102030405060708090a0b0c0d0efa"))
 (assert-event (null (fn-acct-code-text (cdr *at-entropy*))))
+(defconst *at-reading* (fn-acct-live-invite-reading *at-stamp*))
+(defconst *at-reading-no-wall* (fn-acct-live-invite-reading *at-stamp-no-wall*))
 (defmacro at-inv-delta ()
   '(fn-acct-invite-delta (fn-acct-code-digest-text
                           (fn-record-string-octets
                            (fn-acct-code-text *at-entropy*)))
-                         60 *at-stamp*))
+                         60 *at-reading*))
 (assert-event (null (fn-cfg-delta-reason (at-v0) 1 *at-stamp* 0 0 (at-inv-delta))))
-(assert-event (equal (fn-acct-invite-expiry 60 *at-stamp*) 1700060002))
-(assert-event (< (+ (fn-clock-wall *at-stamp*) (fn-clock-wall-error *at-stamp*))
-                 (fn-acct-invite-expiry 60 *at-stamp*)))
+(assert-event (equal (fn-acct-invite-expiry 60 *at-reading*) 1700060002))
+(assert-event (< (fn-clock-reading-latest-milliseconds *at-reading*)
+                 (fn-acct-invite-expiry 60 *at-reading*)))
 ; Hypothesis of fn-acct-invite-delta-is-live-at-its-stamp removed: no wall
 ; clock, no expiry, and the comparison fails.  The conclusion's `<' reads a
 ; non-number as 0 in the logic; `fix' says so, since evaluating (< 0 nil)
 ; is a guard violation, which refused the whole book.
-(assert-event (and (null (fn-acct-invite-expiry 60 *at-stamp-no-wall*))
-                   (null (fn-acct-invite-delta "x" 60 *at-stamp-no-wall*))
-                   (not (< (+ (fn-clock-wall *at-stamp-no-wall*)
-                              (fn-clock-wall-error *at-stamp-no-wall*))
-                           (fix (fn-acct-invite-expiry 60 *at-stamp-no-wall*))))))
+(assert-event (and (null (fn-acct-invite-expiry 60 *at-reading-no-wall*))
+                   (null (fn-acct-invite-delta "x" 60 *at-reading-no-wall*))
+                   (not (< (fix (fn-clock-reading-latest-milliseconds
+                                 *at-reading-no-wall*))
+                           (fix (fn-acct-invite-expiry 60 *at-reading-no-wall*))))))
+; A bare observation is not a reading: no unit, no expiry (the call shape
+; bug M1 had).
+(assert-event (null (fn-acct-invite-expiry 60 *at-stamp*)))
+
+; PRF-374 (bug M1): the running and the stopped path, through the plan the
+; host builds (host/native-admin-host.lisp fn-acct-host-invite-argv) and the
+; readings each path passes (fn-acct-live-invite-reading of the owner's
+; milliseconds clock; fn-acct-offline-invite-reading of the record stamp,
+; milliseconds too since PRF-378).  The instant is 2026-09-28 in DTN milliseconds.
+(defconst *at-now-ms* 812345678901)
+(defmacro at-inv-plan ()
+  '(fn-native-admin-plan
+   (list (fn-record-string-octets "account") (fn-record-string-octets "invite")
+         (fn-record-string-octets (at-digest)) (fn-record-string-octets "3600"))))
+(defconst *at-live-reading*
+  (fn-acct-live-invite-reading (fn-clock-observation 7 *at-now-ms* 250 t)))
+(defconst *at-offline-reading*
+  (fn-acct-offline-invite-reading (fn-clock-observation 3 *at-now-ms* 250 t)))
+; Positive witness of fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths:
+; every hypothesis holds of the reached plan, and both conclusions.
+(assert-event
+ (and (equal (fn-native-admin-result-status (at-inv-plan)) :accepted)
+      (equal (fn-native-admin-result-kind (at-inv-plan)) :account-invite)
+      (equal (fn-native-admin-result-capacity (at-inv-plan)) 3600)
+      (equal (fn-acct-admin-deltas (at-inv-plan) *at-live-reading*)
+             (list (fn-cfg-account-invite (at-digest) "operator"
+                                          "812349279151")))
+      (equal (fn-acct-admin-deltas (at-inv-plan) *at-offline-reading*)
+             (list (fn-cfg-account-invite (at-digest) "operator"
+                                          "812349279151")))))
+; Positive witness of fn-acct-invite-expiry-agrees-across-the-running-and-stopped-paths
+; (no hypotheses): at the reached observation both paths give the same
+; expiry, now + one hour in milliseconds.
+(assert-event
+ (let ((obs (fn-clock-observation 7 *at-now-ms* 250 t)))
+   (and (equal (fn-acct-invite-expiry 3600 (fn-acct-offline-invite-reading obs))
+               (+ *at-now-ms* 250 3600000))
+        (equal (fn-acct-invite-expiry 3600 (fn-acct-offline-invite-reading obs))
+               (fn-acct-invite-expiry 3600 (fn-acct-live-invite-reading obs))))))
+; Mutation witness (labelled): a reading that names the stamp :seconds (the
+; pre-PRF-378 record stamp) disagrees with the running path by the factor
+; the keystone refutes.
+(assert-event
+ (let ((obs (fn-clock-observation 7 *at-now-ms* 250 t)))
+   (not (equal (fn-acct-invite-expiry 3600 (fn-clock-reading :seconds obs))
+               (fn-acct-invite-expiry 3600 (fn-acct-live-invite-reading obs))))))
+; The redeem side: the owner's clock one minute after issue (milliseconds,
+; the redeem plan's stamp) finds the stopped path's row live, and an hour
+; and a second later expired.  Bug M1's row (seconds + 1000 x expires) is
+; already expired at the issuing instant.
+(defmacro at-offline-row ()
+  '(car (fn-cfg-delta-rows
+        (car (fn-acct-admin-deltas (at-inv-plan) *at-offline-reading*)))))
+(assert-event
+ (and (fn-cfg-account-livep (at-offline-row)
+                            (fn-clock-observation 9 (+ *at-now-ms* 60000) 250 t))
+      (not (fn-cfg-account-livep (at-offline-row)
+                                 (fn-clock-observation 9 (+ *at-now-ms* 3601000)
+                                                       0 t)))))
+; Mutation witness (labelled): the pre-fix arithmetic, the record stamp's
+; seconds read as milliseconds, is expired at issue.
+(assert-event
+ (not (fn-cfg-account-livep
+       (fn-cfg-row-make (at-digest) "operator"
+                        (fn-acct-decimal-text
+                         (+ (floor *at-now-ms* 1000) (* 1000 3600)))
+                        0)
+       (fn-clock-observation 9 *at-now-ms* 250 t))))
+; Hypothesis-removal witnesses.  The status and kind hypotheses: a refused
+; plan and another verb's plan stage nothing on either path, so the
+; conclusion fails while every other hypothesis holds.
+(defconst *at-other-plan*
+  (fn-native-admin-plan
+   (list (fn-record-string-octets "account") (fn-record-string-octets "list"))))
+(assert-event
+ (and (not (equal (fn-native-admin-result-kind *at-other-plan*) :account-invite))
+      (null (fn-acct-admin-deltas *at-other-plan* *at-live-reading*))
+      (null (fn-acct-admin-deltas *at-other-plan* *at-offline-reading*))))
+; The capacity hypothesis.  The planner refuses `--expires 0' by itself
+; (the reached plan is (:refused :account)), so the witness is a
+; CONSTRUCTED plan (not reachable through fn-native-admin-plan): accepted,
+; an invite, capacity 0; every other hypothesis holds and the conclusion
+; fails on both paths (nothing is staged).
+(defmacro at-zero-plan ()
+  '(fn-native-admin-result :accepted nil :account-invite
+                           (fn-native-admin-result-name (at-inv-plan)) 0 nil nil))
+(assert-event
+ (and (equal (fn-native-admin-result-status (at-zero-plan)) :accepted)
+      (equal (fn-native-admin-result-kind (at-zero-plan)) :account-invite)
+      (not (posp (fn-native-admin-result-capacity (at-zero-plan))))
+      (equal (fn-native-admin-result-status
+              (fn-native-admin-plan
+               (list (fn-record-string-octets "account")
+                     (fn-record-string-octets "invite")
+                     (fn-record-string-octets (at-digest))
+                     (fn-record-string-octets "0"))))
+             :refused)
+      (null (fn-acct-admin-deltas (at-zero-plan) *at-live-reading*))
+      (null (fn-acct-admin-deltas (at-zero-plan) *at-offline-reading*))))
+; The wall and error hypotheses (natp wall, natp err): a reading whose
+; wall or error bound is not a natural stages nothing on the running path
+; (the plan's hypotheses hold).
+(assert-event
+ (and (equal (fn-native-admin-result-status (at-inv-plan)) :accepted)
+      (null (fn-acct-admin-deltas (at-inv-plan)
+                                  (fn-acct-live-invite-reading
+                                   (fn-clock-observation 7 -5 0 t))))
+      (null (fn-acct-admin-deltas (at-inv-plan)
+                                  (fn-acct-live-invite-reading
+                                   (fn-clock-observation 7 5 -1 t))))))
+
 ; `account list' (books/account-list.lisp, tests/acl2/account-list-tests.lisp)
 ; names logins and principals, never a digest.
 
@@ -503,3 +618,204 @@
   (and (fn-cfg-account-loginp login)
        (fn-cfg-account-heldp (fn-cfg-accounts v) login))))
 
+
+; -----------------------------------------------------------------------------
+; PRF-379: a stopped node's `account invite' with an unreadable wall clock.
+
+(defconst *at-wall-stamp* (fn-clock-observation 3 *at-now-ms* 0 t))
+(defconst *at-blind-stamp* (fn-clock-observation 3 0 0 nil))
+; KEYSTONE fn-acct-offline-invite-refusal-is-no-clock-exactly-without-a-wall:
+; positive witnesses on the reached plan, one per value of the wall claim.
+(assert-event
+ (and (equal (fn-native-admin-result-status (at-inv-plan)) :accepted)
+      (equal (fn-native-admin-result-kind (at-inv-plan)) :account-invite)
+      (posp (fn-native-admin-result-capacity (at-inv-plan)))
+      (fn-clock-observationp *at-blind-stamp*)
+      (fn-clock-observationp *at-wall-stamp*)
+      (equal (fn-acct-offline-invite-refusal (at-inv-plan) *at-blind-stamp*)
+             :no-clock)
+      (null (fn-acct-offline-invite-refusal (at-inv-plan) *at-wall-stamp*))))
+; Hypothesis removal.  Status and kind: another verb's plan, at a stamp with
+; a wall, is refused (nothing to stage), so the conclusion's nil fails.
+(assert-event
+ (and (not (equal (fn-native-admin-result-kind *at-other-plan*) :account-invite))
+      (fn-clock-observationp *at-wall-stamp*)
+      (equal (fn-acct-offline-invite-refusal *at-other-plan* *at-wall-stamp*)
+             :no-clock)))
+; Capacity: the constructed zero-capacity plan (every other hypothesis holds).
+(assert-event
+ (and (equal (fn-native-admin-result-status (at-zero-plan)) :accepted)
+      (equal (fn-native-admin-result-kind (at-zero-plan)) :account-invite)
+      (not (posp (fn-native-admin-result-capacity (at-zero-plan))))
+      (equal (fn-acct-offline-invite-refusal (at-zero-plan) *at-wall-stamp*)
+             :no-clock)))
+; Observation: a stamp claiming a wall whose reading is not a natural.
+(assert-event
+ (let ((bad (fn-clock-observation 3 -5 0 t)))
+   (and (not (fn-clock-observationp bad))
+        (fn-clock-has-wall bad)
+        (equal (fn-acct-offline-invite-refusal (at-inv-plan) bad) :no-clock))))
+
+; -----------------------------------------------------------------------------
+; PRF-378: expiry at admission and replay, in milliseconds.  The reached
+; path: the stopped node's invite at *at-now-ms* (one hour), its record
+; replayed, then a redeem record the owner stamps a minute later (live) and
+; one an hour and a second later (expired).
+
+(defmacro at-inv-deltas ()
+  '(fn-acct-admin-deltas (at-inv-plan) (fn-acct-offline-invite-reading
+                                        *at-wall-stamp*)))
+(defmacro at-cfg1m ()
+  '(fn-config-replay-loop (fn-cfg-initial) 0 1000
+                          (list (fn-cfg-record-make 1 1 1 (at-inv-deltas)
+                                                    *at-wall-stamp*))))
+(defconst *at-soon* (fn-clock-observation 9 (+ *at-now-ms* 60000) 250 t))
+(defconst *at-past* (fn-clock-observation 9 (+ *at-now-ms* 3600000) 0 t))
+(defmacro at-redeem-plan-m ()
+  '(fn-acct-redeem-plan (fn-cfg-value (at-cfg1m)) *at-soon* *at-code*
+                        *at-login* *at-password* *at-salt* nil))
+(defmacro at-redeem-at (stamp)
+  `(fn-cfg-record-make 2 2 2 (list (fn-acct-plan-delta (at-redeem-plan-m)))
+                       ,stamp))
+(defmacro at-row-m ()
+  '(fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value (at-cfg1m))) (at-digest)))
+(defmacro at-keystone-hyps (cfg r)
+  `(let* ((d (car (fn-cfg-record-change ,r)))
+          (stamp (fn-cfg-record-stamp ,r))
+          (row (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value ,cfg))
+                                   (fn-cfg-delta-a d))))
+     (list (fn-cfg-deltap d)
+           (equal (fn-cfg-delta-kind d) :account-redeem)
+           (fn-cfg-account-digestp (fn-cfg-delta-a d))
+           (fn-cfg-account-loginp (fn-cfg-delta-b d))
+           (fn-cfg-account-delta-rowp d 1)
+           (consp row)
+           (equal (fn-cfg-row-n row) 0)
+           (or (not (fn-clock-has-wall stamp))
+               (<= (fn-cfg-account-expiry (fn-cfg-row-c row))
+                   (+ (fn-clock-wall stamp) (fn-clock-wall-error stamp)))))))
+(defmacro at-keystone-concl (cfg r)
+  `(list (equal (fn-cfg-admissible-reason
+                 (fn-cfg-value ,cfg) (fn-cfg-record-generation ,r)
+                 (fn-cfg-record-stamp ,r) 0 1000 (fn-cfg-record-change ,r))
+                :account-expired)
+         (not (fn-cfg-record-acceptablep ,cfg ,r 0 1000))
+         (equal (fn-config-replay-loop ,cfg 0 1000 (list ,r)) :fault)))
+
+; The invitation's expiry is the stamp's milliseconds plus one hour.
+(assert-event (not (equal (at-cfg1m) :fault)))
+(assert-event (equal (fn-cfg-account-expiry (fn-cfg-row-c (at-row-m)))
+                     (+ *at-now-ms* 3600000)))
+(assert-event (equal (car (at-redeem-plan-m)) :redeem))
+; KEYSTONE fn-cfg-record-redeeming-an-expired-code-is-refused-and-faults-replay:
+; the reached positive witness (every hypothesis, every conclusion).
+(assert-event (equal (at-keystone-hyps (at-cfg1m) (at-redeem-at *at-past*))
+                     '(t t t t t t t t)))
+(assert-event (equal (at-keystone-concl (at-cfg1m) (at-redeem-at *at-past*))
+                     '(t t t)))
+; Removal of the time hypothesis: the same redeem a minute after issue is
+; admitted and replays (every other hypothesis holds).
+(assert-event (equal (at-keystone-hyps (at-cfg1m) (at-redeem-at *at-soon*))
+                     '(t t t t t t t nil)))
+(assert-event (equal (at-keystone-concl (at-cfg1m) (at-redeem-at *at-soon*))
+                     '(nil nil nil)))
+; Mutation witness (labelled): read as the pre-PRF-378 seconds stamp (the
+; same instant floored to seconds), the expired redeem is admitted -- the
+; vacuous check this lane removed.
+(assert-event
+ (equal (at-keystone-concl
+         (at-cfg1m)
+         (at-redeem-at (fn-clock-observation 9 (floor (+ *at-now-ms* 3600000) 1000)
+                                             0 t)))
+        '(nil nil nil)))
+; Without a wall claim the redeem is refused (the disjunct's other arm).
+(assert-event (equal (at-keystone-hyps (at-cfg1m) (at-redeem-at *at-blind-stamp*))
+                     '(t t t t t t t t)))
+(assert-event (equal (at-keystone-concl (at-cfg1m) (at-redeem-at *at-blind-stamp*))
+                     '(t t t)))
+; Removal of the pending hypothesis: over the redeemed configuration the
+; identical redeem, stamped with no wall claim (the time hypothesis's other
+; arm, since a redeemed row holds a verifier, not an expiry), is the resume
+; and is admitted.
+(defmacro at-resume-late ()
+  '(fn-cfg-record-make 3 3 3 (list (fn-acct-plan-delta (at-plan1)))
+                       *at-blind-stamp*))
+(assert-event (equal (at-keystone-hyps (at-cfg2) (at-resume-late))
+                     '(t t t t t t nil t)))
+(assert-event (equal (at-keystone-concl (at-cfg2) (at-resume-late))
+                     '(nil nil nil)))
+; Removal of the row hypothesis: a redeem of a digest no row holds is
+; refused as unknown, not expired.
+(defmacro at-unknown-late ()
+  '(fn-cfg-record-make 2 2 2
+                       (list (fn-cfg-account-redeem
+                              (at-digest-2) "robin"
+                              (fn-acct-verifier-text
+                               (fn-authsec-enrol *at-salt* *at-password*))))
+                       *at-past*))
+(assert-event (equal (at-keystone-hyps (at-cfg1m) (at-unknown-late))
+                     '(t t t t t nil nil t)))
+(assert-event (equal (fn-cfg-admissible-reason
+                      (fn-cfg-value (at-cfg1m)) 2 *at-past* 0 1000
+                      (fn-cfg-record-change (at-unknown-late)))
+                     :account-unknown))
+; Removal of the login hypothesis: an empty login is refused as a login.
+(defmacro at-nologin-late ()
+  '(fn-cfg-record-make 2 2 2
+                       (list (fn-cfg-account-redeem
+                              (at-digest) ""
+                              (fn-acct-verifier-text
+                               (fn-authsec-enrol *at-salt* *at-password*))))
+                       *at-past*))
+(assert-event (equal (at-keystone-hyps (at-cfg1m) (at-nologin-late))
+                     '(t t t nil t t t t)))
+(assert-event (equal (fn-cfg-admissible-reason
+                      (fn-cfg-value (at-cfg1m)) 2 *at-past* 0 1000
+                      (fn-cfg-record-change (at-nologin-late)))
+                     :account-login))
+; Removal of the kind hypothesis: the invite record itself, replayed late,
+; is not refused as expired.
+(defmacro at-reinvite-late ()
+  '(fn-cfg-record-make 2 2 2 (at-inv-deltas) *at-past*))
+(assert-event (not (equal (fn-cfg-admissible-reason
+                           (fn-cfg-value (at-cfg1m)) 2 *at-past* 0 1000
+                           (fn-cfg-record-change (at-reinvite-late)))
+                          :account-expired)))
+; Removal of the row-shape hypothesis: a redeem whose row carries the
+; pending mark is refused as a row, not expired.
+(defmacro at-badrow-late ()
+  '(fn-cfg-record-make 2 2 2
+                       (list (fn-cfg-delta-make
+                              :account-redeem (at-digest) "robin" 0
+                              (list (fn-cfg-row-make
+                                     (at-digest) "robin"
+                                     (fn-acct-verifier-text
+                                      (fn-authsec-enrol *at-salt* *at-password*))
+                                     0))))
+                       *at-past*))
+(assert-event (equal (at-keystone-hyps (at-cfg1m) (at-badrow-late))
+                     '(t t t t nil t t t)))
+(assert-event (equal (fn-cfg-admissible-reason
+                      (fn-cfg-value (at-cfg1m)) 2 *at-past* 0 1000
+                      (fn-cfg-record-change (at-badrow-late)))
+                     :account-row))
+; Removal of the digest hypothesis (CONSTRUCTED configuration, not
+; reachable: a pending row keyed by a non-digest, applied without its
+; admission): refused as a digest, not expired.
+(defmacro at-cfg-zz ()
+  '(fn-cfg-make 1 (fn-cfg-apply-delta (at-v0) 1 *at-wall-stamp*
+                                      (fn-cfg-account-invite "zz" "operator"
+                                                             "2000000000"))))
+(defmacro at-zz-late ()
+  '(fn-cfg-record-make 2 2 2
+                       (list (fn-cfg-account-redeem
+                              "zz" "robin"
+                              (fn-acct-verifier-text
+                               (fn-authsec-enrol *at-salt* *at-password*))))
+                       *at-past*))
+(assert-event (equal (at-keystone-hyps (at-cfg-zz) (at-zz-late))
+                     '(t t nil t t t t t)))
+(assert-event (equal (fn-cfg-admissible-reason
+                      (fn-cfg-value (at-cfg-zz)) 2 *at-past* 0 1000
+                      (fn-cfg-record-change (at-zz-late)))
+                     :account-digest))

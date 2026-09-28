@@ -18,6 +18,14 @@ and with --final the first entry of the next segment); `cut-check' is
 tools/cut_release.sh gate 01: VERSION is the next entry after the newest
 existing v* tag (by position), or the first entry when there is none, or
 VERSION's own tag is the newest (the cut's own commit, re-run).
+
+Prehistory (2026-09-28, lane devhist): the first segment may be marked
+"prehistory": true.  Its entries (v1.0.0 to v5.0.0) are retrospective
+annotated tags on milestones of the development history (DEVHIST.md), not
+releases: they have positions, so they sort before 6.6.0, but `first' is the
+first release, cut-check ignores prehistory tags and refuses to cut a
+prehistory version, and tools/changelog.py never takes one as the previous
+release.
 Stdlib only; nothing here reads git or the network.
 """
 from __future__ import annotations
@@ -50,8 +58,14 @@ def parse(text: str) -> tuple[int, ...]:
 def load(path: Path | None = None) -> list[dict]:
     data = json.loads((path or SEQUENCE_FILE).read_text())
     segments = data["segments"]
+    seen_release = False
     for i, seg in enumerate(segments):
         kind = seg.get("kind")
+        if seg.get("prehistory"):
+            if seen_release or kind != "list":
+                raise ValueError(f"segment {i}: a prehistory segment is a list that precedes every release")
+        else:
+            seen_release = True
         if kind == "list":
             for v in seg["versions"]:
                 parse(v)
@@ -145,9 +159,24 @@ def next(version: str, final: bool = False, segments: list[dict] | None = None) 
     return succ[0]
 
 
-def first(segments: list[dict] | None = None) -> str:
+def is_prehistory(version: str, segments: list[dict] | None = None) -> bool:
+    """VERSION is an entry of a prehistory segment: a retrospective tag, not a release."""
     segments = segments if segments is not None else load()
-    return _first_of(segments[0])
+    try:
+        i, _ = position(version, segments)
+    except ValueError:
+        return False
+    return bool(segments[i].get("prehistory"))
+
+
+def first(segments: list[dict] | None = None) -> str:
+    """The first release: the first entry of the first non-prehistory segment."""
+    segments = segments if segments is not None else load()
+    return _first_of(_first_release_segment(segments))
+
+
+def _first_release_segment(segments: list[dict]) -> dict:
+    return [seg for seg in segments if not seg.get("prehistory")][0]
 
 
 def is_next(prev: str | None, new: str, segments: list[dict] | None = None) -> bool:
@@ -183,6 +212,8 @@ def cut_check(version: str, tags, segments: list[dict] | None = None) -> tuple[b
         position(version, segments)
     except ValueError as e:
         return False, f"VERSION {version!r}: {e}"
+    if is_prehistory(version, segments):
+        return False, f"VERSION {version} is a prehistory tag (DEVHIST.md), not a release"
     released = []
     for t in tags:
         if not t.startswith("v"):
@@ -191,6 +222,8 @@ def cut_check(version: str, tags, segments: list[dict] | None = None) -> tuple[b
             position(t[1:], segments)
         except ValueError:
             return False, f"tag {t} is not an entry of the release sequence; it cannot be ordered"
+        if is_prehistory(t[1:], segments):
+            continue
         released.append(t[1:])
     last = newest(released, segments)
     if version in released:

@@ -279,7 +279,8 @@
 
 ; The owner's projection (PKT-665): a live entry whose stamp has a wall
 ; reading yields its fact; the zero stamp of an old `init' yields none.
-(defconst *rct-stamp* (fn-clock-observation 5 841000000 1 t))
+; The stamp is milliseconds, the fact's unit (PRF-378).
+(defconst *rct-stamp* (fn-clock-observation 5000 841000000000 1000 t))
 (assert-event
  (equal (fn-oag-group-facts
          (list (fn-cfg-group-make "fn.one" 1 *rct-stamp* nil

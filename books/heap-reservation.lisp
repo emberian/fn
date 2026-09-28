@@ -566,7 +566,7 @@
 ;; THE STATUS LINE (lane reservation-figure; ops-fixes' sweep: `status'
 ;; printed heap=37643 MB for a node whose launcher reserved about 2.8 GB).
 ;; `status' and `health' printed connection-budget's launch figure
-;; (fn-cbud-launch-decide: the store's heap plus room for as many connections
+;; (fn-cbud-launch-decide, gone since lane zero-copy-commit: the store's heap plus room for as many connections
 ;; as the machine holds, up to 1,024), which the launcher stopped passing when
 ;; connections became records on the I/O loops (PRF-223).  They now print the
 ;; decision the launcher's probe makes for the store's `run' over the store on
@@ -1840,7 +1840,8 @@
               profile
               (nfix (fn-bs-profile-max-history-octets profile))
               (nfix (fn-bs-profile-max-transactions profile)))
-             (fn-heap-store-inflight-octets profile))
+             (fn-heap-store-inflight-octets profile)
+             (fn-heap-articles-octets profile))
           nursery))
   :hints (("Goal" :in-theory (union-theories '(fn-heap-figure-octets fn-heap-store-figure-octets
                                                fn-heap-store-base-octets
@@ -1856,7 +1857,9 @@
                 (<= (nfix (fn-bs-profile-max-record-octets p1))
                     (nfix (fn-bs-profile-max-record-octets p2)))
                 (<= (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p1)) (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2)))
-                (<= (fn-ock-capture-budget p1) (fn-ock-capture-budget p2)))
+                (<= (fn-ock-capture-budget p1) (fn-ock-capture-budget p2))
+                (<= (nfix (fn-bs-profile-max-article-octets p1))
+                    (nfix (fn-bs-profile-max-article-octets p2))))
            (<= (fn-heap-figure-octets p1 core nursery)
                (fn-heap-figure-octets p2 core nursery)))
   :rule-classes nil
@@ -1889,7 +1892,9 @@
                     (nfix (fn-bs-profile-max-transactions p2)))
                 (<= (nfix (fn-bs-profile-max-record-octets p1))
                     (nfix (fn-bs-profile-max-record-octets p2)))
-                (<= (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p1)) (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2))))
+                (<= (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p1)) (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2)))
+                (<= (nfix (fn-bs-profile-max-article-octets p1))
+                    (nfix (fn-bs-profile-max-article-octets p2))))
            (<= (fn-heap-figure-octets p1 core nursery)
                (fn-heap-figure-octets p2 core nursery)))
   :rule-classes nil

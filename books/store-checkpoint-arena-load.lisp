@@ -18,6 +18,11 @@
 (include-book "store-checkpoint-share")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 (local (in-theory (disable fn-cp-idp fn-cp-idp-true-listp
                            fn-sccr-scc-octet-listp-is-cbor-octet-listp
                            fn-sccr-cbor-octet-listp-is-scc-octet-listp)))

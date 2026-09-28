@@ -10,6 +10,11 @@
 (include-book "history-columns-relation")
 (local (include-book "bp-receiver-state-invariants"))
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 (set-verify-guards-eagerness 0)
 
 ; Fast counterparts of the receiver transitions.  These are deliberately

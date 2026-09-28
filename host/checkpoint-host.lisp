@@ -208,12 +208,12 @@
 ;; :reclaim-instant).  KEYSTONE fn-rci-recorded-context-is-the-decided-context:
 ;; the configuration this record yields names the rule and instant the
 ;; decision used.
-(defun fn-store-reclaim-instant-record (clock monotonic wall state)
+(defun fn-store-reclaim-instant-record (clock stamp state)
   (declare (xargs :stobjs state :mode :program))
   (mv-let (rule now) (fn-store-reclaim-rule-and-stamp clock state)
     (declare (ignore rule))
     (if (fn-rci-representablep now)
-        (fn-store-cfg-peer-delta-record (list (fn-rci-delta now)) monotonic wall state)
+        (fn-store-cfg-peer-delta-record (list (fn-rci-delta now)) stamp state)
       (let ((state (f-put-global 'fn-store-cfg-last-reason :reclaim-instant state)))
         (value :refused)))))
 
@@ -232,28 +232,6 @@
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (value (fn-rci-decide-stream profile (fn-cfg-value (f-get-global 'fn-store-cfg state))
                                (f-get-global 'fn-store-sn state) acc dry fn-arena)))
-
-(defun fn-store-checkpoint-publication-initial
-  (generations proposed-generation exclusivep final-absentp values)
-  (declare (xargs :mode :program))
-  (fn-cpp-publication-initial generations proposed-generation exclusivep
-                              final-absentp
-                              (fn-store-checkpoint-generation-capacity values)))
-
-; Selection replacement is a separate contract from immutable generation
-; publication.  The native adapter retains this returned phase and asks ACL2
-; for every next action, observation transition, and terminal outcome.
-(defun fn-store-checkpoint-marker-action (phase)
-  (declare (xargs :mode :program))
-  (fn-cpp-marker-driver-action phase))
-
-(defun fn-store-checkpoint-marker-step (phase result)
-  (declare (xargs :mode :program))
-  (fn-cpp-marker-driver-step phase result))
-
-(defun fn-store-checkpoint-marker-outcome (phase)
-  (declare (xargs :mode :program))
-  (fn-cpp-marker-driver-outcome phase))
 
 ; Decode a selected generation against the live configuration and the
 ; observed durable frontier and record count.  The accepted checkpoint is

@@ -113,10 +113,6 @@
         (state (f-put-global 'fn-store-cfg-open-configs nil state)))
     (value :ready)))
 
-(defun fn-store-sn-state (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (f-get-global 'fn-store-sn state)))
-
 ; The committed record octets and the completion debt of the standalone
 ; Store, carried as (K . VALUE) and advanced over the records committed since
 ; through the Store's derived event index, as the owner carries them
@@ -261,23 +257,6 @@
   ; Each durable configuration record decodes exactly, or the list is :bad.
   (declare (xargs :mode :program))
   (fn-store-cfg-decode-records-loop octet-records nil))
-
-(defun fn-store-cfg-candidate-openp (octet-records frontier config-octet-records)
-  "Decode at the existing byte boundary, then ask the logical native-admin
-candidate predicate whether this exact next durable image reopens.  This is
-not a second recovery algorithm: `fn-native-admin-candidate-openp' invokes
-the same configuration replay and observed-node open definitions startup uses."
-  (declare (xargs :mode :program))
-  (let ((records (fn-store-decode-records octet-records))
-        (config-records (fn-store-cfg-decode-records config-octet-records)))
-    (if (or (equal records :bad) (equal config-records :bad)
-            (null config-records))
-        nil
-      ; The replay's domain is the retained rows: the candidate interns the
-      ; decoded history into a LOCAL arena, as the open does into the live one.
-      (let ((rows (fn-store-intern-records-local records)))
-        (and (not (equal rows :bad))
-             (if (fn-native-admin-candidate-openp rows frontier config-records) t nil))))))
 
 (defun fn-store-cfg-native-admin-authorize
     (octet-records frontier config-octet-records record-octets lock-owned observed-name-octets
@@ -887,7 +866,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; the record octets left in `fn-store-cfg-last-octets', or :refused with the
 ; reason in `fn-store-cfg-last-reason'.  Nothing here mutates the store: the
 ; record becomes durable in Python and is replayed at the next open.
-(defun fn-store-cfg-reconfigure (kind name-octets n monotonic wall state)
+(defun fn-store-cfg-reconfigure (kind name-octets n stamp state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((s (f-get-global 'fn-store-sn state))
          (cfg (f-get-global 'fn-store-cfg state))
@@ -914,7 +893,6 @@ reopen predicate, writer-lock observation and observed final namespace."
                              ((equal kind :set-capacity)
                               (list (fn-cfg-set-capacity (nfix n))))
                              (t nil)))
-               (stamp (fn-clock-observation (nfix monotonic) (nfix wall) 0 t))
                (record (fn-cfg-record-make (fn-cfg-generation cfg)
                                            (fn-state-next-txid (fn-node-acceptance node))
                                            generation deltas stamp)))
@@ -990,7 +968,7 @@ reopen predicate, writer-lock observation and observed final namespace."
                       auth))))
         (if (fn-cfg-peerp p) p nil)))))
 
-(defun fn-store-cfg-peer-delta-record (deltas monotonic wall state)
+(defun fn-store-cfg-peer-delta-record (deltas stamp state)
   ; The configuration record carrying one peer delta, admitted by the
   ; predicate replay applies.  :ok leaves the octets in
   ; `fn-store-cfg-last-octets'; :refused leaves the reason in
@@ -1002,7 +980,6 @@ reopen predicate, writer-lock observation and observed final namespace."
          (cn (fn-cnode-make node cfg))
          (state (f-put-global 'fn-store-cfg-last-octets nil state))
          (generation (+ 1 (fn-cfg-generation cfg)))
-         (stamp (fn-clock-observation (nfix monotonic) (nfix wall) 0 t))
          (record (fn-cfg-record-make (fn-cfg-generation cfg)
                                      (fn-state-next-txid (fn-node-acceptance node))
                                      generation deltas stamp)))
@@ -1045,7 +1022,7 @@ reopen predicate, writer-lock observation and observed final namespace."
                               in-groups-octets in-max-octets in-inflight
                               out-groups-octets out-streaming out-max-queue
                               out-backoff auth-kind auth-octets carries
-                              monotonic wall state)
+                              stamp state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((p (fn-store-cfg-peer-record
              name-octets path-octets host-octets port in-groups-octets
@@ -1063,7 +1040,7 @@ reopen predicate, writer-lock observation and observed final namespace."
            (fn-store-cfg-peer-delta-record
             (list (fn-cfg-set-peer (fn-cfg-peer-name p)
                                    (append (fn-cfg-peer-rows p) extra)))
-            monotonic wall state)))))
+            stamp state)))))
 
 ; The node's own policy slots (`fn policy set|get`).  The one peering needs
 ; is "path-identity": `fn-peer-local-identity` (books/peer-inbound.lisp)
@@ -1078,7 +1055,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; The delta, its admissibility and the record octets are `books/config`'s,
 ; through the same `fn-cnode-record-acceptablep` `peer add` and
 ; `group create` use.
-(defun fn-store-cfg-set-policy (slot-octets id-octets monotonic wall state)
+(defun fn-store-cfg-set-policy (slot-octets id-octets stamp state)
   (declare (xargs :stobjs state :mode :program))
   (let ((slot (fn-store-octets->string slot-octets))
         (id (fn-store-octets->string id-octets)))
@@ -1086,7 +1063,7 @@ reopen predicate, writer-lock observation and observed final namespace."
         (let ((state (f-put-global 'fn-store-cfg-last-reason :policy-slot state)))
           (value :refused))
       (fn-store-cfg-peer-delta-record (list (fn-cfg-set-policy slot id))
-                                      monotonic wall state))))
+                                      stamp state))))
 
 (defun fn-store-cfg-policy (slot-octets state)
   (declare (xargs :stobjs state :mode :program))
@@ -1097,7 +1074,7 @@ reopen predicate, writer-lock observation and observed final namespace."
               (fn-cfg-policy (fn-cfg-value (f-get-global 'fn-store-cfg state))
                              slot))))))
 
-(defun fn-store-cfg-remove-peer (name-octets monotonic wall state)
+(defun fn-store-cfg-remove-peer (name-octets stamp state)
   (declare (xargs :stobjs state :mode :program))
   (let ((name (fn-store-octets->string name-octets)))
     (if (equal name :bad)
@@ -1108,18 +1085,7 @@ reopen predicate, writer-lock observation and observed final namespace."
           (let ((state (f-put-global 'fn-store-cfg-last-reason :no-such-peer state)))
             (value :refused))
         (fn-store-cfg-peer-delta-record (list (fn-cfg-remove-peer-delta name))
-                                        monotonic wall state)))))
-
-; The listing.  Names first, then one slot at a time in the codec's own
-; vocabulary (books/peer-config, `fn-cfg-peer-rows'): nothing about a peer is
-; rendered by Python from a shape it guessed.  The enumeration was a
-; :program-mode copy of the same fold and is now books/peer-config's
-; `fn-cfg-peer-names', so the peer table has one way of being listed.
-(defun fn-store-cfg-peer-names (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-store-cfg-join-names
-          (fn-cfg-peer-names
-           (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state)))))))
+                                        stamp state)))))
 
 (defun fn-store-txn-pairs-octets (pairs)
   (declare (xargs :mode :program))
@@ -1470,26 +1436,6 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-sn-keyring-size (state)
   (declare (xargs :stobjs state :mode :program))
   (value (len (fn-sn-keyring (f-get-global 'fn-store-sn state)))))
-
-(defun fn-store-sn-keyring-generation (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-sn-keyring-generation (f-get-global 'fn-store-sn state))))
-
-; Acceptance evidence carried by the ACL2 state.  Kind-4 results are durable
-; historical evidence.  A legacy fn-r result is only a current-process
-; observation and disappears on recovery because fn-r has no verdict bytes.
-; This wrapper performs only Message-ID conversion and a carried-index lookup;
-; it neither parses article bytes nor verifies a signature.  Present results
-; are the reader-safe :fn-verified item octets.
-(defun fn-store-sn-verdict (msgid-octets state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (not (fn-af-message-idp msgid-octets))
-      (value nil)
-    (let ((verdict
-           (fn-sn-verdict-lookup
-            (f-get-global 'fn-store-sn state)
-            (fn-store-octets->string msgid-octets))))
-      (value (if verdict (fn-stx-verified-item verdict) nil)))))
 
 ; The query.  Absent is nil; present is the statement's canonical octets.
 (defun fn-store-sn-statement (id-octets state)
