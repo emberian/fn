@@ -1089,17 +1089,6 @@ reopen predicate, writer-lock observation and observed final namespace."
         (fn-store-cfg-peer-delta-record (list (fn-cfg-remove-peer-delta name))
                                         monotonic wall state)))))
 
-; The listing.  Names first, then one slot at a time in the codec's own
-; vocabulary (books/peer-config, `fn-cfg-peer-rows'): nothing about a peer is
-; rendered by Python from a shape it guessed.  The enumeration was a
-; :program-mode copy of the same fold and is now books/peer-config's
-; `fn-cfg-peer-names', so the peer table has one way of being listed.
-(defun fn-store-cfg-peer-names (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-store-cfg-join-names
-          (fn-cfg-peer-names
-           (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state)))))))
-
 (defun fn-store-txn-pairs-octets (pairs)
   (declare (xargs :mode :program))
   (if (consp pairs)
