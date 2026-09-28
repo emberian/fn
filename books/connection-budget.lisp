@@ -26,12 +26,16 @@
 ;             and the status line).  A reply larger than that (an OVER or
 ;             LISTGROUP over a large range) is outside the stated workload
 ;             until the owner renders replies in windows (PKT-644);
-;     parser  the wire state of a connection in the middle of an article:
-;             the line and the body so far as octet lists, 16 octets of
-;             heap per octet (*fn-heap-octets-per-list-octet*), twice for
-;             the collector's copy, bounded by the line limit and the body
-;             limit (books/wire.lisp fn-wire-feed-byte-retained-input-is-
-;             bounded; the owner's body limit is the profile's A).
+;     parser  the wire state's command line, an octet list of at most one
+;             line (512 octets), 16 octets of heap per octet
+;             (*fn-heap-octets-per-list-octet*), twice for the collector's
+;             copy.  The BODY of an article in flight is not a per-connection
+;             term since lane zero-copy-commit: the dynamic space holds
+;             `fn-heap-article-slots' of them (books/heap-store-figure.lisp)
+;             and the owner admits a connection into article mode only
+;             within them (books/owner-article-slots.lisp); before, this term
+;             was 32 x (512 + A) and charged to the machine only, so the heap
+;             held none of it.
 ;   NATIVE PART, outside it:
 ;     kernel  the socket's kernel buffers at their defaults, measured;
 ;     tls     OpenSSL's or LibreSSL's session with SSL_MODE_RELEASE_BUFFERS
@@ -46,9 +50,14 @@
 ; loops, accept threads, control clients, the log writer, the publication,
 ; feeds) each with its control stack (STACK, observed) and the runtime's
 ; per-thread regions (*fn-cbud-thread-runtime-octets*, image-floor's 4 MiB).
-; The claim is resident memory under the stated workload; the dynamic
-; space is a reservation the launcher sizes with room for the connections'
-; heap parts (`fn-cbud-launch-decide').
+; The claim is resident memory under the stated workload.  The dynamic space
+; holds the store's figure, which since lane zero-copy-commit includes the
+; articles in flight (the bodies and queued submissions, admitted within
+; `fn-heap-article-slots'); the rest of each connection's heap part (record,
+; reads, reply, command line) is charged to the machine here and NOT held by
+; the dynamic space: a reply of the stated workload is 2A + 1,024 octets a
+; connection, so many readers of the largest article at once can still
+; exhaust the heap until replies are rendered in windows (PKT-644).
 ;
 ; KEYSTONE `fn-cbud-bound-holds-its-connections': the base and N
 ; connections, N at most the bound, fit the machine.
@@ -143,8 +152,7 @@
   (+ *fn-cbud-record-octets*
      *fn-cbud-read-octets*
      (+ (* 2 (nfix article)) *fn-cbud-reply-status-octets*)
-     (* 2 *fn-heap-octets-per-list-octet*
-        (+ *fn-cbud-line-octets* (nfix article)))))
+     (* 2 *fn-heap-octets-per-list-octet* *fn-cbud-line-octets*)))
 
 (defun fn-cbud-conn-native-octets (tlsp)
   (declare (xargs :guard t))
@@ -232,9 +240,8 @@
 
 ; -----------------------------------------------------------------------------
 ; The bound: the most connections the machine holds beside the base.  Every
-; part of every connection is memory of the machine; the heap part also
-; lives in the dynamic space, which the launcher sizes with room for it
-; (`fn-cbud-launch-decide' below).
+; part of every connection is memory of the machine (the heap part also
+; lives in the dynamic space: see the header on what the figure holds).
 
 (defun fn-cbud-machine-room (machine hneed core threads stack)
   (declare (xargs :guard t))
@@ -577,44 +584,13 @@
 (in-theory (disable fn-cbud-limit))
 
 ; -----------------------------------------------------------------------------
-; The launcher's room (the `heap -- ARGV' probe, host/native/heap.lisp).  The
-; dynamic space is fixed when the process starts, before the configuration
-; journal is read, so the probe cannot see the live capacity; it reserves
-; heap room for the connections the machine holds, at most
-; *fn-cbud-launch-connections* (PKT-644 (b): the probe reading the capacity
-; row is the next step).  DECISION is heap-figure's; a refusal passes
-; through.  The accepted figure grows by that room, and the machine must
-; still hold it.
-
-(defconst *fn-cbud-launch-connections* 1024)
-
-(defun fn-cbud-launch-count (machine hneed core threads stack article)
-  (declare (xargs :guard t))
-  (min *fn-cbud-launch-connections*
-       (fn-cbud-bound machine hneed core threads stack article t)))
-
-(defun fn-cbud-launch-decide (decision profile core threads stack observations)
-  (declare (xargs :guard t))
-  (if (and (consp decision) (equal (car decision) :heap)
-           (fn-bs-profile-admittedp profile))
-      (let* ((machine (fn-heap-machine-octets observations))
-             (hneed (* *fn-heap-mib* (fn-heap-decision-mb decision)))
-             (article (fn-bs-profile-max-article-octets profile))
-             (room (* (fn-cbud-launch-count machine hneed core threads stack article)
-                      (fn-cbud-conn-heap-octets article))))
-        (list* :heap (+ (fn-heap-decision-mb decision) (fn-heap-mb-of room))
-               (cddr (true-list-fix decision))))
-    decision))
-
-; The launcher's figure is heap-figure's plus the room: never less.
-(defthm fn-cbud-launch-decide-keeps-the-store-figure
-  (<= (fn-heap-decision-mb decision)
-      (fn-heap-decision-mb (fn-cbud-launch-decide decision profile core
-                                                  threads stack observations)))
-  :hints (("Goal" :in-theory (e/d (fn-cbud-launch-decide fn-heap-decision-mb)
-                                  (fn-cbud-launch-count fn-heap-mb-of
-                                   fn-heap-machine-octets fn-bs-profile-admittedp
-                                   fn-bs-profile-max-article-octets)))))
+; The launcher's room.  Before lane zero-copy-commit `fn-cbud-launch-decide'
+; added room for up to 1,024 connections' heap parts to heap-figure's figure;
+; no host line had called it since lane reservation-figure.  It is gone: the
+; figure itself holds the one per-connection heap term that grows with the
+; profile, the articles in flight (books/heap-store-figure.lisp
+; fn-heap-articles-octets), and the rest of a connection's heap part is
+; charged to the machine here.
 
 ; -----------------------------------------------------------------------------
 ; The run's decision.  CAPACITY is the live configuration's

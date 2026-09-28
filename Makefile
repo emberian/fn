@@ -1269,6 +1269,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-journal \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
+	books/owner-article-slots \
+	tests/acl2/owner-article-slots-tests \
 	books/owner-time-journal-writer \
 	tests/acl2/owner-time-journal-writer-tests \
 	books/owner-stop-drain \

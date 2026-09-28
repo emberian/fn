@@ -311,16 +311,121 @@
               (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile)))))
      (* 2 (fn-ock-capture-budget profile))))
 
+; THE ARTICLES IN FLIGHT (lane zero-copy-commit, 2026-09-28).  A connection
+; in the middle of an article (after POST's 340, IHAVE's 335 or a TAKETHIS
+; line) retains the body until its terminator, and a connection whose article
+; has arrived holds its submission (the decision's octets) in the owner's
+; queue or in the batch in flight until the commit answers it.  These are the
+; per-connection terms that grow with the profile's largest article A and
+; record R, and until this lane the dynamic space held none of them
+; (books/connection-budget.lisp charged the body to the machine only, so
+; enough concurrent posters of large articles exhausted the heap: a fault,
+; exit 4).  The figure now holds `fn-heap-article-slots' articles in flight,
+; each at `fn-heap-article-reserve-octets'; the owner admits a connection to
+; article mode only while fewer than that many are held
+; (books/owner-article-slots.lisp fn-oas-read-span) and refuses the rest by
+; name (POST 440; IHAVE and TAKETHIS 400 and close).  The slots: as many as
+; *fn-heap-article-slot-budget* holds at the reserve, at least one (a node
+; always takes a POST) and at most *fn-heap-article-slots-most* (32, the
+; default configuration's connections).
+(defconst *fn-heap-article-slot-budget* (* 64 1048576))
+(defconst *fn-heap-article-slots-most* 32)
+(defconst *fn-heap-article-line-octets* 512)
+
+; What one slot retains, the larger of its two forms: the body mid-article
+; (the wire's decoded lines, books/wire.lisp body-rev, and the partial line:
+; at most A + one line) and the queued submission (the decision: the
+; injected article, at most A, and the groups its Newsgroups header names,
+; at most the header bound HDR); octet lists, sixteen octets of heap per
+; octet, twice for the collector's copy.
+(defun fn-heap-article-reserve-octets (profile)
+  (declare (xargs :guard t))
+  (* 2 *fn-heap-list-octets-per-octet*
+     (+ *fn-heap-article-line-octets*
+        (nfix (fn-bs-profile-max-article-octets profile))
+        (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile)))))
+
+; The octets the figure holds for articles in flight: the budget, but at
+; least one reserve and at most one per slot of the default capacity.
+; Monotone in A (the figure grows with the profile).
+(defun fn-heap-articles-octets (profile)
+  (declare (xargs :guard t))
+  (let ((r (fn-heap-article-reserve-octets profile)))
+    (max r (min (* *fn-heap-article-slots-most* r) *fn-heap-article-slot-budget*))))
+
+; The slots: how many reserves that holds.
+(defun fn-heap-article-slots (profile)
+  (declare (xargs :guard t))
+  (floor (fn-heap-articles-octets profile) (fn-heap-article-reserve-octets profile)))
+
+
+(defthm fn-heap-article-reserve-octets-posp
+  (posp (fn-heap-article-reserve-octets profile))
+  :rule-classes :type-prescription)
+
+(local
+ (defthm fn-heap-articles-octets-between
+   (and (<= (fn-heap-article-reserve-octets profile) (fn-heap-articles-octets profile))
+        (<= (fn-heap-articles-octets profile)
+            (* *fn-heap-article-slots-most* (fn-heap-article-reserve-octets profile))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (disable fn-heap-article-reserve-octets)))))
+
+(local
+ (defthm fn-heap-floor-between
+   (implies (and (posp r) (natp x) (<= r x) (<= x (* 32 r)))
+            (and (<= 1 (floor x r)) (<= (floor x r) 32)))
+   :rule-classes nil
+   :hints (("Goal" :nonlinearp t))))
+
+(defthm fn-heap-article-slots-bounds
+  (and (posp (fn-heap-article-slots profile))
+       (<= (fn-heap-article-slots profile) *fn-heap-article-slots-most*))
+  :rule-classes ((:type-prescription :corollary (posp (fn-heap-article-slots profile)))
+                 (:linear :corollary (<= (fn-heap-article-slots profile)
+                                         *fn-heap-article-slots-most*)))
+  :hints (("Goal" :in-theory (disable fn-heap-article-reserve-octets fn-heap-articles-octets
+                                      fn-heap-articles-octets-between)
+           :use (fn-heap-articles-octets-between
+                 (:instance fn-heap-floor-between
+                            (r (fn-heap-article-reserve-octets profile))
+                            (x (fn-heap-articles-octets profile)))))))
+
+; KEYSTONE (the slots are held): every count of articles in flight up to the
+; slots, each within the reserve, is within the figure's articles term.
+(defthm fn-heap-article-slots-are-held
+  (implies (<= (nfix k) (fn-heap-article-slots profile))
+           (<= (* (nfix k) (fn-heap-article-reserve-octets profile))
+               (fn-heap-articles-octets profile)))
+  :hints (("Goal" :in-theory (disable fn-heap-article-reserve-octets fn-heap-articles-octets)
+           :nonlinearp t)))
+
+(defthm fn-heap-articles-octets-monotone
+  (implies (and (<= (nfix (fn-bs-profile-max-article-octets p1))
+                    (nfix (fn-bs-profile-max-article-octets p2)))
+                (<= (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p1))
+                    (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2))))
+           (<= (fn-heap-articles-octets p1) (fn-heap-articles-octets p2)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-heap-articles-octets fn-heap-article-reserve-octets)
+                                  (fn-bs-profile-max-article-octets
+                                   fn-bs-profile-field)))))
+
+(in-theory (disable fn-heap-article-slots fn-heap-articles-octets
+                    fn-heap-article-reserve-octets))
+
 ; THE MODEL: what a process needs of its dynamic space at the collector's
 ; TRIGGER while it holds a store of USED octets in N records with M
 ; memberships, having opened
-; (or opening) an input of OU octets in ON records.
+; (or opening) an input of OU octets in ON records, with every article
+; slot in use.
 (defun fn-heap-store-need (profile core used n m ou on trigger)
   (declare (xargs :guard t))
   (+ (fn-heap-core-dynamic core)
      (fn-heap-store-state-octets profile used n m)
      (fn-heap-store-open-octets profile ou on)
      (fn-heap-store-inflight-octets profile)
+     (fn-heap-articles-octets profile)
      (* 2 (nfix trigger))))
 
 ; -----------------------------------------------------------------------------
@@ -372,7 +477,8 @@
      (fn-heap-store-open-octets profile
                                 (fn-heap-open-octets-bound profile observed)
                                 (fn-heap-open-records-bound profile observed))
-     (fn-heap-store-inflight-octets profile)))
+     (fn-heap-store-inflight-octets profile)
+     (fn-heap-articles-octets profile)))
 
 (defthm fn-heap-store-base-octets-natp
   (natp (fn-heap-store-base-octets profile core observed))
@@ -553,7 +659,9 @@
                     (nfix (fn-bs-profile-max-record-octets p2)))
                 (<= (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p1))
                     (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* p2)))
-                (<= (fn-ock-capture-budget p1) (fn-ock-capture-budget p2)))
+                (<= (fn-ock-capture-budget p1) (fn-ock-capture-budget p2))
+                (<= (nfix (fn-bs-profile-max-article-octets p1))
+                    (nfix (fn-bs-profile-max-article-octets p2))))
            (<= (fn-heap-store-base-octets p1 core nil)
                (fn-heap-store-base-octets p2 core nil)))
   :rule-classes nil
@@ -566,9 +674,11 @@
                                    fn-bs-profile-max-transactions
                                    fn-bs-profile-max-groups-per-article
                                    fn-bs-profile-max-record-octets
+                                   fn-bs-profile-max-article-octets
                                    fn-bs-profile-field))
            :use ((:instance fn-heap-open-bounds-of-nil (profile p1))
                  (:instance fn-heap-open-bounds-of-nil (profile p2))
+                 (:instance fn-heap-articles-octets-monotone)
                  (:instance fn-heap-membership-bound-monotone)
                  (:instance fn-heap-arena-octets-monotone
                             (u1 (fn-bs-profile-max-history-octets p1))
