@@ -37,6 +37,12 @@
 (in-package "ACL2")
 (include-book "store-log-kernel")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-apply-op)
+                          (:definition fn-lg-scan)
+                          (:rewrite fn-lgc-take-all))))
+
 ; The host's rule: extend when the open batch, and one spare unit after it,
 ; do not fit the extent (OCTETS: the open batch's log length, which the host
 ; takes from books/store-log.lisp fn-lg-log-len: fn-olr-log-need-is-the-
