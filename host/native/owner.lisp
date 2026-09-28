@@ -3960,8 +3960,10 @@ I/O loops still owe (host/native/mux.lisp fnn-mux-unsent)."
     (when line (fnn-log-line line))))
 
 (defun fnn-owner-drain-service (service)
-  "Drain SERVICE before its stop, as ACL2's fn-osd-drain-step names; returns
-when it answers :stop.  Nothing here compares times or counts."
+  "Drain SERVICE before its stop, as ACL2's fn-osd-drain-next names (the step
+and whether the release was made); returns when it answers :stop, within the
+deadline and its grace for any connection state (PRF-357
+fn-osd-drain-stops-by-the-deadline).  Nothing here compares times or counts."
   (when (and (not (fnn-owner-service-stopping service))
              (fnn-owner-service-mux service))
     (let* ((limits (handler-case
@@ -3984,20 +3986,22 @@ when it answers :stop.  Nothing here compares times or counts."
       (loop
         (when (fnn-owner-service-stopping service) (return))
         (destructuring-bind (awaiting unsent) (fnn-owner-drain-observation service)
-          (let* ((s (fnn-owner-sched-snapshot service))
-                 (step (fnn-core 'fn-osd-drain-step s0 s limits awaiting unsent released)))
-            (case step
+          (let ((s (fnn-owner-sched-snapshot service)))
+            (destructuring-bind (step released2 &rest more)
+                (fnn-call 'fn-osd-drain-next s0 s limits awaiting unsent released)
+             (declare (ignore more))
+             (setq released released2)
+             (case step
               (:stop
                (fnn-owner-drain-log :stop s0 s limits awaiting)
                (return))
               (:release
                (fnn-owner-drain-log :release s0 s limits awaiting)
-               (setq released t)
                (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
                  (setf (fnn-owner-service-drain-release service) t)
                  (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service))))
               (:wait nil)
-              (t (fnn-fault "owner returned a malformed drain step ~a" step)))))
+              (t (fnn-fault "owner returned a malformed drain step ~a" step))))))
         (sleep (/ poll 1000))))))
 
 (defun fnn-owner-run (root port once max-connections

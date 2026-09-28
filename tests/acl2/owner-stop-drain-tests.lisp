@@ -126,3 +126,54 @@
 ; The service log's lines.
 (assert-event (equal (fn-osd-log-line :release *osdt-f0* (osdt-at 6000) *osdt-l* 1)
                      (fn-osch-text "stopping: the drain deadline passed after 6000 ms; the posts in flight are told the outcome is uncertain")))
+
+; --- fn-osd-drain-next (the host's call; lane sigterm-hang): the step, and
+; the release remembered from the step that made it.
+(assert-event (equal (mv-list 2 (fn-osd-drain-next *osdt-f0* (osdt-at 6000) *osdt-l* 1 0 nil))
+                     '(:release t)))
+(assert-event (equal (mv-list 2 (fn-osd-drain-next *osdt-f0* (osdt-at 500) *osdt-l* 1 0 nil))
+                     '(:wait nil)))
+(assert-event (equal (mv-list 2 (fn-osd-drain-next *osdt-f0* (osdt-at 7000) *osdt-l* 1 0 t))
+                     '(:wait t)))
+
+; --- fn-osd-drain-stops-by-the-deadline (KEYSTONE, lane sigterm-hang).
+; Observations (S AWAITING UNSENT) with 8 posters mid-commit awaiting and 8
+; replies unsent (connections mid-article count in neither).
+(defun osdt-obs (xs) (if (atom xs) nil (cons (list (osdt-at (car xs)) 8 8) (osdt-obs (cdr xs)))))
+; Positive, I = 0: both observations past H + grace (16,000 ms); not yet
+; released: the first releases, the second stops: 2 <= 0 + 2.
+(assert-event (fn-osd-past-grace-p *osdt-f0* (nth 0 (osdt-obs '(16000 16100))) *osdt-l*))
+(assert-event (fn-osd-past-grace-p *osdt-f0* (nth 1 (osdt-obs '(16000 16100))) *osdt-l*))
+(assert-event (consp (nthcdr 1 (osdt-obs '(16000 16100)))))
+(assert-event (equal (fn-osd-drain-run *osdt-f0* (osdt-obs '(16000 16100)) *osdt-l* nil) 2))
+; Positive, I = 2, the host's cadence: wait before H, release at H, stop at
+; the first observation past H + grace: 3 <= 2 + 2.
+(assert-event (fn-osd-past-grace-p *osdt-f0* (nth 2 (osdt-obs '(500 6000 16000 16100))) *osdt-l*))
+(assert-event (fn-osd-past-grace-p *osdt-f0* (nth 3 (osdt-obs '(500 6000 16000 16100))) *osdt-l*))
+(assert-event (equal (fn-osd-drain-run *osdt-f0* (osdt-obs '(500 6000 16000 16100)) *osdt-l* nil) 3))
+; Only connections mid-article (nothing awaits, nothing unsent) and nothing
+; in flight: the drain stops at its first observation.
+(assert-event (equal (fn-osd-drain-run *osdt-idle0* (list (list *osdt-idle1* 0 0)) *osdt-l* nil) 1))
+; Hypothesis removal, the I-th past the grace: (500, 16000): the first
+; waits, the second releases; the run has not stopped (the conclusion
+; fails), the retained hypotheses hold.
+(assert-event (not (fn-osd-past-grace-p *osdt-f0* (nth 0 (osdt-obs '(500 16000))) *osdt-l*)))
+(assert-event (fn-osd-past-grace-p *osdt-f0* (nth 1 (osdt-obs '(500 16000))) *osdt-l*))
+(assert-event (consp (nthcdr 1 (osdt-obs '(500 16000)))))
+(assert-event (null (fn-osd-drain-run *osdt-f0* (osdt-obs '(500 16000)) *osdt-l* nil)))
+; The (I+1)-th past the grace removed: (16000, 10000) (a clock read back):
+; released at the first, waiting at the second; not stopped.
+(assert-event (fn-osd-past-grace-p *osdt-f0* (nth 0 (osdt-obs '(16000 10000))) *osdt-l*))
+(assert-event (not (fn-osd-past-grace-p *osdt-f0* (nth 1 (osdt-obs '(16000 10000))) *osdt-l*)))
+(assert-event (null (fn-osd-drain-run *osdt-f0* (osdt-obs '(16000 10000)) *osdt-l* nil)))
+; The next observation removed: one observation past the grace only releases.
+(assert-event (not (consp (nthcdr 1 (osdt-obs '(16000))))))
+(assert-event (fn-osd-past-grace-p *osdt-f0* (nth 0 (osdt-obs '(16000))) *osdt-l*))
+(assert-event (null (fn-osd-drain-run *osdt-f0* (osdt-obs '(16000)) *osdt-l* nil)))
+(must-fail-checked
+ (defthm osdt-stops-without-the-first-past-grace
+   (implies (and (natp i)
+                 (consp (nthcdr (+ 1 i) obs))
+                 (fn-osd-past-grace-p s0 (nth (+ 1 i) obs) limits))
+            (let ((k (fn-osd-drain-run s0 obs limits released)))
+              (and (posp k) (<= k (+ 2 i)))))))

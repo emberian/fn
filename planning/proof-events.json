@@ -12464,6 +12464,14 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-osd-drain-stops-by-the-deadline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-drain-next-step-unfolds"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-osd-deadline-is-past-the-slow-deadline"
         }
       ]
