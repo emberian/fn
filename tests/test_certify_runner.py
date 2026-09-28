@@ -955,7 +955,37 @@ class CriticalPathScheduleTests(unittest.TestCase):
             self.assertEqual(manifest["schedule"],
                              {"policy": "critical-path-first",
                               "books_with_archived_wall": 6,
-                              "predicted_critical_path_seconds": 30.0})
+                              "predicted_critical_path_seconds": 30.0,
+                              "critical_chain": ["books/chain-1", "books/chain-2",
+                                                 "books/chain-3"]})
+
+    def test_jobs_auto_plans_the_count_and_records_the_prediction(self):
+        # The chain is 30 s and the rest 3 s: two jobs already finish at the
+        # chain's own length, so auto picks two of the six it may use, and
+        # the manifest carries the whole curve it chose from.
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, self.BOOKS)
+            repository.archive_walls(self.WALLS)
+            with mock.patch.object(runner.chain_schedule, "slowdown",
+                                   lambda load, host=None: 1.0), \
+                    mock.patch.object(runner, "load_average", lambda: 0.0):
+                code, manifest = repository.certify(self.ORDER, jobs="auto:6")
+            self.assertEqual((code, manifest["status"]), (0, "passed"))
+            self.assertEqual(manifest["jobs"], "auto:6")
+            self.assertEqual(manifest["jobs_effective"], 2)
+            schedule = manifest["schedule"]
+            self.assertEqual(schedule["jobs_chosen"], 2)
+            self.assertEqual(schedule["predicted_wall_by_jobs"]["1"], 33.0)
+            self.assertEqual(schedule["predicted_wall_by_jobs"]["2"], 30.0)
+            self.assertEqual(schedule["predicted_wall_seconds"], 30.0)
+            self.assertLessEqual(repository.peak_concurrency(), 2)
+
+    def test_a_bad_jobs_word_is_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, self.BOOKS)
+            for word in ("many", "auto:0", "0"):
+                with self.assertRaises(SystemExit):
+                    repository.certify(self.ORDER, jobs=word)
 
     def test_one_job_keeps_requested_order_whatever_the_walls(self):
         with tempfile.TemporaryDirectory() as directory:
