@@ -336,7 +336,7 @@
 (defun fn-hp-w-header (w npages)
   ; the open's header check over the image's words W, the page store
   ; holding NPAGES logical pages: (:ok N LENS STARTS) or (:refused REASON)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard (true-listp w) :verify-guards nil))
   (let ((n (nth 6 w))
         (lens (list (nth 9 w) (nth 11 w) (nth 13 w) (nth 15 w) (nth 17 w)))
         (starts (list (nth 8 w) (nth 10 w) (nth 12 w) (nth 14 w) (nth 16 w))))
@@ -641,4 +641,196 @@
           ("Goal'" :in-theory (e/d (fn-hp-lens-4) (fn-hp-w-at fn-hp-iw fn-hp-image fn-hp-okp fn-hp-starts fn-hp-lens
                                    fn-hp-npages fn-hp-pes-len fn-hp-pe fn-scc-encode fn-scc-decode-tree fn-hp-evp
                                    pgs-words-le-octets floor mod fn-hp-mkey fn-hp-cells-of fn-hp-len-pad8 fn-scc-program adt-len-region-below-body adt-body
+                                   fn-hp-pad8-count fn-hp-pe-is-pad8 fn-hp-pad8 nth take nthcdr fn-hp-events-okp)))))
+
+(defun fn-hp-x-ready (p pgs-mem)
+  ; :ok when logical page P is resident and verified; otherwise what the
+  ; host serves before it asks again, in `pgs-x-read''s shapes:
+  ; (:need-table T PHYS), (:need-page P PHYS) (fill the page from PHYS and
+  ; call `pgs-x-open-page' with :eager, which verifies it against its table
+  ; entry), or :out-of-range.  Reads the stobj; changes nothing.
+  (declare (xargs :stobjs pgs-mem :guard (natp p)))
+  (let ((tp (floor p 341)))
+    (cond ((not (and (< p (pgs-v-length pgs-mem))
+                     (<= (* 2048 (+ 1 p)) (pgs-w-length pgs-mem))
+                     (< tp (pgs-tv-length pgs-mem))))
+           :out-of-range)
+          ((not (equal (pgs-tvi tp pgs-mem) 2))
+           (list :need-table tp (first (pgs-x-get-entry 1 *pgs-x-dir-base* tp pgs-mem))))
+          ((not (equal (pgs-vi p pgs-mem) 2))
+           (list :need-page p (first (pgs-x-get-entry 2 0 p pgs-mem))))
+          (t :ok))))
+
+(defthm fn-hp-x-ready-ok
+  (implies (equal (fn-hp-x-ready p pgs-mem) :ok)
+           (and (< p (pgs-v-length pgs-mem))
+                (<= (* 2048 (+ 1 p)) (pgs-w-length pgs-mem))
+                (equal (pgs-vi p pgs-mem) 2)))
+  :rule-classes :forward-chaining)
+
+(defun fn-hp-x-ready-range (p hi pgs-mem)
+  ; :ok when every page in [P, HI) is ready, else the first one's verdict
+  (declare (xargs :stobjs pgs-mem :guard (and (natp p) (natp hi))
+                  :measure (nfix (- (nfix hi) (nfix p)))))
+  (if (mbe :logic (zp (- (nfix hi) (nfix p))) :exec (<= hi p))
+      :ok
+    (let ((v (fn-hp-x-ready p pgs-mem)))
+      (if (eq v :ok) (fn-hp-x-ready-range (+ 1 (nfix p)) hi pgs-mem) v))))
+
+(defun fn-hp-x-words (i k pgs-mem)
+  ; words I .. I+K-1 of the image, as a list
+  (declare (xargs :stobjs pgs-mem
+                  :guard (and (natp i) (natp k) (<= (+ i k) (pgs-w-length pgs-mem)))))
+  (if (zp k) nil (cons (pgs-wi i pgs-mem) (fn-hp-x-words (+ 1 i) (1- k) pgs-mem))))
+
+(defthm fn-hp-x-words-is-take
+  (implies (natp i)
+           (equal (fn-hp-x-words i k pgs-mem) (take k (nthcdr i (nth *pgs-wi* pgs-mem)))))
+  :hints (("Goal" :in-theory (enable pgs-wi take nthcdr) :induct (fn-hp-x-words i k pgs-mem))))
+
+; The open's header check as the host calls it.
+(verify-guards fn-hp-w-header)
+
+(defun fn-hp-x-header (npages pgs-mem)
+  ; The open's header check, as the host calls it: (mv VERDICT RESULT).
+  ; VERDICT :ok and RESULT (:ok N LENS STARTS) or (:refused REASON) once
+  ; page 0 is ready; else VERDICT is what the host serves first.
+  (declare (xargs :stobjs pgs-mem :guard (natp npages)))
+  (let ((v (fn-hp-x-ready 0 pgs-mem)))
+    (if (eq v :ok)
+        (mv :ok (fn-hp-w-header (fn-hp-x-words 0 18 pgs-mem) npages))
+      (mv v nil))))
+
+(local
+ (defthm fn-hp-nth-take-below
+   (implies (and (natp j) (natp k) (< j k))
+            (equal (nth j (take k w)) (nth j w)))
+   :hints (("Goal" :in-theory (enable nth take)))))
+
+(defthm fn-hp-w-header-take-18
+  (equal (fn-hp-w-header (take 18 w) npages) (fn-hp-w-header w npages))
+  :hints (("Goal" :in-theory (disable take adt-starts-l adt-end-l))))
+
+(local
+ (defthm fn-hp-take-18-of-take-2048
+   (equal (take 18 (take 2048 w)) (take 18 w))
+   :hints (("Goal" :in-theory (enable take)))))
+
+; KEYSTONE (the open's header, m2): when page 0 of the page store's image
+; holds page 0 of the history's image and the store holds the image's page
+; count, the header check the host calls answers the history's N and
+; regions; no row page is read.
+(defthm fn-hp-x-header-of-image
+  (implies (and (fn-hp-okp h salt)
+                (equal (take 2048 (nth *pgs-wi* pgs-mem)) (take 2048 (fn-hp-iw h salt)))
+                (equal npages (fn-hp-npages h salt))
+                (equal (mv-nth 0 (fn-hp-x-header npages pgs-mem)) :ok))
+           (equal (mv-nth 1 (fn-hp-x-header npages pgs-mem))
+                  (list :ok (len h) (fn-hp-lens h salt) (fn-hp-starts h salt))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hp-w-header-of-image)
+                 (:instance fn-hp-w-header-take-18 (w (nth *pgs-wi* pgs-mem)) (npages (fn-hp-npages h salt)))
+                 (:instance fn-hp-w-header-take-18 (w (fn-hp-iw h salt)) (npages (fn-hp-npages h salt)))
+                 (:instance fn-hp-take-18-of-take-2048 (w (nth *pgs-wi* pgs-mem)))
+                 (:instance fn-hp-take-18-of-take-2048 (w (fn-hp-iw h salt))))
+           :in-theory (disable fn-hp-w-header-of-image fn-hp-w-header-take-18 fn-hp-take-18-of-take-2048
+                               fn-hp-w-header fn-hp-iw fn-hp-okp fn-hp-npages fn-hp-lens fn-hp-starts take))))
+
+(local
+ (defthm fn-hp-octetp-sha-byte
+   (fn-scc-octetp (fn-sha256-byte x))
+   :hints (("Goal" :in-theory (enable fn-sha256-byte fn-scc-octetp)))))
+(local
+ (defthm fn-hp-scc-octets-of-word
+   (fn-scc-octet-listp (pgs-word-le-octets w))
+   :hints (("Goal" :in-theory (disable fn-sha256-byte ash)))))
+(local
+ (defthm fn-hp-scc-octet-listp-append
+   (implies (and (fn-scc-octet-listp x) (fn-scc-octet-listp y)) (fn-scc-octet-listp (append x y)))))
+(defthm fn-hp-scc-octets-of-words
+  (fn-scc-octet-listp (pgs-words-le-octets ws))
+  :hints (("Goal" :in-theory (disable pgs-word-le-octets))))
+
+(defun fn-hp-at-core (seq n lens salt mkey tl off plen pw)
+  ; the decision of the row read, given the row's four cells and PW, the
+  ; words of its pool entry
+  (declare (xargs :guard (and (true-listp lens) (true-listp pw))))
+  (cond ((not (and (natp seq) (< seq (nfix n)))) (list :refused :seq))
+        ((not (and (natp off) (natp plen) (natp tl) (equal (mod off 8) 0) (equal (mod plen 8) 0)
+                   (<= tl plen) (<= (+ off plen) (nfix (nth 4 lens)))))
+         (list :refused :cells))
+        (t (let ((bytes (pgs-words-le-octets pw)))
+             (if (not (and (<= tl (len bytes)) (equal bytes (fn-hp-pad8 (take tl bytes)))))
+                 (list :refused :padding)
+               (let ((d (fn-scc-decode-tree (take tl bytes))))
+                 (cond ((not (eq (car d) :ok)) (list :refused :tree))
+                       ((not (equal mkey (fn-hp-mkey (cadr d) salt))) (list :refused :mkey))
+                       (t d))))))))
+
+(defthm fn-hp-at-core-when
+  (implies (and (natp seq) (< seq (nfix n))
+                (natp off) (natp plen) (natp tl) (equal (mod off 8) 0) (equal (mod plen 8) 0)
+                (<= tl plen) (<= (+ off plen) (nfix (nth 4 lens)))
+                (equal (pgs-words-le-octets pw) bytes)
+                (<= tl (len bytes))
+                (equal bytes (fn-hp-pad8 (take tl bytes)))
+                (equal (fn-scc-decode-tree (take tl bytes)) (list :ok ev))
+                (equal mkey (fn-hp-mkey ev salt)))
+           (equal (fn-hp-at-core seq n lens salt mkey tl off plen pw) (list :ok ev)))
+  :hints (("Goal" :in-theory (disable fn-hp-mkey fn-scc-decode-tree pgs-words-le-octets mod take nth))))
+
+(defun fn-hp-cell-word (r seq w starts)
+  ; cell SEQ of column R, as the reader finds it in the words W
+  (declare (xargs :verify-guards nil))
+  (nth (+ (* 2048 (nth r starts)) seq) w))
+
+(defun fn-hp-pool-words (seq w starts)
+  ; the words of row SEQ's pool entry, as the reader finds them in W
+  (declare (xargs :verify-guards nil))
+  (let ((off (fn-hp-cell-word 2 seq w starts)) (plen (fn-hp-cell-word 3 seq w starts)))
+    (take (floor plen 8) (nthcdr (+ (* 2048 (nth 4 starts)) (floor off 8)) w))))
+
+(defun fn-hp-w-row (seq w salt n lens starts)
+  ; the row read over the words W: the core over what W holds at the row
+  (declare (xargs :verify-guards nil))
+  (fn-hp-at-core seq n lens salt
+                 (fn-hp-cell-word 0 seq w starts) (fn-hp-cell-word 1 seq w starts)
+                 (fn-hp-cell-word 2 seq w starts) (fn-hp-cell-word 3 seq w starts)
+                 (fn-hp-pool-words seq w starts)))
+
+(defthm fn-hp-len-pe-bound
+  (<= (len (fn-scc-encode ev)) (len (fn-hp-pe ev)))
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-hp-len-enc-le-pe)))))
+
+(defthm fn-hp-w-row-of-image
+  (implies (and (fn-hp-okp h salt) (natp seq) (< seq (len h)))
+           (equal (fn-hp-w-row seq (fn-hp-iw h salt) salt (len h) (fn-hp-lens h salt) (fn-hp-starts h salt))
+                  (list :ok (nth seq h))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hp-at-core-when (n (len h)) (lens (fn-hp-lens h salt)) (ev (nth seq h))
+                            (mkey (fn-hp-mkey (nth seq h) salt)) (tl (len (fn-scc-encode (nth seq h))))
+                            (off (fn-hp-pes-len (take seq h))) (plen (len (fn-hp-pe (nth seq h))))
+                            (pw (take (floor (len (fn-hp-pe (nth seq h))) 8)
+                                      (nthcdr (+ (* 2048 (nth 4 (fn-hp-starts h salt))) (floor (fn-hp-pes-len (take seq h)) 8))
+                                              (fn-hp-iw h salt))))
+                            (bytes (fn-hp-pe (nth seq h))))
+                 (:instance fn-hp-iw-cell (r 0) (i seq)) (:instance fn-hp-iw-cell (r 1) (i seq))
+                 (:instance fn-hp-iw-cell (r 2) (i seq)) (:instance fn-hp-iw-cell (r 3) (i seq))
+                 (:instance fn-hp-cells-of-is (ev (nth seq h)) (pos (fn-hp-pes-len (take seq h))))
+                 (:instance fn-hp-iw-pool (i seq))
+                 (:instance fn-hp-evp-nth (i seq))
+                 (:instance fn-hp-pes-len-take-bound (i seq))
+                 (:instance fn-hp-pes-len-mod-8 (h (take seq h)))
+                 (:instance fn-hp-pe-mod-8 (ev (nth seq h)))
+                 (:instance fn-hp-take-of-pe (ev (nth seq h)))
+                 (:instance fn-hp-pe-def (ev (nth seq h)))
+                 (:instance fn-hp-decode-enc (ev (nth seq h)))
+                 (:instance fn-hp-len-enc-le-pe (ev (nth seq h))))
+           :in-theory (theory 'minimal-theory))
+          ("Goal'" :in-theory (e/d (fn-hp-lens-4 fn-hp-w-row fn-hp-cell-word fn-hp-pool-words)
+                                   (fn-hp-at-core fn-hp-iw fn-hp-image fn-hp-okp fn-hp-starts fn-hp-lens
+                                   fn-hp-npages fn-hp-pes-len fn-hp-pe fn-scc-encode fn-scc-decode-tree fn-hp-evp
+                                   pgs-words-le-octets floor mod fn-hp-mkey fn-hp-cells-of fn-hp-len-pad8 fn-scc-program
+                                   adt-len-region-below-body adt-body
                                    fn-hp-pad8-count fn-hp-pe-is-pad8 fn-hp-pad8 nth take nthcdr fn-hp-events-okp)))))

@@ -114,3 +114,20 @@
 (defthm fn-hp-floor-8-plus
   (implies (and (natp x) (natp y) (equal (mod x 8) 0))
            (equal (floor (+ (* 16384 y) x) 8) (+ (* 2048 y) (floor x 8)))))
+
+; The page of a word.
+(defthm fn-hp-word-below-next-page
+  (implies (natp w) (< w (* 2048 (+ 1 (floor w 2048)))))
+  :rule-classes :linear)
+
+(defthm fn-hp-page-start-below-word
+  (implies (natp w) (<= (* 2048 (floor w 2048)) w))
+  :rule-classes :linear)
+
+(defthm fn-hp-floor-2048-natp
+  (implies (natp w) (natp (floor w 2048)))
+  :rule-classes :type-prescription)
+
+(defthm fn-hp-floor-2048-plus-page
+  (implies (and (natp s) (natp i))
+           (equal (floor (+ (* 2048 s) i) 2048) (+ s (floor i 2048)))))
