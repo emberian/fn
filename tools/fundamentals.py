@@ -614,6 +614,10 @@ def main(argv=None) -> int:
     p.add_argument("--edge-ssh", default=None)
     p.add_argument("--deadline", type=int, default=4 * 3600)
     p.add_argument("--dry-run", action="store_true")
+    # run ends in judge, which reads a.write (batch AZ: without it every run
+    # died after fetching its outputs, before printing the verdict's end).
+    p.add_argument("--write", action="store_true",
+                   help="after fetching, write the records as judge --write does")
     p = sub.add_parser("judge", parents=[bars])
     p.add_argument("--out", required=True)
     p.add_argument("--revision", required=True)
