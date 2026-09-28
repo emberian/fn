@@ -226,6 +226,11 @@ class Case:
             ws.append(str(self.dir / "payloads" / w[1:]) if w.startswith("@") else w)
         return ws
 
+    def program_argv(self):
+        # the Common Lisp product takes the image's CLI (`--fn ...'); the
+        # CHICKEN program its own verbs
+        return [str(self.program), "--fn"] if CORE else [str(self.program)]
+
     def run_one(self, argv, env):
         try:
             p = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, timeout=TIMEOUT)
@@ -240,7 +245,7 @@ class Case:
         if which == "image":
             argv = [str(self.image), "--fn", "model", str(f), str(root)]
         else:
-            argv = [str(self.program), "model", str(f), str(root)]
+            argv = self.program_argv() + ["model", str(f), str(root)]
         rc, out, err = self.run_one(argv, self.env({}))
         return rc, mask(out, root), mask(err, root)
 
@@ -278,7 +283,7 @@ class Case:
                 (self.dir / "payloads" / name).write_bytes(data)
             env = self.env(step["env"])
             ra = self.run_one([str(self.image), "--fn"] + self.words(step, self.a), env)
-            rb = self.run_one([str(self.program)] + self.words(step, self.b), env)
+            rb = self.run_one(self.program_argv() + self.words(step, self.b), env)
             oa = (ra[0], mask(ra[1], self.a).decode(errors="replace"), mask(ra[2], self.a).decode(errors="replace"))
             ob = (rb[0], mask(rb[1], self.b).decode(errors="replace"), mask(rb[2], self.b).decode(errors="replace"))
             rec = {"step": label, "image": {"status": oa[0], "stdout": oa[1], "stderr": oa[2]},
@@ -307,13 +312,19 @@ class Case:
         return {"case": self.name, "verdict": "DIFFER", "step": label, "reason": reason, "steps": steps}
 
 
+CORE = False
+
+
 def main(argv):
+    global CORE
     only = []
     args = []
     it = iter(argv[1:])
     for a in it:
         if a == "--only":
             only.append(next(it))
+        elif a == "--core":
+            CORE = True
         else:
             args.append(a)
     image, program, out = Path(args[0]).resolve(), Path(args[1]).resolve(), Path(args[2]).resolve()

@@ -275,4 +275,3 @@
 (include-book "../../books/bp-run-class")
 (include-book "../../books/bp-node-profile")
 (include-book "../../books/bp-node-profile-admission")
-(include-book "../../books/extract-keyword")

@@ -144,6 +144,9 @@ LISP_PROBE = """(format t "~&PROBE ~a ~a~%" "{label}"
 def sbcl(out):
     with open(out, "w") as h:
         h.write('(in-package "ACL2")\n')
+        # a restarted process's facility start (fn-native-entry's): the
+        # ML-DSA-65 library is loaded per process, never from the saved core
+        h.write("(fnn-hsig-reset)\n(fnn-hsig-initialize)\n")
         h.write(LISP_PRINTER + "\n")
         for label, entry, args in PROBES:
             h.write(LISP_PROBE.replace("{label}", label).replace("{entry}", entry).replace(
@@ -167,6 +170,19 @@ def run_sbcl(image, out):
     argv, env = image_command(['(load "%s")' % forms_file.resolve()])
     r = subprocess.run(argv, env=env, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                        timeout=600, check=False)
+    Path(out).write_bytes(r.stdout)
+    return r.returncode
+
+
+def run_core(core, out):
+    """The probes through the Common Lisp product (tools/extract/core.sh): its
+    developer hook loads the same forms the image evaluates."""
+    import subprocess
+    from pathlib import Path
+    forms_file = Path(out + ".lisp")
+    sbcl(str(forms_file))
+    r = subprocess.run([core, "--xl-load", str(forms_file.resolve())], stdout=subprocess.PIPE,
+                       stderr=subprocess.STDOUT, timeout=600, check=False)
     Path(out).write_bytes(r.stdout)
     return r.returncode
 
@@ -222,6 +238,8 @@ if __name__ == "__main__":
         sbcl(sys.argv[2])
     elif verb == "run-sbcl":
         sys.exit(run_sbcl(sys.argv[2], sys.argv[3]))
+    elif verb == "run-core":
+        sys.exit(run_core(sys.argv[2], sys.argv[3]))
     elif verb == "compare":
         sys.exit(compare(sys.argv[2], sys.argv[3]))
     else:

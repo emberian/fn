@@ -29,13 +29,13 @@ ROOTS=${FN_EXTRACT_ROOTS:-"create-fn-arena fn-reader-use-seed fn-reader-set-post
 # three BLAKE3 entries and the Cancel-Lock hash's SHA-256.
 EXTRA=${FN_EXTRACT_EXTRA:-"create-fn-octets-rd create-fn-octets-lg fn-blake3-stobj fn-blake3-of-prefixed-buffer fn-blake3-of-prefixed-range fn-sha256"}
 python3 "$X/world.py" --check
+# The world, loaded once per world digest and saved (world_image.sh).
+WORLD=$(sh "$X/world_image.sh" "$TREE")
 cat > "$OUT/extract.lsp" <<LSP
-(ld "tools/extract/world.lisp")
-(ld "tools/extract/world-host.lisp")
 (ld "tools/extract/frontend.lisp")
 (xt-extract-with (quote ($ROOTS)) (quote ($EXTRA)) "build/extract/served.json" state)
 LSP
-( cd "$TREE" && swarm-build "$ACL2" < "$OUT/extract.lsp" > "$OUT/extract.log" 2>&1 )
+( cd "$TREE" && swarm-build "$WORLD" < "$OUT/extract.lsp" > "$OUT/extract.log" 2>&1 )
 if grep -q "ACL2 Error" "$OUT/extract.log" || [ ! -s "$OUT/served.json" ]; then
     echo "extract: the front end failed; see $OUT/extract.log" >&2; exit 1
 fi

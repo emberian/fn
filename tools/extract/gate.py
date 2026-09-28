@@ -65,6 +65,9 @@ class Tools:
     ldd: list = field(default_factory=lambda: ["ldd"])
     cc: list = field(default_factory=lambda: ["cc", "--version"])
     store: str = "/tank/fn/scratch/fixtures/n1k-2k/store"
+    # the Common Lisp product's build (tools/extract/core.sh TREE): the SBCL
+    # core without ACL2, the second product under test
+    core: list = None
     # the stateful differential's driver (tools/extract/stateful.py); the
     # gate's tests substitute a stand-in
     stateful: list = field(default_factory=lambda: ["python3", str(X / "stateful.py")])
@@ -191,6 +194,34 @@ class Gate:
         self.ir, self.inv, self.declared = ir, inv, declared
         print("build: %d functions; %d blockers, all declared" % (len(ir["functions"]), len(inv.get("blocker", []))))
 
+    def core(self):
+        """The Common Lisp product (A-TARGET-COMPILER): fn's functions and
+        host/native in a bare SBCL core, built from the same world."""
+        self.step = "core"
+        k = self.tree / "build" / "core"
+        (k / "fn-core").unlink(missing_ok=True)
+        log = self.c / "core-build.log"
+        self.need("core.sh", self.t.core, stdout=log, stderr="stdout", log=log)
+        for name in ("core.json", "defs.lisp", "packages.lisp", "core-world.lisp", "host-block.lisp", "inventory.json"):
+            self.nonempty(k / name, "core")
+        exe = k / "fn-core"
+        if not (exe.is_file() and os.access(exe, os.X_OK)):
+            self.fail("no executable %s" % exe)
+        self.core_exe = exe
+        self.core_inv = self.load_json(k / "inventory.json", "core")
+        print("core: %d defuns, %d *1* functions, %d stobj primitives; host-defined %s"
+              % (self.core_inv["defun"], self.core_inv["star1"], self.core_inv["stobj-prim"],
+                 ",".join(sorted(self.core_inv["host-defined"]))))
+
+    def core_same(self, what, argv, expected, stderr_path):
+        """Run the core; its stdout must be EXPECTED's bytes and its status 0."""
+        out = Path(str(stderr_path).replace(".err", ""))
+        rc = self.run("core " + what, argv, stdout=out, stderr=stderr_path, env=self.acl2_env)
+        if rc != 0:
+            self.fail("%s: the core %s%s" % (what, describe_status(rc), self.tail(stderr_path, 1)))
+        if out.read_bytes() != Path(expected).read_bytes():
+            self.fail("%s: the core's reply differs from the image's (%s against %s)" % (what, out, expected))
+
     def transcripts(self):
         self.step = "transcripts"
         d = self.c / "transcripts"
@@ -229,7 +260,11 @@ class Gate:
             self.fail("compare.sh summary %r, want %d identical" % (summary, len(expected)))
         if rc != 0:
             self.fail("compare.sh %s" % describe_status(rc))
-        print("transcripts: %d of %d identical" % (len(expected), len(expected)))
+        for n in expected:
+            self.core_same("transcript " + n, [self.core_exe, "--fn", "model", d / (n + ".chunks"), "-"],
+                           self.c / "cmp" / ("%s.sbcl" % n), self.c / "cmp" / ("%s.core.err" % n))
+        print("transcripts: %d of %d identical (image, program model and socket, core)"
+              % (len(expected), len(expected)))
 
     def probes(self):
         self.step = "probes"
@@ -243,6 +278,12 @@ class Gate:
         self.need("probes.py compare", ["python3", self.x / "probes.py", "compare", c / "probes.sbcl", c / "probes.chicken"],
                   stdout=c / "probes.log", stderr="stdout", log=c / "probes.log")
         print(Path(c / "probes.log").read_text().strip().splitlines()[-1])
+        self.need("probes.py run-core", ["python3", self.x / "probes.py", "run-core", self.core_exe, c / "probes.core"],
+                  stdout=c / "probes-core.log", stderr="stdout", log=c / "probes-core.log")
+        self.nonempty(c / "probes.core", "probes")
+        self.need("probes.py compare core", ["python3", self.x / "probes.py", "compare", c / "probes.sbcl", c / "probes.core"],
+                  stdout=c / "probes-core-cmp.log", stderr="stdout", log=c / "probes-core-cmp.log")
+        print("core " + Path(c / "probes-core-cmp.log").read_text().strip().splitlines()[-1])
 
     STORE_READ = (b"CAPABILITIES\r\nMODE READER\r\nLIST\r\nLIST ACTIVE\r\nGROUP fn.test\r\nSTAT\r\nHEAD\r\nBODY\r\n"
                   b"ARTICLE 1\r\nARTICLE 2\r\nNEXT\r\nLAST\r\nOVER 1-3\r\nHDR Subject 1-3\r\nLISTGROUP fn.test 1-5\r\n"
@@ -280,7 +321,9 @@ class Gate:
             self.nonempty(a, "store")
             if a.read_bytes() != b.read_bytes():
                 self.fail("%s DIFFER (%s against %s)" % (t, a, b))
-            print("%s over the store: %d bytes IDENTICAL" % (t, a.stat().st_size))
+            self.core_same("store " + t, [self.core_exe, "--fn", "model", f, dst], a,
+                           c / ("%s.store.core.err" % t))
+            print("%s over the store: %d bytes IDENTICAL (image, program, core)" % (t, a.stat().st_size))
 
     def stateful(self):
         """The writable verbs, step for step on twin stores (stateful.py): the
@@ -422,6 +465,18 @@ class Gate:
                           % (found[want]["soname"], found[want]["path"], image_lib))
         return found
 
+    def core_manifest(self):
+        k = self.tree / "build" / "core"
+        if not getattr(self, "core_exe", None):
+            return None
+        return {"executable": str(self.core_exe), "sha256": sha256_file(self.core_exe),
+                "ir_sha256": sha256_file(k / "core.json"), "defs_sha256": sha256_file(k / "defs.lisp"),
+                "compiler": "SBCL compile-file under ACL2's policy (speed 3) (space 1) (safety 0) "
+                            "(acl2.lisp *acl2-optimize-form*), each raw definition with the type "
+                            "declarations ACL2 compiled it with",
+                "erased_checks": "none beyond ACL2's raw code: the policy and declarations are the image's",
+                "inventory": {k2: v for k2, v in self.core_inv.items() if k2 != "star1_names"}}
+
     def capture(self, argv):
         try:
             r = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False, env=self.env)
@@ -470,6 +525,7 @@ class Gate:
                          "c_compiler": self.capture(self.t.cc),
                          "served_sha256": sha256_file(self.e / "served")},
             "foreign_libraries": self.foreign(),
+            "core": self.core_manifest(),
             "toolchain": {"acl2": self.t.acl2, "acl2_sha256": sha256_file(self.t.acl2[0])
                           if Path(self.t.acl2[0]).is_file() else None,
                           "chicken_lib": self.t.chicken_lib},
@@ -485,7 +541,7 @@ class Gate:
         self.c.mkdir(parents=True)
         self.write_status("RUNNING")
         try:
-            for name, stepfn in (("1 build", self.build), ("1b manifest", self.manifest),
+            for name, stepfn in (("1 build", self.build), ("1b manifest", self.manifest), ("1c core", self.core),
                                  ("2 transcripts", self.transcripts), ("3 probes", self.probes),
                                  ("4 store", self.store), ("5 stateful", self.stateful),
                                  ("6 functions", self.functions)):
@@ -511,7 +567,7 @@ def tools_from_env():
     acl2 = os.environ.get("FN_EXTRACT_ACL2", "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k")
     chicken = os.environ.get("CHICKEN", "/tank/fn/toolchains/chicken-5.4.0")
     return Tools(acl2=[acl2], csc=chicken + "/bin/csc", chicken_lib=chicken + "/lib",
-                 swarm=["swarm-build"], build=["sh", str(X / "build.sh")],
+                 swarm=["swarm-build"], build=["sh", str(X / "build.sh")], core=["sh", str(X / "core.sh")],
                  store=os.environ.get("EXTRACT_STORE", "/tank/fn/scratch/fixtures/n1k-2k/store"),
                  per=int(os.environ.get("EXTRACT_FCHECK_PER", "20")),
                  source=os.environ.get("FN_EXTRACT_SOURCE"))
@@ -523,6 +579,7 @@ def main(argv):
     tree = Path(argv[1]).resolve()
     tools = tools_from_env()
     tools.build = tools.build + [str(tree)]
+    tools.core = tools.core + [str(tree)]
     if not tools.source:
         r = subprocess.run(["git", "-C", str(tree), "rev-parse", "HEAD"], stdout=subprocess.PIPE,
                            stderr=subprocess.DEVNULL, check=False)
