@@ -2627,3 +2627,202 @@
 (assert-event (not (equal (in-arena-aut-pinned *aut-arena* (aut-p-reader) "AUTHINFO USER reader")
                           (in-arena-aut-delegated *aut-arena* (aut-p-reader) "AUTHINFO USER reader"))))
 (local (must-fail-checked (aut-k17 aut-k17-without-d5 (d1 d2 d3 d4))))
+
+; -----------------------------------------------------------------------------
+; COMPRESS (RFC 8054; lane compress, PRF-911).  The conversation, over the
+; step: 480 before a login, the label and 206 after it, the 206 holds the
+; session with the layer owed, the host's established event makes it active,
+; and an active layer withdraws STARTTLS and AUTHINFO (labels and commands,
+; 502) and refuses a second COMPRESS (502).
+
+(defconst *aut-z-206* "206 compression active")
+(defconst *aut-z-running* "502 compression is already active")
+(defconst *aut-z-layer* "502 not permitted once a compression layer is active")
+(defconst *aut-z-503* "503 compression algorithm not supported")
+(defconst *aut-z-label* (fn-nntp-string-octets "COMPRESS DEFLATE"))
+(defconst *aut-established* (list :tls-established))
+
+(defmacro aut-z-owed ()
+  '(in-arena-aut-after *aut-arena* (aut-authed) "COMPRESS DEFLATE"))
+(defmacro aut-z-event (as)
+  `(in-arena-fn-auth-step *aut-arena* ,as *aut-archive* *aut-config* *aut-obs*
+                          *aut-obs* *aut-established*))
+(defmacro aut-z-active ()
+  '(fn-post-result-session (aut-z-event (aut-z-owed))))
+
+(defun aut-crlf-lines (xs cur)
+  ; XS split at each CRLF: the lines, without their CRLFs.
+  (declare (xargs :verify-guards nil))
+  (cond ((atom xs) (if cur (list (reverse cur)) nil))
+        ((and (equal (car xs) 13) (consp (cdr xs)) (equal (cadr xs) 10))
+         (cons (reverse cur) (aut-crlf-lines (cddr xs) nil)))
+        (t (aut-crlf-lines (cdr xs) (cons (car xs) cur)))))
+
+(defun aut-capability-lines (effects)
+  ; The lines of a 101 block, as the client reads them.
+  (declare (xargs :verify-guards nil))
+  (aut-crlf-lines (car (cdr (car effects))) nil))
+
+; Before a login: 480, nothing changes, and the label is not offered.
+(assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-req* "COMPRESS DEFLATE")
+                     (aut-single *aut-480*)))
+(assert-event (equal (in-arena-aut-after *aut-arena* *aut-s-req* "COMPRESS DEFLATE")
+                     *aut-s-req*))
+; After it: the label, then 206, and the session holds with the layer owed.
+(assert-event (member-equal *aut-z-label*
+                            (aut-capability-lines
+                             (in-arena-aut-reply *aut-arena* (aut-authed) "CAPABILITIES"))))
+(assert-event (not (member-equal *aut-z-label*
+                                 (aut-capability-lines
+                                  (in-arena-aut-reply *aut-arena* *aut-s-req* "CAPABILITIES")))))
+(assert-event (equal (in-arena-aut-reply *aut-arena* (aut-authed) "COMPRESS DEFLATE")
+                     (aut-single *aut-z-206*)))
+(assert-event (and (fn-auth-sessionp (aut-z-owed))
+                   (fn-auth-session-handshakingp (aut-z-owed))
+                   (equal (fn-auth-session-compress (aut-z-owed)) '(:owed :deflate))
+                   (equal (fn-auth-session-subject (aut-z-owed)) *aut-principal*)))
+; Section 2.2.2's syntax and algorithm answers.
+(assert-event (equal (in-arena-aut-reply *aut-arena* (aut-authed) "COMPRESS SHRINK")
+                     (aut-single *aut-z-503*)))
+(assert-event (equal (in-arena-aut-reply *aut-arena* (aut-authed) "COMPRESS deflate")
+                     (aut-single "501 syntax error")))
+(assert-event (equal (in-arena-aut-reply *aut-arena* (aut-authed) "COMPRESS")
+                     (aut-single "501 syntax error")))
+(assert-event (equal (in-arena-aut-reply *aut-arena* (aut-authed) "COMPRESS DEFLATE X")
+                     (aut-single "501 syntax error")))
+; While owed, the session answers nothing (the host has not installed it).
+(assert-event (null (in-arena-aut-reply *aut-arena* (aut-z-owed) "CAPABILITIES")))
+; Established: active, released, and nothing else changed.
+(assert-event (and (fn-auth-sessionp (aut-z-active))
+                   (equal (fn-auth-session-compress (aut-z-active)) '(:active :deflate))
+                   (not (fn-auth-session-handshakingp (aut-z-active)))
+                   (not (fn-auth-session-tlsp (aut-z-active)))
+                   (equal (fn-auth-session-subject (aut-z-active)) *aut-principal*)))
+; Active: no STARTTLS, AUTHINFO or COMPRESS label; the three commands are
+; 502; the reader goes on.
+(assert-event (let ((lines (aut-capability-lines
+                            (in-arena-aut-reply *aut-arena* (aut-z-active) "CAPABILITIES"))))
+                (and (consp lines)
+                     (not (member-equal *aut-z-label* lines))
+                     (not (member-equal (fn-nntp-string-octets "STARTTLS") lines))
+                     (not (member-equal (fn-nntp-string-octets "AUTHINFO USER") lines)))))
+(assert-event (equal (in-arena-aut-reply *aut-arena* (aut-z-active) "AUTHINFO USER reader")
+                     (aut-single *aut-z-layer*)))
+(assert-event (equal (in-arena-aut-reply *aut-arena* (aut-z-active) "STARTTLS")
+                     (aut-single *aut-z-layer*)))
+(assert-event (equal (in-arena-aut-reply *aut-arena* (aut-z-active) "XREDEEM code")
+                     (aut-single *aut-z-layer*)))
+(assert-event (equal (in-arena-aut-reply *aut-arena* (aut-z-active) "COMPRESS DEFLATE")
+                     (aut-single *aut-z-running*)))
+(assert-event (not (equal (in-arena-aut-reply *aut-arena* (aut-z-active) "GROUP fn.letters")
+                          (aut-single *aut-480*))))
+
+; KEYSTONE fn-auth-established-starts-the-owed-compression.
+;   E1 (fn-auth-sessionp as)   E2 (fn-zc-owedp (fn-auth-session-compress as))
+; Witness: the 206 session above (every conclusion asserted there).
+(assert-event (and (fn-auth-sessionp (aut-z-owed))
+                   (fn-zc-owedp (fn-auth-session-compress (aut-z-owed)))
+                   (null (fn-post-result-effects (aut-z-event (aut-z-owed))))
+                   (equal (fn-auth-session-pending (aut-z-active))
+                          (fn-auth-session-pending (aut-z-owed)))
+                   (equal (fn-auth-session-base (aut-z-active))
+                          (fn-auth-session-base (aut-z-owed)))))
+; E2 dropped: no layer owed; the same event records a TLS layer instead and
+; no compression is active.
+(assert-event (let ((as2 (fn-post-result-session (aut-z-event (aut-authed)))))
+                (and (fn-auth-sessionp (aut-authed))
+                     (not (fn-zc-owedp (fn-auth-session-compress (aut-authed))))
+                     (not (fn-zc-activep (fn-auth-session-compress as2)))
+                     (fn-auth-session-tlsp as2))))
+(local
+ (must-fail-checked
+  (defthm aut-z-established-without-owed
+    (implies (fn-auth-sessionp as)
+             (fn-zc-activep
+              (fn-auth-session-compress
+               (fn-post-result-session
+                (fn-auth-step as archive config observation injection
+                              (list :tls-established) fn-arena)))))
+    :hints (("Goal" :in-theory (e/d (fn-auth-step fn-auth-tls-eventp
+                                     fn-auth-tls-established)
+                                    (fn-auth-sessionp fn-peer-step
+                                     fn-auth-delegate fn-auth-command)))))))
+; E1 dropped (corrupted state: a base that is no peer session): the step
+; answers the value unchanged and the layer stays owed.
+(defconst *aut-z-forged*
+  (fn-auth-make-session :not-a-peer-session *aut-required* nil nil nil t '(:owed :deflate)))
+(assert-event (let ((as2 (fn-post-result-session (aut-z-event *aut-z-forged*))))
+                (and (not (fn-auth-sessionp *aut-z-forged*))
+                     (fn-zc-owedp (fn-auth-session-compress *aut-z-forged*))
+                     (not (fn-zc-activep (fn-auth-session-compress as2))))))
+(local
+ (must-fail-checked
+  (defthm aut-z-established-without-sessionp
+    (implies (fn-zc-owedp (fn-auth-session-compress as))
+             (fn-zc-activep
+              (fn-auth-session-compress
+               (fn-post-result-session
+                (fn-auth-step as archive config observation injection
+                              (list :tls-established) fn-arena)))))
+    :hints (("Goal" :in-theory (e/d (fn-auth-step fn-auth-tls-eventp
+                                     fn-auth-tls-established)
+                                    (fn-auth-sessionp fn-peer-step
+                                     fn-auth-delegate fn-auth-command)))))))
+
+; The hypothesis the layer added to the older keystones: an ACTIVE layer
+; answers AUTHINFO and XREDEEM 502 where a plaintext connection is answered
+; 483.  Reachable by a connection that speaks for a source-address peer (no
+; login, so no subject: fn-auth-compress-mayp), stated here over the
+; protected-only reader's fields with the layer set.
+(defconst *aut-z-prot-active*
+  (fn-auth-make-session (fn-auth-session-base *aut-s-prot*) *aut-protected*
+                        nil nil nil nil '(:active :deflate)))
+(assert-event (and (fn-auth-sessionp *aut-z-prot-active*)
+                   (not (fn-auth-session-handshakingp *aut-z-prot-active*))
+                   (not (fn-auth-session-subject *aut-z-prot-active*))
+                   (fn-auth-config-protected-onlyp (fn-auth-session-config *aut-z-prot-active*))
+                   (not (fn-auth-session-tlsp *aut-z-prot-active*))
+                   (fn-zc-activep (fn-auth-session-compress *aut-z-prot-active*))))
+(assert-event (equal (in-arena-aut-reply *aut-arena* *aut-z-prot-active* "AUTHINFO USER reader")
+                     (aut-single *aut-z-layer*)))
+(assert-event (not (equal (in-arena-aut-reply *aut-arena* *aut-z-prot-active* "AUTHINFO USER reader")
+                          (aut-single *aut-483*))))
+(local
+ (must-fail-checked
+  (defthm aut-483-without-no-layer
+    (implies (and (fn-auth-sessionp as)
+                  (not (fn-auth-session-handshakingp as))
+                  (not (fn-auth-session-subject as))
+                  (fn-auth-config-protected-onlyp (fn-auth-session-config as))
+                  (not (fn-auth-session-tlsp as))
+                  (fn-nntp-command-inputp line)
+                  (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
+                  (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO"))
+             (equal (fn-post-result-effects
+                     (fn-auth-step as archive config observation injection (list :command line) fn-arena))
+                    (fn-auth-single
+                     as "483 a protected channel is required; use STARTTLS")))
+    :hints (("Goal"
+             :do-not-induct t
+             :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp
+                              fn-auth-tls-eventp fn-auth-restricted-keywordp
+                              fn-nntp-keywordp)
+                             (fn-peer-step fn-auth-delegate fn-auth-single
+                              fn-auth-authinfo fn-auth-starttls
+                              fn-auth-sessionp
+                              fn-nntp-tokenize fn-nntp-command-inputp
+                              fn-nntp-keyword-tokenp
+                              fn-nntp-command-arguments-at-mostp)))))))
+(assert-event (equal (fn-post-result-effects
+                      (in-arena-aut-step-pinned *aut-arena* *aut-z-prot-active* "XREDEEM code" nil))
+                     (aut-single *aut-z-layer*)))
+
+; fn-auth-step-starttls-clears-a-principal-role, the hold that is not a
+; layer's: the 206 is a hold too, and it keeps the login (the conclusion's
+; null subject fails), which is why the keystone now names the TLS hold.
+(assert-event (let ((as2 (aut-z-owed)))
+                (and (not (fn-auth-session-handshakingp (aut-authed)))
+                     (fn-auth-session-handshakingp as2)
+                     (not (fn-auth-redeem-waitp as2))
+                     (fn-zc-owedp (fn-auth-session-compress as2))
+                     (fn-auth-session-subject as2))))

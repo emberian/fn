@@ -377,7 +377,7 @@ class ReaderSocketTests(unittest.TestCase):
             sock,
             b"100 help text follows\r\n"
             b"CAPABILITIES HELP QUIT MODE DATE POST\r\n"
-            b"AUTHINFO STARTTLS XREDEEM\r\n"
+            b"AUTHINFO STARTTLS XREDEEM COMPRESS\r\n"
             b"GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS\r\n"
             b"ARTICLE HEAD BODY STAT\r\n"
             b"OVER XOVER HDR XHDR XPAT\r\n"

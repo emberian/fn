@@ -46,12 +46,14 @@ if grep -q '^# fn frozen image launcher v2$' "$image"; then
     set -- "$image_dir"/lib/libsodium.so.*
     [ -s "$1" ] && [ -s "$image_dir/lib/libfn-mldsa65.so" ] &&
     [ -s "$image_dir/lib/libfn-lz4.so" ] &&
+    [ -s "$image_dir/lib/libfn-deflate.so" ] &&
     [ -s "$image_dir/lib/libfn-blake3.so" ] || {
       echo "install-native: frozen crypto dependencies missing" >&2; exit 4; }
   else
     [ -s "$image_dir/lib/libsodium.so.23" ] &&
     [ -s "$image_dir/lib/libfn-mldsa65.so" ] &&
     [ -s "$image_dir/lib/libfn-lz4.so" ] &&
+    [ -s "$image_dir/lib/libfn-deflate.so" ] &&
     [ -s "$image_dir/lib/libfn-blake3.so" ] || {
       echo "install-native: frozen crypto dependencies missing" >&2; exit 4; }
   fi
@@ -78,6 +80,14 @@ else
   done
   [ -n "$lz4" ] || {
     echo "install-native: no lib/libfn-lz4 beside the core (tools/build_lz4.sh)" >&2; exit 4; }
+  # The COMPRESS DEFLATE outbound compressor (tools/build_deflate.sh).
+  deflate=
+  for candidate in "$(dirname -- "$launcher_core")/lib/libfn-deflate.so" \
+                   "$(dirname -- "$launcher_core")/lib/libfn-deflate.dylib"; do
+    [ ! -s "$candidate" ] || deflate=$candidate
+  done
+  [ -n "$deflate" ] || {
+    echo "install-native: no lib/libfn-deflate beside the core (tools/build_deflate.sh)" >&2; exit 4; }
   # BLAKE3, fn's digest, loads from the same lib/ (host/native/digest.lisp).
   blake3=
   for candidate in "$(dirname -- "$launcher_core")/lib/libfn-blake3.so" \
@@ -165,7 +175,7 @@ if [ "$frozen" = yes ]; then
   cp -p "$image_dir/lib/"* "$libdir/lib/"
   cp -p "$image" "$libdir/fn-host"
 else
-  cp -p "$mldsa" "$lz4" "$blake3" "$libdir/lib/"
+  cp -p "$mldsa" "$lz4" "$deflate" "$blake3" "$libdir/lib/"
 
   sed -e "s|^export SBCL_HOME='[^']*'|export SBCL_HOME='$prefix/libexec/fn/runtime/sbcl-home/'|" \
       -e "s|^exec \"[^\"]*\"|exec \"$prefix/libexec/fn/runtime/sbcl\"|" \
@@ -213,13 +223,14 @@ install -m 0755 packaging/install.sh "$destdir$prefix/install.sh"
   elif command -v otool >/dev/null 2>&1; then otool -L "$runtime"
   elif command -v ldd >/dev/null 2>&1; then ldd "$runtime"
   fi
-  echo "dlopen-requirements: system libcrypto+libssl (OpenSSL 3.0+ or LibreSSL 3+), libsodium, lib/libfn-mldsa65, lib/libfn-lz4 and lib/libfn-blake3 (bundled)"
+  echo "dlopen-requirements: system libcrypto+libssl (OpenSSL 3.0+ or LibreSSL 3+), libsodium, lib/libfn-mldsa65, lib/libfn-lz4, lib/libfn-deflate and lib/libfn-blake3 (bundled)"
   if [ "$frozen" = yes ]; then
     $hash_command "$image_dir"/lib/*
     $hash_command "$libdir"/lib/*
   else
     $hash_command "$mldsa" "$libdir/lib/$(basename -- "$mldsa")" \
                   "$lz4" "$libdir/lib/$(basename -- "$lz4")" \
+                  "$deflate" "$libdir/lib/$(basename -- "$deflate")" \
                   "$blake3" "$libdir/lib/$(basename -- "$blake3")"
   fi
   if [ -n "$crypto_inventory" ]; then

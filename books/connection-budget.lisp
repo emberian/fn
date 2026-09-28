@@ -163,12 +163,13 @@
 ; and table (fn-zin-buffer-sizes), its output (one read) and its input (two
 ; reads); zlib's state for the parameters ACL2 gives it.
 (defthm fn-cbud-compress-heap-covers-the-inflater
-  (<= (+ (getf (fn-zin-buffer-sizes) :window) (getf (fn-zin-buffer-sizes) :table)
-         (* 3 *fn-cbud-read-quantum*))
-      *fn-cbud-compress-heap-octets*))
+  (<= (+ *fn-zin-window* *fn-zin-tab-octets* (* 3 *fn-cbud-read-quantum*))
+      *fn-cbud-compress-heap-octets*)
+  :rule-classes nil)
 
 (defthm fn-cbud-compress-native-covers-zlib
-  (<= (fn-zc-deflate-state-octets) *fn-cbud-compress-native-octets*))
+  (<= (fn-zc-deflate-state-octets) *fn-cbud-compress-native-octets*)
+  :rule-classes nil)
 
 (defun fn-cbud-conn-heap-octets (article)
   (declare (xargs :guard t))

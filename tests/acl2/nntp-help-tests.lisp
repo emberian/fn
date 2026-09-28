@@ -58,7 +58,7 @@
                     (nht-crlf-lines
                      '("100 help text follows"
                        "CAPABILITIES HELP QUIT MODE DATE POST"
-                       "AUTHINFO STARTTLS XREDEEM"
+                       "AUTHINFO STARTTLS XREDEEM COMPRESS"
                        "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS"
                        "ARTICLE HEAD BODY STAT"
                        "OVER XOVER HDR XHDR XPAT"
