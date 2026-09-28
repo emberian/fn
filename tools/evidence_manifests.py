@@ -16,10 +16,9 @@ not the claim.  So the manifests are committed under
 `planning/evidence/manifests/<run-id>.json` and the logs stay where they were
 produced.
 
-The archive is written by the tools, at the three points a manifest reaches
-this laptop: `tools/certify_books.py` when a local run finishes,
-`tools/farm.py wait` when a farm run's evidence is fetched, and
-`tools/verdict.py` when a gate is harvested.  A run id resolves by NAME, with
+The archive is written by the tools, at the two points a manifest reaches
+this laptop: `tools/certify_books.py` when a local run finishes and
+`tools/farm.py wait` when a farm run's evidence is fetched.  A run id resolves by NAME, with
 no box, lane or gate in the path, because the box, the lane and the gate are
 exactly the things that get deleted.
 
