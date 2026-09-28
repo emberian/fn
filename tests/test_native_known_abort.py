@@ -17,51 +17,23 @@ only) and checks, per kind:
 * after a restart without the fault, the same verb commits (exit 0) and the
   history grows by exactly that record.
 """
-import os
-from pathlib import Path
-import socket
-import subprocess
-import tempfile
 import unittest
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import (
+    EXIT_OK, EXIT_REFUSED, ROOT, Node, environment, native_image, requires)
 from tests import native_log_observation
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST",
-                            ROOT / "build" / "fn-host-developer"))
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 FIXTURES = ROOT / "tests" / "fixtures" / "topic-history"
-EXIT_OK, EXIT_REFUSED = 0, 1
 FAULT = "record-prepublish:refuse"
 
 
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
-
-
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
-                     "requires the developer image (FN_NATIVE_DEVELOPER_HOST)")
+@requires(IMAGE)
 class NativeKnownAbortTest(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="fn-known-abort-")
-        self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
-        self.store = self.root / "store"
-        self.control = self.root / "control.sock"
-        self.config = self.root / "fn.toml"
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        for name in ("ACL2_SYSTEM_BOOKS", "FN_HOST", "FN_NATIVE_POST_FAULT",
-                     "FN_NATIVE_RECOVERY_FAULT", "FN_NATIVE_CONTROL_FAULT",
-                     "FN_NATIVE_CONTROL_TEST_STOP"):
-            self.env.pop(name, None)
-        self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-            'port = {}\n[control]\npath = "{}"\n'.format(
-                self.store, free_port(), self.control), encoding="ascii")
-        init = self.invoke("store", self.store, "init", "fn.test")
+        self.node = Node(self, IMAGE)
+        self.root, self.store, self.control = self.node.root, self.node.store_path, self.node.control
+        init = self.node.store("init", "fn.test")
         self.assertEqual(init.returncode, 0, self.text(init))
         self.principal = self.root / "principal.bin"
         self.ed_public = self.root / "ed-public.bin"
@@ -74,40 +46,20 @@ class NativeKnownAbortTest(unittest.TestCase):
     def text(result):
         return (result.stdout + result.stderr).decode("utf-8", "replace")
 
-    def invoke(self, *words, env=None):
-        return subprocess.run([str(IMAGE), "--fn", *map(str, words)],
-                              cwd=ROOT, env=env or self.env, capture_output=True,
-                              timeout=120, check=False)
+    def invoke(self, *words):
+        return self.node.invoke(*words, timeout=120)
 
     def start_owner(self, fault=None):
-        env = dict(self.env)
-        if fault:
-            env["FN_NATIVE_POST_FAULT"] = fault
-        proc = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            bufsize=0)
-        self.addCleanup(self.reap, proc)
-        wait_for_announcement(proc, b"LISTENING ", timeout=120)
-        return proc
-
-    @staticmethod
-    def reap(proc):
-        if proc.poll() is None:
-            proc.kill()
-            proc.wait(timeout=10)
-        for stream in (proc.stdout, proc.stderr):
-            if stream and not stream.closed:
-                stream.close()
+        return self.node.start(env={"FN_NATIVE_POST_FAULT": fault} if fault else None,
+                               timeout=120)
 
     def stop_owner(self, proc):
-        diagnostic = stop_and_diagnostics(proc, timeout=60)
-        self.assertEqual(proc.returncode, 0, diagnostic)
-        return diagnostic
+        self.node.stop(process=proc)
+        return proc.stderr.since(0).decode("utf-8", "replace")
 
     def history(self):
         return native_log_observation.committed_history(IMAGE, self.store,
-                                                        env=self.env, cwd=ROOT)
+                                                        env=environment(), cwd=ROOT)
 
     def verb(self, kind):
         if kind == "topic":

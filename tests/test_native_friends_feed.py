@@ -25,141 +25,67 @@ Run: FN_NATIVE_HOST=<launcher> python3 -m unittest -v tests.test_native_friends_
 """
 
 import os
-from pathlib import Path
 import re
-import select
-import shutil
-import signal
-import socket
 import stat
-import subprocess
 import sys
-import tempfile
 import time
 import unittest
-from tools.wire_stream import whole_stream
 
-ROOT = Path(__file__).resolve().parent.parent
+from tests.native_harness import EXIT_OK, EXIT_REFUSED, ROOT, Client, Node, article, native_image
+
 sys.path.insert(0, str(ROOT / "tools"))
 import release_sequence  # noqa: E402
-IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
-# tools/hbox_native.sh sets no FN_NATIVE_HOST: take the developer image it
-# built, else the production one.
-IMAGE = (Path(IMAGE_TEXT) if IMAGE_TEXT else
-         next((p for p in (ROOT / "build" / "fn-host-developer", ROOT / "build" / "fn-host")
-               if p.is_file()), None))
+IMAGE = native_image("FN_NATIVE_HOST", "build/fn-host-developer")
+if not os.environ.get("FN_NATIVE_HOST") and not IMAGE.is_file():
+    IMAGE = ROOT / "build" / "fn-host"
 FRIEND_FN = os.environ.get("FN_FRIEND_FN")
-# An installed bin/fn runs under the heap figure of its store's profile
-# (PKT-016, books/heap-figure.lisp): the D27 default profile (H = 1 TiB) is
-# refused by name on every machine, so the friend's node takes the small
-# preset's fields (the preset has no --profile word yet, PKT-581).
 SMALL_PROFILE = ("--max-transactions", "16384", "--max-history-octets", "8388608",
                  "--max-record-octets", "196608", "--max-article-octets", "32768",
                  "--max-groups-per-article", "16", "--max-open-suffix", "128")
-READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
-EXIT_OK, EXIT_REFUSED = 0, 1
-
-
-def environment(command=None):
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    if FRIEND_FN and command and command[0] == FRIEND_FN:
-        # An installed bin/fn ignores FN_NATIVE_HOST (PKT-481 (a)); popping
-        # it keeps the friend's environment a stranger's.
-        env.pop("FN_NATIVE_HOST", None)
-    return env
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+READY = bool(IMAGE.is_file() and os.access(IMAGE, os.X_OK))
 
 
 def text(result):
     return (result.stdout + result.stderr).decode("utf-8", "replace").strip()
 
 
-def article(message_id, subject, control=None):
-    lines = ["From: author@a.example", "Newsgroups: local.general",
-             "Subject: " + subject, "Date: Sat, 26 Sep 2026 09:00:00 +0000",
-             "Message-ID: " + message_id]
-    if control:
-        lines.append("Control: " + control)
-    return ("\r\n".join(lines) + "\r\n\r\nbody\r\n").encode("ascii")
+def friend_article(message_id, subject, control=None):
+    return article(message_id, groups="local.general", subject=subject,
+                   sender="author@a.example", date="Sat, 26 Sep 2026 09:00:00 +0000",
+                   headers=["Control: " + control] if control else ())
 
 
-class Node:
-    def __init__(self, test, base, name, command):
-        self.test, self.name, self.command = test, name, command
-        self.root = base / name
-        self.root.mkdir()
-        self.store, self.control = self.root / "store", self.root / "control.sock"
-        self.port = free_port()
-        self.config = self.root / "fn.toml"
-        self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
-        self.process = None
-        small = SMALL_PROFILE if FRIEND_FN and command and command[0] == FRIEND_FN else ()
+class Peer(Node):
+    """One node of the pair: initialized with the two groups and its path identity."""
+
+    def __init__(self, case, name, friend=None):
+        super().__init__(case, IMAGE, launcher=friend, name=name)
+        small = SMALL_PROFILE if friend else ()
         self.ok("init", *small, "local.general", "control.cancel")
         self.ok("policy", "set", "path-identity", name + ".example")
 
-    def run(self, *words):
-        return subprocess.run([*self.command, *map(str, words)], cwd=ROOT,
-                              env=environment(self.command), stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, timeout=240, check=False)
-
-    def operator(self, *words):
-        result = self.run("operator", self.config, *words)
+    def operator(self, *words, **options):
+        result = super().operator(*words, timeout=240, **options)
         print("NATIVE-FRIENDS", self.name, " ".join(map(str, words[:2])), "->",
               result.returncode)
         return result
 
     def ok(self, *words):
         result = self.operator(*words)
-        self.test.assertEqual(result.returncode, EXIT_OK, text(result))
+        self.case.assertEqual(result.returncode, EXIT_OK, text(result))
         return result
 
-    def start(self):
-        self.process = subprocess.Popen(
-            [*self.command, "operator", str(self.config), "run"], cwd=ROOT,
-            env=environment(self.command), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            bufsize=0)
-        self.test.addCleanup(self.reap)
-        for _ in range(4):
-            self.test.assertTrue(select.select([self.process.stdout], [], [], 240)[0],
-                                 "owner {} did not become ready".format(self.name))
-            if self.process.stdout.readline().startswith(b"LISTENING "):
-                return
-        self.test.fail("owner {} readiness output was malformed".format(self.name))
+    def run(self, *words):
+        return self.invoke(*words, timeout=240)
 
     def stop(self):
-        self.process.send_signal(signal.SIGTERM)
-        self.test.assertEqual(self.process.wait(timeout=60), EXIT_OK)
-        log = self.process.stderr.read().decode("utf-8", "replace")
-        self.reap()
-        return log
-
-    def reap(self):
-        process, self.process = self.process, None
-        if process is None:
-            return
-        if process.poll() is None:
-            process.send_signal(signal.SIGKILL)
-            process.wait(timeout=10)
-        for stream in (process.stdout, process.stderr):
-            if stream and not stream.closed:
-                stream.close()
+        process = self.process
+        super().stop()
+        return process.stderr.since(0).decode("utf-8", "replace")
 
     def article_status(self, message_id):
-        with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client:
-            stream = whole_stream(client)
-            stream.readline()
-            stream.write(b"STAT " + message_id.encode("ascii") + b"\r\n")
-            return stream.readline().decode("ascii", "replace").strip()
+        with Client(self.port, timeout=30, greeting=None) as client:
+            return client.command("STAT " + message_id).decode("ascii", "replace").strip()
 
     def await_status(self, message_id, code, seconds=90):
         deadline = time.monotonic() + seconds
@@ -173,32 +99,19 @@ class Node:
 
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native launcher")
 class NativeFriendsFeedTests(unittest.TestCase):
-    def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-friends-")
-        self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
-        self.image = [str(IMAGE), "--fn"]
-        self.friend = [FRIEND_FN] if FRIEND_FN else self.image
-
     def test_bare_fn_and_version(self):
-        for command in (self.image, self.friend):
-            bare = subprocess.run(command, cwd=ROOT, env=environment(command),
-                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                  timeout=120, check=False)
+        own = Node(self, IMAGE, listener=False, control=False)
+        friend = Node(self, IMAGE, launcher=FRIEND_FN, listener=False, control=False)
+        for node, is_friend in ((own, False), (friend, True)):
+            bare = node.invoke(timeout=120)
             print("NATIVE-FRIENDS bare fn ->", bare.returncode, text(bare)[:120])
             self.assertEqual(bare.returncode, EXIT_OK, text(bare))
             self.assertIn("usage: fn operator CONFIG {help|init|", bare.stdout.decode())
-            version = subprocess.run([*command, "--version"], cwd=ROOT,
-                                     env=environment(command),
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                     timeout=120, check=False)
+            version = node.invoke("--version", timeout=120)
             print("NATIVE-FRIENDS fn --version ->", version.returncode, text(version))
-            if command is self.friend and FRIEND_FN:
+            if is_friend and FRIEND_FN:
                 self.assertEqual(version.returncode, EXIT_OK, text(version))
             if version.returncode == EXIT_OK:
-                # Any release of the D37 sequence (tools/release_sequence.py):
-                # the friend's fn may be an installed release, not the tree's
-                # VERSION; never a numeric pattern (6.6.0 comes before 6.7.x).
                 printed = re.fullmatch(r"fn ([0-9]+(?:\.[0-9]+)+) \(([0-9a-f]{12})\)\n",
                                        version.stdout.decode())
                 self.assertIsNotNone(printed, version.stdout)
@@ -208,8 +121,9 @@ class NativeFriendsFeedTests(unittest.TestCase):
                 self.assertIn("records no source revision", text(version))
 
     def test_a_cancel_reaches_the_friend_through_the_ordinary_feed(self):
-        a = Node(self, self.base, "a", self.image)
-        f = Node(self, self.base, "f", self.friend)
+        a = Peer(self, "a")
+        f = Peer(self, "f", friend=FRIEND_FN)
+        self.base = a.root.parent
         keys_a, keys_f = self.base / "keys-a", self.base / "keys-f"
         made = a.ok("peer", "keygen", keys_a)
         principal_a = re.search(r"principal ([0-9a-f]{64})", text(made)).group(1)
@@ -249,7 +163,7 @@ class NativeFriendsFeedTests(unittest.TestCase):
 
         def author(stem, message_id, control=None):
             source = self.base / (stem + ".eml")
-            source.write_bytes(article(message_id, "friends " + stem, control))
+            source.write_bytes(friend_article(message_id, "friends " + stem, control))
             signed = a.run("hybrid-sign", keys_a / "principal.bin",
                            keys_a / "ed-public.bin", keys_a / "ed-secret.bin",
                            keys_a / "ml-public.pem", keys_a / "ml-private.pem", source)

@@ -50,7 +50,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT))
 import msgid_measure as m  # noqa: E402
-from tests.native_process import wait_for_announcement  # noqa: E402
+from tests.native_harness import wait_for_announcement  # noqa: E402
 
 HEAD = ("From: rep@example.invalid\r\nNewsgroups: fn.test\r\nSubject: rep %d\r\n"
         "Date: Thu, 24 Sep 2026 12:00:00 +0000\r\nMessage-ID: %s\r\n\r\n")

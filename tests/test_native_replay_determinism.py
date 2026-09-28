@@ -35,32 +35,19 @@ import json
 import os
 from pathlib import Path
 import shutil
-import socket
 import subprocess
 import tarfile
 import tempfile
 import unittest
 
-from tests.native_process import wait_for_announcement, stop_and_diagnostics
+from tests.native_harness import Client, Node, class_case, environment, native_image, run
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 FIXTURES = Path(os.environ.get("FN_DETERMINISM_FIXTURES", "/tank/fn/scratch/fixtures"))
 FIXTURE = os.environ.get("FN_DETERMINISM_FIXTURE", "n1k-2k")
 EXPORT = os.environ.get("FN_DETERMINISM_EXPORT")
 EXPECT = os.environ.get("FN_DETERMINISM_EXPECT")
 TIMEOUT = int(os.environ.get("FN_DETERMINISM_TIMEOUT", "900"))
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
-
-
-def dot_stuff(data):
-    return b"".join((b"." + ln if ln.startswith(b".") else ln)
-                    for ln in data.splitlines(keepends=True))
 
 
 def article(msgid, groups, subject, body, extra=b""):
@@ -71,50 +58,34 @@ def article(msgid, groups, subject, body, extra=b""):
     return head + extra + b"\r\n" + body
 
 
-class Nntp:
-    MULTI = (b"215", b"220", b"221", b"222", b"224", b"225", b"230", b"231", b"101")
+MULTI = (b"215", b"220", b"221", b"222", b"224", b"225", b"230", b"231", b"101")
 
-    def __init__(self, port):
-        self.sock = socket.create_connection(("127.0.0.1", port), timeout=120)
-        self.stream = self.sock.makefile("rwb")
-        self.greeting = self.stream.readline()
 
-    def command(self, line):
-        """The reply to LINE, a multi-line block included, as octets."""
-        self.stream.write(line.encode("ascii") + b"\r\n")
-        self.stream.flush()
-        status = self.stream.readline()
-        if not status:
-            raise AssertionError("connection closed after " + line)
-        out = [status]
-        if status[:3] in self.MULTI:
-            while True:
-                ln = self.stream.readline()
-                if not ln:
-                    raise AssertionError("multi-line reply to {} ended early".format(line))
-                out.append(ln)
-                if ln == b".\r\n":
-                    break
-        return b"".join(out)
+def exchange(client, line):
+    """The reply to LINE, a multi-line block included, as the octets sent."""
+    status = client.command(line)
+    out = [status]
+    if status[:3] in MULTI:
+        while True:
+            ln = client.line()
+            out.append(ln)
+            if ln == b".\r\n":
+                break
+    return b"".join(out)
 
-    def post(self, data):
-        self.stream.write(b"POST\r\n")
-        self.stream.flush()
-        status = self.stream.readline()
-        if not status.startswith(b"340"):
-            return status
-        self.stream.write(dot_stuff(data) + b".\r\n")
-        self.stream.flush()
-        return self.stream.readline()
 
-    def close(self):
-        try:
-            self.stream.write(b"QUIT\r\n")
-            self.stream.flush()
-            self.stream.readline()
-        except OSError:
-            pass
-        self.sock.close()
+def post(client, data):
+    """The final POST reply, or the first when it was not 340."""
+    first, final = client.post(data)
+    return first if final is None else final
+
+
+def node_at(case, store, root):
+    """A node serving STORE (anywhere) from the scratch tree ROOT."""
+    node = Node(case, IMAGE, root=root)
+    node.store_path = store
+    node.write_config()
+    return node
 
 
 def digest_lines(stdout):
@@ -149,9 +120,7 @@ class NativeReplayDeterminismTests(unittest.TestCase):
     def setUpClass(cls):
         cls.temporary = tempfile.TemporaryDirectory(prefix="fn-determinism-")
         cls.base = Path(cls.temporary.name)
-        cls.env = dict(os.environ)
-        cls.env["ACL2_CUSTOMIZATION"] = "NONE"
-        cls.env.pop("ACL2_SYSTEM_BOOKS", None)
+        cls.env = environment()
         cls.workload = []
         if EXPECT:
             with tarfile.open(Path(EXPECT) / "mixed-store.tar") as tar:
@@ -168,43 +137,12 @@ class NativeReplayDeterminismTests(unittest.TestCase):
 
     @classmethod
     def run_native(cls, *args, expected=0, env=None):
-        result = subprocess.run([str(IMAGE), "--fn", *map(str, args)], cwd=ROOT,
-                                env=env or cls.env, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, timeout=TIMEOUT, check=False)
+        result = run([IMAGE, "--fn", *args], env=env or cls.env, timeout=TIMEOUT)
         if expected is not None and result.returncode != expected:
             raise AssertionError("native {} returned {}\nstdout={}\nstderr={}".format(
                 args, result.returncode, result.stdout.decode("utf-8", "replace"),
                 result.stderr.decode("utf-8", "replace")))
         return result
-
-    @classmethod
-    def node_config(cls, store, name):
-        control = cls.base / (name + "-control.sock")
-        port = free_port()
-        config = cls.base / (name + ".toml")
-        config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-                          'port = {}\n[control]\npath = "{}"\n'.format(store, port, control),
-                          encoding="ascii")
-        return config, port, control
-
-    @classmethod
-    def start_owner(cls, config):
-        process = subprocess.Popen([str(IMAGE), "--fn", "operator", str(config), "run"],
-                                   cwd=ROOT, env=cls.env, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        try:
-            wait_for_announcement(process, b"LISTENING ", timeout=TIMEOUT)
-        except BaseException:
-            process.kill()
-            process.wait(timeout=30)
-            raise
-        return process
-
-    @classmethod
-    def stop_owner(cls, process):
-        diagnostic = stop_and_diagnostics(process, timeout=120)
-        if process.returncode != 0:
-            raise AssertionError(diagnostic)
 
     @classmethod
     def step(cls, label, result):
@@ -219,34 +157,33 @@ class NativeReplayDeterminismTests(unittest.TestCase):
 
     @classmethod
     def build_mixed_store(cls):
-        store = cls.base / "mixed" / "store"
-        store.parent.mkdir()
-        config, port, control = cls.node_config(store, "mixed")
+        node = Node(class_case(cls), IMAGE, root=cls.base / "mixed")
+        store, config, port, control = node.store_path, node.config, node.port, node.control
         cls.run_native("operator", config, "init", "fn.letters", "fn.test", "control.cancel")
-        owner = cls.start_owner(config)
+        node.start(timeout=TIMEOUT)
         try:
-            client = Nntp(port)
+            client = Client(port, timeout=120, greeting=None)
             try:
                 for i in range(12):
                     groups = ("fn.test", "fn.letters", "fn.test,fn.letters")[i % 3]
-                    reply = client.post(article("<det-{}@example.invalid>".format(i), groups,
+                    reply = post(client, article("<det-{}@example.invalid>".format(i), groups,
                                                 "det {}".format(i),
                                                 "body {}\r\n.dot line\r\n".format(i).encode() * (1 + i)))
                     cls.step("nntp post {}".format(i), reply[:3].decode())
                 # RFC 8315: a post with a Cancel-Lock, then its cancel by key.
                 key = base64.b64encode(hashlib.sha256(b"det secret").digest()).decode("ascii")
                 lock = base64.b64encode(hashlib.sha256(key.encode("ascii")).digest()).decode("ascii")
-                cls.step("nntp post locked", client.post(article(
+                cls.step("nntp post locked", post(client, article(
                     "<det-locked@example.invalid>", "fn.test", "locked", b"locked\r\n",
                     extra=("Cancel-Lock: sha256:" + lock + "\r\n").encode("ascii")))[:3].decode())
-                cls.step("nntp cancel by key", client.post(article(
+                cls.step("nntp cancel by key", post(client, article(
                     "<det-cancel@example.invalid>", "fn.test",
                     "cmsg cancel <det-locked@example.invalid>", b"cancel\r\n",
                     extra=("Control: cancel <det-locked@example.invalid>\r\n"
                            "Cancel-Key: sha256:" + key + "\r\n").encode("ascii")))[:3].decode())
                 # No Message-ID: the node generates one (a recorded value).
                 cls.step("nntp post generated-id",
-                         client.post(article(None, "fn.test", "generated", b"no id\r\n"))[:3].decode())
+                         post(client, article(None, "fn.test", "generated", b"no id\r\n"))[:3].decode())
             finally:
                 client.close()
             for i in range(2):
@@ -275,17 +212,17 @@ class NativeReplayDeterminismTests(unittest.TestCase):
                     ("consumer ack", ("consumer", "ack", control, cls.base / "worker.fncu"))):
                 cls.step(label, cls.run_native(*words, expected=None))
             cls.hybrid(control)
-            client = Nntp(port)
+            client = Client(port, timeout=120, greeting=None)
             try:
                 for i in range(3):
-                    reply = client.post(article("<det-extra-{}@example.invalid>".format(i),
+                    reply = post(client, article("<det-extra-{}@example.invalid>".format(i),
                                                 "fn.extra,fn.test", "extra {}".format(i),
                                                 b"after the reconfiguration\r\n"))
                     cls.step("nntp post extra {}".format(i), reply[:3].decode())
             finally:
                 client.close()
         finally:
-            cls.stop_owner(owner)
+            node.stop(grace=120)
         return store
 
     @classmethod
@@ -403,33 +340,33 @@ class NativeReplayDeterminismTests(unittest.TestCase):
         self.assert_same(from_checkpoint, full, "checkpoint open against full replay")
 
     def served_view(self, store, name):
-        config, port, _ = self.node_config(store, name)
-        owner = self.start_owner(config)
+        node = node_at(self, store, self.base / (name + "-node"))
+        node.start(timeout=TIMEOUT)
         view = []
         try:
-            client = Nntp(port)
+            client = Client(node.port, timeout=120, greeting=None)
             try:
-                active = client.command("LIST ACTIVE")
+                active = exchange(client, "LIST ACTIVE")
                 view.append(active)
-                view.append(client.command("LIST NEWSGROUPS"))
+                view.append(exchange(client, "LIST NEWSGROUPS"))
                 groups = [ln.split()[0].decode("ascii") for ln in active.split(b"\r\n")[1:]
                           if ln and ln != b"."]
                 for group in groups:
-                    reply = client.command("GROUP " + group)
+                    reply = exchange(client, "GROUP " + group)
                     view.append(reply)
                     if not reply.startswith(b"211 "):
                         continue
                     count, low, high = (int(x) for x in reply.split()[1:4])
                     if count == 0:
                         continue
-                    view.append(client.command("OVER {}-{}".format(low, high)))
+                    view.append(exchange(client, "OVER {}-{}".format(low, high)))
                     for n in range(low, high + 1):
-                        view.append(client.command("ARTICLE {}".format(n)))
-                        view.append(client.command("HEAD {}".format(n)))
+                        view.append(exchange(client, "ARTICLE {}".format(n)))
+                        view.append(exchange(client, "HEAD {}".format(n)))
             finally:
                 client.close()
         finally:
-            self.stop_owner(owner)
+            node.stop(grace=120)
         return view
 
     def test_c_served_view_is_identical(self):
@@ -512,8 +449,8 @@ class NativeReplayDeterminismTests(unittest.TestCase):
         self.assertNotIn(b"digest state ", chained.stdout)
 
     def operator(self, store, name, *words, expected=0):
-        config, _, _ = self.node_config(store, name)
-        return self.run_native("operator", config, *words, expected=expected)
+        node = node_at(self, store, self.base / (name + "-node"))
+        return self.run_native("operator", node.config, *words, expected=expected)
 
     def test_f_a_reclaim_replays_from_its_recorded_instant(self):
         """PKT-857 (books/reclaim-instant.lisp): `store reclaim' records its
@@ -529,20 +466,20 @@ class NativeReplayDeterminismTests(unittest.TestCase):
         # (books/store-reclaim-holders.lisp, the conservative reading).
         base = self.base / "rc" / "store"
         base.parent.mkdir(exist_ok=True)
-        config, port, _ = self.node_config(base, "rc-base")
-        self.run_native("operator", config, "init", "fn.test")
-        owner = self.start_owner(config)
+        node = node_at(self, base, self.base / "rc-base-node")
+        self.run_native("operator", node.config, "init", "fn.test")
+        node.start(timeout=TIMEOUT)
         try:
-            client = Nntp(port)
+            client = Client(node.port, timeout=120, greeting=None)
             try:
                 for i in range(4):
-                    reply = client.post(article("<det-rc-{}@example.invalid>".format(i), "fn.test",
+                    reply = post(client, article("<det-rc-{}@example.invalid>".format(i), "fn.test",
                                                 "rc {}".format(i), b"reclaimable\r\n" * (4 + i)))
                     self.assertTrue(reply.startswith(b"240"), reply)
             finally:
                 client.close()
         finally:
-            self.stop_owner(owner)
+            node.stop(grace=120)
         self.operator(base, "rc-base", "retention", "set", "released-by-all-holders")
         a, b, c = (self.copy(base, "rc-" + x) for x in "abc")
         before = set(os.listdir(b / "config"))

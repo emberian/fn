@@ -27,27 +27,18 @@ import os
 from pathlib import Path
 import re
 import socket
-import subprocess
-import tempfile
 import time
 import unittest
 
-from tests.native_process import wait_for_announcement
+from tests.native_harness import EXIT, Node, native_image, requires
 
-ROOT = Path(__file__).resolve().parent.parent
-PRODUCTION = os.environ.get("FN_NATIVE_HOST")
-DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
+PRODUCTION = native_image("FN_NATIVE_HOST")
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 BUSY = b"400 too many connections; try again later\r\n"
 ADDRESS = b"400 too many connections from this address; try again later\r\n"
 CAPACITY = re.compile(
     r"^exposure capacity connections=(\d+) capacity=(\d+) per-address=(\d+) trusted=(\S+)$",
     re.M)
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def first_line(sock, timeout=30):
@@ -78,39 +69,22 @@ def closed_after(sock, timeout=10):
 
 
 class PublicLimitsCase:
-    """The campaign, over one image (IMAGE set by the subclass)."""
+    """The campaign, over one image (IMAGE set by the subclass).  The held
+    connections are raw sockets: their count is the subject."""
 
-    IMAGE: str | None = None
+    IMAGE = None
 
     def setUp(self):
-        if not self.IMAGE:
-            self.skipTest("image variable unset")
-        self.image = Path(self.IMAGE)
-        self.assertTrue(self.image.is_file() and os.access(self.image, os.X_OK),
-                        self.image)
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-limits-")
-        self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.process = None
+        self.node = Node(self, self.IMAGE)
+        self.base, self.port, self.config = self.node.root, self.node.port, self.node.config
         self.held = []
         self.addCleanup(self.stop)
 
-    def command(self, arguments, expected=0, stdin=None):
-        result = subprocess.run([str(self.image)] + list(map(str, arguments)),
-                                cwd=ROOT, env=self.env, input=stdin,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=180, check=False)
-        if expected is not None:
-            self.assertEqual(result.returncode, expected, result)
-        return result
-
     def policy(self, slot, value):
-        self.command(["--fn", "operator", self.config, "policy", "set", slot, value])
+        self.node.operator("policy", "set", slot, value, expect=EXIT.OK)
 
     def report(self, verb):
-        result = self.command(["--fn", "operator", self.config, verb], expected=None)
+        result = self.node.operator(verb)
         text = result.stdout.decode("ascii", "replace")
         found = CAPACITY.findall(text)
         self.assertEqual(len(found), 1, (verb, result.returncode, text,
@@ -121,21 +95,18 @@ class PublicLimitsCase:
     def stop(self):
         for sock in self.held:
             sock.close()
-        if self.process is not None and self.process.poll() is None:
-            self.process.terminate()
-            try:
-                self.process.communicate(timeout=60)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.communicate(timeout=60)
+        process = self.node.process
+        if process is not None:
+            self.node.stop(expect=None)
         evidence = os.environ.get("FN_LIMITS_EVIDENCE")
         if evidence:
             target = Path(evidence) / self.__class__.__name__
             target.mkdir(parents=True, exist_ok=True)
-            for name in ("fn.log", "stderr.log"):
-                source = self.base / name
-                if source.exists():
-                    (target / name).write_bytes(source.read_bytes())
+            source = self.base / "fn.log"
+            if source.exists():
+                (target / "fn.log").write_bytes(source.read_bytes())
+            if process is not None:
+                (target / "stderr.log").write_bytes(process.stderr.since(0))
 
     def open_from(self, source):
         sock = socket.create_connection(("127.0.0.1", self.port), timeout=30,
@@ -169,23 +140,12 @@ class PublicLimitsCase:
         self.fail("the owner still holds connections 60 s after they closed")
 
     def test_capacity_and_trusted_range(self):
-        store = self.base / "store"
-        self.port = free_port()
-        self.command(["--fn", "store", store, "init", "fn.test"])
-        self.config = self.base / "fn.toml"
-        self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n[log]\npath = "{}"\n'
-            '[auth]\nrequired = false\nprotected_only = false\npath = "{}"\n'.format(
-                store, self.port, self.base / "control.sock", self.base / "fn.log",
-                self.base / "auth.toml"), encoding="ascii")
+        self.node.store("init", "fn.test", expect=EXIT.OK)
+        self.node.write_config(extra='[log]\npath = "{}"\n'
+                               '[auth]\nrequired = false\nprotected_only = false\npath = "{}"\n'
+                               .format(self.base / "fn.log", self.base / "auth.toml"))
         self.policy("exposure-connections", "40")
-        err = open(self.base / "stderr.log", "ab")
-        self.addCleanup(err.close)
-        self.process = subprocess.Popen(
-            [str(self.image), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=err)
-        wait_for_announcement(self.process, b"LISTENING ")
+        process = self.node.start()
 
         # 1. Exactly the capacity, then the named 400.
         self.assertEqual(self.report("status")[:2], (0, 40))
@@ -198,7 +158,7 @@ class PublicLimitsCase:
         self.admit("127.0.0.1", 5)
         self.refused("127.0.0.1", BUSY)
         self.assertEqual(self.report("status")[:2], (45, 45))
-        self.assertIsNone(self.process.poll(), "the owner exited")
+        self.assertIsNone(process.poll(), "the owner exited")
 
         # 4. The trusted range, live.
         self.release_all()
@@ -209,19 +169,18 @@ class PublicLimitsCase:
         self.refused("127.0.3.9", ADDRESS)
         self.assertEqual(self.report("health"), (8, 45, 2, "127.0.2.0/24"))
         # A malformed range is refused by the operator and changes nothing.
-        bad = self.command(["--fn", "operator", self.config, "policy", "set",
-                            "exposure-trusted", "127.0.2.0/33"], expected=None)
+        bad = self.node.operator("policy", "set", "exposure-trusted", "127.0.2.0/33")
         self.assertNotEqual(bad.returncode, 0, bad)
         self.assertEqual(self.report("status")[3], "127.0.2.0/24")
-        self.assertIsNone(self.process.poll(), "the owner exited")
+        self.assertIsNone(process.poll(), "the owner exited")
 
 
-@unittest.skipUnless(DEVELOPER, "FN_NATIVE_DEVELOPER_HOST unset")
+@requires(DEVELOPER)
 class DeveloperImagePublicLimits(PublicLimitsCase, unittest.TestCase):
     IMAGE = DEVELOPER
 
 
-@unittest.skipUnless(PRODUCTION, "FN_NATIVE_HOST unset")
+@requires(PRODUCTION)
 class ProductionImagePublicLimits(PublicLimitsCase, unittest.TestCase):
     IMAGE = PRODUCTION
 

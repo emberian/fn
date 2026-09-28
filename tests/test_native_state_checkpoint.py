@@ -28,18 +28,17 @@ The witnesses:
 import hashlib
 import os
 import re
-from pathlib import Path
 import signal
-import subprocess
+import shutil
 import unittest
 
 from tests.campaign import native_cuts
 from tests import test_native_operator_verbs as verbs
+from tests.native_harness import (
+    EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, executable, native_image)
 
-ROOT = verbs.ROOT
-IMAGE = verbs.IMAGE
-DEVELOPER = verbs.DEVELOPER
-EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = verbs.EXIT_OK, verbs.EXIT_REFUSED, verbs.EXIT_UNCERTAIN
+IMAGE = native_image("FN_NATIVE_HOST")
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 NAME = "store-checkpoint.fnsc"
 
 
@@ -175,33 +174,22 @@ FRAME_TRAILER_OCTETS = 32
 
 class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
     image = IMAGE
+    listener = True
 
     def setUp(self):
-        if not verbs.executable(self.image):
+        if not executable(self.image):
             self.skipTest("{} is required".format(self.image))
         super().setUp()
-        self.control = self.root / "control.sock"
-        self.port = verbs.free_port()
-        self.config.write_text(
-            '[store]\npath = "{}"\n'
-            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
+        self.node.image = self.image
 
-    start_owner = verbs.NativeOperatorUncertainOutcomeTests.start_owner
-    reap = verbs.NativeOperatorUncertainOutcomeTests.reap
     headroom = verbs.NativeOperatorCapacityTests.headroom
     post_many = verbs.NativeOperatorCapacityTests.post_many
-    stop = verbs.NativeOperatorCapacityTests.stop
 
     def op(self, *words, env=None):
-        return self.operator(*words, image=self.image, env=env)
+        return self.operator(*words, env=env)
 
     def store_cli(self, *words, env=None):
-        return subprocess.run(
-            [str(self.image), "--fn", "store", str(self.store), *words],
-            cwd=ROOT, env=env or verbs.environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=600, check=False)
+        return self.node.store(*words, env=env, timeout=600)
 
     def checkpoint(self, entry="operator", env=None):
         if entry == "operator":
@@ -215,9 +203,9 @@ class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
         return hashlib.sha256(self.path().read_bytes()).hexdigest() if self.path().exists() else None
 
     def post(self, ids):
-        owner = self.start_owner(self.image)
+        self.node.start()
         self.assertEqual(self.post_many(ids), ["240 article received OK"] * len(ids))
-        self.stop(owner)
+        self.node.stop()
 
     def open_line(self):
         status = self.op("status")
@@ -398,10 +386,10 @@ class StateCheckpointTests(StateCheckpointFixture):
 
     def test_a_running_owner_refuses_the_verb(self):
         self.init_with_checkpoint_at_three()
-        owner = self.start_owner(self.image)
+        self.node.start()
         held = self.checkpoint()
         self.assertNotEqual(held.returncode, EXIT_OK)
-        self.stop(owner)
+        self.node.stop()
 
 
 class StateCheckpointCutTests(StateCheckpointFixture):
@@ -412,9 +400,8 @@ class StateCheckpointCutTests(StateCheckpointFixture):
         self.init_with_checkpoint_at_three(entry)
         old = self.digest()
         expected = self.observation()
-        env = verbs.environment()
-        env["FN_NATIVE_STATE_CHECKPOINT_FAULT"] = "{}:{}".format(cut.name, action)
-        died = self.checkpoint(entry, env=env)
+        died = self.checkpoint(entry, env={
+            "FN_NATIVE_STATE_CHECKPOINT_FAULT": "{}:{}".format(cut.name, action)})
         if action == "kill":
             self.assertEqual(died.returncode, -signal.SIGKILL, died.stderr.decode())
         else:
@@ -447,9 +434,10 @@ class StateCheckpointCutTests(StateCheckpointFixture):
         does."""
         self.init_with_checkpoint_at_three("store")
         expected = self.observation()
-        owner = self.start_owner(self.image)
+        owner = self.node.start()
         owner.kill()
         owner.wait(timeout=60)
+        owner.finish()
         self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
         self.assertEqual(self.observation(), expected)
         aside = self.root / "aside.fnsc"
@@ -466,9 +454,7 @@ class StateCheckpointCutTests(StateCheckpointFixture):
         self.init_with_checkpoint_at_three("store")
         old = self.digest()
         expected = self.observation()
-        env = verbs.environment()
-        env["FN_NATIVE_CHECKPOINT_BATCH_FAULT"] = "0:kill"
-        died = self.checkpoint("store", env=env)
+        died = self.checkpoint("store", env={"FN_NATIVE_CHECKPOINT_BATCH_FAULT": "0:kill"})
         self.assertEqual(died.returncode, -signal.SIGKILL, died.stderr.decode())
         self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
         self.assertEqual(self.digest(), old)
@@ -484,7 +470,7 @@ class StateCheckpointCutTests(StateCheckpointFixture):
                 for entry in ("operator", "store"):
                     with self.subTest(cut=cut.name, action=action, entry=entry):
                         if self.store.exists():
-                            subprocess.run(["rm", "-rf", str(self.store)], check=True)
+                            shutil.rmtree(self.store)
                         seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
         print("state checkpoint cuts:", sorted(seen.items()))
 

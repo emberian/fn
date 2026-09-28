@@ -7,24 +7,23 @@ Python only writes those bytes and drives real native processes.
 import os
 from pathlib import Path
 import re
-import select
-import shutil
-import socket
-import subprocess
-import tempfile
 import time
 import unittest
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import (
+    EXIT, acl2_octets, acl2_result, environment, free_port, native_image, requires, run,
+    scratch, start)
 from tools import run_bp_ingress, run_store
 
 
 ROOT = Path(os.environ.get(
     "FN_NATIVE_SOURCE_ROOT", Path(__file__).resolve().parent.parent))
-IMAGE = Path(os.environ.get(
-    "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
+# A serve prints a line per session; the 10 MiB family has thousands.
+SERVE_LOG_LIMIT = 64 << 20
 
 
+@requires(IMAGE)
 class NativeBpFragmentNodeTests(unittest.TestCase):
     STORE_PROFILES = {
         "test_ten_mebibyte_article_through_four_kib_fragments": [
@@ -36,18 +35,8 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         "test_ten_mebibyte_article_through_four_kib_fragments": 11534336,
     }
 
-    @classmethod
-    def setUpClass(cls):
-        if not os.access(IMAGE, os.X_OK):
-            raise unittest.SkipTest(f"native developer image missing: {IMAGE}")
-
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="fn-bp-fragment-node-"))
-        self.addCleanup(shutil.rmtree, self.tmp)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.env.pop("ACL2_SYSTEM_BOOKS", None)
-        self.env.pop("FN_HOST", None)
+        self.tmp = scratch(self, "fn-bp-fragment-node-")
         self.store = self.tmp / "store"
         self.journal = self.tmp / "fnbs"
         self.receipts = self.tmp / "fnrj"
@@ -62,30 +51,24 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         profile = self.STORE_PROFILES.get(self._testMethodName, [])
         initialized = self.invoke("store", self.store, "init", *profile,
                                   "fn.test")
-        self.assertEqual(initialized.returncode, 0, initialized.stderr)
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
-            reservation.bind(("127.0.0.1", 0))
-            self.port = reservation.getsockname()[1]
+        self.assertEqual(initialized.returncode, EXIT.OK, initialized.stderr)
+        self.port = free_port()
         self.config = self.tmp / "receiver-fn.toml"
         self.config.write_text(f'[store]\npath = "{self.store}"\n',
                                encoding="ascii")
         policy = self.invoke("operator", self.config, "policy", "set",
                              "path-identity", "receiver.bp.gate.invalid")
-        self.assertEqual(policy.returncode, 0, policy.stderr)
+        self.assertEqual(policy.returncode, EXIT.OK, policy.stderr)
         trusted = self.invoke(
             "operator", self.config, "bp-boundary", "add", "sender-boundary",
             "sender.bp.gate.invalid", "dtn://sender/", self.port,
             "fn.test", self.BOUNDARY_MAX_OCTETS.get(self._testMethodName, 32768),
             16)
-        self.assertEqual(trusted.returncode, 0, trusted.stderr)
+        self.assertEqual(trusted.returncode, EXIT.OK, trusted.stderr)
         self.fragments = self.author_fragments()
 
     def invoke(self, *args, timeout=120):
-        return subprocess.run(
-            [str(IMAGE), "--fn", *map(str, args)], cwd=ROOT,
-            env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=timeout, check=False,
-        )
+        return run([IMAGE, "--fn", *args], cwd=ROOT, timeout=timeout)
 
     def author_fragments(self, count=2):
         msgid = b"<bp-fragment-node@example.invalid>"
@@ -116,7 +99,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                 + " ".join(text(value) for value in fields)
                 + " '" + bridge.literal(article) + "))"
             )
-            adu = run_store.acl2_octets(bridge.call(adu_form))
+            adu = acl2_octets(bridge.call(adu_form))
             # COUNT - 1 interior cut points, strictly increasing.  The cut
             # is fn-bpf-cut (no fragment-count ceiling), not fn-bpf-fragment
             # (at most 64 pieces).
@@ -146,7 +129,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                     "(fn-bpf-total part)) nil "
                     "(fn-bpb-payload-block 1 (fn-bpf-bytes part)))))"
                 )
-                wire = run_store.acl2_octets(bridge.call(form))
+                wire = acl2_octets(bridge.call(form))
                 path = self.tmp / f"fragment-{index}.bp"
                 path.write_bytes(wire)
                 paths.append(path)
@@ -154,36 +137,20 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         finally:
             bridge.close()
 
+    def serve_argv(self, once):
+        return [IMAGE, "--fn", "bp-node", "serve", self.port, self.journal, self.store,
+                self.receipts, self.workflow, "dtn://receiver/", "dtn://sender/",
+                "dtn://receiver/", "native-policy", "dtn://receiver/", "127.0.0.1", "9",
+                "1" if once else "0", "3600000", "2", "32", "1048576", "1000", "0"]
+
     def start_receiver(self, once=True):
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "bp-node", "serve", str(self.port),
-             str(self.journal), str(self.store), str(self.receipts),
-             str(self.workflow), "dtn://receiver/", "dtn://sender/",
-             "dtn://receiver/", "native-policy", "dtn://receiver/",
-             "127.0.0.1", "9", "1" if once else "0", "3600000", "2", "32",
-             "1048576", "1000", "0"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0,
-        )
-        self.addCleanup(self.stop_process, process)
-        line = wait_for_announcement(process, b"BP NODE LISTENING ", timeout=45)
-        if not line.startswith(b"BP NODE LISTENING "):
-            self.fail(f"receiver failed: {line!r} {stop_and_diagnostics(process)}")
+        process = start(self.serve_argv(once), cwd=ROOT, env=environment(),
+                        limit=SERVE_LOG_LIMIT)
+        self.addCleanup(process.stop, 5, 5)
+        line = process.announcement(b"BP NODE LISTENING ", timeout=45)
         actual_port = int(line.rsplit(b" ", 1)[1])
         self.assertEqual(actual_port, self.port)
         return process, actual_port
-
-    @staticmethod
-    def stop_process(process):
-        if process.poll() is None:
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=5)
-        process.stdout.close()
-        process.stderr.close()
 
     def send_fragment(self, port, path, number, timeout=120):
         return self.invoke(
@@ -202,7 +169,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         # its ACL2 exhausts its control stack decoding a 10 MiB record
         # (SCN-077), so it is not the readback here.
         status = self.invoke("store", self.store, "status", timeout=900)
-        self.assertEqual(status.returncode, 0, (status.stdout, status.stderr))
+        self.assertEqual(status.returncode, EXIT.OK, (status.stdout, status.stderr))
         counts = re.findall(rb"^transactions=[0-9]+ articles=([0-9]+) ",
                             status.stdout, re.MULTILINE)
         self.assertEqual(len(counts), 1, status.stdout)
@@ -212,16 +179,16 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         first, port = self.start_receiver()
         sent = self.send_fragment(port, self.fragments[1], 1)
         out, err = first.communicate(timeout=120)
-        self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.assertEqual(first.returncode, 0, (out, err))
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        self.assertEqual(first.returncode, EXIT.OK, (out, err))
         self.assertNotIn(b"BP application handoff durable", out)
         self.assertEqual(self.article_count(), 0)
 
         second, port = self.start_receiver()
         sent = self.send_fragment(port, self.fragments[0], 0)
         out, err = second.communicate(timeout=120)
-        self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.assertEqual(second.returncode, 0, (out, err))
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        self.assertEqual(second.returncode, EXIT.OK, (out, err))
         self.assertIn(b"BP fragment family durable", out)
         self.assertIn(b"BP application handoff durable", out)
         self.assertEqual(self.article_count(), 1)
@@ -232,7 +199,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
             "dtn://receiver/", "native-policy", "dtn://receiver/",
             "127.0.0.1", 9, 1, 3600000, 2, 32, 1048576, 1000, 0,
         )
-        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
         self.assertEqual(self.article_count(), 1)
 
     def kill_across_family(self, count, before_kill):
@@ -246,7 +213,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         first, port = self.start_receiver(once=False)
         for number in order[:before_kill]:
             sent = self.send_fragment(port, fragments[number], number)
-            self.assertEqual(sent.returncode, 0,
+            self.assertEqual(sent.returncode, EXIT.OK,
                              (number, sent.stdout, sent.stderr))
         first.kill()
         out, err = first.communicate(timeout=60)
@@ -256,7 +223,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         second, port = self.start_receiver(once=False)
         for number in order[before_kill:-1]:
             sent = self.send_fragment(port, fragments[number], number)
-            self.assertEqual(sent.returncode, 0,
+            self.assertEqual(sent.returncode, EXIT.OK,
                              (number, sent.stdout, sent.stderr))
         second.terminate()
         out, err = second.communicate(timeout=120)
@@ -266,9 +233,9 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         third, port = self.start_receiver()
         number = order[-1]
         sent = self.send_fragment(port, fragments[number], number)
-        self.assertEqual(sent.returncode, 0, (number, sent.stdout, sent.stderr))
+        self.assertEqual(sent.returncode, EXIT.OK, (number, sent.stdout, sent.stderr))
         out, err = third.communicate(timeout=300)
-        self.assertEqual(third.returncode, 0, (out, err))
+        self.assertEqual(third.returncode, EXIT.OK, (out, err))
         self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
         self.assertEqual(out.count(b"BP application handoff durable"), 1,
                          (out, err))
@@ -288,11 +255,11 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         # ACL2 refuses to lower it again.
         raised = self.invoke("bp-node", "profile", self.journal,
                              "dtn://receiver/", 128, 16777216)
-        self.assertEqual(raised.returncode, 0, raised.stderr)
+        self.assertEqual(raised.returncode, EXIT.OK, raised.stderr)
         self.assertIn(b"BP node profile max-held-rows=128", raised.stdout)
         lowered = self.invoke("bp-node", "profile", self.journal,
                               "dtn://receiver/", 64, 16777216)
-        self.assertEqual(lowered.returncode, 1, lowered.stderr)
+        self.assertEqual(lowered.returncode, EXIT.REFUSED, lowered.stderr)
         self.kill_across_family(70, 35)
 
     # -- SCN-077 (PRF-134): a 10 MiB article through 4 KiB fragments -------
@@ -335,7 +302,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                 "(defconst *bpl4-adu* (fn-bpa-encode (fn-bpa-make-request "
                 + " ".join(text(value) for value in fields)
                 + " *bpl4-article*)))", timeout=3600)
-            total = int(run_store.acl2_result(
+            total = int(acl2_result(
                 bridge.call("(len *bpl4-adu*)")))
             self.assertGreater(total, len(article))
             cuts = list(range(piece, total, piece))
@@ -359,7 +326,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                     "(fn-bpf-total part)) nil "
                     "(fn-bpb-payload-block 1 (fn-bpf-bytes part)))))"
                 )
-                wire = run_store.acl2_octets(bridge.call(form))
+                wire = acl2_octets(bridge.call(form))
                 self.assertLessEqual(len(wire), 4096, index)
                 path = self.tmp / f"large-{index}.bp"
                 path.write_bytes(wire)
@@ -370,33 +337,14 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
 
     @staticmethod
     def drain(process):
-        """Read PROCESS's stdout in a thread so a receiver that prints a line
-        per session never blocks on a full pipe; returns a function that
-        joins the thread and answers what was read."""
-        import threading
-        chunks = []
-        errors = []
-
-        def pump(stream, into):
-            while True:
-                chunk = os.read(stream.fileno(), 65536)
-                if not chunk:
-                    return
-                into.append(chunk)
-
-        threads = [threading.Thread(target=pump, args=(process.stdout, chunks),
-                                    daemon=True),
-                   threading.Thread(target=pump, args=(process.stderr, errors),
-                                    daemon=True)]
-        for thread in threads:
-            thread.start()
-
+        """What PROCESS printed on stdout after its announcement, once it
+        has exited (the harness drains both streams from birth); the
+        returned function's `stderr' is its stderr."""
         def finish(timeout):
             process.wait(timeout=timeout)
-            for thread in threads:
-                thread.join(timeout=60)
-            finish.stderr = b"".join(errors)
-            return b"".join(chunks)
+            process.finish()
+            finish.stderr = process.stderr.since(0)
+            return process.output_since_cursor()
         return finish
 
     def send_many(self, port, numbers, paths, workers=4):
@@ -408,7 +356,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                 lambda n: (n, self.send_fragment(port, paths[n], n, 900)),
                 numbers))
         for number, sent in results:
-            self.assertEqual(sent.returncode, 0,
+            self.assertEqual(sent.returncode, EXIT.OK,
                              (number, sent.stdout, sent.stderr))
 
     def test_ten_mebibyte_article_through_four_kib_fragments(self):
@@ -429,7 +377,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         raised = self.invoke("bp-node", "profile", self.journal,
                              "dtn://receiver/", 4096, 16777216,
                              11 * 1024 * 1024, 1048576, 1000)
-        self.assertEqual(raised.returncode, 0, raised.stderr)
+        self.assertEqual(raised.returncode, EXIT.OK, raised.stderr)
         self.assertIn(b"max-adu-octets=11534336", raised.stdout)
         self.assertIn(b"rotate-records=1000", raised.stdout)
         order = list(reversed(range(count)))
@@ -473,13 +421,13 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         third_out = self.drain(third)
         number = order[-1]
         sent = self.send_fragment(port, paths[number], number, 3600)
-        self.assertEqual(sent.returncode, 0, (sent.stdout, sent.stderr))
+        self.assertEqual(sent.returncode, EXIT.OK, (sent.stdout, sent.stderr))
         out = third_out(3600)
         err = third_out.stderr
         done = time.monotonic()
         print(f"SCN-077 reassembly-and-handoff-seconds={done - before_last:.1f}",
               flush=True)
-        self.assertEqual(third.returncode, 0, (out[-4000:], err[-4000:]))
+        self.assertEqual(third.returncode, EXIT.OK, (out[-4000:], err[-4000:]))
         # The journal rotated at least twice with the family in flight (in
         # the two serves, and at an open that found a generation past the
         # threshold); one generation directory is left, every earlier one
@@ -501,7 +449,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         # own lookup (`store PATH inspect MSGID`) writes them to stdout.
         inspected = self.invoke("store", self.store, "inspect",
                                 self.large_msgid.decode("ascii"), timeout=900)
-        self.assertEqual(inspected.returncode, 0, inspected.stderr[-4000:])
+        self.assertEqual(inspected.returncode, EXIT.OK, inspected.stderr[-4000:])
         self.assertEqual(len(inspected.stdout), len(self.large_article))
         self.assertTrue(inspected.stdout == self.large_article,
                         "the stored article differs from the one the ADU carried")
@@ -523,12 +471,12 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         # is refused with the named verdict and the held rows are not lost.
         raised = self.invoke("bp-node", "profile", self.journal,
                              "dtn://receiver/", 128, 16777216)
-        self.assertEqual(raised.returncode, 0, raised.stderr)
+        self.assertEqual(raised.returncode, EXIT.OK, raised.stderr)
         fragments = self.author_fragments(71)
         first, port = self.start_receiver(once=False)
         for number in range(70, 0, -1):
             sent = self.send_fragment(port, fragments[number], number)
-            self.assertEqual(sent.returncode, 0,
+            self.assertEqual(sent.returncode, EXIT.OK,
                              (number, sent.stdout, sent.stderr))
         first.terminate()
         first.communicate(timeout=120)
@@ -542,7 +490,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
             "dtn://receiver/", "native-policy", "dtn://receiver/",
             "127.0.0.1", 9, 1, 3600000, 2, 32, 1048576, 1000, 0,
         )
-        self.assertEqual(reopened.returncode, 3, (reopened.stdout, reopened.stderr))
+        self.assertEqual(reopened.returncode, EXIT.UNCERTAIN, (reopened.stdout, reopened.stderr))
         self.assertIn(b"HELD-BEYOND-PROFILE",
                       (reopened.stdout + reopened.stderr).upper(),
                       (reopened.stdout, reopened.stderr))
@@ -551,7 +499,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         # the profile file back, and every row is there.
         refused = self.invoke("bp-node", "profile", self.journal,
                               "dtn://receiver/", 128, 16777216)
-        self.assertNotEqual(refused.returncode, 0, refused.stdout)
+        self.assertNotEqual(refused.returncode, EXIT.OK, refused.stdout)
         profile.write_bytes(saved)
         self.assertEqual(self.recovered_held(), 70)
 
@@ -562,29 +510,14 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         a crash point of the model (fn-bpnr-rotation-crash-recovers-old-
         or-new, fn-bpnr-retirement-cut-keeps-open-view).  Returns what the
         process printed."""
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "bp-node", "serve", str(self.port),
-             str(self.journal), str(self.store), str(self.receipts),
-             str(self.workflow), "dtn://receiver/", "dtn://sender/",
-             "dtn://receiver/", "native-policy", "dtn://receiver/",
-             "127.0.0.1", "9", "1", "3600000", "2", "32",
-             "1048576", "1000", "0"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0)
+        process = start(self.serve_argv(True), cwd=ROOT, env=environment(),
+                        limit=SERVE_LOG_LIMIT)
+        self.addCleanup(process.stop, 5, 5)
         marker = b"BP journal rotation generation="
-        seen = b""
-        deadline = time.monotonic() + 120
-        while marker not in seen and time.monotonic() < deadline:
-            ready, _, _ = select.select([process.stdout], [], [], 1)
-            if ready:
-                chunk = os.read(process.stdout.fileno(), 65536)
-                if not chunk:
-                    break
-                seen += chunk
+        seen = process.output_until(marker, timeout=120)
         process.kill()
         process.wait(timeout=15)
-        process.stdout.close()
-        process.stderr.close()
+        process.finish()
         self.assertIn(marker, seen, seen)
         return seen
 
@@ -609,7 +542,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
             "dtn://receiver/", "native-policy", "dtn://receiver/",
             "127.0.0.1", 9, 1, 3600000, 2, 32, 1048576, 1000, 0,
         )
-        self.assertEqual(reopened.returncode, 0, reopened.stderr)
+        self.assertEqual(reopened.returncode, EXIT.OK, reopened.stderr)
         held = None
         for line in reopened.stdout.splitlines():
             if line.startswith(b"BP FNBS recovered held="):
@@ -635,13 +568,13 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         # lowers it to one record.
         raised = self.invoke("bp-node", "profile", self.journal,
                              "dtn://receiver/", 64, 16777216, 65538, 1048576, 100)
-        self.assertEqual(raised.returncode, 0, raised.stderr)
+        self.assertEqual(raised.returncode, EXIT.OK, raised.stderr)
         self.assertIn(b"rotate-records=100", raised.stdout)
         fragments = self.author_fragments(8)
         first, port = self.start_receiver(once=False)
         for number in range(7, 3, -1):
             sent = self.send_fragment(port, fragments[number], number)
-            self.assertEqual(sent.returncode, 0,
+            self.assertEqual(sent.returncode, EXIT.OK,
                              (number, sent.stdout, sent.stderr))
         first.terminate()
         out, err = first.communicate(timeout=120)
@@ -649,7 +582,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertNotIn(b"BP journal rotation in serve", out)
         lowered = self.invoke("bp-node", "profile", self.journal,
                               "dtn://receiver/", 64, 16777216, 65538, 1048576, 1)
-        self.assertEqual(lowered.returncode, 0, lowered.stderr)
+        self.assertEqual(lowered.returncode, EXIT.OK, lowered.stderr)
         self.assertIn(b"rotate-records=1", lowered.stdout)
         # The next open rotates (four records): killed there.
         killed = self.kill_at_rotation()
@@ -671,11 +604,11 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         # still in the generation at the next open, and lowered again after.
         raised = self.invoke("bp-node", "profile", self.journal,
                              "dtn://receiver/", 64, 16777216, 65538, 1048576, 100)
-        self.assertEqual(raised.returncode, 0, raised.stderr)
+        self.assertEqual(raised.returncode, EXIT.OK, raised.stderr)
         second, port = self.start_receiver(once=False)
         for number in range(3, 0, -1):
             sent = self.send_fragment(port, fragments[number], number)
-            self.assertEqual(sent.returncode, 0,
+            self.assertEqual(sent.returncode, EXIT.OK,
                              (number, sent.stdout, sent.stderr))
         second.terminate()
         out, err = second.communicate(timeout=120)
@@ -683,7 +616,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertNotIn(b"BP journal rotation in serve", out)
         lowered = self.invoke("bp-node", "profile", self.journal,
                               "dtn://receiver/", 64, 16777216, 65538, 1048576, 1)
-        self.assertEqual(lowered.returncode, 0, lowered.stderr)
+        self.assertEqual(lowered.returncode, EXIT.OK, lowered.stderr)
         # The selected generation's directory cannot be emptied: the next
         # open rotates, the new selection is durable, and retirement fails
         # at the selected directory.  Recovery reads the new generation;
@@ -707,9 +640,9 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertTrue(old.exists())
         last, port = self.start_receiver()
         sent = self.send_fragment(port, fragments[0], 0)
-        self.assertEqual(sent.returncode, 0, (sent.stdout, sent.stderr))
+        self.assertEqual(sent.returncode, EXIT.OK, (sent.stdout, sent.stderr))
         out, err = last.communicate(timeout=300)
-        self.assertEqual(last.returncode, 0, (out, err))
+        self.assertEqual(last.returncode, EXIT.OK, (out, err))
         self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
         self.assertEqual(out.count(b"BP application handoff durable"), 1,
                          (out, err))
@@ -736,13 +669,13 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         # completes the family once.
         raised = self.invoke("bp-node", "profile", self.journal,
                              "dtn://receiver/", 64, 16777216, 65538, 1048576, 2)
-        self.assertEqual(raised.returncode, 0, raised.stderr)
+        self.assertEqual(raised.returncode, EXIT.OK, raised.stderr)
         self.assertIn(b"rotate-records=2", raised.stdout)
         fragments = self.author_fragments(8)
         serve, port = self.start_receiver(once=False)
         for number in range(7, 0, -1):
             sent = self.send_fragment(port, fragments[number], number)
-            self.assertEqual(sent.returncode, 0,
+            self.assertEqual(sent.returncode, EXIT.OK,
                              (number, sent.stdout, sent.stderr))
         serve.terminate()
         out, err = serve.communicate(timeout=120)
@@ -762,9 +695,9 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertEqual(self.recovered_held(), 7)
         last, port = self.start_receiver()
         sent = self.send_fragment(port, fragments[0], 0)
-        self.assertEqual(sent.returncode, 0, (sent.stdout, sent.stderr))
+        self.assertEqual(sent.returncode, EXIT.OK, (sent.stdout, sent.stderr))
         out, err = last.communicate(timeout=300)
-        self.assertEqual(last.returncode, 0, (out, err))
+        self.assertEqual(last.returncode, EXIT.OK, (out, err))
         self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
         self.assertEqual(out.count(b"BP application handoff durable"), 1,
                          (out, err))

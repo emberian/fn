@@ -1,20 +1,12 @@
 #!/usr/bin/env python3
 """Executable boundary checks for the installed native operator image."""
-import os
 import re
-from pathlib import Path
-import select
 import socket
-import subprocess
-import tempfile
 import unittest
 
+from tests.native_harness import EXIT, ROOT, Client, Node, native_image, requires, run
 
-from tests.native_process import wait_for_announcement
-from tools.wire_stream import whole_stream
-
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
+IMAGE = native_image("FN_NATIVE_HOST")
 
 
 class NativeOperatorPrincipalCompositionTests(unittest.TestCase):
@@ -49,22 +41,14 @@ class NativeOperatorPrincipalCompositionTests(unittest.TestCase):
 
 
 def invoke(config, *words):
-    return subprocess.run(
-        [str(IMAGE), "--fn", "operator", str(config), *words],
-        cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        timeout=30, check=False,
-    )
+    return run([IMAGE, "--fn", "operator", config, *words], timeout=30)
 
 
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
-                     "build/fn-host is required")
+@requires(IMAGE)
 class NativeOperatorCliTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-operator-")
-        self.root = Path(self.temporary.name)
-
-    def tearDown(self):
-        self.temporary.cleanup()
+        self.node = Node(self, IMAGE, listener=False, control=False)
+        self.root = self.node.root
 
     def test_help_does_not_open_missing_config(self):
         result = invoke(self.root / "missing.toml", "help", "run")
@@ -80,7 +64,7 @@ class NativeOperatorCliTests(unittest.TestCase):
         large.write_bytes(b"x" * 16385)
         oversize = invoke(large, "status")
         for result in (missing, nonregular, oversize):
-            self.assertEqual(result.returncode, 5, result.stderr.decode())
+            self.assertEqual(result.returncode, EXIT.USAGE, result.stderr.decode())
 
     def test_unreadable_config_is_fault(self):
         config = self.root / "private.toml"
@@ -90,16 +74,7 @@ class NativeOperatorCliTests(unittest.TestCase):
             result = invoke(config, "status")
         finally:
             config.chmod(0o600)
-        self.assertEqual(result.returncode, 4, result.stderr.decode())
-
-    def initialize_store(self, name):
-        store = self.root / name
-        result = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(store), "init", "fn.test"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=180, check=False)
-        self.assertEqual(result.returncode, 0, result.stderr.decode())
-        return store
+        self.assertEqual(result.returncode, EXIT.FAULT, result.stderr.decode())
 
     @staticmethod
     def reserve_port(host, family):
@@ -111,32 +86,17 @@ class NativeOperatorCliTests(unittest.TestCase):
             reservation.close()
 
     def assert_operator_once_binds(self, host, family):
-        store = self.initialize_store("store-" + host.replace(":", "v"))
-        port = self.reserve_port(host, family)
-        config = self.root / ("listener-" + host.replace(":", "v") + ".toml")
-        config.write_text('[store]\npath = "{}"\n[listener]\nhost = "{}"\nport = {}\n'.format(
-            store, host, port), encoding="ascii")
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(config), "run", "--once"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        try:
-            line = wait_for_announcement(process, b"LISTENING ")
-            self.assertEqual(line, "LISTENING {}\n".format(port).encode(),
-                             "unexpected listener announcement; process status={!r}".format(
-                                 process.poll()))
-            with socket.create_connection((host, port), timeout=30) as client:
-                stream = whole_stream(client)
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"QUIT\r\n")
-                self.assertTrue(stream.readline().startswith(b"205 "))
-            self.assertEqual(process.wait(timeout=60), 0,
-                             process.stderr.read().decode("utf-8", "replace"))
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                process.wait(timeout=10)
-            process.stdout.close()
-            process.stderr.close()
+        name = host.replace(":", "v")
+        node = Node(self, IMAGE, root=self.root / ("node-" + name), listener=False,
+                    control=False)
+        node.store("init", "fn.test", expect=EXIT.OK)
+        node.port = self.reserve_port(host, family)
+        node.config.write_text('[store]\npath = "{}"\n[listener]\nhost = "{}"\nport = {}\n'.format(
+            node.store_path, host, node.port), encoding="ascii")
+        node.start(verb=("run", "--once"))
+        with Client(node.port, host=host, timeout=30, greeting=(b"200",)) as client:
+            self.assertTrue(client.command(b"QUIT").startswith(b"205 "))
+        node.exited(EXIT.OK)
 
     def test_operator_run_uses_acl2_projected_ipv4_loopbacks(self):
         for host in ("127.0.0.1", "localhost"):

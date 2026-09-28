@@ -9,151 +9,54 @@ books/native-config.lisp (fn-native-config-unsupported-key); this file is
 the measurement that the image wires them.
 """
 import os
-from pathlib import Path
-import select
-import socket
-import subprocess
-import tempfile
 import time
 import unittest
 
+from tests.native_harness import EXIT, Node, article, executable, native_image
 
-ROOT = Path(__file__).resolve().parent.parent
-
-
-def image():
-    """The image under test: FN_NATIVE_HOST, else the developer image."""
-    named = os.environ.get("FN_NATIVE_HOST")
-    if named:
-        return Path(named)
-    return Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST",
-                               ROOT / "build" / "fn-host-developer"))
-
-
-IMAGE = image()
+# The image under test: FN_NATIVE_HOST, else the developer image.
+IMAGE = (native_image("FN_NATIVE_HOST") if os.environ.get("FN_NATIVE_HOST")
+         else native_image("FN_NATIVE_DEVELOPER_HOST"))
 SKIP_REASON = ("no native image at {}: build one with tools/build_native_host.sh "
                "(FN_NATIVE_PROFILE=developer) or name one with FN_NATIVE_HOST or "
                "FN_NATIVE_DEVELOPER_HOST".format(IMAGE))
 IDENTITY = "profile.example.invalid"
 
 
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    for name in ("FN_HOST", "FN_NATIVE_CONTROL_TEST_STOP",
-                 "FN_NATIVE_CONTROL_FAULT", "FN_NATIVE_POST_FAULT",
-                 "FN_NATIVE_OWNER_TEST_SIGTERM",
-                 "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP",
-                 "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN",
-                 "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"):
-        env.pop(name, None)
-    return env
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
-
-
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK), SKIP_REASON)
+@unittest.skipUnless(executable(IMAGE), SKIP_REASON)
 class NativeProfileTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-profile-")
-        self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
-        self.store = self.root / "store"
+        self.node = Node(self, IMAGE)
+        self.root, self.store, self.port = self.node.root, self.node.store_path, self.node.port
         self.log = self.root / "log" / "fn.log"
         self.log.parent.mkdir()
-        self.port = free_port()
-        initialized = self.image("store", str(self.store), "init", "fn.test")
-        self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
+        self.node.store("init", "fn.test", expect=EXIT.OK)
 
     def image(self, *words, timeout=180):
-        return subprocess.run([str(IMAGE), "--fn"] + list(words), cwd=ROOT,
-                              env=environment(), stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, timeout=timeout, check=False)
+        return self.node.invoke(*words, timeout=timeout)
 
     def config(self, name, extra=""):
-        path = self.root / name
-        path.write_text(
-            "[store]\npath = \"{}\"\n"
-            "[listener]\nhost = \"127.0.0.1\"\nport = {}\n"
-            "[control]\npath = \"{}\"\n{}".format(
-                self.store, self.port, self.root / "control.sock", extra),
-            encoding="ascii")
-        return path
+        """The node's fn.toml with EXTRA (a table) after its [listener] fields."""
+        self.node.write_config(extra=extra)
+        return self.node.config
 
     def start(self, config):
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(config), "run"], cwd=ROOT,
-            env=environment(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            bufsize=0)
-        self.addCleanup(self.stop, process)
-        lines = []
-        for _ in range(6):
-            ready = select.select([process.stdout], [], [], 180)[0]
-            self.assertTrue(ready, "the owner did not become ready: {}".format(lines))
-            line = process.stdout.readline()
-            lines.append(line)
-            if line.startswith(b"LISTENING "):
-                return process
-            if process.poll() is not None:
-                self.fail("owner exited: {} {}".format(
-                    lines, process.stderr.read().decode("utf-8", "replace")))
-        self.fail("no LISTENING line: {!r}".format(lines))
+        return self.node.start()
 
-    @staticmethod
-    def stop(process):
-        if process.poll() is None:
-            process.terminate()
-            try:
-                process.wait(timeout=120)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
+    def stop(self, process):
+        self.node.stop(expect=None, process=process)
 
     def served_post(self, message_id):
-        """POST one article over NNTP; return the final reply line."""
-        with socket.create_connection(("127.0.0.1", self.port), timeout=60) as conn:
-            stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"200"))
-            stream.write(b"POST\r\n")
-            stream.flush()
-            self.assertTrue(stream.readline().startswith(b"340"))
-            stream.write(b"From: author@example.invalid\r\n"
-                         b"Newsgroups: fn.test\r\n"
-                         b"Subject: the service log\r\n"
-                         b"Message-ID: " + message_id.encode("ascii") + b"\r\n"
-                         b"\r\nserved body\r\n.\r\n")
-            stream.flush()
-            reply = stream.readline()
-            stream.write(b"ARTICLE " + message_id.encode("ascii") + b"\r\n")
-            stream.flush()
-            head = stream.readline()
-            article = b""
-            if head.startswith(b"220"):
-                while True:
-                    line = stream.readline()
-                    if line in (b".\r\n", b""):
-                        break
-                    article += line
-            stream.write(b"QUIT\r\n")
-            stream.flush()
-            return reply, article
+        """POST one article over NNTP; the final reply line and the ARTICLE served."""
+        with self.node.session() as client:
+            _, reply = client.post(article(message_id, subject="the service log",
+                                           date=None, body=b"served body\r\n"))
+            return reply, client.article(message_id) or b""
 
     def control_post(self, config, message_id):
-        payload = self.root / "control.article"
-        payload.write_bytes(b"From: author@example.invalid\r\n"
-                            b"Newsgroups: fn.test\r\n"
-                            b"Subject: control\r\n"
-                            b"Date: Tue, 22 Sep 2026 09:00:00 +0000\r\n"
-                            b"Message-ID: " + message_id.encode("ascii") +
-                            b"\r\n\r\ncontrol body\r\n")
-        return self.image("operator", str(config), "post", "--message-id",
-                          message_id, "--payload", str(payload), "--group",
-                          "fn.test", timeout=120)
+        return self.node.post(message_id, article(
+            message_id, subject="control", date="Tue, 22 Sep 2026 09:00:00 +0000",
+            body=b"control body\r\n"), timeout=120)
 
     def wait_for_log(self, needle, seconds=30):
         deadline = time.monotonic() + seconds
@@ -200,7 +103,7 @@ class NativeProfileTests(unittest.TestCase):
                         controlled)
         # Nothing of the log went to stderr when a file was configured.
         self.stop(owner)
-        self.assertNotIn(b"path=served", owner.stderr.read())
+        self.assertNotIn(b"path=served", owner.stderr.since(0))
 
     def test_without_a_log_path_the_lines_go_to_stderr(self):
         config = self.config("fn.toml")
@@ -210,7 +113,7 @@ class NativeProfileTests(unittest.TestCase):
         self.stop(owner)
         self.assertIn(b"accepted post path=control "
                       b"message-id=<stderr-log@example.invalid>",
-                      owner.stderr.read())
+                      owner.stderr.since(0))
         self.assertFalse(self.log.exists())
 
     def test_posting_agent_and_a_relative_log_are_refused_by_name(self):
@@ -222,5 +125,5 @@ class NativeProfileTests(unittest.TestCase):
             with self.subTest(name=name):
                 result = self.image("operator", str(self.config(name, extra)), "run",
                                     timeout=120)
-                self.assertEqual(result.returncode, 5, result.stderr.decode())
+                self.assertEqual(result.returncode, EXIT.USAGE, result.stderr.decode())
                 self.assertIn(key, result.stderr)

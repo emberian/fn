@@ -28,48 +28,19 @@ The source checks are always active.  The executable witnesses need the saved
 image; when it is absent they skip and name the image they wanted, rather than
 a source inspection being reported as runtime evidence.
 """
-import os
-from pathlib import Path
-import select
-import signal
-import socket
-import subprocess
-import tempfile
 import unittest
 
 from tests.campaign import native_cuts
+from tests.native_harness import EXIT_OK, EXIT_REFUSED, ROOT, Node, native_image, requires
 
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
-
-EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_FAULT = 0, 1, 3, 4
+IMAGE = native_image("FN_NATIVE_HOST")
 
 PEER_ADD = ("peer", "add", "far", "far.example.invalid", "192.0.2.44", "1119",
             "fn.*", "-", "192.0.2.44", "true")
 PEER_ROW = ("far path-identity=far.example.invalid address=192.0.2.44 "
             "port=1119 security=clear inbound=fn.* outbound=- "
             "auth=source-address:192.0.2.44")
-
-
-def environment():
-    env = dict(os.environ)
-    env["ACL2_CUSTOMIZATION"] = "NONE"
-    env.pop("ACL2_SYSTEM_BOOKS", None)
-    env.pop("FN_HOST", None)
-    env.pop("FN_NATIVE_CONTROL_FAULT", None)
-    env.pop("FN_NATIVE_CONTROL_TEST_STOP", None)
-    return env
-
-
-def executable(image):
-    return image.is_file() and os.access(image, os.X_OK)
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 class LiveReconfigurationSourceTests(unittest.TestCase):
@@ -219,87 +190,27 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
                         body.index("(fnn-control-answering control socket)"))
 
 
-@unittest.skipUnless(executable(IMAGE),
-                     "build/fn-host (or FN_NATIVE_HOST) is required: the live "
-                     "arm runs only in a saved image with a control socket")
+@requires(IMAGE)
 class LiveReconfigurationImageTests(unittest.TestCase):
+    """The live arm runs only in a saved image with a control socket."""
+
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-live-reconfig-")
-        self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
-        self.store = self.root / "store"
-        self.control = self.root / "control.sock"
-        self.port = free_port()
-        self.config = self.root / "fn.toml"
-        self.config.write_text(
-            '[store]\npath = "{}"\n'
-            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
-            encoding="ascii")
-        self.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
+        self.node = Node(self, IMAGE)
+        self.root, self.store = self.node.root, self.node.store_path
+        self.node.init()
 
     def operator(self, *words, timeout=180):
-        return subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(self.config), *words],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=timeout, check=False)
-
-    def start_owner(self):
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0)
-        self.addCleanup(self.reap, process)
-        for _ in range(4):
-            self.assertTrue(select.select([process.stdout], [], [], 180)[0],
-                            "the owner did not become ready")
-            line = process.stdout.readline()
-            if line.startswith(b"LISTENING "):
-                return process
-            if process.poll() is not None:
-                self.fail("owner failed: {}".format(
-                    process.stderr.read().decode("utf-8", "replace")))
-        self.fail("the owner's readiness output was malformed")
-
-    def stop_owner(self, process):
-        process.send_signal(signal.SIGTERM)
-        self.assertEqual(process.wait(timeout=60), EXIT_OK,
-                         process.stderr.read().decode("utf-8", "replace"))
-
-    def reap(self, process):
-        if process.poll() is None:
-            process.send_signal(signal.SIGKILL)
-            process.wait(timeout=10)
-        for stream in (process.stdout, process.stderr):
-            if stream and not stream.closed:
-                stream.close()
+        return self.node.operator(*words, timeout=timeout)
 
     def reader(self):
-        connection = socket.create_connection(("127.0.0.1", self.port), timeout=60)
-        self.addCleanup(connection.close)
-        stream = connection.makefile("rb")
-        self.addCleanup(stream.close)
-        greeting = stream.readline()
-        self.assertTrue(greeting.startswith(b"20"), greeting)
-        return connection, stream
-
-    @staticmethod
-    def command(connection, stream, line, multiline):
-        connection.sendall(line.encode("ascii") + b"\r\n")
-        status = stream.readline()
-        lines = []
-        if multiline and status[:1] == b"2":
-            while True:
-                row = stream.readline()
-                if row in (b".\r\n", b""):
-                    break
-                lines.append(row)
-        return status, lines
+        client = self.node.session()
+        self.addCleanup(client.close)
+        return client
 
     def test_a_live_peer_add_leaves_a_pinned_reader_unchanged_and_is_durable(self):
-        owner = self.start_owner()
-        connection, stream = self.reader()
-        before = self.command(connection, stream, "LIST ACTIVE", True)
+        owner = self.node.start()
+        client = self.reader()
+        before = client.multiline("LIST ACTIVE")
         self.assertTrue(before[0].startswith(b"215"), before)
 
         # Two live reconfigurations: the group creation the octet labels used
@@ -311,7 +222,7 @@ class LiveReconfigurationImageTests(unittest.TestCase):
         self.assertEqual(added.returncode, EXIT_OK, added.stderr.decode())
 
         # The reader opened before both changes answers exactly as before.
-        after = self.command(connection, stream, "LIST ACTIVE", True)
+        after = client.multiline("LIST ACTIVE")
         self.assertEqual(after, before)
 
         # A live `peer list` is answered by the running owner over its control
@@ -321,20 +232,20 @@ class LiveReconfigurationImageTests(unittest.TestCase):
         live_list = self.operator("peer", "list")
         self.assertEqual(live_list.returncode, EXIT_OK, live_list.stderr.decode())
         self.assertEqual(live_list.stdout.decode("ascii").splitlines(), [PEER_ROW])
-        self.assertEqual(self.command(connection, stream, "LIST ACTIVE", True), before)
+        self.assertEqual(client.multiline("LIST ACTIVE"), before)
 
-        self.stop_owner(owner)
+        self.node.stop(process=owner)
 
         # What a restart reads: both records are durable.
         listed = self.operator("peer", "list")
         self.assertEqual(listed.returncode, EXIT_OK, listed.stderr.decode())
         self.assertEqual(listed.stdout.decode("ascii").splitlines(), [PEER_ROW])
 
-        restarted = self.start_owner()
-        fresh_connection, fresh_stream = self.reader()
-        status, _ = self.command(fresh_connection, fresh_stream, "GROUP fn.live", False)
+        restarted = self.node.start()
+        fresh_client = self.reader()
+        status = fresh_client.command("GROUP fn.live")
         self.assertTrue(status.startswith(b"211"), status)
-        self.stop_owner(restarted)
+        self.node.stop(process=restarted)
 
     def config_files(self):
         directory = self.store / "config"
@@ -343,16 +254,16 @@ class LiveReconfigurationImageTests(unittest.TestCase):
     def test_the_live_verb_answers_and_the_owner_keeps_serving(self):
         # V0-CFG-LIVE on the dabebb84 image: exit 3, and GROUP on the socket
         # got a refused connection because the owner had stopped.
-        owner = self.start_owner()
+        owner = self.node.start()
         before = self.config_files()
         created = self.operator("group", "create", "fn.live")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.assertIsNone(owner.poll(), "the live verb stopped the owner")
         self.assertEqual(len(self.config_files()), len(before) + 1)
-        connection, stream = self.reader()
-        status, _ = self.command(connection, stream, "GROUP fn.test", False)
+        client = self.reader()
+        status = client.command("GROUP fn.test")
         self.assertTrue(status.startswith(b"211"), status)
-        self.stop_owner(owner)
+        self.node.stop(process=owner)
 
     def test_an_offline_mutation_is_refused_at_the_lock_while_the_owner_lives(self):
         # V0-CFG-LIVE-REFUSE: a second configuration over the SAME store whose
@@ -363,12 +274,9 @@ class LiveReconfigurationImageTests(unittest.TestCase):
                 self.store, self.root / "never-bound.sock"), encoding="ascii")
 
         def offline_create(name):
-            return subprocess.run(
-                [str(IMAGE), "--fn", "operator", str(offline), "group", "create", name],
-                cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, timeout=180, check=False)
+            return self.node.invoke("operator", offline, "group", "create", name)
 
-        owner = self.start_owner()
+        owner = self.node.start()
         before = self.config_files()
         refused = offline_create("fn.offline")
         self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
@@ -378,7 +286,7 @@ class LiveReconfigurationImageTests(unittest.TestCase):
         self.assertIn(b"refused store-held", refused.stderr)
         self.assertEqual(self.config_files(), before)
         self.assertIsNone(owner.poll(), "the offline command disturbed the owner")
-        self.stop_owner(owner)
+        self.node.stop(process=owner)
         # The separating witness: the same words over the same store, with
         # no owner, are accepted.  The refusal above was the lock's.
         accepted = offline_create("fn.offline")
@@ -386,21 +294,21 @@ class LiveReconfigurationImageTests(unittest.TestCase):
         self.assertEqual(len(self.config_files()), len(before) + 1)
 
     def test_a_group_created_live_is_served_before_restart(self):
-        owner = self.start_owner()
-        old_connection, old_stream = self.reader()
-        old_before = self.command(old_connection, old_stream, "LIST ACTIVE", True)
+        owner = self.node.start()
+        old_client = self.reader()
+        old_before = old_client.multiline("LIST ACTIVE")
         self.assertTrue(old_before[0].startswith(b"215"), old_before)
         created = self.operator("group", "create", "fn.live")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        old_after = self.command(old_connection, old_stream, "LIST ACTIVE", True)
+        old_after = old_client.multiline("LIST ACTIVE")
         self.assertEqual(old_after, old_before)
-        connection, stream = self.reader()
-        status, _ = self.command(connection, stream, "GROUP fn.live", False)
-        fresh_list = self.command(connection, stream, "LIST ACTIVE", True)
-        self.stop_owner(owner)
+        client = self.reader()
+        status = client.command("GROUP fn.live")
+        fresh_list = client.multiline("LIST ACTIVE")
+        self.node.stop(process=owner)
         self.assertTrue(status.startswith(b"211"), status)
         self.assertTrue(fresh_list[0].startswith(b"215"), fresh_list)
-        self.assertTrue(any(b"fn.live " in row for row in fresh_list[1]), fresh_list)
+        self.assertIn(b"fn.live ", fresh_list[1], fresh_list)
 
 
 if __name__ == "__main__":

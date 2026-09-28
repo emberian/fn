@@ -71,7 +71,7 @@ UNCERTAIN_ID = "<uncertain@example.invalid>"
 POSTED_ID = "<posted@example.invalid>"
 GROUPS = ("fn.letters", "fn.test")
 NNTP_CLIENTS = ("slrn", "tin", "nn", "trn")
-EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = 0, 1, 3
+from outcome_codes import EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN  # noqa: E402
 SERVER_READY_SECONDS = 300
 
 

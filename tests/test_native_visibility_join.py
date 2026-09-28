@@ -30,34 +30,20 @@ Run: FN_NATIVE_HOST=<developer launcher> FN_TEST_OPENSSL=<openssl 3.5>
 
 import json
 import os
-from pathlib import Path
-import socket
-import subprocess
 import sys
-import tempfile
 import unittest
 
-from tests.native_process import wait_for_announcement
-
-ROOT = Path(__file__).resolve().parent.parent
-from tools.wire_stream import whole_stream
 from tests import native_log_observation
+from tests.native_harness import (
+    EXIT_OK, ROOT, Client, Node, environment, native_image, requires, run, scratch)
 
 # A developer image: the lost reply is FN_NATIVE_POST_FAULT, a developer
 # selector a production image refuses to start with (tools/native_env.py:
 # FN_NATIVE_HOST always names the production image).
-IMAGE_TEXT = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
-IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
-READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 FAULT = "log-fenced:kill"
 CLIENT = [sys.executable, str(ROOT / "tools" / "fn_client.py")]
 PRINCIPAL = bytes([85]) * 32
-
-
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
 
 
 def cancel_article(message_id, target):
@@ -67,102 +53,64 @@ def cancel_article(message_id, target):
                 m=message_id, t=target).encode("ascii")
 
 
-@unittest.skipUnless(READY, "set FN_NATIVE_DEVELOPER_HOST to a native developer launcher")
+@requires(IMAGE)
 class NativeVisibilityJoinTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-vj-")
-        self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.env.pop("FN_NATIVE_POST_FAULT", None)
-        self.processes = []
-        self.addCleanup(self.stop_all)
+        self.base = scratch(self, "fn-native-vj-")
+        self.env = environment()
         self.witness = {}
 
     # ------------------------------------------------------------ harness
 
-    def command(self, arguments, expected=0, env=None, stdin=None):
-        result = subprocess.run(list(map(str, arguments)), cwd=ROOT, env=env or self.env,
-                                input=stdin, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, timeout=300, check=False)
+    def command(self, arguments, expected=EXIT_OK, env=None, stdin=None):
+        result = run(arguments, env=env or self.env, input=stdin, timeout=300)
         if expected is not None:
             self.assertEqual(result.returncode, expected, result)
         return result
 
     def initialize(self, name, protected=False):
-        root = self.base / name
-        root.mkdir()
-        store, control = root / "store", root / "control.sock"
-        port = free_port()
-        self.command([IMAGE, "--fn", "store", store, "init", "fn.test", "control.cancel"])
-        config = root / "fn.toml"
-        text = ('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-                .format(store, port))
-        node = {"root": root, "store": store, "config": config, "port": port,
-                "control": control}
+        """A node whose store `store init` made; PROTECTED: STARTTLS with a
+        fresh certificate for 127.0.0.1 and required, protected-only login."""
+        node = Node(self, IMAGE, root=self.base / name, name=name)
+        self.command([IMAGE, "--fn", "store", node.store_path, "init", "fn.test",
+                      "control.cancel"])
         if protected:
-            cert, key = root / "cert.pem", root / "key.pem"
-            subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout",
-                            str(key), "-out", str(cert), "-sha256", "-days", "1", "-nodes",
-                            "-subj", "/CN=localhost", "-addext",
-                            "subjectAltName=IP:127.0.0.1"],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                           timeout=60, check=True)
-            text += 'tls_cert = "{}"\ntls_key = "{}"\n'.format(cert, key)
-            text += ('[auth]\nrequired = true\nprotected_only = true\npath = "{}"\n'
-                     .format(root / "credentials.toml"))
-            node["cert"] = cert
-        text += '[control]\npath = "{}"\n'.format(control)
-        config.write_text(text, encoding="ascii")
+            cert, key = node.root / "cert.pem", node.root / "key.pem"
+            run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout", key,
+                 "-out", cert, "-sha256", "-days", "1", "-nodes", "-subj", "/CN=localhost",
+                 "-addext", "subjectAltName=IP:127.0.0.1"], timeout=60).check_returncode()
+            node.cert = cert
+            node.write_config(extra=(
+                'tls_cert = "{}"\ntls_key = "{}"\n'
+                '[auth]\nrequired = true\nprotected_only = true\npath = "{}"\n').format(
+                    cert, key, node.root / "credentials.toml"))
         return node
 
     def start(self, node, fault=False):
-        env = dict(self.env)
-        if fault:
-            env["FN_NATIVE_POST_FAULT"] = FAULT
-        process = subprocess.Popen([str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
-                                   cwd=ROOT, env=env, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        self.processes.append(process)
-        node["process"] = process
-        wait_for_announcement(process, b"LISTENING ")
+        node.start(ready=b"LISTENING ", env={"FN_NATIVE_POST_FAULT": FAULT} if fault else None)
 
     def killed(self, node):
-        process = node.pop("process")
-        rc = process.wait(timeout=120)
-        process.stdout.close()
-        process.stderr.close()
-        self.processes.remove(process)
+        """The owner's exit after its fault cut killed it."""
+        rc = node.process.wait(timeout=120)
+        node.process.finish()
         return rc
 
     def stop(self, node):
-        process = node.pop("process")
-        process.terminate()
-        process.communicate(timeout=60)
-        self.processes.remove(process)
-
-    def stop_all(self):
-        for process in self.processes:
-            if process.poll() is None:
-                process.terminate()
-                process.communicate(timeout=60)
+        node.stop(expect=None)
 
     def transactions(self, node):
         # The committed history (format 9: the record log), read by the image.
-        return native_log_observation.committed_history(IMAGE, node["store"],
+        return native_log_observation.committed_history(IMAGE, node.store_path,
                                                         env=self.env, cwd=ROOT)
 
     def first_line(self, node, command):
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
-            stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
-            stream.write(command)
-            return stream.readline().decode().strip()
+        with Client(node.port, timeout=30, greeting=(b"200",)) as client:
+            client.send(command)
+            return client.line().decode().strip()
 
     def client(self, node, *arguments, stdin=None, credentials=None):
-        connection = ["--node", "127.0.0.1:%d" % node["port"], "--json"]
-        connection += (["--cafile", str(node["cert"]), "--credentials", str(credentials)]
+        connection = ["--node", "127.0.0.1:%d" % node.port, "--json"]
+        connection += (["--cafile", str(node.cert), "--credentials", str(credentials)]
                        if credentials else ["--plain"])
         result = self.command(CLIENT + list(arguments[:1]) + connection + list(arguments[1:]),
                               expected=None, stdin=stdin)
@@ -172,7 +120,7 @@ class NativeVisibilityJoinTests(unittest.TestCase):
     def enroll(self, node):
         """Enroll P (generation 1) on the running node; return its key files."""
         openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
-        root = node["root"]
+        root = node.root
         principal, ed_public, ed_secret = (root / "principal.bin", root / "ed-public.bin",
                                            root / "ed-secret.bin")
         principal.write_bytes(PRINCIPAL)
@@ -184,15 +132,15 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         ml_private, ml_public = root / "ml-private.pem", root / "ml-public.pem"
         self.command([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out", ml_private])
         self.command([openssl, "pkey", "-in", ml_private, "-pubout", "-out", ml_public])
-        self.command([IMAGE, "--fn", "hybrid-enroll", node["control"], "1", principal,
+        self.command([IMAGE, "--fn", "hybrid-enroll", node.control, "1", principal,
                       ed_public, ml_public])
         return principal, ed_public, ed_secret, ml_public, ml_private
 
     def withdraw(self, node, targets):
         """Grant P cancel over fn.test and file one signed cancel per target."""
-        root = node["root"]
+        root = node.root
         principal, ed_public, ed_secret, ml_public, ml_private = self.enroll(node)
-        self.command([IMAGE, "--fn", "operator", node["config"], "control", "grant",
+        self.command([IMAGE, "--fn", "operator", node.config, "control", "grant",
                       PRINCIPAL.hex(), "cancel", "fn.test"])
         for i, target in enumerate(targets):
             source = root / ("cancel-%d.eml" % i)
@@ -203,14 +151,14 @@ class NativeVisibilityJoinTests(unittest.TestCase):
             ed_sig, ml_sig = root / ("cancel-%d.ed" % i), root / ("cancel-%d.ml" % i)
             ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
             ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
-            self.command([IMAGE, "--fn", "hybrid-author", node["control"], "1", source,
+            self.command([IMAGE, "--fn", "hybrid-author", node.control, "1", source,
                           ed_sig, ml_sig, ml_public])
 
     # ------------------------------------------------------------ cases
 
     def test_lost_reply_then_withdrawal_reconciles_to_already_stored(self):
         node = self.initialize("withdrawn")
-        draft = node["root"] / "draft.json"
+        draft = node.root / "draft.json"
         # 1. fn_client: the POST commits and the owner dies before the reply.
         self.start(node, fault=True)
         rc, posted = self.client(node, "post", "fn.test", "--subject", "lost reply",
@@ -274,13 +222,13 @@ class NativeVisibilityJoinTests(unittest.TestCase):
     def test_lost_reply_then_authorization_change_is_unresolved(self):
         node = self.initialize("authorization", protected=True)
         user, secret = "vj-poster", "visibility-join-secret-3"  # FAKE-SECRET: a test fixture's password
-        credentials = node["root"] / "login"
+        credentials = node.root / "login"
         credentials.write_text("%s %s\n" % (user, secret))
         credentials.chmod(0o600)
-        fn = [sys.executable, "bin/fn", "--config", str(node["config"]), "principal",
+        fn = [sys.executable, "bin/fn", "--config", str(node.config), "principal",
               "set-password", user, "--password", secret]
         self.command(fn + ["--posting"])
-        draft = node["root"] / "draft.json"
+        draft = node.root / "draft.json"
         self.start(node, fault=True)
         rc, posted = self.client(node, "post", "fn.test", "--subject", "then revoked",
                                  "--draft", str(draft), stdin=b"posted while allowed\n",
@@ -329,13 +277,13 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         import fn_client  # noqa: E402  (tools/ is on sys.path above)
         node = self.initialize("rebinding", protected=True)
         user, secret = "vj-bound", "visibility-join-secret-4"  # FAKE-SECRET: a test fixture's password
-        credentials = node["root"] / "login"
+        credentials = node.root / "login"
         credentials.write_text("%s %s\n" % (user, secret))
         credentials.chmod(0o600)
-        self.command([sys.executable, "bin/fn", "--config", str(node["config"]), "principal",
+        self.command([sys.executable, "bin/fn", "--config", str(node.config), "principal",
                       "set-password", user, "--password", secret, "--posting"])
         other = bytes([86]) * 32
-        operator = [IMAGE, "--fn", "operator", node["config"]]
+        operator = [IMAGE, "--fn", "operator", node.config]
         self.command(operator + ["principal", "bind", user, PRINCIPAL.hex()])
         self.command(operator + ["policy", "set", "posting-policy", "bound-logins"])
         self.start(node)
@@ -343,7 +291,7 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         self.stop(node)
         # The article, signed by the login's bound principal P.
         target = "<vj-rebound@example.invalid>"
-        source, carried = node["root"] / "rebound.eml", node["root"] / "rebound-carried.eml"
+        source, carried = node.root / "rebound.eml", node.root / "rebound-carried.eml"
         source.write_bytes(
             b"From: bound@example.invalid\r\nDate: Sat, 26 Sep 2026 10:00:00 +0000\r\n"
             b"Newsgroups: fn.test\r\nSubject: posted while bound to P\r\n"
@@ -360,10 +308,10 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         self.start(node, fault=True)
         parser = fn_client.build_parser()
         args = parser.parse_args(["post", "fn.test", "--subject", "unused", "--node",
-                                  "127.0.0.1:%d" % node["port"], "--cafile", str(node["cert"]),
+                                  "127.0.0.1:%d" % node.port, "--cafile", str(node.cert),
                                   "--credentials", str(credentials)])
         fn_client.resolve(args, parser)
-        draft = node["root"] / "draft.json"
+        draft = node.root / "draft.json"
         kept = {"format": fn_client.DRAFT_FORMAT,
                 "node": fn_client.node_name(args.host, args.port), "group": "fn.test",
                 "message_id": target, "lines": lines, "original": None,
@@ -419,27 +367,20 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         """COMMAND over STARTTLS and AUTHINFO (the protected listener serves
         nothing before both): its status line, then any multi-line body."""
         import ssl
-        context = ssl.create_default_context(cafile=str(node["cert"]))
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as raw:
-            stream = whole_stream(raw)
-            self.assertTrue(stream.readline().startswith(b"20"))
-            stream.write(b"STARTTLS\r\n")
-            self.assertTrue(stream.readline().startswith(b"382"))
-            with context.wrap_socket(raw, server_hostname="127.0.0.1") as tls:
-                secure = whole_stream(tls)
-                secure.write(b"AUTHINFO USER " + user.encode() + b"\r\n")
-                self.assertTrue(secure.readline().startswith(b"381"))
-                secure.write(b"AUTHINFO PASS " + secret.encode() + b"\r\n")
-                self.assertTrue(secure.readline().startswith(b"281"))
-                secure.write(command)
-                lines = [secure.readline().decode().strip()]
-                if lines[0][:3] in ("225", "215", "220", "221", "224"):
-                    while True:
-                        line = secure.readline().decode().strip()
-                        if line == ".":
-                            break
-                        lines.append(line)
-                return lines
+        context = ssl.create_default_context(cafile=str(node.cert))
+        with Client(node.port, timeout=30) as client:
+            self.assertTrue(client.starttls(context).startswith(b"382"))
+            self.assertTrue(client.command(b"AUTHINFO USER " + user.encode()).startswith(b"381"))
+            self.assertTrue(client.command(b"AUTHINFO PASS " + secret.encode()).startswith(b"281"))
+            client.send(command)
+            lines = [client.line().decode().strip()]
+            if lines[0][:3] in ("225", "215", "220", "221", "224"):
+                while True:
+                    line = client.line().decode().strip()
+                    if line == ".":
+                        break
+                    lines.append(line)
+            return lines
 
 if __name__ == "__main__":
     unittest.main()

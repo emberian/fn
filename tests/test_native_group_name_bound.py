@@ -18,42 +18,45 @@ default profile (field 7 = 256) the 101-octet name is created.
 """
 import unittest
 
-from tests import test_native_operator_verbs as verbs
+from tests.native_harness import EXIT_OK, EXIT_REFUSED, Node, native_image, requires
 
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 NAME_100 = "fn." + "a" * 97
 NAME_101 = "fn." + "a" * 98
 
 
-@unittest.skipUnless(verbs.executable(verbs.DEVELOPER), "the developer image is required")
-class NativeGroupNameBoundTests(verbs.NativeOperatorVerbFixture):
-    def operator(self, *words, **kwargs):
-        return super().operator(*words, image=verbs.DEVELOPER, **kwargs)
+@requires(DEVELOPER)
+class NativeGroupNameBoundTests(unittest.TestCase):
+    def setUp(self):
+        self.node = Node(self, DEVELOPER, listener=False, control=False)
+        self.store = self.node.store_path
+        self.operator = self.node.operator
 
     def config_names(self):
         return sorted(p.name for p in (self.store / "config").iterdir())
 
     def test_group_create_is_bounded_by_field_7(self):
         made = self.operator("init", "--max-group-name-octets", "100", "fn.test")
-        self.assertEqual(made.returncode, verbs.EXIT_OK, made.stderr.decode())
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
         created = self.operator("group", "create", NAME_100)
-        self.assertEqual(created.returncode, verbs.EXIT_OK, created.stderr.decode())
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         before = self.config_names()
         refused = self.operator("group", "create", NAME_101)
-        self.assertEqual(refused.returncode, verbs.EXIT_REFUSED, refused.stderr.decode())
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
         self.assertIn(b"MAX-GROUP-NAME-OCTETS", refused.stderr.upper())
         self.assertEqual(self.config_names(), before)
 
     def test_init_is_bounded_by_field_7(self):
         refused = self.operator("init", "--max-group-name-octets", "100", NAME_101)
-        self.assertEqual(refused.returncode, verbs.EXIT_REFUSED, refused.stderr.decode())
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
         self.assertIn(b"MAX-GROUP-NAME-OCTETS", refused.stderr.upper())
         self.assertFalse(self.store.exists())
 
     def test_the_default_profile_admits_the_longer_name(self):
         made = self.operator("init", "fn.test")
-        self.assertEqual(made.returncode, verbs.EXIT_OK, made.stderr.decode())
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
         created = self.operator("group", "create", NAME_101)
-        self.assertEqual(created.returncode, verbs.EXIT_OK, created.stderr.decode())
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
 
 
 if __name__ == "__main__":

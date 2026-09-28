@@ -23,12 +23,14 @@ import os
 import time
 import unittest
 
-from tests import test_native_operator_verbs as verbs
+from tests.native_harness import EXIT_FAULT, EXIT_OK, Node, native_image, requires
 # The harness stores' init budget (tools/native_env.py): init refuses a
 # store without FN_INIT_BUDGET_MB on a large machine (batch AZ, 2026-09-28).
-from tools.native_env import harness_store_env  # noqa: E402
+from tools.native_env import HARNESS_INIT_BUDGET_MB  # noqa: E402
 
-EXIT_OK = verbs.EXIT_OK
+BUDGET = {"FN_INIT_BUDGET_MB": HARNESS_INIT_BUDGET_MB}
+
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 REQUESTS = int(os.environ.get("FN_PEER_ROWS_REQUESTS", "1100"))
 
 
@@ -36,17 +38,16 @@ def principal(k):
     return "{:064x}".format(k + 1)
 
 
-@unittest.skipUnless(verbs.executable(verbs.DEVELOPER), "the developer image is required")
-class NativePeerRowsGrowthTests(verbs.NativeOperatorVerbFixture):
-    def operator(self, *words, **kwargs):
-        return super().operator(*words, image=verbs.DEVELOPER, **kwargs)
+@requires(DEVELOPER)
+class NativePeerRowsGrowthTests(unittest.TestCase):
+    listener = False
+
+    def setUp(self):
+        self.node = Node(self, DEVELOPER, listener=self.listener, control=self.listener)
+        self.root, self.store = self.node.root, self.node.store_path
 
     def ok(self, *words):
-        result = self.operator(*words)
-        self.assertEqual(result.returncode, EXIT_OK,
-                         "{}: {}".format(" ".join(words[:3]),
-                                         result.stderr.decode(errors="replace")))
-        return result
+        return self.node.operator(*words, expect=EXIT_OK)
 
     def carried(self):
         listed = self.ok("peer", "list")
@@ -101,8 +102,8 @@ class NativePeerRowsGrowthTests(verbs.NativeOperatorVerbFixture):
 OLD_IMAGE = os.environ.get("FN_OLD_IMAGE")
 
 
-@unittest.skipUnless(verbs.executable(verbs.DEVELOPER), "the developer image is required")
-class NativePeerRowsLiveTests(verbs.NativeOperatorVerbFixture):
+@requires(DEVELOPER)
+class NativePeerRowsLiveTests(unittest.TestCase):
     """PKT-451 (4) and (5): the live owner's arm, and an older image's refusal.
 
     With a node running, `peer carries` and `peer budget` reach the owner
@@ -117,42 +118,20 @@ class NativePeerRowsLiveTests(verbs.NativeOperatorVerbFixture):
     image refuses the store at open and opens a fresh store (the control):
     the rollback sentence in docs/operator.md.
     """
-    start_owner = verbs.NativeOperatorUncertainOutcomeTests.start_owner
-    reap = verbs.NativeOperatorUncertainOutcomeTests.reap
-
-    def setUp(self):
-        super().setUp()
-        self.control = self.root / "control.sock"
-        self.config.write_text(
-            '[store]\npath = "{}"\n'
-            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(self.store, verbs.free_port(),
-                                               self.control),
-            encoding="ascii")
-
-    def operator(self, *words, **kwargs):
-        kwargs.setdefault("image", verbs.DEVELOPER)
-        return super().operator(*words, **kwargs)
-
-    def ok(self, *words):
-        result = self.operator(*words)
-        self.assertEqual(result.returncode, EXIT_OK,
-                         "{}: {}".format(" ".join(words[:3]),
-                                         result.stderr.decode(errors="replace")))
-        return result
+    listener = True
+    setUp = NativePeerRowsGrowthTests.setUp
+    ok = NativePeerRowsGrowthTests.ok
 
     def test_the_live_owner_extends_a_peer_and_an_older_image_refuses_it(self):
         self.ok("init", "fn.test")
-        owner = self.start_owner(verbs.DEVELOPER)
+        self.node.start()
         self.ok("peer", "add", "far", "far.example.invalid", "192.0.2.44",
                 "1119", "fn.*", "-", "192.0.2.44", "true")
         for k in range(3):
             self.ok("peer", "carries", "far", principal(k))
         self.ok("peer", "budget", "far", "1048576", "3")
         self.ok("peer", "budget", "far", "2097152", "5")
-        owner.send_signal(verbs.signal.SIGTERM)
-        self.assertEqual(owner.wait(timeout=60), EXIT_OK,
-                         owner.stderr.read().decode("utf-8", "replace"))
+        self.node.stop()
         listed = self.ok("peer", "list").stdout.decode("ascii")
         words = listed.split()
         self.assertEqual([w.split("=", 1)[1] for w in words
@@ -162,34 +141,17 @@ class NativePeerRowsLiveTests(verbs.NativeOperatorVerbFixture):
         self.assertNotIn("1048576", listed)
         print("peer-rows-live:", listed.strip()[:300])
         if OLD_IMAGE:
-            def old_status(store, name):
-                config = self.root / (name + ".toml")
-                config.write_text('[store]\npath = "{}"\n[listener]\n'
-                                  'host = "127.0.0.1"\nport = {}\n'.format(
-                                      store, verbs.free_port()), encoding="ascii")
-                result = verbs.subprocess.run(
-                    [OLD_IMAGE, "--fn", "operator", str(config), "status"],
-                    cwd=verbs.ROOT, env=harness_store_env(verbs.environment()),
-                    stdout=verbs.subprocess.PIPE, stderr=verbs.subprocess.PIPE,
-                    timeout=240, check=False)
+            def old_status(node, name):
+                result = node.operator("status", image=OLD_IMAGE, env=BUDGET, timeout=240)
                 print("peer-rows-old-image", name, "->", result.returncode,
                       (result.stdout + result.stderr).decode(
                           "utf-8", "replace")[-200:].replace("\n", " "))
                 return result
-            fresh = self.root / "fresh"
-            fresh_config = self.root / "fresh-new.toml"
-            fresh_config.write_text('[store]\npath = "{}"\n[listener]\n'
-                                    'host = "127.0.0.1"\nport = {}\n'.format(
-                                        fresh, verbs.free_port()), encoding="ascii")
-            made = verbs.subprocess.run(
-                [str(verbs.DEVELOPER), "--fn", "operator", str(fresh_config),
-                 "init", "fn.test"], cwd=verbs.ROOT, env=harness_store_env(verbs.environment()),
-                stdout=verbs.subprocess.PIPE, stderr=verbs.subprocess.PIPE,
-                timeout=240, check=False)
-            self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
+            fresh = Node(self, DEVELOPER, root=self.root.parent / "fresh", control=False,
+                         env=BUDGET)
+            fresh.init(timeout=240)
             self.assertEqual(old_status(fresh, "fresh").returncode, EXIT_OK)
-            self.assertEqual(old_status(self.store, "extended").returncode,
-                             verbs.EXIT_FAULT)
+            self.assertEqual(old_status(self.node, "extended").returncode, EXIT_FAULT)
 
 
 if __name__ == "__main__":

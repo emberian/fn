@@ -2,49 +2,39 @@
 """Opt-in saved-image vertical for the mandatory hybrid author profile."""
 import base64
 import os
-import re
 from pathlib import Path
-import socket
+import re
 import subprocess
 import sys
-import tempfile
 import time
 import unittest
-from tests.native_process import wait_for_announcement, stop_and_diagnostics
-from tools.wire_stream import whole_stream
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
+from tests.native_harness import ROOT, Client, Node, native_image, requires
+
+IMAGE = native_image("FN_NATIVE_HOST")
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 
 
-def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+def nntp_post(case, port, octets, timeout=30):
+    """POST OCTETS on a fresh connection; the final reply line."""
+    with Client(port, timeout=timeout, greeting=(b"200",)) as client:
+        first, final = client.post(octets)
+        case.assertTrue(first.startswith(b"340 "), first)
+        return final
 
 
 @unittest.skipUnless(os.environ.get("FN_RUN_HYBRID_E2E") == "1",
                      "set FN_RUN_HYBRID_E2E=1 for the OpenSSL 3.5 saved-image gate")
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
-                     "build/fn-host is required")
+@requires(IMAGE)
 class NativeHybridAuthorTest(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="fn-hybrid-author-")
-        self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
-        self.store = self.root / "store"
-        self.control = self.root / "control.sock"
+        self.node = Node(self, IMAGE)
+        self.root, self.store, self.control = self.node.root, self.node.store_path, self.node.control
+        self.port, self.config = self.node.port, self.node.config
         self.service_log = self.root / "service.log"
-        self.port = free_port()
-        self.config = self.root / "fn.toml"
         initialized = self.invoke("store", str(self.store), "init", "fn.test", timeout=180)
         self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
-        self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
-                self.store, self.port, self.control, self.service_log),
-            encoding="ascii")
+        self.node.write_config(extra='[log]\npath = "{}"\n'.format(self.service_log))
         self.principal = self.root / "principal.bin"
         self.ed_public = self.root / "ed-public.bin"
         self.ed_secret = self.root / "ed-secret.bin"
@@ -72,19 +62,13 @@ class NativeHybridAuthorTest(unittest.TestCase):
                         "-out", str(self.ml_public_b)], timeout=60, check=True)
 
     def invoke(self, *args, timeout=60):
-        return subprocess.run([str(IMAGE), "--fn", *args], cwd=ROOT,
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              timeout=timeout, check=False)
+        return self.node.invoke(*args, timeout=timeout)
 
     def start_owner(self):
-        proc = subprocess.Popen([str(IMAGE), "--fn", "operator", str(self.config), "run"],
-                                cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        wait_for_announcement(proc, b"LISTENING ")
-        return proc
+        return self.node.start()
 
     def stop_owner(self, proc):
-        diagnostic = stop_and_diagnostics(proc, timeout=60)
-        self.assertEqual(proc.returncode, 0, diagnostic)
+        self.node.stop(process=proc)
 
     def test_enroll_author_refuse_tamper_and_restart_query(self):
         article = self.root / "article.eml"
@@ -195,33 +179,24 @@ class NativeHybridAuthorTest(unittest.TestCase):
         ])
         owner = self.start_owner()
         try:
-            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
-                with whole_stream(sock) as stream:
-                    self.assertTrue(stream.readline().startswith(b"200 "))
-                    stream.write(("ARTICLE {}\r\n".format(msgid)).encode())
-                    self.assertTrue(stream.readline().startswith(b"220 "))
-                    returned = bytearray()
-                    while True:
-                        line = stream.readline()
-                        self.assertTrue(line, "ARTICLE response ended before dot terminator")
-                        if line == b".\r\n":
-                            break
-                        returned.extend(line[1:] if line.startswith(b"..") else line)
-                    self.assertIn(b"FN-Authorship: ", bytes(returned)[:200])
-                    self.assertTrue(bytes(returned).endswith(article.read_bytes()))
-                    received = self.root / "received.eml"
-                    received.write_bytes(bytes(returned))
-                    checked = self.invoke("hybrid-verify-carrier", str(received),
-                                          str(self.ml_public))
-                    self.assertEqual(checked.returncode, 0, checked.stderr.decode())
-                    stream.write(("HDR :fn-verified {}\r\n".format(msgid)).encode())
-                    self.assertEqual(stream.readline(), b"225 headers follow\r\n")
-                    # Generation 2 has replaced the enrolled key set, but
-                    # the recovered schema-1 verdict keeps its original pin.
-                    self.assertEqual(stream.readline(),
-                                     b"0 verified " + b"55" * 32 +
-                                     b" keyring 1\r\n")
-                    self.assertEqual(stream.readline(), b".\r\n")
+            with Client(self.port, timeout=30, greeting=(b"200",)) as client:
+                status, returned = client.multiline("ARTICLE {}".format(msgid))
+                self.assertTrue(status.startswith(b"220 "), status)
+                self.assertIn(b"FN-Authorship: ", bytes(returned)[:200])
+                self.assertTrue(bytes(returned).endswith(article.read_bytes()))
+                received = self.root / "received.eml"
+                received.write_bytes(bytes(returned))
+                checked = self.invoke("hybrid-verify-carrier", str(received),
+                                      str(self.ml_public))
+                self.assertEqual(checked.returncode, 0, checked.stderr.decode())
+                self.assertEqual(client.command("HDR :fn-verified {}".format(msgid)),
+                                 b"225 headers follow\r\n")
+                # Generation 2 has replaced the enrolled key set, but
+                # the recovered schema-1 verdict keeps its original pin.
+                self.assertEqual(client.line(),
+                                 b"0 verified " + b"55" * 32 +
+                                 b" keyring 1\r\n")
+                self.assertEqual(client.line(), b".\r\n")
         finally:
             self.stop_owner(owner)
 
@@ -376,24 +351,14 @@ class NativeHybridAuthorTest(unittest.TestCase):
             first = author(request)
             again = author(request)
             beyond = author(signed(past_a, "codex003-past-a"))
-            with socket.create_connection(("127.0.0.1", self.port), timeout=60) as sock:
-                with whole_stream(sock) as stream:
-                    self.assertTrue(stream.readline().startswith(b"200 "))
-                    stream.write(b"ARTICLE <codex003-v2@example.invalid>\r\n")
-                    article_status = stream.readline()
-                    returned = bytearray()
-                    if article_status.startswith(b"220 "):
-                        while True:
-                            line = stream.readline()
-                            self.assertTrue(line, "ARTICLE ended before its terminator")
-                            if line == b".\r\n":
-                                break
-                            returned.extend(line[1:] if line.startswith(b"..") else line)
-                    stream.write(b"HDR :fn-verified <codex003-v2@example.invalid>\r\n")
-                    hdr = [stream.readline(), stream.readline(), stream.readline()]
+            with Client(self.port, timeout=60, greeting=(b"200",)) as client:
+                article_status, returned = client.multiline(
+                    b"ARTICLE <codex003-v2@example.invalid>")
+                hdr = [client.command(b"HDR :fn-verified <codex003-v2@example.invalid>"),
+                       client.line(), client.line()]
         finally:
-            diagnostic = stop_and_diagnostics(owner, timeout=60)
-            self.assertEqual(owner.returncode, 0, diagnostic)
+            self.node.stop(process=owner)
+            diagnostic = owner.diagnostics()
         print("NATIVE-CODEX003-WITNESS " + repr(
             {"first": first, "again": again, "beyond": beyond,
              "bound": bound, "article": article_status[:4], "stored": len(returned),
@@ -494,25 +459,15 @@ class NativeHybridAuthorTest(unittest.TestCase):
         self.assertGreater(large_carried.stat().st_size, bound)
 
         def post(octets):
-            with socket.create_connection(("127.0.0.1", self.port),
-                                          timeout=30) as sock:
-                stream = whole_stream(sock)
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"POST\r\n")
-                self.assertTrue(stream.readline().startswith(b"340 "))
-                body = b"".join(
-                    (b"." + line if line.startswith(b".") else line)
-                    for line in octets.splitlines(keepends=True))
+            with Client(self.port, timeout=30, greeting=(b"200",)) as client:
+                # The node may refuse and close mid-body: the refusal
+                # arriving early (test_native_owner's oversize case).
                 try:
-                    stream.write(body + b".\r\n")
-                except OSError:
-                    # The node refused and closed mid-body: the refusal
-                    # arriving early (test_native_owner's oversize case).
-                    pass
-                try:
-                    return stream.readline()
-                except OSError:
+                    first, final = client.post(octets, tolerate_send_error=True)
+                except (OSError, EOFError):
                     return b""
+                self.assertTrue(first.startswith(b"340 "), first)
+                return final
 
         owner = self.start_owner()
         try:
@@ -624,28 +579,16 @@ class NativeHybridAuthorTest(unittest.TestCase):
             return octets
 
         def post(octets):
-            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
-                with whole_stream(sock) as stream:
-                    self.assertTrue(stream.readline().startswith(b"200 "))
-                    stream.write(b"POST\r\n")
-                    self.assertTrue(stream.readline().startswith(b"340 "))
-                    body = b"".join(
-                        (b"." + line if line.startswith(b".") else line)
-                        for line in octets.splitlines(keepends=True))
-                    stream.write(body + b".\r\n")
-                    return stream.readline()
+            return nntp_post(self, self.port, octets)
 
         def verdict(msgid):
-            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
-                with whole_stream(sock) as stream:
-                    self.assertTrue(stream.readline().startswith(b"200 "))
-                    stream.write(b"HDR :fn-verified " + msgid + b"\r\n")
-                    status = stream.readline()
-                    if not status.startswith(b"225 "):
-                        return status
-                    field = stream.readline()
-                    self.assertEqual(stream.readline(), b".\r\n")
-                    return field
+            with Client(self.port, timeout=30, greeting=(b"200",)) as client:
+                status = client.command(b"HDR :fn-verified " + msgid)
+                if not status.startswith(b"225 "):
+                    return status
+                field = client.line()
+                self.assertEqual(client.line(), b".\r\n")
+                return field
 
         unsigned = (b"From: agent@example.invalid\r\nNewsgroups: fn.test\r\n"
                     b"Subject: unsigned over NNTP\r\n"
@@ -727,48 +670,29 @@ class NativeHybridAuthorTest(unittest.TestCase):
                     b"\r\nplain body\r\n")
 
         def post(octets):
-            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
-                with whole_stream(sock) as stream:
-                    self.assertTrue(stream.readline().startswith(b"200 "))
-                    stream.write(b"POST\r\n")
-                    self.assertTrue(stream.readline().startswith(b"340 "))
-                    body = b"".join(
-                        (b"." + line if line.startswith(b".") else line)
-                        for line in octets.splitlines(keepends=True))
-                    stream.write(body + b".\r\n")
-                    return stream.readline()
-
-        def multiline(stream):
-            lines = []
-            while True:
-                line = stream.readline()
-                if line == b".\r\n":
-                    return lines
-                lines.append(line)
+            return nntp_post(self, self.port, octets)
 
         order = ["cat-plain-1", "cat-signed-2", "cat-plain-3", "cat-signed-4", "cat-plain-5"]
 
         def check():
-            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
-                with whole_stream(sock) as stream:
-                    self.assertTrue(stream.readline().startswith(b"200 "))
-                    stream.write(b"GROUP fn.test\r\n")
-                    self.assertEqual(stream.readline(), b"211 5 1 5 fn.test\r\n")
-                    stream.write(b"LISTGROUP fn.test\r\n")
-                    self.assertTrue(stream.readline().startswith(b"211 5 1 5 fn.test"))
-                    self.assertEqual(multiline(stream), [b"%d\r\n" % n for n in range(1, 6)])
-                    stream.write(b"OVER 1-5\r\n")
-                    self.assertTrue(stream.readline().startswith(b"224 "))
-                    over = multiline(stream)
-                    self.assertEqual([line.split(b"\t")[0] for line in over],
-                                     [b"%d" % n for n in range(1, 6)], over)
-                    self.assertEqual([line.split(b"\t")[4] for line in over],
-                                     [b"<" + stem.encode() + b"@example.invalid>"
-                                      for stem in order], over)
-                    for n, stem in enumerate(order, 1):
-                        stream.write(b"STAT <" + stem.encode() + b"@example.invalid>\r\n")
-                        self.assertEqual(stream.readline().split(b" ")[:2],
-                                         [b"223", b"%d" % n], stem)
+            with Client(self.port, timeout=30, greeting=(b"200",)) as client:
+                self.assertEqual(client.command(b"GROUP fn.test"), b"211 5 1 5 fn.test\r\n")
+                status, listed = client.multiline(b"LISTGROUP fn.test")
+                self.assertTrue(status.startswith(b"211 5 1 5 fn.test"), status)
+                self.assertEqual(listed.splitlines(keepends=True),
+                                 [b"%d\r\n" % n for n in range(1, 6)])
+                status, block = client.multiline(b"OVER 1-5")
+                self.assertTrue(status.startswith(b"224 "), status)
+                over = block.splitlines(keepends=True)
+                self.assertEqual([line.split(b"\t")[0] for line in over],
+                                 [b"%d" % n for n in range(1, 6)], over)
+                self.assertEqual([line.split(b"\t")[4] for line in over],
+                                 [b"<" + stem.encode() + b"@example.invalid>"
+                                  for stem in order], over)
+                for n, stem in enumerate(order, 1):
+                    self.assertEqual(
+                        client.command(b"STAT <" + stem.encode() + b"@example.invalid>")
+                        .split(b" ")[:2], [b"223", b"%d" % n], stem)
 
         owner = self.start_owner()
         try:
@@ -800,15 +724,10 @@ class NativeHybridAuthorTest(unittest.TestCase):
         own HDR :fn-verified verdict is checked after delivery and restart.
         Protected transport has its own gate. Both peers are loopback fixtures.
         """
-        other_store = self.root / "receiver"
-        other_control = self.root / "receiver.sock"
-        other_port = free_port()
+        other = Node(self, IMAGE, root=self.root / "receiver")
+        other_store, other_control = other.store_path, other.control
+        other_port, other_config = other.port, other.config
         self.assertNotEqual(self.port, other_port)
-        other_config = self.root / "receiver.toml"
-        other_config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n'.format(
-                other_store, other_port, other_control), encoding="ascii")
 
         def ok(*args):
             result = self.invoke(*map(str, args), timeout=180)
@@ -841,36 +760,24 @@ class NativeHybridAuthorTest(unittest.TestCase):
         ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
 
         def read_article(port):
-            with socket.create_connection(("127.0.0.1", port), timeout=15) as sock:
-                with whole_stream(sock) as stream:
-                    self.assertTrue(stream.readline().startswith(b"200 "))
-                    stream.write(b"ARTICLE " + msgid.encode() + b"\r\n")
-                    status = stream.readline()
-                    if status.startswith(b"430 "):
-                        return None
-                    self.assertTrue(status.startswith(b"220 "), status)
-                    article = bytearray()
-                    while True:
-                        line = stream.readline(32769)
-                        self.assertTrue(line, "unterminated ARTICLE")
-                        if line == b".\r\n":
-                            return bytes(article)
-                        article.extend(line[1:] if line.startswith(b"..") else line)
-                        self.assertLessEqual(len(article), 32768)
+            with Client(port, timeout=15, greeting=(b"200",)) as client:
+                status, article = client.multiline(b"ARTICLE " + msgid.encode())
+                if status.startswith(b"430 "):
+                    return None
+                self.assertTrue(status.startswith(b"220 "), status)
+                self.assertLessEqual(len(article), 32768)
+                return article
 
         owners = []
 
-        def start(config):
-            proc = subprocess.Popen(
-                [str(IMAGE), "--fn", "operator", str(config), "run"],
-                cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            owners.append(proc)
-            wait_for_announcement(proc, b"LISTENING ")
+        def start(node):
+            proc = node.start()
+            owners.append((node, proc))
             return proc
 
         try:
-            start(self.config)
-            receiver = start(other_config)
+            start(self.node)
+            receiver = start(other)
             for control in (self.control, other_control):
                 ok("hybrid-enroll", control, "1", self.principal,
                    self.ed_public, self.ml_public)
@@ -908,25 +815,23 @@ class NativeHybridAuthorTest(unittest.TestCase):
             carried = self.root / "peer-received.eml"
             carried.write_bytes(received)
             ok("hybrid-verify-carrier", carried, self.ml_public)
-            owners.remove(receiver)
-            self.stop_owner(receiver)
-            start(other_config)
+            owners.remove((other, receiver))
+            other.stop(process=receiver)
+            start(other)
             self.assertEqual(read_article(other_port), received)
             # Verify the recovered bytes, rather than reusing a sender verdict.
             carried.write_bytes(read_article(other_port))
             ok("hybrid-verify-carrier", carried, self.ml_public)
             # The receiver's own kind-4 verdict, recovered after restart.
-            with socket.create_connection(("127.0.0.1", other_port), timeout=15) as sock:
-                with whole_stream(sock) as stream:
-                    self.assertTrue(stream.readline().startswith(b"200 "))
-                    stream.write(b"HDR :fn-verified " + msgid.encode() + b"\r\n")
-                    self.assertEqual(stream.readline(), b"225 headers follow\r\n")
-                    self.assertEqual(stream.readline(),
-                                     b"0 verified " + b"55" * 32 + b" keyring 1\r\n")
-                    self.assertEqual(stream.readline(), b".\r\n")
+            with Client(other_port, timeout=15, greeting=(b"200",)) as client:
+                self.assertEqual(client.command(b"HDR :fn-verified " + msgid.encode()),
+                                 b"225 headers follow\r\n")
+                self.assertEqual(client.line(),
+                                 b"0 verified " + b"55" * 32 + b" keyring 1\r\n")
+                self.assertEqual(client.line(), b".\r\n")
         finally:
-            for owner in reversed(owners):
-                self.stop_owner(owner)
+            for node, owner in reversed(owners):
+                node.stop(process=owner)
 
     def test_unenrolled_receiver_refuses_authored_carrier_once_and_both_sides_log_it(self):
         """A receiver without its own enrollment of the principal refuses.
@@ -937,15 +842,10 @@ class NativeHybridAuthorTest(unittest.TestCase):
         fn-olog-transit-line, fn-olog-feed-reply-line).  This is the 1a9dd747
         failure-8 configuration with its silence removed.
         """
-        other_store = self.root / "receiver"
-        other_control = self.root / "receiver.sock"
-        other_log = self.root / "receiver.log"
-        other_port = free_port()
-        other_config = self.root / "receiver.toml"
-        other_config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-            '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
-                other_store, other_port, other_control, other_log), encoding="ascii")
+        other = Node(self, IMAGE, root=self.root / "receiver")
+        other_log = other.root / "receiver.log"
+        other.write_config(extra='[log]\npath = "{}"\n'.format(other_log))
+        other_store, other_port, other_config = other.store_path, other.port, other.config
 
         def ok(*args):
             result = self.invoke(*map(str, args), timeout=180)
@@ -975,12 +875,8 @@ class NativeHybridAuthorTest(unittest.TestCase):
         ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
         owners = []
         try:
-            for config in (self.config, other_config):
-                proc = subprocess.Popen(
-                    [str(IMAGE), "--fn", "operator", str(config), "run"],
-                    cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                owners.append(proc)
-                wait_for_announcement(proc, b"LISTENING ")
+            for node in (self.node, other):
+                owners.append((node, node.start()))
             ok("hybrid-enroll", self.control, "1", self.principal,
                self.ed_public, self.ml_public)
             ok("hybrid-author", self.control, "1", source, ed_sig, ml_sig, self.ml_public)
@@ -1005,14 +901,11 @@ class NativeHybridAuthorTest(unittest.TestCase):
             self.assertEqual(
                 sum(1 for line in other_log.read_text().splitlines()
                     if line.startswith(receiver_line)), 1)
-            with socket.create_connection(("127.0.0.1", other_port), timeout=15) as sock:
-                with whole_stream(sock) as stream:
-                    self.assertTrue(stream.readline().startswith(b"200 "))
-                    stream.write(b"STAT " + msgid.encode() + b"\r\n")
-                    self.assertTrue(stream.readline().startswith(b"430 "))
+            with Client(other_port, timeout=15, greeting=(b"200",)) as client:
+                self.assertTrue(client.command(b"STAT " + msgid.encode()).startswith(b"430 "))
         finally:
-            for owner in reversed(owners):
-                self.stop_owner(owner)
+            for node, owner in reversed(owners):
+                node.stop(process=owner)
 
     # ------------------------------------------------------------------
     # D23: A signs and posts; relay R has no enrollment of A's principal and
@@ -1023,15 +916,9 @@ class NativeHybridAuthorTest(unittest.TestCase):
     def _chain(self, listed, budget=("1048576", "8")):
         nodes = {}
         for name in ("relay", "sink"):
-            root = self.root / name
-            nodes[name] = {"store": root, "control": self.root / (name + ".sock"),
-                           "log": self.root / (name + ".log"), "port": free_port(),
-                           "config": self.root / (name + ".toml")}
-            n = nodes[name]
-            n["config"].write_text(
-                '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
-                '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
-                    n["store"], n["port"], n["control"], n["log"]), encoding="ascii")
+            n = nodes[name] = Node(self, IMAGE, root=self.root / name, name=name)
+            n.log = n.root / (name + ".log")
+            n.write_config(extra='[log]\npath = "{}"\n'.format(n.log))
         relay, sink = nodes["relay"], nodes["sink"]
 
         def ok(*args):
@@ -1041,23 +928,23 @@ class NativeHybridAuthorTest(unittest.TestCase):
 
         hexp = self.principal.read_bytes().hex()
         for n in (relay, sink):
-            ok("store", n["store"], "init", "fn.test")
+            ok("store", n.store_path, "init", "fn.test")
         ok("operator", self.config, "policy", "set", "path-identity", "author.example.invalid")
-        ok("operator", relay["config"], "policy", "set", "path-identity", "relay.example.invalid")
-        ok("operator", sink["config"], "policy", "set", "path-identity", "sink.example.invalid")
+        ok("operator", relay.config, "policy", "set", "path-identity", "relay.example.invalid")
+        ok("operator", sink.config, "policy", "set", "path-identity", "sink.example.invalid")
         # A feeds R.  R takes A's feed (source 127.0.0.1) and feeds C; its C
         # record's source address is one nothing connects from.  C takes R.
         ok("operator", self.config, "peer", "add", "relay", "relay.example.invalid",
-           "127.0.0.1", relay["port"], "-", "fn.*", "127.0.0.9", "true")
+           "127.0.0.1", relay.port, "-", "fn.*", "127.0.0.9", "true")
         carries = ["carries", hexp] if listed else []
-        ok("operator", relay["config"], "peer", "add", "author", "author.example.invalid",
+        ok("operator", relay.config, "peer", "add", "author", "author.example.invalid",
            "127.0.0.1", self.port, "fn.*", "-", "127.0.0.1", "true", *carries)
         if listed and budget:
-            ok("operator", relay["config"], "peer", "budget", "author", *budget)
-        ok("operator", relay["config"], "peer", "add", "sink", "sink.example.invalid",
-           "127.0.0.1", sink["port"], "-", "fn.*", "127.0.0.9", "true")
-        ok("operator", sink["config"], "peer", "add", "relay", "relay.example.invalid",
-           "127.0.0.1", relay["port"], "fn.*", "-", "127.0.0.1", "true")
+            ok("operator", relay.config, "peer", "budget", "author", *budget)
+        ok("operator", relay.config, "peer", "add", "sink", "sink.example.invalid",
+           "127.0.0.1", sink.port, "-", "fn.*", "127.0.0.9", "true")
+        ok("operator", sink.config, "peer", "add", "relay", "relay.example.invalid",
+           "127.0.0.1", relay.port, "fn.*", "-", "127.0.0.1", "true")
         msgid = "<d23-carried-{}@example.invalid>".format("listed" if listed else "unlisted")
         source = self.root / "d23-source.eml"
         source.write_bytes(
@@ -1074,22 +961,16 @@ class NativeHybridAuthorTest(unittest.TestCase):
         return nodes, msgid, source, ed_sig, ml_sig, ok
 
     def _hdr(self, port, msgid):
-        with socket.create_connection(("127.0.0.1", port), timeout=15) as sock:
-            with whole_stream(sock) as stream:
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"HDR :fn-verified " + msgid.encode() + b"\r\n")
-                status = stream.readline()
-                if not status.startswith(b"225 "):
-                    return None
-                line = stream.readline()
-                self.assertEqual(stream.readline(), b".\r\n")
-                return line
+        with Client(port, timeout=15, greeting=(b"200",)) as client:
+            status = client.command(b"HDR :fn-verified " + msgid.encode())
+            if not status.startswith(b"225 "):
+                return None
+            line = client.line()
+            self.assertEqual(client.line(), b".\r\n")
+            return line
 
-    def _start(self, owners, config):
-        proc = subprocess.Popen([str(IMAGE), "--fn", "operator", str(config), "run"],
-                                cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        owners.append(proc)
-        wait_for_announcement(proc, b"LISTENING ")
+    def _start(self, owners, node):
+        owners.append((node, node.start()))
 
     def _verify(self, port, msgid):
         keyring = self.root / "d23-keyring.json"
@@ -1109,51 +990,51 @@ class NativeHybridAuthorTest(unittest.TestCase):
         relay, sink = nodes["relay"], nodes["sink"]
         owners = []
         try:
-            for config in (self.config, relay["config"], sink["config"]):
-                self._start(owners, config)
-            for control in (self.control, sink["control"]):
+            for node in (self.node, relay, sink):
+                self._start(owners, node)
+            for control in (self.control, sink.control):
                 ok("hybrid-enroll", control, "1", self.principal,
                    self.ed_public, self.ml_public)
             ok("hybrid-author", self.control, "1", source, ed_sig, ml_sig, self.ml_public)
             deadline, at_sink = time.monotonic() + 60, None
             while time.monotonic() < deadline:
-                at_sink = self._hdr(sink["port"], msgid)
+                at_sink = self._hdr(sink.port, msgid)
                 if at_sink is not None:
                     break
                 time.sleep(0.2)
             hexp = self.principal.read_bytes().hex().encode()
-            self.assertEqual(self._hdr(relay["port"], msgid), b"0 carried " + hexp + b"\r\n")
+            self.assertEqual(self._hdr(relay.port, msgid), b"0 carried " + hexp + b"\r\n")
             self.assertEqual(at_sink, b"0 verified " + hexp + b" keyring 1\r\n")
-            carried = [line for line in relay["log"].read_text().splitlines()
+            carried = [line for line in relay.log.read_text().splitlines()
                        if " message-id=" + msgid + " " in line and " detail=carried " in line]
-            self.assertEqual(len(carried), 1, relay["log"].read_text())
+            self.assertEqual(len(carried), 1, relay.log.read_text())
             # PKT-473 (PRF-184): the accepted arms name their verdict
             # (fn-pcb-transit-verdict): carried at the relay, verified at
             # the enrolled sink.
             self.assertIn(" detail=carried verdict=carried ", carried[0])
             self.assertTrue(carried[0].startswith("accepted transit "), carried[0])
-            verified = [line for line in sink["log"].read_text().splitlines()
+            verified = [line for line in sink.log.read_text().splitlines()
                         if line.startswith("accepted transit ")
                         and " message-id=" + msgid + " " in line]
-            self.assertEqual(len(verified), 1, sink["log"].read_text())
+            self.assertEqual(len(verified), 1, sink.log.read_text())
             self.assertIn(" detail=none verdict=verified ", verified[0])
             print("NATIVE-TRANSIT-VERDICT", carried[0], "|", verified[0], flush=True)
             if os.environ.get("FN_D23_VERIFY") == "1":
-                self.assertEqual(self._verify(sink["port"], msgid)[0], 0)
-                code, out = self._verify(relay["port"], msgid)
+                self.assertEqual(self._verify(sink.port, msgid)[0], 0)
+                code, out = self._verify(relay.port, msgid)
                 self.assertEqual(code, 3, out)
                 self.assertIn("carried this article", out)
         finally:
-            for owner in reversed(owners):
-                self.stop_owner(owner)
+            for node, owner in reversed(owners):
+                node.stop(process=owner)
 
     def test_d23_unlisted_relay_refuses_439_and_logs_it(self):
         nodes, msgid, source, ed_sig, ml_sig, ok = self._chain(listed=False)
         relay = nodes["relay"]
         owners = []
         try:
-            for config in (self.config, relay["config"]):
-                self._start(owners, config)
+            for node in (self.node, relay):
+                self._start(owners, node)
             ok("hybrid-enroll", self.control, "1", self.principal,
                self.ed_public, self.ml_public)
             ok("hybrid-author", self.control, "1", source, ed_sig, ml_sig, self.ml_public)
@@ -1165,14 +1046,14 @@ class NativeHybridAuthorTest(unittest.TestCase):
                     break
                 time.sleep(0.2)
             self.assertIn(sender_line, sent)
-            refusals = [line for line in relay["log"].read_text().splitlines()
+            refusals = [line for line in relay.log.read_text().splitlines()
                         if line.startswith("refused transit ") and msgid in line]
-            self.assertEqual(len(refusals), 1, relay["log"].read_text())
+            self.assertEqual(len(refusals), 1, relay.log.read_text())
             self.assertIn(" detail=no-local-binding ", refusals[0])
-            self.assertIsNone(self._hdr(relay["port"], msgid))
+            self.assertIsNone(self._hdr(relay.port, msgid))
         finally:
-            for owner in reversed(owners):
-                self.stop_owner(owner)
+            for node, owner in reversed(owners):
+                node.stop(process=owner)
 
     # ------------------------------------------------------------------
     # PRF-099: the opaque-carriage budget and the refusal classes.
@@ -1194,30 +1075,16 @@ class NativeHybridAuthorTest(unittest.TestCase):
         return source, ed_sig, ml_sig
 
     def _article(self, port, msgid):
-        with socket.create_connection(("127.0.0.1", port), timeout=15) as sock:
-            with whole_stream(sock) as stream:
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"ARTICLE " + msgid.encode() + b"\r\n")
-                self.assertTrue(stream.readline().startswith(b"220 "))
-                article = bytearray()
-                while True:
-                    line = stream.readline(65536)
-                    self.assertTrue(line)
-                    if line == b".\r\n":
-                        return bytes(article)
-                    article.extend(line[1:] if line.startswith(b"..") else line)
+        with Client(port, timeout=15, greeting=(b"200",)) as client:
+            status, article = client.multiline(b"ARTICLE " + msgid.encode())
+            self.assertTrue(status.startswith(b"220 "), status)
+            return article
 
     def _ihave(self, port, msgid, article):
-        with socket.create_connection(("127.0.0.1", port), timeout=30) as sock:
-            with whole_stream(sock) as stream:
-                self.assertTrue(stream.readline().startswith(b"200 "))
-                stream.write(b"IHAVE " + msgid.encode() + b"\r\n")
-                self.assertTrue(stream.readline().startswith(b"335 "))
-                for line in article.split(b"\r\n")[:-1]:
-                    stream.write((b"." + line if line.startswith(b".") else line)
-                                 + b"\r\n")
-                stream.write(b".\r\n")
-                return stream.readline()
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            first, final = client.post(article, verb=b"IHAVE " + msgid.encode())
+            self.assertTrue(first.startswith(b"335 "), first)
+            return final
 
     @staticmethod
     def _patch_carrier(article, msgid, patch):
@@ -1255,19 +1122,19 @@ class NativeHybridAuthorTest(unittest.TestCase):
         relay = nodes["relay"]
         hexp = self.principal.read_bytes().hex()
         # The list and the budget arrive by separate requests.
-        ok("operator", relay["config"], "peer", "carries", "author", hexp)
-        ok("operator", relay["config"], "peer", "budget", "author", "1048576", "1")
+        ok("operator", relay.config, "peer", "carries", "author", hexp)
+        ok("operator", relay.config, "peer", "budget", "author", "1048576", "1")
         owners = []
         try:
-            for config in (self.config, relay["config"]):
-                self._start(owners, config)
+            for node in (self.node, relay):
+                self._start(owners, node)
             ok("hybrid-enroll", self.control, "1", self.principal,
                self.ed_public, self.ml_public)
             ok("hybrid-author", self.control, "1", source, ed_sig, ml_sig, self.ml_public)
             deadline = time.monotonic() + 60
-            while time.monotonic() < deadline and self._hdr(relay["port"], msgid) is None:
+            while time.monotonic() < deadline and self._hdr(relay.port, msgid) is None:
                 time.sleep(0.2)
-            self.assertEqual(self._hdr(relay["port"], msgid),
+            self.assertEqual(self._hdr(relay.port, msgid),
                              b"0 carried " + hexp.encode() + b"\r\n")
             # The second carried article exhausts the count of one.
             second = "<pcb-second@example.invalid>"
@@ -1276,17 +1143,17 @@ class NativeHybridAuthorTest(unittest.TestCase):
             want = " message-id=" + second + " "
             deadline, lines = time.monotonic() + 60, []
             while time.monotonic() < deadline:
-                lines = [l for l in relay["log"].read_text().splitlines()
+                lines = [l for l in relay.log.read_text().splitlines()
                          if l.startswith("refused transit ") and want in l]
                 if lines:
                     break
                 time.sleep(0.2)
-            self.assertEqual(len(lines), 1, relay["log"].read_text())
+            self.assertEqual(len(lines), 1, relay.log.read_text())
             self.assertIn(" detail=carried-count-exhausted ", lines[0])
-            self.assertIsNone(self._hdr(relay["port"], second))
+            self.assertIsNone(self._hdr(relay.port, second))
             # From the author's address, by IHAVE: items naming suite 2, and a
             # principal the relay neither enrolled nor carries.
-            carried = self._article(relay["port"], msgid)
+            carried = self._article(relay.port, msgid)
 
             def suite_two(binary):
                 binary[1] = 2
@@ -1303,64 +1170,64 @@ class NativeHybridAuthorTest(unittest.TestCase):
                      "unsupported-profile", "unsupported-profile"),
                     ("<pcb-unbound@example.invalid>", other_principal,
                      "no-local-binding", "unenrolled")):
-                reply = self._ihave(relay["port"], name,
+                reply = self._ihave(relay.port, name,
                                     self._patch_carrier(carried, name, patch))
                 self.assertTrue(reply.startswith(b"437 "), reply)
-                lines = [l for l in relay["log"].read_text().splitlines()
+                lines = [l for l in relay.log.read_text().splitlines()
                          if l.startswith("refused transit ")
                          and " message-id=" + name + " " in l]
-                self.assertEqual(len(lines), 1, relay["log"].read_text())
+                self.assertEqual(len(lines), 1, relay.log.read_text())
                 self.assertIn(" detail=" + detail + " verdict=" + verdict + " ",
                               lines[0])
                 print("NATIVE-REFUSAL-CLASS", detail, verdict, flush=True)
             # PKT-211: the signature-failed row.  The relay now enrols the
             # author, so a present carrier is verified there; one octet of the
             # signed body changed (same length) fails the observation.
-            ok("hybrid-enroll", relay["control"], "1", self.principal,
+            ok("hybrid-enroll", relay.control, "1", self.principal,
                self.ed_public, self.ml_public)
             name = "<pcb-forged@example.invalid>"
             patched = self._patch_carrier(carried, name, lambda binary: binary)
             head, body = patched.split(b"\r\n\r\n", 1)
             at = next(k for k in range(len(body)) if body[k:k + 1].isalpha())
             flipped = body[:at] + body[at:at + 1].swapcase() + body[at + 1:]
-            reply = self._ihave(relay["port"], name, head + b"\r\n\r\n" + flipped)
+            reply = self._ihave(relay.port, name, head + b"\r\n\r\n" + flipped)
             self.assertTrue(reply.startswith(b"437 "), reply)
-            lines = [l for l in relay["log"].read_text().splitlines()
+            lines = [l for l in relay.log.read_text().splitlines()
                      if l.startswith("refused transit ")
                      and " message-id=" + name + " " in l]
-            self.assertEqual(len(lines), 1, relay["log"].read_text())
+            self.assertEqual(len(lines), 1, relay.log.read_text())
             self.assertIn(" detail=signature-failed verdict=cryptographically-invalid ",
                           lines[0])
             print("NATIVE-REFUSAL-CLASS signature-failed cryptographically-invalid",
                   flush=True)
         finally:
-            for owner in reversed(owners):
-                self.stop_owner(owner)
+            for node, owner in reversed(owners):
+                node.stop(process=owner)
 
     def test_carrying_boundary_without_budget_carries_nothing(self):
         nodes, msgid, source, ed_sig, ml_sig, ok = self._chain(listed=True, budget=None)
         relay = nodes["relay"]
         owners = []
         try:
-            for config in (self.config, relay["config"]):
-                self._start(owners, config)
+            for node in (self.node, relay):
+                self._start(owners, node)
             ok("hybrid-enroll", self.control, "1", self.principal,
                self.ed_public, self.ml_public)
             ok("hybrid-author", self.control, "1", source, ed_sig, ml_sig, self.ml_public)
             want = " message-id=" + msgid + " "
             deadline, lines = time.monotonic() + 60, []
             while time.monotonic() < deadline:
-                lines = [l for l in relay["log"].read_text().splitlines()
+                lines = [l for l in relay.log.read_text().splitlines()
                          if l.startswith("refused transit ") and want in l]
                 if lines:
                     break
                 time.sleep(0.2)
-            self.assertEqual(len(lines), 1, relay["log"].read_text())
+            self.assertEqual(len(lines), 1, relay.log.read_text())
             self.assertIn(" detail=carried-budget-unset ", lines[0])
-            self.assertIsNone(self._hdr(relay["port"], msgid))
+            self.assertIsNone(self._hdr(relay.port, msgid))
         finally:
-            for owner in reversed(owners):
-                self.stop_owner(owner)
+            for node, owner in reversed(owners):
+                node.stop(process=owner)
 
 
 if __name__ == "__main__":

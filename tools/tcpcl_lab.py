@@ -56,7 +56,7 @@ BP_AUTHORED = re.compile(r"^BP authored creation=(\d+) sequence=(\d+) "
 EVENT = re.compile(r"^TCPCL (\S+) (event|aux) (.*)$")
 OUTCOME = re.compile(r"^TCPCL (\S+) (accepted|refused|uncertain) (.*)$")
 
-EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = 0, 1, 3
+from outcome_codes import EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN  # noqa: E402
 
 
 def bundle(length: int, seed: int) -> bytes:

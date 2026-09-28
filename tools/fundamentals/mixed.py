@@ -46,7 +46,7 @@ from pathlib import Path
 T = Path(os.environ["FN_MIXED_TREE"])
 sys.path.insert(0, str(T / "tools")); sys.path.insert(0, str(T))
 import msgid_measure as m
-from tests.native_process import wait_for_announcement
+from tests.native_harness import wait_for_announcement
 
 IMG = Path(os.environ["FN_MIXED_IMAGE"])
 DTN = Path(os.environ["FN_MIXED_DTN"]) if os.environ.get("FN_MIXED_DTN") else None

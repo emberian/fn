@@ -57,50 +57,41 @@ Retired earlier with the per-file layout and the pack chain (design
 """
 
 import os
-from pathlib import Path
 import shutil
-import socket
 import subprocess
 import sys
-import tempfile
 import unittest
 
-from tools import run_store
-from tests.native_process import wait_for_announcement, stop_and_diagnostics
-from tools.wire_stream import whole_stream
+from tests.native_harness import (
+    EXIT_OK, EXIT_REFUSED, Client, Node, assert_outcome, environment, executable,
+    native_image, requires, run, scratch)
 
 
-ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
-PRODUCTION_IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
+PRODUCTION_IMAGE = native_image("FN_NATIVE_HOST")
 
 
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
+@unittest.skipUnless(executable(IMAGE),
                      "build/fn-host-developer is required for raw Store fixtures")
 class NativeCheckpointTests(unittest.TestCase):
     image = IMAGE
 
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-checkpoint-")
-        self.base = Path(self.temporary.name)
+        self.base = scratch(self, "fn-native-checkpoint-")
         self.payload = self.base / "payload"
         self.payload.write_bytes(b"native checkpoint payload\r\n")
-        self.env = dict(os.environ)
-        self.env["ACL2_CUSTOMIZATION"] = "NONE"
-        self.env.pop("ACL2_SYSTEM_BOOKS", None)
-
-    def tearDown(self):
-        self.temporary.cleanup()
+        # The whole environment a verb gets (a caller passes a variant of it).
+        self.env = environment()
+        self.nodes = {}
 
     def native(self, *args, expected=0, env=None):
-        result = subprocess.run(
-            [str(self.image), "--fn", *map(str, args)], cwd=ROOT,
-            env=env or self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=getattr(self, "native_timeout", 30), check=False, text=True)
-        self.assertEqual(result.returncode, expected,
-                         f"native {args} returned {result.returncode}\n"
-                         f"stdout={result.stdout}\nstderr={result.stderr}")
-        return result
+        """`IMAGE --fn ARGS...`, asserted to exit EXPECTED; text streams."""
+        result = run([self.image, "--fn", *args], env=env or self.env,
+                     timeout=getattr(self, "native_timeout", 30))
+        assert_outcome(self, result, expected)
+        return subprocess.CompletedProcess(
+            result.args, result.returncode, result.stdout.decode("utf-8", "replace"),
+            result.stderr.decode("utf-8", "replace"))
 
     def initialized(self, name="store", article=True):
         store = self.base / name
@@ -142,7 +133,7 @@ class NativeCheckpointTests(unittest.TestCase):
         self.native("store", source, "init", "fn.letters")
         target = alias / "target"
         refused = self.native("checkpoint", "clone", source, target,
-                              expected=run_store.EXIT_REFUSED)
+                              expected=EXIT_REFUSED)
         self.assertIn("clone path", refused.stderr)
         self.assertFalse(target.exists())
 
@@ -151,15 +142,8 @@ class NativeCheckpointTests(unittest.TestCase):
                          "run only against a combined E2/T10/checkpoint developer image")
     def test_clone_reopens_historical_authorship_verdict(self):
         source = self.initialized("authored-source", article=False)
-        control = self.base / "author-control.sock"
-        with socket.socket() as probe:
-            probe.bind(("127.0.0.1", 0))
-            port = probe.getsockname()[1]
-        config = self.base / "author.toml"
-        config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-            'port = {}\n[control]\npath = "{}"\n'.format(source, port, control),
-            encoding="ascii")
+        config, _port = self.owner_config(source, "author")
+        control = self.nodes[config].control
         principal = self.base / "principal.bin"
         ed_public = self.base / "ed-public.bin"
         ed_secret = self.base / "ed-secret.bin"
@@ -185,12 +169,8 @@ class NativeCheckpointTests(unittest.TestCase):
             b"Subject: clone historical verdict\r\nMessage-ID: " +
             msgid.encode("ascii") + b"\r\n\r\nexact authored source\r\n")
 
-        owner = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(config), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+        owner = self.run_owner(config)
         try:
-            wait_for_announcement(owner, b"LISTENING ")
             self.native("hybrid-enroll", control, "1", principal,
                         ed_public, ml_public)
             signed = self.native("hybrid-sign", principal, ed_public,
@@ -208,8 +188,7 @@ class NativeCheckpointTests(unittest.TestCase):
                         wrong_ed, ml_public)
             self.consumer_history(control, "authored-worker")
         finally:
-            diagnostic = stop_and_diagnostics(owner, timeout=60)
-            self.assertEqual(owner.returncode, 0, diagnostic)
+            self.stop_owner(owner)
 
         # Compact twice (the log's rotation and the drop of the covered
         # segments; lane log-recovery-2 re-targeted this from the pack
@@ -224,48 +203,24 @@ class NativeCheckpointTests(unittest.TestCase):
         self.assertIn("articles=1",
                       self.native("store", target, "recover").stdout)
 
-        target_control = self.base / "clone-control.sock"
-        with socket.socket() as probe:
-            probe.bind(("127.0.0.1", 0))
-            target_port = probe.getsockname()[1]
-        target_config = self.base / "clone.toml"
-        target_config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-            'port = {}\n[control]\npath = "{}"\n'.format(
-                target, target_port, target_control), encoding="ascii")
-        owner = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(target_config), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+        target_config, target_port = self.owner_config(target, "clone")
+        owner = self.run_owner(target_config)
         try:
-            wait_for_announcement(owner, b"LISTENING ")
-            with socket.create_connection(("127.0.0.1", target_port),
-                                          timeout=30) as sock:
-                with whole_stream(sock) as stream:
-                    self.assertTrue(stream.readline().startswith(b"200 "))
-                    stream.write(("ARTICLE {}\r\n".format(msgid)).encode())
-                    self.assertTrue(stream.readline().startswith(b"220 "))
-                    received = bytearray()
-                    while True:
-                        line = stream.readline()
-                        self.assertTrue(line, "cloned ARTICLE ended early")
-                        if line == b".\r\n":
-                            break
-                        received.extend(line[1:] if line.startswith(b"..") else line)
-                    self.assertIn(b"FN-Authorship: ", bytes(received)[:200])
-                    self.assertTrue(bytes(received).endswith(article.read_bytes()))
-                    carried = self.base / "clone-received.eml"
-                    carried.write_bytes(bytes(received))
-                    self.native("hybrid-verify-carrier", carried, ml_public)
-                    stream.write(("HDR :fn-verified {}\r\n".format(msgid)).encode())
-                    self.assertEqual(stream.readline(), b"225 headers follow\r\n")
-                    self.assertEqual(stream.readline(),
-                                     b"0 verified " + b"55" * 32 +
-                                     b" keyring 1\r\n")
-                    self.assertEqual(stream.readline(), b".\r\n")
+            with Client(target_port, timeout=30, greeting=(b"200",)) as client:
+                received = client.article(msgid)
+                self.assertIsNotNone(received, "cloned ARTICLE was not served")
+                self.assertIn(b"FN-Authorship: ", received[:200])
+                self.assertTrue(received.endswith(article.read_bytes()))
+                carried = self.base / "clone-received.eml"
+                carried.write_bytes(received)
+                self.native("hybrid-verify-carrier", carried, ml_public)
+                self.assertEqual(client.command("HDR :fn-verified {}".format(msgid)),
+                                 b"225 headers follow\r\n")
+                self.assertEqual(client.line(),
+                                 b"0 verified " + b"55" * 32 + b" keyring 1\r\n")
+                self.assertEqual(client.line(), b".\r\n")
         finally:
-            diagnostic = stop_and_diagnostics(owner, timeout=60)
-            self.assertEqual(owner.returncode, 0, diagnostic)
+            self.stop_owner(owner)
 
     def test_retired_generation_verbs_refuse_by_name(self):
         """`checkpoint publish/select/status' refuse by name, naming the state
@@ -277,7 +232,7 @@ class NativeCheckpointTests(unittest.TestCase):
                      ("select", store, "0"), ("status", store)):
             with self.subTest(args=args):
                 refused = self.native("checkpoint", *args,
-                                      expected=run_store.EXIT_REFUSED)
+                                      expected=EXIT_REFUSED)
                 self.assertIn("generation checkpoints are retired on the record log",
                               refused.stderr)
                 self.assertIn("store checkpoint", refused.stderr)
@@ -301,32 +256,21 @@ class NativeCheckpointTests(unittest.TestCase):
         return tree
 
     def owner_config(self, store, name):
-        control = self.base / (name + "-control.sock")
-        with socket.socket() as probe:
-            probe.bind(("127.0.0.1", 0))
-            port = probe.getsockname()[1]
-        config = self.base / (name + ".toml")
-        config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-            'port = {}\n[control]\npath = "{}"\n'.format(store, port, control),
-            encoding="ascii")
-        return config, port
+        """A node serving STORE; its fn.toml and listener port."""
+        node = Node(self, self.image, root=self.base / (name + "-node"))
+        node.store_path = store
+        node.write_config()
+        self.nodes[node.config] = node
+        return node.config, node.port
 
     def run_owner(self, config):
-        process = subprocess.Popen(
-            [str(self.image), "--fn", "operator", str(config), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
         # A class that serves a scale store names its startup deadline
-        # (served_timeout); the helper's 180 s default otherwise.
-        wait_for_announcement(process, b"LISTENING ",
-                              timeout=getattr(self, "served_timeout", 180))
-        return process
+        # (served_timeout); 180 s otherwise.
+        return self.nodes[config].start(timeout=getattr(self, "served_timeout", 180))
 
     def stop_owner(self, process):
-        diagnostic = stop_and_diagnostics(process,
-                                          timeout=getattr(self, "served_timeout", 60))
-        self.assertEqual(process.returncode, 0, diagnostic)
+        status = process.stop(grace=getattr(self, "served_timeout", 60))
+        assert_outcome(self, status, EXIT_OK, log=process)
 
     def operator_post(self, config, msgid, subject):
         article = self.base / ("post-" + subject + ".eml")
@@ -345,40 +289,33 @@ class NativeCheckpointTests(unittest.TestCase):
         """GROUP, every ARTICLE by number and by Message-ID, HDR Subject."""
         owner = self.run_owner(config)
         try:
-            with socket.create_connection(("127.0.0.1", port), timeout=30) as sock:
-                sock.settimeout(getattr(self, "served_timeout", 10))
-                with whole_stream(sock) as stream:
-                    self.assertTrue(stream.readline().startswith(b"200 "))
+            with Client(port, timeout=getattr(self, "served_timeout", 10),
+                        greeting=(b"200",)) as client:
 
-                    def command(line):
-                        stream.write(line.encode("ascii") + b"\r\n")
-                        return stream.readline()
+                def block():
+                    # The served octets, dot-stuffing kept: the view compares them.
+                    lines = []
+                    while True:
+                        line = client.line()
+                        if line == b".\r\n":
+                            return b"".join(lines)
+                        lines.append(line)
 
-                    def block():
-                        lines = []
-                        while True:
-                            line = stream.readline()
-                            self.assertTrue(line, "multi-line response ended early")
-                            if line == b".\r\n":
-                                return b"".join(lines)
-                            lines.append(line)
-
-                    group = command("GROUP fn.letters")
-                    self.assertTrue(group.startswith(b"211 "), group)
-                    _, count, low, high = (int(x) for x in group.split()[:4])
-                    view = {"group": group}
-                    for number in range(low, high + 1):
-                        status = command("ARTICLE {}".format(number))
-                        self.assertTrue(status.startswith(b"220 "), status)
-                        view[number] = (status, block())
-                    for msgid in msgids:
-                        status = command("ARTICLE {}".format(msgid))
-                        self.assertTrue(status.startswith(b"220 "), status)
-                        view[msgid] = (status, block())
-                    status = command("HDR Subject {}-{}".format(low, high))
-                    self.assertTrue(status.startswith(b"225 "), status)
-                    view["hdr"] = block()
-                    command("QUIT")
+                group = client.command("GROUP fn.letters")
+                self.assertTrue(group.startswith(b"211 "), group)
+                _, count, low, high = (int(x) for x in group.split()[:4])
+                view = {"group": group}
+                for number in range(low, high + 1):
+                    status = client.command("ARTICLE {}".format(number))
+                    self.assertTrue(status.startswith(b"220 "), status)
+                    view[number] = (status, block())
+                for msgid in msgids:
+                    status = client.command("ARTICLE {}".format(msgid))
+                    self.assertTrue(status.startswith(b"220 "), status)
+                    view[msgid] = (status, block())
+                status = client.command("HDR Subject {}-{}".format(low, high))
+                self.assertTrue(status.startswith(b"225 "), status)
+                view["hdr"] = block()
         finally:
             self.stop_owner(owner)
         return view
@@ -406,8 +343,7 @@ class NativeCheckpointTests(unittest.TestCase):
                 self.assertEqual(grown[key], value)
 
 
-@unittest.skipUnless(PRODUCTION_IMAGE.is_file() and os.access(PRODUCTION_IMAGE, os.X_OK),
-                     "build/fn-host (the production image) is required")
+@requires(PRODUCTION_IMAGE)
 class NativeProductionCompactTests(unittest.TestCase):
     """`operator CONFIG store compact' on the production image (M5).
 
@@ -416,7 +352,6 @@ class NativeProductionCompactTests(unittest.TestCase):
     """
     image = PRODUCTION_IMAGE
     setUp = NativeCheckpointTests.setUp
-    tearDown = NativeCheckpointTests.tearDown
     native = NativeCheckpointTests.native
     owner_config = NativeCheckpointTests.owner_config
     run_owner = NativeCheckpointTests.run_owner

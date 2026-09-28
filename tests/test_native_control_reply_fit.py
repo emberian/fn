@@ -26,14 +26,12 @@ Run on hbox with FN_NATIVE_HOST naming the image under test.
 import hashlib
 import unittest
 
-from tests import test_native_operator_verbs as verbs
+from tests.native_harness import EXIT_OK, EXIT_REFUSED, ROOT
 # The harness stores' init budget (tools/native_env.py): init refuses a
 # store without FN_INIT_BUDGET_MB on a large machine (batch AZ, 2026-09-28).
-from tools.native_env import harness_store_env  # noqa: E402
+from tools.native_env import HARNESS_INIT_BUDGET_MB  # noqa: E402
 from tests.native_profile_fixture import ProfileFixture as ProfileUpgradeFixture
 
-ROOT = verbs.ROOT
-EXIT_OK, EXIT_REFUSED = verbs.EXIT_OK, verbs.EXIT_REFUSED
 CEILING = 4294966940          # *fn-stxa-max-octets*
 PAST = CEILING + 1
 NAME = b"max-record-octets-above-the-poll-reply"
@@ -65,12 +63,12 @@ class ControlReplyFitFixture(ProfileUpgradeFixture):
         return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
 
     def serves(self, tag):
-        owner = self.start_owner(self.image)
+        self.node.start(image=self.image)
         try:
             self.assertEqual(self.post_many(["<fit-{}@example.invalid>".format(tag)]),
                              ["240 article received OK"])
         finally:
-            self.stop(owner)
+            self.node.stop()
 
 
 class ControlReplyFitTests(ControlReplyFitFixture):
@@ -80,7 +78,7 @@ class ControlReplyFitTests(ControlReplyFitFixture):
         # above the ceiling profile's reservation (about 110 TB) so that the
         # budget check, which init runs first, admits both and the named
         # refusal is the one under test (batch AZ, 2026-09-28).
-        budget = harness_store_env(dict(verbs.environment(), FN_INIT_BUDGET_MB="200000000"))
+        budget = {"FN_INIT_BUDGET_MB": "200000000"}
         refused = self.op("init", "--max-record-octets", str(PAST),
                           "--max-history-octets", str(PAST), "fn.test", env=budget)
         print(refused.stderr.decode(errors="replace"), flush=True)
@@ -134,12 +132,6 @@ class ProfileOpenRefusalTests(ControlReplyFitFixture):
                 for p in sorted(self.store.rglob("*"))
                 if p.is_file() and p.name != "writer.lock"}
 
-    def run_owner(self):
-        import subprocess
-        return subprocess.run([str(self.image), "--fn", "operator", str(self.config), "run"],
-                              cwd=ROOT, env=harness_store_env(verbs.environment()), stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, timeout=180, check=False)
-
     def assert_named(self, result, what):
         out = (result.stdout + result.stderr).decode("utf-8", "replace")
         print("$", what, "->", result.returncode, "\n" + out.strip(), flush=True)
@@ -160,7 +152,8 @@ class ProfileOpenRefusalTests(ControlReplyFitFixture):
                           "operator store inspect")
         self.assert_named(self.op("store", "checkpoint"), "operator store checkpoint")
         self.assert_named(self.op("health"), "operator health")
-        self.assert_named(self.run_owner(), "operator run")
+        self.assert_named(self.op("run", env={"FN_INIT_BUDGET_MB": HARNESS_INIT_BUDGET_MB}),
+                          "operator run")
         self.assert_named(self.store_cli("recover"), "store recover")
         self.assert_named(self.store_cli("inspect", "<fit-window@example.invalid>"),
                           "store inspect")
