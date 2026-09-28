@@ -276,7 +276,12 @@ the public-node rehearsal). The
 small preset has no `--profile` word (PKT-581); name its fields:
 `--max-transactions 16384 --max-history-octets 8388608 --max-record-octets
 196608 --max-article-octets 32768 --max-groups-per-article 16
---max-open-suffix 128`. A store's bounds rise only through `store export`
+--max-open-suffix 128`. A native test node that must hold more than
+1,024 articles inside a 24 GiB test scope: `--max-transactions 20000
+--max-history-octets 67108864` (reservation 8,579 MB at ea2cc5121); naming
+T alone keeps the default H and R, whose full store asks 11,542,339 MB and
+is refused (planning/evidence/init-reservation-2026-09-28.md has the table,
+and the synthesized fixtures' profiles). A store's bounds rise only through `store export`
 and `store import --FIELD N`; each command's launcher re-sizes the heap from
 the store it opens, and refuses by name one whose replay the machine cannot
 hold.

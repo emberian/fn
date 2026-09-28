@@ -205,9 +205,7 @@ def recipe_posted(ctx: Context, script: str, n: int) -> None:
     else:
         ctx.run([PY, TREE / EVIDENCE / "post-identity-index-2026-09-26/postmeasure.py", "load",
                  ctx.image, work, n], env=env)
-    load = json.loads((work / "load.json").read_text())
-    if load.get("init_rc") != 0 or load.get("n") != n:
-        raise RuntimeError("load.json: init_rc={} n={}".format(load.get("init_rc"), load.get("n")))
+    check_load(work, n)
     copy_entries(work, ctx.dest, ["store"])
     shutil.copy2(work / "load.json", ctx.dest / "origin.json")
 
@@ -257,24 +255,51 @@ def recipe_rep_store(ctx: Context, n: int, octets: int) -> None:
                                          and not p.name.endswith(".sock")))
 
 
-# The synthesized stores' seed: CAPACITY with room for 1M x 2 KiB articles in
-# the profile (T 4,000,000; H 8 GB), its configured capacity raised to
-# 4,000,000 units (capseed.py: a 2 KiB article is charged 2 units).
-CAPACITY_SYNTH = ("--max-transactions", "4000000", "--max-history-octets", "8000000000",
-                  "--max-open-suffix", "65536", "--max-record-octets", "17138486",
-                  "--max-article-octets", "32768", "--max-groups-per-article", "65535")
+# The synthesized stores' seeds: profiles with room for N x 2 KiB articles
+# whose init reservation (books/heap-reservation.lisp fn-heap-init-decide: the
+# FULL store's run at T and H) the fixture's scope holds; the old single
+# CAPACITY_SYNTH (T 4,000,000, H 8 GB, R 17 MB) asks 188,365 MB since the init
+# budget check (ax-fix-init-budget) and init refuses it, which left the
+# recipe with no store (extract-2, 2026-09-27).  Measured on hbox with the
+# dev image ea2cc5121 (lane-tools-1-fx): SYNTH_100K reserves 10,078 MB
+# (a 24 GiB scope holds it), SYNTH_1M 57,158 MB (an 80 GiB scope; a consumer opens a copy in
+# one at least that size).  R 196,608 is the small preset's record bound (a
+# 2 KiB article's record is about 2.9 KB); H holds N records with margin.
+# K stays 65,536: the owner's automatic checkpoint rotates the log every K
+# records, and synth_log_store needs the seed's whole history in one
+# segment (K 128 left the seed's journal at 000007.log; the reservation is
+# the same either way).
+SYNTH_SMALL_BOUNDS = ("--max-record-octets", "196608", "--max-article-octets", "32768",
+                      "--max-groups-per-article", "16", "--max-open-suffix", "65536")
+SYNTH_100K = ("--max-transactions", "131072", "--max-history-octets", "536870912",
+              *SYNTH_SMALL_BOUNDS)
+SYNTH_1M = ("--max-transactions", "1048576", "--max-history-octets", "2800000000",
+            *SYNTH_SMALL_BOUNDS)
 
 
-def recipe_synth(ctx: Context, n: int) -> None:
+def check_load(work: Path, n: int) -> dict:
+    """The load phase's load.json, refused unless init succeeded and N posted."""
+    try:
+        load = json.loads((work / "load.json").read_text())
+    except (OSError, ValueError) as error:
+        raise RuntimeError("load.json unreadable in {}: {}".format(work, error))
+    if load.get("init_rc") != 0 or load.get("n") != n:
+        raise RuntimeError("load.json: init_rc={} n={} init: {}".format(
+            load.get("init_rc"), load.get("n"), (load.get("init_tail") or "").strip()))
+    return load
+
+
+def recipe_synth(ctx: Context, n: int, flags: tuple) -> None:
     """tools/synth_log_store.py: a seed of 1,000 POSTed 2 KiB articles (the
-    n1k-2k recipe under CAPACITY_SYNTH, then capacity 4,000,000), renumbered
+    n1k-2k recipe under FLAGS, then capacity 4,000,000), renumbered
     to N article records written as the log directly (batch-8 entries, no
     checkpoint): the first open is a full replay of N records
     (planning/evidence/snapshot-open-2-2026-09-27.md section 5)."""
     work = ctx.work / "seed"
-    env = dict(ctx.env, FN_FIXTURE_INIT_FLAGS=" ".join(CAPACITY_SYNTH))
+    env = dict(ctx.env, FN_FIXTURE_INIT_FLAGS=" ".join(flags))
     ctx.run([PY, TREE / EVIDENCE / "post-identity-index-2026-09-26/postmeasure.py", "load",
              ctx.image, work, 1000], env=env)
+    check_load(work, 1000)
     ctx.run([PY, TREE / EVIDENCE / "snapshot-open-3-2026-09-27/capseed.py", ctx.image,
              work / "store", 4000000])
     # The seed's history is its journal: no checkpoint goes into the copy.
@@ -284,6 +309,7 @@ def recipe_synth(ctx: Context, n: int) -> None:
     ctx.run([PY, TREE / "tools/synth_log_store.py", work / "store", ctx.dest / "store", n,
              "--batch", 8])
     (ctx.dest / "store" / "writer.lock").unlink(missing_ok=True)
+    shutil.copy2(work / "load.json", ctx.dest / "seed-load.json")
 
 
 def recipe_bp_open(ctx: Context) -> None:
@@ -344,15 +370,18 @@ REGISTRY = [
             readme="SCN-077's first half (1,311 held rows): pre-rotation.tar and post-rotation.tar "
                    "of the BP journal t/, built by fixture.py; measure.py LABEL TREE IMAGE times "
                    "the three opens."),
-    Fixture("syn100k-2k", lambda c: recipe_synth(c, 100000), mem="40G",
+    Fixture("syn100k-2k", lambda c: recipe_synth(c, 100000, SYNTH_100K), mem="24G",
             readme="100,000 x 2 KiB article records synthesized as the log (tools/synth_log_store.py "
-                   "from a 1,000-article seed, capacity 4,000,000, batch-8 entries, no checkpoint): "
-                   "the open is a full replay (OWNER-OPEN open=full-replay). Copy store/ and touch "
-                   "writer.lock (mode 600) before use."),
-    Fixture("syn1m-2k", lambda c: recipe_synth(c, 1000000), mem="40G",
-            readme="1,000,000 x 2 KiB article records, as syn100k-2k (2.56 GB of entries). A full "
-                   "replay: run it in a unit with MemoryMax (the open's peak was 9.2 GB on the "
-                   "list walk)."),
+                   "from a 1,000-article seed initialized with SYNTH_100K: T 131072, H 512 MiB, "
+                   "R 196608, A 32768, G 16, K 65536; init reservation 10,078 MB; capacity "
+                   "4,000,000, batch-8 entries, no checkpoint): the open is a full replay "
+                   "(OWNER-OPEN open=full-replay). Copy store/ and touch writer.lock (mode 600) "
+                   "before use; seed-load.json is the seed's init line."),
+    Fixture("syn1m-2k", lambda c: recipe_synth(c, 1000000, SYNTH_1M), mem="80G",
+            readme="1,000,000 x 2 KiB article records, as syn100k-2k (2.56 GB of entries), seed "
+                   "initialized with SYNTH_1M: T 1048576, H 2,800,000,000, the same R A G K; its "
+                   "init reservation is 57,158 MB, so open a copy under MemoryMax 80G (a 40G or "
+                   "24G scope refuses it: machine-cannot-hold-profile)."),
     Fixture("usenet-20news-19997", static=True,
             readme="The 20 Newsgroups corpus (a corpus, not a store): verified, never rebuilt."),
 ]
@@ -503,6 +532,11 @@ def cmd_opens(args) -> int:
         for rel in fixture.stores:
             copy = work / "copy" / rel.replace("/", "-").replace(".", "self")
             shutil.copytree(source / rel, copy, symlinks=True)
+            # A fixture made without a lock file (syn100k-2k, syn1m-2k) is
+            # used as its README says: the copy gets writer.lock, mode 600.
+            lock = copy / "writer.lock"
+            if not lock.exists():
+                lock.touch(mode=0o600)
             ctx = Context(image, "", work / "ctx", copy, fixture.mem)
             started = time.time()
             try:
