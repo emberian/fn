@@ -164,20 +164,23 @@
 (assert-event
  (equal (fn-wire-result-events *fn-wire-body-overlimit*) '((:reject :body-overlimit))))
 
-; The carried counters are the measurements they stand for, at a nondegenerate
-; retained state: four retained line octets and two retained body lines.
+; The carried counters, at a nondegenerate retained state: four octets of the
+; current line and two completed lines, all in the article's store
+; (books/body-chunks.lisp, lane chunked-body): the store holds the two lines
+; with their CR LF and the current line's four octets.
 (defconst *fn-wire-carry-state*
   (fn-wire-result-state
    (fn-wire-feed *fn-wire-article-start*
                  '(97 98 13 10 99 100 13 10 101 102 103 104))))
 (assert-event (fn-wire-statep *fn-wire-carry-state*))
 (assert-event (equal (fn-wire-state-line-len *fn-wire-carry-state*) 4))
-(assert-event (equal (fn-wire-state-line-len *fn-wire-carry-state*)
-                     (len (fn-wire-state-line-rev *fn-wire-carry-state*))))
+(assert-event (null (fn-wire-state-line-rev *fn-wire-carry-state*)))
+(assert-event (equal (fn-wire-partial-len *fn-wire-carry-state*) 4))
 (assert-event (equal (fn-wire-state-body-size *fn-wire-carry-state*) 8))
-(assert-event (equal (fn-wire-state-body-size *fn-wire-carry-state*)
-                     (fn-wire-lines-size
-                      (fn-wire-state-body-rev *fn-wire-carry-state*))))
+(assert-event (equal (fn-bch-length (fn-wire-state-body-rev *fn-wire-carry-state*)) 12))
+(assert-event (equal (fn-wire-body-lines *fn-wire-carry-state*) '((97 98) (99 100))))
+(assert-event (equal (fn-bch-octets (fn-wire-state-body-rev *fn-wire-carry-state*))
+                     '(97 98 13 10 99 100 13 10 101 102 103 104)))
 
 ; The executable partition law is exercised with an article split inside its
 ; CRLF and a separately chunked continuation.
@@ -359,46 +362,43 @@
          (fn-wire-result-state *fn-wire-outbound-roundtrip*))
         :command))
 
-; Teeth for fn-wire-after-line-unstuffs-rendered-source-line.  A dot-only
-; source becomes two dots on the wire and is retained as one literal dot;
-; removing the body-bound hypothesis instead reaches the real close branch.
+; Teeth for fn-wire-feed-proper-of-article-line-start (books/wire-invariants).
+; A line-leading dot is counted and dropped; the rest goes into the store.
 (assert-event
- (equal (fn-wire-after-line *fn-wire-article-start* '(46 46))
+ (equal (fn-wire-feed-proper *fn-wire-article-start* '(46 46))
         (fn-wire-make-result
-         (fn-wire-make-state :article nil 0 '((46)) nil 3 32 64)
+         (fn-wire-make-state :article nil 2 (fn-bch-push-list (fn-bch-empty) '(46))
+                             nil 0 32 64)
          nil)))
-(assert-event
- (not (equal
-       (fn-wire-after-line
-        (fn-wire-result-state
-         (fn-wire-begin-article (fn-wire-initial-state 32 2)))
-        '(97))
-       (fn-wire-make-result
-        (fn-wire-make-state :article nil 0 '((97)) nil 3 32 2)
-        nil))))
-
-; Teeth for the actual byte-line composition theorem.  Its good witness is a
-; dot-only source through the byte feeder.  Without the carried line-capacity
-; premise the served transition closes at the second octet; without clean-line
-; content a bare LF closes rather than reaching fn-wire-after-line.
-(assert-event
- (equal
-  (fn-wire-feed-proper *fn-wire-article-start* '(46 46 13 10))
-  (fn-wire-after-line (fn-wire-clear-line-state *fn-wire-article-start*)
-                      '(46 46))))
+; CR LF completes it: the store holds ". CR LF", charged three octets, and the
+; completed line is the literal dot (fn-wire-after-line-completes-article-line).
+(defconst *fn-wire-dot-line*
+  (fn-wire-result-state (fn-wire-feed-proper *fn-wire-article-start* '(46 46 13 10))))
+(assert-event (and (fn-wire-statep *fn-wire-dot-line*)
+                   (equal (fn-wire-state-body-size *fn-wire-dot-line*) 3)
+                   (equal (fn-wire-body-lines *fn-wire-dot-line*) '((46)))
+                   (equal (fn-wire-state-line-len *fn-wire-dot-line*) 0)))
+; Hypothesis removal (the line limit): one octet of room and two octets close
+; the wire at the second.
 (defconst *fn-wire-line-cap-one*
   (fn-wire-result-state
    (fn-wire-begin-article (fn-wire-initial-state 1 64))))
 (assert-event
- (not (equal
-       (fn-wire-feed-proper *fn-wire-line-cap-one* '(97 98 13 10))
-       (fn-wire-after-line (fn-wire-clear-line-state *fn-wire-line-cap-one*)
-                           '(97 98)))))
+ (and (< 1 (len '(97 98)))
+      (equal (fn-wire-result-events (fn-wire-feed-proper *fn-wire-line-cap-one* '(97 98)))
+             '((:reject :line-overlimit)))))
+; Hypothesis removal (line content): a bare LF closes instead.
 (assert-event
- (not (equal
-       (fn-wire-feed-proper *fn-wire-article-start* '(97 10 13 10))
-       (fn-wire-after-line (fn-wire-clear-line-state *fn-wire-article-start*)
-                           '(97 10)))))
+ (equal (fn-wire-result-events (fn-wire-feed-proper *fn-wire-article-start* '(97 10)))
+        '((:reject :malformed))))
+; Hypothesis removal (the body limit, fn-wire-after-line-completes-article-line):
+; a limit of two and a line costing three close the wire at its LF.
+(assert-event
+ (equal (fn-wire-result-events
+         (fn-wire-feed-proper
+          (fn-wire-result-state (fn-wire-begin-article (fn-wire-initial-state 32 2)))
+          '(97 13 10)))
+        '((:reject :body-overlimit))))
 
 ; Empty source is a valid empty NNTP block, and is distinct from malformed
 ; source.  It is the zero-line article accepted by the inbound wire machine.

@@ -824,14 +824,14 @@
 ; -----------------------------------------------------------------------------
 ; One-byte input and incremental feeding
 
-; A line ended (CR LF).  In command mode LINE is the command.  In article
+; A line ended (CR LF).  Outside article mode LINE is the command.  In article
 ; mode the line is already in the store (LINE is not read): the line "." ends
 ; the article, and any other line is completed -- its CR LF appended and
 ; charged -- within the body limit, else the connection closes.
 (defun fn-wire-after-line (wire-state line)
   (declare (xargs :guard (fn-wire-fast-statep wire-state)
                   :verify-guards nil))
-  (if (equal (fn-wire-state-mode wire-state) :command)
+  (if (not (equal (fn-wire-state-mode wire-state) :article))
       (fn-wire-make-result
        (fn-wire-make-state :command nil 0 nil nil 0
                            (fn-wire-state-line-limit wire-state)
@@ -883,6 +883,11 @@
                         (fn-wire-state-body-size wire-state)
                         (fn-wire-state-line-limit wire-state)
                         (fn-wire-state-body-limit wire-state))))
+
+(defthm fn-wire-take-octet-mode
+  (equal (fn-wire-state-mode (fn-wire-take-octet wire-state byte))
+         (fn-wire-state-mode wire-state))
+  :hints (("Goal" :in-theory (enable fn-wire-take-octet))))
 
 ; The per-byte step of the served path.  Every branch reads carried scalars and
 ; conses at most one octet: it runs no recognizer over the retained line, the

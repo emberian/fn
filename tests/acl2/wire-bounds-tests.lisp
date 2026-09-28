@@ -121,11 +121,12 @@
 (defconst *wb-w1* (fn-served-conn-wire (fn-served-result-conn *wb-in-flight*)))
 (assert-event (fn-wire-statep (fn-served-conn-wire *wb-conn*)))
 (assert-event (equal (fn-wire-state-mode *wb-w1*) :article))
-(assert-event (< 0 (fn-wire-lines-size (fn-wire-state-body-rev *wb-w1*))))
-(assert-event (<= (fn-wire-lines-size (fn-wire-state-body-rev *wb-w1*))
+(assert-event (< 0 (fn-wire-state-body-size *wb-w1*)))
+(assert-event (<= (fn-wire-state-body-size *wb-w1*)
                   (fn-wire-state-body-limit (fn-served-conn-wire *wb-conn*))))
-(assert-event (<= (len (fn-wire-state-line-rev *wb-w1*))
-                  (fn-tb-wire-ceiling (fn-served-conn-wire *wb-conn*))))
+(assert-event (<= (fn-wire-held-octets *wb-w1*)
+                  (+ (fn-wire-state-body-limit (fn-served-conn-wire *wb-conn*))
+                     (fn-tb-wire-ceiling (fn-served-conn-wire *wb-conn*)))))
 
 (defconst *wb-body-line* (append (wb-o "body line") '(13 10)))
 (defconst *wb-endless*
@@ -136,7 +137,7 @@
                                 *wb-body-line* *wb-body-line*)))
 (defconst *wb-w2* (fn-served-conn-wire (fn-served-result-conn *wb-endless*)))
 (assert-event (equal (fn-wire-state-mode *wb-w2*) :closed))
-(assert-event (equal (fn-wire-lines-size (fn-wire-state-body-rev *wb-w2*)) 0))
+(assert-event (equal (fn-wire-state-body-size *wb-w2*) 0))
 (assert-event (equal (fn-served-reply-octets (fn-served-result-effects *wb-endless*))
                      (append (wb-o "340 send article to be posted") '(13 10)
                              (wb-o "441 posting failed; the article exceeds the configured size")
@@ -144,18 +145,18 @@
 (assert-event (fn-served-closingp (fn-served-result-effects *wb-endless*)))
 
 ; Hypothesis removed: a wire that is not a wire state -- an article record
-; holding 100 octets under a limit of 10 -- keeps them through a run, so
+; holding a 100-octet line under a limit of 10 -- keeps it through a run, so
 ; the conclusion fails.  (A corrupted-state witness: no open builds it.)
 (defconst *wb-bad-wire*
-  (fn-wire-make-state :article nil 0 (list (make-list 100 :initial-element 65))
+  (fn-wire-make-state :article nil 0
+                      (fn-bch-of (append (make-list 100 :initial-element 65) '(13 10)))
                       nil 102 510 10))
 (defconst *wb-bad-conn* (fn-served-conn-with-wire *wb-conn* *wb-bad-wire*))
 (assert-event (not (fn-wire-statep (fn-served-conn-wire *wb-bad-conn*))))
 (assert-event
- (not (<= (fn-wire-lines-size
-           (fn-wire-state-body-rev
-            (fn-served-conn-wire
-             (fn-served-result-conn (in-arena-fn-served-run *wb-arena* *wb-bad-conn* nil)))))
+ (not (<= (fn-wire-state-body-size
+           (fn-served-conn-wire
+            (fn-served-result-conn (in-arena-fn-served-run *wb-arena* *wb-bad-conn* nil))))
           (fn-wire-state-body-limit (fn-served-conn-wire *wb-bad-conn*)))))
 
 ; -----------------------------------------------------------------------------

@@ -26,6 +26,7 @@
 
 (in-package "ACL2")
 (include-book "wire-span")
+(include-book "body-chunks-span")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -91,24 +92,35 @@
   :hints (("Goal" :expand ((fn-wscan-revonto i k acc fn-octets)))))
 
 ; The wire state after the run [I, K): the reference state after K - I
-; ordinary octets, built once.
+; ordinary octets, built once.  In article mode the run goes into the body's
+; store straight from the buffer (books/body-chunks-span.lisp: packed a block
+; at a time, no list of it built); in command mode it is consed onto the line.
 (defun fn-wscan-after-run (wire-state i k fn-octets)
   (declare (xargs :stobjs fn-octets
                   :guard (and (fn-wire-fast-statep wire-state)
                               (natp i) (natp k) (<= i k)
                               (<= k (fn-octets-len fn-octets)))))
-  (fn-wire-make-state (fn-wire-state-mode wire-state)
-                      (fn-wscan-revonto i k (fn-wire-state-line-rev wire-state)
-                                        fn-octets)
-                      (+ (fn-wire-state-line-len wire-state) (- k i))
-                      (fn-wire-state-body-rev wire-state)
-                      nil
-                      (fn-wire-state-body-size wire-state)
-                      (fn-wire-state-line-limit wire-state)
-                      (fn-wire-state-body-limit wire-state)))
+  (if (equal (fn-wire-state-mode wire-state) :article)
+      (fn-wire-make-state :article nil
+                          (+ (fn-wire-state-line-len wire-state) (- k i))
+                          (fn-bchs-push-span (fn-wire-state-body-rev wire-state) i k fn-octets)
+                          nil
+                          (fn-wire-state-body-size wire-state)
+                          (fn-wire-state-line-limit wire-state)
+                          (fn-wire-state-body-limit wire-state))
+    (fn-wire-make-state (fn-wire-state-mode wire-state)
+                        (fn-wscan-revonto i k (fn-wire-state-line-rev wire-state)
+                                          fn-octets)
+                        (+ (fn-wire-state-line-len wire-state) (- k i))
+                        (fn-wire-state-body-rev wire-state)
+                        nil
+                        (fn-wire-state-body-size wire-state)
+                        (fn-wire-state-line-limit wire-state)
+                        (fn-wire-state-body-limit wire-state))))
 
 ; Whether the octet at I starts a run: an open wire with no pending CR, room
-; on the line, and an ordinary octet.
+; on the line, and an ordinary octet -- but not an article line's leading
+; dot, which the byte step counts and drops.
 (defun fn-wscan-runp (wire-state i fn-octets)
   (declare (xargs :stobjs fn-octets
                   :guard (and (fn-wire-fast-statep wire-state)
@@ -119,7 +131,10 @@
        (natp (fn-wire-state-line-limit wire-state))
        (< (fn-wire-state-line-len wire-state)
           (fn-wire-state-line-limit wire-state))
-       (fn-wscan-ordinaryp (fn-octets-get i fn-octets))))
+       (fn-wscan-ordinaryp (fn-octets-get i fn-octets))
+       (not (and (equal (fn-wire-state-mode wire-state) :article)
+                 (equal (fn-wire-state-line-len wire-state) 0)
+                 (equal (fn-octets-get i fn-octets) 46)))))
 
 (local
  (defthm fn-wscan-plain-end-within-limit
@@ -241,8 +256,10 @@
          (let* ((k (fn-wscan-plain-end i end (fn-wire-state-line-len wire-state)
                                        (fn-wire-state-line-limit wire-state)
                                        fn-octets))
-                (r (fn-wire-after-line wire-state
-                                       (fn-wscan-slice-onto i k nil fn-octets))))
+                (r (if (equal (fn-wire-state-mode wire-state) :article)
+                       (fn-wire-after-line (fn-wscan-after-run wire-state i k fn-octets) nil)
+                     (fn-wire-after-line wire-state
+                                         (fn-wscan-slice-onto i k nil fn-octets)))))
            (if (consp (fn-wire-result-events r))
                (fn-wsp-make (fn-wire-result-state r) (fn-wire-result-events r)
                             (+ 2 k))
@@ -335,8 +352,8 @@
                    x))
    :hints (("Goal" :use fn-wscan-make-state-of-fields))))
 
-; One ordinary octet through the reference step: the octet consed onto the
-; line, no event.
+; One ordinary octet through the reference step: fn-wire-take-octet, no
+; event.
 (local
  (defthm fn-wscan-feed-byte-ordinary
    (implies (and (not (equal (fn-wire-state-mode wire-state) :closed))
@@ -345,66 +362,117 @@
                     (fn-wire-state-line-limit wire-state))
                  (fn-wscan-ordinaryp byte))
             (equal (fn-wire-feed-byte wire-state byte)
-                   (fn-wire-make-result
-                    (fn-wire-make-state (fn-wire-state-mode wire-state)
-                                        (cons byte (fn-wire-state-line-rev wire-state))
-                                        (+ 1 (fn-wire-state-line-len wire-state))
-                                        (fn-wire-state-body-rev wire-state)
-                                        nil
-                                        (fn-wire-state-body-size wire-state)
-                                        (fn-wire-state-line-limit wire-state)
-                                        (fn-wire-state-body-limit wire-state))
-                    nil)))
+                   (fn-wire-make-result (fn-wire-take-octet wire-state byte) nil)))
    :hints (("Goal" :in-theory (enable fn-wire-feed-byte)))))
 
-; The induction for the run: the octet index, the line length and the wire
-; state move together.
+; The run's first octet taken by the byte step, the rest by the run.
+(local
+ (defthm fn-wscan-after-run-step
+   (implies (and (fn-wscan-runp ws i fn-octets)
+                 (natp i) (natp k) (< i k))
+            (equal (fn-wscan-after-run (fn-wire-take-octet ws (fn-octets-get i fn-octets))
+                                       (+ 1 i) k fn-octets)
+                   (fn-wscan-after-run ws i k fn-octets)))
+   :hints (("Goal" :in-theory (e/d (fn-wscan-runp fn-wscan-after-run fn-wire-take-octet)
+                                   (fn-wscan-ordinaryp))
+                   :expand ((fn-bchs-slice i k fn-octets))))))
+
+(local
+ (defthm fn-wscan-after-run-empty-fields
+   (implies (and (natp (fn-wire-state-line-len ws))
+                 (or (not (equal (fn-wire-state-mode ws) :article))
+                     (null (fn-wire-state-line-rev ws))))
+            (equal (fn-wscan-after-run ws i i fn-octets)
+                   (fn-wire-make-state (fn-wire-state-mode ws)
+                                       (fn-wire-state-line-rev ws)
+                                       (fn-wire-state-line-len ws)
+                                       (fn-wire-state-body-rev ws)
+                                       nil
+                                       (fn-wire-state-body-size ws)
+                                       (fn-wire-state-line-limit ws)
+                                       (fn-wire-state-body-limit ws))))
+   :hints (("Goal" :in-theory (enable fn-wscan-after-run)))))
+
+(local
+ (defthm fn-wscan-after-run-empty
+   (implies (and (fn-wire-state-shapep ws)
+                 (not (fn-wire-state-pending-crp ws))
+                 (natp (fn-wire-state-line-len ws))
+                 (or (not (equal (fn-wire-state-mode ws) :article))
+                     (null (fn-wire-state-line-rev ws))))
+            (equal (fn-wscan-after-run ws i i fn-octets) ws))
+   :hints (("Goal" :in-theory (disable fn-wscan-after-run-empty-fields)
+                   :use ((:instance fn-wscan-after-run-empty-fields)
+                         (:instance fn-wscan-make-state-of-fields-no-cr (x ws)))))))
+
+(local
+ (defthm fn-wscan-take-octet-shape
+   (and (fn-wire-state-shapep (fn-wire-take-octet ws x))
+        (not (fn-wire-state-pending-crp (fn-wire-take-octet ws x)))
+        (equal (fn-wire-state-mode (fn-wire-take-octet ws x))
+               (fn-wire-state-mode ws))
+        (equal (fn-wire-state-line-len (fn-wire-take-octet ws x))
+               (+ 1 (fn-wire-state-line-len ws)))
+        (equal (fn-wire-state-line-limit (fn-wire-take-octet ws x))
+               (fn-wire-state-line-limit ws))
+        (equal (fn-wire-state-line-rev (fn-wire-take-octet ws x))
+               (if (equal (fn-wire-state-mode ws) :article)
+                   nil
+                 (cons x (fn-wire-state-line-rev ws)))))
+   :hints (("Goal" :in-theory (enable fn-wire-take-octet)))))
+
+(local
+ (defthm fn-wscan-after-run-one
+   (implies (and (fn-wscan-runp ws i fn-octets) (natp i)
+                 (equal k (+ 1 i)))
+            (equal (fn-wscan-after-run ws i k fn-octets)
+                   (fn-wire-take-octet ws (fn-octets-get i fn-octets))))
+   :hints (("Goal" :use ((:instance fn-wscan-after-run-step (k (+ 1 i)))
+                         (:instance fn-wscan-after-run-empty
+                                    (ws (fn-wire-take-octet ws (fn-octets-get i fn-octets)))
+                                    (i (+ 1 i))))
+                   :in-theory (e/d (fn-wscan-runp)
+                                   (fn-wscan-after-run-step fn-wscan-after-run-empty
+                                    fn-wscan-after-run fn-wire-take-octet))))))
+
+; The induction for the run: the octet index and the wire state move
+; together, a byte step at a time.
 (local
  (defun fn-wscan-run-ind (ws i end fn-octets)
    (declare (xargs :stobjs fn-octets :measure (nfix (- end i))
                    :verify-guards nil))
    (if (or (not (natp i)) (not (natp end)) (>= i end)
-           (not (natp (fn-wire-state-line-len ws)))
-           (not (natp (fn-wire-state-line-limit ws)))
-           (>= (fn-wire-state-line-len ws) (fn-wire-state-line-limit ws))
-           (not (fn-wscan-ordinaryp (fn-octets-get i fn-octets))))
+           (not (fn-wscan-runp ws i fn-octets)))
        (list ws i end)
-     (fn-wscan-run-ind
-      (fn-wire-make-state (fn-wire-state-mode ws)
-                          (cons (fn-octets-get i fn-octets)
-                                (fn-wire-state-line-rev ws))
-                          (+ 1 (fn-wire-state-line-len ws))
-                          (fn-wire-state-body-rev ws)
-                          nil
-                          (fn-wire-state-body-size ws)
-                          (fn-wire-state-line-limit ws)
-                          (fn-wire-state-body-limit ws))
-      (+ 1 i) end fn-octets))))
+     (fn-wscan-run-ind (fn-wire-take-octet ws (fn-octets-get i fn-octets))
+                       (+ 1 i) end fn-octets))))
 
 (local
- (defthm fn-wscan-span-fold-over-run-shape
-   (implies (and (fn-wire-state-shapep ws)
-                 (not (equal (fn-wire-state-mode ws) :closed))
-                 (not (fn-wire-state-pending-crp ws))
-                 (natp (fn-wire-state-line-len ws))
-                 (natp (fn-wire-state-line-limit ws))
-                 (natp i) (natp end) (<= i end))
-            (equal (fn-wire-span-fold
-                    (fn-wscan-after-run
-                     ws i
-                     (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
-                                         (fn-wire-state-line-limit ws)
-                                         fn-octets)
-                     fn-octets)
-                    (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
-                                        (fn-wire-state-line-limit ws)
-                                        fn-octets)
-                    end fn-octets)
-                   (fn-wire-span-fold ws i end fn-octets)))
-   :hints (("Goal" :induct (fn-wscan-run-ind ws i end fn-octets)
-            :in-theory (e/d (fn-wscan-after-run)
-                            (fn-wire-feed-byte fn-wscan-ordinaryp)))
-           ("Subgoal *1/2" :expand ((fn-wire-span-fold ws i end fn-octets))))))
+ (defthm fn-wscan-plain-end-step-back
+   (implies (and (natp i) (natp end) (< i end) (natp len) (natp limit) (< len limit)
+                 (fn-wscan-ordinaryp (fn-octets-get i fn-octets)))
+            (equal (fn-wscan-plain-end (+ 1 i) end (+ 1 len) limit fn-octets)
+                   (fn-wscan-plain-end i end len limit fn-octets)))
+   :hints (("Goal" :expand ((fn-wscan-plain-end i end len limit fn-octets))))))
+
+(local
+ (defthm fn-wscan-plain-end-one
+   (implies (and (natp i) (natp end) (< i end) (natp len) (natp limit) (< len limit)
+                 (fn-wscan-ordinaryp (fn-octets-get i fn-octets))
+                 (or (<= end (+ 1 i)) (<= limit (+ 1 len))
+                     (not (fn-wscan-ordinaryp (fn-octets-get (+ 1 i) fn-octets)))))
+            (equal (fn-wscan-plain-end i end len limit fn-octets)
+                   (+ 1 i)))
+   :hints (("Goal" :expand ((fn-wscan-plain-end i end len limit fn-octets)
+                            (fn-wscan-plain-end (+ 1 i) end (+ 1 len) limit fn-octets))))))
+
+(local
+ (defthm fn-wscan-plain-end-stops
+   (implies (and (natp i) (natp end) (natp len) (natp limit)
+                 (or (>= i end) (>= len limit)
+                     (not (fn-wscan-ordinaryp (fn-octets-get i fn-octets)))))
+            (equal (fn-wscan-plain-end i end len limit fn-octets) i))
+   :hints (("Goal" :expand ((fn-wscan-plain-end i end len limit fn-octets))))))
 
 (local
  (defthm fn-wscan-span-fold-over-run-any
@@ -422,26 +490,16 @@
                                         fn-octets)
                     end fn-octets)
                    (fn-wire-span-fold ws i end fn-octets)))
-   :hints (("Goal"
-            :in-theory (e/d (fn-wscan-runp fn-wscan-after-run)
-                            (fn-wire-feed-byte fn-wscan-ordinaryp
-                             fn-wscan-span-fold-over-run-shape))
-            :expand ((fn-wire-span-fold ws i end fn-octets)
-                     (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
-                                         (fn-wire-state-line-limit ws)
-                                         fn-octets))
-            :use ((:instance fn-wscan-span-fold-over-run-shape
-                             (ws (fn-wire-make-state
-                                  (fn-wire-state-mode ws)
-                                  (cons (fn-octets-get i fn-octets)
-                                        (fn-wire-state-line-rev ws))
-                                  (+ 1 (fn-wire-state-line-len ws))
-                                  (fn-wire-state-body-rev ws)
-                                  nil
-                                  (fn-wire-state-body-size ws)
-                                  (fn-wire-state-line-limit ws)
-                                  (fn-wire-state-body-limit ws)))
-                             (i (+ 1 i))))))))
+   :hints (("Goal" :induct (fn-wscan-run-ind ws i end fn-octets)
+            :in-theory (e/d ()
+                            (fn-wire-feed-byte fn-wscan-ordinaryp fn-wire-take-octet
+                             fn-wscan-plain-end fn-oct-get-is-nth))
+            :expand ((fn-wire-span-fold ws i end fn-octets)))
+
+           (and stable-under-simplificationp
+                '(:in-theory (e/d (fn-wscan-runp)
+                                  (fn-wire-feed-byte fn-wscan-ordinaryp fn-wire-take-octet
+                                   fn-wscan-plain-end fn-oct-get-is-nth)))))))
 
 (local
  (defthm fn-wscan-span-fold-closed
@@ -487,8 +545,9 @@
 
 (local
  (defthm fn-wscan-after-line-after-run
-   (equal (fn-wire-after-line (fn-wscan-after-run ws i k fn-octets) line)
-          (fn-wire-after-line ws line))
+   (implies (not (equal (fn-wire-state-mode ws) :article))
+            (equal (fn-wire-after-line (fn-wscan-after-run ws i k fn-octets) line)
+                   (fn-wire-after-line ws line)))
    :hints (("Goal" :in-theory (enable fn-wire-after-line fn-wscan-after-run
                                       fn-wire-close)))))
 
@@ -514,9 +573,54 @@
                      (:free (x) (fn-wire-span-fold x (+ 1 k) end fn-octets)))))))
 
 (local
-(defthm fn-wscan-span-fold-over-line
+ (defthm fn-wscan-span-fold-over-article-line
    (implies (and (fn-wscan-linep ws i end fn-octets)
-                 (natp i) (natp end) (< i end))
+                 (natp i) (natp end) (< i end)
+                 (equal (fn-wire-state-mode ws) :article))
+            (equal (fn-wire-span-fold ws i end fn-octets)
+                   (let* ((k (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
+                                                 (fn-wire-state-line-limit ws)
+                                                 fn-octets))
+                          (r (fn-wire-after-line (fn-wscan-after-run ws i k fn-octets) nil)))
+                     (if (consp (fn-wire-result-events r))
+                         (fn-wsp-make (fn-wire-result-state r)
+                                      (fn-wire-result-events r) (+ 2 k))
+                       (fn-wire-span-fold (fn-wire-result-state r) (+ 2 k)
+                                          end fn-octets)))))
+   :hints (("Goal"
+            :use ((:instance fn-wscan-span-fold-over-run-any)
+                  (:instance fn-wscan-linep-line-ends-inside (wire-state ws))
+                  (:instance fn-wscan-span-fold-crlf
+                             (s (fn-wscan-after-run
+                                 ws i (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
+                                                          (fn-wire-state-line-limit ws)
+                                                          fn-octets)
+                                 fn-octets))
+                             (k (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
+                                                    (fn-wire-state-line-limit ws)
+                                                    fn-octets))))
+            :in-theory (e/d (fn-wire-reverse-octets fn-wire-reverse-octets-aux)
+                            (fn-wscan-span-fold-over-run-any
+                             fn-wscan-span-fold-crlf
+                             fn-wscan-linep-line-ends-inside
+                             fn-wscan-ordinaryp
+                             fn-wire-span-fold fn-wire-after-line
+                             fn-wscan-plain-end)))
+           (and stable-under-simplificationp
+                '(:in-theory (e/d (fn-wire-reverse-octets fn-wire-reverse-octets-aux
+                                   fn-wscan-linep fn-wscan-runp fn-wscan-after-run)
+                                  (fn-wscan-span-fold-over-run-any
+                                   fn-wscan-span-fold-crlf
+                                   fn-wscan-linep-line-ends-inside
+                                   fn-wscan-ordinaryp
+                                   fn-wire-span-fold fn-wire-after-line
+                                   fn-wscan-plain-end fn-bchs-push-span)))))))
+
+(local
+(defthm fn-wscan-span-fold-over-command-line
+   (implies (and (fn-wscan-linep ws i end fn-octets)
+                 (natp i) (natp end) (< i end)
+                 (not (equal (fn-wire-state-mode ws) :article)))
             (equal (fn-wire-span-fold ws i end fn-octets)
                    (let* ((k (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
                                                  (fn-wire-state-line-limit ws)
@@ -558,6 +662,31 @@
                                    fn-wire-span-fold fn-wire-after-line
                                    fn-wscan-plain-end fn-wscan-slice-onto
                                    fn-wscan-revonto)))))))
+
+(local
+ (defthm fn-wscan-span-fold-over-line
+   (implies (and (fn-wscan-linep ws i end fn-octets)
+                 (natp i) (natp end) (< i end))
+            (equal (fn-wire-span-fold ws i end fn-octets)
+                   (let* ((k (fn-wscan-plain-end i end (fn-wire-state-line-len ws)
+                                                 (fn-wire-state-line-limit ws)
+                                                 fn-octets))
+                          (r (if (equal (fn-wire-state-mode ws) :article)
+                                 (fn-wire-after-line (fn-wscan-after-run ws i k fn-octets) nil)
+                               (fn-wire-after-line
+                                ws (fn-wscan-slice-onto i k nil fn-octets)))))
+                     (if (consp (fn-wire-result-events r))
+                         (fn-wsp-make (fn-wire-result-state r)
+                                      (fn-wire-result-events r) (+ 2 k))
+                       (fn-wire-span-fold (fn-wire-result-state r) (+ 2 k)
+                                          end fn-octets)))))
+   :hints (("Goal" :use ((:instance fn-wscan-span-fold-over-article-line)
+                         (:instance fn-wscan-span-fold-over-command-line))
+                   :in-theory (disable fn-wscan-span-fold-over-article-line
+                                       fn-wscan-span-fold-over-command-line
+                                       fn-wire-span-fold fn-wire-after-line
+                                       fn-wscan-plain-end fn-wscan-after-run
+                                       fn-wscan-slice-onto)))))
 
 ; KEYSTONE (PKT-479), no hypothesis: the line-at-a-time scan the served fold
 ; runs is the octet-at-a-time fold, on every wire state and every range.
