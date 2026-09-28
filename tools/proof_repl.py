@@ -1498,6 +1498,16 @@ def status(args) -> int:
         print(f"  from source (not certified): {book}, "
               + ("in one encapsulate (its local events stay local)" if count == "encapsulated"
                  else f"{count} forms (its local events are in the session)"))
+    leaking = [book for book, count in (state.get("ld_loaded") or {}).items()
+               if count != "encapsulated"]
+    if leaking:
+        print(f"  WARNING: {len(leaking)} from-source book(s) loaded form by form, so their "
+              "LOCAL lemmas and theory are rules in this session that a certified include "
+              "would not give: a proof here may pass, fail or cost differently than under "
+              "certification (feed-queue, 2026-09-27: 6.9M steps here, 1.76M over the "
+              "certified dependency). Start with --ld-local to load each inside one "
+              "encapsulate (its non-local include-book and defpkg forms first), or "
+              "--certify-missing to include certificates.")
     if state["stopped_at"]:
         print(f"  stopped at {state['stopped_at']}:")
         print("  " + (state["error"] or "").replace("\n", "\n  "))
