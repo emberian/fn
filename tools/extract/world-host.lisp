@@ -22,6 +22,7 @@
 (ld "../../host/hybrid-signature-host.lisp" :ld-error-action :error)
 (ld "../../host/peer-invite-host.lisp" :ld-error-action :error)
 (ld "../../host/tls-reload-host.lisp" :ld-error-action :error)
+(ld "../../host/web-host.lisp" :ld-error-action :error)
 (ld "../../host/topic-history-metadata-host.lisp" :ld-error-action :error)
 (ld "../../host/native/reader-model-host.lisp" :ld-error-action :error)
 (ld "../../host/workflow-host.lisp" :ld-error-action :error)
