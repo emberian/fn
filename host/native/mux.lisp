@@ -78,6 +78,10 @@
   ;; committer reads to know every ready connection was stepped
   ;; (host/native/owner.lisp fnn-owner-loops-passed-p).
   (arrived nil) (passes 0) (polling nil)
+  ;; PKT-875: at the end of each pass, how many of this loop's connections
+  ;; wait for a batch's completion or still owe their client its reply (under
+  ;; LOCK); a graceful stop's drain reads it (fnn-mux-unsent).
+  (unsent 0)
   ;; The loop's one read buffer, of the served read size ACL2 decided
   ;; (fnn-mux-read-buffer): a read allocates only the octets it returns.
   (buffer nil))
@@ -96,7 +100,10 @@
   (class :reader) plan
   ;; Lane commit-onto-log: (STEP REDEEM AFTER) while the step's submission
   ;; waits for its commit quantum; nil otherwise.
-  (await nil))
+  (await nil)
+  ;; PKT-875: the output queued is a batch's completion (a POST's reply):
+  ;; a stop's drain waits for it to leave (fnn-mux-iterate's count).
+  (replying nil))
 
 (defun fnn-mux-ticks (seconds)
   (+ (fnn-now) (round (* seconds internal-time-units-per-second))))
@@ -489,7 +496,8 @@ the same octets are handed to the next step."
   "CONN waits for its submission's completion from the next commit quantum
 (host/native/owner.lisp fnn-owner-commit-queued-locked)."
   (let ((service (fnn-mux-service loop)))
-    (setf (fnn-mux-conn-await conn) (list step redeem after))
+    (setf (fnn-mux-conn-await conn) (list step redeem after)
+          (fnn-mux-conn-replying conn) nil)
     (let ((early (fnn-owner-await-register
                   service (fnn-mux-conn-cid conn)
                   (lambda (completion)
@@ -513,6 +521,7 @@ builds it for a step that drained in its own quantum."
           (t
            (let* ((closing (and (consp completion) (eq (car completion) :close)))
                   (octets (if closing (cdr completion) completion)))
+             (setf (fnn-mux-conn-replying conn) t)
              (fnn-mux-queue-plan loop conn
                                  (fnn-core 'fn-splan-step-plan step octets redeem)
                                  (if closing :close after)))))))
@@ -868,10 +877,29 @@ whatever the descriptor says."
               unless (or (zerop (aref revents i))
                          (eq (fnn-mux-conn-phase conn) :done))
                 do (fnn-mux-dispatch loop conn)))))
+  ;; PKT-875: what this loop still owes its clients, for a stop's drain.
+  (let ((owed (count-if (lambda (conn)
+                          (and (not (eq (fnn-mux-conn-phase conn) :done))
+                               (or (fnn-mux-conn-await conn)
+                                   (and (fnn-mux-conn-replying conn)
+                                        (fnn-mux-conn-out conn)))))
+                        (fnn-mux-loop-conns loop))))
+    (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+      (setf (fnn-mux-loop-unsent loop) owed)))
   ;; A pass is complete: every connection ready in it was stepped.  A
   ;; committer waiting for the passes (format 9) looks again.
   (incf (fnn-mux-loop-passes loop))
   (fnn-mux-signal-committer loop))
+
+(defun fnn-mux-unsent (service)
+  "PKT-875: the replies the I/O loops still owe (a stop's drain observation):
+per loop, its connections with output or a completion awaited at its last
+pass, and the completions handed to it and not yet taken."
+  (loop for loop in (fnn-owner-service-mux service)
+        sum (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+              (+ (fnn-mux-loop-unsent loop)
+                 (length (fnn-mux-loop-arrived loop))
+                 (length (fnn-mux-loop-inbox loop))))))
 
 (defun fnn-mux-signal-committer (loop)
   "Wake a committer waiting on this loop's pass (format 9, a submission
@@ -918,7 +946,11 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
     (unwind-protect
          (handler-case
              (loop
-               (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service))
+               ;; PKT-875: a SIGTERM does not end the loop: the stop's drain
+               ;; (host/native/owner.lisp fnn-owner-drain-service) needs it to
+               ;; deliver the replies of the batches in flight; no new input
+               ;; is stepped (fnn-mux-work).  The fence ends it.
+               (when (fnn-owner-service-stopping service)
                  (return))
                (fnn-mux-iterate loop))
            (serious-condition (e)

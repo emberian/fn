@@ -102,7 +102,12 @@
   (commit-lock (sb-thread:make-mutex :name "fn owner commit"))
   (commit-ready (sb-thread:make-waitqueue :name "fn owner commit ready"))
   ;; guarded-by: fnn-owner-service-commit-lock (every access below takes it)
-  (awaiting (make-hash-table)) (done (make-hash-table)) (sparing nil))
+  (awaiting (make-hash-table)) (done (make-hash-table)) (sparing nil)
+  ;; PKT-875 (books/owner-stop-drain.lisp): set by a graceful stop's drain
+  ;; when ACL2 answers :release (the drain deadline passed); the committer
+  ;; then tells every member in flight uncertain and sheds the queue, as at a
+  ;; stall.  Read and written under COMMIT-LOCK.
+  (drain-release nil))
 
 ;;; Inside a commit quantum (fnn-owner-commit-queued-locked) the effects that
 ;;; would let a member's outcome leave the owner before the log's barrier are
@@ -2700,6 +2705,11 @@ leave only in its COMPLETE, after its barrier returned
                             service (fnn-owner-service-synced service)
                             (plusp (fnn-owner-service-queued service))))
                 (unless (eq wake :wait) (return-from waiting))
+                ;; PKT-875: a stop's drain passed its deadline: release
+                ;; below, once, as at a stall.
+                (when (and (fnn-owner-service-drain-release service)
+                           (not stall-told))
+                  (return-from waiting))
                 (let ((ms (fnn-owner-disk-wait-ms service)))
                   (unless (if ms
                               (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
@@ -2727,8 +2737,13 @@ leave only in its COMPLETE, after its barrier returned
           ;; still land (books/owner-time-model.lisp
           ;; fn-otm-stall-tells-no-member-its-outcome) -- and the queued
           ;; POSTs behind them are refused try-later, nothing stored.
+          ;; PKT-875 (books/owner-stop-drain.lisp): a graceful stop whose
+          ;; drain deadline (H) passed releases them the same way, by
+          ;; fn-otm-stall-releases: uncertain, never accepted or refused.
           (when (and (not (eq wake :collect)) (not stall-told)
-                     (fnn-owner-disk-stalled-p service))
+                     (or (fnn-owner-disk-stalled-p service)
+                         (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+                           (fnn-owner-service-drain-release service))))
             (setq stall-told t)
             (let ((told (fnn-owner-stall-release
                          service (fnn-owner-unreleased (append members next) released)))
@@ -3825,6 +3840,70 @@ thread is a worker, so the stop joins it with the clients."
                     (fnn-owner-service-stopping service))
           (error condition))))))
 
+;;; PKT-875: a graceful stop drains the POSTs in flight to their replies
+;;; (books/owner-stop-drain.lisp, PRF-357).  After a SIGTERM the accept loops
+;;; have returned and no I/O loop steps new input (fnn-mux-work); the loops
+;;; keep delivering and the committer keeps committing.  Every observation
+;;; is taken after a clock event (fnn-owner-sched-snapshot) and ACL2 decides
+;;; from it: :wait, :release (the drain deadline H passed: the committer tells
+;;; every member in flight uncertain and sheds the queue, as at a stall), or
+;;; :stop (nothing is owed, or the release's grace passed).  Only then the
+;;; fence (fnn-owner-stop-service), which ends every connection.
+
+(defun fnn-owner-drain-observation (service)
+  "(AWAITING UNSENT): the members waiting for a reply (the connections
+registered for a completion and the queued submissions), and the replies the
+I/O loops still owe (host/native/mux.lisp fnn-mux-unsent)."
+  (list (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+          (+ (hash-table-count (fnn-owner-service-awaiting service))
+             (fnn-owner-service-queued service)))
+        (fnn-mux-unsent service)))
+
+(defun fnn-owner-drain-log (word s0 s limits awaiting)
+  (let ((line (fnn-core 'fn-osd-log-line word s0 s limits awaiting)))
+    (when line (fnn-log-line line))))
+
+(defun fnn-owner-drain-service (service)
+  "Drain SERVICE before its stop, as ACL2's fn-osd-drain-step names; returns
+when it answers :stop.  Nothing here compares times or counts."
+  (when (and (not (fnn-owner-service-stopping service))
+             (fnn-owner-service-mux service))
+    (let* ((limits (handler-case
+                       (fnn-owner-serialized
+                        service nil
+                        (lambda () (fnn-owner-core 'fn-owner-barrier-limits))
+                        :inspect)
+                     (error (condition)
+                       ;; Stopped (a fault) before the drain began: the
+                       ;; fence has ended it already.
+                       (if (fnn-owner-service-stopping service)
+                           (return-from fnn-owner-drain-service nil)
+                         (error condition)))))
+           (s0 (fnn-owner-sched-snapshot service))
+           (poll (fnn-core 'fn-osd-poll-ms))
+           (released nil))
+      (unless (and (integerp poll) (plusp poll))
+        (fnn-fault "owner returned a malformed drain poll ~a" poll))
+      (fnn-owner-drain-log :start s0 s0 limits 0)
+      (loop
+        (when (fnn-owner-service-stopping service) (return))
+        (destructuring-bind (awaiting unsent) (fnn-owner-drain-observation service)
+          (let* ((s (fnn-owner-sched-snapshot service))
+                 (step (fnn-core 'fn-osd-drain-step s0 s limits awaiting unsent released)))
+            (case step
+              (:stop
+               (fnn-owner-drain-log :stop s0 s limits awaiting)
+               (return))
+              (:release
+               (fnn-owner-drain-log :release s0 s limits awaiting)
+               (setq released t)
+               (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+                 (setf (fnn-owner-service-drain-release service) t)
+                 (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service))))
+              (:wait nil)
+              (t (fnn-fault "owner returned a malformed drain step ~a" step)))))
+        (sleep (/ poll 1000))))))
+
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
                         connection-fault-operation tls-port more-addresses)
@@ -3950,6 +4029,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                             (fnn-out "LISTENING-TLS ~d" tls-bound-port)))
                         (fnn-owner-accept service listener once))))
                   (when *fnn-sigterm-requested*
+                    ;; PKT-875: the POSTs in flight are answered first.
+                    (fnn-owner-drain-service service)
                     (fnn-owner-stop-service service +fnn-exit-ok+))
                   (fnn-owner-service-exit-code service))
              (unwind-protect
