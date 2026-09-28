@@ -1375,29 +1375,44 @@ min(32, the 64 MiB budget)) credits. A credit is taken BEFORE the body is
 retained: every served read is `fn-oas-read-span`
 (books/owner-article-slots.lisp, host `fn-owner-chunk-span-at`, the slots
 installed by `fn-owner-connection-budget` from the store's profile), which
-admits a connection into article mode only while the owner then holds at
-most the slots (`fn-oas-held`: connections in article mode, queued
-submissions, the batch in flight; KEYSTONE
-`fn-oas-read-span-admits-within-the-slots`). Past them a POST is answered
-`440 posting not permitted now; the articles in flight fill the memory, try
-again later` at the command (RFC 3977 section 6.3.1: no article is sent),
-and an IHAVE or TAKETHIS that enters article mode is answered `400 the
-articles in flight fill the memory; try again later` and closed (RFC 3977
-section 3.2.1) with its wire dropped. The credit moves with the request:
-held in article mode, then in the owner's queue, then in the batch in
-flight, and released when the commit answers; a client that disconnects
-mid-article drops its wire (nothing else owns it), a queued submission stays
-counted. The completion policy is RESERVE-TO-FINISH: a credit is the whole
-article's worst case (past the body limit the wire closes with 441), so an
-admitted connection's reads are never refused by the slots (KEYSTONE
-`fn-oas-read-span-never-blocks-an-admitted-article`) and partial uploads
-cannot hold the pool while each needs more of it; a stalled upload holds
-its credit until the idle timeout closes its connection. The launcher's
-former room (connection-budget's launch figure, 1,024 connections' heap
-parts, no caller since lane reservation-figure) is gone. Not yet: the body in bounded
+keeps what the owner holds (`fn-oas-held`: connections in article mode,
+queued submissions, the batch in flight) within the slots across every
+read: a read from an owner holding at most the slots leaves it holding at
+most the slots (KEYSTONE `fn-oah-read-span-keeps-held-within-the-slots`,
+books/owner-article-held.lisp), whatever the read carried -- including a
+TAKETHIS (RFC 4644 section 2.5), a pipelined IHAVE or POST, or a small
+article whose command and whole body arrive in one socket read, which
+enters article mode and leaves it within the read with one more
+submission queued; and a connection entering article mode does so within
+the slots (KEYSTONE `fn-oas-read-span-admits-within-the-slots`). A read
+that would take the owner past the slots and past what it held is refused
+in three tiers, the first the slots hold: a POST is answered `440 posting
+not permitted now; the articles in flight fill the memory, try again later`
+at the command (RFC 3977 section 6.3.1: no article is sent); else an article
+the read entered is dropped with its wire closed and `400 the articles in
+flight fill the memory; try again later` and close (RFC 3977 section
+3.2.1), what the read completed before it kept; else the whole read is
+refused, 400 and close, nothing it carried taken (a TAKETHIS in one read:
+RFC 4644 offers it no "later"). A read of one connection leaves every other
+connection's record, and so its wire mode, as it was (KEYSTONE
+`fn-oah-read-span-leaves-the-others-article-mode`). The credit moves with
+the request: held in article mode, then in the owner's queue, then in the
+batch in flight, and released when the commit answers; a client that
+disconnects mid-article drops its wire (nothing else owns it), a queued
+submission stays counted. The completion policy is RESERVE-TO-FINISH: a
+credit is the whole article's worst case (past the body limit the wire
+closes with 441), so an admitted connection's reads that complete or
+continue its article are the reads before the slots exactly (KEYSTONE
+`fn-oas-read-span-never-blocks-an-admitted-article`), and past the slots
+only an article such a read began after completing its own is closed
+(`fn-oah-admitted-read-keeps-what-it-completed`); partial uploads cannot
+hold the pool while each needs more of it; a stalled upload holds its
+credit until the idle timeout closes its connection. The launcher's former
+room (connection-budget's launch figure, 1,024 connections' heap parts, no
+caller since lane reservation-figure) is gone. Not yet: the body in bounded
 pooled chunks (one octet a byte) instead of wire lists, which lowers the
-credit about 32-fold; the frame theorem that a read of one connection leaves
-every other connection's wire mode as it was.
+credit about 32-fold; the queue's growth by the control channel and BP
+deliveries (no connection's read).
 
 Not claimed: a reply larger than the stated workload's (an OVER or LISTGROUP
 over a large range) is outside the figure until replies are rendered in
