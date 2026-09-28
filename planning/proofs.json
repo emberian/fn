@@ -11897,6 +11897,35 @@
         "fn-hp-append-changes-only-dirty",
         "fn-hp-append-dirty-bound"
       ]
+    },
+    {
+      "id": "PRF-348",
+      "title": "Octet text codecs over the octet buffer: decimal and hexadecimal naturals, hex strings and RFC 4648 base64 round-trip, base64 accepts only canonical text and refuses by name, case-insensitive equality is equality of case folds, and the bounded token split loses nothing",
+      "statement": "books/octet-text.lisp. Each codec is a list model over octet lists with an in-place twin over the octet buffer (fn-octets, books/octets-stobj.lisp) and a boundary theorem equating the twin with the model on the buffer's slice; every executable function is guard-verified. fn-ot-nat-parse-of-nat-octets: parsing the printed natural (radix 2..16) under the caller's bound MAX gives it back; fn-ot-nat-parse-bounded: an accepted natural is at most MAX. fn-ot-hex-decode-of-encode and fn-ot-b64-decode-of-encode: decode of encode is the identity (RFC 4648 section 4 for base64). fn-ot-b64-accepted-is-canonical: an accepted base64 text is the encoding of what it decodes to (padding bits zero, the pad only in the last quantum); fn-ot-b64-refuses-outside-alphabet and the refusal kinds :b64-quantum, :b64-alphabet, :b64-padding-bits are named. fn-ot-ci-equal-is-downcase-equal: ASCII case-insensitive equality is equality of the case folds. fn-ot-split-wsp-loses-nothing: the tokens are the input's non-whitespace octets in order, at most LIMIT of them; more is the refusal :too-many-tokens, never a truncation. No function caps data: bounds are the caller's (D27).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/octet-text.lisp",
+        "tests/acl2/octet-text-tests.lisp",
+        "planning/evidence/manifests/certify-20260928T025149Z-846867.json"
+      ],
+      "pending_subject": "No host function calls these codecs yet (lane shared-books built them as the shared library the wire books re-derived); each wire book that adopts one names its host caller then.",
+      "progress_note": "Lane shared-books (Opus 5.5, 2026-09-28), id assigned at the batch AY merge. Certified on persvati: certify-20260928T025149Z-846867 (under 10 s). Teeth: tests/acl2/octet-text-tests.lisp with the RFC 4648 section 10 vectors. Proof-style findings in docs/proof-style.md.",
+      "events": [
+        "fn-ot-nat-parse-of-nat-octets",
+        "fn-ot-nat-parse-bounded",
+        "fn-ot-hex-decode-of-encode",
+        "fn-ot-b64-decode-of-encode",
+        "fn-ot-b64-accepted-is-canonical",
+        "fn-ot-b64-refuses-outside-alphabet",
+        "fn-ot-ci-equal-is-downcase-equal",
+        "fn-ot-split-wsp-loses-nothing"
+      ]
     }
   ]
 }

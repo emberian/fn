@@ -11552,6 +11552,43 @@
           "name": "fn-hp-append-dirty-bound"
         }
       ]
+    },
+    {
+      "id": "PRF-348",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ot-nat-parse-of-nat-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-nat-parse-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-hex-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-b64-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-b64-accepted-is-canonical"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-b64-refuses-outside-alphabet"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-ci-equal-is-downcase-equal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ot-split-wsp-loses-nothing"
+        }
+      ]
     }
   ]
 }

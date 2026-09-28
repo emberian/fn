@@ -3523,7 +3523,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-181"
+        "PRF-181",
+        "PRF-348"
       ],
       "verification": [
         "proof",
