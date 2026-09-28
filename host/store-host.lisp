@@ -428,10 +428,9 @@
   (fn-bs-config-decode octets))
 
 ;; The open of config.json every open path reads (PKT-471,
-;; books/store-profile-open.lisp): (:opened VALUES), (:refused REASON) for a
-;; saved profile whose record bound the poll reply cannot carry or a profile
-;; frame of another format (D34), or (:rejected) for a frame that is no saved
-;; profile.  The refusal's line is ACL2's and names the reinstall and import.
+;; books/store-profile-open.lisp): (:opened VALUES), (:refused :store-format)
+;; for a profile frame of another format word (D34), or (:rejected) for a
+;; frame that is no saved profile.  The refusal's line is ACL2's.
 (defun fn-store-metadata-config-open (octets)
   (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-spo-config-open octets))

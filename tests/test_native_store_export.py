@@ -7,7 +7,7 @@ fnn-command-store-import read and write.  On the image under test:
 * a store with articles served by the owner is exported (the owner stopped),
   a fresh node imports the archive, and the two stores' `status` and
   `store inspect` observations are equal, article for article;
-* the imported store holds the history in the record log (format 9) and
+* the imported store holds the history in the record log and
   exports to the same archive, file for file; a process death at the
   import's log cuts (FN_NATIVE_LOG_FAULT=log-written|log-fenced) publishes
   no store;
@@ -17,13 +17,8 @@ fnn-command-store-import read and write.  On the image under test:
   that keeps the relations is imported and reported by `status`; a damaged
   archive -- an entry dropped or over its work bound, a torn record, a
   profile that does not decode -- is refused by name, never a fault;
-* a store made by another release (synthesized by
-  tests/older_release_store.py: a format-7 frame, a format-8 frame (the
-  per-file layout before the record log), and the thirteen-field
-  layout of every store made before batch AS) is refused at open by name:
-  `open refused reason=store-format` and `open refused
-  reason=older-release`, exit 1, its files unchanged (PKT-695: no fixture
-  store is kept for it).
+* a store of another format is refused at open by name: that case is
+  tests/test_native_foreign_format_open.py's.
 
 TODO (continuation, SCN-133): the brief's 300-article store with a signed
 composite, a cancel, a retention event and a consumer registration; this
@@ -39,7 +34,6 @@ import unittest
 
 from tests import test_native_operator_verbs as verbs
 from tests.native_profile_fixture import ProfileFixture, ProfileLineMixin
-from tests import older_release_store as older
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
@@ -299,30 +293,6 @@ class StoreExportTests(ProfileFixture):
                     self.assertIn(b"import refused reason=archive-incomplete entry=MANIFEST",
                                   got.stderr + got.stdout)
                     self.assertFalse(store2.exists(), name)
-
-    def refused_by_name(self, kind):
-        made, config, _ = older.make_store(kind, self.image, self.root / "older",
-                                           verbs.environment())
-        before = tree(made)
-        for head in (["operator", str(config), "status"], ["store", str(made), "recover"]):
-            got = subprocess.run([str(self.image), "--fn", *head], cwd=verbs.ROOT,
-                                 env=verbs.environment(), stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, timeout=180, check=False)
-            self.assertEqual(got.returncode, EXIT_REFUSED, got.stderr.decode())
-            self.assertIn(older.LINES[kind].encode("ascii"), got.stderr + got.stdout)
-        self.assertEqual(tree(made), before)
-
-    def test_a_format_7_store_is_refused_by_name(self):
-        self.refused_by_name("format-7")
-
-    def test_a_store_of_the_older_layout_is_refused_by_name(self):
-        self.refused_by_name("older-release")
-
-    def test_a_format_8_store_is_refused_by_name(self):
-        # The per-file layout (fn-store-8) opens on no image: D34's one
-        # format is the record log's (fn-spo-open-of-a-format-8-profile-
-        # refuses-by-name).
-        self.refused_by_name("format-8")
 
 
 if __name__ == "__main__":

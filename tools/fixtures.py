@@ -10,9 +10,8 @@
 A fixture is a store (or a BP journal holding one) built once and copied by
 every run that needs it; nothing opens a fixture in place.  D34 keeps one
 store format and translates nothing, so a fixture made before a store-format
-change (a new format word, or a profile layout that grew, as batch AS's did)
-no longer opens: the open refuses it by name (`reason=store-format`,
-`reason=older-release`).  The batch therefore runs `rebuild` after any
+change no longer opens: the open refuses it by name (`reason=store-format`)
+or as damage.  The batch therefore runs `rebuild` after any
 store-format change (build/coordinator/NIGHT.md's batch routine,
 BRIEF-COMMON.md's fixture note), and no fixture is kept past its format.
 
@@ -89,7 +88,7 @@ CAPACITY_32K = ("--max-transactions", "1048576", "--max-history-octets", "107374
 RETIRED = {
     "chain-20000-8cc3cd4c": "replaced by chain-20000 (the same recipe; the name no longer carries a revision)",
     "format-7-store": "retired (PKT-695): the store-format refusal is tested on a synthesized store "
-                      "(tests/older_release_store.py)",
+                      "(tests/foreign_format_store.py)",
 }
 
 

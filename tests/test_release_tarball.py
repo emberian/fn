@@ -9,9 +9,8 @@ Needs a release built by packaging/release-tarball.sh on this platform:
         python3 -m unittest -v tests.test_release_tarball
 
 (OUT_DIR/SHA256SUMS beside it).  The install refuses a node whose store
-this release cannot open: a format-7 store and a store of the layout before
-batch AS, each synthesized by tests/older_release_store.py with the
-release's own bin/fn (PKT-695, PKT-705: no fixture store is kept for it).
+names another format word, synthesized by tests/foreign_format_store.py with
+the release's own bin/fn (no fixture store is kept for it).
 Without FN_RELEASE_TARBALL every case is skipped (not a pass).
 """
 from __future__ import annotations
@@ -33,7 +32,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import runpath_check  # noqa: E402
 import release_sequence  # noqa: E402
 sys.path.insert(0, str(ROOT))
-from tests import older_release_store as older  # noqa: E402
+from tests import foreign_format_store as foreign  # noqa: E402
 
 TARBALL = os.environ.get("FN_RELEASE_TARBALL")
 CLEAN_ENV = {"PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "HOME": "/tmp", "LANG": "C"}
@@ -207,23 +206,18 @@ class ReleaseTarballTests(unittest.TestCase):
             self.assertEqual(again.returncode, 4)
             self.assertIn("an installation is one directory", again.stderr)
 
-    def refuses_a_store_of(self, kind):
+    def test_install_refuses_a_store_of_another_format(self):
         with tempfile.TemporaryDirectory() as tmp:
-            # The node is the builder's directory: KIND/fn.toml and KIND/store.
-            made, _, _ = older.make_store(kind, None, Path(tmp), env=CLEAN_ENV,
-                                          argv=[str(self.top / "bin/fn")])
+            # The node is the builder's directory: another-format/fn.toml
+            # and another-format/store.
+            made, _, _ = foreign.make_store(None, Path(tmp), env=CLEAN_ENV,
+                                            argv=[str(self.top / "bin/fn")])
             node = made.parent
             result = self.install(Path(tmp) / "opt/fn", node)
             self.assertEqual(result.returncode, 4, result.stdout + result.stderr)
-            self.assertIn(older.LINES[kind], result.stdout + result.stderr)
-            self.assertIn("export it with the release that wrote it", result.stderr)
+            self.assertIn(foreign.LINE, result.stdout + result.stderr)
+            self.assertIn("redeploy fresh", result.stderr)
             self.assertFalse((Path(tmp) / "opt/fn").exists())
-
-    def test_install_refuses_a_format_7_store(self):
-        self.refuses_a_store_of("format-7")
-
-    def test_install_refuses_a_store_of_the_older_layout(self):
-        self.refuses_a_store_of("older-release")
 
 
 if __name__ == "__main__":

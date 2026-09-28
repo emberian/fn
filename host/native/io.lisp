@@ -1265,13 +1265,11 @@ execution-boundary fault, never a claim that the core refused an input."
     (fnn-octets value)))
 
 (defun fnn-metadata-config-decode (octets)
-  "ACL2's decoded store profile: a format-9 profile (the one format, D34).  The host keeps the value opaque and
-reads every field through an ACL2 accessor.  The verdict is ACL2's open
-(books/store-profile-open.lisp fn-spo-config-open): a saved profile whose
-record bound the poll reply cannot carry, a profile frame of another
-format, or a fn-store-8 profile frame of another release's layout (PKT-705:
-`reason=older-release' / `newer-release', naming both field counts) is
-refused by name, exit 1, with ACL2's line (PKT-471, D34); a frame that is no
+  "ACL2's decoded store profile (the one format, D34).  The host keeps the
+value opaque and reads every field through an ACL2 accessor.  The verdict is
+ACL2's open (books/store-profile-open.lisp fn-spo-config-open): a profile
+frame of another format word is refused by name, exit 1, with ACL2's line
+(\"not an fn store of this release: redeploy fresh\"); a frame that is no
 saved profile stays a fault."
   (let ((verdict (fnn-core 'fn-store-metadata-config-open
                            (fnn-octet-list octets))))
@@ -2069,15 +2067,15 @@ after the syscall."
 
 (defun fnn-refuse-another-format (store)
   "A store whose config.json ACL2's open names as another format
-(`:store-format-9', `:store-format') is refused by ACL2's line before any
-other check reads the store; anything else is left to the ordinary open."
+(`:store-format') is refused by ACL2's line before any other check reads the
+store; anything else is left to the ordinary open."
   (let ((path (fnn-config-path store)))
     (when (ignore-errors (fnn-check-regular path))
       (let* ((raw (ignore-errors (fnn-read-regular-bounded path 16384)))
-             (verdict (and raw (> (length raw) 0) (/= (aref raw 0) (char-code #\{))
+             (verdict (and raw (> (length raw) 0)
                            (fnn-core 'fn-store-metadata-config-open (fnn-octet-list raw)))))
         (when (and (consp verdict) (eq (first verdict) :refused)
-                   (member (second verdict) '(:store-format-9 :store-format)))
+                   (eq (second verdict) :store-format))
           (error 'fnn-store-profile-refusal
                  :message (fnn-core 'fn-store-metadata-config-refusal-text verdict)))))))
 
@@ -2086,12 +2084,6 @@ other check reads the store; anything else is left to the ordinary open."
   (let ((raw (handler-case
                  (fnn-read-regular-bounded (fnn-config-path store) 16384)
                (fnn-os-error (e) (fnn-fault "invalid durable config: ~a" e)))))
-    ;; JSON metadata (format 5 and older) is another store format (D34): the
-    ;; open refuses it by ACL2's name, and never rewrites it.
-    (when (and (> (length raw) 0) (= (aref raw 0) (char-code #\{)))
-      (error 'fnn-store-profile-refusal
-             :message (fnn-core 'fn-store-metadata-config-refusal-text
-                                '(:refused :store-format))))
     (setf (fnn-store-config store) (fnn-metadata-config-decode raw))))
 
 (defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))

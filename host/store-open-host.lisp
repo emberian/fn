@@ -242,8 +242,6 @@
         (cond ((eq (car raw) :overbound)
                (fn-xo-fault (concatenate 'string "store file exceeds bound: " path)))
               ((not (fn-xo-okp raw)) raw)
-              ((and (consp (cadr raw)) (equal (car (cadr raw)) 123))
-               (list :open-refusal (fn-store-metadata-config-refusal-text '(:refused :store-format))))
               (t (let ((verdict (fn-store-metadata-config-open (cadr raw))))
                    (cond ((and (consp verdict) (eq (car verdict) :opened)
                                (fn-store-profile-admittedp (cadr verdict)))
