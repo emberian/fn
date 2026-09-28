@@ -324,7 +324,7 @@ class FormatNineEveryKindTest(unittest.TestCase):
             kinds[kind] = kinds.get(kind, 0) + 1
         witness("kinds", sorted(kinds.items()))
         for kind in ("article", "composite-verified", "composite-carried", "keyring",
-                     "consumer", "topic-install"):
+                     "consumer-bootstrap", "consumer-register", "topic-install"):
             self.assertIn(kind, kinds, kinds)
         self.assertGreaterEqual(kinds["keyring"], 3, kinds)
 
@@ -362,8 +362,9 @@ class FormatNineEveryKindTest(unittest.TestCase):
         self.assertEqual(old, new)
         if magic == b"fn-e":
             return {2: "verdict", 3: "keyring"}.get(kind, "fn-e-%s" % kind)
-        if magic == b"fnce":
-            return "consumer"
+        if old[:4] == b"fnce":
+            # books/consumer-store-events.lisp: raw magic, version, kind code.
+            return "consumer-" + {0: "bootstrap", 1: "register"}.get(old[5], str(old[5]))
         if magic == b"fnto":
             return "topic-install" if kind == 2 else "topic-%s" % kind
         return "other"
