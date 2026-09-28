@@ -4031,7 +4031,7 @@ of the archive's records, and never the MANIFEST as one list, is built: the
 work and allocation per step are one chunk's.  An accepted plan is written
 into ROOT.import-XXXX as init writes its files, and pass two runs the same
 steps inside the staged publication, appending each chunk's records (the
-step's own, translated for a format-9 archive) to the stage's log; a pass
+step's own) to the stage's log; a pass
 two that does not decide what pass one decided (fn-sxi-same-verdict: the
 archive changed under the import) is refused by name before the open.  The
 ordinary open (full replay, marker catch-up) admits the stage and it is
@@ -4062,15 +4062,12 @@ by fn-bs-imp-classify."
     (unless (and (consp plan) (member (first plan) '(:import :refused)))
       (fnn-fault "ACL2 returned a malformed import plan"))
     (when (eq (first plan) :refused)
-      (fnn-refuse "import refused reason=~(~a~)~@[ ~a~]~@[ sequence=~a~]" (second plan)
+      (fnn-refuse "import refused reason=~(~a~)~@[ ~a~]" (second plan)
                   (let ((detail (third plan)))
                     (cond ((null detail) nil)
                           ((fnn-octet-list-p detail) (fnn-octets-string (fnn-octets detail)))
                           ((keywordp detail) (string-downcase (symbol-name detail)))
-                          (t detail)))
-                  ;; :record-translation names the archive record's sequence.
-                  (and (eq (second plan) :record-translation)
-                       (natp (fourth plan)) (fourth plan))))
+                          (t detail)))))
     (destructuring-bind (values frontier configs) (rest plan)
       (declare (ignore frontier))
       (let* ((root-path (string-right-trim "/" root))
@@ -4081,8 +4078,7 @@ by fn-bs-imp-classify."
           (fnn-fault "ACL2's import plan is not a record-log profile"))
         (fnn-staged-publication
          "import" stage root-path
-         ;; fn-sxp-import-plan's files, in its order.  The plan's profile is
-         ;; format 9 (fn-sxp-log-profile): as a format-9 init stages its
+         ;; fn-sxp-import-plan's files, in its order, as init stages its
          ;; files (books/store-init-log-publication.lisp fn-bs-init-log-files:
          ;; the profile, the configuration records, the segment's ACL2 extent
          ;; of zeros; no allocator file, no transactions/), and the records go
@@ -4091,7 +4087,7 @@ by fn-bs-imp-classify."
                  (mapcar (lambda (config)
                            (cons (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
                          configs)
-                 ;; format 10: the imported store's own genesis (a new node:
+                 ;; The imported store's own genesis (a new node:
                  ;; its identity, salt and clock reading drawn here and
                  ;; recorded; the archive carries none), before the segment.
                  (list (cons (fnn-genesis-path stage) (fnn-genesis-octets values)))
@@ -4101,8 +4097,8 @@ by fn-bs-imp-classify."
          count
          ;; The imported store is a new store on the filesystem ROOT is on
          ;; (its stage is ROOT's sibling): its record, under the import's
-         ;; policy (fn-smid-init-policy: 1), before the ordinary open.  On
-         ;; format 9 the stage's segment (staged above) then receives the
+         ;; policy (fn-smid-init-policy: 1), before the ordinary open.  The
+         ;; stage's segment (staged above) then receives the
          ;; history from the genesis (fnn-log-write-history), pass two's
          ;; records a chunk at a time, before that open admits it.
          (lambda (stage)
@@ -4116,7 +4112,7 @@ by fn-bs-imp-classify."
                                   (cons count plan))
                   (fnn-refuse "import refused reason=archive-changed stage=~a: the archive changed while it was imported; no store was published; remove ~a and import again"
                               stage-root stage-root))))))
-         ;; The staged tree's subdirectories: a format-9 store's are init's
+         ;; The staged tree's subdirectories: init's
          ;; (journal/ among them: fnn-log-init-segment's caller makes it
          ;; since log-2's initializer program).
          (fnn-core 'fn-bs-init-log-subdir-names))
@@ -4161,9 +4157,7 @@ its name (fnn-archive-entry), never a host fault."
          ;; read, and fn-sxi-final refuses the archive by name (its MANIFEST
          ;; check comes first and names the profile when its octets changed;
          ;; lane fuzz-nntp, planning/evidence/fuzz-nntp-2026-09-27.md).
-         ;; This format's profile, or a format-9 archive's translated
-         ;; (books/store-export.lisp fn-sxp-config-decode-archive).
-         (decoded (fnn-core 'fn-sxp-config-decode-archive profile))
+         (decoded (fnn-core 'fn-store-metadata-config-decode profile))
          (record-bound (and decoded (fnn-core 'fn-store-profile-read-bound decoded)))
          (configs (mapcar (lambda (name)
                             (cons name (fnn-octet-list
@@ -4176,16 +4170,15 @@ its name (fnn-archive-entry), never a host fault."
           (count 0))
       (unwind-protect
            (let* ((head (fnn-core 'fn-sxi-head profile frontier configs))
-                  (f9p (first head))
-                  (lines (cddr head))
-                  (st (fnn-core 'fn-sxi-start f9p (second head) lines
+                  (lines (cdr head))
+                  (st (fnn-core 'fn-sxi-start (car head) lines
                                 (fnn-octet-list (fnn-read-up-to fd (length lines)))))
                   (chunk nil) (n 0) (stop nil))
              (flet ((flush ()
                       (when chunk
                         (let* ((records (nreverse chunk))
-                               (want (fnn-core 'fn-sxi-want f9p records))
-                               (r (fnn-core 'fn-sxi-step f9p st records want
+                               (want (fnn-core 'fn-sxi-want records))
+                               (r (fnn-core 'fn-sxi-step st records want
                                             (fnn-octet-list (fnn-read-up-to fd (length want))))))
                           (unless (consp r)
                             (fnn-fault "ACL2 returned a malformed import step"))
@@ -4204,7 +4197,7 @@ its name (fnn-archive-entry), never a host fault."
                    (let ((octets (fnn-octet-list
                                   (fnn-archive-entry dir (fnn-join "records" name)
                                                      record-bound))))
-                     (push (cons (fnn-core 'fn-store-archive-record-sequence octets) octets)
+                     (push (cons (fnn-core 'fn-store-record-sequence octets) octets)
                            chunk)
                      (incf n)
                      (incf count)

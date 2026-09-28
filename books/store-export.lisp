@@ -1,10 +1,12 @@
-; fn: `store export' and `store import' (D34, fresh deploys; design
+; fn: `store export' and `store import': backup and restore of a store of
+; this format (D34: one format, fresh deploys, no migrations; design
 ; 2026-09-26 consolidation section 6, P-D's default).
 ;
-; A deploy is: stop, remove, install the release, `init' or `store import',
-; start.  The data that must survive a reinstall travels as an archive: a
-; directory holding the store's profile frame (config.json's exact octets),
-; its allocation frontier frame (allocation-frontier.json's exact octets, so
+; An archive is a store's data as files, for a store of this build's format
+; only (an archive whose profile frame this format does not decode is
+; refused `:profile :store-format', never translated): a directory holding
+; the store's profile frame (config.json's exact octets), its allocation
+; frontier frame (allocation-frontier.json's exact octets, so
 ; the burned reservations stay burned), each configuration record's exact
 ; file octets, and each committed record's
 ; exact octets (the codec seam's bytes, as the open reads them: the selected
@@ -47,8 +49,6 @@
 (include-book "store-profile-facts")
 (include-book "crypto-seam")
 (include-book "identity")
-(include-book "store-format-9")
-(include-book "store-format-9-records")
 
 ; -----------------------------------------------------------------------------
 ; Names and entries
@@ -183,67 +183,19 @@
          (append (fn-sxp-config-entries configs)
                  (fn-sxp-record-entries records))))
 ; -----------------------------------------------------------------------------
-; The archive's format (D34: one store format; D38 as proposed: the import
-; reads the previous format's archive).
-;
-; An archive is format 10 when its profile frame opens under this format's
-; digest and decodes (`fn-bs-config-decode'), and format 9 when it opens
-; under the SHA-256 trailer format 9 sealed with and names fn-store-9
-; (books/store-format-9.lisp).  The MANIFEST of a format-9 archive is its
-; SHA-256 lines (the digest format 9's image rendered them with), so the
-; import checks each entry under the archive's own digest, and writes the
-; new store under this format's.
-
-(defun fn-sxp-archive-format-9p (profile)
-  (declare (xargs :guard t))
-  (and (not (fn-bs-config-decode profile))
-       (equal (fn-f9-saved-format-word profile) *fn-bs-meta-format-9*)))
-
-; The profile the import reads from an archive's profile frame: this
-; format's, or the format-10 translation of a format-9 one
-; (`fn-f9-config-decode'); NIL when it is neither.
-(defun fn-sxp-config-decode-archive (profile)
-  (declare (xargs :guard t))
-  (if (fn-sxp-archive-format-9p profile)
-      (fn-f9-config-decode profile)
-    (fn-bs-config-decode profile)))
-
-(defthm fn-sxp-config-decode-archive-is-valid
-  (implies (fn-sxp-config-decode-archive profile)
-           (fn-bs-profile-validp (fn-sxp-config-decode-archive profile)))
-  :hints (("Goal" :use ((:instance fn-f9-config-decode-is-valid (octets profile)))
-           :in-theory (e/d (fn-bs-config-decode)
-                           (fn-f9-config-decode-is-valid fn-bs-profile-validp
-                            fn-f9-config-decode fn-frame-open
-                            fn-frame-fields-parse fn-bs-meta-frame-okp)))))
-
-; The profile the import writes: this format's word over the fields (every
-; profile the import reads is already format 10; kept so the plan names the
-; word it writes).
-(defun fn-sxp-log-profile (values)
-  (declare (xargs :guard t))
-  (if (consp values) (cons *fn-bs-meta-format-10* (cdr values)) values))
-
-; -----------------------------------------------------------------------------
 ; The MANIFEST
 
 (defun fn-sxp-octets-or-nil (octets)
   (declare (xargs :guard t))
   (if (fn-cbor-octet-listp octets) octets nil))
 
-; An entry's digest under the archive's format: this format's seam
-; (`fn-digest'), or format 9's SHA-256.
-(defun fn-sxp-entry-digest (f9p octets)
-  (declare (xargs :guard t))
-  (if f9p
-      (fn-f9-trailer (fn-sxp-octets-or-nil octets))
-    (fn-digest (fn-sxp-octets-or-nil octets))))
-
-(defun fn-sxp-manifest-line-under (f9p entry)
+; An entry's MANIFEST line: the lowercase hex of its digest under the seam
+; (`fn-digest'), two spaces, its name, LF.
+(defun fn-sxp-manifest-line (entry)
   (declare (xargs :guard t))
   (let ((name (if (consp entry) (car entry) nil))
         (octets (if (consp entry) (cdr entry) nil)))
-    (append (fn-id-hex-octets (fn-sxp-entry-digest f9p octets))
+    (append (fn-id-hex-octets (fn-digest (fn-sxp-octets-or-nil octets)))
             (list 32 32)
             (fn-sxp-octets-or-nil name)
             (list 10))))
@@ -251,54 +203,49 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-sxp-manifest-under-loop (f9p entries acc)
+(defun fn-sxp-manifest-loop (entries acc)
   (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp entries)
-      (fn-sxp-manifest-under-loop f9p
-                                  (cdr entries)
-                                  (fn-ag-rev-onto (fn-sxp-manifest-line-under f9p
+      (fn-sxp-manifest-loop (cdr entries)
+                                  (fn-ag-rev-onto (fn-sxp-manifest-line
                                                                               (car entries))
                                                   acc))
     (revappend acc nil)))
 
-(defun fn-sxp-manifest-under (f9p entries)
+; What `store export' renders (host/native/io.lisp) and the import checks.
+(defun fn-sxp-manifest (entries)
   (declare (xargs :verify-guards nil :guard t))
   (mbe :logic
        (if (consp entries)
-           (append (fn-sxp-manifest-line-under f9p (car entries))
-                   (fn-sxp-manifest-under f9p (cdr entries)))
+           (append (fn-sxp-manifest-line (car entries))
+                   (fn-sxp-manifest (cdr entries)))
          nil)
-       :exec (fn-sxp-manifest-under-loop f9p entries nil)))
+       :exec (fn-sxp-manifest-loop entries nil)))
 
 (local
- (defthm fn-sxp-manifest-under-loop-rev-onto-append
+ (defthm fn-sxp-manifest-loop-rev-onto-append
    (equal (revappend (fn-ag-rev-onto x acc) y)
           (revappend acc (append x y)))))
 
 (local
- (defthm fn-sxp-manifest-under-loop-is-revappend
-   (equal (fn-sxp-manifest-under-loop f9p entries acc)
-          (revappend acc (fn-sxp-manifest-under f9p entries)))
-   :hints (("Goal" :induct (fn-sxp-manifest-under-loop f9p entries acc)
-                   :in-theory (union-theories '(fn-sxp-manifest-under-loop fn-sxp-manifest-under revappend car-cons cdr-cons fn-sxp-manifest-under-loop-rev-onto-append)
+ (defthm fn-sxp-manifest-loop-is-revappend
+   (equal (fn-sxp-manifest-loop entries acc)
+          (revappend acc (fn-sxp-manifest entries)))
+   :hints (("Goal" :induct (fn-sxp-manifest-loop entries acc)
+                   :in-theory (union-theories '(fn-sxp-manifest-loop fn-sxp-manifest revappend car-cons cdr-cons fn-sxp-manifest-loop-rev-onto-append)
                                               (theory 'minimal-theory))))))
 
-(verify-guards fn-sxp-manifest-under-loop)
+(verify-guards fn-sxp-manifest-loop)
 
-(verify-guards fn-sxp-manifest-under
+(verify-guards fn-sxp-manifest
   :hints (("Goal"
            :in-theory
-           (union-theories '(revappend fn-sxp-manifest-under)
+           (union-theories '(revappend fn-sxp-manifest)
                            (union-theories (theory 'minimal-theory)
                                            (executable-counterpart-theory :here)))
            :use
-           ((:instance fn-sxp-manifest-under-loop-is-revappend (acc nil))))))
+           ((:instance fn-sxp-manifest-loop-is-revappend (acc nil))))))
 
-
-; What `store export' renders (host/native/io.lisp): this format's lines.
-(defun fn-sxp-manifest (entries)
-  (declare (xargs :guard t))
-  (fn-sxp-manifest-under nil entries))
 
 ; The name of the first entry whose line the MANIFEST octets do not carry at
 ; its place, or the MANIFEST's own name when every line matched and octets
@@ -315,12 +262,12 @@
   (declare (xargs :guard (natp n)))
   (if (zp n) xs (fn-sxp-drop (1- n) (if (consp xs) (cdr xs) nil))))
 
-(defun fn-sxp-manifest-mismatch (f9p entries manifest)
+(defun fn-sxp-manifest-mismatch (entries manifest)
   (declare (xargs :guard t :measure (len entries)))
   (if (consp entries)
-      (let ((line (fn-sxp-manifest-line-under f9p (car entries))))
+      (let ((line (fn-sxp-manifest-line (car entries))))
         (if (fn-sxp-prefixp line manifest)
-            (fn-sxp-manifest-mismatch f9p (cdr entries)
+            (fn-sxp-manifest-mismatch (cdr entries)
                                       (fn-sxp-drop (len line) manifest))
           (if (consp (car entries)) (caar entries) nil)))
     (if (consp manifest) *fn-sxp-manifest-name* nil)))
@@ -353,32 +300,8 @@
              (fn-sxp-config-names-increasingp (cdr configs) name)))
     t))
 
-;; -----------------------------------------------------------------------------
-;; The archive's profile is fn-sxp-config-decode-archive above: this format's,
-;; or the format-10 translation of a format-9 one.  The reader of the layout
-;; before batch AS (thirteen fields, format 8; compression-extents-2's proposed
-;; D38) is retired with format 10: the import reads the previous release's
-;; export only (D34); a format-8 archive imports through a format-9 release
-;; first (batch AY, compression-extents-2 x format-bump-10).
-
-; The current layout reads as the open's decoder reads it.
-(defthm fn-sxp-config-decode-archive-of-a-current-frame
-  (implies (fn-bs-config-decode octets)
-           (equal (fn-sxp-config-decode-archive octets) (fn-bs-config-decode octets)))
-  :hints (("Goal" :in-theory (e/d (fn-sxp-config-decode-archive fn-sxp-archive-format-9p)
-                                  (fn-bs-config-decode fn-bs-profile-validp)))))
-
 ; -----------------------------------------------------------------------------
 ; The import's plan
-
-; Why an archive's profile does not import, by name: a format-9 profile's
-; translation refusal (books/store-format-9.lisp fn-f9-profile-refusal), or
-; `:store-format' for a frame of no format this image reads.
-(defun fn-sxp-profile-refusal (profile)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (fn-sxp-archive-format-9p profile)
-      (or (fn-f9-profile-refusal (fn-f9-profile-values profile)) :store-format)
-    :store-format))
 
 ; What `store import' does with an archive it read: MANIFEST, the profile
 ; frame, the FRONTIER frame, CONFIGS and RECORDS as the host read them from the archive's files
@@ -388,54 +311,42 @@
 ;                                      a new store under VALUES holding
 ;                                      FRONTIER, CONFIGS and RECORDS
 ;   (:refused :manifest-mismatch NAME) an entry the MANIFEST does not carry
-;                                      under the archive's digest
-;   (:refused :record-translation REASON SEQUENCE)
-;                                      a format-9 record the translation
-;                                      refuses (books/store-format-9-records)
 ;   (:refused :record-out-of-sequence N)
 ;   (:refused :config-out-of-sequence)
 ;   (:refused :profile REASON)         a profile the codec cannot represent
-;                                      (REASON the relation it fails by name,
-;                                      :store-format for another format)
+;                                      (REASON the relation it fails by name),
+;                                      or :store-format for a profile frame
+;                                      this format does not decode (an
+;                                      archive of another format: none is
+;                                      read, D34)
 (defun fn-sxp-import-plan (manifest profile frontier configs records request)
-  (declare (xargs :guard t :verify-guards nil))
-  (let* ((f9p (fn-sxp-archive-format-9p profile))
-         (mismatch (fn-sxp-manifest-mismatch
-                    f9p (fn-sxp-entries profile frontier configs records) manifest))
-         ; The archive's profile: this format's, or a format-9 one translated
-         ; (fn-sxp-config-decode-archive).
-         (saved (fn-sxp-config-decode-archive profile))
-         ; A format-9 archive's records with their identities re-derived under
-         ; this format's digest (books/store-format-9-records.lisp), after the
-         ; MANIFEST was checked over the archive's own octets.
-         (records (if f9p (fn-f9r-records records) records)))
+  (declare (xargs :guard t))
+  (let ((mismatch (fn-sxp-manifest-mismatch
+                   (fn-sxp-entries profile frontier configs records) manifest))
+        (saved (fn-bs-config-decode profile)))
     (cond (mismatch (list :refused :manifest-mismatch mismatch))
-          ((and f9p (consp records) (equal (car records) :refused))
-           (list :refused :record-translation
-                 (if (consp (cdr records)) (cadr records) nil)
-                 (if (consp (cdr records)) (caddr records) nil)))
           ((fn-sxp-out-of-sequence records nil)
            (list :refused :record-out-of-sequence
                  (fn-sxp-out-of-sequence records nil)))
           ((not (fn-sxp-config-names-increasingp configs nil))
            (list :refused :config-out-of-sequence))
-          ((null saved) (list :refused :profile (fn-sxp-profile-refusal profile)))
+          ((null saved) (list :refused :profile :store-format))
           ((not (fn-bs-profile-requestp request))
            (list :refused :profile :request))
           ((null (cadr request))
-           (list :import (fn-sxp-log-profile saved) frontier configs records))
+           (list :import saved frontier configs records))
           (t (let ((values (fn-bs-profile-resolve request saved)))
                (if (and (consp values) (equal (car values) :invalid))
                    (list :refused :profile
                          (if (consp (cdr values)) (cadr values) :request))
-                 (list :import (fn-sxp-log-profile values)
-                       frontier configs records)))))))
+                 (list :import values frontier configs records)))))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE (PRF-205): the import of an export replays the same history.
 ;
-; For a store whose profile is a valid format-10 profile (fn-bs-profile-logp
-; reads the profile only when it is valid: every store the open admits) and
+; For a store whose profile is a valid profile of this format
+; (fn-bs-profile-logp reads the profile only when it is valid: every store
+; the open admits) and
 ; whose records are in strictly increasing sequence with configuration names
 ; in order (what the open's observation returns), the plan the import takes
 ; over the archive the export wrote -- the same entries, and the MANIFEST
@@ -456,27 +367,9 @@
 
 (local
  (defthm fn-sxp-manifest-mismatch-of-manifest
-   (equal (fn-sxp-manifest-mismatch f9p entries (fn-sxp-manifest-under f9p entries))
+   (equal (fn-sxp-manifest-mismatch entries (fn-sxp-manifest entries))
           nil)
-   :hints (("Goal" :in-theory (disable fn-sxp-manifest-line-under)))))
-
-(local
- (defthm fn-sxp-valid-profile-facts
-   (implies (fn-bs-profile-validp values)
-            (and (consp values)
-                 (equal (car values) *fn-bs-meta-format-10*)))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (enable fn-bs-profile-validp fn-bs-profile-invalid-reason
-                                      fn-bs-meta-formatp)
-                   :expand ((fn-bs-meta-nth 0 values)
-                            (fn-frame-values-okp *fn-bs-meta-profile-spec* values))))))
-
-(local
- (defthm fn-sxp-log-profile-of-valid
-   (implies (fn-bs-profile-validp values)
-            (equal (fn-sxp-log-profile values) values))
-   :hints (("Goal" :use fn-sxp-valid-profile-facts
-            :in-theory (disable fn-bs-profile-validp)))))
+   :hints (("Goal" :in-theory (disable fn-sxp-manifest-line)))))
 
 (local
  (defthm fn-sxp-logp-is-valid
@@ -500,76 +393,8 @@
                   (list :import values frontier configs records)))
   :hints (("Goal" :use (fn-sxp-logp-is-valid
                         (:instance fn-bs-config-decode-of-encode))
-           :in-theory (e/d (fn-sxp-increasingp fn-sxp-config-decode-archive
-                            fn-sxp-archive-format-9p)
+           :in-theory (e/d (fn-sxp-increasingp)
                            (fn-sxp-logp-is-valid fn-bs-config-decode-of-encode
-                            fn-sxp-manifest-under fn-sxp-entries
+                            fn-sxp-manifest fn-sxp-entries
                             fn-bs-config-encode fn-bs-config-decode
-                            fn-bs-profile-validp fn-bs-profile-logp
-                            fn-f9-saved-format-word)))))
-
-; KEYSTONE (D38's witness, format 9 -> 10: the migration across the
-; reinstall).  For every format-9 profile that translates (no refusal by
-; name, books/store-format-9.lisp fn-f9-profile-refusal) and records in
-; strictly increasing sequence with configuration names in order, the plan
-; the import takes over the archive the format-9 release exported -- its
-; profile frame sealed under SHA-256 (fn-f9-config-frame) and its MANIFEST of
-; SHA-256 lines -- with no field raised is: born under the format-10
-; translation of that profile (every field but the two dropped ones), with
-; the same configuration records, replaying exactly the same records in the
-; same order, each re-derived under this format's digest
-; (books/store-format-9-records.lisp fn-f9r-records: the translation keeps
-; every field but the identities, which are the ones a format-10 node
-; derives).
-(local
- (defthm fn-sxp-f9-frame-is-not-decoded
-   (implies (null (fn-f9-profile-refusal values9))
-            (not (fn-bs-config-decode (fn-f9-config-frame values9))))
-   :hints (("Goal" :use (fn-f9-saved-format-word-of-config-frame
-                         (:instance fn-f9-format-9-frame-does-not-decode
-                                    (octets (fn-f9-config-frame values9))))
-            :in-theory (e/d (fn-f9-profile-refusal)
-                            (fn-f9-saved-format-word-of-config-frame
-                             fn-f9-format-9-frame-does-not-decode
-                             fn-bs-config-decode fn-f9-config-frame
-                             fn-f9-saved-format-word fn-bs-profile-invalid-reason))))))
-
-(defthm fn-sxp-import-of-a-format-9-export
-  (implies (and (null (fn-f9-profile-refusal values9))
-                (not (equal (car (fn-f9r-records records)) :refused))
-                (fn-sxp-increasingp (fn-f9r-records records))
-                (fn-sxp-config-names-increasingp configs nil))
-           (equal (fn-sxp-import-plan
-                   (fn-sxp-manifest-under
-                    t (fn-sxp-entries (fn-f9-config-frame values9) frontier
-                                      configs records))
-                   (fn-f9-config-frame values9) frontier configs records
-                   '(:current nil))
-                  (list :import (fn-f9-profile-of values9) frontier configs
-                        (fn-f9r-records records))))
-  :hints (("Goal" :use (fn-sxp-f9-frame-is-not-decoded
-                        fn-f9-config-decode-of-a-format-9-frame
-                        fn-f9-saved-format-word-of-config-frame
-                        (:instance fn-sxp-log-profile-of-valid
-                                   (values (fn-f9-profile-of values9))))
-           :in-theory (e/d (fn-sxp-increasingp fn-sxp-config-decode-archive
-                            fn-sxp-archive-format-9p fn-f9-profile-refusal)
-                           (fn-sxp-f9-frame-is-not-decoded
-                            fn-f9-config-decode-of-a-format-9-frame
-                            fn-f9-saved-format-word-of-config-frame
-                            fn-sxp-log-profile-of-valid
-                            fn-sxp-manifest-under fn-sxp-entries fn-f9r-records
-                            fn-f9-config-frame fn-f9-config-decode
-                            fn-f9-saved-format-word fn-f9-profile-of
-                            fn-bs-config-decode fn-bs-profile-validp
-                            fn-bs-profile-invalid-reason fn-frame-values-okp)))))
-
-(defthm fn-sxp-log-profile-is-a-valid-log-profile
-  (implies (fn-bs-profile-validp values)
-           (and (fn-bs-profile-validp (fn-sxp-log-profile values))
-                (fn-bs-profile-logp (fn-sxp-log-profile values))
-                (equal (cdr (fn-sxp-log-profile values)) (cdr values))))
-  :hints (("Goal" :use (fn-sxp-log-profile-of-valid fn-sxp-valid-profile-facts)
-           :in-theory (e/d (fn-bs-profile-logp fn-bs-profile-of)
-                           (fn-sxp-log-profile-of-valid fn-bs-profile-validp
-                            fn-sxp-log-profile)))))
+                            fn-bs-profile-validp fn-bs-profile-logp)))))

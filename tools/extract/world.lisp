@@ -152,7 +152,6 @@
 (include-book "../../books/store-checkpoint-tables-reader")
 (include-book "../../books/store-intern")
 (include-book "../../books/store-recover-stream")
-(include-book "../../books/store-format-9-records")
 (include-book "../../books/payload-commit-extent")
 (include-book "../../books/payload-extent-read")
 (include-book "../../books/payload-lz-append")

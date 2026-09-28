@@ -90,10 +90,10 @@
          (append (fn-sxp-record-entries a) (fn-sxp-record-entries b)))
   :hints (("Goal" :in-theory (disable fn-sxp-record-name))))
 
-(defthm fn-sxp-manifest-under-of-append
-  (equal (fn-sxp-manifest-under f9p (append a b))
-         (append (fn-sxp-manifest-under f9p a) (fn-sxp-manifest-under f9p b)))
-  :hints (("Goal" :in-theory (disable fn-sxp-manifest-line-under))))
+(defthm fn-sxp-manifest-of-append
+  (equal (fn-sxp-manifest (append a b))
+         (append (fn-sxp-manifest a) (fn-sxp-manifest b)))
+  :hints (("Goal" :in-theory (disable fn-sxp-manifest-line))))
 
 (local
  (defthm fn-sxp-stream-chunk-entries-is-record-entries
@@ -104,8 +104,8 @@
 (local
  (defthm fn-sxp-stream-chunk-manifest-is-manifest
    (equal (fn-sxp-stream-chunk-manifest chunks)
-          (fn-sxp-manifest-under nil (fn-sxp-record-entries (fn-sxp-chunks-records chunks))))
-   :hints (("Goal" :in-theory (disable fn-sxp-record-entries fn-sxp-manifest-under)))))
+          (fn-sxp-manifest (fn-sxp-record-entries (fn-sxp-chunks-records chunks))))
+   :hints (("Goal" :in-theory (disable fn-sxp-record-entries fn-sxp-manifest)))))
 
 ; KEYSTONE (the subject: the steps host/native/io.lisp
 ; fnn-command-store-export calls, fn-sxp-export-head then fn-sxp-export-chunk
@@ -118,5 +118,5 @@
               (fn-sxp-manifest
                (fn-sxp-entries profile frontier configs
                                (fn-sxp-chunks-records chunks)))))
-  :hints (("Goal" :in-theory (disable fn-sxp-record-entries fn-sxp-manifest-under
+  :hints (("Goal" :in-theory (disable fn-sxp-record-entries fn-sxp-manifest
                                       fn-sxp-head-entries))))

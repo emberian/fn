@@ -15,7 +15,6 @@
 (include-book "../books/replay")
 (include-book "../books/store-intern")
 (include-book "../books/store-recover-stream")
-(include-book "../books/store-format-9-records")
 ; The open's extent seals and the served read's trailer check (PRF-294);
 ; the commit's extent reseat (PRF-309; it includes payload-extent).
 (include-book "../books/payload-commit-extent")
@@ -151,19 +150,6 @@
   (declare (xargs :mode :program
                   :guard (fn-cbor-octet-listp octets)))
   (fn-srs-record-sequence octets))
-
-; An archive record's sequence at `store import': the journal record's, or,
-; for a format-9 topic anchor or admission (which format 10 does not decode),
-; the sequence its envelope names (books/store-format-9-records.lisp
-; fn-f9r-signed-topic-sequence), so the MANIFEST check names the right entry
-; and the translation then refuses it by name.
-(defun fn-store-archive-record-sequence (octets)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (let ((sequence (fn-srs-record-sequence octets)))
-    (if (natp sequence)
-        sequence
-      (fn-f9r-signed-topic-sequence octets))))
 
 (defun fn-store-record-txid (octets)
   (declare (xargs :mode :program
