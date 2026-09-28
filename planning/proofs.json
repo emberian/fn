@@ -4342,8 +4342,8 @@
       ],
       "status": "uncertified-at-current-digest",
       "events": [
-        "fn-sha256-of-prefixed-buffer-is-sha256",
-        "fn-shb-subject-id-is-id-subject-of-sha256-preimage"
+        "fn-blake3-of-prefixed-buffer-is-blake3",
+        "fn-sidb-subject-id-is-id-subject-of-payload"
       ],
       "evidence": [
         "planning/evidence/rep-wave-c-2026-09-25.md",
@@ -5235,7 +5235,8 @@
         "fn-smr-admission-is-within-the-profile",
         "fn-smr-roomp-antitone-in-octets",
         "fn-smr-roomp-is-within-the-bound",
-        "fn-smr-admitted-profile-starts-reserved"
+        "fn-smr-admitted-profile-starts-reserved",
+        "fn-scka-publication-setup-plans-within-the-disk"
       ]
     },
     {
@@ -8634,7 +8635,6 @@
         "fn-cl-served-payload-projects-to-the-injected-octets",
         "fn-cl-ring-keys-open-every-retained-lock",
         "fn-cll-skip-of-the-generated-lines",
-        "fn-ns-expand-input-separates-info",
         "fn-ns-cancel-lock-and-posting-account-inputs-differ",
         "fn-ns-file-parse-of-render",
         "fn-cld-a-retry-by-any-account-or-epoch-is-already-stored",
@@ -8772,8 +8772,7 @@
       "events": [
         "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
         "fn-bs-imp-classify-by-what-is-known",
-        "fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store",
-        "fn-bs-init-pub-classify-by-what-is-known"
+        "fn-bs-init-pub-admission-proceeds-only-on-nothing"
       ]
     },
     {
@@ -9495,7 +9494,6 @@
       "progress_note": "Lane fixtures-refresh 2026-09-27 (PKT-705). Restated for format 10 (lane format-bump-10): one text before the u64 run, 15 fields.",
       "events": [
         "fn-spo-open-of-another-layout-refuses-by-name",
-        "fn-spo-config-open-refuses-no-decoded-frame",
         "fn-spo-layout-fields-of-a-layout-frame"
       ]
     },
@@ -9667,9 +9665,9 @@
       ],
       "progress_note": "Lane log-recovery 2026-09-27: admitted in the persvati REPL with its test book; certification is the batch's. Lane log-leftovers 2026-09-27: T8 restated over the streamed open (log-open-stream's fnn-log-stream-segment): the string-era fold fn-lgs-open-chain-records / -last (fn-lg-open-kernel per segment read as a string), its theorems fn-lg-segment-drop-preserves-the-open, fn-lgs-open-chain-records-of-append, fn-lgs-open-chain-is-the-chain and the string splice classifier fn-lgs-chain-broken-string-p / -at (no host caller since the stream) are deleted; the keystone is fn-lgw-segment-drop-preserves-the-open.",
       "events": [
-        "fn-lg-segment-drop-preserves-the-open",
-        "fn-lgs-open-chain-records-of-append",
-        "fn-lgs-open-chain-is-the-chain",
+        "fn-lgw-segment-drop-preserves-the-open",
+        "fn-lgw-open-chain-is-the-chain",
+        "fn-lgw-segment-is-the-scan",
         "fn-lgs-open-plan-scan-ignores-covered",
         "fn-lgs-rotate-is-the-recovered-kernel",
         "fn-lgs-chain-records-of-append",
@@ -11345,7 +11343,7 @@
       ],
       "progress_note": "Lane snapshot-open-2 (2026-09-27): the checkpoint open's list hashing.",
       "events": [
-        "fn-sha256-of-prefixed-range-is-sha256",
+        "fn-blake3-of-prefixed-range-is-blake3",
         "fn-frame-digest-range-is-the-frame-digest",
         "fn-sccr-window-seal-is-seal"
       ]
@@ -11455,7 +11453,7 @@
         "PRF-288"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-admission.lisp",
         "books/peer-inbound-invariants.lisp",
@@ -11479,7 +11477,9 @@
         "fn-otm-closed-posting-never-awaits-an-article",
         "fn-otm-closed-posting-answers-the-generic-440",
         "fn-otm-posting-disallowed-refusal-is-the-generic-441",
-        "fn-otm-disk-reply-effects-is-a-map"
+        "fn-peer-shed-offer-is-disk-slow",
+        "fn-otm-disk-effects-names-the-disk",
+        "fn-otm-peer-reader-read-only-while-shedding"
       ]
     },
     {
@@ -11649,7 +11649,7 @@
         "A-DURABLE-EXTENT",
         "A-DURABLE-LZ"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/payload-lz-record.lisp",
         "books/payload-lz-replay.lisp",
