@@ -712,11 +712,12 @@ class Acl2Session:
     def call(self, form, timeout=None):
         """FORM (text) evaluated; ACL2's printed value and its prompt.  The
         image's world already holds every book it was built with; an
-        `include-book` or `ld` here would load source over it, uncertified
-        (the image's tree need not hold certificates), and is refused."""
-        if re.match(r"\s*\((include-book|ld)\s", form, re.IGNORECASE):
-            raise Acl2ValueError("the image's world is loaded; no {} in a session".format(
-                form.split()[0][1:]))
+        `include-book` here would load a book's source over it, uncertified
+        (the image's tree need not hold certificates), and is refused.  An
+        `ld` of a tool's own program file (tools/synth-log-store.lisp) is
+        the tool's business."""
+        if re.match(r"\s*\(include-book\s", form, re.IGNORECASE):
+            raise Acl2ValueError("the image's world is loaded; no include-book in a session")
         self.proc.stdin.write(form.encode("utf-8") + b"\n")
         self.proc.stdin.flush()
         output = self._until_prompt(timeout)
