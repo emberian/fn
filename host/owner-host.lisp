@@ -3193,14 +3193,6 @@
          (state (f-put-global 'fn-owner-exposure-public publicp state)))
     (value (if publicp :public :loopback))))
 
-(defun fn-owner-exposure-install (family address state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))
-         (state (f-put-global 'fn-owner-exposure-close nil state))
-         (state (f-put-global 'fn-owner-exposure-public
-                              (fn-exp-address-publicp family address) state)))
-    (value (if (fn-exp-address-publicp family address) :public :loopback))))
-
 ;; The accept.  PEER-OCTETS is fn-owner-peer-for-socket-address's answer.
 ;; The result is the new connection id, or NIL; `fn-owner-output' holds the
 ;; greeting, or the 400 a refused connection is sent before it is closed
