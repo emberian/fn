@@ -338,12 +338,17 @@ Disk modes, deadlines and the answer for each command in each mode are a table
 today in prose. Generate the mode machine, the decision-journal rows and the
 tests for each cell from it; the bars F4-R and F4-W become rows ember adopts.
 
-### G9: the definition/implementation split
-Every generated type and every keystone gets a logic-only book (definitions,
-correspondence statements) that dependents include, and an exec book the image
-loads. Abstract stobjs already showed zero dependents recertify on an exec
-change. This is what turns 700-book recertifications into tens, and it is
-what makes the steps ratchet meaningful per book.
+### G9: the definition/implementation split (corrected 2026-09-28 by the pilot)
+A book cannot drop guard verification into a separate book: a guard-verified caller
+needs its callee's guards verified in its own world. The workable split is the
+seam-and-attachment pattern: book B keeps its :logic definitions, their guards and the
+theorems dependents cite; B-exec holds each fast twin as (mbe :logic (F ..) :exec fast)
+whose verify-guards IS the correspondence; the twin reaches execution only through a
+defattach from a constrained seam, in an attach book only images and tests include.
+Measured on records.lisp: an :exec edit to the decoder recertifies 5 books (was 1,132).
+(An earlier claim here that abstract stobjs had "already shown zero dependents
+recertify" had no evidence and is withdrawn.) The tree-wide form is the source-tree
+reorganisation, planning/reorg-2026-09-28.md.
 
 ### Order and what each costs
 1. G3 and G4 during the 6.6.x series: test books and dispatch only; no store
