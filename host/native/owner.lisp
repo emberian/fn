@@ -2466,7 +2466,15 @@ nil when nothing was queued (or the store does not commit through the log)."
                 (fnn-err "start: seal=~a bmax=~d members=~d" seal (fnn-log-bmax log)
                          (length members)))
               (when (and seal members (not uncertain))
-                (fnn-log-seal-open-batch store)))
+                (fnn-log-seal-open-batch store)
+                ;; Lane credits (books/owner-credits.lisp fn-mca-seal): the
+                ;; taken members' credit is the batch in flight's until its
+                ;; COMPLETE, whatever their connections do meanwhile.
+                (fnn-owner-action 'fn-owner-credits-seal))
+              ;; Nothing kept (every member a refusal told at its drain):
+              ;; nothing of theirs is written or held (fn-mca-settle).
+              (when (and (null members) (not uncertain))
+                (fnn-owner-action 'fn-owner-credits-settle)))
           (fnn-store-indeterminate (e)
             (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
             (setq uncertain t))))
@@ -2544,6 +2552,9 @@ members."
        ;; An indeterminate observation before the first member was kept
        ;; still stops: the store is fenced either way (lane log-2).
        (setf (fnn-store-fenced store) t)
+       ;; Lane credits (fn-mca-stop): the service exits; nothing is admitted
+       ;; again.
+       (fnn-owner-action 'fn-owner-credits-stop)
        (fnn-err "a log batch of ~d member~:p is uncertain; the store needs recovery"
                 (length members))
        ;; Each member is answered from the owner before the stop (campaign
@@ -2556,6 +2567,9 @@ members."
        (fnn-owner-stop-service-locked service +fnn-exit-uncertain+))
       (:complete
        (fnn-log-batch-finish store)
+       ;; Lane credits (fn-mca-batch-done): the barrier returned; the batch's
+       ;; buffers are the syncer's no longer.
+       (fnn-owner-action 'fn-owner-credits-batch-done)
        ;; After the barrier: the lines and the feed resolutions, in order.
        (dolist (item (reverse (cdr deferred)))
          (if (eq (car item) :log)
@@ -2850,6 +2864,7 @@ leave only in its COMPLETE, after its barrier returned
                              ;; Stopped during the barrier: no member is
                              ;; answered (uncertain to its client).
                              (fnn-owner-reader-capture :drop)
+                             (fnn-owner-action 'fn-owner-credits-stop)
                              (dolist (m (fnn-owner-unreleased (append members next) released))
                                (fnn-owner-deliver service (first m) :uncertain)))
                             ((eq step :complete)
@@ -2864,7 +2879,10 @@ leave only in its COMPLETE, after its barrier returned
                              ;; is sealed now and becomes the batch in flight.
                              (when next
                                (let ((*fnn-owner-deferred* next-deferred))
-                                 (handler-case (fnn-log-seal-open-batch store)
+                                 (handler-case
+                                     (progn (fnn-log-seal-open-batch store)
+                                            ;; Lane credits: fn-mca-seal.
+                                            (fnn-owner-action 'fn-owner-credits-seal))
                                    (fnn-store-indeterminate (e)
                                      (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
                                      (fnn-owner-reader-capture :drop)
@@ -3446,7 +3464,9 @@ EPIPE and the client saw a bare close)."
                        closing starttls consumed)))
            (when submitted
              (multiple-value-bind (reply-cid done stop)
-                 (fnn-owner-drain-one service)
+                 (multiple-value-prog1 (fnn-owner-drain-one service)
+                   ;; Lane credits (fn-mca-settle): written synchronously.
+                   (fnn-owner-action 'fn-owner-credits-settle))
                (when (and reply-cid (not (= reply-cid cid)))
                  (fnn-fault "writer drained a different connection"))
                (setq completion done uncertain stop)))

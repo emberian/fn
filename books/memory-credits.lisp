@@ -288,3 +288,176 @@
                          (fn-mcr-fundedp (cadr (fn-mcr-evict l x))))
                 (implies (equal (car (fn-mcr-overdraw l id x)) :ok)
                          (fn-mcr-fundedp (cadr (fn-mcr-overdraw l id x)))))))
+
+; -----------------------------------------------------------------------------
+; RESIZE and MOVE (lane credits, B5, 2026-09-28): the two transitions the
+; served path uses (books/owner-credits.lisp).  An operation's credit is
+; FN-MCR-CREDIT-OF (owned plus reserved; zero when it holds none).
+;
+;   fn-mcr-resize id N    the operation now needs N: shrinking (N at most
+;                         what it holds) is never refused -- reserve to
+;                         finish -- and growing is admitted exactly when the
+;                         growth fits beside everything funded, refused
+;                         :memory-budget-exhausted by name otherwise, the
+;                         ledger unchanged.  N = 0 releases it.
+;   fn-mcr-move from to X the buffer changed hands: X of FROM's credit
+;                         becomes TO's, never refused within what FROM
+;                         holds; the funded total is unchanged (the same
+;                         credit follows the buffer).
+(defun fn-mcr-credit-of (id ops)
+  (declare (xargs :guard t))
+  (let ((pair (hons-assoc-equal id ops)))
+    (if pair
+        (+ (fn-mcr-op-owned (cdr pair)) (fn-mcr-op-reserved (cdr pair)))
+      0)))
+
+(defun fn-mcr-set (id n ops)
+  (declare (xargs :guard t))
+  (let ((n (nfix n)))
+    (if (zp n) (fn-mcr-drop id ops) (fn-mcr-put id (cons 0 n) ops))))
+
+(defun fn-mcr-resize (l id n)
+  (declare (xargs :guard t))
+  (let* ((ops (fn-mcr-ops l))
+         (old (fn-mcr-credit-of id ops))
+         (n (nfix n)))
+    (if (and (< old n)
+             (< (fn-mcr-budget l) (+ (- (fn-mcr-total l) old) n)))
+        (list :refused :memory-budget-exhausted)
+      (list :ok (fn-mcr-with l (fn-mcr-cache l) (fn-mcr-drawn l) (fn-mcr-set id n ops))))))
+
+(defun fn-mcr-move (l from to x)
+  (declare (xargs :guard t))
+  (let* ((ops (fn-mcr-ops l))
+         (have (fn-mcr-credit-of from ops))
+         (x (nfix x)))
+    (cond ((equal from to) (list :refused :same-operation))
+          ((< have x) (list :refused :past-what-it-holds))
+          (t (let ((ops1 (fn-mcr-set from (- have x) ops)))
+               (list :ok (fn-mcr-with l (fn-mcr-cache l) (fn-mcr-drawn l)
+                                      (fn-mcr-set to (+ (fn-mcr-credit-of to ops1) x)
+                                                  ops1))))))))
+
+(defthm fn-mcr-credit-of-natp
+  (natp (fn-mcr-credit-of id ops))
+  :rule-classes :type-prescription)
+
+(defthm fn-mcr-ops-credit-splits-at
+  (implies (fn-mcr-opsp ops)
+           (equal (fn-mcr-ops-credit ops)
+                  (+ (fn-mcr-credit-of id ops)
+                     (fn-mcr-ops-credit (fn-mcr-drop id ops)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-mcr-ops-credit-of-drop))
+           :in-theory (enable fn-mcr-drop-when-absent))))
+
+(defthm fn-mcr-ops-credit-of-set
+  (equal (fn-mcr-ops-credit (fn-mcr-set id n ops))
+         (+ (nfix n) (fn-mcr-ops-credit (fn-mcr-drop id ops))))
+  :hints (("Goal" :in-theory (enable fn-mcr-drop))))
+
+(defthm fn-mcr-opsp-of-set
+  (implies (fn-mcr-opsp ops) (fn-mcr-opsp (fn-mcr-set id n ops)))
+  :hints (("Goal" :in-theory (disable fn-mcr-opsp))))
+
+(defthm fn-mcr-hons-assoc-of-drop-same
+  (not (hons-assoc-equal id (fn-mcr-drop id ops)))
+  :hints (("Goal" :in-theory (enable fn-mcr-drop))))
+
+(defthm fn-mcr-credit-of-set-same
+  (equal (fn-mcr-credit-of id (fn-mcr-set id n ops)) (nfix n))
+  :hints (("Goal" :in-theory (enable fn-mcr-put fn-mcr-drop))))
+
+(defthm fn-mcr-hons-assoc-of-drop-other
+  (implies (not (equal a b))
+           (equal (hons-assoc-equal a (fn-mcr-drop b ops)) (hons-assoc-equal a ops)))
+  :hints (("Goal" :in-theory (enable fn-mcr-drop))))
+
+(defthm fn-mcr-credit-of-set-other
+  (implies (not (equal a b))
+           (equal (fn-mcr-credit-of a (fn-mcr-set b n ops)) (fn-mcr-credit-of a ops)))
+  :hints (("Goal" :in-theory (enable fn-mcr-put))))
+
+(in-theory (disable fn-mcr-credit-of fn-mcr-set))
+
+(defthm fn-mcr-total-of-resize
+  (implies (and (fn-mcr-opsp (fn-mcr-ops l))
+                (equal (car (fn-mcr-resize l id n)) :ok))
+           (equal (fn-mcr-total (cadr (fn-mcr-resize l id n)))
+                  (+ (- (fn-mcr-total l) (fn-mcr-credit-of id (fn-mcr-ops l))) (nfix n))))
+  :hints (("Goal" :use ((:instance fn-mcr-ops-credit-splits-at (ops (fn-mcr-ops l)))))))
+
+(defthm fn-mcr-resize-refuses-exactly-past-the-budget
+  (equal (equal (car (fn-mcr-resize l id n)) :ok)
+         (or (<= (nfix n) (fn-mcr-credit-of id (fn-mcr-ops l)))
+             (<= (+ (- (fn-mcr-total l) (fn-mcr-credit-of id (fn-mcr-ops l))) (nfix n))
+                 (fn-mcr-budget l))))
+  :hints (("Goal" :in-theory (disable fn-mcr-total))))
+
+(defthm fn-mcr-resize-sets-the-credit
+  (implies (equal (car (fn-mcr-resize l id n)) :ok)
+           (and (equal (fn-mcr-credit-of id (fn-mcr-ops (cadr (fn-mcr-resize l id n)))) (nfix n))
+                (implies (not (equal a id))
+                         (equal (fn-mcr-credit-of a (fn-mcr-ops (cadr (fn-mcr-resize l id n))))
+                                (fn-mcr-credit-of a (fn-mcr-ops l))))))
+  :hints (("Goal" :in-theory (disable fn-mcr-total))))
+
+(defthm fn-mcr-resize-keeps-the-rest
+  (implies (equal (car (fn-mcr-resize l id n)) :ok)
+           (and (equal (fn-mcr-budget (cadr (fn-mcr-resize l id n))) (fn-mcr-budget l))
+                (equal (fn-mcr-cache (cadr (fn-mcr-resize l id n))) (fn-mcr-cache l))
+                (equal (fn-mcr-drawn (cadr (fn-mcr-resize l id n))) (fn-mcr-drawn l))))
+  :hints (("Goal" :in-theory (disable fn-mcr-total))))
+
+(defthm fn-mcr-total-of-move
+  (implies (and (fn-mcr-opsp (fn-mcr-ops l))
+                (equal (car (fn-mcr-move l from to x)) :ok))
+           (equal (fn-mcr-total (cadr (fn-mcr-move l from to x))) (fn-mcr-total l)))
+  :hints (("Goal" :use ((:instance fn-mcr-ops-credit-splits-at (ops (fn-mcr-ops l)) (id from))
+                        (:instance fn-mcr-ops-credit-splits-at
+                                   (ops (fn-mcr-set from (- (fn-mcr-credit-of from (fn-mcr-ops l)) (nfix x))
+                                                    (fn-mcr-ops l)))
+                                   (id to))))))
+
+(defthm fn-mcr-move-moves-the-credit
+  (implies (equal (car (fn-mcr-move l from to x)) :ok)
+           (and (equal (fn-mcr-credit-of from (fn-mcr-ops (cadr (fn-mcr-move l from to x))))
+                       (- (fn-mcr-credit-of from (fn-mcr-ops l)) (nfix x)))
+                (equal (fn-mcr-credit-of to (fn-mcr-ops (cadr (fn-mcr-move l from to x))))
+                       (+ (fn-mcr-credit-of to (fn-mcr-ops l)) (nfix x)))
+                (implies (and (not (equal a from)) (not (equal a to)))
+                         (equal (fn-mcr-credit-of a (fn-mcr-ops (cadr (fn-mcr-move l from to x))))
+                                (fn-mcr-credit-of a (fn-mcr-ops l)))))))
+
+(defthm fn-mcr-move-within-what-it-holds-is-admitted
+  (implies (and (not (equal from to))
+                (<= (nfix x) (fn-mcr-credit-of from (fn-mcr-ops l))))
+           (equal (car (fn-mcr-move l from to x)) :ok)))
+
+(defun fn-mcr-same-funding (l l1)
+  (declare (xargs :guard t))
+  (and (equal (fn-mcr-budget l1) (fn-mcr-budget l))
+       (equal (fn-mcr-completion l1) (fn-mcr-completion l))
+       (equal (fn-mcr-drawn l1) (fn-mcr-drawn l))))
+
+;; What every admitted resize and move leaves as it was.
+(defthm fn-mcr-resize-and-move-keep-the-rest
+  (and (implies (equal (car (fn-mcr-resize l id n)) :ok)
+                (and (fn-mcr-same-funding l (cadr (fn-mcr-resize l id n)))
+                     (implies (fn-mcr-opsp (fn-mcr-ops l))
+                              (fn-mcr-opsp (fn-mcr-ops (cadr (fn-mcr-resize l id n)))))))
+       (implies (equal (car (fn-mcr-move l from to x)) :ok)
+                (and (fn-mcr-same-funding l (cadr (fn-mcr-move l from to x)))
+                     (implies (fn-mcr-opsp (fn-mcr-ops l))
+                              (fn-mcr-opsp (fn-mcr-ops (cadr (fn-mcr-move l from to x)))))))))
+
+(defthm fn-mcr-resize-and-move-keep-funded
+  (implies (fn-mcr-fundedp l)
+           (and (implies (equal (car (fn-mcr-resize l id n)) :ok)
+                         (fn-mcr-fundedp (cadr (fn-mcr-resize l id n))))
+                (implies (equal (car (fn-mcr-move l from to x)) :ok)
+                         (fn-mcr-fundedp (cadr (fn-mcr-move l from to x))))))
+  :hints (("Goal" :in-theory (e/d (fn-mcr-fundedp fn-mcr-same-funding)
+                                  (fn-mcr-total fn-mcr-resize fn-mcr-move fn-mcr-opsp
+                                   fn-mcr-resize-and-move-keep-the-rest))
+           :use (fn-mcr-resize-and-move-keep-the-rest))))
