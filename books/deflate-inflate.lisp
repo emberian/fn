@@ -191,6 +191,11 @@
 ; Constants.  The window, the table layout, the bomb bound.
 
 (defconst *fn-zin-window* 32768)
+; The window buffer: the 32 KiB ring, then a preset dictionary's last
+; 32 KiB at most (RFC 1950 section 2.2's FDICT, as RFC 9842 names a
+; dictionary by digest): a distance past the octets produced reaches into
+; it.
+(defconst *fn-zin-win-octets* 65536)
 (defconst *fn-zin-ratio* 256)
 (defconst *fn-zin-slack* 65536)
 
@@ -213,7 +218,7 @@
   ; lengths, established by `fn-zin-buffers-ready') and the output bound
   ; is LIM, the caller's.
   (declare (xargs :guard t))
-  (list :window *fn-zin-window* :table *fn-zin-tab-octets*))
+  (list :window *fn-zin-win-octets* :table *fn-zin-tab-octets*))
 
 ; The three Huffman tables: (COUNT-BASE SYMBOL-BASE SYMBOLS).
 (defun fn-zin-cnt-base (tb)
@@ -313,11 +318,13 @@
 (defmacro fn-zin-hdist (fn-zin-st) `(fn-zin-fld 15 ,fn-zin-st))
 (defmacro fn-zin-hclen (fn-zin-st) `(fn-zin-fld 16 ,fn-zin-st))
 (defmacro fn-zin-idx (fn-zin-st) `(fn-zin-fld 17 ,fn-zin-st))    ; the code length being read
+(defmacro fn-zin-preset (fn-zin-st) `(fn-zin-fld 18 ,fn-zin-st)) ; a preset dictionary's
+                                                   ; octets (at most 32 KiB; reset keeps it)
 
 (defstobj fn-zin-st
   (fn-zin-regs :type (array (integer 0 *) (20)) :initially 0))
 
-(defun fn-zin-fld (i fn-zin-st)
+(defun-inline fn-zin-fld (i fn-zin-st)
   (declare (xargs :stobjs fn-zin-st :guard (natp i)))
   (if (< (nfix i) 20) (nfix (fn-zin-regsi (nfix i) fn-zin-st)) 0))
 
@@ -325,7 +332,7 @@
   (natp (fn-zin-fld i fn-zin-st))
   :rule-classes :type-prescription)
 
-(defun fn-zin-set (i v fn-zin-st)
+(defun-inline fn-zin-set (i v fn-zin-st)
   (declare (xargs :stobjs fn-zin-st :guard (natp i)))
   (if (and (natp i) (< i 20))
       (update-fn-zin-regsi i (nfix v) fn-zin-st)
@@ -333,14 +340,16 @@
 
 (defun fn-zin-reset-loop (i fn-zin-st)
   (declare (xargs :stobjs fn-zin-st :guard (natp i) :measure (nfix (- 20 (nfix i)))))
-  (if (and (natp i) (< i 20))
+  (if (and (natp i) (< i 18))
       (let ((fn-zin-st (fn-zin-set i 0 fn-zin-st)))
         (fn-zin-reset-loop (1+ i) fn-zin-st))
     fn-zin-st))
 
 (defun fn-zin-reset (fn-zin-st)
   ; The initial state: mode 0 (a block header), an empty bit buffer, nothing
-  ; read or produced; the Huffman length starts at 1.
+  ; read or produced; the Huffman length starts at 1.  A preset dictionary
+  ; loaded into the window (fn-zin-load-preset, field 18) is kept: one
+  ; decoder serves every payload of that dictionary.
   (declare (xargs :stobjs fn-zin-st))
   (let ((fn-zin-st (fn-zin-reset-loop 0 fn-zin-st)))
     (fn-zin-set 11 1 fn-zin-st)))
@@ -351,7 +360,7 @@
              (nfix v)
            (fn-zin-fld i fn-zin-st))))
 
-(in-theory (disable fn-zin-fld fn-zin-set))
+(in-theory (disable fn-zin-fld$inline fn-zin-set$inline))
 
 ; Modes.
 (defconst *fn-zin-m-header* 0)      ; 3 bits: BFINAL, BTYPE
@@ -376,7 +385,7 @@
   (declare (xargs :stobjs fn-zin-tab))
   (eql (fn-zin-tab-len fn-zin-tab) *fn-zin-tab-octets*))
 
-(defun fn-zin-tget (e fn-zin-tab)
+(defun-inline fn-zin-tget (e fn-zin-tab)
   (declare (xargs :stobjs fn-zin-tab
                   :guard (and (natp e) (< e *fn-zin-tab-entries*) (fn-zin-tab-okp fn-zin-tab))))
   (+ (nfix (fn-zin-tab-get (* 2 e) fn-zin-tab))
@@ -437,6 +446,20 @@
              :in-theory (disable mod floor)))
     :rule-classes :linear)
 
+  (defun-inline fn-zin-bit (x)
+    (declare (xargs :guard t))
+    (mod (nfix x) 2))
+
+  (defun-inline fn-zin-half (x)
+    (declare (xargs :guard t))
+    (floor (nfix x) 2))
+
+  (defthm fn-zin-bit-half-natp
+    (and (natp (fn-zin-bit x)) (natp (fn-zin-half x)) (<= (fn-zin-bit x) 1))
+    :rule-classes ((:type-prescription :corollary (natp (fn-zin-bit x)))
+                   (:type-prescription :corollary (natp (fn-zin-half x)))
+                   (:linear :corollary (<= (fn-zin-bit x) 1))))
+
   (defun fn-zin-shift-in (bits nbits o)
     ; An input octet above the NBITS bits already held (LSB first).
     (declare (xargs :guard (and (natp bits) (natp nbits) (natp o))))
@@ -446,7 +469,8 @@
     (natp (fn-zin-shift-in bits nbits o))
     :rule-classes :type-prescription))
 
-(in-theory (disable fn-zin-lo8 fn-zin-hi8 fn-zin-lowb fn-zin-highb fn-zin-shift-in))
+(in-theory (disable fn-zin-lo8 fn-zin-hi8 fn-zin-lowb fn-zin-highb fn-zin-shift-in
+                    fn-zin-bit$inline fn-zin-half$inline))
 
 (defun fn-zin-tput (e v fn-zin-tab)
   (declare (xargs :stobjs fn-zin-tab
@@ -462,7 +486,7 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-zin-lo8 fn-zin-hi8 fn-cbor-octet-listp update-nth))))
 
-(in-theory (disable fn-zin-tget fn-zin-tput))
+(in-theory (disable fn-zin-tget$inline fn-zin-tput))
 
 ; -----------------------------------------------------------------------------
 ; Building a canonical Huffman table (puff's `construct').  The code
@@ -634,9 +658,9 @@
 
 (defun fn-zin-window-ready-p (fn-zin-win)
   (declare (xargs :stobjs fn-zin-win))
-  (eql (fn-zin-win-len fn-zin-win) *fn-zin-window*))
+  (eql (fn-zin-win-len fn-zin-win) *fn-zin-win-octets*))
 
-(defun fn-zin-wrap (p)
+(defun-inline fn-zin-wrap (p)
   (declare (xargs :guard t))
   (let ((p (nfix p))) (if (< p *fn-zin-window*) p 0)))
 
@@ -645,7 +669,7 @@
   :rule-classes ((:type-prescription :corollary (natp (fn-zin-wrap p)))
                  (:linear :corollary (< (fn-zin-wrap p) *fn-zin-window*))))
 
-(in-theory (disable fn-zin-wrap))
+(in-theory (disable fn-zin-wrap$inline))
 
 (defun fn-zin-bomb-limit (fn-zin-st)
   (declare (xargs :stobjs fn-zin-st :guard t))
@@ -666,11 +690,11 @@
       (mv nil fn-zin-st fn-zin-win fn-zin-out))))
 
 (defthm fn-zin-emit-keeps
-  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-window*)
+  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*)
                 (fn-cbor-octet-listp fn-zin-out) (fn-cbor-octetp o))
            (and (fn-cbor-octet-listp (mv-nth 2 (fn-zin-emit o fn-zin-st fn-zin-win fn-zin-out)))
                 (equal (len (mv-nth 2 (fn-zin-emit o fn-zin-st fn-zin-win fn-zin-out)))
-                       *fn-zin-window*)
+                       *fn-zin-win-octets*)
                 (fn-cbor-octet-listp (mv-nth 3 (fn-zin-emit o fn-zin-st fn-zin-win fn-zin-out))))))
 
 (defthm fn-zin-emit-out
@@ -681,24 +705,48 @@
 
 (in-theory (disable fn-zin-emit))
 
+(defun fn-zin-source (d tout h w fn-zin-win)
+  ; The octet D back, TOUT octets having been produced and the preset
+  ; holding H: the ring's (W its next cell) when D is within the output,
+  ; else the preset's, D - TOUT octets back from its end.
+  (declare (xargs :stobjs fn-zin-win
+                  :guard (and (natp d) (natp tout) (natp h) (natp w)
+                              (fn-zin-window-ready-p fn-zin-win))))
+  (let* ((d (min (nfix d) *fn-zin-window*))
+         (h (min (nfix h) *fn-zin-window*))
+         (e (- d (nfix tout))))
+    (if (and (< 0 e) (<= e h))
+        (fn-zin-win-get (+ *fn-zin-window* (- h e)) fn-zin-win)
+      (let ((w (fn-zin-wrap w)))
+        (fn-zin-win-get (fn-zin-wrap (if (<= d w) (- w d) (- (+ w *fn-zin-window*) d)))
+                        fn-zin-win)))))
+
+(defthm fn-zin-source-octet
+  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*))
+           (fn-cbor-octetp (fn-zin-source d tout h w fn-zin-win))))
+
+(in-theory (disable fn-zin-source))
+
 (defun fn-zin-back (fn-zin-st fn-zin-win)
-  ; The octet DIST back in the window.
+  ; The octet DIST back.
   (declare (xargs :stobjs (fn-zin-win fn-zin-st) :guard (fn-zin-window-ready-p fn-zin-win)))
-  (let* ((w (fn-zin-wrap (fn-zin-wpos fn-zin-st)))
-         (d (min (fn-zin-dist fn-zin-st) *fn-zin-window*))
-         (p (if (<= d w) (- w d) (- (+ w *fn-zin-window*) d))))
-    (fn-zin-win-get (fn-zin-wrap p) fn-zin-win)))
+  (fn-zin-source (fn-zin-dist fn-zin-st) (fn-zin-tout fn-zin-st) (fn-zin-preset fn-zin-st)
+                 (fn-zin-wpos fn-zin-st) fn-zin-win))
 
 (defthm fn-zin-back-octet
-  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-window*))
+  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*))
            (fn-cbor-octetp (fn-zin-back fn-zin-st fn-zin-win))))
 
 (in-theory (disable fn-zin-back))
 
 ; -----------------------------------------------------------------------------
-; One bit of a Huffman decode (puff's `decode', a bit at a time so that it
-; resumes across reads).  (mv KIND SYM ZS): KIND 0 go on, 1 the symbol SYM
-; (the decode state reset), 2 no code of any length matched.
+; A Huffman decode (puff's `decode'), over the bits in hand: the walk
+; consumes them one at a time from the bit buffer, in locals, until a code
+; of some length matches, no code can (past length 15), or the bits run out
+; -- then the decode state is written back once, and the next call resumes
+; it after the loop has pulled another octet.  (mv KIND SYM ZS): KIND 0 go
+; on (the bits ran out), 1 the symbol SYM (the decode state reset), 2 no
+; code of any length matched.
 
 (defun fn-zin-decode-reset (fn-zin-st)
   (declare (xargs :stobjs fn-zin-st :guard t))
@@ -707,27 +755,47 @@
          (fn-zin-st (fn-zin-set 10 0 fn-zin-st)))
     (fn-zin-set 11 1 fn-zin-st)))
 
-(defun fn-zin-decode-bit (tb fn-zin-st fn-zin-tab)
-  (declare (xargs :stobjs (fn-zin-tab fn-zin-st) :guard (fn-zin-tab-okp fn-zin-tab)))
-  (mv-let (bit fn-zin-st) (fn-zin-take 1 fn-zin-st)
-    (let* ((len (fn-zin-dlen fn-zin-st))
-           (len (if (and (<= 1 len) (<= len 15)) len 1))
-           (code (+ (fn-zin-dcode fn-zin-st) bit))
-           (first (fn-zin-dfirst fn-zin-st))
-           (index (fn-zin-dindex fn-zin-st))
+(defun fn-zin-walk (tb bits nbits code first index len fn-zin-tab)
+  ; (mv KIND SYM BITS NBITS CODE FIRST INDEX LEN).
+  (declare (xargs :stobjs fn-zin-tab :guard (and (natp nbits) (fn-zin-tab-okp fn-zin-tab))
+                  :measure (nfix nbits)))
+  (if (zp nbits)
+      (mv 0 0 bits 0 code first index len)
+    (let* ((len (if (and (integerp len) (<= 1 len) (<= len 15)) len 1))
+           (code (+ (nfix code) (fn-zin-bit bits)))
+           (bits (fn-zin-half bits))
+           (nbits (1- nbits))
+           (first (nfix first))
+           (index (nfix index))
            (count (fn-zin-tget (+ (fn-zin-cnt-base tb) len) fn-zin-tab)))
       (cond ((< (- code first) count)
              (let ((k (+ index (- code first))))
                (if (and (<= 0 k) (< k (fn-zin-sym-max tb)))
-                   (let ((fn-zin-st (fn-zin-decode-reset fn-zin-st)))
-                     (mv 1 (fn-zin-tget (+ (fn-zin-sym-base tb) k) fn-zin-tab) fn-zin-st))
-                 (mv 2 0 fn-zin-st))))
-            ((<= 15 len) (mv 2 0 fn-zin-st))
-            (t (let* ((fn-zin-st (fn-zin-set 8 (* 2 code) fn-zin-st))
-                      (fn-zin-st (fn-zin-set 9 (* 2 (+ first count)) fn-zin-st))
-                      (fn-zin-st (fn-zin-set 10 (+ index count) fn-zin-st))
-                      (fn-zin-st (fn-zin-set 11 (1+ len) fn-zin-st)))
-                 (mv 0 0 fn-zin-st)))))))
+                   (mv 1 (fn-zin-tget (+ (fn-zin-sym-base tb) k) fn-zin-tab)
+                       bits nbits 0 0 0 1)
+                 (mv 2 0 bits nbits code first index len))))
+            ((<= 15 len) (mv 2 0 bits nbits code first index len))
+            (t (fn-zin-walk tb bits nbits (* 2 code) (* 2 (+ first count))
+                            (+ index count) (1+ len) fn-zin-tab))))))
+
+(defthm fn-zin-walk-sym-natp
+  (natp (mv-nth 1 (fn-zin-walk tb bits nbits code first index len fn-zin-tab)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :induct (fn-zin-walk tb bits nbits code first index len fn-zin-tab))))
+
+(defun fn-zin-decode-bit (tb fn-zin-st fn-zin-tab)
+  (declare (xargs :stobjs (fn-zin-tab fn-zin-st) :guard (fn-zin-tab-okp fn-zin-tab)))
+  (mv-let (kind sym bits nbits code first index len)
+    (fn-zin-walk tb (fn-zin-bits fn-zin-st) (fn-zin-nbits fn-zin-st)
+                 (fn-zin-dcode fn-zin-st) (fn-zin-dfirst fn-zin-st)
+                 (fn-zin-dindex fn-zin-st) (fn-zin-dlen fn-zin-st) fn-zin-tab)
+    (let* ((fn-zin-st (fn-zin-set 1 bits fn-zin-st))
+           (fn-zin-st (fn-zin-set 2 nbits fn-zin-st))
+           (fn-zin-st (fn-zin-set 8 code fn-zin-st))
+           (fn-zin-st (fn-zin-set 9 first fn-zin-st))
+           (fn-zin-st (fn-zin-set 10 index fn-zin-st))
+           (fn-zin-st (fn-zin-set 11 len fn-zin-st)))
+      (mv kind sym fn-zin-st))))
 
 (defthm fn-zin-decode-bit-natp
   (natp (mv-nth 1 (fn-zin-decode-bit tb fn-zin-st fn-zin-tab)))
@@ -982,7 +1050,7 @@
      (let ((s (fn-zin-sym fn-zin-st)))
        (mv-let (v fn-zin-st) (fn-zin-take (fn-zin-at s *fn-zin-dext*) fn-zin-st)
          (let ((d (+ (fn-zin-at s *fn-zin-dbase*) v)))
-           (if (< (min (fn-zin-tout fn-zin-st) *fn-zin-window*) d)
+           (if (< (min (+ (fn-zin-tout fn-zin-st) (fn-zin-preset fn-zin-st)) *fn-zin-window*) d)
                (mv :distance-too-far fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
              (fn-zin-go (4 d) (0 12)))))))
     (12 ; a match: N octets from DIST back
@@ -998,12 +1066,12 @@
     (otherwise (mv :mode fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))))
 
 (defthm fn-zin-act-keeps
-  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-window*)
+  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*)
                 (fn-cbor-octet-listp fn-zin-tab) (equal (len fn-zin-tab) *fn-zin-tab-octets*)
                 (fn-cbor-octet-listp fn-zin-out))
            (let ((r (fn-zin-act fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)))
              (and (fn-cbor-octet-listp (mv-nth 2 r))
-                  (equal (len (mv-nth 2 r)) *fn-zin-window*)
+                  (equal (len (mv-nth 2 r)) *fn-zin-win-octets*)
                   (fn-cbor-octet-listp (mv-nth 3 r))
                   (equal (len (mv-nth 3 r)) *fn-zin-tab-octets*)
                   (fn-cbor-octet-listp (mv-nth 4 r))))))
@@ -1048,6 +1116,190 @@
 (in-theory (disable fn-zin-act))
 
 ; -----------------------------------------------------------------------------
+; A match copied in one action: up to ROOM octets (what the call may still
+; append), within the bomb bound, from DIST back in the window.  What K
+; single-octet actions of mode 12 would do, in a tight loop over locals.
+
+(defun fn-zin-copy (k w d tout h fn-zin-win fn-zin-out)
+  ; K octets from D back, the ring's next cell W, TOUT produced so far, the
+  ; preset holding H: (mv W2 fn-zin-win fn-zin-out).
+  (declare (xargs :stobjs (fn-zin-win fn-zin-out)
+                  :guard (and (natp k) (natp w) (natp d) (natp tout) (natp h)
+                              (fn-zin-window-ready-p fn-zin-win))
+                  :measure (nfix k)))
+  (if (zp k)
+      (mv (fn-zin-wrap w) fn-zin-win fn-zin-out)
+    (let* ((w (fn-zin-wrap w))
+           (o (fn-zin-source d tout h w fn-zin-win))
+           (fn-zin-out (fn-zin-out-append-octet o fn-zin-out))
+           (fn-zin-win (fn-zin-win-put w o fn-zin-win)))
+      (fn-zin-copy (1- k) (fn-zin-wrap (1+ w)) d (1+ (nfix tout)) h fn-zin-win fn-zin-out))))
+
+(defthm fn-zin-copy-keeps
+  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*)
+                (fn-cbor-octet-listp fn-zin-out))
+           (let ((r (fn-zin-copy k w d tout h fn-zin-win fn-zin-out)))
+             (and (fn-cbor-octet-listp (mv-nth 1 r))
+                  (equal (len (mv-nth 1 r)) *fn-zin-win-octets*)
+                  (fn-cbor-octet-listp (mv-nth 2 r))))))
+
+(local
+ (defthm fn-zin-append-assoc-copy
+   (equal (append (append a b) c) (append a (append b c)))))
+
+(local
+ (defthm fn-zin-true-listp-append-one
+   (implies (true-listp b) (true-listp (append b (list o))))))
+
+(local
+ (defthm fn-zin-copy-out-prefix
+   (implies (and (true-listp a) (true-listp b))
+            (equal (fn-zin-copy k w d tout h fn-zin-win (append a b))
+                   (let ((r (fn-zin-copy k w d tout h fn-zin-win b)))
+                     (mv (car r) (mv-nth 1 r) (append a (mv-nth 2 r))))))
+   :hints (("Goal" :induct (fn-zin-copy k w d tout h fn-zin-win b)
+            :expand ((fn-zin-copy k w d tout h fn-zin-win (append a b)))
+            :in-theory (enable fn-oct-snoc-is-append)))))
+
+(defthm fn-zin-copy-out-free
+  (implies (and (syntaxp (not (equal fn-zin-out ''nil))) (true-listp fn-zin-out))
+           (equal (fn-zin-copy k w d tout h fn-zin-win fn-zin-out)
+                  (let ((r (fn-zin-copy k w d tout h fn-zin-win nil)))
+                    (mv (car r) (mv-nth 1 r) (append fn-zin-out (mv-nth 2 r))))))
+  :hints (("Goal" :use ((:instance fn-zin-copy-out-prefix (a fn-zin-out) (b nil)))
+           :in-theory (disable fn-zin-copy-out-prefix))))
+
+(defthm fn-zin-copy-out-len
+  (and (true-listp (mv-nth 2 (fn-zin-copy k w d tout h fn-zin-win nil)))
+       (equal (len (mv-nth 2 (fn-zin-copy k w d tout h fn-zin-win nil))) (nfix k)))
+  :hints (("Goal" :induct (fn-zin-copy k w d tout h fn-zin-win nil)
+           :in-theory (enable fn-oct-snoc-is-append))))
+
+(defthm fn-zin-copy-len
+  (equal (len (mv-nth 2 (fn-zin-copy k w d tout h fn-zin-win fn-zin-out)))
+         (+ (len fn-zin-out) (nfix k)))
+  :hints (("Goal" :induct (fn-zin-copy k w d tout h fn-zin-win fn-zin-out))))
+
+(defthm fn-zin-copy-wpos
+  (natp (car (fn-zin-copy k w d tout h fn-zin-win fn-zin-out)))
+  :rule-classes :type-prescription)
+
+(in-theory (disable fn-zin-copy))
+
+(defun fn-zin-match (room fn-zin-st fn-zin-win fn-zin-out)
+  ; Mode 12 with N > 0: (mv REFUSAL fn-zin-st win out).
+  (declare (xargs :stobjs (fn-zin-st fn-zin-win fn-zin-out)
+                  :guard (and (natp room) (fn-zin-window-ready-p fn-zin-win))))
+  (let* ((n (fn-zin-n fn-zin-st))
+         (allow (- (fn-zin-bomb-limit fn-zin-st) (fn-zin-tout fn-zin-st)))
+         (k (min n (min (nfix room) (nfix allow)))))
+    (if (zp k)
+        (mv :bomb fn-zin-st fn-zin-win fn-zin-out)
+      (mv-let (w2 fn-zin-win fn-zin-out)
+        (fn-zin-copy k (fn-zin-wpos fn-zin-st) (fn-zin-dist fn-zin-st) (fn-zin-tout fn-zin-st)
+                     (fn-zin-preset fn-zin-st) fn-zin-win fn-zin-out)
+        (let* ((fn-zin-st (fn-zin-set 5 w2 fn-zin-st))
+               (fn-zin-st (fn-zin-set 6 (+ k (fn-zin-tout fn-zin-st)) fn-zin-st))
+               (fn-zin-st (fn-zin-set 3 (- n k) fn-zin-st)))
+          (mv nil fn-zin-st fn-zin-win fn-zin-out))))))
+
+(defthm fn-zin-match-keeps
+  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*)
+                (fn-cbor-octet-listp fn-zin-out))
+           (let ((r (fn-zin-match room fn-zin-st fn-zin-win fn-zin-out)))
+             (and (fn-cbor-octet-listp (mv-nth 2 r))
+                  (equal (len (mv-nth 2 r)) *fn-zin-win-octets*)
+                  (fn-cbor-octet-listp (mv-nth 3 r))))))
+
+(defthm fn-zin-match-out-free
+  (implies (and (syntaxp (not (equal fn-zin-out ''nil))) (true-listp fn-zin-out))
+           (equal (fn-zin-match room fn-zin-st fn-zin-win fn-zin-out)
+                  (let ((r (fn-zin-match room fn-zin-st fn-zin-win nil)))
+                    (mv (car r) (mv-nth 1 r) (mv-nth 2 r)
+                        (append fn-zin-out (mv-nth 3 r)))))))
+
+(defthm fn-zin-match-out-len
+  (and (true-listp (mv-nth 3 (fn-zin-match room fn-zin-st fn-zin-win nil)))
+       (<= (len (mv-nth 3 (fn-zin-match room fn-zin-st fn-zin-win nil))) (nfix room)))
+  :rule-classes ((:rewrite :corollary
+                  (true-listp (mv-nth 3 (fn-zin-match room fn-zin-st fn-zin-win nil))))
+                 (:linear :corollary
+                  (<= (len (mv-nth 3 (fn-zin-match room fn-zin-st fn-zin-win nil))) (nfix room)))))
+
+(defthm fn-zin-match-counts
+  (let ((r (fn-zin-match room fn-zin-st fn-zin-win fn-zin-out)))
+    (and (equal (fn-zin-fld 7 (mv-nth 1 r)) (fn-zin-fld 7 fn-zin-st))
+         (equal (fn-zin-fld 6 (mv-nth 1 r))
+                (+ (fn-zin-fld 6 fn-zin-st) (- (len (mv-nth 3 r)) (len fn-zin-out))))
+         (implies (<= (fn-zin-fld 6 fn-zin-st) (+ (* 256 (fn-zin-fld 7 fn-zin-st)) 65536))
+                  (<= (fn-zin-fld 6 (mv-nth 1 r))
+                      (+ (* 256 (fn-zin-fld 7 (mv-nth 1 r))) 65536))))))
+
+(in-theory (disable fn-zin-match))
+
+; One action: a match's octets in bulk (up to ROOM), or the machine's one
+; step.
+(defun fn-zin-step (room fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
+  (declare (xargs :stobjs (fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
+                  :guard (and (natp room) (fn-zin-window-ready-p fn-zin-win)
+                              (fn-zin-tab-okp fn-zin-tab))))
+  (if (and (eql (fn-zin-mode fn-zin-st) 12) (posp (fn-zin-n fn-zin-st)))
+      (mv-let (why fn-zin-st fn-zin-win fn-zin-out)
+        (fn-zin-match room fn-zin-st fn-zin-win fn-zin-out)
+        (mv why fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))
+    (fn-zin-act fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)))
+
+(defthm fn-zin-step-keeps
+  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*)
+                (fn-cbor-octet-listp fn-zin-tab) (equal (len fn-zin-tab) *fn-zin-tab-octets*)
+                (fn-cbor-octet-listp fn-zin-out))
+           (let ((r (fn-zin-step room fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)))
+             (and (fn-cbor-octet-listp (mv-nth 2 r))
+                  (equal (len (mv-nth 2 r)) *fn-zin-win-octets*)
+                  (fn-cbor-octet-listp (mv-nth 3 r))
+                  (equal (len (mv-nth 3 r)) *fn-zin-tab-octets*)
+                  (fn-cbor-octet-listp (mv-nth 4 r))))))
+
+(local
+ (defthm fn-zin-take-of-append-step
+   (implies (true-listp x)
+            (equal (take (len x) (append x y)) x))))
+
+(local
+ (defthm fn-zin-len-of-append-step
+   (equal (len (append x y)) (+ (len x) (len y)))))
+
+(defthm fn-zin-step-out-extends
+  (implies (true-listp fn-zin-out)
+           (let ((out2 (mv-nth 4 (fn-zin-step room fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))))
+             (and (true-listp out2)
+                  (<= (len fn-zin-out) (len out2))
+                  (<= (len out2) (+ (len fn-zin-out) (max 1 (nfix room))))
+                  (equal (take (len fn-zin-out) out2) fn-zin-out))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-zin-act-out-extends)
+                 (:instance fn-zin-match-out-free)
+                 (:instance fn-zin-match-out-len))
+           :in-theory (disable fn-zin-match-out-free fn-zin-match-out-len)))
+  :rule-classes
+  ((:rewrite :corollary
+    (implies (true-listp fn-zin-out)
+             (and (true-listp (mv-nth 4 (fn-zin-step room fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)))
+                  (equal (take (len fn-zin-out)
+                               (mv-nth 4 (fn-zin-step room fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)))
+                         fn-zin-out))))
+   (:linear :corollary
+    (implies (true-listp fn-zin-out)
+             (<= (len fn-zin-out)
+                 (len (mv-nth 4 (fn-zin-step room fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))))))
+   (:linear :corollary
+    (implies (and (true-listp fn-zin-out) (integerp room) (< 0 room))
+             (<= (len (mv-nth 4 (fn-zin-step room fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)))
+                 (+ (len fn-zin-out) room))))))
+
+(in-theory (disable fn-zin-step))
+
+; -----------------------------------------------------------------------------
 ; The loop.  One iteration is one action: take an input octet into the bit
 ; buffer when the mode needs more bits than it holds, else act.  B counts
 ; iterations.  (mv STATUS B2 IP ZS fn-zin-win fn-zin-tab fn-zin-out).
@@ -1077,19 +1329,20 @@
                             fn-octets fn-zin-win fn-zin-tab fn-zin-out))
            (mv :more b ip fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)))
         (t (mv-let (why fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
-             (fn-zin-act fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
+             (fn-zin-step (- (nfix lim) (fn-zin-out-len fn-zin-out))
+                          fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
              (if why
                  (mv (list :refused why) (1- b) ip fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
                (fn-zin-loop (1- b) ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
                             fn-zin-out))))))
 
 (defthm fn-zin-loop-keeps
-  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-window*)
+  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*)
                 (fn-cbor-octet-listp fn-zin-tab) (equal (len fn-zin-tab) *fn-zin-tab-octets*)
                 (fn-cbor-octet-listp fn-zin-out))
            (let ((r (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
              (and (fn-cbor-octet-listp (mv-nth 4 r))
-                  (equal (len (mv-nth 4 r)) *fn-zin-window*)
+                  (equal (len (mv-nth 4 r)) *fn-zin-win-octets*)
                   (fn-cbor-octet-listp (mv-nth 5 r))
                   (equal (len (mv-nth 5 r)) *fn-zin-tab-octets*)
                   (fn-cbor-octet-listp (mv-nth 6 r))))))
@@ -1115,12 +1368,43 @@
   ; The window and the table at their fixed lengths, zeroed.
   (declare (xargs :stobjs (fn-zin-win fn-zin-tab)))
   (let* ((fn-zin-win (fn-zin-win-clear fn-zin-win))
-         (fn-zin-win (fn-zin-win-reserve *fn-zin-window* fn-zin-win))
-         (fn-zin-win (fn-zin-zeros *fn-zin-window* fn-zin-win))
+         (fn-zin-win (fn-zin-win-reserve *fn-zin-win-octets* fn-zin-win))
+         (fn-zin-win (fn-zin-zeros *fn-zin-win-octets* fn-zin-win))
          (fn-zin-tab (fn-zin-tab-clear fn-zin-tab))
          (fn-zin-tab (fn-zin-tab-reserve *fn-zin-tab-octets* fn-zin-tab))
          (fn-zin-tab (fn-zin-tab-zeros *fn-zin-tab-octets* fn-zin-tab)))
     (mv fn-zin-win fn-zin-tab)))
+
+; A preset dictionary (RFC 1950 section 2.2 FDICT; the stored payloads'
+; shipped dictionary, the COMPRESS extension's negotiated one): its last
+; 32 KiB into the window's upper half, its length into field 18.  Once per
+; decoder; fn-zin-reset keeps it.
+
+(defun fn-zin-put-preset (i xs fn-zin-win)
+  (declare (xargs :stobjs fn-zin-win
+                  :guard (and (natp i) (fn-cbor-octet-listp xs)
+                              (fn-zin-window-ready-p fn-zin-win))
+                  :measure (len xs)))
+  (if (and (consp xs) (natp i) (< i *fn-zin-window*))
+      (let ((fn-zin-win (fn-zin-win-put (+ *fn-zin-window* i) (car xs) fn-zin-win)))
+        (fn-zin-put-preset (1+ i) (cdr xs) fn-zin-win))
+    fn-zin-win))
+
+(defthm fn-zin-put-preset-keeps
+  (implies (and (fn-cbor-octet-listp fn-zin-win) (equal (len fn-zin-win) *fn-zin-win-octets*)
+                (fn-cbor-octet-listp xs))
+           (and (fn-cbor-octet-listp (fn-zin-put-preset i xs fn-zin-win))
+                (equal (len (fn-zin-put-preset i xs fn-zin-win)) *fn-zin-win-octets*))))
+
+(defun fn-zin-load-preset (dict fn-zin-st fn-zin-win)
+  ; (mv fn-zin-st fn-zin-win).
+  (declare (xargs :stobjs (fn-zin-st fn-zin-win)
+                  :guard (and (fn-cbor-octet-listp dict) (fn-zin-window-ready-p fn-zin-win))))
+  (let* ((n (len dict))
+         (tail (if (< *fn-zin-window* n) (nthcdr (- n *fn-zin-window*) dict) dict))
+         (fn-zin-win (fn-zin-put-preset 0 tail fn-zin-win))
+         (fn-zin-st (fn-zin-set 18 (len tail) fn-zin-st)))
+    (mv fn-zin-st fn-zin-win)))
 
 (defun fn-zin-feed (b fn-zin-st start end lim fn-octets fn-zin-win fn-zin-tab fn-zin-out)
   ; THE HOST ENTRY (host/native/mux.lisp, the COMPRESS DEFLATE layer).
@@ -1134,7 +1418,7 @@
 ; The host entry is the loop once the buffers are ready: the resumption
 ; keystones below are stated over the loop and hold of the entry by this.
 (defthm fn-zin-feed-unfolds
-  (implies (and (equal (len fn-zin-win) *fn-zin-window*)
+  (implies (and (equal (len fn-zin-win) *fn-zin-win-octets*)
                 (equal (len fn-zin-tab) *fn-zin-tab-octets*))
            (equal (fn-zin-feed b fn-zin-st start end lim fn-octets fn-zin-win fn-zin-tab
                                fn-zin-out)
@@ -1176,21 +1460,25 @@
       (cons (fn-zin-fld i fn-zin-st) (fn-zin-fields-list (1+ i) fn-zin-st))
     nil))
 
-(defun fn-zin-inflate-bufs (b fn-zin-st c lim fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+(defun fn-zin-inflate-bufs (b dict fn-zin-st c lim fn-octets fn-zin-win fn-zin-tab fn-zin-out)
   (declare (xargs :stobjs (fn-octets fn-zin-win fn-zin-tab fn-zin-out fn-zin-st)
-                  :guard (and (natp b) (natp lim) (fn-cbor-octet-listp c))))
+                  :guard (and (natp b) (natp lim) (fn-cbor-octet-listp c)
+                              (fn-cbor-octet-listp dict))))
   (let* ((fn-octets (fn-octets-from-list c fn-octets))
          (fn-zin-out (fn-zin-out-clear fn-zin-out)))
     (mv-let (fn-zin-win fn-zin-tab) (fn-zin-buffers-ready fn-zin-win fn-zin-tab)
+     (mv-let (fn-zin-st fn-zin-win) (fn-zin-load-preset dict fn-zin-st fn-zin-win)
       (mv-let (st b2 ip fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
         (fn-zin-feed b fn-zin-st 0 (fn-octets-len fn-octets) lim fn-octets fn-zin-win fn-zin-tab
                      fn-zin-out)
         (declare (ignore b2 ip))
         (mv (list st (fn-zin-out-list fn-zin-out) (fn-zin-fields-list 0 fn-zin-st))
-            fn-octets fn-zin-win fn-zin-tab fn-zin-out fn-zin-st)))))
+            fn-octets fn-zin-win fn-zin-tab fn-zin-out fn-zin-st))))))
 
-(defun fn-zin-inflate (b c lim)
-  (declare (xargs :guard (and (natp b) (natp lim) (fn-cbor-octet-listp c))))
+(defun fn-zin-inflate-with (b dict c lim)
+  ; The stream C from the initial state over the preset DICT.
+  (declare (xargs :guard (and (natp b) (natp lim) (fn-cbor-octet-listp c)
+                              (fn-cbor-octet-listp dict))))
   (with-local-stobj fn-octets
     (mv-let (r fn-octets)
       (with-local-stobj fn-zin-win
@@ -1203,7 +1491,7 @@
                     (with-local-stobj fn-zin-st
                       (mv-let (r fn-octets fn-zin-win fn-zin-tab fn-zin-out fn-zin-st)
                         (let ((fn-zin-st (fn-zin-reset fn-zin-st)))
-                          (fn-zin-inflate-bufs b fn-zin-st c lim fn-octets fn-zin-win
+                          (fn-zin-inflate-bufs b dict fn-zin-st c lim fn-octets fn-zin-win
                                                fn-zin-tab fn-zin-out))
                         (mv r fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
                     (mv r fn-zin-out fn-zin-tab fn-zin-win fn-octets))
@@ -1211,6 +1499,10 @@
               (mv r fn-zin-win fn-octets)))
           (mv r fn-octets)))
       r)))
+
+(defun fn-zin-inflate (b c lim)
+  (declare (xargs :guard (and (natp b) (natp lim) (fn-cbor-octet-listp c))))
+  (fn-zin-inflate-with b nil c lim))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE (the bomb, PRF-910).  The octets a call appends to the output
@@ -1230,7 +1522,7 @@
 
 (local
  (defthm fn-zin-reset-loop-fields
-   (implies (and (natp i) (natp j) (<= i j) (< j 20))
+   (implies (and (natp i) (natp j) (<= i j) (< j 18))
             (equal (fn-zin-fld j (fn-zin-reset-loop i fn-zin-st)) 0))
    :hints (("Goal" :induct (fn-zin-reset-loop i fn-zin-st)))))
 
@@ -1275,6 +1567,22 @@
                             (- (len (mv-nth 4 r)) (len fn-zin-out))))
                   (implies (fn-zin-bomb-okp fn-zin-st) (fn-zin-bomb-okp (mv-nth 1 r)))))
   :hints (("Goal" :in-theory (enable fn-zin-act) :do-not-induct t)))
+
+(defthm fn-zin-match-bomb-okp
+  (implies (fn-zin-bomb-okp fn-zin-st)
+           (fn-zin-bomb-okp (mv-nth 1 (fn-zin-match room fn-zin-st fn-zin-win fn-zin-out))))
+  :hints (("Goal" :use ((:instance fn-zin-match-counts))
+           :in-theory (disable fn-zin-match-counts))))
+
+(defthm fn-zin-step-counts
+  (let ((r (fn-zin-step room fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)))
+    (and (equal (fn-zin-fld 7 (mv-nth 1 r)) (fn-zin-fld 7 fn-zin-st))
+         (equal (fn-zin-fld 6 (mv-nth 1 r))
+                (+ (fn-zin-fld 6 fn-zin-st)
+                   (- (len (mv-nth 4 r)) (len fn-zin-out))))
+         (implies (fn-zin-bomb-okp fn-zin-st) (fn-zin-bomb-okp (mv-nth 1 r)))))
+  :hints (("Goal" :in-theory (e/d (fn-zin-step) (fn-zin-act fn-zin-match-out-free
+                                                  fn-zin-bomb-okp)))))
 
 (local
  (defthm fn-zin-pull-counts
@@ -1446,6 +1754,18 @@
 (local
  (defthm fn-zin-append-assoc
    (equal (append (append a b) c) (append a (append b c)))))
+
+(local
+ (defthm fn-zin-cancel-inner
+   (equal (+ y (- y) z) (fix z))))
+
+(defthm fn-zin-step-out-free
+  (implies (and (syntaxp (not (equal fn-zin-out ''nil))) (true-listp fn-zin-out))
+           (equal (fn-zin-step room fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
+                  (let ((r (fn-zin-step room fn-zin-st fn-zin-win fn-zin-tab nil)))
+                    (mv (car r) (mv-nth 1 r) (mv-nth 2 r) (mv-nth 3 r)
+                        (append fn-zin-out (mv-nth 4 r))))))
+  :hints (("Goal" :in-theory (e/d (fn-zin-step) (fn-zin-act)))))
 
 (local
  (defthm fn-zin-loop-out-prefix

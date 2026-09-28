@@ -179,7 +179,7 @@
 
 (defthm dzt-out-bound-improper-list
   (let ((r (fn-zin-feed 0 (list (make-list 20 :initial-element 0)) 0 0 0 nil
-                        (make-list 32768 :initial-element 0)
+                        (make-list 65536 :initial-element 0)
                         (make-list 1446 :initial-element 0) '(7 . 8))))
     (and (not (true-listp '(7 . 8)))
          (equal (mv-nth 6 r) '(7 . 8))
@@ -298,7 +298,7 @@
 
 (assert-event
  (let ((r (dzt-quanta 7 *dzv-session-z* 100000 nil)))
-   (and (equal (car r) :more) (equal (cadr r) *dzv-session*) (< 100 (caddr r)))))
+   (and (equal (car r) :more) (equal (cadr r) *dzv-session*) (< 30 (caddr r)))))
 
 (assert-event
  (let ((r (dzt-quanta 1000000 *dzv-prose-z* 10 t)))
@@ -309,7 +309,7 @@
 ; (fn-zin-feed-unfolds equates it with the host entry).  The removal
 ; witnesses are ground terms in the logic: the buffers as lists.
 
-(defconst *dzt-win* (make-list 32768 :initial-element 0))
+(defconst *dzt-win* (make-list 65536 :initial-element 0))
 (defconst *dzt-tab* (make-list 1446 :initial-element 0))
 (defconst *dzt-st* (list *dzt-initial*))
 
@@ -408,3 +408,23 @@
          (not (equal lhs (list (car rhs) (mv-nth 1 rhs) (+ 0 (mv-nth 2 rhs)) (mv-nth 3 rhs)
                                (mv-nth 4 rhs) (mv-nth 5 rhs) (mv-nth 6 rhs))))))
   :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; A preset dictionary (RFC 1950 section 2.2's FDICT; the stored payloads'
+; shipped dictionary): zlib's stream over an article whose header lines are
+; the dictionary's decodes with the preset loaded, and without it the first
+; match reaches before the stream's first octet and is refused by name.
+(assert-event
+ (let ((r (fn-zin-inflate-with 100000 *dzv-dict* *dzv-dict-z* 100000)))
+   (and (equal (car r) :more)
+        (equal (cadr r) *dzv-dict-article*)
+        (equal (nth 18 (caddr r)) (len *dzv-dict*)))))
+(assert-event
+ (equal (car (fn-zin-inflate 100000 *dzv-dict-z* 100000))
+        '(:refused :distance-too-far)))
+; The preset is the dictionary's LAST 32 KiB: a longer one keeps its tail.
+(assert-event
+ (let ((r (fn-zin-inflate-with 100000 (append (make-list 40000 :initial-element 32) *dzv-dict*)
+                               *dzv-dict-z* 100000)))
+   (and (equal (cadr r) *dzv-dict-article*)
+        (equal (nth 18 (caddr r)) 32768))))
