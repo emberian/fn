@@ -782,10 +782,11 @@
 ; (host/native-admin-host.lisp fn-acct-host-owner-redeem-stage passes
 ; fn-own-clock): the upper end of the issuing reading's error interval plus
 ; SECONDS, both converted to milliseconds from the reading's own unit
-; (books/clock-unit.lisp).  The running node issues from the owner's clock
-; (milliseconds); the stopped node from its configuration record's stamp
-; (seconds).  Bug M1 (PRF-374): the stopped path's seconds stamp was added
-; to milliseconds, so its codes were already expired.
+; (books/clock-unit.lisp).  The running node issues from the owner's clock;
+; the stopped node from its configuration record's stamp; both are
+; milliseconds since PRF-378.  Bug M1 (PRF-374): the stopped path's stamp,
+; then seconds, was added to milliseconds, so its codes were already
+; expired.
 
 (defconst *fn-acct-code-entropy-octets* 16)
 (defconst *fn-acct-default-expiry-seconds* 604800)
@@ -830,18 +831,20 @@
       nil)))
 
 ; The two readings an invitation is issued at.  Running: the live owner's
-; clock, milliseconds.  Stopped: the offline configuration record's stamp,
-; seconds (host/native/admin.lisp fnn-admin-clock-plan,
-; books/native-admin.lisp fn-native-admin-clock-observation), exactly as
-; fn-store-cfg-peer-delta-record stamps the record.
+; clock.  Stopped: the offline configuration record's stamp, the very
+; observation the record carries (host/native/admin.lisp
+; fnn-admin-clock-plan, books/native-admin.lisp
+; fn-native-admin-clock-observation, host/store-node-host.lisp
+; fn-store-cfg-peer-delta-record), wall claim included: a stopped node whose
+; wall clock is unreadable stamps a record with no wall claim, and its
+; invitation refuses (fn-acct-offline-invite-refusal, PRF-379).
 (defun fn-acct-live-invite-reading (clock)
   (declare (xargs :guard t))
   (fn-clock-reading *fn-clock-owner-unit* clock))
 
-(defun fn-acct-offline-invite-reading (monotonic wall)
+(defun fn-acct-offline-invite-reading (stamp)
   (declare (xargs :guard t))
-  (fn-clock-reading *fn-clock-record-stamp-unit*
-                    (fn-clock-observation (nfix monotonic) (nfix wall) 0 t)))
+  (fn-clock-reading *fn-clock-record-stamp-unit* stamp))
 
 ; A pending row's code is live at the issuing reading and at every later
 ; reading whose error interval ends before SECONDS have passed.
@@ -873,61 +876,164 @@
 ; fn-native-admin-host-apply (the stopped node, at
 ; fn-acct-offline-invite-reading of the record's stamp).  On both paths an
 ; accepted invite plan stages exactly one pending row whose expiry is
-; now + expires in MILLISECONDS: the running path's is the owner clock's
-; upper end plus 1000 x expires; the stopped path's is 1000 x the stamp's
-; seconds plus 1000 x expires.
+; now + expires in MILLISECONDS: the upper end of the reading's error
+; interval plus 1000 x expires.
 (defthm fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths
   (implies (and (equal (fn-native-admin-result-status plan) :accepted)
                 (equal (fn-native-admin-result-kind plan) :account-invite)
                 (posp (fn-native-admin-result-capacity plan))
                 (natp wall)
                 (natp err))
-           (and (equal (fn-acct-admin-deltas
-                        plan (fn-acct-live-invite-reading
-                              (fn-clock-observation monotonic wall err t)))
-                       (list (fn-cfg-account-invite
-                              (fn-record-octets-string
-                               (fn-native-admin-result-name plan))
-                              *fn-acct-issuer*
-                              (fn-acct-decimal-text
-                               (+ wall err
-                                  (* 1000 (fn-native-admin-result-capacity
-                                           plan)))))))
-                (equal (fn-acct-admin-deltas
-                        plan (fn-acct-offline-invite-reading monotonic wall))
-                       (list (fn-cfg-account-invite
-                              (fn-record-octets-string
-                               (fn-native-admin-result-name plan))
-                              *fn-acct-issuer*
-                              (fn-acct-decimal-text
-                               (+ (* 1000 wall)
-                                  (* 1000 (fn-native-admin-result-capacity
-                                           plan)))))))))
+           (let ((row (list (fn-cfg-account-invite
+                             (fn-record-octets-string
+                              (fn-native-admin-result-name plan))
+                             *fn-acct-issuer*
+                             (fn-acct-decimal-text
+                              (+ wall err
+                                 (* 1000 (fn-native-admin-result-capacity
+                                          plan))))))))
+             (and (equal (fn-acct-admin-deltas
+                          plan (fn-acct-live-invite-reading
+                                (fn-clock-observation monotonic wall err t)))
+                         row)
+                  (equal (fn-acct-admin-deltas
+                          plan (fn-acct-offline-invite-reading
+                                (fn-clock-observation monotonic wall err t)))
+                         row))))
   :hints (("Goal" :in-theory (enable fn-clock-reading-latest-milliseconds
                                      fn-clock-reading fn-clock-readingp
                                      fn-clock-reading-unit
                                      fn-clock-reading-observation))))
 
-; KEYSTONE (PRF-374).  The two paths agree: an invitation issued stopped at
-; the wall instant W milliseconds (its record stamp is floor(W/1000)
-; seconds, fnn-admin-clock-plan) expires at most one second before, and
-; never after, one issued running at W with no error bound.  The factor of
-; 1000 bug M1 was is exactly what this refutes.
+; KEYSTONE (PRF-374, PRF-378).  The two paths agree exactly: at one
+; observation the stopped node's expiry is the running node's.  Bug M1's
+; factor of 1000, and the one-second truncation of the seconds stamp that
+; followed it, are what this refutes.
 (defthm fn-acct-invite-expiry-agrees-across-the-running-and-stopped-paths
-  (implies (and (posp seconds) (natp w))
-           (let ((running (fn-acct-invite-expiry
-                           seconds (fn-acct-live-invite-reading
-                                    (fn-clock-observation m1 w 0 t))))
-                 (stopped (fn-acct-invite-expiry
-                           seconds (fn-acct-offline-invite-reading
-                                    m2 (floor w 1000)))))
-             (and (equal running (+ w (* 1000 seconds)))
-                  (<= stopped running)
-                  (< (- running 1000) stopped))))
+  (equal (fn-acct-invite-expiry seconds (fn-acct-offline-invite-reading obs))
+         (fn-acct-invite-expiry seconds (fn-acct-live-invite-reading obs)))
+  :hints (("Goal" :in-theory (enable fn-clock-reading))))
+
+; The stopped node's `account invite' outcome (PRF-379): nil when the plan
+; stages its pending row at STAMP, else the reason the host reports.  An
+; unreadable wall clock (a stamp with no wall claim) cannot date an expiry,
+; so the verb refuses by name rather than print a code that is born
+; expired.  The host calls it from host/native-admin-host.lisp
+; fn-native-admin-host-apply.
+(defun fn-acct-offline-invite-refusal (plan stamp)
+  (declare (xargs :guard t))
+  (if (fn-acct-admin-deltas plan (fn-acct-offline-invite-reading stamp))
+      nil
+    :no-clock))
+
+; KEYSTONE (PRF-379).  An accepted `account invite' plan on a stopped node
+; refuses :no-clock exactly when the record's stamp claims no usable wall
+; clock; otherwise it stages its row.
+(defthm fn-acct-offline-invite-refusal-is-no-clock-exactly-without-a-wall
+  (implies (and (equal (fn-native-admin-result-status plan) :accepted)
+                (equal (fn-native-admin-result-kind plan) :account-invite)
+                (posp (fn-native-admin-result-capacity plan))
+                (fn-clock-observationp stamp))
+           (equal (fn-acct-offline-invite-refusal plan stamp)
+                  (if (fn-clock-has-wall stamp) nil :no-clock)))
+  :hints (("Goal" :in-theory (enable fn-clock-reading-latest-milliseconds
+                                     fn-clock-reading fn-clock-readingp
+                                     fn-clock-reading-unit
+                                     fn-clock-reading-observation
+                                     fn-clock-observationp))))
+
+; -----------------------------------------------------------------------------
+; Expiry at admission and replay (PRF-378)
+;
+; `fn-cfg-account-livep' reads a record's stamp in milliseconds, the unit
+; of the expiry, so a redeem record stamped at or after its row's expiry is
+; refused at admission (host/store-node-host.lisp
+; fn-store-cfg-peer-delta-record and books/owner-config.lisp's live path
+; call fn-cfg-record-acceptablep through fn-cnode-record-acceptablep) and
+; faults the replay (fn-config-replay-loop, which every open folds).
+
+(defthm fn-cfg-account-livep-unfolds
+  (implies (and (natp (fn-clock-wall stamp))
+                (natp (fn-clock-wall-error stamp))
+                (fn-clock-observation-shapep stamp))
+           (equal (fn-cfg-account-livep row stamp)
+                  (and (fn-clock-has-wall stamp)
+                       (< (+ (fn-clock-wall stamp) (fn-clock-wall-error stamp))
+                          (fn-cfg-account-expiry (fn-cfg-row-c row))))))
   :hints (("Goal" :in-theory (enable fn-clock-reading-latest-milliseconds
                                      fn-clock-reading fn-clock-readingp
                                      fn-clock-reading-unit
                                      fn-clock-reading-observation))))
+
+; The redeem's own branch of fn-cfg-delta-reason, and the time test in
+; the stamp's milliseconds.
+(defthm fn-cfg-delta-reason-of-a-redeem-past-its-expiry
+  (let ((row (fn-cfg-account-row (fn-cfg-accounts v) (fn-cfg-delta-a d))))
+    (implies (and (fn-cfg-deltap d)
+                  (equal (fn-cfg-delta-kind d) :account-redeem)
+                  (fn-cfg-account-digestp (fn-cfg-delta-a d))
+                  (fn-cfg-account-loginp (fn-cfg-delta-b d))
+                  (fn-cfg-account-delta-rowp d 1)
+                  (consp row)
+                  (equal (fn-cfg-row-n row) 0)
+                  (not (fn-cfg-account-livep row stamp)))
+             (equal (fn-cfg-delta-reason v gen stamp reserved ceiling d)
+                    :account-expired)))
+  :hints (("Goal" :in-theory (disable fn-cfg-account-livep fn-cfg-account-digestp
+                                      fn-cfg-account-loginp fn-cfg-account-delta-rowp
+                                      fn-cfg-account-row fn-cfg-deltap)
+           :expand ((fn-cfg-delta-reason v gen stamp reserved ceiling d)))))
+(defthm fn-cfg-account-livep-fails-at-or-past-the-expiry
+  (implies (or (not (fn-clock-has-wall stamp))
+               (<= (fn-cfg-account-expiry (fn-cfg-row-c row))
+                   (+ (fn-clock-wall stamp) (fn-clock-wall-error stamp))))
+           (not (fn-cfg-account-livep row stamp)))
+  :hints (("Goal" :in-theory (enable fn-clock-reading-latest-milliseconds
+                                     fn-clock-reading fn-clock-readingp
+                                     fn-clock-reading-unit
+                                     fn-clock-reading-observation))))
+
+; KEYSTONE (PRF-378).  A record whose first delta redeems a pending code,
+; stamped when the upper end of its wall interval (milliseconds) is at or
+; past the code's expiry (milliseconds), or with no wall claim, is refused
+; :account-expired, is not acceptable, and faults a replay reaching it.
+(defthm fn-cfg-record-redeeming-an-expired-code-is-refused-and-faults-replay
+  (let* ((d (car (fn-cfg-record-change r)))
+         (stamp (fn-cfg-record-stamp r))
+         (row (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value cfg))
+                                  (fn-cfg-delta-a d))))
+    (implies (and (fn-cfg-deltap d)
+                  (equal (fn-cfg-delta-kind d) :account-redeem)
+                  (fn-cfg-account-digestp (fn-cfg-delta-a d))
+                  (fn-cfg-account-loginp (fn-cfg-delta-b d))
+                  (fn-cfg-account-delta-rowp d 1)
+                  (consp row)
+                  (equal (fn-cfg-row-n row) 0)
+                  (or (not (fn-clock-has-wall stamp))
+                      (<= (fn-cfg-account-expiry (fn-cfg-row-c row))
+                          (+ (fn-clock-wall stamp)
+                             (fn-clock-wall-error stamp)))))
+             (and (equal (fn-cfg-admissible-reason
+                          (fn-cfg-value cfg) (fn-cfg-record-generation r)
+                          stamp reserved ceiling (fn-cfg-record-change r))
+                         :account-expired)
+                  (not (fn-cfg-record-acceptablep cfg r reserved ceiling))
+                  (equal (fn-config-replay-loop cfg reserved ceiling
+                                                (cons r rest))
+                         :fault))))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-admissiblep fn-cfg-record-acceptablep)
+                                  (fn-cfg-account-livep
+                                   fn-cfg-account-digestp
+                                   fn-cfg-account-loginp
+                                   fn-cfg-account-delta-rowp
+                                   fn-cfg-account-row fn-cfg-deltap
+                                   fn-cfg-delta-reason fn-cfg-account-expiry
+                                   fn-cfg-apply-record fn-cfg-apply-delta))
+           :expand ((fn-cfg-admissible-reason
+                     (fn-cfg-value cfg) (fn-cfg-record-generation r)
+                     (fn-cfg-record-stamp r) reserved ceiling
+                     (fn-cfg-record-change r))
+                    (fn-config-replay-loop cfg reserved ceiling (cons r rest))))))
 
 ; -----------------------------------------------------------------------------
 ; Account deletion (public-node-2): `account delete LOGIN', delta code 27

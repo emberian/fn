@@ -1605,6 +1605,12 @@ check:
 # lane serve-depth's head.
 	@$(CHECK_STEP) $(PYTHON) tools/depth_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_depth_check
+# Clock arithmetic goes through books/clock-unit.lisp (PRF-374, PRF-378):
+# arithmetic on an observation's fields at a call site assumed a unit twice
+# (bug M1; the vacuous record-level expiry).  tools/clock_unit_baseline.json
+# counts the sites left per file and only shrinks.
+	@$(CHECK_STEP) $(PYTHON) tools/clock_unit_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_clock_unit_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make

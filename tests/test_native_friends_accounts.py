@@ -284,7 +284,9 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         # clock is in SECONDS; the expiry was computed as if it were
         # milliseconds, so the code was born expired and XREDEEM answered
         # 482.  books/accounts.lisp fn-acct-offline-invite-reading names the
-        # unit; the expiry is now + expires in milliseconds on both paths.
+        # unit; the expiry is now + expires in milliseconds on both paths,
+        # and since PRF-378 the record stamp is milliseconds too, so the
+        # redeem record is admitted by the same comparison the plan made.
         stopped = self.invite(self.node)
         self.start(self.node)
         running = self.invite(self.node)

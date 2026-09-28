@@ -1,14 +1,18 @@
 ; fn: a clock reading carries its unit (lane invite-clock, 2026-09-28;
 ; PRF-374; planning/design-time-model-2026-09-27.md, the recorded time model).
 ;
-; books/clock.lisp's observation is unit-less by shape: the owner's clock
-; (fn-own-clock) reads milliseconds, while a configuration record's stamp
-; (books/owner-config.lisp fn-ocfg-config-stamp, fn-cfg-stampp's uint32
-; schema) is the SECONDS projection of one.  Bug M1 (lane node-migrate):
-; `account invite' on a stopped node handed the record's seconds stamp to
-; an expiry computed in milliseconds, so every such code was already
-; expired.  A reading names its unit, and a decision that adds a duration
-; to it converts both to one named unit here, never at the call site.
+; books/clock.lisp's observation is unit-less by shape.  Bug M1 (lane
+; node-migrate): `account invite' on a stopped node handed a configuration
+; record's stamp, then the SECONDS projection of an observation, to an
+; expiry computed in milliseconds, so every such code was already expired.
+; A reading names its unit, and a decision that adds a duration to it
+; converts both to one named unit here, never at the call site.
+;
+; Since PRF-378 (lane clock-units-2) a configuration record's stamp is in
+; the owner clock's unit, milliseconds (books/config.lisp fn-cfg-stampp,
+; books/owner-config.lisp fn-ocfg-config-stamp), so the two named units
+; below agree; :seconds stays a unit a reading may name.
+; tools/clock_unit_check.py flags clock arithmetic outside this book.
 (in-package "ACL2")
 (include-book "clock")
 
@@ -23,7 +27,7 @@
 
 ; The owner's clock and a configuration record's stamp, by name.
 (defconst *fn-clock-owner-unit* :milliseconds)
-(defconst *fn-clock-record-stamp-unit* :seconds)
+(defconst *fn-clock-record-stamp-unit* :milliseconds)
 
 (defun fn-clock-reading (unit obs)
   (declare (xargs :guard t))
@@ -85,7 +89,15 @@
                 (fn-clock-observation-shapep obs))
            (equal (fn-clock-reading-latest-milliseconds
                    (fn-clock-reading *fn-clock-record-stamp-unit* obs))
-                  (* 1000 (+ (fn-clock-wall obs) (fn-clock-wall-error obs))))))
+                  (+ (fn-clock-wall obs) (fn-clock-wall-error obs)))))
+
+; A reading with no wall claim has no upper end: every decision that needs
+; one refuses (fail closed).
+(defthm fn-clock-reading-latest-milliseconds-without-a-wall
+  (implies (not (fn-clock-has-wall obs))
+           (equal (fn-clock-reading-latest-milliseconds
+                   (fn-clock-reading unit obs))
+                  nil)))
 
 (in-theory (disable fn-clock-reading fn-clock-reading-unit
                     fn-clock-reading-observation fn-clock-readingp

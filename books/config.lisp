@@ -30,7 +30,7 @@
 (in-package "ACL2")
 (include-book "records-invariants")
 (include-book "rev-onto") ; the loop twins' step (PKT-877)
-(include-book "clock")
+(include-book "clock-unit")
 
 ; Nothing in this book opens the CBOR or record codec: every definition here
 ; is `:guard t', and the ground witnesses at the end are decided by
@@ -92,14 +92,13 @@
                                      fn-record-nonempty-at-mostp))))
 
 (defun fn-cfg-stampp (s)
-  ; A clock observation whose three times fit the schema-0 uint32 fields.
-  ; The narrower domain is a format ceiling, not a claim about clocks: the
-  ; 64-bit stamp is an open item for the next codec schema.
+  ; A configuration record's stamp is a clock observation in the owner
+  ; clock's unit, MILLISECONDS (books/clock-unit.lisp
+  ; *fn-clock-record-stamp-unit*; PRF-378), every time a u64 item of the
+  ; codec.  It was the seconds projection, uint32 fields, so an expiry in
+  ; milliseconds compared with it was never reached (fn-cfg-account-livep).
   (declare (xargs :guard t))
-  (and (fn-clock-observationp s)
-       (fn-record-uint32p (fn-clock-monotonic s))
-       (fn-record-uint32p (fn-clock-wall s))
-       (fn-record-uint32p (fn-clock-wall-error s))))
+  (fn-clock-observationp s))
 
 ; -----------------------------------------------------------------------------
 ; A configuration row.
@@ -1247,7 +1246,8 @@
                                (- (nfix (car xs)) 48)))
     (nfix acc)))
 
-; An expiry: one to twenty decimal digits, the width of a 64-bit second.
+; An expiry: one to twenty decimal digits, the width of a 64-bit
+; millisecond count.
 (defun fn-cfg-account-expiryp (text)
   (declare (xargs :guard t))
   (and (stringp text)
@@ -1589,14 +1589,18 @@
 
 ; A pending row is live at a stamp only when the stamp carries a wall clock
 ; whose whole error interval lies before the expiry: an unknown or uncertain
-; clock refuses (fail closed).
+; clock refuses (fail closed).  Both sides are milliseconds: the expiry is
+; written in the owner clock's unit (books/accounts.lisp
+; fn-acct-invite-expiry) and the stamp is read as a record-stamp reading,
+; whose unit is the same (books/clock-unit.lisp; PRF-378).  When record
+; stamps were seconds this compared seconds with milliseconds and a record's
+; :account-expired never fired.
 (defun fn-cfg-account-livep (row stamp)
   (declare (xargs :guard t))
-  (and (fn-clock-has-wall stamp)
-       (natp (fn-clock-wall stamp))
-       (natp (fn-clock-wall-error stamp))
-       (< (+ (fn-clock-wall stamp) (fn-clock-wall-error stamp))
-          (fn-cfg-account-expiry (fn-cfg-row-c row)))))
+  (let ((latest (fn-clock-reading-latest-milliseconds
+                 (fn-clock-reading *fn-clock-record-stamp-unit* stamp))))
+    (and latest
+         (< latest (fn-cfg-account-expiry (fn-cfg-row-c row))))))
 
 ; The one row an account delta carries has the delta's key pair and the
 ; state its kind names.
@@ -2645,9 +2649,12 @@
 (defun fn-cfg-titem (text)
   (declare (xargs :guard t))
   (cons :bytes (fn-record-string-octets text)))
+; An item is a u64 (a record stamp's millisecond times need it); each field
+; keeps its own narrower recognizer, which `fn-cfg-recordp' checks after
+; the decode.
 (defun fn-cfg-uitemp (x)
   (declare (xargs :guard t))
-  (and (consp x) (equal (car x) :uint) (fn-record-uint32p (cdr x))))
+  (and (consp x) (equal (car x) :uint) (fn-record-uint64p (cdr x))))
 (defun fn-cfg-titemp (x)
   (declare (xargs :guard t))
   (and (consp x) (equal (car x) :bytes) (fn-cbor-octet-listp (cdr x))
@@ -2707,6 +2714,17 @@
                   (cons (fn-cfg-uitem (len (fn-cfg-record-change r)))
                         (fn-cfg-deltas-items (fn-cfg-record-change r))))))
 
+; One item's octets.  A uint is written by the wide encoder (an eight-octet
+; argument above 2^32 - 1, the record stamp's milliseconds; PRF-378), which
+; writes the narrow encoder's bytes for every value at most 2^32 - 1
+; (books/cbor-invariants fn-cbor-encode-uint-wide-is-narrow), so no record
+; that fit the narrow codec changes a byte.
+(defun fn-cfg-item-encode (x)
+  (declare (xargs :guard t))
+  (if (and (consp x) (equal (car x) :uint))
+      (fn-cbor-encode-uint-wide (cdr x))
+    (fn-cbor-encode x)))
+
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
@@ -2714,14 +2732,14 @@
   (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp items)
       (fn-cfg-item-octets-loop (cdr items)
-                               (fn-ag-rev-onto (fn-cbor-encode (car items)) acc))
+                               (fn-ag-rev-onto (fn-cfg-item-encode (car items)) acc))
     (revappend acc nil)))
 
 (defun fn-cfg-item-octets (items)
   (declare (xargs :verify-guards nil :guard t))
   (mbe :logic
        (if (consp items)
-           (append (fn-cbor-encode (car items))
+           (append (fn-cfg-item-encode (car items))
                    (fn-cfg-item-octets (cdr items)))
          nil)
        :exec (fn-cfg-item-octets-loop items nil)))
@@ -2762,6 +2780,17 @@
 ; -----------------------------------------------------------------------------
 ; The decoder.  Item readers return the `books/records' parse result.
 
+; One item, with the wide uint (PRF-378): the narrow decoder's input and
+; byte-string bounds, and an eight-octet uint argument accepted only above
+; 2^32 - 1 (books/cbor fn-cbor-decode-prechecked-wide).
+(defun fn-cfg-item-decode (octets)
+  (declare (xargs :guard t))
+  (if (not (fn-cbor-at-mostp octets *fn-cbor-max-input*))
+      (fn-cbor-error :limit)
+    (if (not (fn-cbor-octet-listp octets))
+        (fn-cbor-error :malformed)
+      (fn-cbor-decode-prechecked-wide octets *fn-cbor-max-bytes*))))
+
 ; `(not (posp count))', not `(zp count)', in the three counted readers: `zp'
 ; guards `natp', these readers are `:guard t', and the count arrives from the
 ; wire.  The two are equal on every input, so the definitions say the same.
@@ -2771,7 +2800,7 @@
       (fn-record-parse-ok nil octets)
     (if (not (fn-cbor-octet-listp octets))
         (fn-record-parse-error :octets)
-      (let ((d (fn-cbor-decode octets)))
+      (let ((d (fn-cfg-item-decode octets)))
         (if (not (fn-cbor-result-okp d))
             (fn-record-parse-error :item)
           (if (not (fn-cfg-itemp (fn-cbor-result-value d)))
@@ -3025,11 +3054,22 @@
   (implies (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))
            (fn-cbor-octet-listp (append a b)))))
 
+(defthm fn-cfg-item-encode-octets
+  (fn-cbor-octet-listp (fn-cfg-item-encode x))
+  :hints (("Goal" :cases ((and (natp (cdr x)) (<= (cdr x) *fn-cbor-max-uint64*)))
+           :in-theory (e/d (fn-record-cbor-encode-octets
+                            fn-cbor-encode-uint-wide-octets)
+                           (fn-cbor-encode fn-cbor-octet-listp)))
+          ("Subgoal 2" :in-theory (e/d (fn-cbor-encode-uint-wide
+                                        fn-record-cbor-encode-octets)
+                                       (fn-cbor-encode)))))
+
 (defthm fn-cfg-item-octets-are-octets
   (fn-cbor-octet-listp (fn-cfg-item-octets items))
   :hints (("Goal" :induct (fn-cfg-item-octets items)
            :in-theory (e/d (fn-record-cbor-encode-octets)
-                           (fn-cbor-encode fn-cbor-octet-listp)))))
+                           (fn-cbor-encode fn-cbor-octet-listp
+                            fn-cfg-item-encode)))))
 
 ; OPEN: the general decode-of-encode over a variable-length item stream.
 ; The prefix lemmas it needs (`fn-record-cbor-stream-uint-round-trip',
@@ -3045,6 +3085,17 @@
 (defthm fn-cfg-default-record-round-trip
   (equal (fn-cfg-decode-exact (fn-cfg-encode *fn-cfg-default-record*))
          (fn-record-parse-ok *fn-cfg-default-record* nil))
+  :rule-classes nil)
+
+; A second vector (PRF-378): a record stamped at a 2026 instant in
+; milliseconds (past 2^32) encodes its stamp with eight-octet arguments and
+; decodes to itself.
+(defthm fn-cfg-millisecond-stamp-record-round-trip
+  (let ((r (fn-cfg-record-make 0 0 1 *fn-cfg-default-change*
+                               (fn-clock-observation 812345000000 812345678901
+                                                     250 t))))
+    (equal (fn-cfg-decode-exact (fn-cfg-encode r))
+           (fn-record-parse-ok r nil)))
   :rule-classes nil)
 
 (defthm fn-cfg-default-record-replays-to-generation-one
