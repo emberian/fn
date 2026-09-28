@@ -167,6 +167,8 @@
 ; PRF-323).
 (include-book "../books/owner-time-journal")
 (include-book "../books/owner-time-admission")
+; lane health-truth-journal (PKT-872, PRF-360): the journal writer never keeps a torn line.
+(include-book "../books/owner-time-journal-writer")
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")

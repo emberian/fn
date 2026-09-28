@@ -199,6 +199,19 @@
                                             (ns (car es)) (rest (fn-otm-jlines (cdr es)))
                                             (fields nil)))))))
 
+;; A file that begins with whole lines: the reader takes them and goes on
+;; (books/owner-time-journal-writer.lisp reasons from here).
+(defthm fn-otm-jparse-of-jlines-then
+  (implies (fn-otm-nat-lists-p es)
+           (equal (fn-otm-jparse (append (fn-otm-jlines es) rest) nil nil entries)
+                  (fn-otm-jparse rest nil nil (fn-otm-revonto es entries))))
+  :hints (("Goal" :induct (fn-otm-jlines-ind es entries)
+            :in-theory (disable fn-otm-jparse-of-jline fn-otm-jparse-of-jlines))
+           ("Subgoal *1/1" :use ((:instance fn-otm-jparse-of-jline
+                                            (ns (car es))
+                                            (rest (append (fn-otm-jlines (cdr es)) rest))
+                                            (fields nil))))))
+
 ;; The journal file reads back as the entries written, in order.
 (defthm fn-otm-journal-read-of-jlines
   (implies (fn-otm-nat-lists-p es)
@@ -287,9 +300,14 @@
 ; -----------------------------------------------------------------------------
 ; Replay.  From S, apply each entry's event to the value and compare the
 ; recomputed word with the journaled one.  Answers (mv VERDICT S'):
-; :agrees, or (:gap SEQ) (an entry missing before SEQ: dropped by the sink,
-; or the file cut), (:diverged SEQ) (the recomputed word differs), or
-; (:malformed SEQ).  A start entry resets S to fn-otm-init.
+; :agrees, or (:gap SEQ) (SEQ the first sequence number missing: dropped by
+; the sink or lost to a failed write, PKT-872), (:diverged SEQ) (the
+; recomputed word differs), or (:malformed SEQ).  A start entry resets S to
+; fn-otm-init.  A MARK entry (OP 7, `*fn-otm-mark-entry*') is the writer's
+; own record that entries were lost before the one after it
+; (books/owner-time-journal-writer.lisp): it is a gap at the next sequence.
+
+(defconst *fn-otm-mark-entry* '(0 7 0 0 0 0 0))
 
 (defun fn-otm-replay (s entries)
   (declare (xargs :guard t :measure (len entries)))
@@ -303,8 +321,10 @@
                    (if (equal seq 0)
                        (fn-otm-replay (fn-otm-init) (cdr entries))
                      (mv (list :malformed seq) s)))
+                  ((equal op 7)
+                   (mv (list :gap (+ 1 (fn-otm-jseq s))) s))
                   ((not (equal seq (+ 1 (fn-otm-jseq s))))
-                   (mv (list :gap seq) s))
+                   (mv (list :gap (+ 1 (fn-otm-jseq s))) s))
                   ((fn-otm-kind-of-op op)
                    (mv-let (w s2)
                      (fn-otm-disk-event s (fn-otm-kind-of-op op) reading (list a b c))
@@ -520,10 +540,10 @@
    (let ((e (mv-nth 1 (fn-otm-note s a b))))
      (and (nat-listp e) (consp e) (equal (len e) 7)))))
 
-(local
- (defthm fn-otm-run-entries-shape
-   (fn-otm-nat-lists-p (mv-nth 0 (fn-otm-run s steps)))
-   :hints (("Goal" :in-theory (disable fn-otm-journal-entry fn-otm-note)))))
+;; Exported for books/owner-time-journal-writer.lisp.
+(defthm fn-otm-run-entries-shape
+  (fn-otm-nat-lists-p (mv-nth 0 (fn-otm-run s steps)))
+  :hints (("Goal" :in-theory (disable fn-otm-journal-entry fn-otm-note))))
 
 (local
  (defthm fn-otm-note-seq

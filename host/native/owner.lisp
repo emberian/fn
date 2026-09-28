@@ -3758,18 +3758,69 @@ of those decisions, never durable state."
           (handler-case (fnn-mkdir dir #o750)
             (fnn-os-error () nil))
           (setq *fnn-journal-fd* (fnn-owner-open-log (fnn-join dir "decisions.fnj")))
+          ;; PKT-872: cut a torn last entry (a process that died mid-append)
+          ;; back to the last whole one before this run appends after it,
+          ;; and hand ACL2's writer that offset.
+          (setq *fnn-journal-w*
+                (fnn-core 'fn-otm-jw-init
+                          (fnn-owner-journal-cut (fnn-join dir "decisions.fnj")
+                                                 *fnn-journal-fd*)))
+          (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+            (setq *fnn-journal-dropped* nil))
           (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
             (declare (ignore has-wall))
             (fnn-journal-line (fnn-core 'fn-otm-start-line (fnn-owner-monotonic-ms) wall))))
       (fnn-os-error (condition)
-        (setq *fnn-journal-fd* nil)
+        (when *fnn-journal-fd* (ignore-errors (fnn-close *fnn-journal-fd*)))
+        (setq *fnn-journal-fd* nil *fnn-journal-w* nil)
         (fnn-err "decision journal not opened (~a); decisions that store nothing are not journaled this run"
                  condition)))))
+
+(defun fnn-owner-journal-read-at (fd start count)
+  "COUNT octets of FD from START (a regular file; short reads continued)."
+  (let ((data (fnn-make-octets count)) (at 0))
+    (fnn-posix () (sb-posix:lseek fd start sb-posix:seek-set))
+    (loop while (< at count) do
+      (let* ((buffer (fnn-make-octets (- count at)))
+             (n (fnn-read-fd fd buffer)))
+        (when (zerop n) (fnn-fault "decision journal shrank while its last entry was read"))
+        (replace data buffer :start1 at :end2 n)
+        (incf at n)))
+    data))
+
+(defun fnn-owner-journal-cut (path fd)
+  "PKT-872: the length of the journal's whole entries (ACL2's
+fn-otm-jw-open-step over chunks read backwards from the end, each at most
+fn-otm-jw-open-chunk octets), the file truncated to it through FD when a
+torn last entry follows.  Answers the offset the writer resumes at."
+  (let ((rfd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
+    (unwind-protect
+         (let* ((size (sb-posix:stat-size (fnn-fstat rfd)))
+                (end size)
+                (start (fnn-core 'fn-otm-jw-open-first size)))
+           (loop
+             (unless (and (integerp start) (<= 0 start end))
+               (fnn-fault "ACL2 returned a malformed journal chunk start ~a" start))
+             (let ((step (fnn-core 'fn-otm-jw-open-step
+                                   (fnn-octet-list (fnn-owner-journal-read-at rfd start (- end start)))
+                                   start)))
+               (case (first step)
+                 (:cut
+                  (let ((cut (second step)))
+                    (unless (and (integerp cut) (<= 0 cut size))
+                      (fnn-fault "ACL2 returned a malformed journal cut ~a" cut))
+                    (when (< cut size)
+                      (fnn-posix (path) (sb-posix:ftruncate fd cut))
+                      (fnn-log-line (fnn-core 'fn-otm-jw-cut-line size cut)))
+                    (return cut)))
+                 (:more (setq end start start (second step)))
+                 (t (fnn-fault "ACL2 returned a malformed journal open step ~a" step))))))
+      (fnn-close rfd))))
 
 (defun fnn-owner-journal-close ()
   "After the writer stopped: close the journal's descriptor."
   (let ((fd *fnn-journal-fd*))
-    (setq *fnn-journal-fd* nil)
+    (setq *fnn-journal-fd* nil *fnn-journal-w* nil)
     (when fd (ignore-errors (fnn-close fd)))))
 
 (defun fnn-owner-open-log (path)

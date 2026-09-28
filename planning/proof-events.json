@@ -12376,6 +12376,39 @@
           "name": "fn-otm-shed-iff-slow"
         }
       ]
+    },
+    {
+      "id": "PRF-360",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-file-reads-agrees-or-gap"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-gap-is-the-first-lost"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-gap-names-the-first-missing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-segment-agrees"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-open-step-is-the-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-replay-of-pm"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-open-step-cuts-a-written-file"
+        }
+      ]
     }
   ]
 }
