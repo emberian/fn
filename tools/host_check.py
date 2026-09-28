@@ -1,5 +1,26 @@
 #!/usr/bin/env python3
-"""Load each host file alone, in its own ACL2, and require it to succeed.
+"""The host files load, in the order and world each image loads them.
+
+    python3 tools/host_check.py                 # both images' ld prefixes, build order
+    python3 tools/host_check.py --load          # the raw files, build order, bare ACL2
+    python3 tools/host_check.py --tables        # static: global hash tables
+    python3 tools/host_check.py --world         # static: counterparts in the image world
+    python3 tools/host_check.py --alone FILE... # one file alone (a diagnosis, not a gate)
+
+THE DEFAULT (lane lane-tools-2, 2026-09-28) is the ACL2-mode prefix of
+host/native/build.lisp and of host/native/build-dtn.lisp -- every
+include-book and host `ld`, in the script's order -- translated by
+tools/host_translate_check.py, one ACL2 per image.  It replaced loading each
+host file ALONE, which was vacuous twice over: without FN_ACL2 it printed
+SKIPPED and exited 0 (every `make check' until batch AY), and with ACL2 it
+failed 39 of 80 files in a certified tree, because a host file may use what
+an earlier `ld` in the build defined -- the order the image really loads is
+the one that decides.  No ACL2, or a book the prefix includes without an
+installed certificate, is NOT RUN, exit 2, and `make check' counts it as a
+failed step: evidence that did not run is not a pass.  `--alone FILE...`
+keeps the old per-file load as a diagnosis tool.
+
+What follows describes `--alone`, then the other modes.
 
 The host files are never certified: they are `ld`ed by the Python bridges
 (tools/run_store.py and its siblings) and `load`ed, in raw mode, by
@@ -848,6 +869,25 @@ def world_main(builds: list[str]) -> int:
     return 1 if refused else 0
 
 
+def build_order_main(timeout: int) -> int:
+    """Each image's ACL2-mode prefix in its build order (host_translate_check):
+    0 all translated, 1 an ACL2 error in any, else 2 NOT RUN."""
+    codes = []
+    for build in WORLD_BUILDS:
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "tools/host_translate_check.py"), "--build", build,
+             "--timeout", str(timeout),
+             "--log", f"build/host-translate/{Path(build).stem}.log"],
+            cwd=ROOT)
+        codes.append(result.returncode)
+        verdict = {0: "ok", 1: "FAIL", 2: "NOT RUN"}.get(result.returncode,
+                                                         f"exit {result.returncode}")
+        print(f"host_check: {verdict} {build} (its include-books and host lds, in order)")
+    if any(code == 1 for code in codes):
+        return 1
+    return 0 if all(code == 0 for code in codes) else 2
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -865,6 +905,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="static: refuse a global make-hash-table in host/ that is "
                              "neither :synchronized t nor declared thread-confined or "
                              "guarded-by a lock (no ACL2)")
+    parser.add_argument("--alone", action="store_true",
+                        help="load each FILE (default: every host file) alone in its own "
+                             "ACL2: a diagnosis, not the gate (build order is the gate)")
     parser.add_argument("--world", action="store_true",
                         help="static: every name a raw host/native file passes to fnn-core* "
                              "or fnn-call is defined in the world of the image that loads it "
@@ -902,12 +945,16 @@ def main(argv: list[str] | None = None) -> int:
         if log_dir is not None:
             log_dir.mkdir(parents=True, exist_ok=True)
         return load_check(acl2, files, args.timeout_seconds, log_dir)
+    if not args.alone:
+        if args.files:
+            print("host_check: FILEs without a mode: use --alone FILE... (a diagnosis) "
+                  "or --load FILE... (build order)", file=sys.stderr)
+            return 2
+        return build_order_main(args.timeout_seconds)
     if acl2 is None:
-        # Loudly, not silently: an unset FN_ACL2 is a check that did not run.
-        print("host_check: SKIPPED -- FN_ACL2 is unset or does not name an "
-              "executable, so no host file was loaded.  This check is not "
-              "evidence until it runs with a real ACL2.", file=sys.stderr)
-        return 0
+        print("host_check --alone: NOT RUN -- FN_ACL2 is unset or does not name an "
+              "executable, so no host file was loaded.", file=sys.stderr)
+        return 2
 
     raw = raw_files()
     targets = args.files or host_files()

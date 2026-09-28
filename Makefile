@@ -1372,10 +1372,14 @@ check:
 # metric's floor); a regression fails unless planning/throughput-causes.json
 # names the run's revision with a reason.  No run: NOT MEASURED, passes.
 	@$(CHECK_STEP) $(PYTHON) tools/throughput_gate.py check
-# Every host file loaded alone in its own ACL2: the dynamic half of the
-# host-names lint.  Needs FN_ACL2 and installed certificates; without
-# FN_ACL2 it prints that it did not run and exits 0.
+# Both images' ACL2-mode prefixes (every include-book and host `ld`) in
+# their build order: the dynamic half of the host-names lint.  Needs FN_ACL2
+# and installed certificates (make certs-install); without them it is NOT
+# RUN, exit 2, a failed step -- never a pass (lane lane-tools-2: loading each
+# file alone printed SKIPPED and exited 0 without FN_ACL2, and failed 39/80
+# on build order with it).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_modes
 # specs/crash-model-v2.md section 2.3's check, in both directions: every cut
 # the campaign kills at is a :cut of the model program that transcribes its
 # host function, and every :cut of a model program is a host faults.at site.
