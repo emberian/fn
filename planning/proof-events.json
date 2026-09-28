@@ -12467,6 +12467,27 @@
           "name": "fn-osd-deadline-is-past-the-slow-deadline"
         }
       ]
+    },
+    {
+      "id": "PRF-367",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-verdict-hdr-response-cat-is-archive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-verdict-hdr-range-cat-is-archive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scat-vh-lines-is-verdict-hdr-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scat-vh-fill-lookup"
+        }
+      ]
     }
   ]
 }

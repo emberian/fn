@@ -2010,6 +2010,283 @@
                             fn-cat-view-articles fn-nntp-number-tokenp
                             fn-nntp-decimal-value fn-nntp-session-group fn-cnx-freshp)))))
 
+;;; HDR :fn-verified (lane scale-reads, 2026-09-28).  The pinned reference
+;;; (books/nntp-verdict.lisp) finds each number's article by a walk of the
+;;; view's article list and each article's verdict by a walk of the verdict
+;;; list, so a whole-range request over N articles was N x (N + V): a 100k
+;;; store held the owner over 30 minutes (lane serve-depth).  The twin finds
+;;; the numbers and the articles in the catalog (fn-scat-range-numbers,
+;;; fn-scat-available-article, fn-scat-msgid-article: a probe each) and
+;;; every verdict of the reply in ONE pass over the verdict list, through a
+;;; table of the reply's Message-IDs: O(R + V) hash operations for a reply of
+;;; R lines, where the reference was O(R x (N + V)).
+;;;
+;;; The verdict is read from the recorded evidence (the view's verdict list,
+;;; books/store-node.lisp fn-sn-verdicts), never from the catalog row's
+;;; context: a row's context is decided under the keyring in force at its
+;;; intern and a redecision replaces it (books/catalog-delta.lisp
+;;; :redecide), while HDR :fn-verified answers the acceptance evidence,
+;;; which a keyring change never rewrites.  Reading the row instead (O(R))
+;;; needs that equation carried in the join invariant; it is not proved.
+;;;
+;;; KEYSTONE fn-nntp-verdict-hdr-response-cat-is-archive: the twin IS
+;;; fn-nntp-verdict-hdr-response under the view's catalog (the -cat
+;;; dispatcher's hypotheses).
+
+; The table of the Message-IDs of the articles at NUMBERS, onto TBL.
+(defun fn-scat-vh-want (group numbers v fn-arena fn-cat tbl)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (if (consp numbers)
+      (let ((article (fn-scat-available-article group (car numbers) v fn-arena fn-cat)))
+        (fn-scat-vh-want group (cdr numbers) v fn-arena fn-cat
+                         (if (consp article)
+                             (hons-acons (fn-article-msgid article) t tbl)
+                           tbl)))
+    tbl))
+
+; One pass over VERDICTS: the first pair of each wanted Message-ID, onto FOUND.
+(defun fn-scat-vh-fill (verdicts wanted found)
+  (declare (xargs :guard t))
+  (if (consp verdicts)
+      (let ((e (car verdicts)))
+        (fn-scat-vh-fill (cdr verdicts) wanted
+                         (if (and (consp e)
+                                  (hons-get (car e) wanted)
+                                  (not (hons-get (car e) found)))
+                             (hons-acons (car e) (cdr e) found)
+                           found)))
+    found))
+
+(defthm fn-scat-vh-want-keeps
+  (implies (hons-assoc-equal m tbl)
+           (hons-assoc-equal m (fn-scat-vh-want group numbers v fn-arena fn-cat tbl)))
+  :hints (("Goal" :induct (fn-scat-vh-want group numbers v fn-arena fn-cat tbl)
+                  :in-theory (disable fn-scat-available-article))))
+
+(defthm fn-scat-vh-want-member
+  (implies (and (member-equal n numbers)
+                (consp (fn-scat-available-article group n v fn-arena fn-cat)))
+           (hons-assoc-equal
+            (fn-article-msgid (fn-scat-available-article group n v fn-arena fn-cat))
+            (fn-scat-vh-want group numbers v fn-arena fn-cat tbl)))
+  :hints (("Goal" :induct (fn-scat-vh-want group numbers v fn-arena fn-cat tbl)
+                  :in-theory (disable fn-scat-available-article))))
+
+(defthm fn-scat-vh-fill-lookup
+  (equal (hons-assoc-equal m (fn-scat-vh-fill verdicts wanted found))
+         (or (hons-assoc-equal m found)
+             (and (hons-assoc-equal m wanted)
+                  (hons-assoc-equal m verdicts))))
+  :hints (("Goal" :induct (fn-scat-vh-fill verdicts wanted found))))
+
+(defthm fn-scat-stx-reader-lookup-is-hons-assoc
+  (equal (fn-stx-reader-lookup m verdicts)
+         (cdr (hons-assoc-equal m verdicts)))
+  :hints (("Goal" :in-theory (enable fn-stx-reader-lookup))))
+
+(in-theory (disable fn-scat-vh-want fn-scat-vh-fill))
+
+; The lines, each verdict read from FOUND.
+(defun fn-scat-vh-line (number article found)
+  (declare (xargs :guard t))
+  (fn-nntp-hdr-line (fn-nntp-decimal-field number)
+                    (fn-stx-reader-item (cdr (hons-get (fn-article-msgid article) found)))))
+
+(defun fn-scat-vh-lines-loop (group numbers v found fn-arena fn-cat acc)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (fn-scat-guard) (true-listp acc))
+                  :verify-guards nil))
+  (if (consp numbers)
+      (let ((article (fn-scat-available-article group (car numbers) v fn-arena fn-cat)))
+        (fn-scat-vh-lines-loop group (cdr numbers) v found fn-arena fn-cat
+                               (if (consp article)
+                                   (cons (fn-scat-vh-line (car numbers) article found) acc)
+                                 acc)))
+    (revappend acc nil)))
+
+(defun fn-scat-vh-lines (group numbers v found fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard) :verify-guards nil))
+  (mbe :logic
+       (if (consp numbers)
+           (let ((article (fn-scat-available-article group (car numbers) v fn-arena fn-cat)))
+             (if (consp article)
+                 (cons (fn-scat-vh-line (car numbers) article found)
+                       (fn-scat-vh-lines group (cdr numbers) v found fn-arena fn-cat))
+               (fn-scat-vh-lines group (cdr numbers) v found fn-arena fn-cat)))
+         nil)
+       :exec (fn-scat-vh-lines-loop group numbers v found fn-arena fn-cat nil)))
+
+(local
+ (defthm fn-scat-vh-lines-loop-is-revappend
+   (equal (fn-scat-vh-lines-loop group numbers v found fn-arena fn-cat acc)
+          (revappend acc (fn-scat-vh-lines group numbers v found fn-arena fn-cat)))
+   :hints (("Goal" :induct (fn-scat-vh-lines-loop group numbers v found fn-arena fn-cat acc)
+                   :in-theory (union-theories '(fn-scat-vh-lines-loop fn-scat-vh-lines revappend
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-scat-vh-lines-loop)
+
+(verify-guards fn-scat-vh-lines
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-scat-vh-lines)
+                                             (union-theories (theory 'minimal-theory)
+                                                             (executable-counterpart-theory :here)))
+                  :use ((:instance fn-scat-vh-lines-loop-is-revappend (acc nil))))))
+
+; Every number of NUMBERS drawn from ALL: its verdict is in the table of ALL.
+(defthm fn-scat-vh-want-member-view
+  (implies (and (fn-cnx-freshp fn-cat) group
+                (member-equal n numbers)
+                (consp (fn-nntp-available-article group n (fn-cat-view-articles v fn-arena fn-cat))))
+           (hons-assoc-equal
+            (fn-article-msgid (fn-nntp-available-article group n (fn-cat-view-articles v fn-arena fn-cat)))
+            (fn-scat-vh-want group numbers v fn-arena fn-cat tbl)))
+  :hints (("Goal" :use ((:instance fn-scat-vh-want-member))
+                  :in-theory (disable fn-scat-vh-want-member fn-scat-available-article
+                                      fn-nntp-available-article fn-cat-view-articles fn-cnx-freshp))))
+
+(defthm fn-scat-vh-lines-is-verdict-hdr-lines
+  (implies (and (fn-cnx-freshp fn-cat) group (subsetp-equal numbers all))
+           (equal (fn-scat-vh-lines group numbers v
+                                    (fn-scat-vh-fill verdicts
+                                                     (fn-scat-vh-want group all v fn-arena fn-cat nil)
+                                                     nil)
+                                    fn-arena fn-cat)
+                  (fn-nntp-verdict-hdr-lines group numbers
+                                             (fn-cat-view-articles v fn-arena fn-cat)
+                                             verdicts)))
+  :hints (("Goal" :induct (fn-nntp-verdict-hdr-lines group numbers
+                                                     (fn-cat-view-articles v fn-arena fn-cat)
+                                                     verdicts)
+                  :in-theory (e/d (fn-nntp-verdict-hdr-lines fn-stx-reader-verdict)
+                                  (fn-scat-available-article fn-cat-view-articles
+                                   fn-nntp-available-article fn-nntp-hdr-line
+                                   fn-nntp-decimal-field fn-stx-reader-item
+                                   fn-cnx-freshp fn-stx-reader-lookup)))))
+
+(local (defthm fn-scat-vh-subsetp-cons
+  (implies (subsetp-equal x y) (subsetp-equal x (cons a y)))))
+
+(defthm fn-scat-vh-subsetp-refl
+  (subsetp-equal x x))
+
+; The three arms.
+(defun fn-nntp-verdict-hdr-range-cat (session verdicts token v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (let ((group (fn-nntp-session-group session))
+        (range (fn-nntp-parse-range token)))
+    (if (null group)
+        (fn-nntp-single session (fn-proto-text * :no-group-selected))
+      (let* ((numbers (fn-scat-range-numbers
+                       group (nfix (fn-nntp-range-low range))
+                       (nfix (fn-nntp-range-high range)) v fn-cat))
+             (wanted (fn-scat-vh-want group numbers v fn-arena fn-cat nil))
+             (found (fn-scat-vh-fill verdicts wanted nil))
+             (lines (fast-alist-free-on-exit
+                     wanted
+                     (fast-alist-free-on-exit
+                      found
+                      (fn-scat-vh-lines group numbers v found fn-arena fn-cat)))))
+        (if (consp lines)
+            (fn-nntp-multi session (fn-nntp-hdr-initial nil) lines)
+          (fn-nntp-single session (fn-proto-text * :empty-range)))))))
+
+(defthm fn-nntp-verdict-hdr-range-cat-is-archive
+  (implies (and (fn-cnx-freshp fn-cat)
+                (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat))
+                (natp (fn-nntp-range-low (fn-nntp-parse-range token)))
+                (natp (fn-nntp-range-high (fn-nntp-parse-range token))))
+           (equal (fn-nntp-verdict-hdr-range-cat session verdicts token v fn-arena fn-cat)
+                  (fn-nntp-verdict-hdr-range session archive verdicts token)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-verdict-hdr-range)
+                           (fn-scat-range-numbers fn-scat-vh-lines fn-nntp-verdict-hdr-lines
+                            fn-nntp-group-range-numbers fn-cat-view-articles fn-cnx-freshp
+                            fn-nntp-parse-range fn-nntp-multi fn-nntp-single)))))
+
+(defun fn-nntp-verdict-hdr-current-cat (session verdicts v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (let ((group (fn-nntp-session-group session))
+        (current (fn-nntp-session-current session)))
+    (if (null group)
+        (fn-nntp-single session (fn-proto-text * :no-group-selected))
+      (if (null current)
+          (fn-nntp-single session (fn-proto-text * :no-current))
+        (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
+          (if (not (consp article))
+              (fn-nntp-single session (fn-proto-text * :no-current))
+            (fn-nntp-multi
+             session (fn-nntp-hdr-initial nil)
+             (list (fn-nntp-hdr-line
+                    (fn-nntp-decimal-field current)
+                    (fn-stx-reader-verdict (fn-article-msgid article) verdicts))))))))))
+
+(defthm fn-nntp-verdict-hdr-current-cat-is-archive
+  (implies (and (fn-cnx-freshp fn-cat)
+                (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
+           (equal (fn-nntp-verdict-hdr-current-cat session verdicts v fn-arena fn-cat)
+                  (fn-nntp-verdict-hdr-current session archive verdicts)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-verdict-hdr-current)
+                           (fn-scat-available-article fn-nntp-available-article
+                            fn-cat-view-articles fn-cnx-freshp fn-stx-reader-verdict
+                            fn-nntp-multi fn-nntp-single)))))
+
+(defun fn-nntp-verdict-hdr-msgid-cat (session verdicts token v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (let ((article (fn-scat-msgid-article (fn-nntp-token-string token) v fn-arena fn-cat)))
+    (if (not (consp article))
+        (fn-nntp-single session (fn-proto-text * :no-msgid))
+      (fn-nntp-multi
+       session (fn-nntp-hdr-initial nil)
+       (list (fn-nntp-hdr-line
+              (fn-nntp-decimal-field 0)
+              (fn-stx-reader-verdict (fn-article-msgid article) verdicts)))))))
+
+(defthm fn-nntp-verdict-hdr-msgid-cat-is-archive
+  (implies (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat))
+           (equal (fn-nntp-verdict-hdr-msgid-cat session verdicts token v fn-arena fn-cat)
+                  (fn-nntp-verdict-hdr-msgid session archive verdicts token)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-verdict-hdr-msgid)
+                           (fn-scat-msgid-article fn-find-article fn-cat-view-articles
+                            fn-stx-reader-verdict fn-nntp-multi fn-nntp-single)))))
+
+(defun fn-nntp-verdict-hdr-response-cat (session verdicts args v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (if (not (and (consp args)
+                (fn-nntp-keywordp (car args) ":FN-VERIFIED")))
+      (fn-nntp-single session (fn-proto-text * :syntax))
+    (let ((rest (cdr args)))
+      (if (null rest)
+          (fn-nntp-verdict-hdr-current-cat session verdicts v fn-arena fn-cat)
+        (if (and (consp rest) (null (cdr rest)))
+            (let ((token (car rest)))
+              (if (fn-nntp-range-okp (fn-nntp-parse-range token))
+                  (fn-nntp-verdict-hdr-range-cat session verdicts token v fn-arena fn-cat)
+                (if (fn-nntp-message-id-tokenp token)
+                    (fn-nntp-verdict-hdr-msgid-cat session verdicts token v fn-arena fn-cat)
+                  (fn-nntp-single session (fn-proto-text * :syntax)))))
+          (fn-nntp-single session (fn-proto-text * :syntax)))))))
+
+;; KEYSTONE.  Host path: fn-scr-command (books/served-catalog-chain.lisp)
+;; -> fn-nntp-archive-command-cat -> this; the reference is the pinned
+;; dispatcher's arm.
+(defthm fn-nntp-verdict-hdr-response-cat-is-archive
+  (implies (and (fn-cnx-freshp fn-cat)
+                (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
+           (equal (fn-nntp-verdict-hdr-response-cat session verdicts args v fn-arena fn-cat)
+                  (fn-nntp-verdict-hdr-response session archive verdicts args)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-verdict-hdr-response)
+                           (fn-nntp-verdict-hdr-range-cat fn-nntp-verdict-hdr-range
+                            fn-nntp-verdict-hdr-current-cat fn-nntp-verdict-hdr-current
+                            fn-nntp-verdict-hdr-msgid-cat fn-nntp-verdict-hdr-msgid
+                            fn-nntp-range-okp fn-nntp-parse-range fn-nntp-message-id-tokenp
+                            fn-nntp-keywordp fn-cat-view-articles fn-cnx-freshp
+                            fn-nntp-single))
+           :use ((:instance fn-nntp-parse-range-ok-has-natural-bounds (token (cadr args)))))))
+
+
 ;;; The dispatcher: fn-nntp-archive-command-pinned's case split with the two
 ;;; retrieval arms reading the catalog.  Every other arm is the pinned arm
 ;;; (it reads the archive and the pinned index until step 8).  Its guards are
@@ -2091,7 +2368,7 @@
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
-        (fn-nntp-verdict-hdr-response session archive verdicts args))
+        (fn-nntp-verdict-hdr-response-cat session verdicts args v fn-arena fn-cat))
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-CONTROL"))
@@ -2201,6 +2478,7 @@
                             fn-nntp-number-withdrawn-p fn-nntp-msgid-withdrawn-p
                             fn-nntp-withdrawn-reply fn-gidx-listgroup-command
                             fn-nntp-over-range-indexed fn-nntp-verdict-hdr-response
+                            fn-nntp-verdict-hdr-response-cat
                             fn-nntp-control-hdr-response
                             fn-nntp-enrollment-hdr-response
                             fn-nntp-upcase-keyword
