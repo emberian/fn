@@ -3,7 +3,9 @@
 
 `books/auth-secret.lisp` owns the scheme (specs/nntp.md, "The stored AUTHINFO
 credential"): the stored value is
-``(:fn-authsec-v1 salt (fn-digest-tagged "fn-authinfo-v1" (append salt secret)))``
+``(:fn-authsec-v2 salt digest stored-key server-key)`` (the digest
+``(fn-digest-tagged "fn-authinfo-v1" (append salt secret))``, the keys
+SCRAM-SHA-256's under 4096 iterations)
 and `fn-authsec-checkp` is the comparison the served path runs.  This module
 calls `fn-authsec-enrol` in an ACL2 session and reads the two octet strings
 back.  It computes NOTHING: there is no `hashlib` here and there must never
@@ -80,7 +82,9 @@ class AuthSecretSession:
         return bytes(values)
 
     def enrol(self, salt, secret):
-        """(salt, digest) for this secret, both derived by ACL2.
+        """(salt, digest, stored_key, server_key) for this secret, all derived
+        by ACL2 (verifier v2: the fast digest USER/PASS and PLAIN check, and
+        SCRAM-SHA-256's StoredKey and ServerKey, books/scram.lisp).
 
         The salt goes in and comes back out of `fn-authsec-enrol`'s own
         coercion, so what is stored is what `fn-authsec-checkp` will read.
@@ -93,15 +97,24 @@ class AuthSecretSession:
         digest = self.octets(
             "(fn-authsec-ver-digest (fn-authsec-enrol {} {}))"
             .format(octet_form(salt), octet_form(secret)))
-        if len(stored_salt) != SALT_OCTETS or len(digest) != DIGEST_OCTETS:
+        stored_key = self.octets(
+            "(fn-authsec-ver-stored-key (fn-authsec-enrol {} {}))"
+            .format(octet_form(salt), octet_form(secret)))
+        server_key = self.octets(
+            "(fn-authsec-ver-server-key (fn-authsec-enrol {} {}))"
+            .format(octet_form(salt), octet_form(secret)))
+        if (len(stored_salt) != SALT_OCTETS or len(digest) != DIGEST_OCTETS
+                or len(stored_key) != DIGEST_OCTETS
+                or len(server_key) != DIGEST_OCTETS):
             raise StoreError("ACL2 returned a verifier of the wrong shape")
-        return stored_salt, digest
+        return stored_salt, digest, stored_key, server_key
 
-    def checkp(self, salt, digest, supplied):
+    def checkp(self, salt, digest, stored_key, server_key, supplied):
         """What the served path would answer.  Used by the tests, not by `fn`."""
         body = acl2_result(self.call(
-            "(fn-authsec-checkp (list :fn-authsec-v1 {} {}) {})"
-            .format(octet_form(salt), octet_form(digest), octet_form(supplied))))
+            "(fn-authsec-checkp (fn-authsec-verifier {} {} {} {}) {})"
+            .format(octet_form(salt), octet_form(digest), octet_form(stored_key),
+                    octet_form(server_key), octet_form(supplied))))
         return body.strip().upper() == b"T"
 
     def close(self):
@@ -119,12 +132,13 @@ class AuthSecretSession:
 
 
 def enrol(secret, salt=None):
-    """(salt, digest) as hex, for one credential.  One session, one call."""
+    """(salt, digest, stored_key, server_key) as hex, for one credential.
+    One session, one call."""
     if salt is None:
         salt = os.urandom(SALT_OCTETS)
     session = AuthSecretSession()
     try:
-        stored_salt, digest = session.enrol(salt, secret)
+        fields = session.enrol(salt, secret)
     finally:
         session.close()
-    return stored_salt.hex(), digest.hex()
+    return tuple(field.hex() for field in fields)

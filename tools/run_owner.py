@@ -295,18 +295,19 @@ class Acl2Owner(Acl2Store):
     def set_auth(self, required, protected_only, tls_available, rows):
         """Hand ACL2 the operator's AUTHINFO policy, once, at start-up.
 
-        `rows` are (name, principal, salt, digest, posting) with the four
-        octet strings as bytes.  The host transports them; ACL2 builds the
+        `rows` are (name, principal, salt, digest, posting, stored_key,
+        server_key) with the octet strings as bytes.  The host transports them; ACL2 builds the
         credential, the verifier and the configuration and owns every
         comparison made against them.
         """
         def octets(value):
             return "(" + " ".join(str(byte) for byte in value) + ")"
         literal = "(" + " ".join(
-            "({} {} {} {} {})".format(octets(name), octets(principal),
-                                      octets(salt), octets(digest),
-                                      "t" if posting else "nil")
-            for name, principal, salt, digest, posting in rows) + ")"
+            "({} {} {} {} {} {} {})".format(
+                octets(name), octets(principal), octets(salt), octets(digest),
+                "t" if posting else "nil", octets(stored_key), octets(server_key))
+            for name, principal, salt, digest, posting, stored_key, server_key
+            in rows) + ")"
         outcome = self._symbol("(fn-owner-set-auth {} {} {} '{} state)".format(
             "t" if required else "nil",
             "t" if protected_only else "nil",
@@ -739,7 +740,8 @@ def load_credentials(path):
     """The operator's credential file, as rows of octets for ACL2.
 
     Format v2 (`fn principal set-password`): each `[login.NAME]` carries a
-    principal id, a 16-octet salt and a 32-octet digest, all hex.  A v1
+    principal id, a 16-octet salt, a 32-octet digest and SCRAM-SHA-256's
+    32-octet StoredKey and ServerKey, all hex.  A v1
     entry -- one with `secret` in the clear -- is REFUSED by name; nothing
     here reads a password and nothing here hashes one.
     """
@@ -764,14 +766,17 @@ def load_credentials(path):
             principal = bytes.fromhex(str(entry["principal"]))
             salt = bytes.fromhex(str(entry["salt"]))
             digest = bytes.fromhex(str(entry["digest"]))
+            stored_key = bytes.fromhex(str(entry["scram_stored_key"]))
+            server_key = bytes.fromhex(str(entry["scram_server_key"]))
         except (KeyError, ValueError) as error:
             raise StoreError("{}: [login.{}] is malformed: {}"
                              .format(path, name, error)) from error
-        if len(salt) != 16 or len(digest) != 32 or len(principal) != 32:
+        if (len(salt) != 16 or len(digest) != 32 or len(principal) != 32
+                or len(stored_key) != 32 or len(server_key) != 32):
             raise StoreError("{}: [login.{}] has a field of the wrong length"
                              .format(path, name))
         rows.append((name.encode("ascii"), principal, salt, digest,
-                     bool(entry.get("posting"))))
+                     bool(entry.get("posting")), stored_key, server_key))
     return rows
 
 

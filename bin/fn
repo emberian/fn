@@ -680,8 +680,8 @@ def _principal_set_password(settings, args):
         return EXIT_FAULT, ("set-password needs an ACL2 session to derive the "
                             "verifier (books/auth-secret): {}".format(error))
     try:
-        salt, digest = session.enrol(os.urandom(auth_secret.SALT_OCTETS),
-                                     secret.encode("ascii"))
+        salt, digest, stored_key, server_key = session.enrol(
+            os.urandom(auth_secret.SALT_OCTETS), secret.encode("ascii"))
         if principal is None:
             principal = session.octets(
                 '(fn-digest-tagged (fn-record-string-octets "fn-principal-local-v1") '
@@ -695,11 +695,14 @@ def _principal_set_password(settings, args):
     entries[name] = {"principal": principal.lower(),
                      "salt": salt.hex(),
                      "digest": digest.hex(),
+                     "scram_stored_key": stored_key.hex(),
+                     "scram_server_key": server_key.hex(),
                      "posting": bool(args.posting)}
     lines = ["# fn AUTHINFO credentials (RFC 4643), format v2.  Written by",
              "# `fn principal set-password`.  Each entry is the verifier of",
-             "# books/auth-secret.lisp: a 16-octet salt and the tagged SHA-256",
-             "# of salt || secret.  The secret is NOT here and cannot be",
+             "# books/auth-secret.lisp: a 16-octet salt, the tagged digest",
+             "# of salt || secret, and SCRAM-SHA-256's StoredKey and",
+             "# ServerKey.  The secret is NOT here and cannot be",
              "# recovered from here.  It still crosses an unprotected",
              "# connection in the clear, so set [listener] tls_cert/tls_key",
              "# with [auth] protected_only = true.",
@@ -710,6 +713,10 @@ def _principal_set_password(settings, args):
                   "principal = {}".format(toml_quote(str(entry["principal"]))),
                   "salt = {}".format(toml_quote(str(entry["salt"]))),
                   "digest = {}".format(toml_quote(str(entry["digest"]))),
+                  "scram_stored_key = {}".format(
+                      toml_quote(str(entry.get("scram_stored_key", "")))),
+                  "scram_server_key = {}".format(
+                      toml_quote(str(entry.get("scram_server_key", "")))),
                   "posting = {}".format("true" if entry.get("posting") else "false"),
                   ""]
     location = auth_path(settings)
