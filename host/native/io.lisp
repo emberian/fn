@@ -1992,6 +1992,20 @@ after the syscall."
     (setf (fnn-store-orphans store) (fnn-staging-orphans store))
     (nreverse removed)))
 
+(defun fnn-refuse-another-format (store)
+  "A store whose config.json ACL2's open names as another format
+(`:store-format-9', `:store-format') is refused by ACL2's line before any
+other check reads the store; anything else is left to the ordinary open."
+  (let ((path (fnn-config-path store)))
+    (when (ignore-errors (fnn-check-regular path))
+      (let* ((raw (ignore-errors (fnn-read-regular-bounded path 16384)))
+             (verdict (and raw (> (length raw) 0) (/= (aref raw 0) (char-code #\{))
+                           (fnn-core 'fn-store-metadata-config-open (fnn-octet-list raw)))))
+        (when (and (consp verdict) (eq (first verdict) :refused)
+                   (member (second verdict) '(:store-format-9 :store-format)))
+          (error 'fnn-store-profile-refusal
+                 :message (fnn-core 'fn-store-metadata-config-refusal-text verdict)))))))
+
 (defun fnn-load-config (store)
   (fnn-check-regular (fnn-config-path store))
   (let ((raw (handler-case
@@ -2063,6 +2077,12 @@ after the syscall."
 (defun fnn-acquire (store)
   (fnn-safe-directory (fnn-store-root store))
   (fnn-require-clone-activated store)
+  ;; Format 10 (lane format-bump-10): a store of another format is named
+  ;; first.  Its filesystem record is a frame of its own release's digest, so
+  ;; the record check below would call a format-9 store's record undecodable
+  ;; and point at `rebind-filesystem'; the profile's open (ACL2's
+  ;; fn-spo-config-open) names the format and the way out instead.
+  (fnn-refuse-another-format store)
   ;; PKT-579: the store root is on the filesystem its record names, or the
   ;; open is refused by name before anything else is read.
   (fnn-check-filesystem-identity store)
