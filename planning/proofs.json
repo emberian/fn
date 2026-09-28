@@ -11903,7 +11903,9 @@
         "fn-hp-decode-image",
         "fn-hp-page-digest-is-leaf",
         "fn-hp-append-changes-only-dirty",
-        "fn-hp-append-dirty-bound"
+        "fn-hp-append-dirty-bound",
+        "fn-hp-x-header-is-image",
+        "fn-hp-x-at-is-nth"
       ]
     },
     {
@@ -11916,7 +11918,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/octet-text.lisp",
         "tests/acl2/octet-text-tests.lisp",
@@ -11992,7 +11994,7 @@
         "PRF-325"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-builders.lisp",
@@ -12023,7 +12025,7 @@
         "PRF-014"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/records-shape.lisp",
         "books/acceptance.lisp",
@@ -12060,7 +12062,7 @@
         "PRF-302"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-rcompat-reply-cat-is-rcompat-reply",
         "fn-rcompat-retrieval-cat-is-retrieval",
@@ -12189,7 +12191,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/web-request.lisp",
         "tests/acl2/web-request-tests.lisp",
@@ -12204,7 +12206,6 @@
         "fn-web-head-frame-bounded",
         "fn-web-route-is-a-row",
         "fn-web-response-head-crlf-count",
-        "fn-web-client-address-without-proxy-unfolds",
         "fn-web-parse-head-answers",
         "fn-wrq-span-decode-is-urldecode"
       ]
@@ -12219,7 +12220,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/web-render.lisp",
         "books/web-render-keystones.lisp",
@@ -12249,7 +12250,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/web-session.lisp",
         "books/web-session-keystones.lisp",

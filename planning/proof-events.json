@@ -11847,10 +11847,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-web-client-address-without-proxy-unfolds"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-web-parse-head-answers"
         },
         {
