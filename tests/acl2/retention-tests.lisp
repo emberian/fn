@@ -301,3 +301,25 @@
                            "receipt-from-successor" 4)
           *ret-cap-teeth-near*)
    :rule-classes nil))
+
+; The pin and release walks by loops (PKT-876, PRF-352): each :exec branch
+; runs here (the guards hold), in order, and over 50,000 pins.
+(defconst *retention-od-pins* (fn-retain-pins *retention-two-pins*))
+(assert-event (equal (fn-retain-obligation-ids *retention-od-pins*) '("forward-1" "archive-1")))
+(assert-event (equal (fn-retain-sum *retention-od-pins*) 10))
+(assert-event (equal (fn-retain-remove-id "archive-1" *retention-od-pins*)
+                     (list (car *retention-od-pins*))))
+(assert-event (equal (fn-retain-remove-id "forward-1" *retention-od-pins*)
+                     (cdr *retention-od-pins*)))
+(assert-event (equal (fn-retain-remove-id "absent" *retention-od-pins*) *retention-od-pins*))
+(assert-event (equal (fn-retain-release-ids (fn-retain-releases *retention-all-released*))
+                     (fn-retain-release-ids-rev
+                      (reverse (fn-retain-releases *retention-all-released*)) nil)))
+(assert-event (consp (fn-retain-release-ids (fn-retain-releases *retention-all-released*))))
+(defconst *retention-od-many*
+  (append (make-list 50000 :initial-element (car *retention-od-pins*))
+          (cdr *retention-od-pins*)))
+(assert-event (equal (len (fn-retain-obligation-ids *retention-od-many*)) 50001))
+(assert-event (equal (car (last (fn-retain-obligation-ids *retention-od-many*))) "archive-1"))
+(assert-event (equal (fn-retain-sum *retention-od-many*) (+ (* 50000 4) 6)))
+(assert-event (equal (len (fn-retain-remove-id "archive-1" *retention-od-many*)) 50000))

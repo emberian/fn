@@ -587,3 +587,16 @@
                                                               *stxt-keyring-a*)))))
 ; Adoption, by contrast, does extend the chain -- so the contrast is real.
 (assert-event (equal (len (fn-me-chain (fn-me-adopt *stxt-site* *stxt-commit*))) 1))
+
+; fn-stx-index-of-store by a loop (PKT-876, PRF-352): the reversed left fold
+; is the right fold on the live store above, and 50,000 articles fold.
+(assert-event
+ (equal (fn-stx-index-of-store *stxt-live-2-alpha* *stxt-keyring*)
+        (fn-stx-index-of-store-loop (reverse *stxt-live-2-alpha*) *stxt-keyring*
+                                    (fn-stx-index-empty))))
+(assert-event
+ (equal (fn-stx-index-of-store
+         (append (make-list 50000 :initial-element (car *stxt-live-2-alpha*))
+                 *stxt-live-2-alpha*)
+         nil)
+        (fn-stx-index-empty)))
