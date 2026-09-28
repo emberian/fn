@@ -1619,9 +1619,15 @@ this is a local policy with one stronger fn guarantee: no existence oracle.
   octets); a Message-ID is unique node-wide, so a POST of a hidden article's
   Message-ID is refused as a duplicate; the operator reads everything, and
   confidentiality from the operator or from a peer is the agents' own
-  encryption. Cost: a restricted session's command is served over a view
-  rebuilt per command (O(A) in the view's articles; an unrestricted session
-  pays nothing); pinning the view per connection is PKT-643.
+  encryption. Cost (PKT-643, PRF-913): the host prepares a restricted
+  session's view before each read (`fn-scr-prepare-access`,
+  `books/group-access-cache.lisp` `fn-gacc-prepare`): kept while the
+  connection's pin holds, grown by the acceptances since (one cut, one trie
+  path copy and its bucket entries per article), built only at a restart, a
+  withdrawal or a new rule; every command of the read takes it from the
+  cache (`fn-scr-cached-view`) and builds nothing. The per-command build is
+  the fallback when no prepared entry is keyed to the pin (a GROUP re-pin
+  inside one read). An unrestricted session pays nothing.
 
 ### The posting allowance
 
