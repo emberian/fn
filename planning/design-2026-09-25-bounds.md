@@ -196,7 +196,7 @@ the defining book's dependents today (tools/shape_books.py).
 | `*fn-bpcd-*` | 40 / 36 / 37 | bp-clock-domain.lisp:13-15 | node-generated clock domain fields | | N | stay |
 | `*fn-bpnp-max-forward-retries*` | 3 | bp-forward-attempt.lisp:41 | forwarding retries | 75 | P | stays a policy; section 1.3's work-bound list keeps it |
 | `*fn-nop-max-arguments*` / `-argument-octets*`, `*fn-native-admin-max-arguments*` / `-argument-octets*` | 32 x 512 / 16 x 512 | native-operator.lisp, native-admin-shape.lisp | operator and admin argv | 10 / 526 | D (PKT-867: init could name about 20 groups) | REMOVED by item 1 (HST-032, PRF-902); section 1.3's work-bound list no longer holds them |
-| `*fn-ncfg-max-octets*` / `-max-lines*` | 16384 / 128 | native-config.lisp:21-22 | `fn.toml` | 26 | D (section 1.3) | still open: the file is read whole into ACL2; a streamed line reader bounds the work instead |
+| `*fn-ncfg-max-octets*` / `-max-lines*` | 16384 / 128 | native-config.lisp:21-22 | `fn.toml` | 26 | W now: section 1.3 called it D because the file named groups and peers; they are configuration records since (`group create`, `peer add`), and `fn.toml` is a fixed schema of eleven tables (native-config.lisp:240) | stays, with its comment saying why; a file of comments past 128 lines is the one thing it refuses |
 
 ## 2. The design
 
