@@ -679,23 +679,97 @@ the address and which has no port or TLS mode of its own."
 ; order, after the auth field.  The decoder below reads them back, and
 ; `fn-native-admin-peer-extra-decode-lists-exactly-the-rows' is the keystone:
 ; the words of the three tags are exactly the rows of the three kinds.
+;
+; Both walks execute by loops (lane peer-list-depth): a peer's row group
+; grows one row per `peer carries' request (PRF-171, D27: no row cap), so
+; the recursions took one control-stack frame per row.  The :logic is the
+; recursion, unchanged; the :exec is a loop, equal by the local lemma.
+(defun fn-native-admin-peer-slot-values-loop (rows slot acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rows)
+      (fn-native-admin-peer-slot-values-loop
+       (cdr rows) slot
+       (if (equal (fn-cfg-row-b (car rows)) slot)
+           (cons (fn-cfg-row-c (car rows)) acc)
+         acc))
+    (fn-ag-rev-onto acc nil)))
+
 (defun fn-native-admin-peer-slot-values (rows slot)
   "The value of every row of ROWS whose slot label is SLOT, in row order."
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (if (equal (fn-cfg-row-b (car rows)) slot)
-          (cons (fn-cfg-row-c (car rows))
-                (fn-native-admin-peer-slot-values (cdr rows) slot))
-        (fn-native-admin-peer-slot-values (cdr rows) slot))
-    nil))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp rows)
+           (if (equal (fn-cfg-row-b (car rows)) slot)
+               (cons (fn-cfg-row-c (car rows))
+                     (fn-native-admin-peer-slot-values (cdr rows) slot))
+             (fn-native-admin-peer-slot-values (cdr rows) slot))
+         nil)
+       :exec (fn-native-admin-peer-slot-values-loop rows slot nil)))
+
+(local
+ (defthm fn-native-admin-peer-slot-values-loop-is-rev-onto
+   (equal (fn-native-admin-peer-slot-values-loop rows slot acc)
+          (fn-ag-rev-onto acc (fn-native-admin-peer-slot-values rows slot)))
+   :hints (("Goal" :induct (fn-native-admin-peer-slot-values-loop rows slot acc)
+                   :in-theory (union-theories
+                               '(fn-native-admin-peer-slot-values-loop
+                                 fn-native-admin-peer-slot-values fn-ag-rev-onto
+                                 car-cons cdr-cons)
+                               (theory 'minimal-theory))))))
+
+(verify-guards fn-native-admin-peer-slot-values-loop)
+
+(verify-guards fn-native-admin-peer-slot-values
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-native-admin-peer-slot-values
+                                fn-native-admin-peer-slot-values-loop-is-rev-onto
+                                fn-ag-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
+
+(defun fn-native-admin-peer-list-octets-loop (head rev acc)
+  (declare (xargs :guard (true-listp head) :verify-guards nil))
+  (if (consp rev)
+      (fn-native-admin-peer-list-octets-loop
+       head (cdr rev)
+       (append head
+               (true-list-fix (fn-native-admin-peer-label-octets (car rev)))
+               acc))
+    acc))
 
 (defun fn-native-admin-peer-list-octets (head values)
-  (declare (xargs :guard (true-listp head)))
-  (if (consp values)
-      (append head
-              (true-list-fix (fn-native-admin-peer-label-octets (car values)))
-              (fn-native-admin-peer-list-octets head (cdr values)))
-    nil))
+  (declare (xargs :guard (true-listp head) :verify-guards nil))
+  (mbe :logic
+       (if (consp values)
+           (append head
+                   (true-list-fix (fn-native-admin-peer-label-octets (car values)))
+                   (fn-native-admin-peer-list-octets head (cdr values)))
+         nil)
+       :exec (fn-native-admin-peer-list-octets-loop
+              head (fn-ag-rev-onto values nil) nil)))
+
+(local
+ (defthm fn-native-admin-peer-list-octets-loop-of-rev-onto
+   (equal (fn-native-admin-peer-list-octets-loop head (fn-ag-rev-onto values zs) nil)
+          (fn-native-admin-peer-list-octets-loop
+           head zs (fn-native-admin-peer-list-octets head values)))
+   :hints (("Goal" :induct (fn-ag-rev-onto values zs)
+                   :in-theory (union-theories
+                               '(fn-native-admin-peer-list-octets-loop
+                                 fn-native-admin-peer-list-octets fn-ag-rev-onto
+                                 car-cons cdr-cons)
+                               (theory 'minimal-theory))))))
+
+(verify-guards fn-native-admin-peer-list-octets-loop)
+
+(verify-guards fn-native-admin-peer-list-octets
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-native-admin-peer-list-octets
+                                fn-native-admin-peer-list-octets-loop)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here)))
+                  :use ((:instance fn-native-admin-peer-list-octets-loop-of-rev-onto
+                                   (zs nil))))))
 
 (defun fn-native-admin-peer-word-octetp (x)
   (declare (xargs :guard t))

@@ -80,8 +80,43 @@ class BaselineTests(unittest.TestCase):
         self.assertIn("only shrinks", stale[0])
 
     def test_a_bounded_entry_names_its_bound(self):
-        problems = d.check([self.ROW], {"bounded": {"fn-walk": ""}, "debt": {}})
+        problems = d.check([self.ROW], {"bounded": {"fn-walk": ""}, "debt": {}}, set())
         self.assertTrue(any("names no bound" in p for p in problems))
+
+    def bounded(self, why, constants=frozenset()):
+        return d.check([self.ROW], {"bounded": {"fn-walk": why}, "debt": {}}, set(constants))
+
+    # The regression (lane peer-list-depth, batch AZ): `peer list' over a peer
+    # carrying ~1,100 principals died at 1,024 KiB in fn-napb-before-last, which
+    # the baseline held under "bounded" with this text.  Operator data is not
+    # a bound (D27): the check refuses it, and every reason of its class.
+    def test_operator_data_is_not_a_bound(self):
+        for why in ("Walks one rendered 'peer list' line for one peer; bounded "
+                    "peer-config-row rendering, not traffic.",
+                    "walks rows, the peer/config table keyed rows; bounded by the operator's profile",
+                    "Walks config-generation entries; bounded by the profile's operator-set "
+                    "max-config-generations field.",
+                    "entries is the consumer registration table, capped by the operator's "
+                    "store-profile field fn-bs-profile-max-consumers"):
+            problems = self.bounded(why)
+            self.assertEqual(len(problems), 1, why)
+            self.assertIn("names no bound", problems[0])
+            self.assertIn("D27", problems[0])
+
+    def test_a_named_bound_passes(self):
+        self.assertEqual(self.bounded("capped at *fn-cfg-max-rows*=1024 on decode",
+                                      {"*fn-cfg-max-rows*"}), [])
+        self.assertEqual(self.bounded("walks a 32-octet digest"), [])
+        self.assertEqual(self.bounded("walks a number's decimal digits (log n)"), [])
+        self.assertEqual(self.bounded("a fixed record's field list"), [])
+
+    def test_a_cited_constant_must_exist(self):
+        problems = self.bounded("capped at *fn-no-such-cap*")
+        self.assertEqual(len(problems), 1)
+        self.assertIn("does not define", problems[0])
+
+    def test_the_trees_constants_are_read(self):
+        self.assertIn("*fn-native-admin-max-arguments*", d.defined_constants())
 
 
 if __name__ == "__main__":

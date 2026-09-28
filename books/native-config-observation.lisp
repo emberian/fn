@@ -51,15 +51,48 @@
                 (car entry) (cadr entry))
         nil))))
 
-(defun fn-nco-decode-entries (entries)
-  (declare (xargs :guard t))
+; The walks over the configuration history execute by loops (lane
+; peer-list-depth): the history grows one generation per accepted
+; administrative request up to the operator's `max-config-generations' (D27:
+; a profile field, no fixed cap), and every open walks it, so the recursions
+; took one control-stack frame per generation.  Each :logic is the
+; recursion, unchanged; each :exec is a loop, equal by the local lemma.
+(defun fn-nco-decode-entries-loop (entries acc)
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp entries)
       (let ((entry (fn-nco-decode-entry (car entries))))
         (if (null entry)
             :bad
-          (let ((rest (fn-nco-decode-entries (cdr entries))))
-            (if (equal rest :bad) :bad (cons entry rest)))))
-    (if (null entries) nil :bad)))
+          (fn-nco-decode-entries-loop (cdr entries) (cons entry acc))))
+    (if (null entries) (fn-ag-rev-onto acc nil) :bad)))
+
+(defun fn-nco-decode-entries (entries)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp entries)
+           (let ((entry (fn-nco-decode-entry (car entries))))
+             (if (null entry)
+                 :bad
+               (let ((rest (fn-nco-decode-entries (cdr entries))))
+                 (if (equal rest :bad) :bad (cons entry rest)))))
+         (if (null entries) nil :bad))
+       :exec (fn-nco-decode-entries-loop entries nil)))
+
+(local
+ (defthm fn-nco-decode-entries-loop-is-rev-onto
+   (equal (fn-nco-decode-entries-loop entries acc)
+          (let ((decoded (fn-nco-decode-entries entries)))
+            (if (equal decoded :bad) :bad (fn-ag-rev-onto acc decoded))))
+   :hints (("Goal" :induct (fn-nco-decode-entries-loop entries acc)
+                   :in-theory (e/d (fn-nco-decode-entries-loop
+                                    fn-nco-decode-entries fn-ag-rev-onto)
+                                   (fn-nco-decode-entry))))))
+
+(verify-guards fn-nco-decode-entries-loop)
+
+(verify-guards fn-nco-decode-entries
+  :hints (("Goal" :in-theory (e/d (fn-ag-rev-onto)
+                                  (fn-nco-decode-entry fn-nco-decode-entries-loop)))))
 
 (defun fn-nco-entry-generation (entry)
   "A total natural projection.  Decoded records already supply a natural
@@ -71,29 +104,92 @@ program-mode caller supplies a malformed logical entry."
 (defun fn-nco-entry-octets (entry)
   (declare (xargs :guard t)) (fn-ag-car (fn-ag-cdr (fn-ag-cdr entry))))
 
-(defun fn-nco-insert-by-generation (entry entries)
-  (declare (xargs :guard t))
+(defun fn-nco-insert-by-generation-loop (entry entries acc)
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp entries)
       (if (<= (fn-nco-entry-generation entry)
               (fn-nco-entry-generation (car entries)))
-          (cons entry entries)
-        (cons (car entries)
-              (fn-nco-insert-by-generation entry (cdr entries))))
-    (list entry)))
+          (fn-ag-rev-onto acc (cons entry entries))
+        (fn-nco-insert-by-generation-loop entry (cdr entries)
+                                          (cons (car entries) acc)))
+    (fn-ag-rev-onto acc (list entry))))
+
+(defun fn-nco-insert-by-generation (entry entries)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp entries)
+           (if (<= (fn-nco-entry-generation entry)
+                   (fn-nco-entry-generation (car entries)))
+               (cons entry entries)
+             (cons (car entries)
+                   (fn-nco-insert-by-generation entry (cdr entries))))
+         (list entry))
+       :exec (fn-nco-insert-by-generation-loop entry entries nil)))
+
+(defun fn-nco-sort-by-generation-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-nco-sort-by-generation-loop
+       (cdr rev) (fn-nco-insert-by-generation (car rev) acc))
+    acc))
 
 (defun fn-nco-sort-by-generation (entries)
-  (declare (xargs :guard t))
-  (if (consp entries)
-      (fn-nco-insert-by-generation (car entries)
-                                   (fn-nco-sort-by-generation (cdr entries)))
-    nil))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp entries)
+           (fn-nco-insert-by-generation (car entries)
+                                        (fn-nco-sort-by-generation (cdr entries)))
+         nil)
+       :exec (fn-nco-sort-by-generation-loop (fn-ag-rev-onto entries nil) nil)))
 
 (defthm fn-nco-entry-generation-is-a-natural
   (natp (fn-nco-entry-generation entry))
   :rule-classes :type-prescription)
 
 (verify-guards fn-nco-entry-generation)
-(verify-guards fn-nco-insert-by-generation)
+
+(local
+ (defthm fn-nco-insert-by-generation-loop-is-rev-onto
+   (equal (fn-nco-insert-by-generation-loop entry entries acc)
+          (fn-ag-rev-onto acc (fn-nco-insert-by-generation entry entries)))
+   :hints (("Goal" :induct (fn-nco-insert-by-generation-loop entry entries acc)
+                   :in-theory (union-theories
+                               '(fn-nco-insert-by-generation-loop
+                                 fn-nco-insert-by-generation fn-ag-rev-onto
+                                 car-cons cdr-cons)
+                               (theory 'minimal-theory))))))
+
+(verify-guards fn-nco-insert-by-generation-loop)
+
+(verify-guards fn-nco-insert-by-generation
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-nco-insert-by-generation
+                                fn-nco-insert-by-generation-loop-is-rev-onto
+                                fn-ag-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
+
+(local
+ (defthm fn-nco-sort-by-generation-loop-of-rev-onto
+   (equal (fn-nco-sort-by-generation-loop (fn-ag-rev-onto entries zs) nil)
+          (fn-nco-sort-by-generation-loop zs (fn-nco-sort-by-generation entries)))
+   :hints (("Goal" :induct (fn-ag-rev-onto entries zs)
+                   :in-theory (union-theories
+                               '(fn-nco-sort-by-generation-loop
+                                 fn-nco-sort-by-generation fn-ag-rev-onto
+                                 car-cons cdr-cons)
+                               (theory 'minimal-theory))))))
+
+(verify-guards fn-nco-sort-by-generation-loop)
+
+(verify-guards fn-nco-sort-by-generation
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-nco-sort-by-generation
+                                fn-nco-sort-by-generation-loop)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here)))
+                  :use ((:instance fn-nco-sort-by-generation-loop-of-rev-onto
+                                   (zs nil))))))
 
 ; These are the preservation keystones for the recovery sorter.  A directory
 ; can contain conflicting decoded generations, so preserving only a set of
@@ -141,13 +237,46 @@ program-mode caller supplies a malformed logical entry."
 
 (verify-guards fn-nco-canonical-contiguousp)
 
-(defun fn-nco-output-entries (entries)
-  (declare (xargs :guard t))
+(defun fn-nco-output-entries-loop (entries acc)
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp entries)
-      (cons (list (fn-nco-entry-name (car entries))
-                  (fn-nco-entry-octets (car entries)))
-            (fn-nco-output-entries (cdr entries)))
-    nil))
+      (fn-nco-output-entries-loop
+       (cdr entries)
+       (cons (list (fn-nco-entry-name (car entries))
+                   (fn-nco-entry-octets (car entries)))
+             acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-nco-output-entries (entries)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp entries)
+           (cons (list (fn-nco-entry-name (car entries))
+                       (fn-nco-entry-octets (car entries)))
+                 (fn-nco-output-entries (cdr entries)))
+         nil)
+       :exec (fn-nco-output-entries-loop entries nil)))
+
+(local
+ (defthm fn-nco-output-entries-loop-is-rev-onto
+   (equal (fn-nco-output-entries-loop entries acc)
+          (fn-ag-rev-onto acc (fn-nco-output-entries entries)))
+   :hints (("Goal" :induct (fn-nco-output-entries-loop entries acc)
+                   :in-theory (union-theories
+                               '(fn-nco-output-entries-loop
+                                 fn-nco-output-entries fn-ag-rev-onto
+                                 car-cons cdr-cons)
+                               (theory 'minimal-theory))))))
+
+(verify-guards fn-nco-output-entries-loop)
+
+(verify-guards fn-nco-output-entries
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-nco-output-entries
+                                fn-nco-output-entries-loop-is-rev-onto
+                                fn-ag-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-nco-observe (entries max-generations)
   "Return :ok only for the exact bounded 1..n filename/generation history."
