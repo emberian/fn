@@ -283,7 +283,7 @@
 
 
 (defthm fn-hp-x-cells-of-image
-  (implies (and (fn-hp-okp h salt) (natp seq) (< seq (len h)) (pgs-memp pgs-mem)
+  (implies (and (fn-hp-okp h salt) (natp seq) (< seq (len h))
                 (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-iw h salt))
                 (equal (mv-nth 0 (fn-hp-x-at seq salt (len h) lens (fn-hp-starts h salt) pgs-mem)) :ok))
            (and (equal (mv-nth 1 (fn-hp-x-cell 0 seq (fn-hp-starts h salt) pgs-mem)) (fn-hp-mkey (nth seq h) salt))
@@ -310,7 +310,7 @@
 ; verified is never read: the read answers a need-verdict instead, and the
 ; host's fill + `pgs-x-open-page' check is where a page becomes verified.
 (defthm fn-hp-x-at-is-nth
-  (implies (and (fn-hp-okp h salt) (natp seq) (< seq (len h)) (pgs-memp pgs-mem)
+  (implies (and (fn-hp-okp h salt) (natp seq) (< seq (len h))
                 (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-iw h salt))
                 (equal (mv-nth 0 (fn-hp-x-at seq salt (len h) (fn-hp-lens h salt) (fn-hp-starts h salt) pgs-mem)) :ok))
            (equal (mv-nth 1 (fn-hp-x-at seq salt (len h) (fn-hp-lens h salt) (fn-hp-starts h salt) pgs-mem))
@@ -352,7 +352,7 @@
 ; any state whose verified pages hold the image; the open reads page 0 and
 ; nothing else.
 (defthm fn-hp-x-header-is-image
-  (implies (and (fn-hp-okp h salt) (natp npages) (equal npages (fn-hp-npages h salt))
+  (implies (and (fn-hp-okp h salt) (equal npages (fn-hp-npages h salt))
                 (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-iw h salt))
                 (equal (mv-nth 0 (fn-hp-x-header npages pgs-mem)) :ok))
            (equal (mv-nth 1 (fn-hp-x-header npages pgs-mem))
@@ -378,4 +378,5 @@
 
 (defthmd fn-hp-vhold-is-x
   (equal (fn-hp-vhold p np pgs-mem iw) (fn-hp-vhold-x p np pgs-mem iw))
-  :hints (("Goal" :in-theory (enable pgs-vi) :induct (fn-hp-vhold-x p np pgs-mem iw))))
+  :hints (("Goal" :in-theory (e/d (pgs-vi) (take nthcdr)) :induct (fn-hp-vhold-x p np pgs-mem iw)
+           :expand ((fn-hp-vhold p np pgs-mem iw) (fn-hp-vhold-x p np pgs-mem iw)))))

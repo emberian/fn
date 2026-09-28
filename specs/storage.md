@@ -711,9 +711,18 @@ octets) / 16384 pages for K events while no region doubles. Limitation
 (L-HP-DOUBLING): FNADTSN1 places regions contiguously, so a region that
 doubles moves every region after it and that commit writes them (amortized
 O(1) per row). The Message-ID bucket heads are not in the image (FNADTSN1's
-keyed form carries the live records, not the index). Not yet the owner's
-path: the open over these pages and the snapshot commit are the next
-milestones.
+keyed form carries the live records, not the index). The open reads the
+image's page 0 only: the header check (magic, version, the schema digest,
+the region count, placement, column sizes, the page count) answers N and the
+regions, and another schema's image is refused by name (:schema), never
+rebuilt. Reads return need-verdicts: a page not yet verified answers
+(:need-table T PHYS) / (:need-page P PHYS) and the host fills it with its two
+byte primitives, verifies it against its table entry and asks again; the
+first read of a row pays at most its four cells' pages and its pool entry's
+pages. Proved: over any page store state whose verified pages hold the
+image's words, the header check and the row read answer the history.
+Not yet the owner's path: the writer, the host wiring and the snapshot
+commit are the next milestones.
 
 ## History classes and lifetimes
 
