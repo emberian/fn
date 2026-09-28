@@ -12732,7 +12732,8 @@
       "status": "uncertified-at-current-digest",
       "evidence": [
         "books/history-records.lisp",
-        "tests/acl2/history-records-tests.lisp"
+        "tests/acl2/history-records-tests.lisp",
+        "planning/evidence/arena-store-6-2026-09-28.md"
       ],
       "progress_note": "Lane arena-store-6 milestone (a), 2026-09-28: history-columns' stage 3 as the coordinator decided it (one abstract stobj, not a twin per consumer). Not yet host-called: milestone (b) migrates the served readers of fn-sf-records onto fn-hrecs-read, (c) wires the served open (adopt, no E decode) and the snapshot (commit of the dirty pages). Teeth: ground witnesses for fn-hrc-at-is-nth (positive, and removal of the relation, the shape and (natp seq)), the fill's page-store step (positive; removal of the words hypothesis: a table matching other words is accepted and faithfulness fails), and live executions of load/flush/read (40 events, relocations) and of the need path (need, fill, read; a wrong fill refused :page-damaged and the page asked again). The stobj-level keystones over updating exports have no ground witness: ACL2 does not evaluate stobj-let updaters on ground lists in a proof.",
       "events": [
