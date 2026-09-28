@@ -25,10 +25,12 @@
   ; PRF-099: an :extend-peer plan's delta is built over the live owner's
   ; peer table (`fn-native-admin-plan-deltas-over').
   ;; PRF-164: an `account invite' plan's pending row expires from the live
-  ;; owner's clock (fn-acct-admin-deltas).
+  ;; owner's clock, a milliseconds reading (fn-acct-admin-deltas,
+  ;; fn-acct-live-invite-reading; PRF-374).
   (let ((deltas (if (equal (fn-native-admin-result-kind plan) :account-invite)
                     (fn-acct-admin-deltas
-                     plan (fn-own-clock (fn-owner-core state)))
+                     plan (fn-acct-live-invite-reading
+                           (fn-own-clock (fn-owner-core state))))
                   (fn-native-admin-plan-deltas-over
                    plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))))))
     (cond
@@ -98,11 +100,12 @@
                                           state)))
                  (value :refused)))))
           ;; PRF-164: offline, the pending row expires from the record's
-          ;; own stamp (the one fn-store-cfg-peer-delta-record builds).
+          ;; own stamp (the one fn-store-cfg-peer-delta-record builds), a
+          ;; SECONDS reading (fn-acct-offline-invite-reading; PRF-374, bug
+          ;; M1: it was read as milliseconds, so the code was born expired).
           ((equal kind :account-invite)
            (let ((deltas (fn-acct-admin-deltas
-                          plan (fn-clock-observation (nfix monotonic) (nfix wall)
-                                                     0 t))))
+                          plan (fn-acct-offline-invite-reading monotonic wall))))
              (if deltas
                  (fn-store-cfg-peer-delta-record deltas monotonic wall state)
                (let ((state (f-put-global 'fn-store-cfg-last-reason :no-clock
