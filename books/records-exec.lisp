@@ -261,11 +261,13 @@
   (equal (fn-record-decode-exact-exec octets)
          (fn-record-decode-exact-impl octets)))
 
-;; The two PRF-333 equations serve the guard proofs above; withdrawn on
-;; export (enabled, the payload equation stalled a
+;; The two PRF-333 equations serve the guard proofs above, and the
+;; attachment names the -by-definition equation in its hint; all are withdrawn
+;; on export (enabled, the payload equation stalled a
 ;; store-checkpoint-arena-writer proof, persvati run-20260927T223317Z-f677).
 (in-theory (disable fn-record-payloadp-of-octets-by-definition
                     fn-record-p-of-make-is-without-payload
+                    fn-record-decode-exact-exec-is-impl-by-definition
                     fn-record-decode-tail-exec
                     fn-record-decode-after-header-exec
                     fn-record-decode-exact-exec))
