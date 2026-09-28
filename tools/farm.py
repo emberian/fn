@@ -978,6 +978,12 @@ def fetch(host: str, identifier: str, root: Path,
         run(["rsync", "-a", "--update", "--include=*/", "--include=*.cert",
              "--include=*.port", "--exclude=*",
              f"{host}:{remote}/{directory}/", f"{root}/{directory}/"], check=False)
+    if run_record(root, identifier).get("no_publish"):
+        # A measurement run (`submit --no-publish`): its pairs stay in its
+        # own tree; no cache on either box or here takes them.
+        print(f"{identifier}: submitted --no-publish: the run's pairs are not "
+              "published to any cache")
+        return
     # The box keeps its own copy: the next lane there installs these instead
     # of certifying them again.  The runner publishes after each root, so this
     # is the sweep for a run whose last root, or whose own publish, failed.
@@ -1462,6 +1468,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--all", action="store_true",
                         help="submit: certify every Makefile root (an empty "
                              "selection is refused without it)")
+    parser.add_argument("--no-publish", action="store_true",
+                        help="submit: a measurement run: the runner publishes no pair "
+                             "to the box's cache, and `wait` neither sweeps nor "
+                             "mirrors nor publishes locally (the run record says so)")
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
     if arguments.recertify_from:
@@ -1523,6 +1533,7 @@ def main(argv: list[str] | None = None) -> int:
                                 else None,
                                 arguments.closure, arguments.cache,
                                 arguments.acl2,
+                                no_publish=arguments.no_publish,
                                 require_origin=arguments.require_origin,
                                 recertify=list(arguments.recertify))
             print(identifier)
