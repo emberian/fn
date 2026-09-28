@@ -239,6 +239,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-format-9 \
 	books/store-format-9-records \
 	tests/acl2/store-format-9-tests \
+	tests/acl2/store-format-9-records-tests \
 	books/store-profile-open \
 	tests/acl2/store-profile-open-tests \
 	books/store-profile-namespace \
