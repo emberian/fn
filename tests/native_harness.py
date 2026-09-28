@@ -40,7 +40,6 @@ The ACL2 printed-value parsers (`acl2_result`, `acl2_octets`, ...) are
 here so no native module imports tools/run_store.py for them.
 """
 import contextlib
-import enum
 import os
 from pathlib import Path
 import re
@@ -559,7 +558,7 @@ def native_peer_add(image, store, words, env, cwd):
 # --- Outcomes ---------------------------------------------------------------
 
 ROOT = Path(__file__).resolve().parent.parent
-from tools.outcome_codes import (  # noqa: E402  (the one table, read from ACL2's book)
+from tools.outcome_codes import (  # noqa: E402,F401  (re-exported: the one table, read from ACL2's book)
     EXIT, EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_USAGE, OUTCOME_BOOK,
     outcome_codes, outcome_name)
 
