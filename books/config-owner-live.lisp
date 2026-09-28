@@ -13,11 +13,9 @@
 (include-book "config-owner-live-read")
 
 
-(deftheory fn-ocl-vocabulary
-  '(fn-ocl-owner-with-store fn-ocl-store-config fn-ocl-complete fn-ocl-conn-historyp
-    fn-ocl-conns-historyp fn-ocl-view-historyp fn-ocl-config-historyp
-    fn-ocl-view-configp fn-ocl-relation))
-(in-theory (disable fn-ocl-vocabulary))
+; fn-ocl-vocabulary (the relation's definitions) is withdrawn where they are
+; defined, at the end of config-owner-live-complete, so a book that needs only
+; the relation includes that part and sees the theory this book exports.
 
 ; These large read-composition facts are applied explicitly by the historical
 ; reader proof.  Leaving them as global rewrite rules makes unrelated TLS and

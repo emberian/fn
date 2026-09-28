@@ -4,6 +4,7 @@
 (include-book "bp-bundle-invariants")
 (include-book "bp-primary-invariants")
 (include-book "frame-trailer")
+(include-book "consumer-position")
 
 (defthm fn-bpnf-peer-octets-reconstruct-eid
   (implies (and (fn-bpp-eidp peer)
