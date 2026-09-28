@@ -580,3 +580,297 @@
                             fn-hib-open-root fn-hrc-fill fn-hrc-fill-shape fn-hrc-phys fn-hrc-adopt fn-hp-x-header
                             fn-hp-piw fn-hp-piw-caps-extend fn-hp-placement-mono fn-hp-wreps-commute fn-hp-hdr2 adt-zeros (:e adt-zeros) (:e fn-hp-hdr2) fn-hp-okp fn-hp-lens pgs-rec-npages pgs-rec-txid fn-pgs-fill-realize-is-page-words fn-hp-starts-okp adt-placement-ok fn-hp-vhold
                             fn-hib-tw fn-hib-nw fn-hrc-wfp take nthcdr resize-list nth adt-nth-0 adt-nth-1+)))))
+
+; -----------------------------------------------------------------------------
+; E. Asynchronous page faults: a need becomes a request bound to the active
+; root and the page's identity; its completion arrives outside the owner.
+
+(defun fn-hib-entry (p fn-hrecs$c)
+  ; the loaded table's entry for image page P: (PHYS TXID DIGEST)
+  (declare (xargs :stobjs fn-hrecs$c :guard (natp p)))
+  (stobj-let ((pgs-mem (fn-hrc-pgs fn-hrecs$c))) (e) (pgs-x-get-entry 2 0 p pgs-mem) e))
+
+(defun fn-hib-request (op p fn-hrecs$c)
+  ; A read's need for page P, as a request the host serves OUTSIDE the
+  ; owner: (:page-request OP ROOT P PHYS DIGEST) -- the operation OP that
+  ; asked, the active root's generation ROOT (the committed record's txid),
+  ; the logical page, the address its entry names and the digest the
+  ; words must have.
+  (declare (xargs :stobjs fn-hrecs$c :guard (natp p)))
+  (let ((e (fn-hib-entry p fn-hrecs$c)))
+    (list :page-request op (fn-hrc-txid fn-hrecs$c) p (first e) (third e))))
+
+(defun fn-hib-requestp (q)
+  (declare (xargs :guard t))
+  (and (true-listp q) (equal (len q) 6) (eq (nth 0 q) :page-request)
+       (natp (nth 2 q)) (natp (nth 3 q)) (natp (nth 4 q))))
+
+(defun fn-hib-q-root (q) (declare (xargs :guard (fn-hib-requestp q))) (nth 2 q))
+(defun fn-hib-q-page (q) (declare (xargs :guard (fn-hib-requestp q))) (nth 3 q))
+(defun fn-hib-q-phys (q) (declare (xargs :guard (fn-hib-requestp q))) (nth 4 q))
+(defun fn-hib-q-digest (q) (declare (xargs :guard (fn-hib-requestp q))) (nth 5 q))
+
+(defthm fn-hib-entry-shape
+  (true-listp (fn-hib-entry p c))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable pgs-x-get-entry))))
+(defun fn-hib-complete (q words fn-hrecs$c)
+  ; The completion of request Q with WORDS, the host's read at Q's PHYS
+  ; (done outside the owner; it may arrive late).  (mv VERDICT fn-hrecs$c):
+  ;   (:refused :stale-root ROOT-Q ROOT)  the active root changed since Q:
+  ;                                       nothing changes, the reader asks
+  ;                                       again (never damage, never absence)
+  ;   (:refused :stale-page P)            P's entry is not the one Q named:
+  ;                                       nothing changes
+  ;   :ok                                 P verified (or it already was)
+  ;   the page store's refusal of the words ((:page-damaged P PHYS)): the
+  ;                                       page file does not hold the page
+  ;                                       (a recovery event)
+  (declare (xargs :stobjs fn-hrecs$c :guard (and (fn-hib-requestp q) (fn-hrc-wfp fn-hrecs$c))
+                  :guard-hints (("Goal" :in-theory (union-theories '(fn-hib-requestp fn-hib-q-page fn-hib-entry-shape natp len
+                                                                     (:e len) (:e natp))
+                                                                   (theory 'minimal-theory))))))
+  (let ((p (fn-hib-q-page q)) (e (fn-hib-entry (fn-hib-q-page q) fn-hrecs$c)))
+    (cond ((not (equal (fn-hib-q-root q) (fn-hrc-txid fn-hrecs$c)))
+           (mv (list :refused :stale-root (fn-hib-q-root q) (fn-hrc-txid fn-hrecs$c)) fn-hrecs$c))
+          ((not (and (equal (fn-hib-q-phys q) (first e)) (equal (fn-hib-q-digest q) (third e))))
+           (mv (list :refused :stale-page p) fn-hrecs$c))
+          (t (fn-hrc-fill p words fn-hrecs$c)))))
+
+
+(defthm fn-hib-complete-stale
+  (let ((r (fn-hib-complete q words c)))
+    (and (implies (not (equal (fn-hib-q-root q) (fn-hrc-txid c)))
+                  (and (equal (mv-nth 1 r) c)
+                       (equal (mv-nth 0 r) (list :refused :stale-root (fn-hib-q-root q) (fn-hrc-txid c)))))
+         (implies (and (equal (fn-hib-q-root q) (fn-hrc-txid c))
+                       (not (and (equal (fn-hib-q-phys q) (first (fn-hib-entry (fn-hib-q-page q) c)))
+                                 (equal (fn-hib-q-digest q) (third (fn-hib-entry (fn-hib-q-page q) c))))))
+                  (and (equal (mv-nth 1 r) c)
+                       (equal (mv-nth 0 r) (list :refused :stale-page (fn-hib-q-page q)))))))
+  :hints (("Goal" :in-theory (disable fn-hrc-fill fn-hrc-fill-shape fn-hib-entry fn-hrs-fill-pgs))))
+
+(defthm fn-hib-entry-phys
+  (equal (first (fn-hib-entry p c)) (fn-hrc-phys p c))
+  :hints (("Goal" :in-theory (disable pgs-x-get-entry))))
+
+; KEYSTONE (the asynchronous fault's completion).  A completion whose words
+; are what the page file holds at the request's address keeps the history
+; faithful, the root's tables H's and the disk bound, whatever it answers;
+; a stale one (the root or the entry changed since the request) changes
+; nothing and says so by name.
+(defthm fn-hib-complete-keeps
+  (implies (and (fn-hrc-wfp c) (fn-hrs-rel h c) (fn-hib-root-holds h c) (fn-hib-disk-bound file h c)
+                (fn-hib-requestp q))
+           (let ((c2 (mv-nth 1 (fn-hib-complete q (fn-pgs-fill-realize file (fn-hib-q-phys q)) c))))
+             (and (fn-hrc-wfp c2) (fn-hrs-rel h c2) (fn-hib-root-holds h c2) (fn-hib-disk-bound file h c2))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hib-complete-stale (words (fn-pgs-fill-realize file (fn-hib-q-phys q))))
+                 (:instance fn-hib-fill-rel (p (fn-hib-q-page q)))
+                 (:instance fn-hib-root-holds-of-fill (p (fn-hib-q-page q))
+                            (words (fn-pgs-fill-realize file (fn-hib-q-phys q)))))
+           :in-theory (union-theories '(fn-hib-complete fn-hib-entry-phys fn-hib-requestp fn-hib-q-page fn-hib-q-root
+                                        fn-hib-q-phys fn-hib-q-digest natp mv-nth car-cons cdr-cons)
+                                      (theory 'minimal-theory)))))
+
+(defthm fn-hib-entry-phys-natp
+  (natp (first (pgs-x-get-entry sel base i m)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (e/d (pgs-x-get-entry) (pgs-x-word$inline pgs-x-dig4 pgs-x-eaddr pgs-x-len$inline)))))
+(defthm fn-hib-request-p
+  (implies (and (natp p) (fn-hrc-wfp c))
+           (fn-hib-requestp (fn-hib-request op p c)))
+  :hints (("Goal" :in-theory (union-theories '(fn-hib-request fn-hib-requestp fn-hib-entry fn-hib-entry-phys-natp fn-hrc-wfp
+                                               nth-0-cons nth-add1 len true-listp (:e zp) zp (:e len) (:e nfix) natp
+                                               (:e natp) car-cons cdr-cons)
+                                             (theory 'minimal-theory)))))
+
+; -----------------------------------------------------------------------------
+; D. Eviction and the progress of an operation that pins what it filled.
+
+(defun fn-hib-evict (p pins fn-hrecs$c)
+  ; Release image page P (the bounded cache's eviction): refused while an
+  ; operation in progress pins it; otherwise the page is no longer verified
+  ; and the next read that touches it asks for it again.  (mv VERDICT
+  ; fn-hrecs$c).  In this representation (one words array for the image)
+  ; the release forgets the verification and frees no memory; the page-frame
+  ; table that frees it is the representation step after this one.
+  (declare (xargs :stobjs fn-hrecs$c :guard (and (natp p) (true-listp pins))
+                  :guard-hints (("Goal" :in-theory (enable fn-hrc-vlen)))))
+  (cond ((member p pins) (mv (list :refused :pinned p) fn-hrecs$c))
+        ((not (< p (fn-hrc-vlen fn-hrecs$c))) (mv (list :refused :evict-range p) fn-hrecs$c))
+        (t (stobj-let ((pgs-mem (fn-hrc-pgs fn-hrecs$c)))
+                      (pgs-mem)
+                      (update-pgs-vi p 0 pgs-mem)
+                      (mv :ok fn-hrecs$c)))))
+
+(defthm fn-hib-vhold-clear-flag
+  (implies (and (fn-hp-vhold s np m iw) (natp p))
+           (fn-hp-vhold s np (update-pgs-vi p 0 m) iw))
+  :hints (("Goal" :induct (fn-hp-vhold s np m iw)
+           :in-theory (e/d (pgs-vi update-pgs-vi) (take nthcdr)))))
+
+(defthm fn-hib-v-length-of-clear
+  (implies (and (natp p) (< p (pgs-v-length m)))
+           (equal (pgs-v-length (update-pgs-vi p v m)) (pgs-v-length m)))
+  :hints (("Goal" :in-theory (enable pgs-v-length update-pgs-vi))))
+
+(defthm fn-hib-tw-of-clear
+  (equal (fn-hib-tw s n iw (update-pgs-vi p v m)) (fn-hib-tw s n iw m))
+  :hints (("Goal" :in-theory (disable pgs-x-get-entry take nthcdr) :induct (fn-hib-tw s n iw m))))
+(defthm fn-hib-nw-of-clear
+  (equal (fn-hib-nw file s n iw (update-pgs-vi p v m)) (fn-hib-nw file s n iw m))
+  :hints (("Goal" :in-theory (disable pgs-x-get-entry take nthcdr) :induct (fn-hib-nw file s n iw m))))
+
+(defthm fn-hib-evict-shape
+  (equal (mv-nth 1 (fn-hib-evict p pins c))
+         (if (or (member p pins) (not (< p (pgs-v-length (fn-hrc-pgs c)))))
+             c
+           (update-fn-hrc-pgs (update-pgs-vi p 0 (fn-hrc-pgs c)) c)))
+  :hints (("Goal" :in-theory (disable update-pgs-vi pgs-v-length))))
+
+(defthm fn-hib-rel-of-clear
+  (implies (and (fn-hrs-rel h c) (natp p) (< p (pgs-v-length (fn-hrc-pgs c))))
+           (fn-hrs-rel h (update-fn-hrc-pgs (update-pgs-vi p 0 (fn-hrc-pgs c)) c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-hrs-rel fn-hrs-img-ok fn-hrc-row-pgs fn-hib-v-length-of-clear
+                                        fn-hrs-sfx-list-of-updates natp)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-hib-vhold-clear-flag (s 0) (np (pgs-v-length (fn-hrc-pgs c))) (m (fn-hrc-pgs c))
+                            (iw (fn-hp-piw (take (fn-hrc-nimg c) h) (fn-hrc-salt c) (fn-hrc-starts c) (fn-hrc-npages c))))))))
+
+(defthm fn-hib-wfp-of-update-pgs
+  (equal (fn-hrc-wfp (update-fn-hrc-pgs x c)) (fn-hrc-wfp c))
+  :hints (("Goal" :in-theory (enable fn-hrc-wfp))))
+
+(defthm fn-hib-root-holds-of-clear
+  (implies (and (natp p) (< p (pgs-v-length (fn-hrc-pgs c))))
+           (and (equal (fn-hib-root-holds h (update-fn-hrc-pgs (update-pgs-vi p 0 (fn-hrc-pgs c)) c))
+                       (fn-hib-root-holds h c))
+                (equal (fn-hib-disk-bound file h (update-fn-hrc-pgs (update-pgs-vi p 0 (fn-hrc-pgs c)) c))
+                       (fn-hib-disk-bound file h c))))
+  :hints (("Goal" :in-theory (union-theories '(fn-hib-root-holds fn-hib-disk-bound fn-hib-tabs-is-tw fn-hib-nc-is-nw
+                                               fn-hrc-row-pgs fn-hib-v-length-of-clear fn-hib-tw-of-clear fn-hib-nw-of-clear)
+                                             (theory 'minimal-theory)))))
+
+(defthm fn-hib-evict-keeps
+  (implies (and (fn-hrc-wfp c) (fn-hrs-rel h c) (natp p))
+           (let ((c2 (mv-nth 1 (fn-hib-evict p pins c))))
+             (and (fn-hrc-wfp c2) (fn-hrs-rel h c2)
+                  (equal (fn-hib-root-holds h c2) (fn-hib-root-holds h c))
+                  (equal (fn-hib-disk-bound file h c2) (fn-hib-disk-bound file h c)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hib-evict-shape) (:instance fn-hib-rel-of-clear) (:instance fn-hib-root-holds-of-clear))
+           :in-theory (union-theories '(fn-hib-wfp-of-update-pgs) (theory 'minimal-theory)))))
+
+(defun-nx fn-hib-undone (q n pins c)
+  ; the pages in [Q, N) an operation holding PINS has not yet made safe:
+  ; not (verified and pinned by it)
+  (declare (xargs :measure (nfix (- (nfix n) (nfix q)))))
+  (if (zp (- (nfix n) (nfix q)))
+      0
+    (+ (if (and (equal (pgs-vi (nfix q) (fn-hrc-pgs c)) 2) (member-equal (nfix q) pins)) 0 1)
+       (fn-hib-undone (+ 1 (nfix q)) n pins c))))
+
+(defthm fn-hib-undone-bound
+  (<= (fn-hib-undone q n pins c) (nfix (- (nfix n) (nfix q))))
+  :rule-classes :linear)
+
+(defthm fn-hib-vi-of-update-vi
+  (implies (and (natp q) (natp p))
+           (equal (pgs-vi q (update-pgs-vi p v m)) (if (equal q p) v (pgs-vi q m))))
+  :hints (("Goal" :in-theory (enable pgs-vi update-pgs-vi))))
+
+(defthm fn-hib-undone-clear
+  (implies (and (natp p) (not (member-equal p opins)))
+           (equal (fn-hib-undone q n opins (update-fn-hrc-pgs (update-pgs-vi p 0 (fn-hrc-pgs c)) c))
+                  (fn-hib-undone q n opins c)))
+  :hints (("Goal" :induct (fn-hib-undone q n opins c)
+           :in-theory (disable update-pgs-vi pgs-vi))))
+
+(local
+ (defthm fn-hib-subsetp-member
+   (implies (and (subsetp-equal x y) (member-equal a x)) (member-equal a y))))
+(defthm fn-hib-undone-evict
+  (implies (and (subsetp-equal opins pins) (natp p))
+           (equal (fn-hib-undone q n opins (mv-nth 1 (fn-hib-evict p pins c))) (fn-hib-undone q n opins c)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hib-evict-shape) (:instance fn-hib-undone-clear)
+                 (:instance fn-hib-subsetp-member (a p) (x opins) (y pins)))
+           :in-theory (e/d () (fn-hib-evict fn-hib-evict-shape fn-hib-undone-clear fn-hib-undone update-pgs-vi pgs-vi
+                               fn-hib-subsetp-member)))))
+
+(defthm fn-hib-fill-verdict
+  (equal (mv-nth 0 (fn-hrc-fill p words c))
+         (mv-nth 0 (fn-hrs-fill-pgs p words (fn-hrc-txid c) (fn-hrc-pgs c) (fn-hrc-oct c))))
+  :hints (("Goal" :in-theory (disable fn-hrs-fill-pgs))))
+(defthm fn-hib-fill-flag-frame
+  (implies (natp p)
+           (let ((m2 (fn-hrc-pgs (mv-nth 1 (fn-hrc-fill p words c)))))
+             (and (implies (not (equal (nfix q) p)) (equal (pgs-vi q m2) (pgs-vi q (fn-hrc-pgs c))))
+                  (implies (not (equal (pgs-vi p m2) (pgs-vi p (fn-hrc-pgs c)))) (equal (pgs-vi p m2) 2))
+                  (implies (and (equal (mv-nth 0 (fn-hrc-fill p words c)) :ok)
+                                (< p (pgs-v-length (fn-hrc-pgs c))))
+                           (equal (pgs-vi p m2) 2)))))
+  :hints (("Goal" :use ((:instance fn-hrs-fill-pgs-frame (txid (fn-hrc-txid c)) (pgs-mem (fn-hrc-pgs c))
+                                   (fn-octets-pg (fn-hrc-oct c))))
+           :in-theory (union-theories '(fn-hrc-fill-shape fn-hib-fill-verdict fn-hrc-row-oct fn-hrc-row-pgs)
+                                      (theory 'minimal-theory)))))
+
+(defthm fn-hib-undone-fill-le
+  (implies (natp p)
+           (<= (fn-hib-undone qq n pins (mv-nth 1 (fn-hrc-fill p words c))) (fn-hib-undone qq n pins c)))
+  :hints (("Goal" :induct (fn-hib-undone qq n pins c)
+           :in-theory (disable fn-hrc-fill fn-hrc-fill-shape fn-hib-fill-verdict pgs-vi fn-hib-fill-flag-frame fn-hib-undone-bound))
+          ("Subgoal *1/2" :use ((:instance fn-hib-fill-flag-frame (q (nfix qq))))))
+  :rule-classes :linear)
+
+(defthm fn-hib-undone-more-pins
+  (<= (fn-hib-undone qq n (cons a pins) c) (fn-hib-undone qq n pins c))
+  :hints (("Goal" :induct (fn-hib-undone qq n pins c) :in-theory (disable pgs-vi fn-hib-undone-bound))
+          ("Subgoal *1/2" :expand ((fn-hib-undone qq n (cons a pins) c) (fn-hib-undone qq n pins c)))
+          ("Subgoal *1/1" :expand ((fn-hib-undone qq n (cons a pins) c) (fn-hib-undone qq n pins c))))
+  :rule-classes :linear)
+
+(defthm fn-hib-undone-fill-drop
+  (implies (and (natp p) (natp qq) (<= qq p) (< p (nfix n))
+                (not (equal (pgs-vi p (fn-hrc-pgs c)) 2))
+                (equal (pgs-vi p (fn-hrc-pgs (mv-nth 1 (fn-hrc-fill p words c)))) 2))
+           (< (fn-hib-undone qq n (cons p pins) (mv-nth 1 (fn-hrc-fill p words c))) (fn-hib-undone qq n pins c)))
+  :hints (("Goal" :induct (fn-hib-undone qq n pins c)
+           :in-theory (disable fn-hrc-fill fn-hrc-fill-shape fn-hib-fill-verdict pgs-vi fn-hib-fill-flag-frame
+                               fn-hib-undone-bound fn-hib-undone-fill-le fn-hib-undone-more-pins))
+          ("Subgoal *1/2" :use ((:instance fn-hib-fill-flag-frame (q (nfix qq)))
+                                (:instance fn-hib-undone-fill-le (qq (+ 1 (nfix qq))))
+                                (:instance fn-hib-undone-more-pins (qq (+ 1 (nfix qq))) (a p)
+                                           (c (mv-nth 1 (fn-hrc-fill p words c)))))
+           :expand ((fn-hib-undone qq n (cons p pins) (mv-nth 1 (fn-hrc-fill p words c)))
+                    (fn-hib-undone qq n pins c))))
+  :rule-classes :linear)
+
+(defthm fn-hib-complete-ok-is-fill
+  (implies (equal (mv-nth 0 (fn-hib-complete q words c)) :ok)
+           (equal (fn-hib-complete q words c) (fn-hrc-fill (fn-hib-q-page q) words c)))
+  :hints (("Goal" :in-theory (union-theories '(fn-hib-complete mv-nth car-cons cdr-cons (:e equal) (:e car))
+                                             (theory 'minimal-theory)))))
+
+; PROGRESS (eviction-aware).  An operation pins each page its read asked
+; for once the completion lands.  Its measure `fn-hib-undone' over the
+; image's pages is bounded by the page count, never moved by an eviction
+; that respects the pins (`fn-hib-undone-evict'), never raised by any
+; other fill (`fn-hib-undone-fill-le'), and dropped by each completion of
+; one of its own requests (below): so an operation completes after at most
+; as many of its own page reads as the image has pages, whatever the other
+; operations and the cache do meanwhile.
+(defthm fn-hib-complete-progress
+  (let* ((p (fn-hib-q-page q)) (r (fn-hib-complete q words c)))
+    (implies (and (fn-hib-requestp q) (equal (mv-nth 0 r) :ok)
+                  (< p (pgs-v-length (fn-hrc-pgs c))) (not (equal (pgs-vi p (fn-hrc-pgs c)) 2))
+                  (natp qq) (<= qq p) (< p (nfix n)))
+             (< (fn-hib-undone qq n (cons p pins) (mv-nth 1 r)) (fn-hib-undone qq n pins c))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hib-complete-ok-is-fill)
+                 (:instance fn-hib-undone-fill-drop (p (fn-hib-q-page q)))
+                 (:instance fn-hib-fill-flag-frame (p (fn-hib-q-page q)) (q (fn-hib-q-page q))))
+           :in-theory (union-theories '(fn-hib-requestp fn-hib-q-page natp nfix mv-nth) (theory 'minimal-theory))))
+  :rule-classes :linear)
