@@ -9,13 +9,19 @@
 ;;; OpenBSD's login classes set), and the store's saved profile (config.json,
 ;;; read without the writer lock as `principal' administration reads it).
 ;;;
-;;;   heap -- ARGV...   the installed launcher's probe (packaging/fn): the
-;;;                     figure for the command ARGV names, one line on stdout
-;;;                     `heap=MB MB profile=WORD machine=M MB stack=KB KB
-;;;                     threads=N' (books/heap-reservation.lisp), exit 0; or
-;;;                     ACL2's refusal line on stderr, exit 1 (outcome-class
-;;;                     :refused).  The launcher then execs the image with
-;;;                     `--dynamic-space-size MB --control-stack-size KBKB'.
+;;;   heap -- ARGV...   the installed launcher's probe (packaging/fn): ACL2's
+;;;                     decision for the command ARGV names, one line on
+;;;                     stdout, always: `heap=MB MB profile=WORD machine=M MB
+;;;                     stack=KB KB threads=N' (books/heap-reservation.lisp),
+;;;                     exit 0; or ACL2's refusal line `refused REASON ...',
+;;;                     exit 1 (outcome-class :refused), which the launcher
+;;;                     prints on stderr as `fn: refused ...'.  A probe that
+;;;                     prints no line never reached ACL2 (the runtime could
+;;;                     not map the image under the process's limits): the
+;;;                     launcher reports that as a fault, never as a refusal
+;;;                     (lane openbsd-datasize).  On acceptance the launcher
+;;;                     execs the image with `--dynamic-space-size MB
+;;;                     --control-stack-size KBKB'.
 ;;;
 ;;; `operator CONFIG status' and `health' print the same line after their
 ;;; report; `operator CONFIG init' asks ACL2's `fn-heap-init-decide' what to
@@ -333,9 +339,10 @@ sizes by them (NIL otherwise)."
                      (fnn-heap-reservation profile connections action observed)))
          (line (fnn-core 'fn-heap-reserve-report-line decision))
          (code (fnn-core 'fn-heap-decision-exit-code decision)))
-    (if (eql code +fnn-exit-ok+)
-        (fnn-out "~a" line)
-      (fnn-err "fn: ~a" line))
+    ;; The decision line on stdout whatever it is: the launcher tells ACL2's
+    ;; refusal (a line, exit 1) from a runtime that never reached ACL2 (no
+    ;; line) by it, and prints a refusal on stderr itself.
+    (fnn-out "~a" line)
     code))
 
 (fnn-register-verb "heap" #'fnn-command-heap)
