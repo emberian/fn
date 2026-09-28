@@ -11277,9 +11277,7 @@
       "progress_note": "hbox REPL (1 MiB thread, raw mode): 80,000, 1,000,000 and 17,000,000 octets round-trip; the old recursion as a raw copy: 40,000 ok, 80,000 control-stack-exhausted.",
       "events": [
         "fn-record-octets-chars",
-        "fn-record-string-octets-aux",
-        "fn-record-octets-chars-rev",
-        "fn-record-string-octets-rev"
+        "fn-record-string-octets-aux"
       ]
     }
   ]
