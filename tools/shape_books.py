@@ -7,7 +7,6 @@
     python3 tools/shape_books.py --json
     python3 tools/shape_books.py --write-doc    # regenerate docs/proof-style.md's table
     python3 tools/shape_books.py --check        # warn (exit 0) when that table is stale
-    python3 tools/shape_books.py --chain --book books/wildmat.lisp   # with chain position
 
 Lane served-columns spent an hour choosing where a column lives (arena vs
 facts vs a new stobj) because nothing said that books/held-record.lisp is
@@ -26,15 +25,6 @@ transitively.  For each book this prints
               selects; the farm certifies their closures),
   changed     the date of the last commit touching the file (`git log -1`),
               or "unknown" in a tree without .git (an rsynced box tree).
-
-CHAIN POSITION (`--chain`).  A recertification's wall time is its longest
-include chain, not its size (planning/architecture-recommendation-2026-09-28.md
-section 4.2: three runs, three matches).  `--chain` adds, per book, `below`
-(the longest include chain ending at it, itself counted), `above` (the longest
-chain of includers over it, itself counted) and `through` (below + above - 1,
-the longest chain that passes through it), and prints the graph's depth.  A
-fan-in cut that lowers `through` for books on the longest chain shortens
-every run that reaches them; one that only lowers `dependents` saves work.
 
 WHY --check WARNS AND DOES NOT FAIL.  The counts move with every include a
 lane adds anywhere in the tree; a failing check would make every such lane
@@ -79,39 +69,6 @@ def fan_in(closure: dict[str, list[str]], roots: list[str]) -> dict[str, tuple[i
                     stack.append(parent)
         counts[book] = (len(seen), len(seen & root_set))
     return counts
-
-
-def chain_position(closure: dict[str, list[str]]) -> dict[str, tuple[int, int]]:
-    """book -> (below, above): the longest include chain ending at the book and
-    the longest includer chain starting at it, each counting the book."""
-    included_by: dict[str, set[str]] = collections.defaultdict(set)
-    for book, includes in closure.items():
-        for dependency in includes:
-            included_by[dependency].add(book)
-    below: dict[str, int] = {}
-    above: dict[str, int] = {}
-
-    def depth(book: str, edges, memo: dict[str, int]) -> int:
-        # Iterative: the graph is ~65 deep, but a recursive walk would still
-        # couple this tool to Python's recursion limit.
-        stack = [book]
-        while stack:
-            top = stack[-1]
-            if top in memo:
-                stack.pop()
-                continue
-            pending = [n for n in edges(top) if n not in memo]
-            if pending:
-                stack.extend(pending)
-                continue
-            memo[top] = 1 + max((memo[n] for n in edges(top)), default=0)
-            stack.pop()
-        return memo[book]
-
-    for book in closure:
-        depth(book, lambda b: closure.get(b, ()), below)
-        depth(book, lambda b: included_by.get(b, ()), above)
-    return {book: (below[book], above[book]) for book in closure}
 
 
 def ranked(counts: dict[str, tuple[int, int]]) -> list[tuple[str, int, int]]:
@@ -166,8 +123,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--book", action="append", default=[],
                         help="print this book's counts (repeatable; with or without .lisp)")
     parser.add_argument("--json", action="store_true")
-    parser.add_argument("--chain", action="store_true",
-                        help="add each book's chain position (below, above, through)")
     parser.add_argument("--write-doc", action="store_true",
                         help="regenerate the table in docs/proof-style.md")
     parser.add_argument("--check", action="store_true",
@@ -198,22 +153,6 @@ def main(argv: list[str] | None = None) -> int:
             rows.append((book, *counts[book]))
     else:
         rows = ranked(counts)[:arguments.top]
-    if arguments.chain:
-        position = chain_position(certify_books.local_closure(certify_books.default_books()))
-        depth = max(below for below, _ in position.values())
-        if arguments.json:
-            print(json.dumps({"books": len(counts), "roots": roots, "depth": depth, "rows": [
-                {"book": f"{b}.lisp", "dependents": d, "roots": r,
-                 "below": position[b][0], "above": position[b][1],
-                 "through": sum(position[b]) - 1} for b, d, r in rows]}, indent=2))
-            return 0
-        print(f"graph depth (longest include chain): {depth}")
-        print(f"| book | dependents (of {len(counts)}) | roots (of {roots}) | below | above | through |")
-        print("|---|---:|---:|---:|---:|---:|")
-        for b, d, r in rows:
-            print(f"| `{b}.lisp` | {d} | {r} | {position[b][0]} | {position[b][1]} | "
-                  f"{sum(position[b]) - 1} |")
-        return 0
     if arguments.json:
         print(json.dumps({"books": len(counts), "roots": roots, "rows": [
             {"book": f"{b}.lisp", "dependents": d, "roots": r, "changed": last_changed(b)}
