@@ -24,7 +24,7 @@ import tempfile
 import time
 import unittest
 
-from tests.native_process import wait_for_announcement, stop_and_diagnostics
+from tests.native_harness import wait_for_announcement, stop_and_diagnostics
 from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent

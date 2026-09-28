@@ -50,7 +50,7 @@ import time
 import unittest
 from pathlib import Path
 
-from tests.native_process import node_log_on_failure
+from tests.native_harness import node_log_on_failure
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = os.environ.get("FN_NATIVE_HOST")

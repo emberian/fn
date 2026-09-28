@@ -15,7 +15,7 @@ import tempfile
 import time
 import unittest
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import stop_and_diagnostics, wait_for_announcement
 from tools import run_bp_ingress, run_store
 
 

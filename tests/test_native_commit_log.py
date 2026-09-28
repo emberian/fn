@@ -31,7 +31,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tests.campaign import native_cuts  # noqa: E402
-from tests.native_process import wait_for_announcement  # noqa: E402
+from tests.native_harness import wait_for_announcement  # noqa: E402
 from tools.wire_stream import whole_stream
 
 DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST", "")

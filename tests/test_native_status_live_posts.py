@@ -51,7 +51,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
-from tests.native_process import wait_for_announcement  # noqa: E402
+from tests.native_harness import wait_for_announcement  # noqa: E402
 from tools import msgid_measure as m  # noqa: E402
 import native_env  # noqa: E402
 

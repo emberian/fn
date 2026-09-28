@@ -7,7 +7,7 @@ on 2026-09-22, which wired its own through tests/test_native_owner.py).  A
 test nobody runs is a claim, so this module runs every `tests/*_raw.sh`,
 one case each, and skips with the reason when no SBCL is found.
 
-The SBCL is the one the image ships on (tests/native_process.py runtime_sbcl:
+The SBCL is the one the image ships on (tests/native_harness.py runtime_sbcl:
 FN_SBCL, else the runtime named by the FN_NATIVE_HOST image's wrapper, else
 `sbcl` on PATH), passed to every script as FN_SBCL: the host code names
 symbols an older system SBCL does not export (PKT-614: hbox's /usr/bin/sbcl
@@ -20,7 +20,7 @@ import pathlib
 import subprocess
 import unittest
 
-from tests.native_process import runtime_sbcl
+from tests.native_harness import runtime_sbcl
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCRIPTS = sorted(ROOT.glob("tests/test_*_raw.sh"))

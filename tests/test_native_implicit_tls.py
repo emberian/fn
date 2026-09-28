@@ -17,7 +17,7 @@ import ssl
 import subprocess
 import unittest
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import stop_and_diagnostics, wait_for_announcement
 import tests.test_native_starttls as starttls
 from tests.test_native_starttls import (
     IMAGE, ROOT, MemoryTlsClient, environment, free_loopback_port, recv_line)

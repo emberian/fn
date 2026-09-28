@@ -14,7 +14,7 @@ import unittest
 from tools import run_bp_ingress, run_store
 
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import stop_and_diagnostics, wait_for_announcement
 from tools.wire_stream import whole_stream
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a

@@ -35,7 +35,7 @@ import unittest
 from pathlib import Path
 
 import tests.test_bp_app_native as base
-from tests.native_process import wait_for_announcement
+from tests.native_harness import wait_for_announcement
 from tools import msgid_measure as m
 
 HIST = int(os.environ.get("FN_CV_HIST", "300000"))

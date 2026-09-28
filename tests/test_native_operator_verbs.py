@@ -27,7 +27,7 @@ import tempfile
 import unittest
 
 from tests.campaign import native_cuts
-from tests.native_process import next_log_number, start_filed
+from tests.native_harness import next_log_number, start_filed
 
 
 ROOT = Path(__file__).resolve().parent.parent

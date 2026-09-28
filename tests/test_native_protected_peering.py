@@ -24,7 +24,7 @@ import unittest
 
 from tests import test_native_peering as peer
 from tests.test_feed_journal_live import BookBridge
-from tests.native_process import wait_for_announcement
+from tests.native_harness import wait_for_announcement
 from tools.wire_stream import whole_stream
 
 ACTUAL_CORE = peer.ACTUAL_CORE

@@ -26,7 +26,7 @@ import time
 import unittest
 from urllib.parse import urlencode
 
-from tests.native_process import wait_for_announcement, stop_and_diagnostics
+from tests.native_harness import wait_for_announcement, stop_and_diagnostics
 
 IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", "/nonexistent/fn-host-developer"))
 ROOT = Path(os.environ.get("FN_NATIVE_TEST_ROOT", Path(__file__).resolve().parents[1]))

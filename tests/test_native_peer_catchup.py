@@ -36,7 +36,7 @@ import tempfile
 import time
 import unittest
 
-from tests.native_process import wait_for_announcement
+from tests.native_harness import wait_for_announcement
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10

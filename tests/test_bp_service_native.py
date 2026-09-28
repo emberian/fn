@@ -8,7 +8,7 @@ import tempfile
 import time
 import unittest
 
-from tests.native_process import AcceptThenClosePeer, refused_port
+from tests.native_harness import AcceptThenClosePeer, refused_port
 
 
 ROOT = Path(__file__).resolve().parent.parent

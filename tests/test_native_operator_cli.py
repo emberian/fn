@@ -10,7 +10,7 @@ import tempfile
 import unittest
 
 
-from tests.native_process import wait_for_announcement
+from tests.native_harness import wait_for_announcement
 from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent

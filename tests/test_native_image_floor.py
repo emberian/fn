@@ -42,7 +42,7 @@ import sys
 import tempfile
 import unittest
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import stop_and_diagnostics, wait_for_announcement
 
 
 ROOT = Path(__file__).resolve().parent.parent

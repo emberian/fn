@@ -12,7 +12,8 @@ read and what each variable means, and the check hbox_native.sh makes before
 any test step.
 
 A module *reads* a variable when its source calls `os.environ.get("NAME"`,
-`os.environ["NAME"]` or `os.getenv("NAME"`; `plan` scans the module's own file
+`os.environ["NAME"]`, `os.getenv("NAME"` or tests/native_harness.py's
+`native_image("NAME"`; `plan` scans the module's own file
 (tests/test_x.py for tests.test_x or tests.test_x.Class) and every tests/
 module it imports, transitively, for image variables (PKT-490 (2)); opt-ins
 and fixed paths count from the module's own file.  An image variable read only
@@ -215,7 +216,7 @@ def image_identity(image: Path, source: str | None = None) -> dict[str, str]:
     return found
 
 
-READ = re.compile(r'(?:environ\.get\(|environ\[|getenv\()\s*"(FN_[A-Z0-9_]+)"')
+READ = re.compile(r'(?:environ\.get\(|environ\[|getenv\(|native_image\()\s*"(FN_[A-Z0-9_]+)"')
 
 
 def module_file(module: str) -> Path:

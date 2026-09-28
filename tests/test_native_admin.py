@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 import unittest
 
-from tests.native_process import wait_for_announcement
+from tests.native_harness import wait_for_announcement
 
 
 ROOT = Path(__file__).resolve().parent.parent

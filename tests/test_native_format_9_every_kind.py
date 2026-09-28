@@ -44,7 +44,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import blake3_ref  # noqa: E402
-from tests.native_process import wait_for_announcement, stop_and_diagnostics  # noqa: E402
+from tests.native_harness import wait_for_announcement, stop_and_diagnostics  # noqa: E402
 from tests.test_native_format_9_migration import (  # noqa: E402
     cbor_items, expected_identities, identity, SUBJECT)
 from tests.test_native_key_statements import (  # noqa: E402

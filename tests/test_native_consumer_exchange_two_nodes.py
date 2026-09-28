@@ -50,7 +50,7 @@ import tempfile
 import time
 import unittest
 
-from tests.native_process import stop_and_diagnostics
+from tests.native_harness import stop_and_diagnostics
 from tests.test_native_peer_pull import RecordingProxy
 from tools.wire_stream import whole_stream
 

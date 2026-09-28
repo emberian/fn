@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import stop_and_diagnostics, wait_for_announcement
 
 
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", "/nonexistent/fn-host"))

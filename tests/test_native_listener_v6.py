@@ -19,7 +19,7 @@ import ssl
 import subprocess
 import unittest
 
-from tests.native_process import next_log_number, start_filed, wait_for_announcement
+from tests.native_harness import next_log_number, start_filed, wait_for_announcement
 import tests.test_native_starttls as starttls
 from tests.test_native_implicit_tls import TlsLines
 from tests.test_native_starttls import IMAGE, ROOT, environment, free_loopback_port, recv_line

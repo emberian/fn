@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unittest
 
-from tests.native_process import AcceptThenClosePeer
+from tests.native_harness import AcceptThenClosePeer
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
 # connection lost after it existed is exit 6 (connection-local: the job stays

@@ -37,7 +37,7 @@ import threading
 import time
 import unittest
 
-from tests.native_process import node_log_on_failure
+from tests.native_harness import node_log_on_failure
 
 ROOT = Path(__file__).resolve().parents[1]
 # The developer image: the only one that honours a developer selector.

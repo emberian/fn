@@ -25,7 +25,7 @@ import subprocess
 import tempfile
 import unittest
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_harness import stop_and_diagnostics, wait_for_announcement
 
 ROOT = Path(__file__).resolve().parents[1]
 PRODUCTION = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))

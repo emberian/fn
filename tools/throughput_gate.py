@@ -49,7 +49,7 @@ is taken on tmpfs (/dev/shm), in one unit, on a box checked quiet.
             The box load (loadavg, whole-box CPU busy fraction) is sampled
             every 5 s through the run.  Output: one JSON.
     run     (laptop) ship this script and the client (tools/msgid_measure.py,
-            tools/rep_measure.py, tests/native_process.py) to hbox, start the
+            tools/rep_measure.py, tests/native_harness.py) to hbox, start the
             box half in `systemd-run --user -p MemoryMax=24G`, wait, fetch the
             JSON into planning/evidence/throughput/REV12-LABEL.json.
     check   (make check) the newest committed run whose revision is HEAD or
@@ -96,7 +96,8 @@ BOX_ROOT = "/tank/fn/scratch/throughput-gate"
 OPENSSL = "/tank/fn/toolchains/openssl-3.5.8"
 CLIENT_FILES = ("tools/throughput_gate.py", "tools/msgid_measure.py", "tools/rep_measure.py",
                 "tools/signed_carriers.py", "tools/__init__.py", "tools/wire_stream.py",
-                "tests/__init__.py", "tests/native_process.py")
+                "tests/__init__.py", "tests/native_harness.py",
+                "books/outcome-class.lisp")
 # Metrics the gate compares (all: lower is better).  The floor is the
 # absolute slack: a loopback millisecond figure on a shared box moves by
 # more than 25% of itself between repetitions of one image (commit-

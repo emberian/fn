@@ -10,11 +10,11 @@ import subprocess
 import sys
 import tempfile
 
-from tests.native_process import native_peer_add
+from tests.native_harness import native_peer_add
 import time
 import unittest
 
-from tests.native_process import runtime_sbcl
+from tests.native_harness import runtime_sbcl
 from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
