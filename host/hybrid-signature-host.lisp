@@ -56,12 +56,6 @@
   (fn-hsig-authorize-at (fn-hsig-source-version source)
                         principal keys source signatures observed-ml-key ed ml))
 
-(defun fn-hsig-host-keyring-event
-    (sequence txid generation keyring-generation principal keys)
-  (declare (xargs :mode :program))
-  (fn-hsig-keyring-event sequence txid generation keyring-generation
-                         principal keys))
-
 (defun fn-hl-host-enroll-event
     (sequence txid generation keyring-generation principal keys snapshots)
   (declare (xargs :mode :program))
