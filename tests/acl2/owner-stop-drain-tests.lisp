@@ -86,7 +86,8 @@
 (assert-event (not (<= (fn-osd-deadline *osdt-l*) (fn-osd-elapsed *osdt-f0* (osdt-at 5999)))))
 (must-fail-checked
  (defthm osdt-release-without-its-hypothesis
-   (<= (fn-osd-deadline limits) (fn-osd-elapsed s0 s))))
+   (implies (not (fn-osd-quiet-p s 1 0 nil))
+            (<= (fn-osd-deadline '(2000 6000 250)) (fn-osd-elapsed s0 s)))))
 
 ; --- fn-osd-drain-ends-by-the-deadline, first conjunct (:release).
 ; Positive: all three hypotheses (above, at 6,000).  Removal of each:

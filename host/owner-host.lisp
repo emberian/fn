@@ -166,6 +166,9 @@
 ; PRF-322) and the 440 at the POST command (books/owner-time-admission.lisp,
 ; PRF-323).
 (include-book "../books/owner-time-journal")
+;; PKT-875 (PRF-357): a graceful stop's drain (fn-osd-drain-step), which
+;; host/native/owner.lisp fnn-owner-drain-service calls in every image.
+(include-book "../books/owner-stop-drain")
 (include-book "../books/owner-time-admission")
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.

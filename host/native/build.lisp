@@ -58,9 +58,6 @@
 ;; fn-otm-start-line) and the 440 at the POST command (fn-otm-read-span).
 (include-book "books/owner-time-journal")
 (include-book "books/owner-time-admission")
-;; PKT-875 (PRF-357): a graceful stop's drain (fn-osd-drain-step,
-;; host/native/owner.lisp fnn-owner-drain-service).
-(include-book "books/owner-stop-drain")
 (include-book "books/owner-open-carried")
 ;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
 (include-book "books/reader-open-carried")
