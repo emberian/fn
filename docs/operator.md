@@ -430,7 +430,11 @@ fn operator /etc/fn/fn.toml tls reload
 New connections get the new certificate. Open ones keep the old one until
 they end. fn refuses (and keeps the old one) if the new files do not
 match, the dates are wrong, or a name the old certificate had is missing.
-A certificate for different names needs a restart instead. `status` shows
+A certificate for different names needs a restart instead. `run` checks
+the files it starts with the same way (except for names, since nothing is
+served yet): a key that does not match, or a certificate that has expired or
+is not valid yet, stops the start with `refused operator run tls REASON`
+(exit 1), for example `tls key-mismatch` or `tls expired`. `status` shows
 the certificate in use:
 
 ```

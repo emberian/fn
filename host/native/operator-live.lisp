@@ -59,11 +59,12 @@
                       *fnn-owner-log-path* log-path)
                 (fnn-operator-log-run-line
                  (fnn-core 'fn-native-health-host-run-started-line)))
-              ;; ACL2 already enforced paired presence.  Only a successfully
-              ;; loaded and key-checked context is passed to auth/owner.
+              ;; ACL2 already enforced paired presence.  Only a pair ACL2
+              ;; accepted (fn-tlsr-start-decide, the decision `tls reload'
+              ;; applies; PRF-387) is passed to auth/owner.
               (when certificate
                 (setq tls-context
-                      (fnn-tls-open-context certificate private-key)))
+                      (fnn-tls-start-context certificate private-key)))
               (let* ((web-plan
                        ;; The node's own web face (PRF-340): ACL2's plan of
                        ;; the profile's [web] table, or NIL for none.
