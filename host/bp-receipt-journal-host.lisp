@@ -74,13 +74,6 @@
      (f-get-global 'fn-bprj-state state)
      (fn-record-parse-value parsed)) nil))))
 
-; Native application projections.  These read the same joined replay state the
-; publication preflight and apply functions above update.
-(defun fn-bprj-request-status (request-octets state)
- (declare (xargs :stobjs state :mode :program))
- (value (fn-bpaj-request-status-fast
-         (f-get-global 'fn-bpaj-state state) request-octets)))
-
 (defun fn-bprj-request-action (request-octets generation fn-arena fn-hist state)
  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program
                   :guard (fn-cbor-octet-listp request-octets)))
