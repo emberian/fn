@@ -11,15 +11,6 @@
      (f-get-global 'fn-bprj-bound-store state)
    (f-get-global 'fn-store-sn state)))
 
-(defun fn-bprj-bind-store (store state)
- (declare (xargs :stobjs state :mode :program))
- ; This low-level setter is called only by fn-owner-app-bind-receipt-store,
- ; whose STORE argument is read from the canonical fn-owner in the same ACL2
- ; state transition.  The native host has no store argument to invent.
- (let* ((state (f-put-global 'fn-bprj-bound-store store state))
-        (state (f-put-global 'fn-bprj-store-source :owner-bound state)))
-  (value :ready)))
-
 (defun fn-bprj-use-standalone-store (state)
  (declare (xargs :stobjs state :mode :program))
  (let* ((state (f-put-global 'fn-bprj-store-source :standalone state))
