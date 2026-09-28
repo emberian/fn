@@ -31,7 +31,7 @@ import unittest
 
 from tests import test_native_peering as peer
 from tests import test_native_protected_peering as protected
-from tests import native_harness
+from tests.native_harness import EXIT_OK
 from tools.wire_stream import whole_stream
 
 IMAGE = peer.IMAGE
@@ -122,19 +122,6 @@ class NativeFeedTlsReadTests(unittest.TestCase):
     # Bound through the module, never as a module-level TestCase name, so
     # the loader does not collect the protected module's tests here.
     setUp = protected.NativeProtectedPeeringTests.setUp
-    def command(self, arguments, expected=0, timeout=180):
-        # The peering modules' command helper (native-harness group 5a
-        # replaced it there with the harness's own verbs; this module keeps
-        # the one call shape it needs).
-        result = native_harness.run(list(map(str, arguments)),
-                                    env=native_harness.environment(), timeout=timeout)
-        self.assertEqual(result.returncode, expected,
-                         "command {} returned {}\nstdout={}\nstderr={}".format(
-                             arguments, result.returncode,
-                             result.stdout.decode("utf-8", "replace"),
-                             result.stderr.decode("utf-8", "replace")))
-        return result
-
     process_identity = protected.NativeProtectedPeeringTests.process_identity
     verify_process_identity = protected.NativeProtectedPeeringTests.verify_process_identity
     article = staticmethod(peer.NativePeeringTests.article)
@@ -146,22 +133,19 @@ class NativeFeedTlsReadTests(unittest.TestCase):
     profile = protected.NativeProtectedPeeringTests.profile
     start = protected.NativeProtectedPeeringTests.start
 
-    stop_all = protected.NativeProtectedPeeringTests.stop_all
-
     def plain_source(self, name):
-        node = peer.NativePeeringTests.initialize(self, name, peer.free_port())
-        return node
+        # A native_harness.Node under the test's tree (stopped at cleanup).
+        return peer.NativePeeringTests.initialize(self, name)
 
     def start_plain(self, node):
         peer.NativePeeringTests.start(self, node)
 
     def configure_tls_peer(self, source, target_name, port, anchor):
-        self.command([
-            IMAGE, "--fn", "operator", source["config"], "peer", "add",
-            target_name, target_name + ".example.invalid", "127.0.0.1",
-            str(port), "fn.*", "fn.*", "source-address", "127.0.0.1", "true",
-            "implicit", "localhost", anchor,
-        ])
+        source.operator(
+            "peer", "add", target_name, target_name + ".example.invalid",
+            "127.0.0.1", str(port), "fn.*", "fn.*", "source-address",
+            "127.0.0.1", "true", "implicit", "localhost", anchor,
+            expect=EXIT_OK)
 
     def scripted(self, name, **options):
         certificate, key = self.make_certificate(self.base, name)
@@ -170,7 +154,7 @@ class NativeFeedTlsReadTests(unittest.TestCase):
         return scripted, certificate
 
     def stderr_text(self, node):
-        return node["process"].stderr.since(0).decode("utf-8", "replace")
+        return node.process.stderr.since(0).decode("utf-8", "replace")
 
     def test_greeting_after_session_tickets_keeps_the_link(self):
         scripted, certificate = self.scripted("late-greeting", greeting_delay=0.4)
@@ -238,8 +222,7 @@ class NativeFeedTlsReadTests(unittest.TestCase):
         first = "<before-pause@example.invalid>"
         self.post(source, first, "before-pause")
         self.assertIsNotNone(scripted.await_article(first, timeout=30))
-        self.command([IMAGE, "--fn", "operator", source["config"], "peer", "feed",
-                      "pausable", "pause"])
+        source.operator("peer", "feed", "pausable", "pause", expect=EXIT_OK)
         with scripted.lock:
             accepted = len(scripted.accepted)
         held = "<while-paused@example.invalid>"
@@ -248,8 +231,7 @@ class NativeFeedTlsReadTests(unittest.TestCase):
         with scripted.lock:
             self.assertNotIn(held, scripted.articles)
             self.assertEqual(len(scripted.accepted), accepted, scripted.accepted)
-        self.command([IMAGE, "--fn", "operator", source["config"], "peer", "feed",
-                      "pausable", "resume"])
+        source.operator("peer", "feed", "pausable", "resume", expect=EXIT_OK)
         got = scripted.await_article(held, timeout=30)
         self.assertIsNotNone(got, self.stderr_text(source)[-4000:])
         print("NATIVE-FEED-TLS-READ-WITNESS " + json.dumps({
@@ -257,22 +239,22 @@ class NativeFeedTlsReadTests(unittest.TestCase):
             "connections": len(scripted.accepted)}, sort_keys=True), flush=True)
 
     def initialize_implicit(self, name, login, password):
-        node = self.initialize(name, peer.free_port(), login, password)
-        node["tls_port"] = peer.free_port()
-        text = node["config"].read_text(encoding="ascii")
+        node = self.initialize(name, login, password)
+        node.tls_port = peer.free_port()
+        text = node.config.read_text(encoding="ascii")
         text = text.replace("[control]", "tls_port = {}\n[control]".format(
-            node["tls_port"]), 1)
-        node["config"].write_text(text, encoding="ascii")
+            node.tls_port), 1)
+        node.config.write_text(text, encoding="ascii")
+        # Two listeners announce, in either order (Node.start).
+        node.listening = 2
         return node
 
     def configure_implicit_peer(self, source, target, profile):
-        self.command([
-            IMAGE, "--fn", "operator", source["config"], "peer", "add",
-            target["name"], target["name"] + ".example.invalid", "127.0.0.1",
-            str(target["tls_port"]), "fn.*", "fn.*", "principal",
-            source["principal"], profile, "false", "true", "implicit",
-            "localhost", target["certificate"],
-        ])
+        source.operator(
+            "peer", "add", target.name, target.name + ".example.invalid",
+            "127.0.0.1", str(target.tls_port), "fn.*", "fn.*", "principal",
+            source.principal, profile, "false", "true", "implicit",
+            "localhost", target.certificate, expect=EXIT_OK)
 
     def test_two_nodes_peer_both_ways_over_implicit_tls(self):
         a = self.initialize_implicit("implicit-a", "b-at-a", "b-secret")
@@ -290,7 +272,7 @@ class NativeFeedTlsReadTests(unittest.TestCase):
             self.assertTrue(identical)
             transit[label] = identical
         for node in (a, b):
-            text = node["stderr_path"].read_text(errors="replace")
+            text = node.process.stderr.since(0).decode("utf-8", "replace")
             self.assertNotIn("link=dropped", text, text[-4000:])
         print("NATIVE-FEED-TLS-READ-WITNESS " + json.dumps({
             "kind": "implicit-tls-two-nodes", "transit": transit},
