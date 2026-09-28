@@ -222,7 +222,7 @@ def write_manifest(run_id: str, text: str, source: str = "",
 def archive_run(source: Path, root: Path = ROOT, origin: str = "") -> str:
     """Archive one run directory or one `manifest.json`.
 
-    Called by `certify_books.py`, `farm.py` and `verdict.py`; never raises,
+    Called by `certify_books.py` and `farm.py`; never raises,
     because failing to file a copy of the evidence must not fail the run that
     produced it.  `origin` names where the LOGS are: for a farm run that is
     the remote root on the box, not the fetched copy under `build/`.

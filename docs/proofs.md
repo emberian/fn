@@ -420,7 +420,7 @@ certified once, and a second `make certify` against the same cache while the
 first is publishing gives the second a cache it cannot vouch for. The hand
 gate scripts on the boxes take `flock` on `$HOME/fn-gates/.gate.lock`
 (persvati) and `/tank/fn/gates/.lock` (hbox) -- `exec 9>LOCK; flock 9` at the
-top of `gate.sh`, held until the script exits. `tools/verdict.py` kept a
+top of `gate.sh`, held until the script exits. The verdict orchestrator (retired 2026-09-28 by python-diet; recoverable at 940bc3104) kept a
 second scheme of its own beside them, an atomic `mkdir` on `.verdict.lock`,
 and two schemes that cannot see each other are not a lock: a verdict run and
 a hand gate could certify on one box at the same time. The gate script
@@ -588,8 +588,8 @@ the same reason ACL2 says it is: Complete checks sub-books' certificate write
 dates rather than their book-hash, and ACL2's own documentation recommends
 certifying a project's books from scratch without it for maximum trust.
 
-`tools/verdict.py --reuse-gate [REV]` reads a gate directory that already
-exists and builds its per-fiber table from it, shipping nothing and starting
+The retired verdict orchestrator's `--reuse-gate [REV]` read a gate directory that already
+existed and built its per-fiber table from it, shipping nothing and starting
 no ACL2. It reads the shape both kinds of gate share (`certify.log`,
 `pytests.log`, `publish.log`, `build/acl2/certify-*/manifest.json`) rather
 than the `gate.done` only its own gates write, and names any of those four
@@ -767,7 +767,7 @@ construction (D13) and no run can decide it, so it is a limitation and reports
 without failing; a tap that never took its cut, a GROUP reply with no count,
 or an offer command no recorder saw is a defect in THAT run, establishes
 nothing, and must not stand behind a release claim. Exit 3 is D13's uncertain,
-and `tools/verdict.py` carries it out as a fourth fiber state rather than
+and the verdict orchestrator carried it out as a fourth fiber state rather than
 folding it into `fail` or `pass`. `tests/test_gate_verdicts.py` injects each
 bad outcome into the real scenario methods and requires the failed assertion
 and the nonzero exit.
