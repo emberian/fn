@@ -8,7 +8,7 @@
 (include-book "../books/web-config")
 
 (defun fn-web-host-plan (config-octets listener-port tls-port certp)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program :guard (fn-cbor-octet-listp config-octets)))
   (fn-web-config-plan config-octets listener-port tls-port certp))
 
 (defun fn-web-host-plan-web-p (plan)
