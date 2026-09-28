@@ -153,6 +153,9 @@
 (include-book "books/native-operator")
 ; The process heap from the store profile (PKT-016): host/native/heap.lisp.
 (include-book "books/heap-figure")
+;; Lane f1-bisect: host/native/io.lisp fnn-open-nursery calls
+;; fn-heap-open-nursery-trigger (the open's trigger sized to its history).
+(include-book "books/heap-open-nursery")
 (include-book "books/heap-reservation")
 (include-book "books/native-control")
 (include-book "books/native-control-reason")
