@@ -6,6 +6,8 @@
                                       [--root ROOT] [--work DIR] [--jobs N]
     python3 tools/fixtures.py check [--root ROOT] [--rev REV]
     python3 tools/fixtures.py opens --image IMAGE [--only NAME ...] [--root ROOT] [--work DIR]
+    python3 tools/fixtures.py post-suffix IMAGE STORE N   (a recipe's step: see
+                                      recipe_checkpoint_suffix)
 
 A fixture is a store (or a BP journal holding one) built once and copied by
 every run that needs it; nothing opens a fixture in place.  D34 keeps one
@@ -294,7 +296,7 @@ def check_load(work: Path, n: int) -> dict:
     return load
 
 
-def recipe_synth(ctx: Context, n: int, flags: tuple) -> None:
+def recipe_synth(ctx: Context, n: int, flags: tuple, capacity: int | None = None) -> None:
     """tools/synth_log_store.py: a seed of 1,000 POSTed 2 KiB articles (the
     n1k-2k recipe under FLAGS, then capacity 2 N + 4,000 units: a 2 KiB
     article is charged 2; lane fitness), renumbered
@@ -307,7 +309,7 @@ def recipe_synth(ctx: Context, n: int, flags: tuple) -> None:
              ctx.image, work, 1000], env=env)
     check_load(work, 1000)
     ctx.run([PY, TREE / EVIDENCE / "snapshot-open-3-2026-09-27/capseed.py", ctx.image,
-             work / "store", 2 * n + 4000])
+             work / "store", capacity or 2 * n + 4000])
     # The seed's history is its journal: no checkpoint goes into the copy.
     for path in (work / "store").glob("store-checkpoint*"):
         path.unlink()
@@ -316,6 +318,86 @@ def recipe_synth(ctx: Context, n: int, flags: tuple) -> None:
              "--batch", 8])
     (ctx.dest / "store" / "writer.lock").unlink(missing_ok=True)
     shutil.copy2(work / "load.json", ctx.dest / "seed-load.json")
+
+
+# The suffix POSTs' numbers: rep_measure.article(i)'s Message-IDs, clear of the
+# seed's 0..999 (heap-bounds' b3s.py).
+SUFFIX_FIRST = 5000000
+
+
+def suffix_capacity(n: int, suffix: int) -> int:
+    """Capacity units for N synthesized records plus SUFFIX posts: a 2 KiB
+    article is charged 2 (fn-charge-for-payload), plus recipe_synth's 4,000.
+    syn100k-2k's 2 N + 4,000 = 204,000 leaves room for 2,000 posts, which is
+    why no registered fixture had a suffix longer than that (heap-bounds,
+    2026-09-28: its 19,082-post suffix over syn100k-2k was refused at 2,000)."""
+    return 2 * (n + suffix) + 4000
+
+
+def recipe_checkpoint_suffix(ctx: Context, n: int, suffix: int) -> None:
+    """A store checkpointed at N records with a SUFFIX-record log after the
+    checkpoint (heap-bounds' b3s.py, lane tooling-obstructions): recipe_synth's
+    N-record store with room for N + SUFFIX (suffix_capacity), built on the
+    work tmpfs; `store rebind-filesystem' and an offline `store checkpoint';
+    then SUFFIX POSTs of 2,048 octets to one owner run with the automatic
+    checkpoint deferred (FN_NATIVE_CHECKPOINT_BUDGET_TEST=1), still on tmpfs
+    (on /tank the fsync barrier holds POSTs to ~7/s; automatic checkpoints at
+    30k took 60-120 s each and blocked them).  The first open of a copy is
+    `open=checkpoint:N suffix=SUFFIX'.  suffix.json records the counts and
+    seconds."""
+    base = Context(ctx.image, ctx.rev, ctx.work / "base-work", ctx.work / "base", ctx.mem)
+    base.work.mkdir(parents=True, exist_ok=True)
+    base.log = ctx.log
+    recipe_synth(base, n, SYNTH_100K, suffix_capacity(n, suffix))
+    store = base.dest / "store"
+    ctx.run([PY, Path(__file__).resolve(), "post-suffix", ctx.image, store, suffix,
+             "--json", ctx.work / "suffix.json"])
+    copy_entries(base.dest, ctx.dest, ["store", "seed-load.json"],
+                 skip=("writer.lock", "c.sock.lock"))
+    shutil.copy2(ctx.work / "suffix.json", ctx.dest / "suffix.json")
+
+
+def cmd_post_suffix(args) -> int:
+    """recipe_checkpoint_suffix's step on STORE: rebind, checkpoint offline,
+    then N POSTs to one owner with the automatic checkpoint deferred."""
+    import rep_measure  # noqa: E402  (tools/, as the recipes' scripts use them)
+    import msgid_measure  # noqa: E402
+    store = Path(args.store).resolve()
+    image = Path(args.image)
+    work = store.parent
+    env = native_env.harness_store_env(dict(os.environ, ACL2_CUSTOMIZATION="NONE"))
+    env.pop("ACL2_SYSTEM_BOOKS", None)
+    lock = store / "writer.lock"
+    lock.touch()
+    os.chmod(lock, 0o600)
+    out = {"suffix": args.n, "first": SUFFIX_FIRST, "octets": args.octets}
+    for verb in ("rebind-filesystem", "checkpoint"):
+        started = time.monotonic()
+        subprocess.run([str(image), "--fn", "store", str(store), verb], env=env, check=True)
+        out[verb.replace("-", "_") + "_seconds"] = round(time.monotonic() - started, 1)
+    port = msgid_measure.free_port()
+    config = work / "suffix-fn.toml"
+    config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n'
+                      '[control]\npath = "%s"\n' % (store, port, work / "c.sock"))
+    owner_env = dict(env, FN_NATIVE_CHECKPOINT_BUDGET_TEST="1")
+    proc, opened, stderr = rep_measure.start_owner(image, config, owner_env,
+                                                   work / "suffix-owner.stderr")
+    out["open_seconds"] = round(opened, 1)
+    started = time.monotonic()
+    posted = 0
+    try:
+        conn = msgid_measure.Conn(port)
+        for i in range(args.n):
+            rep_measure.post(conn, SUFFIX_FIRST + i, args.octets)
+            posted += 1
+        conn.close()
+    finally:
+        rep_measure.stop_owner(proc, stderr)
+        out["posted"] = posted
+        out["post_seconds"] = round(time.monotonic() - started, 1)
+        Path(args.json).write_text(json.dumps(out, indent=1) + "\n")
+    config.unlink()
+    return 0 if posted == args.n else 1
 
 
 # tools/scale_curve.py's points (ember 2026-09-28: "extrapolate from the curve at
@@ -473,6 +555,15 @@ REGISTRY = [
                    "initialized with SYNTH_1M: T 1048576, H 2,800,000,000, the same R A G K; its "
                    "init reservation is 57,158 MB, so open a copy under MemoryMax 80G (a 40G or "
                    "24G scope refuses it: machine-cannot-hold-profile)."),
+    Fixture("cp100k-sfx20k-2k", lambda c: recipe_checkpoint_suffix(c, 100000, 20000),
+            mem="40G",
+            readme="syn100k-2k's 100,000 synthesized 2 KiB article records (seed initialized with "
+                   "SYNTH_100K, capacity 244,000 = room for 120,000 articles) checkpointed "
+                   "offline, then 20,000 POSTed 2 KiB articles (Message-IDs from 5,000,000) "
+                   "with the automatic checkpoint deferred: the first open of a copy is "
+                   "open=checkpoint:100000 suffix=20000 (heap-bounds' B3 reopen; tools/"
+                   "fixtures.py recipe_checkpoint_suffix). suffix.json: counts and seconds. "
+                   "Copy store/ and touch writer.lock (mode 600) before use."),
     Fixture("curve", recipe_curve, mem="24G",
             stores=tuple("n{}/store".format(n) for n in CURVE_NS),
             readme="tools/scale_curve.py's points: nN/store for N in 1,000 2,000 5,000 10,000 "
@@ -694,9 +785,15 @@ def main(argv=None) -> int:
     op.add_argument("--only", nargs="+", default=None)
     op.add_argument("--root", default=str(ROOT))
     op.add_argument("--work", default=str(WORK))
+    ps = sub.add_parser("post-suffix")
+    ps.add_argument("image")
+    ps.add_argument("store")
+    ps.add_argument("n", type=int)
+    ps.add_argument("--octets", type=int, default=2048)
+    ps.add_argument("--json", required=True)
     args = p.parse_args(argv)
     return {"list": cmd_list, "rebuild": cmd_rebuild, "check": cmd_check,
-            "opens": cmd_opens}[args.cmd](args)
+            "opens": cmd_opens, "post-suffix": cmd_post_suffix}[args.cmd](args)
 
 
 if __name__ == "__main__":
