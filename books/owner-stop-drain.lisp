@@ -217,85 +217,36 @@
          (fn-osd-drain-step s0 s limits awaiting unsent released))
   :hints (("Goal" :in-theory '(fn-osd-drain-next mv-nth))))
 
-;; The drain over a sequence of observations, each (S AWAITING UNSENT) as
-;; fnn-owner-drain-service takes them: the number taken until :stop, or nil
-;; if it has not stopped by the last.
-(defun fn-osd-obs-s (o)
-  (declare (xargs :guard t))
-  (and (consp o) (car o)))
-(defun fn-osd-obs-awaiting (o)
-  (declare (xargs :guard t))
-  (and (consp o) (consp (cdr o)) (cadr o)))
-(defun fn-osd-obs-unsent (o)
-  (declare (xargs :guard t))
-  (and (consp o) (consp (cdr o)) (consp (cddr o)) (caddr o)))
-
-(defun fn-osd-drain-run (s0 obs limits released)
-  (declare (xargs :guard t))
-  (if (atom obs)
-      nil
-    (let ((o (car obs)))
-      (mv-let (step released2)
-        (fn-osd-drain-next s0 (fn-osd-obs-s o) limits (fn-osd-obs-awaiting o)
-                           (fn-osd-obs-unsent o) released)
-        (if (eq step :stop)
-            1
-          (let ((k (fn-osd-drain-run s0 (cdr obs) limits released2)))
-            (and k (+ 1 k))))))))
-
-;; An observation at or past the deadline and its grace since S0.
-(defun fn-osd-past-grace-p (s0 o limits)
+;; An observation at S is at or past the deadline and its grace since S0.
+(defun fn-osd-past-grace-p (s0 s limits)
   (declare (xargs :guard t))
   (<= (+ (fn-osd-deadline limits) *fn-osd-grace-ms*)
-      (fn-osd-elapsed s0 (fn-osd-obs-s o))))
-
-(local
- (defthm fn-osd-drain-run-two-past-grace
-   (implies (and (consp (cdr obs))
-                 (fn-osd-past-grace-p s0 (car obs) limits)
-                 (fn-osd-past-grace-p s0 (cadr obs) limits))
-            (let ((k (fn-osd-drain-run s0 obs limits released)))
-              (and (posp k) (<= k 2))))
-   :rule-classes nil
-   :hints (("Goal" :expand ((fn-osd-drain-run s0 obs limits released)
-                            (fn-osd-drain-run s0 (cdr obs) limits t))
-                   :in-theory (enable fn-osd-drain-next fn-osd-past-grace-p
-                                      fn-osd-drain-step)))))
-
-(local
- (defun fn-osd-drain-run-induct (i obs released s0 limits)
-   (if (or (zp i) (atom obs))
-       (list obs released)
-     (mv-let (step released2)
-       (fn-osd-drain-next s0 (fn-osd-obs-s (car obs)) limits
-                          (fn-osd-obs-awaiting (car obs))
-                          (fn-osd-obs-unsent (car obs))
-                          released)
-       (declare (ignore step))
-       (fn-osd-drain-run-induct (1- i) (cdr obs) released2 s0 limits)))))
+      (fn-osd-elapsed s0 s)))
 
 ; KEYSTONE (the stop terminates within the deadline, for any connection
-; state).  For any observations -- any AWAITING and UNSENT, so any number of
-; connections mid-article, mid-commit or holding an unread reply -- if the
-; I-th and the next both lie at or past H plus the grace, the drain has
-; stopped by the (I+2)-th: at the first it releases (if it had not) or
-; stops, at the next it stops.  The host observes every *fn-osd-poll-ms*
-; on a clock that never goes back (each observation follows a clock event),
-; so the first observation past H + grace and the next are two such, and
-; the stop comes within H + grace + one poll (+ one observation's work) of
-; the drain's start; the fence follows at once.
+; state).  The subject is fn-osd-drain-next as fnn-owner-drain-service
+; composes it: each observation's call takes the RELEASED the previous call
+; returned, and the loop continues only past a step other than :stop.  For
+; any two consecutive observations S1 and S2 at or past H plus the grace --
+; any AWAITING and UNSENT at each (any number of connections mid-article,
+; mid-commit or holding an unread reply) and whatever RELEASED the drain
+; carried in -- the first answers :stop, or the second does.  The host
+; observes every *fn-osd-poll-ms* on a clock that never goes back (each
+; observation follows a clock event), so the first observation past H +
+; grace and the next are two such: the stop comes within H + grace + one
+; poll (+ one observation's work) of the drain's start, and the fence
+; follows at once.
 (defthm fn-osd-drain-stops-by-the-deadline
-  (implies (and (natp i)
-                (consp (nthcdr (+ 1 i) obs))
-                (fn-osd-past-grace-p s0 (nth i obs) limits)
-                (fn-osd-past-grace-p s0 (nth (+ 1 i) obs) limits))
-           (let ((k (fn-osd-drain-run s0 obs limits released)))
-             (and (posp k) (<= k (+ 2 i)))))
+  (implies (and (fn-osd-past-grace-p s0 s1 limits)
+                (fn-osd-past-grace-p s0 s2 limits))
+           (mv-let (step1 released1)
+             (fn-osd-drain-next s0 s1 limits awaiting1 unsent1 released)
+             (or (equal step1 :stop)
+                 (equal (mv-nth 0 (fn-osd-drain-next s0 s2 limits awaiting2 unsent2
+                                                     released1))
+                        :stop))))
   :rule-classes nil
-  :hints (("Goal" :induct (fn-osd-drain-run-induct i obs released s0 limits)
-                  :in-theory (e/d (nth nthcdr) (fn-osd-past-grace-p fn-osd-drain-next)))
-          ("Subgoal *1/2" :expand ((fn-osd-drain-run s0 obs limits released)))
-          ("Subgoal *1/1" :use ((:instance fn-osd-drain-run-two-past-grace)))))
+  :hints (("Goal" :in-theory '(fn-osd-drain-next fn-osd-past-grace-p
+                               fn-osd-drain-step mv-nth car-cons cdr-cons))))
 
-(in-theory (disable fn-osd-drain-step fn-osd-drain-next fn-osd-drain-run
-                    fn-osd-past-grace-p))
+(in-theory (disable fn-osd-drain-step fn-osd-drain-next fn-osd-past-grace-p))
