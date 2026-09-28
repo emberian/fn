@@ -76,6 +76,8 @@ class RemoteCheckTests(unittest.TestCase):
         self.assertEqual((tree / "marker.txt").read_text(), "edited, not committed\n")
         self.assertFalse((tree / "stray.txt").exists())
         self.assertIn("applying 1 uncommitted", done.stdout)
+        self.assertIn("the box tree was dirty; discarding:", done.stdout)
+        self.assertIn("stray.txt", done.stdout)
         done = self.run_check("--no-dirty")
         self.assertEqual((tree / "marker.txt").read_text(), "one\n")
 
