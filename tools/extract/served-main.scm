@@ -12,6 +12,7 @@
 (include "runtime.scm")
 (include "served.scm")
 (include "native.scm")
+(include "hostio.scm")
 (include "probes.scm")
 
 (define (global name) (a-get-global name acl2-state))
@@ -29,14 +30,43 @@
   (call-with-values (lambda () (|b:ACL2::FN-READER-MODEL-OCTETS| chunks arena acl2-state))
     (lambda (erp val st) val)))
 
+(define (outcome-exit class text)
+  ;; fnn-main's report and ACL2's exit code for the class (fn-outcome-code)
+  (let ((port (current-error-port)))
+    (display "store: " port) (display text port) (newline port))
+  (exit (|b:ACL2::FN-OUTCOME-CODE|
+         (case class
+           ((|KEYWORD::REFUSED| |KEYWORD::OPEN-REFUSAL|) '|KEYWORD::REFUSED|)
+           ((|KEYWORD::INDETERMINATE|) '|KEYWORD::FENCED|)
+           ((|KEYWORD::USAGE|) '|KEYWORD::USAGE|)
+           (else '|KEYWORD::FAULT|)))))
+
+;; The reader over a store (fnn-reader-prepare with a store root): the open is
+;; host/store-open-host.lisp's fn-xo-open-store, extracted; then the store is
+;; selected as fnn-reader-select selects it.
+(define (select-store root arena)
+  (let ((lg (|f:ACL2::CREATE-FN-OCTETS$C|)))
+    (call-with-values (lambda () (|b:ACL2::FN-XO-OPEN-STORE| root lg arena acl2-state))
+      (lambda (result lg2 arena2 st)
+        (unless (eq? (car result) '|KEYWORD::OK|)
+          (outcome-exit (car result) (cadr result)))))
+    (ignore-values (|b:ACL2::FN-READER-SET-POSTING| '() acl2-state))
+    (call-with-values (lambda () (|b:ACL2::FN-READER-USE-STORE| acl2-state))
+      (lambda (erp val st)
+        (unless (eq? val '|KEYWORD::READY|)
+          (outcome-exit '|KEYWORD::REFUSED| "reader archive is not NNTP-projectable"))))))
+
+(define store-root #f)
+(define (select arena) (if store-root (select-store store-root arena) (select-seed arena)))
+
 (define (model chunks)
   (let ((arena (|f:ACL2::CREATE-FN-ARENA$X|)))
-    (select-seed arena)
+    (select arena)
     (model-octets chunks arena)))
 
 (define (socket chunks)
   (let ((arena (|f:ACL2::CREATE-FN-ARENA$X|)) (out '()))
-    (select-seed arena)
+    (select arena)
     (ignore-values (|b:ACL2::FN-READER-RESET| acl2-state))
     (set! out (cons (global '|ACL2::FN-READER-OUTPUT|) out))
     (let loop ((cs chunks))
@@ -98,8 +128,15 @@
   (exit (|b:ACL2::FN-OUTCOME-CODE| '|KEYWORD::FAULT|)))
 
 (define (main args)
+  ;; model|socket CHUNKS [STORE-ROOT]; bench CHUNKS N [STORE-ROOT]
   (let* ((verb (car args))
          (chunks (parse-chunks (read-file-u8vector (cadr args)))))
+    (let ((root (if (string=? verb "bench") (and (pair? (cdddr args)) (cadddr args))
+                    (and (pair? (cddr args)) (caddr args)))))
+      (when (and root (not (string=? root "-")))
+        ;; fnn-absolute
+        (set! store-root (if (char=? (string-ref root 0) #\/) root
+                             (string-append (current-directory) "/" root)))))
     (cond ((string=? verb "model") (write-octets (model chunks)))
           ((string=? verb "socket") (write-octets (socket chunks)))
           ((string=? verb "post") (write-octets (post chunks)))
@@ -108,7 +145,7 @@
            ;; before it accepts clients; each run is one connection's model
            (let ((n (string->number (caddr args)))
                  (arena (|f:ACL2::CREATE-FN-ARENA$X|)))
-             (select-seed arena)
+             (select arena)
              (model-octets chunks arena)
              (let ((t0 (current-process-milliseconds)) (g0 (current-gc-milliseconds)))
                (do ((i 0 (+ i 1))) ((= i n)) (model-octets chunks arena))

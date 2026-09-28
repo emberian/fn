@@ -173,14 +173,7 @@
        (a-fault 'fault (sprintf "ACL2 error in ~a: ~a" name
                                 ((condition-property-accessor 'exn 'message) e))))))
 
-;; --- the durable-extent realizers (A-DURABLE-EXTENT, books/assumptions.lisp) ------
-;; host/native/extent.lisp's raw definitions read a registered durable file.
-;; This runtime registers none: exactly the answer of an image whose store
-;; registered none (arena-extent-read), and the seeded archive holds no extent.
-(define (a-durable-realize-octet file eoff elen poff plen trailer i)
-  (error (sprintf "arena-extent-read: no durable file ~a is registered" file)))
-(define (a-durable-realize-octets file eoff elen poff plen trailer)
-  (error (sprintf "arena-extent-read: no durable file ~a is registered" file)))
+;; --- the durable-extent realizers: tools/extract/hostio.scm (A-DURABLE-EXTENT) --
 ;; A-DURABLE-LZ's realizer (host/native/extent.lisp fn-durable-realize-lz)
 ;; calls ACL2's decoder fn-lzr-lz-read through fnn-core; the image does not
 ;; include books/payload-lz-record (nothing in host/native/build.lisp's world

@@ -161,6 +161,13 @@ SHIMS = {
     "ACL2::FN-DURABLE-REALIZE-OCTET": "a-durable-realize-octet",
     "ACL2::FN-DURABLE-REALIZE-OCTETS": "a-durable-realize-octets",
     "ACL2::FN-DURABLE-REALIZE-LZ": "a-durable-realize-lz",
+    # host/store-open-host.lisp's host primitives (tools/extract/hostio.scm)
+    "ACL2::FN-HX-LSTAT": "a-hx-lstat", "ACL2::FN-HX-LIST-DIR": "a-hx-list-dir",
+    "ACL2::FN-HX-OPEN": "a-hx-open", "ACL2::FN-HX-PREAD": "a-hx-pread",
+    "ACL2::FN-HX-FILL": "a-hx-fill", "ACL2::FN-HX-LOCK-SHARED": "a-hx-lock-shared",
+    "ACL2::FN-HX-FSYNC-DIR": "a-hx-fsync-dir", "ACL2::FN-HX-STATFS": "a-hx-statfs",
+    "ACL2::FN-HX-REALPATH": "a-hx-realpath", "ACL2::FN-HX-OS": "a-hx-os",
+    "ACL2::FN-HX-WARN": "a-hx-warn",
 }
 # The image's native digest (host/native/digest.lisp, lane digest-native):
 # calls of these go to tools/extract/native.scm's libcrypto SHA-256; the
@@ -204,6 +211,9 @@ SHIM_CLASS = {
     "ACL2::FN-DURABLE-REALIZE-OCTETS": "file primitive (A-DURABLE-EXTENT)",
     "ACL2::FN-DURABLE-REALIZE-LZ": "file primitive and ACL2's decoder (A-DURABLE-LZ)",
 }
+for _n in list(SHIMS):
+    if _n.startswith("ACL2::FN-HX-"):
+        SHIM_CLASS[_n] = "host primitive (host/store-open-host.lisp; tools/extract/hostio.scm)"
 # fx forms for arithmetic whose arguments and result are fixnums.
 FX = {
     "ACL2::BINARY-+": "fx+", "ACL2::BINARY-*": "fx*",

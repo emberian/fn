@@ -7,6 +7,7 @@
 (include "runtime.scm")
 (include "served.scm")
 (include "native.scm")
+(include "hostio.scm")
 (include "fntable.scm")
 (import (chicken process signal))
 

@@ -51,8 +51,14 @@ def host_books(hosts):
     return out
 
 
+# The extracted program's own host files, which the image does not load (yet):
+# the read-only store open as ACL2 :program code over the host primitives.
+EXTRA_HOSTS = ["host/store-open-host.lisp"]
+
+
 def render():
     books, hosts = forms()
+    hosts = hosts + [h for h in EXTRA_HOSTS if h not in hosts]
     for b in host_books(hosts):
         if b not in books:
             books.append(b)

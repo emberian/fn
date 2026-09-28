@@ -1293,7 +1293,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/proto/adt-consumer-position \
 	tests/acl2/proto-adt-tests
 
-.PHONY: site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: extract-check site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -1307,6 +1307,15 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/store-prepare-correspondence books/config-records books/node-config \
 	books/checkpoint books/checkpoint-compaction books/checkpoint-publish \
 	books/records-shape books/statement books/statement-invariants
+
+# The extraction differential (A-EXTRACT, specs/failures.md; lane extract-2):
+# the world extracted to a CHICKEN program and compared with the developer
+# image -- the served transcripts, the boundary probes, a real store's replies
+# and the per-function differential -- on hbox (tools/extract/check.sh; from
+# elsewhere tools/extract/remote_check.sh ships the tree with hbox_native.sh).
+EXTRACT_REV ?= .
+extract-check:
+	sh tools/extract/remote_check.sh $(EXTRACT_REV)
 
 # fn's static website: a newsreader over the guides' Usenet articles
 # (docs/articles/*.txt) in build/site/ (open build/site/index.html); GitHub
