@@ -362,6 +362,27 @@ A book that is a data table read by tools as well as by ACL2
 probability is a rational (`1/5`), never `0.2`, which ACL2 refuses as input;
 the tool's reader converts.
 
+A reply the table owns reaches a book through the fn-proto-text macro that
+`books/protocol-table.lisp` generates: the admitted term is the literal, so no proof sees a lookup and none may. A table
+read that must stay a function at run time is disabled where it is defined
+and exported as one `-unfolds` equality per (row, key) the proofs use, never
+left enabled for the rewriter to open in every subgoal. When a book slows
+after such a change, profile it (section 9) before blaming the table: the
+2026-09-28 costs of `nntp-post`, `served-catalog-join-frame-store`, `catalog` and
+`web-session-keystones` were included vocabulary rules (`fn-nntp-article-idp-is-consp`, the
+response-text and `-true-listp` backchains) tried on every goal and useful
+never, withdrawn by one book-local `in-theory` after the includes. A lemma
+about ACL2 primitives alone (`butlast`, `nthcdr`, `take`, `len`) is proved in
+`(theory 'ground-zero)`: no book's rule can help it.
+
+The steps ratchet starts at the near line, 5 s at 2 jobs on a quiet box
+(`near_seconds` in `planning/proof-cost-baseline.json`, written by
+`tools/proof_cost.py --write-baseline --near 5`): a book at or over it has a
+row, and its prover steps may not grow more than 10% until it drops back
+under the line; the four books above grew past 10 s without one. Under the
+line growth is free, because a row for every book would make any added
+theorem fail make check.
+
 ### Shape books: what a change costs
 
 A certificate is content-hashed over its book and everything the book

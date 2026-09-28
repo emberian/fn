@@ -35,6 +35,16 @@ RECORDED and never ratchet; a manifest without `jobs_effective` is unknown and
 skipped with a warning. `--write-baseline` drops improved books, lowers steps
 and seconds, never raises either and refuses to add a row unless
 `--allow-regression` is given. The baseline only shrinks.
+
+The NEAR line (`near_seconds` in the baseline, set by `--write-baseline
+--near SECONDS`; 5 s since 2026-09-28): a book at or over it, measured at 2
+jobs or fewer on a quiet box, gets a row at the next `--write-baseline`, so
+its steps are ratcheted before it reaches the ten-second line (the six D26
+books of 2026-09-28 had no row and grew past it unseen).  A row stays while
+the book is at or over the near line and is dropped (IMPROVED) below it.
+Growth under the near line is free: a row for every book would make any
+added theorem fail make check.  `--allow-regression` then records every
+book conclusively over the near line, not only over the threshold.
 """
 
 from __future__ import annotations
@@ -521,6 +531,26 @@ def conclusive_over(record: Measurement, line: float) -> bool:
                                       or record.seconds > line * LOAD_FACTOR)
 
 
+def load_near(path: Path) -> float | None:
+    """The baseline's near line (`near_seconds`), or None when it has none."""
+    if not path.is_file():
+        return None
+    value = json.loads(path.read_text(encoding="utf-8"))
+    near = value.get("near_seconds") if isinstance(value, dict) else None
+    if near is None:
+        return None
+    if not isinstance(near, (int, float)) or isinstance(near, bool) or near < 0:
+        raise ValueError(f"{path}: near_seconds must be a nonnegative number")
+    return float(near)
+
+
+def near_quiet(record: Measurement, near: float) -> bool:
+    """Whether `record` shows its book at or over the near line: quiet, or so
+    far over it that load cannot explain it."""
+    return record.seconds >= near and (record.quiet is True
+                                       or record.seconds > near * LOAD_FACTOR)
+
+
 def load_baseline(path: Path) -> dict[str, dict]:
     if not path.is_file():
         return {}
@@ -578,12 +608,16 @@ def lowered(prior: dict, record: Measurement) -> dict:
 def ratchet(selected: dict[tuple[str, str, str, str], Measurement], books: set[str],
             baseline: dict[str, dict], threshold: float,
             tolerance: float = TOLERANCE,
-            step_tolerance: float = STEP_TOLERANCE) -> Ratchet:
+            step_tolerance: float = STEP_TOLERANCE,
+            near: float | None = None, add_near: bool = False) -> Ratchet:
     """Compare each book's D26 measurement and steps with the baseline.
 
     `proposed` is the baseline `--write-baseline` would write without
     `--allow-regression`: improved books dropped, numbers lowered to the
-    current measurement, never raised, nothing added.
+    current measurement, never raised, nothing added -- except, with
+    `add_near`, a row for each book quietly at or over the `near` line.
+    A row is dropped as improved below `near` (below `threshold` without
+    one); between the two its steps are ratcheted like any row's.
     """
     best, failed_only = decisive(selected)
     result = Ratchet([], [], [], {})
@@ -592,12 +626,24 @@ def ratchet(selected: dict[tuple[str, str, str, str], Measurement], books: set[s
                  "of its CPUs")
     for book, record in sorted(best.items()):
         prior = baseline.get(book)
-        if record.seconds <= threshold:
+        if record.seconds <= threshold and near is not None and (
+                (prior is None and add_near and near_quiet(record, near))
+                or (prior is not None and record.seconds >= near)):
+            if prior is None:
+                result.kept.append(
+                    f"NEAR-ROW {book}: best={record.seconds:.3f}s >= near line "
+                    f"{near:g}s {record.words()}; row added, its steps ratcheted")
+                result.proposed[book] = entry(record)
+                continue
+            # A near row (load only adds seconds, so the fastest at or over the
+            # line never shows it under): the steps ratchet below.
+        elif record.seconds <= threshold:
             if prior is not None:
                 result.improved.append(
                     f"IMPROVED {book}: best={record.seconds:.3f}s <= {threshold:g}s "
                     f"(baseline {float(prior['seconds']):.3f}s) {record.words()}; "
-                    "improved; remove from baseline")
+                    + (f"under the near line {near:g}s; " if near is not None else "")
+                    + "improved; remove from baseline")
             continue
         if prior is None:
             if record.seconds <= threshold * (1 + NEAR_BAND):
@@ -687,15 +733,19 @@ def regression_baseline(selected: dict[tuple[str, str, str, str], Measurement],
             if conclusive_over(record, threshold)}
 
 
-def write_baseline(path: Path, entries: dict[str, dict], threshold: float) -> None:
+def write_baseline(path: Path, entries: dict[str, dict], threshold: float,
+                   near: float | None = None) -> None:
     value = {
         "about": ("Books over the ten-second rule (D26): each row's prover "
                   "steps (the ratchet) and its fastest passed measurement at "
                   f"{RATCHET_JOBS} jobs or fewer over all hosts and toolchains, "
                   "with the load it was taken under. Generated by "
                   "python3 tools/proof_cost.py --write-baseline; only shrinks "
-                  "without --allow-regression. See docs/proofs.md."),
+                  "without --allow-regression. Books at or over near_seconds "
+                  "(quiet, 2 jobs) have rows too, so their steps are ratcheted "
+                  "before they reach the threshold. See docs/proofs.md."),
         "threshold_seconds": threshold,
+        **({"near_seconds": near} if near is not None else {}),
         "tolerance": TOLERANCE,
         "step_tolerance": STEP_TOLERANCE,
         "quiet_load_fraction": QUIET_LOAD_FRACTION,
@@ -719,12 +769,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--write-baseline", action="store_true",
                         help="rewrite the baseline: drop improved books, lower numbers; "
                              "refuses to add or raise without --allow-regression")
+    parser.add_argument("--near", type=float, default=None, metavar="SECONDS",
+                        help="the near line: with --write-baseline, add a row for every "
+                             "book quietly at or over it and record it in the baseline "
+                             "(default: the baseline's near_seconds)")
     parser.add_argument("--allow-regression", action="store_true",
                         help="with --write-baseline: record every current book over the "
                              "threshold at its current worst measurement")
     args = parser.parse_args(argv)
     if args.threshold < 0:
         parser.error("--threshold must be nonnegative")
+    if args.near is not None and args.near < 0:
+        parser.error("--near must be nonnegative")
     if args.allow_regression and not args.write_baseline:
         parser.error("--allow-regression applies only with --write-baseline")
     if args.write_baseline and (args.manifest or args.toolchain or args.host):
@@ -744,7 +800,9 @@ def main(argv: list[str] | None = None) -> int:
             print("ratchet: not applied to a filtered view")
             return 0
         baseline = load_baseline(args.baseline)
-        verdict = ratchet(computed[0], books, baseline, args.threshold)
+        near = args.near if args.near is not None else load_near(args.baseline)
+        verdict = ratchet(computed[0], books, baseline, args.threshold, near=near,
+                          add_near=args.write_baseline and near is not None)
         unmeasured = len(books - {record.book for record in computed[0].values()})
         for line in (verdict.kept + verdict.unquiet + verdict.improved
                      + verdict.failed + verdict.failing):
@@ -755,7 +813,8 @@ def main(argv: list[str] | None = None) -> int:
                 # entries the ratchet would keep (unmeasured at the current
                 # closure): an allowance adds, it never forgets a defect.
                 entries = dict(verdict.proposed)
-                entries.update(regression_baseline(computed[0], args.threshold))
+                entries.update(regression_baseline(
+                    computed[0], args.threshold if near is None else min(near, args.threshold)))
             elif verdict.failing:
                 print(f"proof_cost: refusing to write {args.baseline}: "
                       f"{len(verdict.failing)} book(s) above would be added or "
@@ -763,7 +822,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             else:
                 entries = verdict.proposed
-            write_baseline(args.baseline, entries, args.threshold)
+            write_baseline(args.baseline, entries, args.threshold, near)
             print(f"proof_cost: wrote {args.baseline} with {len(entries)} book(s) "
                   f"(was {len(baseline)})")
             return 0
