@@ -1131,6 +1131,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-catchup \
 	tests/acl2/peer-catchup-tests \
 	books/protocol-table \
+	books/protocol-builders \
 	books/protocol-codes \
 	books/protocol-framing \
 	tests/acl2/protocol-codes-tests \

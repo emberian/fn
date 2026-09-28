@@ -30,6 +30,18 @@
 ;              arm's (books/served-catalog.lisp fn-nntp-archive-command-cat,
 ;              the served one once sca-join-5 lands); :xref the Xref arm's
 ;              (books/nntp-xref.lisp, books/nntp-reader-compat.lisp).
+;   :live      the function that ANSWERS each form of the command in the composed
+;              served environment, in the order the served dispatcher
+;              (books/served-catalog.lisp fn-nntp-archive-command-cat, which
+;              fn-scr-command calls) tries its arms: (FORM FUNCTION).  The
+;              served environment always names an Xref server, so
+;              fn-nntp-xref-reply answers OVER/XOVER before the -cat arm and
+;              fn-rcompat-reply answers ARTICLE/HEAD before the catalog
+;              retrievals (sca-join-4's record, "F2 lookup counts").  Subject
+;              of the equality: fn-nntp-archive-command-cat-is-pinned and
+;              fn-scr-command-is-command-pinned.  sca-join-5 moves the live
+;              arm of ARTICLE/HEAD by number, GROUP and LISTGROUP to the
+;              catalog; its lane updates these values when it lands.
 ;   :framing   :command, or :article when the reply hands the connection to
 ;              article mode (POST's 340).  A pinned connection may be sent
 ;              only :command replies unsolicited: books/nntp-auth-fold.lisp's
@@ -254,6 +266,19 @@
   (let ((row (fn-proto-row name rows)))
     (fn-proto-text-in key (fn-proto-row-replies row))))
 
+;; `(fn-proto-text * KEY)': a reply the dispatcher shares among rows (the
+;; transit refusal, the projection refusal, the withdrawn answers): the text
+;; KEY has in every row that lists it literally, or nil if two rows differ.
+(defun fn-proto-shared-text (key rows text)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (let ((here (fn-proto-text-in key (fn-proto-row-replies (car rows)))))
+        (cond ((null here) (fn-proto-shared-text key (cdr rows) text))
+              ((or (null text) (equal here text))
+               (fn-proto-shared-text key (cdr rows) here))
+              (t nil)))
+    text))
+
 (defmacro defprotocol (name &rest rows)
   `(progn
      (defconst ,name ',rows)
@@ -265,7 +290,9 @@
        (fn-proto-pseudo-codes :unrecognized ,name))
      (defconst *fn-proto-article-framing* (fn-proto-article-framing-names ,name))
      (defmacro fn-proto-text (command key)
-       (let ((text (fn-proto-text-of command key ,name)))
+       (let ((text (if (eq command '*)
+                       (fn-proto-shared-text key ,name nil)
+                     (fn-proto-text-of command key ,name))))
          (if (stringp text)
              text
            (er hard 'fn-proto-text
@@ -283,6 +310,7 @@
    :rfc "RFC 3977 5.2" :dispatch :session
    :parser (fn-nntp-keyword-tokenp)
    :model (fn-nntp-capabilities) :cat nil :xref nil
+   :live (("any" fn-nntp-capabilities))
    :framing :command
    :fuzz ((:opt 1/5 (:choice "x" "AUTOUPDATE")))
    :replies ((101 :accepted :reader :list "101 capability list follows")
@@ -295,6 +323,7 @@
    :rfc "RFC 3977 7.2" :dispatch :session
    :parser nil
    :model (fn-nntp-help) :cat nil :xref nil
+   :live (("any" fn-nntp-help))
    :framing :command
    :fuzz ()
    :replies ((100 :accepted :reader :text "100 help text follows")
@@ -305,6 +334,7 @@
    :rfc "RFC 3977 5.3; RFC 4644 2.3 (MODE STREAM)" :dispatch :session
    :parser (fn-nntp-keywordp)
    :model (fn-nntp-mode-response) :cat nil :xref nil
+   :live (("any" fn-nntp-mode-response))
    :framing :command
    :fuzz ((:choice "READER" "STREAM" "" "reader" "POSTER" "X"))
    :replies ((200 :accepted :reader :posting "200 posting allowed")
@@ -319,6 +349,7 @@
    :rfc "RFC 3977 5.4" :dispatch :session
    :parser nil
    :model (fn-nntp-session-command) :cat nil :xref nil
+   :live (("any" fn-nntp-session-command))
    :framing :command
    :fuzz ()
    :replies ((205 :accepted :reader :closing "205 closing connection")
@@ -329,6 +360,7 @@
    :rfc "RFC 3977 6.1.1" :dispatch :archive
    :parser (fn-nntp-printable-tokenp)
    :model (fn-nntp-group-result) :cat (fn-nntp-group-result-cat) :xref nil
+   :live (("name" fn-nntp-group-result-cat))
    :framing :command
    :fuzz ((:pool :groups) (:opt 1/20 "x"))
    :replies ((211 :accepted :reader :selected "211 COUNT LOW HIGH GROUP" :computed)
@@ -343,6 +375,7 @@
    :parser (fn-nntp-printable-tokenp fn-nntp-parse-range)
    :model (fn-gidx-listgroup-command fn-nntp-listgroup-command)
    :cat (fn-nntp-listgroup-command-cat) :xref nil
+   :live (("any" fn-nntp-listgroup-command-cat))
    :framing :command
    :fuzz ((:opt 4/5 (:pool :groups) (:opt 1/2 (:pool :ranges))))
    :replies ((211 :accepted :reader :listed "211 COUNT LOW HIGH GROUP list follows" :computed)
@@ -357,6 +390,7 @@
    :rfc "RFC 3977 6.1.3" :dispatch :archive
    :parser nil
    :model (fn-nntp-next-or-last) :cat nil :xref nil
+   :live (("any" fn-nntp-next-or-last))
    :framing :command
    :fuzz ()
    :replies ((223 :accepted :reader :moved "223 NUMBER MESSAGE-ID retrieved" :computed)
@@ -375,6 +409,7 @@
    :rfc "RFC 3977 6.1.4" :dispatch :archive
    :parser nil
    :model (fn-nntp-next-or-last) :cat nil :xref nil
+   :live (("any" fn-nntp-next-or-last))
    :framing :command
    :fuzz ()
    :replies ((223 :accepted :reader :moved "223 NUMBER MESSAGE-ID retrieved" :computed)
@@ -394,6 +429,7 @@
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref (fn-rcompat-retrieval)
+   :live (("withdrawn" fn-nntp-withdrawn-reply) ("any" fn-rcompat-retrieval))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
    :replies ((220 :accepted :reader :sent "220 NUMBER MESSAGE-ID article follows" :computed)
@@ -418,6 +454,7 @@
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref (fn-rcompat-retrieval)
+   :live (("withdrawn" fn-nntp-withdrawn-reply) ("any" fn-rcompat-retrieval))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
    :replies ((221 :accepted :reader :sent "221 NUMBER MESSAGE-ID headers follow" :computed)
@@ -442,6 +479,7 @@
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref nil
+   :live (("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-retrieval))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
    :replies ((222 :accepted :reader :sent "222 NUMBER MESSAGE-ID body follows" :computed)
@@ -466,6 +504,7 @@
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
    :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref nil
+   :live (("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-retrieval))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
    :replies ((223 :accepted :reader :sent "223 NUMBER MESSAGE-ID retrieved" :computed)
@@ -489,6 +528,7 @@
    :parser (fn-nntp-parse-range fn-nntp-message-id-tokenp)
    :model (fn-nntp-over-response fn-nntp-over-range-indexed)
    :cat (fn-nntp-over-range-cat) :xref (fn-nntp-xref-reply)
+   :live (("range" fn-nntp-over-range-served) ("current" fn-nntp-over-current-served) ("msgid" fn-nntp-over-msgid-served))
    :framing :command
    :fuzz ((:opt 4/5 (:pool+msgid :ranges)))
    :replies ((224 :accepted :reader :overview "224 overview information follows")
@@ -510,6 +550,7 @@
    :parser (fn-nntp-parse-range)
    :model (fn-nntp-xover-response fn-nntp-over-range-indexed)
    :cat (fn-nntp-over-range-cat) :xref (fn-nntp-xref-reply)
+   :live (("range" fn-nntp-over-range-served) ("current" fn-nntp-over-current-served) ("other" fn-nntp-xover-response))
    :framing :command
    :fuzz ((:opt 4/5 (:pool+msgid :ranges)))
    :replies ((224 :accepted :reader :overview "224 overview information follows")
@@ -532,6 +573,7 @@
    :model (fn-nntp-hdr-response fn-nntp-verdict-hdr-response
            fn-nntp-control-hdr-response fn-nntp-enrollment-hdr-response)
    :cat (fn-nntp-hdr-command-cat) :xref (fn-nntp-xref-reply fn-rcompat-hdr)
+   :live ((":fn-verified" fn-nntp-verdict-hdr-response) (":fn-control" fn-nntp-control-hdr-response) (":fn-enrollment" fn-nntp-enrollment-hdr-response) ("Xref" fn-rcompat-hdr) ("other" fn-nntp-hdr-command-cat))
    :framing :command
    :fuzz ((:pool :header-fields) (:opt 7/10 (:pool+msgid :ranges)))
    :replies ((225 :accepted :reader :headers "225 headers follow")
@@ -554,6 +596,7 @@
    :parser (fn-nntp-parse-range fn-nntp-message-id-tokenp)
    :model (fn-nntp-xhdr-response) :cat (fn-nntp-hdr-command-cat)
    :xref (fn-nntp-xref-reply fn-rcompat-hdr)
+   :live (("Xref" fn-rcompat-hdr) ("other" fn-nntp-hdr-command-cat))
    :framing :command
    :fuzz ((:pool :header-fields) (:opt 7/10 (:pool+msgid :ranges)))
    :replies ((221 :accepted :reader :header "221 header follows")
@@ -574,6 +617,7 @@
    :rfc "RFC 2980 2.9" :dispatch :archive
    :parser (fn-nntp-parse-range fn-nntp-message-id-tokenp fn-wildmat-parse)
    :model (fn-nntp-xpat-response) :cat (fn-nntp-xpat-response-cat) :xref nil
+   :live (("any" fn-nntp-xpat-response-cat))
    :framing :command
    :fuzz ((:pool :header-names) (:pool+msgid :ranges) (:pool :wildmats))
    :replies ((221 :accepted :reader :header "221 header follows")
@@ -590,6 +634,7 @@
    :parser (fn-nntp-keyword-tokenp fn-wildmat-parse)
    :model (fn-nntp-list-command fn-gidx-list-counts-command)
    :cat (fn-nntp-list-counts-command-cat) :xref (fn-nntp-xref-reply fn-rcompat-reply)
+   :live (("COUNTS" fn-nntp-list-counts-command-cat) ("OVERVIEW.FMT" fn-nntp-list-overview-fmt-served) ("ACTIVE.TIMES" fn-rcompat-active-times) ("SUBSCRIPTIONS" fn-rcompat-subscriptions) ("other" fn-nntp-list-command))
    :framing :command
    :fuzz ((:alt ()
                ("ACTIVE" (:opt 1/2 (:pool :wildmats)))
@@ -627,6 +672,7 @@
    :rfc "RFC 3977 7.3" :dispatch :archive
    :parser (fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse)
    :model (fn-nntp-newgroups-response) :cat nil :xref (fn-rcompat-reply)
+   :live (("any" fn-rcompat-newgroups))
    :framing :command
    :fuzz ((:bound :date 0) (:bound :date 1) (:opt 2/5 (:choice "GMT" "UTC" "gmt" "X")))
    :replies ((231 :accepted :reader :listed "231 list of new newsgroups follows")
@@ -640,6 +686,7 @@
    :rfc "RFC 3977 7.4" :dispatch :archive
    :parser (fn-wildmat-parse fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse)
    :model (fn-nntp-newnews-response) :cat nil :xref nil
+   :live (("any" fn-nntp-newnews-response))
    :framing :command
    :fuzz ((:pool :wildmats) (:bound :date 0) (:bound :date 1) (:opt 2/5 (:choice "GMT" "UTC" "gmt" "X")))
    :replies ((230 :accepted :reader :listed "230 list of new articles by message-id follows")
@@ -653,6 +700,7 @@
    :rfc "RFC 3977 7.1" :dispatch :session
    :parser nil
    :model (fn-nntp-date-response) :cat nil :xref nil
+   :live (("any" fn-nntp-date-response))
    :framing :command
    :fuzz ()
    :replies ((111 :accepted :reader :date "111 YYYYMMDDhhmmss" :computed)
@@ -666,6 +714,7 @@
    :rfc "RFC 3977 6.3.1; RFC 5537 3.5" :dispatch :session
    :parser nil
    :model (fn-nntp-post-offer fn-nntp-post-step) :cat nil :xref nil
+   :live (("any" fn-nntp-post-offer))
    :framing :article
    :fuzz ((:opt 1/20 "x"))
    :replies ((340 :accepted :reader :send "340 send article to be posted")
@@ -689,6 +738,7 @@
    :rfc "RFC 3977 6.3.2" :dispatch :peer
    :parser (fn-nntp-message-id-tokenp)
    :model (fn-peer-command) :cat nil :xref nil
+   :live (("reader" fn-nntp-session-command) ("peer" fn-peer-command))
    :framing :command
    :fuzz ((:bound :mid 0))
    :replies ((502 :refused :reader :transit "502 transit is not permitted on this connection")
@@ -708,6 +758,7 @@
    :rfc "RFC 4644 2.3" :dispatch :peer
    :parser (fn-nntp-message-id-tokenp)
    :model (fn-peer-command) :cat nil :xref nil
+   :live (("reader" fn-nntp-session-command) ("peer" fn-peer-command))
    :framing :command
    :fuzz ((:msgid))
    :replies ((502 :refused :reader :transit "502 transit is not permitted on this connection")
@@ -721,6 +772,7 @@
    :rfc "RFC 4644 2.4" :dispatch :peer
    :parser (fn-nntp-message-id-tokenp)
    :model (fn-peer-command) :cat nil :xref nil
+   :live (("reader" fn-nntp-session-command) ("peer" fn-peer-command))
    :framing :command
    :fuzz ((:bound :mid 0))
    :replies ((502 :refused :reader :transit "502 transit is not permitted on this connection")
@@ -734,6 +786,7 @@
    :rfc "RFC 4643 2.3" :dispatch :auth
    :parser (fn-auth-token-argp)
    :model (fn-auth-authinfo) :cat nil :xref nil
+   :live (("any" fn-auth-authinfo))
    :framing :command
    :fuzz ((:cases (("USER" (:choice "fuzz" "nobody" "" (:rep "u" 600)))
                    ("PASS" (:choice "fuzz-password" "wrong" "" (:rep "p" 600))))
@@ -755,6 +808,7 @@
    :rfc "RFC 4642 2.2" :dispatch :auth
    :parser nil
    :model (fn-auth-starttls) :cat nil :xref nil
+   :live (("any" fn-auth-starttls))
    :framing :command
    :fuzz ()
    :replies ((382 :accepted :auth :continue "382 continue with TLS negotiation")
@@ -764,9 +818,10 @@
    :faq "Turns on TLS on this connection before you log in.")
 
   ("XREDEEM"
-   :rfc "fn (PRF-164)" :dispatch :auth
+   :rfc "fn extension, PRF-164" :dispatch :auth
    :parser (fn-auth-token-argp)
    :model (fn-auth-xredeem fn-auth-redeem-outcome) :cat nil :xref nil
+   :live (("any" fn-auth-xredeem))
    :framing :command
    :fuzz ((:rep-choice ("code" "" (:rep "x" 600)) 3))
    :replies ((381 :accepted :auth :password "381 send the password with XREDEEM PASS")
@@ -780,9 +835,10 @@
    :faq "Redeems an invitation code for a login.")
 
   ("XFNCATCHUP"
-   :rfc "fn (PRF-325, NNT-053)" :dispatch :pinned
+   :rfc "fn extension, PRF-325" :dispatch :pinned
    :parser (fn-cu-parse-request)
    :model (fn-cu-serve-reply) :cat nil :xref nil
+   :live (("any" fn-cu-serve-reply))
    :framing :command
    :fuzz ((:pool :wildmats) (:pool :ranges) (:choice "0" "x") (:pool :ranges))
    :replies ((291 :accepted :reader :batch "291 NEXT END done|more CHAIN" :computed)
@@ -813,7 +869,7 @@
   ("(connection)"
    :rfc "RFC 3977 5.1" :dispatch :connection
    :parser nil
-   :model (fn-served-greeting fn-exp-admit) :cat nil :xref nil
+   :model (fn-served-greeting fn-exp-admit-decision) :cat nil :xref nil
    :framing :command
    :replies ((200 :accepted :connection :greeting-posting "200 fn-nntp experimental server ready")
              (201 :accepted :connection :greeting "201 fn-nntp experimental reader ready")
