@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 
@@ -956,6 +957,42 @@ class FrictionTests(unittest.TestCase):
         self.assertIn("no farm run started", text)
         self.assertIn("form starting at host/io.lisp:1 never closes", text)
         self.assertEqual(fake.commands, [])
+
+    def test_a_selection_the_runner_refuses_is_refused_before_the_sync(self):
+        # shared-books: a book in no Makefile root's closure cost a whole mirror.
+        fake = Fake([])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            seed_books(root)
+            (root / "tools").mkdir(exist_ok=True)
+            (root / "tools" / "certify_books.py").write_text(
+                "import sys\nprint('certify_books: in no Makefile root closure: '"
+                " + sys.argv[-1], file=sys.stderr)\nsys.exit(2)\n")
+            with driving(fake, root / "cache"):
+                with self.assertRaises(farm.FarmError) as refused:
+                    farm.submit("persvati", root, [], jobs=2, timeout_seconds=60,
+                                affected_by=["books/alpha"])
+        text = str(refused.exception)
+        self.assertIn("before any sync", text)
+        self.assertIn("in no Makefile root closure: books/alpha", text)
+        self.assertEqual(fake.commands, [])
+
+    def test_submit_with_no_box_picks_the_least_loaded(self):
+        picked = farm.pick_host(lambda *a, **k: SimpleNamespace(returncode=0,
+                                                               stdout="persvati\n"))
+        self.assertEqual(picked, "persvati")
+        with self.assertRaises(farm.FarmError):
+            farm.pick_host(lambda *a, **k: SimpleNamespace(returncode=3, stdout=""))
+        calls = []
+        with mock.patch.object(farm, "pick_host", lambda: "hbox"), \
+                mock.patch.object(farm, "submit",
+                                  lambda host, root, books, *a, **k: calls.append(
+                                      (host, books)) or "run-x"), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(farm.main(["submit", "books/wire", "books/x"]), 0)
+            self.assertEqual(farm.main(["submit", "auto", "books/y"]), 0)
+        self.assertEqual(calls, [("hbox", ["books/wire", "books/x"]), ("hbox", ["books/y"])])
 
     def test_valid_words_with_lisp_suffix_pass_validation(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -2588,9 +2588,38 @@ def run_remote(args, argv: list[str]) -> int:
     return done.returncode
 
 
+def resolve_auto_host(args, picker=None) -> str:
+    """`--host auto`: a session's own box, else the least loaded one now.
+
+    A command about an existing session (send, send-range, resync, status,
+    stop, and probe beside it) goes where that session was started
+    (remote.json); `start` and the machine-wide `list`/`reap` pick the box
+    with the lowest load per core (tools/boxes.sh --pick prints both).
+    """
+    name = getattr(args, "name", None)
+    if args.command != "start" and name:
+        with contextlib.suppress(OSError, KeyError, json.JSONDecodeError):
+            host = json.loads((session_dir(name) / "remote.json").read_text())["host"]
+            print(f"proof-repl --host auto: session {name!r} is on {host}", flush=True)
+            return host
+        if args.command != "probe":
+            raise SystemExit(f"proof-repl: --host auto: no record here of session {name!r}'s "
+                             "box; name it (--host hbox|persvati)")
+    if picker is None:
+        def picker():
+            done = subprocess.run(["sh", str(ROOT / "tools" / "boxes.sh"), "--pick"],
+                                  stdout=subprocess.PIPE, text=True, check=False)
+            return done.stdout.strip() if done.returncode == 0 else ""
+    host = picker()
+    if host not in REMOTE_TREES:
+        raise SystemExit("proof-repl: --host auto: no build box answered (tools/boxes.sh)")
+    return host
+
+
 def add_remote_options(parser, sync: bool = False) -> None:
     parser.add_argument("--host", default=None, metavar="BOX",
-                        help="run this on BOX (hbox, persvati) in the lane's tree there, "
+                        help="run this on BOX (hbox, persvati, or auto: a session's own "
+                             "box, else the lower load per core) in the lane's tree there, "
                              "with that box's ACL2 and certificate cache")
     parser.add_argument("--remote-tree", default=None, metavar="PATH",
                         help="with --host: the tree on the box (default: "
@@ -2765,6 +2794,9 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(run=reap)
     argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
+    if getattr(args, "host", None) == "auto":
+        args.host = resolve_auto_host(args)
+        argv = [args.host if word == "auto" else word for word in argv]
     if getattr(args, "host", None):
         return run_remote(args, argv)
     if getattr(args, "acl2", None):

@@ -579,6 +579,22 @@ class RemoteTests(unittest.TestCase):
             proof_repl.refuse_stale_remote("hbox", "/t", relative, lambda *_: None)
         self.assertIn("sha256 absent", str(absent.exception))
 
+    def test_host_auto_follows_the_session_else_picks_the_least_loaded(self):
+        name = "auto-host-test"
+        directory = proof_repl.session_dir(name)
+        directory.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, directory, True)
+        ns = proof_repl.argparse.Namespace
+        start = ns(command="start", name=name)
+        self.assertEqual(proof_repl.resolve_auto_host(start, lambda: "persvati"), "persvati")
+        with self.assertRaises(SystemExit):
+            proof_repl.resolve_auto_host(ns(command="send", name=name), lambda: "hbox")
+        (directory / "remote.json").write_text(json.dumps({"host": "hbox"}))
+        self.assertEqual(proof_repl.resolve_auto_host(ns(command="send", name=name),
+                                                      lambda: "persvati"), "hbox")
+        with self.assertRaises(SystemExit):
+            proof_repl.resolve_auto_host(start, lambda: "")
+
     def test_the_sync_is_tools_and_the_closure_never_planning(self):
         files = proof_repl.sync_files(["books/wildmat"], ["tests/acl2/extra.lisp"])
         self.assertIn("tools/proof_repl.py", files)

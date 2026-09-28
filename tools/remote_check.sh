@@ -4,7 +4,8 @@
 #   tools/remote_check.sh BOX [--target T] [--fetch PATH]... [--no-dirty]
 #                             [--tree PATH] [--log PATH]
 #
-# BOX is hbox or persvati.  The laptop is not a build box (closeout-common,
+# BOX is hbox, persvati or auto (tools/boxes.sh --pick: the lower load per
+# core now; it prints both loads and the choice).  The laptop is not a build box (closeout-common,
 # 2026-09-27): every repo-wide Python step runs there.  This does, in order:
 #   1. bundles the commits of HEAD the box's mirror does not have yet (git
 #      bundle over the mirror's refs; the whole history only the first time);
@@ -64,6 +65,9 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+if [ "$BOX" = auto ]; then
+    BOX=$(sh "$(dirname "$0")/boxes.sh" --pick) || exit 3
+fi
 case $BOX in
     hbox) BASE=/tank/fn/scratch; WRAP=swarm-build ;;
     persvati) BASE='$HOME/fn-gates'; WRAP= ;;

@@ -434,6 +434,26 @@ def refuse_bad_book_names(root: Path, books: list[str], affected_by: list[str],
         raise FarmError("no farm run started: " + "; ".join(problems))
 
 
+def refuse_unselectable(root: Path, books: list[str], affected_by: list[str],
+                        closure: bool) -> None:
+    """Refuse, before any rsync, a selection the box's runner would refuse.
+
+    The box runs exactly `selection_words` as its preflight (exit 13), but
+    only after the whole mirror: shared-books lost a sync to a book in no
+    Makefile root's closure.  The same command here, in this tree, refuses
+    first.
+    """
+    words = selection_words(books, affected_by, closure)
+    if not (root / words[1]).is_file():
+        return  # no runner in this tree: the box's preflight says so (exit 10)
+    done = subprocess.run([sys.executable, *words[1:]], cwd=root, capture_output=True,
+                          text=True, check=False)
+    if done.returncode != 0:
+        raise FarmError("no farm run started: the runner refuses this selection here, "
+                        "before any sync: "
+                        + (done.stderr.strip() or done.stdout.strip())[-600:])
+
+
 def refuse_unbalanced_sources(root: Path) -> None:
     """Refuse, before any rsync or ssh, a tree with an unbalanced form.
 
@@ -652,6 +672,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
                         "install; --closure and --require-origin do not make one")
     refuse_unmerged_source(root)
     refuse_bad_book_names(root, books, affected_by, list(recertify))
+    refuse_unselectable(root, books, affected_by, closure)
     refuse_unbalanced_sources(root)
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
@@ -1211,6 +1232,20 @@ def uncited_in_selection(root: Path, books: list[str], affected_by: list[str]) -
     return certified_claims.uncited_books(root, certify_books.with_dependencies(roots))
 
 
+def pick_host(runner=subprocess.run) -> str:
+    """The build box with the lowest load per core now (tools/boxes.sh --pick).
+
+    It prints both loads and the choice on stderr; `submit` names the box in
+    the run id's line, so `wait` can be told it.
+    """
+    done = runner(["sh", str(Path(__file__).resolve().parent / "boxes.sh"), "--pick"],
+                  stdout=subprocess.PIPE, text=True, check=False)
+    host = (done.stdout or "").strip()
+    if done.returncode != 0 or host not in HOSTS:
+        raise FarmError("no farm run started: no build box answered (tools/boxes.sh)")
+    return host
+
+
 def cache_summary(record: dict) -> str:
     """What `submit` installed for a run, from its local record, in one word.
 
@@ -1229,7 +1264,8 @@ def cache_summary(record: dict) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=("submit", "wait", "status"))
-    parser.add_argument("host")
+    parser.add_argument("host", help="hbox or persvati; submit: 'auto' (or no box at "
+                                     "all) picks the one with the lowest load per core")
     parser.add_argument("rest", nargs="*",
                         help="submit: book roots; wait: the run id")
     parser.add_argument("--jobs", type=int,
@@ -1276,6 +1312,14 @@ def main(argv: list[str] | None = None) -> int:
                              "certificates installable in any local worktree")
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
+    if arguments.action == "submit" and arguments.host not in HOSTS:
+        if arguments.host != "auto":
+            # `farm.py submit books/x`: no box named, so the first word is a book.
+            arguments.rest.insert(0, arguments.host)
+        arguments.host = pick_host()
+    elif arguments.host == "auto":
+        parser.error(f"{arguments.action} needs the box the run is on (its submit "
+                     "printed it); auto picks a box only for submit")
     if arguments.action == "submit" and arguments.recertify_uncited:
         arguments.recertify = sorted(set(arguments.recertify)
                                      | set(uncited_in_selection(
@@ -1295,6 +1339,8 @@ def main(argv: list[str] | None = None) -> int:
                                 require_origin=arguments.require_origin,
                                 recertify=list(arguments.recertify))
             print(identifier)
+            print(f"{identifier}: on {arguments.host}; wait with `farm.py wait "
+                  f"{arguments.host} {identifier}`", file=sys.stderr)
             return 0
         if arguments.action == "wait":
             if len(arguments.rest) != 1:
