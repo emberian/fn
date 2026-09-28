@@ -72,14 +72,6 @@
 (defun fn-anchor-host-frame-limit ()
   (+ *fn-anchor-max-payload* *fn-frame-overhead-octets*))
 
-(defun fn-anchor-host-replace-start () (fn-anchor-rp-start))
-(defun fn-anchor-host-recover-start (presentp)
-  (fn-anchor-rp-recover-start presentp))
-(defun fn-anchor-host-replace-action (phase) (fn-anchor-rp-action phase))
-(defun fn-anchor-host-replace-step (phase event)
-  (fn-anchor-rp-step phase event))
-(defun fn-anchor-host-replace-outcome (phase) (fn-anchor-rp-outcome phase))
-
 ; Accepting one observation into the node's durable anchor state.
 (defun fn-anchor-host-accept (pinned latest-fields incarnation fields verdict
                               one-nonce)
@@ -88,22 +80,6 @@
                                   incarnation)
                   (fn-anchor-host-fields fields) verdict one-nonce)))
     (list (fn-anchor-status outcome) (fn-anchor-reason outcome))))
-
-; Advancing this node's incarnation under one observation.  OBJ-006: the new
-; incarnation is opened only under an anchor strictly newer than the one the
-; node holds, which `fn-anchor-incarnation-advances-only-under-a-newer-anchor'
-; is about.
-(defun fn-anchor-host-advance (pinned latest-fields incarnation fields verdict
-                               one-nonce)
-  (let ((outcome (fn-anchor-node-advance-observed
-                  (fn-anchor-node pinned (fn-anchor-host-fields latest-fields)
-                                  incarnation)
-                  (fn-anchor-host-fields fields) verdict one-nonce)))
-    (list (fn-anchor-status outcome)
-          (fn-anchor-reason outcome)
-          (if (equal (fn-anchor-status outcome) :accepted)
-              (fn-anchor-node-incarnation (fn-anchor-payload outcome))
-            incarnation))))
 
 ; The restore decision over an image the host read off disk.
 (defun fn-anchor-host-restore (pinned image-incarnation image-fields
@@ -118,16 +94,6 @@
           (if (equal (fn-anchor-status outcome) :accepted)
               (fn-anchor-node-incarnation (fn-anchor-payload outcome))
             image-incarnation))))
-
-; Two images of one origin: fork, the same image, or distinct incarnations.
-(defun fn-anchor-host-pair (left-incarnation left-fields
-                            right-incarnation right-fields)
-  (let ((outcome (fn-anchor-pair-admit
-                  (fn-anchor-image left-incarnation
-                                   (fn-anchor-host-fields left-fields))
-                  (fn-anchor-image right-incarnation
-                                   (fn-anchor-host-fields right-fields)))))
-    (list (fn-anchor-status outcome) (fn-anchor-reason outcome))))
 
 ;; Restore the logic-mode default: the store bridge waits for the
 ;; "ACL2 !>" prompt, and a host file that leaves the session in program

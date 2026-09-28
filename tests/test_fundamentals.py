@@ -55,6 +55,33 @@ class ScoreboardTests(unittest.TestCase):
         self.assertFalse(rows(f8_reserved_mb=2000, f8_reopen_mb=128)["F8"].met)
         self.assertTrue(rows(f8_reserved_mb=2000)["F8"].met)
 
+    def test_f6_from_the_scale_curve_judges_the_next_point_up(self):
+        import json
+        sys.path.insert(0, str(ROOT / "tools"))
+        import scale_curve
+        ns = [1000, 2000, 5000, 10000, 25000, 50000, 100000]
+        # replay grows linearly (0.4 + 0.11 s per 1k), the checkpoint open more slowly.
+        points = {str(n): {"n": n, "values": {
+            "open_replay.s": 0.4 + 0.00011 * n, "open_checkpoint.s": 0.3 + 0.00005 * n,
+            "open_checkpoint.rss_kib": 150000 + 5.0 * n, "open_checkpoint.hwm_kib": 200000 + 10.0 * n,
+            "open_checkpoint.anon_peak_kib": 90000 + 4.0 * n}} for n in ns}
+        curve = {"meta": {"ns": ns, "load_start": ["1"], "load_end": ["1"], "wall_s": 60}, "points": points}
+        curve["fits"] = scale_curve.fit_all(curve)
+        self.assertEqual(curve["fits"]["open_replay.s"]["best"], "N")
+        self.assertAlmostEqual(curve["fits"]["open_replay.s"]["at_1M"], 110.4, places=3)
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "out"
+            shutil.copytree(SCOREBOARD, out)
+            (out / "f6-curve").mkdir()
+            (out / "f6-curve" / "curve.json").write_text(json.dumps(curve))
+            f6 = fundamentals.f6(out, bars())
+            # 25k: 3.15 s replay; 50k: 5.9 s replay -- both under 10 s.
+            self.assertTrue(f6.met, f6.clauses)
+            self.assertIn("5.90 s measured at 50k", f6.clauses[1][2])
+            self.assertFalse(fundamentals.f6(out, bars(f6_bar_s=5)).met)
+            f8 = fundamentals.f8(out, bars())
+            self.assertTrue(any("open_checkpoint.rss_kib fits N" in line for line in f8.raw), f8.raw)
+
     def test_f4_stays_open_until_q_max_and_h_are_named(self):
         f4 = rows()["F4"]
         unknown = [name for name, met, _ in f4.clauses if met is None]
@@ -75,7 +102,7 @@ class ScoreboardTests(unittest.TestCase):
                       "f6-t40k-2k-cp5-asis.json", "f6-t40k-2k-cp5-reckpt.json"):
                 (ev / "out" / f).unlink()
             checklist = Path(tmp) / "release.md"
-            shutil.copy(ROOT / "planning" / "release-v6.7.0.md", checklist)
+            shutil.copy(ROOT / "planning" / "release-v{}.md".format((ROOT / "VERSION").read_text().strip()), checklist)
             before = fundamentals.table_rows(checklist.read_text())
             a = bars(checklist=str(checklist), out=str(ev / "out"), revision="HEAD", write=True)
             with contextlib.redirect_stdout(io.StringIO()):

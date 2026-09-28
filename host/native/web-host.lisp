@@ -313,12 +313,6 @@ exposure admission decides (the id, or NIL when it refused)."
         (fnn-out "LISTENING-WEB ~d" bound-port)
         face))))
 
-(defun fnn-web-stop (service)
-  (declare (ignore service))
-  (let ((face *fnn-web-face*))
-    (when face
-      (setf (fnn-web-face-stop face) t))))
-
 (defun fnn-web-close-face (service)
   "After the workers are joined (the owner's close hooks run then)."
   (declare (ignore service))

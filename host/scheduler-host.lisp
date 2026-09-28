@@ -19,22 +19,6 @@
                               (fn-sched-initial-state config next-tx) state)))
     (value :ready))))
 
-(defun fn-sched-host-get (state)
- (declare (xargs :stobjs state :mode :program))
- (value (f-get-global 'fn-sched-state state)))
-
-(defun fn-sched-host-generation (state)
- (declare (xargs :stobjs state :mode :program))
- (value (fn-sched-generation (f-get-global 'fn-sched-state state))))
-
-(defun fn-sched-host-next-tx (state)
- (declare (xargs :stobjs state :mode :program))
- (value (fn-sched-next-tx (f-get-global 'fn-sched-state state))))
-
-(defun fn-sched-host-retries (state)
- (declare (xargs :stobjs state :mode :program))
- (value (fn-sched-retries (f-get-global 'fn-sched-state state))))
-
 ; One non-tick observation.  ACL2 refuses a malformed event by leaving the
 ; state alone, and the host learns nothing it did not already know.
 (defun fn-sched-host-observe (event state)
@@ -57,17 +41,6 @@
  (let ((selected (fn-sched-selection (f-get-global 'fn-sched-state state)
                                      (f-get-global 'fn-workflow-state state))))
   (value (if (consp selected) (fn-sched-item-work-id selected) :none))))
-
-(defun fn-sched-host-reason (state)
- (declare (xargs :stobjs state :mode :program))
- (value (fn-sched-selection-reason (f-get-global 'fn-sched-state state)
-                                   (f-get-global 'fn-workflow-state state))))
-
-(defun fn-sched-host-passes (work-id state)
- (declare (xargs :stobjs state :mode :program))
- (let ((item (fn-sched-find work-id
-                            (fn-sched-queue (f-get-global 'fn-sched-state state)))))
-  (value (if (consp item) (fn-sched-item-passes item) :none))))
 
 ; The durable decision record for the work the scheduler just selected, as the
 ; protected octets of one FNSC frame.  The host appends the A-CRYPTO trailer
@@ -120,11 +93,3 @@
                 (fn-sched-with-tick ss)))
         (state (f-put-global 'fn-sched-state next state)))
   (value :ready)))
-
-(defun fn-sched-host-decision-count (state)
- (declare (xargs :stobjs state :mode :program))
- (value (len (fn-sched-decisions (f-get-global 'fn-sched-state state)))))
-
-(defun fn-sched-host-queue-ids (state)
- (declare (xargs :stobjs state :mode :program))
- (value (fn-sched-queue (f-get-global 'fn-sched-state state))))

@@ -18,6 +18,7 @@
                   :guard (fn-cbor-octet-listp host-octets)))
   (fn-native-config-listener-addresses host-octets))
 
+;; test-only (tools/host_callers.py): tests/acl2/native-config-tests.lisp
 (defun fn-native-config-host-listener-address (host-octets)
   "The raw owner consumes this ACL2 projection instead of resolving HOST."
   (declare (xargs :mode :program))
