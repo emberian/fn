@@ -28,13 +28,14 @@
 
 ;; The reachable witness: `init''s number for the small preset (the run of
 ;; the full store, unobserved, at init's connections): the hypothesis holds,
-;; the terms add up to it: 1,179 MiB (1,188 MiB before lane f8-reservation,
+;; the terms add up to it: 1,235 MiB with zero-copy-commit's 32 article slots
+;; (48.5 MiB; 1,179 MiB without them, 1,188 MiB before lane f8-reservation,
 ;; printed 1,187 MB under init's own probe's observation).
 (assert! (not (member-equal :run *fn-heap-list-actions*)))
 (assert! (hbt-conclusion :run *hbt-small* *hbt-core* *hbt-nursery* nil
                          (fn-heap-reserve-init-connections)))
 (assert! (equal (fn-heap-init-reservation-octets *hbt-small* *hbt-core* *hbt-nursery*)
-                1236374528))
+                1295094784))
 (assert! (equal (fn-heap-breakdown :run *hbt-small* *hbt-core* *hbt-nursery* nil
                                    (fn-heap-reserve-init-connections))
                 '((:image-dynamic . 147604131)
@@ -46,19 +47,20 @@
                   (:open-per-record . 33554432)
                   (:inflight-lists . 7864320)
                   (:octet-buffers . 50725002)
-                  (:articles . 0)
-                  (:collector-room . 108099417)
-                  (:megabyte-rounding . 279866)
+                  (:articles . 50855936)
+                  (:collector-room . 115364551)
+                  (:megabyte-rounding . 879052)
                   (:image-outside-heap . 214012928)
                   (:thread-stacks . 31457280)
                   (:thread-runtime . 125829120))))
 
 ;; The launcher's figure for the empty store (the :init observation): 780 MB
 ;; before lane f8-reservation (the observation was solved from it), 770 MB
-;; since the payload and the memberships share H.
+;; since the payload and the memberships share H, 826 MB with the article
+;; slots (zero-copy-commit).
 (assert! (equal (fn-heap-mb-of (fn-heap-operation-figure-octets :init *hbt-small* *hbt-core*
                                                                  *hbt-nursery* nil))
-                770))
+                826))
 (assert! (hbt-conclusion :init *hbt-small* *hbt-core* *hbt-nursery* nil 32))
 
 ;; The hypothesis is needed: `store compact' reserves the larger of its list
