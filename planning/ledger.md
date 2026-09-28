@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1432 |
-| Certification roots in the Makefile | 1402 |
-| Books inside the root closure | 1429 |
-| `defthm` and `defthmd` events | 23061 |
-| `defun` events | 15583 |
-| Functions with verified guards | 2963 |
-| Functions declared `:verify-guards nil` and never verified | 1809 |
-| Functions left at the default with an explicit guard | 8540 |
-| Functions left at the default with no guard | 2271 |
-| `assert-event` checks | 20311 |
-| `must-fail` checks | 2258 |
+| Books read | 1436 |
+| Certification roots in the Makefile | 1405 |
+| Books inside the root closure | 1433 |
+| `defthm` and `defthmd` events | 23100 |
+| `defun` events | 15622 |
+| Functions with verified guards | 2966 |
+| Functions declared `:verify-guards nil` and never verified | 1829 |
+| Functions left at the default with an explicit guard | 8554 |
+| Functions left at the default with no guard | 2273 |
+| `assert-event` checks | 20326 |
+| `must-fail` checks | 2264 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 139 |
 | Theorems flagged SUSPECT by shape | 1100 |
-| Export-hygiene warnings | 279 |
+| Export-hygiene warnings | 280 |
 | Enabled-projection warnings | 49 |
-| Teeth-form warnings | 242 |
-| Include-hygiene warnings | 1945 |
-| Host-names warnings | 1783 |
+| Teeth-form warnings | 246 |
+| Include-hygiene warnings | 1949 |
+| Host-names warnings | 1784 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -493,6 +493,7 @@ that `make certify` requests.
 | `books/native-live-status.lisp` | root | 73 | 57 | 6/10/41/0 | 0 | 0 | 0 |
 | `books/native-mission.lisp` | root | 15 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/native-operator.lisp` | root | 58 | 129 | 0/0/129/0 | 0 | 0 | 2 |
+| `books/native-status-columns.lisp` | closure | 17 | 12 | 1/8/3/0 | 0 | 0 | 0 |
 | `books/nntp-article-block.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/nntp-article-pass.lisp` | root | 19 | 12 | 0/0/10/2 | 0 | 0 | 2 |
 | `books/nntp-auth-fold.lisp` | root | 67 | 4 | 0/3/1/0 | 0 | 0 | 0 |
@@ -730,7 +731,7 @@ that `make certify` requests.
 | `books/served-catalog-join.lisp` | root | 23 | 2 | 0/1/0/1 | 0 | 0 | 3 |
 | `books/served-catalog-owner.lisp` | root | 87 | 18 | 2/3/10/3 | 0 | 0 | 5 |
 | `books/served-catalog-view.lisp` | root | 62 | 24 | 6/0/17/1 | 0 | 0 | 0 |
-| `books/served-catalog.lisp` | root | 113 | 44 | 23/1/19/1 | 0 | 0 | 4 |
+| `books/served-catalog.lisp` | root | 126 | 53 | 25/1/26/1 | 0 | 0 | 4 |
 | `books/served-columns.lisp` | root | 50 | 19 | 2/2/14/1 | 0 | 0 | 0 |
 | `books/served-implicit-tls.lisp` | root | 5 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/served-plan.lisp` | root | 33 | 24 | 0/1/23/0 | 0 | 0 | 2 |
@@ -774,6 +775,7 @@ that `make certify` requests.
 | `books/store-events-carried.lisp` | root | 24 | 13 | 0/0/13/0 | 0 | 0 | 1 |
 | `books/store-events.lisp` | root | 2 | 26 | 15/9/2/0 | 0 | 0 | 1 |
 | `books/store-existing-alpha.lisp` | root | 3 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/store-export-stream.lisp` | root | 6 | 8 | 0/4/4/0 | 0 | 0 | 0 |
 | `books/store-export.lisp` | root | 16 | 26 | 6/2/18/0 | 0 | 0 | 0 |
 | `books/store-files-invariants.lisp` | root | 62 | 4 | 0/1/0/3 | 0 | 0 | 2 |
 | `books/store-files-traces.lisp` | root | 51 | 12 | 0/0/0/12 | 0 | 0 | 0 |
@@ -1213,6 +1215,7 @@ that `make certify` requests.
 | `tests/acl2/native-mission-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 23 | 5 | 0 |
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
 | `tests/acl2/native-operator-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 300 | 28 | 0 |
+| `tests/acl2/native-status-columns-tests.lisp` | root | 0 | 8 | 0/8/0/0 | 6 | 4 | 0 |
 | `tests/acl2/nntp-article-block-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 17 | 0 | 0 |
 | `tests/acl2/nntp-auth-fold-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/nntp-auth-teeth-tests.lisp` | root | 0 | 27 | 0/14/0/13 | 346 | 88 | 0 |
@@ -1374,7 +1377,7 @@ that `make certify` requests.
 | `tests/acl2/served-catalog-join-tests.lisp` | root | 7 | 6 | 0/3/0/3 | 22 | 0 | 1 |
 | `tests/acl2/served-catalog-owner-tests.lisp` | root | 0 | 25 | 0/5/0/20 | 43 | 2 | 0 |
 | `tests/acl2/served-catalog-scan-tests.lisp` | root | 0 | 10 | 0/6/0/4 | 9 | 0 | 0 |
-| `tests/acl2/served-catalog-tests.lisp` | root | 22 | 2 | 0/0/0/2 | 0 | 9 | 0 |
+| `tests/acl2/served-catalog-tests.lisp` | root | 25 | 3 | 0/0/0/3 | 0 | 11 | 0 |
 | `tests/acl2/served-catalog-view-tests.lisp` | root | 5 | 1 | 0/0/0/1 | 0 | 1 | 0 |
 | `tests/acl2/served-columns-tests.lisp` | root | 3 | 10 | 0/6/4/0 | 3 | 3 | 0 |
 | `tests/acl2/served-implicit-tls-tests.lisp` | root | 0 | 7 | 0/3/0/4 | 23 | 2 | 0 |
@@ -1409,6 +1412,7 @@ that `make certify` requests.
 | `tests/acl2/store-events-carried-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 58 | 11 | 0 |
 | `tests/acl2/store-events-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/store-existing-alpha-tests.lisp` | root | 0 | 8 | 0/2/0/6 | 9 | 4 | 0 |
+| `tests/acl2/store-export-stream-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 9 | 0 | 0 |
 | `tests/acl2/store-export-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 59 | 5 | 0 |
 | `tests/acl2/store-files-exploration-tests.lisp` | root | 0 | 29 | 0/0/0/29 | 60 | 0 | 0 |
 | `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 75 | 2 | 0 |
@@ -2193,9 +2197,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sca-withdrawn-of-assign` | `books/served-catalog-owner.lisp` | 952 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sca-withdrawn-of-with-withdrawn` | `books/served-catalog-owner.lisp` | 1072 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scat-article-idp-is-msgid-idp` | `books/served-catalog.lisp` | 524 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scat-built-listgroup-is-fold` | `books/served-catalog.lisp` | 2170 | instance-corollary: the statement is fn-gidx-listgroup-command-of-build instantiated, discharging nothing |
-| `fn-scat-built-trie-corresponds` | `books/served-catalog.lisp` | 2159 | reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-scat-pin-trie-is-built` | `books/served-catalog.lisp` | 2152 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-midx-correspondencep |
+| `fn-scat-built-listgroup-is-fold` | `books/served-catalog.lisp` | 2447 | instance-corollary: the statement is fn-gidx-listgroup-command-of-build instantiated, discharging nothing |
+| `fn-scat-built-trie-corresponds` | `books/served-catalog.lisp` | 2436 | reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-scat-pin-trie-is-built` | `books/served-catalog.lisp` | 2429 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-midx-correspondencep |
 | `fn-scf-debt-from-of-atom` | `books/store-carried-folds.lisp` | 43 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cvec-debt-from and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-cvec-debt-from and the conclusion is that branch's value |
 | `fn-scf-tally-records-of-atom` | `books/store-carried-folds.lisp` | 49 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-tally-records and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-pcb-tally-records and the conclusion is that branch's value |
 | `fn-sched-mark-expired-keeps-the-fields` | `books/scheduler-invariants.lisp` | 167 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
