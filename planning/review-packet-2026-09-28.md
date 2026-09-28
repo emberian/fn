@@ -67,7 +67,7 @@ Coordinator's (ember may reverse):
 | Deployed stack | Tests ran with a 64 MiB stack; nodes run 1 MiB. At 1 MiB a node could not restart past ~30k articles, and 26 commands killed the owner at 100k. ~320 walks became mbe loops (logic unchanged); a shrink-only lint now fails any new article-depth recursion. Every protocol command completes at 1M. |
 | Page store | COW page store, FNADTSN2 layout, growth proved, BLAKE3 page digest, 570 crash/power cuts with 0 violations. Prototype-host open: 10.5 ms at 100k AND 1M (served open today: 11.2 s / 135 s). |
 | Format 10 | On dev. Import covers every format-9 kind EXCEPT signed topic anchors/admissions, which are refused by name (`:signed-format-9-identity`: their signed sources name format-9 identities format 10 cannot interpret). Signed composites carry byte-for-byte, identities re-derived. (Corrected after GPT-6's review.) |
-| Extraction | Chicken Scheme program extracted from ACL2's translated terms serves a real store byte-identically (9 transcripts, 44,960 generated inputs): 5.3 MB, 14 MB RSS at start vs 466 MB; 3.4x slower per command. |
+| Extraction | Chicken Scheme program extracted from ACL2's translated terms serves a real store byte-identically (9 transcripts, 44,960 generated inputs): 5.3 MB, 14 MB RSS at start (the SBCL production image: 37 MiB RSS at start per image-floor's record; an earlier "466 MB" figure in this packet had no source and is withdrawn); 3.4x slower per command. |
 | Generators | defkeystone (teeth generated from one form; differential clean) and defprotocol (the NNTP table; the dispatcher generated and proved equal to the hand-written one; 342 reply strings from the table). |
 | Web face | The node serves its own HTTP reader; parse/route/render/session decided in ACL2 (every page proved fixed markup or escaped text). 16/16 Chromium checks. Python readers deleted (7,412 lines). |
 | Health and stop | health reports disk stalls/full; POSTs refused before a full disk; the decision journal never keeps a torn line; a graceful stop drains in-flight POSTs, bounded by a proved deadline. |
@@ -124,8 +124,10 @@ SHA-256 and two converters recursing per octet.
    functions. arena-store-7 is moving it (the representation decision in §3).
 3. **The checkpoint rewrites the whole store** every K/2 records: 42 s and 33 GB
    allocated at 100k. Pages make it a dirty-page commit.
-4. **The served image carries ACL2.** 466 MB start vs 30 MiB for plain SBCL without ACL2
-   vs 14 MB extracted. Building the served image without ACL2 is ember's pending go.
+4. **The served image carries ACL2.** The production core is ~122 MB on disk and starts at
+   ~37 MiB RSS (image-floor), 90 MiB of core pages mapped (runtime-floor); plain SBCL
+   without ACL2 starts at 30 MiB; the extracted program at 14 MB. (Corrected: an earlier
+   "466 MB" had no source.) Building the served image without ACL2 is ember's pending go.
 5. **Python grew back.** Tonight deleted ~8,100 lines, but lanes added tools and tests:
    205,107 lines now vs 194,153 last night. The plan (python-diet) reaches 30.5%; the
    generators (defkeystone, defprotocol, defadt) are what can shrink the lint and test
@@ -182,7 +184,7 @@ not yet undertaken.
    layers; the buffer becomes the reserve. *Scout:* the right bound when many
    connections post large articles at once — pooled buffers vs per-connection?
 4. **The served image without ACL2, then the extracted program as the served build.**
-   Plain SBCL without ACL2 is 30 MiB at start (vs 466 MB); the Chicken extraction is
+   Plain SBCL without ACL2 is 30 MiB at start (the ACL2 production image ~37 MiB RSS at start, 90 MiB mapped); the Chicken extraction is
    14 MB and byte-identical on every transcript, 3.4x slower per command (keyword
    matching and record accessors). image-strip (RUNNING) removes prover state the image
    never reads. *Scout:* what would you require before the extracted program serves
