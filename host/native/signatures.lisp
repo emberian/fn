@@ -315,32 +315,6 @@ authorization check binds its observed key bytes to the carrier's key set."
             (list :verified source principal keys)
           (list :unverified :signature received))))))
 
-(defun fnn-hsig-authorized-submission-event
-    (coordinates keyring-generation enrolled-snapshot msgid source groups
-                 obligation-id content-subject release-evidence charge
-                 principal keys signatures ml-public-key-path observation)
-  "Verify once and ask ACL2 to construct the complete fn-r plus kind-4 event."
-  (destructuring-bind (sequence txid generation) coordinates
-    (let ((preimage (fnn-core 'fn-hsig-host-preimage principal keys source)))
-      (unless (and preimage (plusp (length preimage)))
-        (return-from fnn-hsig-authorized-submission-event nil))
-      (let* ((observations
-              (fnn-hsig-observe (cdr (first keys)) ml-public-key-path
-                                preimage signatures))
-             (ml-observation (second observations))
-             (observed-ml-key (and (consp ml-observation)
-                                   (second ml-observation))))
-        (fnn-core
-         'fn-hsig-host-authorized-submission-event
-         sequence txid generation keyring-generation enrolled-snapshot
-         msgid source groups obligation-id content-subject release-evidence
-         charge principal keys signatures
-         (and observed-ml-key (coerce observed-ml-key 'list))
-         (first observations)
-         (if (consp ml-observation) (first ml-observation)
-           ml-observation)
-         observation)))))
-
 (defun fnn-hsig-authorized-carried-submission-event
     (coordinates keyring-generation enrolled-snapshot msgid source received groups
                  obligation-id content-subject release-evidence charge
