@@ -5639,11 +5639,13 @@
           "NativeHeaderLineTests.test_long_fields_folded_are_served_whole_and_a_long_line_is_refused_by_name"
         ],
         "native": true,
-        "record": "planning/evidence/nntp-bugs-2026-09-28.md"
+        "record": "planning/evidence/nntp-bugs-2026-09-28.md",
+        "log": "planning/evidence/nntp-bugs-2026-09-28/native-n3-test_native_header_lines.log"
       },
       "evidence": [
         "tests/test_native_header_lines.py",
-        "planning/evidence/nntp-bugs-2026-09-28.md"
+        "planning/evidence/nntp-bugs-2026-09-28.md",
+        "planning/evidence/nntp-bugs-2026-09-28/native-n3-test_native_header_lines.log"
       ]
     }
   ]
