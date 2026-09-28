@@ -6,14 +6,15 @@
 ; released only by the receipt's evidence, D13).  The operator had no verbs
 ; over it (fitness 2026-09-28: workflow-init, workflow-enqueue,
 ; bp-obligation undertake and request per article, none documented).  This
-; book is the control half: three FNWF record kinds, durable operator events
-; the journal replays (books/frame-journal.lisp appends their codes), kept in
-; the workflow's auxiliary overlay beside the ION evidence
+; book is the control half: one FNWF record kind, durable operator events
+; the journal replays (books/frame-journal.lisp appends its code; one kind,
+; since each kind doubles the frame codec's guard proof), kept in the
+; workflow's auxiliary overlay beside the ION evidence
 ; (books/bp-ion-workflow.lisp fn-bpiw-apply), never in the work records:
 ;
-;   (:carry-pause WORK)    no request is formed for WORK ("*": every work)
-;   (:carry-resume WORK)   the pause ends ("*": every pause)
-;   (:carry-drop WORK REASON)   WORK is carried no more, for REASON, final.
+;   (:carry "pause" WORK "-")     no request is formed for WORK ("*": every work)
+;   (:carry "resume" WORK "-")    the pause ends ("*": every pause)
+;   (:carry "drop" WORK REASON)   WORK is carried no more, for REASON, final.
 ;
 ; A drop stops the carrying; it does not release the Store's pin.  The pin
 ; is the obligation's, and books/retention.lisp releases it only with the
@@ -43,18 +44,23 @@
 
 (defun fn-bpcc-kindp (kind)
   (declare (xargs :guard t))
-  (and (member-equal kind '(:carry-pause :carry-resume :carry-drop)) t))
+  (equal kind :carry))
+
+(defun fn-bpcc-verb (record) (declare (xargs :guard t)) (fn-ag-car (fn-ag-cdr record)))
+(defun fn-bpcc-record-work (record)
+  (declare (xargs :guard t)) (fn-ag-car (fn-ag-cdr (fn-ag-cdr record))))
+(defun fn-bpcc-record-reason (record)
+  (declare (xargs :guard t)) (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr record)))))
 
 (defun fn-bpcc-recordp (record)
   (declare (xargs :guard t))
   (and (true-listp record)
+       (equal (len record) 4)
        (fn-bpcc-kindp (car record))
-       (if (equal (car record) :carry-drop)
-           (and (equal (len record) 3)
-                (fn-bp-journal-textp (cadr record))
-                (fn-bp-journal-textp (caddr record)))
-         (and (equal (len record) 2)
-              (fn-bp-journal-textp (cadr record))))))
+       (member-equal (fn-bpcc-verb record) '("pause" "resume" "drop"))
+       (fn-bp-journal-textp (fn-bpcc-record-work record))
+       (fn-bp-journal-textp (fn-bpcc-record-reason record))
+       t))
 
 (defun fn-bpcc-drop-entry (c work-id)
   (declare (xargs :guard t))
@@ -84,14 +90,14 @@
   (declare (xargs :guard t))
   (if (not (fn-bpcc-recordp record))
       :malformed
-    (let ((kind (car record)) (w (cadr record)))
-      (cond ((equal kind :carry-pause)
+    (let ((kind (fn-bpcc-verb record)) (w (fn-bpcc-record-work record)))
+      (cond ((equal kind "pause")
              (cond ((equal w "*") (if (fn-bpcc-all c) :already-paused nil))
                    ((not (fn-bpcc-workp bp w)) :unknown-work)
                    ((equal (fn-bpcc-work-state c w) :dropped) :dropped)
                    ((equal (fn-bpcc-work-state c w) :paused) :already-paused)
                    (t nil)))
-            ((equal kind :carry-resume)
+            ((equal kind "resume")
              (cond ((equal w "*")
                     (if (or (fn-bpcc-all c) (consp (fn-bpcc-paused c))) nil :not-paused))
                    ((not (fn-bpcc-workp bp w)) :unknown-work)
@@ -118,18 +124,18 @@
 
 (defun fn-bpcc-apply (c record)
   (declare (xargs :guard t))
-  (let ((kind (fn-ag-car record)) (w (fn-ag-car (fn-ag-cdr record)))
+  (let ((kind (fn-bpcc-verb record)) (w (fn-bpcc-record-work record))
         (all (fn-bpcc-all c)) (paused (true-list-fix (fn-bpcc-paused c)))
         (dropped (if (alistp (fn-bpcc-dropped c)) (fn-bpcc-dropped c) nil)))
-    (cond ((equal kind :carry-pause)
+    (cond ((equal kind "pause")
            (if (equal w "*") (list t paused dropped)
              (list all (cons w paused) dropped)))
-          ((equal kind :carry-resume)
+          ((equal kind "resume")
            (if (equal w "*") (list nil nil dropped)
              (list all (fn-bpcc-remove w paused) dropped)))
-          ((equal kind :carry-drop)
+          ((equal kind "drop")
            (list all (fn-bpcc-remove w paused)
-                 (cons (cons w (fn-ag-car (fn-ag-cdr (fn-ag-cdr record)))) dropped)))
+                 (cons (cons w (fn-bpcc-record-reason record)) dropped)))
           (t (list all paused dropped)))))
 
 ; The request gate: PLAN is books/bp-request-plan.lisp fn-bprq-plan's answer
@@ -165,10 +171,13 @@
 ; A drop admitted for W holds W dropped with its reason.
 (defthm fn-bpcc-admitted-drop-drops
   (implies (and (fn-bpcc-admissiblep bp c record)
-                (equal (car record) :carry-drop))
-           (and (equal (fn-bpcc-work-state (fn-bpcc-apply c record) (cadr record)) :dropped)
-                (equal (fn-bpcc-dropped-reason (fn-bpcc-apply c record) (cadr record))
-                       (caddr record)))))
+                (equal (fn-bpcc-verb record) "drop"))
+           (and (equal (fn-bpcc-work-state (fn-bpcc-apply c record)
+                                           (fn-bpcc-record-work record))
+                       :dropped)
+                (equal (fn-bpcc-dropped-reason (fn-bpcc-apply c record)
+                                               (fn-bpcc-record-work record))
+                       (fn-bpcc-record-reason record)))))
 
 ; ---------------------------------------------------------------------------
 ; The operator's reports (`fn operator CONFIG carry list|inspect'), rendered

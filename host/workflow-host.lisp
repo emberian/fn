@@ -170,9 +170,9 @@
 ; (books/bp-carry-control.lisp fn-bpcc-refusal over the installed image).
 (defun fn-workflow-carry-record (verb work-id reason state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((record (cond ((eq verb :pause) (list :carry-pause work-id))
-                       ((eq verb :resume) (list :carry-resume work-id))
-                       ((eq verb :drop) (list :carry-drop work-id reason))
+  (let* ((record (cond ((eq verb :pause) (list :carry "pause" work-id "-"))
+                       ((eq verb :resume) (list :carry "resume" work-id "-"))
+                       ((eq verb :drop) (list :carry "drop" work-id reason))
                        (t nil)))
          (refusal (if record
                       (fn-bpcc-refusal (f-get-global 'fn-workflow-state state)

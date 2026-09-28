@@ -30,21 +30,21 @@
 ; fn-bpcc-drop-is-final: a resume of "*" and a pause of the work leave the
 ; drop; a resume ends a pause.
 (assert-event (equal (fn-bpcc-work-state
-                      (fn-bpcc-apply *bpcc-dropped* '(:carry-resume "*")) "w2")
+                      (fn-bpcc-apply *bpcc-dropped* '(:carry "resume" "*" "-")) "w2")
                      :dropped))
 (assert-event (equal (fn-bpcc-work-state
-                      (fn-bpcc-apply *bpcc-dropped* '(:carry-pause "w2")) "w2")
+                      (fn-bpcc-apply *bpcc-dropped* '(:carry "pause" "w2" "-")) "w2")
                      :dropped))
 (assert-event (null (fn-bpcc-work-state
-                     (fn-bpcc-apply *bpcc-paused* '(:carry-resume "w1")) "w1")))
+                     (fn-bpcc-apply *bpcc-paused* '(:carry "resume" "w1" "-")) "w1")))
 (assert-event (equal (fn-bpcc-dropped-reason
-                      (fn-bpcc-apply (fn-bpcc-initial) '(:carry-drop "w4" "no route")) "w4")
+                      (fn-bpcc-apply (fn-bpcc-initial) '(:carry "drop" "w4" "no route")) "w4")
                      "no route"))
 
 ; The refusals by name over an image with no works.
-(assert-event (equal (fn-bpcc-refusal nil (fn-bpcc-initial) '(:carry-pause "w1")) :unknown-work))
-(assert-event (null (fn-bpcc-refusal nil (fn-bpcc-initial) '(:carry-pause "*"))))
-(assert-event (equal (fn-bpcc-refusal nil (list t nil nil) '(:carry-pause "*")) :already-paused))
-(assert-event (equal (fn-bpcc-refusal nil (fn-bpcc-initial) '(:carry-resume "*")) :not-paused))
-(assert-event (equal (fn-bpcc-refusal nil (fn-bpcc-initial) '(:carry-drop "*" "x")) :unknown-work))
-(assert-event (equal (fn-bpcc-refusal nil (fn-bpcc-initial) '(:carry-drop "w1")) :malformed))
+(assert-event (equal (fn-bpcc-refusal nil (fn-bpcc-initial) '(:carry "pause" "w1" "-")) :unknown-work))
+(assert-event (null (fn-bpcc-refusal nil (fn-bpcc-initial) '(:carry "pause" "*" "-"))))
+(assert-event (equal (fn-bpcc-refusal nil (list t nil nil) '(:carry "pause" "*" "-")) :already-paused))
+(assert-event (equal (fn-bpcc-refusal nil (fn-bpcc-initial) '(:carry "resume" "*" "-")) :not-paused))
+(assert-event (equal (fn-bpcc-refusal nil (fn-bpcc-initial) '(:carry "drop" "*" "x")) :unknown-work))
+(assert-event (equal (fn-bpcc-refusal nil (fn-bpcc-initial) '(:carry "drop" "w1")) :malformed))

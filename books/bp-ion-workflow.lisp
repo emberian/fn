@@ -188,8 +188,7 @@
                                 fn-arena)))))
 
 (defthm fn-bpiw-ion-record-keeps-bp-state
-  (implies (member-equal (car record) '(:ion-route :ion-observed
-                                        :carry-pause :carry-resume :carry-drop))
+  (implies (member-equal (car record) '(:ion-route :ion-observed :carry))
            (equal (nth 1 (fn-bpiw-apply bp ion record fn-arena)) bp))
   :hints (("Goal" :in-theory
            (e/d (fn-bpiw-apply)
@@ -198,8 +197,7 @@
                  fn-bpcc-admissiblep fn-bpcc-apply)))))
 
 (defthm fn-bpiw-ion-record-emits-no-effects
-  (implies (member-equal (car record) '(:ion-route :ion-observed
-                                        :carry-pause :carry-resume :carry-drop))
+  (implies (member-equal (car record) '(:ion-route :ion-observed :carry))
            (equal (nth 2 (fn-bpiw-apply bp ion record fn-arena)) nil))
   :hints (("Goal" :in-theory
            (e/d (fn-bpiw-apply)
