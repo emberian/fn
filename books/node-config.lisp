@@ -809,14 +809,49 @@
                            (fn-cnode-statep fn-cnode-apply-record
                             fn-cnode-apply-config fn-cnode-record-acceptablep)))))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cnode-config-jrecs-loop (records acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp records)
+      (fn-cnode-config-jrecs-loop (cdr records)
+                                  (cons (fn-jrec-make :config
+                                                      (fn-cfg-record-sequence (car records))
+                                                      (car records))
+                                        acc))
+    (revappend acc nil)))
+
 (defun fn-cnode-config-jrecs (records)
   ; A configuration-only history as the two-kind stream.
-  (declare (xargs :guard t))
-  (if (consp records)
-      (cons (fn-jrec-make :config (fn-cfg-record-sequence (car records))
-                          (car records))
-            (fn-cnode-config-jrecs (cdr records)))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp records)
+           (cons (fn-jrec-make :config (fn-cfg-record-sequence (car records))
+                               (car records))
+                 (fn-cnode-config-jrecs (cdr records)))
+         nil)
+       :exec (fn-cnode-config-jrecs-loop records nil)))
+
+(local
+ (defthm fn-cnode-config-jrecs-loop-is-revappend
+   (equal (fn-cnode-config-jrecs-loop records acc)
+          (revappend acc (fn-cnode-config-jrecs records)))
+   :hints (("Goal" :induct (fn-cnode-config-jrecs-loop records acc)
+                   :in-theory (union-theories '(fn-cnode-config-jrecs-loop fn-cnode-config-jrecs revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cnode-config-jrecs-loop)
+
+(verify-guards fn-cnode-config-jrecs
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cnode-config-jrecs)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cnode-config-jrecs-loop-is-revappend (acc nil))))))
+
 
 (defun fn-cnode-replay (js)
   ; The entry point: the empty configuration, the ceiling cited once.

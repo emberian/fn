@@ -86,13 +86,46 @@
                      (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) mem))))
 
 ; The memory without the disk-slow posture's entries.
-(defun fn-otm-strip-shed (mem)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-otm-strip-shed-loop (mem acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp mem)
       (if (and (consp (car mem)) (equal (car (car mem)) :disk-slow))
-          (fn-otm-strip-shed (cdr mem))
-        (cons (car mem) (fn-otm-strip-shed (cdr mem))))
-    mem))
+          (fn-otm-strip-shed-loop (cdr mem) acc)
+        (fn-otm-strip-shed-loop (cdr mem) (cons (car mem) acc)))
+    (revappend acc mem)))
+
+(defun fn-otm-strip-shed (mem)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp mem)
+           (if (and (consp (car mem)) (equal (car (car mem)) :disk-slow))
+               (fn-otm-strip-shed (cdr mem))
+             (cons (car mem) (fn-otm-strip-shed (cdr mem))))
+         mem)
+       :exec (fn-otm-strip-shed-loop mem nil)))
+
+(local
+ (defthm fn-otm-strip-shed-loop-is-revappend
+   (equal (fn-otm-strip-shed-loop mem acc)
+          (revappend acc (fn-otm-strip-shed mem)))
+   :hints (("Goal" :induct (fn-otm-strip-shed-loop mem acc)
+                   :in-theory (union-theories '(fn-otm-strip-shed-loop fn-otm-strip-shed revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-otm-strip-shed-loop)
+
+(verify-guards fn-otm-strip-shed
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-otm-strip-shed)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-otm-strip-shed-loop-is-revappend (acc nil))))))
+
 
 ; The owner a shed read runs over: connection ID's posting bit off, the
 ; posture's entry at the front of the refused-offer memory.

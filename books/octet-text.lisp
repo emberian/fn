@@ -833,11 +833,42 @@
   (declare (xargs :guard t))
   (if (fn-ot-lowerp o) (- o 32) o))
 
-(defun fn-ot-downcase (xs)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-ot-downcase-loop (xs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp xs)
-      (cons (fn-ot-downcase-octet (car xs)) (fn-ot-downcase (cdr xs)))
-    nil))
+      (fn-ot-downcase-loop (cdr xs) (cons (fn-ot-downcase-octet (car xs)) acc))
+    (revappend acc nil)))
+
+(defun fn-ot-downcase (xs)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp xs)
+           (cons (fn-ot-downcase-octet (car xs)) (fn-ot-downcase (cdr xs)))
+         nil)
+       :exec (fn-ot-downcase-loop xs nil)))
+
+(local
+ (defthm fn-ot-downcase-loop-is-revappend
+   (equal (fn-ot-downcase-loop xs acc)
+          (revappend acc (fn-ot-downcase xs)))
+   :hints (("Goal" :induct (fn-ot-downcase-loop xs acc)
+                   :in-theory (union-theories '(fn-ot-downcase-loop fn-ot-downcase revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ot-downcase-loop)
+
+(verify-guards fn-ot-downcase
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-ot-downcase)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-ot-downcase-loop-is-revappend (acc nil))))))
+
 
 (defun fn-ot-upcase (xs)
   (declare (xargs :guard t))

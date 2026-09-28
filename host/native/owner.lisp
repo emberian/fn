@@ -102,7 +102,12 @@
   (commit-lock (sb-thread:make-mutex :name "fn owner commit"))
   (commit-ready (sb-thread:make-waitqueue :name "fn owner commit ready"))
   ;; guarded-by: fnn-owner-service-commit-lock (every access below takes it)
-  (awaiting (make-hash-table)) (done (make-hash-table)) (sparing nil))
+  (awaiting (make-hash-table)) (done (make-hash-table)) (sparing nil)
+  ;; PKT-875 (books/owner-stop-drain.lisp): set by a graceful stop's drain
+  ;; when ACL2 answers :release (the drain deadline passed); the committer
+  ;; then tells every member in flight uncertain and sheds the queue, as at a
+  ;; stall.  Read and written under COMMIT-LOCK.
+  (drain-release nil))
 
 ;;; Inside a commit quantum (fnn-owner-commit-queued-locked) the effects that
 ;;; would let a member's outcome leave the owner before the log's barrier are
@@ -352,6 +357,11 @@ function supplied no observation at all, which is a defect here."
                      'fn-owner-observe mono wall +fnn-owner-wall-error-ms+ has-wall)))
       (when (eq outcome :invalid)
         (fnn-fault "owner was handed a malformed clock reading"))
+      ;; PRF-359 (PKT-872): the free space, when ACL2 says an observation
+      ;; is due (fn-otm-space-due-p: none yet, or a cadence old), before
+      ;; this read's write admission reads the value.
+      (when *fnn-owner-time-service*
+        (fnn-owner-space-observe-if-due *fnn-owner-time-service*))
       outcome)))
 
 (defun fnn-owner-finish ()
@@ -938,10 +948,30 @@ disk's deadline logic reads (books/owner-time-model.lisp takes it as NOW;
 the host compares no times)."
   (floor (* (get-internal-real-time) 1000) internal-time-units-per-second))
 
+(defun fnn-owner-space-event (service need)
+  "PRF-359 (PKT-872): record the store filesystem's free octets (statvfs,
+host/native/io.lisp fnn-disk-free-octets; nil when it cannot observe) with
+ACL2's NEED as a :space event (books/owner-time-model.lisp): below the need
+the disk is :full and every write is shed.  The host compares nothing."
+  (let ((free (ignore-errors
+               (fnn-disk-free-octets (fnn-owner-service-store service)))))
+    (fnn-owner-disk-event service :space
+                          (list (and (integerp free) (>= free 0) free) need))))
+
+(defun fnn-owner-space-observe-if-due (service)
+  "A :space event when ACL2 says one is due (fn-otm-space-due-p over the
+gate's value).  The caller holds the owner mutex (fn-owner-space-need reads
+the live configuration)."
+  (when (fnn-core 'fn-otm-space-due-p (fnn-owner-gate-sched-value service))
+    (fnn-owner-space-event service (fnn-owner-core 'fn-owner-space-need))))
+
 (defun fnn-owner-sched-snapshot (service)
   "ACL2's scheduler value for `health' and `status'
 (books/owner-time-model.lisp fn-otm-health-lines, fn-otm-disk-lines): a clock
-event is appended on demand first, so the figures are at the render's time."
+event is appended on demand first, so the figures are at the render's time,
+and the free space is observed (PRF-359: health's `disk' state reads it).
+The caller holds the owner mutex."
+  (fnn-owner-space-event service (fnn-owner-core 'fn-owner-space-need))
   (fnn-owner-disk-event service :clock)
   (let ((gate (fnn-owner-service-gate service)))
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
@@ -968,7 +998,9 @@ Returns (values WORD READING)."
       (destructuring-bind (w sched jline lline)
           (fnn-core 'fn-otm-disk-step (fnn-owner-gate-sched gate) kind reading arg)
         (unless (member w '(:issued :returned :recovered :recovered-from-stall
-                            :became-slow :became-stalled :none :clock-regressed :fault))
+                            :became-slow :became-stalled :none :clock-regressed :fault
+                            ;; PRF-359: a :space event's words.
+                            :became-full :space-recovered :space-unobserved))
           (fnn-fault "owner returned a malformed disk event word ~a" w))
         (when (eq w :fault)
           (fnn-fault "owner refused the disk event ~a" kind))
@@ -2655,6 +2687,7 @@ leave only in its COMPLETE, after its barrier returned
 (fn-ocp-complete-only-after-the-barrier)."
   (let ((members nil) (uncertain nil) (deferred nil) (action nil)
         (next nil) (next-deferred nil) (syncer nil) (result nil) (limits nil)
+        (need nil)
         ;; Lane time-model-2: the cids told uncertain at a stall (their
         ;; replies are not delivered again), and whether this barrier's
         ;; stall was answered.
@@ -2665,7 +2698,9 @@ leave only in its COMPLETE, after its barrier returned
        ;; Lane time-model: the barrier's limits (D H C), from the
        ;; configuration generation current at the START
        ;; (fn-owner-barrier-limits).
-       (setq limits (fnn-owner-core 'fn-owner-barrier-limits))
+       (setq limits (fnn-owner-core 'fn-owner-barrier-limits)
+             ;; PRF-359: the space the next admissions are judged against.
+             need (fnn-owner-core 'fn-owner-space-need))
        ;; PKT-828: the view the readers read while this batch is in flight.
        (fnn-owner-reader-capture :start)
        (multiple-value-setq (members uncertain deferred)
@@ -2680,6 +2715,11 @@ leave only in its COMPLETE, after its barrier returned
          (t (fnn-fault "owner named ~a after a START" action))))
      :commit)
     (loop while (eq action :sync) do
+      ;; PRF-359 (PKT-872): the free space at every barrier's issue, before
+      ;; its append: the POSTs admitted from here on join the next batch, so
+      ;; an observation per barrier keeps fn-otm-space-need's two batches
+      ;; the only octets between the observation and the appends it admits.
+      (fnn-owner-space-event service need)
       (multiple-value-setq (syncer result) (fnn-owner-start-syncer service))
       ;; Lane time-model (PRF-311): the barrier is a request with a
       ;; deadline; its issue is a disk event at this reading.
@@ -2700,6 +2740,11 @@ leave only in its COMPLETE, after its barrier returned
                             service (fnn-owner-service-synced service)
                             (plusp (fnn-owner-service-queued service))))
                 (unless (eq wake :wait) (return-from waiting))
+                ;; PKT-875: a stop's drain passed its deadline: release
+                ;; below, once, as at a stall.
+                (when (and (fnn-owner-service-drain-release service)
+                           (not stall-told))
+                  (return-from waiting))
                 (let ((ms (fnn-owner-disk-wait-ms service)))
                   (unless (if ms
                               (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
@@ -2727,8 +2772,13 @@ leave only in its COMPLETE, after its barrier returned
           ;; still land (books/owner-time-model.lisp
           ;; fn-otm-stall-tells-no-member-its-outcome) -- and the queued
           ;; POSTs behind them are refused try-later, nothing stored.
+          ;; PKT-875 (books/owner-stop-drain.lisp): a graceful stop whose
+          ;; drain deadline (H) passed releases them the same way, by
+          ;; fn-otm-stall-releases: uncertain, never accepted or refused.
           (when (and (not (eq wake :collect)) (not stall-told)
-                     (fnn-owner-disk-stalled-p service))
+                     (or (fnn-owner-disk-stalled-p service)
+                         (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+                           (fnn-owner-service-drain-release service))))
             (setq stall-told t)
             (let ((told (fnn-owner-stall-release
                          service (fnn-owner-unreleased (append members next) released)))
@@ -2786,7 +2836,8 @@ leave only in its COMPLETE, after its barrier returned
                        (store (fnn-owner-service-store service)))
                    ;; The next batch's barrier (sealed below) gets the
                    ;; limits of the configuration current now.
-                   (setq limits (fnn-owner-core 'fn-owner-barrier-limits))
+                   (setq limits (fnn-owner-core 'fn-owner-barrier-limits)
+                         need (fnn-owner-core 'fn-owner-space-need))
                    (fnn-owner-shared-action-locked
                     service nil
                     (lambda ()
@@ -3693,8 +3744,17 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                    (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
                                    (unwind-protect
                                         (setq made (sb-thread:make-thread
-                                                    (lambda () (fnn-owner-publish-captured
-                                                                service captured position))
+                                                    (lambda ()
+                                                      ;; Lane scale-reads: the stop ends the
+                                                      ;; publication at its next batch
+                                                      ;; (io.lisp fnn-checkpoint-yield).
+                                                      (let ((*fnn-checkpoint-stop-test*
+                                                              (lambda ()
+                                                                (fnn-with-roster (service)
+                                                                  (fnn-owner-service-stopping
+                                                                   service)))))
+                                                        (fnn-owner-publish-captured
+                                                         service captured position)))
                                                     :name "fn owner checkpoint"))
                                      (unless made
                                        (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*))))))))
@@ -3722,18 +3782,69 @@ of those decisions, never durable state."
           (handler-case (fnn-mkdir dir #o750)
             (fnn-os-error () nil))
           (setq *fnn-journal-fd* (fnn-owner-open-log (fnn-join dir "decisions.fnj")))
+          ;; PKT-872: cut a torn last entry (a process that died mid-append)
+          ;; back to the last whole one before this run appends after it,
+          ;; and hand ACL2's writer that offset.
+          (setq *fnn-journal-w*
+                (fnn-core 'fn-otm-jw-init
+                          (fnn-owner-journal-cut (fnn-join dir "decisions.fnj")
+                                                 *fnn-journal-fd*)))
+          (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+            (setq *fnn-journal-dropped* nil))
           (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
             (declare (ignore has-wall))
             (fnn-journal-line (fnn-core 'fn-otm-start-line (fnn-owner-monotonic-ms) wall))))
       (fnn-os-error (condition)
-        (setq *fnn-journal-fd* nil)
+        (when *fnn-journal-fd* (ignore-errors (fnn-close *fnn-journal-fd*)))
+        (setq *fnn-journal-fd* nil *fnn-journal-w* nil)
         (fnn-err "decision journal not opened (~a); decisions that store nothing are not journaled this run"
                  condition)))))
+
+(defun fnn-owner-journal-read-at (fd start count)
+  "COUNT octets of FD from START (a regular file; short reads continued)."
+  (let ((data (fnn-make-octets count)) (at 0))
+    (fnn-posix () (sb-posix:lseek fd start sb-posix:seek-set))
+    (loop while (< at count) do
+      (let* ((buffer (fnn-make-octets (- count at)))
+             (n (fnn-read-fd fd buffer)))
+        (when (zerop n) (fnn-fault "decision journal shrank while its last entry was read"))
+        (replace data buffer :start1 at :end2 n)
+        (incf at n)))
+    data))
+
+(defun fnn-owner-journal-cut (path fd)
+  "PKT-872: the length of the journal's whole entries (ACL2's
+fn-otm-jw-open-step over chunks read backwards from the end, each at most
+fn-otm-jw-open-chunk octets), the file truncated to it through FD when a
+torn last entry follows.  Answers the offset the writer resumes at."
+  (let ((rfd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
+    (unwind-protect
+         (let* ((size (sb-posix:stat-size (fnn-fstat rfd)))
+                (end size)
+                (start (fnn-core 'fn-otm-jw-open-first size)))
+           (loop
+             (unless (and (integerp start) (<= 0 start end))
+               (fnn-fault "ACL2 returned a malformed journal chunk start ~a" start))
+             (let ((step (fnn-core 'fn-otm-jw-open-step
+                                   (fnn-octet-list (fnn-owner-journal-read-at rfd start (- end start)))
+                                   start)))
+               (case (first step)
+                 (:cut
+                  (let ((cut (second step)))
+                    (unless (and (integerp cut) (<= 0 cut size))
+                      (fnn-fault "ACL2 returned a malformed journal cut ~a" cut))
+                    (when (< cut size)
+                      (fnn-posix (path) (sb-posix:ftruncate fd cut))
+                      (fnn-log-line (fnn-core 'fn-otm-jw-cut-line size cut)))
+                    (return cut)))
+                 (:more (setq end start start (second step)))
+                 (t (fnn-fault "ACL2 returned a malformed journal open step ~a" step))))))
+      (fnn-close rfd))))
 
 (defun fnn-owner-journal-close ()
   "After the writer stopped: close the journal's descriptor."
   (let ((fd *fnn-journal-fd*))
-    (setq *fnn-journal-fd* nil)
+    (setq *fnn-journal-fd* nil *fnn-journal-w* nil)
     (when fd (ignore-errors (fnn-close fd)))))
 
 (defun fnn-owner-open-log (path)
@@ -3824,6 +3935,70 @@ thread is a worker, so the stop joins it with the clients."
         (unless (or *fnn-sigterm-requested*
                     (fnn-owner-service-stopping service))
           (error condition))))))
+
+;;; PKT-875: a graceful stop drains the POSTs in flight to their replies
+;;; (books/owner-stop-drain.lisp, PRF-357).  After a SIGTERM the accept loops
+;;; have returned and no I/O loop steps new input (fnn-mux-work); the loops
+;;; keep delivering and the committer keeps committing.  Every observation
+;;; is taken after a clock event (fnn-owner-sched-snapshot) and ACL2 decides
+;;; from it: :wait, :release (the drain deadline H passed: the committer tells
+;;; every member in flight uncertain and sheds the queue, as at a stall), or
+;;; :stop (nothing is owed, or the release's grace passed).  Only then the
+;;; fence (fnn-owner-stop-service), which ends every connection.
+
+(defun fnn-owner-drain-observation (service)
+  "(AWAITING UNSENT): the members waiting for a reply (the connections
+registered for a completion and the queued submissions), and the replies the
+I/O loops still owe (host/native/mux.lisp fnn-mux-unsent)."
+  (list (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+          (+ (hash-table-count (fnn-owner-service-awaiting service))
+             (fnn-owner-service-queued service)))
+        (fnn-mux-unsent service)))
+
+(defun fnn-owner-drain-log (word s0 s limits awaiting)
+  (let ((line (fnn-core 'fn-osd-log-line word s0 s limits awaiting)))
+    (when line (fnn-log-line line))))
+
+(defun fnn-owner-drain-service (service)
+  "Drain SERVICE before its stop, as ACL2's fn-osd-drain-step names; returns
+when it answers :stop.  Nothing here compares times or counts."
+  (when (and (not (fnn-owner-service-stopping service))
+             (fnn-owner-service-mux service))
+    (let* ((limits (handler-case
+                       (fnn-owner-serialized
+                        service nil
+                        (lambda () (fnn-owner-core 'fn-owner-barrier-limits))
+                        :inspect)
+                     (error (condition)
+                       ;; Stopped (a fault) before the drain began: the
+                       ;; fence has ended it already.
+                       (if (fnn-owner-service-stopping service)
+                           (return-from fnn-owner-drain-service nil)
+                         (error condition)))))
+           (s0 (fnn-owner-sched-snapshot service))
+           (poll (fnn-core 'fn-osd-poll-ms))
+           (released nil))
+      (unless (and (integerp poll) (plusp poll))
+        (fnn-fault "owner returned a malformed drain poll ~a" poll))
+      (fnn-owner-drain-log :start s0 s0 limits 0)
+      (loop
+        (when (fnn-owner-service-stopping service) (return))
+        (destructuring-bind (awaiting unsent) (fnn-owner-drain-observation service)
+          (let* ((s (fnn-owner-sched-snapshot service))
+                 (step (fnn-core 'fn-osd-drain-step s0 s limits awaiting unsent released)))
+            (case step
+              (:stop
+               (fnn-owner-drain-log :stop s0 s limits awaiting)
+               (return))
+              (:release
+               (fnn-owner-drain-log :release s0 s limits awaiting)
+               (setq released t)
+               (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+                 (setf (fnn-owner-service-drain-release service) t)
+                 (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service))))
+              (:wait nil)
+              (t (fnn-fault "owner returned a malformed drain step ~a" step)))))
+        (sleep (/ poll 1000))))))
 
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
@@ -3950,6 +4125,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                             (fnn-out "LISTENING-TLS ~d" tls-bound-port)))
                         (fnn-owner-accept service listener once))))
                   (when *fnn-sigterm-requested*
+                    ;; PKT-875: the POSTs in flight are answered first.
+                    (fnn-owner-drain-service service)
                     (fnn-owner-stop-service service +fnn-exit-ok+))
                   (fnn-owner-service-exit-code service))
              (unwind-protect

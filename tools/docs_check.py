@@ -545,6 +545,11 @@ HEALTH_ADVICE = {
                         "post is refused feed-queue-full until it catches "
                         "up). Check peer list; ask its operator.",
     "receipt-debt": "Forwarded articles wait for their receipts.",
+    "disk": "The disk is stalled (a write has waited past its stall "
+            "deadline; posters were told uncertain) or full (free space "
+            "below what a write needs). Look at the device; free space. "
+            "The node recovers by itself. (Provisional: this state and "
+            "its code wait on a decision.)",
 }
 
 

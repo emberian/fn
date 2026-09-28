@@ -6977,7 +6977,7 @@
         {
           "kind": "theorem",
           "name": "fn-sxp-import-of-export-replays-the-same-history",
-          "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-import calls fn-sxp-import-plan; fnn-command-store-export calls fn-sxp-entries and fn-sxp-manifest. Teeth: tests/acl2/store-export-tests.lisp."
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-import calls fn-sxp-import-plan; fnn-command-store-export writes fn-sxp-entries and fn-sxp-manifest a chunk at a time (PRF-366, fn-sxp-stream-is-the-export). Teeth: tests/acl2/store-export-tests.lisp."
         },
         {
           "kind": "theorem",
@@ -10933,6 +10933,190 @@
       ]
     },
     {
+      "id": "PRF-335",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-feed-queue-length-is-undelivered"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-final-outcome-retires-for-good"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-accepted-outcomes-bounded-by-enqueues"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-at-most-one-accepted-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-drivenp-implies-feedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-saturated-peer-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-feed-queue-refusal-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-feed-queue-full-intent-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-intent-refusal-word-is-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-drivenp-of-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-distinct-fast-is-distinctp"
+        }
+      ]
+    },
+    {
+      "id": "PRF-336",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nls-octets-string-is-record-octets-string"
+        }
+      ]
+    },
+    {
+      "id": "PRF-345",
+      "events": [
+        {
+          "kind": "guarded-function",
+          "name": "fn-record-octets-chars"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-record-string-octets-aux"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-article-msgids"
+        }
+      ]
+    },
+    {
+      "id": "PRF-352",
+      "events": [
+        {
+          "kind": "guarded-function",
+          "name": "fn-retain-obligation-ids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-retain-release-ids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-retain-sum"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-retain-remove-id"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-node-binding-msgids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-node-binding-ids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-replay-verdict-pairs"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-stx-index-of-store"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-mxc-build"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-rii-kbuild-releases"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-rii-kbuild-pins"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-ctl-articles-withdrawals-in"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-ctl-drop-via"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-ctl-visible-filter"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-ctl-subseq-diff"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-own-take"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-gidx-build-entries"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-index-build"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-midx-build"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-scka-canon-rows"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-scka-enc-lens-sum"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-sct-payloads"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-sbud-record-octets"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-sbud-stored-octets"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-pgc-obligation-ids"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-pgc-release-ids"
+        }
+      ]
+    },
+    {
       "id": "PRF-314",
       "events": [
         {
@@ -10994,91 +11178,6 @@
       ]
     },
     {
-      "id": "PRF-342",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-hp-decode-image"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-page-digest-is-leaf"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-append-changes-only-dirty"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-append-dirty-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-header-is-image"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-at-is-nth"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-append-refines"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-header-is-placed"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-at-is-nth-placed"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-append-refines-placed"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-piw-relocated"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-relocate-refines"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-piw-caps-extend"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-piw-of-append1-grown"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-grow-then-append"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-grow-then-append-only-r"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-append-step-refines"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-init-refines"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-append-all-refines"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-records-at-is-nth"
-        }
-      ]
-    },
-    {
       "id": "PRF-344",
       "events": [
         {
@@ -11136,6 +11235,22 @@
         {
           "kind": "theorem",
           "name": "pgs-x-words-digest-is-blake3"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-commit-refines-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-commit-refines-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-commit-refines-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-fork-refines"
         }
       ]
     },
@@ -11527,60 +11642,87 @@
       ]
     },
     {
-      "id": "PRF-335",
+      "id": "PRF-342",
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-feed-queue-length-is-undelivered"
+          "name": "fn-hp-decode-image"
         },
         {
           "kind": "theorem",
-          "name": "fn-feed-final-outcome-retires-for-good"
+          "name": "fn-hp-page-digest-is-leaf"
         },
         {
           "kind": "theorem",
-          "name": "fn-feed-accepted-outcomes-bounded-by-enqueues"
+          "name": "fn-hp-append-changes-only-dirty"
         },
         {
           "kind": "theorem",
-          "name": "fn-feed-at-most-one-accepted-outcome"
+          "name": "fn-hp-append-dirty-bound"
         },
         {
           "kind": "theorem",
-          "name": "fn-feed-drivenp-implies-feedp"
+          "name": "fn-hp-x-header-is-image"
         },
         {
           "kind": "theorem",
-          "name": "fn-nh-saturated-peer-is-held"
+          "name": "fn-hp-x-at-is-nth"
         },
         {
           "kind": "theorem",
-          "name": "fn-nh-feed-queue-refusal-is-held"
+          "name": "fn-hp-x-append-refines"
         },
         {
           "kind": "theorem",
-          "name": "fn-nh-feed-queue-full-intent-is-held"
+          "name": "fn-hp-x-header-is-placed"
         },
         {
           "kind": "theorem",
-          "name": "fn-own-intent-refusal-word-is-a-refusal"
+          "name": "fn-hp-x-at-is-nth-placed"
         },
         {
           "kind": "theorem",
-          "name": "fn-feed-drivenp-of-prefix"
+          "name": "fn-hp-x-append-refines-placed"
         },
         {
           "kind": "theorem",
-          "name": "fn-feed-distinct-fast-is-distinctp"
-        }
-      ]
-    },
-    {
-      "id": "PRF-336",
-      "events": [
+          "name": "fn-hp-piw-relocated"
+        },
         {
           "kind": "theorem",
-          "name": "fn-nls-octets-string-is-record-octets-string"
+          "name": "fn-hp-x-relocate-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-piw-caps-extend"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-piw-of-append1-grown"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-grow-then-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-grow-then-append-only-r"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-append-step-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-init-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-append-all-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-records-at-is-nth"
         }
       ]
     },
@@ -11693,23 +11835,6 @@
         {
           "kind": "theorem",
           "name": "fn-proto-command-pinned-is-command-pinned"
-        }
-      ]
-    },
-    {
-      "id": "PRF-345",
-      "events": [
-        {
-          "kind": "guarded-function",
-          "name": "fn-record-octets-chars"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-record-string-octets-aux"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-article-msgids"
         }
       ]
     },
@@ -12073,153 +12198,6 @@
       ]
     },
     {
-      "id": "PRF-352",
-      "events": [
-        {
-          "kind": "guarded-function",
-          "name": "fn-retain-obligation-ids"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-retain-release-ids"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-retain-sum"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-retain-remove-id"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-node-binding-msgids"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-node-binding-ids"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-replay-verdict-pairs"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-stx-index-of-store"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-mxc-build"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-rii-kbuild-releases"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-rii-kbuild-pins"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-ctl-articles-withdrawals-in"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-ctl-drop-via"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-ctl-visible-filter"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-ctl-subseq-diff"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-own-take"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-gidx-build-entries"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-index-build"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-midx-build"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-scka-canon-rows"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-scka-enc-lens-sum"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-sct-payloads"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-sbud-record-octets"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-sbud-stored-octets"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-pgc-obligation-ids"
-        },
-        {
-          "kind": "guarded-function",
-          "name": "fn-pgc-release-ids"
-        }
-      ]
-    },
-    {
-      "id": "PRF-354",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-ocs-unstaged-start-tells-its-refusals"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ocs-kept-member-starts-the-barrier"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ocs-told-at-drain-p-by-definition"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ocp-unstaged-start-issues-no-sync"
-        }
-      ]
-    },
-    {
-      "id": "PRF-361",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-rcl-verdict-heldp-of-held-verdicts"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rcl-store-classes-over-every-verdict"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rcl-store-counts-is-the-model-over-alpha"
-        }
-      ]
-    },
-    {
       "id": "PRF-355",
       "events": [
         {
@@ -12250,6 +12228,27 @@
       ]
     },
     {
+      "id": "PRF-354",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-unstaged-start-tells-its-refusals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-kept-member-starts-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-told-at-drain-p-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-unstaged-start-issues-no-sync"
+        }
+      ]
+    },
+    {
       "id": "PRF-356",
       "events": [
         {
@@ -12261,6 +12260,285 @@
           "kind": "theorem",
           "name": "fn-sdg-chain-of-one-block",
           "note": "KEYSTONE (a stream within one block digests as before). Teeth: tests/acl2/state-digest-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-361",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-verdict-heldp-of-held-verdicts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-store-classes-over-every-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-store-counts-is-the-model-over-alpha"
+        }
+      ]
+    },
+    {
+      "id": "PRF-365",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hpo-installed-records-are-checkpoint-then-suffix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hpo-records-at-is-installed-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hpo-records-at-is-nth-of-extension"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hpo-snapshot-image-is-next-checkpoint"
+        }
+      ]
+    },
+    {
+      "id": "PRF-364",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-heap-open-nursery-trigger-bounds",
+          "note": "KEYSTONE (the open's collector trigger: at least 8 MiB, at most 4 x the history on disk, never above the figure's trigger). Teeth: tests/acl2/heap-open-nursery-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-store-figure-holds-every-store-at-the-open-trigger"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-open-nursery-trigger-natp"
+        }
+      ]
+    },
+    {
+      "id": "PRF-363",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scv-count-is-count-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scv-first-is-first-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scv-last-is-last-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scv-keptp-is-liveq-outside-x"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-withdrawn-at-is-from"
+        }
+      ]
+    },
+    {
+      "id": "PRF-358",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otm-health-disk-held-iff-stalled-or-full"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-health-disk-stalled-names-the-stall"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-held-disk-is-never-healthy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-verdict-states"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-exit-code-decodes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-report-exit-of-render"
+        }
+      ]
+    },
+    {
+      "id": "PRF-359",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otm-admit-keeps-the-space-need"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-full-sheds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-space-need-covers-two-batches"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-space-recovers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-space-of-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-full-p-of-other-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-space-event-keeps-the-disk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-admit-is-the-mode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-shed-iff-slow"
+        }
+      ]
+    },
+    {
+      "id": "PRF-360",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-file-reads-agrees-or-gap"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-gap-is-the-first-lost"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-gap-names-the-first-missing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-segment-agrees"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-open-step-is-the-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-replay-of-pm"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-jw-open-step-cuts-a-written-file"
+        }
+      ]
+    },
+    {
+      "id": "PRF-357",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osd-stops-only-when-nothing-is-owed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-releases-only-at-the-deadline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-drain-ends-by-the-deadline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-deadline-is-past-the-slow-deadline"
+        }
+      ]
+    },
+    {
+      "id": "PRF-367",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-verdict-hdr-response-cat-is-archive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-verdict-hdr-range-cat-is-archive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scat-vh-lines-is-verdict-hdr-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scat-vh-fill-lookup"
+        }
+      ]
+    },
+    {
+      "id": "PRF-368",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-verdict-is-verdict-in"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-store-tally-is-counts-and-classes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-reclaim-words-is-reclaim-words"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-report-is-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-answer-report-is-answer-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-client-step-is-client-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-client-step-carries-its-length"
+        }
+      ]
+    },
+    {
+      "id": "PRF-366",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-stream-is-the-export",
+          "note": "KEYSTONE (no hypotheses). Host: host/native/io.lisp fnn-command-store-export calls fn-sxp-export-head, then fn-sxp-export-chunk per chunk of fnn-log-history-each's records. Teeth: tests/acl2/store-export-stream-tests.lisp (positive witness at a three-chunk chunking; mutation witnesses: swapped and dropped chunks)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-record-entries-of-append",
+          "note": "Lemma: record entries distribute over append."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-manifest-under-of-append",
+          "note": "Lemma: MANIFEST lines distribute over append."
         }
       ]
     }

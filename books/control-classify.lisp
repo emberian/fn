@@ -25,13 +25,46 @@
   (if (true-listp field) (fn-article-field-name field) nil))
 
 ; The fields named NAME, in order.  Guard t: it runs over any field list.
-(defun fn-ctl-fields-named (name fields)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-ctl-fields-named-loop (name fields acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp fields)
       (if (equal (fn-ctl-field-name (car fields)) name)
-          (cons (car fields) (fn-ctl-fields-named name (cdr fields)))
-        (fn-ctl-fields-named name (cdr fields)))
-    nil))
+          (fn-ctl-fields-named-loop name (cdr fields) (cons (car fields) acc))
+        (fn-ctl-fields-named-loop name (cdr fields) acc))
+    (revappend acc nil)))
+
+(defun fn-ctl-fields-named (name fields)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp fields)
+           (if (equal (fn-ctl-field-name (car fields)) name)
+               (cons (car fields) (fn-ctl-fields-named name (cdr fields)))
+             (fn-ctl-fields-named name (cdr fields)))
+         nil)
+       :exec (fn-ctl-fields-named-loop name fields nil)))
+
+(local
+ (defthm fn-ctl-fields-named-loop-is-revappend
+   (equal (fn-ctl-fields-named-loop name fields acc)
+          (revappend acc (fn-ctl-fields-named name fields)))
+   :hints (("Goal" :induct (fn-ctl-fields-named-loop name fields acc)
+                   :in-theory (union-theories '(fn-ctl-fields-named-loop fn-ctl-fields-named revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ctl-fields-named-loop)
+
+(verify-guards fn-ctl-fields-named
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-ctl-fields-named)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-ctl-fields-named-loop-is-revappend (acc nil))))))
+
 
 ; ---------------------------------------------------------------------------
 ; control-command = verb *( 1*WSP argument )   (RFC 5536 section 3.2.3)
@@ -89,13 +122,49 @@
   (declare (xargs :guard t))
   (fn-ctl-words-aux bytes nil nil))
 
-(defun fn-ctl-downcase (bytes)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-ctl-downcase-loop (bytes acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp bytes)
-      (cons (let ((b (car bytes)))
-              (if (and (integerp b) (<= 65 b) (<= b 90)) (+ b 32) b))
-            (fn-ctl-downcase (cdr bytes)))
-    nil))
+      (fn-ctl-downcase-loop (cdr bytes)
+                            (cons (let ((b (car bytes)))
+                                    (if (and (integerp b) (<= 65 b) (<= b 90))
+                                        (+ b 32)
+                                      b))
+                                  acc))
+    (revappend acc nil)))
+
+(defun fn-ctl-downcase (bytes)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp bytes)
+           (cons (let ((b (car bytes)))
+                   (if (and (integerp b) (<= 65 b) (<= b 90)) (+ b 32) b))
+                 (fn-ctl-downcase (cdr bytes)))
+         nil)
+       :exec (fn-ctl-downcase-loop bytes nil)))
+
+(local
+ (defthm fn-ctl-downcase-loop-is-revappend
+   (equal (fn-ctl-downcase-loop bytes acc)
+          (revappend acc (fn-ctl-downcase bytes)))
+   :hints (("Goal" :induct (fn-ctl-downcase-loop bytes acc)
+                   :in-theory (union-theories '(fn-ctl-downcase-loop fn-ctl-downcase revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ctl-downcase-loop)
+
+(verify-guards fn-ctl-downcase
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-ctl-downcase)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-ctl-downcase-loop-is-revappend (acc nil))))))
+
 
 ; One Control field's command.  The grammar has SP, not FWS, after the
 ; colon, so a folded field (more than one raw line) is malformed.  The verb

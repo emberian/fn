@@ -329,6 +329,9 @@ transition."
                              ;; the owner's arena: the reclaim line reads each
                              ;; article's stored length through it.
                              (fnn-live-arena)
+                             ;; lane scale-reads: and each article's tombstone
+                             ;; flag from the catalog's column.
+                             (fnn-live-cat)
                              *the-live-state*)))
        (unless (and (consp answer) (consp (cdr answer))
                     (fnn-octet-list-p (first answer)))
@@ -1007,23 +1010,27 @@ an ordinary refusal (it is stopping)."
 
 (:done OCTETS), or an outcome keyword for `fn-nls-route'.  A page that fails
 after the first was answered is :after-submission: the owner was there."
-  (let ((acc nil) (total nil) (digest nil) (restarts 0)
+  ;; CHUNKS: the pages so far, newest first; N their joined length, which
+  ;; ACL2 carries (fn-nsc-client-step-carries-its-length) and the next
+  ;; page's offset.
+  (let ((chunks nil) (n 0) (total nil) (digest nil) (restarts 0)
         (limit (fnn-core 'fn-native-live-status-host-max-restarts)))
     (loop
-      (let ((page (fnn-control-live-status-page path-octets kind (length acc))))
+      (let ((page (fnn-control-live-status-page path-octets kind n)))
         (when (keywordp page)
           (return (if (and (eq page :before-submission)
-                           (or acc (plusp restarts)))
+                           (or chunks (plusp restarts)))
                       :after-submission
                     page)))
-        (let ((step (fnn-core 'fn-native-live-status-host-client-step
-                              acc total digest page)))
+        (let ((step (fnn-core 'fn-native-live-status-host-client-step-chunks
+                              chunks n total digest page)))
           (case (first step)
             (:done (return step))
-            (:next (setq acc (second step) total (third step) digest (fourth step)))
+            (:next (setq chunks (second step) n (third step)
+                         total (fourth step) digest (fifth step)))
             (:restart
              (when (>= (incf restarts) limit) (return :after-submission))
-             (setq acc nil total nil digest nil))
+             (setq chunks nil n 0 total nil digest nil))
             ;; ACL2's named refusal, (:refused WORD), is carried to the
             ;; caller as it came (fn-nls-page-refuses-exactly-past-the-
             ;; total-width); a bare refusal stays :refused.

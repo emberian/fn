@@ -190,13 +190,46 @@
         (fn-bp-find-work-by-msgid msgid (cdr xs)))
     nil))
 
-(defun fn-bp-replace-work (work xs)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bp-replace-work-loop (work xs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp xs)
       (if (equal (fn-bp-work-id work) (fn-bp-work-id (car xs)))
-          (cons work (cdr xs))
-        (cons (car xs) (fn-bp-replace-work work (cdr xs))))
-    nil))
+          (revappend acc (cons work (cdr xs)))
+        (fn-bp-replace-work-loop work (cdr xs) (cons (car xs) acc)))
+    (revappend acc nil)))
+
+(defun fn-bp-replace-work (work xs)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp xs)
+           (if (equal (fn-bp-work-id work) (fn-bp-work-id (car xs)))
+               (cons work (cdr xs))
+             (cons (car xs) (fn-bp-replace-work work (cdr xs))))
+         nil)
+       :exec (fn-bp-replace-work-loop work xs nil)))
+
+(local
+ (defthm fn-bp-replace-work-loop-is-revappend
+   (equal (fn-bp-replace-work-loop work xs acc)
+          (revappend acc (fn-bp-replace-work work xs)))
+   :hints (("Goal" :induct (fn-bp-replace-work-loop work xs acc)
+                   :in-theory (union-theories '(fn-bp-replace-work-loop fn-bp-replace-work revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bp-replace-work-loop)
+
+(verify-guards fn-bp-replace-work
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bp-replace-work)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bp-replace-work-loop-is-revappend (acc nil))))))
+
 
 (defun fn-bp-work-outstandingp (work)
   (declare (xargs :guard t))
@@ -643,12 +676,43 @@
         (fn-bp-work-with-status work :restart-observed)
       work)))
 
-(defun fn-bp-restart-works (works)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bp-restart-works-loop (works acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp works)
-      (cons (fn-bp-restart-work (car works))
-            (fn-bp-restart-works (cdr works)))
-    nil))
+      (fn-bp-restart-works-loop (cdr works) (cons (fn-bp-restart-work (car works)) acc))
+    (revappend acc nil)))
+
+(defun fn-bp-restart-works (works)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp works)
+           (cons (fn-bp-restart-work (car works))
+                 (fn-bp-restart-works (cdr works)))
+         nil)
+       :exec (fn-bp-restart-works-loop works nil)))
+
+(local
+ (defthm fn-bp-restart-works-loop-is-revappend
+   (equal (fn-bp-restart-works-loop works acc)
+          (revappend acc (fn-bp-restart-works works)))
+   :hints (("Goal" :induct (fn-bp-restart-works-loop works acc)
+                   :in-theory (union-theories '(fn-bp-restart-works-loop fn-bp-restart-works revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bp-restart-works-loop)
+
+(verify-guards fn-bp-restart-works
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bp-restart-works)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bp-restart-works-loop-is-revappend (acc nil))))))
+
 
 (defun fn-bp-restart (s)
   (declare (xargs :guard t))

@@ -374,15 +374,54 @@ fn-pcb-transit-verdict (PKT-473), or nil."
                         (fn-olog-symbol-text (fn-olog-post-refusal-reason reply)))
          (fn-olog-field "time" (fn-olog-time (fn-own-clock o))))))
 
-(defun fn-olog-served-refusal-lines (o id effects)
-  "One line per 441 reply in EFFECTS, in order."
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-olog-served-refusal-lines-loop (o id effects acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp effects)
       (if (fn-olog-441-replyp (car effects))
-          (cons (fn-olog-served-refusal-line o id (cadr (car effects)))
-                (fn-olog-served-refusal-lines o id (cdr effects)))
-        (fn-olog-served-refusal-lines o id (cdr effects)))
-    nil))
+          (fn-olog-served-refusal-lines-loop o
+                                             id
+                                             (cdr effects)
+                                             (cons (fn-olog-served-refusal-line o
+                                                                                id
+                                                                                (cadr (car effects)))
+                                                   acc))
+        (fn-olog-served-refusal-lines-loop o id (cdr effects) acc))
+    (revappend acc nil)))
+
+(defun fn-olog-served-refusal-lines (o id effects)
+  "One line per 441 reply in EFFECTS, in order."
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp effects)
+           (if (fn-olog-441-replyp (car effects))
+               (cons (fn-olog-served-refusal-line o id (cadr (car effects)))
+                     (fn-olog-served-refusal-lines o id (cdr effects)))
+             (fn-olog-served-refusal-lines o id (cdr effects)))
+         nil)
+       :exec (fn-olog-served-refusal-lines-loop o id effects nil)))
+
+(local
+ (defthm fn-olog-served-refusal-lines-loop-is-revappend
+   (equal (fn-olog-served-refusal-lines-loop o id effects acc)
+          (revappend acc (fn-olog-served-refusal-lines o id effects)))
+   :hints (("Goal" :induct (fn-olog-served-refusal-lines-loop o id effects acc)
+                   :in-theory (union-theories '(fn-olog-served-refusal-lines-loop fn-olog-served-refusal-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-olog-served-refusal-lines-loop)
+
+(verify-guards fn-olog-served-refusal-lines
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-olog-served-refusal-lines)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-olog-served-refusal-lines-loop-is-revappend (acc nil))))))
+
 
 (defun fn-olog-control-refusal-line (o msgid groups octets stored)
   "The line for the operator's article when fn-own-operator-submit-result

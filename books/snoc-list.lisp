@@ -66,11 +66,42 @@
     (if (and (consp h) (eq (car h) :raw)) (cdr h) h)))
 
 ; append with (list r), total.
-(defun fn-sl-append1 (x r)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-sl-append1-loop (x r acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp x)
-      (cons (car x) (fn-sl-append1 (cdr x) r))
-    (list r)))
+      (fn-sl-append1-loop (cdr x) r (cons (car x) acc))
+    (revappend acc (list r))))
+
+(defun fn-sl-append1 (x r)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp x)
+           (cons (car x) (fn-sl-append1 (cdr x) r))
+         (list r))
+       :exec (fn-sl-append1-loop x r nil)))
+
+(local
+ (defthm fn-sl-append1-loop-is-revappend
+   (equal (fn-sl-append1-loop x r acc)
+          (revappend acc (fn-sl-append1 x r)))
+   :hints (("Goal" :induct (fn-sl-append1-loop x r acc)
+                   :in-theory (union-theories '(fn-sl-append1-loop fn-sl-append1 revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-sl-append1-loop)
+
+(verify-guards fn-sl-append1
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-sl-append1)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-sl-append1-loop-is-revappend (acc nil))))))
+
 
 (defun fn-sl-snoc (h r)
   (declare (xargs :guard t))

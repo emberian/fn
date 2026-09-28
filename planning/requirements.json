@@ -1787,7 +1787,8 @@
       "milestone": "M4",
       "status": "specified",
       "proof_targets": [
-        "PRF-026"
+        "PRF-026",
+        "PRF-367"
       ],
       "verification": [
         "proof",
@@ -2126,7 +2127,9 @@
         "PRF-336",
         "PRF-345",
         "PRF-361",
-        "PRF-352"
+        "PRF-352",
+        "PRF-368",
+        "PRF-362"
       ],
       "verification": [
         "proof",
@@ -2145,7 +2148,7 @@
     },
     {
       "id": "HST-007",
-      "title": "The operator's health names which of eight things is wrong, each with its own line and exit code",
+      "title": "The operator's health names which of nine things is wrong, each with its own line and exit code",
       "specification": "specs/host.md#operator-health",
       "milestone": "M4",
       "status": "implemented",
@@ -2153,7 +2156,8 @@
         "PRF-112",
         "PRF-172",
         "PRF-317",
-        "PRF-335"
+        "PRF-335",
+        "PRF-358"
       ],
       "verification": [
         "proof",
@@ -2167,7 +2171,7 @@
         "host/native/control.lisp",
         "planning/evidence/operator-health-2026-09-25.md"
       ],
-      "implementation_note": "`operator CONFIG health` asks the owner whose control socket the configuration names (FNLS kind 6, fn-nh-live-report over its Store, configuration and feed table, with its run plan's [alerts] headroom_min_percent); with no owner answering, the host observes the writer lock and the clone fence file and ACL2 (fn-nh-fence-of) either renders the fenced report or the Store is opened read-only (fn-nh-offline-report, the feed states unobserved). Exit 20 to 27 names the first held state, 19 some unobserved, 0 all clear; the host reads the code back from the octets it prints (fn-nh-report-exit).",
+      "implementation_note": "`operator CONFIG health` asks the owner whose control socket the configuration names (FNLS kind 6, fn-nh-live-report over its Store, configuration and feed table, with its run plan's [alerts] headroom_min_percent); with no owner answering, the host observes the writer lock and the clone fence file and ACL2 (fn-nh-fence-of) either renders the fenced report or the Store is opened read-only (fn-nh-offline-report, the feed states unobserved). Exit 20 to 27 names the first held state, 19 some unobserved, 0 all clear; the host reads the code back from the octets it prints (fn-nh-report-exit). Lane health-truth (PRF-358, PKT-879): a ninth state, `disk', appended (exit 28): the running owner's disk stalled or full (books/owner-time-model.lisp fn-otm-health-disk); unobserved offline.",
       "note": "The mandate's section 11 list. Stranded transfer and unavailable peer are read from the NNTP owner's outbound feed table; the DTN image's BP forwarding rows (`bp-node resume`) and contacts are not yet a source (open, in the evidence)."
     },
     {
@@ -3516,7 +3520,8 @@
       "proof_targets": [
         "PRF-181",
         "PRF-348",
-        "PRF-346"
+        "PRF-346",
+        "PRF-363"
       ],
       "verification": [
         "proof",
@@ -3610,7 +3615,8 @@
       "proof_targets": [
         "PRF-201",
         "PRF-204",
-        "PRF-332"
+        "PRF-332",
+        "PRF-367"
       ],
       "verification": [
         "proof",
@@ -3934,7 +3940,8 @@
         "PRF-203",
         "PRF-202",
         "PRF-302",
-        "PRF-346"
+        "PRF-346",
+        "PRF-363"
       ],
       "verification": [
         "proof",
@@ -4090,7 +4097,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-198",
-        "PRF-315"
+        "PRF-315",
+        "PRF-364"
       ],
       "verification": [
         "proof",
@@ -4713,7 +4721,10 @@
       "proof_targets": [
         "PRF-311",
         "PRF-323",
-        "PRF-354"
+        "PRF-354",
+        "PRF-358",
+        "PRF-359",
+        "PRF-357"
       ],
       "verification": [
         "proof",
@@ -4734,9 +4745,10 @@
         "planning/evidence/time-model-2-2026-09-27.md",
         "planning/evidence/time-model-2026-09-27.md",
         "tests/acl2/owner-time-model-tests.lisp",
-        "tests/test_native_slow_disk.py"
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/health-truth-2026-09-28.md"
       ],
-      "implementation_note": "Slices 1 and 2 of planning/design-time-model-2026-09-27.md. The limits D, H and the clock-event cadence are the live configuration's barrier-deadline-ms, barrier-stall-ms and clock-event-ms rows (policy set; defaults 5,000 / 30,000 / 1,000 ms). Past D: a POST command is answered 440 with the reason, an article already announced 441 with the reason, a mutating control request BUSY; past H every poster of the batch in flight and of the next is told uncertain and the queued POSTs are refused try-later. Not yet: IHAVE 436 / CHECK 431 during slow (PKT-862: transit is not admitted while a barrier is pending; peers wait), the inline barrier and configuration publication as requests (slice 3), health's exit in stalled (PKT-853 (b)). Lane log-leftovers (2026-09-27): the 440 at the POST command and the 441 of an article whose POST got 340 before the disk went slow carry ACL2's disk reason (books/owner-time-admission.lisp fn-otm-disk-effects); a peer's IHAVE is answered 436 and CHECK 431 at once while the disk sheds (PKT-858: a reader-class quantum under the disk-slow posture, books/peer-inbound.lisp fn-peer-shed-p)."
+      "implementation_note": "Slices 1 and 2 of planning/design-time-model-2026-09-27.md. The limits D, H and the clock-event cadence are the live configuration's barrier-deadline-ms, barrier-stall-ms and clock-event-ms rows (policy set; defaults 5,000 / 30,000 / 1,000 ms). Past D: a POST command is answered 440 with the reason, an article already announced 441 with the reason, a mutating control request BUSY; past H every poster of the batch in flight and of the next is told uncertain and the queued POSTs are refused try-later. Not yet: IHAVE 436 / CHECK 431 during slow (PKT-862: transit is not admitted while a barrier is pending; peers wait), the inline barrier and configuration publication as requests (slice 3), health's exit in stalled (PKT-853 (b)). Lane log-leftovers (2026-09-27): the 440 at the POST command and the 441 of an article whose POST got 340 before the disk went slow carry ACL2's disk reason (books/owner-time-admission.lisp fn-otm-disk-effects); a peer's IHAVE is answered 436 and CHECK 431 at once while the disk sheds (PKT-858: a reader-class quantum under the disk-slow posture, books/peer-inbound.lisp fn-peer-shed-p). Lane health-truth (PRF-359, PKT-872): the free space is a recorded :space observation; below ACL2's need (maintenance reserve + two batches + disk-reserve-octets) the disk is :full and every write is shed with the reason; health holds `disk' in :stalled and :full (PRF-358)."
     },
     {
       "id": "HST-027",
@@ -4863,7 +4875,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-344",
-        "PRF-342"
+        "PRF-342",
+        "PRF-365"
       ],
       "verification": [
         "proof",
@@ -4884,7 +4897,9 @@
         "books/history-pages-exec.lisp",
         "books/history-pages-read.lisp",
         "tests/acl2/history-pages-read-tests.lisp",
-        "books/history-pages-row.lisp"
+        "books/history-pages-row.lisp",
+        "books/history-pages-owner.lisp",
+        "tests/acl2/history-pages-owner-tests.lisp"
       ],
       "implementation_note": "Lane arena-store (2026-09-27): the model, keystones, reclamation and the executable layer are proved; the host driver host/native/proto-pagestore.lisp runs them on hbox (process death and power loss, 0 violations); page 0 (the owner's root slots) is the model's reserved page, kept by pgs-disk-keeps and marked by pgs-g-start; the scenario is SCN-186. Limitation L-PGS-LAZY-SHAPE (record section 5): the host's lazy open shape-checks only the table pages its own commit wrote, the model's lazy open every table page. The owner does not use it yet (fn-hist on pages is the next step, lane arena-store-2)."
     },
@@ -4944,6 +4959,32 @@
         "planning/evidence/format-bump-10-2026-09-28.md"
       ],
       "implementation_note": "Lane format-bump-10. Non-determinism recorded (ember 2026-09-27): the CSPRNG node identity and salt, the clock reading. Never recorded: the node secret, credential salts."
+    },
+    {
+      "id": "HST-030",
+      "title": "The decision journal never keeps a torn line: a failed append is undone, a loss is named as a gap at the first missing sequence number, and a run's start cuts a torn tail",
+      "specification": "specs/host.md#the-disk-as-an-adversarial-environment",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-360"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-time-journal-writer.lisp",
+        "books/owner-time-journal.lisp",
+        "tests/acl2/owner-time-journal-writer-tests.lisp",
+        "tests/acl2/owner-time-model-tests.lisp",
+        "host/native/io.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_journal_torn.py",
+        "planning/evidence/health-truth-journal-2026-09-28.md"
+      ],
+      "implementation_note": "Lane health-truth-journal (PKT-872). ENOSPC mid-line used to leave torn octets the next entry was appended after (fitness f2-full: malformed-at-18416 forever). The writer's rule is ACL2's (books/owner-time-journal-writer.lisp); the host truncates with ftruncate, which needs no free space. A developer selector FN_NATIVE_TEST_JOURNAL_FAIL_FILE injects the failure."
     }
   ]
 }

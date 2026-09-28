@@ -1,6 +1,7 @@
-; fn: the operator's health verdict, eight distinct states (PRF-112).
+; fn: the operator's health verdict, nine distinct states (PRF-112; the
+; ninth, the disk, PRF-358).
 ;
-; `operator CONFIG health' says which of eight things is wrong, never one red
+; `operator CONFIG health' says which of nine things is wrong, never one red
 ; bit (the mandate, section 11; PKT-098).  Each state has its own line and its
 ; own exit code, and each line is a function of the report the operator
 ; verbs already render (books/native-live-status.lisp): the Store state,
@@ -30,7 +31,15 @@
 ;                          (PRF-335: every local post then refuses
 ;                          feed-queue-full);
 ;   7 receipt-debt         forwarding obligations held, awaiting the receipt
-;                          that releases them.
+;                          that releases them;
+;   8 disk                 the running owner's disk is stalled (a barrier
+;                          pending past the stall deadline H: its posters
+;                          were told uncertain) or full (the free octets
+;                          below the need: every write refused try-later);
+;                          books/owner-time-model.lisp fn-otm-health-disk
+;                          decides it (PRF-358, PKT-879; provisional per
+;                          PKT-853 (b): a slow disk is the line only).
+;                          Appended last so codes 20..27 keep their meaning.
 ;
 ; Each state is :held, :clear, or :unobserved (the source was not observed:
 ; offline there is no feed table; a fenced Store is not opened).  The exit
@@ -69,7 +78,7 @@
 
 (defconst *fn-nh-states*
   '(:fenced :exhausted :unqualified-profile :space-pressure
-    :no-route :stranded-transfer :unavailable-peer :receipt-debt))
+    :no-route :stranded-transfer :unavailable-peer :receipt-debt :disk))
 
 (defconst *fn-nh-unobserved-exit* 19)
 (defconst *fn-nh-first-exit* 20)
@@ -201,13 +210,47 @@ profile's."
 ;
 ; TBL is `fn-own-feeds': entries (NAME RECORD FEED), books/owner-feed.lisp.
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-nh-dropped-count-loop (xs acc)
+  (declare (xargs :guard (acl2-numberp acc) :verify-guards nil))
+  (if (consp xs)
+      (fn-nh-dropped-count-loop (cdr xs)
+                                (+ (if (equal (fn-feed-entry-state (car xs))
+                                              '(:dropped :retry-bound))
+                                       1
+                                     0)
+                                   acc))
+    (+ acc 0)))
+
 (defun fn-nh-dropped-count (xs)
   "Entries dropped at their retry bound (`fn-feed-give-up' :retry-bound)."
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (+ (if (equal (fn-feed-entry-state (car xs)) '(:dropped :retry-bound)) 1 0)
-         (fn-nh-dropped-count (cdr xs)))
-    0))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp xs)
+           (+ (if (equal (fn-feed-entry-state (car xs)) '(:dropped :retry-bound)) 1 0)
+              (fn-nh-dropped-count (cdr xs)))
+         0)
+       :exec (fn-nh-dropped-count-loop xs 0)))
+
+(local
+ (defthm fn-nh-dropped-count-loop-is-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-nh-dropped-count-loop xs acc)
+                   (+ acc (fn-nh-dropped-count xs))))
+   :hints (("Goal" :induct (fn-nh-dropped-count-loop xs acc)
+                   :in-theory (disable fn-feed-entry-state)))))
+
+(verify-guards fn-nh-dropped-count-loop)
+
+(verify-guards fn-nh-dropped-count
+  :hints (("Goal"
+           :in-theory
+           (disable fn-nh-dropped-count-loop fn-feed-entry-state)
+           :use
+           ((:instance fn-nh-dropped-count-loop-is-plus (acc 0))))))
+
 
 (defun fn-nh-feed-pendingp (f)
   (declare (xargs :guard t))
@@ -219,14 +262,51 @@ profile's."
 ;; fenced peer) or that a lost connection returned: queued again with an
 ;; attempt counted.  While any is there the peer is not taking this node's
 ;; articles, even with a connection open.
-(defun fn-nh-deferred-count (xs)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-nh-deferred-count-loop (xs acc)
+  (declare (xargs :guard (acl2-numberp acc) :verify-guards nil))
   (if (consp xs)
-      (+ (if (and (equal (fn-feed-entry-state (car xs)) :queued)
-                  (posp (fn-feed-entry-attempts (car xs))))
-             1 0)
-         (fn-nh-deferred-count (cdr xs)))
-    0))
+      (fn-nh-deferred-count-loop (cdr xs)
+                                 (+ (if (and (equal (fn-feed-entry-state (car xs))
+                                                    :queued)
+                                             (posp (fn-feed-entry-attempts (car xs))))
+                                        1
+                                      0)
+                                    acc))
+    (+ acc 0)))
+
+(defun fn-nh-deferred-count (xs)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp xs)
+           (+ (if (and (equal (fn-feed-entry-state (car xs)) :queued)
+                       (posp (fn-feed-entry-attempts (car xs))))
+                  1 0)
+              (fn-nh-deferred-count (cdr xs)))
+         0)
+       :exec (fn-nh-deferred-count-loop xs 0)))
+
+(local
+ (defthm fn-nh-deferred-count-loop-is-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-nh-deferred-count-loop xs acc)
+                   (+ acc (fn-nh-deferred-count xs))))
+   :hints (("Goal" :induct (fn-nh-deferred-count-loop xs acc)
+                   :in-theory (disable fn-feed-entry-attempts fn-feed-entry-state)))))
+
+(verify-guards fn-nh-deferred-count-loop)
+
+(verify-guards fn-nh-deferred-count
+  :hints (("Goal"
+           :in-theory
+           (disable fn-nh-deferred-count-loop
+                    fn-feed-entry-attempts
+                    fn-feed-entry-state)
+           :use
+           ((:instance fn-nh-deferred-count-loop-is-plus (acc 0))))))
+
 
 (defun fn-nh-feed-deferredp (f)
   (declare (xargs :guard t))
@@ -249,45 +329,216 @@ profile's."
       (fn-nh-feed-deferredp f)
       (fn-nh-feed-saturatedp f)))
 
-(defun fn-nh-saturated-total (tbl)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-nh-saturated-total-loop (tbl acc)
+  (declare (xargs :guard (acl2-numberp acc) :verify-guards nil))
   (if (consp tbl)
-      (+ (if (fn-nh-feed-saturatedp (fn-own-feed-entry-feed (car tbl))) 1 0)
-         (fn-nh-saturated-total (cdr tbl)))
-    0))
+      (fn-nh-saturated-total-loop (cdr tbl)
+                                  (+ (if (fn-nh-feed-saturatedp (fn-own-feed-entry-feed (car tbl)))
+                                         1
+                                       0)
+                                     acc))
+    (+ acc 0)))
+
+(defun fn-nh-saturated-total (tbl)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp tbl)
+           (+ (if (fn-nh-feed-saturatedp (fn-own-feed-entry-feed (car tbl))) 1 0)
+              (fn-nh-saturated-total (cdr tbl)))
+         0)
+       :exec (fn-nh-saturated-total-loop tbl 0)))
+
+(local
+ (defthm fn-nh-saturated-total-loop-is-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-nh-saturated-total-loop tbl acc)
+                   (+ acc (fn-nh-saturated-total tbl))))
+   :hints (("Goal" :induct (fn-nh-saturated-total-loop tbl acc)
+                   :in-theory (disable fn-nh-feed-saturatedp fn-own-feed-entry-feed)))))
+
+(verify-guards fn-nh-saturated-total-loop)
+
+(verify-guards fn-nh-saturated-total
+  :hints (("Goal"
+           :in-theory
+           (disable fn-nh-saturated-total-loop
+                    fn-nh-feed-saturatedp
+                    fn-own-feed-entry-feed)
+           :use
+           ((:instance fn-nh-saturated-total-loop-is-plus (acc 0))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nh-stranded-peers-loop (tbl acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp tbl)
+      (if (< 0 (fn-nh-dropped-count (fn-feed-queue (fn-own-feed-entry-feed (car tbl)))))
+          (fn-nh-stranded-peers-loop (cdr tbl)
+                                     (cons (fn-own-feed-entry-name (car tbl)) acc))
+        (fn-nh-stranded-peers-loop (cdr tbl) acc))
+    (revappend acc nil)))
 
 (defun fn-nh-stranded-peers (tbl)
-  (declare (xargs :guard t))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp tbl)
+           (if (< 0 (fn-nh-dropped-count
+                     (fn-feed-queue (fn-own-feed-entry-feed (car tbl)))))
+               (cons (fn-own-feed-entry-name (car tbl))
+                     (fn-nh-stranded-peers (cdr tbl)))
+             (fn-nh-stranded-peers (cdr tbl)))
+         nil)
+       :exec (fn-nh-stranded-peers-loop tbl nil)))
+
+(local
+ (defthm fn-nh-stranded-peers-loop-is-revappend
+   (equal (fn-nh-stranded-peers-loop tbl acc)
+          (revappend acc (fn-nh-stranded-peers tbl)))
+   :hints (("Goal" :induct (fn-nh-stranded-peers-loop tbl acc)
+                   :in-theory (union-theories '(fn-nh-stranded-peers-loop fn-nh-stranded-peers revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-nh-stranded-peers-loop)
+
+(verify-guards fn-nh-stranded-peers
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-nh-stranded-peers)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-nh-stranded-peers-loop-is-revappend (acc nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-nh-stranded-count-loop (tbl acc)
+  (declare (xargs :guard (acl2-numberp acc) :verify-guards nil))
   (if (consp tbl)
-      (if (< 0 (fn-nh-dropped-count
-                (fn-feed-queue (fn-own-feed-entry-feed (car tbl)))))
-          (cons (fn-own-feed-entry-name (car tbl))
-                (fn-nh-stranded-peers (cdr tbl)))
-        (fn-nh-stranded-peers (cdr tbl)))
-    nil))
+      (fn-nh-stranded-count-loop (cdr tbl)
+                                 (+ (fn-nh-dropped-count (fn-feed-queue (fn-own-feed-entry-feed (car tbl))))
+                                    acc))
+    (+ acc 0)))
 
 (defun fn-nh-stranded-count (tbl)
-  (declare (xargs :guard t))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp tbl)
+           (+ (fn-nh-dropped-count (fn-feed-queue (fn-own-feed-entry-feed (car tbl))))
+              (fn-nh-stranded-count (cdr tbl)))
+         0)
+       :exec (fn-nh-stranded-count-loop tbl 0)))
+
+(local
+ (defthm fn-nh-stranded-count-loop-is-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-nh-stranded-count-loop tbl acc)
+                   (+ acc (fn-nh-stranded-count tbl))))
+   :hints (("Goal" :induct (fn-nh-stranded-count-loop tbl acc)
+                   :in-theory (disable fn-feed-queue fn-nh-dropped-count fn-own-feed-entry-feed)))))
+
+(verify-guards fn-nh-stranded-count-loop)
+
+(verify-guards fn-nh-stranded-count
+  :hints (("Goal"
+           :in-theory
+           (disable fn-nh-stranded-count-loop
+                    fn-feed-queue
+                    fn-nh-dropped-count
+                    fn-own-feed-entry-feed)
+           :use
+           ((:instance fn-nh-stranded-count-loop-is-plus (acc 0))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-nh-deferred-total-loop (tbl acc)
+  (declare (xargs :guard (acl2-numberp acc) :verify-guards nil))
   (if (consp tbl)
-      (+ (fn-nh-dropped-count (fn-feed-queue (fn-own-feed-entry-feed (car tbl))))
-         (fn-nh-stranded-count (cdr tbl)))
-    0))
+      (fn-nh-deferred-total-loop (cdr tbl)
+                                 (+ (fn-nh-deferred-count (fn-feed-queue (fn-own-feed-entry-feed (car tbl))))
+                                    acc))
+    (+ acc 0)))
 
 (defun fn-nh-deferred-total (tbl)
-  (declare (xargs :guard t))
-  (if (consp tbl)
-      (+ (fn-nh-deferred-count (fn-feed-queue (fn-own-feed-entry-feed (car tbl))))
-         (fn-nh-deferred-total (cdr tbl)))
-    0))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp tbl)
+           (+ (fn-nh-deferred-count (fn-feed-queue (fn-own-feed-entry-feed (car tbl))))
+              (fn-nh-deferred-total (cdr tbl)))
+         0)
+       :exec (fn-nh-deferred-total-loop tbl 0)))
 
-(defun fn-nh-unavailable-peers (tbl)
-  (declare (xargs :guard t))
+(local
+ (defthm fn-nh-deferred-total-loop-is-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-nh-deferred-total-loop tbl acc)
+                   (+ acc (fn-nh-deferred-total tbl))))
+   :hints (("Goal" :induct (fn-nh-deferred-total-loop tbl acc)
+                   :in-theory (disable fn-feed-queue fn-nh-deferred-count fn-own-feed-entry-feed)))))
+
+(verify-guards fn-nh-deferred-total-loop)
+
+(verify-guards fn-nh-deferred-total
+  :hints (("Goal"
+           :in-theory
+           (disable fn-nh-deferred-total-loop
+                    fn-feed-queue
+                    fn-nh-deferred-count
+                    fn-own-feed-entry-feed)
+           :use
+           ((:instance fn-nh-deferred-total-loop-is-plus (acc 0))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nh-unavailable-peers-loop (tbl acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp tbl)
       (if (fn-nh-feed-unavailablep (fn-own-feed-entry-feed (car tbl)))
-          (cons (fn-own-feed-entry-name (car tbl))
-                (fn-nh-unavailable-peers (cdr tbl)))
-        (fn-nh-unavailable-peers (cdr tbl)))
-    nil))
+          (fn-nh-unavailable-peers-loop (cdr tbl)
+                                        (cons (fn-own-feed-entry-name (car tbl)) acc))
+        (fn-nh-unavailable-peers-loop (cdr tbl) acc))
+    (revappend acc nil)))
+
+(defun fn-nh-unavailable-peers (tbl)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp tbl)
+           (if (fn-nh-feed-unavailablep (fn-own-feed-entry-feed (car tbl)))
+               (cons (fn-own-feed-entry-name (car tbl))
+                     (fn-nh-unavailable-peers (cdr tbl)))
+             (fn-nh-unavailable-peers (cdr tbl)))
+         nil)
+       :exec (fn-nh-unavailable-peers-loop tbl nil)))
+
+(local
+ (defthm fn-nh-unavailable-peers-loop-is-revappend
+   (equal (fn-nh-unavailable-peers-loop tbl acc)
+          (revappend acc (fn-nh-unavailable-peers tbl)))
+   :hints (("Goal" :induct (fn-nh-unavailable-peers-loop tbl acc)
+                   :in-theory (union-theories '(fn-nh-unavailable-peers-loop fn-nh-unavailable-peers revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-nh-unavailable-peers-loop)
+
+(verify-guards fn-nh-unavailable-peers
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-nh-unavailable-peers)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-nh-unavailable-peers-loop-is-revappend (acc nil))))))
+
 
 ; -----------------------------------------------------------------------------
 ; Fence reasons: what the host observed before it could open the Store
@@ -328,6 +579,7 @@ profile's."
         ((equal name :stranded-transfer) "stranded-transfer")
         ((equal name :unavailable-peer) "unavailable-peer")
         ((equal name :receipt-debt) "receipt-debt")
+        ((equal name :disk) "disk")
         (t "healthy")))
 
 (defun fn-nh-pair (name used bound)
@@ -351,13 +603,53 @@ profile's."
               (fn-nls-text " development")
             nil)))
 
-(defun fn-nh-name-list-words (names)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nh-name-list-words-loop (names acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp names)
-      (append (fn-nls-text " ")
-              (if (stringp (car names)) (fn-nls-text (car names)) (fn-nls-text "?"))
-              (fn-nh-name-list-words (cdr names)))
-    nil))
+      (fn-nh-name-list-words-loop (cdr names)
+                                  (fn-ag-rev-onto (if (stringp (car names))
+                                                      (fn-nls-text (car names))
+                                                    (fn-nls-text "?"))
+                                                  (fn-ag-rev-onto (fn-nls-text " ") acc)))
+    (revappend acc nil)))
+
+(defun fn-nh-name-list-words (names)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp names)
+           (append (fn-nls-text " ")
+                   (if (stringp (car names)) (fn-nls-text (car names)) (fn-nls-text "?"))
+                   (fn-nh-name-list-words (cdr names)))
+         nil)
+       :exec (fn-nh-name-list-words-loop names nil)))
+
+(local
+ (defthm fn-nh-name-list-words-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-nh-name-list-words-loop-is-revappend
+   (equal (fn-nh-name-list-words-loop names acc)
+          (revappend acc (fn-nh-name-list-words names)))
+   :hints (("Goal" :induct (fn-nh-name-list-words-loop names acc)
+                   :in-theory (union-theories '(fn-nh-name-list-words-loop fn-nh-name-list-words revappend car-cons cdr-cons fn-nh-name-list-words-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-nh-name-list-words-loop)
+
+(verify-guards fn-nh-name-list-words
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-nh-name-list-words)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-nh-name-list-words-loop-is-revappend (acc nil))))))
+
 
 (defun fn-nh-fence-words (reason)
   (declare (xargs :guard t))
@@ -372,7 +664,7 @@ profile's."
         (t (fn-nls-text " reason=unknown"))))
 
 ; -----------------------------------------------------------------------------
-; The verdict: eight (OUTCOME . WORDS), in `*fn-nh-states*' order
+; The verdict: nine (OUTCOME . WORDS), in `*fn-nh-states*' order
 
 (defun fn-nh-outcome (heldp words)
   (declare (xargs :guard t))
@@ -380,6 +672,8 @@ profile's."
 
 (defconst *fn-nh-no-store*
   (cons :unobserved (fn-record-string-octets " (the store was not opened)")))
+(defconst *fn-nh-no-disk*
+  (cons :unobserved (fn-record-string-octets " (no running owner: the disk's mode lives in the owner)")))
 (defconst *fn-nh-no-owner*
   (cons :unobserved (fn-record-string-octets " (no running owner: the feed table lives in the owner)")))
 
@@ -455,7 +749,17 @@ profile's."
                                             (fn-nh-forward-pins (fn-nh-nth 1 store))))))
     *fn-nh-no-store*))
 
-(defun fn-nh-verdict (fence store min feeds)
+; PRF-358: DISK is the owner's disk outcome, (:held . WORDS) or (:clear)
+; (books/owner-time-model.lisp fn-otm-health-disk over the scheduler value
+; the owner carries), or :unobserved with no running owner.
+(defun fn-nh-o-disk (disk)
+  (declare (xargs :guard t))
+  (cond ((equal disk :unobserved) *fn-nh-no-disk*)
+        ((and (consp disk) (equal (car disk) :held))
+         (cons :held (if (true-listp (cdr disk)) (cdr disk) nil)))
+        (t (cons :clear nil))))
+
+(defun fn-nh-verdict (fence store min feeds disk)
   (declare (xargs :guard t :verify-guards nil))
   (list (fn-nh-o-fenced fence)
         (fn-nh-o-exhausted store min)
@@ -464,7 +768,8 @@ profile's."
         (fn-nh-o-no-route store)
         (fn-nh-o-stranded feeds)
         (fn-nh-o-unavailable feeds)
-        (fn-nh-o-debt store)))
+        (fn-nh-o-debt store)
+        (fn-nh-o-disk disk)))
 
 ; -----------------------------------------------------------------------------
 ; The exit code
@@ -494,7 +799,7 @@ profile's."
 (defun fn-nh-code-state (code)
   "The state an exit code names; nil for 0 and 19."
   (declare (xargs :guard t))
-  (if (and (natp code) (<= *fn-nh-first-exit* code) (< code 28))
+  (if (and (natp code) (<= *fn-nh-first-exit* code) (< code 29))
       (fn-nh-nth (- code *fn-nh-first-exit*) *fn-nh-states*)
     nil))
 
@@ -512,9 +817,9 @@ profile's."
     t))
 
 (defun fn-nh-verdict-shapep (v)
-  "Eight outcomes, each :held, :clear or :unobserved."
+  "Nine outcomes, each :held, :clear or :unobserved."
   (declare (xargs :guard t))
-  (and (true-listp v) (equal (len v) 8)
+  (and (true-listp v) (equal (len v) 9)
        (fn-nh-outcomes-okp v)
        t))
 
@@ -558,18 +863,64 @@ profile's."
         ((and (consp o) (equal (car o) :unobserved)) "unobserved")
         (t "clear")))
 
-(defun fn-nh-lines (v names)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nh-lines-loop (v names acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (and (consp v) (consp names))
-      (append (fn-nls-text (fn-nh-state-word (car names)))
-              (fn-nls-text " ")
-              (fn-nls-text (fn-nh-outcome-word (car v)))
-              (if (and (consp (car v)) (true-listp (cdr (car v))))
-                  (cdr (car v))
-                nil)
-              *fn-nls-lf*
-              (fn-nh-lines (cdr v) (cdr names)))
-    nil))
+      (fn-nh-lines-loop (cdr v)
+                        (cdr names)
+                        (fn-ag-rev-onto *fn-nls-lf*
+                                        (fn-ag-rev-onto (if (and (consp (car v))
+                                                                 (true-listp (cdr (car v))))
+                                                            (cdr (car v))
+                                                          nil)
+                                                        (fn-ag-rev-onto (fn-nls-text (fn-nh-outcome-word (car v)))
+                                                                        (fn-ag-rev-onto (fn-nls-text " ")
+                                                                                        (fn-ag-rev-onto (fn-nls-text (fn-nh-state-word (car names)))
+                                                                                                        acc))))))
+    (revappend acc nil)))
+
+(defun fn-nh-lines (v names)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (and (consp v) (consp names))
+           (append (fn-nls-text (fn-nh-state-word (car names)))
+                   (fn-nls-text " ")
+                   (fn-nls-text (fn-nh-outcome-word (car v)))
+                   (if (and (consp (car v)) (true-listp (cdr (car v))))
+                       (cdr (car v))
+                     nil)
+                   *fn-nls-lf*
+                   (fn-nh-lines (cdr v) (cdr names)))
+         nil)
+       :exec (fn-nh-lines-loop v names nil)))
+
+(local
+ (defthm fn-nh-lines-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-nh-lines-loop-is-revappend
+   (equal (fn-nh-lines-loop v names acc)
+          (revappend acc (fn-nh-lines v names)))
+   :hints (("Goal" :induct (fn-nh-lines-loop v names acc)
+                   :in-theory (union-theories '(fn-nh-lines-loop fn-nh-lines revappend car-cons cdr-cons fn-nh-lines-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-nh-lines-loop)
+
+(verify-guards fn-nh-lines
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-nh-lines)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-nh-lines-loop-is-revappend (acc nil))))))
+
 
 (defun fn-nh-render (v)
   (declare (xargs :guard t))
@@ -601,16 +952,17 @@ profile's."
   "No owner is running and the Store opened: its facts, no feed table."
   (declare (xargs :guard t :verify-guards nil))
   (fn-nh-render (fn-nh-verdict nil (fn-nh-store-inputs profile s (fn-sbud-bytes-used s) cfg)
-                               min :unobserved)))
+                               min :unobserved :unobserved)))
 
 (defun fn-nh-fenced-report (reason)
   "The Store was not opened because it is fenced: only the fence is observed."
   (declare (xargs :guard t :verify-guards nil))
-  (fn-nh-render (fn-nh-verdict reason nil 0 :unobserved)))
+  (fn-nh-render (fn-nh-verdict reason nil 0 :unobserved :unobserved)))
 
-(defun fn-nh-live-report (profile oc cache min)
+(defun fn-nh-live-report (profile oc cache min disk)
   "The running owner's words over what it carries: its Store, configuration
-and feed table, with the committed octets extended from the carried sum."
+and feed table, with the committed octets extended from the carried sum, and
+its disk's outcome DISK (PRF-358)."
   (declare (xargs :guard t :verify-guards nil))
   (let ((s (fn-own-store (fn-ocfg-owner oc))))
     (fn-nh-render
@@ -618,21 +970,23 @@ and feed table, with the committed octets extended from the carried sum."
                     (fn-nh-store-inputs
                      profile s (fn-sbud-bytes-extend cache (fn-sf-records (fn-sn-files s)))
                      (fn-ocfg-config oc))
-                    min (fn-own-feeds (fn-ocfg-owner oc))))))
+                    min (fn-own-feeds (fn-ocfg-owner oc)) disk))))
 
 ; What the owner renders for an FNLS request: the health report for :health,
-; the status report of books/native-live-status.lisp otherwise.
-(defun fn-nh-answer-report (kind profile oc cache obs min fn-arena)
+; the status report of books/native-live-status.lisp otherwise.  DISK is
+; the owner's disk outcome (host/native-live-status-host.lisp passes
+; fn-otm-health-disk of the scheduler value it renders the disk lines from).
+(defun fn-nh-answer-report (kind profile oc cache obs min disk fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (equal kind :health)
-      (fn-nh-live-report profile oc cache min)
+      (fn-nh-live-report profile oc cache min disk)
     (fn-nls-live-report kind profile oc cache obs fn-arena)))
 
 ; -----------------------------------------------------------------------------
 ; Theorems
 
 ; KEYSTONE (each line from the report).  The subject is `fn-nh-verdict', which
-; every report above renders.  It has eight outcomes, one per state in
+; every report above renders.  It has nine outcomes, one per state in
 ; `*fn-nh-states*' order, and each is decided by the report's own values:
 ; the fence the host observed; the headroom `status' prints (exhausted,
 ; space pressure); the persisted profile (unqualified); the retention
@@ -693,8 +1047,17 @@ and feed table, with the committed octets extended from the carried sum."
         (equal (car (fn-nh-o-debt store)) (cond ((atom store) :unobserved) ((posp (fn-nh-store-debt store)) :held) (t :clear))))
    :hints (("Goal" :in-theory (enable fn-nh-o-debt)))))
 
+(local
+ (defthm fn-nh-o-disk-car
+   (and (consp (fn-nh-o-disk disk))
+        (equal (car (fn-nh-o-disk disk))
+               (cond ((equal disk :unobserved) :unobserved)
+                     ((and (consp disk) (equal (car disk) :held)) :held)
+                     (t :clear))))
+   :hints (("Goal" :in-theory (enable fn-nh-o-disk)))))
+
 (defthm fn-nh-verdict-states
-  (let ((v (fn-nh-verdict fence store min feeds))
+  (let ((v (fn-nh-verdict fence store min feeds disk))
         (hr (fn-nh-store-hr store))
         (debt (fn-nh-store-debt store)))
     (and (fn-nh-verdict-shapep v)
@@ -726,11 +1089,34 @@ and feed table, with the committed octets extended from the carried sum."
          (equal (car (fn-nh-nth 7 v))
                 (cond ((atom store) :unobserved)
                       ((posp debt) :held)
+                      (t :clear)))
+         (equal (car (fn-nh-nth 8 v))
+                (cond ((equal disk :unobserved) :unobserved)
+                      ((and (consp disk) (equal (car disk) :held)) :held)
                       (t :clear)))))
   :hints (("Goal" :in-theory (e/d (fn-nh-verdict fn-nh-verdict-shapep fn-nh-outcomes-okp)
                                   (fn-nh-o-fenced fn-nh-o-exhausted fn-nh-o-unqualified
                                    fn-nh-o-pressure fn-nh-o-no-route fn-nh-o-stranded
-                                   fn-nh-o-unavailable fn-nh-o-debt)))))
+                                   fn-nh-o-unavailable fn-nh-o-debt fn-nh-o-disk)))))
+
+;; KEYSTONE (PRF-358, PKT-879: a stalled or full disk is never healthy).
+;; The subject is fn-nh-verdict, which fn-nh-live-report renders for the
+;; running owner (fn-nh-answer-report, host/native-live-status-host.lisp
+;; fn-native-live-status-host-answer, with DISK = fn-otm-health-disk of the
+;; owner's scheduler value).  A held disk outcome is the ninth state held:
+;; the exit is a held state's code, never 0 or 19, and it is 28 exactly
+;; when none of the first eight states is held.
+(defthm fn-nh-held-disk-is-never-healthy
+  (implies (and (consp disk) (equal (car disk) :held))
+           (let ((code (fn-nh-exit-code (fn-nh-verdict fence store min feeds disk))))
+             (and (<= 20 code) (<= code 28)
+                  (iff (equal code 28)
+                       (not (fn-nh-first-held-index
+                             (take 8 (fn-nh-verdict fence store min feeds disk)) 0))))))
+  :hints (("Goal" :in-theory (e/d (fn-nh-exit-code fn-nh-verdict fn-nh-first-held-index)
+                                  (fn-nh-o-fenced fn-nh-o-exhausted fn-nh-o-unqualified
+                                   fn-nh-o-pressure fn-nh-o-no-route fn-nh-o-stranded
+                                   fn-nh-o-unavailable fn-nh-o-debt fn-nh-o-disk)))))
 
 ;; KEYSTONE (PKT-711).  While a peer defers any of this node's articles (a
 ;; full Store answers 436), `health' holds unavailable-peer: the node is
@@ -749,7 +1135,7 @@ and feed table, with the committed octets extended from the carried sum."
 (defthm fn-nh-deferring-peer-is-held
   (implies (and (member-equal e feeds)
                 (fn-nh-feed-deferredp (fn-own-feed-entry-feed e)))
-           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds))) :held))
+           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds disk))) :held))
   :hints (("Goal" :in-theory (disable fn-nh-verdict fn-nh-feed-deferredp fn-nh-nth)
            :use ((:instance fn-nh-verdict-states)))))
 
@@ -810,14 +1196,14 @@ and feed table, with the committed octets extended from the carried sum."
 (defthm fn-nh-saturated-peer-is-held
   (implies (and (member-equal e feeds)
                 (fn-nh-feed-saturatedp (fn-own-feed-entry-feed e)))
-           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds))) :held))
+           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds disk))) :held))
   :hints (("Goal" :in-theory (disable fn-nh-verdict fn-nh-feed-saturatedp fn-nh-nth)
            :use ((:instance fn-nh-verdict-states)))))
 
 (defthm fn-nh-feed-queue-refusal-is-held
   (implies (and (fn-nh-names-have-entriesp names feeds)
                 (not (fn-own-feed-target-capacityp names feeds msgid)))
-           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds))) :held))
+           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds disk))) :held))
   :hints (("Goal" :use ((:instance fn-nh-full-target-is-saturated (tbl feeds))
                         (:instance fn-nh-saturated-peer-is-held
                                    (e (fn-own-feed-entry-of
@@ -903,7 +1289,7 @@ and feed table, with the committed octets extended from the carried sum."
   (implies (and (fn-own-feed-tablep (fn-own-feeds o))
                 (equal (fn-own-submission-intent-result o evidence generation txid)
                        :capacity))
-           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min (fn-own-feeds o))))
+           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min (fn-own-feeds o) disk)))
                   :held))
   :hints (("Goal" :use ((:instance fn-nh-feed-queue-refusal-is-held
                                    (names (fn-own-submission-targets o))
@@ -925,12 +1311,12 @@ and feed table, with the committed octets extended from the carried sum."
                  (< (fn-nh-first-held-index v i) (+ i (len v)))))
    :rule-classes nil))
 
-; The scale (PKT-329).  For every verdict of at most eight outcomes (the
-; verdict has exactly eight: fn-nh-verdict-states) the code is 0, 19, or
-; 20..27.
+; The scale (PKT-329).  For every verdict of at most nine outcomes (the
+; verdict has exactly nine: fn-nh-verdict-states) the code is 0, 19, or
+; 20..28.
 (defthm fn-nh-exit-code-cases
-  (implies (<= (len v) 8)
-           (member-equal (fn-nh-exit-code v) '(0 19 20 21 22 23 24 25 26 27)))
+  (implies (<= (len v) 9)
+           (member-equal (fn-nh-exit-code v) '(0 19 20 21 22 23 24 25 26 27 28)))
   :hints (("Goal" :use ((:instance fn-nh-first-held-index-bounds (i 0)))
            :in-theory (disable fn-nh-first-held-index))))
 
@@ -951,12 +1337,12 @@ and feed table, with the committed octets extended from the carried sum."
             (equal (fn-nh-exit-code v) (fn-outcome-code :accepted))))
   :hints (("Goal" :in-theory (enable fn-nh-exit-code fn-outcome-codep))))
 
-; KEYSTONE (the code names the state).  For every verdict of at most eight
-; outcomes (the verdict has exactly eight: fn-nh-verdict-states), the exit
+; KEYSTONE (the code names the state).  For every verdict of at most nine
+; outcomes (the verdict has exactly nine: fn-nh-verdict-states), the exit
 ; code the host returns names the first held state in `*fn-nh-states*' order,
 ; and it is 0 exactly when no state is held and none is unobserved.
 (defthm fn-nh-exit-code-decodes
-  (implies (<= (len v) 8)
+  (implies (<= (len v) 9)
            (and (equal (fn-nh-code-state (fn-nh-exit-code v)) (fn-nh-first-held v))
                 (iff (equal (fn-nh-exit-code v) 0)
                      (and (not (fn-nh-first-held-index v 0))
@@ -991,7 +1377,7 @@ and feed table, with the committed octets extended from the carried sum."
 
 (local
  (defthm fn-nh-report-exit-of-code
-   (implies (and (member-equal c '(0 19 20 21 22 23 24 25 26 27))
+   (implies (and (member-equal c '(0 19 20 21 22 23 24 25 26 27 28))
                  (true-listp rest))
             (equal (fn-nh-report-exit
                     (append (fn-nh-exit-prefix) (append (fn-nh-digit2 c) rest)))
@@ -1008,9 +1394,9 @@ and feed table, with the committed octets extended from the carried sum."
 ; KEYSTONE (the exit the host returns is the verdict's).  The host prints the
 ; octets `fn-nh-render' made, locally or over the control socket, and returns
 ; `fn-nh-report-exit' of the octets it holds (`fn-native-health-host-exit');
-; for every verdict of at most eight outcomes that is the verdict's code.
+; for every verdict of at most nine outcomes that is the verdict's code.
 (defthm fn-nh-report-exit-of-render
-  (implies (<= (len v) 8)
+  (implies (<= (len v) 9)
            (equal (fn-nh-report-exit (fn-nh-render v)) (fn-nh-exit-code v)))
   :hints (("Goal" :in-theory (e/d (fn-nh-render fn-nh-header)
                                   (fn-nh-report-exit fn-nh-exit-code fn-nh-digit2 fn-nh-header-reason
@@ -1068,14 +1454,14 @@ and feed table, with the committed octets extended from the carried sum."
 (defthm fn-nh-live-report-is-the-store-report
   (implies (fn-sbud-octets-cache-validp
             cache (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
-           (equal (fn-nh-live-report profile oc cache min)
+           (equal (fn-nh-live-report profile oc cache min disk)
                   (fn-nh-render
                    (fn-nh-verdict nil
                                   (fn-nh-store-inputs
                                    profile (fn-own-store (fn-ocfg-owner oc))
                                    (fn-sbud-bytes-used (fn-own-store (fn-ocfg-owner oc)))
                                    (fn-ocfg-config oc))
-                                  min (fn-own-feeds (fn-ocfg-owner oc))))))
+                                  min (fn-own-feeds (fn-ocfg-owner oc)) disk))))
   :hints (("Goal" :use ((:instance fn-sbud-bytes-used-is-kernel-sum
                                    (s (fn-own-store (fn-ocfg-owner oc)))))
            :in-theory '(fn-nh-live-report))))
@@ -1193,7 +1579,7 @@ and feed table, with the committed octets extended from the carried sum."
                                fn-rtf-pin-count fn-rtf-reserved))))
 
 ; -----------------------------------------------------------------------------
-; PKT-508 (PRF-187): the owner's log sink after the eight states.
+; PKT-508 (PRF-187): the owner's log sink after the nine states.
 ;
 ; The running owner's `health' ends with one line of its service-log sink
 ; (books/log-sink.lisp): the lines pending in the writer's queue, the lines
@@ -1209,11 +1595,11 @@ and feed table, with the committed octets extended from the carried sum."
           (fn-nls-field "written" (fn-log-sink-written sink))
           *fn-nls-lf*))
 
-; KEYSTONE (lines after the eight states leave the exit alone).  The host
+; KEYSTONE (lines after the nine states leave the exit alone).  The host
 ; returns `fn-nh-report-exit' of the whole page it received, which carries
 ; the exposure lines and the log-sink line after the verdict's report; for
-; every verdict of at most eight outcomes and whatever follows, that is the
-; verdict's code.  So `log-sink dropped=N' is reported without a ninth code
+; every verdict of at most nine outcomes and whatever follows, that is the
+; verdict's code.  So `log-sink dropped=N' is reported without a tenth code
 ; and without moving the scale monitors read (HST-007).
 (local
  (defthm fn-nh-render-long-enough
@@ -1241,7 +1627,7 @@ and feed table, with the committed octets extended from the carried sum."
                                    fn-nh-exit-prefix)))))
 
 (defthm fn-nh-report-exit-of-render-and-more
-  (implies (and (<= (len v) 8) (true-listp more))
+  (implies (and (<= (len v) 9) (true-listp more))
            (equal (fn-nh-report-exit (append (fn-nh-render v) more))
                   (fn-nh-exit-code v)))
   :hints (("Goal" :use (fn-nh-report-exit-of-render
@@ -1411,13 +1797,13 @@ and feed table, with the committed octets extended from the carried sum."
           *fn-nls-lf*))
 
 ; `health' when the step says (:not-running): the header, why it stopped,
-; then the eight states over the Store this process opened read-only.
+; then the nine states over the Store this process opened read-only.
 (defun fn-nh-not-running-report (profile s cfg min last)
   (declare (xargs :guard t :verify-guards nil))
   (append (fn-nh-not-running-header)
           (fn-nh-last-run-words last)
           (fn-nh-lines (fn-nh-verdict nil (fn-nh-store-inputs profile s (fn-sbud-bytes-used s) cfg)
-                                      min :unobserved)
+                                      min :unobserved :unobserved)
                        *fn-nh-states*)))
 
 (verify-guards fn-nh-not-running-report)
@@ -1454,7 +1840,7 @@ and feed table, with the committed octets extended from the carried sum."
            :in-theory (disable fn-nh-report-exit-of-append))))
 
 ; KEYSTONE.  The not-running report's exit is 18, its own code: never 0,
-; never 19 (some state unobserved), never a held state's 20 to 27.
+; never 19 (some state unobserved), never a held state's 20 to 28.
 (defthm fn-nh-not-running-report-exit
   (equal (fn-nh-report-exit (fn-nh-not-running-report profile s cfg min last))
          *fn-nh-not-running-exit*)
@@ -1463,7 +1849,7 @@ and feed table, with the committed octets extended from the carried sum."
                                                  (fn-nh-lines
                                                   (fn-nh-verdict
                                                    nil (fn-nh-store-inputs profile s (fn-sbud-bytes-used s) cfg)
-                                                   min :unobserved)
+                                                   min :unobserved :unobserved)
                                                   *fn-nh-states*)))))
            :in-theory (union-theories
                        '(fn-nh-not-running-report fn-nh-true-listp-of-not-running-tail)

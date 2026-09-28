@@ -720,17 +720,59 @@
 ; found by its raw name: every name this face's forms use is a plain
 ; lower-case word.
 
-(defun fn-wrq-urldecode (xs)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-wrq-urldecode-loop (xs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp xs)
       (let ((o (car xs)))
-        (cond ((equal o 43) (cons 32 (fn-wrq-urldecode (cdr xs))))
-              ((and (equal o 37) (consp (cdr xs)) (consp (cddr xs))
-                    (fn-ot-hex-value (cadr xs)) (fn-ot-hex-value (caddr xs)))
-               (cons (+ (* 16 (fn-ot-hex-value (cadr xs))) (fn-ot-hex-value (caddr xs)))
-                     (fn-wrq-urldecode (cdddr xs))))
-              (t (cons o (fn-wrq-urldecode (cdr xs))))))
-    nil))
+        (cond ((equal o 43) (fn-wrq-urldecode-loop (cdr xs) (cons 32 acc)))
+              ((and (equal o 37)
+                    (consp (cdr xs))
+                    (consp (cddr xs))
+                    (fn-ot-hex-value (cadr xs))
+                    (fn-ot-hex-value (caddr xs)))
+               (fn-wrq-urldecode-loop (cdddr xs)
+                                      (cons (+ (* 16 (fn-ot-hex-value (cadr xs)))
+                                               (fn-ot-hex-value (caddr xs)))
+                                            acc)))
+              (t (fn-wrq-urldecode-loop (cdr xs) (cons o acc)))))
+    (revappend acc nil)))
+
+(defun fn-wrq-urldecode (xs)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp xs)
+           (let ((o (car xs)))
+             (cond ((equal o 43) (cons 32 (fn-wrq-urldecode (cdr xs))))
+                   ((and (equal o 37) (consp (cdr xs)) (consp (cddr xs))
+                         (fn-ot-hex-value (cadr xs)) (fn-ot-hex-value (caddr xs)))
+                    (cons (+ (* 16 (fn-ot-hex-value (cadr xs))) (fn-ot-hex-value (caddr xs)))
+                          (fn-wrq-urldecode (cdddr xs))))
+                   (t (cons o (fn-wrq-urldecode (cdr xs))))))
+         nil)
+       :exec (fn-wrq-urldecode-loop xs nil)))
+
+(local
+ (defthm fn-wrq-urldecode-loop-is-revappend
+   (equal (fn-wrq-urldecode-loop xs acc)
+          (revappend acc (fn-wrq-urldecode xs)))
+   :hints (("Goal" :induct (fn-wrq-urldecode-loop xs acc)
+                   :in-theory (union-theories '(fn-wrq-urldecode-loop fn-wrq-urldecode revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-wrq-urldecode-loop)
+
+(verify-guards fn-wrq-urldecode
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-wrq-urldecode)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-wrq-urldecode-loop-is-revappend (acc nil))))))
+
 
 (defun fn-wrq-field-match (name field)
   ; FIELD (octets of one name=value) has name NAME: its value's octets, else :no.
@@ -809,21 +851,68 @@
 
 ; The decoded octets of the span [s, e): the logical model is
 ; `fn-wrq-urldecode' of the slice (`fn-wrq-span-decode-is-urldecode').
-(defun fn-wrq-span-decode (s e fn-octets)
-  (declare (xargs :stobjs fn-octets
-                  :guard (and (natp s) (natp e) (<= s e) (<= e (fn-octets-len fn-octets)))
-                  :measure (nfix (- e s))))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-wrq-span-decode-loop (s e fn-octets acc)
+  (declare (xargs :stobjs fn-octets :measure (nfix (- e s)) :guard (and (and (natp s) (natp e) (<= s e) (<= e (fn-octets-len fn-octets))) (true-listp acc)) :verify-guards nil))
   (if (or (not (natp s)) (not (natp e)) (<= e s))
-      nil
+      (revappend acc nil)
     (let ((o (fn-octets-get s fn-octets)))
-      (cond ((equal o 43) (cons 32 (fn-wrq-span-decode (1+ s) e fn-octets)))
-            ((and (equal o 37) (< (+ 2 s) e)
+      (cond ((equal o 43) (fn-wrq-span-decode-loop (1+ s) e fn-octets (cons 32 acc)))
+            ((and (equal o 37)
+                  (< (+ 2 s) e)
                   (fn-ot-hex-value (fn-octets-get (+ 1 s) fn-octets))
                   (fn-ot-hex-value (fn-octets-get (+ 2 s) fn-octets)))
-             (cons (+ (* 16 (fn-ot-hex-value (fn-octets-get (+ 1 s) fn-octets)))
-                      (fn-ot-hex-value (fn-octets-get (+ 2 s) fn-octets)))
-                   (fn-wrq-span-decode (+ 3 s) e fn-octets)))
-            (t (cons o (fn-wrq-span-decode (1+ s) e fn-octets)))))))
+             (fn-wrq-span-decode-loop (+ 3 s)
+                                      e
+                                      fn-octets
+                                      (cons (+ (* 16
+                                                  (fn-ot-hex-value (fn-octets-get (+ 1
+                                                                                     s)
+                                                                                  fn-octets)))
+                                               (fn-ot-hex-value (fn-octets-get (+ 2 s)
+                                                                               fn-octets)))
+                                            acc)))
+            (t (fn-wrq-span-decode-loop (1+ s) e fn-octets (cons o acc)))))))
+
+(defun fn-wrq-span-decode (s e fn-octets)
+  (declare (xargs :verify-guards nil :stobjs fn-octets
+                  :guard (and (natp s) (natp e) (<= s e) (<= e (fn-octets-len fn-octets)))
+                  :measure (nfix (- e s))))
+  (mbe :logic
+       (if (or (not (natp s)) (not (natp e)) (<= e s))
+           nil
+         (let ((o (fn-octets-get s fn-octets)))
+           (cond ((equal o 43) (cons 32 (fn-wrq-span-decode (1+ s) e fn-octets)))
+                 ((and (equal o 37) (< (+ 2 s) e)
+                       (fn-ot-hex-value (fn-octets-get (+ 1 s) fn-octets))
+                       (fn-ot-hex-value (fn-octets-get (+ 2 s) fn-octets)))
+                  (cons (+ (* 16 (fn-ot-hex-value (fn-octets-get (+ 1 s) fn-octets)))
+                           (fn-ot-hex-value (fn-octets-get (+ 2 s) fn-octets)))
+                        (fn-wrq-span-decode (+ 3 s) e fn-octets)))
+                 (t (cons o (fn-wrq-span-decode (1+ s) e fn-octets))))))
+       :exec (fn-wrq-span-decode-loop s e fn-octets nil)))
+
+(local
+ (defthm fn-wrq-span-decode-loop-is-revappend
+   (equal (fn-wrq-span-decode-loop s e fn-octets acc)
+          (revappend acc (fn-wrq-span-decode s e fn-octets)))
+   :hints (("Goal" :induct (fn-wrq-span-decode-loop s e fn-octets acc)
+                   :in-theory (union-theories '(fn-wrq-span-decode-loop fn-wrq-span-decode revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-wrq-span-decode-loop)
+
+(verify-guards fn-wrq-span-decode
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-wrq-span-decode)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-wrq-span-decode-loop-is-revappend (acc nil))))))
+
 
 (local
  (defthm fn-wrq-slice-open

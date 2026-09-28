@@ -12,12 +12,45 @@
 (include-book "hybrid-carrier")
 (include-book "control-classify")
 
-(defun fn-hsig-octet-fields-to-strings (fields)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-hsig-octet-fields-to-strings-loop (fields acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp fields)
-      (cons (fn-record-octets-string (car fields))
-            (fn-hsig-octet-fields-to-strings (cdr fields)))
-    nil))
+      (fn-hsig-octet-fields-to-strings-loop (cdr fields)
+                                            (cons (fn-record-octets-string (car fields))
+                                                  acc))
+    (revappend acc nil)))
+
+(defun fn-hsig-octet-fields-to-strings (fields)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp fields)
+           (cons (fn-record-octets-string (car fields))
+                 (fn-hsig-octet-fields-to-strings (cdr fields)))
+         nil)
+       :exec (fn-hsig-octet-fields-to-strings-loop fields nil)))
+
+(local
+ (defthm fn-hsig-octet-fields-to-strings-loop-is-revappend
+   (equal (fn-hsig-octet-fields-to-strings-loop fields acc)
+          (revappend acc (fn-hsig-octet-fields-to-strings fields)))
+   :hints (("Goal" :induct (fn-hsig-octet-fields-to-strings-loop fields acc)
+                   :in-theory (union-theories '(fn-hsig-octet-fields-to-strings-loop fn-hsig-octet-fields-to-strings revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-hsig-octet-fields-to-strings-loop)
+
+(verify-guards fn-hsig-octet-fields-to-strings
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-hsig-octet-fields-to-strings)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-hsig-octet-fields-to-strings-loop-is-revappend (acc nil))))))
+
 
 (defun fn-hsig-authored-source-fields (source)
   "Return the supplied Message-ID and Newsgroups parsed from the exact source."

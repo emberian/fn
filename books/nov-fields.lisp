@@ -29,16 +29,41 @@
       byte
     32))
 
-(defun fn-nov-scrub (bytes)
-  (declare (xargs :guard t :verify-guards nil :measure (acl2-count bytes)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nov-scrub-loop (bytes acc)
+  (declare (xargs :measure (acl2-count bytes) :guard (true-listp acc) :verify-guards nil))
   (if (consp bytes)
       (if (and (equal (fn-ag-car bytes) 13)
                (consp (fn-ag-cdr bytes))
                (equal (fn-ag-car (fn-ag-cdr bytes)) 10))
-          (fn-nov-scrub (fn-ag-cdr (fn-ag-cdr bytes)))
-        (cons (fn-nov-scrub-byte (fn-ag-car bytes))
-              (fn-nov-scrub (fn-ag-cdr bytes))))
-    nil))
+          (fn-nov-scrub-loop (fn-ag-cdr (fn-ag-cdr bytes)) acc)
+        (fn-nov-scrub-loop (fn-ag-cdr bytes)
+                           (cons (fn-nov-scrub-byte (fn-ag-car bytes)) acc)))
+    (revappend acc nil)))
+
+(defun fn-nov-scrub (bytes)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count bytes)))
+  (mbe :logic
+       (if (consp bytes)
+           (if (and (equal (fn-ag-car bytes) 13)
+                    (consp (fn-ag-cdr bytes))
+                    (equal (fn-ag-car (fn-ag-cdr bytes)) 10))
+               (fn-nov-scrub (fn-ag-cdr (fn-ag-cdr bytes)))
+             (cons (fn-nov-scrub-byte (fn-ag-car bytes))
+                   (fn-nov-scrub (fn-ag-cdr bytes))))
+         nil)
+       :exec (fn-nov-scrub-loop bytes nil)))
+
+(local
+ (defthm fn-nov-scrub-loop-is-revappend
+   (equal (fn-nov-scrub-loop bytes acc)
+          (revappend acc (fn-nov-scrub bytes)))
+   :hints (("Goal" :induct (fn-nov-scrub-loop bytes acc)
+                   :in-theory (union-theories '(fn-nov-scrub-loop fn-nov-scrub revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
 
 ; RFC 3977 section 8.3.2: the field is the header content, that is, the header
 ; name and its following colon and space removed.  The parsed view's unfolded
@@ -76,7 +101,16 @@
 
 (verify-guards fn-nov-scrub-byte)
 
-(verify-guards fn-nov-scrub)
+(verify-guards fn-nov-scrub-loop)
+
+(verify-guards fn-nov-scrub
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-nov-scrub)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-nov-scrub-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nov-value-content)
 

@@ -645,6 +645,24 @@ for the barrier as in slice 1, the inline barrier and
 configuration publication as requests (slice 3), `health`'s exit in
 `stalled` (PKT-853 (b)).
 
+A graceful stop (SIGTERM, PKT-875; PRF-357, books/owner-stop-drain.lisp)
+drains before its fence: the owner stops accepting and stepping input, the
+I/O loops keep delivering and the committer keeps committing, and each
+poster is told at its batch's COMPLETE as always (240 only after a fenced
+barrier). ACL2 decides from each observation (`fn-osd-drain-step`, every
+100 ms after a clock event): the fence comes only when no member awaits its
+reply, no reply is unsent and no batch is in flight unless its members were
+released (`fn-osd-stops-only-when-nothing-is-owed`); at the drain deadline,
+the configuration's H after the SIGTERM, the members still in flight are
+released uncertain by the stall's own rule and the queue shed
+(`fn-osd-releases-only-at-the-deadline`), and the drain ends 10 s after that
+release at the latest (`fn-osd-drain-ends-by-the-deadline`). A stop never
+closes a connection whose article committed without its reply before that
+bound. Not covered: a command read but not yet stepped at the SIGTERM (an
+article after its 340) is not answered; it is not stored. The fence itself
+still waits for a barrier that does not return (a stuck device holds the
+exit, never a reply).
+
 HST-028: Every decision that stores nothing is reproducible from the
 decision journal (PRF-322, books/owner-time-journal.lisp). Each event the
 scheduler's disk-and-clock value takes -- a barrier's issue and completion,
@@ -668,6 +686,47 @@ What a process death with entries unflushed loses is exactly those entries:
 the replay of decisions that stored nothing. No durable state depends on an
 entry (a disk event keeps the pipeline; a refusal stores nothing), and the
 record log alone determines the durable state.
+
+The free space (lane health-truth; PRF-359, PKT-872). A full filesystem
+was found by the append (ENOSPC after the members had sent their articles:
+the recovery event, every member uncertain). The free octets of the store's
+filesystem are now a recorded observation, a `:space` event (journal op 6)
+carrying statvfs's figure and ACL2's need (`fn-otm-space-need`: PRF-129's
+maintenance reserve, two batches at `log-batch-octets`, and the operator's
+`disk-reserve-octets` row, `policy set disk-reserve-octets N`, default 64
+MiB), taken at every barrier's issue, at every `health` and `status`
+render, and before a served read's admission when ACL2 says one is due
+(`fn-otm-space-due-p`: a cadence after the last). Below the need the disk is
+`full` and every write is shed as while `slow`: a POST command is answered
+`440 posting not permitted now; the disk is full (F octets free, N needed),
+try again later` before its article, an article already sent `441 posting
+failed; the disk is full (...): nothing was stored, try again later`
+(`fn-otm-full-sheds`, `fn-otm-admit-keeps-the-space-need`); `health` holds
+`disk` with `mode=full` (exit 28); the next observation with room recovers
+(`fn-otm-space-recovers`). An unobserved figure is never `full`: an append
+that then meets ENOSPC stays the recovery event.
+
+HST-030: The decision journal never keeps a torn line (PKT-872, PRF-360,
+books/owner-time-journal-writer.lisp). The writer thread appends each entry
+by ACL2's rule: it carries the length of the file's whole entries; an append
+that fails (ENOSPC part-way through a line, any write error) is truncated
+back to that length, and when the truncation itself fails the journal is
+closed for the run, so no line is ever appended after torn octets. The
+first entry written after a lost one (a failed append, or an entry the sink
+dropped at its bound) is preceded by a mark line `0 7 0 0 0 0 0`, which the
+replay reads as `gap-at-N`, N the first sequence number missing; a gap
+detected by the sequence numbers also names the first one missing. At each
+run's start the file is cut back to its last whole entry (read backwards in
+bounded chunks), so a process that died mid-append leaves nothing the next
+run appends after. Keystone `fn-otm-jw-file-reads-agrees-or-gap`: from a
+file of whole entries, whatever happens to each offered entry -- written,
+dropped, failed after any number of its octets with the truncation holding
+or not, and so at every process-death cut -- `store ROOT journal` reads
+`whole` or `torn`, never `malformed`, and replays to agreement or to the gap
+one past the last entry replayed (`fn-otm-jw-gap-is-the-first-lost`: the
+sequence number of the first entry lost). A journal that cannot be written
+costs replay of decisions that stored nothing, never service: the owner
+keeps serving and `health`'s log-sink line counts what was dropped.
 
 ### The owner submission path
 
@@ -990,16 +1049,25 @@ HST-006: The operator's status, pins, obligations and peers answer while the
 owner runs, in the offline words: the running owner renders the same ACL2
 report (`fn-nls-report`, books/native-live-status.lisp) of the state it
 carries that the offline command renders from the Store, and answering changes
-no state. The operator guide's
+no state. The running owner's report is `fn-nsc-answer-report`
+(books/native-status-columns.lisp, PRF-368): its reclaim line reads each
+article's tombstone flag from the catalog column the intern decided and makes
+one walk for all seven figures, never realizing a payload; under the column
+relation it is the offline report's function of the same state
+(`fn-nsc-answer-report-is-answer-report`). The operator guide's
 [status section](../docs/operator-internals.md#status-while-the-owner-runs) describes the
 verbs.
 
 ## Operator health
 
-HST-007: The operator's health verdict names which of eight things is wrong,
+HST-007: The operator's health verdict names which of nine things is wrong,
 never one red bit. `operator CONFIG health` prints one line per state in a
 fixed order: fenced, exhausted, unqualified-profile, space-pressure,
-no-route, stranded-transfer, unavailable-peer, receipt-debt; each line says
+no-route, stranded-transfer, unavailable-peer, receipt-debt, disk (PRF-358:
+the running owner's disk stalled or full, exit 28, both PROVISIONAL until
+ember decides the F4 bars and the health exit; appended so 20..27 keep
+their meaning; a slow disk is the `disk slow` line only, provisional per
+PKT-853 (b)); each line says
 `held` (with the figures that hold it), `clear`, or `unobserved` (the source
 was not observed: offline there is no feed table, a fenced store is not
 opened). The exit code is 20 plus the index of the first held state, 19 when
@@ -1017,7 +1085,7 @@ configured socket, or one the probe could not read, is `store-held`
 (`fn-nh-fence-of-starting-iff`). `starting` is a reason of the fenced state, exit 20, never a ninth code (PKT-454), and it clears on the one observation listening changes: the host takes every observation of one invocation before ACL2 decides (`fn-nh-health-step`), which reports `starting` exactly while no clone fence is present, the lock is held, an owner would listen and nothing answered, and gives the owner's own report, with no fence, for the same lock and fence once the owner answers on its socket (`fn-nh-starting-clears-on-listening`). The running owner renders the same verdict over the state it
 carries (FNLS kind 6); the exit code the host returns is read back from the
 rendered octets (`fn-nh-report-exit-of-render`). The operator guide's
-[health section](../docs/operator-internals.md#health-which-of-eight-things-is-wrong)
+[health section](../docs/operator-internals.md#health-which-of-nine-things-is-wrong)
 describes the verb.
 
 HST-010: The operator's daily verbs distinguish an owner starting, a fenced

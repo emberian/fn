@@ -100,11 +100,39 @@
               (append (true-list-fix (car records)) (fn-lg-pack (cdr records))))
     nil))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-lg-pack-len-loop (rev acc)
+  (declare (xargs :guard (rationalp acc) :verify-guards nil))
+  (if (consp rev) (fn-lg-pack-len-loop (cdr rev) (+ 4 (len (car rev)) acc)) acc))
+
 (defun fn-lg-pack-len (records)
-  (declare (xargs :guard t))
-  (if (consp records)
-      (+ 4 (len (car records)) (fn-lg-pack-len (cdr records)))
-    0))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp records)
+           (+ 4 (len (car records)) (fn-lg-pack-len (cdr records)))
+         0)
+       :exec (fn-lg-pack-len-loop (fn-ag-rev-onto records nil) 0)))
+
+(local
+ (defthm fn-lg-pack-len-loop-of-rev-onto
+   (equal (fn-lg-pack-len-loop (fn-ag-rev-onto records zs) 0)
+          (fn-lg-pack-len-loop zs (fn-lg-pack-len records)))
+   :hints (("Goal" :induct (fn-ag-rev-onto records zs)
+                   :in-theory (union-theories '(fn-lg-pack-len-loop fn-lg-pack-len fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-lg-pack-len-loop)
+
+(verify-guards fn-lg-pack-len
+  :hints (("Goal" :in-theory (union-theories '(fn-lg-pack-len fn-lg-pack-len-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-lg-pack-len-loop-of-rev-onto (zs nil))))))
+
 
 (local
  (defthm fn-lg-len-nthcdr-early
@@ -139,12 +167,43 @@
     t))
 
 ; How many records from the front fit one frame after USED payload octets.
-(defun fn-lg-fit-count (records used)
-  (declare (xargs :guard (natp used)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-lg-fit-count-loop (records used acc)
+  (declare (xargs :guard (and (natp used) (acl2-numberp acc)) :verify-guards nil))
   (if (and (consp records)
            (<= (+ (nfix used) 4 (len (car records))) *fn-frame-max-payload*))
-      (1+ (fn-lg-fit-count (cdr records) (+ (nfix used) 4 (len (car records)))))
-    0))
+      (fn-lg-fit-count-loop (cdr records)
+                            (+ (nfix used) 4 (len (car records)))
+                            (+ 1 acc))
+    (+ acc 0)))
+
+(defun fn-lg-fit-count (records used)
+  (declare (xargs :verify-guards nil :guard (natp used)))
+  (mbe :logic
+       (if (and (consp records)
+                (<= (+ (nfix used) 4 (len (car records))) *fn-frame-max-payload*))
+           (1+ (fn-lg-fit-count (cdr records) (+ (nfix used) 4 (len (car records)))))
+         0)
+       :exec (fn-lg-fit-count-loop records used 0)))
+
+(local
+ (defthm fn-lg-fit-count-loop-is-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-lg-fit-count-loop records used acc)
+                   (+ acc (fn-lg-fit-count records used))))
+   :hints (("Goal" :induct (fn-lg-fit-count-loop records used acc)))))
+
+(verify-guards fn-lg-fit-count-loop)
+
+(verify-guards fn-lg-fit-count
+  :hints (("Goal"
+           :in-theory
+           (disable fn-lg-fit-count-loop)
+           :use
+           ((:instance fn-lg-fit-count-loop-is-plus (acc 0))))))
+
 
 ; The first chunk's length: at least one record.
 (defun fn-lg-chunk-len (records)

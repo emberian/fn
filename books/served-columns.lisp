@@ -423,8 +423,11 @@
 ; nntp-xref arm with the two per-article reads replaced, and is equated to
 ; it under F.
 
-(defun fn-nov-served-lines-numbered-col (numbers nidx trie server fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-nov-served-lines-numbered-col-loop (numbers nidx trie server fn-arena fn-cat acc)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (true-listp acc) :verify-guards nil))
   (if (consp numbers)
       (let* ((number (car numbers))
              (article (fn-gidx-nidx-number-article number nidx trie))
@@ -433,11 +436,63 @@
                        (fn-scol-overview-of article fn-arena fn-cat)
                      (list :error))))
         (if (fn-nov-okp over)
-            (cons (fn-nov-served-line number over server article)
-                  (fn-nov-served-lines-numbered-col (cdr numbers) nidx trie server
-                                                    fn-arena fn-cat))
-          (fn-nov-served-lines-numbered-col (cdr numbers) nidx trie server fn-arena fn-cat)))
-    nil))
+            (fn-nov-served-lines-numbered-col-loop (cdr numbers)
+                                                   nidx
+                                                   trie
+                                                   server
+                                                   fn-arena
+                                                   fn-cat
+                                                   (cons (fn-nov-served-line number
+                                                                             over
+                                                                             server
+                                                                             article)
+                                                         acc))
+          (fn-nov-served-lines-numbered-col-loop (cdr numbers)
+                                                 nidx
+                                                 trie
+                                                 server
+                                                 fn-arena
+                                                 fn-cat
+                                                 acc)))
+    (revappend acc nil)))
+
+(defun fn-nov-served-lines-numbered-col (numbers nidx trie server fn-arena fn-cat)
+  (declare (xargs :verify-guards nil :stobjs (fn-arena fn-cat) :guard t))
+  (mbe :logic
+       (if (consp numbers)
+           (let* ((number (car numbers))
+                  (article (fn-gidx-nidx-number-article number nidx trie))
+                  (over (if (and (consp article)
+                                 (not (fn-scol-tombstonep article fn-arena fn-cat)))
+                            (fn-scol-overview-of article fn-arena fn-cat)
+                          (list :error))))
+             (if (fn-nov-okp over)
+                 (cons (fn-nov-served-line number over server article)
+                       (fn-nov-served-lines-numbered-col (cdr numbers) nidx trie server
+                                                         fn-arena fn-cat))
+               (fn-nov-served-lines-numbered-col (cdr numbers) nidx trie server fn-arena fn-cat)))
+         nil)
+       :exec (fn-nov-served-lines-numbered-col-loop numbers nidx trie server fn-arena fn-cat nil)))
+
+(local
+ (defthm fn-nov-served-lines-numbered-col-loop-is-revappend
+   (equal (fn-nov-served-lines-numbered-col-loop numbers nidx trie server fn-arena fn-cat acc)
+          (revappend acc (fn-nov-served-lines-numbered-col numbers nidx trie server fn-arena fn-cat)))
+   :hints (("Goal" :induct (fn-nov-served-lines-numbered-col-loop numbers nidx trie server fn-arena fn-cat acc)
+                   :in-theory (union-theories '(fn-nov-served-lines-numbered-col-loop fn-nov-served-lines-numbered-col revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-nov-served-lines-numbered-col-loop)
+
+(verify-guards fn-nov-served-lines-numbered-col
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-nov-served-lines-numbered-col)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-nov-served-lines-numbered-col-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-nov-served-lines-numbered-col-is-served
   (implies (fn-scol-okp fn-arena fn-cat)

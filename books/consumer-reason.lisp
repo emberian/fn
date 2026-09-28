@@ -285,12 +285,49 @@
                    (fn-ncr-hex-digit (floor (min x 255) 16))
                    (fn-ncr-hex-digit (mod (min x 255) 16)))))))
 
-(defun fn-ncr-json-escape (octets)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-ncr-json-escape-loop (octets acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp octets)
-      (append (fn-ncr-json-octet (car octets))
-              (fn-ncr-json-escape (cdr octets)))
-    nil))
+      (fn-ncr-json-escape-loop (cdr octets)
+                               (fn-ag-rev-onto (fn-ncr-json-octet (car octets)) acc))
+    (revappend acc nil)))
+
+(defun fn-ncr-json-escape (octets)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp octets)
+           (append (fn-ncr-json-octet (car octets))
+                   (fn-ncr-json-escape (cdr octets)))
+         nil)
+       :exec (fn-ncr-json-escape-loop octets nil)))
+
+(local
+ (defthm fn-ncr-json-escape-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-ncr-json-escape-loop-is-revappend
+   (equal (fn-ncr-json-escape-loop octets acc)
+          (revappend acc (fn-ncr-json-escape octets)))
+   :hints (("Goal" :induct (fn-ncr-json-escape-loop octets acc)
+                   :in-theory (union-theories '(fn-ncr-json-escape-loop fn-ncr-json-escape revappend car-cons cdr-cons fn-ncr-json-escape-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ncr-json-escape-loop)
+
+(verify-guards fn-ncr-json-escape
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-ncr-json-escape)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-ncr-json-escape-loop-is-revappend (acc nil))))))
+
 
 (defun fn-ncr-decimal-aux (n acc)
   (declare (xargs :guard t :measure (nfix n)))
@@ -441,13 +478,46 @@
 
 ; The JSON line `fn consumer-article --json REPORT' prints: the report's
 ; kind, its Message-ID and, for an article, the stored octets in hex.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-ncr-hex-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-ncr-hex-loop (cdr rev)
+                       (list* (fn-ncr-hex-digit (floor (min (nfix (car rev)) 255) 16))
+                              (fn-ncr-hex-digit (mod (min (nfix (car rev)) 255) 16))
+                              acc))
+    acc))
+
 (defun fn-ncr-hex (octets)
-  (declare (xargs :guard t))
-  (if (consp octets)
-      (list* (fn-ncr-hex-digit (floor (min (nfix (car octets)) 255) 16))
-             (fn-ncr-hex-digit (mod (min (nfix (car octets)) 255) 16))
-             (fn-ncr-hex (cdr octets)))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp octets)
+           (list* (fn-ncr-hex-digit (floor (min (nfix (car octets)) 255) 16))
+                  (fn-ncr-hex-digit (mod (min (nfix (car octets)) 255) 16))
+                  (fn-ncr-hex (cdr octets)))
+         nil)
+       :exec (fn-ncr-hex-loop (fn-ag-rev-onto octets nil) nil)))
+
+(local
+ (defthm fn-ncr-hex-loop-of-rev-onto
+   (equal (fn-ncr-hex-loop (fn-ag-rev-onto octets zs) nil)
+          (fn-ncr-hex-loop zs (fn-ncr-hex octets)))
+   :hints (("Goal" :induct (fn-ag-rev-onto octets zs)
+                   :in-theory (union-theories '(fn-ncr-hex-loop fn-ncr-hex fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ncr-hex-loop)
+
+(verify-guards fn-ncr-hex
+  :hints (("Goal" :in-theory (union-theories '(fn-ncr-hex fn-ncr-hex-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-ncr-hex-loop-of-rev-onto (zs nil))))))
+
 
 (defun fn-ncr-article-json (summary)
   (declare (xargs :guard t))

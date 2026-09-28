@@ -8,6 +8,7 @@ FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
 	books/defkeystone \
 	books/deftransition \
+	books/rev-onto \
 	books/acceptance-alloc \
 	tests/acl2/defrecord-tests \
 	tests/acl2/defkeystone-tests \
@@ -231,6 +232,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-replay-bound-tests \
 	books/store-export \
 	tests/acl2/store-export-tests \
+	books/store-export-stream \
+	tests/acl2/store-export-stream-tests \
 	books/store-import-publication \
 	tests/acl2/store-import-publication-tests \
 	books/store-init-publication \
@@ -363,6 +366,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/visibility-join-tests \
 	books/store-reclaim-holders \
 	tests/acl2/store-reclaim-holders-tests \
+	tests/acl2/native-status-columns-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
 	books/store-reclaim-stream \
@@ -870,6 +874,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-entries \
 	books/catalog-refresh \
 	books/catalog-number-index \
+	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
 	books/served-catalog \
@@ -920,6 +925,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
+	tests/acl2/served-catalog-view-tests \
 	tests/acl2/served-catalog-chain-tests \
 	tests/acl2/served-catalog-scan-tests \
 	tests/acl2/served-catalog-owner-tests \
@@ -1021,6 +1027,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/ideal \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
+	tests/acl2/serve-depth-tests \
 	books/nntp-index-runtime \
 	books/group-number-index \
 	books/group-bucket-index \
@@ -1091,6 +1098,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/pagestore-exec \
 	books/pagestore-gc \
 	tests/acl2/pagestore-tests \
+	books/pagestore-refine \
+	tests/acl2/pagestore-refine-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \
 	books/snapshot-segments \
@@ -1254,6 +1263,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-journal \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
+	books/owner-time-journal-writer \
+	tests/acl2/owner-time-journal-writer-tests \
+	books/owner-stop-drain \
+	tests/acl2/owner-stop-drain-tests \
 	books/web-request \
 	tests/acl2/web-request-tests \
 	books/web-2047 \
@@ -1394,7 +1407,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-pages-import \
 	books/history-pages-view \
 	tests/acl2/history-pages-step-tests \
-	tests/acl2/history-pages-import-tests
+	tests/acl2/history-pages-import-tests \
+	books/history-pages-owner \
+	tests/acl2/history-pages-owner-tests
 
 .PHONY: extract-check site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
@@ -1568,6 +1583,18 @@ check:
 # A retained payload is a HANDLE (books/payload-kinds.lisp); every definition
 # that reads one declares which kind it takes (lane entry-guards, 2026-09-27).
 	@$(CHECK_STEP) $(PYTHON) tools/payload_kind_check.py
+# Every node thread runs on a 1,024 KiB control stack, and a non-tail
+# recursion costs a frame per step: LIST ACTIVE and GROUP stopped the owner
+# past ~30,000 articles in fn-nntp-group-low (PKT-877), the open in
+# fn-retain-obligation-ids (PKT-876).  This lists every non-tail recursion on
+# the host-called closure (the functions a raw host file names and what they
+# execute, mbe :exec branches only) and fails on one tools/depth_baseline.json
+# does not classify: "bounded" names its bound, "debt" (a walk whose depth is
+# an article count, a group's articles, a history, a queue or an octet count)
+# only shrinks.  Source-level, no ACL2; the extractor agreed (604 of 604, then 383 of 383) at
+# lane serve-depth's head.
+	@$(CHECK_STEP) $(PYTHON) tools/depth_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_depth_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make

@@ -260,11 +260,39 @@
 ; pieces of SEG octets (one piece when SEG is 0 or the list is no longer
 ; than SEG); here a piece is the pair of its bounds.
 
-(defun fn-sccb-chunk-count (l seg)
-  (declare (xargs :guard (and (natp l) (natp seg)) :measure (nfix l)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-sccb-chunk-count-loop (l seg acc)
+  (declare (xargs :measure (nfix l) :guard (and (and (natp l) (natp seg)) (acl2-numberp acc)) :verify-guards nil))
   (if (or (zp seg) (<= (nfix l) seg))
-      1
-    (+ 1 (fn-sccb-chunk-count (- l seg) seg))))
+      (+ acc 1)
+    (fn-sccb-chunk-count-loop (- l seg) seg (+ 1 acc))))
+
+(defun fn-sccb-chunk-count (l seg)
+  (declare (xargs :verify-guards nil :guard (and (natp l) (natp seg)) :measure (nfix l)))
+  (mbe :logic
+       (if (or (zp seg) (<= (nfix l) seg))
+           1
+         (+ 1 (fn-sccb-chunk-count (- l seg) seg)))
+       :exec (fn-sccb-chunk-count-loop l seg 0)))
+
+(local
+ (defthm fn-sccb-chunk-count-loop-is-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-sccb-chunk-count-loop l seg acc)
+                   (+ acc (fn-sccb-chunk-count l seg))))
+   :hints (("Goal" :induct (fn-sccb-chunk-count-loop l seg acc)))))
+
+(verify-guards fn-sccb-chunk-count-loop)
+
+(verify-guards fn-sccb-chunk-count
+  :hints (("Goal"
+           :in-theory
+           (disable fn-sccb-chunk-count-loop)
+           :use
+           ((:instance fn-sccb-chunk-count-loop-is-plus (acc 0))))))
+
 
 (defthm fn-sccb-chunk-count-is-len-chunks
   (implies (true-listp p)

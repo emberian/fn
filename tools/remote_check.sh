@@ -155,8 +155,27 @@ t=ast.parse(open(\"tools/farm.py\").read())
 h=[ast.literal_eval(n.value) for n in t.body if isinstance(n,ast.Assign) and getattr(n.targets[0],\"id\",None)==\"HOSTS\"][0].get(sys.argv[1],{})
 print((\"export FN_ACL2=%s FN_CERT_CACHE=%s\" % (h.get(\"acl2\",\"\"), os.path.expanduser(h.get(\"cache\",\"\")))) + (\" FN_IMAGE_ACL2=%s\" % h[\"image_acl2\"] if h.get(\"image_acl2\") else \"\") if h else \"\")' $BOX 2>/dev/null)"
 echo "remote_check: make $TARGET in $BOX:$TREE (log $LOG)"
-remote "cd $TREE && $ENVS; [ -n \"\${FN_ACL2:-}\" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)' >&2; exit 3; }; { echo \"== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)\"; if [ $INSTALL = 1 ]; then echo \"== certs install: \$(python3 tools/certs.py install 2>&1 | grep -E '^ *installed' | tail -n 1)\"; fi; $WRAP make $TARGET 2>&1; echo \"== make exit \$?\"; } > $LOG 2>&1; tail -n 1 $LOG | grep -q '^== make exit 0\$'"
-STATUS=$?
+# make runs DETACHED on the box (its own script, nohup) and this side polls
+# the log's last line: an ssh session that ends early (exit 255) used to be
+# reported as make's status while make kept running (scale-latency,
+# 2026-09-28).  A poll that cannot reach the box is retried.
+remote "cat > $LOG.run.sh" <<RUNSCRIPT || { echo "remote_check: cannot write the run script on $BOX" >&2; exit 3; }
+cd $TREE && $ENVS; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ $INSTALL = 1 ]; then echo "== certs install: \$(python3 tools/certs.py install 2>&1 | grep -E '^ *installed' | tail -n 1)"; fi; $WRAP make $TARGET 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
+RUNSCRIPT
+remote "rm -f $LOG; nohup sh $LOG.run.sh > $LOG 2>&1 < /dev/null &" || {
+    echo "remote_check: cannot start make on $BOX" >&2; exit 3; }
+FAILS=0
+while :; do
+    sleep "${FN_REMOTE_CHECK_POLL:-15}"
+    LAST=$(remote "tail -n 1 $LOG 2>/dev/null" 2>/dev/null) || {
+        FAILS=$((FAILS + 1))
+        [ $FAILS -lt 40 ] || { echo "remote_check: lost $BOX for 40 polls; make may still run (log $LOG)" >&2; exit 3; }
+        continue; }
+    FAILS=0
+    case $LAST in "== make exit "*) break ;; esac
+    remote "grep -q '^remote_check: no FN_ACL2' $LOG 2>/dev/null" 2>/dev/null && break
+done
+case $LAST in "== make exit 0") STATUS=0 ;; *) STATUS=1 ;; esac
 remote "cat $LOG" > "$WORK/log" 2>/dev/null
 mkdir -p "$ROOT/build/remote-check"
 cp "$WORK/log" "$ROOT/build/remote-check/$BOX-$TARGET.log"

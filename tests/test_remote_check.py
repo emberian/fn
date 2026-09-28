@@ -41,7 +41,7 @@ class RemoteCheckTests(unittest.TestCase):
         fake_ssh.chmod(0o755)
         self.env = {**os.environ, **GIT_ENV, "FN_REMOTE_CHECK_SSH": str(fake_ssh),
                     "FN_REMOTE_CHECK_BASE": str(self.box), "FN_REMOTE_CHECK_WRAP": "",
-                    "FN_ACL2": "/nonexistent/acl2"}
+                    "FN_ACL2": "/nonexistent/acl2", "FN_REMOTE_CHECK_POLL": "0.2"}
         self.env.pop("FN_LANE", None)
 
     def tearDown(self):

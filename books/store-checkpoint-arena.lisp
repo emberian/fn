@@ -630,14 +630,47 @@
   (declare (xargs :guard (natp l)))
   (+ (len (fn-scc-nat-octets l)) l))
 
-(defun fn-scka-batch-count (lens seg acc)
-  (declare (xargs :guard (and (nat-listp lens) (natp seg) (natp acc))))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-scka-batch-count-loop (lens seg acc count)
+  (declare (xargs :guard (and (nat-listp lens) (natp seg) (natp acc) (acl2-numberp count))
+                  :verify-guards nil))
   (if (atom lens)
-      0
+      count
     (let ((e (+ (nfix acc) (fn-scka-enc-len (nfix (car lens))))))
       (if (and (< 0 (nfix acc)) (< (nfix seg) e))
-          0
-        (+ 1 (fn-scka-batch-count (cdr lens) seg e))))))
+          count
+        (fn-scka-batch-count-loop (cdr lens) seg e (+ 1 count))))))
+
+(defun fn-scka-batch-count (lens seg acc)
+  (declare (xargs :verify-guards nil :guard (and (nat-listp lens) (natp seg) (natp acc))))
+  (mbe :logic
+       (if (atom lens)
+           0
+         (let ((e (+ (nfix acc) (fn-scka-enc-len (nfix (car lens))))))
+           (if (and (< 0 (nfix acc)) (< (nfix seg) e))
+               0
+             (+ 1 (fn-scka-batch-count (cdr lens) seg e)))))
+       :exec (fn-scka-batch-count-loop lens seg acc 0)))
+
+(local
+ (defthm fn-scka-batch-count-loop-is-plus
+   (implies (acl2-numberp count)
+            (equal (fn-scka-batch-count-loop lens seg acc count)
+                   (+ count (fn-scka-batch-count lens seg acc))))
+   :hints (("Goal" :induct (fn-scka-batch-count-loop lens seg acc count)
+                   :in-theory (disable fn-scka-enc-len)))))
+
+(verify-guards fn-scka-batch-count-loop)
+
+(verify-guards fn-scka-batch-count
+  :hints (("Goal"
+           :in-theory
+           (disable fn-scka-batch-count-loop fn-scka-enc-len)
+           :use
+           ((:instance fn-scka-batch-count-loop-is-plus (count 0))))))
+
 
 (defthm fn-scka-batch-count-bounds
   (and (<= (fn-scka-batch-count lens seg acc) (len lens))

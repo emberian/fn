@@ -112,9 +112,10 @@
       "class": "unexpected",
       "packet": "PKT-308"
     },
-    "fn-bpnd-held-list-debt recursion F": {
+    "fn-bpnd-held-list-debt-loop recursion F": {
       "class": "unexpected",
-      "packet": "PKT-308"
+      "packet": "PKT-308",
+      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-bpnd-held-list-debt recursion F', same traversal, same class]"
     },
     "fn-bpnf-active-set-rows*1* recursion F": {
       "class": "unexpected",
@@ -268,18 +269,14 @@
       "class": "unexpected",
       "packet": "PKT-308"
     },
-    "fn-bpr-article-records recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (g)",
-      "note": "closed on every served entry by PRF-220 (hot-path-fixes-bp): fn-bpr-host-accept and fn-bpreq-existing-record look the record up through the event index (fn-bpaj-record-lookup-fast); what remains is the recovery replay at fn-bprj-install (cold)"
-    },
     "fn-cev-find-article recursion N": {
       "class": "unexpected",
       "packet": "PKT-504 (c)"
     },
-    "fn-cev-queue-envelopes recursion N": {
+    "fn-cev-queue-envelopes-loop recursion N": {
       "class": "unexpected",
-      "packet": "PKT-658"
+      "packet": "PKT-658",
+      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-cev-queue-envelopes recursion N', same traversal, same class]"
     },
     "fn-cpa-last-record recursion N": {
       "class": "cold",
@@ -302,10 +299,11 @@
       "class": "unexpected",
       "packet": "PKT-658"
     },
-    "fn-ctl-configs-through recursion N": {
+    "fn-ctl-configs-through-loop recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (b)"
+      "packet": "PKT-448 (b)",
+      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-ctl-configs-through recursion N', same traversal, same class]"
     },
     "fn-ctl-drop-via-rev recursion N": {
       "class": "unexpected",
@@ -366,9 +364,10 @@
       "class": "unexpected",
       "packet": "PKT-448 (a)"
     },
-    "fn-gac-restrict-articles recursion N": {
+    "fn-gac-restrict-articles-loop recursion N": {
       "class": "unexpected",
-      "packet": "PKT-643"
+      "packet": "PKT-643",
+      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-gac-restrict-articles recursion N', same traversal, same class]"
     },
     "fn-hist-load-events recursion N": {
       "class": "cold",
@@ -434,44 +433,15 @@
       "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
       "packet": "PKT-448 (c)"
     },
-    "fn-nntp-group-count recursion N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
-      "packet": "PKT-448 (c)"
-    },
-    "fn-nntp-group-high recursion N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
-      "packet": "PKT-448 (c)"
-    },
-    "fn-nntp-group-last-number recursion N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
-      "packet": "PKT-448 (c)"
-    },
-    "fn-nntp-group-low recursion N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
-      "packet": "PKT-448 (c)"
-    },
-    "fn-nntp-group-next-number recursion N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
-      "packet": "PKT-448 (c)"
-    },
-    "fn-nntp-group-range-numbers recursion N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
-      "packet": "PKT-448 (c)"
-    },
     "fn-nntp-index-config-digest len N": {
       "class": "unexpected",
       "packet": "PKT-448 (f)"
     },
-    "fn-nntp-newnews-scan recursion N": {
+    "fn-nntp-newnews-scan-loop recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
-      "packet": "PKT-448 (c)"
+      "packet": "PKT-448 (c)",
+      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-nntp-newnews-scan recursion N', same traversal, same class]"
     },
     "fn-nntp-projectionp len N": {
       "class": "unexpected",
@@ -576,10 +546,10 @@
       "packet": "PKT-324 (8)",
       "note": "audit-fixes (2026-09-27): fn-rcl-summary over the arena (the counts read handle bytes since the flip); the same walk under its arena name. [batch AY: the walk runs as a loop (fn-rcl-summary-loop); moved from 'fn-rcl-summary-in recursion N', same traversal, same class]"
     },
-    "fn-rcl-held-verdicts recursion N": {
+    "fn-rcl-held-verdicts-loop recursion N": {
       "class": "unexpected",
       "packet": "PKT-324 (8)",
-      "note": "[batch AZ: health-truth-status (PRF-361): the counts ask the held test of the held verdicts only, one walk of the verdict list per render; moved from 'fn-rcl-verdict-heldp recursion N', same traversal, same class]"
+      "note": "[batch AZ: health-truth-status (PRF-361): the counts ask the held test of the held verdicts only, one walk of the verdict list per render; moved from 'fn-rcl-verdict-heldp recursion N', same traversal, same class] [batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-rcl-held-verdicts recursion N', same traversal, same class]"
     },
     "fn-replay-identity-loop recursion N": {
       "class": "cold",
@@ -791,6 +761,16 @@
       "class": "unexpected",
       "packet": "PKT-324 (8)",
       "note": "bp-retention-leftovers (PKT-844, 2026-09-27): the signed and kept classes status prints beside the reclaim counts (fn-rcl-store-classes); the same per-article walk as fn-rcl-summary-in, on the offline/operator status report only, never per request. [batch AY: the walk runs as a loop (fn-rcl-class-count-loop); moved from 'fn-rcl-class-count-in recursion N', same traversal, same class]"
+    },
+    "fn-nsc-tally-loop recursion N": {
+      "class": "unexpected",
+      "packet": "PKT-324 (8)",
+      "note": "lane scale-reads-status (PRF-368): the live status reclaim line's ONE walk over the articles (was four walks, each realizing and digest-checking every payload); the tombstone flag is read from the catalog column. Still O(articles) per status under the owner mutex: 2.2 s at syn1m-2k live."
+    },
+    "fn-nsc-report len N": {
+      "class": "unexpected",
+      "packet": "PKT-324 (8)",
+      "note": "lane scale-reads-status (PRF-368): the status line's articles= count (len of the article list), as fn-nls-report's; the live twin of the same term."
     }
   },
   "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only."

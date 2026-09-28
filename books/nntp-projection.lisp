@@ -97,6 +97,18 @@
   (implies (consp (fn-nntp-available-article group number articles))
            (fn-nntp-article-idp (fn-nntp-available-article group number articles))))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion kept one
+; control-stack frame per number before NUMBER's place.  The loop moves that
+; prefix onto an accumulator and puts it back with `revappend'.
+(defun fn-nntp-insert-number-loop (number numbers prefix)
+  (declare (xargs :guard (true-listp prefix) :verify-guards nil))
+  (if (consp numbers)
+      (if (fn-ag-less number (fn-ag-car numbers))
+          (revappend prefix (cons number numbers))
+        (fn-nntp-insert-number-loop number (fn-ag-cdr numbers)
+                                    (cons (fn-ag-car numbers) prefix)))
+    (revappend prefix (list number))))
+
 (defun fn-nntp-insert-number (number numbers)
   (mbe :logic
        (if (consp numbers)
@@ -104,13 +116,12 @@
                (cons number numbers)
              (cons (car numbers) (fn-nntp-insert-number number (cdr numbers))))
          (list number))
-       :exec
-       (if (consp numbers)
-           (if (fn-ag-less number (fn-ag-car numbers))
-               (cons number numbers)
-             (cons (fn-ag-car numbers)
-                   (fn-nntp-insert-number number (fn-ag-cdr numbers))))
-         (list number))))
+       :exec (fn-nntp-insert-number-loop number numbers nil)))
+
+(local
+ (defthm fn-nntp-insert-number-loop-is-revappend
+   (equal (fn-nntp-insert-number-loop number numbers prefix)
+          (revappend prefix (fn-nntp-insert-number number numbers)))))
 
 (defun fn-nntp-orderedp (numbers)
   (if (consp numbers)
@@ -134,12 +145,35 @@
 ; One pass over the committed articles.  The count, the water marks, NEXT, and
 ; LAST never build or sort a number list; only LISTGROUP does, and it sorts
 ; only the numbers inside the range its own argument names.
+;
+; Each whole-list walk below executes by a loop (PKT-877, lane serve-depth):
+; the recursion took one control-stack frame per committed article, and LIST
+; ACTIVE stopped the owner at 1,024 KiB past ~30,000 articles.  The :logic is
+; the recursion, unchanged; the :exec folds the reversed list (fn-ag-rev-onto)
+; from the left with the same step, equal by a -loop-of-rev-onto lemma.
+(defun fn-nntp-group-count-loop (group rev acc)
+  (declare (xargs :guard (natp acc) :verify-guards nil))
+  (if (consp rev)
+      (fn-nntp-group-count-loop
+       group (cdr rev)
+       (if (posp (fn-nntp-article-number group (car rev))) (+ 1 acc) acc))
+    acc))
+
 (defun fn-nntp-group-count (group articles)
-  (if (consp articles)
-      (if (posp (fn-nntp-article-number group (car articles)))
-          (+ 1 (fn-nntp-group-count group (cdr articles)))
-        (fn-nntp-group-count group (cdr articles)))
-    0))
+  (mbe :logic
+       (if (consp articles)
+           (if (posp (fn-nntp-article-number group (car articles)))
+               (+ 1 (fn-nntp-group-count group (cdr articles)))
+             (fn-nntp-group-count group (cdr articles)))
+         0)
+       :exec (fn-nntp-group-count-loop group (fn-ag-rev-onto articles nil) 0)))
+
+(local
+ (defthm fn-nntp-group-count-loop-of-rev-onto
+   (equal (fn-nntp-group-count-loop group (fn-ag-rev-onto xs zs) 0)
+          (fn-nntp-group-count-loop group zs (fn-nntp-group-count group xs)))
+   :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                   :in-theory (disable fn-nntp-article-number)))))
 
 (defthm fn-nntp-group-count-natp
   (natp (fn-nntp-group-count group articles))
@@ -149,15 +183,35 @@
   (<= (fn-nntp-group-count group articles) (len articles))
   :rule-classes (:rewrite :linear))
 
+(defun fn-nntp-group-low-loop (group rev acc)
+  (if (consp rev)
+      (fn-nntp-group-low-loop
+       group (cdr rev)
+       (let ((number (fn-nntp-article-number group (car rev))))
+         (if (and (posp number)
+                  (or (not (posp acc)) (< number acc)))
+             number
+           acc)))
+    acc))
+
 (defun fn-nntp-group-low (group articles)
-  (if (consp articles)
-      (let ((number (fn-nntp-article-number group (car articles)))
-            (rest (fn-nntp-group-low group (cdr articles))))
-        (if (and (posp number)
-                 (or (not (posp rest)) (< number rest)))
-            number
-          rest))
-    0))
+  (mbe :logic
+       (if (consp articles)
+           (let ((number (fn-nntp-article-number group (car articles)))
+                 (rest (fn-nntp-group-low group (cdr articles))))
+             (if (and (posp number)
+                      (or (not (posp rest)) (< number rest)))
+                 number
+               rest))
+         0)
+       :exec (fn-nntp-group-low-loop group (fn-ag-rev-onto articles nil) 0)))
+
+(local
+ (defthm fn-nntp-group-low-loop-of-rev-onto
+   (equal (fn-nntp-group-low-loop group (fn-ag-rev-onto xs zs) 0)
+          (fn-nntp-group-low-loop group zs (fn-nntp-group-low group xs)))
+   :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                   :in-theory (disable fn-nntp-article-number)))))
 
 (defthm fn-nntp-group-low-natp
   (natp (fn-nntp-group-low group articles))
@@ -172,12 +226,30 @@
            (consp (fn-nntp-available-article
                    group (fn-nntp-group-low group articles) articles))))
 
+(defun fn-nntp-group-high-loop (group rev acc)
+  (declare (xargs :guard (natp acc) :verify-guards nil))
+  (if (consp rev)
+      (fn-nntp-group-high-loop
+       group (cdr rev)
+       (let ((number (fn-nntp-article-number group (car rev))))
+         (if (and (posp number) (< acc number)) number acc)))
+    acc))
+
 (defun fn-nntp-group-high (group articles)
-  (if (consp articles)
-      (let ((number (fn-nntp-article-number group (car articles)))
-            (rest (fn-nntp-group-high group (cdr articles))))
-        (if (and (posp number) (< rest number)) number rest))
-    0))
+  (mbe :logic
+       (if (consp articles)
+           (let ((number (fn-nntp-article-number group (car articles)))
+                 (rest (fn-nntp-group-high group (cdr articles))))
+             (if (and (posp number) (< rest number)) number rest))
+         0)
+       :exec (fn-nntp-group-high-loop group (fn-ag-rev-onto articles nil) 0)))
+
+(local
+ (defthm fn-nntp-group-high-loop-of-rev-onto
+   (equal (fn-nntp-group-high-loop group (fn-ag-rev-onto xs zs) 0)
+          (fn-nntp-group-high-loop group zs (fn-nntp-group-high group xs)))
+   :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                   :in-theory (disable fn-nntp-article-number)))))
 
 (defthm fn-nntp-group-high-natp
   (natp (fn-nntp-group-high group articles))
@@ -192,17 +264,40 @@
            (consp (fn-nntp-available-article
                    group (fn-nntp-group-high group articles) articles))))
 
+(defun fn-nntp-group-next-number-loop (group current rev acc)
+  (if (consp rev)
+      (fn-nntp-group-next-number-loop
+       group current (cdr rev)
+       (let ((number (fn-nntp-article-number group (car rev))))
+         (if (and (posp number)
+                  (fn-ag-less current number)
+                  (or (not (posp acc)) (< number acc)))
+             number
+           acc)))
+    acc))
+
 (defun fn-nntp-group-next-number (group current articles)
   ; The least available number strictly greater than `current`, or 0.
-  (if (consp articles)
-      (let ((number (fn-nntp-article-number group (car articles)))
-            (rest (fn-nntp-group-next-number group current (cdr articles))))
-        (if (and (posp number)
-                 (fn-ag-less current number)
-                 (or (not (posp rest)) (< number rest)))
-            number
-          rest))
-    0))
+  (mbe :logic
+       (if (consp articles)
+           (let ((number (fn-nntp-article-number group (car articles)))
+                 (rest (fn-nntp-group-next-number group current (cdr articles))))
+             (if (and (posp number)
+                      (fn-ag-less current number)
+                      (or (not (posp rest)) (< number rest)))
+                 number
+               rest))
+         0)
+       :exec (fn-nntp-group-next-number-loop
+              group current (fn-ag-rev-onto articles nil) 0)))
+
+(local
+ (defthm fn-nntp-group-next-number-loop-of-rev-onto
+   (equal (fn-nntp-group-next-number-loop group current (fn-ag-rev-onto xs zs) 0)
+          (fn-nntp-group-next-number-loop
+           group current zs (fn-nntp-group-next-number group current xs)))
+   :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                   :in-theory (disable fn-nntp-article-number fn-ag-less)))))
 
 (defthm fn-nntp-group-next-number-natp
   (natp (fn-nntp-group-next-number group current articles))
@@ -214,17 +309,41 @@
                    group (fn-nntp-group-next-number group current articles)
                    articles))))
 
+(defun fn-nntp-group-last-number-loop (group current rev acc)
+  (declare (xargs :guard (natp acc) :verify-guards nil))
+  (if (consp rev)
+      (fn-nntp-group-last-number-loop
+       group current (cdr rev)
+       (let ((number (fn-nntp-article-number group (car rev))))
+         (if (and (posp number)
+                  (fn-ag-less number current)
+                  (< acc number))
+             number
+           acc)))
+    acc))
+
 (defun fn-nntp-group-last-number (group current articles)
   ; The greatest available number strictly less than `current`, or 0.
-  (if (consp articles)
-      (let ((number (fn-nntp-article-number group (car articles)))
-            (rest (fn-nntp-group-last-number group current (cdr articles))))
-        (if (and (posp number)
-                 (fn-ag-less number current)
-                 (< rest number))
-            number
-          rest))
-    0))
+  (mbe :logic
+       (if (consp articles)
+           (let ((number (fn-nntp-article-number group (car articles)))
+                 (rest (fn-nntp-group-last-number group current (cdr articles))))
+             (if (and (posp number)
+                      (fn-ag-less number current)
+                      (< rest number))
+                 number
+               rest))
+         0)
+       :exec (fn-nntp-group-last-number-loop
+              group current (fn-ag-rev-onto articles nil) 0)))
+
+(local
+ (defthm fn-nntp-group-last-number-loop-of-rev-onto
+   (equal (fn-nntp-group-last-number-loop group current (fn-ag-rev-onto xs zs) 0)
+          (fn-nntp-group-last-number-loop
+           group current zs (fn-nntp-group-last-number group current xs)))
+   :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                   :in-theory (disable fn-nntp-article-number fn-ag-less)))))
 
 (defthm fn-nntp-group-last-number-natp
   (natp (fn-nntp-group-last-number group current articles))
@@ -237,16 +356,40 @@
                    articles))))
 ; LISTGROUP's list.  Only the numbers inside the requested range are inserted,
 ; so the sort is charged to the command's own range and not to the archive.
+(defun fn-nntp-group-range-numbers-loop (group low high rev acc)
+  (if (consp rev)
+      (fn-nntp-group-range-numbers-loop
+       group low high (cdr rev)
+       (let ((number (fn-nntp-article-number group (car rev))))
+         (if (and (posp number)
+                  (fn-ng-less-equal low number)
+                  (fn-ng-less-equal number high))
+             (fn-nntp-insert-number number acc)
+           acc)))
+    acc))
+
 (defun fn-nntp-group-range-numbers (group low high articles)
-  (if (consp articles)
-      (let ((number (fn-nntp-article-number group (car articles))))
-        (if (and (posp number)
-                 (fn-ng-less-equal low number)
-                 (fn-ng-less-equal number high))
-            (fn-nntp-insert-number
-             number (fn-nntp-group-range-numbers group low high (cdr articles)))
-          (fn-nntp-group-range-numbers group low high (cdr articles))))
-    nil))
+  (mbe :logic
+       (if (consp articles)
+           (let ((number (fn-nntp-article-number group (car articles))))
+             (if (and (posp number)
+                      (fn-ng-less-equal low number)
+                      (fn-ng-less-equal number high))
+                 (fn-nntp-insert-number
+                  number (fn-nntp-group-range-numbers group low high (cdr articles)))
+               (fn-nntp-group-range-numbers group low high (cdr articles))))
+         nil)
+       :exec (fn-nntp-group-range-numbers-loop
+              group low high (fn-ag-rev-onto articles nil) nil)))
+
+(local
+ (defthm fn-nntp-group-range-numbers-loop-of-rev-onto
+   (equal (fn-nntp-group-range-numbers-loop group low high (fn-ag-rev-onto xs zs) nil)
+          (fn-nntp-group-range-numbers-loop
+           group low high zs (fn-nntp-group-range-numbers group low high xs)))
+   :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
+                   :in-theory (disable fn-nntp-article-number fn-ng-less-equal
+                                       fn-nntp-insert-number)))))
 
 (defthm fn-nntp-group-range-numbers-are-ordered
   (fn-nntp-orderedp (fn-nntp-group-range-numbers group low high articles)))
@@ -258,11 +401,26 @@
                 (consp (fn-nntp-available-article group value articles))))
   :rule-classes nil)
 
-(defun fn-nntp-number-lines (numbers)
+(defun fn-nntp-number-lines-loop (numbers acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp numbers)
-      (cons (fn-nntp-decimal-field (car numbers))
-            (fn-nntp-number-lines (cdr numbers)))
-    nil))
+      (fn-nntp-number-lines-loop (cdr numbers)
+                                 (cons (fn-nntp-decimal-field (car numbers)) acc))
+    (revappend acc nil)))
+
+(defun fn-nntp-number-lines (numbers)
+  (mbe :logic
+       (if (consp numbers)
+           (cons (fn-nntp-decimal-field (car numbers))
+                 (fn-nntp-number-lines (cdr numbers)))
+         nil)
+       :exec (fn-nntp-number-lines-loop numbers nil)))
+
+(local
+ (defthm fn-nntp-number-lines-loop-is-revappend
+   (equal (fn-nntp-number-lines-loop numbers acc)
+          (revappend acc (fn-nntp-number-lines numbers)))
+   :hints (("Goal" :in-theory (disable fn-nntp-decimal-field)))))
 
 (defun fn-nntp-group-summary (archive group)
   (let ((low (fn-nntp-group-low group (fn-state-articles archive))))
@@ -365,23 +523,55 @@
 
 (verify-guards fn-nntp-available-article)
 
-(verify-guards fn-nntp-insert-number)
+(verify-guards fn-nntp-insert-number-loop)
+
+(verify-guards fn-nntp-insert-number
+  :hints (("Goal" :in-theory (disable fn-nntp-insert-number-loop)
+                  :use ((:instance fn-nntp-insert-number-loop-is-revappend (prefix nil))))))
 
 (verify-guards fn-nntp-orderedp)
 
-(verify-guards fn-nntp-group-count)
+(verify-guards fn-nntp-group-count-loop)
 
-(verify-guards fn-nntp-group-low)
+(verify-guards fn-nntp-group-count
+  :hints (("Goal" :in-theory (disable fn-nntp-article-number fn-ag-rev-onto)
+                  :use ((:instance fn-nntp-group-count-loop-of-rev-onto (xs articles) (zs nil))))))
 
-(verify-guards fn-nntp-group-high)
+(verify-guards fn-nntp-group-low-loop)
 
-(verify-guards fn-nntp-group-next-number)
+(verify-guards fn-nntp-group-low
+  :hints (("Goal" :in-theory (disable fn-nntp-article-number fn-ag-rev-onto)
+                  :use ((:instance fn-nntp-group-low-loop-of-rev-onto (xs articles) (zs nil))))))
 
-(verify-guards fn-nntp-group-last-number)
+(verify-guards fn-nntp-group-high-loop)
 
-(verify-guards fn-nntp-group-range-numbers)
+(verify-guards fn-nntp-group-high
+  :hints (("Goal" :in-theory (disable fn-nntp-article-number fn-ag-rev-onto)
+                  :use ((:instance fn-nntp-group-high-loop-of-rev-onto (xs articles) (zs nil))))))
 
-(verify-guards fn-nntp-number-lines)
+(verify-guards fn-nntp-group-next-number-loop)
+
+(verify-guards fn-nntp-group-next-number
+  :hints (("Goal" :in-theory (disable fn-nntp-article-number fn-ag-less fn-ag-rev-onto)
+                  :use ((:instance fn-nntp-group-next-number-loop-of-rev-onto (xs articles) (zs nil))))))
+
+(verify-guards fn-nntp-group-last-number-loop)
+
+(verify-guards fn-nntp-group-last-number
+  :hints (("Goal" :in-theory (disable fn-nntp-article-number fn-ag-less fn-ag-rev-onto)
+                  :use ((:instance fn-nntp-group-last-number-loop-of-rev-onto (xs articles) (zs nil))))))
+
+(verify-guards fn-nntp-group-range-numbers-loop)
+
+(verify-guards fn-nntp-group-range-numbers
+  :hints (("Goal" :in-theory (disable fn-nntp-article-number fn-ng-less-equal fn-nntp-insert-number fn-ag-rev-onto)
+                  :use ((:instance fn-nntp-group-range-numbers-loop-of-rev-onto (xs articles) (zs nil))))))
+
+(verify-guards fn-nntp-number-lines-loop)
+
+(verify-guards fn-nntp-number-lines
+  :hints (("Goal" :in-theory (disable fn-nntp-decimal-field fn-nntp-number-lines-loop)
+                  :use ((:instance fn-nntp-number-lines-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-group-summary)
 

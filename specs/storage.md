@@ -22,6 +22,8 @@ a suitable correspondence/checking argument exists.
 
 STO-027: The catalog is the served store's executable: the Message-ID binding, the local numbers, a row's visibility to a version and the retained octets are columns of `fn-cat` read in constant time, never rediscovered by a walk of the history (wave 5, D33; lane catalog-slice: the columns exist and are proved, the served path moves to them in the continuation).
 
+`HDR :fn-verified` (PRF-367, lane scale-reads) reads the catalog for its numbers and articles and the RECORDED verdict list for each line's verdict (SUB-006: the acceptance evidence, which a keyring change never rewrites), resolving a whole reply's verdicts in one pass over that list: O(R + V) for R lines and V recorded verdicts, where the reference was O(R x (N + V)). A catalog row's context verdict is NOT that evidence (it is decided under the keyring in force at its intern and a `:redecide` replaces it), so the verdict is not yet a constant-time column; that needs the row-to-evidence equation carried, or a recorded-verdict column.
+
 Proposed on-disk roles, not a frozen directory ABI:
 
 ```text
@@ -1263,6 +1265,13 @@ configuration record and each committed record in sequence order: the
 checkpoint's records then the log's, T8) with a MANIFEST whose names and
 digest lines ACL2 renders (`fn-digest`, the store's digest: BLAKE3, b3sum's line format); the genesis is
 not exported (it is the node's: its identity, salt and clock reading).
+The export reads the history a chunk of records at a time and asks ACL2 for
+each chunk's entries and MANIFEST lines (`fn-sxp-export-chunk`); for every
+chunking the files and MANIFEST it writes are the whole history's
+(PRF-366, `fn-sxp-stream-is-the-export`), so its memory is one chunk's,
+never the store's. The MANIFEST is staged as `MANIFEST.partial` and renamed
+onto `MANIFEST` after every entry is fenced: an interrupted export has no
+MANIFEST and the import refuses it by name, never a prefix of the history.
 `store import DIR [--FIELD N ...]` builds a new format-10 store from it,
 with its OWN genesis, writing the records into the log through its own append
 and barrier, refusing a MANIFEST mismatch, a record out of sequence and a

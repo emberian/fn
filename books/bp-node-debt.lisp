@@ -43,12 +43,43 @@
        (if (fn-bpnd-held-active-attemptp h) 1 0)
        (if (fn-bpnd-local-request-undeliveredp h node) 3 0))))
 
-(defun fn-bpnd-held-list-debt (held node)
-  (declare (xargs :guard t :measure (acl2-count held)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-bpnd-held-list-debt-loop (held node acc)
+  (declare (xargs :measure (acl2-count held) :guard (acl2-numberp acc) :verify-guards nil))
   (if (consp held)
-      (+ (fn-bpnd-held-debt (car held) node)
-         (fn-bpnd-held-list-debt (cdr held) node))
-    0))
+      (fn-bpnd-held-list-debt-loop (cdr held)
+                                   node
+                                   (+ (fn-bpnd-held-debt (car held) node) acc))
+    (+ acc 0)))
+
+(defun fn-bpnd-held-list-debt (held node)
+  (declare (xargs :verify-guards nil :guard t :measure (acl2-count held)))
+  (mbe :logic
+       (if (consp held)
+           (+ (fn-bpnd-held-debt (car held) node)
+              (fn-bpnd-held-list-debt (cdr held) node))
+         0)
+       :exec (fn-bpnd-held-list-debt-loop held node 0)))
+
+(local
+ (defthm fn-bpnd-held-list-debt-loop-is-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-bpnd-held-list-debt-loop held node acc)
+                   (+ acc (fn-bpnd-held-list-debt held node))))
+   :hints (("Goal" :induct (fn-bpnd-held-list-debt-loop held node acc)
+                   :in-theory (disable fn-bpnd-held-debt)))))
+
+(verify-guards fn-bpnd-held-list-debt-loop)
+
+(verify-guards fn-bpnd-held-list-debt
+  :hints (("Goal"
+           :in-theory
+           (disable fn-bpnd-held-list-debt-loop fn-bpnd-held-debt)
+           :use
+           ((:instance fn-bpnd-held-list-debt-loop-is-plus (acc 0))))))
+
 
 (defun fn-bpnd-handoff-debt (handoff)
   (declare (xargs :guard t))
@@ -56,23 +87,83 @@
            (equal (fn-bpn-nth 3 handoff) :owed))
       3 0))
 
-(defun fn-bpnd-handoffs-debt (handoffs)
-  (declare (xargs :guard t :measure (acl2-count handoffs)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-bpnd-handoffs-debt-loop (handoffs acc)
+  (declare (xargs :measure (acl2-count handoffs) :guard (acl2-numberp acc) :verify-guards nil))
   (if (consp handoffs)
-      (+ (fn-bpnd-handoff-debt (car handoffs))
-         (fn-bpnd-handoffs-debt (cdr handoffs)))
-    0))
+      (fn-bpnd-handoffs-debt-loop (cdr handoffs)
+                                  (+ (fn-bpnd-handoff-debt (car handoffs)) acc))
+    (+ acc 0)))
+
+(defun fn-bpnd-handoffs-debt (handoffs)
+  (declare (xargs :verify-guards nil :guard t :measure (acl2-count handoffs)))
+  (mbe :logic
+       (if (consp handoffs)
+           (+ (fn-bpnd-handoff-debt (car handoffs))
+              (fn-bpnd-handoffs-debt (cdr handoffs)))
+         0)
+       :exec (fn-bpnd-handoffs-debt-loop handoffs 0)))
+
+(local
+ (defthm fn-bpnd-handoffs-debt-loop-is-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-bpnd-handoffs-debt-loop handoffs acc)
+                   (+ acc (fn-bpnd-handoffs-debt handoffs))))
+   :hints (("Goal" :induct (fn-bpnd-handoffs-debt-loop handoffs acc)
+                   :in-theory (disable fn-bpnd-handoff-debt)))))
+
+(verify-guards fn-bpnd-handoffs-debt-loop)
+
+(verify-guards fn-bpnd-handoffs-debt
+  :hints (("Goal"
+           :in-theory
+           (disable fn-bpnd-handoffs-debt-loop fn-bpnd-handoff-debt)
+           :use
+           ((:instance fn-bpnd-handoffs-debt-loop-is-plus (acc 0))))))
+
 
 ; No open forwarding/fragment plan is represented in the current FNBS
 ; state: kind 18 replaces a complete family atomically.  The separate plan
 ; term is explicit for the later persisted-plan transition: each open plan
 ; costs one kind 17 plus three records per unmaterialized child.
-(defun fn-bpnd-open-plans-debt (unmaterialized-counts)
-  (declare (xargs :guard t :measure (acl2-count unmaterialized-counts)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec adds onto an accumulator.
+(defun fn-bpnd-open-plans-debt-loop (unmaterialized-counts acc)
+  (declare (xargs :measure (acl2-count unmaterialized-counts) :guard (acl2-numberp acc) :verify-guards nil))
   (if (consp unmaterialized-counts)
-      (+ 1 (* 3 (nfix (car unmaterialized-counts)))
-         (fn-bpnd-open-plans-debt (cdr unmaterialized-counts)))
-    0))
+      (fn-bpnd-open-plans-debt-loop (cdr unmaterialized-counts)
+                                    (+ (+ 1 (* 3 (nfix (car unmaterialized-counts))))
+                                       acc))
+    (+ acc 0)))
+
+(defun fn-bpnd-open-plans-debt (unmaterialized-counts)
+  (declare (xargs :verify-guards nil :guard t :measure (acl2-count unmaterialized-counts)))
+  (mbe :logic
+       (if (consp unmaterialized-counts)
+           (+ 1 (* 3 (nfix (car unmaterialized-counts)))
+              (fn-bpnd-open-plans-debt (cdr unmaterialized-counts)))
+         0)
+       :exec (fn-bpnd-open-plans-debt-loop unmaterialized-counts 0)))
+
+(local
+ (defthm fn-bpnd-open-plans-debt-loop-is-plus
+   (implies (acl2-numberp acc)
+            (equal (fn-bpnd-open-plans-debt-loop unmaterialized-counts acc)
+                   (+ acc (fn-bpnd-open-plans-debt unmaterialized-counts))))
+   :hints (("Goal" :induct (fn-bpnd-open-plans-debt-loop unmaterialized-counts acc)))))
+
+(verify-guards fn-bpnd-open-plans-debt-loop)
+
+(verify-guards fn-bpnd-open-plans-debt
+  :hints (("Goal"
+           :in-theory
+           (disable fn-bpnd-open-plans-debt-loop)
+           :use
+           ((:instance fn-bpnd-open-plans-debt-loop-is-plus (acc 0))))))
+
 
 (defun fn-bpnd-debt-with-plans (st node unmaterialized-counts)
   (declare (xargs :guard t))

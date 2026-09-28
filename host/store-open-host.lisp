@@ -519,6 +519,37 @@
                         (t (fn-xo-scan root (cdr scan) (fn-lgc-last (cadr r)) unit max
                                        replay fn-octets-lg fn-arena))))))))))))
 
+;; The genesis (fnn-genesis-open, format 10): ACL2's open of
+;; journal/000000.log under the store's profile, refused by name or kept for
+;; this process (fn-store-genesis-install); (mv RESULT state), RESULT (:ok
+;; CHAIN), CHAIN the value segment 1 chains from, or the refusal.
+(defun fn-xo-genesis-open (root config state)
+  (declare (xargs :mode :program :stobjs state))
+  (let* ((path (fn-xo-join (fn-xo-join root "journal") (fn-store-genesis-file-name)))
+         (st (fn-hx-lstat path)))
+    (if (not (eq (car st) :regular))
+        (mv (fn-xo-fault (concatenate 'string "missing store genesis: " path
+                                      " (an init that did not finish: run init again)"))
+            state)
+      (let ((read (fn-xo-read-bounded path 1024)))
+        (cond
+         ((equal read '(:overbound))
+          (mv (list :refused (concatenate 'string "store file exceeds bound: " path)) state))
+         ((not (fn-xo-okp read)) (mv read state))
+         (t
+          (let ((verdict (fn-store-genesis-open (cadr read) config)))
+            (cond
+             ((not (and (consp verdict) (member-eq (car verdict) '(:genesis :refused))))
+              (mv (fn-xo-fault "ACL2 returned a malformed genesis verdict") state))
+             ((eq (car verdict) :refused)
+              (let ((text (fn-store-genesis-refusal-text verdict)))
+                (mv (if (stringp text) (list :open-refusal text)
+                      (fn-xo-fault "ACL2 refused the genesis without naming a reason"))
+                    state)))
+             (t (mv-let (erp val state) (fn-store-genesis-install verdict state)
+                  (declare (ignore erp val))
+                  (mv (list :ok (fn-store-genesis-chain verdict)) state)))))))))))
+
 ; ---------------------------------------------------------------------------
 ; The open (fnn-reader-prepare with a store, read-only; fnn-recover-log's
 ; full-replay arm; the recovery barriers).  (mv RESULT fn-octets-lg fn-arena
@@ -594,9 +625,12 @@
                               (let ((config-records (fn-xo-config-records root config)))
                                 (if (not (fn-xo-okp config-records))
                                     (mv config-records fn-octets-lg fn-arena state)
+                                 (mv-let (genesis state) (fn-xo-genesis-open root config state)
+                                  (if (not (fn-xo-okp genesis))
+                                      (mv genesis fn-octets-lg fn-arena state)
                                   (let ((fn-arena (fn-arena-clear fn-arena)))
                                     (mv-let (r replay fn-octets-lg fn-arena)
-                                      (fn-xo-scan root (cadr plan) *fn-lg-genesis*
+                                      (fn-xo-scan root (cadr plan) (cadr genesis)
                                                   (fn-store-log-unit)
                                                   (fn-store-profile-max-record-octets config)
                                                   (list nil nil 0 0 nil 1)
@@ -635,4 +669,4 @@
                                                                           (fn-xo-parent root))
                                                                     nil state)
                                                     (mv (if (fn-xo-okp b) (list :ok next) b)
-                                                        fn-octets-lg fn-arena state)))))))))))))))))))))))))))))
+                                                        fn-octets-lg fn-arena state)))))))))))))))))))))))))))))))
