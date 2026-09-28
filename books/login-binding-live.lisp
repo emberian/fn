@@ -12,6 +12,12 @@
 ;     (`fn-lb-sync-plan': one delta per login whose binding differs, chunked
 ;     into records of at most *fn-cfg-max-deltas*), and again whenever
 ;     `fn principal bind|unbind' asks it to after rewriting the file;
+;   * a login the configuration holds as a redeemed account (mark 1) and the
+;     credential file does not name is bound in the configuration itself
+;     (PRF-388, PKT-560): `fn principal bind|unbind' on such a login is the
+;     administrative record `account bind|unbind', admitted by
+;     `fn-lb-account-bind-plan' only while the login holds that account, and
+;     the start publication leaves its binding as it is;
 ;   * the gate the host calls (`fn-lb-ocfg-gate', through host/owner-host.lisp
 ;     fn-owner-login-gate, called by host/native/owner.lisp
 ;     fnn-owner-attempt-served) reads the posting policy from the LIVE
@@ -313,21 +319,41 @@
           (fn-lb-sync-binds (cdr entries) file current)))
     nil))
 
-(defun fn-lb-sync-unbinds (entries file current)
+; PRF-388 (PKT-560): whether ROWS (the accounts slot) hold NAME (octets) as
+; a redeemed account (mark 1), the row XREDEEM writes.  A tombstone (mark 7)
+; holds no account.
+(defun fn-lb-account-heldp (name rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (or (and (equal (fn-cfg-row-n (car rows)) 1)
+               (equal (fn-record-string-octets (fn-cfg-row-b (car rows))) name))
+          (fn-lb-account-heldp name (cdr rows)))
+    nil))
+
+; The configuration, not the credential file, owns NAME's binding: NAME is
+; a redeemed account the file does not name.  The start publication leaves
+; such a binding as the configuration holds it (`account bind' wrote it).
+(defun fn-lb-config-ownsp (name file rows)
+  (declare (xargs :guard t))
+  (and (fn-lb-account-heldp name rows)
+       (not (fn-lb-has name file))))
+
+(defun fn-lb-sync-unbinds (entries file current rows)
   (declare (xargs :guard t))
   (if (consp entries)
       (let ((name (and (consp (car entries)) (car (car entries)))))
         (if (and name (fn-lb-binding name current)
-                 (not (fn-lb-binding name file)))
+                 (not (fn-lb-binding name file))
+                 (not (fn-lb-config-ownsp name file rows)))
             (cons (cons name nil)
-                  (fn-lb-sync-unbinds (cdr entries) file current))
-          (fn-lb-sync-unbinds (cdr entries) file current)))
+                  (fn-lb-sync-unbinds (cdr entries) file current rows))
+          (fn-lb-sync-unbinds (cdr entries) file current rows)))
     nil))
 
-(defun fn-lb-sync-pairs (file current)
+(defun fn-lb-sync-pairs (file current rows)
   (declare (xargs :guard t))
   (append (fn-lb-sync-binds file file current)
-          (fn-lb-sync-unbinds current file current)))
+          (fn-lb-sync-unbinds current file current rows)))
 
 (defun fn-lb-pairs-okp (pairs)
   (declare (xargs :guard t))
@@ -368,7 +394,8 @@
 ; configuration can spell.
 (defun fn-lb-sync-plan (file v)
   (declare (xargs :guard t))
-  (let ((pairs (fn-lb-sync-pairs file (fn-lb-value-bindings v))))
+  (let ((pairs (fn-lb-sync-pairs file (fn-lb-value-bindings v)
+                                 (fn-cfg-accounts v))))
     (if (fn-lb-pairs-okp pairs)
         (list :ok (fn-lb-chunks (fn-lb-pairs-deltas pairs) *fn-cfg-max-deltas*))
       (list :refused :binding-login))))
@@ -441,45 +468,83 @@
 (local (defthm fn-lb-sync-unbinds-names-an-unfiled-login
   (implies (and login (fn-lb-has login entries)
                 (fn-lb-binding login current)
-                (not (fn-lb-binding login file)))
-           (fn-lb-has login (fn-lb-sync-unbinds entries file current)))))
+                (not (fn-lb-binding login file))
+                (not (fn-lb-config-ownsp login file rows)))
+           (fn-lb-has login (fn-lb-sync-unbinds entries file current rows)))
+  :hints (("Goal" :in-theory (disable fn-lb-config-ownsp)))))
+
+(local (defthm fn-lb-sync-unbinds-skips-an-owned-login
+  (implies (fn-lb-config-ownsp login file rows)
+           (not (fn-lb-has login (fn-lb-sync-unbinds entries file current rows))))
+  :hints (("Goal" :in-theory (disable fn-lb-config-ownsp)))))
+
+(local (defthm fn-lb-config-ownsp-names-no-file-login
+  (implies (fn-lb-config-ownsp login file rows)
+           (and (not (fn-lb-has login file))
+                (not (fn-lb-binding login file))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-lb-binding)))))
+
+(local (defthm fn-lb-sync-binds-names-only-entries
+  (implies (not (fn-lb-has login entries))
+           (not (fn-lb-has login (fn-lb-sync-binds entries file current))))))
 
 (local (defthm fn-lb-sync-binds-targetp
   (fn-lb-pairs-targetp (fn-lb-sync-binds entries file current) file)))
 
 (local (defthm fn-lb-sync-unbinds-targetp
-  (fn-lb-pairs-targetp (fn-lb-sync-unbinds entries file current) file)))
+  (fn-lb-pairs-targetp (fn-lb-sync-unbinds entries file current rows) file)))
 
 (local (defthm fn-lb-pairs-targetp-of-append
   (implies (and (fn-lb-pairs-targetp a file) (fn-lb-pairs-targetp b file))
            (fn-lb-pairs-targetp (append a b) file))))
 
-; KEYSTONE (the start publication).  When the plan is :ok, applying its
-; deltas leaves every login bound in the configuration exactly as the
-; credential file binds it: the file's principal, or unbound.
-(defthm fn-lb-sync-binds-every-login-as-the-file-does
-  (implies (fn-lb-pairs-okp (fn-lb-sync-pairs file (fn-lb-value-bindings v)))
+; KEYSTONE (the start publication; PRF-166, PRF-388).  When the plan is
+; :ok, applying its deltas leaves every login bound as the credential file
+; binds it (the file's principal, or unbound), except a login the
+; configuration owns -- a redeemed account the file does not name -- whose
+; binding stays as the configuration held it.
+(defthm fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings
+  (implies (fn-lb-pairs-okp (fn-lb-sync-pairs file (fn-lb-value-bindings v)
+                                              (fn-cfg-accounts v)))
            (equal (fn-lb-binding
                    name
                    (fn-lb-value-bindings
                     (fn-cfg-apply v gen stamp
                                   (fn-lb-pairs-deltas
                                    (fn-lb-sync-pairs
-                                    file (fn-lb-value-bindings v))))))
-                  (fn-lb-binding name file)))
+                                    file (fn-lb-value-bindings v)
+                                    (fn-cfg-accounts v))))))
+                  (if (fn-lb-config-ownsp name file (fn-cfg-accounts v))
+                      (fn-lb-binding name (fn-lb-value-bindings v))
+                    (fn-lb-binding name file))))
   :hints (("Goal" :in-theory (disable fn-lb-value-bindings fn-lb-pairs-deltas
                                       fn-lb-sync-binds fn-lb-sync-unbinds
                                       fn-lb-pairs-okp fn-lb-pairs-deltas-set-exactly-their-logins
-                                      fn-lb-binding-when-not-has)
+                                      fn-lb-binding-when-not-has fn-lb-config-ownsp
+                                      fn-lb-sync-unbinds-names-an-unfiled-login
+                                      fn-lb-sync-unbinds-skips-an-owned-login)
            :use ((:instance fn-lb-pairs-deltas-set-exactly-their-logins
                             (pairs (fn-lb-sync-pairs
-                                    file (fn-lb-value-bindings v))))
+                                    file (fn-lb-value-bindings v)
+                                    (fn-cfg-accounts v))))
                  (:instance fn-lb-binding-when-not-has
                             (login name) (bindings file))
                  (:instance fn-lb-has-when-binding
                             (login name)
-                            (bindings (fn-lb-value-bindings v))))
-           :cases ((and name (fn-lb-has name file))
+                            (bindings (fn-lb-value-bindings v)))
+                 (:instance fn-lb-sync-unbinds-names-an-unfiled-login
+                            (login name)
+                            (entries (fn-lb-value-bindings v))
+                            (current (fn-lb-value-bindings v))
+                            (rows (fn-cfg-accounts v)))
+                 (:instance fn-lb-sync-unbinds-skips-an-owned-login
+                            (login name)
+                            (entries (fn-lb-value-bindings v))
+                            (current (fn-lb-value-bindings v))
+                            (rows (fn-cfg-accounts v))))
+           :cases ((fn-lb-config-ownsp name file (fn-cfg-accounts v))
+                   (and name (fn-lb-has name file))
                    (and name (not (fn-lb-has name file)))
                    (not name)))))
 
@@ -634,8 +699,8 @@
 ; fresh identifier (a consequence of the owner relation fn-ocfg-statep,
 ; books/owner-config.lisp fn-ocfg-open-pins-the-live-configuration), and that
 ; the open admitted the connection.  With PAIRS the start plan's
-; (fn-lb-sync-binds-every-login-as-the-file-does) that is the credential
-; file's table.
+; (fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings)
+; that is the credential file's table.
 (defthm fn-lb-a-connection-opened-after-a-publication-is-bound-anew
   (let* ((staged (fn-ocfg-step oc (list :reconfigure other
                                         (fn-lb-pairs-deltas pairs)) fn-arena))
@@ -671,5 +736,155 @@
                             (stamp (fn-ocfg-config-stamp
                                     (fn-own-clock (fn-ocfg-owner oc)))))))))
 
+; -----------------------------------------------------------------------------
+; PRF-388 (PKT-560): binding a redeemed account's login
+;
+; `fn principal bind LOGIN HEX' binds a login of the credential file in the
+; file (books/native-auth-admin.lisp fn-native-auth-admin-bind).  A login
+; redeemed from an invitation (books/accounts.lisp) is not in the file: its
+; credential is a row of the configuration's accounts slot, so its binding
+; is too.  The verb's answer for a login the file does not hold is :account,
+; and the operator then sends the administrative record `account bind LOGIN
+; HEX' (`account unbind LOGIN'), live to the owner or offline into the
+; store.  This plan decides it over the configuration it would change: the
+; binding delta when LOGIN holds a redeemed account, else a refusal by name
+; (`unknown-login': neither the file's login nor an account's).
+
+; The principal of the verb's HEX octets (64 hexadecimal digits), nil for
+; the unbind (no HEX), :bad otherwise.
+(defun fn-lb-hex-principal (hex)
+  (declare (xargs :guard t))
+  (cond ((null hex) nil)
+        ((and (true-listp hex) (equal (len hex) 64) (fn-id-hex-listp hex))
+         (fn-id-unhex hex))
+        (t :bad)))
+
+; (:ok DELTAS) or (:refused REASON).  NAME the login's octets.
+(defun fn-lb-account-bind-plan (name hex v)
+  (declare (xargs :guard t))
+  (let ((principal (fn-lb-hex-principal hex)))
+    (cond ((not (fn-lb-bindable-namep name)) (list :refused :binding-login))
+          ((not (fn-lb-principalp principal)) (list :refused :binding-principal))
+          ((not (fn-lb-account-heldp name (fn-cfg-accounts v)))
+           (list :refused :unknown-login))
+          (t (list :ok (list (fn-lb-binding-delta name principal)))))))
+
+; KEYSTONE (PRF-388, admission).  The subject is `fn-lb-account-bind-plan',
+; which host/native-admin-host.lisp fn-native-admin-host-owner-reconfigure
+; (the live owner's arm, called by host/native/admin.lisp for a control
+; vector) and fn-native-admin-host-apply (the offline arm) compute for an
+; `account bind|unbind' plan: the plan stages a record exactly when the
+; login is a login the configuration can spell, the principal is 32 octets
+; (or absent, the unbind), and the configuration holds the login as a
+; redeemed account.
+(defthm fn-lb-account-bind-plan-admits-exactly-a-held-account-login
+  (iff (equal (car (fn-lb-account-bind-plan name hex v)) :ok)
+       (and (fn-lb-bindable-namep name)
+            (fn-lb-principalp (fn-lb-hex-principal hex))
+            (fn-lb-account-heldp name (fn-cfg-accounts v))))
+  :hints (("Goal" :in-theory (disable fn-lb-bindable-namep fn-lb-principalp
+                                      fn-lb-hex-principal fn-lb-account-heldp
+                                      fn-lb-binding-delta))))
+
+(local (defthm fn-lb-account-heldp-of-append
+  (equal (fn-lb-account-heldp name (append a b))
+         (or (fn-lb-account-heldp name a) (fn-lb-account-heldp name b)))))
+
+(local (defthm fn-lb-account-heldp-of-rows-without-binding
+  (equal (fn-lb-account-heldp name (fn-cfg-rows-without-binding rows l))
+         (fn-lb-account-heldp name rows))
+  :hints (("Goal" :in-theory (enable fn-cfg-rows-without-binding
+                                     fn-cfg-binding-rowp)))))
+
+; A binding delta leaves every account where it was.
+(local (defthm fn-lb-binding-delta-keeps-held-accounts
+  (implies (fn-lb-account-heldp name (fn-cfg-accounts v))
+           (fn-lb-account-heldp name (fn-cfg-accounts
+                                      (fn-cfg-apply-delta
+                                       v gen stamp
+                                       (fn-lb-binding-delta other p)))))
+  :hints (("Goal" :in-theory (disable fn-lb-account-heldp fn-lb-hex-text)))))
+
+(local (defthm fn-lb-account-bind-plan-ok-shape
+  (implies (equal (car (fn-lb-account-bind-plan name hex v)) :ok)
+           (and (equal (cadr (fn-lb-account-bind-plan name hex v))
+                       (list (fn-lb-binding-delta name (fn-lb-hex-principal hex))))
+                (fn-lb-bindable-namep name)
+                (fn-lb-principalp (fn-lb-hex-principal hex))
+                (fn-lb-account-heldp name (fn-cfg-accounts v))))
+  :hints (("Goal" :in-theory (disable fn-lb-bindable-namep fn-lb-principalp
+                                      fn-lb-hex-principal fn-lb-account-heldp
+                                      fn-lb-binding-delta)))))
+
+; KEYSTONE (PRF-388, the effect).  An :ok plan's record is admitted against
+; the configuration it was planned over, binds the account's login to
+; exactly the principal (unbinds it for the unbind), leaves every other
+; login's binding, and leaves the login holding its account.
+(defthm fn-lb-account-bind-plan-binds-exactly-the-account-login
+  (let ((plan (fn-lb-account-bind-plan name hex v)))
+    (implies (equal (car plan) :ok)
+             (and (not (fn-cfg-delta-reason v gen stamp reserved ceiling
+                                            (car (cadr plan))))
+                  (equal (fn-lb-binding name (fn-lb-value-bindings
+                                              (fn-cfg-apply v gen stamp (cadr plan))))
+                         (fn-lb-hex-principal hex))
+                  (implies (not (equal other name))
+                           (equal (fn-lb-binding other (fn-lb-value-bindings
+                                                        (fn-cfg-apply v gen stamp
+                                                                      (cadr plan))))
+                                  (fn-lb-binding other (fn-lb-value-bindings v))))
+                  (fn-lb-account-heldp name (fn-cfg-accounts
+                                             (fn-cfg-apply v gen stamp (cadr plan)))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lb-bindable-namep)
+                           (fn-lb-account-bind-plan fn-lb-principalp
+                            fn-lb-hex-principal fn-lb-account-heldp
+                            fn-lb-binding-delta fn-lb-value-bindings
+                            fn-cfg-account-loginp))
+           :use ((:instance fn-lb-account-bind-plan-ok-shape)
+                 (:instance fn-lb-binding-delta-is-admitted
+                            (principal (fn-lb-hex-principal hex)))
+                 (:instance fn-lb-binding-delta-binds-the-login
+                            (principal (fn-lb-hex-principal hex)))
+                 (:instance fn-lb-binding-delta-keeps-other-logins
+                            (principal (fn-lb-hex-principal hex)))
+                 (:instance fn-lb-binding-delta-keeps-held-accounts
+                            (other name) (p (fn-lb-hex-principal hex)))))))
+
+; KEYSTONE (PRF-388, composed).  An account binding survives the next start:
+; after an :ok plan's record, the start publication (the credential file's
+; table; a file that does not name the login) leaves the login bound to the
+; principal the verb named.  Before PKT-560 the verb refused the login, and
+; a binding written any other way was unbound at the next start.
+(defthm fn-lb-an-account-binding-survives-the-next-start
+  (let* ((plan (fn-lb-account-bind-plan name hex v))
+         (v1 (fn-cfg-apply v gen stamp (cadr plan)))
+         (pairs (fn-lb-sync-pairs file (fn-lb-value-bindings v1)
+                                  (fn-cfg-accounts v1))))
+    (implies (and (equal (car plan) :ok)
+                  (not (fn-lb-has name file))
+                  (fn-lb-pairs-okp pairs))
+             (equal (fn-lb-binding name (fn-lb-value-bindings
+                                         (fn-cfg-apply v1 gen2 stamp2
+                                                       (fn-lb-pairs-deltas pairs))))
+                    (fn-lb-hex-principal hex))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lb-config-ownsp)
+                           (fn-lb-account-bind-plan fn-lb-account-heldp
+                            fn-lb-hex-principal fn-lb-value-bindings
+                            fn-lb-sync-pairs fn-lb-pairs-okp fn-lb-pairs-deltas
+                            fn-cfg-apply
+                            fn-lb-account-bind-plan-binds-exactly-the-account-login
+                            fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings))
+           :use ((:instance fn-lb-account-bind-plan-binds-exactly-the-account-login
+                            (reserved nil) (ceiling nil) (other nil))
+                 (:instance
+                  fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings
+                  (v (fn-cfg-apply v gen stamp
+                                   (cadr (fn-lb-account-bind-plan name hex v))))
+                  (gen gen2) (stamp stamp2))))))
+
 (in-theory (disable fn-lb-ocfg-gate fn-lb-conn-bindings fn-lb-inflight-id
-                    fn-lb-sync-plan fn-lb-value-bindings fn-lb-config-bindings))
+                    fn-lb-sync-plan fn-lb-value-bindings fn-lb-config-bindings
+                    fn-lb-account-bind-plan fn-lb-hex-principal
+                    fn-lb-account-heldp fn-lb-config-ownsp))

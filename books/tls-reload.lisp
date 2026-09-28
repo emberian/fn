@@ -367,6 +367,68 @@
                                       fn-tlsr-now fn-tlsr-seconds))))
 
 ; -----------------------------------------------------------------------------
+; The start (PRF-387, PKT-606)
+;
+; `run' opens the pair it serves from with the same candidate builder and
+; the same facts as a reload (host/native/tls-reload.lisp
+; fnn-tls-start-context), and takes it exactly when this decision accepts.
+; It is the reload's decision against no served material: at start the node
+; answers for no name yet, so nothing can be dropped.  Before PKT-606 the
+; start refused only what OpenSSL refused (an unloadable or mismatched
+; pair), so an expired, not-yet-valid or name-unreadable pair started and
+; was then refused by the first `tls reload'.
+
+(defun fn-tlsr-start-decide (facts)
+  (declare (xargs :guard t))
+  (fn-tlsr-decide facts nil))
+
+; KEYSTONE (PRF-387).  The subject is `fn-tlsr-start-decide', which
+; host/tls-reload-host.lisp fn-tlsr-host-start-decide computes for
+; host/native/tls-reload.lisp fnn-tls-start-context, the context
+; host/native/operator-live.lisp fnn-operator-execute-run opens before the
+; owner starts; the host serves the pair exactly when the decision is
+; :accept and refuses the start otherwise.  The pair is taken exactly when
+; the chain and key loaded, the key matches, the clock lies in the validity
+; window and the names are readable.
+(defthm fn-tlsr-start-decide-accepts-exactly-loaded-matching-current-material
+  (iff (fn-tlsr-acceptp (fn-tlsr-start-decide facts))
+       (and (fn-tlsr-chain-loadedp facts)
+            (fn-tlsr-key-loadedp facts)
+            (fn-tlsr-key-matchesp facts)
+            (fn-tlsr-currentp facts)
+            (not (equal (fn-tlsr-names facts) :malformed))))
+  :hints (("Goal" :in-theory (disable fn-tlsr-decide fn-tlsr-chain-loadedp
+                                      fn-tlsr-key-loadedp fn-tlsr-key-matchesp
+                                      fn-tlsr-currentp fn-tlsr-names
+                                      fn-tlsr-served-names)
+           :use ((:instance
+                  fn-tlsr-decide-accepts-exactly-loaded-matching-current-covering-material
+                  (served nil))))))
+
+; KEYSTONE (PRF-387, one check).  The reload and the start decide the same
+; material the same way: every reload decision other than `names-dropped'
+; (the one conjunct about what is being served) is the start's decision, so
+; a pair the start refuses a reload refuses by the same word, and a pair a
+; reload accepts the start accepts with the same names and notAfter.
+(defthm fn-tlsr-decide-is-the-start-decision-unless-names-dropped
+  (implies (not (equal (fn-tlsr-decide facts served)
+                       (list :refuse :names-dropped)))
+           (equal (fn-tlsr-decide facts served)
+                  (fn-tlsr-start-decide facts)))
+  :hints (("Goal" :in-theory (disable fn-tlsr-chain-loadedp fn-tlsr-key-loadedp
+                                      fn-tlsr-key-matchesp fn-tlsr-names
+                                      fn-tlsr-not-before fn-tlsr-not-after
+                                      fn-tlsr-now fn-tlsr-seconds))))
+
+; The start's refusal as the operator's line carries it: `tls REASON'.  The
+; host appends the library's own text for the failed observation.
+(defun fn-tlsr-start-refusal-line (decision)
+  (declare (xargs :guard t))
+  (append (fn-record-string-octets "tls ")
+          (fn-nctrl-reason-word (and (consp decision) (consp (cdr decision))
+                                     (cadr decision)))))
+
+; -----------------------------------------------------------------------------
 ; The served line, from the served context's facts:
 ;   tls names=A,B not-after=YYYY-MM-DDTHH:MM:SSZ
 ; with `names=none' for a leaf without dNSNames (a CN-only certificate),
