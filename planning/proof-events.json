@@ -12409,6 +12409,27 @@
           "name": "fn-otm-jw-open-step-cuts-a-written-file"
         }
       ]
+    },
+    {
+      "id": "PRF-357",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osd-stops-only-when-nothing-is-owed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-releases-only-at-the-deadline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-drain-ends-by-the-deadline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-deadline-is-past-the-slow-deadline"
+        }
+      ]
     }
   ]
 }

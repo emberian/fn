@@ -645,6 +645,24 @@ for the barrier as in slice 1, the inline barrier and
 configuration publication as requests (slice 3), `health`'s exit in
 `stalled` (PKT-853 (b)).
 
+A graceful stop (SIGTERM, PKT-875; PRF-357, books/owner-stop-drain.lisp)
+drains before its fence: the owner stops accepting and stepping input, the
+I/O loops keep delivering and the committer keeps committing, and each
+poster is told at its batch's COMPLETE as always (240 only after a fenced
+barrier). ACL2 decides from each observation (`fn-osd-drain-step`, every
+100 ms after a clock event): the fence comes only when no member awaits its
+reply, no reply is unsent and no batch is in flight unless its members were
+released (`fn-osd-stops-only-when-nothing-is-owed`); at the drain deadline,
+the configuration's H after the SIGTERM, the members still in flight are
+released uncertain by the stall's own rule and the queue shed
+(`fn-osd-releases-only-at-the-deadline`), and the drain ends 10 s after that
+release at the latest (`fn-osd-drain-ends-by-the-deadline`). A stop never
+closes a connection whose article committed without its reply before that
+bound. Not covered: a command read but not yet stepped at the SIGTERM (an
+article after its 340) is not answered; it is not stored. The fence itself
+still waits for a barrier that does not return (a stuck device holds the
+exit, never a reply).
+
 HST-028: Every decision that stores nothing is reproducible from the
 decision journal (PRF-322, books/owner-time-journal.lisp). Each event the
 scheduler's disk-and-clock value takes -- a barrier's issue and completion,
