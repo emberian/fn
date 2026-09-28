@@ -537,6 +537,9 @@ class Load:
                 self.ledger.note("POST", now() - started, None)
                 with self.ledger.lock:
                     self.ledger.uncertain[msgid] = (started, str(error)[:120])
+                    if target:
+                        # the cancel or supersede may have been stored
+                        self.ledger.retracted.add(target)
                 self.events.emit("post-uncertain", msgid=msgid, why=str(error)[:120],
                                  in_window=self.ledger.in_window(started))
                 conn = None
@@ -550,6 +553,8 @@ class Load:
                 with self.ledger.lock:
                     self.ledger.uncertain[msgid] = (started, status[:120])
                     self.ledger.told_uncertain.add(msgid)
+                    if target:
+                        self.ledger.retracted.add(target)
                 self.events.emit("post-told-uncertain", msgid=msgid, reply=status)
             elif status.startswith("240"):
                 with self.ledger.lock:
@@ -568,7 +573,7 @@ class Load:
                     self.ledger.refused[msgid] = (now(), status)
                 if status[:1] == "5":
                     self.five("POST", status)
-                self.events.emit("post-refused", msgid=msgid, kind=kind, reply=status,
+                self.events.emit("post-refused", msgid=msgid, post_kind=kind, reply=status,
                                  in_window=self.ledger.in_window(started))
         if conn:
             conn.close()
@@ -707,13 +712,9 @@ def sample(node: Node, load: Load, ledger: Ledger, events: Events, fsync_seconds
 
 def copy_fixture(fixture: Path, node: Node):
     src = fixture / "store"
-    if getattr(node, "mounted", False):
-        # a mount point stays: copy into it
-        subprocess.run(["cp", "-a", str(src) + "/.", str(node.store)], check=True)
-    else:
-        if node.store.exists():
-            shutil.rmtree(node.store)
-        subprocess.run(["cp", "-a", "--reflink=auto", str(src), str(node.store)], check=True)
+    if node.store.exists():
+        shutil.rmtree(node.store)
+    subprocess.run(["cp", "-a", "--reflink=auto", str(src), str(node.store)], check=True)
     lock = node.store / "writer.lock"
     lock.touch()
     lock.chmod(0o600)
@@ -786,7 +787,7 @@ def verify_presence(node, creds, ledger: Ledger, events: Events, label, limit=No
             served_refused.append(msgid)
     for msgid in uncertain:
         status, _ = conn.cmd("STAT " + msgid)
-        uncertain_present += status.startswith("223")
+        uncertain_present += status.startswith("223") or status.startswith("430 withdrawn")
     conn.close()
     row = events.emit("presence", label=label, checked=len(accepted), missing=len(missing),
                       missing_ids=missing[:20], refused_checked=len(refused),
@@ -874,6 +875,8 @@ def digest_check(node: Node, events: Events, label):
     if copy.exists():
         shutil.rmtree(copy)
     subprocess.run(["cp", "-a", "--reflink=auto", str(node.store), str(copy)], check=True)
+    # the copy lives on another filesystem than a tmpfs-mounted store: bind it
+    node.fn("store", copy, "rebind-filesystem")
     compacted = not (node.store / "journal" / "000001.log").exists()
     twin = node.fn("store", copy, "digest") if compacted else None
     dropped = []
@@ -1123,6 +1126,8 @@ def cmd_soak(args):
         if node.pid():
             node.stop()
         if mount:
+            # keep the store (and its decision journal) past the unmount
+            subprocess.run(["cp", "-a", str(node.store), str(node.dir / "store-kept")])
             unmount_tmpfs(mount, events)
         summary["ended"] = now()
         findings = [json.loads(l) for l in (work / "events.jsonl").read_text().splitlines()
@@ -1279,8 +1284,9 @@ def tear_tail(node, events):
 
 
 def mount_tmpfs(node, megabytes, events):
-    """The store's directory as a size-limited tmpfs (sudo), owned by us."""
-    target = node.dir / "store"
+    """A size-limited tmpfs (sudo) at DIR/vol, owned by us; the store is
+    DIR/vol/store (init and the fixture copy create it, as they must)."""
+    target = node.dir / "vol"
     target.mkdir(parents=True, exist_ok=True)
     r = subprocess.run(["sudo", "-n", "mount", "-t", "tmpfs", "-o",
                         "size={}m,uid={},gid={},mode=0700".format(megabytes, os.getuid(),
@@ -1290,8 +1296,8 @@ def mount_tmpfs(node, megabytes, events):
                 err=r.stderr.decode()[-200:])
     if r.returncode:
         raise RuntimeError("mount tmpfs: " + r.stderr.decode())
-    # copy_fixture removes and recreates the store directory: copy INTO it.
-    node.mounted = True
+    node.store = target / "store"
+    node.write_config()
     return target
 
 
@@ -1304,7 +1310,7 @@ def unmount_tmpfs(target, events):
 def fill_disk(node, events, ledger, load, creds, image):
     """Fill the store's filesystem to within a few KiB, watch, free, recover."""
     window = ledger.open_window("full")
-    ballast = node.store.parent / "store" / ".fitness-ballast"
+    ballast = node.store.parent / ".fitness-ballast"
     st = os.statvfs(node.store)
     free = st.f_bavail * st.f_frsize
     keep = 64 * 1024
