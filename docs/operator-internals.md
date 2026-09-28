@@ -628,7 +628,7 @@ configuration plan and authentication startup. Native SIGTERM enters the owner
 stop boundary, wakes and joins connection, control, and feed workers, closes
 TLS and journals, and preserves the owner's exit outcome.
 
-### Health: which of eight things is wrong
+### Health: which of nine things is wrong
 
 `operator CONFIG health` (HST-007) answers with one line per state, always
 in this order, then exits with a code that names the first one held:
@@ -644,6 +644,7 @@ no-route clear
 stranded-transfer clear
 unavailable-peer held peers: hub
 receipt-debt clear
+disk clear
 accepted operator health
 ```
 
@@ -657,6 +658,7 @@ accepted operator health
 | 25 | `stranded-transfer` | an outbound feed entry was dropped at its retry bound; nothing re-offers it | fix the peer, then re-feed the article |
 | 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection, or it keeps deferring them (`deferred=N`: a full peer answers IHAVE/TAKETHIS `436` with `reason=unaffordable` in its log; planning/evidence/friend-blockers-2026-09-27.md, PKT-711), or its outbound feed queue is saturated (`saturated=N`: the queue holds only undelivered articles, and while one of the post's target peers has no room every POST is refused `441 ... (feed-queue-full)` and a relayed article is answered `436`; PRF-335) | check the peer's host and port (`peer list`), its reachability, and ask its operator whether its store is full |
 | 27 | `receipt-debt` | forwarding obligations are held, awaiting the receipt that releases them | `bp-obligation status`; the receipt releases each |
+| 28 | `disk` | the running owner's disk is `stalled` (a barrier pending past `barrier-stall-ms`, H: its posters were told uncertain; the line names `pending-ms`) or `full` (the free octets of the store's filesystem below the need: PRF-129's maintenance reserve, two batches at `log-batch-octets` and `disk-reserve-octets`, default 64 MiB; every POST is answered 440/441 with the reason before anything is written). A `slow` disk (past `barrier-deadline-ms`, D, under H) is the `disk slow` line only, never a held state (provisional, PKT-853 (b)). Offline the state is `unobserved` | look at the device (`iostat`, `zpool status`); free space, or lower `policy set disk-reserve-octets N`; the node recovers at the next observation with room or the barrier's completion, no restart |
 | 19 | (none held) | some state is `unobserved` | offline, the two feed states need a running owner |
 | 0 | (healthy) | every state is `clear` | |
 
@@ -1877,7 +1879,7 @@ table in `specs/nntp.md` ("Public exposure"). In short:
   behaviour, and it lets an anonymous client POST if `[posting]` is
   enabled: there is no read-only anonymous level yet (PKT-405).
 
-`operator CONFIG health` prints four `exposure` lines after its eight
+`operator CONFIG health` prints four `exposure` lines after its nine
 states: `exposure pressure held|clear` (held at nine tenths of the total or
 after any refusal, wait or close in the current minute), the counts
 (`admitted`, `refused-busy`, `refused-address`, `refused-auth`, `deferred`,

@@ -411,6 +411,8 @@ class SlowDiskNativeTests(unittest.TestCase):
             time.sleep(max(0.0, t0 + 3.0 - time.monotonic()))
             elapsed, health = self.timed_operator("health")
             self.assertIsNotNone(DISK_SLOW.search(health.stdout), health.stdout)
+            # PRF-358 (provisional, PKT-853 (b)): slow is the line only.
+            slow_health = health
             started = time.monotonic()
             busy = self.operator("policy", "set", "clock-event-ms", "500")
             busy_at = time.monotonic() - started
@@ -437,6 +439,7 @@ class SlowDiskNativeTests(unittest.TestCase):
             _, health = self.timed_operator("health")
             stalled = DISK_STALLED.search(health.stdout)
             self.assertIsNotNone(stalled, health.stdout)
+            stalled_health = health
             g.write(b"POST\r\n")
             g.flush()
             refused_command = g.readline()
@@ -497,6 +500,22 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertEqual(stat[b"after2"], b"223", stat)
         self.assertEqual(int(ok.group(7)), 1)
         self.assertTrue(after.startswith(b"240"), after)
+        # PRF-358 (PKT-879): health's ninth state.  Slow: clear, exit 0.
+        # Stalled: held with the stall's duration, exit 28.  Recovered: 0.
+        print("health while slow: rc=%d %r; while stalled: rc=%d %r; after: rc=%d"
+              % (slow_health.returncode, slow_health.stdout.split(b"\n")[0],
+                 stalled_health.returncode, stalled_health.stdout.split(b"\n")[0],
+                 health.returncode))
+        self.assertEqual(slow_health.returncode, 0, slow_health.stdout)
+        self.assertIn(b"\ndisk clear\n", slow_health.stdout)
+        self.assertEqual(stalled_health.returncode, 28, stalled_health.stdout)
+        self.assertTrue(stalled_health.stdout.startswith(b"health exit=28 state=disk\n"),
+                        stalled_health.stdout)
+        held = re.search(rb"^disk held mode=stalled pending-ms=(\d+) stall-ms=(\d+) "
+                         rb"members=uncertain posts=try-later$", stalled_health.stdout, re.M)
+        self.assertIsNotNone(held, stalled_health.stdout)
+        self.assertGreaterEqual(int(held.group(1)), int(held.group(2)))
+        self.assertEqual(health.returncode, 0, health.stdout)
         log = (self.root / "owner.stderr").read_bytes()
         self.assertIn(b"disk stalled: a barrier has waited ", log)
         self.assertIn(b"disk recovered after a stall: the barrier completed after ", log)
@@ -522,6 +541,93 @@ class SlowDiskNativeTests(unittest.TestCase):
         print("store journal: rc=%d %r" % (replay.returncode, replay.stdout))
         self.assertEqual(replay.returncode, 0, (replay.stdout, replay.stderr))
         self.assertIn(b" replay=agrees", replay.stdout)
+
+    def test_a_full_disk_refuses_posts_before_the_write_and_recovers(self):
+        """PRF-359 (PKT-872) and PRF-358 (lane health-truth): the store's
+        filesystem observed below the need (FN_NATIVE_DISK_FREE=@FILE caps
+        the statvfs observation at the number in FILE, read at every
+        observation, on the developer image): a POST command is answered 440
+        with the reason before its article, an article whose POST got 340
+        before is answered 441, nothing stored, and `health' holds `disk'
+        (exit 28, mode=full with the figures).  Room again: the next
+        observation recovers, POSTs are accepted, health exit 0.  The owner
+        never stops and nothing is uncertain."""
+        self.reap(self.owner)
+        cap = self.root / "disk-free"
+        cap.write_text("1000000000000\n")
+        self.owner = self.start_owner({"FN_NATIVE_TEST_DISK_STALL_FILE": str(self.stall),
+                                       "FN_NATIVE_DISK_FREE": "@" + str(cap)})
+        w_conn, w = self.connect()
+        b_conn, b = self.connect()
+        with w_conn, b_conn:
+            self.send_article(w, b"room@example.invalid", b"room on the disk")
+            self.assertTrue(w.readline().startswith(b"240"))
+            before = self.operator("health")
+            b.write(b"POST\r\n")
+            b.flush()
+            self.assertTrue(b.readline().startswith(b"340"))
+            # The disk fills.  The next observation (health's, or a served
+            # read's a cadence after the last) finds it full.
+            cap.write_text("1000\n")
+            full_health = self.operator("health")
+            full_status = self.operator("status")
+            time.sleep(1.2)
+            started = time.monotonic()
+            w.write(b"POST\r\n")
+            w.flush()
+            refused_command = w.readline()
+            refused_command_at = time.monotonic() - started
+            self.send_body(b, b"full@example.invalid", b"sent while the disk is full")
+            refused = b.readline()
+            # Room again.
+            cap.write_text("1000000000000\n")
+            time.sleep(1.2)
+            self.send_article(w, b"after-full@example.invalid", b"room again")
+            after = w.readline()
+            after_health = self.operator("health")
+            w.write(b"STAT <full@example.invalid>\r\n")
+            w.flush()
+            stat_full = w.readline()[:3]
+            w.write(b"GROUP fn.test\r\nSTAT <after-full@example.invalid>\r\n")
+            w.flush()
+            w.readline()
+            stat_after = w.readline()[:3]
+            for stream in (w, b):
+                stream.write(b"QUIT\r\n")
+                stream.flush()
+        print("full disk: health before rc=%d; full rc=%d %r; status rc=%d %r; POST command %.3fs %r; "
+              "article %r; after %r; health after rc=%d; STAT full=%r after=%r"
+              % (before.returncode, full_health.returncode, full_health.stdout.split(b"\n")[0],
+                 full_status.returncode,
+                 [l for l in full_status.stdout.split(b"\n") if l.startswith(b"disk ")],
+                 refused_command_at, refused_command, refused, after, after_health.returncode,
+                 stat_full, stat_after))
+        self.assertEqual(before.returncode, 0, before.stdout)
+        self.assertRegex(before.stdout, rb"(?m)^disk space: free-octets=\d+ need-octets=\d+$")
+        self.assertEqual(full_health.returncode, 28, full_health.stdout)
+        self.assertTrue(full_health.stdout.startswith(b"health exit=28 state=disk\n"), full_health.stdout)
+        self.assertRegex(full_health.stdout,
+                         rb"(?m)^disk held mode=full free-octets=1000 need-octets=\d+ posts=try-later$")
+        self.assertRegex(full_health.stdout,
+                         rb"(?m)^disk full: free-octets=1000 need-octets=\d+ posts=try-later$")
+        self.assertEqual(full_status.returncode, 0, full_status.stdout)
+        self.assertRegex(full_status.stdout, rb"(?m)^disk full: free-octets=1000 ")
+        self.assertRegex(refused_command,
+                         rb"^440 posting not permitted now; the disk is full \(1000 octets free, \d+ needed\), "
+                         rb"try again later\r\n$")
+        self.assertLess(refused_command_at, 2.0)
+        self.assertRegex(refused,
+                         rb"^441 posting failed; the disk is full \(1000 octets free, \d+ needed\): "
+                         rb"nothing was stored, try again later\r\n$")
+        self.assertTrue(after.startswith(b"240"), after)
+        self.assertEqual(after_health.returncode, 0, after_health.stdout)
+        self.assertEqual(stat_full, b"430")
+        self.assertEqual(stat_after, b"223")
+        self.assertIsNone(self.owner.poll(), "the owner stopped")
+        log = (self.root / "owner.stderr").read_bytes()
+        self.assertIn(b"disk full: 1000 octets free, ", log)
+        self.assertIn(b"disk space recovered: ", log)
+        self.assertNotIn(b"needs recovery", log)
 
     FULL_REFUSAL = (b"441 posting failed; the store is full: no capacity for this article "
                     b"(unaffordable); the node's operator can raise it\r\n")
