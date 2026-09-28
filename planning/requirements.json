@@ -3219,7 +3219,8 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-164"
+        "PRF-164",
+        "PRF-374"
       ],
       "verification": [
         "proof",

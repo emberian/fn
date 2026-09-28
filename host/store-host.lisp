@@ -332,6 +332,7 @@
   (fn-bs-config-frame-for-profile profile))
 
 (defun fn-store-metadata-config-decode (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-bs-config-decode octets))
 
 ;; The open of config.json every open path reads (PKT-471,

@@ -1,8 +1,8 @@
 From: fn <docs@fn.fg-goose.online>
 Newsgroups: fn.docs
 Subject: fn FAQ, part 5: when things go wrong
-Date: Sun, 27 Sep 2026 12:02:00 +0000
-Message-ID: <fn-faq-5-20260927@fn.fg-goose.online>
+Date: Mon, 28 Sep 2026 18:00:00 +0000
+Message-ID: <fn-faq-5-20260928@fn.fg-goose.online>
 Archive-name: fn-faq/part5
 Posting-Frequency: when fn changes
 Last-modified: 2026-09-28
