@@ -781,16 +781,25 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; JOURNAL, beside the configured store (books/bp-carry-control.lisp decides
 ; each record; host/native/bp-obligation.lisp executes).  A drop's REASON is
 ; its words joined by one space.
+(defun fn-nop-chars-onto (cs acc)
+  (declare (xargs :guard (and (character-listp cs) (character-listp acc))))
+  (if (consp cs) (fn-nop-chars-onto (cdr cs) (cons (car cs) acc)) acc))
+
+(defthm fn-nop-chars-onto-character-listp
+  (implies (and (character-listp cs) (character-listp acc))
+           (character-listp (fn-nop-chars-onto cs acc))))
+
 (defun fn-nop-join-words-loop (words acc)
-  (declare (xargs :guard (true-listp acc)))
+  ; ACC is the joined characters so far, reversed: one pass, no append.
+  (declare (xargs :guard (character-listp acc)))
   (if (consp words)
       (fn-nop-join-words-loop
        (cdr words)
        (if (stringp (car words))
-           (if acc (append acc (cons #\Space (coerce (car words) 'list)))
-             (coerce (car words) 'list))
+           (fn-nop-chars-onto (coerce (car words) 'list)
+                              (if acc (cons #\Space acc) nil))
          acc))
-    (coerce acc 'string)))
+    (coerce (fn-nop-chars-onto acc nil) 'string)))
 
 (defun fn-nop-parse-carry (words config)
   (declare (xargs :guard t))

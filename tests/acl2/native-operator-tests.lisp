@@ -1515,3 +1515,24 @@
 (assert-event (not (fn-native-operator-result-compaction-planp
                     (fn-native-operator-run *fn-nop-minimal-config*
                                             (fn-nop-test-argv '("store" "reclaim"))))))
+
+; PKT-869: `carry JOURNAL ...' plans; a drop's reason is its words joined.
+(defconst *fn-nop-carry-drop*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("carry" "/srv/fn/workflow" "drop" "work-a"
+                                              "peer" "retired"))))
+(assert-event (equal (fn-native-operator-result-carry-fields *fn-nop-carry-drop*)
+                     '("/srv/fn/workflow" :drop "work-a" "peer retired")))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-carry-drop*) :carry))
+(assert-event (equal (fn-native-operator-result-carry-fields
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("carry" "/srv/fn/workflow" "pause" "*"))))
+                     '("/srv/fn/workflow" :pause "*" nil)))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("carry" "relative" "list"))))
+                     :usage))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("carry" "/srv/fn/workflow" "drop" "work-a"))))
+                     :usage))
