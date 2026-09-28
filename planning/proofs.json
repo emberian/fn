@@ -2666,7 +2666,7 @@
         "PRF-046"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tcpcl-delivery.lisp",
         "books/tcpcl-delivery-invariants.lisp",
@@ -9440,7 +9440,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/payload-lz.lisp",
         "tests/acl2/payload-lz-tests.lisp",
@@ -11934,7 +11934,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/octet-text.lisp",
         "tests/acl2/octet-text-tests.lisp",
@@ -12241,7 +12241,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-request.lisp",
         "tests/acl2/web-request-tests.lisp",
@@ -12358,7 +12358,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-2047.lisp",
         "books/web-render.lisp",
@@ -12710,7 +12710,7 @@
         "PRF-352"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/nntp-projection.lisp",
         "books/nntp-index-runtime.lisp",
@@ -12749,12 +12749,7 @@
         "PRF-198"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "events": [
-        "fn-heap-open-nursery-trigger-bounds",
-        "fn-heap-store-figure-holds-every-store-at-the-open-trigger",
-        "fn-heap-open-nursery-trigger-natp"
-      ],
+      "status": "planned",
       "evidence": [
         "books/heap-open-nursery.lisp",
         "tests/acl2/heap-open-nursery-tests.lisp",
