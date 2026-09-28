@@ -13038,6 +13038,15 @@
           "name": "fn-ndur-recovery-never-reissues-a-logged-txid"
         }
       ]
+    },
+    {
+      "id": "PRF-385",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-feed-restart-forgets-the-previous-clock-domain"
+        }
+      ]
     }
   ]
 }

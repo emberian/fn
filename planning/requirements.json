@@ -5022,7 +5022,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-384"
+        "PRF-384",
+        "PRF-385"
       ],
       "verification": [
         "proof",
@@ -5031,14 +5032,17 @@
       ],
       "evidence": [
         "books/owner-time-bars.lisp",
+        "books/feed-restart-domain.lisp",
+        "books/peer-feed.lisp",
         "books/owner-time-journal.lisp",
         "tests/acl2/owner-time-bars-tests.lisp",
+        "tests/acl2/feed-restart-domain-tests.lisp",
         "host/native/owner.lisp",
         "tests/test_native_slow_disk.py",
         "planning/design-time-model-2026-09-27.md",
         "planning/evidence/time-bars-2026-09-28.md"
       ],
-      "implementation_note": "Lane time-bars (row F1 of COMPLETE-BEFORE-6.6.0). Bars (ember 2026-09-28): D 5 s, H 30 s with at most 1 s notification slack, cached health p99 <= 250 ms and <= 1 s under the injected stall, warm reads <= 1 s, cold page-dependent reads a declared 5 s dependency deadline then 403 (design section 4b). The committer's told-connection list moved into ACL2 (fn-otb-*); the journal's start entry records the wall observation, no monotonic origin; the push feed's restart forgets the previous process's back-off deadline. The cold-read decision is the interface row A4's asynchronous page fault calls; until A4 a cold extent read is synchronous under the owner. The push feed restart fix (PRF-385) follows on lane/time-bars-feed."
+      "implementation_note": "Lane time-bars (row F1 of COMPLETE-BEFORE-6.6.0). Bars (ember 2026-09-28): D 5 s, H 30 s with at most 1 s notification slack, cached health p99 <= 250 ms and <= 1 s under the injected stall, warm reads <= 1 s, cold page-dependent reads a declared 5 s dependency deadline then 403 (design section 4b). The committer's told-connection list moved into ACL2 (fn-otb-*); the journal's start entry records the wall observation, no monotonic origin; the push feed's restart forgets the previous process's back-off deadline. The cold-read decision is the interface row A4's asynchronous page fault calls; until A4 a cold extent read is synchronous under the owner."
     },
     {
       "id": "NNT-056",

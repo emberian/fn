@@ -705,7 +705,7 @@ section 4b. A restart is a new clock domain: the decision journal's start
 entry records the wall observation and whether it is usable, never a
 monotonic origin, and no decision of a run reads an earlier run's reading
 (`fn-otb-a-restart-forgets-the-previous-clock-domain`; the push feed's
-back-off: PRF-385, lane/time-bars-feed). F4-W
+back-off, PRF-385). F4-W
 (`fn-otm-f4w-stall-within-h`): the committer's clock events, each within
 its wait plus the timer's lateness L, enter `stalled` at most H + L after
 the barrier's issue (its wait never reaches past H), so every POST is
@@ -801,7 +801,7 @@ sequence number of the first entry lost). A journal that cannot be written
 costs replay of decisions that stored nothing, never service: the owner
 keeps serving and `health`'s log-sink line counts what was dropped.
 
-HST-031: The adopted F4 bars (PRF-384; planning/design-time-model-2026-09-27.md
+HST-031: The adopted F4 bars (PRF-384, PRF-385; planning/design-time-model-2026-09-27.md
 section 4b): D 5 s, H 30 s with at most 1 s notification slack, a cold read's
 declared 5 s page-dependency deadline. A deadline is a notification, never a
 cancellation. The barrier's late completion is consumed exactly once, into
@@ -815,8 +815,8 @@ its host call site is the asynchronous page fault still to come). A restart
 is a new clock domain: the decision journal's start entry records the wall
 observation and no monotonic origin, and no decision of a run reads an
 earlier run's reading (`fn-otb-a-restart-forgets-the-previous-clock-domain`);
-the push feed's restart is to forget the previous process's back-off
-deadline (PRF-385, following on lane/time-bars-feed). Scenario SCN-202.
+the push feed's restart forgets the previous process's back-off deadline
+(`fn-feed-restart-forgets-the-previous-clock-domain`). Scenario SCN-202.
 
 ### The owner submission path
 
