@@ -101,8 +101,8 @@
  (equal (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
                        *fn-frame-store-kind* '(1 2 3))
         (append *fn-frame-trailer-t-prefix*
-                '(183 162 160 5 37 20 123 28 147 194 61 218 190 130 161 178
-                  246 131 69 54 36 252 244 95 20 124 177 90 71 84 36 157))))
+                '(205 109 140 213 55 4 42 226 118 170 158 232 33 189 42 208
+                  177 165 152 88 92 252 16 186 129 188 95 134 108 90 94 37))))
 
 ; The decode direction, with the trailer re-derived over the frame's own
 ; protected prefix -- which is exactly what `FrameSession.digest_of',

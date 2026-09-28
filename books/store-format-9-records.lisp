@@ -40,6 +40,22 @@
             :use ((:instance fn-id-subject-shape
                              (digest (fn-frame-digest (fn-id-subject-preimage p)))))))))
 
+(local
+ (defthm fn-f9r-subject-of-payload-len
+   (equal (len (fn-id-subject-of-payload p)) *fn-id-subject-octets*)
+   :hints (("Goal" :in-theory (e/d (fn-id-subject-of-payload fn-id-digestp)
+                                   (fn-id-subject-shape))
+            :use ((:instance fn-id-subject-shape
+                             (digest (fn-frame-digest (fn-id-subject-preimage p)))))))))
+
+(local
+ (defthm fn-f9r-obligation-of-octets
+   (fn-cbor-octet-listp (fn-id-obligation-of m s))
+   :hints (("Goal" :in-theory (e/d (fn-id-obligation-of fn-id-digestp)
+                                   (fn-id-obligation-shape))
+            :use ((:instance fn-id-obligation-shape
+                             (digest (fn-frame-digest (fn-id-obligation-preimage m s)))))))))
+
 ; -----------------------------------------------------------------------------
 ; An article's identities, as format 10 derives them
 
@@ -119,7 +135,8 @@
                             (fn-record-string-octets (fn-record-msgid r))
                             subject)))))))
   :hints (("Goal" :in-theory (e/d (fn-f9r-article fn-f9r-subject fn-f9r-obligation fn-f9r-text)
-                           (fn-id-subject-of-payload fn-id-obligation-of fn-id-text)))))
+                           (fn-id-subject-of-payload fn-id-obligation-of fn-id-text
+                            fn-record-string-octets)))))
 
 ; -----------------------------------------------------------------------------
 ; Retention events: their identity texts through the articles' map

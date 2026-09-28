@@ -41,6 +41,7 @@
  (defthm fn-f9-cbor-octet-listp-is-sha256-octet-listp
    (equal (fn-cbor-octet-listp xs)
           (fn-sha256-octet-listp xs))
+   :rule-classes nil
    :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp)))))
 
 (defun fn-f9-frame-open (octets max-payload)
@@ -57,7 +58,11 @@
 
 (defthm fn-f9-trailer-is-a-digest
   (fn-frame-digestp (fn-f9-trailer octets))
-  :hints (("Goal" :in-theory (enable fn-frame-digestp))))
+  :hints (("Goal" :use ((:instance fn-f9-cbor-octet-listp-is-sha256-octet-listp
+                                   (xs (fn-sha256 octets)))
+                        (:instance fn-sha256-shape (m octets)))
+           :in-theory (e/d (fn-frame-digestp fn-f9-trailer)
+                           (fn-sha256-shape fn-sha256)))))
 
 (defthm fn-f9-trailer-is-octets
   (and (fn-cbor-octet-listp (fn-f9-trailer octets))

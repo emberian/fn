@@ -116,6 +116,17 @@
                                     fn-bs-profile-validp)))))))
 
 ;; -----------------------------------------------------------------------------
+;; The migration reads records as the export writes them: each record's
+;; codec octets (host/native/io.lisp fnn-command-store-export: the log's
+;; records as the open reads them), not frames.
+(defun sxpt-encodings (events)
+  (if (consp events)
+      (cons (fn-store-event-encode (car events)) (sxpt-encodings (cdr events)))
+    nil))
+(make-event
+ `(defconst *sxpt-raw-records*
+    ',(pairlis$ '(0 1 2 4 5) (sxpt-encodings *sxpt-events*))))
+
 ;; The migration from format 9 (fn-sxp-import-of-a-format-9-export): the
 ;; archive the previous release exported -- the development preset's fields
 ;; in format 9's layout (the word, the frontier word, sixteen naturals with
@@ -132,14 +143,14 @@
 (make-event
  `(defconst *sxpt-manifest-9*
     ',(fn-sxp-manifest-under t (fn-sxp-entries *sxpt-profile-9* *sxpt-frontier*
-                                               *sxpt-configs* *sxpt-records*))))
+                                               *sxpt-configs* *sxpt-raw-records*))))
 ;; The records translated (books/store-format-9-records.lisp): the article's
 ;; two identities re-derived under this format's digest, every other field and
 ;; every other event kept.
-(make-event `(defconst *sxpt-records-10* ',(fn-f9r-records *sxpt-records*)))
-(assert-event (equal (strip-cars *sxpt-records-10*) (strip-cars *sxpt-records*)))
-(assert-event (equal (cdr *sxpt-records-10*) (cdr *sxpt-records*)))
-(assert-event (not (equal (car *sxpt-records-10*) (car *sxpt-records*))))
+(make-event `(defconst *sxpt-records-10* ',(fn-f9r-records *sxpt-raw-records*)))
+(assert-event (equal (strip-cars *sxpt-records-10*) (strip-cars *sxpt-raw-records*)))
+(assert-event (equal (cdr *sxpt-records-10*) (cdr *sxpt-raw-records*)))
+(assert-event (not (equal (car *sxpt-records-10*) (car *sxpt-raw-records*))))
 (make-event
  `(defconst *sxpt-article-10*
     ',(cadr (fn-store-event-decode-exact (cdar *sxpt-records-10*)))))
@@ -158,7 +169,7 @@
 (assert-event (fn-sxp-archive-format-9p *sxpt-profile-9*))
 (assert-event
  (equal (fn-sxp-import-plan *sxpt-manifest-9* *sxpt-profile-9* *sxpt-frontier*
-                            *sxpt-configs* *sxpt-records* '(:current nil))
+                            *sxpt-configs* *sxpt-raw-records* '(:current nil))
         (list :import *fn-bs-profile-development* *sxpt-frontier*
               *sxpt-configs* *sxpt-records-10*)))
 ;; A retention event naming a format-9 identity no article defined is refused
@@ -182,8 +193,8 @@
 (assert-event
  (equal (fn-sxp-import-plan
          (fn-sxp-manifest-under t (fn-sxp-entries *sxpt-profile-9m* *sxpt-frontier*
-                                                  *sxpt-configs* *sxpt-records*))
-         *sxpt-profile-9m* *sxpt-frontier* *sxpt-configs* *sxpt-records* '(:current nil))
+                                                  *sxpt-configs* *sxpt-raw-records*))
+         *sxpt-profile-9m* *sxpt-frontier* *sxpt-configs* *sxpt-raw-records* '(:current nil))
         '(:refused :profile :history-marker-required)))
 ;; And a field the translation cannot hold (R below H is kept in order: H
 ;; below R) is refused by the relation's own name.
