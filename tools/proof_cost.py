@@ -288,12 +288,30 @@ def jobs_band(jobs: int | None) -> str:
     return SCOPED if jobs <= RATCHET_JOBS else WIDE
 
 
+def include_only(root: Path, name: str) -> bool:
+    """Is NAME an umbrella: nothing but in-package and include-book forms?
+
+    Its certification proves nothing (zero prover steps) and its wall time is
+    the loading of its closure: books/image-world, which the native image
+    includes once instead of ~600 top-level includes (tools/extract/world.py),
+    certifies in about a minute.  The ten-second rule is about proof work;
+    the load is the image build's cost, measured there."""
+    path = root / f"{name}.lisp"
+    try:
+        forms = [form for form, _ in ledger.Reader(path.read_text(encoding="utf-8")).top_level()]
+    except (OSError, ledger.ReadError):
+        return False
+    heads = {str(form[0]).lower() for form in forms if isinstance(form, list) and form}
+    return bool(forms) and heads <= {"in-package", "include-book"} and "include-book" in heads
+
+
 def current_books(root: Path) -> set[str]:
-    """The current Makefile-root closure, even before the ledger is rewritten."""
+    """The current Makefile-root closure, even before the ledger is rewritten,
+    less the umbrellas (include_only)."""
     books: set[str] = set()
     for name in ledger.makefile_roots():
         books.update(certs.closure(root, name))
-    return books
+    return {book for book in books if not include_only(root, book)}
 
 
 def history(root: Path, books: set[str], *, toolchain: str | None = None,

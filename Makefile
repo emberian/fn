@@ -1641,6 +1641,15 @@ check:
 # And every book a DTN-loaded host file calls is included before its `ld`:
 # at 32842f50 build-dtn.lisp lacked books/octets-stobj and the image failed.
 # Static, under a second, with its teeth test.
+# Each native build script loads its world through ONE umbrella book, first,
+# with the compiler off after it, and closes its world before the trust tag
+# (lane image-umbrella): a top-level include-book reloads its closure's
+# compiled files and each reloaded stub takes a TLS index SBCL never frees;
+# ~600 of them took the developer image to 60% of its TLS and b1 past it.
+# Static, no ACL2; the image build refuses over its TLS budget, and
+# `tools/tls_check.py --measure BUILD` names each compiled file's cost.
+	@$(CHECK_STEP) $(PYTHON) tools/tls_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_tls_check
 	@$(CHECK_STEP) $(PYTHON) tools/build_lists_check.py
 	@$(CHECK_STEP) $(PYTHON) tools/host_defun_check.py
 # A host macro used before its definition in load order compiles as a
