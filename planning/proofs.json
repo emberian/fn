@@ -10154,9 +10154,10 @@
         "books/payload-arena-attach.lisp",
         "planning/evidence/arena-offheap-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T122543Z-3171271.json",
-        "planning/evidence/manifests/certify-20260927T125739Z-3340064.json"
+        "planning/evidence/manifests/certify-20260927T125739Z-3340064.json",
+        "planning/evidence/manifests/certify-20260928T002033Z-3553464.json"
       ],
-      "progress_note": "Lane arena-offheap (2026-09-27), stage 1 of the coordinator's off-heap decision: the paged attachment replaces the byte array in the image. Stage 2 (payloads off the heap: handle -> durable file extent, A-DURABLE-EXTENT) builds on the same generic. A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them."
+      "progress_note": "Lane arena-offheap (2026-09-27), stage 1 of the coordinator's off-heap decision: the paged attachment replaces the byte array in the image. Stage 2 (payloads off the heap: handle -> durable file extent, A-DURABLE-EXTENT) builds on the same generic. A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them. Recertified after records-shape's octet-conversion loops (PRF-345, lane thread-stacks): persvati certify-20260928T002033Z-3553464 certifies books/payload-arena-paged and its tests at the lane's digest."
     },
     {
       "id": "PRF-285",
@@ -11268,7 +11269,10 @@
         "books/records-shape.lisp",
         "tests/acl2/records-shape-tests.lisp",
         "tests/test_native_bounds_join.py",
-        "tests/test_native_peering.py"
+        "tests/test_native_peering.py",
+        "planning/evidence/manifests/certify-20260928T002033Z-3553464.json",
+        "planning/evidence/manifests/certify-20260928T002216Z-3243313.json",
+        "planning/evidence/manifests/certify-20260928T003307Z-3688271.json"
       ],
       "progress_note": "hbox REPL (1 MiB thread, raw mode): 80,000, 1,000,000 and 17,000,000 octets round-trip; the old recursion as a raw copy: 40,000 ok, 80,000 control-stack-exhausted.",
       "events": [
