@@ -103,16 +103,6 @@
               (fn-anchor-node-incarnation (fn-anchor-payload outcome))
             image-incarnation))))
 
-; Two images of one origin: fork, the same image, or distinct incarnations.
-(defun fn-anchor-host-pair (left-incarnation left-fields
-                            right-incarnation right-fields)
-  (let ((outcome (fn-anchor-pair-admit
-                  (fn-anchor-image left-incarnation
-                                   (fn-anchor-host-fields left-fields))
-                  (fn-anchor-image right-incarnation
-                                   (fn-anchor-host-fields right-fields)))))
-    (list (fn-anchor-status outcome) (fn-anchor-reason outcome))))
-
 ;; Restore the logic-mode default: the store bridge waits for the
 ;; "ACL2 !>" prompt, and a host file that leaves the session in program
 ;; mode ("ACL2 p!>") makes every bridge call time out.
