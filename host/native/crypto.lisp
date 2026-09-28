@@ -143,10 +143,6 @@
   (fnn-crypto-reset)
   (fnn-crypto-initialize))
 
-(defun fnn-crypto-version ()
-  (fnn-crypto-initialize)
-  (list *fnn-crypto-library* *fnn-crypto-version*))
-
 (defun fnn-crypto-octets (value limit name)
   "Copy VALUE to a bounded simple (unsigned-byte 8) vector in one pass.
 A list is walked by its conses: ELT on a list walks from the head at every

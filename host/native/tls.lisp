@@ -348,6 +348,7 @@ configured server context and never a protected client session."
           *fnn-tls-version* nil))
   t)
 
+;; test-only (tools/host_callers.py): tests/native_tls_transport.lisp
 (defun fnn-tls-version ()
   (fnn-tls-initialize)
   (list *fnn-tls-libraries* *fnn-tls-version*))

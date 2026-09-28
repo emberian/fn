@@ -207,12 +207,6 @@
   (declare (xargs :stobjs state :mode :program))
   (f-get-global 'fn-owner state))
 
-(defun fn-owner-ocfg-state (state)
-  ; External ACL2 bridge accessor.  `value' is intentionally only at this
-  ; boundary; host functions use fn-owner-ocfg above as a single value.
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-owner-ocfg state)))
-
 ; `fn-owner' has one canonical value: the configured owner.  These are the
 ; only host accessors for its raw owner component.  A wrapper that changes
 ; connection membership must use fn-owner-step's fn-ocfg transition; a core
@@ -291,10 +285,6 @@
   (let ((oc (f-get-global 'fn-owner state)))
     (fn-owner-install-ocfg (fn-ocfg-with-owner oc owner) state)))
 
-(defun fn-owner-state (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-owner-core state)))
-
 ;; SEC-006 (PRF-210): the node's key ring the native host read from
 ;; STORE/keys/ (host/native/owner.lisp fnn-owner-load-node-secret: the
 ;; current entry, then each retained older epoch), installed into the
@@ -309,10 +299,6 @@
                     state)))
         (value :installed))
     (value :refused)))
-
-(defun fn-owner-node-secret-width (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value *fn-ns-secret-octets*))
 
 ; The served read's install (fn-owner-chunk, the bridge's list read): every
 ; projection `fn-owner-install-effects' makes EXCEPT the reply octets, which
@@ -904,11 +890,6 @@
                      (fn-oii-publication-group-count event) debt)
                 fn-hist state)))))))
 
-; The carried profile as the operator reads it (field names and values).
-(defun fn-owner-profile-report (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bs-profile-report (fn-owner-store-profile state))))
-
 (defun fn-owner-node (state)
   (declare (xargs :stobjs state :mode :program))
   (fn-sn-node (fn-owner-store state)))
@@ -1120,15 +1101,6 @@
 (defun fn-owner-compress-min-octets (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-lzr-config-min (fn-cfg-value (fn-owner-config state)))))
-
-;; Lane time-model (PRF-311): the barrier's deadline from the live
-;; configuration, the `barrier-deadline-ms' limit row read like the batch
-;; bounds (books/owner-log-route.lisp fn-olr-bmax), ACL2's default when the
-;; row is absent (books/owner-time-model.lisp fn-otm-deadline-of-limit).
-(defun fn-owner-barrier-deadline (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-otm-deadline-of-limit
-          (fn-cfg-limit (fn-cfg-value (fn-owner-config state)) "barrier-deadline-ms"))))
 
 ;; Lane time-model-2: the three disk rows, (D H C) as the operator set them
 ;; (`policy set barrier-deadline-ms|barrier-stall-ms|clock-event-ms N'); the
@@ -2602,11 +2574,6 @@
          (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
     (value (list (fn-sn-identity-next s) txid txid))))
 
-(defun fn-owner-keyring-snapshot (generation state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-stxk-find generation
-                       (fn-sn-keyring-snapshots (fn-owner-store state)))))
-
 (defun fn-owner-hybrid-snapshots (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-sn-keyring-snapshots (fn-owner-store state))))
@@ -3211,14 +3178,6 @@
          (state (f-put-global 'fn-owner-exposure-close nil state))
          (state (f-put-global 'fn-owner-exposure-public publicp state)))
     (value (if publicp :public :loopback))))
-
-(defun fn-owner-exposure-install (family address state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))
-         (state (f-put-global 'fn-owner-exposure-close nil state))
-         (state (f-put-global 'fn-owner-exposure-public
-                              (fn-exp-address-publicp family address) state)))
-    (value (if (fn-exp-address-publicp family address) :public :loopback))))
 
 ;; The accept.  PEER-OCTETS is fn-owner-peer-for-socket-address's answer.
 ;; The result is the new connection id, or NIL; `fn-owner-output' holds the

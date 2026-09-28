@@ -88,13 +88,6 @@
          (f-get-global 'fn-workflow-state state)
          octets txid generation authorizedp)))
 
-(defun fn-workflow-receipt-auto-record (octets authorizedp state)
- (declare (xargs :stobjs state :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
- (value (fn-bprl-receipt-auto-record
-         (f-get-global 'fn-workflow-state state)
-         octets authorizedp)))
-
 (defun fn-workflow-release-record (receipt-id state)
  (declare (xargs :stobjs state :mode :program))
  (value (fn-bprl-release-record-for-journal

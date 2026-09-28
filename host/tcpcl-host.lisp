@@ -92,9 +92,6 @@
 (defun fn-tcl-host-encode (m)
   (fn-tcl-encode m))
 
-(defun fn-tcl-host-kind (m)
-  (fn-tcl-msg-kind m))
-
 (defun fn-tcl-host-phase (s)
   (fn-tcl-session-phase s))
 
@@ -104,10 +101,6 @@
 (defun fn-tcl-host-keepalive (s)
   (let ((n (fn-tcl-session-negotiated s)))
     (if n (fn-tcl-negotiated-keepalive n) 0)))
-
-(defun fn-tcl-host-transfer-mtu (s)
-  (let ((n (fn-tcl-session-negotiated s)))
-    (if n (fn-tcl-negotiated-transfer-mtu n) 0)))
 
 ; -----------------------------------------------------------------------------
 ; Event digests.  A session log line must be bounded, so the bulk octets of a

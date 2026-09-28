@@ -29,10 +29,6 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpaj-listener-ports (fn-owner-config state))))
 
-(defun fn-owner-bp-receipt-trustedp (view state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-bpah-receipt-trustedp view (fn-owner-config state))))
-
 (defun fn-owner-bp-request-trustedp (view state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-request-trustedp view (fn-owner-config state))))
@@ -423,9 +419,6 @@
 (defun fn-owner-app-planned-result (state)
   (declare (xargs :stobjs state :mode :program))
   (value (f-get-global 'fn-owner-app-planned-result state)))
-(defun fn-owner-app-record-octets (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (f-get-global 'fn-owner-app-record state)))
 (defun fn-owner-app-record-txid (state)
   (declare (xargs :stobjs state :mode :program))
   (value (f-get-global 'fn-owner-app-record-txid state)))

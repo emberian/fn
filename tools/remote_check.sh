@@ -5,7 +5,8 @@
 #                             [--install-certs] [--tree PATH] [--log PATH]
 #
 # BOX is hbox, persvati or auto (tools/boxes.sh --pick: the lower load per
-# core now; it prints both loads and the choice).  The laptop is not a build box (closeout-common,
+# core now among the boxes nobody has reserved; it prints both loads and the
+# choice; a named box that is reserved waits for the lease: tools/boxes.sh).  The laptop is not a build box (closeout-common,
 # 2026-09-27): every repo-wide Python step runs there.  This does, in order:
 #   1. bundles the commits of HEAD the box's mirror does not have yet (git
 #      bundle over the mirror's refs; the whole history only the first time);
@@ -79,6 +80,12 @@ case $BOX in
     persvati) BASE='$HOME/fn-gates'; WRAP= ;;
     *) echo "remote_check: unknown box '$BOX' (hbox, persvati)" >&2; exit 2 ;;
 esac
+# A box reserved for a measurement (tools/boxes.sh reserve): auto already
+# picked the other box; a named box waits for the lease, printing its holder.
+# The tests' local box (FN_REMOTE_CHECK_BASE) has no lease.
+if [ -z "${FN_REMOTE_CHECK_BASE:-}" ]; then
+    sh "$(dirname "$0")/boxes.sh" wait "$BOX" || exit 3
+fi
 # The tests point these at a local directory and a local shell.
 BASE=${FN_REMOTE_CHECK_BASE:-$BASE}
 WRAP=${FN_REMOTE_CHECK_WRAP-$WRAP}
