@@ -16,10 +16,9 @@ not the claim.  So the manifests are committed under
 `planning/evidence/manifests/<run-id>.json` and the logs stay where they were
 produced.
 
-The archive is written by the tools, at the three points a manifest reaches
-this laptop: `tools/certify_books.py` when a local run finishes,
-`tools/farm.py wait` when a farm run's evidence is fetched, and
-`tools/verdict.py` when a gate is harvested.  A run id resolves by NAME, with
+The archive is written by the tools, at the two points a manifest reaches
+this laptop: `tools/certify_books.py` when a local run finishes and
+`tools/farm.py wait` when a farm run's evidence is fetched.  A run id resolves by NAME, with
 no box, lane or gate in the path, because the box, the lane and the gate are
 exactly the things that get deleted.
 
@@ -222,7 +221,7 @@ def write_manifest(run_id: str, text: str, source: str = "",
 def archive_run(source: Path, root: Path = ROOT, origin: str = "") -> str:
     """Archive one run directory or one `manifest.json`.
 
-    Called by `certify_books.py`, `farm.py` and `verdict.py`; never raises,
+    Called by `certify_books.py` and `farm.py`; never raises,
     because failing to file a copy of the evidence must not fail the run that
     produced it.  `origin` names where the LOGS are: for a farm run that is
     the remote root on the box, not the fetched copy under `build/`.

@@ -730,7 +730,7 @@
         "A stopped service releases the writer lock, and the store reopens without recovery."
       ],
       "evidence": [],
-      "execution_scope": "Specified. `tools/v0_matrix.py` drives every step between two nodes on one host over loopback; the row verdicts and their blockers are in planning/v0-matrix.json. Nothing here exercises two machines, a real network, or an operator's own configuration."
+      "execution_scope": "Specified. The v0 rows (planning/v0-matrix.json, last run b6759850) are owned by tests/test_native_conformance.py on one node and by tests/test_native_peering.py and tests/test_native_protected_peering.py between two nodes on one host over loopback (planning/evidence/python-diet-2-2026-09-28/v0-row-owners.md). Nothing here exercises two machines, a real network, or an operator's own configuration."
     },
     {
       "id": "SCN-022",
@@ -873,7 +873,7 @@
       "id": "SCN-026",
       "title": "A host fault on one connection, with another connection open across it",
       "milestone": "M3",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "HST-005",
         "NNT-002",
@@ -894,17 +894,7 @@
       "evidence": [
         "planning/evidence/owner-survival-2026-09-21.md"
       ],
-      "execution_scope": "Implemented as tests/test_owner.py OwnerSurvivesAFaultTests, two cases, one owner process each. The fault is injected, not provoked by a peer: the two real crashes it stands for are fixed, and a regression that provokes one from the wire needs two nodes (tools/v0_matrix.py's transit rows). This remains Python-host evidence. Native attributable-fault survival is pending and is not replaced by the separate shared-state global-fence scenario SCN-015.",
-      "implementation": {
-        "test": "tests.test_owner",
-        "cases": [
-          "OwnerSurvivesAFaultTests.test_a_fault_in_a_served_read_costs_that_connection_and_nothing_else",
-          "OwnerSurvivesAFaultTests.test_a_fault_carrying_a_submission_leaves_the_post_path_open"
-        ],
-        "native": false,
-        "log": "planning/evidence/harness-repair-2026-09-25/laptop-after.txt",
-        "record": "planning/evidence/owner-survival-2026-09-21.md"
-      }
+      "execution_scope": "Specified. Its implementation was tests/test_owner.py OwnerSurvivesAFaultTests over the retired Python host (python-diet T5 removed both; recoverable at 940bc3104). Native attributable-fault survival is pending and is not replaced by the separate shared-state global-fence scenario SCN-015."
     },
     {
       "id": "SCN-027",
