@@ -25,19 +25,83 @@
 ; -----------------------------------------------------------------------------
 ; The retention test, guard t
 
-(defun fn-pgc-obligation-ids (xs)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
+; retained article on the owner's open.  The :logic is the recursion,
+; unchanged; the :exec is a loop, equal by the guard proof.
+(defun fn-pgc-obligation-ids-rev (xs acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp xs)
-      (cons (fn-retain-obligation-id (car xs))
-            (fn-pgc-obligation-ids (cdr xs)))
-    nil))
+      (fn-pgc-obligation-ids-rev (cdr xs) (cons (fn-retain-obligation-id (car xs)) acc))
+    acc))
+
+(defun fn-pgc-obligation-ids (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (cons (fn-retain-obligation-id (car xs))
+                 (fn-pgc-obligation-ids (cdr xs)))
+         nil)
+       :exec (reverse (fn-pgc-obligation-ids-rev xs nil))))
+
+(encapsulate ()
+  (local
+   (defthm fn-pgc-obligation-ids-rev-is-revappend
+     (equal (fn-pgc-obligation-ids-rev xs acc)
+            (revappend (fn-pgc-obligation-ids xs) acc))
+     :hints (("Goal" :in-theory (disable fn-retain-obligation-id)))))
+  (local
+   (defthm fn-pgc-obligation-ids-true-listp-od
+     (true-listp (fn-pgc-obligation-ids xs))))
+  (local
+   (defthm fn-pgc-obligation-ids-od-revappend-revappend
+     (equal (revappend (revappend x y) z) (revappend y (append x z)))))
+  (local
+   (defthm fn-pgc-obligation-ids-od-append-nil-when-true-listp
+     (implies (true-listp x) (equal (append x nil) x))))
+  (local
+   (defthm fn-pgc-obligation-ids-od-true-listp-of-revappend
+     (implies (true-listp y) (true-listp (revappend x y)))))
+  (verify-guards fn-pgc-obligation-ids
+    :hints (("Goal" :in-theory (disable fn-retain-obligation-id)))))
+
+; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
+; retained article on the owner's open.  The :logic is the recursion,
+; unchanged; the :exec is a loop, equal by the guard proof.
+(defun fn-pgc-release-ids-rev (xs acc)
+  (declare (xargs :guard (true-listp acc)))
+  (if (consp xs)
+      (fn-pgc-release-ids-rev (cdr xs) (cons (fn-retain-release-id (car xs)) acc))
+    acc))
 
 (defun fn-pgc-release-ids (xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (cons (fn-retain-release-id (car xs))
-            (fn-pgc-release-ids (cdr xs)))
-    nil))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (cons (fn-retain-release-id (car xs))
+                 (fn-pgc-release-ids (cdr xs)))
+         nil)
+       :exec (reverse (fn-pgc-release-ids-rev xs nil))))
+
+(encapsulate ()
+  (local
+   (defthm fn-pgc-release-ids-rev-is-revappend
+     (equal (fn-pgc-release-ids-rev xs acc)
+            (revappend (fn-pgc-release-ids xs) acc))
+     :hints (("Goal" :in-theory (disable fn-retain-release-id)))))
+  (local
+   (defthm fn-pgc-release-ids-true-listp-od
+     (true-listp (fn-pgc-release-ids xs))))
+  (local
+   (defthm fn-pgc-release-ids-od-revappend-revappend
+     (equal (revappend (revappend x y) z) (revappend y (append x z)))))
+  (local
+   (defthm fn-pgc-release-ids-od-append-nil-when-true-listp
+     (implies (true-listp x) (equal (append x nil) x))))
+  (local
+   (defthm fn-pgc-release-ids-od-true-listp-of-revappend
+     (implies (true-listp y) (true-listp (revappend x y)))))
+  (verify-guards fn-pgc-release-ids
+    :hints (("Goal" :in-theory (disable fn-retain-release-id)))))
 
 (local (defthm fn-pgc-obligation-ids-is-retain-obligation-ids
   (equal (fn-pgc-obligation-ids xs) (fn-retain-obligation-ids xs))
