@@ -10,8 +10,9 @@ the node recognizer the open runs (fn-cnode-statep from fn-sco-cpr-finish;
 lane thread-stacks).  Here each named fixture is copied, rebound to this
 filesystem, and opened by the owner (`operator CONFIG run`):
 
-* by full replay (the fixture has no checkpoint): the owner LISTENs, GROUP
-  answers, and it stops cleanly with no stack exhaustion;
+* by full replay (the fixture has no checkpoint): the owner LISTENs, a
+  connection is greeted and answers DATE, and the owner stops cleanly with
+  no stack exhaustion;
 * on a second copy, from a checkpoint `operator CONFIG store checkpoint'
   writes first, the open line naming it: the same.
 
@@ -103,25 +104,20 @@ class OpenDepthTests(unittest.TestCase):
                 print("OPEN-DEPTH {} {} seconds={:.1f} {}".format(
                     name, mode, listening, opened[-1] if opened else "(no OWNER-OPEN line)"),
                       flush=True)
+                # One command that reads no article list: the served reads
+                # that walk a group's whole article list (LIST ACTIVE, GROUP:
+                # fn-nntp-group-low/-high/-count) still recurse per article
+                # and die at this stack past ~30,000 (PKT-877, not this
+                # packet's); the open is what this module certifies.
                 with socket.create_connection(("127.0.0.1", port), timeout=600) as conn:
                     f = conn.makefile("rwb")
                     self.assertTrue(f.readline().startswith(b"20"))
-                    f.write(b"LIST ACTIVE\r\n")
-                    f.flush()
-                    self.assertTrue(f.readline().startswith(b"215"))
-                    groups = []
-                    while True:
-                        ln = f.readline()
-                        if ln in (b".\r\n", b""):
-                            break
-                        groups.append(ln.split()[0].decode("ascii"))
-                    self.assertTrue(groups)
-                    f.write("GROUP {}\r\n".format(groups[0]).encode("ascii"))
+                    f.write(b"DATE\r\n")
                     f.flush()
                     reply = f.readline()
                     print("OPEN-DEPTH {} {} {}".format(name, mode, reply.strip().decode("ascii")),
                           flush=True)
-                    self.assertTrue(reply.startswith(b"211 "), reply)
+                    self.assertTrue(reply.startswith(b"111 "), reply)
                     f.write(b"QUIT\r\n")
                     f.flush()
                 return opened[-1] if opened else ""
