@@ -402,7 +402,10 @@ class NativePeeringTests(unittest.TestCase):
         feed: X offered to B by IHAVE, acknowledged 235.
         kill: B SIGKILLed after 335 with half of Z sent; restarted, B still
         serves X and Y octet for octet, Z is absent and takes a fresh 335/235
-        (the interrupted transfer left nothing), and A never stopped."""
+        (the interrupted transfer left nothing), and A never stopped.
+        The v0 matrix's rows V0-CRASH-KILL, V0-CRASH-SURVIVOR, V0-CRASH-RECOVER,
+        V0-CRASH-ACKNOWLEDGED, V0-CRASH-INTERRUPTED and V0-CRASH-RESTART are
+        this case (tools/v0_matrix.py retired with it, python-diet T2b)."""
         a = self.initialize("kill-a")
         b = self.initialize("kill-b")
         self.configure_peer(b, a, outbound="-")

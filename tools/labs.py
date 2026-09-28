@@ -183,6 +183,15 @@ LABS: tuple[Lab, ...] = (
     # all.  They establish that the harness parses, sequences, classifies and
     # renders.  They establish NOTHING about fn, and they are printed apart
     # from the labs so that they cannot be read as a lab result.
+    Lab(name="deploy-dry", kind="dry", tier="quick",
+        script="tests/test_deploy_gate.py",
+        budget=600.0, cost="about 35 s",
+        carries="tools/deploy_gate.py's sequencing, port parsing, three outcomes, "
+                "kill/restart cut, exit-code classification and evidence, against "
+                "a stand-in native image (tests/inn_lab_fake/native/fn-host)",
+        argv=lambda root, run, args: [
+            sys.executable, "-m", "unittest", "tests.test_deploy_gate"],
+        unmet=_dry_unmet),
     Lab(name="inn-dry", kind="dry", tier="quick",
         script="tests/test_inn_lab.py",
         budget=600.0, cost="about 20 s",

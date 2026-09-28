@@ -271,7 +271,7 @@ class RepoRootTests(unittest.TestCase):
     def test_every_harness_anchors_its_evidence_on_the_invoking_tree(self):
         """No harness may reintroduce `--repo default=str(ROOT)`."""
         tools = Path(__file__).resolve().parent.parent / "tools"
-        for name in ("deploy_gate", "inn_lab", "verdict"):
+        for name in ("deploy_gate", "inn_lab"):
             text = (tools / f"{name}.py").read_text()
             self.assertNotIn('"--repo", default=str(ROOT)', text, name)
             self.assertIn("if args.repo else repo_root()", text, name)

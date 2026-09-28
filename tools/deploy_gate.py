@@ -1337,12 +1337,11 @@ def resolve(repo: Path, commit: str) -> tuple[str, str]:
 
 
 def report(gate) -> None:
-    """The last lines of stdout: the contract `tools/verdict.py` reads.
+    """The last lines of stdout: the step counts and the verdict.
 
-    `steps=/failed=/not-exercised=` is unchanged so that reader keeps working;
-    `violated=` and `inconclusive=` are appended because a step count was
-    never the verdict -- an assertion violated inside a probe declared
-    `expect=None` moved neither of the first two numbers."""
+    `violated=` and `inconclusive=` sit beside the step counts because a step
+    count was never the verdict -- an assertion violated inside a probe
+    declared `expect=None` moved neither of the first two numbers."""
     bad = [s for s in gate.steps if s.failed]
     tally = gate.counts()
     print("steps={} failed={} not-exercised={} violated={} inconclusive={}".format(

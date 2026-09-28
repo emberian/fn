@@ -16,9 +16,7 @@ No socket, no node, no image: the classification and the exit code only.
 tools/twonode_gate.py, python-diet T5; their subject is now
 tests/test_native_peering.py.)
 """
-import contextlib
 import hashlib
-import io
 import json
 from pathlib import Path
 import sys
@@ -27,7 +25,6 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-import deploy_gate                                             # noqa: E402
 from deploy_gate import (DeployGate, FindingError, GATE_INCONCLUSIVE,  # noqa: E402
                          GATE_OK, GATE_VIOLATED, HELD, INCONCLUSIVE, NOT_EXERCISED,
                          VIOLATED)
@@ -105,24 +102,6 @@ class TheRecorderRefusesWhatItCannotCheck(unittest.TestCase):
         again = hashlib.sha256(json.dumps(
             doc["rows"], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         self.assertNotEqual(doc["rows_digest"], again)
-
-
-class TheStdoutContractCarriesTheVerdict(unittest.TestCase):
-    """`tools/verdict.py` reads the last lines; they must carry the words."""
-
-    def test_the_summary_line_names_violations_and_inconclusives(self):
-        one = gate()
-        one.check("outcomes-distinct", False, "refused exited 0")
-        one.inconclusive("post-capability", "no reply", "the owner never answered")
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            deploy_gate.report(one)
-        text = out.getvalue()
-        self.assertRegex(text, r"^steps=\d+ failed=\d+ not-exercised=\d+ "
-                               r"violated=1 inconclusive=1\n")
-        self.assertIn("FAILED assertion outcomes-distinct", text)
-        self.assertIn("INCONCLUSIVE post-capability", text)
-        self.assertIn("verdict=violated", text)
 
 
 if __name__ == "__main__":

@@ -4,12 +4,12 @@
 `verdict.py` does not certify anything itself and does not drive a socket
 itself.  It ships one commit to a farm box, runs the box's own gate over it
 (`make certify`, the Python suite, `tools/gate_publish.sh`), then runs each
-harness that already exists -- the deploy gate and the INN lab, both over
-the native image `--native-image` names on the box -- against that same commit, and writes one evidence
+harness that already exists -- the deploy gate, the two-node gate, the INN
+lab, the scale gate -- against that same commit, and writes one evidence
 record whose table is a fiber per row and whose last line is the single
 sentence this tree is entitled to say.
 
-    python3 tools/verdict.py HEAD --host hbox --native-image /abs/build/fn-host
+    python3 tools/verdict.py HEAD --host persvati
 
 Each harness keeps its own evidence file; this one cites them and adds
 nothing to them.  A fiber that did not run is a row saying so, never an
@@ -28,8 +28,8 @@ this tool writes opens the same file and holds `flock` on it for its whole
 certification phase, exactly as the hand gates do, and before launching
 anything this tool asks the box whether that lock is free and refuses rather
 than queueing behind it.  `--wait-for-lock` queues instead.  The lock is a
-CERTIFICATION lock: it is not a reservation of the box, and the deploy and
-INN fibers do not hold it.
+CERTIFICATION lock: it is not a reservation of the box, and the deploy,
+two-node, INN and scale fibers do not hold it.
 
 `--reuse-gate [REV]` reads a gate directory that already exists -- one this
 tool made, or one of the hand gates, which have the same shape (`certify.log`,
@@ -592,7 +592,7 @@ def claim(fibers: list[Fiber], gate_facts: dict) -> str:
             "the Python suite ran {} tests ({})".format(
                 roots - bad, roots, acl2,
                 suite.get("ran", 0), suite.get("verdict", "unknown")))
-    lived = [n for n in ("deploy", "inn") if n in passed]
+    lived = [n for n in ("deploy", "twonode", "inn") if n in passed]
     if lived:
         head += ("; the {} harness{} drove a server built from it and returned "
                  "every step at its expected code".format(
@@ -759,13 +759,10 @@ def main(argv=None) -> int:
                         help="the host's ACL2 image; the default is tools/farm.py's")
     parser.add_argument("--evidence", default=None)
     parser.add_argument("--skip", action="append", default=[],
-                        choices=["gate", "deploy", "inn"],
+                        choices=["gate", "deploy", "twonode", "inn"],
                         help="a fiber to leave out; it is still a row saying so")
     parser.add_argument("--only", action="append", default=[],
-                        choices=["gate", "deploy", "inn"])
-    parser.add_argument("--native-image", default="",
-                        help="the production image's path on the box, for the "
-                             "deploy and INN fibers (their served node)")
+                        choices=["gate", "deploy", "twonode", "inn"])
     parser.add_argument("--reuse-gate", nargs="?", const="", default=None,
                         metavar="REV",
                         help="read a gate directory that already exists and "
@@ -789,10 +786,11 @@ def main(argv=None) -> int:
     acl2 = args.acl2 or FARM_HOSTS.get(args.host, {}).get("acl2", "acl2")
 
     wanted = set(args.only) if args.only else {
-        "gate", "deploy", "inn"} - set(args.skip)
+        "gate", "deploy", "twonode", "inn"} - set(args.skip)
     plan = [
         Fiber("gate", args.host, "make certify + unittest + gate_publish.sh"),
         Fiber("deploy", args.host, "tools/deploy_gate.py"),
+        Fiber("twonode", args.host, "tools/twonode_gate.py"),
         Fiber("inn", args.inn_host, "tools/inn_lab.py"),
     ]
     for fiber in plan:
@@ -823,9 +821,9 @@ def main(argv=None) -> int:
                                       args.gate_wait, args.reuse_gate)
         else:
             command = [sys.executable, "tools/{}.py".format(
-                {"deploy": "deploy_gate", "inn": "inn_lab"}[fiber.name]),
-                commit, "--host", fiber.host, "--tree", args.tree,
-                "--native-image", args.native_image]
+                {"deploy": "deploy_gate", "twonode": "twonode_gate",
+                 "inn": "inn_lab"}[fiber.name]),
+                commit, "--host", fiber.host, "--tree", args.tree]
             if fiber.name == "inn":
                 command += ["--jobs", str(args.jobs)]
             harness(fiber, command, repo, args.harness_timeout)
