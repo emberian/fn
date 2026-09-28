@@ -109,31 +109,38 @@
   (fnn-tls-test-check (and certificate private-key wrong-key
                            encrypted-certificate encrypted-key)
                       "certificate/key test environment")
-  (fnn-tls-test-check
-   (handler-case
-       (progn (fnn-tls-open-context certificate wrong-key) nil)
-     (fnn-tls-config-error (condition)
-       (search "mismatch" (fnn-tls-error-detail condition))))
-   "certificate/private-key mismatch diagnostic")
-  (fnn-tls-test-check
-   (handler-case
-       (progn (fnn-tls-open-context encrypted-certificate encrypted-key) nil)
-     (fnn-tls-config-error (condition)
-       (search "encrypted keys are unsupported"
-               (fnn-tls-error-detail condition))))
-   "encrypted private key is refused without a password prompt")
-  ;; friend-path-2: a key file that is not there is named as missing, not as
-  ;; an encrypted key (OpenSSL's 0x80000002 is ENOENT).
-  (fnn-tls-test-check
-   (handler-case
-       (progn (fnn-tls-open-context certificate "/nonexistent/fn-friend-path-2/key.pem") nil)
-     (fnn-tls-config-error (condition)
-       (and (search "does not exist" (fnn-tls-error-detail condition))
-            (not (search "encrypted" (fnn-tls-error-detail condition))))))
-   "a missing private key is named as missing")
+  ;; The candidate builder reports observations; ACL2 decides them at `run'
+  ;; and at `tls reload' (books/tls-reload.lisp fn-tlsr-start-decide,
+  ;; fn-tlsr-decide).  Each observation is checked here, with the library's
+  ;; text for the one that failed.
+  (flet ((observe (chain-path key-path)
+           (multiple-value-bind (pointer chain key match detail)
+               (fnn-tls-server-candidate chain-path key-path)
+             (when pointer (fnn-%ssl-ctx-free pointer))
+             (list chain key match (or detail "")))))
+    (destructuring-bind (chain key match detail) (observe certificate wrong-key)
+      (fnn-tls-test-check (and chain key (not match) (search "mismatch" detail))
+                          "certificate/private-key mismatch observation"))
+    (destructuring-bind (chain key match detail)
+        (observe encrypted-certificate encrypted-key)
+      (fnn-tls-test-check (and chain (not key) (not match)
+                               (search "encrypted keys are unsupported" detail))
+                          "encrypted private key is refused without a password prompt"))
+    ;; friend-path-2: a key file that is not there is named as missing, not
+    ;; as an encrypted key (OpenSSL's 0x80000002 is ENOENT).
+    (destructuring-bind (chain key match detail)
+        (observe certificate "/nonexistent/fn-friend-path-2/key.pem")
+      (fnn-tls-test-check (and chain (not key) (not match)
+                               (search "does not exist" detail)
+                               (not (search "encrypted" detail)))
+                          "a missing private key is named as missing"))
+    (fnn-tls-test-check (equal (observe certificate private-key) (list t t t ""))
+                        "the matching pair loads, and its key matches"))
   (fnn-tls-test-check (string= (read-line *standard-input*) "stdin-sentinel")
                       "encrypted key refusal leaves stdin untouched")
-  (let ((context (fnn-tls-open-context certificate private-key))
+  (let ((context (fnn-tls-context-make
+                  :pointer (nth-value 0 (fnn-tls-server-candidate certificate private-key))
+                  :certificate-path certificate :private-key-path private-key))
         (listener (make-instance 'sb-bsd-sockets:inet-socket
                                  :type :stream :protocol :tcp)))
     (unwind-protect

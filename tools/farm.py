@@ -1382,6 +1382,23 @@ def cache_summary(record: dict) -> str:
     return f"{found.get('installed', 0)}+{found.get('kept', 0)}/{count}"
 
 
+def recertify_list(paths: list[str]) -> list[str]:
+    """The books named in each --recertify-from FILE, in order, once each.
+
+    Words are separated by whitespace or commas and `#' starts a comment, so
+    green_check's "installed-without-cited-manifest: N: a, b" line pasted
+    after its colon, or a one-per-line list, both read.  The file exists
+    because a list held in one shell variable reached farm.py as a single
+    argument under zsh (batch BB, 2026-09-28)."""
+    books: list[str] = []
+    for path in paths:
+        text = sys.stdin.read() if path == "-" else Path(path).read_text()
+        for line in text.splitlines():
+            line = line.split("#", 1)[0]
+            books.extend(word for word in line.replace(",", " ").split() if word)
+    return list(dict.fromkeys(books))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=("submit", "wait", "status"))
@@ -1410,6 +1427,13 @@ def main(argv: list[str] | None = None) -> int:
                         help="certify this book of the closure afresh instead of "
                              "installing its cached pair (repeatable; passed to "
                              "the cache preflight and the runner)")
+    parser.add_argument("--recertify-from", action="append", default=[], metavar="FILE",
+                        help="add to --recertify every book named in FILE (words "
+                             "separated by whitespace or commas; `#' starts a "
+                             "comment; `-' reads standard input), so a list "
+                             "never has to survive a shell's word splitting; "
+                             "when the submit names no other book and no "
+                             "--affected-by, these books are also its roots")
     parser.add_argument("--recertify-uncited", action="store_true",
                         help="add to --recertify every book of the closure no "
                              "committed manifest certified at its current digest "
@@ -1438,6 +1462,22 @@ def main(argv: list[str] | None = None) -> int:
                              "selection is refused without it)")
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
+    if arguments.recertify_from:
+        if arguments.action != "submit":
+            parser.error("--recertify-from belongs to submit")
+        try:
+            listed = recertify_list(arguments.recertify_from)
+        except OSError as error:
+            parser.error(f"--recertify-from: {error}")
+        if not listed:
+            parser.error("--recertify-from names no book: refusing rather than "
+                         "certifying nothing (or, as roots, everything)")
+        arguments.recertify = list(dict.fromkeys(list(arguments.recertify) + listed))
+        named_roots = list(arguments.rest) + ([arguments.host] if arguments.host
+                                              not in HOSTS and arguments.host != "auto"
+                                              else [])
+        if not named_roots and not arguments.affected_by and not arguments.all:
+            arguments.rest.extend(listed)
     if arguments.action == "submit":
         named = list(arguments.rest) + ([arguments.host] if arguments.host not in HOSTS
                                         and arguments.host != "auto" else [])

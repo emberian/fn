@@ -175,6 +175,11 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-principal-plan result))
 
+(defun fn-native-operator-host-result-principal-account-result (result)
+  "PRF-388: the `account bind|unbind' result for a login the file lacks."
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-principal-account-result result))
+
 (defun fn-native-operator-host-result-principal-auth-path-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-principal-auth-path-octets result))

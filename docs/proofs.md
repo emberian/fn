@@ -176,6 +176,18 @@ needs `--allow-regression`, which is a decision to record in the commit that
 uses it and which adds only books conclusively over the line. The baseline
 only shrinks.
 
+The per-book rows cannot see a tree whose every book stays under the near
+line while the whole grows, so the baseline also carries an `aggregate`: the
+sum of prover steps over every current root-closure book and the heaviest
+include chain by steps (the chain bounds recertification wall time), with
+the 2-job seconds beside them. It is judged only when every book has a
+passed 2-job measurement with steps at its current bytes, which is the
+prerelease convergence run; otherwise `proof_cost.py` prints `AGGREGATE
+PARTIAL` and does not fail. `--write-aggregate` records a complete figure at
+a convergence and refuses one more than `aggregate.tolerance` (10 % until
+ember sets it) over the previous convergence's without `--allow-regression`;
+a complete figure over it fails the check.
+
 ### Guard status
 
 Four states, from the source rather than from the ACL2 world: `verified`

@@ -54,10 +54,13 @@
 ;;; holds across SSL_new: SSL_new takes its own reference to the SSL_CTX (in
 ;;; OpenSSL 3 and LibreSSL alike), so once the swap releases the lock no
 ;;; new session can start on the old pointer and the sessions already open
-;;; keep it alive until each is freed.  SERVED is ACL2's accepted decision
-;;; for the material in POINTER (books/tls-reload.lisp fn-tlsr-decide), the
-;;; source of the `tls names=... not-after=...' line; NIL when no decision was
-;;; taken (a client context).
+;;; keep it alive until each is freed.  SERVED is the facts of the material
+;;; in POINTER, which ACL2 accepted (books/tls-reload.lisp
+;;; fn-tlsr-start-decide at `run', host/native/tls-reload.lisp
+;;; fnn-tls-start-context; fn-tlsr-decide at each reload), the source of the
+;;; `tls names=... not-after=...' line; NIL when no decision was taken (a
+;;; client context).  This file builds and observes candidates and decides
+;;; nothing about them.
 (defstruct (fnn-tls-context (:constructor fnn-tls-context-make))
   pointer certificate-path private-key-path
   (lock (sb-thread:make-mutex :name "fn native TLS context"))
@@ -464,17 +467,6 @@ library cannot create at all is a config error."
       (error (condition)
         (fnn-%ssl-ctx-free pointer)
         (error condition)))))
-
-(defun fnn-tls-open-context (certificate-path private-key-path)
-  "Load and validate one server certificate chain/private-key pair."
-  (multiple-value-bind (pointer chain key match detail)
-      (fnn-tls-server-candidate certificate-path private-key-path)
-    (unless (and chain key match)
-      (fnn-%ssl-ctx-free pointer)
-      (error 'fnn-tls-config-error :detail detail))
-    (fnn-tls-context-make :pointer pointer
-                          :certificate-path certificate-path
-                          :private-key-path private-key-path)))
 
 (defun fnn-tls-context-swap (context pointer served)
   "Serve POINTER (and SERVED, ACL2's accepted decision) to every session

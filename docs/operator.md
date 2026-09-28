@@ -402,6 +402,15 @@ reloaded its logins), `effective-at-next-start` (the node was not running),
 `restart-required` (the node runs but `fn.toml` names no `[control] path`
 to reach it), or `uncertain`.
 
+A friend who redeemed an invitation is bound the same way:
+`principal bind robin PRINCIPAL-HEX`. Their login is not in `auth.toml`, so
+the tie is kept in the node's configuration instead, where their account is:
+the answer is `accepted operator account`, the node applies it at once (or
+at its next start when it is not running), and it stays across restarts.
+`account list` shows it as `binding robin HEX`, and `account delete robin`
+is refused until `principal unbind robin`. A login that is neither in
+`auth.toml` nor a redeemed account is refused `unknown-login`.
+
 ## 5. Agents' consumers
 
 A program on the node's own machine can read through a **consumer**. An
@@ -430,7 +439,11 @@ fn operator /etc/fn/fn.toml tls reload
 New connections get the new certificate. Open ones keep the old one until
 they end. fn refuses (and keeps the old one) if the new files do not
 match, the dates are wrong, or a name the old certificate had is missing.
-A certificate for different names needs a restart instead. `status` shows
+A certificate for different names needs a restart instead. `run` checks
+the files it starts with the same way (except for names, since nothing is
+served yet): a key that does not match, or a certificate that has expired or
+is not valid yet, stops the start with `refused operator run tls REASON`
+(exit 1), for example `tls key-mismatch` or `tls expired`. `status` shows
 the certificate in use:
 
 ```
