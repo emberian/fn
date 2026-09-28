@@ -6,9 +6,11 @@ FN_CERTIFY_JOBS ?= 1
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
+	books/defkeystone \
 	books/deftransition \
 	books/acceptance-alloc \
 	tests/acl2/defrecord-tests \
+	tests/acl2/defkeystone-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
@@ -1558,6 +1560,7 @@ check:
 # and cannot grow silently.  Deliberately generous about what counts as a
 # subject, so every orphan it reports is real and it misses some.
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
+	@$(CHECK_STEP) $(PYTHON) tools/keystone_emit.py --check
 # Which host entries walk retained state (PKT-334, answers 2026-09-26 §2): a
 # function called once per request that traverses the Store history, the
 # held BP fragments or the queued BP jobs.  tools/hot_path_check.py follows the
