@@ -1436,8 +1436,9 @@ Each is quoted from the transcripts (UTC); the packet ids are the backlog's.
 
 Closed by these decisions, no answer needed: PKT-235 (mark the live store
 `required`: every node is redeployed fresh); PKT-587 (with no upgrade verb,
-D31's unconditional marker means `init` writes the covering marker, required
-at birth); PKT-432, PKT-440, PKT-444 (2), PKT-471 and the format-10 migration
+D31's unconditional marker means a store is required at birth; under the
+record log the marker is the log's tail, PKT-746; confirming init's birth
+state carries it is proposed row Q3's); PKT-432, PKT-440, PKT-444 (2), PKT-471 and the format-10 migration
 plan (rollback, translation and repair of older stores: D38 withdrawn);
 PKT-766 (a heap figure for octet-list history: the page store and the F8
 split replace it; rows B2 and B5 carry the remainder); PKT-792's F6 half (the
@@ -1493,9 +1494,22 @@ strict bar stands).
 15. **Standing defaults ember has not confirmed** (each implemented unless
     marked; silence keeps them): PKT-164 (the login and posting gates before
     "already stored"), PKT-165 (no content-holding consumer mode), PKT-173
-    a/b/c, PKT-175 (`HDR :fn-enrollment`; recommended, NOT implemented),
+    a/b/c, PKT-175 (`HDR :fn-enrollment`, implemented as (a) at 3679ea0ad),
     PKT-228 (a witness-driven rebase for a restored store; NOT implemented),
     PKT-229, PKT-296, PKT-127, PKT-323, PKT-584, PKT-586 (article numbers
     never reused; the high-water mark kept after a cancel), PKT-592 (P-B,
     P-C, P-D), PKT-670, PKT-688 (1) (no render thread), PKT-746 (the marker is
-    the log's tail).
+    the log's tail), PKT-405 (no anonymous reading off loopback), PKT-406 (the
+    public defaults without PROXY), PKT-495 (the checkpoint budget from 3 x
+    max-history-octets), PKT-604 (per-source budgets inside the trusted range).
+16. **Group control by article** (C4, PKT-071): D29 defers it until group
+    authority and succession are decided; decide them, or keep group creation
+    and retirement operator-only for 6.6.0.
+17. **T and H** (PKT-018): move max-transactions and max-history-octets from
+    the profile to a configuration record (per-store switches are
+    configuration events since 2026-09-28), or keep them in the profile.
+18. **A store identity on the wire** (PKT-076; the 2026-09-24 candidate
+    above): the lane recommends nothing until a client keeps marks without a
+    Message-ID.
+19. **GPT-6's proposed AGENTS.md rule** (PKT-342): "A producer's admitted
+    domain is a lifecycle contract ...": adopt or not.
