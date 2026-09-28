@@ -11021,6 +11021,10 @@
         {
           "kind": "guarded-function",
           "name": "fn-record-string-octets-aux"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-article-msgids"
         }
       ]
     }

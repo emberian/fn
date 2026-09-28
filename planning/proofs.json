@@ -11254,8 +11254,8 @@
     },
     {
       "id": "PRF-345",
-      "title": "The record's octet/string conversions execute in constant stack: fn-record-octets-chars and fn-record-string-octets-aux run an accumulator loop equal to their definitions",
-      "statement": "books/records-shape.lisp: fn-record-octets-chars (under fn-record-octets-string) and fn-record-string-octets-aux (under fn-record-string-octets) are each (mbe :logic <the per-octet recursion, unchanged> :exec (reverse (<twin> x nil))) with the twins fn-record-octets-chars-rev and fn-record-string-octets-rev, tail-recursive accumulators; their verify-guards events prove exec = logic on every input satisfying the guard (fn-cbor-octet-listp, character-listp), by the local lemmas fn-record-octets-chars-rev-is-revappend and fn-record-string-octets-rev-is-revappend (the twin is revappend of the definition). The host reaches them through every conversion site, e.g. host/store-host.lisp fn-store-octets->string and fn-store-frame-wire-to-logical-values (fn-record-octets-string), host/native-live-status-host.lisp fn-native-live-status-host-answer (fn-nls-buffer). Before, execution recursed once per octet: on a node thread's 1,024 KB control stack 80,000 octets exhausted it (the 5,000-obligation report stopped the owner). Scope: the octet list stays the representation (D27's concrete twin is PKT-864).",
+      "title": "The record's octet/string conversions and the article Message-ID walk execute in constant stack: fn-record-octets-chars, fn-record-string-octets-aux and fn-article-msgids run an accumulator loop equal to their definitions",
+      "statement": "books/records-shape.lisp: fn-record-octets-chars (under fn-record-octets-string) and fn-record-string-octets-aux (under fn-record-string-octets) are each (mbe :logic <the per-octet recursion, unchanged> :exec (reverse (<twin> x nil))) with the twins fn-record-octets-chars-rev and fn-record-string-octets-rev, tail-recursive accumulators; their verify-guards events prove exec = logic on every input satisfying the guard (fn-cbor-octet-listp, character-listp), by the local lemmas fn-record-octets-chars-rev-is-revappend and fn-record-string-octets-rev-is-revappend (the twin is revappend of the definition). The host reaches them through every conversion site, e.g. host/store-host.lisp fn-store-octets->string and fn-store-frame-wire-to-logical-values (fn-record-octets-string), host/native-live-status-host.lisp fn-native-live-status-host-answer (fn-nls-buffer). Before, execution recursed once per octet: on a node thread's 1,024 KB control stack 80,000 octets exhausted it (the 5,000-obligation report stopped the owner). Scope: the octet list stays the representation (D27's concrete twin is PKT-864). books/acceptance.lisp fn-article-msgids is the same shape (twin fn-article-msgids-rev, lemma fn-article-msgids-rev-is-revappend); fn-article-listp's :exec calls it over the whole article list, and on a full-replay open (host/store-node-host.lisp fn-store-sn-recover-rows -> fn-store-sn-open-extended -> fn-sco-cpr-finish's fn-cnode-statep) 100,000 articles exhausted the 1,024 KB main-thread stack at 30,526 frames.",
       "milestone": "M5",
       "requirements": [
         "HST-006"
@@ -11264,9 +11264,10 @@
         "PRF-014"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/records-shape.lisp",
+        "books/acceptance.lisp",
         "tests/acl2/records-shape-tests.lisp",
         "tests/test_native_bounds_join.py",
         "tests/test_native_peering.py",
@@ -11277,7 +11278,8 @@
       "progress_note": "hbox REPL (1 MiB thread, raw mode): 80,000, 1,000,000 and 17,000,000 octets round-trip; the old recursion as a raw copy: 40,000 ok, 80,000 control-stack-exhausted.",
       "events": [
         "fn-record-octets-chars",
-        "fn-record-string-octets-aux"
+        "fn-record-string-octets-aux",
+        "fn-article-msgids"
       ]
     }
   ]
