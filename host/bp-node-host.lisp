@@ -31,9 +31,6 @@
 (defun fn-bpn-host-eid (uri)
   (fn-bpaj-raw-announced-eid uri))
 
-(defun fn-bpn-host-eidp (e)
-  (and (fn-bpp-eidp e) t))
-
 (defun fn-bpn-host-node-idp (e)
   (and (fn-bpp-previous-nodep e) t))
 
@@ -44,9 +41,6 @@
 (defun fn-bpn-host-config (node-id lifetime crc-type hop-limit transfer-limit)
   (let ((c (fn-bpn-config node-id lifetime crc-type hop-limit transfer-limit)))
     (if (fn-bpn-configp c) c nil)))
-
-(defun fn-bpn-host-configp (c)
-  (and (fn-bpn-configp c) t))
 
 ; -----------------------------------------------------------------------------
 ; The clock observation.  The host has a monotonic millisecond reading and,
@@ -201,7 +195,6 @@
 (defun fn-bpn-host-receive-outcome (r) (nth 0 r))
 (defun fn-bpn-host-receive-reason (r) (nth 1 r))
 (defun fn-bpn-host-receive-adu (r) (nth 2 r))
-(defun fn-bpn-host-receive-length (r) (nth 3 r))
 
 ; -----------------------------------------------------------------------------
 ; One process result.  The class of a BP verb's run and its exit code are

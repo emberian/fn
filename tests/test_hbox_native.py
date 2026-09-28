@@ -253,6 +253,7 @@ class IdentityTests(unittest.TestCase):
         (tree / "tools" / "hbox_native.sh").write_text(
             head + '\necho "COPY=$FN_HBOX_NATIVE_COPY"\necho "RUNNING=$0"\necho "HERE=$HERE"\n')
         shutil.copy(ROOT / "tools" / "wait_for.sh", tree / "tools" / "wait_for.sh")
+        shutil.copy(ROOT / "tools" / "boxes.sh", tree / "tools" / "boxes.sh")
         env = {k: v for k, v in os.environ.items() if not k.startswith("FN_HBOX_NATIVE_")}
         probe = subprocess.run(["sh", str(tree / "tools" / "hbox_native.sh")], cwd=ROOT,
                                capture_output=True, text=True, timeout=30, env=env)

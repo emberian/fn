@@ -27,6 +27,9 @@ import hashlib
 import unittest
 
 from tests import test_native_operator_verbs as verbs
+# The harness stores' init budget (tools/native_env.py): init refuses a
+# store without FN_INIT_BUDGET_MB on a large machine (batch AZ, 2026-09-28).
+from tools.native_env import harness_store_env  # noqa: E402
 from tests.native_profile_fixture import ProfileFixture as ProfileUpgradeFixture
 
 ROOT = verbs.ROOT
@@ -72,15 +75,21 @@ class ControlReplyFitFixture(ProfileUpgradeFixture):
 
 class ControlReplyFitTests(ControlReplyFitFixture):
     def test_init_refuses_r_past_the_poll_reply_by_name_and_admits_the_ceiling(self):
+        # The reply-fit refusal is a property of the profile, not of this
+        # machine: the init budget (books/heap-reservation.lisp) is set far
+        # above the ceiling profile's reservation (about 110 TB) so that the
+        # budget check, which init runs first, admits both and the named
+        # refusal is the one under test (batch AZ, 2026-09-28).
+        budget = harness_store_env(dict(verbs.environment(), FN_INIT_BUDGET_MB="200000000"))
         refused = self.op("init", "--max-record-octets", str(PAST),
-                          "--max-history-octets", str(PAST), "fn.test")
+                          "--max-history-octets", str(PAST), "fn.test", env=budget)
         print(refused.stderr.decode(errors="replace"), flush=True)
         self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
         # The operator's result line prints the reason word upper-cased.
         self.assertIn(NAME, refused.stderr.lower())
         self.assertIsNone(self.config_frame())
         created = self.op("init", "--max-record-octets", str(CEILING),
-                          "--max-history-octets", str(CEILING), "fn.test")
+                          "--max-history-octets", str(CEILING), "fn.test", env=budget)
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.assertEqual(self.profile_line()["max-record-octets"], CEILING)
         self.serves("init")
@@ -128,7 +137,7 @@ class ProfileOpenRefusalTests(ControlReplyFitFixture):
     def run_owner(self):
         import subprocess
         return subprocess.run([str(self.image), "--fn", "operator", str(self.config), "run"],
-                              cwd=ROOT, env=verbs.environment(), stdout=subprocess.PIPE,
+                              cwd=ROOT, env=harness_store_env(verbs.environment()), stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, timeout=180, check=False)
 
     def assert_named(self, result, what):

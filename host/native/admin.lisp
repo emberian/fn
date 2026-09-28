@@ -8,14 +8,6 @@
 
 (in-package "ACL2")
 
-(defun fnn-admin-argv-octets (arguments)
-  "Marshal raw process words only.  ACL2 rejects non-ASCII, empty, oversized,
-or syntactically unsupported requests in `fn-native-admin-plan'."
-  (mapcar (lambda (argument) (fnn-ascii-octet-list argument)) arguments))
-
-(defun fnn-admin-plan (arguments)
-  (fnn-core 'fn-native-admin-host-plan (fnn-admin-argv-octets arguments)))
-
 (defun fnn-admin-plan-acceptedp (plan)
   (eq (fnn-core 'fn-native-admin-host-status plan) :accepted))
 
@@ -413,8 +405,3 @@ turning a refusal into a physical mutation."
                           generation name verification)
                  +fnn-exit-ok+)))
         (when store (fnn-store-close store)))))
-
-(defun fnn-command-admin (root arguments)
-  "Unregistered internal test helper.  Production reaches fnn-admin-execute
-only through the ACL2 native-operator action plan."
-  (fnn-admin-execute root (fnn-admin-plan arguments)))
