@@ -12690,11 +12690,11 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-napb-rows-with-key-loop-is-rev-onto"
+          "name": "fn-cfg-rows-with-key-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
-          "name": "fn-napb-peer-names-loop-is-rev-onto"
+          "name": "fn-cfg-peer-names-loop-is-rev-onto"
         }
       ]
     },
@@ -12757,6 +12757,23 @@
         {
           "kind": "theorem",
           "name": "fn-heap-breakdown-is-inits-reservation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-386",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-record-fitsp-is-the-decoder-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-record-octet-count-is-len-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-record-item-count-is-len-of-items"
         }
       ]
     }

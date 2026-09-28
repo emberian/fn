@@ -234,15 +234,14 @@
          nil)
        :exec (fn-cfg-rows-with-key-loop rows a nil)))
 
-(local
- (defthm fn-cfg-rows-with-key-loop-is-rev-onto
-   (equal (fn-cfg-rows-with-key-loop rows a acc)
-          (fn-ag-rev-onto acc (fn-cfg-rows-with-key rows a)))
-   :hints (("Goal" :induct (fn-cfg-rows-with-key-loop rows a acc)
-                   :in-theory (union-theories
-                               '(fn-cfg-rows-with-key-loop fn-cfg-rows-with-key
-                                 fn-ag-rev-onto car-cons cdr-cons)
-                               (theory 'minimal-theory))))))
+(defthm fn-cfg-rows-with-key-loop-is-rev-onto
+  (equal (fn-cfg-rows-with-key-loop rows a acc)
+         (fn-ag-rev-onto acc (fn-cfg-rows-with-key rows a)))
+  :hints (("Goal" :induct (fn-cfg-rows-with-key-loop rows a acc)
+                  :in-theory (union-theories
+                              '(fn-cfg-rows-with-key-loop fn-cfg-rows-with-key
+                                fn-ag-rev-onto car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
 
 (verify-guards fn-cfg-rows-with-key
   :hints (("Goal" :in-theory (union-theories
@@ -2794,6 +2793,14 @@
        (cdr rows) (fn-cfg-items-octet-count (fn-cfg-row-items (car rows)) acc))
     acc))
 
+(defthm fn-cfg-items-octet-count-natp
+  (implies (natp acc) (natp (fn-cfg-items-octet-count items acc)))
+  :rule-classes :type-prescription)
+
+(defthm fn-cfg-rows-octet-count-natp
+  (implies (natp acc) (natp (fn-cfg-rows-octet-count rows acc)))
+  :rule-classes :type-prescription)
+
 (defun fn-cfg-delta-head-items (d)
   (declare (xargs :guard t))
   (list (fn-cfg-uitem (fn-cfg-kind-code (fn-cfg-delta-kind d)))
@@ -2812,6 +2819,10 @@
         (fn-cfg-items-octet-count (fn-cfg-delta-head-items (car ds)) acc)))
     acc))
 
+(defthm fn-cfg-deltas-octet-count-natp
+  (implies (natp acc) (natp (fn-cfg-deltas-octet-count ds acc)))
+  :rule-classes :type-prescription)
+
 (defun fn-cfg-record-head-items (r)
   (declare (xargs :guard t))
   (append (list (fn-cfg-uitem (fn-cfg-record-sequence r))
@@ -2827,12 +2838,20 @@
        (cdr ds) (+ acc 5 (* 4 (len (fn-cfg-delta-rows (car ds))))))
     acc))
 
+(defthm fn-cfg-deltas-item-count-natp
+  (implies (natp acc) (natp (fn-cfg-deltas-item-count ds acc)))
+  :rule-classes :type-prescription)
+
 (defun fn-cfg-record-item-count (r)
   (declare (xargs :guard t))
   (fn-cfg-deltas-item-count (fn-cfg-record-change r) 8))
 
 (defun fn-cfg-record-octet-count (r)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-cfg-record-head-items
+                                                            fn-cfg-items-octet-count
+                                                            fn-cfg-deltas-octet-count
+                                                            fn-cbor-encode)))))
   (+ (len (fn-cbor-encode (cons :bytes *fn-cfg-magic*)))
      (len (fn-cbor-encode (fn-cfg-uitem *fn-cfg-schema-version*)))
      (len (fn-cbor-encode (fn-cfg-uitem (fn-cfg-record-item-count r))))
@@ -2864,12 +2883,23 @@
                   (+ acc (len (fn-cfg-item-octets (fn-cfg-rows-items rows))))))
   :hints (("Goal" :in-theory (disable fn-cfg-item-encode fn-cfg-row-items)))))
 
+(local (defthm fn-cfg-delta-items-is-head-and-rows
+  (equal (fn-cfg-delta-items d)
+         (append (fn-cfg-delta-head-items d)
+                 (fn-cfg-rows-items (fn-cfg-delta-rows d))))
+  :hints (("Goal" :in-theory (disable fn-cfg-rows-items)))))
+
+(local (defthm fn-cfg-len-of-append
+  (equal (len (append a b)) (+ (len a) (len b)))))
+
 (local (defthm fn-cfg-deltas-octet-count-is-len
   (implies (acl2-numberp acc)
            (equal (fn-cfg-deltas-octet-count ds acc)
                   (+ acc (len (fn-cfg-item-octets (fn-cfg-deltas-items ds))))))
-  :hints (("Goal" :in-theory (disable fn-cfg-item-encode fn-cfg-row-items
-                                      fn-cfg-rows-items)))))
+  :hints (("Goal" :induct (fn-cfg-deltas-octet-count ds acc)
+                  :in-theory (disable fn-cfg-item-encode fn-cfg-item-octets
+                                      fn-cfg-row-items fn-cfg-rows-items
+                                      fn-cfg-delta-items fn-cfg-delta-head-items)))))
 
 (local (defthm fn-cfg-len-rows-items
   (equal (len (fn-cfg-rows-items rows)) (* 4 (len rows)))))
@@ -3348,6 +3378,9 @@
     (:d fn-cfg-read-label) (:d fn-cfg-read-row) (:d fn-cfg-read-rows)
     (:d fn-cfg-read-delta) (:d fn-cfg-read-deltas) (:d fn-cfg-read-record)
     (:d fn-cfg-decode-exact)
-    ))
+    (:d fn-cfg-items-octet-count) (:d fn-cfg-rows-octet-count)
+    (:d fn-cfg-delta-head-items) (:d fn-cfg-deltas-octet-count)
+    (:d fn-cfg-record-head-items) (:d fn-cfg-deltas-item-count)
+    (:d fn-cfg-record-item-count) (:d fn-cfg-record-octet-count)))
 
 (in-theory (disable fn-cfg-vocabulary fn-cfg-codec-vocabulary))
