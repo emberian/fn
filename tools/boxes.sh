@@ -12,6 +12,11 @@
 #   tools/boxes.sh release BOX [--as NAME] [--force]
 #   tools/boxes.sh check BOX [--as NAME]      exit 0 free (or yours), 4 reserved
 #   tools/boxes.sh wait BOX [--as NAME] [--max MINUTES]   until free (or yours)
+#   BOX may also be a named TOKEN (a lower-case word that is not a box, e.g.
+#   `wide'): a lease on a shared resource rather than a machine, kept on
+#   $FN_BOX_TOKEN_HOST (hbox) as ~/.fn-box-reservation-token-NAME; the same
+#   reserve/release/check/wait and the same --as holder rules
+#   (closeout-common's wide-book rule: `reserve wide --for MIN --why TEXT').
 #
 # Free memory is MemAvailable plus, on hbox, the ZFS ARC, which shrinks on
 # demand: `free` counts the ARC as used, and Claude misread an idle hbox as
@@ -88,7 +93,7 @@ sq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 usage() { sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 # The lease operations run on the box, under flock: OP HOLDER MINUTES WHY FORCE.
-LEASE_OP='L=$HOME/.fn-box-reservation; op=$1; me=$2; min=$3; why=$4; force=$5
+LEASE_OP='L=$HOME/.fn-box-reservation$6; op=$1; me=$2; min=$3; why=$4; force=$5
 exec 9>"$L.lock"; flock -w 60 9 || { echo "boxes: cannot lock $L" >&2; exit 3; }
 n=$(date +%s); u=0; h=; w=
 [ -f "$L" ] && IFS=$(printf "\t") read -r u h w < "$L"
@@ -97,14 +102,17 @@ if [ $live = 1 ] && [ "$h" != "$me" ] && [ "$force" != 1 ]; then
     echo "R $u $(( (u - n + 59) / 60 )) $(date -u -d @$u +%H:%MZ) $h $w"; exit 4
 fi
 case $op in
+    show) [ $live = 1 ] && echo "R $u $(( (u - n + 59) / 60 )) $(date -u -d @$u +%H:%MZ) $h $w" ;;
     reserve) u=$((n + min * 60)); printf "%s\t%s\t%s\n" "$u" "$me" "$why" > "$L.new" && mv "$L.new" "$L"
              echo "R $u $min $(date -u -d @$u +%H:%MZ) $me $why" ;;
     release) rm -f "$L" ;;
 esac'
 
-lease_op() {  # BOX OP MINUTES WHY FORCE
-    $SSH -o ConnectTimeout=10 -o BatchMode=yes "$1" \
-        "sh -c $(sq "$LEASE_OP") lease $(sq "$2") $(sq "$(me)") $(sq "$3") $(sq "$4") $(sq "$5")"
+lease_op() {  # BOX-OR-TOKEN OP MINUTES WHY FORCE
+    lhost=$1; suffix=
+    case $1 in hbox|persvati) ;; *) lhost=${FN_BOX_TOKEN_HOST:-hbox}; suffix=-token-$1 ;; esac
+    $SSH -o ConnectTimeout=10 -o BatchMode=yes "$lhost" \
+        "sh -c $(sq "$LEASE_OP") lease $(sq "$2") $(sq "$(me)") $(sq "$3") $(sq "$4") $(sq "$5") $(sq "$suffix")"
 }
 
 cmd=${1:-}
@@ -112,6 +120,7 @@ cmd=${1:-}
 AS=; FOR=; WHY=; FORCE=0; MAX=240; BOX=
 case $cmd in reserve|release|check|wait)
     [ $# -ge 1 ] || usage; BOX=$1; shift
+    case $BOX in hbox|persvati) ;; *[!a-z0-9-]*|''|-*) usage ;; esac
     while [ $# -gt 0 ]; do
         case $1 in
             --as) [ $# -ge 2 ] || usage; AS=$2; shift 2 ;;
@@ -176,7 +185,10 @@ case $cmd in
     check|wait)
         waited=0
         while :; do
-            l=$(lease "$(probe "$BOX")")
+            case $BOX in
+                hbox|persvati) l=$(lease "$(probe "$BOX")") ;;
+                *) l=$(lease "$(lease_op "$BOX" show 0 "" 0 2>/dev/null)") ;;
+            esac
             if ! held_by_other "$l" || [ "${FN_BOX_RESERVATION:-}" = ignore ]; then exit 0; fi
             if [ $cmd = check ] || [ $waited -ge $((MAX * 60)) ]; then
                 echo "boxes: $(describe "$BOX" "$l")" >&2; exit 4
