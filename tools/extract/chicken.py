@@ -176,6 +176,7 @@ NATIVE = {
     "ACL2::FN-SHA256-STOBJ": "a-native-sha256-list",
     "ACL2::FN-SHA256-OF-STRING": "a-native-sha256-string",
     "ACL2::FN-SHA256-OF-PREFIXED-BUFFER": "a-native-sha256-prefixed-buffer",
+    "ACL2::FN-SHA256-OF-PREFIXED-RANGE": "a-native-sha256-prefixed-range",
 }
 # Common Lisp and ACL2 built-ins that raw Lisp compiles inline (NOT, EQ,
 # ZP ...): the Scheme form for a test position, and for a value position.
@@ -284,6 +285,7 @@ class Backend:
         self.prim_info = {}   # stobj primitive name -> (stobj, field, op)
         self.array_lengths = set()
         self.pred_cache = {}
+        self.result_cache = {}
         self.cur_star1 = False
         self.checked_needed = set()
         self.native = True
@@ -577,12 +579,48 @@ class Backend:
             a, c = self.interval(args[0], env), qint(args[1])
             if a and c is not None and a.lo >= 0 and a.hi != INF:
                 return Iv(0, (int(a.hi) << c) if c >= 0 else (int(a.hi) >> -c), a.why)
+        if fn == "COMMON-LISP::MOD" and qint(args[1]) is not None and qint(args[1]) > 0:
+            m = qint(args[1])
+            return Iv(0, m - 1, ["(mod _ %d) of an integer is in [0, %d)" % (m, m)]) \
+                if self.integer_valued(args[0], env) else None
+        if fn == "COMMON-LISP::ASH":
+            a, c = self.interval(args[0], env), self.interval(args[1], env)
+            if a and c and a.lo >= 0 and a.hi != INF and c.lo != -INF and c.hi != INF:
+                if c.hi <= 0:
+                    return Iv(0, int(a.hi) >> int(-c.hi), a.why + c.why)
+                return Iv(0, int(a.hi) << int(c.hi), a.why + c.why)
+        rt = self.result_interval(fn)
+        if rt is not None:
+            return rt
         if fn in self.array_lengths or fn in LENGTHISH:
             return Iv(0, FIX_HI, ["a resident object's length is a fixnum"])
         info = self.prim_info.get(fn)
         if info and info[2] == "array-get" and self.elt_type(info[1]) == "u8":
             return Iv(0, 255, ["an (unsigned-byte 8) array element"])
         return None
+
+    def integer_valued(self, t, env):
+        return self.interval(t, env) is not None or (
+            t[0] == "c" and t[1] in ("COMMON-LISP::LOGAND", "ACL2::BINARY-LOGAND", "ACL2::BINARY-LOGIOR",
+                                     "ACL2::BINARY-LOGXOR", "COMMON-LISP::ASH", "COMMON-LISP::LOGNOT"))
+
+    def result_interval(self, fn):
+        """A guard-verified function whose executable body is (the TYPE expr):
+        the declared type is its result's interval (checked by ACL2's guard
+        verification of the `the')."""
+        if fn in self.result_cache:
+            return self.result_cache[fn]
+        self.result_cache[fn] = None
+        f = self.fns.get(fn)
+        iv = None
+        if f and f["kind"] == "defun" and f.get("class") == "common-lisp-compliant" and fn not in SHIMS:
+            the = self.the_pattern(f["body"])
+            if the is not None:
+                r = self.conj_interval(the[1])
+                if r and r[0] == the[2]:
+                    iv = Iv(r[1].lo, r[1].hi, ["%s returns (the %s)" % (short(fn).lower(), text(the[1]))])
+        self.result_cache[fn] = iv
+        return iv
 
     def the_pattern(self, t):
         """((lambda (var) (the-check G 'TYPE var)) EXPR) -> (EXPR, G)."""
@@ -737,6 +775,15 @@ class Backend:
             if all(iv and iv.fixnum() for iv in ivs) and res and res.fixnum():
                 self.erase(short(fn), FX[fn], args, ivs + [res])
                 return "(%s %s)" % (FX[fn], " ".join(self.emit(a, env, 1) for a in args))
+        if (fn == "COMMON-LISP::MOD" and self.cur_verified and qint(args[1]) is not None
+                and qint(args[1]) > 0 and qint(args[1]) & (qint(args[1]) - 1) == 0):
+            a = self.interval(args[0], env)
+            if a and a.lo >= 0 and a.fixnum():
+                self.erase("mod", "fxand", args, [a])
+                return "(fxand %s %d)" % (self.emit(args[0], env, 1), qint(args[1]) - 1)
+            if a and a.lo >= 0:
+                self.erase("mod", "bitwise-and", args, [a])
+                return "(bitwise-and %s %d)" % (self.emit(args[0], env, 1), qint(args[1]) - 1)
         if fn == "ACL2::THE-CHECK":
             return self.emit(args[2], env, 1)
         xs = [self.emit(a, env, 1) for a in args]

@@ -254,3 +254,24 @@ static int fnx_statfs(const char *p, unsigned char *buf) {
   (let ((entry (extent-entry file eoff elen)) (start (- poff eoff)))
     (let loop ((i (+ start plen -1)) (acc '()))
       (if (< i start) acc (loop (- i 1) (cons (u8vector-ref entry i) acc))))))
+
+;; A-DURABLE-LZ's realizer (host/native/extent.lisp fn-durable-realize-lz):
+;; the block read through the extent realizer (trailer checked), ACL2's
+;; decoder fn-lzr-lz-read over it (called as the host calls it, through the
+;; boundary), its octets answered; a failed decode refused by name.  The last
+;; decoded payload is kept (key: file, entry, block, length; the dictionary by
+;; identity), so an octet-by-octet reader decodes once.
+(define extent-lz-last #f)
+(define (a-durable-realize-lz file eoff elen poff plen trailer n dict)
+  (let ((key (list file eoff poff plen n)))
+    (if (and extent-lz-last (equal? (car extent-lz-last) key) (eq? (cadr extent-lz-last) dict))
+        (cddr extent-lz-last)
+        (let* ((c (a-durable-realize-octets file eoff elen poff plen trailer))
+               (saved a-current-entry)
+               (r (|b:ACL2::FN-LZR-LZ-READ| dict c n)))
+          (set! a-current-entry saved)
+          (unless (and (pair? r) (eq? (car r) '|KEYWORD::OK|))
+            (error (sprintf "arena-extent-lz-decode: the block at ~a of ~a does not decode to its ~a octets"
+                            poff (hx-path file) n)))
+          (set! extent-lz-last (cons key (cons dict (cadr r))))
+          (cadr r)))))

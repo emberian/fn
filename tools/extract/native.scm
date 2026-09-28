@@ -6,7 +6,8 @@
 ;;; fn-sha256-of-string and fn-sha256-of-prefixed-buffer by libcrypto's
 ;;; EVP SHA-256 after a start-up check; this file does the same for the
 ;;; extracted program: tools/extract/chicken.py (NATIVE) sends every call of
-;;; the three (fn-digest reaches fn-sha256-stobj through its attachment) to
+;;; the three, and the window digest fn-sha256-of-prefixed-range (the log
+;;; walk's frame check; the image does not replace it yet), (fn-digest reaches fn-sha256-stobj through its attachment) to
 ;;; the procedures below, and the extracted ACL2 definitions stay as the
 ;;; reference each falls back to outside the fast domain and the self-check
 ;;; compares against.  The fast domain is digest.lisp's: a list is digested
@@ -73,6 +74,20 @@
               #t)))
       (|f:ACL2::FN-SHA256-OF-STRING| s)))
 
+(define (a-native-sha256-prefixed-range prefix a wn st)
+  ;; fn-sha256-of-prefixed-range: PREFIX's octets, then the buffer's [A, A+WN)
+  ;; (its guard: A+WN within the fill); the extracted definition otherwise
+  (or (and (fixnum? a) (fixnum? wn) (fx>= a 0) (fx>= wn 0)
+           (vector? st) (fx= (vector-length st) 2) (u8vector? (vector-ref st 0))
+           (fixnum? (vector-ref st 1)) (fx<= (fx+ a wn) (vector-ref st 1))
+           (fx<= (vector-ref st 1) (u8vector-length (vector-ref st 0)))
+           (native-with-context
+            (lambda (ctx)
+              (and (native-update-list ctx prefix)
+                   (begin (native-digest-check (%md-update ctx (vector-ref st 0) a wn) "EVP_DigestUpdate")
+                          #t)))))
+      (|f:ACL2::FN-SHA256-OF-PREFIXED-RANGE| prefix a wn st)))
+
 (define (a-native-sha256-prefixed-buffer prefix st)
   (or (and (vector? st) (fx= (vector-length st) 2)
            (u8vector? (vector-ref st 0)) (fixnum? (vector-ref st 1))
@@ -123,6 +138,10 @@
    (lambda (n)
      (let ((m (native-test-message n (fx+ n 7))))
        (unless (equal? (a-native-sha256-list m) (|f:ACL2::FN-SHA256-STOBJ| m)) (fail "list differential"))
+       (let ((k (quotient n 3)) (b (make-buffer m)))
+         (unless (equal? (a-native-sha256-prefixed-range (list-head m 5) k (quotient n 2) b)
+                         (|f:ACL2::FN-SHA256-OF-PREFIXED-RANGE| (list-head m 5) k (quotient n 2) b))
+           (fail "range differential")))
        (let ((k (quotient n 3)))
          (unless (equal? (a-native-sha256-prefixed-buffer (list-head m k) (make-buffer (list-tail m k)))
                          (|f:ACL2::FN-SHA256-OF-PREFIXED-BUFFER| (list-head m k) (make-buffer (list-tail m k))))

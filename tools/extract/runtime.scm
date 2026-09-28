@@ -60,8 +60,16 @@
 
 ;; --- raw-Lisp built-ins (Common Lisp's own function runs in ACL2) --------------
 (define (a-ash i c) (arithmetic-shift i c))
-(define (a-floor i j) (floor (/ i j)))
-(define (a-mod i j) (- i (* (floor (/ i j)) j)))
+; CL's floor and mod (flooring division); on two integers without a ratnum
+(define (a-floor i j)
+  (if (and (exact-integer? i) (exact-integer? j))
+      (let ((q (quotient i j)))
+        (if (and (not (= (* q j) i)) (not (eq? (negative? i) (negative? j)))) (- q 1) q))
+      (floor (/ i j))))
+(define (a-mod i j)
+  (if (and (exact-integer? i) (exact-integer? j))
+      (modulo i j)
+      (- i (* (floor (/ i j)) j))))
 (define (a-expt r i) (if (and (eqv? r 0) (negative? i)) 0 (expt r i)))
 (define (a-niq i j) (quotient i j))
 (define (a-len x) (let loop ((x x) (n 0)) (if (pair? x) (loop (cdr x) (fx+ n 1)) n)))
@@ -174,13 +182,7 @@
                                 ((condition-property-accessor 'exn 'message) e))))))
 
 ;; --- the durable-extent realizers: tools/extract/hostio.scm (A-DURABLE-EXTENT) --
-;; A-DURABLE-LZ's realizer (host/native/extent.lisp fn-durable-realize-lz)
-;; calls ACL2's decoder fn-lzr-lz-read through fnn-core; the image does not
-;; include books/payload-lz-record (nothing in host/native/build.lisp's world
-;; does), so the image answers a compressed extent with the fault below, and
-;; so does this program.
-(define (a-durable-realize-lz file eoff elen poff plen trailer n dict)
-  (a-fault 'fault "ACL2 executable counterpart missing: FN-LZR-LZ-READ"))
+
 
 ;; --- stobj support ----------------------------------------------------------------
 ;; A defstobj is a Scheme vector of its fields; an array field is a vector,
