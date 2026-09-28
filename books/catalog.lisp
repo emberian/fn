@@ -3376,12 +3376,26 @@
   (declare (xargs :guard t))
   (fn-cat-withdrawn-at-from w fn-cat$a 0))
 
-; S into the ascending list L.
-(defun fn-cat-insert-asc (s l)
-  (declare (xargs :guard t))
+; S into the ascending list L (executed as a loop: tools/depth_check.py).
+(defun fn-cat-insert-asc-loop (s l acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (and (consp l) (< (nfix (car l)) (nfix s)))
-      (cons (car l) (fn-cat-insert-asc s (cdr l)))
-    (cons s l)))
+      (fn-cat-insert-asc-loop s (cdr l) (cons (car l) acc))
+    (revappend acc (cons s l))))
+
+(defun fn-cat-insert-asc (s l)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (and (consp l) (< (nfix (car l)) (nfix s)))
+                  (cons (car l) (fn-cat-insert-asc s (cdr l)))
+                (cons s l))
+       :exec (fn-cat-insert-asc-loop s l nil)))
+
+(local
+ (defthm fn-cat-insert-asc-loop-is-revappend
+   (equal (fn-cat-insert-asc-loop s l acc)
+          (revappend acc (fn-cat-insert-asc s l)))))
+
+(verify-guards fn-cat-insert-asc)
 
 (defun fn-cat$c-withdrawn-at (w fn-cat$c)
   (declare (xargs :stobjs fn-cat$c))

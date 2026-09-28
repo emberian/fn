@@ -74,38 +74,107 @@
 ; -----------------------------------------------------------------------------
 ; X: the numbers whose answer at V may differ from the table's.
 
-; The numbers in GROUP of the rows S .. N-1.
-(defun fn-scv-new-numbers (group s n fn-cat)
-  (declare (xargs :stobjs fn-cat :guard (and (natp s) (natp n))
+; The numbers in GROUP of the rows S .. N-1.  Every walk below executes as
+; a loop (an accumulator, reversed at the end: tools/depth_check.py); the
+; :logic is the recursion the proofs read.
+(defun fn-scv-new-numbers-loop (group s n fn-cat acc)
+  (declare (xargs :stobjs fn-cat :guard (and (natp s) (natp n) (true-listp acc))
                   :measure (nfix (- (nfix n) (nfix s)))
                   :guard-hints (("Goal" :in-theory (disable fn-cat-count-is-len fn-cat-at-is-nth)))))
   (if (and (natp s) (natp n) (< s n) (< s (fn-cat-count fn-cat)))
-      (let ((k (fn-held-number-in group (fn-cat-at s fn-cat)))
-            (rest (fn-scv-new-numbers group (+ 1 s) n fn-cat)))
-        (if (posp k) (cons k rest) rest))
-    nil))
+      (let ((k (fn-held-number-in group (fn-cat-at s fn-cat))))
+        (fn-scv-new-numbers-loop group (+ 1 s) n fn-cat (if (posp k) (cons k acc) acc)))
+    (revappend acc nil)))
+
+(defun fn-scv-new-numbers (group s n fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (and (natp s) (natp n))
+                  :measure (nfix (- (nfix n) (nfix s)))
+                  :verify-guards nil))
+  (mbe :logic
+       (if (and (natp s) (natp n) (< s n) (< s (fn-cat-count fn-cat)))
+           (let ((k (fn-held-number-in group (fn-cat-at s fn-cat)))
+                 (rest (fn-scv-new-numbers group (+ 1 s) n fn-cat)))
+             (if (posp k) (cons k rest) rest))
+         nil)
+       :exec (fn-scv-new-numbers-loop group s n fn-cat nil)))
+
+(local
+ (defthm fn-scv-new-numbers-loop-is-revappend
+   (equal (fn-scv-new-numbers-loop group s n fn-cat acc)
+          (revappend acc (fn-scv-new-numbers group s n fn-cat)))
+   :hints (("Goal" :induct (fn-scv-new-numbers-loop group s n fn-cat acc)))))
+
+(verify-guards fn-scv-new-numbers
+  :hints (("Goal" :in-theory (disable fn-cat-count-is-len fn-cat-at-is-nth))))
 
 ; The numbers in GROUP of the rows SEQS names.
-(defun fn-scv-seq-numbers (group seqs fn-cat)
-  (declare (xargs :stobjs fn-cat
+(defun fn-scv-seq-numbers-loop (group seqs fn-cat acc)
+  (declare (xargs :stobjs fn-cat :guard (true-listp acc)
                   :guard-hints (("Goal" :in-theory (disable fn-cat-count-is-len fn-cat-at-is-nth)))))
   (if (consp seqs)
-      (let ((rest (fn-scv-seq-numbers group (cdr seqs) fn-cat))
-            (s (car seqs)))
-        (if (and (natp s) (< s (fn-cat-count fn-cat)))
-            (let ((k (fn-held-number-in group (fn-cat-at s fn-cat))))
-              (if (posp k) (cons k rest) rest))
-          rest))
-    nil))
+      (let ((s (car seqs)))
+        (fn-scv-seq-numbers-loop
+         group (cdr seqs) fn-cat
+         (if (and (natp s) (< s (fn-cat-count fn-cat)))
+             (let ((k (fn-held-number-in group (fn-cat-at s fn-cat))))
+               (if (posp k) (cons k acc) acc))
+           acc)))
+    (revappend acc nil)))
+
+(defun fn-scv-seq-numbers (group seqs fn-cat)
+  (declare (xargs :stobjs fn-cat :verify-guards nil))
+  (mbe :logic
+       (if (consp seqs)
+           (let ((rest (fn-scv-seq-numbers group (cdr seqs) fn-cat))
+                 (s (car seqs)))
+             (if (and (natp s) (< s (fn-cat-count fn-cat)))
+                 (let ((k (fn-held-number-in group (fn-cat-at s fn-cat))))
+                   (if (posp k) (cons k rest) rest))
+               rest))
+         nil)
+       :exec (fn-scv-seq-numbers-loop group seqs fn-cat nil)))
+
+(local
+ (defthm fn-scv-seq-numbers-loop-is-revappend
+   (equal (fn-scv-seq-numbers-loop group seqs fn-cat acc)
+          (revappend acc (fn-scv-seq-numbers group seqs fn-cat)))
+   :hints (("Goal" :induct (fn-scv-seq-numbers-loop group seqs fn-cat acc)))))
+
+(verify-guards fn-scv-seq-numbers
+  :hints (("Goal" :in-theory (disable fn-cat-count-is-len fn-cat-at-is-nth))))
 
 ; The numbers in GROUP of the rows withdrawn at a version W .. HZ-1.
-(defun fn-scv-withdrawn-numbers (group w hz fn-cat)
-  (declare (xargs :stobjs fn-cat :guard (and (natp w) (natp hz))
+(defun fn-scv-withdrawn-numbers-loop (group w hz fn-cat acc)
+  (declare (xargs :stobjs fn-cat :guard (and (natp w) (natp hz) (true-listp acc))
                   :measure (nfix (- (nfix hz) (nfix w)))))
   (if (and (natp w) (natp hz) (< w hz))
-      (append (fn-scv-seq-numbers group (fn-cat-withdrawn-at w fn-cat) fn-cat)
-              (fn-scv-withdrawn-numbers group (+ 1 w) hz fn-cat))
-    nil))
+      (fn-scv-withdrawn-numbers-loop
+       group (+ 1 w) hz fn-cat
+       (revappend (fn-scv-seq-numbers group (fn-cat-withdrawn-at w fn-cat) fn-cat) acc))
+    (revappend acc nil)))
+
+(defun fn-scv-withdrawn-numbers (group w hz fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (and (natp w) (natp hz))
+                  :measure (nfix (- (nfix hz) (nfix w)))
+                  :verify-guards nil))
+  (mbe :logic
+       (if (and (natp w) (natp hz) (< w hz))
+           (append (fn-scv-seq-numbers group (fn-cat-withdrawn-at w fn-cat) fn-cat)
+                   (fn-scv-withdrawn-numbers group (+ 1 w) hz fn-cat))
+         nil)
+       :exec (fn-scv-withdrawn-numbers-loop group w hz fn-cat nil)))
+
+(local
+ (defthm fn-scv-revappend-revappend
+   (equal (revappend (revappend a b) c) (revappend b (append a c)))))
+
+(local
+ (defthm fn-scv-withdrawn-numbers-loop-is-revappend
+   (equal (fn-scv-withdrawn-numbers-loop group w hz fn-cat acc)
+          (revappend acc (fn-scv-withdrawn-numbers group w hz fn-cat)))
+   :hints (("Goal" :induct (fn-scv-withdrawn-numbers-loop group w hz fn-cat acc)))))
+
+(verify-guards fn-scv-withdrawn-numbers)
 
 (defun fn-scv-x (group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
@@ -270,37 +339,123 @@
   (and (natp x) (natp lo) (natp top) (<= lo x) (<= x top)))
 
 ; The sum of (served) - (live) over the elements of XS within LO .. TOP.
-(defun fn-scv-xdiff (group xs lo top v fn-cat)
-  (declare (xargs :stobjs fn-cat :guard (natp v)))
+(defun fn-scv-xdiff-loop (group xs lo top v fn-cat acc)
+  (declare (xargs :stobjs fn-cat :guard (and (natp v) (integerp acc))))
   (if (consp xs)
-      (+ (if (fn-scv-in-rangep (car xs) lo top) (fn-scv-diff group (car xs) v fn-cat) 0)
-         (fn-scv-xdiff group (cdr xs) lo top v fn-cat))
-    0))
+      (fn-scv-xdiff-loop group (cdr xs) lo top v fn-cat
+                         (+ acc (if (fn-scv-in-rangep (car xs) lo top)
+                                    (fn-scv-diff group (car xs) v fn-cat)
+                                  0)))
+    acc))
+
+(defun fn-scv-xdiff (group xs lo top v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v) :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (+ (if (fn-scv-in-rangep (car xs) lo top) (fn-scv-diff group (car xs) v fn-cat) 0)
+              (fn-scv-xdiff group (cdr xs) lo top v fn-cat))
+         0)
+       :exec (fn-scv-xdiff-loop group xs lo top v fn-cat 0)))
+
+(local
+ (defthm fn-scv-xdiff-loop-is-sum
+   (implies (acl2-numberp acc)
+            (equal (fn-scv-xdiff-loop group xs lo top v fn-cat acc)
+                   (+ acc (fn-scv-xdiff group xs lo top v fn-cat))))
+   :hints (("Goal" :induct (fn-scv-xdiff-loop group xs lo top v fn-cat acc)))))
+
+(verify-guards fn-scv-xdiff)
 
 ; The least (greatest) element of XS within LO .. TOP served at V, else 0.
 (defun fn-scv-min* (a b)
   (declare (xargs :guard (and (natp a) (natp b))))
   (cond ((zp a) (nfix b)) ((zp b) a) (t (min a b))))
 
-(defun fn-scv-xmin (group xs lo top v fn-cat)
-  (declare (xargs :stobjs fn-cat :guard (natp v)))
+(defun fn-scv-xmin-loop (group xs lo top v fn-cat acc)
+  (declare (xargs :stobjs fn-cat :guard (and (natp v) (natp acc))))
   (if (consp xs)
-      (fn-scv-min* (if (and (fn-scv-in-rangep (car xs) lo top)
-                            (fn-scv-keptp group (car xs) v fn-cat))
-                       (car xs)
-                     0)
-                   (fn-scv-xmin group (cdr xs) lo top v fn-cat))
-    0))
+      (fn-scv-xmin-loop group (cdr xs) lo top v fn-cat
+                        (fn-scv-min* acc (if (and (fn-scv-in-rangep (car xs) lo top)
+                                                  (fn-scv-keptp group (car xs) v fn-cat))
+                                             (car xs)
+                                           0)))
+    acc))
+
+(defun fn-scv-xmin (group xs lo top v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v) :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (fn-scv-min* (if (and (fn-scv-in-rangep (car xs) lo top)
+                                 (fn-scv-keptp group (car xs) v fn-cat))
+                            (car xs)
+                          0)
+                        (fn-scv-xmin group (cdr xs) lo top v fn-cat))
+         0)
+       :exec (fn-scv-xmin-loop group xs lo top v fn-cat 0)))
+
+(local
+ (defthm fn-scv-min*-natp
+   (natp (fn-scv-min* a b))
+   :rule-classes :type-prescription))
+
+(local
+ (defthm fn-scv-min*-assoc-comm
+   (implies (and (natp a) (natp b) (natp c))
+            (and (equal (fn-scv-min* (fn-scv-min* a b) c) (fn-scv-min* a (fn-scv-min* b c)))
+                 (equal (fn-scv-min* a b) (fn-scv-min* b a))
+                 (equal (fn-scv-min* 0 a) a)))))
+
+(local
+ (defthm fn-scv-xmin-natp
+   (natp (fn-scv-xmin group xs lo top v fn-cat))
+   :rule-classes :type-prescription))
+
+(local
+ (defthm fn-scv-xmin-loop-is-min*
+   (implies (natp acc)
+            (equal (fn-scv-xmin-loop group xs lo top v fn-cat acc)
+                   (fn-scv-min* acc (fn-scv-xmin group xs lo top v fn-cat))))
+   :hints (("Goal" :induct (fn-scv-xmin-loop group xs lo top v fn-cat acc)
+            :in-theory (disable fn-scv-min*)))))
+
+(verify-guards fn-scv-xmin
+  :hints (("Goal" :in-theory (disable fn-scv-min*))))
+
+(defun fn-scv-xmax-loop (group xs lo top v fn-cat acc)
+  (declare (xargs :stobjs fn-cat :guard (and (natp v) (natp acc))))
+  (if (consp xs)
+      (fn-scv-xmax-loop group (cdr xs) lo top v fn-cat
+                        (max acc (if (and (fn-scv-in-rangep (car xs) lo top)
+                                          (fn-scv-keptp group (car xs) v fn-cat))
+                                     (car xs)
+                                   0)))
+    acc))
 
 (defun fn-scv-xmax (group xs lo top v fn-cat)
-  (declare (xargs :stobjs fn-cat :guard (natp v)))
-  (if (consp xs)
-      (max (if (and (fn-scv-in-rangep (car xs) lo top)
-                    (fn-scv-keptp group (car xs) v fn-cat))
-               (car xs)
-             0)
-           (fn-scv-xmax group (cdr xs) lo top v fn-cat))
-    0))
+  (declare (xargs :stobjs fn-cat :guard (natp v) :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (max (if (and (fn-scv-in-rangep (car xs) lo top)
+                         (fn-scv-keptp group (car xs) v fn-cat))
+                    (car xs)
+                  0)
+                (fn-scv-xmax group (cdr xs) lo top v fn-cat))
+         0)
+       :exec (fn-scv-xmax-loop group xs lo top v fn-cat 0)))
+
+(local
+ (defthm fn-scv-xmax-natp
+   (natp (fn-scv-xmax group xs lo top v fn-cat))
+   :rule-classes :type-prescription))
+
+(local
+ (defthm fn-scv-xmax-loop-is-max
+   (implies (natp acc)
+            (equal (fn-scv-xmax-loop group xs lo top v fn-cat acc)
+                   (max acc (fn-scv-xmax group xs lo top v fn-cat))))
+   :hints (("Goal" :induct (fn-scv-xmax-loop group xs lo top v fn-cat acc)))))
+
+(verify-guards fn-scv-xmax)
 
 ; The first (last) table-live number outside XS from K up to TOP (down to 1).
 (defun fn-scv-scan-up (group k top xs fn-cat)
