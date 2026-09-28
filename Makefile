@@ -1264,6 +1264,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-commit-steps-tests \
 	books/owner-commit-pipeline \
 	tests/acl2/owner-commit-pipeline-tests \
+	books/owner-commit-fairness \
+	tests/acl2/owner-commit-fairness-tests \
 	books/owner-ack-after-barrier \
 	tests/acl2/owner-ack-after-barrier-tests \
 	books/owner-reader-view \

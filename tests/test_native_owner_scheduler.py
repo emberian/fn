@@ -442,6 +442,68 @@ class SchedulerNativeTests(unittest.TestCase):
         self.assertTrue(stat_b3.startswith(b"223"), stat_b3)
 
 
+    @unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
+    def test_a_control_request_is_admitted_under_sustained_post_load(self):
+        # Lane durability-bugs (row I3; PKT-700/701's owner, scheduler-3's
+        # finding; SCN-195, PRF-901).  Barrier held 1.5 s; four posters POST
+        # back to back, so a member is always queued behind the batch in
+        # flight.  Before the lane the committer prepared a next batch behind
+        # every barrier (START-NEXT) and the COMPLETE sealed it, so a batch was
+        # always in flight and a mutating control request (`group create',
+        # the :control class, which flight shuts out) waited as long as the
+        # POSTs kept coming.  Now a waiting control request stops the
+        # pipeline (fn-ocp-wake BLOCKED): at most two more batches are sealed
+        # (fn-ocf-control-waits-at-most-the-bound), so it is answered within
+        # three barriers plus its own quantum, while the posters keep going.
+        self.reap(self.owner)
+        hold = 1.5
+        self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000))},
+                                      image=DEVELOPER)
+        stop = threading.Event()
+        errors, accepted = [], []
+
+        def poster(index):
+            try:
+                conn, stream = self.connect()
+                with conn:
+                    n = 0
+                    while not stop.is_set():
+                        self.post(stream, b"load-%d-%d@example.invalid" % (index, n),
+                                  b"sustained %d %d\r\n" % (index, n))
+                        accepted.append(time.monotonic())
+                        n += 1
+                    stream.write(b"QUIT\r\n")
+                    stream.flush()
+            except Exception as error:  # noqa: BLE001 -- reported below
+                errors.append("poster %d: %r" % (index, error))
+
+        threads = [threading.Thread(target=poster, args=(i,), daemon=True) for i in range(4)]
+        for thread in threads:
+            thread.start()
+        try:
+            # Let the pipeline fill: a batch in flight and one behind it.
+            time.sleep(3 * hold)
+            started = time.monotonic()
+            created = self.operator("group", "create", "fn.fair", timeout=60)
+            answered = time.monotonic() - started
+            during = sum(1 for t in accepted if started <= t <= started + answered)
+            time.sleep(hold)
+            after = sum(1 for t in accepted if t > started + answered)
+        finally:
+            stop.set()
+            for thread in threads:
+                thread.join(timeout=60)
+        print("control under sustained POST (barrier %.1fs): group create answered in %.3fs; "
+              "POSTs accepted while it waited %d, in the next %.1fs %d; total %d"
+              % (hold, answered, during, hold, after, len(accepted)))
+        self.assertEqual(errors, [])
+        self.assertEqual(created.returncode, 0, created.stderr.decode())
+        # Three barriers (the batch in flight, the one open behind it, one
+        # START that was due) plus the request's own quantum and slack.
+        self.assertLess(answered, 3 * hold + 3.0, answered)
+        # The posters were never starved in turn: POSTs kept being accepted.
+        self.assertGreater(after, 0)
+
     def test_a_redeem_during_a_barrier_waits_for_the_complete_without_holding_the_owner(self):
         # PKT-828 open item 2 (books/owner-reader-read.lisp).  An XREDEEM PASS
         # publishes a configuration record: its reply (281) promises the

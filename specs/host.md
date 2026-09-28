@@ -556,8 +556,23 @@ turns; a thread that re-enters the gate while it holds the owner is a host
 fault. The keystone
 `fn-osch-control-waits-at-most-the-bound`: while control has a waiter, at
 most three quanta of the other classes run before a control quantum, from
-any cursor. A quantum is one bounded semantic step, unchanged by this
-requirement (a served read with its drain, one control request, one transit
+any cursor. That bound counts the picks outside a batch in flight; while
+one is in flight only `:inspect`, `:commit` and `:reader` run, and until
+lane durability-bugs (2026-09-28) the pipelined committer prepared a next
+batch behind every barrier, so under sustained POST load a batch was always
+in flight and a control, poster or transit request was never admitted. Now
+the committer's wake (`fn-ocp-wake`, BLOCKED; host
+`fnn-owner-commit-wake`, which reads the gate's waiting counts, and again
+inside the START-NEXT quantum) prepares no next batch while one of those
+classes waits, and the keystone `fn-ocf-control-waits-at-most-the-bound`
+(PRF-901, books/owner-commit-fairness.lisp) holds over the host's pick,
+wake and commit events from any scheduler value: while a control request
+waits at every pick, before it is admitted (or the owner stops) at most ten
+quanta run that are not `:inspect`, a reader during a barrier or a
+START-NEXT that took nobody, and at most two batches are sealed (the one
+already open behind the barrier and one START already due), so its wait is
+at most three barriers plus those quanta. A quantum is one bounded semantic
+step, unchanged by this requirement (a served read with its drain, one control request, one transit
 step); the journal writes stay inside it. The exposure charge (PRF-161) is
 decided in the same critical section as the step it admits. What leaves the
 critical section is the reply's rendering: `fn-owner-chunk-span` returns one

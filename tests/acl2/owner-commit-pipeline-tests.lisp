@@ -27,13 +27,13 @@
 (assert-event (equal (ocpt-action *ocpt-s0* :started) :sync))
 (defconst *ocpt-s1* (ocpt-event *ocpt-s0* :started))
 (assert-event (equal (ocpt-phase *ocpt-s1*) :staged))
-(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* nil t) :start-next))
-(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* nil nil) :wait))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* nil t nil) :start-next))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* nil nil nil) :wait))
 (assert-event (equal (ocpt-action *ocpt-s1* :next-started) :wait))
 (defconst *ocpt-s2* (ocpt-event *ocpt-s1* :next-started))
 (assert-event (fn-ocp-open-next *ocpt-s2*))
 ; With a next batch open, a queued member waits: one batch behind at most.
-(assert-event (equal (fn-ocp-committer-wake *ocpt-s2* nil t) :wait))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-s2* nil t nil) :wait))
 (assert-event (equal (ocpt-action *ocpt-s2* :next-started) :fault))
 ; While the next batch is open the commit goes first, then the readers
 ; (PKT-828: they read at the reader view, books/owner-reader-view.lisp);
@@ -41,7 +41,7 @@
 (assert-event (equal (ocpt-class *ocpt-s2* *ocpt-readers-commit*) :commit))
 (assert-event (equal (ocpt-class *ocpt-s2* *ocpt-readers*) :reader))
 (assert-event (equal (ocpt-class *ocpt-s2* '(1 0 0 0 0 0)) nil))
-(assert-event (equal (fn-ocp-committer-wake *ocpt-s2* t t) :collect))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-s2* t t nil) :collect))
 (assert-event (equal (ocpt-action *ocpt-s2* :fenced) :complete))
 (defconst *ocpt-s3* (ocpt-event *ocpt-s2* :fenced))
 (assert-event (equal (ocpt-action *ocpt-s3* :completed) :sync))
@@ -57,7 +57,7 @@
 (assert-event (equal (ocpt-action *ocpt-s2* :failed) :stop))
 (assert-event (equal (ocpt-action *ocpt-s1* :next-uncertain) :stop))
 (defconst *ocpt-s6* (ocpt-event *ocpt-s1* :next-uncertain))
-(assert-event (equal (fn-ocp-committer-wake *ocpt-s6* t nil) :collect))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-s6* t nil nil) :collect))
 (assert-event (equal (ocpt-action *ocpt-s6* :fenced) :stop))
 (assert-event (equal (ocpt-phase (ocpt-event (ocpt-event *ocpt-s6* :fenced) :completed)) :idle))
 
@@ -91,10 +91,23 @@
 (assert-event (equal (ocpt-step-action :fenced nil :completed) :none))
 
 ; --- fn-ocp-start-next-only-behind-a-sync: each hypothesis of the wake.
-(assert-event (equal (fn-ocp-wake :idle nil nil t) :wait))
-(assert-event (equal (fn-ocp-wake :staged t nil t) :wait))
-(assert-event (equal (fn-ocp-wake :staged nil t t) :collect))
-(assert-event (equal (fn-ocp-wake :staged nil nil nil) :wait))
+(assert-event (equal (fn-ocp-wake :idle nil nil t nil) :wait))
+(assert-event (equal (fn-ocp-wake :staged t nil t nil) :wait))
+(assert-event (equal (fn-ocp-wake :staged nil t t nil) :collect))
+(assert-event (equal (fn-ocp-wake :staged nil nil nil nil) :wait))
+;; The added hypothesis (lane durability-bugs): the same staged batch with a
+;; member queued and no next batch open prepares the next one only when no
+;; shut-out class waits; a waiting control (slot 0), poster (2) or transit
+;; (3) request stops it, a waiting reader (1), commit (4) or inspect (5)
+;; does not.
+(assert-event (equal (fn-ocp-wake :staged nil nil t nil) :start-next))
+(assert-event (equal (fn-ocp-wake :staged nil nil t t) :wait))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* nil t '(1 0 0 0 0 0)) :wait))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* nil t '(0 0 1 0 0 0)) :wait))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* nil t '(0 0 0 1 0 0)) :wait))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* nil t '(0 5 0 0 1 1)) :start-next))
+;; The syncer's return is collected whatever waits.
+(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* t t '(1 0 1 1 0 0)) :collect))
 
 ; -----------------------------------------------------------------------------
 ; keystone-audit 2026-09-27.

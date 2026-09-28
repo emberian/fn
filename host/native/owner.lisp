@@ -2624,12 +2624,16 @@ reads the phase it leaves.  Called inside the committer's :commit quanta."
 
 (defun fnn-owner-commit-wake (service returned queued)
   "ACL2's wake for the committer while a batch is in flight
-(fn-ocp-committer-wake): :collect, :start-next or :wait."
+(fn-ocp-committer-wake): :collect, :start-next or :wait.  The gate's six
+waiting counts go with the scheduler value, read under the gate mutex: a
+waiting control, poster or transit request stops the pipeline from
+preparing another batch (books/owner-commit-fairness.lisp)."
   (let ((gate (fnn-owner-service-gate service)))
-    (let ((wake (fnn-core 'fn-otm-committer-wake
-                          (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
-                            (fnn-owner-gate-sched gate))
-                          returned queued)))
+    (let ((wake (multiple-value-bind (sched waiting)
+                    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                      (values (fnn-owner-gate-sched gate)
+                              (coerce (fnn-owner-gate-waiting gate) 'list)))
+                  (fnn-core 'fn-otm-committer-wake sched returned queued waiting))))
       (unless (member wake '(:collect :start-next :wait))
         (fnn-fault "owner returned a malformed committer wake ~a" wake))
       wake)))
@@ -2801,6 +2805,18 @@ leave only in its COMPLETE, after its barrier returned
               (fnn-owner-shared-action-locked
                service nil
                (lambda ()
+                 ;; Lane durability-bugs: the wake was decided before this
+                 ;; quantum was admitted.  Asked again here, under the owner:
+                 ;; a control, poster or transit request that arrived in
+                 ;; between stops the START-NEXT, which then takes nobody
+                 ;; (:next-none; books/owner-commit-fairness.lisp's
+                 ;; fn-ocf-okp names :next-started only at a :start-next
+                 ;; wake with the counts of the pick).
+                 (if (not (eq (fnn-owner-commit-wake
+                               service nil (plusp (fnn-owner-service-queued service)))
+                              :start-next))
+                     (setq step (fnn-owner-commit-event service :next-none))
+                 (progn
                  ;; PKT-828: the next batch's reader view, taken before its
                  ;; members join the working view.
                  (fnn-owner-reader-capture :next)
@@ -2823,7 +2839,7 @@ leave only in its COMPLETE, after its barrier returned
                      (fnn-owner-commit-complete-locked
                       service :stop (fnn-owner-unreleased (append members next) released)
                       deferred)
-                     (setq members nil next nil))))))))))
+                     (setq members nil next nil))))))))))))
       (sb-thread:join-thread syncer :default nil)
       (destructuring-bind (word . condition) (car result)
         ;; COMPLETE runs whatever the barrier observed, and the batch leaves

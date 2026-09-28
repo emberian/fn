@@ -5614,6 +5614,25 @@
         "native": true,
         "record": "planning/evidence/zero-copy-commit-2026-09-28.md"
       }
+    },
+    {
+      "id": "SCN-195",
+      "title": "A mutating control request is admitted under sustained POST load (the owner's queue is fair; PRF-901)",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "tests/test_native_owner_scheduler.py test_a_control_request_is_admitted_under_sustained_post_load on the developer image: the barrier held 1.5 s by FN_NATIVE_OWNER_TEST_BARRIER_MS; four posters POST back to back for the whole test; after 4.5 s `group create fn.fair' on the control socket."
+      ],
+      "expected": [
+        "The control request is answered within three barriers plus slack (under 7.5 s) while the posters keep being answered 240; before the lane it waited for as long as the POSTs kept coming."
+      ],
+      "evidence": [
+        "books/owner-commit-fairness.lisp",
+        "tests/test_native_owner_scheduler.py"
+      ]
     }
   ]
 }

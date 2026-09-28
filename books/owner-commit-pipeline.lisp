@@ -103,14 +103,32 @@
             ((eq event :started-uncertain) (mv :stop :idle nil))
             (t (mv :fault :idle nil)))))))
 
+; The classes a batch in flight shuts out (fn-ocs-in-flight-admits-only-
+; inspect-commit-and-reader): control (slot 0), poster (slot 2) and transit
+; (slot 3).  W is the gate's six waiting counts.
+(defun fn-ocp-excluded-waits-p (w)
+  (declare (xargs :guard t))
+  (or (posp (fn-osch-waits 0 w)) (posp (fn-osch-waits 2 w))
+      (posp (fn-osch-waits 3 w))))
+
 ; The committer's wake while a batch is in flight: RETURNED whether the
-; syncer returned, QUEUED whether a member waits.  :collect (report the
-; sync's word in a :commit quantum), :start-next, or :wait.
-(defun fn-ocp-wake (phase next returned queued)
+; syncer returned, QUEUED whether a member waits, BLOCKED whether a class the
+; batch in flight shuts out waits at the gate.  :collect (report the sync's
+; word in a :commit quantum), :start-next, or :wait.
+;
+; Lane durability-bugs (PKT-700/701, scheduler-3's finding): with no BLOCKED
+; the pipeline under sustained POST load always had a batch in flight -- the
+; COMPLETE sealed the next batch, which a START-NEXT had prepared behind the
+; barrier -- so a control, poster or transit waiter was never admitted.  A
+; waiting shut-out class now stops the pipeline from preparing another batch:
+; the batches already sealed or open complete and the owner leaves flight,
+; where books/owner-scheduler.lisp's cyclic pick (PRF-248) serves it.  The
+; bound is books/owner-commit-fairness.lisp's.
+(defun fn-ocp-wake (phase next returned queued blocked)
   (declare (xargs :guard t))
   (cond ((not (fn-ocs-in-flight-p phase)) :wait)
         (returned :collect)
-        ((and (eq phase :staged) queued (not next)) :start-next)
+        ((and (eq phase :staged) queued (not next) (not blocked)) :start-next)
         (t :wait)))
 
 ; -----------------------------------------------------------------------------
@@ -138,10 +156,10 @@
       (mv action (fn-ocp-make (fn-ocs-make (fn-ocs-ocm ocs) phase (fn-ocs-lasti ocs))
                               next)))))
 
-(defun fn-ocp-committer-wake (s returned queued)
+(defun fn-ocp-committer-wake (s returned queued w)
   (declare (xargs :guard t))
   (fn-ocp-wake (fn-ocs-phase (fn-ocp-ocs s)) (fn-ocp-open-next s)
-               (if returned t nil) (if queued t nil)))
+               (if returned t nil) (if queued t nil) (fn-ocp-excluded-waits-p w)))
 
 ; =============================================================================
 ; Theorems.
@@ -211,9 +229,15 @@
   :rule-classes nil)
 
 (defthm fn-ocp-start-next-only-behind-a-sync
-  (implies (equal (fn-ocp-wake phase next returned queued) :start-next)
-           (and (equal phase :staged) (not next) (not returned) queued))
+  (implies (equal (fn-ocp-wake phase next returned queued blocked) :start-next)
+           (and (equal phase :staged) (not next) (not returned) queued (not blocked)))
   :rule-classes nil)
+
+; A waiting control, poster or transit request stops the pipeline: the
+; committer's wake never prepares another batch while one waits.
+(defthm fn-ocp-no-start-next-while-a-shut-out-class-waits
+  (implies (fn-ocp-excluded-waits-p w)
+           (not (equal (fn-ocp-committer-wake s returned queued w) :start-next))))
 
 ; KEYSTONE.  A next batch is open only while the ocs phase is in flight, so
 ; the gate (fn-ocs-next, fn-ocp-next-is-ocs-next) admits only :inspect,

@@ -556,9 +556,9 @@
   (mv-let (action ocp) (fn-ocp-commit-event (fn-otm-ocp s) event)
     (mv action (fn-otm-make ocp (fn-otm-disk s) (fn-otm-clock s)))))
 
-(defun fn-otm-committer-wake (s returned queued)
+(defun fn-otm-committer-wake (s returned queued w)
   (declare (xargs :guard t))
-  (fn-ocp-committer-wake (fn-otm-ocp s) returned queued))
+  (fn-ocp-committer-wake (fn-otm-ocp s) returned queued w))
 
 ; The disk's events.  Each carries the host's READING, recorded first --
 ; kept monotone: a reading below the recorded time is counted by name
@@ -1224,8 +1224,9 @@
 ; hypotheses (fn-otm-barrier-walk-okp):
 ;   - a reader waits at every pick;
 ;   - the commit class waits only when the committer's wake is :start-next
-;     (fn-ocp-committer-wake with the syncer NOT returned and a member
-;     queued: host/native/owner.lisp fnn-owner-commit-pipeline enters the
+;     (fn-ocp-committer-wake with the syncer NOT returned, a member
+;     queued and, since lane durability-bugs, no control, poster or transit
+;     request waiting at that pick: host/native/owner.lisp fnn-owner-commit-pipeline enters the
 ;     gate as :commit during a barrier only then; its COMPLETE is entered
 ;     only after the syncer returned, which is where the walk ends).
 ; The event a :commit reports is any: the bound does not depend on what the
@@ -1276,7 +1277,7 @@
       (let ((w (fn-ocs-item-w (car ws))) (class (fn-otm-walk-class s (car ws))))
         (and (fn-ocs-reader-waits-p w)
              (implies (fn-ocs-commit-waits-p w)
-                      (equal (fn-otm-committer-wake s nil t) :start-next))
+                      (equal (fn-otm-committer-wake s nil t w) :start-next))
              (or (eq class :reader)
                  (fn-otm-barrier-walk-okp (fn-otm-walk-next s (car ws)) (cdr ws)))))
     t))
@@ -1374,8 +1375,9 @@
 
 (local
  (defthm fn-otm-wake-start-next
-   (equal (equal (fn-otm-committer-wake s nil t) :start-next)
-          (and (equal (fn-otm-phase s) :staged) (not (fn-otm-open-next s))))
+   (equal (equal (fn-otm-committer-wake s nil t w) :start-next)
+          (and (equal (fn-otm-phase s) :staged) (not (fn-otm-open-next s))
+               (not (fn-ocp-excluded-waits-p w))))
    :hints (("Goal" :in-theory (enable fn-otm-committer-wake fn-ocp-committer-wake fn-ocp-wake)))))
 
 (local (in-theory (disable fn-otm-next fn-otm-commit-event fn-otm-committer-wake
