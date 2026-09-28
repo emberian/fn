@@ -5041,6 +5041,32 @@
         "tests/test_native_log_compaction.py"
       ],
       "implementation_note": "Lane operations (row N1 item 4; GPT-6's 2026-09-28 review asked that I/O leave the semantic critical section). Before: every greeting's clock observation ran statvfs under the owner mutex when a space observation was due, the checkpoint capture ran statvfs and the whole of P-ROTATE (create, fallocate, fsync, fsync journal/) under it, and a status render ran statvfs under it. Now fnn-owner-gated observes before the gate admits the quantum (ACL2's fn-otm-space-due-p decides when; the NEED ACL2 computes under the mutex is kept on the service), the status render and the drain observe before their quantum, the capture's statvfs precedes its quantum, and P-ROTATE is three programs: the spare staged in staging/ off the mutex, the rename under it, journal/'s fence off it (by the new segment's first fence before any member there is acknowledged, and by the publication before its checkpoint names the segment). The whole-state greeting cost PKT-190 was retired earlier (served-path-scale-2)."
+    },
+    {
+      "id": "HST-034",
+      "title": "Compaction without downtime: `store compact' and `store checkpoint' on a running owner are a request it answers by name (requested, coalesced, nothing-to-compact, refused while a deferral blocks) and serves by its own publication, in bounded batches off its mutex, crash-safe by the publication's cuts",
+      "specification": "specs/storage.md",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-908"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-compact-request.lisp",
+        "tests/acl2/owner-compact-request-tests.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/owner-host.lisp",
+        "host/native/admin.lisp",
+        "host/native/operator.lisp",
+        "tests/test_native_checkpoint_auto.py"
+      ],
+      "implementation_note": "Lane operations (PKT-868). The verbs opened the store under its exclusive lock, so a running owner refused them and compaction meant stop 1.1 s + compact 3.7 s + start 1.0 s on a 12k store (fitness 2026-09-28). The owner already compacts itself (the automatic publication: capture under the mutex, bounded batches off it that yield at a stop, install, T8's drop); a request is one more reason for it to be due, at any suffix, never a second in flight and never past a deferral. The verb reaches the owner as the administrative vector `compaction request' by ACL2's liveness decision; with no owner it runs offline as before. A request lives in the owner's memory: a death before its capture loses the request (never data), and the operator asks again."
     }
   ]
 }

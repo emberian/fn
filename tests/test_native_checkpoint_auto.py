@@ -377,5 +377,54 @@ class AutoCheckpointTests(AutoCheckpointFixture):
                 self.assertEqual(self.open_line(), "open=checkpoint:64 suffix=0")
 
 
+    def test_store_compact_on_the_running_owner_is_a_request_it_answers_by_name(self):
+        # PKT-868 (HST-034, SCN-200): `store compact' used to be refused
+        # while the owner ran (`store is already locked'), so compaction
+        # meant a stop.  Now the running owner answers the request by
+        # ACL2's word (books/owner-compact-request.lisp) and publishes at a
+        # suffix far below K/2 = 64, off its mutex, while it keeps serving;
+        # a second request finds nothing to compact; a death in the
+        # publication's first batch reopens with the store as it was.
+        self.init_development()
+        self.keep_log()
+        owner = self.node.start()
+        self.ids = self.post_batch(0, 10)
+        asked = self.op("store", "compact")
+        self.assertEqual(asked.returncode, EXIT_OK, asked.stderr.decode())
+        self.assertIn(b"requested", asked.stdout + asked.stderr)
+        line = self.owner_line(owner, CHECKPOINT_AUTO)
+        self.assertIsNotNone(line, "the requested publication did not run")
+        self.assertEqual(int(line.group(1)), 10)
+        # serving continued: more POSTs are answered
+        self.ids += self.post_batch(10, 2)
+        again = self.op("store", "checkpoint")
+        self.assertEqual(again.returncode, EXIT_OK, again.stderr.decode())
+        self.assertIn(b"requested", again.stdout + again.stderr)
+        line = self.owner_line(owner, CHECKPOINT_AUTO)
+        self.assertIsNotNone(line, "the second request did not publish")
+        self.assertEqual(int(line.group(1)), 12)
+        nothing = self.op("store", "compact")
+        self.assertEqual(nothing.returncode, EXIT_OK, nothing.stderr.decode())
+        self.assertIn(b"nothing-to-compact", nothing.stdout + nothing.stderr)
+        self.node.stop(process=owner)
+        self.assertEqual(self.open_line(), "open=checkpoint:12 suffix=0")
+        before = self.digest()
+        # A death in the requested publication's first batch: the old
+        # checkpoint stands and the recover sweeps the stage.
+        owner = self.node.start(env={"FN_NATIVE_CHECKPOINT_BATCH_FAULT": "0:kill"})
+        self.ids += self.post_batch(12, 3)
+        asked = self.op("store", "compact")
+        deadline = time.monotonic() + 120.0
+        while owner.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.25)
+        self.assertIsNotNone(owner.poll(), "the owner survived the batch fault")
+        self.node.stop(expect=None, process=owner)
+        self.assertEqual(self.digest(), before)
+        recovered = self.op("recover")
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr.decode())
+        self.assertEqual(self.open_line(), "open=checkpoint:12 suffix=3")
+        self.assertEqual(self.headroom()["transactions-used"], 15)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -461,6 +461,29 @@ observation into the outcome and this function only carries it out."
 ; And `fnn-command-reclaim' (`store reclaim [--dry-run | --recorded]', STO-017).
 (defvar *fnn-reclaim-callback* nil)
 
+(defun fnn-operator-execute-compaction (result root offline)
+  "PKT-868: `store compact' / `store checkpoint'.  A running owner is asked
+(ACL2's liveness decision over the socket and the lock, as for an
+administrative vector): it answers the compaction request by name and runs
+the publication itself, off its mutex (host/native/admin.lisp
+fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
+  (let* ((live *fnn-operator-live-owner*)
+         (path-list (fnn-core 'fn-native-operator-host-result-compaction-control-path-octets
+                              result))
+         (control-path (and (fnn-octet-list-p path-list) (consp path-list)
+                            (fnn-octets path-list)))
+         (liveness (if (and live control-path)
+                       (funcall (fnn-olo-admin-observe live) root path-list nil)
+                     :offline)))
+    (if (member liveness '(:live :held))
+        (multiple-value-bind (exit detail)
+            (funcall (fnn-olo-admin live) control-path
+                     (fnn-core 'fn-native-operator-host-result-compaction-argv result)
+                     liveness)
+          (when detail (fnn-out "~a" detail))
+          exit)
+      (funcall offline))))
+
 (defun fnn-operator-execute-store-action (result action)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
     (handler-case
@@ -472,11 +495,13 @@ observation into the outcome and this function only carries it out."
                        (let ((at (second (fnn-core 'fn-native-operator-result-arguments result))))
                          (fnn-command-recover root (and (stringp at)
                                                         (list "--repair" "truncate" at)))))
-                      (:compact (funcall *fnn-compact-callback* root))
+                      (:compact (fnn-operator-execute-compaction
+                                 result root (lambda () (funcall *fnn-compact-callback* root))))
                       (:reclaim (funcall *fnn-reclaim-callback* root :reclaim))
                       (:reclaim-dry-run (funcall *fnn-reclaim-callback* root :dry-run))
                       (:reclaim-recorded (funcall *fnn-reclaim-callback* root :recorded))
-                      (:checkpoint (fnn-command-state-checkpoint root))
+                      (:checkpoint (fnn-operator-execute-compaction
+                                    result root (lambda () (fnn-command-state-checkpoint root))))
                       (:rebind-filesystem
                        (fnn-command-rebind-filesystem
                         root

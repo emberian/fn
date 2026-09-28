@@ -13492,6 +13492,30 @@
         "fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed",
         "fn-lgrs-spare-name-is-swept-and-never-a-segment"
       ]
+    },
+    {
+      "id": "PRF-908",
+      "title": "An operator's compaction request makes the owner's publication due at any suffix, without a second in flight and never past a deferral",
+      "statement": "books/owner-compact-request.lisp. KEYSTONE fn-ock-requested-next-is-due-with-a-suffix: with a request, nothing in flight and no deferral blocking, fn-ock-requested-next is :due exactly when the automatic rule is due or there is a suffix past the durable checkpoint that the last attempt did not take (fn-ock-request-duep). fn-ock-requested-next-without-request: no request is the automatic decision (fn-ock-publication-next). fn-ock-requested-one-in-flight: in flight, the automatic word stands (:coalesce/:inflight). fn-ock-requested-never-past-a-deferral: :blocked stands. fn-ock-requested-word-is-the-next-due: an answer :requested is the next decision's :due. Subjects: host/owner-host.lisp fn-owner-sco-due (fnn-owner-maybe-publish-quantum) and fn-owner-sco-request (host/native/admin.lisp fnn-owner-compaction-request).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-034"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-compact-request.lisp",
+        "tests/acl2/owner-compact-request-tests.lisp"
+      ],
+      "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
+      "events": [
+        "fn-ock-requested-next-is-due-with-a-suffix",
+        "fn-ock-requested-next-without-request",
+        "fn-ock-requested-one-in-flight",
+        "fn-ock-requested-never-past-a-deferral",
+        "fn-ock-requested-word-is-the-next-due"
+      ]
     }
   ]
 }

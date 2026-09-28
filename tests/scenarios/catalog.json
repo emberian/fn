@@ -5637,6 +5637,28 @@
         ],
         "native": true
       }
+    },
+    {
+      "id": "SCN-200",
+      "title": "`store compact' on the running owner compacts without a stop, answers by name, and a death in its publication leaves the store as it was",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-034"
+      ],
+      "steps": [
+        "A development-profile store (K = 128); `run`; 10 POSTs; `operator store compact`; 2 POSTs; `operator store checkpoint`; `operator store compact`; stop; then the developer owner with FN_NATIVE_CHECKPOINT_BATCH_FAULT=0:kill, 3 POSTs, `operator store compact`; `recover`."
+      ],
+      "expected": [
+        "The first request is answered requested and the owner logs CHECKPOINT auto sequence=10 while POSTs continue; the second publishes 12; the third answers nothing-to-compact; the store opens checkpoint:12 suffix=0; the killed publication leaves the checkpoint's bytes unchanged and the recover opens checkpoint:12 suffix=3 with 15 transactions."
+      ],
+      "implementation": {
+        "test": "tests.test_native_checkpoint_auto",
+        "cases": [
+          "AutoCheckpointTests.test_store_compact_on_the_running_owner_is_a_request_it_answers_by_name"
+        ],
+        "native": true
+      }
     }
   ]
 }
