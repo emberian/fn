@@ -161,3 +161,46 @@
                  (:instance fn-scjs-ocfg-store-step-keeps-versions)
                  (:instance fn-sjh-store-step-historyp (o (fn-ocfg-owner oc)))
                  (:instance fn-oix-ocfg-step-keeps-view-indexed (event (list :store ev)))))))
+
+; -----------------------------------------------------------------------------
+; The connection events keep the store and the view.
+
+(defthm fn-sjh-okp-of-same-store-and-view
+  (implies (and (fn-sjh-okp o pending fn-arena fn-cat)
+                (equal (fn-own-store o2) (fn-own-store o))
+                (equal (fn-own-view o2) (fn-own-view o))
+                (fn-scj-invp o2 fn-arena fn-cat)
+                (fn-scj-versions-okp o2))
+           (fn-sjh-okp o2 pending fn-arena fn-cat))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(fn-sjh-okp fn-scjs-seenp fn-scjs-historyp fn-scar-view-indexedp fn-sjh-linkp))))
+
+(defthm fn-sjh-ocfg-conn-event-keeps-store-and-view
+  (implies (member-equal (car event) '(:open :open-peer :advance :close :fault))
+           (and (equal (fn-own-store (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)))
+                       (fn-own-store (fn-ocfg-owner oc)))
+                (equal (fn-own-view (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)))
+                       (fn-own-view (fn-ocfg-owner oc)))))
+  :hints (("Goal" :in-theory (e/d (fn-ocfg-step fn-ocfg-open fn-ocfg-open-peer fn-ocfg-advance
+                                   fn-ocfg-close fn-ocfg-fault fn-own-open fn-own-open-peer
+                                   fn-own-advance fn-own-advance-result fn-own-close fn-own-fault
+                                   fn-own-set-conns fn-ocfg-with-owner)
+                                  (fn-served-open-group-indexed fn-served-open-peer-group-indexed
+                                   fn-own-replace-conn fn-own-remove-conn fn-own-find-conn
+                                   fn-own-conn-make-group-indexed fn-ocfg-pin-add fn-ocfg-pin-remove
+                                   fn-ocfg-pin-set)))))
+
+; KEYSTONE (the connection events: open, open-peer, advance, close, fault
+; over fn-ocfg-step): the store and the view stay; the catalog invariant and
+; the pinned versions are sca-join-4's (fn-scj-invp-of-ocfg-step-conn-event,
+; fn-scj-versions-atmost-of-ocfg-step-conn-event); fn-sjh-okp with the same
+; pending row.
+(defthm fn-sjh-okp-of-ocfg-conn-event
+  (implies (and (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
+                (member-equal (car event) '(:open :open-peer :advance :close :fault)))
+           (fn-sjh-okp (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)) pending fn-arena fn-cat))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(fn-sjh-okp-of-same-store-and-view fn-sjh-ocfg-conn-event-keeps-store-and-view)
+           :use ((:instance fn-sjh-okp-unfolds (o (fn-ocfg-owner oc)))
+                 (:instance fn-scj-invp-of-ocfg-step-conn-event)
+                 (:instance fn-scj-versions-atmost-of-ocfg-step-conn-event)))))
