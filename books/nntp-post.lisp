@@ -59,23 +59,11 @@
 ; record blocks below are stated over them, so they are open here.
 (local (in-theory (enable fn-inj-nth fn-inj-car fn-inj-cdr)))
 ;; Rules the vocabularies above bring that this book's proofs try on every
-;; consp, true-listp and response-text goal and never use: over the whole
-;; book (accumulated-persistence, 2026-09-28, lane d26-books) they were most
-;; of its frames, fn-nntp-article-idp-is-consp alone 1.73M, useful never.
-(local (in-theory (disable fn-nntp-article-idp-is-consp
-                           fn-nntp-closed-step-has-no-effects
-                           fn-nntp-response-text-true-listp
-                           fn-nntp-message-id-tail-is-true-listp
-                           fn-nntp-message-id-token-is-response-text
-                           fn-nntp-description-text-is-response-text
-                           fn-nntp-clean-line-is-response-text
-                           fn-nntp-decimal-token-is-response-text
-                           fn-nntp-printable-token-is-response-text
-                           fn-digest-octetsp-implies-octet-listp
-                           fn-record-accepted-input-length
-                           fn-arn-payload-listp-true-listp
-                           fn-ctl-authorize-execute-is-nonempty
-                           fn-oct-bufp-true-listp)))
+;; true-listp goal and never use (accumulated-persistence, 2026-09-28, lane
+;; d26-books).  The rest of that list, fn-nntp-article-idp-is-consp (1.73M
+;; frames here) first, is now withdrawn at its source (lane rule-hygiene).
+(local (in-theory (disable fn-nntp-closed-step-has-no-effects
+                           fn-nntp-message-id-tail-is-true-listp)))
 
 ; -----------------------------------------------------------------------------
 ; The session, extended opaquely

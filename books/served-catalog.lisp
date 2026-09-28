@@ -59,12 +59,7 @@
 ; goal and never use (accumulated-persistence over the whole book,
 ; 2026-09-28, lane d26-books).  None is cited below.
 (local (in-theory (disable fn-nntp-index-msgid-okp-stringp
-                           fn-cp-id-length-bound
-                           fn-nntp-find-group-number-of-fresh-member
-                           fn-digest-octetsp-implies-octet-listp
-                           fn-wire-next-loop-event-needs-input
-                           fn-wire-next-event-needs-input
-                           fn-ctl-authorize-execute-is-nonempty)))
+                           fn-nntp-find-group-number-of-fresh-member)))
 
 ;;; The finders.
 

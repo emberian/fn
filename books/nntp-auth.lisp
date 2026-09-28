@@ -78,12 +78,7 @@
 ;; Included rules these proofs try on every true-listp, octet-list and
 ;; nonempty goal and never use (accumulated-persistence over the whole book,
 ;; 2026-09-28, lane d26-books).  None is cited below.
-(local (in-theory (disable fn-arn-payload-listp-true-listp
-                           fn-cp-idp-true-listp
-                           fn-digest-octetsp-implies-octet-listp
-                           fn-oct-bufp-true-listp
-                           fn-nntp-message-id-tail-is-true-listp
-                           fn-ctl-authorize-execute-is-nonempty)))
+(local (in-theory (disable fn-nntp-message-id-tail-is-true-listp)))
 ; The record accessors below are fn-inj-nth applications, as
 ; books/peer-inbound.lisp's are; the accessor-of-constructor lemmas cannot
 ; close without it.  Local, so no includer inherits the opening.
@@ -95,17 +90,6 @@
 ; goal about `cdr'.  Closed here, book-locally, which is where
 ; docs/proof-style.md section 8 says a record accessor belongs.
 (local (in-theory (disable fn-nntp-result-effects)))
-; Two exported rules of the NNTP books state a shape fact about a recognizer:
-; fn-nntp-article-idp-is-consp (books/nntp-invariants) and
-; fn-nntp-response-text-true-listp (books/nntp-effects).  With the syntax
-; vocabulary open above, each is tried on every `consp' and `true-listp' term
-; of a dispatch over the auth step, and relieving its hypothesis opens the
-; Message-ID grammar or the response-text scan on a term that is neither.
-; In the certify log's two role keystones they were the top of the profile
-; (560 k and 175 k useless frames of 2.3 s); no proof here reads an article
-; identifier, and none needs a response text's shape from this rule.
-(local (in-theory (disable fn-nntp-article-idp-is-consp
-                           fn-nntp-response-text-true-listp)))
 
 ; -----------------------------------------------------------------------------
 ; A credential
