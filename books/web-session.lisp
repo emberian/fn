@@ -438,14 +438,52 @@
     (fn-wss-slice s e fn-web-in)))
 
 ; Fields of the line [A, B) separated by SEP: spans (S . E).
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-wss-split-loop (a b start sep fn-web-in acc)
+  (declare (xargs :stobjs fn-web-in :measure (nfix (- b a)) :guard (and (and (natp a) (natp b) (natp start) (<= b (fn-octets-len fn-web-in))) (true-listp acc)) :verify-guards nil))
+  (cond ((or (not (natp a)) (not (natp b)) (<= b a))
+         (revappend acc (list (cons (nfix start) (nfix b)))))
+        ((equal (fn-octets-get a fn-web-in) sep)
+         (fn-wss-split-loop (1+ a)
+                            b
+                            (1+ a)
+                            sep
+                            fn-web-in
+                            (cons (cons (nfix start) a) acc)))
+        (t (fn-wss-split-loop (1+ a) b start sep fn-web-in acc))))
+
 (defun fn-wss-split (a b start sep fn-web-in)
-  (declare (xargs :stobjs fn-web-in
+  (declare (xargs :verify-guards nil :stobjs fn-web-in
                   :guard (and (natp a) (natp b) (natp start) (<= b (fn-octets-len fn-web-in)))
                   :measure (nfix (- b a))))
-  (cond ((or (not (natp a)) (not (natp b)) (<= b a)) (list (cons (nfix start) (nfix b))))
-        ((equal (fn-octets-get a fn-web-in) sep)
-         (cons (cons (nfix start) a) (fn-wss-split (1+ a) b (1+ a) sep fn-web-in)))
-        (t (fn-wss-split (1+ a) b start sep fn-web-in))))
+  (mbe :logic
+       (cond ((or (not (natp a)) (not (natp b)) (<= b a)) (list (cons (nfix start) (nfix b))))
+             ((equal (fn-octets-get a fn-web-in) sep)
+              (cons (cons (nfix start) a) (fn-wss-split (1+ a) b (1+ a) sep fn-web-in)))
+             (t (fn-wss-split (1+ a) b start sep fn-web-in)))
+       :exec (fn-wss-split-loop a b start sep fn-web-in nil)))
+
+(local
+ (defthm fn-wss-split-loop-is-revappend
+   (equal (fn-wss-split-loop a b start sep fn-web-in acc)
+          (revappend acc (fn-wss-split a b start sep fn-web-in)))
+   :hints (("Goal" :induct (fn-wss-split-loop a b start sep fn-web-in acc)
+                   :in-theory (union-theories '(fn-wss-split-loop fn-wss-split revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-wss-split-loop)
+
+(verify-guards fn-wss-split
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-wss-split)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-wss-split-loop-is-revappend (acc nil))))))
+
 
 (defun fn-wss-spanp (x n)
   (declare (xargs :guard t))
@@ -695,32 +733,139 @@
         (fn-wss-find token (cdr sessions) now idle))
     nil))
 
-(defun fn-wss-drop (token sessions)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-wss-drop-loop (token sessions acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp sessions)
       (if (equal (fn-wss-s-token (car sessions)) token)
-          (fn-wss-drop token (cdr sessions))
-        (cons (car sessions) (fn-wss-drop token (cdr sessions))))
-    nil))
+          (fn-wss-drop-loop token (cdr sessions) acc)
+        (fn-wss-drop-loop token (cdr sessions) (cons (car sessions) acc)))
+    (revappend acc nil)))
+
+(defun fn-wss-drop (token sessions)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp sessions)
+           (if (equal (fn-wss-s-token (car sessions)) token)
+               (fn-wss-drop token (cdr sessions))
+             (cons (car sessions) (fn-wss-drop token (cdr sessions))))
+         nil)
+       :exec (fn-wss-drop-loop token sessions nil)))
+
+(local
+ (defthm fn-wss-drop-loop-is-revappend
+   (equal (fn-wss-drop-loop token sessions acc)
+          (revappend acc (fn-wss-drop token sessions)))
+   :hints (("Goal" :induct (fn-wss-drop-loop token sessions acc)
+                   :in-theory (union-theories '(fn-wss-drop-loop fn-wss-drop revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-wss-drop-loop)
+
+(verify-guards fn-wss-drop
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-wss-drop)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-wss-drop-loop-is-revappend (acc nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-wss-touch-loop (token sessions now acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp sessions)
+      (if (equal (fn-wss-s-token (car sessions)) token)
+          (fn-wss-touch-loop token
+                             (cdr sessions)
+                             now
+                             (cons (fn-wss-session token
+                                                   (fn-wss-s-cid (car sessions))
+                                                   (fn-wss-s-login (car sessions))
+                                                   (fn-wss-s-csrf (car sessions))
+                                                   now)
+                                   acc))
+        (fn-wss-touch-loop token (cdr sessions) now (cons (car sessions) acc)))
+    (revappend acc nil)))
 
 (defun fn-wss-touch (token sessions now)
-  (declare (xargs :guard t))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp sessions)
+           (if (equal (fn-wss-s-token (car sessions)) token)
+               (cons (fn-wss-session token (fn-wss-s-cid (car sessions)) (fn-wss-s-login (car sessions))
+                                     (fn-wss-s-csrf (car sessions)) now)
+                     (fn-wss-touch token (cdr sessions) now))
+             (cons (car sessions) (fn-wss-touch token (cdr sessions) now)))
+         nil)
+       :exec (fn-wss-touch-loop token sessions now nil)))
+
+(local
+ (defthm fn-wss-touch-loop-is-revappend
+   (equal (fn-wss-touch-loop token sessions now acc)
+          (revappend acc (fn-wss-touch token sessions now)))
+   :hints (("Goal" :induct (fn-wss-touch-loop token sessions now acc)
+                   :in-theory (union-theories '(fn-wss-touch-loop fn-wss-touch revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-wss-touch-loop)
+
+(verify-guards fn-wss-touch
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-wss-touch)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-wss-touch-loop-is-revappend (acc nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-wss-expired-loop (sessions now idle acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp sessions)
-      (if (equal (fn-wss-s-token (car sessions)) token)
-          (cons (fn-wss-session token (fn-wss-s-cid (car sessions)) (fn-wss-s-login (car sessions))
-                                (fn-wss-s-csrf (car sessions)) now)
-                (fn-wss-touch token (cdr sessions) now))
-        (cons (car sessions) (fn-wss-touch token (cdr sessions) now)))
-    nil))
+      (if (fn-wss-livep (car sessions) now idle)
+          (fn-wss-expired-loop (cdr sessions) now idle acc)
+        (fn-wss-expired-loop (cdr sessions) now idle (cons (car sessions) acc)))
+    (revappend acc nil)))
 
 (defun fn-wss-expired (sessions now idle)
   ; The sessions past their idle time.
-  (declare (xargs :guard t))
-  (if (consp sessions)
-      (if (fn-wss-livep (car sessions) now idle)
-          (fn-wss-expired (cdr sessions) now idle)
-        (cons (car sessions) (fn-wss-expired (cdr sessions) now idle)))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp sessions)
+           (if (fn-wss-livep (car sessions) now idle)
+               (fn-wss-expired (cdr sessions) now idle)
+             (cons (car sessions) (fn-wss-expired (cdr sessions) now idle)))
+         nil)
+       :exec (fn-wss-expired-loop sessions now idle nil)))
+
+(local
+ (defthm fn-wss-expired-loop-is-revappend
+   (equal (fn-wss-expired-loop sessions now idle acc)
+          (revappend acc (fn-wss-expired sessions now idle)))
+   :hints (("Goal" :induct (fn-wss-expired-loop sessions now idle acc)
+                   :in-theory (union-theories '(fn-wss-expired-loop fn-wss-expired revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-wss-expired-loop)
+
+(verify-guards fn-wss-expired
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-wss-expired)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-wss-expired-loop-is-revappend (acc nil))))))
+
 
 (defun fn-wss-live (sessions now idle)
   (declare (xargs :guard t))
@@ -903,13 +1048,48 @@
   (declare (xargs :guard t))
   (append (fn-wrq-join words (list 32)) (list 13 10)))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-wss-one-line-loop (xs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp xs)
+      (fn-wss-one-line-loop (cdr xs)
+                            (cons (if (member (car xs) '(13 10 9 0))
+                                      32
+                                    (fn-wss-octet (car xs)))
+                                  acc))
+    (revappend acc nil)))
+
 (defun fn-wss-one-line (xs)
   ; A header value from form text: CR, LF and TAB become SP.
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (cons (if (member (car xs) '(13 10 9 0)) 32 (fn-wss-octet (car xs)))
-            (fn-wss-one-line (cdr xs)))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp xs)
+           (cons (if (member (car xs) '(13 10 9 0)) 32 (fn-wss-octet (car xs)))
+                 (fn-wss-one-line (cdr xs)))
+         nil)
+       :exec (fn-wss-one-line-loop xs nil)))
+
+(local
+ (defthm fn-wss-one-line-loop-is-revappend
+   (equal (fn-wss-one-line-loop xs acc)
+          (revappend acc (fn-wss-one-line xs)))
+   :hints (("Goal" :induct (fn-wss-one-line-loop xs acc)
+                   :in-theory (union-theories '(fn-wss-one-line-loop fn-wss-one-line revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-wss-one-line-loop)
+
+(verify-guards fn-wss-one-line
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-wss-one-line)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-wss-one-line-loop-is-revappend (acc nil))))))
+
 
 (defun fn-wss-asciip (xs)
   (declare (xargs :guard t))

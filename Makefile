@@ -8,6 +8,7 @@ FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
 	books/defkeystone \
 	books/deftransition \
+	books/rev-onto \
 	books/acceptance-alloc \
 	tests/acl2/defrecord-tests \
 	tests/acl2/defkeystone-tests \
@@ -257,6 +258,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-checkpoint-arena-tests \
 	books/heap-store-figure \
 	books/heap-figure \
+	books/heap-open-nursery \
+	tests/acl2/heap-open-nursery-tests \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
 	tests/acl2/heap-figure-tests \
@@ -1021,6 +1024,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/ideal \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
+	tests/acl2/serve-depth-tests \
 	books/nntp-index-runtime \
 	books/group-number-index \
 	books/group-bucket-index \
@@ -1084,7 +1088,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-columns-relation-tests \
 	tests/acl2/history-columns-tests \
 	books/pagestore-words \
-	books/pagestore-words-sha \
+	books/pagestore-words-blake3 \
 	books/pagestore \
 	books/pagestore-keystones \
 	books/pagestore-reclaim \
@@ -1366,6 +1370,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/proto-adt-2-tests \
 	books/history-pages \
 	tests/acl2/history-pages-tests \
+	tests/acl2/history-pages-digest-tests \
 	books/history-pages-words \
 	books/history-pages-exec \
 	books/history-pages-row \
@@ -1379,7 +1384,21 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-pages-placed \
 	books/history-pages-nest \
 	books/history-pages-placed-write \
-	tests/acl2/history-pages-placed-tests
+	tests/acl2/history-pages-placed-tests \
+	books/history-pages-grow \
+	books/history-pages-grow-cap \
+	books/history-pages-grow-append \
+	books/history-pages-relocate \
+	tests/acl2/history-pages-relocate-tests \
+	books/history-pages-append-grown \
+	books/history-pages-grow-then-append \
+	tests/acl2/history-pages-grow-then-append-tests \
+	tests/acl2/history-pages-grow-five-tests \
+	books/history-pages-step \
+	books/history-pages-import \
+	books/history-pages-view \
+	tests/acl2/history-pages-step-tests \
+	tests/acl2/history-pages-import-tests
 
 .PHONY: extract-check site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
@@ -1553,6 +1572,18 @@ check:
 # A retained payload is a HANDLE (books/payload-kinds.lisp); every definition
 # that reads one declares which kind it takes (lane entry-guards, 2026-09-27).
 	@$(CHECK_STEP) $(PYTHON) tools/payload_kind_check.py
+# Every node thread runs on a 1,024 KiB control stack, and a non-tail
+# recursion costs a frame per step: LIST ACTIVE and GROUP stopped the owner
+# past ~30,000 articles in fn-nntp-group-low (PKT-877), the open in
+# fn-retain-obligation-ids (PKT-876).  This lists every non-tail recursion on
+# the host-called closure (the functions a raw host file names and what they
+# execute, mbe :exec branches only) and fails on one tools/depth_baseline.json
+# does not classify: "bounded" names its bound, "debt" (a walk whose depth is
+# an article count, a group's articles, a history, a queue or an octet count)
+# only shrinks.  Source-level, no ACL2; the extractor agreed (604 of 604, then 383 of 383) at
+# lane serve-depth's head.
+	@$(CHECK_STEP) $(PYTHON) tools/depth_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_depth_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make

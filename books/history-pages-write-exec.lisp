@@ -101,20 +101,39 @@
     (cons (+ (car lens) (car dl)) (fn-hp-x-add (cdr lens) (cdr dl)))))
 
 (defun fn-hp-x-caps-ok (lens lens2)
-  ; every region word-aligned and none changes its cap
+  ; every region word-aligned and none changes its cap (the canonical
+  ; model's condition, `fn-hp-deltas-ok-from-checks'; the writer checks the
+  ; placement instead)
   (declare (xargs :guard (and (nat-listp lens) (nat-listp lens2))))
   (if (or (atom lens) (atom lens2)) t
     (and (equal (mod (car lens) 8) 0)
          (equal (adt-cap (car lens2)) (adt-cap (car lens)))
          (fn-hp-x-caps-ok (cdr lens) (cdr lens2)))))
 
-(defun fn-hp-x-grow-region (r lens lens2)
-  ; the first region whose cap changes, counted from R
-  (declare (xargs :guard (and (natp r) (nat-listp lens) (nat-listp lens2))))
-  (if (or (atom lens) (atom lens2)) r
-    (if (equal (adt-cap (car lens2)) (adt-cap (car lens)))
-        (fn-hp-x-grow-region (+ 1 r) (cdr lens) (cdr lens2))
-      r)))
+(defun fn-hp-x-mix (k lens lens2)
+  ; the first K regions at their new lengths LENS2, the rest at LENS
+  (declare (xargs :guard (and (natp k) (true-listp lens) (true-listp lens2))))
+  (if (or (zp k) (atom lens) (atom lens2)) lens
+    (cons (car lens2) (fn-hp-x-mix (1- k) (cdr lens) (cdr lens2)))))
+
+(defthm fn-hp-nat-listp-x-mix
+  (implies (and (nat-listp lens) (nat-listp lens2)) (nat-listp (fn-hp-x-mix k lens lens2))))
+
+(defun fn-hp-x-unfit (k starts lens lens2 np)
+  ; the first region, from K, that does not fit at its new length when
+  ; every region before it is at its new length too: region K when
+  ; (fn-hp-x-mix K+1 ...) is not placed at STARTS in NP pages (the length
+  ; of LENS when none is)
+  (declare (xargs :guard (and (natp k) (nat-listp starts) (nat-listp lens) (nat-listp lens2) (natp np))
+                  :measure (nfix (- (len lens) (nfix k)))))
+  (if (or (not (natp k)) (<= (len lens) k)) (nfix k)
+    (if (adt-placement-ok starts (fn-hp-x-mix (+ 1 k) lens lens2) np)
+        (fn-hp-x-unfit (+ 1 k) starts lens lens2 np)
+      k)))
+
+(defthm fn-hp-natp-x-unfit
+  (natp (fn-hp-x-unfit k starts lens lens2 np))
+  :rule-classes :type-prescription)
 
 (defun fn-hp-bb-list (starts lens wls)
   ; per region its block: its words WL at the region's end
@@ -188,17 +207,25 @@
   (true-listp (fn-scc-encode x))
   :rule-classes :type-prescription)
 
-(defun fn-hp-x-append-plan (ev salt n lens starts)
+(defun fn-hp-x-append-plan (ev salt n lens starts np)
   ; The append's checks and blocks, changing nothing: (mv VERDICT BLOCKS
   ; LENS2), VERDICT nil when BLOCKS are to be written, else
-  ;   (:grow R)           region R's cap would change (the growth path
-  ;                       relocates the region, FNADTSN2)
-  ;   (:refused REASON)   :event (not encodable), :alignment, :out-of-range
+  ;   (:grow R C)         the new lengths LENS2 are not placed at STARTS in
+  ;                       NP pages: R = `fn-hp-x-unfit', the first region
+  ;                       whose new cap does not fit, C its new cap; the
+  ;                       host relocates it (`fn-hp-x-relocate' R C) and
+  ;                       asks again.  A cap that grows and still fits
+  ;                       grows in place.
+  ;   (:refused REASON)   :event (not encodable), :alignment, :placement
+  ;                       (LENS not placed at STARTS in NP pages: not the
+  ;                       header of an image), :out-of-range (a header
+  ;                       word, or the appended history's canonical image
+  ;                       size, past 64 bits)
   (declare (xargs :guard (and (natp n) (nat-listp lens) (equal (len lens) 5)
-                              (nat-listp starts) (equal (len starts) 5))
-                  :guard-hints (("Goal" :in-theory (disable fn-scc-encode fn-hp-pad8 fn-hp-x-caps-ok adt-cap
+                              (nat-listp starts) (equal (len starts) 5) (natp np))
+                  :guard-hints (("Goal" :in-theory (disable fn-scc-encode fn-hp-pad8 adt-cap adt-placement-ok
                                                             fn-hp-hb fn-hp-pack8 floor mod fn-hp-x-blocks
-                                                            fn-hp-x-grow-region fn-sccb-treep fn-hp-mkey
+                                                            fn-hp-x-unfit fn-sccb-treep fn-hp-mkey
                                                             fn-hp-u64-listp fn-scc-program fn-hp-x-aligned)))))
   (if (not (fn-sccb-treep ev))
       (mv (list :refused :event) nil lens)
@@ -209,9 +236,13 @@
                (lens2 (fn-hp-x-add lens (list 8 8 8 8 plen))))
           (cond ((not (fn-hp-x-aligned lens))
                  (mv (list :refused :alignment) nil lens))
-                ((not (fn-hp-x-caps-ok lens lens2))
-                 (mv (list :grow (fn-hp-x-grow-region 0 lens lens2)) nil lens))
-                ((not (and (unsigned-byte-p 64 (+ 1 n)) (fn-hp-u64-listp lens2) (fn-hp-u64-listp starts)))
+                ((not (adt-placement-ok starts lens np))
+                 (mv (list :refused :placement) nil lens))
+                ((not (adt-placement-ok starts lens2 np))
+                 (let ((r (fn-hp-x-unfit 0 starts lens lens2 np)))
+                   (mv (list :grow r (adt-cap (nfix (nth r lens2)))) nil lens)))
+                ((not (and (unsigned-byte-p 64 (+ 1 n)) (fn-hp-u64-listp lens2) (fn-hp-u64-listp starts)
+                           (unsigned-byte-p 64 (* 16384 (adt-end-l lens2 1)))))
                  (mv (list :refused :out-of-range) nil lens))
                 (t (mv nil
                        (fn-hp-x-blocks n lens lens2 starts (fn-hp-mkey ev salt) tl
@@ -219,27 +250,29 @@
                        lens2))))))))
 
 (defthm fn-hp-alistp-x-append-plan
-  (alistp (mv-nth 1 (fn-hp-x-append-plan ev salt n lens starts)))
-  :hints (("Goal" :in-theory (disable fn-hp-x-blocks fn-scc-encode fn-hp-pad8 fn-hp-x-caps-ok fn-hp-pack8 fn-scc-program fn-sccb-treep))))
+  (alistp (mv-nth 1 (fn-hp-x-append-plan ev salt n lens starts np)))
+  :hints (("Goal" :in-theory (disable fn-hp-x-blocks fn-scc-encode fn-hp-pad8 adt-placement-ok fn-hp-x-unfit fn-hp-pack8 fn-scc-program fn-sccb-treep))))
 
-(defun fn-hp-x-append (ev salt n lens starts pgs-mem)
+(defun fn-hp-x-append (ev salt n lens starts np pgs-mem)
   ; The append of the event EV, as the host calls it, over the open's header
-  ; answer (N LENS STARTS) the host carries: (mv VERDICT N2 LENS2 pgs-mem).
+  ; answer (N LENS STARTS NP) the host carries: (mv VERDICT N2 LENS2 pgs-mem).
   ;   :ok                 the six blocks are written into the page store's
   ;                       words and their pages marked dirty; (N2 LENS2
-  ;                       STARTS) is the new header answer to carry
+  ;                       STARTS NP) is the new header answer to carry (a
+  ;                       region whose cap grew grew in place)
   ;   (:need-table T P) / (:need-page P PHYS) / :out-of-range
   ;                       a page a block touches is not ready: nothing
   ;                       written; the host fills it and asks again
-  ;   (:grow R), (:refused REASON)   as `fn-hp-x-append-plan': nothing written
+  ;   (:grow R C), (:refused REASON)   as `fn-hp-x-append-plan': nothing
+  ;                       written
   ; Every write lands on a verified page: the check precedes every write.
   (declare (xargs :stobjs pgs-mem
                   :guard (and (natp n) (nat-listp lens) (equal (len lens) 5)
-                              (nat-listp starts) (equal (len starts) 5))
+                              (nat-listp starts) (equal (len starts) 5) (natp np))
                   :guard-hints (("Goal" :in-theory (disable fn-hp-x-append-plan fn-hp-x-blocks-ready
                                                             fn-hp-x-put-blocks)))))
   (mv-let (verdict blocks lens2)
-    (fn-hp-x-append-plan ev salt n lens starts)
+    (fn-hp-x-append-plan ev salt n lens starts np)
     (if verdict
         (mv verdict n lens pgs-mem)
       (let ((v (fn-hp-x-blocks-ready blocks pgs-mem)))

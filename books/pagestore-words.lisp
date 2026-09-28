@@ -1,10 +1,19 @@
 ;; fn: the page store's word layer (lane arena-store, 2026-09-27).  Prefix pgs-.
 ;;
 ;; The stobj the host fills and drains with its two byte primitives
-;; (host/native/proto-pagestore-io.lisp), and SHA-256 over a range of its
-;; little-endian u64 words with books/sha256-stobj.lisp's compression.  Split
-;; out of books/pagestore.lisp so that the word digest's correspondence
-;; to `fn-sha256' (A-PGS-OBSERVE's SHA part) is proved against a frozen book.
+;; (host/native/proto-pagestore-io.lisp), and the page digest: BLAKE3 over
+;; the little-endian octets of a range of its u64 words (lane arena-store-4,
+;; 2026-09-28; SHA-256 until then).  The words are copied into the page
+;; store's own octet buffer `fn-octets-pg' (congruent to fn-octets,
+;; books/octets-stobj.lisp), two u32 halves at a time, and hashed in place by
+;; books/blake3-stobj.lisp's `fn-blake3-of-prefixed-buffer'.  Work and
+;; allocation are those of the range: a page is 16 KiB, a directory run as
+;; many pages as it has, and the buffer is reused across calls (cleared, not
+;; reallocated).  BLAKE3 is the digest `fn-digest' is attached to
+;; (books/crypto-attach.lisp attaches `fn-blake3-stobj', proved equal to
+;; `fn-blake3'); the correspondence to `fn-blake3'
+;; (`pgs-x-words-digest-is-blake3') is proved in
+;; books/pagestore-words-blake3.lisp against this frozen book.
 ;;
 ;; The arrays (all (unsigned-byte 64), resizable):
 ;;   pgs-w   the resident image: logical page I is words [I*W, (I+1)*W),
@@ -18,7 +27,7 @@
 ;; A word range is named by a selector SEL: 0 the image, 1 the metadata,
 ;; 2 the table pages (`pgs-x-len', `pgs-x-word').
 (in-package "ACL2")
-(include-book "sha256-stobj")
+(include-book "blake3-stobj")
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
 (local (include-book "arithmetic/top" :dir :system))
 
@@ -217,75 +226,65 @@
 (defconst *pgs-magic* #x31544D4353504E46)   ; "FNPSCMT1", little-endian
 (defconst *pgs-rec-words* 20)             ; 16 body words, 4 check words
 
-; -----------------------------------------------------------------------------
-; The fn-shs facts this section needs (sha256-stobj keeps its own local;
-; restated here, as the retired sha256-buffer book restated them).
-
 (local (in-theory (disable floor mod truncate rem ash)))
 
-(local
- (defthm pgs-shs-wp-of-update-nth
-   (implies (and (fn-shs-wp w) (natp i) (< i (len w)) (unsigned-byte-p 32 v))
-            (fn-shs-wp (update-nth i v w)))
-   :hints (("Goal" :in-theory (enable update-nth)))))
+; -----------------------------------------------------------------------------
+; The digest's octet buffer: the page store's own live object, congruent to
+; fn-octets (the served attempt's buffer and the log walk's are never
+; touched by a page digest).
 
-(local
- (defthm pgs-shs-hp-of-update-nth
-   (implies (and (fn-shs-hp h) (natp i) (< i (len h)) (unsigned-byte-p 32 v))
-            (fn-shs-hp (update-nth i v h)))
-   :hints (("Goal" :in-theory (enable update-nth)))))
+(defabsstobj fn-octets-pg
+  :foundation fn-octets$c
+  :recognizer (fn-octets-pg-p :logic fn-octets$ap :exec fn-octets$cp)
+  :creator (create-fn-octets-pg :logic create-fn-octets$a :exec create-fn-octets$c)
+  :exports ((fn-octets-pg-len :logic fn-octets$a-len :exec fn-octets$c-len)
+            (fn-octets-pg-get :logic fn-octets$a-get :exec fn-octets$c-get)
+            (fn-octets-pg-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
+            (fn-octets-pg-append-octet :logic fn-octets$a-append-octet
+                                       :exec fn-octets$c-append-octet :protect t)
+            (fn-octets-pg-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
+            (fn-octets-pg-reserve :logic fn-octets$a-reserve :exec fn-octets$c-reserve
+                                  :protect t)
+            (fn-octets-pg-list :logic fn-octets$a-list :exec fn-octets$c-list)
+            (fn-octets-pg-from-list :logic fn-octets$a-from-list
+                                    :exec fn-octets$c-from-list :protect t)
+            (fn-octets-pg-append-list :logic fn-octets$a-append-list
+                                      :exec fn-oct-write-list :protect t)
+            (fn-octets-pg-append-back :logic fn-octets$a-append-back
+                                      :exec fn-octets$c-append-back :protect t)
+            (fn-octets-pg-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
+            (fn-octets-pg-append-word :logic fn-octets$a-append-word
+                                      :exec fn-octets$c-append-word :protect t))
+  :congruent-to fn-octets)
 
-(local
- (defthm pgs-len-of-update-nth
-   (equal (len (update-nth i v l))
-          (max (+ 1 (nfix i)) (len l)))
-   :hints (("Goal" :in-theory (enable update-nth)))))
+(defthm pgs-oct-clear-is-nil
+  (equal (fn-octets-pg-clear fn-octets-pg) nil)
+  :hints (("Goal" :in-theory (enable fn-octets-pg-clear))))
 
-(local (in-theory (disable nth update-nth)))
+(defthm pgs-oct-append-word-is-append
+  (equal (fn-octets-pg-append-word w k fn-octets-pg)
+         (append fn-octets-pg (fn-oct-word-octets w k)))
+  :hints (("Goal" :in-theory (enable fn-octets-pg-append-word))))
 
-(defthm pgs-shs-p-of-update-w
-   (implies (and (fn-shs-p fn-shs) (natp i) (< i 64) (unsigned-byte-p 32 v))
-            (fn-shs-p (update-nth 0 (update-nth i v (nth 0 fn-shs)) fn-shs)))
-   :hints (("Goal" :do-not-induct t)))
+(defthm pgs-oct-list-is-identity
+  (equal (fn-octets-pg-list fn-octets-pg) fn-octets-pg)
+  :hints (("Goal" :in-theory (enable fn-octets-pg-list))))
 
-(defthm pgs-shs-p-of-update-h
-   (implies (and (fn-shs-p fn-shs) (natp i) (< i 8) (unsigned-byte-p 32 v))
-            (fn-shs-p (update-nth 1 (update-nth i v (nth 1 fn-shs)) fn-shs)))
-   :hints (("Goal" :do-not-induct t)))
+(defthm pgs-oct-p-is-octet-listp
+  (equal (fn-octets-pg-p x) (fn-cbor-octet-listp x))
+  :hints (("Goal" :in-theory (enable fn-octets-pg-p))))
 
-(defthm pgs-shs-p-parts
-   (implies (fn-shs-p fn-shs)
-            (and (fn-shs-wp (nth 0 fn-shs))
-                 (equal (len (nth 0 fn-shs)) 64)
-                 (fn-shs-hp (nth 1 fn-shs))
-                 (equal (len (nth 1 fn-shs)) 8))))
+(in-theory (disable fn-octets-pg-p fn-octets-pg-clear fn-octets-pg-append-word fn-octets-pg-list))
 
-(defthm pgs-shs-p-of-h-init
-   (implies (and (fn-shs-p fn-shs) (natp i) (fn-shs-word-listp hs))
-            (fn-shs-p (fn-shs-h-init i hs fn-shs)))
-   :hints (("Goal" :in-theory (e/d (fn-shs-h-init fn-shs-word-listp) (fn-shs-p)))))
-
-(defthm pgs-shs-p-of-extend
-   (implies (and (fn-shs-p fn-shs) (natp t0))
-            (fn-shs-p (fn-shs-extend t0 fn-shs)))
-   :hints (("Goal" :in-theory (e/d (fn-shs-extend fn-shs-sched-word$inline) (fn-shs-p)))))
-
-(defthm pgs-shs-p-of-h-add
-   (implies (and (fn-shs-p fn-shs) (natp i))
-            (fn-shs-p (fn-shs-h-add i regs fn-shs)))
-   :hints (("Goal" :in-theory (e/d (fn-shs-h-add fn-shs-add$inline) (fn-shs-p)))))
-
-(defthm pgs-shs-p-of-compress-loaded
-   (implies (fn-shs-p fn-shs)
-            (fn-shs-p (fn-shs-compress-loaded fn-shs)))
-   :hints (("Goal" :in-theory (e/d (fn-shs-compress-loaded) (fn-shs-p)))))
-
-(local (in-theory (disable fn-shs-p)))
+; The buffer's concrete-array rules (books/octets-stobj.lisp) are about its
+; foundation, never about the page store's lists, and backchaining through
+; them on every `true-listp' more than doubled pagestore-keystones' prover
+; steps: out of the page store's theory.
+(in-theory (disable fn-oct-bufp-true-listp fn-oct-bufp-cell-is-octet fn-oct-bufp-of-update-nth
+                    fn-oct-bufp-of-resize-list fn-octets$c-bufp))
 
 ; -----------------------------------------------------------------------------
-; SHA-256 over words: the octets of a word range, each word little-endian.
-; The message is 8*NW octets (NW a multiple of 8, so whole 64-octet
-; blocks); the padding is one more block.
+; BLAKE3 over words: the octets of a word range, each word little-endian.
 
 (defun-inline pgs-x-len (sel pgs-mem)
   ; The length of the word array SEL names: 1 the metadata, 2 the table
@@ -303,35 +302,6 @@
     (1 (pgs-mi i pgs-mem))
     (2 (pgs-ti i pgs-mem))
     (otherwise (pgs-wi i pgs-mem))))
-
-(defun-inline pgs-sw (x)
-  ; The big-endian SHA word of the four octets of X, low octet first.
-  (declare (type (unsigned-byte 32) x)
-           (xargs :guard-hints (("Goal" :in-theory (enable mod ash)))))
-  (fn-shs-be-word (mod x 256) (mod (ash x -8) 256)
-                  (mod (ash x -16) 256) (mod (ash x -24) 256)))
-
-(defthm pgs-u32-of-be-word
-  (unsigned-byte-p 32 (fn-shs-be-word a b c d))
-  :hints (("Goal" :in-theory (enable fn-shs-be-word$inline fn-sha256-w32))))
-
-(local (defthm pgs-u32-of-lo
-  (implies (unsigned-byte-p 64 w)
-           (unsigned-byte-p 32 (mod w 4294967296)))
-  :hints (("Goal" :in-theory (enable unsigned-byte-p mod)))))
-
-(local (defthm pgs-u32-of-hi
-  (implies (unsigned-byte-p 64 w)
-           (unsigned-byte-p 32 (floor w 4294967296)))
-  :hints (("Goal" :in-theory (enable unsigned-byte-p)
-                  :nonlinearp t))))
-
-(defthm pgs-u32-of-sw
-  (unsigned-byte-p 32 (pgs-sw x))
-  :hints (("Goal" :in-theory (e/d (pgs-sw$inline) (fn-shs-be-word$inline unsigned-byte-p))
-                  :use ((:instance pgs-u32-of-be-word
-                                   (a (mod x 256)) (b (mod (ash x -8) 256))
-                                   (c (mod (ash x -16) 256)) (d (mod (ash x -24) 256)))))))
 
 (local (defthm pgs-wp-nth
   (implies (and (pgs-wp l) (natp i) (< i (len l)))
@@ -377,147 +347,73 @@
                  (:type-prescription :corollary (natp (pgs-hi32 w)))
                  (:linear :corollary (< (pgs-hi32 w) 4294967296))))
 
-(defthm pgs-u32-of-sw-linear
-  (and (natp (pgs-sw x)) (< (pgs-sw x) 4294967296))
-  :hints (("Goal" :use pgs-u32-of-sw :in-theory (disable pgs-u32-of-sw)))
-  :rule-classes ((:type-prescription :corollary (natp (pgs-sw x)))
-                 (:linear :corollary (< (pgs-sw x) 4294967296))))
+(in-theory (disable pgs-x-word$inline pgs-lo32$inline pgs-hi32$inline))
 
-(in-theory (disable pgs-sw$inline pgs-x-word$inline pgs-lo32$inline pgs-hi32$inline))
+(defun pgs-octets-be-nat-acc (os acc)
+  (declare (xargs :guard (natp acc)))
+  (if (consp os)
+      (pgs-octets-be-nat-acc (cdr os) (+ (* 256 (nfix acc)) (nfix (car os))))
+    (nfix acc)))
 
-(defun pgs-load-half (j x fn-shs)
-  ; Schedule word J (0..15) from the 32-bit half X of a message word.
-  (declare (xargs :stobjs fn-shs
-                  :guard (and (natp j) (< j 16) (unsigned-byte-p 32 x))))
-  (fn-shs-w-set j (pgs-sw x) fn-shs))
+(defun pgs-octets-be-nat (os)
+  ; The natural whose big-endian octets OS are: the 256-bit digest the
+  ; table entries and records hold as four words.
+  (declare (xargs :guard t))
+  (pgs-octets-be-nat-acc os 0))
 
-(defthm pgs-shs-p-of-load-half
-  (implies (and (fn-shs-p fn-shs) (natp j) (< j 16))
-           (fn-shs-p (pgs-load-half j x fn-shs))))
-
-(in-theory (disable pgs-load-half))
-
-(defun pgs-load-block (k sel base pgs-mem fn-shs)
-  ; Message words BASE..BASE+7 into schedule words 0..15.
-  (declare (xargs :stobjs (pgs-mem fn-shs)
-                  :guard (and (natp k) (<= k 8) (natp base)
-                              (<= (+ base 8)
-                                  (pgs-x-len sel pgs-mem)))
-                  :measure (nfix (- 8 (nfix k)))))
-  (if (mbe :logic (zp (- 8 (nfix k))) :exec (= k 8))
-      fn-shs
+(defun pgs-x-words-load (k n sel base pgs-mem fn-octets-pg)
+  ; Append the little-endian octets of words [BASE + K, BASE + N) of the
+  ; array SEL names to the buffer, each word as its low and high halves.
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg)
+                  :guard (and (natp k) (natp n) (natp base) (<= k n)
+                              (<= (+ base n) (pgs-x-len sel pgs-mem)))
+                  :measure (nfix (- (nfix n) (nfix k)))))
+  (if (mbe :logic (zp (- (nfix n) (nfix k))) :exec (= k n))
+      fn-octets-pg
     (let* ((w (pgs-x-word sel (+ base k) pgs-mem))
-           (fn-shs (pgs-load-half (* 2 k) (pgs-lo32 w) fn-shs))
-           (fn-shs (pgs-load-half (+ 1 (* 2 k)) (pgs-hi32 w) fn-shs)))
-      (pgs-load-block (+ 1 (nfix k)) sel base pgs-mem fn-shs))))
+           (fn-octets-pg (fn-octets-pg-append-word (pgs-lo32 w) 4 fn-octets-pg))
+           (fn-octets-pg (fn-octets-pg-append-word (pgs-hi32 w) 4 fn-octets-pg)))
+      (pgs-x-words-load (+ 1 (nfix k)) n sel base pgs-mem fn-octets-pg))))
 
-(defthm pgs-shs-p-of-load-block
-  (implies (and (fn-shs-p fn-shs) (natp k))
-           (fn-shs-p (pgs-load-block k sel base pgs-mem fn-shs))))
+(defthm pgs-oct-p-of-words-load
+  (implies (fn-octets-pg-p fn-octets-pg)
+           (fn-octets-pg-p (pgs-x-words-load k n sel base pgs-mem fn-octets-pg))))
 
-(in-theory (disable pgs-load-block))
+(in-theory (disable pgs-x-words-load))
 
-(defun pgs-blocks (b nb sel base pgs-mem fn-shs)
-  (declare (xargs :stobjs (pgs-mem fn-shs)
-                  :guard (and (natp b) (natp nb) (natp base) (<= b nb)
+(defun pgs-x-words-digest (sel base nb pgs-mem fn-octets-pg)
+  ; BLAKE3 of the 64*NB octets of words [BASE, BASE + 8*NB), as the
+  ; big-endian natural of its 32 octets: (mv DIGEST fn-octets-pg).
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg)
+                  :guard (and (natp base) (natp nb)
                               (<= (+ base (* 8 nb))
-                                  (pgs-x-len sel pgs-mem)))
-                  :measure (nfix (- (nfix nb) (nfix b)))))
-  (if (mbe :logic (zp (- (nfix nb) (nfix b))) :exec (= b nb))
-      fn-shs
-    (let* ((fn-shs (pgs-load-block 0 sel (+ base (* 8 b)) pgs-mem fn-shs))
-           (fn-shs (fn-shs-compress-loaded fn-shs)))
-      (pgs-blocks (+ 1 (nfix b)) nb sel base pgs-mem fn-shs))))
-
-(defthm pgs-shs-p-of-blocks
-  (implies (fn-shs-p fn-shs)
-           (fn-shs-p (pgs-blocks b nb sel base pgs-mem fn-shs))))
-
-(in-theory (disable pgs-blocks))
-
-(defun pgs-zero-w (j fn-shs)
-  (declare (xargs :stobjs fn-shs :guard (and (natp j) (<= j 14))
-                  :measure (nfix (- 14 (nfix j)))))
-  (if (mbe :logic (zp (- 14 (nfix j))) :exec (= j 14))
-      fn-shs
-    (let ((fn-shs (fn-shs-w-set j 0 fn-shs)))
-      (pgs-zero-w (+ 1 (nfix j)) fn-shs))))
-
-(defthm pgs-shs-p-of-zero-w
-  (implies (and (fn-shs-p fn-shs) (natp j)) (fn-shs-p (pgs-zero-w j fn-shs))))
-
-(in-theory (disable pgs-zero-w))
-
-(defun pgs-set-w (j v fn-shs)
-  (declare (xargs :stobjs fn-shs
-                  :guard (and (natp j) (< j 16) (unsigned-byte-p 32 v))))
-  (fn-shs-w-set j v fn-shs))
-
-(defthm pgs-shs-p-of-set-w
-  (implies (and (fn-shs-p fn-shs) (natp j) (< j 16) (unsigned-byte-p 32 v))
-           (fn-shs-p (pgs-set-w j v fn-shs))))
-
-(in-theory (disable pgs-set-w))
-
-(defun pgs-pad-block (nbits fn-shs)
-  ; The final block of a message whose length is a whole number of blocks:
-  ; the 1 bit, zeros, and the 64-bit big-endian bit count.
-  (declare (xargs :stobjs fn-shs :guard (unsigned-byte-p 64 nbits)))
-  (let* ((fn-shs (pgs-set-w 0 #x80000000 fn-shs))
-         (fn-shs (pgs-zero-w 1 fn-shs))
-         (fn-shs (pgs-set-w 14 (pgs-hi32 nbits) fn-shs)))
-    (pgs-set-w 15 (pgs-lo32 nbits) fn-shs)))
-
-(defthm pgs-shs-p-of-pad-block
-  (implies (fn-shs-p fn-shs) (fn-shs-p (pgs-pad-block nbits fn-shs))))
-
-(in-theory (disable pgs-pad-block))
-
-(defthm pgs-shs-hp-nth
-  (implies (and (fn-shs-hp l) (natp i) (< i (len l)))
-           (and (integerp (nth i l)) (<= 0 (nth i l))))
-  :hints (("Goal" :in-theory (enable nth))))
-
-(defthm pgs-h-word-natp
-  (implies (and (fn-shs-p fn-shs) (natp i) (< i 8))
-           (and (integerp (nth i (nth 1 fn-shs))) (<= 0 (nth i (nth 1 fn-shs)))))
-  :hints (("Goal" :in-theory (enable fn-shs-p))))
-
-(defun pgs-h-nat (i acc fn-shs)
-  (declare (xargs :stobjs fn-shs :guard (and (natp i) (<= i 8) (natp acc))
-                  :measure (nfix (- 8 (nfix i)))
-                  :guard-hints (("Goal" :use ((:instance pgs-h-word-natp))
-                                 :in-theory (disable pgs-h-word-natp)))))
-  (if (mbe :logic (zp (- 8 (nfix i))) :exec (= i 8))
-      (nfix acc)
-    (pgs-h-nat (+ 1 (nfix i)) (+ (* (nfix acc) 4294967296) (fn-shs-h-ref i fn-shs)) fn-shs)))
-
-(defun pgs-x-words-digest (sel base nb pgs-mem fn-shs)
-  ; SHA-256 of the 64*NB octets of words [BASE, BASE + 8*NB), as a natural.
-  (declare (xargs :stobjs (pgs-mem fn-shs)
-                  :guard (and (natp base) (natp nb) (< nb 1099511627776)
-                              (<= (+ base (* 8 nb))
-                                  (pgs-x-len sel pgs-mem)))
-                  :guard-hints (("Goal" :in-theory (enable unsigned-byte-p)))))
-  (let* ((fn-shs (fn-shs-h-init 0 *fn-sha256-h0* fn-shs))
-         (fn-shs (pgs-blocks 0 nb sel base pgs-mem fn-shs))
-         (fn-shs (pgs-pad-block (* 512 nb) fn-shs))
-         (fn-shs (fn-shs-compress-loaded fn-shs)))
-    (mv (pgs-h-nat 0 0 fn-shs) fn-shs)))
+                                  (pgs-x-len sel pgs-mem)))))
+  (let* ((fn-octets-pg (fn-octets-pg-clear fn-octets-pg))
+         (fn-octets-pg (pgs-x-words-load 0 (* 8 nb) sel base pgs-mem fn-octets-pg)))
+    ; The buffer twin runs; its logical value is the list definition's
+    ; (`fn-blake3-of-prefixed-buffer-is-blake3', the guard proof), so
+    ; ground evaluation in the logic reads the octets as a list, not by
+    ; index.
+    (mv (pgs-octets-be-nat (mbe :logic (fn-blake3 (fn-octets-pg-list fn-octets-pg))
+                                :exec (fn-blake3-of-prefixed-buffer nil fn-octets-pg)))
+        fn-octets-pg)))
 
 (defthm pgs-natp-of-words-digest
-  (natp (mv-nth 0 (pgs-x-words-digest sel base nb pgs-mem fn-shs)))
+  (natp (mv-nth 0 (pgs-x-words-digest sel base nb pgs-mem fn-octets-pg)))
   :rule-classes :type-prescription)
 
-(defthm pgs-shs-p-of-words-digest
-  (implies (fn-shs-p fn-shs)
-           (fn-shs-p (mv-nth 1 (pgs-x-words-digest sel base nb pgs-mem fn-shs)))))
+(defthm pgs-oct-p-of-words-digest
+  (fn-octets-pg-p (mv-nth 1 (pgs-x-words-digest sel base nb pgs-mem fn-octets-pg))))
 
 (in-theory (disable pgs-x-words-digest))
 
-(defun pgs-x-page-digest (i pgs-mem fn-shs)
+(defun pgs-x-page-digest (i pgs-mem fn-octets-pg)
   ; The digest of resident logical page I.
-  (declare (xargs :stobjs (pgs-mem fn-shs)
+  (declare (xargs :stobjs (pgs-mem fn-octets-pg)
                   :guard (and (natp i) (<= (* (+ 1 i) *pgs-page-words*) (pgs-w-length pgs-mem)))))
-  (pgs-x-words-digest 0 (* i *pgs-page-words*) (floor *pgs-page-words* 8) pgs-mem fn-shs))
+  (pgs-x-words-digest 0 (* i *pgs-page-words*) (floor *pgs-page-words* 8) pgs-mem fn-octets-pg))
 
+; The octet lists' recognizer from books/cbor.lisp (through the buffer's
+; include) backchains on every `true-listp' the page store's books ask; the
+; page store never reasons about octet lists past this point.
+(in-theory (disable fn-cbor-octet-listp-implies-true-listp fn-cbor-octet-listp))

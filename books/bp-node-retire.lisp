@@ -56,23 +56,101 @@
 ; names the host observed in it (bounded by the namespace's work bound); a
 ; retired name with no listing is a root file.  A directory's files go
 ; first, then the directory, and one root barrier ends the program.
-(defun fn-bpnr-retire-dir-ops (dir files)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpnr-retire-dir-ops-loop (dir files acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (atom files)
-      (list (list :rmdir dir))
-    (cons (list :unlink-in dir (car files))
-          (fn-bpnr-retire-dir-ops dir (cdr files)))))
+      (revappend acc (list (list :rmdir dir)))
+    (fn-bpnr-retire-dir-ops-loop dir
+                                 (cdr files)
+                                 (cons (list :unlink-in dir (car files)) acc))))
+
+(defun fn-bpnr-retire-dir-ops (dir files)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (atom files)
+           (list (list :rmdir dir))
+         (cons (list :unlink-in dir (car files))
+               (fn-bpnr-retire-dir-ops dir (cdr files))))
+       :exec (fn-bpnr-retire-dir-ops-loop dir files nil)))
+
+(local
+ (defthm fn-bpnr-retire-dir-ops-loop-is-revappend
+   (equal (fn-bpnr-retire-dir-ops-loop dir files acc)
+          (revappend acc (fn-bpnr-retire-dir-ops dir files)))
+   :hints (("Goal" :induct (fn-bpnr-retire-dir-ops-loop dir files acc)
+                   :in-theory (union-theories '(fn-bpnr-retire-dir-ops-loop fn-bpnr-retire-dir-ops revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpnr-retire-dir-ops-loop)
+
+(verify-guards fn-bpnr-retire-dir-ops
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpnr-retire-dir-ops)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpnr-retire-dir-ops-loop-is-revappend (acc nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-bpnr-retire-ops-aux-loop (retired listings acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (atom retired)
+      (revappend acc (list (list :barrier)))
+    (fn-bpnr-retire-ops-aux-loop (cdr retired)
+                                 listings
+                                 (fn-ag-rev-onto (let ((listing (and (alistp listings)
+                                                                     (assoc-equal (car retired)
+                                                                                  listings))))
+                                                   (if listing
+                                                       (fn-bpnr-retire-dir-ops (car retired)
+                                                                               (cdr listing))
+                                                     (list (list :unlink (car retired)))))
+                                                 acc))))
 
 (defun fn-bpnr-retire-ops-aux (retired listings)
-  (declare (xargs :guard t))
-  (if (atom retired)
-      (list (list :barrier))
-    (append (let ((listing (and (alistp listings)
-                                (assoc-equal (car retired) listings))))
-              (if listing
-                  (fn-bpnr-retire-dir-ops (car retired) (cdr listing))
-                (list (list :unlink (car retired)))))
-            (fn-bpnr-retire-ops-aux (cdr retired) listings))))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (atom retired)
+           (list (list :barrier))
+         (append (let ((listing (and (alistp listings)
+                                     (assoc-equal (car retired) listings))))
+                   (if listing
+                       (fn-bpnr-retire-dir-ops (car retired) (cdr listing))
+                     (list (list :unlink (car retired)))))
+                 (fn-bpnr-retire-ops-aux (cdr retired) listings)))
+       :exec (fn-bpnr-retire-ops-aux-loop retired listings nil)))
+
+(local
+ (defthm fn-bpnr-retire-ops-aux-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-bpnr-retire-ops-aux-loop-is-revappend
+   (equal (fn-bpnr-retire-ops-aux-loop retired listings acc)
+          (revappend acc (fn-bpnr-retire-ops-aux retired listings)))
+   :hints (("Goal" :induct (fn-bpnr-retire-ops-aux-loop retired listings acc)
+                   :in-theory (union-theories '(fn-bpnr-retire-ops-aux-loop fn-bpnr-retire-ops-aux revappend car-cons cdr-cons fn-bpnr-retire-ops-aux-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-bpnr-retire-ops-aux-loop)
+
+(verify-guards fn-bpnr-retire-ops-aux
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-bpnr-retire-ops-aux)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-bpnr-retire-ops-aux-loop-is-revappend (acc nil))))))
+
 
 (defun fn-bpnr-retire-ops (names listings selected)
   (declare (xargs :guard t :verify-guards nil))

@@ -86,25 +86,100 @@
 
 ; The body's lines, split at LF, a CR before it dropped; LINE is the current
 ; line reversed.
-(defun fn-ks-lines (octets line)
-  (declare (xargs :guard (true-listp line)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-ks-lines-loop (octets line acc)
+  (declare (xargs :guard (and (true-listp line) (true-listp acc)) :verify-guards nil))
   (if (consp octets)
       (if (equal (car octets) 10)
-          (cons (reverse (if (and (consp line) (equal (car line) 13))
-                             (cdr line) line))
-                (fn-ks-lines (cdr octets) nil))
-        (fn-ks-lines (cdr octets) (cons (car octets) line)))
-    (if (consp line) (list (reverse line)) nil)))
+          (fn-ks-lines-loop (cdr octets)
+                            nil
+                            (cons (reverse (if (and (consp line) (equal (car line) 13))
+                                               (cdr line)
+                                             line))
+                                  acc))
+        (fn-ks-lines-loop (cdr octets) (cons (car octets) line) acc))
+    (if (consp line) (revappend acc (list (reverse line))) (revappend acc nil))))
+
+(defun fn-ks-lines (octets line)
+  (declare (xargs :verify-guards nil :guard (true-listp line)))
+  (mbe :logic
+       (if (consp octets)
+           (if (equal (car octets) 10)
+               (cons (reverse (if (and (consp line) (equal (car line) 13))
+                                  (cdr line) line))
+                     (fn-ks-lines (cdr octets) nil))
+             (fn-ks-lines (cdr octets) (cons (car octets) line)))
+         (if (consp line) (list (reverse line)) nil))
+       :exec (fn-ks-lines-loop octets line nil)))
+
+(local
+ (defthm fn-ks-lines-loop-is-revappend
+   (equal (fn-ks-lines-loop octets line acc)
+          (revappend acc (fn-ks-lines octets line)))
+   :hints (("Goal" :induct (fn-ks-lines-loop octets line acc)
+                   :in-theory (union-theories '(fn-ks-lines-loop fn-ks-lines revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ks-lines-loop)
+
+(verify-guards fn-ks-lines
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-ks-lines)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-ks-lines-loop-is-revappend (acc nil))))))
+
 
 ; The concatenated values of the lines named PREFIX, and whether any was.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-ks-values-loop (prefix rev acc)
+  (declare (xargs :guard (consp acc) :verify-guards nil))
+  (if (consp rev)
+      (fn-ks-values-loop prefix
+                         (cdr rev)
+                         (let ((rest (fn-ks-prefix-rest prefix (car rev)))
+                               (more acc))
+                           (if (equal rest :no)
+                               more
+                             (cons t
+                                   (append (if (true-listp rest) rest nil) (cdr more))))))
+    acc))
+
 (defun fn-ks-values (prefix lines)
-  (declare (xargs :guard t))
-  (if (consp lines)
-      (let ((rest (fn-ks-prefix-rest prefix (car lines)))
-            (more (fn-ks-values prefix (cdr lines))))
-        (if (equal rest :no) more
-          (cons t (append (if (true-listp rest) rest nil) (cdr more)))))
-    (cons nil nil)))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp lines)
+           (let ((rest (fn-ks-prefix-rest prefix (car lines)))
+                 (more (fn-ks-values prefix (cdr lines))))
+             (if (equal rest :no) more
+               (cons t (append (if (true-listp rest) rest nil) (cdr more)))))
+         (cons nil nil))
+       :exec (fn-ks-values-loop prefix (fn-ag-rev-onto lines nil) (cons nil nil))))
+
+(local
+ (defthm fn-ks-values-loop-of-rev-onto
+   (equal (fn-ks-values-loop prefix (fn-ag-rev-onto lines zs) (cons nil nil))
+          (fn-ks-values-loop prefix zs (fn-ks-values prefix lines)))
+   :hints (("Goal" :induct (fn-ag-rev-onto lines zs)
+                   :in-theory (union-theories '(fn-ks-values-loop fn-ks-values fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-ks-values-loop)
+
+(verify-guards fn-ks-values
+  :hints (("Goal" :in-theory (union-theories '(fn-ks-values fn-ks-values-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-ks-values-loop-of-rev-onto (zs nil))))))
+
 
 (defun fn-ks-field (lines prefix)
   (declare (xargs :guard t))

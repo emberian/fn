@@ -172,11 +172,42 @@
 ; reader's chain check from the genesis.  (:ok START END REST) or the
 ; refusal.
 
-(defun fn-sctr-take-frames (n plan)
-  (declare (xargs :guard (natp n)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-sctr-take-frames-loop (n plan acc)
+  (declare (xargs :guard (and (natp n) (true-listp acc)) :verify-guards nil))
   (if (or (zp n) (not (consp plan)))
-      nil
-    (cons (car plan) (fn-sctr-take-frames (1- n) (cdr plan)))))
+      (revappend acc nil)
+    (fn-sctr-take-frames-loop (1- n) (cdr plan) (cons (car plan) acc))))
+
+(defun fn-sctr-take-frames (n plan)
+  (declare (xargs :verify-guards nil :guard (natp n)))
+  (mbe :logic
+       (if (or (zp n) (not (consp plan)))
+           nil
+         (cons (car plan) (fn-sctr-take-frames (1- n) (cdr plan))))
+       :exec (fn-sctr-take-frames-loop n plan nil)))
+
+(local
+ (defthm fn-sctr-take-frames-loop-is-revappend
+   (equal (fn-sctr-take-frames-loop n plan acc)
+          (revappend acc (fn-sctr-take-frames n plan)))
+   :hints (("Goal" :induct (fn-sctr-take-frames-loop n plan acc)
+                   :in-theory (union-theories '(fn-sctr-take-frames-loop fn-sctr-take-frames revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-sctr-take-frames-loop)
+
+(verify-guards fn-sctr-take-frames
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-sctr-take-frames)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-sctr-take-frames-loop-is-revappend (acc nil))))))
+
 
 (defun fn-sctr-drop-frames (n plan)
   (declare (xargs :guard (natp n)))

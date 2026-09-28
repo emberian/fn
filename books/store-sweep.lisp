@@ -152,14 +152,48 @@
           (fn-sn-name-memberp x (cdr names)))
     nil))
 
-(defun fn-sn-sweep-removals (observed held)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-sn-sweep-removals-loop (observed held acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp observed)
       (if (and (fn-sn-staging-namep (car observed))
                (not (fn-sn-name-memberp (car observed) held)))
-          (cons (car observed) (fn-sn-sweep-removals (cdr observed) held))
-        (fn-sn-sweep-removals (cdr observed) held))
-    nil))
+          (fn-sn-sweep-removals-loop (cdr observed) held (cons (car observed) acc))
+        (fn-sn-sweep-removals-loop (cdr observed) held acc))
+    (revappend acc nil)))
+
+(defun fn-sn-sweep-removals (observed held)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp observed)
+           (if (and (fn-sn-staging-namep (car observed))
+                    (not (fn-sn-name-memberp (car observed) held)))
+               (cons (car observed) (fn-sn-sweep-removals (cdr observed) held))
+             (fn-sn-sweep-removals (cdr observed) held))
+         nil)
+       :exec (fn-sn-sweep-removals-loop observed held nil)))
+
+(local
+ (defthm fn-sn-sweep-removals-loop-is-revappend
+   (equal (fn-sn-sweep-removals-loop observed held acc)
+          (revappend acc (fn-sn-sweep-removals observed held)))
+   :hints (("Goal" :induct (fn-sn-sweep-removals-loop observed held acc)
+                   :in-theory (union-theories '(fn-sn-sweep-removals-loop fn-sn-sweep-removals revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-sn-sweep-removals-loop)
+
+(verify-guards fn-sn-sweep-removals
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-sn-sweep-removals)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-sn-sweep-removals-loop-is-revappend (acc nil))))))
+
 
 ; The kernel gate.  :ready is the phase at which no file operation is
 ; outstanding and no record is staged; fn-sf-record-candidate is the record

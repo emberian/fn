@@ -1,5 +1,6 @@
-; fn: teeth for books/history-pages-placed.lisp and
-; books/history-pages-placed-write.lisp (lane arena-store-3, 2026-09-28).
+; fn: teeth for books/history-pages-placed.lisp and the placed writer's
+; keystone (books/history-pages-append-grown.lisp; lanes arena-store-3 and
+; arena-store-4, 2026-09-28).
 ;
 ; What this book is evidence FOR.  FNADTSN2's free placement: over a page
 ; store state whose verified pages hold the history's image with its pool
@@ -12,7 +13,7 @@
 ; the weakened statement.  Named exceptions: the `fn-hp-okp' u64 bounds
 ; (need 2^64 octets).
 (in-package "ACL2")
-(include-book "../../books/history-pages-placed-write")
+(include-book "../../books/history-pages-append-grown")
 (include-book "must-fail-checked")
 
 (local (in-theory (enable fn-hp-vhold-is-x)))
@@ -228,40 +229,40 @@
 ; KEYSTONE fn-hp-x-append-refines-placed (the writer at the moved placement).
 
 (defmacro hpt-ap-conc (h ev n lens s np mem p)
-  `(let ((mem2 (mv-nth 3 (fn-hp-x-append ,ev 0 ,n ,lens ,s ,mem))))
+  `(let ((mem2 (mv-nth 3 (fn-hp-x-append ,ev 0 ,n ,lens ,s ,np ,mem))))
      (and (fn-hp-okp (append ,h (list ,ev)) 0)
-          (equal (mv-nth 1 (fn-hp-x-append ,ev 0 ,n ,lens ,s ,mem)) (len (append ,h (list ,ev))))
-          (equal (mv-nth 2 (fn-hp-x-append ,ev 0 ,n ,lens ,s ,mem)) (fn-hp-lens (append ,h (list ,ev)) 0))
+          (equal (mv-nth 1 (fn-hp-x-append ,ev 0 ,n ,lens ,s ,np ,mem)) (len (append ,h (list ,ev))))
+          (equal (mv-nth 2 (fn-hp-x-append ,ev 0 ,n ,lens ,s ,np ,mem)) (fn-hp-lens (append ,h (list ,ev)) 0))
           (adt-placement-ok ,s (fn-hp-lens (append ,h (list ,ev)) 0) ,np)
           (fn-hp-vhold 0 (pgs-v-length mem2) mem2 (fn-hp-piw (append ,h (list ,ev)) 0 ,s ,np))
           (implies (and (natp ,p) (equal (nth ,p (nth *pgs-di* mem2)) 1)
                         (not (equal (nth ,p (nth *pgs-di* ,mem)) 1)))
                    (and (member-equal ,p (fn-hp-append-pdirty ,h (list ,ev) 0 ,s))
                         (equal (pgs-vi ,p mem2) 2))))))
-(defmacro hpt-ap-ok (ev n lens s mem)
-  `(equal (mv-nth 0 (fn-hp-x-append ,ev 0 ,n ,lens ,s ,mem)) :ok))
+(defmacro hpt-ap-ok (ev n lens s np mem)
+  `(equal (mv-nth 0 (fn-hp-x-append ,ev 0 ,n ,lens ,s ,np ,mem)) :ok))
 
 (defthm hpt-append-w
   (let ((mem (hpt-mem *hpt-piw* *hpt-v* *hpt-np*)))
     (and (fn-hp-okp *hpt-h* 0) (equal 2 (len *hpt-h*)) (equal *hpt-lens* (fn-hp-lens *hpt-h* 0))
          (fn-hp-starts-okp *hpt-s*) (adt-placement-ok *hpt-s* *hpt-lens* *hpt-np*)
          (fn-hp-vhold 0 (pgs-v-length mem) mem *hpt-piw*)
-         (hpt-ap-ok *hpt-ev* 2 *hpt-lens* *hpt-s* mem)
+         (hpt-ap-ok *hpt-ev* 2 *hpt-lens* *hpt-s* *hpt-np* mem)
          (hpt-ap-conc *hpt-h* *hpt-ev* 2 *hpt-lens* *hpt-s* *hpt-np* mem 0)
          (hpt-ap-conc *hpt-h* *hpt-ev* 2 *hpt-lens* *hpt-s* *hpt-np* mem 6)
          ; the dirty part is not vacuous: the header page and the MOVED pool page were marked
-         (equal (nth 6 (nth *pgs-di* (mv-nth 3 (fn-hp-x-append *hpt-ev* 0 2 *hpt-lens* *hpt-s* mem)))) 1)
-         (equal (nth 0 (nth *pgs-di* (mv-nth 3 (fn-hp-x-append *hpt-ev* 0 2 *hpt-lens* *hpt-s* mem)))) 1)
+         (equal (nth 6 (nth *pgs-di* (mv-nth 3 (fn-hp-x-append *hpt-ev* 0 2 *hpt-lens* *hpt-s* *hpt-np* mem)))) 1)
+         (equal (nth 0 (nth *pgs-di* (mv-nth 3 (fn-hp-x-append *hpt-ev* 0 2 *hpt-lens* *hpt-s* *hpt-np* mem)))) 1)
          ; the free page 5 was not touched
-         (equal (nth 5 (nth *pgs-di* (mv-nth 3 (fn-hp-x-append *hpt-ev* 0 2 *hpt-lens* *hpt-s* mem)))) 0)))
+         (equal (nth 5 (nth *pgs-di* (mv-nth 3 (fn-hp-x-append *hpt-ev* 0 2 *hpt-lens* *hpt-s* *hpt-np* mem)))) 0)))
   :rule-classes nil)
 
 (defmacro hpt-ap-mf (name &rest hyps)
   `(hpt-mf ,name ,hyps
-           (let ((mem2 (mv-nth 3 (fn-hp-x-append ev salt n lens starts pgs-mem))))
+           (let ((mem2 (mv-nth 3 (fn-hp-x-append ev salt n lens starts np pgs-mem))))
              (and (fn-hp-okp (append h (list ev)) salt)
-                  (equal (mv-nth 1 (fn-hp-x-append ev salt n lens starts pgs-mem)) (len (append h (list ev))))
-                  (equal (mv-nth 2 (fn-hp-x-append ev salt n lens starts pgs-mem))
+                  (equal (mv-nth 1 (fn-hp-x-append ev salt n lens starts np pgs-mem)) (len (append h (list ev))))
+                  (equal (mv-nth 2 (fn-hp-x-append ev salt n lens starts np pgs-mem))
                          (fn-hp-lens (append h (list ev)) salt))
                   (adt-placement-ok starts (fn-hp-lens (append h (list ev)) salt) np)
                   (fn-hp-vhold 0 (pgs-v-length mem2) mem2 (fn-hp-piw (append h (list ev)) salt starts np))))))
@@ -272,13 +273,13 @@
     (and (not (fn-hp-okp *hpt-bad* 0)) (equal 1 (len *hpt-bad*))
          (fn-hp-starts-okp '(1 2 3 4 5)) (adt-placement-ok '(1 2 3 4 5) (fn-hp-lens *hpt-bad* 0) 6)
          (fn-hp-vhold 0 (pgs-v-length mem) mem piw)
-         (hpt-ap-ok *hpt-ev* 1 (fn-hp-lens *hpt-bad* 0) '(1 2 3 4 5) mem)
+         (hpt-ap-ok *hpt-ev* 1 (fn-hp-lens *hpt-bad* 0) '(1 2 3 4 5) 6 mem)
          (not (hpt-ap-conc *hpt-bad* *hpt-ev* 1 (fn-hp-lens *hpt-bad* 0) '(1 2 3 4 5) 6 mem 0))))
   :rule-classes nil)
 (hpt-ap-mf hpt-false-append-without-okp
-           (equal n (len h)) (equal lens (fn-hp-lens h salt)) (fn-hp-starts-okp starts) (adt-placement-ok starts lens np)
+           (equal n (len h)) (equal lens (fn-hp-lens h salt)) (fn-hp-starts-okp starts)
            (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-piw h salt starts np))
-           (equal (mv-nth 0 (fn-hp-x-append ev salt n lens starts pgs-mem)) :ok))
+           (equal (mv-nth 0 (fn-hp-x-append ev salt n lens starts np pgs-mem)) :ok))
 
 ; (equal n (len h)): N carried as 5.
 (defthm hpt-append-n-removal
@@ -286,13 +287,13 @@
     (and (fn-hp-okp *hpt-h* 0) (not (equal 5 (len *hpt-h*))) (equal *hpt-lens* (fn-hp-lens *hpt-h* 0))
          (fn-hp-starts-okp *hpt-s*) (adt-placement-ok *hpt-s* *hpt-lens* *hpt-np*)
          (fn-hp-vhold 0 (pgs-v-length mem) mem *hpt-piw*)
-         (hpt-ap-ok *hpt-ev* 5 *hpt-lens* *hpt-s* mem)
+         (hpt-ap-ok *hpt-ev* 5 *hpt-lens* *hpt-s* *hpt-np* mem)
          (not (hpt-ap-conc *hpt-h* *hpt-ev* 5 *hpt-lens* *hpt-s* *hpt-np* mem 0))))
   :rule-classes nil)
 (hpt-ap-mf hpt-false-append-without-n
-           (fn-hp-okp h salt) (equal lens (fn-hp-lens h salt)) (fn-hp-starts-okp starts) (adt-placement-ok starts lens np)
+           (fn-hp-okp h salt) (equal lens (fn-hp-lens h salt)) (fn-hp-starts-okp starts)
            (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-piw h salt starts np))
-           (equal (mv-nth 0 (fn-hp-x-append ev salt n lens starts pgs-mem)) :ok))
+           (equal (mv-nth 0 (fn-hp-x-append ev salt n lens starts np pgs-mem)) :ok))
 
 ; (equal lens (fn-hp-lens h salt)): the MKEY column's length carried as 8.
 (defthm hpt-append-lens-removal
@@ -300,13 +301,13 @@
     (and (fn-hp-okp *hpt-h* 0) (equal 2 (len *hpt-h*)) (not (equal lens (fn-hp-lens *hpt-h* 0)))
          (fn-hp-starts-okp *hpt-s*) (adt-placement-ok *hpt-s* lens *hpt-np*)
          (fn-hp-vhold 0 (pgs-v-length mem) mem *hpt-piw*)
-         (hpt-ap-ok *hpt-ev* 2 lens *hpt-s* mem)
+         (hpt-ap-ok *hpt-ev* 2 lens *hpt-s* *hpt-np* mem)
          (not (hpt-ap-conc *hpt-h* *hpt-ev* 2 lens *hpt-s* *hpt-np* mem 0))))
   :rule-classes nil)
 (hpt-ap-mf hpt-false-append-without-lens
-           (fn-hp-okp h salt) (equal n (len h)) (fn-hp-starts-okp starts) (adt-placement-ok starts lens np)
+           (fn-hp-okp h salt) (equal n (len h)) (fn-hp-starts-okp starts)
            (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-piw h salt starts np))
-           (equal (mv-nth 0 (fn-hp-x-append ev salt n lens starts pgs-mem)) :ok))
+           (equal (mv-nth 0 (fn-hp-x-append ev salt n lens starts np pgs-mem)) :ok))
 
 ; (fn-hp-starts-okp starts) in the writer's keystone is a named exception:
 ; with four starts the pool is placed nowhere in both the image and the
@@ -315,20 +316,15 @@
 ; ground witness here (its image does not evaluate under the ground
 ; prover).  The hypothesis is the one `fn-hp-x-append-plan-shape' needs.
 
-; (adt-placement-ok starts lens np): the pool over the length-offset
-; column's page; the pool's cell write lands in that column.
-(defthm hpt-append-placement-removal
+; The placement of the old lengths is not a hypothesis: the writer checks
+; it.  The pool carried over the length-offset column's page: refused
+; :placement, nothing written.
+(defthm hpt-append-placement-refused
   (let* ((s '(1 2 3 4 4)) (piw (fn-hp-piw *hpt-h* 0 s *hpt-np*)) (mem (hpt-mem piw *hpt-v* *hpt-np*)))
-    (and (fn-hp-okp *hpt-h* 0) (equal 2 (len *hpt-h*)) (equal *hpt-lens* (fn-hp-lens *hpt-h* 0))
-         (fn-hp-starts-okp s) (not (adt-placement-ok s *hpt-lens* *hpt-np*))
-         (fn-hp-vhold 0 (pgs-v-length mem) mem piw)
-         (hpt-ap-ok *hpt-ev* 2 *hpt-lens* s mem)
-         (not (hpt-ap-conc *hpt-h* *hpt-ev* 2 *hpt-lens* s *hpt-np* mem 0))))
+    (and (not (adt-placement-ok s *hpt-lens* *hpt-np*))
+         (equal (mv-nth 0 (fn-hp-x-append *hpt-ev* 0 2 *hpt-lens* s *hpt-np* mem)) (list :refused :placement))
+         (equal (mv-nth 3 (fn-hp-x-append *hpt-ev* 0 2 *hpt-lens* s *hpt-np* mem)) mem)))
   :rule-classes nil)
-(hpt-ap-mf hpt-false-append-without-placement
-           (fn-hp-okp h salt) (equal n (len h)) (equal lens (fn-hp-lens h salt)) (fn-hp-starts-okp starts)
-           (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-piw h salt starts np))
-           (equal (mv-nth 0 (fn-hp-x-append ev salt n lens starts pgs-mem)) :ok))
 
 ; The verified-pages relation: a verified word the append does not write
 ; (on the moved pool's page, past its entries) changed; it stays changed.
@@ -337,13 +333,13 @@
     (and (fn-hp-okp *hpt-h* 0) (equal 2 (len *hpt-h*)) (equal *hpt-lens* (fn-hp-lens *hpt-h* 0))
          (fn-hp-starts-okp *hpt-s*) (adt-placement-ok *hpt-s* *hpt-lens* *hpt-np*)
          (not (fn-hp-vhold 0 (pgs-v-length mem) mem *hpt-piw*))
-         (hpt-ap-ok *hpt-ev* 2 *hpt-lens* *hpt-s* mem)
+         (hpt-ap-ok *hpt-ev* 2 *hpt-lens* *hpt-s* *hpt-np* mem)
          (not (hpt-ap-conc *hpt-h* *hpt-ev* 2 *hpt-lens* *hpt-s* *hpt-np* mem 0))))
   :rule-classes nil)
 (hpt-ap-mf hpt-false-append-without-vhold
            (fn-hp-okp h salt) (equal n (len h)) (equal lens (fn-hp-lens h salt)) (fn-hp-starts-okp starts)
-           (adt-placement-ok starts lens np)
-           (equal (mv-nth 0 (fn-hp-x-append ev salt n lens starts pgs-mem)) :ok))
+          
+           (equal (mv-nth 0 (fn-hp-x-append ev salt n lens starts np pgs-mem)) :ok))
 
 ; The verdict: the moved pool's page not verified; nothing written.
 (defthm hpt-append-verdict-removal
@@ -351,10 +347,10 @@
     (and (fn-hp-okp *hpt-h* 0) (equal 2 (len *hpt-h*)) (equal *hpt-lens* (fn-hp-lens *hpt-h* 0))
          (fn-hp-starts-okp *hpt-s*) (adt-placement-ok *hpt-s* *hpt-lens* *hpt-np*)
          (fn-hp-vhold 0 (pgs-v-length mem) mem *hpt-piw*)
-         (not (hpt-ap-ok *hpt-ev* 2 *hpt-lens* *hpt-s* mem))
+         (not (hpt-ap-ok *hpt-ev* 2 *hpt-lens* *hpt-s* *hpt-np* mem))
          (not (hpt-ap-conc *hpt-h* *hpt-ev* 2 *hpt-lens* *hpt-s* *hpt-np* mem 0))))
   :rule-classes nil)
 (hpt-ap-mf hpt-false-append-without-verdict
            (fn-hp-okp h salt) (equal n (len h)) (equal lens (fn-hp-lens h salt)) (fn-hp-starts-okp starts)
-           (adt-placement-ok starts lens np)
+          
            (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-piw h salt starts np)))

@@ -447,22 +447,87 @@
 (defthm fn-oct-nth-is-nth
   (equal (fn-oct-nth i xs) (nth i xs)))
 
-(defun fn-oct-snoc (xs o)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-oct-snoc-loop (xs o acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp xs)
-      (cons (car xs) (fn-oct-snoc (cdr xs) o))
-    (list o)))
+      (fn-oct-snoc-loop (cdr xs) o (cons (car xs) acc))
+    (revappend acc (list o))))
+
+(defun fn-oct-snoc (xs o)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp xs)
+           (cons (car xs) (fn-oct-snoc (cdr xs) o))
+         (list o))
+       :exec (fn-oct-snoc-loop xs o nil)))
+
+(local
+ (defthm fn-oct-snoc-loop-is-revappend
+   (equal (fn-oct-snoc-loop xs o acc)
+          (revappend acc (fn-oct-snoc xs o)))
+   :hints (("Goal" :induct (fn-oct-snoc-loop xs o acc)
+                   :in-theory (union-theories '(fn-oct-snoc-loop fn-oct-snoc revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-oct-snoc-loop)
+
+(verify-guards fn-oct-snoc
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-oct-snoc)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-oct-snoc-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-oct-snoc-is-append
   (implies (true-listp xs)
            (equal (fn-oct-snoc xs o) (append xs (list o)))))
 
-(defun fn-oct-update (i o xs)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-oct-update-loop (i o xs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (or (not (natp i)) (= i 0))
-      (cons o (if (consp xs) (cdr xs) nil))
-    (cons (if (consp xs) (car xs) nil)
-          (fn-oct-update (1- i) o (if (consp xs) (cdr xs) nil)))))
+      (revappend acc (cons o (if (consp xs) (cdr xs) nil)))
+    (fn-oct-update-loop (1- i)
+                        o
+                        (if (consp xs) (cdr xs) nil)
+                        (cons (if (consp xs) (car xs) nil) acc))))
+
+(defun fn-oct-update (i o xs)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (or (not (natp i)) (= i 0))
+           (cons o (if (consp xs) (cdr xs) nil))
+         (cons (if (consp xs) (car xs) nil)
+               (fn-oct-update (1- i) o (if (consp xs) (cdr xs) nil))))
+       :exec (fn-oct-update-loop i o xs nil)))
+
+(local
+ (defthm fn-oct-update-loop-is-revappend
+   (equal (fn-oct-update-loop i o xs acc)
+          (revappend acc (fn-oct-update i o xs)))
+   :hints (("Goal" :induct (fn-oct-update-loop i o xs acc)
+                   :in-theory (union-theories '(fn-oct-update-loop fn-oct-update revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-oct-update-loop)
+
+(verify-guards fn-oct-update
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-oct-update)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-oct-update-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-oct-update-is-update-nth
   (implies (and (natp i) (< i (len xs)) (true-listp xs))
@@ -1028,15 +1093,46 @@
 ; Derived readers over the abstract stobj: the vocabulary a codec twin reads
 ; the buffer with.  Each is equal to its list term over the logical value.
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-oct-slice-list-loop (i n fn-octets acc)
+  (declare (xargs :stobjs fn-octets :measure (nfix (- n i)) :guard (and (and (natp i) (natp n) (<= i n) (<= n (fn-octets-len fn-octets))) (true-listp acc)) :verify-guards nil))
+  (if (or (not (natp i)) (not (natp n)) (<= n i))
+      (revappend acc nil)
+    (fn-oct-slice-list-loop (1+ i) n fn-octets (cons (fn-octets-get i fn-octets) acc))))
+
 (defun fn-oct-slice-list (i n fn-octets)
   ; st[i..n) as a list.
-  (declare (xargs :stobjs fn-octets
+  (declare (xargs :verify-guards nil :stobjs fn-octets
                   :guard (and (natp i) (natp n) (<= i n) (<= n (fn-octets-len fn-octets)))
                   :measure (nfix (- n i))))
-  (if (or (not (natp i)) (not (natp n)) (<= n i))
-      nil
-    (cons (fn-octets-get i fn-octets)
-          (fn-oct-slice-list (1+ i) n fn-octets))))
+  (mbe :logic
+       (if (or (not (natp i)) (not (natp n)) (<= n i))
+           nil
+         (cons (fn-octets-get i fn-octets)
+               (fn-oct-slice-list (1+ i) n fn-octets)))
+       :exec (fn-oct-slice-list-loop i n fn-octets nil)))
+
+(local
+ (defthm fn-oct-slice-list-loop-is-revappend
+   (equal (fn-oct-slice-list-loop i n fn-octets acc)
+          (revappend acc (fn-oct-slice-list i n fn-octets)))
+   :hints (("Goal" :induct (fn-oct-slice-list-loop i n fn-octets acc)
+                   :in-theory (union-theories '(fn-oct-slice-list-loop fn-oct-slice-list revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-oct-slice-list-loop)
+
+(verify-guards fn-oct-slice-list
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-oct-slice-list)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-oct-slice-list-loop-is-revappend (acc nil))))))
+
 
 (defun fn-oct-prefix-equalp (i xs fn-octets)
   ; Whether st[i..) opens with XS, read in place.  XS is any object.

@@ -85,7 +85,7 @@ cat "$C/gen.log"
 ( cd "$TREE" && swarm-build "$ACL2" < "$C/fcheck.lsp" > "$C/fcheck-acl2.log" 2>&1 )
 ls "$C"/cands.*.vec > /dev/null 2>&1 || fail "functions: ACL2 wrote no vectors ($C/fcheck-acl2.log)"
 python3 "$X/fcheck.py" scheme "$C"/cands.*.vec --ir "$E/served.json" --out "$E/vectors.scm" > /dev/null
-( cd "$E" && cp "$X/fcheck-main.scm" . && PATH=$CHICKEN/bin:$PATH swarm-build csc -O2 -d0 fcheck-main.scm -o fcheck -L -lcrypto > "$C/fcheck-csc.log" 2>&1 ) \
+( cd "$E" && cp "$X/fcheck-main.scm" . && PATH=$CHICKEN/bin:$PATH swarm-build csc -O2 -d0 fcheck-main.scm -o fcheck -L -lcrypto -L "-L$E/lib -lfn-blake3 -Wl,-rpath,$E/lib" > "$C/fcheck-csc.log" 2>&1 ) \
     || fail "functions: csc fcheck-main ($C/fcheck-csc.log)"
 "$E/fcheck" "$E/vectors.scm" > "$C/fcheck.log" 2>&1
 python3 "$X/fcheck.py" report "$E/served.json" "$C/fcheck.log" --json "$C/fcheck.json" | tail -3

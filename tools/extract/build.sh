@@ -19,9 +19,10 @@ mkdir -p "$OUT"
 # codes, and the probes' entries (tools/extract/probes.py).
 ROOTS=${FN_EXTRACT_ROOTS:-"create-fn-arena fn-reader-use-seed fn-reader-set-posting fn-reader-model-octets fn-reader-reset fn-reader-chunk fn-reader-outcome fn-reader-observe-clock fn-outcome-code fn-ns-file-render fn-intern-events fn-arx-entry-ok-buffer fn-arx-read-cache-entries fn-xo-open-store fn-reader-use-store fn-lzr-lz-read"}
 # Not boundary functions: the realizer's buffer stobj's creator (the image
-# holds the live fn-octets-rd; the program creates it once) and the three
-# SHA-256 references the native digest falls back to (tools/extract/native.scm).
-EXTRA=${FN_EXTRACT_EXTRA:-"create-fn-octets-rd create-fn-octets-lg fn-sha256-stobj fn-sha256-of-string fn-sha256-of-prefixed-buffer fn-sha256-of-prefixed-range"}
+# holds the live fn-octets-rd; the program creates it once) and the
+# references the native digests fall back to (tools/extract/native.scm): the
+# three BLAKE3 entries and the Cancel-Lock hash's SHA-256.
+EXTRA=${FN_EXTRACT_EXTRA:-"create-fn-octets-rd create-fn-octets-lg fn-blake3-stobj fn-blake3-of-prefixed-buffer fn-blake3-of-prefixed-range fn-sha256"}
 python3 "$X/world.py" --check
 cat > "$OUT/extract.lsp" <<LSP
 (ld "tools/extract/world.lisp")
@@ -38,7 +39,12 @@ python3 "$X/chicken.py" served.json --out served.scm --erased erased.json \
     --inventory inventory.json --table fntable.scm
 python3 "$X/probes.py" scheme probes.scm
 cp "$X/runtime.scm" "$X/served-main.scm" "$X/native.scm" "$X/hostio.scm" .
+# BLAKE3 is the images' own library (tools/build_blake3.sh, the vendored
+# reference C behind host/native/fn-blake3.c), linked with its directory as
+# the run path; libcrypto is for the Cancel-Lock SHA-256.
+sh "$TREE/tools/build_blake3.sh" "$OUT/lib" > blake3.log 2>&1 || {
+    echo "extract: tools/build_blake3.sh failed; see $OUT/blake3.log" >&2; exit 1; }
 PATH=$CHICKEN/bin:$PATH swarm-build csc -O3 -d0 -block -inline-global -lfa2 \
-    served-main.scm -o served -L -lcrypto > csc.log 2>&1 || {
+    served-main.scm -o served -L -lcrypto -L "-L$OUT/lib -lfn-blake3 -Wl,-rpath,$OUT/lib" > csc.log 2>&1 || {
     echo "extract: csc failed; see $OUT/csc.log" >&2; tail -20 csc.log >&2; exit 1; }
 echo "extract: built $OUT/served"

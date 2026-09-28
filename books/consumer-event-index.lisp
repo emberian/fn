@@ -91,9 +91,40 @@
           rest))
     nil))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cei-snoc-loop (xs x acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp xs)
+      (fn-cei-snoc-loop (cdr xs) x (cons (car xs) acc))
+    (revappend acc (list x))))
+
 (defun fn-cei-snoc (xs x)
-  (declare (xargs :guard t))
-  (if (consp xs) (cons (car xs) (fn-cei-snoc (cdr xs) x)) (list x)))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp xs) (cons (car xs) (fn-cei-snoc (cdr xs) x)) (list x))
+       :exec (fn-cei-snoc-loop xs x nil)))
+
+(local
+ (defthm fn-cei-snoc-loop-is-revappend
+   (equal (fn-cei-snoc-loop xs x acc)
+          (revappend acc (fn-cei-snoc xs x)))
+   :hints (("Goal" :induct (fn-cei-snoc-loop xs x acc)
+                   :in-theory (union-theories '(fn-cei-snoc-loop fn-cei-snoc revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cei-snoc-loop)
+
+(verify-guards fn-cei-snoc
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cei-snoc)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cei-snoc-loop-is-revappend (acc nil))))))
+
 
 (defun fn-cei-sequence-trie (index)
   (declare (xargs :guard t))

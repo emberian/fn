@@ -170,13 +170,46 @@
 ; The logical model: the columns as functions of the list.
 
 ; The sequences of the rows carrying MSGID, ascending, the first row being I.
-(defun fn-cat-seqs-for (msgid c i)
-  (declare (xargs :guard (natp i)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cat-seqs-for-loop (msgid c i acc)
+  (declare (xargs :guard (and (natp i) (true-listp acc)) :verify-guards nil))
   (if (consp c)
       (if (equal msgid (fn-record-msgid (car c)))
-          (cons i (fn-cat-seqs-for msgid (cdr c) (+ 1 i)))
-        (fn-cat-seqs-for msgid (cdr c) (+ 1 i)))
-    nil))
+          (fn-cat-seqs-for-loop msgid (cdr c) (+ 1 i) (cons i acc))
+        (fn-cat-seqs-for-loop msgid (cdr c) (+ 1 i) acc))
+    (revappend acc nil)))
+
+(defun fn-cat-seqs-for (msgid c i)
+  (declare (xargs :verify-guards nil :guard (natp i)))
+  (mbe :logic
+       (if (consp c)
+           (if (equal msgid (fn-record-msgid (car c)))
+               (cons i (fn-cat-seqs-for msgid (cdr c) (+ 1 i)))
+             (fn-cat-seqs-for msgid (cdr c) (+ 1 i)))
+         nil)
+       :exec (fn-cat-seqs-for-loop msgid c i nil)))
+
+(local
+ (defthm fn-cat-seqs-for-loop-is-revappend
+   (equal (fn-cat-seqs-for-loop msgid c i acc)
+          (revappend acc (fn-cat-seqs-for msgid c i)))
+   :hints (("Goal" :induct (fn-cat-seqs-for-loop msgid c i acc)
+                   :in-theory (union-theories '(fn-cat-seqs-for-loop fn-cat-seqs-for revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cat-seqs-for-loop)
+
+(verify-guards fn-cat-seqs-for
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cat-seqs-for)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cat-seqs-for-loop-is-revappend (acc nil))))))
+
 
 ; The first row binding (GROUP . N), or nil; a row outside the group binds
 ; nothing, so no N matches it.
@@ -587,22 +620,93 @@
 ; The commit's plan: per group, its next number and its old row count, read
 ; from the tables BEFORE any write, so that a group listed twice gets the
 ; same number and is counted once (the logical assignment reads C once).
-(defun fn-cat$c-plan (groups fn-cat$c)
-  (declare (xargs :stobjs fn-cat$c))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cat$c-plan-loop (groups fn-cat$c acc)
+  (declare (xargs :stobjs fn-cat$c :guard (true-listp acc) :verify-guards nil))
   (if (consp groups)
       (let ((e (fn-cat$c-groups-get (car groups) fn-cat$c)))
-        (cons (list (car groups)
-                    (if (consp e) (nfix (cdr e)) 1)
-                    (if (consp e) (nfix (car e)) 0))
-              (fn-cat$c-plan (cdr groups) fn-cat$c)))
-    nil))
+        (fn-cat$c-plan-loop (cdr groups)
+                            fn-cat$c
+                            (cons (list (car groups)
+                                        (if (consp e) (nfix (cdr e)) 1)
+                                        (if (consp e) (nfix (car e)) 0))
+                                  acc)))
+    (revappend acc nil)))
+
+(defun fn-cat$c-plan (groups fn-cat$c)
+  (declare (xargs :verify-guards nil :stobjs fn-cat$c))
+  (mbe :logic
+       (if (consp groups)
+           (let ((e (fn-cat$c-groups-get (car groups) fn-cat$c)))
+             (cons (list (car groups)
+                         (if (consp e) (nfix (cdr e)) 1)
+                         (if (consp e) (nfix (car e)) 0))
+                   (fn-cat$c-plan (cdr groups) fn-cat$c)))
+         nil)
+       :exec (fn-cat$c-plan-loop groups fn-cat$c nil)))
+
+(local
+ (defthm fn-cat$c-plan-loop-is-revappend
+   (equal (fn-cat$c-plan-loop groups fn-cat$c acc)
+          (revappend acc (fn-cat$c-plan groups fn-cat$c)))
+   :hints (("Goal" :induct (fn-cat$c-plan-loop groups fn-cat$c acc)
+                   :in-theory (union-theories '(fn-cat$c-plan-loop fn-cat$c-plan revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cat$c-plan-loop)
+
+(verify-guards fn-cat$c-plan
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cat$c-plan)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cat$c-plan-loop-is-revappend (acc nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cat-plan-numbers-loop (plan acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp plan)
+      (fn-cat-plan-numbers-loop (cdr plan)
+                                (cons (cons (fn-cbor-ag-car (car plan))
+                                            (fn-cbor-ag-car (fn-cbor-ag-cdr (car plan))))
+                                      acc))
+    (revappend acc nil)))
 
 (defun fn-cat-plan-numbers (plan)
-  (declare (xargs :guard t))
-  (if (consp plan)
-      (cons (cons (fn-cbor-ag-car (car plan)) (fn-cbor-ag-car (fn-cbor-ag-cdr (car plan))))
-            (fn-cat-plan-numbers (cdr plan)))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp plan)
+           (cons (cons (fn-cbor-ag-car (car plan)) (fn-cbor-ag-car (fn-cbor-ag-cdr (car plan))))
+                 (fn-cat-plan-numbers (cdr plan)))
+         nil)
+       :exec (fn-cat-plan-numbers-loop plan nil)))
+
+(local
+ (defthm fn-cat-plan-numbers-loop-is-revappend
+   (equal (fn-cat-plan-numbers-loop plan acc)
+          (revappend acc (fn-cat-plan-numbers plan)))
+   :hints (("Goal" :induct (fn-cat-plan-numbers-loop plan acc)
+                   :in-theory (union-theories '(fn-cat-plan-numbers-loop fn-cat-plan-numbers revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cat-plan-numbers-loop)
+
+(verify-guards fn-cat-plan-numbers
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cat-plan-numbers)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cat-plan-numbers-loop-is-revappend (acc nil))))))
+
 
 (defun fn-cat$c-apply-plan (plan seq fn-cat$c)
   (declare (xargs :stobjs fn-cat$c))
@@ -661,9 +765,40 @@
                      fn-cat$c-hz update-fn-cat$c-hz)))
 
 ; A total snoc: append on a true list, and on anything else the list of one.
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cat-snoc-loop (xs x acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp xs)
+      (fn-cat-snoc-loop (cdr xs) x (cons (car xs) acc))
+    (revappend acc (list x))))
+
 (defun fn-cat-snoc (xs x)
-  (declare (xargs :guard t))
-  (if (consp xs) (cons (car xs) (fn-cat-snoc (cdr xs) x)) (list x)))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp xs) (cons (car xs) (fn-cat-snoc (cdr xs) x)) (list x))
+       :exec (fn-cat-snoc-loop xs x nil)))
+
+(local
+ (defthm fn-cat-snoc-loop-is-revappend
+   (equal (fn-cat-snoc-loop xs x acc)
+          (revappend acc (fn-cat-snoc xs x)))
+   :hints (("Goal" :induct (fn-cat-snoc-loop xs x acc)
+                   :in-theory (union-theories '(fn-cat-snoc-loop fn-cat-snoc revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cat-snoc-loop)
+
+(verify-guards fn-cat-snoc
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cat-snoc)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cat-snoc-loop-is-revappend (acc nil))))))
+
 
 (defun fn-cat$c-commit-base (h fn-cat$c)
   (declare (xargs :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
@@ -764,8 +899,11 @@
 
 ;; The commit's entries, read before any write: per group, the entry after
 ;; a row numbered N (the group's next) joins it, live or not.
-(defun fn-cat$c-live-plan (groups livep fn-cat$c)
-  (declare (xargs :stobjs fn-cat$c))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cat$c-live-plan-loop (groups livep fn-cat$c acc)
+  (declare (xargs :stobjs fn-cat$c :guard (true-listp acc) :verify-guards nil))
   (if (consp groups)
       (let* ((g (car groups))
              (ge (fn-cat$c-groups-get g fn-cat$c))
@@ -773,11 +911,56 @@
              (count (fn-cat$c-group-live-count g fn-cat$c))
              (low (fn-cat$c-group-live-low g fn-cat$c))
              (high (fn-cat$c-group-live-high g fn-cat$c)))
-        (cons (cons g (if (and livep (posp n) (<= n *fn-nntp-max-article-number*))
-                          (cons (+ 1 count) (cons (if (equal low 0) n low) n))
-                        (cons count (cons low high))))
-              (fn-cat$c-live-plan (cdr groups) livep fn-cat$c)))
-    nil))
+        (fn-cat$c-live-plan-loop (cdr groups)
+                                 livep
+                                 fn-cat$c
+                                 (cons (cons g
+                                             (if (and livep
+                                                      (posp n)
+                                                      (<= n
+                                                          *fn-nntp-max-article-number*))
+                                                 (cons (+ 1 count)
+                                                       (cons (if (equal low 0) n low) n))
+                                               (cons count (cons low high))))
+                                       acc)))
+    (revappend acc nil)))
+
+(defun fn-cat$c-live-plan (groups livep fn-cat$c)
+  (declare (xargs :verify-guards nil :stobjs fn-cat$c))
+  (mbe :logic
+       (if (consp groups)
+           (let* ((g (car groups))
+                  (ge (fn-cat$c-groups-get g fn-cat$c))
+                  (n (if (consp ge) (nfix (cdr ge)) 1))
+                  (count (fn-cat$c-group-live-count g fn-cat$c))
+                  (low (fn-cat$c-group-live-low g fn-cat$c))
+                  (high (fn-cat$c-group-live-high g fn-cat$c)))
+             (cons (cons g (if (and livep (posp n) (<= n *fn-nntp-max-article-number*))
+                               (cons (+ 1 count) (cons (if (equal low 0) n low) n))
+                             (cons count (cons low high))))
+                   (fn-cat$c-live-plan (cdr groups) livep fn-cat$c)))
+         nil)
+       :exec (fn-cat$c-live-plan-loop groups livep fn-cat$c nil)))
+
+(local
+ (defthm fn-cat$c-live-plan-loop-is-revappend
+   (equal (fn-cat$c-live-plan-loop groups livep fn-cat$c acc)
+          (revappend acc (fn-cat$c-live-plan groups livep fn-cat$c)))
+   :hints (("Goal" :induct (fn-cat$c-live-plan-loop groups livep fn-cat$c acc)
+                   :in-theory (union-theories '(fn-cat$c-live-plan-loop fn-cat$c-live-plan revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cat$c-live-plan-loop)
+
+(verify-guards fn-cat$c-live-plan
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cat$c-live-plan)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cat$c-live-plan-loop-is-revappend (acc nil))))))
+
 
 (defun fn-cat$c-live-apply (plan fn-cat$c)
   (declare (xargs :stobjs fn-cat$c))
@@ -814,8 +997,11 @@
 ;; The withdrawal's entries, read before any write: for each binding
 ;; (g . k) of the row whose number the table answers with the row and which
 ;; is live; a repeated binding repeats the same entry.
-(defun fn-cat$c-drop-plan (pairs target row fn-cat$c)
-  (declare (xargs :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-cat$c-drop-plan-loop (pairs target row fn-cat$c acc)
+  (declare (xargs :stobjs fn-cat$c :guard (and (fn-cat$c-wfp fn-cat$c) (true-listp acc)) :verify-guards nil))
   (if (consp pairs)
       (let* ((p (car pairs))
              (g (fn-cbor-ag-car p))
@@ -823,10 +1009,50 @@
         (if (and (consp p)
                  (equal (fn-cat$c-numbers-get (cons g k) fn-cat$c) target)
                  (fn-cat-live-rowp g k row))
-            (cons (cons g (fn-cat$c-drop-entry g k fn-cat$c))
-                  (fn-cat$c-drop-plan (cdr pairs) target row fn-cat$c))
-          (fn-cat$c-drop-plan (cdr pairs) target row fn-cat$c)))
-    nil))
+            (fn-cat$c-drop-plan-loop (cdr pairs)
+                                     target
+                                     row
+                                     fn-cat$c
+                                     (cons (cons g (fn-cat$c-drop-entry g k fn-cat$c))
+                                           acc))
+          (fn-cat$c-drop-plan-loop (cdr pairs) target row fn-cat$c acc)))
+    (revappend acc nil)))
+
+(defun fn-cat$c-drop-plan (pairs target row fn-cat$c)
+  (declare (xargs :verify-guards nil :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
+  (mbe :logic
+       (if (consp pairs)
+           (let* ((p (car pairs))
+                  (g (fn-cbor-ag-car p))
+                  (k (fn-cbor-ag-cdr p)))
+             (if (and (consp p)
+                      (equal (fn-cat$c-numbers-get (cons g k) fn-cat$c) target)
+                      (fn-cat-live-rowp g k row))
+                 (cons (cons g (fn-cat$c-drop-entry g k fn-cat$c))
+                       (fn-cat$c-drop-plan (cdr pairs) target row fn-cat$c))
+               (fn-cat$c-drop-plan (cdr pairs) target row fn-cat$c)))
+         nil)
+       :exec (fn-cat$c-drop-plan-loop pairs target row fn-cat$c nil)))
+
+(local
+ (defthm fn-cat$c-drop-plan-loop-is-revappend
+   (equal (fn-cat$c-drop-plan-loop pairs target row fn-cat$c acc)
+          (revappend acc (fn-cat$c-drop-plan pairs target row fn-cat$c)))
+   :hints (("Goal" :induct (fn-cat$c-drop-plan-loop pairs target row fn-cat$c acc)
+                   :in-theory (union-theories '(fn-cat$c-drop-plan-loop fn-cat$c-drop-plan revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-cat$c-drop-plan-loop)
+
+(verify-guards fn-cat$c-drop-plan
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-cat$c-drop-plan)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-cat$c-drop-plan-loop-is-revappend (acc nil))))))
+
 
 (defun fn-cat$c-withdraw (target by fn-cat$c)
   (declare (xargs :stobjs fn-cat$c

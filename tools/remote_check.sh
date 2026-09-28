@@ -2,7 +2,7 @@
 # Run `make check-lane` (or another target) for this worktree on a build box.
 #
 #   tools/remote_check.sh BOX [--target T] [--fetch PATH]... [--no-dirty]
-#                             [--tree PATH] [--log PATH]
+#                             [--install-certs] [--tree PATH] [--log PATH]
 #
 # BOX is hbox, persvati or auto (tools/boxes.sh --pick: the lower load per
 # core now; it prints both loads and the choice).  The laptop is not a build box (closeout-common,
@@ -17,7 +17,11 @@
 #      make on an old head (batch AX, 2026-09-28);
 #   4. applies this worktree's uncommitted tracked changes (git diff HEAD) on
 #      top, unless --no-dirty; untracked files are named, never shipped;
-#   5. runs `make T` there (T = check-lane by default) with the box's own
+#   5. with --install-certs, first installs the box cache's certificates for
+#      the tree's bytes (tools/certs.py install; its summary heads the log):
+#      without them make check's host_check prints NOT RUN for both images
+#      (batch AZ, 2026-09-28; AY ran the install by hand before each check);
+#      then runs `make T` there (T = check-lane by default) with the box's own
 #      FN_ACL2 and FN_CERT_CACHE (tools/farm.py HOSTS), under swarm-build on
 #      hbox, logging to <base>/LANE-check.log;
 #   6. prints the log's step table, copies the log to
@@ -51,6 +55,7 @@ shift
 TARGET=check-lane
 FETCH=
 DIRTY=1
+INSTALL=0
 TREE=
 LOG=
 while [ $# -gt 0 ]; do
@@ -58,6 +63,7 @@ while [ $# -gt 0 ]; do
         --target) [ $# -ge 2 ] || usage; TARGET=$2; shift 2 ;;
         --fetch) [ $# -ge 2 ] || usage; FETCH="$FETCH $2"; shift 2 ;;
         --no-dirty) DIRTY=0; shift ;;
+        --install-certs) INSTALL=1; shift ;;
         --tree) [ $# -ge 2 ] || usage; TREE=$2; shift 2 ;;
         --log) [ $# -ge 2 ] || usage; LOG=$2; shift 2 ;;
         -h|--help) usage ;;
@@ -149,7 +155,7 @@ t=ast.parse(open(\"tools/farm.py\").read())
 h=[ast.literal_eval(n.value) for n in t.body if isinstance(n,ast.Assign) and getattr(n.targets[0],\"id\",None)==\"HOSTS\"][0].get(sys.argv[1],{})
 print((\"export FN_ACL2=%s FN_CERT_CACHE=%s\" % (h.get(\"acl2\",\"\"), os.path.expanduser(h.get(\"cache\",\"\")))) + (\" FN_IMAGE_ACL2=%s\" % h[\"image_acl2\"] if h.get(\"image_acl2\") else \"\") if h else \"\")' $BOX 2>/dev/null)"
 echo "remote_check: make $TARGET in $BOX:$TREE (log $LOG)"
-remote "cd $TREE && $ENVS; [ -n \"\${FN_ACL2:-}\" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)' >&2; exit 3; }; { echo \"== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)\"; $WRAP make $TARGET 2>&1; echo \"== make exit \$?\"; } > $LOG 2>&1; tail -n 1 $LOG | grep -q '^== make exit 0\$'"
+remote "cd $TREE && $ENVS; [ -n \"\${FN_ACL2:-}\" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)' >&2; exit 3; }; { echo \"== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)\"; if [ $INSTALL = 1 ]; then echo \"== certs install: \$(python3 tools/certs.py install 2>&1 | grep -E '^ *installed' | tail -n 1)\"; fi; $WRAP make $TARGET 2>&1; echo \"== make exit \$?\"; } > $LOG 2>&1; tail -n 1 $LOG | grep -q '^== make exit 0\$'"
 STATUS=$?
 remote "cat $LOG" > "$WORK/log" 2>/dev/null
 mkdir -p "$ROOT/build/remote-check"
