@@ -213,9 +213,6 @@
 (defun fn-store-frame-receipt-protected (kind values)
   (fn-frame-receipt-protected kind values))
 
-(defun fn-store-frame-workflow-kinds ()
-  *fn-frame-workflow-kinds*)
-
 (defun fn-store-frame-receipt-kinds ()
   *fn-frame-receipt-kinds*)
 
