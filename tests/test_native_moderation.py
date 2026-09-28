@@ -44,12 +44,9 @@ launcher> python3 -m unittest -v tests.test_native_moderation
 import os
 from pathlib import Path
 import re
-import socket
-import ssl
 import subprocess
 import unittest
-from tests.native_harness import ROOT, Node, executable, free_port
-from tools.wire_stream import whole_stream
+from tests.native_harness import ROOT, Client, Node, client_context, dot_stuff, executable, free_port
 
 PRODUCTION = os.environ.get("FN_NATIVE_HOST")
 DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
@@ -128,31 +125,20 @@ class NativeModerationTests(unittest.TestCase):
         node.stop()
 
     def tls(self, node, source=None):
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
-        raw = socket.create_connection(("127.0.0.1", node.tls_port), timeout=60,
-                                       source_address=(source, 0) if source else None)
-        stream = whole_stream(context.wrap_socket(raw))
-        self.addCleanup(stream.close)
-        stream.readline()
+        stream = Client(node.tls_port, timeout=60, implicit_tls=client_context(),
+                        greeting=None, source=source)
+        self.addCleanup(stream.close, quit=False)
         return stream
 
     @staticmethod
     def line(stream, command):
-        stream.write(command.encode("ascii") + b"\r\n")
-        return stream.readline().decode("ascii", "replace").rstrip("\r\n")
+        return stream.command(command).decode("ascii", "replace").rstrip("\r\n")
 
     def multi(self, stream, command):
         status = self.line(stream, command)
         rows = []
         if status[:1] == "2":
-            while True:
-                raw = stream.readline()
-                row = raw.decode("ascii", "replace").rstrip("\r\n")
-                if row == "." or raw == b"":
-                    break
-                rows.append(row[1:] if row.startswith("..") else row)
+            rows = stream.block().decode("ascii", "replace").split("\r\n")[:-1]
         return status, rows
 
     def account(self, node, login):
@@ -170,20 +156,17 @@ class NativeModerationTests(unittest.TestCase):
         self.assertTrue(self.line(stream, "AUTHINFO PASS pw-" + login).startswith("281"))
         return stream
 
+    @staticmethod
+    def octets(lines):
+        return "".join(row + "\r\n" for row in lines).encode("ascii")
+
     def post_lines(self, stream, lines):
-        status = self.line(stream, "POST")
-        if not status.startswith("340"):
-            return status
-        body = "".join(("." + row if row.startswith(".") else row) + "\r\n"
-                       for row in lines)
-        stream.write((body + ".\r\n").encode("ascii"))
-        return stream.readline().decode("ascii", "replace").rstrip("\r\n")
+        first, final = stream.post(self.octets(lines))
+        return (final or first).decode("ascii", "replace").rstrip("\r\n")
 
     def post_body(self, stream, lines):
-        body = "".join(("." + row if row.startswith(".") else row) + "\r\n"
-                       for row in lines)
-        stream.write((body + ".\r\n").encode("ascii"))
-        return stream.readline().decode("ascii", "replace").rstrip("\r\n")
+        stream.send(dot_stuff(self.octets(lines)) + b".\r\n")
+        return stream.line().decode("ascii", "replace").rstrip("\r\n")
 
     def article(self, groups, tag, extra=()):
         return (["From: {}@example.invalid".format(tag), "Newsgroups: " + groups,

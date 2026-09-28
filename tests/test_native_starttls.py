@@ -3,35 +3,16 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-import select
 import socket
 import ssl
 import subprocess
-import tempfile
 import time
 import unittest
 
+from tests.native_harness import EXIT, ROOT, Node, client_context, native_image, requires
 
-from tests.native_harness import stop_and_diagnostics, wait_for_announcement
-
-ROOT = Path(__file__).resolve().parents[1]
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
-
-
-def environment() -> dict[str, str]:
-    result = dict(os.environ)
-    result["ACL2_CUSTOMIZATION"] = "NONE"
-    result.pop("ACL2_SYSTEM_BOOKS", None)
-    result.pop("FN_HOST", None)
-    return result
-
-
-def free_loopback_port() -> int:
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+IMAGE = native_image("FN_NATIVE_HOST")
 
 
 def recv_line(peer: socket.socket, prefix: bytes = b"") -> tuple[bytes, bytes]:
@@ -43,14 +24,6 @@ def recv_line(peer: socket.socket, prefix: bytes = b"") -> tuple[bytes, bytes]:
         buffered += piece
     line, remainder = buffered.split(b"\r\n", 1)
     return line + b"\r\n", remainder
-
-
-def client_context() -> ssl.SSLContext:
-    context = ssl.create_default_context()
-    context.check_hostname = False
-    context.verify_mode = ssl.CERT_NONE
-    context.minimum_version = ssl.TLSVersion.TLSv1_2
-    return context
 
 
 def tls_1_1_client_hello() -> bytes:
@@ -172,20 +145,12 @@ class MemoryTlsClient:
         return line + b"\r\n"
 
 
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
-                     "build/fn-host is required")
+@requires(IMAGE)
 class NativeStartTlsTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-starttls-")
-        self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
-        self.store = self.root / "store"
-        self.port = free_loopback_port()
-        initialized = subprocess.run(
-            [str(IMAGE), "--fn", "store", str(self.store), "init", "fn.test"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=180, check=False)
-        self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
+        self.node = Node(self, IMAGE, control=False)
+        self.root, self.store, self.port = self.node.root, self.node.store_path, self.node.port
+        self.node.store("init", "fn.test", expect=EXIT.OK)
         self.certificate, self.private_key = self.make_certificate("server")
 
     def make_certificate(self, name: str) -> tuple[Path, Path]:
@@ -199,48 +164,18 @@ class NativeStartTlsTests(unittest.TestCase):
             timeout=60, check=True)
         return certificate, private_key
 
-    def write_config(self, certificate: Path, private_key: Path) -> Path:
-        config = self.root / "fn.toml"
-        config.write_text(
-            '[store]\npath = "{}"\n\n[listener]\nhost = "127.0.0.1"\n'
-            'port = {}\ntls_cert = "{}"\ntls_key = "{}"\n\n'
-            '[auth]\nprotected_only = true\n'
-            .format(self.store, self.port, certificate, private_key),
-            encoding="ascii")
-        return config
+    def write_config(self, certificate: Path, private_key: Path) -> None:
+        self.node.write_config(extra='tls_cert = "{}"\ntls_key = "{}"\n'.format(
+            certificate, private_key), protected_only=True)
 
-    def start(self, config: Path) -> subprocess.Popen[bytes]:
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(config), "run"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        assert process.stdout is not None
-        line = wait_for_announcement(process, b"LISTENING ")
-        if line != "LISTENING {}\n".format(self.port).encode():
-            diagnostic = stop_and_diagnostics(process)
-            self.fail("native TLS owner failed: {!r} {}".format(line, diagnostic))
-        return process
-
-    def stop(self, process: subprocess.Popen[bytes]) -> None:
-        if process.poll() is None:
-            process.terminate()
-            try:
-                process.wait(timeout=20)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=10)
-        assert process.stdout is not None and process.stderr is not None
-        process.stdout.close()
-        process.stderr.close()
+    def stop(self, process) -> None:
+        self.node.stop(expect=None, process=process, grace=20)
 
     def test_context_mismatch_refuses_before_listener(self) -> None:
         _, wrong_key = self.make_certificate("wrong")
-        config = self.write_config(self.certificate, wrong_key)
-        result = subprocess.run(
-            [str(IMAGE), "--fn", "operator", str(config), "run", "--once"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=180, check=False)
-        self.assertEqual(result.returncode, 4, result.stderr.decode())
+        self.write_config(self.certificate, wrong_key)
+        result = self.node.operator("run", "--once")
+        self.assertEqual(result.returncode, EXIT.FAULT, result.stderr.decode())
         self.assertNotIn(b"LISTENING ", result.stdout)
         self.assertIn(b"mismatch", result.stderr.lower())
 
@@ -279,7 +214,8 @@ class NativeStartTlsTests(unittest.TestCase):
         ClientHello; a non-fatal alert or one other than protocol_version (70);
         a connection left open. The TLS 1.2 client afterwards shows the refusal
         is the floor, not a broken listener."""
-        process = self.start(self.write_config(self.certificate, self.private_key))
+        self.write_config(self.certificate, self.private_key)
+        process = self.node.start()
         try:
             with starttls_socket(self.port) as old:
                 old.sendall(tls_1_1_client_hello())
@@ -318,7 +254,8 @@ class NativeStartTlsTests(unittest.TestCase):
         handshake failure or unrecognized_name alert when SNI is present, a
         different certificate for the SNI client, a session that does not
         carry NNTP after the handshake."""
-        process = self.start(self.write_config(self.certificate, self.private_key))
+        self.write_config(self.certificate, self.private_key)
+        process = self.node.start()
         try:
             served = []
             for name in ("sni-probe.fn.invalid", None):
@@ -335,7 +272,8 @@ class NativeStartTlsTests(unittest.TestCase):
             self.stop(process)
 
     def test_pipelined_clienthello_protection_and_failure_isolation(self) -> None:
-        process = self.start(self.write_config(self.certificate, self.private_key))
+        self.write_config(self.certificate, self.private_key)
+        process = self.node.start()
         try:
             # A malformed handshake kills this connection after 382, but the
             # listener and the shared validated context remain usable.

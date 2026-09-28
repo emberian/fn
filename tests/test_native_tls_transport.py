@@ -13,6 +13,8 @@ import tempfile
 import unittest
 import threading
 
+from tests.native_harness import client_context
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -103,12 +105,8 @@ class NativeTlsTransportTest(unittest.TestCase):
                         break
                 self.assertIn("FAILURE-ISOLATED\n", lines)
 
-                context = ssl.create_default_context()
-                context.check_hostname = False
-                context.verify_mode = ssl.CERT_NONE
-                context.minimum_version = ssl.TLSVersion.TLSv1_2
                 with socket.create_connection(("127.0.0.1", port), timeout=5) as raw_peer:
-                    with context.wrap_socket(raw_peer, server_hostname="localhost") as protected:
+                    with client_context().wrap_socket(raw_peer, server_hostname="localhost") as protected:
                         for line in process.stdout:
                             lines.append(line)
                             if line.startswith("TLS-READY"):

@@ -967,16 +967,18 @@ class Client:
     greeting (RFC 8143); `starttls()` upgrades after a 382 (RFC 4642)."""
 
     def __init__(self, port, *, host="127.0.0.1", timeout=60, implicit_tls=None,
-                 greeting=(b"200", b"201"), source=None):
+                 greeting=(b"200", b"201"), source=None, server_hostname=None):
         self.sock = socket.create_connection(
             (host, port), timeout=timeout,
             source_address=(source, 0) if source else None)
         self.sock.settimeout(timeout)
         self.host = host
+        self.server_hostname = server_hostname or host
         self.buffer = b""
         try:
             if implicit_tls is not None:
-                self.sock = implicit_tls.wrap_socket(self.sock, server_hostname=host)
+                self.sock = implicit_tls.wrap_socket(self.sock,
+                                                     server_hostname=self.server_hostname)
             self.greeting = self.line()
         except BaseException:
             self.sock.close()
@@ -1050,7 +1052,7 @@ class Client:
             if self.buffer:
                 raise AssertionError("octets followed the 382 before the handshake")
             self.sock = (context or client_context()).wrap_socket(
-                self.sock, server_hostname=self.host)
+                self.sock, server_hostname=self.server_hostname)
         return status
 
     def close(self, quit=True):
