@@ -1,6 +1,59 @@
 ; fn: the history image adopted from its committed root and bound to the
 ; exact log prefix (lane composed-owner, 2026-09-29, rows A2-A4 of
-; build/coordinator/COMPLETE-BEFORE-6.6.0.md).  Prefix fn-hib-.
+; build/coordinator/COMPLETE-BEFORE-6.6.0.md; GPT-6's review of 2026-09-28,
+; "Representation and page-store calls").  Prefix fn-hib-.
+;
+; books/history-records.lisp's reads keep the history faithful over a page
+; file that HOLDS the image (`fn-hrecs-disk-faithful': every unverified page
+; at its address is the image's), and books/history-records-disk.lisp's
+; decode takes that as a hypothesis (`fn-hrs-disk-holds').  Nothing
+; establishes it, and nothing could without reading every page.  This book
+; replaces it by what the open can establish:
+;
+;   ROOT-HOLDS  the tables of the adopted root name the digests of H's
+;               image pages (`fn-hib-root-holds'; at the open, the root the
+;               binding names: `fn-hib-root-is-image');
+;   DISK-BOUND  the page file holds no BLAKE3 second preimage of an image
+;               page at the address the table names (`fn-hib-disk-bound';
+;               `fn-hib-file-bound') -- the narrow cryptographic-failure
+;               assumption, as a hypothesis on the actual file; the
+;               pessimistic figure is the collision bound, 2^-128 per pair.
+;
+; Under them a fill verifies a page exactly when its words ARE H's page;
+; any other words (damage, a torn write, another history's page) are
+; refused by the page store's check, by name -- never answered, never
+; absence.
+;
+; KEYSTONES (each over the function the host will call)
+;   fn-hib-fill-rel            a fill of the words the file holds keeps the
+;                              history faithful (no disk-faithful)
+;   fn-hib-get-keeps           the read loop keeps it; :ok is record SEQ
+;   fn-hib-hrecs-get-fuel-enough  the loop never runs out of fuel, with no
+;                              relation to the disk at all
+;   fn-hib-adopt-establishes   ADOPTION ESTABLISHES faithfulness: the root
+;                              opened, page 0 filled and checked, the header
+;                              read from page 0 (not from a handle), the
+;                              count checked against the binding's
+;   fn-hib-complete-keeps      an asynchronous page request's completion
+;                              keeps it; a late one (root or entry changed)
+;                              changes nothing, refused :stale-root /
+;                              :stale-page (fn-hib-complete-stale)
+;   fn-hib-evict-keeps, fn-hib-undone-evict, fn-hib-complete-progress
+;                              eviction respecting pins keeps it, and an
+;                              operation that pins what it filled completes
+;                              within the image's page count of its own reads
+;   fn-hib-open-binds-prefix   the binding's TRAIL (the log's chain value) is
+;                              an identity of the prefix, not its count
+;   fn-hib-open-is-log-prefix  alpha of the selected image is the history of
+;                              exactly the log's prefix [0, COUNT)
+;   fn-hib-replay-extends      the running state is that prefix extended by
+;                              the log's suffix
+;
+; Sections: A. digests and the fill of an unverified page; B. the fill
+; without disk-faithful; C. the read loop; F. adoption; E. asynchronous page
+; requests; D. eviction and progress; G. the binding.  Teeth:
+; tests/acl2/history-image-binding-tests.lisp (live runs over committed
+; page files, and row A3's adversarial cases).
 (in-package "ACL2")
 (include-book "history-records-disk")
 (include-book "store-log")
@@ -925,14 +978,22 @@
         ((not (equal (fn-hib-b-trail b) trail)) (list :refused :prefix (fn-hib-b-count b)))
         (t nil)))
 
+(defun fn-hib-slot-has (rec slots)
+  ; SLOTS as the page store reads the root file (`pgs-x-read-rec' per
+  ; slot): each (RECORD CHECK), CHECK the digest observed over its words.
+  (declare (xargs :guard t))
+  (and (consp slots)
+       (or (and (consp (car slots)) (consp (cdr (car slots)))
+                (equal (car (car slots)) rec) (pgs-rec-ok rec (cadr (car slots))))
+           (fn-hib-slot-has rec (cdr slots)))))
+
 (defun fn-hib-select (b slots)
-  ; The binding's root among the page file's root SLOTS (the records its
-  ; two slots hold): nil when one of them is exactly B's record and valid;
-  ; else (:refused :root-absent) -- the image the binding names is not
-  ; the page file's (a crash between the two publications, or a file from
-  ; another store or generation).
+  ; The binding's root among the page file's root SLOTS: nil when a slot
+  ; holds exactly B's record and it checks; else (:refused :root-absent) --
+  ; the image the binding names is not the page file's (the publications
+  ; out of order, or a file from another store or generation).
   (declare (xargs :guard (fn-hib-bindingp b)))
-  (if (and (member-equal (fn-hib-b-rec b) (true-list-fix slots)) (pgs-rec-valid (fn-hib-b-rec b)))
+  (if (fn-hib-slot-has (fn-hib-b-rec b) slots)
       nil
     (list :refused :root-absent)))
 
