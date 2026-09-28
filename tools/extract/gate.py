@@ -335,7 +335,10 @@ class Gate:
         if d.exists():
             shutil.rmtree(d)
         log = self.c / "stateful.log"
-        rc = self.run("stateful.py", self.t.stateful + [self.image, self.e / "served", d], stdout=log,
+        # the Common Lisp product is the product under test; the CHICKEN
+        # program runs the same cases as the oracle when EXTRACT_STATEFUL_CHICKEN=1
+        # (tools/extract/stateful.py without --core), recorded in status.json
+        rc = self.run("stateful.py", self.t.stateful + [self.image, self.core_exe, d, "--core"], stdout=log,
                       stderr="stdout", env=self.acl2_env)
         man = self.load_json(d / "manifest.json", "stateful")
         doc = self.load_json(d / "stateful.json", "stateful")

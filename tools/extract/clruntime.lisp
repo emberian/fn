@@ -130,3 +130,7 @@
 (defun xl-lognot (x) (lognot (xl-ifix x)))
 (defun xl-ash (x y) (ash (xl-ifix x) (xl-ifix y)))
 (defun xl-len (x) (loop for tail = x then (cdr tail) while (consp tail) count t))
+(defun xl-string-append (a b)
+  (concatenate 'string (if (stringp a) a "") (if (stringp b) b "")))
+(defun xl-niq (i j)
+  (if (and (integerp i) (integerp j) (< 0 j) (<= 0 i)) (floor i j) 0))

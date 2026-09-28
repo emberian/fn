@@ -66,6 +66,10 @@ RAW = {
     "ACL2::BINARY-LOGAND": "logand", "ACL2::BINARY-LOGIOR": "logior", "ACL2::BINARY-LOGXOR": "logxor",
     "ACL2::BINARY-LOGEQV": "logeqv", "COMMON-LISP::LOGNOT": "lognot", "COMMON-LISP::ASH": "ash",
     "ACL2::LEN": "|ACL2|::|XL-LEN|",
+    # raw-only: the :exec branch is Common Lisp's (string-append's is
+    # (concatenate 'string ...), which translates back to string-append)
+    "ACL2::STRING-APPEND": "|ACL2|::|XL-STRING-APPEND|",
+    "ACL2::NONNEGATIVE-INTEGER-QUOTIENT": "|ACL2|::|XL-NIQ|",
 }
 LOGIC = {"COMMON-LISP::CAR": "|ACL2|::|XL-CAR|", "COMMON-LISP::CDR": "|ACL2|::|XL-CDR|",
          "ACL2::BINARY-+": "|ACL2|::|XL-+|", "ACL2::BINARY-*": "|ACL2|::|XL-*|",

@@ -5,6 +5,10 @@
 ;;; loads it (core_build.py), saved as one executable.  Run from the tree's
 ;;; root; XL_OUT names build/core/.  tools/extract/core.sh runs it.
 (setq *compile-verbose* nil *compile-print* nil)
+;; ACL2's external formats (acl2.lisp): Latin-1 for streams, file names and
+;; the command line, so argv's octets are the characters the image reads
+(setq sb-impl::*default-external-format* :iso-8859-1)
+(setq sb-alien::*default-c-string-external-format* :iso-8859-1)
 (defvar cl-user::*xl-out* (sb-ext:posix-getenv "XL_OUT"))
 (defun cl-user::xl-path (name) (concatenate 'string cl-user::*xl-out* name))
 (load (cl-user::xl-path "packages.lisp") :external-format :latin-1)
@@ -30,7 +34,18 @@
             (lambda (code)
               (let ((*standard-output* *error-output*))
                 (funcall (intern "REPORT" "SB-SPROF") :type :flat :max 40))
-              (funcall exit code)))))
+              (funcall exit code))))
+    ;; XL_PROF_SECONDS: report and show where the main thread is, then exit
+    (let ((secs (sb-ext:posix-getenv "XL_PROF_SECONDS")) (main sb-thread:*current-thread*))
+      (when secs
+        (sb-ext:schedule-timer
+         (sb-ext:make-timer (lambda ()
+                              (let ((*standard-output* *error-output*))
+                                (funcall (intern "REPORT" "SB-SPROF") :type :flat :max 30)
+                                (sb-thread:interrupt-thread main (lambda () (sb-debug:print-backtrace :count 40)
+                                                                   (sb-ext:exit :code 99 :abort t)))))
+                            :thread t)
+         (parse-integer secs)))))
   (acl2::xl-make-live-stobjs)
   ;; A developer core's evaluation hook for the extraction gate's boundary
   ;; probes (tools/extract/probes.py run-core): `fn-core --xl-load FILE'
