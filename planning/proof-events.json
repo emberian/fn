@@ -11010,6 +11010,27 @@
           "name": "fn-nls-octets-string-is-record-octets-string"
         }
       ]
+    },
+    {
+      "id": "PRF-345",
+      "events": [
+        {
+          "kind": "guarded-function",
+          "name": "fn-record-octets-chars"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-record-string-octets-aux"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-record-octets-chars-rev"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-record-string-octets-rev"
+        }
+      ]
     }
   ]
 }
