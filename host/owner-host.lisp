@@ -178,6 +178,9 @@
 ;; Lane zero-copy-commit: the articles in flight within the slots the figure
 ;; holds (fn-oas-read-span, over fn-otm-read-span).
 (include-book "../books/owner-article-slots")
+;; Lane credits (B5, PRF-380): the memory credits the served read, the
+;; commit's steps and the close move (fn-mca-read-span over fn-oas-read-span).
+(include-book "../books/owner-credits")
 ; lane health-truth-journal (PKT-872, PRF-360): the journal writer never keeps a torn line.
 (include-book "../books/owner-time-journal-writer")
 (include-book "../books/owner-reader-read")
@@ -955,6 +958,49 @@
                     (f-get-global 'fn-owner-article-slots state))))
     (if (posp slots) slots 1)))
 
+; Lane credits (books/owner-credits.lisp, PRF-380): the run's credit ledger
+; (fn-mca-initial: the launcher's reservation is the budget, the articles'
+; pool what it leaves free) and one article's reserve.  Before a run
+; installs them, a ledger that admits one article (fn-mca-default).
+(defun fn-owner-credit-reserve (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((r (and (boundp-global 'fn-owner-credit-reserve state)
+                (f-get-global 'fn-owner-credit-reserve state))))
+    (if (posp r) r (fn-heap-article-reserve-octets nil))))
+
+(defun fn-owner-credits (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((l (and (boundp-global 'fn-owner-credits state)
+                (f-get-global 'fn-owner-credits state))))
+    (or l (fn-mca-default (fn-owner-credit-reserve state)))))
+
+(defun fn-owner-put-credits (l state)
+  (declare (xargs :stobjs state :mode :program))
+  (f-put-global 'fn-owner-credits l state))
+
+;; The commit's steps (host/native/owner.lisp): the batch appended
+;; (fnn-log-seal-open-batch), its COMPLETE after the barrier, a START that
+;; sealed nothing or a synchronous write, and the stop.
+(defun fn-owner-credits-seal (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (fn-owner-put-credits (fn-mca-seal (fn-owner-credits state)) state)))
+    (value :ok)))
+
+(defun fn-owner-credits-batch-done (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (fn-owner-put-credits (fn-mca-batch-done (fn-owner-credits state)) state)))
+    (value :ok)))
+
+(defun fn-owner-credits-settle (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (fn-owner-put-credits (fn-mca-settle (fn-owner-credits state)) state)))
+    (value :ok)))
+
+(defun fn-owner-credits-stop (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (fn-owner-put-credits (fn-mca-stop (fn-owner-credits state)) state)))
+    (value :ok)))
+
 (defun fn-owner-connection-budget (machine dynamic core threads stack nursery profile
                                            tlsp state)
   ; Once per run, after recovery and before listen (host/native/mux.lisp
@@ -978,6 +1024,13 @@
          (state (f-put-global 'fn-owner-article-slots
                               (fn-heap-article-slots profile)
                               state))
+         ;; Lane credits: the same figure is the credit budget
+         ;; (fn-mca-initial-funds-exactly-the-articles), from which every
+         ;; served read, take, seal, COMPLETE and close moves credit.
+         (state (f-put-global 'fn-owner-credit-reserve
+                              (fn-heap-article-reserve-octets profile)
+                              state))
+         (state (fn-owner-put-credits (fn-mca-initial profile core nursery) state))
          (state (f-put-global 'fn-owner-connection-budget-line
                               (fn-record-string-octets
                                (if (equal (car d) :hold)
@@ -1892,7 +1945,14 @@
                               (fn-own-node-secret after)))
              (intent (fn-apc-icar-carry-of sub (cdr tk)))
              (state (f-put-global 'fn-owner-submit-intent intent state))
-             (state (f-put-global 'fn-owner-parse-carry (cdr tk) state)))
+             (state (f-put-global 'fn-owner-parse-carry (cdr tk) state))
+             ;; Lane credits: the submission's credit follows it from its
+             ;; connection to the committer (fn-mca-take; :open until the
+             ;; batch is appended, fn-owner-credits-seal).
+             (state (fn-owner-put-credits
+                     (fn-mca-take (fn-owner-credits state) (fn-own-sub-id sub)
+                                  (fn-owner-credit-reserve state))
+                     state)))
         (value (fn-apc-take-result sub (car tk) intent))))))
 
 ; The hybrid-signed author path and the BP application path submit an
@@ -2551,7 +2611,11 @@
     (declare (ignore val))
     (if erp
         (mv erp nil state)
-      (let ((state (f-put-global 'fn-owner-output (fn-otm-shed-reply s) state)))
+      (let* ((state (f-put-global 'fn-owner-output (fn-otm-shed-reply s) state))
+             ;; Lane credits: nothing stored, its taken credit comes back.
+             (state (fn-owner-put-credits
+                     (fn-mca-untake (fn-owner-credits state) (fn-owner-credit-reserve state))
+                     state)))
         (value :shed)))))
 
 ; The control result is projected before the event consumes the in-flight
@@ -3379,11 +3443,21 @@
         ;; 400 and close); within them it is fn-otm-read-span exactly
         ;; (fn-oas-read-span-when-held-unfolds).  The slots are the run's
         ;; (fn-owner-connection-budget); before a run installs them, one.
-        (let* ((result (fn-oas-read-span
-                        (fn-owner-ocfg state) (fn-owner-reader-views state)
-                        id start end sched
-                        (fn-owner-article-slots state)
-                        fn-octets fn-arena fn-cat))
+        ;; Lane credits (books/owner-credits.lisp, PRF-380): that read, and
+        ;; this connection's credit resized to what its buffers then need.
+        ;; Within the credit it is fn-oas-read-span exactly
+        ;; (fn-mca-read-span-within-the-credit-unfolds); past it the read is
+        ;; refused by name (POST 440, else 400 and close) and the ledger is
+        ;; never over-committed (fn-mca-read-span-keeps-funded).
+        (let* ((rc (fn-mca-read-span
+                    (fn-owner-credits state)
+                    (fn-owner-ocfg state) (fn-owner-reader-views state)
+                    id start end sched
+                    (fn-owner-article-slots state)
+                    (fn-owner-credit-reserve state)
+                    fn-octets fn-arena fn-cat))
+               (result (car rc))
+               (state (fn-owner-put-credits (cdr rc) state))
                (effects (fn-own-tls-result-effects result))
                (consumed (fn-own-tls-result-consumed result))
                (state (fn-owner-install-ocfg
@@ -3407,7 +3481,11 @@
 
 (defun fn-owner-close (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (let ((state (fn-owner-step (list :close id) fn-arena state)))
+  (let* ((state (fn-owner-step (list :close id) fn-arena state))
+         ;; Lane credits: the connection's body and queued submissions are
+         ;; freed with it; what the committer took and the batch in flight
+         ;; keep their credit (fn-mca-close-keeps-what-the-commit-owns).
+         (state (fn-owner-put-credits (fn-mca-close (fn-owner-credits state) id) state)))
     (value :closed)))
 
 ; The host-fault boundary (books/owner-fault.lisp).
@@ -3430,7 +3508,9 @@
          (knownp (if (fn-own-find-conn id (fn-own-conns owner)) t nil))
          (result (fn-ocfg-fault (fn-owner-ocfg state) id))
          (state (fn-owner-install-ocfg (cdr result) state))
-         (state (fn-owner-install-effects (car result) state)))
+         (state (fn-owner-install-effects (car result) state))
+         ;; Lane credits: as a close (fn-mca-close-keeps-what-the-commit-owns).
+         (state (fn-owner-put-credits (fn-mca-close (fn-owner-credits state) id) state)))
     (value (if knownp :faulted :unknown))))
 
 (defun fn-owner-advance (id fn-arena state)
