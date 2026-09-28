@@ -978,17 +978,19 @@
   (implies (equal (fn-hib-chain t0 e1) (fn-hib-chain t0 e2)) (equal e1 e2)))
 
 ; KEYSTONE (exact prefix binding).  When the open accepts a binding whose
-; TRAIL is the chain value of the entries its snapshot held (EW) and the
-; log's chain value at that prefix is its entries' (EL), the snapshot's
-; records ARE the log's prefix -- equal histories, not equal counts.
+; TRAIL is the chain value of the log entries its snapshot covered (EW), and
+; the log's chain value at that prefix is its entries' (EL), the snapshot
+; covered exactly the log's prefix: the same entries -- the same records,
+; in the same order, framed the same way -- not merely as many.
 (defthm fn-hib-open-binds-prefix
   (implies (and (not (mv-nth 0 (fn-hib-open b node salt trail slots file c)))
                 (equal (fn-hib-b-trail b) (fn-hib-chain t0 ew))
                 (equal trail (fn-hib-chain t0 el))
                 (fn-hib-chain-distinct t0 ew el))
-           (equal (fn-hib-flat ew) (fn-hib-flat el)))
+           (equal ew el))
   :hints (("Goal" :in-theory (union-theories '(fn-hib-open fn-hib-check fn-hib-chain-distinct mv-nth car-cons cdr-cons (:e zp) zp (:e not) (:e equal))
-                                             (theory 'minimal-theory)))))
+                                             (theory 'minimal-theory))))
+  :rule-classes nil)
 
 ; The root REC of FILE holds H's image: the tables the page store's open
 ; loads from it name the digests of H's placed image pages.  The snapshot
@@ -1007,35 +1009,39 @@
     (fn-hib-nw file 0 np (fn-hp-piw h salt starts np) (fn-hrc-pgs (mv-nth 1 (fn-hib-open-root file rec c))))))
 
 ; KEYSTONE (alpha of the selected image is the log's prefix, at open).
-; The open accepts the binding of a snapshot of the records of entries EW
-; (its TRAIL their chain value, its root holding their image), against a
-; log whose chain value at that prefix is its entries EL's: the adopted
-; concrete holds exactly the log's prefix records (fn-hrs-rel, the relation
-; fn-hrecs-faithful is), with the root's tables and the page file bound to
-; them, and the image's count is the prefix's length.  Established here --
-; by the checks the open makes -- and not assumed by the host.
+; The open accepts the binding a snapshot wrote: its TRAIL the chain value
+; of the log entries EW the snapshot covered, its root holding the image of
+; the history HW the snapshot held.  Against a log whose chain value at that
+; prefix is its entries EL's, the adopted concrete holds exactly HW
+; (`fn-hrs-rel', the relation `fn-hrecs-faithful' is), with the root's
+; tables and the page file bound to it, HW's length is the binding's count,
+; and EW is EL: the history the image holds is the snapshot's of exactly
+; the log's prefix [0, COUNT).  Established by the checks the open makes;
+; the host assumes none of it.
 (defthm fn-hib-open-is-log-prefix
-  (let* ((r (fn-hib-open b node salt trail slots file c)) (h (fn-hib-flat el)))
+  (let ((r (fn-hib-open b node salt trail slots file c)))
     (implies (and (fn-hrc-wfp c)
                   (equal (fn-hib-b-trail b) (fn-hib-chain t0 ew))
-                  (fn-hib-root-is-image file (fn-hib-b-rec b) (fn-hib-flat ew) (fn-hib-b-salt b) starts c)
-                  (fn-hib-file-bound file (fn-hib-b-rec b) (fn-hib-flat ew) (fn-hib-b-salt b) starts c)
+                  (fn-hib-root-is-image file (fn-hib-b-rec b) hw (fn-hib-b-salt b) starts c)
+                  (fn-hib-file-bound file (fn-hib-b-rec b) hw (fn-hib-b-salt b) starts c)
                   (equal trail (fn-hib-chain t0 el))
                   (fn-hib-chain-distinct t0 ew el)
                   (not (mv-nth 0 r)))
              (and (fn-hrc-wfp (mv-nth 1 r))
-                  (fn-hrs-rel h (mv-nth 1 r))
-                  (fn-hib-root-holds h (mv-nth 1 r))
-                  (fn-hib-disk-bound file h (mv-nth 1 r))
-                  (equal (len h) (fn-hib-b-count b)))))
+                  (fn-hrs-rel hw (mv-nth 1 r))
+                  (fn-hib-root-holds hw (mv-nth 1 r))
+                  (fn-hib-disk-bound file hw (mv-nth 1 r))
+                  (equal (len hw) (fn-hib-b-count b))
+                  (equal ew el))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-hib-open-binds-prefix)
-                 (:instance fn-hib-adopt-establishes (h (fn-hib-flat ew)) (rec (fn-hib-b-rec b)) (salt (fn-hib-b-salt b))
+                 (:instance fn-hib-adopt-establishes (h hw) (rec (fn-hib-b-rec b)) (salt (fn-hib-b-salt b))
                             (count (fn-hib-b-count b))))
            :in-theory (union-theories '(fn-hib-open fn-hib-check fn-hib-select fn-hib-root-is-image fn-hib-file-bound
                                         fn-hib-bindingp fn-hib-b-salt fn-hib-b-count natp mv-nth car-cons cdr-cons
                                         (:e zp) zp (:e not) (:e equal) len (:e len))
-                                      (theory 'minimal-theory)))))
+                                      (theory 'minimal-theory))))
+  :rule-classes nil)
 
 (defthm fn-hib-load-events-fields
   (let ((c2 (fn-hrc-load-events q c)))
