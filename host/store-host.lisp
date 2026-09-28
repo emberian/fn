@@ -338,9 +338,6 @@
       (fn-id-obligation-of msgid subject)
     nil))
 
-(defun fn-store-obligation-id (digest)
-  (if (fn-id-digestp digest) (fn-id-obligation digest) nil))
-
 (defun fn-store-charge (length)
   (if (natp length) (fn-charge-for-payload length) 0))
 
