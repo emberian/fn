@@ -452,3 +452,10 @@
                            (fn-f9r-step fast-alist-free
                             fn-f9r-step-carries-identity-free-kinds-verbatim
                             fn-f9r-step-of-a-composite)))))
+
+; Export withdrawal: a book including this one reasons about the translation
+; through these names, never by opening them (books/store-export.lisp keeps
+; fn-f9r-records disabled).
+(in-theory (disable fn-f9r-step fn-f9r-loop fn-f9r-composite fn-f9r-article
+                    fn-f9r-step-carries-identity-free-kinds-verbatim
+                    fn-f9r-step-of-a-composite))
