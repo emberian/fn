@@ -12488,6 +12488,39 @@
           "name": "fn-scat-vh-fill-lookup"
         }
       ]
+    },
+    {
+      "id": "PRF-368",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-verdict-is-verdict-in"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-store-tally-is-counts-and-classes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-reclaim-words-is-reclaim-words"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-report-is-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-answer-report-is-answer-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-client-step-is-client-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsc-client-step-carries-its-length"
+        }
+      ]
     }
   ]
 }

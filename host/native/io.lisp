@@ -2823,6 +2823,25 @@ which the process is killed, or NIL."
             (fnn-fault "invalid FN_NATIVE_CHECKPOINT_BATCH_FAULT (expected K:kill)"))
           k)))))
 
+;;; Lane scale-reads: a stop ends a checkpoint publication at its next batch.
+;;; The owner's publication thread binds this to a test of the service's stop
+;;; fence (host/native/owner.lisp fnn-owner-publish-captured); each batch loop
+;;; below asks it first and, when it answers true, ends the publication as a
+;;; known failure before the rename (fnn-refuse-io): the staged file is
+;;; dropped and the old checkpoint, or none, stays -- the state a process
+;;; death between two batches leaves (fn-bs-scp-program-crash-is-old-or-new),
+;;; and the record log stays authoritative.  Before this the stop joined the
+;;; publication, which walks the whole history: at syn100k-2k the owner took
+;;; 102 s to stop.  Unbound (the offline verbs), nothing is asked.
+(defvar *fnn-checkpoint-stop-test* nil)
+
+(defun fnn-checkpoint-yield (where count)
+  "Refuse the publication at a batch boundary when the owner is stopping."
+  (let ((test *fnn-checkpoint-stop-test*))
+    (when (and test (funcall test))
+      (fnn-refuse-io "the owner is stopping: the checkpoint publication ends before ~a batch ~d; the old checkpoint stays"
+                     where count))))
+
 (defun fnn-checkpoint-walk (records)
   "The walk of the owner's captured RECORDS: each canonical payload's length
 and source (books/store-checkpoint-arena-writer.lisp fn-scka-srcs-n), a
@@ -2832,6 +2851,7 @@ one walk: fn-scka-srcs-n-compose).  READS the arena.  The last state,
   (let ((walk (list records nil nil)) (arena (fnn-live-arena)))
     (loop
       (when (atom (first walk)) (return walk))
+      (fnn-checkpoint-yield "walk" (length (second walk)))
       (setq walk (fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+
                            (second walk) (third walk) arena))
       (unless (and (consp walk) (= (length walk) 3))
@@ -2850,6 +2870,7 @@ the publication buffer ST."
     (let ((steps 0) (arena (fnn-live-arena)))
       (loop
         (when (fnn-core 'fn-scka-write-donep state count) (return steps))
+        (fnn-checkpoint-yield "arena" steps)
         (let ((answer (fnn-call 'fn-scka-write-step state n count sequence
                                 segment-bound file-bound arena st)))
           (unless (and (consp answer) (>= (length answer) 3))
@@ -2878,6 +2899,7 @@ number of steps."
          (state (fnn-core 'fn-ockp-initial-state (second setup) st)))
     (loop
       (when (fnn-core 'fn-ockp-donep state) (return steps))
+      (fnn-checkpoint-yield "table" steps)
       (let ((answer (fnn-call 'fn-ockp-step setup state +fnn-checkpoint-batch-rows+
                               +fnn-checkpoint-batch-octets+
                               segment sequence segment-bound file-bound st)))

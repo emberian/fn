@@ -1049,7 +1049,12 @@ HST-006: The operator's status, pins, obligations and peers answer while the
 owner runs, in the offline words: the running owner renders the same ACL2
 report (`fn-nls-report`, books/native-live-status.lisp) of the state it
 carries that the offline command renders from the Store, and answering changes
-no state. The operator guide's
+no state. The running owner's report is `fn-nsc-answer-report`
+(books/native-status-columns.lisp, PRF-368): its reclaim line reads each
+article's tombstone flag from the catalog column the intern decided and makes
+one walk for all seven figures, never realizing a payload; under the column
+relation it is the offline report's function of the same state
+(`fn-nsc-answer-report-is-answer-report`). The operator guide's
 [status section](../docs/operator-internals.md#status-while-the-owner-runs) describes the
 verbs.
 
