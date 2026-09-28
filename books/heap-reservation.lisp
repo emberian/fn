@@ -53,6 +53,11 @@
 (include-book "heap-figure")
 (include-book "native-control")
 
+; The tau system is off in this book: it is time no prover step counts, and
+; here it was half the proof time (ACL2 time over the book's own forms 6.0 ->
+; 3.2 s at the same steps, persvati REPL 2026-09-28, lane d26-books-2).
+(local (in-theory (disable (tau-system))))
+
 (defconst *fn-heap-stack-octets* (* 1024 1024))
 (defconst *fn-heap-thread-runtime-octets* (* 4 *fn-heap-mib*))
 (defconst *fn-heap-fixed-threads* 12)
@@ -160,7 +165,16 @@
       (nfix (nth 5 decision))
     0))
 
+(local (deflabel fn-heap-before-arithmetic))
 (local (include-book "arithmetic-5/top" :dir :system))
+; arithmetic-5's rules, named so the budget proofs below can close them: they
+; are what the reservation's figures need, and they are slow and useless in
+; the init decision's case analysis (heap-reservation 11.4 -> 6 s REPL,
+; persvati 2026-09-28; tried rules whose syntaxp and bind-free tests are not
+; prover steps).
+(local (deftheory fn-heap-arithmetic
+  (set-difference-theories (current-theory :here)
+                           (current-theory 'fn-heap-before-arithmetic))))
 
 (defthm fn-heap-kib-of-covers
   (<= (nfix octets) (* 1024 (fn-heap-kib-of octets)))
@@ -606,6 +620,8 @@
          (equal (car (fn-heap-reserve-full-store-decide p core nursery observations
                                                        *fn-ncfg-default-max-connections*))
                 :heap))))
+
+(local (in-theory (e/d (|(floor (if a b c) x)|) (fn-heap-arithmetic))))
 
 (defun fn-heap-reserve-init-choose (candidates last core nursery observations)
   (declare (xargs :guard t))
@@ -1140,7 +1156,7 @@
    (implies (<= (nfix a) (nfix b))
             (<= (fn-heap-mb-of a) (fn-heap-mb-of b)))
    :rule-classes nil
-   :hints (("Goal" :in-theory (enable fn-heap-mb-of)))))
+   :hints (("Goal" :in-theory (enable fn-heap-mb-of fn-heap-arithmetic)))))
 
 (local
  (defthm fn-heap-run-figure-is-at-most-the-full-store
@@ -1729,9 +1745,9 @@
                    (floor (fn-heap-init-machine-octets physical limits) *fn-heap-mib*)))
            (equal (fn-heap-machine-octets (fn-heap-init-observations physical limits e))
                   e))
-  :hints (("Goal" :in-theory (disable fn-heap-init-machine-octets
+  :hints (("Goal" :in-theory (e/d (fn-heap-arithmetic) (fn-heap-init-machine-octets
                                       fn-heap-init-observations
-                                      fn-heap-machine-octets)
+                                      fn-heap-machine-octets))
            :cases ((< e (fn-heap-init-machine-octets physical limits))))))
 
 (local
@@ -1776,9 +1792,9 @@
                   (equal (nth 2 note) machine-mb)
                   (< (nth 4 d) machine-mb))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-heap-init-decide fn-heap-init-machine-octets
+           :in-theory (e/d (fn-heap-arithmetic) (fn-heap-init-decide fn-heap-init-machine-octets
                                fn-heap-init-explicit-budget
-                               fn-heap-init-observations fn-heap-machine-octets))))
+                               fn-heap-init-observations fn-heap-machine-octets)))))
 
 ; ... and only then: no named budget (FN_INIT_BUDGET_MB unset), a named
 ; budget at or above the machine, or a refusal carries no note.

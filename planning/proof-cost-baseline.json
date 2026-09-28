@@ -189,14 +189,14 @@
       "cpus": 24
     },
     "books/heap-reservation": {
-      "seconds": 10.034,
-      "run": "certify-20260928T124849Z-2149901",
+      "seconds": 5.824,
+      "run": "certify-20260928T135810Z-2787398",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed",
-      "steps": 497329,
-      "load": 3.02,
-      "cpus": 24
+      "load": 3.18,
+      "cpus": 24,
+      "steps": 451778
     },
     "books/heap-store-figure": {
       "seconds": 8.076,
@@ -219,14 +219,14 @@
       "cpus": 24
     },
     "books/native-admin": {
-      "seconds": 11.833,
-      "run": "certify-20260928T124849Z-2149901",
+      "seconds": 8.443,
+      "run": "certify-20260928T140427Z-2846918",
       "host": "persvati",
-      "jobs": 2,
+      "jobs": 1,
       "verdict": "passed",
-      "steps": 4075415,
-      "load": 3.7,
-      "cpus": 24
+      "load": 3.4,
+      "cpus": 24,
+      "steps": 2336955
     },
     "books/native-admin-peer": {
       "seconds": 5.332,
@@ -419,14 +419,14 @@
       "cpus": 24
     },
     "books/served-catalog": {
-      "seconds": 11.383,
-      "run": "certify-20260928T124849Z-2149901",
+      "seconds": 6.627,
+      "run": "certify-20260928T135810Z-2787398",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed",
-      "steps": 759714,
-      "load": 3.94,
-      "cpus": 24
+      "load": 3.18,
+      "cpus": 24,
+      "steps": 478964
     },
     "books/served-catalog-join-entry": {
       "seconds": 6.826,
