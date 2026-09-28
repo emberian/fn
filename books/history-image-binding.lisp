@@ -3,6 +3,7 @@
 ; build/coordinator/COMPLETE-BEFORE-6.6.0.md).  Prefix fn-hib-.
 (in-package "ACL2")
 (include-book "history-records-disk")
+(include-book "store-log")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -874,3 +875,207 @@
                  (:instance fn-hib-fill-flag-frame (p (fn-hib-q-page q)) (q (fn-hib-q-page q))))
            :in-theory (union-theories '(fn-hib-requestp fn-hib-q-page natp nfix mv-nth) (theory 'minimal-theory))))
   :rule-classes :linear)
+
+; -----------------------------------------------------------------------------
+; G. The binding: the selected root bound to the exact log prefix.
+;
+; A BINDING (written by the snapshot, beside the fold state the checkpoint
+; carries) is (:hib NODE CODEC COUNT TRAIL REC SALT):
+;   NODE   the store's identity: the genesis record's node identity
+;   CODEC  the interpretation of the image: *fn-hib-codec*
+;   COUNT  the prefix's length: the records [0, COUNT) the image holds
+;   TRAIL  the prefix's IDENTITY: the log's chain value after the entries
+;          that hold records [0, COUNT) (the trailer of the last one; the
+;          genesis trailer for the empty prefix) -- not its count
+;   REC    the page store's commit record of the image, exactly
+;   SALT   the image's Message-ID key salt (the genesis record's)
+; The open checks the binding against the store (NODE, SALT), the image
+; format it reads (CODEC), the log (TRAIL against the chain value the log's
+; suffix continues from) and the page file (REC in a valid root slot); the
+; adoption then reads the image's header from page 0 and checks COUNT.
+; Each refusal is named; none is absence.
+
+(defconst *fn-hib-codec* (list :fnadtsn2 *adt-version* *fn-scc-schema*))
+
+(defun fn-hib-binding (node codec count trail rec salt)
+  (declare (xargs :guard t))
+  (list :hib node codec count trail rec salt))
+
+(defun fn-hib-bindingp (b)
+  (declare (xargs :guard t))
+  (and (true-listp b) (equal (len b) 7) (eq (nth 0 b) :hib)
+       (natp (nth 3 b)) (natp (nth 6 b))))
+
+(defun fn-hib-b-node (b) (declare (xargs :guard (fn-hib-bindingp b))) (nth 1 b))
+(defun fn-hib-b-codec (b) (declare (xargs :guard (fn-hib-bindingp b))) (nth 2 b))
+(defun fn-hib-b-count (b) (declare (xargs :guard (fn-hib-bindingp b))) (nth 3 b))
+(defun fn-hib-b-trail (b) (declare (xargs :guard (fn-hib-bindingp b))) (nth 4 b))
+(defun fn-hib-b-rec (b) (declare (xargs :guard (fn-hib-bindingp b))) (nth 5 b))
+(defun fn-hib-b-salt (b) (declare (xargs :guard (fn-hib-bindingp b))) (nth 6 b))
+
+(defun fn-hib-check (b node salt trail)
+  ; The binding B against the store's NODE and SALT (its genesis record's)
+  ; and the log's chain value TRAIL at the binding's prefix: nil, or the
+  ; refusal by name.
+  (declare (xargs :guard t))
+  (cond ((not (fn-hib-bindingp b)) (list :refused :binding))
+        ((not (equal (fn-hib-b-codec b) *fn-hib-codec*)) (list :refused :codec (fn-hib-b-codec b)))
+        ((not (equal (fn-hib-b-node b) node)) (list :refused :store-identity))
+        ((not (equal (fn-hib-b-salt b) salt)) (list :refused :salt))
+        ((not (equal (fn-hib-b-trail b) trail)) (list :refused :prefix (fn-hib-b-count b)))
+        (t nil)))
+
+(defun fn-hib-select (b slots)
+  ; The binding's root among the page file's root SLOTS (the records its
+  ; two slots hold): nil when one of them is exactly B's record and valid;
+  ; else (:refused :root-absent) -- the image the binding names is not
+  ; the page file's (a crash between the two publications, or a file from
+  ; another store or generation).
+  (declare (xargs :guard (fn-hib-bindingp b)))
+  (if (and (member-equal (fn-hib-b-rec b) (true-list-fix slots)) (pgs-rec-valid (fn-hib-b-rec b)))
+      nil
+    (list :refused :root-absent)))
+
+(defun fn-hib-open (b node salt trail slots file fn-hrecs$c)
+  ; The served open's adoption of the image the selected binding names:
+  ; (mv VERDICT fn-hrecs$c), VERDICT nil when adopted (then the concrete
+  ; holds the image of records [0, COUNT) and an empty suffix).
+  (declare (xargs :stobjs fn-hrecs$c :guard (fn-hrc-wfp fn-hrecs$c)
+                  :guard-hints (("Goal" :in-theory (union-theories '(fn-hib-check fn-hib-bindingp fn-hib-b-salt fn-hib-b-count
+                                                                     natp (:e natp) len (:e len))
+                                                                   (theory 'minimal-theory))))))
+  (let ((v (fn-hib-check b node salt trail)))
+    (if v
+        (mv v fn-hrecs$c)
+      (let ((v (fn-hib-select b slots)))
+        (if v
+            (mv v fn-hrecs$c)
+          (fn-hib-adopt file (fn-hib-b-rec b) (fn-hib-b-salt b) (fn-hib-b-count b) fn-hrecs$c))))))
+
+; The model's exact identity of a log prefix: its ENTRIES (each a chunk of
+; records, framed and chained as the log writes them, books/store-log.lisp
+; fn-lg-frame / fn-lg-trailer).  The prefix's records are the entries'
+; records in order; its chain value from the genesis trailer T0 is what
+; the binding's TRAIL carries.
+(defun fn-hib-chain (prev entries)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom entries)
+      prev
+    (fn-hib-chain (fn-lg-trailer (fn-lg-frame prev (car entries))) (cdr entries))))
+
+(defun fn-hib-flat (entries)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom entries) nil (append (true-list-fix (car entries)) (fn-hib-flat (cdr entries)))))
+
+; The narrow cryptographic-failure assumption for the prefix, as a
+; hypothesis on the two logs actually compared: two entry lists chained from
+; the same genesis trailer that reach the same chain value are the same
+; entries.  Its failure needs a collision (or a second preimage of the
+; genesis trailer) of the frame digest -- BLAKE3 since store format 10 --
+; among these frames; the pessimistic figure is the collision bound, 2^-128
+; per pair.  No universal injectivity is assumed or claimed.
+(defun-nx fn-hib-chain-distinct (t0 e1 e2)
+  (implies (equal (fn-hib-chain t0 e1) (fn-hib-chain t0 e2)) (equal e1 e2)))
+
+; KEYSTONE (exact prefix binding).  When the open accepts a binding whose
+; TRAIL is the chain value of the entries its snapshot held (EW) and the
+; log's chain value at that prefix is its entries' (EL), the snapshot's
+; records ARE the log's prefix -- equal histories, not equal counts.
+(defthm fn-hib-open-binds-prefix
+  (implies (and (not (mv-nth 0 (fn-hib-open b node salt trail slots file c)))
+                (equal (fn-hib-b-trail b) (fn-hib-chain t0 ew))
+                (equal trail (fn-hib-chain t0 el))
+                (fn-hib-chain-distinct t0 ew el))
+           (equal (fn-hib-flat ew) (fn-hib-flat el)))
+  :hints (("Goal" :in-theory (union-theories '(fn-hib-open fn-hib-check fn-hib-chain-distinct mv-nth car-cons cdr-cons (:e zp) zp (:e not) (:e equal))
+                                             (theory 'minimal-theory)))))
+
+; The root REC of FILE holds H's image: the tables the page store's open
+; loads from it name the digests of H's placed image pages.  The snapshot
+; that committed REC for H establishes it; after a restart it is what the
+; open's digest checks of the directory and table pages establish, under
+; the same digest bound as the data pages.
+(defun-nx fn-hib-root-is-image (file rec h salt starts c)
+  (let ((np (pgs-rec-npages rec)))
+    (and (fn-hp-okp h salt) (fn-hp-starts-okp starts) (adt-placement-ok starts (fn-hp-lens h salt) np)
+         (fn-hib-tw 0 np (fn-hp-piw h salt starts np) (fn-hrc-pgs (mv-nth 1 (fn-hib-open-root file rec c)))))))
+
+; The page file holds no second preimage of an image page at the addresses
+; the root's tables name (the digest bound, as a hypothesis on this file).
+(defun-nx fn-hib-file-bound (file rec h salt starts c)
+  (let ((np (pgs-rec-npages rec)))
+    (fn-hib-nw file 0 np (fn-hp-piw h salt starts np) (fn-hrc-pgs (mv-nth 1 (fn-hib-open-root file rec c))))))
+
+; KEYSTONE (alpha of the selected image is the log's prefix, at open).
+; The open accepts the binding of a snapshot of the records of entries EW
+; (its TRAIL their chain value, its root holding their image), against a
+; log whose chain value at that prefix is its entries EL's: the adopted
+; concrete holds exactly the log's prefix records (fn-hrs-rel, the relation
+; fn-hrecs-faithful is), with the root's tables and the page file bound to
+; them, and the image's count is the prefix's length.  Established here --
+; by the checks the open makes -- and not assumed by the host.
+(defthm fn-hib-open-is-log-prefix
+  (let* ((r (fn-hib-open b node salt trail slots file c)) (h (fn-hib-flat el)))
+    (implies (and (fn-hrc-wfp c)
+                  (equal (fn-hib-b-trail b) (fn-hib-chain t0 ew))
+                  (fn-hib-root-is-image file (fn-hib-b-rec b) (fn-hib-flat ew) (fn-hib-b-salt b) starts c)
+                  (fn-hib-file-bound file (fn-hib-b-rec b) (fn-hib-flat ew) (fn-hib-b-salt b) starts c)
+                  (equal trail (fn-hib-chain t0 el))
+                  (fn-hib-chain-distinct t0 ew el)
+                  (not (mv-nth 0 r)))
+             (and (fn-hrc-wfp (mv-nth 1 r))
+                  (fn-hrs-rel h (mv-nth 1 r))
+                  (fn-hib-root-holds h (mv-nth 1 r))
+                  (fn-hib-disk-bound file h (mv-nth 1 r))
+                  (equal (len h) (fn-hib-b-count b)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hib-open-binds-prefix)
+                 (:instance fn-hib-adopt-establishes (h (fn-hib-flat ew)) (rec (fn-hib-b-rec b)) (salt (fn-hib-b-salt b))
+                            (count (fn-hib-b-count b))))
+           :in-theory (union-theories '(fn-hib-open fn-hib-check fn-hib-select fn-hib-root-is-image fn-hib-file-bound
+                                        fn-hib-bindingp fn-hib-b-salt fn-hib-b-count natp mv-nth car-cons cdr-cons
+                                        (:e zp) zp (:e not) (:e equal) len (:e len))
+                                      (theory 'minimal-theory)))))
+
+(defthm fn-hib-load-events-fields
+  (let ((c2 (fn-hrc-load-events q c)))
+    (and (equal (fn-hrc-pgs c2) (fn-hrc-pgs c)) (equal (fn-hrc-nimg c2) (fn-hrc-nimg c))
+         (equal (fn-hrc-salt c2) (fn-hrc-salt c)) (equal (fn-hrc-starts c2) (fn-hrc-starts c))
+         (equal (fn-hrc-npages c2) (fn-hrc-npages c))))
+  :hints (("Goal" :induct (fn-hrc-load-events q c) :in-theory (enable fn-hrc-load-events))))
+
+(local
+ (defthm fn-hib-take-append-short
+   (implies (and (natp n) (<= n (len h))) (equal (take n (append h x)) (take n h)))
+   :hints (("Goal" :in-theory (enable take)))))
+
+(defthm fn-hib-root-holds-extend
+  (implies (and (natp (fn-hrc-nimg c)) (<= (fn-hrc-nimg c) (len h)))
+           (and (equal (fn-hib-root-holds (append h x) c) (fn-hib-root-holds h c))
+                (equal (fn-hib-disk-bound file (append h x) c) (fn-hib-disk-bound file h c))))
+  :hints (("Goal" :in-theory (e/d (fn-hib-root-holds fn-hib-disk-bound fn-hib-tabs-is-tw fn-hib-nc-is-nw)
+                                  (fn-hib-tw fn-hib-nw fn-hp-piw take)))))
+
+(defthm fn-hib-root-holds-of-load-events
+  (and (equal (fn-hib-root-holds h (fn-hrc-load-events q c)) (fn-hib-root-holds h c))
+       (equal (fn-hib-disk-bound file h (fn-hrc-load-events q c)) (fn-hib-disk-bound file h c)))
+  :hints (("Goal" :in-theory (e/d (fn-hib-root-holds fn-hib-disk-bound fn-hib-tabs-is-tw fn-hib-nc-is-nw)
+                                  (fn-hib-tw fn-hib-nw fn-hp-piw take fn-hrc-load-events)))))
+
+(defthm fn-hib-wfp-nimg
+  (implies (fn-hrc-wfp c) (natp (fn-hrc-nimg c)))
+  :rule-classes :forward-chaining)
+; KEYSTONE (the running state extends the prefix by the suffix).  Replaying
+; the log's suffix Q onto the adopted image (the suffix array, no page
+; touched) holds the prefix followed by Q, with the root and disk bound
+; unchanged.
+(defthm fn-hib-replay-extends
+  (implies (and (fn-hrc-wfp c) (fn-hrs-rel h c) (fn-hib-root-holds h c) (fn-hib-disk-bound file h c))
+           (let ((c2 (fn-hrc-load-events q c)) (h2 (append h (true-list-fix q))))
+             (and (fn-hrc-wfp c2) (fn-hrs-rel h2 c2)
+                  (fn-hib-root-holds h2 c2) (fn-hib-disk-bound file h2 c2))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hrc-load-events-rel (fn-hrecs$c c) (events q))
+                 (:instance fn-hib-root-holds-extend (x (true-list-fix q)) (c (fn-hrc-load-events q c))))
+           :in-theory (e/d (fn-hrs-rel) (fn-hrc-load-events-rel fn-hib-root-holds-extend fn-hrc-load-events fn-hib-root-holds
+                                         fn-hib-disk-bound fn-hrc-wfp fn-hrs-img-ok take nthcdr fn-hrc-sfx-list)))))
