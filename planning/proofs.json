@@ -12749,6 +12749,89 @@
         "planning/evidence/manifests/certify-20260928T095103Z-512720.json"
       ],
       "progress_note": "Lane f1-bisect (2026-09-28): both books certified on persvati (certify-20260928T095103Z-512720, 2 passed, none over 10 s). Teeth: positive witnesses at the F1 store (17,553,520), past the cap, unobserved and fresh; the hypothesis-removal witness for NATP HISTORY; one must-fail. F1 before/after on hbox in the lane's LANEDUMP."
+    },
+    {
+      "id": "PRF-358",
+      "title": "health's ninth state, the disk: held exactly when the running owner's disk is stalled (a barrier past the stall deadline H, the line naming its duration) or full, so health never reports healthy while posters are told uncertain or every write is refused; a slow disk stays the line only (provisional, PKT-853 (b))",
+      "statement": "Subjects: fn-otm-health-disk (books/owner-time-model.lisp), which host/native-live-status-host.lisp fn-native-live-status-host-answer hands to fn-nh-answer-report as DISK over the scheduler value host/native/owner.lisp fnn-owner-sched-snapshot took (a :space and a :clock event at the render), and fn-nh-verdict / fn-nh-live-report (books/native-health.lisp), whose exit the host returns (fn-native-health-host-exit, fn-nh-report-exit-of-render). KEYSTONE fn-otm-health-disk-held-iff-stalled-or-full: the outcome is (:held . WORDS) exactly when fn-otm-mode is :stalled or :full, else (:clear), never :unobserved; fn-otm-health-disk-stalled-names-the-stall: in :stalled the pending milliseconds on the line are at least H. KEYSTONE fn-nh-held-disk-is-never-healthy: with DISK held the verdict's exit code is in 20..28, and 28 exactly when none of the first eight states is held. The ninth state is appended (*fn-nh-states* ends :disk, code 28) so codes 20..27 keep their meaning; fn-nh-verdict-states, fn-nh-exit-code-cases, fn-nh-exit-code-decodes and fn-nh-report-exit-of-render(-and-more) restated for nine outcomes. Offline (no owner) the state is :unobserved. Scope: :failed has no live render (a failed barrier stops the owner, exit 3); the choice that :slow is clear is PKT-853 (b), provisional.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-007",
+        "HST-026"
+      ],
+      "depends_on": [
+        "PRF-112",
+        "PRF-311"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-time-model.lisp",
+        "tests/acl2/owner-time-space-tests.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/health-truth-2026-09-28.md",
+        "books/native-health.lisp",
+        "tests/acl2/native-health-tests.lisp",
+        "tools/docs_check.py",
+        "docs/operator-internals.md",
+        "planning/evidence/manifests/certify-20260928T063909Z-97938.json",
+        "planning/evidence/manifests/certify-20260928T071502Z-325832.json"
+      ],
+      "progress_note": "Lane health-truth (Opus 5.5, 2026-09-28; PKT-879 from lane fitness). REPL-admitted on persvati: books/owner-time-model (5.4 s ACL2 time), books/native-health, tests/acl2/native-health-tests and tests/acl2/owner-time-model-tests (--ld-local). Teeth: nht-disk-never-healthy-without-held (the clear disk: exit 0), the reached exit 28 and the earlier held state's 26; stalled/slow/ok witnesses of fn-otm-health-disk in the owner-time-model tests. Native: tests.test_native_slow_disk (health rc 0 while slow, 28 with `disk held mode=stalled pending-ms=' while stalled, 0 after). Certified on hbox: run-20260928T063812Z-0804, manifest certify-20260928T063909Z-97938 (23 books recertified, 0 failed). Native tests.test_native_slow_disk OK 6/6 at 137529eca (hbox native-ht2). The split test books certified at 2 jobs, none over 10 s: certify-20260928T071502Z-325832.",
+      "events": [
+        "fn-otm-health-disk-held-iff-stalled-or-full",
+        "fn-otm-health-disk-stalled-names-the-stall",
+        "fn-nh-held-disk-is-never-healthy",
+        "fn-nh-verdict-states",
+        "fn-nh-exit-code-decodes",
+        "fn-nh-report-exit-of-render"
+      ]
+    },
+    {
+      "id": "PRF-359",
+      "title": "The free space is a recorded observation and a write is admitted only above ACL2's need: below it every POST is refused try-later by name before its article (440, or 441 for an article already sent), nothing stored, the owner stays up, and the next observation with room recovers",
+      "statement": "Subjects: fn-otm-admit-post (host/native/owner.lisp fnn-owner-handle-chunk-read after fnn-owner-advance-clock's :served and, when fn-otm-space-due-p, :space event; host/owner-host.lisp fn-owner-chunk-span-at feeds S to fn-otm-read-span, PRF-323), fn-otm-disk-event with kind :space (fnn-owner-space-event: the committer before every barrier's syncer, fnn-owner-sched-snapshot before every health/status render, fnn-owner-space-observe-if-due before a served read's admission; ARG (FREE NEED), FREE the statvfs observation of the store's filesystem or nil), fn-otm-space-need (host/owner-host.lisp fn-owner-space-need: PRF-129's fn-smr-reserve-octets + 2 x fn-olr-omax + the `disk-reserve-octets' row, default 64 MiB), fn-otm-shed-reply / fn-otm-post-command-reply (the reason), fn-otm-disk-step (journal op 6). KEYSTONE fn-otm-admit-keeps-the-space-need: admitted with the space observed, free >= need. fn-otm-full-sheds: observed below the need, every write is shed whatever the barrier. fn-otm-space-need-covers-two-batches: from an observation F >= need, two batches of at most OMAX octets leave the reserve and the extra (hypothesis: nothing else writes to the filesystem between the observation and the appends; the observation at every barrier's issue keeps that window to two batches). fn-otm-space-recovers: an observation with room admits unless the barrier is past D. fn-otm-space-of-event / fn-otm-full-p-of-other-event / fn-otm-space-event-keeps-the-disk: only a :space event moves the space and it moves nothing else (so fn-otm-disk-event-keeps-the-pipeline and the durability keystones hold). fn-otm-admit-is-the-mode: shed exactly in :slow, :stalled, :full. fn-otm-shed-iff-slow restated: shed exactly when the disk line says slow/stalled or the space line says `disk full:'. PRF-311's fn-otm-shed-only-past-the-deadline, fn-otm-return-recovers, fn-otm-clock-event-never-issues and fn-otm-issue-is-pending-and-admits carry the hypothesis (not (fn-otm-full-p s)). fn-otm-journal-determines-the-decisions holds with the fifth kind. Scope: statvfs unobserved is never :full (an append that then meets ENOSPC stays the recovery event it was); the space consumed between observations by another writer is outside the model.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-026"
+      ],
+      "depends_on": [
+        "PRF-311",
+        "PRF-323",
+        "PRF-129",
+        "PRF-322"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-time-model.lisp",
+        "tests/acl2/owner-time-space-tests.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/health-truth-2026-09-28.md",
+        "books/owner-time-journal.lisp",
+        "books/native-admin.lisp",
+        "host/native/io.lisp",
+        "planning/evidence/manifests/certify-20260928T063909Z-97938.json",
+        "planning/evidence/manifests/certify-20260928T071502Z-325832.json"
+      ],
+      "progress_note": "Lane health-truth (Opus 5.5, 2026-09-28; PKT-872 from lane fitness, the admission half; the journal's torn line is lane health-truth-journal's). REPL-admitted on persvati: books/owner-time-model, books/owner-time-journal, tests/acl2/owner-time-model-tests (--ld-local). Teeth (prefix htt-, tests/acl2/owner-time-space-tests.lisp, split from owner-time-model-tests to keep both under 10 s): reached room/full/recovered/unobserved states from fn-otm-init, the full reason on the 440/441 lines and a reached served read's 440 (t2r-host-read), must-fail per hypothesis of fn-otm-admit-keeps-the-space-need, fn-otm-full-sheds, fn-otm-space-recovers (its natp hypothesis removed after the weakened theorem was proved), fn-otm-space-need-covers-two-batches and the four restated PRF-311 theorems. Native: tests.test_native_slow_disk test_a_full_disk_refuses_posts_before_the_write_and_recovers (FN_NATIVE_DISK_FREE=@FILE). Certified on hbox: run-20260928T063812Z-0804, manifest certify-20260928T063909Z-97938 (23 books recertified, 0 failed). Native tests.test_native_slow_disk OK 6/6 at 137529eca (hbox native-ht2). The split test books certified at 2 jobs, none over 10 s: certify-20260928T071502Z-325832.",
+      "events": [
+        "fn-otm-admit-keeps-the-space-need",
+        "fn-otm-full-sheds",
+        "fn-otm-space-need-covers-two-batches",
+        "fn-otm-space-recovers",
+        "fn-otm-space-of-event",
+        "fn-otm-full-p-of-other-event",
+        "fn-otm-space-event-keeps-the-disk",
+        "fn-otm-admit-is-the-mode",
+        "fn-otm-shed-iff-slow"
+      ]
     }
   ]
 }

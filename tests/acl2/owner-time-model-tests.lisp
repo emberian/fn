@@ -55,6 +55,7 @@
 (assert-event (equal (fn-otm-wait-ms (otmt-at *otmt-s1* 4000)) 2000))
 (assert-event (equal (fn-otm-disk-lines (otmt-at *otmt-s1* 3000))
                      (otmt-text "disk ok: pending-ms=2000 last-barrier-ms=0 max-barrier-ms=0 deadline-ms=5000 stall-ms=30000 slow-episodes=0 stalls=0
+disk space: unobserved (statvfs gave nothing; an append that finds the disk full is a recovery event)
 ")))
 (assert-event (equal (otmt-disk-word *otmt-s1* :clock 5999 0) :none))
 ; At the deadline: shed, health says slow with the figure, the clock event
@@ -63,6 +64,7 @@
 (assert-event (equal (fn-otm-wait-ms (otmt-at *otmt-s1* 6000)) 1000))
 (assert-event (equal (fn-otm-disk-lines (otmt-at *otmt-s1* 12500))
                      (otmt-text "disk slow: barrier 11500 ms pending deadline-ms=5000 stall-ms=30000 slow-episodes=1 stalls=0 posts=try-later
+disk space: unobserved (statvfs gave nothing; an append that finds the disk full is a recovery event)
 ")))
 (assert-event (equal (otmt-disk-word *otmt-s1* :clock 6000 0) :became-slow))
 (defconst *otmt-s1s* (otmt-at *otmt-s1* 6000))
@@ -82,6 +84,7 @@
                    (equal (fn-otm-admit-post *otmt-back*) :shed)))
 (assert-event (equal (fn-otm-disk-lines *otmt-back*)
                      (otmt-text "disk slow: barrier 8000 ms pending deadline-ms=5000 stall-ms=30000 slow-episodes=1 stalls=0 posts=try-later
+disk space: unobserved (statvfs gave nothing; an append that finds the disk full is a recovery event)
 clock regressed: readings=1
 ")))
 ; The disk events kept the pipeline: the commit is still staged.
@@ -96,6 +99,7 @@ clock regressed: readings=1
 (assert-event (equal (fn-otm-admit-post (otmt-at *otmt-s2* 99000)) :admit))
 (assert-event (equal (fn-otm-disk-lines (otmt-at *otmt-s2* 40000))
                      (otmt-text "disk ok: pending-ms=0 last-barrier-ms=30000 max-barrier-ms=30000 deadline-ms=5000 stall-ms=30000 slow-episodes=1 stalls=0
+disk space: unobserved (statvfs gave nothing; an append that finds the disk full is a recovery event)
 ")))
 (assert-event (equal (fn-otm-log-line *otmt-s2* :recovered)
                      (otmt-text "disk recovered: the barrier completed after 30000 ms")))
@@ -262,6 +266,7 @@ clock regressed: readings=1
                    (equal (otmt-disk-word *t2-stalled* :clock 16000 0) :none)))
 (assert-event (equal (fn-otm-disk-lines *t2-stalled*)
                      (otmt-text "disk stalled: barrier 5000 ms pending deadline-ms=2000 stall-ms=5000 slow-episodes=1 stalls=1 posts=try-later members=uncertain
+disk space: unobserved (statvfs gave nothing; an append that finds the disk full is a recovery event)
 ")))
 (assert-event (equal (fn-otm-log-line *t2-stalled* :became-stalled)
                      (otmt-text "disk stalled: a barrier has waited 5000 ms (stall deadline 5000 ms); its posters are told the outcome is uncertain: it may still complete")))
@@ -577,3 +582,4 @@ clock regressed: readings=1
 (assert-event (and (not (fn-otm-conn-allow *lgt-finished* 0))
                    (equal (fn-own-tls-result-effects *t2r-closed-shed*)
                           (list *fn-otm-generic-440*))))
+

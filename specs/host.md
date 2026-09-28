@@ -669,6 +669,25 @@ the replay of decisions that stored nothing. No durable state depends on an
 entry (a disk event keeps the pipeline; a refusal stores nothing), and the
 record log alone determines the durable state.
 
+The free space (lane health-truth; PRF-359, PKT-872). A full filesystem
+was found by the append (ENOSPC after the members had sent their articles:
+the recovery event, every member uncertain). The free octets of the store's
+filesystem are now a recorded observation, a `:space` event (journal op 6)
+carrying statvfs's figure and ACL2's need (`fn-otm-space-need`: PRF-129's
+maintenance reserve, two batches at `log-batch-octets`, and the operator's
+`disk-reserve-octets` row, `policy set disk-reserve-octets N`, default 64
+MiB), taken at every barrier's issue, at every `health` and `status`
+render, and before a served read's admission when ACL2 says one is due
+(`fn-otm-space-due-p`: a cadence after the last). Below the need the disk is
+`full` and every write is shed as while `slow`: a POST command is answered
+`440 posting not permitted now; the disk is full (F octets free, N needed),
+try again later` before its article, an article already sent `441 posting
+failed; the disk is full (...): nothing was stored, try again later`
+(`fn-otm-full-sheds`, `fn-otm-admit-keeps-the-space-need`); `health` holds
+`disk` with `mode=full` (exit 28); the next observation with room recovers
+(`fn-otm-space-recovers`). An unobserved figure is never `full`: an append
+that then meets ENOSPC stays the recovery event.
+
 ### The owner submission path
 
 Served POST, inbound transit and a running owner's control `POST` all enter
@@ -996,10 +1015,13 @@ verbs.
 
 ## Operator health
 
-HST-007: The operator's health verdict names which of eight things is wrong,
+HST-007: The operator's health verdict names which of nine things is wrong,
 never one red bit. `operator CONFIG health` prints one line per state in a
 fixed order: fenced, exhausted, unqualified-profile, space-pressure,
-no-route, stranded-transfer, unavailable-peer, receipt-debt; each line says
+no-route, stranded-transfer, unavailable-peer, receipt-debt, disk (PRF-358:
+the running owner's disk stalled or full, exit 28; appended so 20..27 keep
+their meaning; a slow disk is the `disk slow` line only, provisional per
+PKT-853 (b)); each line says
 `held` (with the figures that hold it), `clear`, or `unobserved` (the source
 was not observed: offline there is no feed table, a fenced store is not
 opened). The exit code is 20 plus the index of the first held state, 19 when
@@ -1017,7 +1039,7 @@ configured socket, or one the probe could not read, is `store-held`
 (`fn-nh-fence-of-starting-iff`). `starting` is a reason of the fenced state, exit 20, never a ninth code (PKT-454), and it clears on the one observation listening changes: the host takes every observation of one invocation before ACL2 decides (`fn-nh-health-step`), which reports `starting` exactly while no clone fence is present, the lock is held, an owner would listen and nothing answered, and gives the owner's own report, with no fence, for the same lock and fence once the owner answers on its socket (`fn-nh-starting-clears-on-listening`). The running owner renders the same verdict over the state it
 carries (FNLS kind 6); the exit code the host returns is read back from the
 rendered octets (`fn-nh-report-exit-of-render`). The operator guide's
-[health section](../docs/operator-internals.md#health-which-of-eight-things-is-wrong)
+[health section](../docs/operator-internals.md#health-which-of-nine-things-is-wrong)
 describes the verb.
 
 HST-010: The operator's daily verbs distinguish an owner starting, a fenced

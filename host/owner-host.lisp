@@ -1131,6 +1131,17 @@
                                 (fn-cfg-limit v "barrier-stall-ms")
                                 (fn-cfg-limit v "clock-event-ms"))))))
 
+;; PRF-359 (PKT-872): the free octets a write needs admitted
+;; (books/owner-time-model.lisp fn-otm-space-need): PRF-129's maintenance
+;; reserve, two batches at the live batch octet bound
+;; (books/owner-log-route.lisp fn-olr-omax) and the operator's
+;; `disk-reserve-octets' row (ACL2's default when unset).
+(defun fn-owner-space-need (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((v (fn-cfg-value (fn-owner-config state))))
+    (value (fn-otm-space-need (fn-olr-omax v) (fn-smr-reserve-octets)
+                              (fn-cfg-limit v "disk-reserve-octets")))))
+
 ;; Whether the oldest queued submission is a served POST's (not a control
 ;; submission, not a peer transit): the only kind a slow disk sheds.
 (defun fn-owner-queue-head-served-p (state)
