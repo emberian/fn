@@ -369,7 +369,7 @@ def rank(logs: list[Path], slower_seconds: float) -> dict:
             "fraction": round(saved / on["runtime"], 3) if on["runtime"] else 0.0,
             "on_realtime": on["realtime"], "off_realtime": off["realtime"],
             "on_steps": on["steps"], "off_steps": off["steps"],
-            "failing": failing, "cascaded": cascaded, "slower": slower,
+            "failing": failing, "cascaded": len(cascaded), "slower": slower,
             "on_errors": on["errors"],
             "timed_out": off["exit"] == 124, "load": [on["load"], off["load"]],
         })

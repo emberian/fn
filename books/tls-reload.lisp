@@ -41,6 +41,11 @@
 (include-book "native-control")
 (include-book "native-control-reason")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; -----------------------------------------------------------------------------
 ; Decimal fields and the validity times
 
@@ -409,6 +414,7 @@
 
 ; The owner's log line for a reload, as octets: ACL2's words, the host
 ; writes them.  FACTS are the candidate's (served, when accepted).
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defun fn-tlsr-log-line (decision facts)
   (declare (xargs :guard t))
   (if (fn-tlsr-acceptp decision)
@@ -418,6 +424,7 @@
             (fn-nctrl-reason-word (and (consp decision) (consp (cdr decision))
                                         (cadr decision)))
             (fn-record-string-octets ": the served certificate is unchanged"))))
+(local (in-theory (disable (tau-system))))
 
 ; -----------------------------------------------------------------------------
 ; The frames: kind 19 (request) and kind 20 (reply)

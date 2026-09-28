@@ -39,6 +39,11 @@
 (local (include-book "identity-invariants"))
 (local (include-book "records-canonicality"))
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 (defconst *fn-acct-code-tag* (fn-record-string-octets "fn-account-code-v1"))
 (defconst *fn-acct-local-principal-tag*
   (fn-record-string-octets "fn-principal-local-v1"))

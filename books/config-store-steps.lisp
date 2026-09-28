@@ -6,6 +6,11 @@
 (include-book "config-store-traces")
 (include-book "store-prepare-correspondence")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; Two rules that backchain into the consumer-id recognizer on every
 ; `true-listp' and `len' (the note in books/store-node-traces-prepare.lisp).
 (local (in-theory (disable fn-cp-idp-true-listp fn-cp-id-length-bound)))

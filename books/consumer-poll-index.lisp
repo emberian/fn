@@ -4,6 +4,11 @@
 (include-book "consumer-event-index")
 (include-book "history-columns")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; A poll inspects at most sixteen consecutive committed Store events and
 ; stops at its first group-matching accepted article.  Its cursor names the
 ; last inspected prefix, never an omitted matching article.  The selected

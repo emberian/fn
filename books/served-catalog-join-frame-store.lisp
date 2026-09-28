@@ -64,6 +64,11 @@
 (include-book "owner-offer-indexed")
 (include-book "served-catalog-join-pinned")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; The included world carries recognizer rules whose hypotheses open recursive
 ; predicates on every candidate term (true-listp, stringp, a length bound).
 ; accumulated-persistence over this whole book (2026-09-28, lane d26-books)

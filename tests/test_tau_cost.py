@@ -68,7 +68,7 @@ class TauCostTests(unittest.TestCase):
         row = result["books"][0]
         self.assertEqual((row["saved"], row["fraction"]), (2.5, 0.625))
         self.assertEqual(row["failing"], ["defun f"])
-        self.assertEqual(row["cascaded"], ["deftheory t", "defthm g"])
+        self.assertEqual(row["cascaded"], 2)
         self.assertEqual(row["slower"], [["defun f", 0.5, 1.2]])
         self.assertEqual(len(tau_cost.selected(result, 1.0, 0.2)), 1)
         self.assertEqual(tau_cost.selected(result, 3.0, 0.7), [])

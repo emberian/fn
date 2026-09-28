@@ -4,6 +4,11 @@
 (in-package "ACL2")
 (include-book "nntp-auth-invariants")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 (local
  (defthm fn-auth-fold-authinfo-keeps-the-config
    (equal (fn-auth-session-config
@@ -270,6 +275,7 @@
                             fn-cu-select fn-cu-initial-line fn-cu-render-lines
                             fn-cu-chain-over fn-cu-parse-request)))))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects
@@ -285,6 +291,7 @@
                 (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
                  fn-nntp-archive-command fn-nntp-keywordp
                  fn-nntp-stuff-lines fn-nntp-crlf)))))
+(local (in-theory (disable (tau-system))))
 
 (defthm fn-auth-fold-command-pinned-offers-only-post
   (implies (not (fn-nntp-keywordp (car tokens) "POST"))
