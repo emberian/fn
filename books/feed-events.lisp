@@ -60,7 +60,7 @@
                        (list (fn-feed-peer f) msgid attempt code
                              (nfix (fn-clock-monotonic obs))))) nil)
            (if (and (fn-feed-retry-exhaustedp g msgid)
-                    (not (equal gs :done)) (not (fn-feed-droppedp gs)))
+                    (not (fn-feed-droppedp gs)))
                (list (fn-feed-journal-entry :feed-drop
                        (list (fn-feed-peer f) msgid :retry-bound))) nil))))
        (t (fn-feed-lost-records f obs))))))

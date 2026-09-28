@@ -192,49 +192,50 @@
         (not (equal img-a img-b))
         (equal (adt-canon *s* a) img-b)))))
 
-; -----------------------------------------------------------------------------
-; 4. The invasiveness probe: the stobj walk finds what `fn-cp-find' finds
-;    over the logical value, and the carried epoch bound holds.
+;; -----------------------------------------------------------------------------
+; 4. The invasiveness probe (now over `defadt-keyed', lane proto-adt-2): the
+;    keyed stobj finds what `fn-cp-find' finds over the logical value, the
+;    carried epoch bound holds, and the rebase step on the columns is the
+;    model's.
 
 (defconst *cp-e0* '(:entry (1 2) (3) (4 5) 1 1 3 0))
 (defconst *cp-e1* '(:entry (9) (3) (4 5) 1 1 4 2))
+(defconst *cp-e1b* '(:entry (9) (3) (6) 2 1 5 0))
 
-(defun cpent-load (tbl cpent)
-  (declare (xargs :stobjs cpent :guard (cpentp tbl)
-                  :guard-hints (("Goal" :in-theory (enable adt-seq-p)))))
-  (if (atom tbl)
-      cpent
-    (let ((cpent (cpent-append (car tbl) cpent)))
-      (cpent-load (cdr tbl) cpent))))
-
-(defthm cpentp-of-cpent-load
-  (implies (and (cpentp cpent) (cpentp tbl))
-           (cpentp (cpent-load tbl cpent)))
-  :hints (("Goal" :in-theory (enable adt-seq-p))))
-
-(defun cpent-probe (c tbl)
-  ; Build the table in a live stobj from a list, then walk it.
-  (declare (xargs :guard (cpentp tbl)))
+(defun cpent-probe (c)
+  ; the table (e0 e1): e1 inserted first, e0 consed in front of it
   (with-local-stobj cpent
     (mv-let (out cpent)
-      (let* ((cpent (cpent-load tbl cpent))
-             (k (cpent-find-from c 0 cpent)))
-        (mv (if k (list k (cpent-get-epoch k cpent)) nil) cpent))
+      (let* ((cpent (cpent-insert *cp-e1* cpent))
+             (cpent (cpent-insert *cp-e0* cpent)))
+        (mv (cpent-find c cpent) cpent))
+      out)))
+
+(defun cpent-rebase-probe ()
+  (with-local-stobj cpent
+    (mv-let (out cpent)
+      (let* ((cpent (cpent-insert *cp-e1* cpent))
+             (cpent (cpent-insert *cp-e0* cpent))
+             (cpent (cpent-rebase '(9) *cp-e1b* cpent)))
+        (mv (list (cpent-find '(9) cpent) (cpent-find '(1 2) cpent) (cpent-has '(7) cpent)) cpent))
       out)))
 
 (assert-event (let ((tbl (list *cp-e0* *cp-e1*)))
                 (and (fn-cp-entriesp tbl 5 6)
-                     (equal (cpent-probe '(9) tbl) '(1 4))
+                     (cpentp tbl)
+                     (equal (cpent-probe '(9)) *cp-e1*)
                      (equal (fn-cp-find '(9) tbl) *cp-e1*)
-                     (< 4 6))))
+                     (< (nth 6 (cpent-probe '(9))) 6))))
 ; without (fn-cp-entriesp ...): an epoch at next-epoch is found and breaks the bound
 (assert-event (let ((tbl (list *cp-e0* *cp-e1*)))
                 (and (not (fn-cp-entriesp tbl 5 4))
-                     (equal (cpent-probe '(9) tbl) '(1 4))
-                     (not (< 4 4)))))
-; without the find: the empty table, next epoch 0 (the conclusion's
-; (nth nil nil) is outside nth's guard, so guard checking is off here)
-(assert-event (with-guard-checking :none
-               (and (fn-cp-entriesp nil 0 0)
-                    (equal (cpent-probe '(9) nil) nil)
-                    (not (< (nth 6 (nth nil nil)) (nfix 0))))))
+                     (equal (cpent-probe '(9)) *cp-e1*)
+                     (not (< (nth 6 (cpent-probe '(9))) 4)))))
+; without the find: absent consumer, nothing found
+(assert-event (and (equal (cpent-probe '(8)) nil)
+                   (equal (fn-cp-find '(8) (list *cp-e0* *cp-e1*)) nil)))
+; the rebase step on the columns is the model's (cons e (fn-cp-remove c es))
+(assert-event (let ((model (cons *cp-e1b* (fn-cp-remove '(9) (list *cp-e0* *cp-e1*)))))
+                (and (equal model (list *cp-e1b* *cp-e0*))
+                     (equal (cpent-rebase-probe)
+                            (list (fn-cp-find '(9) model) (fn-cp-find '(1 2) model) nil)))))

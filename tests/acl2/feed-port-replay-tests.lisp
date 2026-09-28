@@ -34,10 +34,11 @@
 (defconst *fpr-records* (fn-feed-port-history *fpr-open* *fpr-events*))
 (defconst *fpr-replayed* (fn-feed-replay *fpr-open* *fpr-records*))
 
-(assert-event (equal (len (fn-feed-queue *fpr-live*)) 5))
+; Two delivered entries have left the queue (PRF-335): five enqueued, three owed.
+(assert-event (equal (len (fn-feed-queue *fpr-live*)) 3))
 (assert-event (equal (len *fpr-records*) 13))
-(assert-event (equal (fn-feed-state-of *fpr-a* (fn-feed-queue *fpr-live*)) :done))
-(assert-event (equal (fn-feed-state-of *fpr-b* (fn-feed-queue *fpr-live*)) :done))
+(assert-event (not (consp (fn-feed-find *fpr-a* (fn-feed-queue *fpr-live*)))))
+(assert-event (not (consp (fn-feed-find *fpr-b* (fn-feed-queue *fpr-live*)))))
 (assert-event (fn-feed-sentp (fn-feed-state-of *fpr-c* (fn-feed-queue *fpr-live*))))
 (assert-event (equal (fn-feed-state-of *fpr-d* (fn-feed-queue *fpr-live*)) :queued))
 (assert-event (equal (fn-feed-state-of *fpr-e* (fn-feed-queue *fpr-live*)) :queued))
@@ -52,7 +53,7 @@
                      (list (list :command 8 (fn-feed-check-line *fpr-c*)))))
 
 ; Drop the crash-image premise by fabricating a durable 239 for the third
-; attempt. It changes that entry to :done while the live run remains :sent.
+; attempt. It retires that entry while the live run keeps it :sent.
 (defconst *fpr-false-image*
   (append *fpr-records*
           (list (fn-feed-journal-entry :feed-outcome

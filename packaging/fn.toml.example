@@ -1,6 +1,6 @@
 # fn configuration.  `fn operator CONFIG mission small-community --host ADDR
 # --port N` writes one; every `fn operator CONFIG VERB` reads the CONFIG it
-# names.  See share/fn/docs/install.md (docs/install.md in the source).
+# names.  See share/fn/docs/fn-faq-3.txt (docs/articles/ in the source).
 
 [store]
 # The store root.  It holds the journal, the writer lock, the configuration

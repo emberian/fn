@@ -84,7 +84,7 @@ class ReleaseTarballTests(unittest.TestCase):
         for rel in ("SHA256SUMS", "install.sh", "bin/fn", "libexec/fn/fn-host",
                     "libexec/fn/fn-host.core", "libexec/fn/source-revision",
                     "libexec/fn/runtime/sbcl", "libexec/fn/lib/libfn-mldsa65.so",
-                    "share/fn/fn.toml.example", "share/fn/docs/install.md",
+                    "share/fn/fn.toml.example", "share/fn/docs/fn-faq-3.txt",
                     "share/fn/release-gate.txt", "share/fn/runpath-check.txt"):
             self.assertTrue((self.top / rel).exists(), rel)
         self.assertTrue(list((self.top / "libexec/fn/lib").glob("libsodium.so.*")))
@@ -187,8 +187,15 @@ class ReleaseTarballTests(unittest.TestCase):
             first = self.install(prefix, node)
             self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
             self.assertTrue((prefix / "bin/fn").is_file())
-            unit = node / ("fn.rc" if platform.system() == "OpenBSD" else "fn.service")
-            self.assertIn(f"{prefix}/bin/fn operator {node}/fn.toml run", unit.read_text())
+            if platform.system() == "OpenBSD":
+                # rc.d(8) names the program and its flags apart
+                # (share/fn/rc.d/fn.rc.in).
+                rc = (node / "fn.rc").read_text()
+                self.assertIn(f'daemon="{prefix}/bin/fn"', rc)
+                self.assertIn(f'daemon_flags="operator {node}/fn.toml run"', rc)
+            else:
+                unit = node / "fn.service"
+                self.assertIn(f"{prefix}/bin/fn operator {node}/fn.toml run", unit.read_text())
             again = self.install(prefix, node)
             self.assertEqual(again.returncode, 4)
             self.assertIn("an installation is one directory", again.stderr)

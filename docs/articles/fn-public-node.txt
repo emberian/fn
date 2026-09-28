@@ -1,0 +1,25 @@
+From: fn <docs@fn.fg-goose.online>
+Newsgroups: fn.announce
+Subject: fn.fg-goose.online is open, by invitation
+Date: Sun, 27 Sep 2026 12:01:00 +0000
+Message-ID: <fn-public-node-20260927@fn.fg-goose.online>
+Archive-name: fn-faq/public-node
+Posting-Frequency: when the node changes
+Last-modified: 2026-09-27
+Summary: The first public fn node: its ports, and how to get a login.
+
+The first public fn node is up: fn.fg-goose.online.
+
+*Why it matters:* You can read and post without running a node.
+
+*The details:*
+- Port 563 is TLS from the first byte; port 119 is STARTTLS.
+- Its certificate is from Let's Encrypt: no file to install.
+- Logins only, and never before TLS.
+
+*Getting a login:* Ask ember for an invitation code. Redeem it once,
+with the fn release unpacked. It asks for a password:
+
+    fn redeem fn.fg-goose.online:563 CODE carol --tls
+
+*Go deeper:* fn FAQ, part 2: reading and posting.

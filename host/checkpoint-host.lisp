@@ -7,6 +7,7 @@
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/store-reclaim-stream")
 (include-book "../books/store-log-reclaim")
+(include-book "../books/reclaim-instant")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -196,6 +197,41 @@
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (mv-let (rule now) (fn-store-reclaim-rule-and-stamp clock state)
     (value (fn-lgr-decide-stream profile rule now (f-get-global 'fn-store-sn state) acc dry fn-arena))))
+
+;; The reclaim's instant, recorded (books/reclaim-instant.lisp, PKT-857):
+;; before a reclaim rewrites anything, the host publishes the configuration
+;; record carrying the one delta `fn-rci-delta' of the SAME clock's stamp
+;; (the stamp `fn-store-reclaim-rule-and-stamp' hands the context), built and
+;; admitted by the configuration record path every administrative change
+;; takes.  :ok leaves the octets in `fn-store-cfg-last-octets'; :refused the
+;; reason in `fn-store-cfg-last-reason' (an unrepresentable instant is
+;; :reclaim-instant).  KEYSTONE fn-rci-recorded-context-is-the-decided-context:
+;; the configuration this record yields names the rule and instant the
+;; decision used.
+(defun fn-store-reclaim-instant-record (clock monotonic wall state)
+  (declare (xargs :stobjs state :mode :program))
+  (mv-let (rule now) (fn-store-reclaim-rule-and-stamp clock state)
+    (declare (ignore rule))
+    (if (fn-rci-representablep now)
+        (fn-store-cfg-peer-delta-record (list (fn-rci-delta now)) monotonic wall state)
+      (let ((state (f-put-global 'fn-store-cfg-last-reason :reclaim-instant state)))
+        (value :refused)))))
+
+;; `store reclaim --recorded': the context and the decision from the
+;; configuration the store opened with -- its rule and its recorded instant
+;; (fn-rci-context, fn-rci-decide-stream; refused :no-recorded-instant when no
+;; reclaim was ever recorded).  KEYSTONE fn-rci-recorded-decision-is-the-
+;; decision: over the record `store reclaim' published, this is the decision
+;; it took at its clock.
+(defun fn-store-reclaim-context-recorded (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-rci-context (fn-cfg-value (f-get-global 'fn-store-cfg state))
+                         (f-get-global 'fn-store-sn state))))
+
+(defun fn-store-log-reclaim-decide-recorded (profile acc dry fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (value (fn-rci-decide-stream profile (fn-cfg-value (f-get-global 'fn-store-cfg state))
+                               (f-get-global 'fn-store-sn state) acc dry fn-arena)))
 
 (defun fn-store-checkpoint-publication-initial
   (generations proposed-generation exclusivep final-absentp values)

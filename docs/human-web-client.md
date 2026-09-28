@@ -1,9 +1,13 @@
 # Newsreaders
 
+The short version is a Usenet article: [fn FAQ, part 2: reading and posting](articles/fn-faq-2.txt).
+This page stays the full reference; what changed after the articles were
+written (batch AY) is here first and folds into the articles next.
+
 Any newsreader that can use TLS works with fn. tin, slrn and pan were tested
 in September 2026. For reading in a browser instead, see
 [the web reader](web.md). Words you may not know are in
-[the short glossary](README.md#words-you-will-meet).
+[the short glossary](articles/fn-faq-1.txt).
 
 You need three things from the node's operator:
 

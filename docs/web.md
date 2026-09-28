@@ -1,5 +1,9 @@
 # Read it in your browser
 
+The short version is part of a Usenet article: [fn FAQ, part 2: reading and posting](articles/fn-faq-2.txt).
+This page stays the full reference; what changed after the articles were
+written (batch AY) is here first and folds into the articles next.
+
 Your node comes with a web page where you and your friends read and write
 in its groups, from any browser, phone included. We call it the web reader.
 It runs on the same machine as your node, beside it. Your friends need only
@@ -7,7 +11,7 @@ a browser: nothing to install, and they make their own account from an
 invitation code.
 
 Words you may not know are in
-[the short glossary](README.md#words-you-will-meet). How to use the pages
+[the short glossary](articles/fn-faq-1.txt). How to use the pages
 once they are up is in [the friends' reader](reader.md).
 
 ## What you need
@@ -53,7 +57,8 @@ Open `/var/lib/fn-reader/reader.conf` in an editor. Change two lines:
   where the node cannot use ports below 1024, the `tls_port` is one like
   `11564`) needs the line `tls = yes` as well; without it the reader
   speaks STARTTLS to that port, and making an account fails with
-  `refused redeem connection: the server closed or did not answer`.
+  `unreachable redeem: the node could not be reached, or closed or stopped
+  answering before the code was taken`.
 - `site =` the name your friends see at the top of every page.
 
 If your node's certificate is from Let's Encrypt (or another public
@@ -145,9 +150,14 @@ To make yourself an account, do the same. Accounts made with
 
 ## If it goes wrong
 
-- **"We can't reach the server right now."** The reader cannot reach your
-  node. Check that the node runs (`fn operator /var/lib/fn/fn.toml health`)
-  and that `node =` in `reader.conf` has the right name and port. Then
+- **"We can't reach the server right now."** (on **Make your account**:
+  "We could not reach the server, or it stopped answering") The reader
+  cannot reach your node. A code tried then is not counted as refused, and
+  the account page quotes `fn redeem`'s own line: `unreachable redeem` means
+  nothing was redeemed; `uncertain redeem` means the connection ended after
+  the password was sent, so the account may be ready (sign in to see).
+  Check that the node runs (`fn operator /var/lib/fn/fn.toml health`) and
+  that `node =` in `reader.conf` has the right name and port. Then
   `systemctl restart fn-reader`. `journalctl -u fn-reader` shows what the
   reader said.
 - **"We couldn't confirm the server is the real one."** The reader did not

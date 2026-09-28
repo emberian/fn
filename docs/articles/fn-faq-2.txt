@@ -1,0 +1,44 @@
+From: fn <docs@fn.fg-goose.online>
+Newsgroups: fn.docs
+Subject: fn FAQ, part 2: reading and posting
+Date: Sun, 27 Sep 2026 12:02:00 +0000
+Message-ID: <fn-faq-2-20260927@fn.fg-goose.online>
+Archive-name: fn-faq/part2
+Posting-Frequency: when fn changes
+Last-modified: 2026-09-27
+Summary: Newsreaders, the web reader, and cancelling your own post.
+
+Any newsreader with TLS works.
+
+*What you need:* The node's name, a login, and the node's
+certificate if it made its own. A login before TLS is refused.
+
+*A login:* Redeem the operator's invitation code once:
+
+    fn redeem news.example.org CODE carol --cafile cert.pem
+
+*tin:* tin 2.6 needs TLS from the first byte, on port 563. Build it
+with --with-nntps=openssl. Put "HOST PASSWORD LOGIN" in ~/.newsauth,
+mode 0600. Then:
+
+    tin -T -r -A -p 563 -g fn.fg-goose.online
+
+- A self-made certificate goes in ~/.tin/tinrc: tls_ca_cert_file.
+- Never use -k: it skips the check.
+
+*slrn:* 1.0.3 never checks the certificate.
+
+*Cancel:* Your reader's cancel withdraws your own post everywhere.
+
+*The web reader:* tools/fn_web.py in fn's source; Python 3 only. It
+uses STARTTLS on port 119, never 563:
+
+    git clone https://github.com/emberian/fn ~/fn
+    cd ~/fn
+    python3 tools/fn_web.py --node news.example.org:119 \
+        --tls-cert cert.pem --user carol --outbox ~/.fn-web/outbox
+
+Then open http://127.0.0.1:8919/. If a post comes back uncertain,
+press "Re-send this same article". Never post it again as new.
+
+*Go deeper:* part 8, for programs.

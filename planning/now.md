@@ -85,8 +85,6 @@ reader sees:
   fundamentals-scoreboard is gathering it.
 - **No qualified format-9 image** (above), and the live node cannot be
   upgraded in place.
-- **M5's drop theorem** is stated over a fold the streamed open no longer
-  calls; the equation is owed ([current view](current.md#m5)).
 - **`health` prints `format=8`** for every valid profile, including format 9
   (books/native-health.lisp `fn-nh-profile-words` hard-codes it).
 - **Consumers' withdrawal events** are proved and the view is refreshed
