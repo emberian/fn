@@ -26,7 +26,7 @@ and the saved Lisp image it execs; no Python runs on a deployed node
 (D35, `tools/runpath_check.py`). Python remains for clients on other
 machines and for the tests. The sections "Install" and "Run it as a service"
 and the per-user `~/fn-live` service further down still describe the older
-Python development service (`bin/fn --config ...` in a checkout), which was
+Python development service (the Python `bin/fn` in a checkout), which was
 retired on 2026-09-28 (python-diet T5); a release never had it, and its verbs
 are `fn operator CONFIG VERB ...`.
 
@@ -1388,10 +1388,9 @@ maps writable-executable pages and will not start with it set.
 
 Two things the unit will bite you with, both learned by running it:
 
-- **`--config` precedes the verb.** `fn run --config <path>` exits 2 with
-  `unrecognized arguments`, and under `Restart=on-failure` that is a loop. The
-  shipped `ExecStart` is `fn --config <path> run`; keep that order if you edit
-  it. The unit carries `StartLimitIntervalSec=60` and `StartLimitBurst=5` so a
+- **The configuration precedes the verb.** The shipped `ExecStart` is
+  `fn operator <config> run`; a verb before the configuration is a usage
+  error, and under `Restart=on-failure` that is a loop. The unit carries `StartLimitIntervalSec=60` and `StartLimitBurst=5` so a
   service that cannot start gives up instead of spinning.
 - **The start limit latches.** Once a unit has hit it, every later `restart`
   is refused with `Start request repeated too quickly` **and exits 0**, which

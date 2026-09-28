@@ -741,7 +741,7 @@ a violated scenario assertion
 ([the follow-up review](../planning/review-2026-09-20-astra-followup.md), F1).
 
 `tools/deploy_gate.py` now carries a `Finding` beside the `Step`, with the
-vocabulary [`tools/v0_matrix.py`](../tools/v0_matrix.py) already keeps apart
+vocabulary `tools/v0_matrix.py` already keeps apart
 over its rows: a fixed set of words never collapsed into pass/fail, a declared
 inventory (`ASSERTIONS`) so an assertion the run never reached is emitted
 rather than lost, one emitter that refuses an undeclared key or an undecided
