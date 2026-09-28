@@ -99,6 +99,31 @@ class DriverThroughGit(unittest.TestCase):
             unmerged = git(repo, "diff", "--name-only", "--diff-filter=U").stdout
             self.assertIn("planning/proofs.json", unmerged)
             json.loads((repo / "planning/proofs.json").read_text())  # still JSON
+            # And recorded where the batch runner reads it: `git add` of the
+            # valid JSON would otherwise keep ours silently.
+            record = repo / "build/merge-conflicts/registry.jsonl"
+            (entry,) = [json.loads(line) for line in record.read_text().splitlines()]
+            self.assertEqual((entry["path"], entry["id"], entry["field"], entry["ours_kept"]),
+                             ("planning/proofs.json", "PRF-001", "status", True))
+            listed = subprocess.run([sys.executable, str(DRIVER), "--pending"], cwd=repo,
+                                    capture_output=True, text=True)
+            self.assertEqual(listed.returncode, 1)
+            self.assertIn("UNRESOLVED planning/proofs.json: PRF-001 status", listed.stdout)
+            cleared = subprocess.run([sys.executable, str(DRIVER), "--clear"], cwd=repo,
+                                     capture_output=True, text=True)
+            self.assertEqual(cleared.returncode, 0)
+            again = subprocess.run([sys.executable, str(DRIVER), "--pending"], cwd=repo,
+                                   capture_output=True, text=True)
+            self.assertEqual(again.returncode, 0, again.stdout)
+
+    def test_a_clean_merge_records_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.repo(directory, [row("PRF-001")])
+            self.branch(repo, "a", [row("PRF-001"), row("PRF-002", title="a")])
+            self.branch(repo, "b", [row("PRF-001"), row("PRF-003", title="b")], "dev")
+            git(repo, "checkout", "-q", "a")
+            git(repo, "merge", "--no-edit", "b")
+            self.assertFalse((repo / "build/merge-conflicts/registry.jsonl").exists())
 
 
 class RuleTests(unittest.TestCase):
@@ -117,6 +142,16 @@ class RuleTests(unittest.TestCase):
         self.assertEqual([r.get("title") for r in merged["rows"][1:]], ["ours", "theirs"])
         self.assertEqual(len(conflicts), 1)
         self.assertIn("CONFLICT B: both sides added this id", conflicts[0])
+
+    def test_conflict_lines_parse_to_id_and_field(self):
+        records = merge_registry.conflict_records("p.json", [
+            "CONFLICT PRF-212 status: ours 'a' theirs 'b' base 'c'",
+            "CONFLICT PRF-9 keystone_subjects fn-x: ours 1 theirs 2 base 3",
+            "CONFLICT B: both sides added this id with different rows",
+            "CONFLICT (top level) schema_version: ours 1 theirs 2 base 0"])
+        self.assertEqual([(r["id"], r["field"]) for r in records],
+                         [("PRF-212", "status"), ("PRF-9", "keystone_subjects fn-x"),
+                          ("B", ""), ("(top level)", "schema_version")])
 
     def test_an_element_ours_removed_stays_removed(self):
         self.assertEqual(merge_registry.merge_list(["x", "y"], ["x"], ["x", "y", "z"]),

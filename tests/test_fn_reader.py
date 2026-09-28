@@ -322,7 +322,7 @@ class ReaderTests(unittest.TestCase):
         script.chmod(0o755)
         return directory, script
 
-    def redeem(self, code="0a1b2c", user="carol", password="new-pass", again=None):
+    def redeem(self, code="0a1b2c", user="carol", password="new-pass", again=None):  # FAKE-SECRET: a test fixture's password
         _, _, page = self.request("GET", "/redeem")
         pre = re.search(r"name='pre' value='([^']+)'", page).group(1)
         return self.request("POST", "/redeem", {"pre": pre, "code": code, "user": user,
@@ -331,7 +331,7 @@ class ReaderTests(unittest.TestCase):
 
     def test_an_invitation_is_redeemed_by_the_nodes_own_command(self):
         directory, script = self.fake_fn(0, "redeemed: the account carol is ready")
-        self.start(password="new-pass", implicit_tls=True, tls=True, fn=str(script))
+        self.start(password="new-pass", implicit_tls=True, tls=True, fn=str(script))  # FAKE-SECRET: a test fixture's password
         status, where, _ = self.redeem()
         self.assertEqual((status, where), (303, "/"))
         argv = (directory / "argv").read_text().split("\n")

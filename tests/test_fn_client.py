@@ -52,7 +52,7 @@ class FnClientTests(unittest.TestCase):
         self.addCleanup(node.stop)
         return node
 
-    def run_client(self, node, argv, password="right", plain=False, credentials=None,
+    def run_client(self, node, argv, password="right", plain=False, credentials=None,  # FAKE-SECRET: a test fixture's password
                    stdin=""):
         out, err = io.StringIO(), io.StringIO()
         base = ["--node", "127.0.0.1:%d" % node.port, "--timeout", "10",
@@ -555,7 +555,7 @@ class FnClientTests(unittest.TestCase):
     # ---- the secret, the credential file, and the JSON ------------------
 
     def test_the_password_reaches_neither_the_output_nor_the_state(self):
-        node = self.serve(password="s3cret-word-9")
+        node = self.serve(password="s3cret-word-9")  # FAKE-SECRET: a test fixture's password
         node.seed("fn.agents", "one", "body one")
         code, out, err = self.run_client(node, ["read", "fn.agents", "--json"],
                                          password="s3cret-word-9")
