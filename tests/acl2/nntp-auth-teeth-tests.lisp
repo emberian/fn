@@ -45,6 +45,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/nntp-auth-invariants")
+(include-book "../../books/nntp-auth-roles")
 (include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
