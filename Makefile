@@ -234,6 +234,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-export-tests \
 	books/store-export-stream \
 	tests/acl2/store-export-stream-tests \
+	books/store-import-stream \
+	tests/acl2/store-import-stream-tests \
+	books/store-export-durability \
+	tests/acl2/store-export-durability-tests \
 	books/store-import-publication \
 	tests/acl2/store-import-publication-tests \
 	books/store-init-publication \
@@ -1260,6 +1264,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-reader-read \
 	tests/acl2/owner-reader-read-tests \
 	books/clock-wall-reading \
+	books/clock-unit \
 	books/owner-time-model \
 	books/owner-time-journal \
 	books/owner-time-admission \

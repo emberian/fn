@@ -133,11 +133,17 @@
 
 ;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
 ;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
-;; fn-sxp-import-plan; fnn-command-store-import follows fn-bs-imp-program's
+;; fn-sxp-import-plan (streamed: fn-sxi-*, PRF-369); fnn-command-store-import follows fn-bs-imp-program's
 ;; publication (staged, validated, no-replace rename, parent fenced) and
 ;; classifies a leftover staged directory through fn-bs-imp-classify.
 (include-book "books/store-export")
 (include-book "books/store-export-stream")
+;; PRF-369: `store import' a chunk at a time (fn-sxi-*; the stream plan IS
+;; fn-sxp-import-plan, fn-sxi-stream-plan-is-the-import-plan).
+(include-book "books/store-import-stream")
+;; PRF-370: the export's data share one sync, the MANIFEST last; the import
+;; refuses an archive without one by name (fn-sxd-archive-verdict).
+(include-book "books/store-export-durability")
 (include-book "books/store-import-publication")
 ;; `operator init` publishes the empty store by the same program (PKT-647):
 ;; fnn-command-init-published asks fn-bs-init-pub-admission.

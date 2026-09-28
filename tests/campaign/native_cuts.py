@@ -102,6 +102,26 @@ IMPORT_CUTS = tuple(
         ("import-published", "fn-bs-imp-publication-program", "either"),
         ("import-durable", "fn-bs-imp-publication-program", "present")))
 
+# `store export DIR' (host/native/io.lisp `fnn-command-store-export'):
+# books/store-export-durability.lisp fn-sxd-program, selected by
+# FN_NATIVE_EXPORT_FAULT (lane obligations-paged-archive, PRF-370).  The data
+# share one sync; the MANIFEST is renamed into place last.  The candidate
+# column is whether DIR's MANIFEST is there after a death at the cut: absent
+# before the rename (the import refuses archive-incomplete), either at it,
+# present once DIR is fenced (fn-sxd-crash-is-incomplete-or-complete: a
+# present MANIFEST is the complete archive).
+EXPORT_BOOK = "store-export-durability.lisp"
+EXPORT_PROGRAMS = ("fn-sxd-entry-steps", "fn-sxd-tail-steps", "fn-sxd-publish-program")
+EXPORT_CUTS = tuple(
+    NativeCut(name, program, candidate, book=EXPORT_BOOK)
+    for name, program, candidate in (
+        ("export-entry-written", "fn-sxd-entry-steps", "absent"),
+        ("export-data-written", "fn-sxd-tail-steps", "absent"),
+        ("export-data-durable", "fn-sxd-publish-program", "absent"),
+        ("export-manifest-staged", "fn-sxd-publish-program", "absent"),
+        ("export-manifest-renamed", "fn-sxd-publish-program", "either"),
+        ("export-durable", "fn-sxd-publish-program", "present")))
+
 # The suffixes of the publication program's cuts, in its order.
 PUBLICATION_SUFFIXES = tuple(c.name[len("import-"):] for c in IMPORT_CUTS)
 
@@ -228,7 +248,9 @@ STEP_KINDS = ("observe", "cut", "create", "write-all", "fsync-file", "fsync-dir"
               # books/store-log-programs.lisp's positioned write and barrier.
               "write-at", "fence",
               # books/store-log-extend.lisp's zero extension.
-              "extend-to")
+              "extend-to",
+              # books/store-export-durability.lisp's one filesystem sync.
+              "sync-all")
 SYSCALL_KINDS = frozenset(STEP_KINDS[2:])
 
 
@@ -297,6 +319,7 @@ def verify_native_cut_map() -> None:
     verify_recovery_order()
     verify_state_checkpoint_cut_map()
     verify_import_cut_map()
+    verify_export_cut_map()
 
 
 def verify_state_checkpoint_cut_map() -> None:
@@ -369,6 +392,72 @@ def verify_import_cut_map() -> None:
         raise AssertionError("fnn-command-store-import does not classify before publishing")
     verify_staged_publication(source, "import", declared)
     _import_candidates()
+
+
+def verify_export_cut_map() -> None:
+    """The host's export cuts are fn-sxd-program's, in its order: the declared
+    names are the program's cuts, `fnn-command-store-export' reaches the
+    program's steps and cuts in that order (the data written with no per-file
+    fence, one sync, then the MANIFEST's fence, rename and DIR's fence), and
+    the candidate column is the one the program's steps give."""
+    declared = tuple(c.name for c in EXPORT_CUTS)
+    if declared != native_declared_cut_names("fnn-export-model-cuts"):
+        raise AssertionError("native/model export cuts differ")
+    program_cuts = tuple(name for program in EXPORT_PROGRAMS
+                         for name in model_cut_names(program, EXPORT_BOOK))
+    if declared != program_cuts:
+        raise AssertionError("export cuts are not fn-sxd-program's: {!r}".format(program_cuts))
+    book = (ROOT / "books" / EXPORT_BOOK).read_text()
+    write = host_function(book, "fn-sxd-write-program")
+    whole = host_function(book, "fn-sxd-program")
+    if not (write.index("(fn-sxd-head-steps)") < write.index("(fn-sxd-entry-steps entries)")
+            < write.index("(fn-sxd-tail-steps manifest)")):
+        raise AssertionError("fn-sxd-write-program no longer runs its parts in order")
+    if not (whole.index("(fn-sxd-write-program ") < whole.index("(list :sync-all)")
+            < whole.index("(fn-sxd-publish-program)")):
+        raise AssertionError("fn-sxd-program no longer syncs between writing and publishing")
+    source = (ROOT / "host/native/io.lisp").read_text()
+    body = host_function(source, "fnn-command-store-export")
+    at = '(fnn-export-at fault "{}")'.format
+    order = [body.index('(fnn-mkdir (fnn-join dir "config") #o700)'),
+             body.index('(fnn-mkdir (fnn-join dir "records") #o700)'),
+             body.index("(fnn-open staged"),
+             body.index("(fnn-export-step dir fd head fault)"),
+             body.index(at("export-data-written")),
+             body.index("(fnn-export-sync-data dir)"),
+             body.index(at("export-data-durable")),
+             body.index("(fnn-fsync-file fd)"),
+             body.index('(fnn-fsync-dir (fnn-join dir "records"))'),
+             body.index('(fnn-fsync-dir (fnn-join dir "config"))'),
+             body.index(at("export-manifest-staged")),
+             body.index('(fnn-replace staged (fnn-join dir "MANIFEST"))'),
+             body.index(at("export-manifest-renamed")),
+             body.index("(fnn-fsync-dir dir)"),
+             body.index(at("export-durable"))]
+    if order != sorted(order):
+        raise AssertionError("fnn-command-store-export is out of fn-sxd-program's order")
+    entries = host_function(source, "fnn-export-entries")
+    if not (entries.index("(fnn-archive-write-file ")
+            < entries.index(at("export-entry-written"))):
+        raise AssertionError("fnn-export-entries cuts before writing")
+    if "fsync" in host_function(source, "fnn-archive-write-file").split('"', 2)[-1]:
+        raise AssertionError("fnn-archive-write-file fences each entry (the program syncs once)")
+    import_pass = host_function(source, "fnn-import-pass")
+    if not (import_pass.index("(fnn-core 'fn-sxd-archive-verdict")
+            < import_pass.index('(fnn-archive-entry dir "profile"')):
+        raise AssertionError("the import reads an entry before the MANIFEST's verdict")
+    for cut in EXPORT_CUTS:
+        own = EXPORT_PROGRAMS.index(cut.program)
+        before = [step for program in EXPORT_PROGRAMS[:own]
+                  for step in model_steps(program, EXPORT_BOOK)]
+        before += list(model_steps(cut.program, cut.book)[:cut_step_index(cut)])
+        kinds = [step.kind for step in before]
+        renamed = "rename" in kinds
+        fenced = renamed and "fsync-dir" in kinds[kinds.index("rename"):]
+        expected = "present" if fenced else ("either" if renamed else "absent")
+        if cut.candidate != expected:
+            raise AssertionError("{}: candidate {} but the program says {}".format(
+                cut.name, cut.candidate, expected))
 
 
 def verify_staged_publication(source: str, kind: str, declared: tuple) -> None:
