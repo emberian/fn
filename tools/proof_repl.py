@@ -562,8 +562,31 @@ class Acl2:
                 raise
 
 
+FAILED_BANNER = "******** FAILED ********"
+SUMMARY_LINE = re.compile(r"^Summary\s*$", re.MULTILINE)
+
+
 def errored(output: str) -> bool:
-    return any(mark in output for mark in ERROR_MARKS + CRASH_MARKS)
+    """Did ACL2 refuse the form -- judged by the form's own result, not by
+    error text anywhere in its output.
+
+    An event that expects an error and catches it (`must-fail` over an `er
+    hard`) prints "HARD ACL2 ERROR" and then succeeds: its summary comes
+    after the error and no FAILED banner follows (defkeystone, 2026-09-27:
+    such a must-fail returned T and was marked refused).  So error text that
+    lies wholly before the form's final Summary, with no FAILED banner, is a
+    caught error.  A crash, ACL2 Halted, a FAILED banner, or error text with
+    no summary after it (a query, a translation error) is a refusal.
+    """
+    if any(mark in output for mark in CRASH_MARKS) or "ACL2 Halted" in output:
+        return True
+    if FAILED_BANNER in output:
+        return True
+    last_error = max((output.rfind(mark) for mark in ERROR_MARKS), default=-1)
+    if last_error < 0:
+        return False
+    summaries = [match.start() for match in SUMMARY_LINE.finditer(output)]
+    return not summaries or last_error > summaries[-1]
 
 
 def crashed(output: str) -> bool:

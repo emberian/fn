@@ -349,7 +349,10 @@ class LoadLimitTests(unittest.TestCase):
                                         "(defthm slow (equal (f x) x))\n(defthm after t)\n")
         timeout_answer = ("*** Key checkpoint at the top level: ***\n(EQUAL (F X) X)\n"
                           "ACL2 Error [Time-limit] in ( DEFTHM SLOW ...):  Out of time in "
-                          "the rewriter.\nSummary\nForm:  ( DEFTHM SLOW ...)\n")
+                          "the rewriter.\nSummary\nForm:  ( DEFTHM SLOW ...)\n"
+                          # What ACL2 8.7 prints after it (hbox, 2026-09-28).
+                          "\nACL2 Error [Failure] in ( DEFTHM SLOW ...):  See :DOC "
+                          "failure.\n\n******** FAILED ********\n")
         acl2 = self.Recorder(["", "", "", timeout_answer])
         state = {"name": None, "loaded": [], "ld_loaded": {}}
         ok = proof_repl.load_book(acl2, "build/proof-repl-limit-test/b", state, 600.0,
