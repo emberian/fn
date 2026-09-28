@@ -8,7 +8,6 @@
 (defun fn-native-admin-host-plan (argv) (fn-native-admin-plan argv))
 (defun fn-native-admin-host-status (result) (fn-native-admin-result-status result))
 (defun fn-native-admin-host-reason (result) (fn-native-admin-result-reason result))
-(defun fn-native-admin-host-peer (result) (fn-native-admin-result-peer result))
 (defun fn-native-admin-host-value (result) (fn-native-admin-result-value result))
 (defun fn-native-admin-host-queryp (result) (fn-native-admin-result-queryp result))
 (defun fn-native-admin-host-report-kind (result)
