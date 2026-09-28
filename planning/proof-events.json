@@ -12708,10 +12708,6 @@
         {
           "kind": "theorem",
           "name": "fn-fps-live-names-are-the-unpaused-feeds"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-fps-deltas-of-an-absent-peer"
         }
       ]
     },

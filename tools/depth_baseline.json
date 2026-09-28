@@ -101,6 +101,8 @@
   "fn-ff-butlast": "Walks the filename components list; capped at *fn-ff-max-components* = 7.",
   "fn-ff-chunks-fuel": "Walks fuel = hex(peer name) length; peer name capped at *fn-ff-max-name* = 256 octets, so fuel <= 512.",
   "fn-ff-take": "Walks up to n items; every real caller passes n = *fn-ff-chunk* (120) or a leaf length bounded by *fn-ff-max-name* (256).",
+  "fn-fps-live-names": "walks the owner's feed-table names (fn-own-feed-names); bounded by the peer config table",
+  "fn-fps-other-slot-rows": "walks one peer's config rows for the outbound-paused slot; bounded by the operator's profile",
   "fn-frame-enum-index": "Walks keys, a code-fixed enum keyword list (a small named record-kind vocabulary).",
   "fn-frame-fields-octets": "Walks specs, a record's fixed field-spec list defined by its schema, not by data.",
   "fn-frame-fields-parse-aux": "Walks specs, a record's fixed field-spec list defined by its schema, not by data.",
