@@ -13,10 +13,10 @@ these local resource limits:
 | Limit | Value | Status |
 | --- | ---: | --- |
 | complete source | 32,768 octets | local policy |
-| header section before the blank separator | profile field 17 `max-header-octets` (default 16,384) | operator's (D27, STO-030) |
+| header section before the blank separator | profile field 15 `max-header-octets` (default 16,384) | operator's (D27, STO-030) |
 | physical header line excluding CRLF | 998 octets | local policy, aligned with RFC 5536 §2.2's generation limit |
-| physical header lines | profile field 16 `max-header-lines` (default 256) | operator's (D27, STO-030) |
-| header fields | profile field 15 `max-header-fields` (default 64) | operator's (D27, STO-030) |
+| physical header lines | profile field 14 `max-header-lines` (default 256) | operator's (D27, STO-030) |
+| header fields | profile field 13 `max-header-fields` (default 64) | operator's (D27, STO-030) |
 
 The three header limits are the store profile's (lane header-limits-profile,
 2026-09-27; PRF-230). `fn-article-parse-under OCTETS LIMITS` is the parser

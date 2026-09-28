@@ -4303,17 +4303,15 @@
         "books/records-canonicality.lisp",
         "books/records-invariants.lisp",
         "tests/acl2/records-schema-v1-teeth-tests.lisp",
-        "books/byte-store-profile-v1.lisp",
         "books/byte-store-frame.lisp",
         "books/records-seam.lisp",
-        "tests/acl2/byte-store-profile-v1-tests.lisp",
         "tests/acl2/byte-store-frame-tests.lisp",
         "tests/acl2/records-ceiling-tests.lisp",
         "planning/evidence/bounds-p6-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T010233Z-3422722.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
-      "progress_note": "Certified with teeth; the theorem is over the implementation the seam attaches, not over the constrained seam function; the open corollary over fn-store-sn-recover is by congruence of the program-mode host map and is not an ACL2 event.",
+      "progress_note": "Certified with teeth; the theorem is over the implementation the seam attaches, not over the constrained seam function; the open corollary over fn-store-sn-recover is by congruence of the program-mode host map and is not an ACL2 event. Format 10 (lane format-bump-10, 2026-09-28): books/byte-store-profile-v1.lisp and its tests were deleted with format 9 (D34: every format-10 profile is written by a format-10 init or import under the current relation; the frozen pre-P6 relation and the PKT-467 window describe profiles no format-10 store holds); the events and paths that named them are removed from this row.",
       "events": [
         "fn-record-v1-bytes-decode-identically",
         "fn-record-v1-bytes-are-their-translation",
@@ -4323,9 +4321,7 @@
         "fn-cbor-decode-prechecked-wide-uint-reencode-prefix",
         "fn-record-impl-round-trip",
         "fn-record-impl-accepted-input-is-canonical",
-        "fn-record-impl-encode-narrow-length-bound",
-        "fn-bs-profile-v1-valid-is-valid",
-        "fn-bs-profile-v1-valid-stays-valid"
+        "fn-record-impl-encode-narrow-length-bound"
       ]
     },
     {
@@ -6570,7 +6566,7 @@
     {
       "id": "PRF-178",
       "title": "A control reply that cannot carry its value refuses by name: profile validation refuses a record bound the consumer poll reply cannot carry, and the live-status reply names a report its u32 total cannot say",
-      "statement": "(a) PKT-467, the coordinator's ruling (D27: profile validation, representation and format evolution agree). The subject is fn-bs-profile-validp / fn-bs-profile-admittedp (books/byte-store-frame), which host/native/io.lisp fnn-command-upgrade-profile reaches through fn-hmr-upgrade-verdict / fn-profile-upgrade-verdict and `init` through host/store-host.lisp fn-store-profile-init-verdict (fn-bs-profile-init-verdict); every open through fn-store-profile-admittedp. fn-bs-profile-invalid-reason answers :max-record-octets-above-the-poll-reply when R exceeds *fn-stxa-max-octets* (4,294,966,940: the Store frame's u32 less the kind-6 poll reply's 9 header and 346 cursor octets, the inequality fn-ncl-poll-event-bytesp checks). fn-bs-profile-valid-record-fits-a-poll-reply: for any value, fn-bs-profile-max-record-octets is at most *fn-stxa-max-octets*, and every payload fn-bs-publication-admissiblep admits (the gate host/store-host.lisp fn-store-publication-admissibility asserts for host/native/io.lisp fnn-publish) is within it. fn-col-poll-report-of-an-admitted-payload-fits (books/consumer-owner-local-progress): a page whose event encoding is such an admitted payload is served by fn-col-poll-report (host/owner-host.lisp fn-owner-consumer-local-poll) as that page, not :oversize. fn-bs-profile-v1-valid-stays-valid (books/byte-store-profile-v1) now carries R <= *fn-stxa-max-octets*, and fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name says the window it excludes is refused by the new name: together they characterize which saved profiles still open. (b) The subject is fn-nls-page over fn-nls-buffer (books/native-live-status), which host/native-live-status-host.lisp fn-native-live-status-host-answer answers for host/native/control.lisp fnn-control-live-status-answer, and fn-nls-client-step, which host/native/control.lisp fnn-control-live-status folds pages through. fn-nls-page-refuses-exactly-past-the-total-width: for an octet report and any offset, the client's step on the owner's page is (:refused :report-past-the-total-width) exactly when the report is longer than 2^32-1 octets; the refused reply's existing chunk field carries the word (no layout change). Not claimed: that the served store's events re-encode to at most R (the :oversize arm stays as the named refusal for a store holding an event past its own R; PKT-470); that a live-status report is bounded before it is rendered (the render is whole, octet lists: PKT-470, hot-path-checker's class); a concrete witness of either past-the-ceiling antecedent (each needs 2^32 octets; the hypothesis teeth are proved symbolically). (c) PKT-471, the coordinator's decision (a named refusal at open, never translation-at-open). The subject is fn-spo-config-open (books/store-profile-open), the open host/native/io.lisp fnn-metadata-config-decode calls through host/store-host.lisp fn-store-metadata-config-open on every open (fnn-load-config from fnn-acquire: owner start, store recover, inspect, checkpoint, status, the offline health). fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name: for every profile the format-8 encoder saved under the relation before PKT-467 (fn-bs-profile-v2-validp, frozen; fn-bs-profile-valid-is-v2-valid and fn-bs-profile-v1-valid-is-v2-valid include the current and the pre-P6 saved profiles), the open of its frame (fn-spo-saved-frame) is (:opened VALUES) when R <= *fn-stxa-max-octets* and (:refused :max-record-octets-above-the-poll-reply) otherwise, never (:rejected), the host's fault; the host prints ACL2's line (fn-spo-refusal-text) at exit 1. fn-spo-config-open-refuses-only-what-the-old-open-rejected: a refusal is never a frame fn-bs-config-decode decoded, so every store the open opened before opens the same. The repair is a separate verdict, fn-spo-repair-verdict, which fnn-command-upgrade-profile reaches through fnn-command-repair-profile on that refusal (fn-profile-upgradep is unchanged, so every fn-profile-upgrade-keeps-* theorem is unaffected): fn-spo-repair-admits-exactly-the-lowering-to-the-width: over any saved profile's frame the verdict writes exactly when the saved R exceeds *fn-stxa-max-octets* and the target is (:current ((4 . *fn-stxa-max-octets*))), what `store upgrade-profile --max-record-octets 4294966940` parses to, and the written frame opens as the saved profile with R lowered and every other field kept (fn-spo-repaired-keeps-every-other-field). Not claimed (PKT-486): that the repair's open under the lowered profile names a store holding a committed record above the lowered read bound (it would fault on the read bound; no such record is constructible below 4 GiB); a native crash witness of the repair path (it writes through the upgrade's byte program, fn-bs-profile-program-crash-is-old-or-new).",
+      "statement": "(a) PKT-467, the coordinator's ruling (D27: profile validation, representation and format evolution agree). The subject is fn-bs-profile-validp / fn-bs-profile-admittedp (books/byte-store-frame), which host/native/io.lisp fnn-command-upgrade-profile reaches through fn-hmr-upgrade-verdict / fn-profile-upgrade-verdict and `init` through host/store-host.lisp fn-store-profile-init-verdict (fn-bs-profile-init-verdict); every open through fn-store-profile-admittedp. fn-bs-profile-invalid-reason answers :max-record-octets-above-the-poll-reply when R exceeds *fn-stxa-max-octets* (4,294,966,940: the Store frame's u32 less the kind-6 poll reply's 9 header and 346 cursor octets, the inequality fn-ncl-poll-event-bytesp checks). fn-bs-profile-valid-record-fits-a-poll-reply: for any value, fn-bs-profile-max-record-octets is at most *fn-stxa-max-octets*, and every payload fn-bs-publication-admissiblep admits (the gate host/store-host.lisp fn-store-publication-admissibility asserts for host/native/io.lisp fnn-publish) is within it. fn-col-poll-report-of-an-admitted-payload-fits (books/consumer-owner-local-progress): a page whose event encoding is such an admitted payload is served by fn-col-poll-report (host/owner-host.lisp fn-owner-consumer-local-poll) as that page, not :oversize. fn-bs-profile-v1-valid-stays-valid (books/byte-store-profile-v1) now carries R <= *fn-stxa-max-octets*, and fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name says the window it excludes is refused by the new name: together they characterize which saved profiles still open. (b) The subject is fn-nls-page over fn-nls-buffer (books/native-live-status), which host/native-live-status-host.lisp fn-native-live-status-host-answer answers for host/native/control.lisp fnn-control-live-status-answer, and fn-nls-client-step, which host/native/control.lisp fnn-control-live-status folds pages through. fn-nls-page-refuses-exactly-past-the-total-width: for an octet report and any offset, the client's step on the owner's page is (:refused :report-past-the-total-width) exactly when the report is longer than 2^32-1 octets; the refused reply's existing chunk field carries the word (no layout change). Not claimed: that the served store's events re-encode to at most R (the :oversize arm stays as the named refusal for a store holding an event past its own R; PKT-470); that a live-status report is bounded before it is rendered (the render is whole, octet lists: PKT-470, hot-path-checker's class); a concrete witness of either past-the-ceiling antecedent (each needs 2^32 octets; the hypothesis teeth are proved symbolically). (c) [retired by format 10: the saved-profile window refusal and the repair are gone with format 9; every format-10 profile satisfies the arm at its writing] PKT-471, the coordinator's decision (a named refusal at open, never translation-at-open). The subject is fn-spo-config-open (books/store-profile-open), the open host/native/io.lisp fnn-metadata-config-decode calls through host/store-host.lisp fn-store-metadata-config-open on every open (fnn-load-config from fnn-acquire: owner start, store recover, inspect, checkpoint, status, the offline health). fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name: for every profile the format-8 encoder saved under the relation before PKT-467 (fn-bs-profile-v2-validp, frozen; fn-bs-profile-valid-is-v2-valid and fn-bs-profile-v1-valid-is-v2-valid include the current and the pre-P6 saved profiles), the open of its frame (fn-spo-saved-frame) is (:opened VALUES) when R <= *fn-stxa-max-octets* and (:refused :max-record-octets-above-the-poll-reply) otherwise, never (:rejected), the host's fault; the host prints ACL2's line (fn-spo-refusal-text) at exit 1. fn-spo-config-open-refuses-only-what-the-old-open-rejected: a refusal is never a frame fn-bs-config-decode decoded, so every store the open opened before opens the same. The repair is a separate verdict, fn-spo-repair-verdict, which fnn-command-upgrade-profile reaches through fnn-command-repair-profile on that refusal (fn-profile-upgradep is unchanged, so every fn-profile-upgrade-keeps-* theorem is unaffected): fn-spo-repair-admits-exactly-the-lowering-to-the-width: over any saved profile's frame the verdict writes exactly when the saved R exceeds *fn-stxa-max-octets* and the target is (:current ((4 . *fn-stxa-max-octets*))), what `store upgrade-profile --max-record-octets 4294966940` parses to, and the written frame opens as the saved profile with R lowered and every other field kept (fn-spo-repaired-keeps-every-other-field). Not claimed (PKT-486): that the repair's open under the lowered profile names a store holding a committed record above the lowered read bound (it would fault on the read bound; no such record is constructible below 4 GiB); a native crash witness of the repair path (it writes through the upgrade's byte program, fn-bs-profile-program-crash-is-old-or-new).",
       "milestone": "M5",
       "requirements": [
         "STO-021"
@@ -6583,8 +6579,6 @@
       "evidence": [
         "books/byte-store-frame.lisp",
         "tests/acl2/byte-store-frame-tests.lisp",
-        "books/byte-store-profile-v1.lisp",
-        "tests/acl2/byte-store-profile-v1-tests.lisp",
         "books/consumer-owner-local-progress.lisp",
         "tests/acl2/consumer-owner-local-progress-tests.lisp",
         "books/native-live-status.lisp",
@@ -6601,15 +6595,11 @@
         "host/native/io.lisp",
         "planning/evidence/manifests/certify-20260926T134557Z-2464906.json"
       ],
-      "progress_note": "Lane control-reply-fit (2026-09-26), the coordinator's PKT-467 ruling and the control-reply sweep. Lane profile-open-refusal (2026-09-26): PKT-471, the named refusal at open and the one repair.",
+      "progress_note": "Lane control-reply-fit (2026-09-26), the coordinator's PKT-467 ruling and the control-reply sweep. Lane profile-open-refusal (2026-09-26): PKT-471, the named refusal at open and the one repair. Format 10 (lane format-bump-10, 2026-09-28): books/byte-store-profile-v1.lisp and its tests were deleted with format 9 (D34: every format-10 profile is written by a format-10 init or import under the current relation; the frozen pre-P6 relation and the PKT-467 window describe profiles no format-10 store holds); the events and paths that named them are removed from this row. Part (c)'s keystones (the window refusal) are retired; the open's refusals by name are PRF-350 and PRF-258.",
       "events": [
         "fn-bs-profile-valid-record-fits-a-poll-reply",
-        "fn-bs-profile-v1-valid-stays-valid",
-        "fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name",
         "fn-col-poll-report-of-an-admitted-payload-fits",
-        "fn-nls-page-refuses-exactly-past-the-total-width",
-        "fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name",
-        "fn-spo-config-open-refuses-only-what-the-old-open-rejected"
+        "fn-nls-page-refuses-exactly-past-the-total-width"
       ]
     },
     {
@@ -9480,7 +9470,7 @@
     {
       "id": "PRF-258",
       "title": "A store made by another release is refused at open by the name of its profile layout, never the generic fault",
-      "statement": "books/store-profile-open.lisp fn-spo-open-of-another-layout-refuses-by-name: for every natural N other than *fn-spo-release-layout-fields* (16) and every VALUES of the layout fn-spo-layout-spec N (two frame texts, the first the format word fn-store-8, then N u64 fields) whose payload fits a profile frame (600 octets), fn-spo-config-open, the open host/native/io.lisp fnn-metadata-config-decode calls through host/store-host.lisp fn-store-metadata-config-open on every open (fnn-load-config from fnn-acquire: owner start, store recover, status, inspect, checkpoint, the offline health), answers (:refused :profile-layout N) on the frame that layout's encoder writes (fn-spo-layout-frame N VALUES; every store made before batch AS has N = 13); fn-spo-refusal-text renders `open refused reason=older-release: store made by an older release (profile layout N fields, this release expects 16): export it with the release that made it, then import it here` (newer-release above 16), which the host prints at exit 1. fn-spo-config-open-layout-refusal-is-never-a-decoded-frame: the refusal is never a frame fn-bs-config-decode decodes (every frame it decodes has this release's layout, so every store the open opened before opens the same). With fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name (this release's layout) and fn-spo-config-open-store-format-is-exactly-a-foreign-frame (another format word), a sealed profile frame of any layout or format opens or is refused by name; the generic fault remains for octets with this release's layout that the relation refuses or with no layout (fn-spo-config-open-rejected-has-this-layout-or-none-by-definition). Nothing is translated (D34).",
+      "statement": "books/store-profile-open.lisp fn-spo-open-of-another-layout-refuses-by-name (format 10): for every natural N other than *fn-spo-release-layout-fields* (15) and every VALUES of the layout fn-spo-layout-spec N (the format word fn-store-10, then N u64 fields) whose payload fits a profile frame (600 octets), fn-spo-config-open, the open host/native/io.lisp fnn-metadata-config-decode calls through host/store-host.lisp fn-store-metadata-config-open on every open (fnn-load-config from fnn-acquire), answers (:refused :profile-layout N) on the frame that layout's encoder writes (fn-spo-layout-frame N VALUES); fn-spo-refusal-text renders `open refused reason=older-release: store made by an older release (profile layout N fields, this release expects 15): export it with the release that made it, then import it here` (newer-release above 15), which the host prints at exit 1. fn-spo-config-open-refuses-no-decoded-frame: every frame fn-bs-config-decode decodes is opened as its values, so no refusal is ever a decoded frame. Another format word is PRF-350's (:store-format-9 by name, :store-format otherwise); the generic fault remains for octets with this layout that the relation refuses or with no layout (fn-spo-config-open-rejected-has-this-layout-or-none-by-definition). Nothing is translated (D34).",
       "milestone": "M5",
       "requirements": [
         "STO-028"
@@ -9501,10 +9491,10 @@
         "tests/test_native_older_release_open.py",
         "planning/evidence/fixtures-refresh-2026-09-27.md"
       ],
-      "progress_note": "Lane fixtures-refresh 2026-09-27 (PKT-705).",
+      "progress_note": "Lane fixtures-refresh 2026-09-27 (PKT-705). Restated for format 10 (lane format-bump-10): one text before the u64 run, 15 fields.",
       "events": [
         "fn-spo-open-of-another-layout-refuses-by-name",
-        "fn-spo-config-open-layout-refusal-is-never-a-decoded-frame",
+        "fn-spo-config-open-refuses-no-decoded-frame",
         "fn-spo-layout-fields-of-a-layout-frame"
       ]
     },
@@ -11785,6 +11775,77 @@
       "progress_note": "Open: books/records-shape.lisp fn-record-octets-chars and fn-record-string-octets-aux recurse once per octet (393 call sites); any conversion past about 50,000 octets on a node thread dies the same way. Fixing them at the cause recertifies 1,084 books (a coordinator decision).",
       "events": [
         "fn-nls-octets-string-is-record-octets-string"
+      ]
+    },
+    {
+      "id": "PRF-349",
+      "title": "The store's genesis at position 0 of the log opens, at every open, as what init wrote, and every other file is refused by name",
+      "statement": "books/store-genesis.lisp fn-gen-open-of-octets-for: for the host's recorded readings (node identity, 4 salt octets, created-at, revision) and a profile, whenever fn-gen-octets-for writes a file (host/native/io.lisp fnn-initialize / fnn-log-init-genesis and the import's staged file, through host/store-host.lisp fn-store-genesis-octets), fn-gen-open of that file under the same profile (host/native/io.lisp fnn-genesis-open, on every open, through fn-store-genesis-open) is (:genesis G TRAILER) with G the record fn-gen-record-for built and TRAILER the file's last 32 octets, the chain value segment 1 starts from; fn-gen-open-of-the-genesis-init-writes states it for every genesis record of format 10 whose schema digest is the image's and whose profile digest is the profile's. fn-gen-open refuses by name (:genesis-damaged, :genesis-format, :schema-digest, :profile-digest) every other file (teeth: tests/acl2/store-genesis-tests.lisp). fn-gen-verdict-salt-is-32-bits: the salt the owner's install hands fn-hist-load (host/owner-host.lisp) is a u32. books/byte-store-log-initializer.lisp fn-bsi-log-init-program-establishes-the-empty-log now also establishes the genesis durable in journal/ with its octets, and books/store-init-log-publication.lisp's plan holds it (fn-bs-init-log-complete-segment-is-zeros). Not claimed: that the salt is secret (it is recorded); anything about the digest beyond A-CRYPTO.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-036"
+      ],
+      "depends_on": [
+        "PRF-205"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-genesis.lisp",
+        "tests/acl2/store-genesis-tests.lisp",
+        "books/byte-store-log-initializer.lisp",
+        "tests/acl2/byte-store-log-initializer-tests.lisp",
+        "books/store-init-log-publication.lisp",
+        "tests/acl2/store-init-log-publication-tests.lisp",
+        "host/native/io.lisp",
+        "host/store-host.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_replay_determinism.py",
+        "tests/test_native_initializer_fidelity.py"
+      ],
+      "progress_note": "Lane format-bump-10 (2026-09-28). Admitted in the persvati REPL; certification in the lane's runs.",
+      "events": [
+        "fn-gen-open-of-octets-for",
+        "fn-gen-open-of-the-genesis-init-writes",
+        "fn-gen-decode-of-frame",
+        "fn-gen-verdict-salt-is-32-bits",
+        "fn-bsi-log-init-program-establishes-the-empty-log"
+      ]
+    },
+    {
+      "id": "PRF-350",
+      "title": "Format 10: a format-9 store is refused at open by name with the way out, and store import reads the format-9 archive",
+      "statement": "books/store-profile-open.lisp fn-spo-open-of-a-format-9-frame-refuses-by-name: for all octets whose profile frame, opened under the SHA-256 trailer format 9 sealed with (books/store-format-9.lisp fn-f9-saved-format-word), names fn-store-9, fn-spo-config-open (host/native/io.lisp fnn-metadata-config-decode through host/store-host.lisp fn-store-metadata-config-open, every open) is (:refused :store-format-9), whose line names the way out (export with that release, import here), exit 1, whatever the seam's digest (fn-f9-format-9-frame-does-not-decode: such a frame never decodes as format 10). fn-spo-open-of-a-valid-profile-opens-it: every frame init or import seals opens as its values. fn-spo-config-open-store-format-is-exactly-a-foreign-frame: :store-format exactly for a sealed frame of another word. books/store-format-9.lisp fn-f9-config-decode-of-a-format-9-frame (D38's witness): every format-9 profile that translates reads back from its SHA-256-sealed frame as its format-10 translation (word fn-store-10, fields 2-13 and 15-17 in order, the frontier word and the history marker dropped; refusals by name otherwise). books/store-export.lisp fn-sxp-import-of-a-format-9-export: the import plan (host/native/io.lisp fnn-command-store-import) over a format-9 archive with its SHA-256 MANIFEST imports under that translation with the same configuration records and records. Not claimed: the identity re-derivation of records under BLAKE3 (open, with lane blake3-digest).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028"
+      ],
+      "depends_on": [
+        "PRF-205",
+        "PRF-258"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-profile-open.lisp",
+        "tests/acl2/store-profile-open-tests.lisp",
+        "books/store-format-9.lisp",
+        "tests/acl2/store-format-9-tests.lisp",
+        "books/store-export.lisp",
+        "tests/acl2/store-export-tests.lisp",
+        "host/native/io.lisp",
+        "host/store-host.lisp",
+        "tests/older_release_store.py",
+        "tests/test_native_older_release_open.py"
+      ],
+      "progress_note": "Lane format-bump-10 (2026-09-28). persvati run-20260928T025120Z-9ee0 and run-20260928T025925Z-a4e9 certified every changed root.",
+      "events": [
+        "fn-spo-open-of-a-format-9-frame-refuses-by-name",
+        "fn-spo-open-of-a-valid-profile-opens-it",
+        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
+        "fn-f9-config-decode-of-a-format-9-frame",
+        "fn-f9-format-9-frame-does-not-decode",
+        "fn-sxp-import-of-a-format-9-export"
       ]
     }
   ]

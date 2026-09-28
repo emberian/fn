@@ -37,11 +37,13 @@ bounds the work of opening a store before any configuration record is replayed:
 the transaction-namespace observation (`fn-profile-txn-observation`), the
 aggregate replay input (`fn-profile-replay-within-boundp`) and the per-record
 publication ceiling. Since D27 its values are the operator's (format
-`fn-store-9`, the one format; a `fn-store-8` profile is refused at the open
-by name, STO-028: transactions, history octets, record octets, article octets,
-groups per article, group-name octets, open suffix, five namespace counts,
-the committed-history marker and the three header limits of
-header-limits-profile, sixteen fields in all, `*fn-bs-profile-field-names*`;
+`fn-store-10`, the one format; a `fn-store-9` profile is refused at the open
+by name with the way out, STO-028: the format word, then transactions,
+history octets, record octets, article octets, groups per article,
+group-name octets, open suffix, five namespace counts and the three header
+limits of header-limits-profile, fifteen u64 fields numbered 1 to 15,
+`*fn-bs-profile-field-names*`; format 9's frontier word and committed-history
+marker, carried and never read, are gone;
 docs/operator.md), set at `init` by flags and validated by the relations of
 `fn-bs-profile-validp`; ACL2 fixes no value except the codec ceilings above
 them. It is written once, by `init` (or `store import`, STO-028), and never
@@ -52,7 +54,7 @@ open by name. This is a local-policy choice of fn; no RFC governs it.
 STO-015: a namespace the store holds is bounded by the operator's profile,
 never by a constant (D27). Configuration generations and AUTHINFO
 credentials are bounded by the profile's `max-config-generations` and
-`max-credentials` (profile fields 11 and 12, read through
+`max-credentials` (profile fields 10 and 11, read through
 books/store-profile-namespace.lisp). The writer refuses exactly past the
 bound, by name (`:max-config-generations`, `:too-many-credentials`), and
 the reader admits every namespace within it: the configuration listing
@@ -71,17 +73,17 @@ that bounds stored data is one of three things: governed by a profile field,
 a work bound of one fixed-shape record, or a codec width that admits every
 valid profile (`fn-bs-profile-validp-codecs-accept`); the classification is
 planning/evidence/community-bounds-2026-09-26.md. The consumer count is the
-profile's `max-consumers` (field 9): the owner's registration
+profile's `max-consumers` (field 8): the owner's registration
 (`fn-cp-register-within`, books/consumer-position.lisp) refuses
 `:max-consumers` exactly when the table already holds that many, and a raised
 field takes effect at the next open with no migration; replay re-runs the
 registration's validity, not the admission bound, because the profile only
-rises. Open: the group-name bound (field 7) is not yet read on the served
+rises. Open: the group-name bound (field 6) is not yet read on the served
 path and the name width is 256, below the NNTP wire's 460 (PKT-451); a
 peer's configuration rows are now data (STO-023).
 
 STO-030: the header limits of one article are profile fields, and admission refuses exactly past them by name.
-Fields 15 `max-header-fields`, 16 `max-header-lines` and 17
+Fields 13 `max-header-fields`, 14 `max-header-lines` and 15
 `max-header-octets` (defaults 64, 256 and 16,384, the parser's constants
 before D27) bound one article's header; `init` and `store import` take
 them as `--max-header-fields N` and so on. The relation is 1 <= fields <=
@@ -111,7 +113,7 @@ a reinstall with a larger T (`store import --max-transactions N`) raises it and 
 figure of 4,096 publications. No store format changed: an older image
 refuses a configuration log holding codes 18 or 19 and a checkpoint
 directory holding more than 4,096 names or a name at or above 4096, the
-rollback consequence of these two steps. Field 7, `max-group-name-octets`,
+rollback consequence of these two steps. Field 6, `max-group-name-octets`,
 now governs group names at both intakes: `init` refuses
 `:max-group-name-octets` by name (`fn-nop-init-plain-groups-are-within-the-profile`)
 and every configuration record, offline or through the live owner, is
@@ -1117,51 +1119,128 @@ invent independently inside a file-writing adapter.
 
 ## One format and the archive
 
-STO-028: A store has one format, `fn-store-9` (D34, fresh deploys): `init`
-writes it, and its committed history is the record log (`journal/000001.log`,
-one self-checking chained entry per record, one barrier per batch of commits;
-planning/design-2026-09-27-storage-log.md, lane commit-onto-log). The
-per-file layout `fn-store-8` (the allocation frontier, `transactions/`, the
-committed-history marker) is no longer opened or written by any image (lane
-log-recovery, 2026-09-27, planning/evidence/log-recovery-2026-09-27.md; no
-image writes it, `FN_NATIVE_STORE_FORMAT` is gone): a valid format-8 profile
-is refused at the open the host calls by name
-(`fn-spo-open-of-a-format-8-profile-refuses-by-name`,
-books/store-profile-open.lisp), as is a profile frame of any other format
-(`open refused reason=store-format: reinstall from the release and import`,
-exit 1), and nothing is translated. The per-file code that remains in the
-host is unreachable on every store an image opens; its deletion is open
-(PKT-838). A profile frame of another
-release's layout (the run of u64 fields after the two texts: thirteen in every
-store made before batch AS, sixteen now) is refused by name with both counts:
-`open refused reason=older-release: store made by an older release (profile
-layout 13 fields, this release expects 16): export it with the release that
-made it, then import it here` (`newer-release` for a wider layout), exit 1,
-never the generic fault (PRF-258, PKT-705); `install.sh` refuses such a node
-before copying anything. On a `fn-store-9` store `store compact` is the
+STO-028: A store has one format, `fn-store-10` (D34, fresh deploys; lane
+format-bump-10): `init` and `store import` write it, and its committed
+history is the record log, whose position 0 is the store's genesis
+(STO-036; `journal/000000.log`), then the chained segments
+`journal/000001.log`, ... (one self-checking chained entry per record or
+batch, one barrier per batch of commits; planning/design-2026-09-27-storage-log.md,
+lane commit-onto-log). Paragraphs of this specification that say "format 9"
+describe the record log's mechanics, which format 10 keeps unchanged: the
+format word, the profile's layout, the genesis and the stored digests are
+what changed. The open the host calls reads config.json through
+`fn-spo-config-open` (books/store-profile-open.lisp, PRF-350) and answers:
+
+- a profile of this format: opened (`fn-spo-open-of-a-valid-profile-opens-it`);
+- a format-9 store (the release before, its frame read under the SHA-256
+  trailer format 9 sealed with, books/store-format-9.lisp): refused BY NAME
+  with the way out, `open refused reason=store-format-9: a format-9 store
+  (made by the release before format 10); export it with that release (store
+  ROOT export DIR), then import it here (store NEWROOT import DIR); no store is
+  upgraded in place (D34)`, exit 1 (`fn-spo-open-of-a-format-9-frame-refuses-by-name`);
+- any other format word (8, 7, ...): `open refused reason=store-format:
+  reinstall from the release and import`, exit 1
+  (`fn-spo-config-open-store-format-is-exactly-a-foreign-frame`);
+- a format-10 frame of another width: `reason=older-release` or
+  `newer-release` with both counts (PKT-705,
+  `fn-spo-open-of-another-layout-refuses-by-name`);
+- anything else (a corrupted file): the host's fault, as before.
+
+Nothing is translated at the open. On the record log `store compact` is the
 log's rotation and drop (STO-034), and `store reclaim` is the log's content
-reclamation: ACL2's decision over the history (`fn-lgr-decide`,
-books/store-log-reclaim.lisp, keystone
-`fn-lgr-decide-checkpoints-the-rewrite`, PRF-271), the rewritten history
-replayed, its checkpoint with rotation, then the drop
-(`fnn-log-reclaim-steps`). The pack verbs (`pack`, `pack-reclaim`,
-`pack-retire`) refuse by name on a `fn-store-9` store (`reason=record-log`:
-it has no packs). `store
-export DIR` writes the committed history the open reads (the profile frame,
-the allocation frontier -- on `fn-store-9` the one the log derives -- each
-configuration record and each committed record in sequence order: on
-`fn-store-9` the checkpoint's records then the log's, T8) with a MANIFEST
-whose names and SHA-256 lines ACL2 renders; `store import DIR [--FIELD N
-...]` builds a new `fn-store-9` store from it (the archive's profile fields
-under the `fn-store-9` word, `fn-sxp-log-profile`: an archive the previous
-release exported from a `fn-store-8` store imports as a `fn-store-9` store
-holding the same history, which is the migration path across a reinstall),
-writing the records into `journal/000001.log` from the genesis through the
-log's own append and barrier, refusing a MANIFEST mismatch, a record out of
-sequence and a profile the codec cannot represent by name, and admits it by
-the ordinary open before it appears at its path. The import of an export
-replays the same history under the same profile (PRF-205). The MANIFEST is a
-transport check: the digest seam is abstract.
+reclamation (`fn-lgr-decide`, PRF-271). The pack verbs refuse by name
+(`reason=record-log`). `store export DIR` writes the committed history the
+open reads (the profile frame, the allocation frontier the log derives, each
+configuration record and each committed record in sequence order: the
+checkpoint's records then the log's, T8) with a MANIFEST whose names and
+digest lines ACL2 renders (`fn-digest`, the store's digest); the genesis is
+not exported (it is the node's: its identity, salt and clock reading).
+`store import DIR [--FIELD N ...]` builds a new format-10 store from it,
+with its OWN genesis, writing the records into the log through its own append
+and barrier, refusing a MANIFEST mismatch, a record out of sequence and a
+profile the codec cannot represent by name, and admits it by the ordinary
+open before it appears at its path. The import of an export replays the same
+history under the same profile (PRF-205,
+`fn-sxp-import-of-export-replays-the-same-history`).
+
+The migration 9 -> 10 (D38 as proposed 2026-09-27: every format or layout
+change ships the previous one's archive reader, with a witness). `store
+import` reads the archive the format-9 release exported: its MANIFEST under
+SHA-256 (format 9's digest), its profile translated
+(`fn-f9-config-decode`: the word becomes `fn-store-10`, fields 2 to 13 and
+15 to 17 kept in order, the frontier word and the committed-history marker
+dropped; a set marker or a foreign second text is refused by name,
+`:history-marker-required`, `:frontier-format`), the configuration records
+as they are (unframed CBOR, no digest), and the records replayed
+(`fn-sxp-import-of-a-format-9-export`, `fn-f9-config-decode-of-a-format-9-frame`).
+"Identical" across the migration: the store digest (`store ROOT digest`,
+every line up to and including `digest state`) of the format-10 store is
+the digest, under the format-10 digest function, of the records the import
+wrote; while the digest seam is SHA-256 on both sides those records are the
+archive's bytes and the canonical history of the two stores is the same
+octets. When the seam becomes BLAKE3 (lane blake3-digest) the records whose
+content identities are stored in them are re-derived at import under
+algorithm 2 (open, below), and "identical" is: the format-10 node's digest
+of its imported history equals the BLAKE3 digest of the canonical octets of
+the translated records, computed independently of the node (the test's
+job), and every non-identity field of every record is the archive's.
+
+STO-036: the genesis. Position 0 of the log is `journal/000000.log`: exactly
+one FNLG frame (version 1) of KIND 3, never a record kind the scan reads
+(kinds 1 and 2), whose payload is the 32 zero octets of the empty chain and
+then the genesis record, the frame-field record
+
+| # | field | codec | content |
+|---|---|---|---|
+| 0 | magic | text | `fn-g` |
+| 1 | format | text | `fn-store-10` |
+| 2 | node identity | blob, 32 octets | drawn from the OS CSPRNG at `init` or `store import` |
+| 3 | schema digest | blob, 32 octets | `fn-digest` of this format's schema text (`*fn-gen-schema-octets*`: the profile's fields, the entry kinds, the record envelopes, the identity profile, the digest) |
+| 4 | profile digest | blob, 32 octets | `fn-digest` of config.json's frame |
+| 5 | history salt | u64 field below 2^32 | four CSPRNG octets read big-endian |
+| 6 | created-at | u64 field | the wall-clock reading at `init`, DTN seconds (the configuration stamps' unit) |
+| 7 | image revision | text | the creating image's source revision, or `unknown` |
+
+(books/store-genesis.lisp, PRF-349). Byte for byte the file is the frame
+header (`FNLG`, version 1, kind 3, the u32 payload length), the payload (32
+zeros; then field 0 as its u16 length and 4 octets, field 1 as u16 and 11
+octets, fields 2 to 4 each as a u32 length 32 and 32 octets, fields 5 and 6
+as eight big-endian octets each, field 7 as u16 length and its octets) and
+the 32-octet trailer `fn-frame-digest` of the protected prefix; it is not
+padded (segment 0 is never appended to). Its trailer is the chain value
+segment 1's first entry names as its predecessor, so every record the log
+holds is chained to the genesis. `init` (books/byte-store-log-initializer.lisp,
+books/store-init-log-publication.lisp) publishes it after the configuration
+history and before segment 1 (stage, write, fsync, link, root fence, unlink,
+then the journal/ fence `init-genesis-journal-fenced`); a re-run init keeps
+an existing genesis (link EEXIST), never redraws it. Segment 0 is not a
+segment index (`fn-lgs-segment-index` is positive), so rotation and the
+checkpoint's drop never name it.
+
+Recorded, not secret: the node identity is a generated id; the salt keys the
+history stobj's Message-ID hash (books/history-columns.lisp `fn-hist-hash`,
+PKT-774: the constant 0 before format 10), a node-local derived index no
+answer depends on; created-at and the revision are provenance. Never in the
+log: the node secret and the credential salts (host/native/admin.lisp
+`fnn-csprng-octets` "credential salt"): account and key material, node-local.
+
+Who reads it (and nothing else does): every open, through `fn-gen-open`
+(host/native/io.lisp `fnn-genesis-open`), refuses by name a file that is not
+a genesis frame (`genesis-damaged`), one of another format
+(`genesis-format`), one of another schema (`schema-digest`: a store of this
+word made under other structures) and one whose profile digest is not
+config.json's (`profile-digest`: a config.json swapped under the log), and
+hands the trailer to the scan of segment 1 (`fn-gen-open-of-the-genesis-init-writes`,
+`fn-gen-open-of-octets-for`); the owner's install reads the salt
+(host/owner-host.lisp `fn-hist-load`, `fn-gen-verdict-salt-is-32-bits`).
+`store ROOT digest` prints `digest genesis` after `digest state` and outside
+it; tests/test_native_replay_determinism.py test_g opens two imports of one
+export (two genesis records, one history) and finds every other line equal.
+
+Open (format 10): the content-identity algorithm octet 2 (BLAKE3,
+`*fn-id-algorithm-blake3*`) and the record translation at import land with
+lane blake3-digest's attachment; the stored-digest theorem names that say
+`-sha256` become `-fn-digest` with it.
 
 STO-029: `store import` publishes by an explicit program (P-IMPORT,
 books/store-import-publication.lisp): the staged `ROOT.import-XXXX` is

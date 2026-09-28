@@ -161,9 +161,9 @@ result line, so `init` with a stray word shows the full `init` grammar.
 
 **Store profile (M5, D27).** The store profile is the operator's: every
 bound on the data a store holds is a field `init` writes into `config.json`
-(format `fn-store-9`, `books/byte-store-frame.lisp`, the one store format:
-D34; a `fn-store-8` profile, the retired per-file layout, is refused at the
-open by name, STO-028) and nothing
+(format `fn-store-10`, `books/byte-store-frame.lisp`, the one store format:
+D34; a `fn-store-9` profile, the release before, is refused at the open by
+name with the way out, STO-028) and nothing
 rewrites in place; a different profile is a reinstall and an
 import. ACL2 fixes the relations between the fields
 (`fn-bs-profile-validp`) and the codec ceilings no field may pass, not the
@@ -522,7 +522,7 @@ books/native-live-status.lisp) whoever answers:
 ```
 $ fn-native operator fn.toml status
 transactions=12 articles=12 staging-orphans=0 unsigned-legacy-experiment
-profile format=9 max-transactions=4294967295 max-history-octets=1099511627776 ... history-marker=unmarked
+profile format=10 max-transactions=4294967295 max-history-octets=1099511627776 ... max-header-octets=16384
 open-cost replay-records=4294967295 list-memory-octets=35184372088832
 headroom transactions-used=12 transactions-budget=4294967295 bytes-used=5321 history-bound=1099511627776 charge-reserved=24 charge-capacity=...
 open=full-replay reason=no-checkpoint
@@ -538,8 +538,7 @@ pins=12 reserved=24 connections=1
 connection id=3 config-generation=4
 ```
 
-Every value prints in full decimal, and `history-marker` prints its word
-(`required` or `unmarked`). `open-cost` is the profile's pessimistic open
+Every value prints in full decimal. `open-cost` is the profile's pessimistic open
 figure (a full replay of up to `max-transactions` records holding the
 payloads as octet lists, 32 × `max-history-octets`), not a measurement.
 `open=` says how this answering process opened the store; `checkpoint-file`
@@ -2270,15 +2269,19 @@ a start never creates a secret. A store imported without its key files needs
 `node-secret create`, and the posts its accounts made before then cancel only
 by a signed canceller or the poster's own RFC 8315 key.
 
-The store has one format, `fn-store-9`: its commits go to the record log,
-`journal/NNNNNN.log` segments (six digits, the highest present the active
+The store has one format, `fn-store-10`: its commits go to the record log,
+whose position 0 is the store's genesis `journal/000000.log` (its node
+identity, history salt, creation reading and image revision, recorded at
+`init`; specs/storage.md STO-036), then `journal/NNNNNN.log` segments (six digits, the highest present the active
 one), one fsync per batch of POSTs; a checkpoint names the first segment it
 does not cover and the covered ones are dropped (`store compact` above).
-A store of the per-file layout (`fn-store-8`, every store made before
-2026-09-27) or of any other format is refused at open by name (`open
-refused reason=store-format: reinstall from the release and import`, exit
-1); its archive, exported by the release that made it, imports here as
-format 9 (`fn-sxp-log-profile`). The archive carries the committed records,
+A format-9 store (every store made before format 10) is refused at open
+by name with the way out (`open refused reason=store-format-9: ... export it
+with that release (store ROOT export DIR), then import it here (store
+NEWROOT import DIR)`, exit 1), a store of any older format as another
+format (`reason=store-format`); a format-9 archive, exported by the release
+that made it, imports here as format 10 with a new genesis
+(`fn-sxp-import-of-a-format-9-export`). The archive carries the committed records,
 the configuration records, the profile and the frontier; the store identity
 and consumer state are records, so they travel with them. Feed journals and
 BP spools do not: a reinstalled node re-peers. It is a Store-history

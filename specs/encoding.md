@@ -222,10 +222,11 @@ kind-4 composites round-trip through the actual Store-event dispatcher.
 
 FNST's 196,608-octet ceiling counts its payload, excluding the fixed 42-octet
 frame header and trailer. The store profile (FNSM kind 1, format
-`fn-store-9`, the one format an image opens; `fn-store-8`, the retired
-per-file layout, is refused at the open by name: STO-028,
-books/byte-store-frame.lisp, books/store-profile-open.lisp) is two texts
-(the format and the frontier format) and sixteen eight-octet frame naturals
+`fn-store-10`, the one format an image opens; `fn-store-9`, the release
+before, is refused at the open by name with the way out, and every older word
+as another format: STO-028, books/byte-store-frame.lisp,
+books/store-profile-open.lisp) is one text (the format) and fifteen
+eight-octet frame naturals
 (a sealed frame of another width is refused `older-release` or
 `newer-release`, fixtures-refresh 2026-09-27), the operator's fields
 in the order of `*fn-bs-profile-field-names*`; `fn-bs-profile-validp` states
