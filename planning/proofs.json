@@ -12731,9 +12731,10 @@
         "books/served-catalog.lisp",
         "tests/acl2/served-catalog-tests.lisp",
         "tests/test_native_open_depth.py",
-        "planning/evidence/manifests/certify-20260928T103349Z-905231.json"
+        "planning/evidence/manifests/certify-20260928T103349Z-905231.json",
+        "planning/evidence/scale-reads-2026-09-28.md"
       ],
-      "progress_note": "Lane scale-reads (2026-09-28): REPL-admitted on persvati; teeth sct-teeth-vh-positive (all arms agree; the newer of two recorded verdicts; no-record), -freshness-/-view-hypotheses with must-fail twins. Certified at 48baeadf5 on persvati: certify-20260928T103349Z-905231 (the 34 roots affected by books/served-catalog.lisp, 34 passed, 0 failed; served-catalog 11.4 s at 22 jobs, judged at 2 by the steps ratchet)."
+      "progress_note": "Lane scale-reads (2026-09-28): REPL-admitted on persvati; teeth sct-teeth-vh-positive (all arms agree; the newer of two recorded verdicts; no-record), -freshness-/-view-hypotheses with must-fail twins. Certified at 48baeadf5 on persvati: certify-20260928T103349Z-905231 (the 34 roots affected by books/served-catalog.lisp, 34 passed, 0 failed; served-catalog 11.4 s at 22 jobs, judged at 2 by the steps ratchet). Native (hbox native-sr1, production image): whole-range HDR :fn-verified 1.1 s at syn100k-2k (was over 30 min) and 16.3 s at syn1m-2k."
     }
   ]
 }
