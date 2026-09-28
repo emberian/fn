@@ -301,6 +301,33 @@
 (assert-event (equal (oast-read *oahx-mid* *orrt-views* 0 *oahx-finish-then-post* *t2-s1* 0)
                      *oahx-fp-old*))
 
+;; ONE SUBMISSION IN FLIGHT COUNTS ONE (fn-oas-inflight-count; lane
+;; admission-gap follow-up, found by lane credits).  The in-flight field is
+;; nil or ONE submission record (books/owner.lisp), and the count before
+;; this fix was its LENGTH: a six-field record with a login held six slots.
+;; CONSTRUCTED STATE: the opened owner with such a record in flight (as
+;; fn-own-take-submission leaves it).  It holds one; a POST with two slots
+;; is admitted (340) and the owner then holds two.  MUTATION: the old count
+;; reads seven there, past the two slots, and the old admission refused the
+;; POST that the slots allow.
+(defconst *oahi-sub*
+  (fn-own-sub-make-author 1 1 nil '(:decision-witness) '(108) '(97)))
+(defconst *oahi-inflight*
+  (fn-ocfg-with-owner *oast-open* (update-nth 11 *oahi-sub* (fn-ocfg-owner *oast-open*))))
+(assert-event (equal (fn-own-inflight (fn-ocfg-owner *oahi-inflight*)) *oahi-sub*))
+(assert-event (equal (len *oahi-sub*) 6))
+(assert-event (equal (fn-oas-held *oahi-inflight*) 1))
+(defun oahi-old-held (oc)
+  (declare (xargs :mode :program))
+  (let ((o (fn-ocfg-owner oc)))
+    (+ (fn-oas-article-conns (fn-own-conns o)) (len (fn-own-queue o))
+       (len (fn-own-inflight o)))))
+(defconst *oahi-admit* (oast-read *oahi-inflight* *orrt-views* 0 *t2r-post* *t2-s1* 2))
+(assert-event (equal (oast-keystone *oahi-inflight* *oahi-admit* 0 2) '(t t t)))
+(assert-event (fn-post-offeredp (fn-own-tls-result-effects *oahi-admit*)))
+(assert-event (equal (fn-oas-held (fn-own-tls-result-owner *oahi-admit*)) 2))
+(assert-event (equal (oahi-old-held (fn-own-tls-result-owner *oahi-admit*)) 7))
+
 ; The slots the figure holds, at the small preset: 32 slots (the most) of
 ; 1,589,248 octets (an article of A = 32 KiB, its header bound of 16 KiB and
 ; a line, as lists, twice for the collector), under the 64 MiB budget

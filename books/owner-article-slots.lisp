@@ -3,7 +3,7 @@
 ;
 ; A connection in the middle of an article retains the body until its
 ; terminator (books/wire.lisp body-rev), and a connection whose article has
-; arrived holds its submission in the owner's queue or the batch in flight
+; arrived holds its submission in the owner's queue or in flight
 ; until the commit answers it.  Each is the per-connection heap term that
 ; grows with the profile's article limit A (at A = 11 MiB, 383 MB of octet
 ; lists a connection), and before this book nothing bounded how many there
@@ -14,7 +14,7 @@
 ; books/heap-store-figure.lisp now holds `fn-heap-article-slots' articles in
 ; flight in the figure the launcher reserves (fn-heap-articles-octets); this
 ; book keeps what the owner holds (`fn-oas-held': the connections in article
-; mode, the queued submissions and the batch in flight) within that many
+; mode, the queued submissions and the submission in flight) within that many
 ; across every read.  The host installs the slots once per run
 ; (host/owner-host.lisp fn-owner-connection-budget, from the store's
 ; profile) and every served read runs `fn-oas-read-span':
@@ -96,12 +96,21 @@
   (natp (fn-oas-article-conns conns))
   :rule-classes :type-prescription)
 
+;; The submission in flight: nil or ONE submission record (books/owner.lisp:
+;; fn-own-take-submission takes one from the queue when nothing is in
+;; flight), so it holds one article, not the record's length.
+(defun fn-oas-inflight-count (o)
+  (declare (xargs :guard t))
+  (if (fn-own-inflight o) 1 0))
+
 (defun fn-oas-held (oc)
   (declare (xargs :guard t))
   (let ((o (fn-ocfg-owner oc)))
     (+ (fn-oas-article-conns (fn-own-conns o))
        (len (fn-own-queue o))
-       (len (fn-own-inflight o)))))
+       (fn-oas-inflight-count o))))
+
+(in-theory (disable fn-oas-inflight-count))
 
 (defun fn-oas-articlep (oc id)
   (declare (xargs :guard t))
@@ -358,6 +367,11 @@
    (and (equal (fn-own-queue (fn-own-set-conns o conns)) (fn-own-queue o))
         (equal (fn-own-inflight (fn-own-set-conns o conns)) (fn-own-inflight o)))
    :hints (("Goal" :in-theory (enable fn-own-queue fn-own-inflight fn-own-set-conns fn-own-make)))))
+
+(local
+ (defthm fn-oas-inflight-count-of-set-conns
+   (equal (fn-oas-inflight-count (fn-own-set-conns o conns)) (fn-oas-inflight-count o))
+   :hints (("Goal" :in-theory (enable fn-oas-inflight-count)))))
 
 ;; Closing connection ID never raises what the owner holds.
 (defthm fn-oas-owner-closed-held
