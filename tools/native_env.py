@@ -106,9 +106,12 @@ IMAGES = {
 # A module that needs a different first choice for a variable (module stem,
 # variable) -> images in order: 7 of test_bp_service_native's 17 cases need
 # fault-injection switches the non-developer DTN image refuses (image-strip,
-# 2026-09-28), so it takes the dtn-developer image when that is built.
+# 2026-09-28), so it takes the dtn-developer image when that is built; 2 of
+# test_bp_receive_integrity_native's 4 likewise (FN_BP_TEST_DELIVER_FAULT,
+# FN_IMMUTABLE_PUBLISH_TEST_FAIL; red on the dtn image, lane native-reds).
 PREFER = {
     ("test_bp_service_native", "FN_NATIVE_BP_HOST"): ("dtn-developer", "dtn"),
+    ("test_bp_receive_integrity_native", "FN_NATIVE_BP_HOST"): ("dtn-developer", "dtn"),
 }
 # The modules reading these default to exactly the first image's path in
 # their own tree ($T), so when that image is built nothing is exported and
