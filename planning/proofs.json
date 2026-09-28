@@ -13056,6 +13056,44 @@
         "fn-sxp-record-entries-of-append",
         "fn-sxp-manifest-under-of-append"
       ]
+    },
+    {
+      "id": "PRF-372",
+      "title": "The owner's records as an abstract stobj over the history image: the read with its one need-page retry loop answers the history's record, keeps the history, its faithfulness and the page file's relation, and never stops for fuel; append, load and the flush into the image keep the history faithful",
+      "statement": "books/history-records.lisp. The abstract stobj fn-hrecs (defabsstobj: value (H . C), H the history as a ghost, C the concrete: the FNADTSN2 image of H's first N events on a nested page store then a suffix array; correspondence C itself). fn-hrecs-faithful ST: (fn-hrs-rel H C), H the image's events then the suffix's and every verified page of the nested store holding H's placed image (fn-hp-vhold of fn-hp-piw). KEYSTONES: fn-hrecs-at-is-nth ((fn-hrecs-p ST), faithful, SEQ natural: an :ok answer of (fn-hrecs-at SEQ ST) is (:ok (nth SEQ H)) below (len H) and (:refused :seq) past it; any other verdict is a need-verdict and SEQ < (len H)); fn-hrecs-read-is-nth (ST faithful and (fn-hrecs-disk-faithful FILE ST): the page file FILE holds, at the address the table names, the image's page for every page not verified; then (fn-hrecs-read SEQ FILE ST) keeps fn-hrecs-p, H, faithfulness and the page file's relation, answers :ok only with record SEQ as above, and never (:refused :fuel)); fn-hrecs-get-is-nth and fn-hrecs-get-fuel-enough (the loop with any fuel; fuel at least the number of pages not verified suffices); fn-hrecs-serve-keeps (one fill from fn-pgs-fill-realize, A-PGS-HOST-IO, keeps all three, whatever it answers); fn-hrecs-fill-keeps (a fill that writes the image's page when the page is not verified keeps H faithful, whatever it answers); fn-hrecs-flush-keeps (the oldest suffix event into the image, fn-hp-x-append-step, the empty image first: keeps H faithful, whatever it answers; over fn-hrs-loop-placement: a step's answer other than :ok leaves a valid placement); fn-hrecs-append-appends, fn-hrecs-load-is-events, fn-hrecs-count-is-len. Scope: not yet host-called; the store's readers still read the record list (fn-sf-records); the open's adopt of a committed image, the flush's retry over pages not verified and the commit are not stated.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-035"
+      ],
+      "depends_on": [
+        "PRF-342",
+        "PRF-365"
+      ],
+      "assumptions": [
+        "A-PGS-HOST-IO"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-records.lisp",
+        "tests/acl2/history-records-tests.lisp",
+        "planning/evidence/arena-store-6-2026-09-28.md"
+      ],
+      "progress_note": "Lane arena-store-6 milestone (a), 2026-09-28: history-columns' stage 3 as the coordinator decided it (one abstract stobj, not a twin per consumer). Not yet host-called: milestone (b) migrates the served readers of fn-sf-records onto fn-hrecs-read, (c) wires the served open (adopt, no E decode) and the snapshot (commit of the dirty pages). Teeth: ground witnesses for fn-hrc-at-is-nth (positive, and removal of the relation, the shape and (natp seq)), the fill's page-store step (positive; removal of the words hypothesis: a table matching other words is accepted and faithfulness fails), and live executions of load/flush/read (40 events, relocations) and of the need path (need, fill, read; a wrong fill refused :page-damaged and the page asked again). The stobj-level keystones over updating exports have no ground witness: ACL2 does not evaluate stobj-let updaters on ground lists in a proof.",
+      "events": [
+        "fn-hrecs-at-is-nth",
+        "fn-hrecs-read-is-nth",
+        "fn-hrecs-get-is-nth",
+        "fn-hrecs-get-fuel-enough",
+        "fn-hrecs-serve-keeps",
+        "fn-hrecs-fill-keeps",
+        "fn-hrecs-flush-keeps",
+        "fn-hrecs-append-appends",
+        "fn-hrecs-load-is-events",
+        "fn-hrecs-count-is-len",
+        "fn-hrc-at-is-nth",
+        "fn-hrc-flush-one-rel",
+        "fn-hrs-loop-placement"
+      ]
     }
   ]
 }
