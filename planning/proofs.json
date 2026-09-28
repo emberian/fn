@@ -12329,11 +12329,7 @@
         "fn-ocs-unstaged-start-tells-its-refusals",
         "fn-ocs-kept-member-starts-the-barrier",
         "fn-ocs-told-at-drain-p-by-definition",
-        "fn-ocs-all-told-keeps-none",
-        "fn-ocp-unstaged-start-issues-no-sync",
-        "fn-oab-drain-kept-step-unfolds",
-        "fn-oab-drain-told-step-unfolds",
-        "fn-oab-report-of-nothing-unfolds"
+        "fn-ocp-unstaged-start-issues-no-sync"
       ]
     },
     {
