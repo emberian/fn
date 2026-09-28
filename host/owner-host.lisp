@@ -81,6 +81,9 @@
 (include-book "../books/owner-commit-ocl")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
+; Defect M3: host/native/feed-service.lisp fnn-feed-drop-link asks
+; fn-flb-lost for the redial delay and logs fn-flb-drop-line for every drop.
+(include-book "../books/feed-link-backoff")
 ; Step 8 (catalog slice): the served read over the catalog and the catalog at
 ; the owner's entries (books/served-catalog-chain, books/served-catalog-owner).
 (include-book "../books/served-catalog-owner")

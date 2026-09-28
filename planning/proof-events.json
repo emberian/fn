@@ -12676,6 +12676,27 @@
           "name": "fn-nlp-offline-pages-join-to-the-report"
         }
       ]
+    },
+    {
+      "id": "PRF-376",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-flb-lost-advances-the-backoff"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-flb-lost-doubles-below-the-ceiling"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-flb-first-loss-after-ready-waits-the-base"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-flb-delay-is-bounded"
+        }
+      ]
     }
   ]
 }

@@ -32,6 +32,12 @@
                        (fnn-tls-config-error () t))
                (error "embedded-NUL trust anchor reached OpenSSL"))
              (sb-bsd-sockets:socket-connect socket #(127 0 0 1) port)
+             ;; The served and feed descriptors are nonblocking
+             ;; (fnn-socket-fd); a blocking one would hide a WANT_READ.
+             (let ((fd (sb-bsd-sockets:socket-file-descriptor socket)))
+               (sb-posix:fcntl fd sb-posix:f-setfl
+                               (logior (sb-posix:fcntl fd sb-posix:f-getfl)
+                                       sb-posix:o-nonblock)))
              ;; PKT-613: FN_TLS_CLIENT_CA=system selects the library's default
              ;; roots (the test points SSL_CERT_FILE at its scratch CA).
              (setq context (fnn-tls-open-client-context
@@ -48,11 +54,34 @@
              (setq channel (fnn-tls-connect context
                                             (sb-bsd-sockets:socket-file-descriptor socket)
                                             name 5))
-             (fnn-tls-send-all channel (fnn-octets '(80 73 78 71 13 10)) 5)
-             (let ((reply (fnn-tls-read channel 5 64)))
-               (unless (and (string= expect "success")
-                            (equalp reply (fnn-octets '(80 79 78 71 13 10))))
-                 (error "unexpected authenticated client result")))
+             (if (string= expect "tickets")
+                 ;; Defect M3: the server's TLS 1.3 NewSessionTicket records
+                 ;; arrive before its greeting.  The feed's zero-second read
+                 ;; on the nonblocking descriptor must answer :timeout for
+                 ;; them (no application data yet), then the greeting.
+                 (let ((deadline (+ (fnn-now) (* 5 internal-time-units-per-second)))
+                       (timeouts 0))
+                   (sleep 0.2)
+                   (loop
+                     (let ((incoming (fnn-tls-read channel 0 64)))
+                       (cond ((eq incoming :timeout)
+                              (incf timeouts)
+                              (unless (< (fnn-now) deadline)
+                                (error "no greeting after the tickets"))
+                              (sleep 0.01))
+                             ((equalp incoming (fnn-octets '(50 48 48 32 104 105 13 10)))
+                              (return))
+                             (t (error "unexpected bytes after the tickets: ~s"
+                                       incoming)))))
+                   (unless (plusp timeouts)
+                     (error "the greeting was not delayed past the tickets"))
+                   (format t "TLS-CLIENT-TICKETS-PASSED ~d~%" timeouts))
+               (progn
+                 (fnn-tls-send-all channel (fnn-octets '(80 73 78 71 13 10)) 5)
+                 (let ((reply (fnn-tls-read channel 5 64)))
+                   (unless (and (string= expect "success")
+                                (equalp reply (fnn-octets '(80 79 78 71 13 10))))
+                     (error "unexpected authenticated client result")))))
              (format t "TLS-CLIENT-PASSED~%"))
          (fnn-tls-error (condition)
            (unless (string= expect "failure") (error condition))
