@@ -71,6 +71,10 @@ CODEC_LAYER = CODEC_BOOKS | {
 # whose name ends in `-impl'.
 IMPL = re.compile(r"\(defun\s+(fn-[^\s()]*-impl)\b", re.IGNORECASE)
 
+# An atom is also a character literal (#\( #\" #\; #\Space: the character
+# after #\ is never a delimiter) and a |bar-quoted symbol|; read as ordinary
+# atoms they unbalanced the parentheses of a one-line form (proof_repl send,
+# compression-extents-2, 2026-09-27).
 TOKEN = re.compile(r'''
     (?P<comment>;[^\n]*)              |
     (?P<block>\#\|.*?\|\#)            |
@@ -78,7 +82,7 @@ TOKEN = re.compile(r'''
     (?P<open>\()                      |
     (?P<close>\))                     |
     (?P<quote>'|`|,@|,|\#\.)          |
-    (?P<atom>[^\s()"';]+)
+    (?P<atom>\#\\.[^\s()"';]*|\|[^|]*\|[^\s()"';]*|[^\s()"';]+)
 ''', re.VERBOSE | re.DOTALL)
 
 

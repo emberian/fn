@@ -1176,7 +1176,9 @@ def handle(request: dict, acl2: Acl2, state: dict, default_limit: float) -> dict
     try:
         count = len(commands(form))
     except ValueError as error:
-        return {"error": True, "output": f"not one complete form: {error}"}
+        return {"error": True, "output": f"not one complete form: {error} (a form with "
+                "quotes, strings or character literals is safest in a file: "
+                "`proof_repl.py send-range NAME FILE`, or `send NAME -` from stdin)"}
     if count != 1:
         return {"error": True, "output": f"send exactly one form, not {count}"}
     limit = request.get("limit") or default_limit
