@@ -40,7 +40,9 @@
           (cons :open-per-record (* 2 *fn-heap-open-record-octets* on))
           (cons :inflight-lists (* 2 *fn-heap-list-octets-per-octet*
                                    (+ r (* *fn-heap-inflight-header-copies* hdr))))
-          (cons :octet-buffers (* 2 (fn-ock-capture-budget profile))))))
+          (cons :octet-buffers (* 2 (fn-ock-capture-budget profile)))
+          ;; the articles in flight (lane zero-copy-commit): the slots' pool
+          (cons :articles (fn-heap-articles-octets profile)))))
 
 (defun fn-heap-breakdown-sum (terms)
   (declare (xargs :guard t))
@@ -84,7 +86,7 @@
    :hints (("Goal" :in-theory (e/d (fn-heap-store-base-octets fn-heap-store-state-bound
                                     fn-heap-store-open-octets fn-heap-store-inflight-octets)
                                    (fn-ock-capture-budget fn-heap-store-history-octets
-                                    fn-heap-core-dynamic
+                                    fn-heap-articles-octets fn-heap-core-dynamic
                                     fn-heap-open-octets-bound fn-heap-open-records-bound
                                     fn-bs-profile-max-history-octets
                                     fn-bs-profile-max-transactions

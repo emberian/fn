@@ -46,6 +46,7 @@
                   (:open-per-record . 33554432)
                   (:inflight-lists . 7864320)
                   (:octet-buffers . 50725002)
+                  (:articles . 0)
                   (:collector-room . 108099417)
                   (:megabyte-rounding . 279866)
                   (:image-outside-heap . 214012928)
