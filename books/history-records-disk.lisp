@@ -257,16 +257,21 @@
 (defun fn-hrs-disk-history (handle)
   ; The committed image's history: the decode, or a fault by name when it
   ; is not clean (history-image-fault: a recovery event; never a silent
-  ; value on a served path).
-  (declare (xargs :guard (fn-hrs-handlep handle)))
-  (mv-let (clean rows)
-    (fn-hrs-disk-decode handle)
-    (if clean
-        rows
-      (prog2$ (er hard? 'fn-hrs-disk-history
-                     "history-image-fault: the committed history image ~x0 does not decode"
-                     handle)
-              rows))))
+  ; value on a served path).  Guard T, the handle checked here: the decode
+  ; updates its local stobj, and ACL2's invariant-risk climbs through every
+  ; caller whose guard is not T -- up to the host's :program entries, which
+  ; would then run their *1* bodies.  It stops at this function.
+  (declare (xargs :guard t))
+  (if (not (fn-hrs-handlep handle))
+      nil
+    (mv-let (clean rows)
+      (fn-hrs-disk-decode handle)
+      (if clean
+          rows
+        (prog2$ (er hard? 'fn-hrs-disk-history
+                       "history-image-fault: the committed history image ~x0 does not decode"
+                       handle)
+                rows)))))
 
 ; -----------------------------------------------------------------------------
 ; D. The concrete loop is the abstract one's (whatever the ghost), so the
@@ -376,7 +381,8 @@
 (defthm fn-hrs-len-make-list-ac
   (equal (len (make-list-ac n val ac)) (+ (nfix n) (len ac))))
 (defthm fn-hrs-disk-history-len
-  (equal (len (fn-hrs-disk-history handle)) (fn-hrs-h-n handle))
+  (implies (fn-hrs-handlep handle)
+           (equal (len (fn-hrs-disk-history handle)) (fn-hrs-h-n handle)))
   :hints (("Goal" :in-theory (disable fn-hrc-open-file fn-hrc-rows create-fn-hrecs$c))))
 
 (defthm fn-hrs-true-listp-make-list-ac (equal (true-listp (make-list-ac n val ac)) (true-listp ac)))

@@ -86,13 +86,15 @@
 (defun fn-sfr-nth (i f)
   ; Record I, oldest 0: past the image, the suffix's (O(distance from the
   ; newest)); inside it, the image's (a lazy decode).
-  (declare (xargs :guard (natp i)))
-  (if (fn-sfr-basedp f)
-      (let ((n (fn-hrs-h-n (fn-sfr-handle f))))
-        (if (< i n)
-            (nth i (fn-hrs-disk-history (fn-sfr-handle f)))
-          (fn-sl-nth (- i n) (fn-sfr-suffix f))))
-    (fn-sl-nth i f)))
+  ; Guard T (I fixed here): see fn-hrs-disk-history on invariant-risk.
+  (declare (xargs :guard t))
+  (let ((i (nfix i)))
+    (if (fn-sfr-basedp f)
+        (let ((n (fn-hrs-h-n (fn-sfr-handle f))))
+          (if (< i n)
+              (nth i (fn-hrs-disk-history (fn-sfr-handle f)))
+            (fn-sl-nth (- i n) (fn-sfr-suffix f))))
+      (fn-sl-nth i f))))
 
 ; -----------------------------------------------------------------------------
 ; The representation facts, for every value.
