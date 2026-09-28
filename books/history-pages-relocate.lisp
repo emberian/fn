@@ -436,8 +436,9 @@
 
 (defun fn-hp-x-relocate (r c n lens starts np pgs-mem)
   ; Region R moved to C fresh pages appended at the image's end, when
-  ; `fn-hp-x-append' answered (:grow R) and the pending append needs R to
-  ; hold C pages (C >= R's cap; C > 0).  N LENS STARTS NP: the open's
+  ; `fn-hp-x-append' answered (:grow R C): the pending append needs R to
+  ; hold C pages (C >= R's cap; C > 0; progress:
+  ; `fn-hp-grow-then-append').  N LENS STARTS NP: the open's
   ; header answer.  (mv VERDICT STARTS2 NP2 pgs-mem):
   ;   :ok     the image grew to NP2 = NP+C pages (`pgs-x-grow-image': zero,
   ;           verified); R's words were copied to page NP, its old pages
