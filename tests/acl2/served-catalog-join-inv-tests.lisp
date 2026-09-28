@@ -19,6 +19,14 @@
 ;      keystone turns on): a view whose group index is not its articles'
 ;      build (the retained hypotheses checked, the omitted one false) is not
 ;      live over the catalog.
+;   5. REACHABLE WITNESS of fn-scj-invp-at-host-article-finish-carried on
+;      the T2 owner (catalog-entries-tests' POST run to :completing): the
+;      carried hypotheses the pinned tests do not evaluate (the article
+;      case, the acceptance's shape, fn-scjs-seenp's and fn-scjs-historyp's
+;      bodies, the pin bound) and fn-scj-invp's five conjuncts before (at
+;      the owner, over the load of the history before the in-flight event)
+;      and after (at the finished owner, over the catalog fn-sca-finish
+;      leaves); served-catalog-join-pinned-tests item 4 evaluates the rest.
 ;   4. WHY THE HOST ROUTES ARTICLES THROUGH THE CATALOG (labelled: a
 ;      corrupted pairing, not a reachable host state): the same owner paired
 ;      with the catalog of its FIRST row only -- what the catalog would be
@@ -29,6 +37,7 @@
 (in-package "ACL2")
 
 (include-book "served-catalog-join-entry-tests")
+(include-book "served-catalog-join-pinned-tests")
 (include-book "../../books/served-catalog-join-inv")
 
 (defun scji-rows-of (i fn-cat)
@@ -159,3 +168,62 @@
 
 (assert-event (equal (scji-exec *scje-o* (take 1 *scje-srows*))
                      (list (list nil nil t nil t 1) t)))
+
+; -----------------------------------------------------------------------------
+; 5. fn-scj-invp-at-host-article-finish-carried on the T2 owner.
+
+(defun scji-t2-run (oc payloads fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many payloads fn-arena))
+         (o (fn-ocfg-owner oc))
+         (view (fn-own-view o))
+         (s (fn-own-store o))
+         (r (fn-ccar-completion-record s))
+         (rows (fn-sf-records (fn-sn-files s)))
+         (v (fn-own-view-version view))
+         (seen (butlast rows 1))
+         (fn-cat (fn-sca-load-held-rows seen (fn-own-view-index view) fn-arena fn-cat))
+         (row (fn-sn-completion-record s))
+         (w (fn-held-wire-of row fn-arena))
+         (pending (fn-cat-prepare-sealed w row nil nil nil fn-arena fn-cat))
+         (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files s)))) (fn-pc-expected pending)))
+         (o2 (cdr (fn-ccar-own-finish o (fn-ocfg-config oc) fn-arena)))
+         (view2 (fn-own-view o2))
+         (hyps (list (not (or (fn-evc-retentionp r) (fn-evc-consumerp r) (fn-evc-topicp r)
+                              (fn-evc-stxep r) (fn-evc-stxkp r) (fn-evc-stxap r)))
+                     (if (fn-statep (fn-node-acceptance (fn-sn-node s))) t nil)
+                     (equal (fn-sf-phase (fn-sn-files s)) :completing)
+                     (and (<= v (len seen)) (fn-scj-no-rowsp (nthcdr v seen)))
+                     (and (natp v) (<= v (len rows)) (true-listp rows))
+                     (consp rows)
+                     (fn-scj-conns-versions-atmostp (fn-own-conns o) v)
+                     (equal (fn-scj-load-h (car (last rows))) (fn-pc-held pending))
+                     (equal token (fn-pc-token pending))))
+         (before (scji-parts o fn-arena fn-cat)))
+    (mv-let (word pending2 fn-cat)
+      (fn-sca-finish token pending (fn-own-view-index view2)
+                     (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
+                                        (fn-own-view-withdrawals view2))
+                     fn-cat)
+      (declare (ignore word pending2))
+      (mv (list hyps before (scji-parts o2 fn-arena fn-cat)
+                (len (fn-state-articles (fn-own-view-archive view)))
+                (len (fn-state-articles (fn-own-view-archive view2))))
+          fn-arena fn-cat))))
+
+(defun scji-t2-exec (oc payloads)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (scji-t2-run oc payloads fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+(assert-event (equal (scji-t2-exec *cet-t2-oc* *cet-t2-payloads*)
+                     (list (make-list 9 :initial-element t)
+                           (list t t t t t 0)
+                           (list t t t t t 1)
+                           0 1)))

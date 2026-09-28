@@ -12007,6 +12007,44 @@
         "fn-proto-command-pinned-offers-only-article-framing",
         "fn-proto-offers-only-post-by-table"
       ]
+    },
+    {
+      "id": "PRF-346",
+      "title": "F2: every served lookup the host reaches is constant or logarithmic in the store: the Xref ARTICLE/HEAD/HDR arms, the by-number withdrawn test, GROUP/LISTGROUP's summary and the re-pin read the catalog, equal to the archive walks they replace",
+      "statement": "Lane sca-join-5. (1) books/served-catalog.lisp fn-rcompat-reply-cat (called by fn-nntp-archive-command-cat, the -cat dispatcher of the host's served read, books/served-catalog-chain.lisp fn-scr-command) answers ARTICLE/HEAD by number and of the current article with fn-scat-number-article / fn-scat-available-article (one number-table probe) and HDR/XHDR Xref with fn-scat-range-numbers, where books/nntp-reader-compat.lisp fn-rcompat-retrieval and fn-rcompat-hdr walk the pinned archive; KEYSTONES fn-rcompat-reply-cat-is-rcompat-reply, fn-rcompat-retrieval-cat-is-retrieval, fn-rcompat-hdr-cat-is-hdr (hypotheses: the archive is the catalog's view at V, fn-cnx-freshp). fn-nntp-number-withdrawn-p-cat probes the number table before walking the pinned withdrawn list W (fn-nntp-number-withdrawn-p-cat-is-archive). The boundary theorem fn-nntp-archive-command-cat-is-pinned keeps its statement. (2) books/catalog.lisp: the catalog keeps, per group, the live summary (count, least, greatest live number: a number whose row is not withdrawn and is a served number; fn-cat-live-count-from/-first/-last over the number column, no uniqueness needed) and the withdrawal horizon (fn-cat-horizon-of), maintained by commit and withdraw; the defabsstobj exports fn-cat-group-live-count/-low/-high and fn-cat-horizon are one probe each (rules fn-cat-group-live-count-is-count-from, -low-is-first, -high-is-last, fn-cat-horizon-is-horizon-of). fn-scat-group-summary and fn-scat-group-low read them at the top view (V the count, horizon <= V) and the probe pass otherwise: KEYSTONES fn-scat-group-summary-is-pass and fn-scat-group-low-is-pass, with no hypotheses; the -is-archive theorems keep their statements. (3) books/served-catalog-chain.lisp fn-scr-dispatch re-pins through fn-scr-repin (fn-scr-reselect: the group's low from the catalog at the live view, where fn-served-reselect folds fn-nntp-group-low over the live archive): KEYSTONE fn-scr-repin-is-served-repin under fn-scr-conn-okp; fn-scr-dispatch-is-scar-dispatch keeps its statement. Not claimed: that the host always takes the table branch (the lookup counts measure it); the withdrawal scans that maintain low/high are amortized (low only rises) and the downward scan crosses withdrawn numbers at the group's top; LISTGROUP of a range still costs its range.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012",
+        "NNT-042"
+      ],
+      "depends_on": [
+        "PRF-181",
+        "PRF-201",
+        "PRF-302"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "events": [
+        "fn-rcompat-reply-cat-is-rcompat-reply",
+        "fn-rcompat-retrieval-cat-is-retrieval",
+        "fn-rcompat-hdr-cat-is-hdr",
+        "fn-nntp-number-withdrawn-p-cat-is-archive",
+        "fn-nntp-archive-command-cat-is-pinned",
+        "fn-scat-group-summary-is-pass",
+        "fn-scat-group-low-is-pass",
+        "fn-scr-repin-is-served-repin",
+        "fn-scr-dispatch-is-scar-dispatch"
+      ],
+      "evidence": [
+        "books/catalog.lisp",
+        "books/served-catalog.lisp",
+        "books/served-catalog-chain.lisp",
+        "tests/acl2/served-catalog-tests.lisp",
+        "planning/evidence/manifests/certify-20260928T003009Z-3659350.json",
+        "planning/evidence/manifests/certify-20260928T003941Z-3754893.json",
+        "planning/evidence/sca-join-2026-09-27.md"
+      ],
+      "progress_note": "Lane sca-join-5 (2026-09-28): REPL-admitted and certified on persvati (affected roots of catalog, served-catalog, served-catalog-chain, served-catalog-tests: certify-20260928T003009Z-3659350, 172 passed; served-catalog-join-inv re-proved over batch AY's fn-otm-read-span: certify-20260928T003941Z-3754893). Lookup counts before/after in planning/evidence/sca-join-2026-09-27.md. Native on hbox (709b2824a, /tank/fn/scratch/sca-join-5/native-f2): served_differential OK 7, reader_index OK 7, reader_freshness OK 2; served_cost FAILED 1 (test_owner_calls_fast_span_entry: its static text check expects the pre-batch-AY host call shape; host code not changed by this lane). f2_lookups at 1k/10k/100k: every measured command O(1) + the O(log N) bisection, LISTGROUP/OVER proportional to their output; VERDICT MET."
     }
   ]
 }

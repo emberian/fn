@@ -11663,6 +11663,56 @@
           "name": "fn-proto-offers-only-post-by-table"
         }
       ]
+    },
+    {
+      "id": "PRF-346",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-reply-cat-is-rcompat-reply",
+          "note": "KEYSTONE. The Xref compatibility reply with ARTICLE/HEAD/HDR Xref reading the catalog equals fn-rcompat-reply. Teeth: tests/acl2/served-catalog-tests.lisp (sct-f2-xref-*)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-retrieval-cat-is-retrieval",
+          "note": "KEYSTONE. ARTICLE/HEAD by number and of the current article: one number-table probe, equal to the archive walk. Teeth: sct-f2-xref-retrieval, -view-hypotheses, -without-view."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-hdr-cat-is-hdr",
+          "note": "KEYSTONE. HDR/XHDR Xref over the catalog's range numbers equals the archive fold."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-number-withdrawn-p-cat-is-archive",
+          "note": "The by-number withdrawn test probes the number table before walking W."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-archive-command-cat-is-pinned",
+          "note": "The -cat dispatcher's boundary theorem, statement unchanged, now over the twins."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scat-group-summary-is-pass",
+          "note": "KEYSTONE (no hypotheses). GROUP's summary from the catalog's live table at the top view equals the probe pass. Teeth: sct-f2-summary-from-table, sct-f2-below-horizon, sct-f2-older-view."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scat-group-low-is-pass",
+          "note": "KEYSTONE (no hypotheses). The group's first live number from the table equals the pass. Teeth: sct-f2-summary-from-table."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-repin-is-served-repin",
+          "note": "KEYSTONE. The re-pin with the group low from the catalog equals fn-served-repin under fn-scr-conn-okp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-dispatch-is-scar-dispatch",
+          "note": "The catalog chain's dispatch, statement unchanged, now re-pinning through fn-scr-repin."
+        }
+      ]
     }
   ]
 }
