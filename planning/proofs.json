@@ -11684,14 +11684,17 @@
         "PRF-325"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "evidence": [
         "books/protocol-table.lisp",
+        "books/protocol-builders.lisp",
         "books/protocol-codes.lisp",
         "books/protocol-framing.lisp",
-        "tests/acl2/protocol-codes-tests.lisp"
+        "tests/acl2/protocol-codes-tests.lisp",
+        "tests/test_protocol_fuzz_grammar.py",
+        "planning/evidence/manifests/certify-20260928T001508Z-3191332.json"
       ],
-      "progress_note": "Lane defprotocol (Opus 5.5, 2026-09-27/28). Admitted in the persvati REPL (protocol-codes 6.3M prover steps; teeth book 171 forms, all admitted). Teeth: 120 witnesses asserting the keystone's conclusion and the exact code per row, 25 must-fail row theorems with a witnessed code removed, the framing witnesses and a must-fail without the :article exclusion; unwitnessed codes named at the end of the test book.",
+      "progress_note": "Lane defprotocol (Opus 5.5, 2026-09-28). Certified on hbox: the 484 affected roots of books/nntp, books/protocol-table and books/protocol-builders (506 books, certify-20260928T001508Z-3191332, passed). Teeth: 120 witnesses asserting the keystone's conclusion and the exact code per row, 25 must-fail row theorems with a witnessed code removed, the framing witnesses and a must-fail without the :article exclusion; the codes a two-article archive cannot reach are named at the end of the test book (pending-fixture hostile-reader-archive).",
       "events": [
         "fn-proto-command-pinned-replies-are-in-the-row",
         "fn-proto-command-pinned-offers-only-article-framing",
