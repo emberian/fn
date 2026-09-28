@@ -8,22 +8,9 @@
 (defun fn-native-admin-host-plan (argv) (fn-native-admin-plan argv))
 (defun fn-native-admin-host-status (result) (fn-native-admin-result-status result))
 (defun fn-native-admin-host-reason (result) (fn-native-admin-result-reason result))
-(defun fn-native-admin-host-kind (result) (fn-native-admin-result-kind result))
-(defun fn-native-admin-host-name (result) (fn-native-admin-result-name result))
-(defun fn-native-admin-host-capacity (result) (fn-native-admin-result-capacity result))
-(defun fn-native-admin-host-peer (result) (fn-native-admin-result-peer result))
-(defun fn-native-admin-host-value (result) (fn-native-admin-result-value result))
 (defun fn-native-admin-host-queryp (result) (fn-native-admin-result-queryp result))
 (defun fn-native-admin-host-report-kind (result)
   (fn-native-admin-result-report-kind result))
-(defun fn-native-admin-host-peer-report (state)
-  ; The `peer list' report over the configuration the store just replayed.
-  ; The rows are the replayed value's own; this bridge selects no peer,
-  ; orders nothing, and renders no field: books/native-admin.lisp does all
-  ; three and raw Lisp only writes the octets out.
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-native-admin-peer-budget-report
-          (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state))))))
 (defun fn-native-admin-host-query-report (plan state)
   ; `peer list' or `control list' over the configuration the store just
   ; replayed; books/native-admin.lisp selects and renders.

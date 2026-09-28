@@ -4,15 +4,6 @@
 
 (in-package "ACL2")
 
-(defun fn-bpn-host-machine-initial (config max-jobs max-octets)
-  (fn-bpn-initial-machine-state config max-jobs max-octets))
-
-(defun fn-bpn-host-answer-state (answer)
-  (fn-bpn-answer-state answer))
-
-(defun fn-bpn-host-answer-effects (answer)
-  (fn-bpn-answer-effects answer))
-
 (defun fn-bpn-host-ready-peers (st)
   ; fnn-bps-open checks the initial invariant once.  Its only later state
   ; writes are fn-bpn-step answers, whose transition preserves it.
@@ -42,19 +33,6 @@
 
 (defun fn-bpn-host-lifecycle-record-name (token)
   (fn-bpn-lifecycle-record-name token))
-
-(defun fn-bpn-host-lifecycle-max-namespace-entries ()
-  (fn-bpn-lifecycle-max-namespace-entries))
-
-(defun fn-bpn-host-lifecycle-namespace-plan (names)
-  (fn-bpn-lifecycle-namespace-plan names))
-
-(defun fn-bpn-host-lifecycle-plan-ready-p (plan)
-  (and (fn-bpn-lifecycle-namespace-planp plan) t))
-
-(defun fn-bpn-host-lifecycle-plan-record-names (plan)
-  (if (fn-bpn-lifecycle-namespace-planp plan)
-      (fn-bpn-lifecycle-plan-record-names plan) nil))
 
 (defun fn-bpn-host-lifecycle-recovery (names records)
   (fn-bpn-lifecycle-recovery names records))

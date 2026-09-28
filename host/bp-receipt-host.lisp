@@ -12,11 +12,7 @@
         (fn-bpa-result-message answer)
       nil)))
 
-(defun fn-bpr-host-request-article (adu state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((request (fn-bpr-host-request adu)))
-    (if request (value (fn-bpa-request-article request)) (value nil))))
-
+;; test-only (tools/host_callers.py): tests/test_bp_receipt_host.py
 (defun fn-bpr-host-reset (config state)
   (declare (xargs :stobjs state :mode :program))
   (if (fn-bpr-configp config)
@@ -51,6 +47,7 @@
       (let ((state (f-put-global 'fn-bpr-state (car (cdr answer)) state)))
         (mv nil (car answer) fn-hist state))))))
 
+;; test-only (tools/host_callers.py): tests/test_bp_receipt_host.py
 (defun fn-bpr-host-prepare-receipt (work-id receipt-id policy-authorizedp state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((old (f-get-global 'fn-bpr-state state))
@@ -58,6 +55,7 @@
     (let ((state (f-put-global 'fn-bpr-state next state)))
       (value (if (consp (fn-bpr-state-pending next)) :pending :refused)))))
 
+;; test-only (tools/host_callers.py): tests/test_bp_receipt_host.py
 (defun fn-bpr-host-commit-receipt (work-id receipt-id outcome state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((old (f-get-global 'fn-bpr-state state))
@@ -67,6 +65,7 @@
                        (null (fn-bpr-state-pending next)))
                  :committed :unchanged)))))
 
+;; test-only (tools/host_callers.py): tests/test_bp_receipt_host.py
 (defun fn-bpr-host-receipt-adu (adu state)
   (declare (xargs :stobjs state :mode :program))
   (let ((request (fn-bpr-host-request adu)))

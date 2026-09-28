@@ -49,7 +49,7 @@ this composition does not make preflight durable.
 
 ## Host boundary
 
-`host/bp-outbound-host.lisp` provides two program-mode calls:
+`host/bp-outbound-host.lisp` provides these program-mode calls:
 
 The sender loads it with `ld` after `host/workflow-host.lisp`; it reads the live
 workflow global installed by `Acl2WorkflowReplay` and is not a certified book.
@@ -58,11 +58,9 @@ workflow global installed by `Acl2WorkflowReplay` and is not a certified book.
   and returns raw ADU octets without mutating workflow effects. The workflow
   journal must call it only inside its successful `take_submit` callback.
   Refusal returns `nil`.
-- `fn-bpo-host-receipt-record(receipt-octets, txid, generation,
-  policy-authorizedp, state)` returns the exact local record after canonical
-  decode, local policy authorization and workflow preflight. It is read-only;
-  the existing journal adapter must publish and apply the record.
-- `fn-bpo-host-receipt-validp` returns a primitive boolean for the same check.
+- `fn-bpo-host-receipt-validp` returns a primitive boolean: whether the
+  receipt octets pass canonical decode, local policy authorization and
+  workflow preflight.
   `fn-bpo-host-receipt-field-octets` returns one of the nine ACL2-derived text
   fields as octets, allowing Python to construct its fixed FNWF dictionary
   without parsing printed Lisp strings or selecting receipt fields itself.
