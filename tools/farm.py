@@ -91,6 +91,10 @@ HOSTS = {
     },
     "hbox": {
         "acl2": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        # The same ACL2 at --tls-limit 65536: the production world exhausts
+        # SBCL's default thread-local storage (tools/hbox_native.sh IMAGE_ACL2;
+        # packaging/release-tarball.sh FN_IMAGE_ACL2).
+        "image_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
         "cache": "/tank/fn/certcache",
         # hbox is shared with another project's build; swarm-build is the
         # cgroup with the enforced memory cap.

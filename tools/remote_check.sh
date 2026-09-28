@@ -147,7 +147,7 @@ UNTRACKED=$(git -C "$ROOT" ls-files --others --exclude-standard | grep -v '^LANE
 ENVS="eval \$(python3 -c 'import ast,os,sys
 t=ast.parse(open(\"tools/farm.py\").read())
 h=[ast.literal_eval(n.value) for n in t.body if isinstance(n,ast.Assign) and getattr(n.targets[0],\"id\",None)==\"HOSTS\"][0].get(sys.argv[1],{})
-print(\"export FN_ACL2=%s FN_CERT_CACHE=%s\" % (h.get(\"acl2\",\"\"), os.path.expanduser(h.get(\"cache\",\"\"))) if h else \"\")' $BOX 2>/dev/null)"
+print((\"export FN_ACL2=%s FN_CERT_CACHE=%s\" % (h.get(\"acl2\",\"\"), os.path.expanduser(h.get(\"cache\",\"\")))) + (\" FN_IMAGE_ACL2=%s\" % h[\"image_acl2\"] if h.get(\"image_acl2\") else \"\") if h else \"\")' $BOX 2>/dev/null)"
 echo "remote_check: make $TARGET in $BOX:$TREE (log $LOG)"
 remote "cd $TREE && $ENVS; [ -n \"\${FN_ACL2:-}\" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)' >&2; exit 3; }; { echo \"== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)\"; $WRAP make $TARGET 2>&1; echo \"== make exit \$?\"; } > $LOG 2>&1; tail -n 1 $LOG | grep -q '^== make exit 0\$'"
 STATUS=$?
