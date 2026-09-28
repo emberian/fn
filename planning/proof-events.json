@@ -12660,10 +12660,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cfg-delta-reason-of-a-redeem-past-its-expiry"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cfg-account-livep-fails-at-or-past-the-expiry"
         },
         {
