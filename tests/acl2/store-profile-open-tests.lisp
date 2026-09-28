@@ -66,7 +66,7 @@
 ; Another word and another layout (three fields): refused by the same name.
 (defun spot-other-short () (spot-frame *spot-word-11* '(1 2 3)))
 (assert-event (equal (fn-spo-config-open (spot-other-short)) '(:refused :store-format)))
-; Its octets, pinned: tests/older_release_store.py writes exactly these as
+; Its octets, pinned: tests/foreign_format_store.py writes exactly these as
 ; the config.json of a store of another release (the native refusal case).
 (defconst *spot-other-short-octets*
   '(
