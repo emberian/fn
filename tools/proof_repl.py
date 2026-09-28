@@ -106,7 +106,7 @@ EVENT, or from the first earlier event its world lacks; a refusal is judged by
 the form's own result (a must-fail that caught an `er hard` is not refused);
 a form that took long for few prover steps says so; `status` warns that a
 book loaded form by form from source leaks its local theory; the reader
-knows character literals (#\( #\") and |bar symbols|.
+knows character literals (#\\( #\\") and |bar symbols|.
 
 A session holds one slot of the machine's ACL2 pool for its whole life, so
 it belongs to its lane and ends with it (PKT-346: fifteen finished lanes'
