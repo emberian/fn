@@ -12,11 +12,6 @@
         (fn-bpa-result-message answer)
       nil)))
 
-(defun fn-bpr-host-request-article (adu state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((request (fn-bpr-host-request adu)))
-    (if request (value (fn-bpa-request-article request)) (value nil))))
-
 (defun fn-bpr-host-reset (config state)
   (declare (xargs :stobjs state :mode :program))
   (if (fn-bpr-configp config)
