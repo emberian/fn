@@ -1269,9 +1269,22 @@ The export reads the history a chunk of records at a time and asks ACL2 for
 each chunk's entries and MANIFEST lines (`fn-sxp-export-chunk`); for every
 chunking the files and MANIFEST it writes are the whole history's
 (PRF-366, `fn-sxp-stream-is-the-export`), so its memory is one chunk's,
-never the store's. The MANIFEST is staged as `MANIFEST.partial` and renamed
-onto `MANIFEST` after every entry is fenced: an interrupted export has no
-MANIFEST and the import refuses it by name, never a prefix of the history.
+never the store's. The entries are written without a per-file fence and
+share ONE sync of the filesystem at the end (Linux `syncfs(2)`; elsewhere a
+fence of every file under the archive); the MANIFEST is staged as
+`MANIFEST.partial`, fenced after that sync, renamed onto `MANIFEST`, and the
+archive directory fenced last: an archive counts as complete only once its
+MANIFEST is durable. A crash anywhere leaves no MANIFEST, which the import
+refuses by name before reading any entry (`import refused
+reason=archive-incomplete entry=MANIFEST`), or the complete archive (PRF-370,
+`fn-sxd-crash-is-incomplete-or-complete` over the byte model). The import
+reads the archive a chunk of records at a time, the MANIFEST a piece at each
+chunk's place, in two passes: the first decides with nothing written, the
+second appends the records to the staged log; for every chunking the
+decision is the whole archive's (PRF-369,
+`fn-sxi-stream-plan-is-the-import-plan`), and a second pass that decides
+otherwise (the archive changed under the import) is refused by name
+(`archive-changed`) before anything is published.
 `store import DIR [--FIELD N ...]` builds a new format-10 store from it,
 with its OWN genesis, writing the records into the log through its own append
 and barrier, refusing a MANIFEST mismatch, a record out of sequence and a
