@@ -203,7 +203,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 - Deployed: no: node image `902de488`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: reader_index 5/5 with LIST COUNTS and the numbered lookup; `test_fn_web_native` 4/4 ([m6-list-counts](evidence/m6-list-counts-2026-09-24.md)).
 - Remaining obstruction: never run against the deployed node or with real credentials; no `verified` badge observed on an image (the client does not sign).
-- Next positive gate: ember, yue and tulip reading and posting through `tools/fn_web.py` against the deployed node on the current image.
+- Next positive gate: ember, yue and tulip reading and posting through the node's own web face (WEB-005; tools/fn_web.py was retired 2026-09-28) against the deployed node on the current image.
 
 ### T17
 
