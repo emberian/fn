@@ -175,6 +175,13 @@ unbounded (&rest or &key)."
 (defun fnn-socket-fd (socket) (declare (ignore socket)) 7)
 (defun fnn-socket-shut (socket) (declare (ignore socket)) nil)
 (defun fnn-tls-close-channel (channel) (declare (ignore channel)) nil)
+;; host/native/tls.lisp's condition (tls.lisp is not extracted): the loop's
+;; handler names it (host/native/mux.lisp), and SBCL resolves a handler's type
+;; when a condition passes through it.
+(define-condition fnn-tls-error (error)
+  ((detail :initarg :detail))
+  (:report (lambda (condition stream)
+             (format stream "native TLS: ~a" (slot-value condition 'detail)))))
 (defun fnn-now () (get-internal-real-time))
 ;; The graceful close's shutdown(2) of the output side.
 (defun fnn-%shutdown (fd how) (declare (ignore fd how)) (incf *graceful*) 0)
@@ -260,12 +267,13 @@ unbounded (&rest or &key)."
 (defun fnn-core-buffer-state (name &rest args)
   (ecase name
     (fn-owner-chunk-span
-     ;; ADMIT is the disk's write admission at this read's recorded time
-     ;; (lane time-model-2); no disk here is slow, so every read admits.
-     (destructuring-bind (cid start end admit replies) args
+     ;; SCHED is the gate's scheduler value at this read's recorded time
+     ;; (lane log-leftovers: the read's admission and reason lines are
+     ;; ACL2's over it); no disk here is slow, so every read admits.
+     (destructuring-bind (cid start end sched) args
        (declare (ignore cid))
-       (unless (and (eq admit :admit) (null replies))
-         (error "a read was handed the admission ~s ~s; no disk here sheds" admit replies))
+       (unless (eq sched :sched)
+         (error "a read was handed the scheduler value ~s; the gate here holds :sched" sched))
        (take-step (subseq *buffer* start end))))))
 
 ;; The disk's clock and admission (books/owner-time-model.lisp): the event is
@@ -312,8 +320,9 @@ unbounded (&rest or &key)."
      (let ((octets (if (second args) (fnn-octets (second args)) *output*)))
        (if (> (length octets) 0) (list octets) nil)))
     (fn-otm-admit-post (push :admit *timeline*) :admit)
-    ;; The disk admits, so no reply names a reason (fn-otm-shed-replies).
-    (fn-otm-shed-replies nil)
+    ;; A transit peer's read proceeds (fn-otm-peer-read-proceeds-p); these
+    ;; scenarios are reader connections, which never ask.
+    (fn-otm-peer-read-proceeds-p t)
     (fn-otm-log-line nil)))
 (defun fnn-owner-render-next (plan)
   (if plan
