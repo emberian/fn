@@ -3804,7 +3804,9 @@
         "PRF-314",
         "PRF-315",
         "PRF-328",
-        "PRF-331"
+        "PRF-331",
+        "PRF-375",
+        "PRF-380"
       ],
       "verification": [
         "proof",

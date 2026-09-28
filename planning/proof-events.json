@@ -7103,6 +7103,14 @@
         {
           "kind": "theorem",
           "name": "fn-heap-reserve-full-store-accepted-is-within-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-store-history-holds-payload-and-memberships"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-arena-octets-slope"
         }
       ]
     },
@@ -11129,12 +11137,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-membership-bound-holds-the-charged-memberships",
-          "note": "KEYSTONE (the heap's membership term is a function of H). Host: host/native/heap.lisp via fn-heap-operation-decide / fn-heap-status-decide."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-heap-membership-term-is-at-most-twice-h"
+          "name": "fn-heap-store-history-holds-payload-and-memberships",
+          "note": "KEYSTONE (the heap's history term is a function of H: the payload and the memberships share the budget; lane f8-reservation replaced the separate membership bound). Host: host/native/heap.lisp via fn-heap-operation-decide / fn-heap-status-decide, whose figure's base is fn-heap-store-state-bound."
         },
         {
           "kind": "theorem",
@@ -12744,6 +12748,19 @@
           "kind": "theorem",
           "name": "fn-spo-open-of-a-valid-profile-opens-it",
           "note": "KEYSTONE (what init and store import write opens as itself). Host: host/native/io.lisp fnn-metadata-config-decode (every open, from fnn-load-config; and fnn-refuse-another-format) via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (the presets and init's frame; validp removed: H below R is the generic fault)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-375",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-heap-breakdown-sums-to-the-reservation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-breakdown-is-inits-reservation"
         }
       ]
     }
