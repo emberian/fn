@@ -311,10 +311,9 @@
          (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
     (implies (and (fn-bs-profile-admittedp profile)
                   (equal (car decision) :heap)
-                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
-                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
-                  (<= (* *fn-sbud-membership-octets* (nfix m))
+                  (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
                       (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
                   (<= (nfix ou) (nfix (fn-bs-profile-max-history-octets profile)))
                   (<= (nfix on) (nfix (fn-bs-profile-max-transactions profile))))
              (and (<= (fn-heap-store-need profile core used n m ou on
@@ -590,10 +589,9 @@
          (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
     (implies (and (fn-bs-profile-admittedp profile)
                   (equal (car decision) :heap)
-                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
-                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
-                  (<= (* *fn-sbud-membership-octets* (nfix m))
+                  (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
                       (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
                   (<= (nfix ou) (fn-heap-open-octets-bound
                                  profile (fn-heap-operation-observation action observed)))
                   (<= (nfix on) (fn-heap-open-records-bound
@@ -657,8 +655,10 @@
 ;; per-record state and the streamed open (lane reservation-figure), and the
 ;; memberships charged to the history budget (lane membership-budget: at
 ;; most H / 320 = 26,214 of them, 16 MiB, where 16 groups a record counted
-;; 160 MiB).  At its bounds (T = 16,384 records, H = 8 MiB) the retained
-;; state alone is 401 MiB (2 x 16,384 x 12 KiB + 2 x 320 x 26,214), and a
+;; 160 MiB), and since lane f8-reservation the payload and the memberships
+;; charged against the one H together (at most 2 H, not 3 H).  At its bounds
+;; (T = 16,384 records, H = 8 MiB) the retained state alone is 401 MiB
+;; (2 x 16,384 x 12 KiB + 2 H, the empty arena's page, the handles), and a
 ;; full replay of such a store adds 108 MiB (one chunk and one record as
 ;; lists, the input's vectors, 1 KiB a record); a `run' sizes the open by the
 ;; store on disk (`fn-heap-operation-decide', :run).  With any
@@ -667,7 +667,7 @@
 ;; (OpenBSD's default login class; the friend's machine has about 2 GB).
 (defthm fn-heap-small-run-base-of-an-empty-store
   (equal (fn-heap-store-base-octets *fn-heap-small-profile* core '(0 . 0))
-         (+ (fn-heap-core-dynamic core) 567149482))
+         (+ (fn-heap-core-dynamic core) 558760138))
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 

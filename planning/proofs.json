@@ -7556,9 +7556,11 @@
         "planning/evidence/compact-arena-2026-09-27.md",
         "planning/evidence/reservation-figure-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T165617Z-3480090.json",
-        "planning/evidence/membership-budget-2026-09-27.md"
+        "planning/evidence/membership-budget-2026-09-27.md",
+        "books/heap-breakdown.lisp",
+        "planning/evidence/f8-reservation-2026-09-28.md"
       ],
-      "progress_note": "Lane heap-from-profile (2026-09-26): every event and the test book admitted in the persvati REPL (proof_repl, the farm toolchain w25); certification is the batch's (Validation by batch). The native case ran on hbox under MemoryMax=2G (planning/evidence/heap-from-profile-2026-09-26.md). Lane openbsd-release-fixes (2026-09-27): certified by persvati farm runs run-20260927T081126Z-3648 (certify-20260927T081222Z-2154140: checkpoint-pack-chain-once, heap-figure, heap-reservation and their test books) and run-20260927T081705Z-af7b (certify-20260927T081801Z-2227997: heap-reservation and its test book after the keystone was re-proved by instances; the book was 13.7 s before the lane and is 14.4 s, over D26's 10 s, pre-existing). A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them. Lane membership-budget (2026-09-27): the membership product 2 x T x 320 x G is gone: every membership is charged 320 octets of the history budget (PRF-314), so the state's membership term is 2 x 320 x floor(H / 320) <= 2 H and the figure no longer reads G (the G hypothesis of fn-heap-store-base-octets-grows-with-the-profile and fn-heap-figure-octets-grows-with-history-and-record was removed after proving the weakened theorems); init judges the FULL store's run (fn-heap-reserve-full-store-decide, was the empty store's first run: PRF-315)."
+      "progress_note": "Lane heap-from-profile (2026-09-26): every event and the test book admitted in the persvati REPL (proof_repl, the farm toolchain w25); certification is the batch's (Validation by batch). The native case ran on hbox under MemoryMax=2G (planning/evidence/heap-from-profile-2026-09-26.md). Lane openbsd-release-fixes (2026-09-27): certified by persvati farm runs run-20260927T081126Z-3648 (certify-20260927T081222Z-2154140: checkpoint-pack-chain-once, heap-figure, heap-reservation and their test books) and run-20260927T081705Z-af7b (certify-20260927T081801Z-2227997: heap-reservation and its test book after the keystone was re-proved by instances; the book was 13.7 s before the lane and is 14.4 s, over D26's 10 s, pre-existing). A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them. Lane membership-budget (2026-09-27): the membership product 2 x T x 320 x G is gone: every membership is charged 320 octets of the history budget (PRF-314), so the state's membership term is 2 x 320 x floor(H / 320) <= 2 H and the figure no longer reads G (the G hypothesis of fn-heap-store-base-octets-grows-with-the-profile and fn-heap-figure-octets-grows-with-history-and-record was removed after proving the weakened theorems); init judges the FULL store's run (fn-heap-reserve-full-store-decide, was the empty store's first run: PRF-315). Lane f8-reservation (2026-09-28): the payload and the memberships are charged against ONE history budget (books/store-budget.lisp fn-sbud-row-octets: payload octets + 320 a membership), so the state's history term is fn-heap-store-history-octets = the empty arena + 2 H + one page pointer (KEYSTONE fn-heap-store-history-holds-payload-and-memberships, from fn-heap-arena-octets-slope), not arena(H) + 2 x 320 x floor(H / 320) (3 H): H was counted twice. The store keystones (fn-heap-store-figure-holds-every-store, fn-heap-decide-admits-every-store-the-profile-admits, fn-heap-operation-decide-holds-the-store, fn-heap-store-figure-holds-every-store-at-the-open-trigger) take the budget's joint hypothesis USED + 320 M <= H. Small preset: init 1,188 -> 1,179 MiB on the d5ab87aec core; the default preset's 1 TiB of H no longer counted three times."
     },
     {
       "id": "PRF-196",
@@ -13184,6 +13186,45 @@
         "fn-nlp-answer-keeps-other-versions",
         "fn-nlp-offline-pages-join-to-the-report"
       ]
+    },
+    {
+      "id": "PRF-375",
+      "title": "The heap reservation itemised: every term of the model named, and the terms add up to exactly the reservation the host is handed",
+      "statement": "books/heap-breakdown.lisp fn-heap-breakdown (action profile core nursery observed connections) lists the reservation's terms as the model computes them: the image's dynamic content, the state (the history: payload and memberships sharing H; handles; records), the open's transient (chunk lists, suffix vectors, per-record build), the request in flight (lists, octet buffers), the collector's room, the megabyte rounding, the image outside the dynamic space, and the threads' stacks and runtime. KEYSTONE fn-heap-breakdown-sums-to-the-reservation: for every action but the offline list verbs (:recover :compact :reclaim, whose figure is the larger of two), (equal (fn-heap-breakdown-sum (fn-heap-breakdown action ...)) (fn-heap-reservation-octets (fn-heap-mb-of (fn-heap-operation-figure-octets action ...)) core (fn-heap-stack-kib profile) (fn-heap-thread-count connections))); fn-heap-breakdown-is-inits-reservation: the :run action unobserved at init's connections is fn-heap-init-reservation-octets, the number `init' prints (host/native/heap.lisp fnn-heap-init-decision). tools/f8_breakdown.py evaluates it: the itemisation is generated, never hand arithmetic.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013"
+      ],
+      "depends_on": [
+        "PRF-198"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/heap-breakdown.lisp",
+        "tests/acl2/heap-breakdown-tests.lisp",
+        "tools/f8_breakdown.py",
+        "planning/evidence/f8-reservation-2026-09-28.md"
+      ],
+      "progress_note": "Lane f8-reservation (2026-09-28): REPL-admitted on persvati; teeth: the small preset's alist on the d5ab87aec core, the hypothesis-needed witness (:compact) and its must-fail, a mutation dropping the collector's room."
+    },
+    {
+      "id": "PRF-380",
+      "title": "Memory admission by credits: an operation acquires its credit (owned U and reserved R) before it allocates, and the ledger M_base + M_cache + sum(U_i + R_i) + E_completion + E_runtime <= B holds across every transition",
+      "statement": "books/memory-credits.lisp: the ledger (BUDGET BASE CACHE COMPLETION RUNTIME DRAWN OPS). fn-mcr-acquire admits a new operation exactly when its whole credit fits (fn-mcr-acquire-refuses-exactly-past-the-budget; refused :memory-budget-exhausted by name, the ledger unchanged); fn-mcr-grow moves reserve to owned and is never refused within the reserve, the total unchanged (fn-mcr-grow-within-the-reserve-is-admitted: reserve to finish); fn-mcr-retain moves the retained octets to the cache and returns the rest (fn-mcr-retain-moves-the-credit); fn-mcr-evict returns cache credit only by the octets actually evicted (fn-mcr-evict-returns-what-was-evicted); fn-mcr-overdraw draws only from the separately funded completion reserve (fn-mcr-overdraw-is-within-the-completion-reserve). KEYSTONE fn-mcr-transitions-keep-funded: from a funded ledger (one entry an operation, total within B, drawn within the completion reserve) every admitted transition's result is funded. The model of GPT-6's review (2026-09-28, 'Memory and zero-copy calls') adopted with ember's F8 split (18:15Z). Its host subjects are the allocation sites; the article slots of lane zero-copy-commit (books/owner-article-slots.lisp fn-oas-read-span, PRF-377) are the first instance (U + R one reserve a slot); wiring the ledger itself to the host is open.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/memory-credits.lisp",
+        "tests/acl2/memory-credits-tests.lisp",
+        "planning/evidence/f8-reservation-2026-09-28.md"
+      ],
+      "progress_note": "Lane f8-reservation (2026-09-28): REPL-admitted on persvati; teeth: a 256 MiB small-node ledger admitting 47 article credits and refusing the 48th by name, every transition's witness and refusal, the hypothesis-needed witness (an over-budget ledger stays unfunded) with its must-fail, and a mutant unchecked acquire. pending_subject: no host function calls the ledger yet."
     }
   ]
 }

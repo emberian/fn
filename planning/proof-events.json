@@ -7113,6 +7113,14 @@
         {
           "kind": "theorem",
           "name": "fn-heap-reserve-full-store-accepted-is-within-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-store-history-holds-payload-and-memberships"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-arena-octets-slope"
         }
       ]
     },
@@ -12674,6 +12682,54 @@
         {
           "kind": "theorem",
           "name": "fn-nlp-offline-pages-join-to-the-report"
+        }
+      ]
+    },
+    {
+      "id": "PRF-375",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-heap-breakdown-sums-to-the-reservation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-breakdown-is-inits-reservation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-380",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mcr-transitions-keep-funded",
+          "pending_subject": "Subject is the credit ledger (books/memory-credits.lisp); no host function calls it yet. Its first instance is the article slots (lane zero-copy-commit, books/owner-article-slots.lisp fn-oas-read-span, PRF-377), U + R one reserve a slot; wiring the ledger to the host's allocation sites is the open step."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mcr-acquire-refuses-exactly-past-the-budget",
+          "pending_subject": "Subject is the credit ledger (books/memory-credits.lisp); no host function calls it yet. Its first instance is the article slots (lane zero-copy-commit, books/owner-article-slots.lisp fn-oas-read-span, PRF-377), U + R one reserve a slot; wiring the ledger to the host's allocation sites is the open step."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mcr-grow-within-the-reserve-is-admitted",
+          "pending_subject": "Subject is the credit ledger (books/memory-credits.lisp); no host function calls it yet. Its first instance is the article slots (lane zero-copy-commit, books/owner-article-slots.lisp fn-oas-read-span, PRF-377), U + R one reserve a slot; wiring the ledger to the host's allocation sites is the open step."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mcr-retain-moves-the-credit",
+          "pending_subject": "Subject is the credit ledger (books/memory-credits.lisp); no host function calls it yet. Its first instance is the article slots (lane zero-copy-commit, books/owner-article-slots.lisp fn-oas-read-span, PRF-377), U + R one reserve a slot; wiring the ledger to the host's allocation sites is the open step."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mcr-evict-returns-what-was-evicted",
+          "pending_subject": "Subject is the credit ledger (books/memory-credits.lisp); no host function calls it yet. Its first instance is the article slots (lane zero-copy-commit, books/owner-article-slots.lisp fn-oas-read-span, PRF-377), U + R one reserve a slot; wiring the ledger to the host's allocation sites is the open step."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mcr-overdraw-is-within-the-completion-reserve",
+          "pending_subject": "Subject is the credit ledger (books/memory-credits.lisp); no host function calls it yet. Its first instance is the article slots (lane zero-copy-commit, books/owner-article-slots.lisp fn-oas-read-span, PRF-377), U + R one reserve a slot; wiring the ledger to the host's allocation sites is the open step."
         }
       ]
     }

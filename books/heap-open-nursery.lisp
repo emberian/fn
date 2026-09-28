@@ -92,10 +92,9 @@
 (defthm fn-heap-store-figure-holds-every-store-at-the-open-trigger
   (implies (and (natp d)
                 (<= (fn-heap-store-figure-octets profile core nursery observed) d)
-                (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
-                (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
-                (<= (* *fn-sbud-membership-octets* (nfix m))
+                (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
                     (nfix (fn-bs-profile-max-history-octets profile)))
+                (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
                 (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
                 (<= (nfix on) (fn-heap-open-records-bound profile observed)))
            (<= (fn-heap-store-need profile core used n m ou on
