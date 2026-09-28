@@ -80,11 +80,16 @@ BUILD_ROOT = ROOT / "build" / "acl2"
 # parallel schedule (`archived_walls`).  Nothing about a verdict comes from here.
 WALL_HISTORY = ROOT / "planning" / "evidence" / "manifests"
 SUCCESS_PREFIX = "FN_CERTIFY_SUCCESS "
-FAILURE_MARKERS = (
-    "CERTIFICATION FAILED",
-    "ACL2 Error",
-    "HARD ACL2 ERROR",
-)
+# A failed certify-book prints this and nothing else can: always a failure.
+FATAL_MARKERS = ("CERTIFICATION FAILED",)
+# ACL2's error text.  It explains a book that has no fresh success marker, but
+# it is not by itself a verdict: an `er hard` inside `must-fail` (and any
+# other event that expects and catches an error) prints "HARD ACL2 ERROR" in
+# a book that certifies, and counting the text anywhere failed defkeystone's
+# green book in a farm round (run-20260927T234335Z-f70b).  The marker is
+# emitted only from certify-book's successful branch, so it is the judge.
+ERROR_TEXT_MARKERS = ("ACL2 Error", "HARD ACL2 ERROR")
+FAILURE_MARKERS = FATAL_MARKERS + ERROR_TEXT_MARKERS
 BOOK_NAME = re.compile(r"(?:books|tests/acl2)/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+$")
 # ACL2's provisional certification, in the three waves `:DOC
 # provisional-certification` names.  Create skips proofs and writes `.pcert0`;
@@ -231,13 +236,18 @@ def book_result(book: str, output: str, exit_code: int | str, nonce: str,
     manifest, whose only per-book result field was that zero, and was read as
     having passed.  The verdict is this book's own fresh nonce-tagged marker,
     its own log clean of ACL2's failure markers, and a certificate on disk.
+    ACL2's error text ("ACL2 Error", "HARD ACL2 ERROR") in a book that has its
+    marker, exit 0 and a certificate is an error some event caught (an `er
+    hard` under `must-fail`), not a failure: see `ERROR_TEXT_MARKERS`.
     """
     reasons: list[str] = []
     if exit_code != 0:
         reasons.append(f"ACL2 exited {exit_code}")
-    if success_markers(output, nonce) != [success_token(book, nonce)]:
+    fresh = success_markers(output, nonce) == [success_token(book, nonce)]
+    if not fresh:
         reasons.append("no fresh success marker in this book's log")
-    observed = [marker for marker in FAILURE_MARKERS if marker in output]
+    observed = [marker for marker in FAILURE_MARKERS if marker in output
+                and (marker in FATAL_MARKERS or not fresh)]
     if observed:
         reasons.append("failure marker in this book's log: " + ", ".join(observed))
     if not certificate:
@@ -1398,7 +1408,6 @@ def main() -> int:
     (run_dir / "certify.log").write_text(combined_log, encoding="utf-8")
     expected_markers = [success_token(book, nonce) for book in args.books]
     marker_ok = markers == expected_markers
-    found_failures = [marker for marker in FAILURE_MARKERS if marker in combined_log]
     certificates = {
         book: digest(ROOT / f"{book}.cert")
         for book in args.books
@@ -1410,6 +1419,15 @@ def main() -> int:
                 for book in args.books}
     book_results = {book: verdict for book, (verdict, _) in verdicts.items()}
     book_failures = {book: reasons for book, (_, reasons) in verdicts.items() if reasons}
+    # The run's failure markers are its failed books' (and a fatal marker
+    # anywhere); a passed book's caught error text is recorded, not counted.
+    found_failures = [marker for marker in FAILURE_MARKERS
+                      if any(marker in outputs[book] for book in args.books
+                             if marker in FATAL_MARKERS or book_results[book] != "passed")]
+    caught_error_text = {book: [marker for marker in ERROR_TEXT_MARKERS
+                                if marker in outputs[book]]
+                         for book in args.books if book_results[book] == "passed"}
+    caught_error_text = {book: found for book, found in caught_error_text.items() if found}
     try:
         source_digests_after = collect_book_sources(digested)
     except ValueError as error:
@@ -1443,6 +1461,7 @@ def main() -> int:
             "expected_success_markers": expected_markers,
             "observed_success_markers": markers,
             "failure_markers": found_failures,
+            "caught_error_text": caught_error_text,
             "driver_digests_sha256": driver_digests,
             "certificate_digests_sha256": certificates,
             "compiled_digests_sha256": compiled_digests(sorted(certificates)),
