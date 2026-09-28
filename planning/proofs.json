@@ -6420,7 +6420,7 @@
     {
       "id": "PRF-175",
       "title": "A login's signing binding is a row of the configuration the owner publishes live: at start and on `principal bind|unbind' the configuration binds every login as the credential file does, an open session is decided under the table its connection pinned, a connection opened after the publication under the published table, and the verb says `applied' only after the owner published",
-      "statement": "Subject fn-lb-ocfg-gate (books/login-binding-live.lisp), called by host/owner-host.lisp fn-owner-login-gate from host/native/owner.lisp fnn-owner-attempt-served; fn-lb-sync-plan, called by host/owner-host.lisp fn-owner-login-bindings-plan from host/native/auth.lisp fnn-native-auth-publish-bindings (at start in fnn-native-auth-install and on control request 14 in host/native/login-bindings.lisp), whose delta lists are staged by fn-owner-reconfigure-deltas and published by fn-owner-reconfigure-complete (fn-ocl-publish) through fnn-owner-live-reconfigure-locked. (1) By definition (fn-lb-ocfg-gate-unfolds, not cited) the host's verdict is fn-lb-owner-gate (PRF of books/login-binding.lisp; its keystones apply) with the policy of the live configuration and the binding table of the in-flight submission's connection pin. (2) The delta (books/config.lisp :login-binding, code 17, rows (LOGIN PRINCIPAL-HEX \"\" 2) of the accounts slot): fn-lb-binding-delta-binds-the-login binds exactly the given principal (nil unbinds), fn-lb-binding-delta-keeps-other-logins leaves every other login, fn-lb-binding-delta-is-admitted is admitted against every configuration for a bindable login and a 32-octet principal. (3) fn-lb-sync-binds-every-login-as-the-file-does: when the plan is :ok, applying its deltas binds every login as the credential file's table does; fn-lb-pairs-deltas-set-exactly-their-logins is the fold; fn-lb-pairs-deltas-ignore-the-record-coordinates lets the host's records of at most 64 deltas compose. (4) fn-lb-a-publication-keeps-every-open-connections-table (no hypotheses): staging and publishing any change leaves every connection's pinned table; fn-lb-an-open-session-is-decided-under-its-pinned-table: over any owner trace that does not re-pin the connection, the gate decides its submission under the table pinned before the trace. (5) fn-lb-a-connection-opened-after-a-publication-is-bound-anew: with nothing staged, a durable publication of the binding deltas (the owner's history relation before, fn-ocl-config-historyp; no stale pin at the fresh identifier after, which fn-ocfg-statep implies) and a connection opened next, that connection's table binds every login the deltas name as the file does and every other as before. (6) fn-native-auth-admin-effect-word-applied-only-when-published (fn-native-auth-admin-effect-word-restart-unless-no-owner, restated with the owner's answer, stays its PRF's): `applied' only when the lock was not seen free or absent and the owner answered :accepted. Teeth: tests/acl2/login-binding-live-tests.lisp (a witness per keystone asserting every antecedent; one must-fail per hypothesis; the gate witness is login-binding-tests' constructed owner, the publication witness config-owner-live-tests' replayed ground owner) and tests/acl2/native-auth-admin-tests.lisp. Not covered: that the owner's live configuration is its history's replay across every publication (the maintained relation; PRF-028 (certified again at the current digest since c7072ddc: served-path-scale's manifest certify-20260926T123813Z-1816946 covers its thirteen theorems); the host's reading of the credential file (bounded transport, as before).",
+      "statement": "Subject fn-lb-ocfg-gate (books/login-binding-live.lisp), called by host/owner-host.lisp fn-owner-login-gate from host/native/owner.lisp fnn-owner-attempt-served; fn-lb-sync-plan, called by host/owner-host.lisp fn-owner-login-bindings-plan from host/native/auth.lisp fnn-native-auth-publish-bindings (at start in fnn-native-auth-install and on control request 14 in host/native/login-bindings.lisp), whose delta lists are staged by fn-owner-reconfigure-deltas and published by fn-owner-reconfigure-complete (fn-ocl-publish) through fnn-owner-live-reconfigure-locked. (1) By definition (fn-lb-ocfg-gate-unfolds, not cited) the host's verdict is fn-lb-owner-gate (PRF of books/login-binding.lisp; its keystones apply) with the policy of the live configuration and the binding table of the in-flight submission's connection pin. (2) The delta (books/config.lisp :login-binding, code 17, rows (LOGIN PRINCIPAL-HEX \"\" 2) of the accounts slot): fn-lb-binding-delta-binds-the-login binds exactly the given principal (nil unbinds), fn-lb-binding-delta-keeps-other-logins leaves every other login, fn-lb-binding-delta-is-admitted is admitted against every configuration for a bindable login and a 32-octet principal. (3) fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings: when the plan is :ok, applying its deltas binds every login as the credential file's table does, except a redeemed account the file does not name, whose binding stays as the configuration holds it (PRF-388); fn-lb-pairs-deltas-set-exactly-their-logins is the fold; fn-lb-pairs-deltas-ignore-the-record-coordinates lets the host's records of at most 64 deltas compose. (4) fn-lb-a-publication-keeps-every-open-connections-table (no hypotheses): staging and publishing any change leaves every connection's pinned table; fn-lb-an-open-session-is-decided-under-its-pinned-table: over any owner trace that does not re-pin the connection, the gate decides its submission under the table pinned before the trace. (5) fn-lb-a-connection-opened-after-a-publication-is-bound-anew: with nothing staged, a durable publication of the binding deltas (the owner's history relation before, fn-ocl-config-historyp; no stale pin at the fresh identifier after, which fn-ocfg-statep implies) and a connection opened next, that connection's table binds every login the deltas name as the file does and every other as before. (6) fn-native-auth-admin-effect-word-applied-only-when-published (fn-native-auth-admin-effect-word-restart-unless-no-owner, restated with the owner's answer, stays its PRF's): `applied' only when the lock was not seen free or absent and the owner answered :accepted. Teeth: tests/acl2/login-binding-live-tests.lisp (a witness per keystone asserting every antecedent; one must-fail per hypothesis; the gate witness is login-binding-tests' constructed owner, the publication witness config-owner-live-tests' replayed ground owner) and tests/acl2/native-auth-admin-tests.lisp. Not covered: that the owner's live configuration is its history's replay across every publication (the maintained relation; PRF-028 (certified again at the current digest since c7072ddc: served-path-scale's manifest certify-20260926T123813Z-1816946 covers its thirteen theorems); the host's reading of the credential file (bounded transport, as before).",
       "milestone": "M3",
       "requirements": [
         "SEC-005"
@@ -13516,6 +13516,72 @@
         "fn-ock-requested-never-past-a-deferral",
         "fn-ock-requested-word-is-the-next-due"
       ]
+    },
+    {
+      "id": "PRF-387",
+      "title": "`run` takes its TLS certificate and key exactly when they load, match and are valid now and readable, by the decision `tls reload` applies, and refuses the start by name otherwise",
+      "statement": "Subject fn-tlsr-start-decide (books/tls-reload.lisp), which host/tls-reload-host.lisp fn-tlsr-host-start-decide computes for host/native/tls-reload.lisp fnn-tls-start-context, called by host/native/operator-live.lisp fnn-operator-execute-run before the owner starts; the host builds and observes the candidate exactly as a reload does (fnn-tls-server-candidate, fnn-tls-facts-of), serves it exactly on :accept (recording the facts as the context's served facts, the relation fnn-tls-context-swap preserves), and otherwise frees it and refuses the start (exit 1, `refused operator run tls REASON`). (1) fn-tlsr-start-decide-accepts-exactly-loaded-matching-current-material (KEYSTONE, no hypotheses): the start accepts iff the chain loaded, the key loaded, the key matches, the clock lies in the validity window and the subjectAltName is readable. (2) fn-tlsr-decide-is-the-start-decision-unless-names-dropped (KEYSTONE): every reload decision other than (:refuse :names-dropped) equals the start decision, so the two paths decide the same material by one check and a pair the start refuses a reload refuses by the same word. Before PKT-606 the start refused only what OpenSSL refused (fnn-tls-open-context, deleted), so an expired, not-yet-valid or name-unreadable pair started. Teeth: tests/acl2/tls-reload-tests.lisp (the real P-256 certificate's facts; the positive witness asserting every conjunct; per conjunct a witness where it alone fails and the start refuses by name; per conjunct a must-fail; the names-dropped material the reload refuses and the start takes, with a must-fail of the equation without its hypothesis). Trusted, not proved: as PRF-212 (the library's parse and three booleans, the host clock). Native: tests/test_native_tls_reload.py (a start with a mismatched pair refused key-mismatch and one with an expired certificate refused expired, exit 1, no listener), tests/test_native_starttls.py test_context_mismatch_refuses_before_listener, tests/test_native_tls_transport.py (the candidate's observations).",
+      "milestone": "M4",
+      "requirements": [
+        "HST-020"
+      ],
+      "depends_on": [
+        "PRF-212"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/tls-reload.lisp",
+        "tests/acl2/tls-reload-tests.lisp",
+        "host/tls-reload-host.lisp",
+        "host/native/tls-reload.lisp",
+        "host/native/tls.lisp",
+        "host/native/operator-live.lisp",
+        "tests/test_native_tls_reload.py",
+        "tests/test_native_starttls.py",
+        "tests/native_tls_transport.lisp"
+      ],
+      "events": [
+        "fn-tlsr-start-decide-accepts-exactly-loaded-matching-current-material",
+        "fn-tlsr-decide-is-the-start-decision-unless-names-dropped"
+      ],
+      "progress_note": "Lane auth-tls-bugs (2026-09-28): REPL-admitted on hbox (w28), the book from source and its test book, all 87 forms; certification is the batch's."
+    },
+    {
+      "id": "PRF-388",
+      "title": "A login redeemed from an invitation is bound with `principal bind` like a credential-file login: the binding is the configuration's own row, admitted only while the login holds a redeemed account, and kept by the start publication",
+      "statement": "Subject fn-lb-account-bind-plan (books/login-binding-live.lisp), which host/native-admin-host.lisp fn-native-admin-host-owner-reconfigure (live, from host/native/admin.lisp fnn-owner-live-admin-serialized) and fn-native-admin-host-apply (offline, from fnn-admin-reconfigure) compute for the administrative vector `account bind LOGIN HEX` / `account unbind LOGIN`; the operator sends that vector (fn-native-operator-result-principal-account-result, dispatched by host/native/operator-live.lisp fnn-operator-execute-principal) exactly when fn-native-auth-admin-bind answers :account, the credential file not holding the login (PKT-560: it answered refused unknown-login). (1) fn-lb-account-bind-plan-admits-exactly-a-held-account-login (KEYSTONE, no hypotheses): the plan is :ok iff the login is bindable, the principal is 32 octets or absent (the unbind), and the configuration holds the login as a redeemed account (mark 1; a tombstone holds none); otherwise it refuses binding-login, binding-principal or unknown-login. (2) fn-lb-account-bind-plan-binds-exactly-the-account-login (KEYSTONE): an :ok plan's record is admitted, binds the login to exactly the principal, leaves every other login's binding and leaves the login holding its account. (3) fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings (PRF-175's start keystone, generalized): the start publication binds every login as the credential file does except a redeemed account the file does not name. (4) fn-lb-an-account-binding-survives-the-next-start (KEYSTONE, composed): after an :ok plan's record, the next start publication over a file that does not name the login leaves it bound to the principal the verb named. Teeth: tests/acl2/login-binding-live-tests.lisp (a configuration with a redeemed account robin and a deleted account wren; per conjunct of (1) a witness refusing by name; the effect witnesses; the start witness keeping robin and unbinding guest; hypothesis removal: a file naming robin wins, a binding row of a login no account holds is unbound at start; pairs-okp is carried from (3) and not separated), tests/acl2/native-auth-admin-tests.lisp (:account for a login the file lacks, absent file included), tests/acl2/native-operator-tests.lisp (the principal result carries the account plan and argv). Native: tests/test_native_friends_accounts.py test_a_redeemed_login_is_bound_and_keeps_its_binding (live and offline bind, 441 unsigned under bound-logins, kept across a restart, account delete refused while bound, unbind, unknown-login for a login nobody holds).",
+      "milestone": "M3",
+      "requirements": [
+        "SEC-005",
+        "NNT-034"
+      ],
+      "depends_on": [
+        "PRF-164",
+        "PRF-175"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/login-binding-live.lisp",
+        "tests/acl2/login-binding-live-tests.lisp",
+        "books/native-auth-admin.lisp",
+        "tests/acl2/native-auth-admin-tests.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "host/native-admin-host.lisp",
+        "host/native-operator-host.lisp",
+        "host/native/auth-admin.lisp",
+        "host/native/operator-live.lisp",
+        "tests/test_native_friends_accounts.py"
+      ],
+      "events": [
+        "fn-lb-account-bind-plan-admits-exactly-a-held-account-login",
+        "fn-lb-account-bind-plan-binds-exactly-the-account-login",
+        "fn-lb-an-account-binding-survives-the-next-start"
+      ],
+      "progress_note": "Lane auth-tls-bugs (2026-09-28): REPL-admitted on hbox (w28): books/login-binding-live with its test book, books/native-auth-admin with its test book, books/native-admin, books/native-auth-admin and books/native-operator with native-operator-tests; certification is the batch's."
     }
   ]
 }

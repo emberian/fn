@@ -13,6 +13,13 @@ the release builds: the production image (FN_NATIVE_HOST) and the developer
 image (FN_NATIVE_DEVELOPER_HOST).  Refuted: a restart, a new handshake served
 the old certificate after an accepted reload, a closed or failing older
 session, a refusal that changed what is served, or a refusal without its name.
+
+PRF-387 (PKT-606): `run' applies the same decision to the pair it starts
+with (fn-tlsr-start-decide).  A start with a key that does not match the
+chain, and a start with an expired certificate, are refused by name
+(`refused operator run tls key-mismatch', `... tls expired', exit 1) before
+any listener.  Refuted: a start that listens, a fault exit, or a refusal
+without ACL2's word.
 """
 
 from __future__ import annotations
@@ -57,6 +64,34 @@ class TlsReloadCases:
             cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             timeout=60, check=True)
         return certificate, private_key
+
+    def make_expired_pair(self, name: str, dns: str) -> tuple[Path, Path]:
+        """A self-signed P-256 pair whose validity ended a day ago (the
+        OpenSSL CLI on hbox, 3.3, cannot date a certificate in the past)."""
+        import datetime
+        from cryptography import x509
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.x509.oid import NameOID
+        key = ec.generate_private_key(ec.SECP256R1())
+        subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, dns)])
+        now = datetime.datetime.now(datetime.timezone.utc)
+        certificate = (x509.CertificateBuilder()
+                       .subject_name(subject).issuer_name(subject)
+                       .public_key(key.public_key())
+                       .serial_number(x509.random_serial_number())
+                       .not_valid_before(now - datetime.timedelta(days=3))
+                       .not_valid_after(now - datetime.timedelta(days=1))
+                       .add_extension(x509.SubjectAlternativeName([x509.DNSName(dns)]),
+                                      critical=False)
+                       .sign(key, hashes.SHA256()))
+        certificate_path = self.root / (name + "-cert.pem")
+        key_path = self.root / (name + "-key.pem")
+        certificate_path.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+        key_path.write_bytes(key.private_bytes(
+            serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption()))
+        return certificate_path, key_path
 
     def install(self, certificate: Path, private_key: Path) -> None:
         """Replace the served paths the way fn-cert-install.sh does: a
@@ -133,6 +168,21 @@ class TlsReloadCases:
 
         self.assertTrue(before.command(b"QUIT").startswith(b"205 "))
         self.assertIsNone(process.poll(), "the owner stopped")
+
+    def assertStartRefused(self, word: bytes) -> None:
+        result = self.operator("run", "--once")
+        self.assertEqual(result.returncode, EXIT.REFUSED, result.stdout + result.stderr)
+        self.assertNotIn(b"LISTENING ", result.stdout)
+        self.assertIn(b"refused operator run tls " + word, result.stderr)
+
+    def test_start_refuses_a_mismatched_pair_by_name(self) -> None:
+        _, wrong_key = self.make_pair("w", "localhost")
+        self.install(self.a[0], wrong_key)
+        self.assertStartRefused(b"key-mismatch")
+
+    def test_start_refuses_an_expired_pair_by_name(self) -> None:
+        self.install(*self.make_expired_pair("x", "localhost"))
+        self.assertStartRefused(b"expired")
 
     def test_reload_without_an_owner_is_not_accepted(self) -> None:
         result = self.operator("tls", "reload")
