@@ -315,31 +315,6 @@ authorization check binds its observed key bytes to the carrier's key set."
             (list :verified source principal keys)
           (list :unverified :signature received))))))
 
-(defun fnn-hsig-authorized-article-event
-    (sequence txid generation keyring-generation enrolled-snapshot
-              msgid content-subject
-              article-record principal keys source signatures
-              ml-public-key-path)
-  "Verify once, then ask ACL2 to construct the complete durable kind-4 event.
-The caller may pass the returned object unchanged to the identity owner."
-  (let ((preimage (fnn-core 'fn-hsig-host-preimage principal keys source)))
-    (unless (and preimage (plusp (length preimage)))
-      (return-from fnn-hsig-authorized-article-event nil))
-    (let* ((observations
-            (fnn-hsig-observe (cdr (first keys)) ml-public-key-path
-                              preimage signatures))
-           (ml-observation (second observations))
-           (observed-ml-key (and (consp ml-observation)
-                                 (second ml-observation))))
-      (fnn-core
-       'fn-hsig-host-authorized-article-event
-       sequence txid generation keyring-generation enrolled-snapshot
-       msgid content-subject
-       article-record principal keys source signatures
-       (and observed-ml-key (coerce observed-ml-key 'list))
-       (first observations)
-       (if (consp ml-observation) (first ml-observation) ml-observation)))))
-
 (defun fnn-hsig-authorized-submission-event
     (coordinates keyring-generation enrolled-snapshot msgid source groups
                  obligation-id content-subject release-evidence charge
