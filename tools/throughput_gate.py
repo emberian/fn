@@ -96,7 +96,7 @@ BOX_ROOT = "/tank/fn/scratch/throughput-gate"
 OPENSSL = "/tank/fn/toolchains/openssl-3.5.8"
 CLIENT_FILES = ("tools/throughput_gate.py", "tools/msgid_measure.py", "tools/rep_measure.py",
                 "tools/signed_carriers.py", "tools/__init__.py", "tools/wire_stream.py",
-                "tests/__init__.py", "tests/native_harness.py",
+                "tests/__init__.py", "tests/native_harness.py", "tools/outcome_codes.py",
                 "books/outcome-class.lisp")
 # Metrics the gate compares (all: lower is better).  The floor is the
 # absolute slack: a loopback millisecond figure on a shared box moves by

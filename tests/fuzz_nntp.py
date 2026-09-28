@@ -1293,7 +1293,8 @@ def campaign_bounds(args):
 # ---------------------------------------------------------------------------
 # The store campaign
 
-EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_FAULT, EXIT_USAGE = 0, 1, 3, 4, 5
+from tools.outcome_codes import (  # noqa: E402
+    EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_USAGE)
 # A message that names the host's own contract, not the input's defect.
 INTERNAL = re.compile(r"ACL2 returned|non-natural|\[Errno|internal error|unexpected ACL2|"
                       r"debugger invoked|Unhandled|bridge failed|The value|is not of type")

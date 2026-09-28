@@ -61,13 +61,10 @@ ANCHOR_RECORD_BYTES = 1024 + 42
 TRAILER_BYTES = 32
 MAX_STAGING_REPORT = 64
 
-# Distinct CLI outcomes.  Uncertain, refused and accepted never share a code;
-# specs/host.md carries the table and its reader contract.
-EXIT_OK = 0
-EXIT_REFUSED = 1
-EXIT_UNCERTAIN = 3
-EXIT_FAULT = 4
-EXIT_USAGE = 5
+# Distinct CLI outcomes, ACL2's table (books/outcome-class.lisp, read by
+# tools/outcome_codes.py); specs/host.md carries its reader contract.
+from tools.outcome_codes import (  # noqa: E402,F401
+    EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_USAGE)
 
 # ACL2 bridge correlation and reply bounds.  Every call prints a fresh nonce
 # marker first, so a reply is accepted only when this call's marker preceded
