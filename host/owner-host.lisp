@@ -30,6 +30,9 @@
 (include-book "../books/owner-config")
 ; The compression threshold (fn-owner-compress-min-octets; PRF-341).
 (include-book "../books/payload-lz-append")
+;; RFC 8054 COMPRESS DEFLATE: the inflater the host calls per connection
+;; (host/native/deflate.lisp fnn-zin-inflate calls fn-zin-feed).
+(include-book "../books/deflate-inflate")
 ; P3 owner open and publication (fn-ock-).
 (include-book "../books/owner-checkpoint-open")
 ; The publication through the octet buffer, decided before it is encoded
@@ -3036,6 +3039,19 @@
              (state (fn-owner-install-ocfg (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
+
+;; RFC 8054 (lane compress): the compression layer this connection's session
+;; owes the host after a 206 (books/nntp-auth.lisp fn-auth-compress): the
+;; algorithm (:deflate), or nil.  The host installs the layer once the 206's
+;; CRLF is written and re-enters with fn-owner-tls-established, which the
+;; session reads as the owed layer established (fn-auth-tls-established).
+;; A question about ACL2's session, never about the octets.
+(defun fn-owner-compress-owed (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))))
+    (value (and conn
+                (let ((z (fn-auth-session-compress (fn-own-conn-session conn))))
+                  (and (fn-zc-owedp z) (cadr z)))))))
 
 ; Open pins the committed view and opens one served connection over it
 ; (fn-own-open); the greeting is the effect list it returns.  A refused open

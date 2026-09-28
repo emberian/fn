@@ -229,7 +229,7 @@
 ; hypothesis holds of it -- the configuration requires authentication, no
 ; subject is installed and it is not handshaking.
 (defconst *aut-forged*
-  (fn-auth-make-session :not-a-peer-session *aut-required* nil nil nil nil))
+  (fn-auth-make-session :not-a-peer-session *aut-required* nil nil nil nil nil))
 (assert-event (not (fn-auth-sessionp *aut-forged*)))
 (assert-event (fn-auth-config-requiredp (fn-auth-session-config *aut-forged*)))
 (assert-event (null (fn-auth-session-subject *aut-forged*)))
@@ -522,7 +522,7 @@
 
 ; G1 dropped: the forged session again, now under the protected-only policy.
 (defconst *aut-forged-prot*
-  (fn-auth-make-session :not-a-peer-session *aut-protected* nil nil nil nil))
+  (fn-auth-make-session :not-a-peer-session *aut-protected* nil nil nil nil nil))
 (assert-event (not (fn-auth-sessionp *aut-forged-prot*)))
 (assert-event (fn-auth-config-protected-onlyp
                (fn-auth-session-config *aut-forged-prot*)))
@@ -1780,7 +1780,7 @@
 ; A session with chosen fields over a real base, for the values no command
 ; sequence reaches.
 (defun aut-mk (base acfg pending subject tlsp handshaking)
-  (fn-auth-make-session base acfg pending subject tlsp handshaking))
+  (fn-auth-make-session base acfg pending subject tlsp handshaking nil))
 (defconst *aut-reader-base* (fn-auth-session-base *aut-r-one*))
 (defconst *aut-src-base* (fn-auth-session-base *aut-src*))
 (defconst *aut-pass* "AUTHINFO PASS correct-horse")
@@ -2425,7 +2425,7 @@
 ; the statements that leave out the premise excluding it.
 (defconst *aut-p-mismatch*
   (fn-auth-make-session (fn-auth-session-base *aut-p-s*) *aut-p-policy*
-                        *aut-name* *aut-principal-guest* nil nil))
+                        *aut-name* *aut-principal-guest* nil nil nil))
 (assert-event (fn-auth-sessionp *aut-p-mismatch*))
 
 (defconst *aut-k15-hyps*
@@ -2517,7 +2517,7 @@
 (defconst *aut-p-forged-guest*
   (fn-auth-make-session :not-a-peer-session *aut-p-policy*
                         (fn-nntp-string-octets "guest") *aut-principal-guest*
-                        nil nil))
+                        nil nil nil))
 (assert-event (not (fn-auth-sessionp *aut-p-forged-guest*)))
 (assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-p-forged-guest* "POST") nil))
 (local (must-fail-checked (aut-k16 aut-k16-without-p1 (p2 p3 p4 p5 p6 p7))))
@@ -2525,7 +2525,7 @@
 (defconst *aut-p-hs-guest*
   (fn-auth-make-session (fn-auth-session-base *aut-p-s*) *aut-p-policy*
                         (fn-nntp-string-octets "guest") *aut-principal-guest*
-                        nil t))
+                        nil t nil))
 (assert-event (fn-auth-sessionp *aut-p-hs-guest*))
 (assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-p-hs-guest* "POST") nil))
 (local (must-fail-checked (aut-k16 aut-k16-without-p2 (p1 p3 p4 p5 p6 p7))))
@@ -2601,7 +2601,7 @@
 ; a session, answered nothing, while the delegation offers 340.
 (defmacro aut-p-bad-tls-reader ()
   '(fn-auth-make-session (fn-auth-session-base (aut-p-reader)) *aut-p-policy*
-                         *aut-name* *aut-principal* :maybe nil))
+                         *aut-name* *aut-principal* :maybe nil nil))
 (assert-event (not (fn-auth-sessionp (aut-p-bad-tls-reader))))
 (assert-event (not (equal (in-arena-aut-pinned *aut-arena* (aut-p-bad-tls-reader) "POST")
                           (in-arena-aut-delegated *aut-arena* (aut-p-bad-tls-reader) "POST"))))
@@ -2609,7 +2609,7 @@
 ; D2 dropped: the reader's fields, handshaking.
 (defmacro aut-p-hs-reader ()
   '(fn-auth-make-session (fn-auth-session-base (aut-p-reader)) *aut-p-policy*
-                         *aut-name* *aut-principal* nil t))
+                         *aut-name* *aut-principal* nil t nil))
 (assert-event (fn-auth-sessionp (aut-p-hs-reader)))
 (assert-event (not (equal (in-arena-aut-pinned *aut-arena* (aut-p-hs-reader) "POST")
                           (in-arena-aut-delegated *aut-arena* (aut-p-hs-reader) "POST"))))

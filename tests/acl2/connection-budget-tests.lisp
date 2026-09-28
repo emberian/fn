@@ -26,8 +26,8 @@
 ; 336 KiB outside it.
 (assert-event (equal (fn-cbud-conn-heap-octets *cbt-article*) 107520))
 (assert-event (equal (fn-cbud-conn-native-octets t) 344064))
-(assert-event (equal (fn-cbud-conn-octets *cbt-article* t) 451584))
-(assert-event (equal (fn-cbud-conn-octets *cbt-article* nil) 320512))
+(assert-event (equal (fn-cbud-conn-octets *cbt-article* t) 566272))
+(assert-event (equal (fn-cbud-conn-octets *cbt-article* nil) 435200))
 (assert-event (equal (fn-cbud-base-octets *cbt-hneed* *cbt-core* *cbt-threads* *cbt-stack*)
                      1218363392))
 

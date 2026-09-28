@@ -36,7 +36,7 @@
                                             (if authenticatedp
                                                 (make-list 32 :initial-element 1)
                                               nil)
-                                            nil nil)
+                                            nil nil nil)
                       nil nil nil))
                6 8 nil nil nil nil nil nil
                (fn-own-sub-make-author 5 0 0 nil (if authenticatedp login nil)
@@ -69,7 +69,7 @@
                       5 0 0 nil
                       (fn-auth-make-session nil nil *lbt-other-login*
                                             (make-list 32 :initial-element 2)
-                                            nil nil)
+                                            nil nil nil)
                       nil nil nil))
                6 8 nil nil nil nil nil nil
                (fn-own-sub-make-author 5 0 0 nil *lbt-login*

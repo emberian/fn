@@ -76,6 +76,15 @@ case $(uname -s) in
   *) FN_LZ4_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-lz4.so ;;
 esac
 export FN_LZ4_LIBRARY
+# The COMPRESS DEFLATE outbound compressor (vendored zlib 1.3.2,
+# third_party/zlib/UPSTREAM.txt), built into the same lib/
+# (host/native/deflate.lisp); ACL2 decodes every inbound stream.
+sh tools/build_deflate.sh "$LIBDIR" >&2
+case $(uname -s) in
+  Darwin) FN_DEFLATE_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-deflate.dylib ;;
+  *) FN_DEFLATE_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-deflate.so ;;
+esac
+export FN_DEFLATE_LIBRARY
 # BLAKE3 (fn's digest) is the vendored C behind host/native/fn-blake3.c,
 # built beside it; host/native/digest.lisp loads it at build and every start.
 sh tools/build_blake3.sh "$LIBDIR" >&2
