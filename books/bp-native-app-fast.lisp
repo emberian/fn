@@ -9,6 +9,7 @@
 (include-book "store-files-traces")
 (include-book "history-columns-relation")
 (local (include-book "bp-receiver-state-invariants"))
+
 (set-verify-guards-eagerness 0)
 
 ; Fast counterparts of the receiver transitions.  These are deliberately

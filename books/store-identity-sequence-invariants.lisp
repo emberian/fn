@@ -2,6 +2,12 @@
 (in-package "ACL2")
 (include-book "store-node-resolution")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-replay-apply-carried-verdict)
+                          (:definition fn-replay-apply-revoked-verdict)
+                          (:definition fn-replay-identity-loop))))
+
 ; The v6 Store constructor appends a derived event index.  Keep its journal
 ; cursor selector explicit here so reservation and abort proofs do not unfold
 ; the whole 14-field constructor after a node update.
@@ -465,3 +471,10 @@
                             fn-sn-make-v6)))))
 
 (in-theory (disable fn-sn-identity-sequencep))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-replay-identity-ok-next-is-record-count)))

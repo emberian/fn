@@ -25,6 +25,7 @@
 ; fn-bpi-finish-prepared carries it too and discharges its nested calls from
 ; fn-sn-io-preserves-state and fn-sn-finish-preserves-state.
 (local (include-book "store-node-invariants"))
+
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary

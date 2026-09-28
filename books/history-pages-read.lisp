@@ -15,6 +15,18 @@
 (in-package "ACL2")
 (include-book "history-pages-row")
 (local (include-book "arithmetic/top" :dir :system))
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-scc-atom-octets)
+                          (:definition fn-scc-nat-octets)
+                          (:definition fn-scc-octet-listp)
+                          (:definition fn-scc-program)
+                          (:definition fn-scc-string-octets)
+                          (:linear fn-cp-id-length-bound)
+                          (:rewrite fn-scc-octet-listp-facts . 1)
+                          (:rewrite fn-sccb-scc-octetp-is-cbor-octetp))))
+
 ; -----------------------------------------------------------------------------
 ; D. The reads as the host calls them: need-verdicts, never a fill.
 

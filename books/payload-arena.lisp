@@ -66,6 +66,12 @@
 (in-package "ACL2")
 (include-book "payload-arena-extent-logic")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-arn-extent-guardp)
+                          (:definition fn-arn-lz-guardp)
+                          (:rewrite fn-arn-payload-listp-true-listp))))
+
 ; -----------------------------------------------------------------------------
 ; The list-backed reference foundation.
 

@@ -1079,3 +1079,13 @@
 ; served-step facts above are the exported K2 interface.
 (in-theory (disable fn-auth-fold-post-awaiting fn-auth-fold-safe-connp
                     fn-auth-fold-no-local-effectsp fn-auth-fold-fed-conn))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-auth-fold-peer-delegate-starts-post-awaiting-only-on-post)
+                    (:rewrite fn-auth-fold-peer-step-starts-post-awaiting-only-on-post)
+                    (:rewrite fn-auth-fold-post-step-starts-awaiting-only-on-post)
+                    (:rewrite fn-auth-fold-reader-offer-has-a-post-command-origin)))

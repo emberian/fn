@@ -10,6 +10,7 @@
 (in-package "ACL2")
 (include-book "hybrid-carrier")
 (include-book "injection-invariants")
+
 ;
 ; THE RELATION.  For a stored record `stored' that is this agent's injection
 ; of `source' with neither the Message-ID nor the Date generated (which

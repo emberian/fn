@@ -111,6 +111,18 @@ if grep -q -E 'ACL2 Error|HARD ACL2 ERROR|ABORTING from raw Lisp|Uncertified' "$
     openssl_hint
     exit 1
 fi
+# Every book loads its compiled file.  Without one ACL2 processes the book's
+# events and compiles each definition in core, and SBCL keeps every such
+# definition's source form in the image: 114 books without a .fasl grew the
+# production core by 8.9 MB (image-growth, 2026-09-28; the cache had lost
+# them, tools/certs.py install_entry/write_entry).  Recertify the named books
+# (tools/certify_books.py --recertify BOOK) so the cache holds their .fasl.
+if grep -q -E 'Unable to (complete )?load (of )?compiled file' "$LOG"; then
+    echo "build_native_host: books loaded without their compiled file (.fasl) in $LOG:" >&2
+    grep -A2 -E 'Unable to (complete )?load (of )?compiled file' "$LOG" \
+        | tr -d '\\\n' | grep -o -E '/[^ ]*\.lisp' | sort -u | head -20 >&2
+    exit 1
+fi
 if ! grep -q 'FN_NATIVE_BUILD_LOADED' "$LOG"; then
     echo "build_native_host: ready marker missing from $LOG" >&2
     exit 1

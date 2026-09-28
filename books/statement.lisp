@@ -45,7 +45,6 @@
 ; and see them only through the seam's constraints (plan 2026-09-22 §4.1).
 (include-book "statement-seam")
 
-
 ;; Convergence: the codecs cluster withdraws its proof vocabulary on export;
 ;; re-open it locally (agreed on the deputy board, codecs ANSWER to substrate).
 (local (in-theory (enable fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary fn-record-invariants-vocabulary)))

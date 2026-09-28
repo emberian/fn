@@ -7,6 +7,14 @@
 (include-book "store-node")
 (include-book "records-seam")
 (include-book "topic-history-identity-disjoint")
+
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-replay-apply-carried-verdict)
+                          (:definition fn-replay-apply-revoked-verdict)
+                          (:definition fn-replay-identity-loop)
+                          (:definition fn-replay-verdict-pairs))))
+
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-record-p and the record accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
@@ -2059,3 +2067,10 @@
                             (suffix (last records)))
                  (:instance fn-snt-but-last-append-last-total (xs records)))
            :in-theory (disable fn-sf-history-recoverablep fn-sf-but-last))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-sn-new-success-requires-actual-matching-durable-node-completion)))

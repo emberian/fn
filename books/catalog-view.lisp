@@ -412,3 +412,10 @@
   :hints (("Goal" :in-theory (disable fn-cat-view-find fn-cat-view-last-visible fn-cvl-range-split-top)
            :use ((:instance fn-cvl-view-find-is-range (i (fn-cat-count fn-cat)))
                  (:instance fn-cvl-range-is-seqs-for (k 0) (c fn-cat))))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-nntp-index-msgid-okp-stringp)))

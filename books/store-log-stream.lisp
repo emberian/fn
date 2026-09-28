@@ -39,6 +39,13 @@
 (include-book "store-log-kernel-concrete")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-lg-entry-okp)
+                          (:definition fn-lg-scan)
+                          (:rewrite fn-lgc-consp-nthcdr)
+                          (:rewrite fn-lgc-octets-true-listp))))
+
 ; -----------------------------------------------------------------------------
 ; The stream's state: (:lgw POS PREV COUNT NEXT STOP BROKEN)
 
@@ -600,3 +607,10 @@
 
 (in-theory (disable fn-lgw-segment-records fn-lgw-segment-last
                     fn-lgw-open-chain-records fn-lgw-open-chain-last))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-lgw-slice-when-not-declared)))

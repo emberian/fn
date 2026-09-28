@@ -16,6 +16,10 @@
 (include-book "../../books/payload-arena")
 (include-book "must-fail-checked")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-arn-extent-guardp))))
+
 (assert-event
  (and (eq (symbol-class 'fn-arena$x-count (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arena$x-payload-len (w state)) :common-lisp-compliant)

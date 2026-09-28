@@ -15,6 +15,12 @@
 (in-package "ACL2")
 (include-book "byte-store-relation")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-bs-keys-belowp)
+                          (:definition fn-bs-op-listp)
+                          (:definition fn-bs-opp))))
+
 (defconst *fn-bsi-lock-name* "writer.lock")
 (defconst *fn-bsi-config-record-name* "00000001.cfg")
 

@@ -13,6 +13,11 @@
 (in-package "ACL2")
 (include-book "wire")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-wire-octet-listp)
+                          (:rewrite fn-wire-octet-listp-cdr))))
+
 ; books/wire.lisp made its three records opaque and withdrew its step
 ; vocabulary at its export event.  This book is the one place that reasons
 ; about how a step composes -- how the result record's state and events and the
@@ -945,3 +950,11 @@
     fn-wire-suffixp-implies-length-bound fn-wire-octet-list-is-true-list))
 
 (in-theory (disable fn-wire-invariants-vocabulary fn-wire-drive))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-wire-next-event-needs-input)
+                    (:rewrite fn-wire-next-loop-event-needs-input)))

@@ -459,3 +459,16 @@
 (verify-guards fn-bpf-unfragment-block)
 (verify-guards fn-bpf-starts)
 (verify-guards fn-bpf-fragment-primaries)
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-bpf-canvas)
+                    (:definition fn-bpf-cell-at)
+                    (:definition fn-bpf-fragment-listp)
+                    (:definition fn-bpf-fragmentp)
+                    (:rewrite fn-bpf-fragment-listp-car-and-cdr)
+                    (:rewrite fn-bpf-fragment-listp-is-a-true-list)
+                    (:rewrite fn-bpf-fragmentp-fields)))

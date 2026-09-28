@@ -6,6 +6,7 @@
 (include-book "bp-fragment-fast")
 (include-book "bp-fragment-invariants")
 (include-book "bp-fragment-sweep")
+
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpnf-family-member (x xs)
@@ -247,3 +248,10 @@
   :hints (("Goal"
            :in-theory '(fn-bpnf-fragment-query fn-bpnf-active-set
                         fn-bpnf-receive-proposal-does-not-install-held))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-bpnf-offset-zero-source)))

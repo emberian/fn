@@ -69,25 +69,10 @@
 ; accumulated-persistence over this whole book (2026-09-28, lane d26-books)
 ; found each of these tried thousands of times and useful never: together
 ; more than half the book's frames.  None is cited below.
-(local (in-theory (disable fn-nntp-article-idp-is-consp
-                           fn-scat-article-idp-is-msgid-idp
-                           fn-cp-id-length-bound
-                           fn-nntp-index-msgid-okp-stringp
-                           fn-digest-octetsp-implies-octet-listp
-                           fn-nntp-response-text-true-listp
+(local (in-theory (disable fn-nntp-index-msgid-okp-stringp
                            fn-scat-car-le-last
-                           fn-oct-bufp-true-listp
-                           fn-nntp-clean-line-is-response-text
-                           fn-stxa-is-no-other-wire-event
-                           fn-bs-stxa-is-no-other-wire-event
-                           fn-scc-octet-listp-true
                            fn-scc-octet-listp-facts
-                           fn-arn-payload-listp-true-listp
-                           fn-record-accepted-input-length
-                           fn-bs-natural-head-is-no-other-wire-event
-                           fn-cp-take-append-prefix
-                           fn-hf-split-index-bound
-                           fn-cp-idp-true-listp)))
+                           fn-cp-take-append-prefix)))
 
 (defthm fn-scjs-invp-of-same-fields
   (implies (and (equal (fn-own-store o2) (fn-own-store o))

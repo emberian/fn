@@ -49,13 +49,6 @@
 (in-package "ACL2")
 (include-book "catalog-record")
 
-; Rules of the included world that this book's proofs try on every consp,
-; true-listp or nonempty goal and never use (accumulated-persistence over the
-; whole book, 2026-09-28, lane d26-books).  None is cited below.
-(local (in-theory (disable fn-ctl-authorize-execute-is-nonempty
-                           fn-arn-payload-listp-true-listp
-                           fn-oct-bufp-true-listp)))
-
 ; -----------------------------------------------------------------------------
 ; Held record helpers: a row's number in a group, and the three row updates
 ; that keep its keys (Message-ID, numbers, facts).
@@ -4115,3 +4108,10 @@
                 (< seq (len fn-cat)))
            (fn-held-listp (fn-cat-redecide seq context fn-cat)))
   :hints (("Goal" :in-theory (enable fn-cat-redecide-is-update-nth))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-scat-msgid-idp)))

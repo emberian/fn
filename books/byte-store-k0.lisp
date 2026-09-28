@@ -26,6 +26,7 @@
 (in-package "ACL2")
 (include-book "byte-store-record-provenance")
 (include-book "byte-store-record-fence")
+
 (defun fn-bs-k0c-ind (k bs ks steps outs g c)
   (declare (xargs :measure (acl2-count steps) :verify-guards nil))
   (if (or (zp k) (atom steps)) (list bs ks outs g c)

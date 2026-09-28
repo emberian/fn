@@ -34,6 +34,7 @@
 (include-book "records-canonicality")
 (include-book "frame-invariants")
 (local (include-book "arithmetic/top" :dir :system))
+
 ; The codecs cluster withdrew its vocabulary at export (2026-09-19).  These
 ; proofs induct with the CBOR u16/u32 byte facts, so the book re-enables
 ; that one bundle.  It does NOT re-enable fn-record-record-vocabulary or

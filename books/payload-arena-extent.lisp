@@ -40,6 +40,15 @@
 (include-book "payload-arena-paged")
 (include-book "payload-arena-extent-logic")
 
+;; Rules withdrawn at their source that this book's proofs use
+;; (lane rule-hygiene, tools/rule_cost.py).
+(local (in-theory (enable (:definition fn-arn-extent-guardp)
+                          (:definition fn-arn-extentp)
+                          (:definition fn-arn-lz-extentp)
+                          (:definition fn-arn-lz-guardp)
+                          (:rewrite fn-arn-payload-listp-true-listp)
+                          (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1))))
+
 (defstobj fn-arena$x
   (fn-arena$x-inner :type fn-arena-paged)
   (fn-arena$x-ext :type (array t (0)) :initially 0 :resizable t)

@@ -32,6 +32,7 @@
 (in-package "ACL2")
 (include-book "owner-prepare-outcome")
 (include-book "consumer-store-invariants")
+
 (local
  (defthm fn-pout-consumer-frontier-of-replay
    (implies (and (equal (fn-cpe-projection-replay nil records 0) (list :ok c)) c)
