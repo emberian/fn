@@ -223,6 +223,8 @@
 (include-book "../../books/owner-identity-served")
 (include-book "../../books/owner-prepare-outcome")
 (include-book "../../books/owner-feed-port")
+(include-book "../../books/feed-link-backoff")
+(include-book "../../books/feed-pause")
 (include-book "../../books/served-catalog-owner")
 (include-book "../../books/owner-prepare-correspondence")
 (include-book "../../books/owner-store-budget")
