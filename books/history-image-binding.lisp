@@ -168,7 +168,8 @@
 
 (defun-nx fn-hib-tabs (p n h c)
   ; entries P..N-1 of the loaded table name the digests of H's image pages
-  (declare (xargs :measure (nfix (- (nfix n) (nfix p)))))
+  (declare (xargs :measure (nfix (- (nfix n) (nfix p)))
+                  :hints (("Goal" :in-theory (disable fn-hrs-image-page pgs-x-get-entry fn-hib-page-digest)))))
   (if (zp (- (nfix n) (nfix p)))
       t
     (and (equal (third (pgs-x-get-entry 2 0 (nfix p) (fn-hrc-pgs c)))
@@ -178,7 +179,8 @@
 (defun-nx fn-hib-nc (file p n h c)
   ; pages P..N-1: the words the page file holds at the address the table
   ; names are H's image page, or their digest is not that page's
-  (declare (xargs :measure (nfix (- (nfix n) (nfix p)))))
+  (declare (xargs :measure (nfix (- (nfix n) (nfix p)))
+                  :hints (("Goal" :in-theory (disable fn-hrs-image-page pgs-x-get-entry fn-hib-page-digest)))))
   (if (zp (- (nfix n) (nfix p)))
       t
     (and (let ((w (fn-pgs-page-words file (first (pgs-x-get-entry 2 0 (nfix p) (fn-hrc-pgs c)))))
@@ -301,6 +303,15 @@
 ; C. The read loop over the adopted image: faithful, and progress without any
 ; relation to the disk.
 
+(defthm fn-hib-fill-keeps-all
+  (implies (and (fn-hrc-wfp c) (fn-hrs-rel h c) (natp p)
+                (fn-hib-root-holds h c) (fn-hib-disk-bound file h c))
+           (let ((c2 (mv-nth 1 (fn-hrc-fill p (fn-pgs-fill-realize file (fn-hrc-phys p c)) c))))
+             (and (fn-hrc-wfp c2) (fn-hrs-rel h c2) (fn-hib-root-holds h c2) (fn-hib-disk-bound file h c2))))
+  :hints (("Goal" :use ((:instance fn-hib-fill-rel)
+                        (:instance fn-hib-root-holds-of-fill (words (fn-pgs-fill-realize file (fn-hrc-phys p c)))))
+           :in-theory (theory 'minimal-theory))))
+
 (defthm fn-hib-get-keeps
   (implies (and (fn-hrc-wfp c) (fn-hrs-rel h c) (fn-hib-root-holds h c) (fn-hib-disk-bound file h c) (natp seq))
            (let ((r (fn-hrc-get seq file fuel c)))
@@ -311,14 +322,16 @@
                   (implies (equal (mv-nth 0 r) :ok)
                            (equal (mv-nth 1 r) (if (< seq (len h)) (list :ok (nth seq h)) (list :refused :seq)))))))
   :hints (("Goal" :induct (fn-hrc-get seq file fuel c)
-           :in-theory (e/d (fn-hrc-get) (fn-hrc-at fn-hrc-fill fn-hrc-phys fn-hrc-wfp fn-hrs-rel fn-hib-root-holds fn-hib-disk-bound
-                               fn-hrc-fill-shape fn-hrs-fill-pgs fn-hib-fill-rel fn-hrc-at-is-nth fn-pgs-fill-realize-is-page-words floor mod)))
-          ("Subgoal *1/1" :use ((:instance fn-hib-fill-rel (p (cadr (mv-nth 0 (fn-hrc-at seq c))))) (:instance fn-hrc-at-is-nth (fn-hrecs$c c))))
-          ("Subgoal *1/2" :use ((:instance fn-hib-fill-rel (p (cadr (mv-nth 0 (fn-hrc-at seq c))))) (:instance fn-hrc-at-is-nth (fn-hrecs$c c))))
-          ("Subgoal *1/3" :use ((:instance fn-hib-fill-rel (p (cadr (mv-nth 0 (fn-hrc-at seq c))))) (:instance fn-hrc-at-is-nth (fn-hrecs$c c))))
-          ("Subgoal *1/4" :use ((:instance fn-hib-fill-rel (p (cadr (mv-nth 0 (fn-hrc-at seq c))))) (:instance fn-hrc-at-is-nth (fn-hrecs$c c))))
-          ("Subgoal *1/5" :use ((:instance fn-hib-fill-rel (p (cadr (mv-nth 0 (fn-hrc-at seq c))))) (:instance fn-hrc-at-is-nth (fn-hrecs$c c))))
-          ("Subgoal *1/6" :use ((:instance fn-hib-fill-rel (p (cadr (mv-nth 0 (fn-hrc-at seq c))))) (:instance fn-hrc-at-is-nth (fn-hrecs$c c))))))
+  :in-theory (set-difference-theories
+              (union-theories '(fn-hrc-get (:induction fn-hrc-get) fn-hib-fill-keeps-all car-cons cdr-cons eq zp (:e zp)
+                                natp (:e natp) (:e equal) (:e car) (:e cdr))
+                              (theory 'minimal-theory))
+              '(mv-nth)))
+ ("Subgoal *1/5" :use ((:instance fn-hrc-at-is-nth (fn-hrecs$c c))))
+ ("Subgoal *1/4" :use ((:instance fn-hrc-at-is-nth (fn-hrecs$c c))))
+ ("Subgoal *1/3" :use ((:instance fn-hrc-at-is-nth (fn-hrecs$c c))))
+ ("Subgoal *1/2" :use ((:instance fn-hrc-at-is-nth (fn-hrecs$c c))))
+ ("Subgoal *1/1" :use ((:instance fn-hrc-at-is-nth (fn-hrecs$c c))))))
 
 (defthm fn-hib-serve-p
   (implies (and (fn-hrecs-p st) (natp p))
@@ -596,6 +609,26 @@
  (defthm fn-hib-nthcdr-len
    (implies (true-listp h) (equal (nthcdr (len h) h) nil))))
 
+(defthm fn-hib-adopt-shape
+  (let* ((c1 (mv-nth 1 (fn-hib-open-root file rec c)))
+         (np (pgs-rec-npages rec))
+         (c1f (mv-nth 1 (fn-hrc-fill 0 (fn-pgs-fill-realize file (fn-hrc-phys 0 c1)) c1)))
+         (hd (fn-hp-x-header np (fn-hrc-pgs c1f)))
+         (r (fn-hib-adopt file rec salt count c)))
+    (implies (not (mv-nth 0 r))
+             (and (not (mv-nth 0 (fn-hib-open-root file rec c)))
+                  (< 0 np)
+                  (equal (mv-nth 0 (fn-hrc-fill 0 (fn-pgs-fill-realize file (fn-hrc-phys 0 c1)) c1)) :ok)
+                  (equal (mv-nth 0 hd) :ok)
+                  (fn-hib-headerp (mv-nth 1 hd))
+                  (equal (nth 1 (mv-nth 1 hd)) count)
+                  (equal (mv-nth 1 r)
+                         (fn-hrc-adopt salt count (nth 2 (mv-nth 1 hd)) (nth 3 (mv-nth 1 hd)) np (pgs-rec-txid rec) c1f)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-hib-adopt fn-hib-header mv-nth car-cons cdr-cons zp (:e zp) eq (:e equal)
+                                               (:e not) (:t pgs-rec-npages) natp)
+                                             (theory 'minimal-theory))))
+  :rule-classes nil)
+
 ; KEYSTONE (adoption ESTABLISHES faithfulness).  When the root the host
 ; opens holds H's image -- its tables name the digests of H's placed image
 ; pages (the snapshot of H committed it; section G ties the root to the
@@ -622,18 +655,22 @@
                   (fn-hib-root-holds h c2)
                   (fn-hib-disk-bound file h c2))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hib-open-root-pgs) (:instance fn-hrc-fill-wfp (p 0) (fn-hrecs$c (mv-nth 1 (fn-hib-open-root file rec c))) (words (fn-pgs-fill-realize file (fn-hrc-phys 0 (mv-nth 1 (fn-hib-open-root file rec c))))))
-                 (:instance fn-hib-adopt-fill-vhold (c1 (mv-nth 1 (fn-hib-open-root file rec c))) (np (pgs-rec-npages rec))
-                            (iw (fn-hp-piw h salt starts (pgs-rec-npages rec))))
-                 (:instance fn-hp-x-header-is-placed (np (pgs-rec-npages rec))
-                            (pgs-mem (fn-hrc-pgs (mv-nth 1 (fn-hrc-fill 0 (fn-pgs-fill-realize file (fn-hrc-phys 0 (mv-nth 1 (fn-hib-open-root file rec c))))
-                                                                         (mv-nth 1 (fn-hib-open-root file rec c))))))))
-           :in-theory (e/d (fn-hib-adopt fn-hib-header fn-hrs-rel fn-hrs-img-ok fn-hib-root-holds fn-hib-disk-bound
-                            fn-hib-tabs-is-tw fn-hib-nc-is-nw)
-                           (fn-hib-open-root-pgs fn-hib-adopt-fill-vhold fn-hp-x-header-is-placed
-                            fn-hib-open-root fn-hrc-fill fn-hrc-fill-shape fn-hrc-phys fn-hrc-adopt fn-hp-x-header
-                            fn-hp-piw fn-hp-piw-caps-extend fn-hp-placement-mono fn-hp-wreps-commute fn-hp-hdr2 adt-zeros (:e adt-zeros) (:e fn-hp-hdr2) fn-hp-okp fn-hp-lens pgs-rec-npages pgs-rec-txid fn-pgs-fill-realize-is-page-words fn-hp-starts-okp adt-placement-ok fn-hp-vhold
-                            fn-hib-tw fn-hib-nw fn-hrc-wfp take nthcdr resize-list nth adt-nth-0 adt-nth-1+)))))
+  :use ((:instance fn-hib-adopt-shape)
+        (:instance fn-hib-open-root-pgs)
+        (:instance fn-hib-open-root-wfp (fn-hrecs$c c))
+        (:instance fn-hrc-fill-wfp (p 0) (fn-hrecs$c (mv-nth 1 (fn-hib-open-root file rec c)))
+                   (words (fn-pgs-fill-realize file (fn-hrc-phys 0 (mv-nth 1 (fn-hib-open-root file rec c))))))
+        (:instance fn-hib-adopt-fill-vhold (c1 (mv-nth 1 (fn-hib-open-root file rec c))) (np (pgs-rec-npages rec))
+                   (iw (fn-hp-piw h salt starts (pgs-rec-npages rec))))
+        (:instance fn-hp-x-header-is-placed (np (pgs-rec-npages rec))
+                   (pgs-mem (fn-hrc-pgs (mv-nth 1 (fn-hrc-fill 0 (fn-pgs-fill-realize file (fn-hrc-phys 0 (mv-nth 1 (fn-hib-open-root file rec c))))
+                                                                (mv-nth 1 (fn-hib-open-root file rec c))))))))
+  :in-theory (set-difference-theories (union-theories '(fn-hrs-rel fn-hrs-img-ok fn-hib-root-holds fn-hib-disk-bound fn-hib-tabs-is-tw fn-hib-nc-is-nw
+                               fn-hib-adopt-fields fn-hib-adopt-wfp fn-hib-sfx-list-empty fn-hib-take-len fn-hib-nthcdr-len
+                               fn-hib-okp-true-listp fn-hib-headerp fn-hrs-true-listp-piw
+                               car-cons cdr-cons nth-0-cons nth-add1 (:e zp) zp (:e equal) natp (:t pgs-rec-npages)
+                               (:t pgs-rec-txid) (:t len) len (:e len) true-listp)
+                             (theory 'minimal-theory)) '(mv-nth)))))
 
 ; -----------------------------------------------------------------------------
 ; E. Asynchronous page faults: a need becomes a request bound to the active
@@ -767,7 +804,9 @@
 (defthm fn-hib-v-length-of-clear
   (implies (and (natp p) (< p (pgs-v-length m)))
            (equal (pgs-v-length (update-pgs-vi p v m)) (pgs-v-length m)))
-  :hints (("Goal" :in-theory (enable pgs-v-length update-pgs-vi))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-v-length update-pgs-vi update-nth-array len-update-nth nth-update-nth
+                                               (:e nth) nfix natp max (:t len))
+                                             (theory 'minimal-theory)))))
 
 (defthm fn-hib-tw-of-clear
   (equal (fn-hib-tw s n iw (update-pgs-vi p v m)) (fn-hib-tw s n iw m))
@@ -1038,6 +1077,24 @@
 (defun-nx fn-hib-chain-distinct (t0 e1 e2)
   (implies (equal (fn-hib-chain t0 e1) (fn-hib-chain t0 e2)) (equal e1 e2)))
 
+(defthm fn-hib-open-landed
+  (implies (not (mv-nth 0 (fn-hib-open b node salt trail slots file c)))
+           (and (not (fn-hib-check b node salt trail))
+                (equal (fn-hib-open b node salt trail slots file c)
+                       (fn-hib-adopt file (fn-hib-b-rec b) (fn-hib-b-salt b) (fn-hib-b-count b) c))))
+  :hints (("Goal" :in-theory (set-difference-theories
+                              (union-theories '(fn-hib-open car-cons cdr-cons (:e not)) (theory 'minimal-theory))
+                              '(mv-nth fn-hib-check fn-hib-select fn-hib-adopt))))
+  :rule-classes nil)
+
+(defthm fn-hib-check-ok
+  (implies (not (fn-hib-check b node salt trail))
+           (and (natp (fn-hib-b-salt b)) (natp (fn-hib-b-count b)) (equal (fn-hib-b-trail b) trail)))
+  :hints (("Goal" :in-theory (union-theories '(fn-hib-check fn-hib-bindingp fn-hib-b-salt fn-hib-b-count fn-hib-b-trail
+                                               (:e zp) zp (:e not) (:e equal) len (:e len) natp)
+                                             (theory 'minimal-theory))))
+  :rule-classes nil)
+
 ; KEYSTONE (exact prefix binding).  When the open accepts a binding whose
 ; TRAIL is the chain value of the log entries its snapshot covered (EW), and
 ; the log's chain value at that prefix is its entries' (EL), the snapshot
@@ -1095,13 +1152,13 @@
                   (equal (len hw) (fn-hib-b-count b))
                   (equal ew el))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hib-open-binds-prefix)
-                 (:instance fn-hib-adopt-establishes (h hw) (rec (fn-hib-b-rec b)) (salt (fn-hib-b-salt b))
-                            (count (fn-hib-b-count b))))
-           :in-theory (union-theories '(fn-hib-open fn-hib-check fn-hib-select fn-hib-root-is-image fn-hib-file-bound
-                                        fn-hib-bindingp fn-hib-b-salt fn-hib-b-count natp mv-nth car-cons cdr-cons
-                                        (:e zp) zp (:e not) (:e equal) len (:e len))
-                                      (theory 'minimal-theory))))
+  :use ((:instance fn-hib-open-landed) (:instance fn-hib-check-ok)
+        (:instance fn-hib-open-binds-prefix)
+        (:instance fn-hib-adopt-establishes (h hw) (rec (fn-hib-b-rec b)) (salt (fn-hib-b-salt b))
+                   (count (fn-hib-b-count b))))
+  :in-theory (set-difference-theories
+              (union-theories '(fn-hib-root-is-image fn-hib-file-bound) (theory 'minimal-theory))
+              '(mv-nth))))
   :rule-classes nil)
 
 (defthm fn-hib-load-events-fields
@@ -1132,6 +1189,11 @@
 (defthm fn-hib-wfp-nimg
   (implies (fn-hrc-wfp c) (natp (fn-hrc-nimg c)))
   :rule-classes :forward-chaining)
+(defthm fn-hib-rel-nimg
+  (implies (fn-hrs-rel h c) (<= (fn-hrc-nimg c) (len h)))
+  :hints (("Goal" :in-theory (union-theories '(fn-hrs-rel) (theory 'minimal-theory))))
+  :rule-classes nil)
+
 ; KEYSTONE (the running state extends the prefix by the suffix).  Replaying
 ; the log's suffix Q onto the adopted image (the suffix array, no page
 ; touched) holds the prefix followed by Q, with the root and disk bound
@@ -1143,6 +1205,7 @@
                   (fn-hib-root-holds h2 c2) (fn-hib-disk-bound file h2 c2))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-hrc-load-events-rel (fn-hrecs$c c) (events q))
-                 (:instance fn-hib-root-holds-extend (x (true-list-fix q)) (c (fn-hrc-load-events q c))))
-           :in-theory (e/d (fn-hrs-rel) (fn-hrc-load-events-rel fn-hib-root-holds-extend fn-hrc-load-events fn-hib-root-holds
-                                         fn-hib-disk-bound fn-hrc-wfp fn-hrs-img-ok take nthcdr fn-hrc-sfx-list)))))
+                 (:instance fn-hib-root-holds-extend (x (true-list-fix q)) (c (fn-hrc-load-events q c)))
+                 (:instance fn-hib-rel-nimg))
+           :in-theory (union-theories '(fn-hib-load-events-fields fn-hib-root-holds-of-load-events fn-hib-wfp-nimg)
+                                      (theory 'minimal-theory)))))
