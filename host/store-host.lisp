@@ -213,12 +213,6 @@
 (defun fn-store-frame-receipt-protected (kind values)
   (fn-frame-receipt-protected kind values))
 
-(defun fn-store-frame-names-octets (names)
-  (if (consp names)
-      (cons (fn-record-string-octets (car names))
-            (fn-store-frame-names-octets (cdr names)))
-    nil))
-
 (defun fn-store-frame-workflow-kinds ()
   *fn-frame-workflow-kinds*)
 
