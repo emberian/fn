@@ -30,10 +30,6 @@
 (in-package "ACL2")
 (include-book "frame-trailer")
 (local (include-book "arithmetic/top" :dir :system))
-
-;; Rules withdrawn at their source that this book's proofs use
-;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:definition fn-scc-le-digits))))
 (local
  (defthm fn-scc-len-append
    (equal (len (append a b)) (+ (len a) (len b)))))

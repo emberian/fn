@@ -222,9 +222,14 @@ def rune_name(rune: str) -> str:
     return rune[1:-1].split()[1].lower()
 
 
-def definers(books: list[str]) -> dict[str, str]:
-    """Rule name (lower case) -> the book whose source defines it."""
-    owner: dict[str, str] = {}
+def definers(books: list[str]) -> dict[str, list[str]]:
+    """Rule name (lower case) -> the books whose source defines it.
+
+    Usually one; two books may define the same function identically (one is
+    then redundant where both are included: fn-scc-le-digits in the
+    checkpoint arena and codec books), and neither is exported into the
+    other."""
+    owner: dict[str, list[str]] = {}
     for book in books:
         path = ROOT / (book + ".lisp")
         if not path.exists():
@@ -235,11 +240,13 @@ def definers(books: list[str]) -> dict[str, str]:
         # disable of it at that book's end would fail on include).
         for event in parsed.theorems + parsed.functions:
             if not event.local:
-                owner.setdefault(str(event.name).lower(), book)
+                names = owner.setdefault(str(event.name).lower(), [])
+                if book not in names:
+                    names.append(book)
     return owner
 
 
-def rank(logs: list[Path], owner: dict[str, str]) -> dict:
+def rank(logs: list[Path], owner: dict[str, list[str]]) -> dict:
     per_book: dict[str, dict] = {}
     totals: dict[str, dict] = defaultdict(lambda: {
         "useless": 0, "useful": 0, "frames": 0, "tries": 0,
@@ -253,9 +260,10 @@ def rank(logs: list[Path], owner: dict[str, str]) -> dict:
         frames_all = sum(r["frames"] for r in parsed["runes"].values())
         exported = 0
         for rune, value in parsed["runes"].items():
-            source = owner.get(rune_name(rune))
-            if source is None or source == book:
+            sources = owner.get(rune_name(rune)) or []
+            if not sources or book in sources:
                 continue
+            source = sources[0]
             exported += value["useless"]
             row = totals[rune]
             row["definer"] = source

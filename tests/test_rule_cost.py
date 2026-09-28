@@ -49,8 +49,8 @@ class RuleCostTest(unittest.TestCase):
         self.assertEqual(parsed["runes"]["(:TYPE-PRESCRIPTION FN-A-IS-CONSP)"]["useful"], 490)
 
     def test_rank_counts_only_rules_another_fn_book_defines(self):
-        owner = {"fn-a-is-consp": "books/a", "fn-a-true-listp": "books/a",
-                 "fn-b-own": "books/b"}
+        owner = {"fn-a-is-consp": ["books/a"], "fn-a-true-listp": ["books/a"],
+                 "fn-b-own": ["books/a", "books/b"]}
         with tempfile.TemporaryDirectory() as scratch:
             log = Path(scratch) / "b.log"
             log.write_text(LOG, encoding="utf-8")
