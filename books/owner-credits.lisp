@@ -148,7 +148,7 @@
 ;; closed and answered 400 (books/owner-article-slots.lisp
 ;; fn-oas-posting-off-read, fn-oas-close-result; lane admission-gap split the
 ;; former fn-oas-refused-read into those two, batch BB 2026-09-28).
-(defun fn-mca-refused-read (oc views id i end s fn-octets fn-arena fn-cat)
+(defun fn-mca-refused-read (oc views id i end cache s fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets))
@@ -171,7 +171,7 @@
                             (fn-mca-need (fn-own-tls-result-owner r0) id reserve))))
     (if (equal (car d0) :ok)
         (cons r0 (cadr d0))
-      (let* ((r1 (fn-mca-refused-read oc views id i end s fn-octets fn-arena fn-cat))
+      (let* ((r1 (fn-mca-refused-read oc views id i end cache s fn-octets fn-arena fn-cat))
              (d1 (fn-mcr-resize credits key
                                 (fn-mca-need (fn-own-tls-result-owner r1) id reserve))))
         (if (equal (car d1) :ok)
@@ -386,7 +386,7 @@
                  (:instance fn-mcr-resize-sets-the-credit (l credits) (a nil)
                             (id (fn-mca-conn-key id))
                             (n (fn-mca-need (fn-own-tls-result-owner
-                                             (fn-mca-refused-read oc views id i end s
+                                             (fn-mca-refused-read oc views id i end cache s
                                                                   fn-octets fn-arena fn-cat))
                                             id reserve)))
                  (:instance fn-mcr-resize-sets-the-credit (l credits) (a nil)
