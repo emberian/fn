@@ -453,6 +453,46 @@ def workload(a):
 
     import threading
     log_lock = threading.Lock()
+    # --observe (lane durability-bugs): a reader polls GROUP/OVER while the
+    # posters run and marks every (number, Message-ID) the first time it is
+    # SERVED, after the reply.  A mark before a cut is a number some reader
+    # saw before the power went: the cut's oracle requires it held by the
+    # same Message-ID after recovery and below every fresh POST's number
+    # (a number once issued is never issued again, books/number-durability).
+    seen_numbers = {}
+    observe_stop = threading.Event()
+
+    def observer():
+        while not observe_stop.is_set():
+            try:
+                c = m.Conn(port)
+                try:
+                    while not observe_stop.is_set():
+                        for n, mid in read_overview(c):
+                            if n not in seen_numbers:
+                                seen_numbers[n] = mid
+                                with log_lock:
+                                    mark("seen-%d" % n)
+                                    out_line(log, tag="seen", n=n, mid=mid)
+                        time.sleep(0.01)
+                finally:
+                    c.close()
+            except Exception:  # noqa: BLE001 - the owner is between runs
+                time.sleep(0.1)
+
+    def observing(fn):
+        def run(*args):
+            if not a.observe:
+                return fn(*args)
+            observe_stop.clear()
+            t = threading.Thread(target=observer, daemon=True)
+            t.start()
+            try:
+                return fn(*args)
+            finally:
+                observe_stop.set()
+                t.join(timeout=30)
+        return run
 
     def post_range(lo, hi, errname):
         if a.posters > 1:
@@ -559,7 +599,7 @@ def workload(a):
     bounds = [0, a.posts // 2, (3 * a.posts) // 4, a.posts]
     for k in range(3):
         mark("phase:post")
-        post_range(bounds[k], bounds[k + 1], "owner-%d.stderr" % (k + 1))
+        observing(post_range)(bounds[k], bounds[k + 1], "owner-%d.stderr" % (k + 1))
         if k < 2:
             mark("phase:compact")
             t0 = time.time()
@@ -818,12 +858,15 @@ def cuts(a):
     over = work / "reference" / "over.json"
     if over.exists():
         REF_OVER.update(json.loads(over.read_text()))
-    ack_at, refuse_at = {}, {}
+    ack_at, refuse_at, seen_at = {}, {}, {}
     for i, t in marks:
         if t.startswith("ack-"):
             ack_at[int(t[4:])] = i
         elif t.startswith("refuse-"):
             refuse_at[int(t[7:])] = i
+        elif t.startswith("seen-"):
+            seen_at.setdefault(int(t[5:]), i)
+    seen_mid = {r["n"]: r["mid"] for r in wl if r["tag"] == "seen"}
     plan = dict(x.split("=") for x in a.plan.split(","))
     plan = {k: int(v) for k, v in plan.items()}
     chosen = choose_cuts(ents, marks, {k: v for k, v in plan.items() if k != "control"}, a.seed)
@@ -881,6 +924,8 @@ def cuts(a):
             continue
         acked = sorted(i for i, at in ack_at.items() if at < cut)
         refused = sorted(i for i, at in refuse_at.items() if at < cut)
+        ctx["observed"] = {n: seen_mid[n] for n, at in seen_at.items()
+                           if at < cut and n in seen_mid}
         if phase == "control":
             acked.append(controls[cut])
         if phase == "stmtcontrol":
@@ -962,7 +1007,7 @@ def evaluate(ctx, img, rec, phase, acked, refused, attempted, violations):
         rec.update(check_store(ctx["image"], ctx["cfg"], ctx["port"], ctx["work"], phase, acked,
                                attempted, ctx["ref"], ctx["ref2"], violations, refused,
                                ctx.get("statements") or (), ctx.get("ref_history") or [],
-                               rec.get("pretend") or ()))
+                               rec.get("pretend") or (), ctx.get("observed") or {}))
     except Exception as e:  # a harness failure is not a verdict
         rec["harness_error"] = repr(e)[-400:]
     finally:
@@ -1118,7 +1163,7 @@ def second_cut(ctx, img, rng, violations):
 
 
 def check_store(image, cfg, port, work, phase, acked, attempted, ref, ref2, violations, refused=(),
-                stmts=(), ref_history=(), pretend=()):
+                stmts=(), ref_history=(), pretend=(), observed=None):
     rec = {}
     acked_set = set(acked)
     code, so, se = native(image, "operator", cfg, "recover")
@@ -1140,7 +1185,9 @@ def check_store(image, cfg, port, work, phase, acked, attempted, ref, ref2, viol
         return rec
     try:
         got = read_all(port, attempted)
-        rec["binding"] = bindings(port, got, acked, violations, attempted)
+        rec["binding"] = bindings(port, got, acked, violations, attempted, observed or {},
+                                  reclaimed=phase in ("reclaim", "reference-reclaimed", "end",
+                                                      "export", "import"))
     finally:
         rec["owner_stop"] = stop_owner(p, err)
     rec.update(classify(got, phase, acked_set, ref, ref2, violations))
@@ -1237,20 +1284,32 @@ def read_overview(c):
     return rows
 
 
-def bindings(port, got, acked, violations, attempted=0):
+def bindings(port, got, acked, violations, attempted=0, observed=None, reclaimed=False):
     """Identity and number stability after the cut: the newest acknowledged
     Message-ID is refused if posted again (its binding survived), and a fresh
     article takes a local number above every number the recovered store
-    serves (no allocated number is handed out twice)."""
+    serves (no allocated number is handed out twice).  OBSERVED maps every
+    number a reader was served before the cut to its Message-ID: each is
+    served with that Message-ID after recovery (or, once the reclaim ran,
+    unlisted), and the fresh number is above all of them."""
     import msgid_measure as m
     c = m.Conn(port)
     rec = {}
+    observed = observed or {}
     try:
         over = read_overview(c)
         nums = [n for n, _ in over]
         # Every number an acknowledged article ever held stays allocated,
-        # reclaimed (unlisted) or not.
-        held = nums + [REF_OVER[msgid(i)] for i in acked if msgid(i) in REF_OVER]
+        # reclaimed (unlisted) or not; so does every number a reader saw.
+        held = (nums + [REF_OVER[msgid(i)] for i in acked if msgid(i) in REF_OVER]
+                + list(observed))
+        served = dict(over)
+        rec["observed"] = len(observed)
+        for n, mid in sorted(observed.items()):
+            if n in served and served[n] != mid:
+                violations.append("observed-number-reissued:%d:%s->%s" % (n, mid, served[n]))
+            elif n not in served and not reclaimed:
+                violations.append("observed-number-lost:%d:%s" % (n, mid))
         rec["max_served"] = max(held) if held else 0
         rec["listed"] = len(over)
         if len(set(nums)) != len(nums):
@@ -1635,6 +1694,8 @@ def main(argv=None):
     w.add_argument("--posters", type=int, default=1)
     w.add_argument("--statements", type=int, default=0,
                    help="K key successions of one principal among the POSTs (lane ack-before-barrier)")
+    w.add_argument("--observe", action="store_true",
+                   help="a reader marks every number the first time it is served (lane durability-bugs)")
     i = sub.add_parser("index")
     i.add_argument("work")
     c = sub.add_parser("cuts")

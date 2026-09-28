@@ -5614,6 +5614,31 @@
         "native": true,
         "record": "planning/evidence/zero-copy-commit-2026-09-28.md"
       }
+    },
+    {
+      "id": "SCN-198",
+      "title": "Power is cut under a committing node while a reader polls GROUP/OVER; every number the reader was served before the cut is served with the same Message-ID after recovery, and a fresh POST takes a number above all of them",
+      "milestone": "M2",
+      "status": "implemented",
+      "implementation": {
+        "test": "tools/power_loss.py",
+        "cases": [],
+        "native": true,
+        "record": "planning/evidence/durability-numbers-2026-09-28.md"
+      },
+      "requirements": [
+        "OBJ-005",
+        "STO-005"
+      ],
+      "steps": [
+        "tools/power_loss.py workload --observe --posters 4: a reader thread polls GROUP fn.test and OVER 1- and writes a seen-N mark into the dm-log-writes log after the first reply serving N.",
+        "For each cut, the numbers whose seen mark precedes the cut must be served after recovery by the same Message-ID (observed-number-reissued / observed-number-lost otherwise), and the fresh POST's number is above every observed one."
+      ],
+      "evidence": [
+        "planning/evidence/durability-numbers-2026-09-28.md",
+        "tools/power_loss.py"
+      ],
+      "expected": "No observed number reissued or lost; a lost unacknowledged POST's number may be taken by the next POST (never observed)."
     }
   ]
 }

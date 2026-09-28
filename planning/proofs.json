@@ -13468,6 +13468,27 @@
         "planning/evidence/f8-reservation-2026-09-28.md"
       ],
       "progress_note": "Lane f8-reservation (2026-09-28): books/memory-credits.lisp and its test book are certified (persvati certify-20260928T171227Z-391318, hbox certify-20260928T173440Z-1769341): fn-mcr-transitions-keep-funded, fn-mcr-acquire-refuses-exactly-past-the-budget, fn-mcr-grow-within-the-reserve-is-admitted, fn-mcr-retain-moves-the-credit, fn-mcr-evict-returns-what-was-evicted, fn-mcr-overdraw-is-within-the-completion-reserve. NO EVENTS ARE CITED: no host line calls the ledger yet (reach_check), so the running server exercises none of it. The events are cited when an allocation site calls it; the first is the article slots (lane zero-copy-commit, fn-oas-read-span, PRF-377), U + R one reserve a slot. Teeth: tests/acl2/memory-credits-tests.lisp."
+    },
+    {
+      "id": "PRF-903",
+      "title": "A local article number or transaction id, once issued, is never issued again across crashes",
+      "statement": "books/number-durability.lisp. A number is ISSUED when a party outside the owner can observe it; every observation is of the completed (fenced) prefix (books/owner-reader-view.lisp fn-ocvm-reader-view-is-the-completed-prefix; replies, log lines and feed resolutions in COMPLETE). KEYSTONE fn-ndur-replay-extension-keeps-every-number: the configured replay (fn-cst-replay-node) of any history extending XS holds every (group . number) of XS's replay with the same Message-ID, below its next number. KEYSTONE fn-ndur-recovery-keeps-every-visible-number: for a live configured owner whose view (fn-ocl-view-historyp) is at a version no later than the fenced count, the host's open (fn-cpo-open-observed, the function fn-store-sn-recover-rows reaches through fn-rii-sco-extend-open) of any history extending the fenced prefix keeps every number the view shows, below the recovered next number; the log's crash theorem (fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer) gives that extension at every crash image, the decode keeps it (fn-ndur-decode-of-a-scanned-prefix). KEYSTONE fn-ndur-prepare-never-allocates-below-the-watermark: fn-accept-prepare stages no number below the state's next number. KEYSTONE fn-ndur-crash-trace-never-reissues-a-number: over any crash trace of epochs, each extending the previous one's visible prefix, a number issued in the first epoch is held by the same Message-ID in the last and below its next number. A number held only in memory by an unacknowledged, lost POST is not issued and may be given to the next article (RFC 3977 section 6: the next sequential unused number). KEYSTONE fn-ndur-recovery-never-reissues-a-logged-txid (PKT-835): every record of the fenced prefix the recovered history extends has a txid below the recovered next txid (the open's frontier); the first prepare stages it (fn-ndur-prepare-stages-the-next-txid). A txid named only by a durable FNFD feed intent whose record was never logged is not issued: the open decides the intent without its txid (PRF-269, fn-own-feed-intent-reuse-is-a-fresh-intent).",
+      "milestone": "M2",
+      "requirements": [
+        "OBJ-005",
+        "STO-005"
+      ],
+      "depends_on": [
+        "PRF-002"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/number-durability.lisp",
+        "tests/acl2/number-durability-tests.lisp",
+        "tools/power_loss.py"
+      ],
+      "progress_note": "Lane durability-bugs (row I3 item 2), 2026-09-28. Open: the premise (fn-sf-prefixp fenced recovered) is over Store rows; a live arena that sealed a payload for a POST refused after its seal numbers later payload handles differently from the fresh intern at the open, so for such runs the live and recovered rows differ in handles although the numbering reads no payload (PKT-886). Teeth: tests/acl2/number-durability-tests.lisp. The extension premise is a hypothesis here; at a crash it is T2's conclusion (fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer, under A-CRYPTO-TRAILER) on a device that honours its flushes (A-DURABILITY; the power-loss rig's model)."
     }
   ]
 }
