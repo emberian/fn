@@ -22,9 +22,10 @@
 ; owner's steps extend: owner-invariants-served fn-own-run-records-prefix).
 ;
 ; The cycle closes at the snapshot: appending the records since H to the
-; image (`fn-hp-x-append-all', what the host calls) leaves the image of
-; exactly the records the next checkpoint holds (`fn-ock-next-checkpoint',
-; the publication's; KEYSTONE fn-hpo-snapshot-image-is-next-checkpoint),
+; image (`fn-hp-x-append-all', what the host calls) -- the canonical rows
+; the publication extends its base over -- leaves the image of exactly the
+; records the next checkpoint holds (`fn-scka-next-checkpoint', the
+; publication's; KEYSTONE fn-hpo-snapshot-image-is-next-checkpoint),
 ; so the open's hypothesis -- the image holds C's records -- is what the
 ; previous snapshot established.  Scope: the image and the checkpoint are
 ; two durable writes; that the pair the open reads is one snapshot's is the
@@ -35,6 +36,7 @@
 (include-book "replay-identity-index")
 (include-book "history-pages-view")
 (include-book "history-pages-import")
+(include-book "store-checkpoint-arena-writer")
 
 (local
  (defthm fn-hpo-finalize-records
@@ -152,38 +154,46 @@
            :in-theory (union-theories '(fn-hpo-len-append) (theory 'minimal-theory)))))
 
 (local
- (defthm fn-hpo-ock-prefixp-splits
-   (implies (and (fn-ock-prefixp p r) (true-listp p))
-            (equal (append p (nthcdr (len p) r)) r))
-   :hints (("Goal" :induct (fn-ock-prefixp p r)))))
-(local
- (defthm fn-hpo-true-listp-nthcdr
-   (implies (true-listp r) (true-listp (nthcdr n r)))))
+ (defthm fn-hpo-canon-rows-true-listp
+   (implies (not (equal (fn-scka-canon-rows rows fn-arena h) :bad))
+            (true-listp (fn-scka-canon-rows rows fn-arena h)))
+   :hints (("Goal" :induct (fn-scka-canon-rows rows fn-arena h)
+            :in-theory (e/d (fn-scka-canon-rows) (fn-scka-intern-one fn-row-wire-of fn-scka-sealsp))))))
 (local
  (defthm fn-hpo-take-len
    (implies (true-listp x) (equal (take (len x) x) x))))
+
+; KEYSTONE (the snapshot).  The owner's next checkpoint is
+; `fn-scka-next-checkpoint' (host/owner-host.lisp fn-owner-sco-prepare):
+; BASE extended over the canonical rows of the live records after BASE's.
+; Appending exactly those rows to the image of BASE's records
+; (`fn-hp-x-append-all', the host's append) leaves, when it answers :ok, the
+; image of the next checkpoint's records, with the header answer the host
+; carries: the open's hypothesis H = (fn-sco-records C) for the checkpoint
+; this snapshot publishes.
 (defthm fn-hpo-snapshot-image-is-next-checkpoint
   (let* ((h (fn-sco-records base))
-         (evs (nthcdr (len h) r))
-         (res (fn-hp-x-append-all evs 0 salt (len h) lens starts np pgs-mem))
-         (next (fn-ock-next-checkpoint base configs r)))
-    (implies (and (true-listp r) (fn-ock-prefixp h r)
+         (canon (fn-scka-canon-rows (nthcdr (len h) records) fn-arena h0))
+         (res (fn-hp-x-append-all canon 0 salt (len h) lens starts np pgs-mem))
+         (next (fn-scka-next-checkpoint base h0 configs records fn-arena))
+         (h2 (append h canon)))
+    (implies (and (not (equal canon :bad))
                   (fn-hp-okp h salt) (equal lens (fn-hp-lens h salt))
                   (fn-hp-starts-okp starts)
                   (fn-hp-vhold 0 (pgs-v-length pgs-mem) pgs-mem (fn-hp-piw h salt starts np))
                   (equal (mv-nth 0 res) :ok))
-             (and (equal (fn-sco-records next) r)
-                  (fn-hp-okp r salt)
-                  (equal (mv-nth 2 res) (len r))
-                  (equal (mv-nth 3 res) (fn-hp-lens r salt))
+             (and (equal (fn-sco-records next) h2)
+                  (fn-hp-okp h2 salt)
+                  (equal (mv-nth 2 res) (len h2))
+                  (equal (mv-nth 3 res) (fn-hp-lens h2 salt))
                   (fn-hp-starts-okp (mv-nth 4 res))
                   (fn-hp-vhold 0 (pgs-v-length (mv-nth 6 res)) (mv-nth 6 res)
-                               (fn-hp-piw r salt (mv-nth 4 res) (mv-nth 5 res))))))
+                               (fn-hp-piw h2 salt (mv-nth 4 res) (mv-nth 5 res))))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-hp-x-append-all-refines (h (fn-sco-records base)) (n (len (fn-sco-records base)))
-                            (evs (nthcdr (len (fn-sco-records base)) r)))
-                 (:instance fn-hpo-ock-prefixp-splits (p (fn-sco-records base))))
-           :in-theory (union-theories '(fn-ock-next-checkpoint fn-hpo-sco-records-of-extend fn-hpo-take-len
-                                        fn-hpo-tlf-id fn-hpo-okp-true-listp fn-hpo-true-listp-nthcdr)
+                            (evs (fn-scka-canon-rows (nthcdr (len (fn-sco-records base)) records) fn-arena h0)))
+                 (:instance fn-hpo-canon-rows-true-listp (rows (nthcdr (len (fn-sco-records base)) records)) (h h0)))
+           :in-theory (union-theories '(fn-scka-next-checkpoint fn-hpo-sco-records-of-extend fn-hpo-take-len
+                                        fn-hpo-tlf-id fn-hpo-okp-true-listp)
                                       (theory 'minimal-theory)))))
