@@ -11242,6 +11242,7 @@
         "planning/evidence/arena-store-2-2026-09-28.md",
         "books/history-pages-words.lisp",
         "books/history-pages-exec.lisp",
+        "books/history-pages-row.lisp",
         "books/history-pages-read.lisp",
         "tests/acl2/history-pages-read-tests.lisp"
       ],
