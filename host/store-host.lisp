@@ -286,9 +286,6 @@
    (fn-store-frame-workflow-decode octets digest)
    *fn-frame-workflow-specs*))
 
-(defun fn-store-frame-receipt-encode (kind values digest)
-  (fn-frame-receipt-encode kind values digest))
-
 (defun fn-store-frame-receipt-decode (octets digest)
   (fn-store-frame-record-result (fn-frame-receipt-decode octets digest)))
 
