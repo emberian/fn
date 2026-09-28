@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1314 |
-| Certification roots in the Makefile | 1288 |
-| Books inside the root closure | 1312 |
-| `defthm` and `defthmd` events | 20219 |
-| `defun` events | 13691 |
+| Books read | 1316 |
+| Certification roots in the Makefile | 1290 |
+| Books inside the root closure | 1314 |
+| `defthm` and `defthmd` events | 20300 |
+| `defun` events | 13722 |
 | Functions with verified guards | 2488 |
-| Functions declared `:verify-guards nil` and never verified | 1608 |
-| Functions left at the default with an explicit guard | 7611 |
-| Functions left at the default with no guard | 1984 |
+| Functions declared `:verify-guards nil` and never verified | 1627 |
+| Functions left at the default with an explicit guard | 7618 |
+| Functions left at the default with no guard | 1989 |
 | `assert-event` checks | 19243 |
-| `must-fail` checks | 2182 |
+| `must-fail` checks | 2188 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 100 |
+| `encapsulate` events | 102 |
 | Theorems flagged SUSPECT by shape | 1017 |
 | Export-hygiene warnings | 242 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 229 |
-| Include-hygiene warnings | 1786 |
+| Include-hygiene warnings | 1788 |
 | Host-names warnings | 1485 |
 | Hand-written-record warnings | 18 |
 
@@ -417,6 +417,7 @@ that `make certify` requests.
 | `books/history-columns-store.lisp` | root | 25 | 9 | 6/0/1/2 | 0 | 0 | 2 |
 | `books/history-columns.lisp` | root | 78 | 26 | 2/1/17/6 | 0 | 0 | 2 |
 | `books/history-fold-refinement.lisp` | closure | 29 | 4 | 1/0/3/0 | 0 | 0 | 3 |
+| `books/history-pages.lisp` | root | 70 | 28 | 0/19/7/2 | 0 | 0 | 0 |
 | `books/history-wire.lisp` | closure | 3 | 1 | 0/0/1/0 | 0 | 0 | 2 |
 | `books/hybrid-carrier.lisp` | root | 18 | 33 | 0/0/33/0 | 0 | 0 | 1 |
 | `books/hybrid-lifecycle-store-invariants.lisp` | root | 23 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -1085,6 +1086,7 @@ that `make certify` requests.
 | `tests/acl2/history-columns-store-tests.lisp` | root | 2 | 3 | 0/2/1/0 | 16 | 2 | 0 |
 | `tests/acl2/history-columns-tests.lisp` | root | 10 | 9 | 0/0/7/2 | 14 | 4 | 0 |
 | `tests/acl2/history-fold-refinement-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 30 | 1 | 0 |
+| `tests/acl2/history-pages-tests.lisp` | root | 11 | 3 | 0/0/0/3 | 0 | 6 | 0 |
 | `tests/acl2/hybrid-carrier-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 4 | 0 |
 | `tests/acl2/hybrid-lifecycle-store-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 2 | 0 |
 | `tests/acl2/hybrid-lifecycle-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
