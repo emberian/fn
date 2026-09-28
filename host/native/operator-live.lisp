@@ -238,13 +238,22 @@ profile bounds the credentials (max-credentials, D27, PRF-102)."
                           result)))
             (and (fnn-octet-list-p control) (consp control)
                  (fnn-octets-string (fnn-octets control))))))
-    (fnn-native-auth-admin-execute
-     (fnn-core 'fn-native-operator-host-result-principal-plan result)
-     (fnn-octets-string
-      (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
-                result))
-     (fnn-operator-store-max-credentials
-      (fnn-core 'fn-native-operator-host-result-store-root result)))))
+    (let ((code (fnn-native-auth-admin-execute
+                 (fnn-core 'fn-native-operator-host-result-principal-plan result)
+                 (fnn-octets-string
+                  (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
+                            result))
+                 (fnn-operator-store-max-credentials
+                  (fnn-core 'fn-native-operator-host-result-store-root result)))))
+      ;; PRF-388 (PKT-560): ACL2 answered that the credential file does not
+      ;; hold the login of `bind|unbind' (:account); its `account
+      ;; bind|unbind' result is dispatched like any operator result, live to
+      ;; the owner or offline into the store, where fn-lb-account-bind-plan
+      ;; admits it only for a redeemed account.
+      (if (eq code :account)
+          (fnn-operator-dispatch-plan
+           (fnn-core 'fn-native-operator-host-result-principal-account-result result))
+        code))))
 
 ;;; The running owner, as operator.lisp's offline verbs ask it.
 

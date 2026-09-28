@@ -402,6 +402,15 @@ reloaded its logins), `effective-at-next-start` (the node was not running),
 `restart-required` (the node runs but `fn.toml` names no `[control] path`
 to reach it), or `uncertain`.
 
+A friend who redeemed an invitation is bound the same way:
+`principal bind robin PRINCIPAL-HEX`. Their login is not in `auth.toml`, so
+the tie is kept in the node's configuration instead, where their account is:
+the answer is `accepted operator account`, the node applies it at once (or
+at its next start when it is not running), and it stays across restarts.
+`account list` shows it as `binding robin HEX`, and `account delete robin`
+is refused until `principal unbind robin`. A login that is neither in
+`auth.toml` nor a redeemed account is refused `unknown-login`.
+
 ## 5. Agents' consumers
 
 A program on the node's own machine can read through a **consumer**. An
