@@ -5015,6 +5015,32 @@
         "planning/evidence/health-truth-journal-2026-09-28.md"
       ],
       "implementation_note": "Lane health-truth-journal (PKT-872). ENOSPC mid-line used to leave torn octets the next entry was appended after (fitness f2-full: malformed-at-18416 forever). The writer's rule is ACL2's (books/owner-time-journal-writer.lisp); the host truncates with ftruncate, which needs no free space. A developer selector FN_NATIVE_TEST_JOURNAL_FAIL_FILE injects the failure."
+    },
+    {
+      "id": "HST-033",
+      "title": "The owner holds its mutex for no disk I/O at a connection's greeting or a checkpoint's capture: the free-space observation is taken before a quantum's gate entry, and the log rotation's file creation, preallocation and fences run outside the mutex, the switch under it being one rename",
+      "specification": "specs/storage.md",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-907"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/store-log-rotate-spare.lisp",
+        "books/store-log-segments.lisp",
+        "host/native/io.lisp",
+        "host/native/owner.lisp",
+        "host/native/control.lisp",
+        "tests/campaign/native_cuts.py",
+        "tests/test_native_checkpoint_auto.py",
+        "tests/test_native_log_compaction.py"
+      ],
+      "implementation_note": "Lane operations (row N1 item 4; GPT-6's 2026-09-28 review asked that I/O leave the semantic critical section). Before: every greeting's clock observation ran statvfs under the owner mutex when a space observation was due, the checkpoint capture ran statvfs and the whole of P-ROTATE (create, fallocate, fsync, fsync journal/) under it, and a status render ran statvfs under it. Now fnn-owner-gated observes before the gate admits the quantum (ACL2's fn-otm-space-due-p decides when; the NEED ACL2 computes under the mutex is kept on the service), the status render and the drain observe before their quantum, the capture's statvfs precedes its quantum, and P-ROTATE is three programs: the spare staged in staging/ off the mutex, the rename under it, journal/'s fence off it (by the new segment's first fence before any member there is acknowledged, and by the publication before its checkpoint names the segment). The whole-state greeting cost PKT-190 was retired earlier (served-path-scale-2)."
     }
   ]
 }
