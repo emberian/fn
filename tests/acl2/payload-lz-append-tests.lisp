@@ -267,3 +267,29 @@
    (and (equal x (list :refused :lz-dictionary))
         (equal tl (fn-lzr-tally-empty))
         (stringp (fn-lzr-read-refusal-text x)))))
+
+; -----------------------------------------------------------------------------
+; The switch is a configuration row (fn-lzr-config-min): no row is off, the
+; row's N is the threshold, and 0 is off.
+(defconst *pla-cfg-on*
+  (fn-cfg-apply (fn-cfg-empty-value) 1 0 (list (fn-cfg-set-limit "compress-min-octets" 64))))
+(defconst *pla-cfg-off*
+  (fn-cfg-apply (fn-cfg-empty-value) 1 0 (list (fn-cfg-set-limit "compress-min-octets" 0))))
+(assert-event (equal (fn-lzr-config-min (fn-cfg-empty-value)) 0))
+(assert-event (equal (fn-lzr-config-min *pla-cfg-on*) 64))
+(assert-event (equal (fn-lzr-config-min *pla-cfg-off*) 0))
+(assert-event (equal (fn-lzr-append-plan (fn-lzr-config-min *pla-cfg-on*) *plr-r*)
+                     (cons *plr-k* 750)))
+(assert-event (equal (fn-lzr-append-plan (fn-lzr-config-min (fn-cfg-empty-value)) *plr-r*) nil))
+
+; fn-lzr-config-min-without-a-row-is-off: the witness (the empty value has
+; no row; off), and with the row the conclusion fails.
+(assert-event (and (not (consp (fn-cfg-row-lookup (fn-cfg-limits (fn-cfg-empty-value))
+                                                  "compress-min-octets")))
+                   (equal (fn-lzr-config-min (fn-cfg-empty-value)) 0)))
+(assert-event (and (consp (fn-cfg-row-lookup (fn-cfg-limits *pla-cfg-on*) "compress-min-octets"))
+                   (not (equal (fn-lzr-config-min *pla-cfg-on*) 0))))
+(must-fail-checked
+ (defthm pla-config-min-any-row
+   (equal (fn-lzr-config-min v) 0)
+   :hints (("Goal" :do-not-induct t))))

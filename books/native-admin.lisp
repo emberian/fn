@@ -603,6 +603,25 @@
                                 (fn-native-admin-decimal-value
                                  (coerce (cadddr words) 'list))
                                 nil nil))
+       ; Lane compression-extents-2 (PRF-341): `policy set
+       ; compress-min-octets N', the store's compression threshold as a
+       ; `:set-limit' row keyed (SLOT, ""), staged, published and replayed
+       ; like the log's batch bounds; 0 is off, and no row is off
+       ; (books/payload-lz-append.lisp fn-lzr-config-min).  An article
+       ; record appended after the row with a payload span of at least N
+       ; octets is offered to the encoder; records already in the log keep
+       ; their form.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (equal (caddr words) "compress-min-octets")
+             (fn-native-admin-decimalp (cadddr words))
+             (<= (fn-native-admin-decimal-value (coerce (cadddr words) 'list))
+                 (fn-cfg-limit-ceiling (caddr words))))
+        (fn-native-admin-result :accepted nil :set-transit-limit (caddr argv)
+                                (fn-native-admin-decimal-value
+                                 (coerce (cadddr words) 'list))
+                                nil nil))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ; D13 (STO-014): the operator's content-retention rule.  Two

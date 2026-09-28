@@ -49,39 +49,23 @@ FORMAT_7_CONFIG = bytes.fromhex(
     "32ece77fc0992cb848ad3c313ab9bd7c45c08613cae3af56903723e6ec5d762e"
     "ad")
 FORMAT_8_CONFIG = bytes.fromhex(
-    "464e534d0101000000b4000a666e2d73746f72652d38001e666e2d73746f7265"
+    "464e534d0101000000ac000a666e2d73746f72652d38001e666e2d73746f7265"
     "2d616c6c6f636174696f6e2d66726f6e746965722d3200000000000000800000"
     "00000180000000000000010583360000000000008000000000000000ffff0000"
     "0000000001000000000000000080000000000010000000000000001000000000"
     "0000001000000000000000100000000000000010000000000000000000000000"
-    "0000000000400000000000000100000000000000400000000000000000007de7"
-    "db0ed3a43b4b342d1018050578f1aba31ae0091e096fbcc5a2812b6e08b0")
-# PRE_COMPRESSION_CONFIG: a store of the release before lane
-# compression-extents-2 (sixteen u64 fields, no compress-min-octets; word
-# fn-store-9, the development preset): (fn-spo-layout-frame 16 (take 18
-# *fn-bs-profile-development*)).  Refused by the older layout's name; `store
-# import' reads its archive with compression off (fn-bs-config-decode-archive).
-PRE_COMPRESSION_CONFIG = bytes.fromhex(
-    "464e534d0101000000ac000a666e2d73746f72652d39001e666e2d73746f7265"
-    "2d616c6c6f636174696f6e2d66726f6e746965722d3200000000000000800000"
-    "00000180000000000000010583360000000000008000000000000000ffff0000"
-    "0000000001000000000000000080000000000010000000000000001000000000"
-    "0000001000000000000000100000000000000010000000000000000000000000"
-    "00000000004000000000000001000000000000004000b9348921ec983ec098b6"
-    "c5f9a6929c3842ebf9af327c74252bf60a8020673847")
+    "000000000040000000000000010000000000000040006fafea5557022366ed01"
+    "717e509d54dbf4a18b95c0e648856e8eda5bb0282d64")
 FRAMES = {"older-release": OLDER_RELEASE_CONFIG, "format-7": FORMAT_7_CONFIG,
-          "format-8": FORMAT_8_CONFIG, "pre-compression": PRE_COMPRESSION_CONFIG}
+          "format-8": FORMAT_8_CONFIG}
 
 # The lines ACL2 renders for the two refusals (fn-spo-refusal-text).
 OLDER_RELEASE_LINE = ("open refused reason=older-release: store made by an older release "
-                      "(profile layout 13 fields, this release expects 17): export it with "
+                      "(profile layout 13 fields, this release expects 16): export it with "
                       "the release that made it, then import it here")
 FORMAT_7_LINE = "open refused reason=store-format: reinstall from the release and import"
-PRE_COMPRESSION_LINE = ("open refused reason=older-release: store made by an older release "
-                        "(profile layout 16 fields, this release expects 17): export it with "
-                        "the release that made it, then import it here")
 LINES = {"older-release": OLDER_RELEASE_LINE, "format-7": FORMAT_7_LINE,
-         "format-8": FORMAT_7_LINE, "pre-compression": PRE_COMPRESSION_LINE}
+         "format-8": FORMAT_7_LINE}
 
 
 def write_config(root, store, name="fn"):

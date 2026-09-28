@@ -92,10 +92,6 @@
            :max-header-lines-above-octets)
           ((< *fn-bs-profile-article-ceiling-codec* (fn-bs-pf 17 values))
            :max-header-octets-above-codec)
-          ; The compression threshold (lane compression-extents-2): the
-          ; layout grew field 18 under D34, read as the relation reads it.
-          ((< (fn-bs-pf 5 values) (fn-bs-pf 18 values))
-           :compress-min-octets-above-max-article-octets)
           (t nil))))
 
 (defun fn-bs-profile-v2-validp (values)
@@ -172,7 +168,7 @@
   (if (zp n) nil (cons :nat (fn-spo-nat-specs (1- n)))))
 
 ; The profile layout of N u64 fields: the spec a release whose profile had N
-; fields sealed its config.json under.  (fn-spo-layout-spec 17) is
+; fields sealed its config.json under.  (fn-spo-layout-spec 16) is
 ; *fn-bs-meta-profile-spec*; (fn-spo-layout-spec 13) is the layout before
 ; batch AS.
 (defun fn-spo-layout-spec (n)
@@ -353,7 +349,7 @@
                    (+ (len (fn-frame-field-octets :text *fn-bs-meta-format-8*))
                       (len (fn-frame-field-octets
                             :text *fn-bs-meta-frontier-format*))
-                      136)))
+                      128)))
    :hints (("Goal"
             :use ((:instance fn-spo-all-nat-fields-octets-len
                              (specs (cddr *fn-bs-meta-profile-spec*))
@@ -522,7 +518,7 @@
             :in-theory (enable fn-frame-fields-parse-aux fn-frame-field-parse)))))
 
 ; The head (the two texts) of a payload that parses under this release's
-; layout: the same format word, and 136 octets before the parse's rest.
+; layout: the same format word, and 128 octets before the parse's rest.
 (local
  (defthm fn-spo-head-of-a-profile-parse
    (implies (fn-frame-parse-okp
@@ -537,7 +533,7 @@
                                *fn-bs-meta-profile-spec* p))))
                  (equal (len (fn-frame-parse-rest
                               (fn-frame-fields-parse-aux '(:text :text) p)))
-                        (+ 136 (len (fn-frame-parse-rest
+                        (+ 128 (len (fn-frame-parse-rest
                                      (fn-frame-fields-parse-aux
                                       *fn-bs-meta-profile-spec* p)))))))
    :hints (("Goal"

@@ -23,7 +23,7 @@
 ;
 ; THE PLAN.  `fn-lzr-append-plan MIN R' is the host's one question before it
 ; runs the encoder: the payload span (K . N) of the article record R, when
-; the profile's threshold MIN (field 18 compress-min-octets; 0 is off) wants
+; the threshold MIN (the configuration row compress-min-octets; 0 is off) wants
 ; it compressed, and NIL otherwise.  The span is ACL2's: R decodes as a record
 ; (the codec, books/records-seam.lisp) and its payload opens at K
 ; (books/payload-extent.lisp fn-arx-record-suffix-len; checked, never
@@ -46,6 +46,7 @@
 ; not the frame's head).
 (in-package "ACL2")
 (include-book "payload-lz-record")
+(include-book "config")
 
 ; -----------------------------------------------------------------------------
 ; 1. The plan.
@@ -99,6 +100,29 @@
 (defthm fn-lzr-append-plan-off
   (implies (zp min)
            (equal (fn-lzr-append-plan min r) nil)))
+
+; THE SWITCH is a configuration row, not a profile field (the coordinator's
+; decision, 2026-09-27: per-store codec switches are configuration events in
+; the log; the profile is capacity).  `policy set compress-min-octets N'
+; (books/native-admin.lisp) publishes the `:set-limit' row (SLOT, "", N);
+; the owner reads it from its live configuration (host/owner-host.lisp
+; fn-owner-compress-min-octets) and hands it to the plan as MIN.  No row is
+; off (`fn-lzr-config-min-without-a-row-is-off'), so every store written
+; before this book, and every store whose operator never sets the row,
+; appends exactly as before.  The frame represents every span of every
+; record the codec accepts (a record has a u32 length:
+; fn-record-accepted-input-bounds), so no profile needs validating for it.
+(defconst *fn-lzr-slot* "compress-min-octets")
+
+(defun fn-lzr-config-min (v)
+  (declare (xargs :guard t))
+  (fn-cfg-limit v *fn-lzr-slot*))
+
+(defthm fn-lzr-config-min-without-a-row-is-off
+  (implies (not (consp (fn-cfg-row-lookup (fn-cfg-limits v) *fn-lzr-slot*)))
+           (and (equal (fn-lzr-config-min v) 0)
+                (equal (fn-lzr-append-plan (fn-lzr-config-min v) r) nil)))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-limit) (fn-lzr-append-plan)))))
 
 ; The capacity the host gives the encoder: a block of more octets than this
 ; frames no shorter than R, so the host asks for no more

@@ -13,16 +13,15 @@
   (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
         4096 4294967295 4294967295 32768 65535 256 4096
         1048576 1048576 1048576 1048576 1048576 0
-        64 256 16384 0))
+        64 256 16384))
 
 ; Its config.json, octet for octet: the FNSM frame the format-8 encoder wrote
 ; under the relation before PKT-467 (magic, version 1, kind 1, the u32
-; payload length 180, the two texts, seventeen u64 fields -- the layout of
-; lane compression-extents-2 --, the SHA-256 trailer).
-; tests/test_native_control_reply_fit.py writes the same octets.
+; payload length 172, the two texts, sixteen u64 fields, the SHA-256
+; trailer).  tests/test_native_control_reply_fit.py writes the same octets.
 (defconst *spot-window-octets*
   '(
-    70 78 83 77 1 1 0 0 0 180 0 10 102 110 45 115
+    70 78 83 77 1 1 0 0 0 172 0 10 102 110 45 115
     116 111 114 101 45 56 0 30 102 110 45 115 116 111 114 101
     45 97 108 108 111 99 97 116 105 111 110 45 102 114 111 110
     116 105 101 114 45 50 0 0 0 0 0 0 16 0 0 0
@@ -33,11 +32,11 @@
     0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
     0 0 0 16 0 0 0 0 0 0 0 0 0 0 0 0
     0 0 0 0 0 64 0 0 0 0 0 0 1 0 0 0
-    0 0 0 0 64 0 0 0 0 0 0 0 0 0 187 209
-    174 241 48 15 22 212 156 227 206 247 78 224 255 138 1 38
-    236 21 202 36 108 8 60 52 187 89 0 194 170 219))
+    0 0 0 0 64 0 121 139 102 61 92 206 2 20 187 88
+    114 29 128 147 96 135 218 253 203 152 133 61 46 249 28 121
+    15 221 14 210 22 11))
 
-(assert-event (equal (len *spot-window-octets*) 222))
+(assert-event (equal (len *spot-window-octets*) 214))
 (assert-event (equal (fn-spo-saved-frame *spot-window*) *spot-window-octets*))
 
 ; -----------------------------------------------------------------------------
@@ -205,7 +204,7 @@
 ; synthesized format-8 store's config.json.
 (defconst *spot-format-8-octets*
   '(
-    70 78 83 77 1 1 0 0 0 180 0 10 102 110 45 115
+    70 78 83 77 1 1 0 0 0 172 0 10 102 110 45 115
     116 111 114 101 45 56 0 30 102 110 45 115 116 111 114 101
     45 97 108 108 111 99 97 116 105 111 110 45 102 114 111 110
     116 105 101 114 45 50 0 0 0 0 0 0 0 128 0 0
@@ -216,11 +215,10 @@
     0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
     0 0 0 16 0 0 0 0 0 0 0 0 0 0 0 0
     0 0 0 0 0 64 0 0 0 0 0 0 1 0 0 0
-    0 0 0 0 64 0 0 0 0 0 0 0 0 0 125 231
-    219 14 211 164 59 75 52 45 16 24 5 5 120 241 171 163
-    26 224 9 30 9 111 188 197 162 129 43 110 8 176))
-
-(assert-event (equal (len *spot-format-8-octets*) 222))
+    0 0 0 0 64 0 111 175 234 85 87 2 35 102 237 1
+    113 126 80 157 84 219 244 161 139 149 192 230 72 133 110 142
+    218 91 176 40 45 100))
+(assert-event (equal (len *spot-format-8-octets*) 214))
 (assert-event (equal (fn-bs-config-encode (spot-as-format-8 *fn-bs-profile-development*))
                      *spot-format-8-octets*))
 ; Reachable witness, the complete antecedent: a valid profile whose word is
@@ -270,12 +268,12 @@
 ; Another layout (PKT-705: fn-spo-open-of-another-layout-refuses-by-name)
 
 ; The layouts, by hand: the one before batch AS (13 u64 fields) and this
-; release's (17 since lane compression-extents-2, the profile spec itself).
+; release's (16, the profile spec itself).
 (assert-event (equal (fn-spo-layout-spec 13)
                      '(:text :text :nat :nat :nat :nat :nat :nat :nat :nat :nat
                        :nat :nat :nat :nat)))
-(assert-event (equal (fn-spo-layout-spec 17) *fn-bs-meta-profile-spec*))
-(assert-event (equal *fn-spo-release-layout-fields* 17))
+(assert-event (equal (fn-spo-layout-spec 16) *fn-bs-meta-profile-spec*))
+(assert-event (equal *fn-spo-release-layout-fields* 16))
 
 ; A store made before batch AS: hbox:/tank/fn/scratch/fixtures/n1k-2k/store/
 ; config.json, octet for octet (190 octets; the default profile, written by
@@ -322,57 +320,27 @@
 ; The line every open path prints: the cause and the way out (D34).
 (assert-event
  (equal (fn-spo-refusal-text (fn-spo-config-open *spot-pre-as-octets*))
-        "open refused reason=older-release: store made by an older release (profile layout 13 fields, this release expects 17): export it with the release that made it, then import it here"))
+        "open refused reason=older-release: store made by an older release (profile layout 13 fields, this release expects 16): export it with the release that made it, then import it here"))
 
 ; A layout wider than this release's is refused by the other name.
-(defconst *spot-wider* (append *spot-pre-as* '(1 2 3 4 5)))
-(assert-event (fn-frame-values-okp (fn-spo-layout-spec 18) *spot-wider*))
-(assert-event (equal (fn-spo-config-open (fn-spo-layout-frame 18 *spot-wider*))
-                     '(:refused :profile-layout 18)))
+(defconst *spot-wider* (append *spot-pre-as* '(1 2 3 4)))
+(assert-event (fn-frame-values-okp (fn-spo-layout-spec 17) *spot-wider*))
+(assert-event (equal (fn-spo-config-open (fn-spo-layout-frame 17 *spot-wider*))
+                     '(:refused :profile-layout 17)))
 (assert-event
- (equal (fn-spo-refusal-text (fn-spo-config-open (fn-spo-layout-frame 18 *spot-wider*)))
-        "open refused reason=newer-release: store made by a newer release (profile layout 18 fields, this release expects 17): export it with the release that made it, then import it here"))
+ (equal (fn-spo-refusal-text (fn-spo-config-open (fn-spo-layout-frame 17 *spot-wider*)))
+        "open refused reason=newer-release: store made by a newer release (profile layout 17 fields, this release expects 16): export it with the release that made it, then import it here"))
 
-; A store made before lane compression-extents-2 (sixteen u64 fields, no
-; compression threshold): the development preset's format-8 frame of that
-; release, octet for octet, is refused by the older layout's name at every
-; open, and `store import' reads its archive with the threshold 0
-; (books/byte-store-frame.lisp fn-bs-config-decode-archive).
-(defconst *spot-pre-lz-octets*
-  '(
-    70 78 83 77 1 1 0 0 0 172 0 10 102 110 45 115
-    116 111 114 101 45 56 0 30 102 110 45 115 116 111 114 101
-    45 97 108 108 111 99 97 116 105 111 110 45 102 114 111 110
-    116 105 101 114 45 50 0 0 0 0 0 0 0 128 0 0
-    0 0 1 128 0 0 0 0 0 0 1 5 131 54 0 0
-    0 0 0 0 128 0 0 0 0 0 0 0 255 255 0 0
-    0 0 0 0 1 0 0 0 0 0 0 0 0 128 0 0
-    0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
-    0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
-    0 0 0 16 0 0 0 0 0 0 0 0 0 0 0 0
-    0 0 0 0 0 64 0 0 0 0 0 0 1 0 0 0
-    0 0 0 0 64 0 111 175 234 85 87 2 35 102 237 1
-    113 126 80 157 84 219 244 161 139 149 192 230 72 133 110 142
-    218 91 176 40 45 100))
-(assert-event (equal (fn-spo-layout-fields *spot-pre-lz-octets*) 16))
-(assert-event (equal (fn-spo-config-open *spot-pre-lz-octets*) '(:refused :profile-layout 16)))
-(assert-event (null (fn-bs-config-decode *spot-pre-lz-octets*)))
-(assert-event (equal (fn-bs-config-decode-archive *spot-pre-lz-octets*)
-                     (spot-as-format-8 *fn-bs-profile-development*)))
-(assert-event (equal (fn-bs-config-decode-archive *spot-format-8-octets*)
-                     (spot-as-format-8 *fn-bs-profile-development*)))
-(assert-event (null (fn-bs-config-decode-archive *spot-pre-as-octets*)))
-
-; Hypothesis removed: (not (equal n 17)).  This release's layout, the scale
+; Hypothesis removed: (not (equal n 16)).  This release's layout, the scale
 ; preset: every other hypothesis holds; the open opens it, not the refusal.
-(assert-event (fn-frame-values-okp (fn-spo-layout-spec 17) *fn-bs-profile-scale*))
+(assert-event (fn-frame-values-okp (fn-spo-layout-spec 16) *fn-bs-profile-scale*))
 (assert-event (fn-bs-meta-formatp (car *fn-bs-profile-scale*)))
-(assert-event (<= (len (fn-frame-fields-octets (fn-spo-layout-spec 17) *fn-bs-profile-scale*))
+(assert-event (<= (len (fn-frame-fields-octets (fn-spo-layout-spec 16) *fn-bs-profile-scale*))
                   *fn-bs-meta-max-config-payload*))
-(assert-event (equal (fn-spo-config-open (fn-spo-layout-frame 17 *fn-bs-profile-scale*))
+(assert-event (equal (fn-spo-config-open (fn-spo-layout-frame 16 *fn-bs-profile-scale*))
                      (list :opened *fn-bs-profile-scale*)))
 (must-fail-checked
- (thm (implies (and (equal n 17) (equal values *fn-bs-profile-scale*))
+ (thm (implies (and (equal n 16) (equal values *fn-bs-profile-scale*))
                (equal (fn-spo-config-open (fn-spo-layout-frame n values))
                       (list :refused :profile-layout n)))))
 
@@ -454,5 +422,5 @@
 ; octets that are no frame have no layout; this release's layout with H below
 ; R is this release's layout.
 (assert-event (null (fn-spo-layout-fields *spot-garbage*)))
-(assert-event (equal (fn-spo-layout-fields (fn-spo-saved-frame *spot-short-history*)) 17))
+(assert-event (equal (fn-spo-layout-fields (fn-spo-saved-frame *spot-short-history*)) 16))
 (assert-event (null (fn-spo-layout-fields *spot-corrupted*)))

@@ -301,8 +301,7 @@
                             '(("history-marker" . "unmarked")
                               ("max-header-fields" . 64)
                               ("max-header-lines" . 256)
-                              ("max-header-octets" . 16384)
-                              ("compress-min-octets" . 0))))))
+                              ("max-header-octets" . 16384))))))
 ; D31: the history requirement reads as its word.
 (assert-event (equal (cdr (assoc-equal "history-marker"
                                        (fn-bs-profile-report
@@ -418,36 +417,3 @@
 (assert-event (equal (cdr (assoc-equal "max-header-fields"
                                        (fn-bs-profile-report *bsft-raised-headers*)))
                      1000))
-
-; -----------------------------------------------------------------------------
-; Field 18, the compression threshold (lane compression-extents-2): 0 (off)
-; in every preset and the defaults; set by `init --compress-min-octets N';
-; at most the article bound, refused by name above it.
-(assert-event (equal (fn-bs-profile-compress-min-octets *fn-bs-profile-defaults*) 0))
-(assert-event (equal (fn-bs-profile-compress-min-octets *fn-bs-profile-development*) 0))
-(assert-event (equal (fn-bs-profile-compress-min-octets *fn-bs-profile-scale*) 0))
-(assert-event (equal (assoc 18 *fn-bs-profile-field-names*) '(18 . "compress-min-octets")))
-(defconst *bsft-lz* (fn-bs-profile-resolve '(:development ((18 . 64))) nil))
-(assert-event (fn-bs-profile-validp *bsft-lz*))
-(assert-event (equal (fn-bs-profile-compress-min-octets *bsft-lz*) 64))
-(assert-event (equal (fn-bs-config-decode (fn-bs-config-encode *bsft-lz*)) *bsft-lz*))
-(assert-event (equal (fn-bs-profile-resolve '(:development ((18 . 32768))) nil)
-                     (fn-bs-profile-put 18 32768 *fn-bs-profile-development*)))
-(assert-event (equal (fn-bs-profile-resolve '(:development ((18 . 32769))) nil)
-                     '(:invalid :compress-min-octets-above-max-article-octets)))
-
-; fn-bs-profile-record-is-frameable: the witness at the largest record a
-; valid profile admits (R of the defaults), and without validity (a profile
-; list whose R is 2^32) the conclusion fails.
-(assert-event (let ((r (fn-bs-pf 4 *fn-bs-profile-defaults*)))
-                (and (fn-bs-profile-validp *fn-bs-profile-defaults*)
-                     (<= r (fn-bs-pf 4 *fn-bs-profile-defaults*))
-                     (< r 4294967296))))
-(assert-event (let ((v (fn-bs-profile-put 4 4294967296 *fn-bs-profile-defaults*)))
-                (and (not (fn-bs-profile-validp v))
-                     (<= 4294967296 (fn-bs-pf 4 v))
-                     (not (< 4294967296 4294967296)))))
-(must-fail-checked
- (defthm bsft-frameable-without-validity
-   (implies (<= n (fn-bs-pf 4 values)) (< n 4294967296))
-   :hints (("Goal" :do-not-induct t))))

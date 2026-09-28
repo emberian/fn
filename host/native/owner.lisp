@@ -1285,6 +1285,14 @@ the current connection."
 (defun fnn-owner-taken-groups (taken)
   (mapcar #'fnn-octets (fnn-core 'fn-ores-taken-groups taken)))
 
+(defun fnn-owner-refresh-compression (log)
+  "The log's compression threshold from the owner's live configuration
+(fn-owner-compress-min-octets: the `compress-min-octets' row, 0 off), read
+where the batch bounds are read, so a reconfiguration applies from the next
+record on (lane compression-extents-2)."
+  (when log
+    (setf (fnn-log-lz-min log) (fnn-nat (fnn-owner-core 'fn-owner-compress-min-octets)))))
+
 (defun fnn-owner-publish-prepared (service label)
   "Publish and finish the one ACL2-prepared owner transaction."
   (let* ((store (fnn-owner-service-store service))
@@ -1295,6 +1303,7 @@ the current connection."
                     (fnn-owner-core 'fn-owner-pending-sequence))))
     (unless (fnn-octet-list-p record)
       (fnn-fault "owner returned malformed ~a transaction" label))
+    (when (fnn-store-logp store) (fnn-owner-refresh-compression (fnn-store-log store)))
     (handler-case
         (fnn-publish store sequence (fnn-octets record))
       (fnn-store-indeterminate (e) (error e))
@@ -2362,6 +2371,7 @@ nil when nothing was queued (or the store does not commit through the log)."
           (log (fnn-store-log store)))
       (destructuring-bind (bmax omax) (fnn-owner-core 'fn-owner-log-bounds)
         (setf (fnn-log-bmax log) bmax (fnn-log-omax log) omax))
+      (fnn-owner-refresh-compression log)
       (let ((*fnn-log-batch* t)
             (*fnn-owner-deferred* deferred))
         (handler-case

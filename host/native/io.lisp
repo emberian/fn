@@ -4256,7 +4256,8 @@ in use (lane compression-extents-2)."
     (declare (ignore records))
     (unwind-protect
          (progn
-           (fnn-out "~a" (fnn-core 'fn-lzr-tally-text (fnn-store-compress-min store)
+           (fnn-out "~a" (fnn-core 'fn-lzr-tally-text
+                                   (fnn-nat (fnn-core-state 'fn-store-compress-min-octets))
                                    (or *fnn-lz-tally* (fnn-core 'fn-lzr-tally-empty))))
            +fnn-exit-ok+)
       (fnn-store-close store))))
@@ -5177,11 +5178,14 @@ with its depth, and the rows under it name the path that called it."
   ;; fence); the COMPLETE reseats FENCED (fnn-log-reseat-fenced).
   ;; EXTENT-FILE the realizer's id of the active segment (EXTENT-PATH).
   (members nil) (inflight nil) (fenced nil) (extent-file nil) (extent-path nil)
-  ;; The store's compression threshold is set (profile field 18,
-  ;; compress-min-octets > 0; lane compression-extents-2): the COMPLETE
-  ;; reseats through ACL2's compressed reseat (fn-lzr-commit-reseats), which a
-  ;; framed member needs; NIL keeps fn-arx-commit-reseats, as before.
-  (lz nil))
+  ;; Compressed records (lane compression-extents-2).  LZ-MIN the owner's
+  ;; live compression threshold (the `compress-min-octets' configuration
+  ;; row, fn-owner-compress-min-octets; 0 off, the default), set with the
+  ;; batch bounds; LZ set once this log has taken a compressed record: the
+  ;; COMPLETE then reseats through ACL2's compressed reseat
+  ;; (fn-lzr-commit-reseats), which a framed member needs; NIL keeps
+  ;; fn-arx-commit-reseats, as before.
+  (lz-min 0) (lz nil))
 
 (defmacro fnn-log-with-kernel ((log) &body body)
   "BODY under the log's kernel lock (recursive: a kernel step may call another)."
@@ -5285,8 +5289,9 @@ record's (FILE . PLACE), PLACE ACL2's (START N ROFF RLEN); else NIL.")
 ;;; Compressed records (lane compression-extents-2; books/payload-lz-append.lisp
 ;;; PRF-341 over books/payload-lz-record.lisp PRF-326).
 ;;;
-;;; The APPEND (fnn-log-compress, from fnn-log-publish): with the profile's
-;;; threshold set, ACL2 plans the payload span of the record
+;;; The APPEND (fnn-log-compress, from fnn-log-publish): with the owner's
+;;; live threshold set (`policy set compress-min-octets N', a configuration
+;;; row; no row is off), ACL2 plans the payload span of the record
 ;;; (fn-lzr-append-plan), the host asks the untrusted LZ4-HC encoder for a
 ;;; candidate block within ACL2's cap (host/native/lz4.lisp), and ACL2 decides
 ;;; (fn-lzr-append-decide: the proved decoder runs over the candidate): the
@@ -5339,8 +5344,10 @@ entry passed its trailer, is a store fault."
           (fnn-fault "~a" line))))))
 
 (defun fnn-store-compress-min (store)
-  "The profile's compression threshold (field 18; 0 off)."
-  (fnn-nat (fnn-core 'fn-bs-profile-compress-min-octets (fnn-store-config store))))
+  "The owner's live compression threshold (the configuration row; 0 off):
+the log's LZ-MIN, which the owner sets from fn-owner-compress-min-octets."
+  (let ((log (fnn-store-log store)))
+    (if log (fnn-nat (fnn-log-lz-min log)) 0)))
 
 (defun fnn-log-compress (store record)
   "RECORD (octets) as the log takes it: ACL2's frame of it, or RECORD."
@@ -5358,7 +5365,8 @@ entry passed its trailer, is a store fault."
                                      (if (eq candidate :none) :none
                                        (fnn-octet-list candidate)))))
             (case (and (consp decision) (first decision))
-              (:framed (second decision))
+              (:framed (setf (fnn-log-lz (fnn-store-log store)) t)
+                       (second decision))
               (:kept record)
               (t (fnn-fault "~a" (or (fnn-core 'fn-lzr-append-refusal-text decision)
                                      "lz-candidate: ACL2 refused the encoder's block"))))))))))
@@ -6020,8 +6028,7 @@ the process's life) and the stream binds each record's place for SINK
                             (fnn-log-recover path (fnn-log-observed-extent path) unit max genesis sink)
                           (fnn-log-open-read-only path unit max genesis sink))))
               (setf (fnn-log-index log) k
-                    (fnn-log-genesis log) genesis
-                    (fnn-log-lz log) (plusp (fnn-store-compress-min store)))
+                    (fnn-log-genesis log) genesis)
               (return-from fnn-log-scan-segments log))))))
     (fnn-fault "the log's open plan named no segment")))
 

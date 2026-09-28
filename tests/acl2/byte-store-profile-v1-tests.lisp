@@ -14,12 +14,12 @@
   (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
         4096 805306368 17138486 32768 65535 256 4096
         1048576 1048576 1048576 1048576 1048576 0
-        64 256 16384 0))
+        64 256 16384))
 (defconst *bspv1-saved-development*
   (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
         128 25165824 17138486 32768 65535 256 128
         1048576 1048576 1048576 1048576 1048576 0
-        64 256 16384 0))
+        64 256 16384))
 
 ; Non-degenerate witness: the old relation admits both; this image admits
 ; them, runs the store under them unchanged, and reads their saved frames
