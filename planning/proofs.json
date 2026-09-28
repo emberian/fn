@@ -12005,7 +12005,9 @@
         "planning/evidence/manifests/certify-20260928T001508Z-3191332.json",
         "planning/evidence/manifests/certify-20260928T032046Z-3695293.json",
         "planning/evidence/manifests/certify-20260928T034446Z-1337917.json",
-        "tests/acl2/protocol-text-tests.lisp"
+        "tests/acl2/protocol-text-tests.lisp",
+        "planning/evidence/manifests/certify-20260928T041204Z-1591020.json",
+        "planning/evidence/manifests/certify-20260928T041318Z-3967241.json"
       ],
       "progress_note": "Lane defprotocol (Opus 5.5, 2026-09-28). Certified on hbox: the 484 affected roots of books/nntp, books/protocol-table and books/protocol-builders (506 books, certify-20260928T001508Z-3191332, passed). Teeth: 120 witnesses asserting the keystone's conclusion and the exact code per row, 25 must-fail row theorems with a witnessed code removed, the framing witnesses and a must-fail without the :article exclusion; the codes a two-article archive cannot reach are named at the end of the test book (pending-fixture hostile-reader-archive). The keystones made literal defthms: hbox certify-20260928T032046Z-3695293 (protocol-codes, protocol-framing, the test book: passed). Open: books/protocol-codes 18.6 s at 3 jobs (D26 debt; the per-row theorems, HDR 2.2M steps and OVER 0.9M; split the row theorems into their own book).",
       "events": [
@@ -12030,14 +12032,13 @@
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-dispatch.lisp",
-        "tests/acl2/protocol-dispatch-tests.lisp"
+        "tests/acl2/protocol-dispatch-tests.lisp",
+        "planning/evidence/manifests/certify-20260928T041204Z-1591020.json",
+        "planning/evidence/manifests/certify-20260928T041318Z-3967241.json"
       ],
-      "progress_note": "lane defprotocol-2: REPL-admitted on persvati (protocol-dispatch 60,136 prover steps); certification by the batch.",
+      "progress_note": "lane defprotocol-2: certified persvati certify-20260928T041204Z-1591020 (264 roots, 462 passed, 0 failed) and hbox certify-20260928T041318Z-3967241 (264 roots, 439 passed, 0 failed); protocol-dispatch 4.5 s wall at load 18, 60,136 prover steps.",
       "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-proto-command-pinned-is-command-pinned"
-        }
+        "fn-proto-command-pinned-is-command-pinned"
       ]
     },
     {
@@ -12074,7 +12075,9 @@
         "tests/acl2/served-catalog-tests.lisp",
         "planning/evidence/manifests/certify-20260928T003009Z-3659350.json",
         "planning/evidence/manifests/certify-20260928T003941Z-3754893.json",
-        "planning/evidence/sca-join-2026-09-27.md"
+        "planning/evidence/sca-join-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260928T041204Z-1591020.json",
+        "planning/evidence/manifests/certify-20260928T041318Z-3967241.json"
       ],
       "progress_note": "Lane sca-join-5 (2026-09-28): REPL-admitted and certified on persvati (affected roots of catalog, served-catalog, served-catalog-chain, served-catalog-tests: certify-20260928T003009Z-3659350, 172 passed; served-catalog-join-inv re-proved over batch AY's fn-otm-read-span: certify-20260928T003941Z-3754893). Lookup counts before/after in planning/evidence/sca-join-2026-09-27.md. Native on hbox (709b2824a, /tank/fn/scratch/sca-join-5/native-f2): served_differential OK 7, reader_index OK 7, reader_freshness OK 2; served_cost FAILED 1 (test_owner_calls_fast_span_entry: its static text check expects the pre-batch-AY host call shape; host code not changed by this lane). f2_lookups at 1k/10k/100k: every measured command O(1) + the O(log N) bisection, LISTGROUP/OVER proportional to their output; VERDICT MET."
     },
