@@ -599,7 +599,8 @@
          (<= (len (fn-own-queue o2)) (+ 1 (len (fn-own-queue o))))
          (equal (fn-oas-inflight-count o2) (fn-oas-inflight-count o))))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (e/d (fn-oah-steps fn-oas-inflight-count) (fn-otm-read-span fn-oah-otm-read-span-steps))
+  :hints (("Goal" :in-theory (e/d (fn-oah-steps fn-oas-inflight-count)
+                                  (fn-otm-read-span fn-oah-otm-read-span-steps))
            :use fn-oah-otm-read-span-steps)))
 
 ;; What the owner holds after the read before the slots, from an admitted

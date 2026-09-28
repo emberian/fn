@@ -362,3 +362,69 @@
                          nil))
 (assert-event (fn-bs-profile-admittedp *oast-a600k*))
 (assert-event (equal (fn-heap-article-slots *oast-a600k*) 3))
+
+; -----------------------------------------------------------------------------
+; THE DISK'S REASON BEFORE THE MEMORY'S (lane credits-stall, 2026-09-28;
+; fn-oas-refusal-line).  The refused POST's tier (a), fn-oas-posting-off-read,
+; on the posting connection: at the admitted gate value it says the memory's
+; 440; at the STALLED value (*t2-stalled*: a barrier past H) the disk's --
+; the very line fn-otm-read-span gives a POST while the disk sheds -- and
+; not the memory's.  MUTATION: the substitution before this lane (the
+; memory's line whatever the disk) gives the memory's 440 at the stalled
+; value, the wrong reason for a disk outcome.
+(defun oast-off-in (oc views id octs s rows payloads fn-octets fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-octets fn-arena fn-cat)))
+  (let* ((fn-octets (fn-octets-from-list octs fn-octets))
+         (fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many payloads fn-arena))
+         (fn-cat (fn-sca-load-held-rows rows (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
+                                        fn-arena fn-cat)))
+    (mv (fn-oas-posting-off-read oc views id 0 (len octs) s fn-octets fn-arena fn-cat)
+        fn-octets fn-arena fn-cat)))
+
+(defun oast-off (oc views id octs s)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-octets
+    (mv-let (result fn-octets)
+      (with-local-stobj fn-arena
+        (mv-let (result fn-octets fn-arena)
+          (with-local-stobj fn-cat
+            (mv-let (result fn-octets fn-arena fn-cat)
+              (oast-off-in oc views id octs s (orrt-records *lgt-finished*)
+                           *g12b-payloads* fn-octets fn-arena fn-cat)
+              (mv result fn-octets fn-arena)))
+          (mv result fn-octets)))
+      result)))
+
+(defconst *oast-memory-440* (fn-nntp-reply-effect *fn-oas-post-line*))
+(assert-event (equal (fn-otm-admit-post *t2-s1*) :admit))
+(assert-event (equal (fn-otm-admit-post *t2-stalled*) :shed))
+(assert-event (equal (fn-own-tls-result-effects (oast-off *oast-open* *orrt-views* 0 *t2r-post* *t2-s1*))
+                     (list *oast-memory-440*)))
+(defconst *oast-stalled-off* (oast-off *oast-open* *orrt-views* 0 *t2r-post* *t2-stalled*))
+(defconst *oast-disk-440* (fn-nntp-reply-effect (fn-otm-post-command-reply *t2-stalled*)))
+(assert-event (equal (fn-own-tls-result-effects *oast-stalled-off*) (list *oast-disk-440*)))
+(assert-event (not (member-equal *oast-memory-440* (fn-own-tls-result-effects *oast-stalled-off*))))
+; It is the time model's own answer to a POST while the disk sheds.
+(assert-event (equal (fn-own-tls-result-effects
+                      (t2r-host-read *oast-open* *orrt-views* 0 *t2r-post* *t2-stalled*))
+                     (list *oast-disk-440*)))
+; The mutation (the memory's line whatever the disk).
+(assert-event (equal (fn-oas-post-effects-onto
+                      (fn-own-tls-result-effects
+                       (t2r-host-read (fn-otm-owner-with-allow *oast-open* 0 nil) *orrt-views* 0
+                                      *t2r-post* *t2-stalled*))
+                      *fn-oas-post-line* nil)
+                     (list *oast-memory-440*)))
+
+; THE IN-FLIGHT COUNT the default profile holds, by the article limit
+; (tests/test_native_slow_disk.py's init): A = 64 KiB, 25 articles in flight;
+; A = 1 MiB, one (a credit is the article's worst case as octet lists, 32
+; octets an octet, until chunked-body (B6) holds the body in packed chunks).
+(defun oast-default-at (a)
+  (declare (xargs :mode :program))
+  (fn-bs-profile-resolve (list :default (list (cons *fn-bs-pf-max-article-octets* a))) nil))
+(assert-event (equal (fn-heap-article-reserve-octets (oast-default-at 65536)) 2637824))
+(assert-event (equal (fn-heap-article-slots (oast-default-at 65536)) 25))
+(assert-event (equal (fn-heap-article-reserve-octets (oast-default-at 1048576)) 34095104))
+(assert-event (equal (fn-heap-article-slots (oast-default-at 1048576)) 1))

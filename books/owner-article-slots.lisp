@@ -96,12 +96,17 @@
   (natp (fn-oas-article-conns conns))
   :rule-classes :type-prescription)
 
-;; The submission in flight: nil or ONE submission record (books/owner.lisp:
-;; fn-own-take-submission takes one from the queue when nothing is in
-;; flight), so it holds one article, not the record's length.
+; The one submission in the durable path, counted once (it is a record, not
+; a list: its length was its field count, 4 or 6; lane credits-stall).
 (defun fn-oas-inflight-count (o)
   (declare (xargs :guard t))
   (if (fn-own-inflight o) 1 0))
+
+(defthm fn-oas-inflight-count-natp
+  (natp (fn-oas-inflight-count o))
+  :rule-classes :type-prescription)
+
+(in-theory (disable fn-oas-inflight-count))
 
 (defun fn-oas-held (oc)
   (declare (xargs :guard t))
@@ -109,8 +114,6 @@
     (+ (fn-oas-article-conns (fn-own-conns o))
        (len (fn-own-queue o))
        (fn-oas-inflight-count o))))
-
-(in-theory (disable fn-oas-inflight-count))
 
 (defun fn-oas-articlep (oc id)
   (declare (xargs :guard t))
@@ -143,22 +146,35 @@
   (fn-nntp-crlf (fn-nntp-string-octets
                  "400 the articles in flight fill the memory; try again later")))
 
-; Each generic 440 becomes this book's line; every other effect as it is.
-; A loop onto an accumulator, reversed at the end (tail recursive).
-(defun fn-oas-post-effects-onto (effects acc)
+; Each generic 440 becomes LINE; every other effect as it is.  A loop
+; onto an accumulator, reversed at the end (tail recursive).
+(defun fn-oas-post-effects-onto (effects line acc)
   (declare (xargs :guard (true-listp acc)))
   (if (consp effects)
       (fn-oas-post-effects-onto
-       (cdr effects)
+       (cdr effects) line
        (cons (if (equal (car effects) *fn-otm-generic-440*)
-                 (fn-nntp-reply-effect *fn-oas-post-line*)
+                 (fn-nntp-reply-effect line)
                (car effects))
              acc))
     (revappend acc nil)))
 
-(defun fn-oas-post-effects (effects)
+; THE REASON A REFUSED POST IS GIVEN (lane credits-stall, 2026-09-28).  The
+; disk's classification comes before the memory's: while the time model
+; sheds posts (fn-otm-admit-post: a slow or stalled barrier, or a full
+; disk; D and H of books/owner-time-model.lisp), a POST the slots refuse is
+; told the disk's reason, the line fn-otm-read-span itself gives
+; (fn-otm-post-command-reply), never the memory's; otherwise the memory's.
+; Uncertain, refused and accepted stay distinct, and so do the reasons.
+(defun fn-oas-refusal-line (s)
   (declare (xargs :guard t))
-  (fn-oas-post-effects-onto effects nil))
+  (if (eq (fn-otm-admit-post s) :shed)
+      (fn-otm-post-command-reply s)
+    *fn-oas-post-line*))
+
+(defun fn-oas-post-effects (effects s)
+  (declare (xargs :guard t))
+  (fn-oas-post-effects-onto effects (fn-oas-refusal-line s) nil))
 
 ; Connection ID's wire closed (its retained input dropped), every other
 ; field and connection as it is.
@@ -195,7 +211,7 @@
     (fn-own-tls-make-result
      (fn-own-tls-result-consumed r)
      (if allow
-         (fn-oas-post-effects (fn-own-tls-result-effects r))
+         (fn-oas-post-effects (fn-own-tls-result-effects r) s)
        (fn-own-tls-result-effects r))
      (fn-otm-owner-with-allow (fn-own-tls-result-owner r) id allow)
      (fn-own-tls-result-repinned r))))
@@ -254,6 +270,16 @@
 
 ; -----------------------------------------------------------------------------
 ; The theorems.
+
+;; The refused POST's reason follows the disk's classification: while the
+;; time model sheds, the time model's own line (the reason fn-otm-read-span
+;; gives a POST at the command), else the memory's.
+(defthm fn-oas-refusal-line-follows-the-disk-unfolds
+  (equal (fn-oas-refusal-line s)
+         (if (eq (fn-otm-admit-post s) :shed)
+             (fn-otm-post-command-reply s)
+           *fn-oas-post-line*))
+  :hints (("Goal" :in-theory (union-theories '(fn-oas-refusal-line) (theory 'minimal-theory)))))
 
 ;; A read the slots hold is the read before this book.
 (defthm fn-oas-read-span-when-held-unfolds
@@ -376,10 +402,17 @@
 ;; Closing connection ID never raises what the owner holds.
 (defthm fn-oas-owner-closed-held
   (<= (fn-oas-held (fn-oas-owner-closed oc id)) (fn-oas-held oc))
-  :hints (("Goal" :in-theory (e/d (fn-oas-owner-closed fn-oas-held fn-oas-article-conns)
+  :hints (("Goal" :in-theory (e/d (fn-oas-owner-closed fn-oas-held fn-oas-article-conns
+                                   fn-oas-inflight-count)
                                   (fn-oas-conn-articlep fn-oas-conn-closed
                                    fn-own-replace-conn fn-own-find-conn fn-own-set-conns))))
   :rule-classes :linear)
+
+(defthm fn-oas-inflight-count-of-owner-closed
+  (equal (fn-oas-inflight-count (fn-ocfg-owner (fn-oas-owner-closed oc id)))
+         (fn-oas-inflight-count (fn-ocfg-owner oc)))
+  :hints (("Goal" :in-theory (e/d (fn-oas-owner-closed fn-oas-inflight-count)
+                                  (fn-oas-conn-closed fn-own-replace-conn fn-own-find-conn)))))
 
 (defthm fn-oas-whole-refusal-held
   (<= (fn-oas-held (fn-own-tls-result-owner (fn-oas-whole-refusal oc id i end)))
