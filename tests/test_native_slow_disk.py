@@ -60,7 +60,7 @@ class SlowDiskSourceTests(unittest.TestCase):
         self.assertIn("(fnn-owner-disk-event service :clock)", pipeline)
         self.assertIn("(fnn-owner-disk-wait-ms service)", pipeline)
         self.assertIn(":timeout (/ ms 1000)", pipeline)
-        self.assertLess(pipeline.index("(fnn-owner-start-syncer service)"),
+        self.assertLess(pipeline.index("(fnn-owner-start-syncer service gen)"),
                         pipeline.index("(fnn-owner-disk-event service :issue limits)"))
         # Slice 2: past H every member is told uncertain, once per barrier,
         # and the queued POSTs are shed; the told members are not answered
@@ -68,7 +68,12 @@ class SlowDiskSourceTests(unittest.TestCase):
         self.assertIn("(fnn-owner-disk-stalled-p service)", pipeline)
         self.assertIn("(fnn-owner-stall-release", pipeline)
         self.assertIn("(fnn-owner-journal-note service (length told) shed)", pipeline)
-        self.assertIn("(fnn-owner-unreleased members released)", pipeline)
+        # Lane time-bars (PRF-384): ACL2's ledger decides who the late
+        # completion answers; the syncer carries its generation.
+        self.assertIn("(fnn-core 'fn-otb-issue ledger)", pipeline)
+        self.assertIn("(fnn-owner-answer-early ledger (append members next))", pipeline)
+        self.assertIn("(fnn-owner-complete-generation ledger rgen members)", pipeline)
+        self.assertNotIn("fnn-owner-unreleased", owner)
         event = owner[owner.index("(defun fnn-owner-disk-event "):owner.index("(defun fnn-owner-journal-note")]
         self.assertIn("'fn-otm-disk-step", event)
         self.assertIn("(fnn-journal-line entry)", event)
@@ -107,7 +112,7 @@ class SlowDiskSourceTests(unittest.TestCase):
         shed = owner[owner.index("(defun fnn-owner-shed-queued-locked "):]
         self.assertIn("'fn-owner-shed-outcome", shed[:2000])
         wrapper = (ROOT / "host" / "owner-host.lisp").read_text()
-        self.assertIn("(fn-otm-read-span\n", wrapper)
+        self.assertIn("(fn-oas-read-span\n", wrapper)  # over fn-otm-read-span (lane zero-copy-commit)
         self.assertIn("(fn-otm-shed-reply s)", wrapper)
         self.assertIn("(fn-owner-outcome id :refused state)", wrapper)
         live = (ROOT / "host" / "native-live-status-host.lisp").read_text()
