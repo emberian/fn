@@ -55,14 +55,34 @@
 (defun fn-mcr-op-owned (op) (declare (xargs :guard t)) (if (consp op) (nfix (car op)) 0))
 (defun fn-mcr-op-reserved (op) (declare (xargs :guard t)) (if (consp op) (nfix (cdr op)) 0))
 
-(defun fn-mcr-ops-credit (ops)
-  (declare (xargs :guard t))
+; The served path runs these (books/owner-credits.lisp): each is a loop
+; (tail recursive, one control-stack frame whatever the operations) equal
+; to its logical definition (lane credits; PRF-352's loop twins).
+(defun fn-mcr-ops-credit-onto (ops acc)
+  (declare (xargs :guard (acl2-numberp acc)))
   (if (consp ops)
-      (+ (if (consp (car ops))
-             (+ (fn-mcr-op-owned (cdar ops)) (fn-mcr-op-reserved (cdar ops)))
-           0)
-         (fn-mcr-ops-credit (cdr ops)))
-    0))
+      (fn-mcr-ops-credit-onto
+       (cdr ops)
+       (+ acc (if (consp (car ops))
+                  (+ (fn-mcr-op-owned (cdar ops)) (fn-mcr-op-reserved (cdar ops)))
+                0)))
+    acc))
+
+(defun fn-mcr-ops-credit (ops)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp ops)
+                  (+ (if (consp (car ops))
+                         (+ (fn-mcr-op-owned (cdar ops)) (fn-mcr-op-reserved (cdar ops)))
+                       0)
+                     (fn-mcr-ops-credit (cdr ops)))
+                0)
+       :exec (fn-mcr-ops-credit-onto ops 0)))
+
+(defthm fn-mcr-ops-credit-onto-is-the-credit
+  (implies (acl2-numberp acc)
+           (equal (fn-mcr-ops-credit-onto ops acc) (+ acc (fn-mcr-ops-credit ops)))))
+
+(verify-guards fn-mcr-ops-credit)
 
 (defun fn-mcr-make (budget base cache completion runtime drawn ops)
   (declare (xargs :guard t))
@@ -103,14 +123,29 @@
   (declare (xargs :guard t))
   (cdr (hons-assoc-equal id ops)))
 
-; OPS without ID's entries.
-(defun fn-mcr-drop (id ops)
-  (declare (xargs :guard t))
+; OPS without ID's entries (a loop onto an accumulator, reversed at the end).
+(defun fn-mcr-drop-loop (id ops acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp ops)
-      (if (and (consp (car ops)) (equal (caar ops) id))
-          (fn-mcr-drop id (cdr ops))
-        (cons (car ops) (fn-mcr-drop id (cdr ops))))
-    nil))
+      (fn-mcr-drop-loop id (cdr ops)
+                        (if (and (consp (car ops)) (equal (caar ops) id))
+                            acc
+                          (cons (car ops) acc)))
+    (revappend acc nil)))
+
+(defun fn-mcr-drop (id ops)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp ops)
+                  (if (and (consp (car ops)) (equal (caar ops) id))
+                      (fn-mcr-drop id (cdr ops))
+                    (cons (car ops) (fn-mcr-drop id (cdr ops))))
+                nil)
+       :exec (fn-mcr-drop-loop id ops nil)))
+
+(defthm fn-mcr-drop-loop-is-the-drop
+  (equal (fn-mcr-drop-loop id ops acc) (revappend acc (fn-mcr-drop id ops))))
+
+(verify-guards fn-mcr-drop)
 
 ; ID's credit is counted once in OPS: hons-assoc-equal finds the first entry
 ; and the ops a transition builds keep one entry an id (fn-mcr-put).

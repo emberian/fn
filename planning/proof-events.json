@@ -12631,10 +12631,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-mcr-transitions-keep-funded"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-mcr-resize-and-move-keep-funded"
         },
         {
