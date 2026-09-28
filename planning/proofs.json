@@ -11649,7 +11649,7 @@
         "A-DURABLE-EXTENT",
         "A-DURABLE-LZ"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/payload-lz-record.lisp",
         "books/payload-lz-replay.lisp",
