@@ -13488,6 +13488,15 @@
         "tests/acl2/nntp-list-counts-tests.lisp",
         "tests/test_native_moderation.py",
         "tests/test_native_group_access.py"
+      ],
+      "events": [
+        "fn-scat-counts-lines-status-is-the-active-status",
+        "fn-gidx-counts-lines-status-is-the-active-status",
+        "fn-nntp-counts-lines-status-is-the-active-status",
+        "fn-nntp-counts-summary-line-status",
+        "fn-nntp-active-status-line-status",
+        "fn-nntp-list-counts-command-cat-is-archive",
+        "fn-gidx-list-counts-command-is-the-archive-fold"
       ]
     },
     {
@@ -13513,6 +13522,12 @@
         "tests/acl2/injection-tests.lisp",
         "tests/acl2/owner-log-tests.lisp",
         "tests/test_native_header_lines.py"
+      ],
+      "events": [
+        "fn-inj-decide-line-length-is-a-long-header-line",
+        "fn-article-parse-under-limit-is-a-long-header-line",
+        "fn-article-parse-limit-is-a-long-header-line",
+        "fn-article-next-line-limit-is-a-long-line"
       ]
     },
     {
@@ -13537,6 +13552,18 @@
         "tests/acl2/group-access-cache-tests.lisp",
         "tests/acl2/served-catalog-chain-tests.lisp",
         "tests/test_native_group_access.py"
+      ],
+      "events": [
+        "fn-scr-auth-delegate-is-scar-auth-delegate-pinned",
+        "fn-scr-cached-view-is-the-view",
+        "fn-scr-prepare-access-keeps-okp",
+        "fn-scr-prepare-access-serves-the-pin",
+        "fn-gacc-view-is-the-view-entry",
+        "fn-gacc-prepare-keeps-okp",
+        "fn-gacc-view-of-prepare",
+        "fn-gacc-refresh-okp",
+        "fn-gacc-grow-builds",
+        "fn-gac-view-entry-is-per-command"
       ]
     }
   ]
