@@ -148,7 +148,7 @@
             (fn-oah-ex (fn-ocfg-owner oc) id)
             (fn-oah-art (fn-ocfg-owner oc) id)
             (len (fn-own-queue (fn-ocfg-owner oc)))
-            (len (fn-own-inflight (fn-ocfg-owner oc)))))
+            (fn-oas-inflight-count (fn-ocfg-owner oc))))
   :hints (("Goal" :in-theory (enable fn-oas-held fn-oah-extra fn-oah-others fn-oah-ex fn-oah-art))))
 
 (defthm fn-oah-articlep-is-art
@@ -590,9 +590,10 @@
         (o (fn-ocfg-owner oc)))
     (and (<= (fn-oah-ex o2 id) (fn-oah-ex o id))
          (<= (len (fn-own-queue o2)) (+ 1 (len (fn-own-queue o))))
-         (equal (len (fn-own-inflight o2)) (len (fn-own-inflight o)))))
+         (equal (fn-oas-inflight-count o2) (fn-oas-inflight-count o))))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (e/d (fn-oah-steps) (fn-otm-read-span fn-oah-otm-read-span-steps))
+  :hints (("Goal" :in-theory (e/d (fn-oah-steps fn-oas-inflight-count)
+                                  (fn-otm-read-span fn-oah-otm-read-span-steps))
            :use fn-oah-otm-read-span-steps)))
 
 ;; What the owner holds after the read before the slots, from an admitted
