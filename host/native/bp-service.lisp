@@ -44,7 +44,6 @@
   (cursors nil))
 
 (defun fnn-bps-max-rows (service) (first (fnn-bps-profile service)))
-(defun fnn-bps-max-octets (service) (second (fnn-bps-profile service)))
 
 (defun fnn-bps-read-profile (root)
   "ACL2's reading of ROOT's `bp-node-profile' (fn-bpnpf-node-profile-read):

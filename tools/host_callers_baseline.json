@@ -1,0 +1,4 @@
+{
+ "about": "Host definitions nothing in the tracked tree calls, kept on purpose: name -> why. tools/host_callers.py --check warns on any other zero-caller host definition (lane uncalled-host-defuns, 2026-09-28).",
+ "uncalled": {}
+}

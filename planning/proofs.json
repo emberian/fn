@@ -13189,6 +13189,37 @@
         "fn-nlp-answer-keeps-other-versions",
         "fn-nlp-offline-pages-join-to-the-report"
       ]
+    },
+    {
+      "id": "PRF-374",
+      "title": "An invitation's expiry is now + expires in milliseconds on both the running and the stopped path: the clock reading carries its unit",
+      "statement": "Subject: fn-acct-admin-deltas (books/accounts.lisp), host-called from host/native-admin-host.lisp fn-native-admin-host-owner-reconfigure (the running node, at fn-acct-live-invite-reading of fn-own-clock, a :milliseconds reading) and fn-native-admin-host-apply (the stopped node, at fn-acct-offline-invite-reading of the configuration record's stamp, a :seconds reading; host/native/admin.lisp fnn-admin-clock-plan), both reached from host/native/operator.lisp fnn-operator-execute-account-invite. books/clock-unit.lisp names the unit a reading is in (fn-clock-reading, *fn-clock-owner-unit* :milliseconds, *fn-clock-record-stamp-unit* :seconds) and converts its upper end to milliseconds (fn-clock-reading-latest-milliseconds); fn-acct-invite-expiry adds the duration in milliseconds (fn-clock-seconds-in-milliseconds) to it and to nothing else, and a bare observation (no unit) yields no expiry. KEYSTONE fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths: for an accepted account-invite plan with positive capacity and a natural wall and error bound, the running path stages exactly one pending row expiring at wall + err + 1000 x expires and the stopped path exactly one expiring at 1000 x wall-seconds + 1000 x expires. KEYSTONE fn-acct-invite-expiry-agrees-across-the-running-and-stopped-paths: at the same wall instant W milliseconds (the stopped stamp floor(W/1000)), the running expiry is W + 1000 x expires and the stopped one lies in (running - 1000, running]. fn-acct-invite-delta-is-live-at-its-stamp: the expiry lies after the issuing reading's upper end. Bug M1 (lane node-migrate): the stopped path's seconds stamp was added to milliseconds, so every code invited on a stopped node was born expired (XREDEEM 482). Not claimed: that the record-level admission check (books/config.lisp fn-cfg-account-livep inside fn-cfg-delta-reason at fn-cfg-record-stamp, a SECONDS stamp against a MILLISECONDS expiry) enforces the expiry: it is vacuous (always live) and open (LANEDUMP invite-clock); the enforcing comparison is the redeem plan's at the owner's milliseconds clock (fn-acct-host-owner-redeem-stage). Not claimed: that an unreadable wall clock refuses an offline invite (fnn-admin-clock-plan passes wall 0 and fn-native-admin-clock-observation claims a wall; open).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-034"
+      ],
+      "depends_on": [
+        "PRF-164"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/clock-unit.lisp",
+        "books/accounts.lisp",
+        "tests/acl2/accounts-tests.lisp",
+        "host/native-admin-host.lisp",
+        "host/native/admin.lisp",
+        "tests/test_native_friends_accounts.py",
+        "planning/evidence/manifests/certify-20260928T164119Z-88576.json"
+      ],
+      "progress_note": "Lane invite-clock (Opus 5.5, 2026-09-28). REPL-admitted on persvati (books/accounts with clock-unit from source; tests/acl2/accounts-tests all 161 forms). Teeth in tests/acl2/accounts-tests.lisp: reached positive witnesses through fn-native-admin-plan of the host's argv on both paths (exact expiry texts), a redeem-side liveness witness at the owner's clock, a labelled mutation witness (the pre-fix arithmetic is expired at issue), hypothesis-removal witnesses (another verb, a CONSTRUCTED capacity-0 plan since the planner refuses 0, a non-natural wall or error; seconds 0 and a negative instant for the agreement). Native: tests.test_native_friends_accounts test_a_code_invited_while_the_node_is_stopped_redeems. Native (hbox, 98ddcd3b7, developer+production images): test_native_friends_accounts OK (5 ran) and test_native_operator_verbs OK (24 ran); the same new test at 5de7dda3e (pre-fix) FAILED with XREDEEM PASS -> 482. Certified: persvati run-20260928T163928Z-e70a, affected roots of books/accounts and books/clock-unit, 483 passed, 0 failed.",
+      "events": [
+        "fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths",
+        "fn-acct-invite-expiry-agrees-across-the-running-and-stopped-paths",
+        "fn-acct-invite-delta-is-live-at-its-stamp",
+        "fn-clock-reading-latest-milliseconds-of-an-owner-reading",
+        "fn-clock-reading-latest-milliseconds-of-a-record-stamp-reading"
+      ]
     }
   ]
 }

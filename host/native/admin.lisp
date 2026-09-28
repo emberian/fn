@@ -8,14 +8,6 @@
 
 (in-package "ACL2")
 
-(defun fnn-admin-argv-octets (arguments)
-  "Marshal raw process words only.  ACL2 rejects non-ASCII, empty, oversized,
-or syntactically unsupported requests in `fn-native-admin-plan'."
-  (mapcar (lambda (argument) (fnn-ascii-octet-list argument)) arguments))
-
-(defun fnn-admin-plan (arguments)
-  (fnn-core 'fn-native-admin-host-plan (fnn-admin-argv-octets arguments)))
-
 (defun fnn-admin-plan-acceptedp (plan)
   (eq (fnn-core 'fn-native-admin-host-status plan) :accepted))
 
@@ -30,6 +22,9 @@ represent."
   ;; configuration stamps (books/owner-config.lisp `fn-ocfg-config-stamp').
   ;; It was get-universal-time (seconds since 1900), so an offline record's
   ;; stamp was 3155673600 s ahead of a live one's (PKT-665, 2026-09-27).
+  ;; The stamp is therefore a :seconds reading; an offline `account invite'
+  ;; names that unit (books/accounts.lisp fn-acct-offline-invite-reading,
+  ;; PRF-374) so its expiry is in the owner clock's milliseconds (bug M1).
   (let ((result (fnn-core 'fn-native-admin-host-clock-observation
                           (floor (fnn-now) internal-time-units-per-second)
                           (floor (fnn-owner-wall-milliseconds) 1000))))
@@ -409,8 +404,3 @@ turning a refusal into a physical mutation."
                           generation name verification)
                  +fnn-exit-ok+)))
         (when store (fnn-store-close store)))))
-
-(defun fnn-command-admin (root arguments)
-  "Unregistered internal test helper.  Production reaches fnn-admin-execute
-only through the ACL2 native-operator action plan."
-  (fnn-admin-execute root (fnn-admin-plan arguments)))

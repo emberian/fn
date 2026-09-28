@@ -148,10 +148,6 @@ build/lib for a built image, the frozen or installed directory's lib/."
           *fnn-hsig-mldsa-library* nil *fnn-hsig-mldsa-version* nil))
   t)
 
-(defun fnn-hsig-version ()
-  (fnn-hsig-initialize)
-  (list *fnn-hsig-mldsa-library* *fnn-hsig-mldsa-version*))
-
 (defun fnn-hsig-ml-fault (code what)
   (error 'fnn-hsig-fault
          :detail (format nil "~a: ~a" what (fnn-%hsig-ml-strerror code))))
@@ -314,57 +310,6 @@ authorization check binds its observed key bytes to the carrier's key set."
                                         ml-public-key-path)
             (list :verified source principal keys)
           (list :unverified :signature received))))))
-
-(defun fnn-hsig-authorized-article-event
-    (sequence txid generation keyring-generation enrolled-snapshot
-              msgid content-subject
-              article-record principal keys source signatures
-              ml-public-key-path)
-  "Verify once, then ask ACL2 to construct the complete durable kind-4 event.
-The caller may pass the returned object unchanged to the identity owner."
-  (let ((preimage (fnn-core 'fn-hsig-host-preimage principal keys source)))
-    (unless (and preimage (plusp (length preimage)))
-      (return-from fnn-hsig-authorized-article-event nil))
-    (let* ((observations
-            (fnn-hsig-observe (cdr (first keys)) ml-public-key-path
-                              preimage signatures))
-           (ml-observation (second observations))
-           (observed-ml-key (and (consp ml-observation)
-                                 (second ml-observation))))
-      (fnn-core
-       'fn-hsig-host-authorized-article-event
-       sequence txid generation keyring-generation enrolled-snapshot
-       msgid content-subject
-       article-record principal keys source signatures
-       (and observed-ml-key (coerce observed-ml-key 'list))
-       (first observations)
-       (if (consp ml-observation) (first ml-observation) ml-observation)))))
-
-(defun fnn-hsig-authorized-submission-event
-    (coordinates keyring-generation enrolled-snapshot msgid source groups
-                 obligation-id content-subject release-evidence charge
-                 principal keys signatures ml-public-key-path observation)
-  "Verify once and ask ACL2 to construct the complete fn-r plus kind-4 event."
-  (destructuring-bind (sequence txid generation) coordinates
-    (let ((preimage (fnn-core 'fn-hsig-host-preimage principal keys source)))
-      (unless (and preimage (plusp (length preimage)))
-        (return-from fnn-hsig-authorized-submission-event nil))
-      (let* ((observations
-              (fnn-hsig-observe (cdr (first keys)) ml-public-key-path
-                                preimage signatures))
-             (ml-observation (second observations))
-             (observed-ml-key (and (consp ml-observation)
-                                   (second ml-observation))))
-        (fnn-core
-         'fn-hsig-host-authorized-submission-event
-         sequence txid generation keyring-generation enrolled-snapshot
-         msgid source groups obligation-id content-subject release-evidence
-         charge principal keys signatures
-         (and observed-ml-key (coerce observed-ml-key 'list))
-         (first observations)
-         (if (consp ml-observation) (first ml-observation)
-           ml-observation)
-         observation)))))
 
 (defun fnn-hsig-authorized-carried-submission-event
     (coordinates keyring-generation enrolled-snapshot msgid source received groups

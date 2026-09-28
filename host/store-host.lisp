@@ -111,7 +111,7 @@
 ; (fn-rcon-wire-event-p-is-wire-event-p, -sequence-is-, -txid-is-): the
 ; journal's and the checkpoint's bytes.  The store machine never holds one:
 ; the entry interns the decoded events into the arena first
-; (fn-store-intern-records below; books/store-intern.lisp fn-intern-events).
+; (books/store-intern.lisp fn-intern-events).
 (defun fn-store-decode-records (octet-records)
   ; books/store-recover-stream.lisp fn-srs-decode: the chunked open's step
   ; decodes with the same function.
@@ -119,21 +119,11 @@
                   :guard (fn-octet-list-listp octet-records)))
   (fn-srs-decode octet-records))
 
-; THE INTERN AT THE OPEN (records-flip; PKT-635): the decoded wire events
-; become the store's rows, every article's payload sealed once into the
-; arena (fn-intern-events; KEYSTONES fn-intern-events-materializes,
-; -keep-coordinates, -contexts-okp).  The keyring at open is nil and the
-; generation 0 (the host installs the operator's keyring afterwards through
-; fn-store-sn-set-keyring, which recontexts every row through the arena).
-; :bad when any event is refused (a composite whose article does not decode).
-(defun fn-store-intern-records (records fn-arena)
-  (declare (xargs :mode :program :stobjs fn-arena))
-  (fn-intern-events records nil 0 fn-arena))
-
-; The same intern into a LOCAL arena, for a decision over a history that is
-; not the live Store's (the administrative candidate reopen, the checkpoint
-; generation capture): the rows are the replay's domain; the arena is dropped
-; with the answer, so nothing is retained.
+; The intern (fn-intern-events; KEYSTONES fn-intern-events-materializes,
+; -keep-coordinates, -contexts-okp) into a LOCAL arena, for a decision over
+; a history that is not the live Store's (the administrative candidate
+; reopen, the checkpoint generation capture): the rows are the replay's
+; domain; the arena is dropped with the answer, so nothing is retained.
 (defun fn-store-intern-records-local (records)
   (declare (xargs :mode :program))
   (with-local-stobj fn-arena
@@ -207,40 +197,6 @@
 (defun fn-store-frame-store-protected (record)
   (fn-frame-store-protected record))
 
-(defun fn-store-frame-workflow-protected (kind values)
-  (fn-frame-workflow-protected kind values))
-
-(defun fn-store-frame-receipt-protected (kind values)
-  (fn-frame-receipt-protected kind values))
-
-(defun fn-store-frame-names-octets (names)
-  (if (consp names)
-      (cons (fn-record-string-octets (car names))
-            (fn-store-frame-names-octets (cdr names)))
-    nil))
-
-(defun fn-store-frame-schema (kind names-table spec-table)
-  ; (:ok (field-name-octets ...) (field-specification ...)) or (:error :kind).
-  (let ((names (fn-frame-spec-for kind names-table))
-        (spec (fn-frame-spec-for kind spec-table)))
-    (if (or (equal names :none) (equal spec :none))
-        (list :error :kind)
-      (list :ok (fn-store-frame-names-octets names) spec))))
-
-(defun fn-store-frame-workflow-schema (kind)
-  (fn-store-frame-schema kind *fn-frame-workflow-field-names*
-                         *fn-frame-workflow-specs*))
-
-(defun fn-store-frame-receipt-schema (kind)
-  (fn-store-frame-schema kind *fn-frame-receipt-field-names*
-                         *fn-frame-receipt-specs*))
-
-(defun fn-store-frame-workflow-kinds ()
-  *fn-frame-workflow-kinds*)
-
-(defun fn-store-frame-receipt-kinds ()
-  *fn-frame-receipt-kinds*)
-
 ; Native application journals hold the logical record values used by
 ; bp-workflow-records and bp-receipt-records: text fields are ACL2 strings.
 ; The durable frame grammar holds text octets.  Keep that representation
@@ -299,9 +255,6 @@
                 (fn-store-frame-wire-to-logical-values spec values))))
     answer))
 
-(defun fn-store-frame-store-encode (record digest)
-  (fn-frame-store-encode record digest))
-
 (defun fn-store-frame-store-decode (octets digest)
   (fn-store-frame-result (fn-frame-store-decode octets digest)))
 
@@ -314,9 +267,6 @@
 (defun fn-store-unframe-split (prefix trailer)
   (fn-store-frame-result (fn-srs-unframe prefix trailer)))
 
-(defun fn-store-frame-workflow-encode (kind values digest)
-  (fn-frame-workflow-encode kind values digest))
-
 (defun fn-store-frame-workflow-decode (octets digest)
   (fn-store-frame-record-result (fn-frame-workflow-decode octets digest)))
 
@@ -325,9 +275,6 @@
   (fn-store-frame-logical-result
    (fn-store-frame-workflow-decode octets digest)
    *fn-frame-workflow-specs*))
-
-(defun fn-store-frame-receipt-encode (kind values digest)
-  (fn-frame-receipt-encode kind values digest))
 
 (defun fn-store-frame-receipt-decode (octets digest)
   (fn-store-frame-record-result (fn-frame-receipt-decode octets digest)))
@@ -381,34 +328,8 @@
       (fn-id-obligation-of msgid subject)
     nil))
 
-(defun fn-store-subject-prefix (length)
-  ; Superseded by fn-store-subject-id-of-payload; retained for compatibility.
-  (if (and (natp length) (<= length *fn-cbor-max-uint*))
-      (fn-id-subject-prefix length)
-    nil))
-
-(defun fn-store-subject-id (digest)
-  (if (fn-id-digestp digest) (fn-id-subject digest) nil))
-
-(defun fn-store-obligation-preimage (msgid subject)
-  (if (and (fn-cbor-octet-listp msgid)
-           (<= (len msgid) *fn-cbor-max-uint*)
-           (fn-cbor-octet-listp subject)
-           (<= (len subject) *fn-cbor-max-uint*))
-      (fn-id-obligation-preimage msgid subject)
-    nil))
-
-(defun fn-store-obligation-id (digest)
-  (if (fn-id-digestp digest) (fn-id-obligation digest) nil))
-
 (defun fn-store-charge (length)
   (if (natp length) (fn-charge-for-payload length) 0))
-
-(defun fn-store-group-name-octets (groups)
-  (if (consp groups)
-      (cons (fn-record-string-octets (car groups))
-            (fn-store-group-name-octets (cdr groups)))
-    nil))
 
 (defun fn-store-identity-text (identity)
   ; The one rendering of a canonical identity into a string, for the three
@@ -514,9 +435,6 @@
 (defun fn-store-profile-init-verdict (request)
   (fn-bs-profile-init-verdict request))
 
-(defun fn-store-profile-max-transactions (values)
-  (fn-bs-profile-max-transactions values))
-
 (defun fn-store-profile-max-article-octets (values)
   (fn-bs-profile-max-article-octets values))
 
@@ -532,9 +450,6 @@
 ;; host/owner-host.lisp fn-owner-consumer-local-register).
 (defun fn-store-profile-max-consumers (values)
   (fn-bs-profile-max-consumers values))
-
-(defun fn-store-profile-max-config-generations (values)
-  (fn-bs-profile-max-config-generations values))
 
 (defun fn-store-profile-max-credentials (values)
   (fn-bs-profile-max-credentials values))
@@ -574,9 +489,6 @@
 ;; is within it, `fn-srb-admitted-history-is-within-the-bound').
 (defun fn-store-profile-replay-within-bound (profile aggregate)
   (fn-srb-replay-within-boundp profile aggregate))
-
-(defun fn-store-publication-kind-ceiling (kind)
-  (fn-store-publication-ceiling kind))
 
 ;; The open's per-file read bound under the persisted PROFILE: one FNST frame
 ;; whose payload is at most the profile's per-record ceiling.  Every committed

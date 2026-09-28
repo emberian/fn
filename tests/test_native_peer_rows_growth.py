@@ -24,6 +24,9 @@ import time
 import unittest
 
 from tests import test_native_operator_verbs as verbs
+# The harness stores' init budget (tools/native_env.py): init refuses a
+# store without FN_INIT_BUDGET_MB on a large machine (batch AZ, 2026-09-28).
+from tools.native_env import harness_store_env  # noqa: E402
 
 EXIT_OK = verbs.EXIT_OK
 REQUESTS = int(os.environ.get("FN_PEER_ROWS_REQUESTS", "1100"))
@@ -55,8 +58,14 @@ class NativePeerRowsGrowthTests(verbs.NativeOperatorVerbFixture):
 
     def test_a_peer_carries_more_than_the_old_row_cap(self):
         room = str(REQUESTS + 64)
+        # The small preset's record, article and group bounds (tools/fixtures.py
+        # SYNTH_SMALL_BOUNDS): with the defaults, init's reservation for this
+        # profile is 11.5 TB and the budget check refuses it (batch AZ).
         self.ok("init", "--max-transactions", room,
-                "--max-config-generations", room, "fn.test")
+                "--max-config-generations", room,
+                "--max-record-octets", "196608", "--max-article-octets", "32768",
+                "--max-groups-per-article", "16",
+                "--max-history-octets", "67108864", "fn.test")
         self.ok("peer", "add", "far", "far.example.invalid", "192.0.2.44",
                 "1119", "fn.*", "-", "192.0.2.44", "true")
         started = time.monotonic()
@@ -160,7 +169,7 @@ class NativePeerRowsLiveTests(verbs.NativeOperatorVerbFixture):
                                       store, verbs.free_port()), encoding="ascii")
                 result = verbs.subprocess.run(
                     [OLD_IMAGE, "--fn", "operator", str(config), "status"],
-                    cwd=verbs.ROOT, env=verbs.environment(),
+                    cwd=verbs.ROOT, env=harness_store_env(verbs.environment()),
                     stdout=verbs.subprocess.PIPE, stderr=verbs.subprocess.PIPE,
                     timeout=240, check=False)
                 print("peer-rows-old-image", name, "->", result.returncode,
@@ -174,7 +183,7 @@ class NativePeerRowsLiveTests(verbs.NativeOperatorVerbFixture):
                                         fresh, verbs.free_port()), encoding="ascii")
             made = verbs.subprocess.run(
                 [str(verbs.DEVELOPER), "--fn", "operator", str(fresh_config),
-                 "init", "fn.test"], cwd=verbs.ROOT, env=verbs.environment(),
+                 "init", "fn.test"], cwd=verbs.ROOT, env=harness_store_env(verbs.environment()),
                 stdout=verbs.subprocess.PIPE, stderr=verbs.subprocess.PIPE,
                 timeout=240, check=False)
             self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())

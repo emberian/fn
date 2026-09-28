@@ -28,6 +28,9 @@ SPEC = importlib.util.spec_from_file_location("farm", TOOLS / "farm.py")
 farm = importlib.util.module_from_spec(SPEC)
 sys.modules["farm"] = farm
 SPEC.loader.exec_module(farm)
+# No test reaches a real box's reservation lease (tools/boxes.sh wait).
+BOX_WAITS = []
+farm.BOXES = lambda words, **_: BOX_WAITS.append(words) or SimpleNamespace(returncode=0)
 
 
 COHERENT = ("install-set: 3 books, cache /home/ember/fn-certcache\n"
@@ -993,6 +996,21 @@ class FrictionTests(unittest.TestCase):
             self.assertEqual(farm.main(["submit", "books/wire", "books/x"]), 0)
             self.assertEqual(farm.main(["submit", "auto", "books/y"]), 0)
         self.assertEqual(calls, [("hbox", ["books/wire", "books/x"]), ("hbox", ["books/y"])])
+
+    def test_a_named_box_waits_for_its_reservation_and_a_held_one_starts_nothing(self):
+        calls = []
+        with mock.patch.object(farm, "submit",
+                               lambda host, root, books, *a, **k: calls.append(host) or "run-x"), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            del BOX_WAITS[:]
+            self.assertEqual(farm.main(["submit", "persvati", "books/y"]), 0)
+            self.assertEqual([w[-2:] for w in BOX_WAITS], [["wait", "persvati"]])
+            with mock.patch.object(farm, "BOXES",
+                                   lambda words, **_: SimpleNamespace(returncode=4)):
+                self.assertEqual(farm.main(["submit", "hbox", "books/y"]), 2)
+        self.assertEqual(calls, ["persvati"])
+        self.assertIn("hbox is reserved", err.getvalue())
 
     def test_valid_words_with_lisp_suffix_pass_validation(self):
         with tempfile.TemporaryDirectory() as directory:

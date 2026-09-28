@@ -8,22 +8,9 @@
 (defun fn-native-admin-host-plan (argv) (fn-native-admin-plan argv))
 (defun fn-native-admin-host-status (result) (fn-native-admin-result-status result))
 (defun fn-native-admin-host-reason (result) (fn-native-admin-result-reason result))
-(defun fn-native-admin-host-kind (result) (fn-native-admin-result-kind result))
-(defun fn-native-admin-host-name (result) (fn-native-admin-result-name result))
-(defun fn-native-admin-host-capacity (result) (fn-native-admin-result-capacity result))
-(defun fn-native-admin-host-peer (result) (fn-native-admin-result-peer result))
-(defun fn-native-admin-host-value (result) (fn-native-admin-result-value result))
 (defun fn-native-admin-host-queryp (result) (fn-native-admin-result-queryp result))
 (defun fn-native-admin-host-report-kind (result)
   (fn-native-admin-result-report-kind result))
-(defun fn-native-admin-host-peer-report (state)
-  ; The `peer list' report over the configuration the store just replayed.
-  ; The rows are the replayed value's own; this bridge selects no peer,
-  ; orders nothing, and renders no field: books/native-admin.lisp does all
-  ; three and raw Lisp only writes the octets out.
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-native-admin-peer-budget-report
-          (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state))))))
 (defun fn-native-admin-host-query-report (plan state)
   ; `peer list' or `control list' over the configuration the store just
   ; replayed; books/native-admin.lisp selects and renders.
@@ -38,10 +25,12 @@
   ; PRF-099: an :extend-peer plan's delta is built over the live owner's
   ; peer table (`fn-native-admin-plan-deltas-over').
   ;; PRF-164: an `account invite' plan's pending row expires from the live
-  ;; owner's clock (fn-acct-admin-deltas).
+  ;; owner's clock, a milliseconds reading (fn-acct-admin-deltas,
+  ;; fn-acct-live-invite-reading; PRF-374).
   (let ((deltas (if (equal (fn-native-admin-result-kind plan) :account-invite)
                     (fn-acct-admin-deltas
-                     plan (fn-own-clock (fn-owner-core state)))
+                     plan (fn-acct-live-invite-reading
+                           (fn-own-clock (fn-owner-core state))))
                   (fn-native-admin-plan-deltas-over
                    plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))))))
     (cond
@@ -111,11 +100,12 @@
                                           state)))
                  (value :refused)))))
           ;; PRF-164: offline, the pending row expires from the record's
-          ;; own stamp (the one fn-store-cfg-peer-delta-record builds).
+          ;; own stamp (the one fn-store-cfg-peer-delta-record builds), a
+          ;; SECONDS reading (fn-acct-offline-invite-reading; PRF-374, bug
+          ;; M1: it was read as milliseconds, so the code was born expired).
           ((equal kind :account-invite)
            (let ((deltas (fn-acct-admin-deltas
-                          plan (fn-clock-observation (nfix monotonic) (nfix wall)
-                                                     0 t))))
+                          plan (fn-acct-offline-invite-reading monotonic wall))))
              (if deltas
                  (fn-store-cfg-peer-delta-record deltas monotonic wall state)
                (let ((state (f-put-global 'fn-store-cfg-last-reason :no-clock

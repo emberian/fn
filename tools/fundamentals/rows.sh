@@ -25,9 +25,11 @@
 # EDGE_SSH (an ssh destination with python3 and this tree's F3 harness for
 # the edge disk's POST/s; none by default), OPENSSL_TEST (an OpenSSL 3.5
 # binary for the ML-DSA-65 test keys; default hbox's 3.5.8 toolchain).
-# STEPS default: "heap f4 f5 f5n f8 f1 f6 f3 f2 f7 wait f4s".
+# STEPS default: "heap f4 f5 f5n f8 f1 f6c f3 f2 f7 wait f4s" (f6c: F6 from the
+# scale curve, TREE/tools/scale_curve.py over the curve fixture; f6: the old
+# chain-20000 and t40k-2k-cp5 opens).
 set -u
-T=$1; O=$2; STEPS=${3:-"heap f4 f5 f5n f8 f1 f6 f3 f2 f7 wait f4s"}
+T=$1; O=$2; STEPS=${3:-"heap f4 f5 f5n f8 f1 f6c f3 f2 f7 wait f4s"}
 H=$(cd "$(dirname "$0")" && pwd)
 ROW_CORES=${ROW_CORES:-20-23}; F4_CORES=${F4_CORES:-16-19}; F4_SECONDS=${F4_SECONDS:-3600}
 FX=${F6_FIXTURES:-/tank/fn/scratch/fixtures}
@@ -110,6 +112,10 @@ f6) for fx in chain-20000 t40k-2k-cp5; do
         done_ "f6-$fx-$mode" $?; rm -rf "$W/f6"
       done
     done ;;
+f6c) box f6c; rm -rf "$O/f6-curve"
+    python3 "$T/tools/scale_curve.py" run --image "$PROD" --tree "$T" --probes open_replay,checkpoint,open_checkpoint \
+      --jobs 1 --cores 4 --first-core "${ROW_CORES%%-*}" --work /dev/shm --out "$O/f6-curve" > "$O/f6-curve.out" 2>&1
+    done_ f6c $? ;;
 f3) for fs in nvme tank; do
       if [ $fs = nvme ]; then D=/var/tmp/fundamentals-$(basename "$(dirname "$O")")/gc-$fs; S=30; else D=/tank/fn/scratch/fundamentals/$(basename "$(dirname "$O")")/gc-$fs; S=60; fi
       rm -rf "$D"; mkdir -p "$(dirname "$D")"
