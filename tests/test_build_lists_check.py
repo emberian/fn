@@ -26,8 +26,8 @@ CHECKPOINT_LD = '(ld "host/checkpoint-host.lisp" :ld-error-action :error)\n'
 BUFFER_INCLUDES = ('(include-book "books/octets-stobj")\n'
                    '(include-book "books/poster-bytes-buffer")\n'
                    ';; host/native/io.lisp fnn-subject-id-buffer calls '
-                   'fn-shb-subject-id-bounded, as in build.lisp.\n'
-                   '(include-book "books/sha256-buffer")\n'
+                   'fn-sidb-subject-id-bounded, as in build.lisp.\n'
+                   '(include-book "books/subject-id-buffer")\n'
                    ';; D13 (STO-014): the tombstone-aware same-article test over '
                    'the buffer\n'
                    ';; (fn-rclb-same-articlep), which fn-pidx-existing-action, '
@@ -124,8 +124,8 @@ STORE_NODE_HOST_FINDINGS = []
 # finding: host/store-node-host.lisp includes books/store-reclaim and
 # books/acceptance-payload-ref itself (the Python bridge loads that host file
 # alone).  fn-rcl-existing-action was retired (PKT-860).
-# host/owner-host.lisp no longer names fn-shb-subject-id: the served POST calls
-# the guard-verified fn-shb-subject-id-bounded from host/native/io.lisp
+# host/owner-host.lisp names no subject-id-buffer entry: the served POST calls
+# the guard-verified fn-sidb-subject-id-bounded from host/native/io.lisp
 # (qual-e747dbcc A4), outside the `ld` closure this check reads.
 # In build-dtn.lisp fn-octets itself is no finding: it includes
 # books/bp-node-rotation-buffer (which includes books/octets-stobj) before it

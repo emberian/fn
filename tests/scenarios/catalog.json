@@ -4481,7 +4481,7 @@
         "On today's image and the new one: 1,000 POSTs of 2,048 octets on a fresh scale store, the fixed served transcript (node_measure.py run --transcript), stop and reopen; a development store until the owner publishes a checkpoint, then the reopen."
       ],
       "expected": [
-        "guard-probe exits 4 with the one stderr line `store: ACL2 error in fn-sha256-of-string: (EV-FNCALL-GUARD-ER FN-SHA256-OF-STRING (42) (STRINGP S) (NIL) NIL)` on both developer images and with ACL2_SYSTEM_BOOKS set; the production image refuses the verb with exit 5.",
+        "guard-probe exits 4 with the one stderr line `store: host-entry-guard: fn-b3-left-chunks argument 2 (n) must be a natural (natp); the host passed the integer -1` on both developer images and with ACL2_SYSTEM_BOOKS set; the production image refuses the verb with exit 5.",
         "The stripped core needs under 192 MiB of dynamic space (today's 271 MiB); the 256 MB node answers 240 and 220.",
         "The transcripts of today's image and the new one are byte-identical; the qualifying native modules pass on the new images."
       ],

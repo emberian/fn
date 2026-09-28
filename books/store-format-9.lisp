@@ -23,18 +23,25 @@
 ; a value it does not understand.
 (in-package "ACL2")
 (include-book "byte-store-frame")
-(include-book "crypto-attach")
+(include-book "sha256")
 (local (include-book "frame-invariants"))
 (local (include-book "cbor-invariants"))
 
 ; -----------------------------------------------------------------------------
 ; A format-9 frame: FNSM (or any family) under the SHA-256 trailer.
 
-; The protected prefix's SHA-256, through the word-stobj computation
-; (books/sha256-stobj.lisp `fn-sha256-stobj-is-sha256': it is `fn-sha256').
+; The protected prefix's SHA-256 (books/sha256.lisp's list model: the word
+; stobj went with the BLAKE3 attachment; a profile frame is a few hundred
+; octets, and the import reads each archive entry once).
 (defun fn-f9-trailer (octets)
   (declare (xargs :guard t))
-  (fn-sha256-stobj octets))
+  (fn-sha256 octets))
+
+(local
+ (defthm fn-f9-cbor-octet-listp-is-sha256-octet-listp
+   (equal (fn-cbor-octet-listp xs)
+          (fn-sha256-octet-listp xs))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp)))))
 
 (defun fn-f9-frame-open (octets max-payload)
   (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))

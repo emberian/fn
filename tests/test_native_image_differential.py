@@ -514,7 +514,7 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
                      "(tools/hbox_native.sh --images developer,developer-stripped)")
 class GuardViolationTests(unittest.TestCase):
     """A guard violation at the host boundary: the developer verb
-    `guard-probe' calls fn-sha256-of-string on 42 through fnn-call."""
+    `guard-probe' calls fn-b3-left-chunks on 42 and -1 through fnn-call."""
     maxDiff = None
 
     def test_the_same_refusal_full_and_stripped(self):

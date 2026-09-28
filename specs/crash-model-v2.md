@@ -1935,7 +1935,7 @@ constraint, and a named qualification hook.
 ; A-CRYPTO-TRAILER.  The tears the platform produces are a subset of the
 ; model's tears, and none of them validates unless it is the exact write.
 ; The witness is "no tears".  Its qualification is statistical: the
-; campaign's garble and truncate variants (section 5) over SHA-256 never
+; campaign's garble and truncate variants (section 5) over the trailer's digest (BLAKE3) never
 ; validate; a 2^-256 event is not modeled.  This replaces the sentence "the
 ; frame checksum supplies only the predicate that damaged bytes in the
 ; stated fault class are rejected" (store-refinement.md) with the class.

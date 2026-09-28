@@ -9,7 +9,7 @@ parser's, never a second table.
 
     python3 tools/fn_native.py store --store DIR init|post|recover|status|config|inspect ...
     python3 tools/fn_native.py reader --port N [--once] [--store DIR]
-    python3 tools/fn_native.py sha256-selftest
+    python3 tools/fn_native.py blake3-selftest
 
 With `FN_HOST=native` in the environment, `tools/run_store.py` and
 `tools/run_reader.py` delegate here after parsing, so the existing tests run
@@ -20,7 +20,6 @@ it to the explicitly built
 `build/fn-host-developer`; the public production reader starts through
 `packaging/fn-native operator CONFIG run`.
 """
-import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -93,32 +92,37 @@ def exec_reader(args):
     return launch(reader_protocol(args))
 
 
-def sha256_selftest():
-    """Compare the image's SHA-256 with hashlib on standard and random vectors."""
-    vectors = [b"", b"abc", b"a" * 1000000,
+def blake3_selftest():
+    """Compare the image's `blake3' verb (ACL2's digest, the C BLAKE3 in the
+    saved images) with tools/blake3_ref.py's pure-Python BLAKE3, an
+    independent implementation, on the official vector inputs' shapes and
+    random octets across the chunk and block edges."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import blake3_ref
+    vectors = [b"", b"abc", bytes(i % 251 for i in range(102400)),
                b"The quick brown fox jumps over the lazy dog",
-               os.urandom(55), os.urandom(56), os.urandom(64), os.urandom(65),
-               os.urandom(65538), os.urandom(200001)]
+               os.urandom(63), os.urandom(64), os.urandom(65), os.urandom(1023),
+               os.urandom(1024), os.urandom(1025), os.urandom(65538), os.urandom(200001)]
     failures = 0
-    with tempfile.TemporaryDirectory(prefix="fn-sha256-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="fn-blake3-") as temporary:
         for index, data in enumerate(vectors):
             path = Path(temporary) / "v{}".format(index)
             path.write_bytes(data)
-            result = subprocess.run([str(image_path()), "--fn", "sha256", str(path)],
+            result = subprocess.run([str(image_path()), "--fn", "blake3", str(path)],
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                     env=image_environment(), check=False)
-            expected = hashlib.sha256(data).hexdigest()
+            expected = blake3_ref.blake3_py(data).hex()
             actual = result.stdout.decode("ascii", "replace").strip()
             status = "ok" if (result.returncode == 0 and actual == expected) else "MISMATCH"
             failures += status != "ok"
-            print("sha256 len={:<7d} {} {}".format(len(data), status, expected))
+            print("blake3 len={:<7d} {} {}".format(len(data), status, expected))
     return 1 if failures else 0
 
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
-    if argv and argv[0] == "sha256-selftest":
-        return sha256_selftest()
+    if argv and argv[0] == "blake3-selftest":
+        return blake3_selftest()
     if argv and argv[0] in ("store", "reader"):
         os.environ["FN_HOST"] = "native"
         sys.path.insert(0, str(ROOT / "tools"))

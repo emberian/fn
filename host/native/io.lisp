@@ -185,19 +185,14 @@ whose own failure would raise a new condition here."
   (apply #'concatenate 'string strings))
 
 ;;; ---------------------------------------------------------------------------
-;;; SHA-256 has one owner, and it is ACL2.  `books/sha256-stobj.lisp'
-;;; computes FIPS 180-4 over a word stobj: `fn-sha256-stobj' is what
-;;; books/crypto-attach.lisp attaches to the digest seams, and
-;;; `fn-sha256-of-string' reads a string in place.  This host used to carry
-;;; a SHA-256 of its own for the diagnostic `sha256' verb, a second
-;;; implementation of a decision ACL2 owns; the verb now hands ACL2 the file
-;;; as a string.  tools/fn_native.py `sha256-selftest' checks the verb
-;;; against hashlib, which is now a check of ACL2's digest through the host.
-
-(defun fnn-octet-string (octets)
-  "A byte array as an ACL2 string of the same character codes: the concrete
-input the core's string entries read in place, with no list in between."
-  (map '(simple-array character (*)) #'code-char octets))
+;;; The digest has one owner, and it is ACL2.  books/crypto-attach.lisp
+;;; attaches BLAKE3 (`fn-blake3-stobj', books/blake3-stobj.lisp; SHA-256 up
+;;; to store format 9) to the digest seams, and the diagnostic `blake3' verb
+;;; hands ACL2 the file in the octet buffer (`fn-blake3-of-prefixed-buffer').
+;;; In the saved images host/native/digest.lisp swaps the vendored C BLAKE3
+;;; in for those functions after a start-up check against them
+;;; (A-CRYPTO-NATIVE).  tools/fn_native.py `blake3-selftest' checks the verb
+;;; against an independent BLAKE3.
 
 ;;; ---------------------------------------------------------------------------
 ;;; The octet buffer (books/octets-stobj.lisp, D27 boundary 6).  `fn-octets'
@@ -1566,12 +1561,13 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
   "The integrity trailer over a protected prefix, computed by ACL2.
 
 `books/frame-trailer.lisp' owns it: `fn-frame-trailer' is `fn-frame-digest',
-realised by `fn-sha256' through `books/crypto-attach.lisp'.  This host used
-to run `fnn-sha256' here, which made three separate SHA-256s the owners of
-one decision -- the other two being `tools/frame_bridge.py' and
-`tools/run_owner.py' -- and that is what AGENTS.md's one-owner rule forbids.
-The diagnostic `sha256' verb asks ACL2 too (`fn-sha256-of-string'); this
-host has no SHA-256 of its own."
+realised by BLAKE3 (`fn-blake3-stobj') through `books/crypto-attach.lisp'.
+This host once ran a SHA-256 of its own here, which made three separate
+digests the owners of one decision -- the other two being
+`tools/frame_bridge.py' and `tools/run_owner.py' -- and that is what
+AGENTS.md's one-owner rule forbids.  The diagnostic `blake3' verb asks ACL2
+too; this host has no digest of its own (host/native/digest.lisp's C
+BLAKE3 replaces ACL2's executable only after checking it against it)."
   (let ((value (fnn-core 'fn-frame-trailer (fnn-octet-list prefix))))
     (when (eq value :bad)
       (fnn-fault "ACL2 refused to trail a protected prefix"))
@@ -1587,9 +1583,9 @@ host has no SHA-256 of its own."
 
 (defun fnn-subject-id (payload)
   "Content identity v1 (books/identity), derived end to end in ACL2.
-`books/crypto-attach.lisp' attaches SHA-256 to `fn-frame-digest', so the
+`books/crypto-attach.lisp' attaches BLAKE3 to `fn-frame-digest', so the
 preimage AND the digest are ACL2's; this host no longer hashes for identity,
-because a second SHA-256 here would be a second owner of the derivation.
+because a second digest here would be a second owner of the derivation.
 Hashing the bare payload is the v0 profile and derives a different identity,
 which `fn-store-sn-prepare' then refuses."
   (fnn-as-octets (fnn-core 'fn-store-subject-id-of-payload
@@ -1597,13 +1593,13 @@ which `fn-store-sn-prepare' then refuses."
 
 (defun fnn-subject-id-buffer ()
   "FNN-SUBJECT-ID of the payload in the octet buffer, digested in place.
-books/sha256-buffer.lisp `fn-shb-subject-id-bounded', guard-verified with
+books/subject-id-buffer.lisp `fn-sidb-subject-id-bounded', guard-verified with
 guard T, so the call runs the compiled stobj code and ACL2 raises no
 invariant-risk warning on standard output (qual-e747dbcc A4): the subject
 preimage's fixed head is a short list and the payload is read from the
 buffer by index, so no octet list of the payload is built for the digest
 (D27 wave C; the served POST, host/native/owner.lisp fnn-owner-attempt)."
-  (fnn-as-octets (fnn-core 'fn-shb-subject-id-bounded (fnn-live-octets))))
+  (fnn-as-octets (fnn-core 'fn-sidb-subject-id-bounded (fnn-live-octets))))
 
 (defun fnn-obligation-id (msgid subject)
   "Obligation identity v1, preimage and digest both ACL2's.  See FNN-SUBJECT-ID."
@@ -4882,7 +4878,7 @@ connection `fn-reader-reset' opens and projects with
 ;;;                      SEGMENT-MRU TRANSFER-MRU EXPECT TRACE]
 ;;;   tcpcl replay TRACE-FILE [ROLE NODE-ID PEER KEEPALIVE SEGMENT-MRU
 ;;;                      TRANSFER-MRU]
-;;;   sha256 PATH
+;;;   blake3 PATH
 ;;; `FN_NATIVE_INIT_FAULT=MODEL-CUT:eio|kill|eacces` is a developer-only test seam;
 ;;; it is intentionally absent from this command protocol and normal CLI.
 
@@ -6632,7 +6628,7 @@ observation (the COMPLETE re-signals it under the owner)."
          (unless (fnn-developer-image-p)
            (error 'fnn-usage-error
                   :message "guard-probe is available only in the developer image"))
-         (fnn-core 'fn-sha256-of-string 42)
+         (fnn-core 'fn-b3-left-chunks 42 -1)
          +fnn-exit-ok+)
         ((string= verb "redeem")
          (fnn-command-redeem (cdr args)))
@@ -6649,14 +6645,16 @@ observation (the COMPLETE re-signals it under the owner)."
          (if (null (cdr args))
              (funcall (fnn-verb-handler verb) "help" nil)
            (funcall (fnn-verb-handler verb) (second args) (cddr args))))
-        ((string= verb "sha256")
+        ((string= verb "blake3")
          (need 2)
-         ;; The file reaches ACL2 as a string, read in place by
-         ;; `fn-sha256-of-string' (books/sha256-stobj.lisp): no octet list.
+         ;; The file reaches ACL2 in the octet buffer, read in place by
+         ;; `fn-blake3-of-prefixed-buffer-any' (books/frame-digest-buffer.lisp):
+         ;; no octet list.
          (fnn-out "~a" (fnn-hex (fnn-as-octets
-                                 (fnn-core 'fn-sha256-of-string
-                                           (fnn-octet-string
+                                 (fnn-core 'fn-blake3-of-prefixed-buffer-any nil
+                                           (fnn-octets-fill
                                             (fnn-read-regular-bounded (second args) (ash 1 26)))))))
+         (fnn-octets-clear)
          +fnn-exit-ok+)
         (t (error 'fnn-usage-error :message (format nil "unknown verb ~a" verb)))))))
 

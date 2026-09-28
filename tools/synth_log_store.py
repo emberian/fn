@@ -21,9 +21,7 @@ previous trailer first in the payload, SHA-256 trailer, zero padding to the
 (journal/000000.log, books/store-genesis.lisp: position 0 of the log, one
 kind-3 frame; copied unchanged, so OUT is the seed's node: its identity,
 history salt and profile digest -- the profile is copied too).  The digest is
-the store's frame digest (DIGEST below: SHA-256 while books/crypto-attach.lisp
-attaches it; lane blake3-digest's attachment makes it BLAKE3, and this
-constant changes with it).
+the store's frame digest, BLAKE3 (digest below).
 
 The seed's profile and configuration must hold N: a 2 KiB article is charged
 2 units of the store's capacity (fn-charge-for-payload), and the default
@@ -39,17 +37,22 @@ node's own open verifies every frame, chain link and record (a fixture it
 refuses is refused by name), so a wrong byte here is a refused fixture, never
 an accepted wrong history.  Streams: memory is one batch, whatever N is.
 """
-import argparse, hashlib, os, shutil, struct, sys
+import argparse, os, shutil, struct, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
 UNIT = 4096
 MAGIC = b"FNLG"
 SUBJECT_LABEL = b"fn/subject/v1"
 OBLIGATION_LABEL = b"fn/obligation/v1"
 # The store's digest and the content identities' algorithm octet
-# (books/identity.lisp): SHA-256 and 1 while books/crypto-attach.lisp attaches
-# SHA-256; BLAKE3 and 2 with lane blake3-digest's attachment.
-DIGEST = hashlib.sha256
-IDENTITY_ALGORITHM = 1
+# (books/identity.lisp): BLAKE3 (books/crypto-attach.lisp, through
+# tools/blake3_ref.py) and 2 in format 10.
+IDENTITY_ALGORITHM = 2
+
+
+def digest(octets):
+    return blake3_ref.blake3(octets)
 
 
 def cbor_head(major, n):
@@ -95,13 +98,13 @@ def encode(items):
 
 
 def subject_of(payload):
-    d = DIGEST(SUBJECT_LABEL + b"\x00" + struct.pack(">I", len(payload)) + payload).digest()
+    d = digest(SUBJECT_LABEL + b"\x00" + struct.pack(">I", len(payload)) + payload)
     return SUBJECT_LABEL + b"\x00\x01" + bytes([IDENTITY_ALGORITHM]) + d
 
 
 def obligation_of(msgid, subject):
-    d = DIGEST(OBLIGATION_LABEL + b"\x00" + struct.pack(">I", len(msgid)) + msgid
-                       + struct.pack(">I", len(subject)) + subject).digest()
+    d = digest(OBLIGATION_LABEL + b"\x00" + struct.pack(">I", len(msgid)) + msgid
+                       + struct.pack(">I", len(subject)) + subject)
     return OBLIGATION_LABEL + b"\x00\x01" + bytes([IDENTITY_ALGORITHM]) + d
 
 
@@ -114,7 +117,7 @@ def genesis_trailer(path):
     n = struct.unpack(">I", d[6:10])[0]
     if len(d) != 10 + n + 32 or d[10:42] != bytes(32):
         raise SystemExit("seed genesis: not one frame from the zero chain")
-    if DIGEST(d[:10 + n]).digest() != d[10 + n:]:
+    if digest(d[:10 + n]) != d[10 + n:]:
         raise SystemExit("seed genesis: the trailer does not verify")
     return d[10 + n:]
 
@@ -127,7 +130,7 @@ def read_entries(path, genesis):
         n = struct.unpack(">I", d[pos + 6:pos + 10])[0]
         prot = d[pos:pos + 10 + n]
         trailer = d[pos + 10 + n:pos + 42 + n]
-        if DIGEST(prot).digest() != trailer or prot[10:42] != prev:
+        if digest(prot) != trailer or prot[10:42] != prev:
             raise SystemExit("seed log: entry at %d does not verify" % pos)
         body = prot[42:]
         if kind == 1:
@@ -193,7 +196,7 @@ def frame(prev, chunk):
     body = chunk[0] if kind == 1 else b"".join(struct.pack(">I", len(r)) + r for r in chunk)
     payload = prev + body
     prot = MAGIC + bytes([1, kind]) + struct.pack(">I", len(payload)) + payload
-    trailer = DIGEST(prot).digest()
+    trailer = digest(prot)
     f = prot + trailer
     return f + bytes((-len(f)) % UNIT), trailer
 

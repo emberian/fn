@@ -1610,7 +1610,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 (defun fn-store-sn-digest-line (words digest)
   (declare (xargs :mode :program))
-  (append (fn-shs-string-octets (concatenate 'string "digest " words " "))
+  (append (fn-record-string-octets (concatenate 'string "digest " words " "))
           (fn-sdg-hex digest) (list 10)))
 
 (defun fn-store-sn-digest-fields (s names i)

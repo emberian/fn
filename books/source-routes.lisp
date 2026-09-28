@@ -20,10 +20,10 @@
 ;   * the injected octets are never a tombstone, so the host's
 ;     tombstone-aware verdict is the D25 one on a live article;
 ;   * the tombstone keeps the authored-source identity: its source digest
-;     is SHA-256 of the poster's exact source, and its agent is the
+;     is BLAKE3 of the poster's exact source, and its agent is the
 ;     injecting one, so a retry after reclamation is still "already stored
 ;     here" and a changed authored byte is still a conflict (up to a
-;     SHA-256 collision between the two sources, the stated limit).
+;     BLAKE3 collision between the two sources, the stated limit).
 ;
 ; The keystones' held-payload hypothesis reads the bytes under the held
 ; article's handle through the arena FN-ARENA the verdict reads (a flipped
@@ -41,7 +41,7 @@
                            fn-inj-decide fn-inj-injectedp fn-inj-source-of
                            fn-inj-decision-octets fn-inj-decision-msgid
                            fn-pb-same-articlep fn-pb-path-agent fn-pb-subject
-                           fn-find-article fn-sha256 fn-rcl-tombstone-of
+                           fn-find-article fn-blake3 fn-rcl-tombstone-of
                            fn-rcl-tomb-sourcep fn-rcl-tomb-agent
                            fn-rcl-tomb-source-digest fn-rcl-tomb-octets-digest)))
 
@@ -87,7 +87,6 @@
                                     fn-inj-message-id-line fn-inj-date-line
                                     fn-inj-injection-info-line))))))
 
-
 (encapsulate ()
 (local
  (defthm fn-sr-a-tombstone-opens-with-nul
@@ -122,7 +121,6 @@
                         (:instance fn-inj-refusal-produces-no-octets (observation obs)))
                   :in-theory (disable fn-rcl-tombstonep)))
   :rule-classes nil))
-
 
 ; An injected article is at least its Path or Injection- line.
 (defthm fn-sr-an-injection-is-a-cons
@@ -244,9 +242,9 @@
 ; The tombstone keeps the authored-source identity.
 
 ; KEYSTONE (tombstone).  Reclaiming an injected article writes a tombstone
-; that names the poster's source: its source digest is SHA-256 of the exact
-; source, its agent is the injecting one, and its octet digest is SHA-256 of
-; the stored octets.  A digest is an identity only up to SHA-256 collision
+; that names the poster's source: its source digest is BLAKE3 of the exact
+; source, its agent is the injecting one, and its octet digest is BLAKE3 of
+; the stored octets.  A digest is an identity only up to BLAKE3 collision
 ; (about 2^128 work, the stated limit, not proved).
 (defthm fn-sr-the-tombstone-keeps-the-source
   (let* ((d (fn-inj-decide source config obs))
@@ -255,10 +253,10 @@
     (implies (fn-inj-injectedp d)
              (and (fn-rcl-tombstonep tomb)
                   (fn-rcl-tomb-sourcep tomb)
-                  (equal (fn-rcl-tomb-source-digest tomb) (fn-sha256 source))
+                  (equal (fn-rcl-tomb-source-digest tomb) (fn-blake3 source))
                   (equal (fn-rcl-tomb-agent tomb) (fn-inj-config-agent config))
                   (equal (fn-rcl-tomb-octets-digest tomb)
-                         (fn-sha256 (fn-inj-decision-octets d))))))
+                         (fn-blake3 (fn-inj-decision-octets d))))))
   :hints (("Goal" :use ((:instance fn-rcl-tombstone-of-fields
                                    (payload (fn-inj-decision-octets
                                              (fn-inj-decide source config obs)))
@@ -299,7 +297,7 @@
   :rule-classes nil)
 
 ; KEYSTONE (conflict after reclamation).  A different source under the
-; reclaimed Message-ID is a conflict, unless SHA-256 collides on the two
+; reclaimed Message-ID is a conflict, unless BLAKE3 collides on the two
 ; sources (the stated limit).
 (defthm fn-sr-a-changed-source-after-reclaim-is-a-conflict
   (let ((held (fn-find-article

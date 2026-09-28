@@ -36,6 +36,8 @@ sbcl_home=$(sed -n "s/^export SBCL_HOME='\([^']*\)'/\1/p" "$first")
 [ -x "$runtime" ] && [ -d "$sbcl_home" ] || { echo 'freeze-native-image: missing SBCL runtime' >&2; exit 4; }
 mldsa=$build/lib/libfn-mldsa65.so
 [ -s "$mldsa" ] || { echo "freeze-native-image: missing $mldsa (tools/build_mldsa65.sh)" >&2; exit 4; }
+blake3=$build/lib/libfn-blake3.so
+[ -s "$blake3" ] || { echo "freeze-native-image: missing $blake3 (tools/build_blake3.sh)" >&2; exit 4; }
 if [ -n "${FN_FREEZE_SODIUM:-}" ]; then
   sodium=$FN_FREEZE_SODIUM
 elif [ "$system" = Linux ]; then
@@ -70,6 +72,7 @@ cp -p "$runtime" "$out/runtime/sbcl"
 cp -RL "$sbcl_home"/. "$out/runtime/sbcl-home"/
 cp -L "$sodium" "$out/lib/$sodium_name"
 cp -L "$mldsa" "$out/lib/libfn-mldsa65.so"
+cp -L "$blake3" "$out/lib/libfn-blake3.so"
 if [ "$system" = OpenBSD ]; then
   # The runtime's DT_NEEDED objects outside the base system (/usr/lib) travel
   # with it: pkg_add sbcl links libzstd from /usr/local/lib.

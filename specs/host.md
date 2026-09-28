@@ -163,10 +163,11 @@ trust-boundary entries. The production integration must not contaminate book
 certification with arbitrary raw-mode changes or hide trusted code inside a
 claimed proved function. Certify the pure core in a clean environment.
 
-The native SHA-256 (lane digest-native) is such an entry, visible by name:
-`host/native/digest.lisp` replaces, in the saved images only and after a
-start-up check against the ACL2 definitions, the raw bodies of the three
-SHA-256 realisers the digest seams attach to (A-CRYPTO-NATIVE,
+The native BLAKE3 (lanes digest-native, blake3-digest) is such an entry,
+visible by name: `host/native/digest.lisp` replaces, in the saved images only
+and after a start-up check against the official vectors and the ACL2
+definition, the raw bodies of the three BLAKE3 realisers the digest seams
+attach to with the vendored C in `lib/libfn-blake3` (A-CRYPTO-NATIVE,
 specs/failures.md). The books, their certificates and every theorem are
 unchanged; the ACL2 definitions stay the reference and the fallback.
 
@@ -733,7 +734,7 @@ one ACL2-visible symbol whose raw definition that file replaces.
 | Files (sb-posix, sb-unix) | `fnn-open`, `fnn-close`, `fnn-fstat`, `fnn-lstat`, `fnn-check-regular`, `fnn-read-fd`, `fnn-read-regular-bounded`, `fnn-write-all`, `fnn-list-directory`, `fnn-link`, `fnn-replace`, `fnn-unlink`, `fnn-mkdir`, `fnn-safe-directory` | The same `O_NOFOLLOW` opens, `fstat` regularity checks, bounded reads, `O_EXCL` staging, `link`/`rename` publication and directory grammar as `tools/run_store.py` |
 | Barriers | `fnn-durable-barrier`, `fnn-fsync-file`, `fnn-fsync-dir`, `fnn-fsync-regular` | The platform table above: `fcntl(fd, 51)` (`F_FULLFSYNC`, which sb-posix does not name) on darwin, `fsync(2)` after `ENOTTY`/`ENOTSUP`/`EOPNOTSUPP`/`EINVAL`/`EPERM`, `fsync(2)` elsewhere; the five recovery barriers, the staged-file and directory barriers are real calls |
 | Locks | `fnn-flock` (alien `flock(2)`), `fnn-open-lock` | `LOCK_EX`/`LOCK_SH` with `LOCK_NB`, the same refusal and fault classes |
-| Cryptography | `fnn-trailer` calls `fn-frame-trailer`; `fnn-sha256` remains only behind the diagnostic `sha256` verb | Store and metadata trailers are computed by `books/sha256.lisp` through `books/crypto-attach.lisp`, as they are in the Python bridge. `python3 tools/fn_native.py sha256-selftest` still compares the separate diagnostic raw-Lisp SHA-256 with `hashlib`; that result is not used to frame durable data. |
+| Cryptography | `fnn-trailer` calls `fn-frame-trailer`; the diagnostic `blake3` verb asks ACL2 (`fn-blake3-of-prefixed-buffer-any`) | Store and metadata trailers are BLAKE3 (`books/blake3.lisp`, attached by `books/crypto-attach.lisp`; the C BLAKE3 in the saved images after its start-up check, A-CRYPTO-NATIVE). `python3 tools/fn_native.py blake3-selftest` compares the image's verb with `tools/blake3_ref.py`'s pure-Python BLAKE3. |
 | Store metadata | `fnn-metadata-config-frame/-decode`, `fnn-metadata-frontier-frame/-decode/-next`, `fnn-transaction-name`, `fnn-load-config`, `fnn-load-frontier` | `config.json` and `allocation-frontier.json` contain the same ACL2-sealed `FNSM` frames that the Python adapter uses. `books/byte-store-frame.lisp` owns profile values, framing, parsing, integrity and the frontier successor; `books/byte-store-txn-name.lisp` owns the published transaction name. The native host moves octets and retains format-5 JSON in place while refusing normal open pending offline migration. |
 | Core calls | `fnn-call`, `fnn-core`, `fnn-core-state`, `fnn-global` | Counterparts of `fn-store-sn-reset/-recover-records/-recover-rows/-io/-prepare/-existing-action/-pending-octets/-known-abort/-refuse-reservation/-finish/-article-count/-next-txid/-group-next/-pin-count/-reserved/-lookup/-lookup-foundp`, `fn-store-record-sequence/-txid`, `fn-store-frame-constants/-store-protected/-store-decode`, `fn-store-metadata-config-frame/-decode`, `fn-store-metadata-frontier-frame/-decode/-next`, `fn-store-txn-name`, `fn-store-subject-id`, `fn-store-obligation-preimage/-id`, `fn-sbud-post-boundary`, `fn-store-charge`, `fn-store-group-codes` (names against the replayed domain), `fn-store-cfg-generation/-served/-domain`, `fn-cfg-host-initial-octets`, `fn-reader-use-seed/-use-store/-set-posting/-reset/-chunk/-outcome`, `fn-reader-model-octets`, and the payload-arena updates the host performs itself (`fn-intern-events` at the open after emptying the arena; the seal of the octets a prepare's `(:seal OCTETS)` or `:seal-buffer` names, through the arena's exports in `books/payload-arena.lisp`), because a `:program` entry that updated the arena would carry ACL2's invariant-risk; the globals `fn-reader-output`, `fn-reader-closep`, `fn-reader-submit-octets/-msgid`, `guard-checking-on`. A `raw-ev-fncall` throw, Lisp error, core error flag or malformed result is a fault; a returned semantic refusal remains a refusal |
 | Sockets | `fnn-listen` (`sb-bsd-sockets` `inet-socket`/`inet6-socket`, loopback unless an address is passed), `fnn-connect` (one nonblocking `connect(2)` and `SO_ERROR` completion under its caller deadline), `fnn-accept-loop`, `fnn-socket-fd`, `fnn-socket-shut`; `fnn-recv`, `fnn-send-all` (`sb-sys:wait-until-fd-usable` with absolute deadlines over nonblocking read/write retries), `fnn-graceful-close` (alien `shutdown(fd, SHUT_WR)` then a one-second drain), `fnn-serve-client`; AF_UNIX bind/connect in `host/native/control.lisp` | The feed gets its TCP completion timeout from ACL2. Synchronous DNS remains a separate availability boundary: the host does not claim that this deadline bounds `getaddrinfo`, and it never terminates a resolver thread. The served reader loop and bounded FNCT local-control transport use the same raw socket surface. Control accepts one sealed request and returns one sealed reply per connection; ACL2 owns both frames and their caps. Raw Lisp transports the bytes and never opens the Store from the control module. |
@@ -788,7 +789,7 @@ statically in `make check` and over every release before it is packed; it
 cannot judge an operator-supplied helper or what the loader resolves at run
 time. Python stays for clients and tests.
 
-SHA-256 is ACL2's (`books/sha256.lisp`); randomness is `/dev/urandom` in the
+The digest is ACL2's (`books/blake3.lisp`; the vendored C in `lib/libfn-blake3` runs it in the images after checking it against ACL2's), RFC 8315's lock hash SHA-256 is ACL2's `books/sha256.lisp`; randomness is `/dev/urandom` in the
 host and `getentropy(2)` inside the ML-DSA-65 library; neither uses OpenSSL.
 ML-DSA-65 is FIPS 204 final, pure, with the empty context and hedged
 signing, which is what OpenSSL 3.5's `EVP_PKEY_sign` for "ML-DSA-65" makes.

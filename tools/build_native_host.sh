@@ -67,12 +67,23 @@ case $(uname -s) in
   *) FN_MLDSA_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-mldsa65.so ;;
 esac
 export FN_MLDSA_LIBRARY
+# BLAKE3 (fn's digest) is the vendored C behind host/native/fn-blake3.c,
+# built beside it; host/native/digest.lisp loads it at build and every start.
+sh tools/build_blake3.sh "$LIBDIR" >&2
+case $(uname -s) in
+  Darwin) FN_BLAKE3_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-blake3.dylib ;;
+  *) FN_BLAKE3_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-blake3.so ;;
+esac
+export FN_BLAKE3_LIBRARY
 openssl_hint() {
     if grep -q -E 'OpenSSL|LibreSSL|TLS library|libcrypto|libssl' "$LOG" 2>/dev/null; then
         echo "build_native_host: the log names the TLS library; the system needs OpenSSL 3.0+ or LibreSSL 3+ (FN_OPENSSL_PREFIX now: ${FN_OPENSSL_PREFIX:-unset})" >&2
     fi
     if grep -q -E 'ML-DSA' "$LOG" 2>/dev/null; then
         echo "build_native_host: the log names ML-DSA-65; the library is $FN_MLDSA_LIBRARY (tools/build_mldsa65.sh)" >&2
+    fi
+    if grep -q -E 'BLAKE3|native digest' "$LOG" 2>/dev/null; then
+        echo "build_native_host: the log names the native digest; the library is $FN_BLAKE3_LIBRARY (tools/build_blake3.sh)" >&2
     fi
 }
 LOG="${FN_NATIVE_LOG:-build/native-host-build.log}"

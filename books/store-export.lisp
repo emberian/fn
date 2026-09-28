@@ -9,14 +9,14 @@
 ; file octets, and each committed record's
 ; exact octets (the codec seam's bytes, as the open reads them: the selected
 ; pack's records and then the suffix files, every kind), in sequence order,
-; with a MANIFEST of SHA-256 lines ACL2 renders.  The store identity and the
+; with a MANIFEST of digest lines ACL2 renders (the seam's digest: BLAKE3).  The store identity and the
 ; consumer state are records, so they travel with them (P-D).  Feed journals
 ; and BP spools do not (a reinstall re-peers).
 ;
 ; ACL2 decides the archive: the entry names (`fn-sxp-entries': "profile",
 ; "config/NAME", "records/<the transaction name of the sequence>"), the
 ; MANIFEST's octets (`fn-sxp-manifest': per entry the lowercase hex of the
-; digest, two spaces, the name, LF -- `sha256sum -c' reads it), and the
+; digest, two spaces, the name, LF -- `b3sum -c' reads it), and the
 ; import's plan (`fn-sxp-import-plan'): the refusals by name, or the profile
 ; the new store is born under with the configuration records and the records
 ; to replay, in order.  The host (host/native/io.lisp
@@ -37,7 +37,7 @@
 ; it is replayed.  An interrupted import leaves only ROOT.import-XXXX,
 ; never a store at ROOT.)
 ;
-; What the digest is: the crypto seam's `fn-digest', SHA-256 under
+; What the digest is: the crypto seam's `fn-digest', BLAKE3 under
 ; books/crypto-attach in the image.  In this logic it is constrained only by
 ; its shape, so the MANIFEST equality proves nothing about integrity against
 ; an adversary (AGENTS.md: an abstract model proves nothing about real

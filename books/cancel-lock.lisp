@@ -7,14 +7,18 @@
 ; record does not, and D34 forbids adding it), so the node writes the
 ; account's material into the article's own octets, as RFC 8315 section 3.1
 ; lets an injecting agent do for a posting agent without Cancel-Lock
-; support (RFC 8315 section 4, K = HMAC(sec, uid+mid)):
+; support (RFC 8315 section 4's shape K = MAC(sec, uid+mid)):
 ;
 ;   sec  = the cancel-lock purpose key of the key epoch E
-;          (books/node-secret.lisp fn-ns-cancel-lock-key: HKDF-SHA256 of the
-;          epoch's root, salt the node identity, info "fn/cancel-lock/v1")
+;          (books/node-secret.lisp fn-ns-cancel-lock-key: BLAKE3 derive_key
+;          of the epoch's root and node identity, context "fn/cancel-lock/v2")
 ;   uid  = the account id in lowercase hex (no angle brackets, section 4)
 ;   mid  = the Message-ID with its angle brackets
-;   K    = HMAC-SHA256(sec, uid || mid); the c-key-string is Base64(K)
+;   K    = BLAKE3-keyed_hash(sec, uid || mid); the c-key-string is Base64(K).
+;          Section 4 RECOMMENDS HMAC and says the MAC's hash need not be the
+;          scheme's: only this node recomputes K, and every verifier checks
+;          the lock below, so the choice is fn's (ember 2026-09-28: BLAKE3
+;          wherever fn chooses; HMAC-SHA256 up to store format 9).
 ;   lock = Base64(SHA-256(Base64(K)))   (section 2.1: the hash is over the
 ;          Base64-encoded key; `fn-ctl-lock-of-key' hashes the key entry's
 ;          octets as they are written, RFC 8315 section 5.2's example in the
@@ -41,8 +45,8 @@
 ; The withdrawal decision (books/control-authority.lisp
 ; `fn-ctl-withdrawal-effect', the :poster arm) reads the two articles only:
 ; A's key opens A's lock, on this node and on every peer the two articles
-; reach; another account's key opens it only if SHA-256 of two distinct HMAC
-; outputs collide.
+; reach; another account's key opens it only if SHA-256 (the RFC 8315
+; sha256 scheme's lock hash) of two distinct keyed-BLAKE3 outputs collide.
 ;
 ; A proto-article that already carries Cancel-Lock (tin does, with its own
 ; secret) gets no lock from the node (section 2: the field occurs at most
@@ -60,12 +64,13 @@
 (include-book "identity")
 
 ; -----------------------------------------------------------------------------
-; RFC 8315 section 4 over an explicit secret: Base64(HMAC-SHA256(SEC, UID ||
-; MID)).  Section 5.2's example is in the teeth.
+; RFC 8315 section 4's shape over an explicit secret: Base64(MAC(SEC, UID ||
+; MID)), the MAC BLAKE3's keyed_hash.  Section 5.2's lock-of-key example (the
+; SHA-256 the section-2 scheme fixes) is in the teeth.
 
 (defun fn-cl-rfc8315-key (sec uid mid)
   (declare (xargs :guard t))
-  (fn-stx-b64-encode (fn-ns-hmac-sha256 sec (fn-cll-append uid mid))))
+  (fn-stx-b64-encode (fn-ns-mac sec (fn-cll-append uid mid))))
 
 ; The account id's uid: its lowercase hex.
 (defun fn-cl-uid (account)
@@ -274,7 +279,7 @@
 ; one lock the node writes for ACCOUNT under ENTRY: the key it derives for
 ; an account A2 opens it exactly when A2's lock for this Message-ID is
 ; ACCOUNT's.  So ACCOUNT's own key opens it, and another account's key
-; opens it only when SHA-256 of the two HMAC-SHA256 outputs collide under
+; opens it only when SHA-256 of the two keyed-BLAKE3 outputs collide under
 ; the purpose key: the cryptographic assumption no theorem states
 ; (planning/evidence/newsreader-cancel-2026-09-26.md, the pessimistic
 ; figure); the teeth show a concrete retrying account refused.

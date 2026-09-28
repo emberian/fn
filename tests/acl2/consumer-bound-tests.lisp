@@ -189,8 +189,8 @@
 (defconst *cbt-verifier*
   (fn-authsec-verifier
    *cbt-salt*
-   '(60 237 250 71 154 204 168 180 72 224 241 93 232 185 72 59
-     73 5 240 237 54 116 175 93 127 219 39 238 113 83 63 194)))
+   '(42 82 187 10 181 221 230 125 199 188 135 91 193 55 205 245
+     177 50 208 139 71 236 67 86 54 24 223 76 55 144 61 51)))
 (assert-event (equal *cbt-verifier* (fn-authsec-enrol *cbt-salt* *cbt-secret*)))
 (defconst *cbt-acfg*
   (fn-auth-make-config

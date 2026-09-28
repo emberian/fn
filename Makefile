@@ -51,6 +51,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-config \
 	books/sha256 \
 	tests/acl2/sha256-tests \
+	books/blake3 \
+	tests/acl2/blake3-tests \
+	books/blake3-stobj \
+	tests/acl2/blake3-stobj-tests \
 	books/frame-octets \
 	books/frame-fields \
 	books/frame-journal \
@@ -908,10 +912,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-feed-article \
 	tests/acl2/owner-feed-article-tests \
 	tests/acl2/catalog-number-index-tests \
-	books/sha256-buffer \
-	tests/acl2/sha256-buffer-tests \
-	books/sha256-range \
-	tests/acl2/sha256-range-tests \
+	books/octet-window \
+	books/subject-id-buffer \
+	tests/acl2/subject-id-buffer-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -1179,7 +1182,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/group-status-tests \
 	tests/acl2/moderation-tests \
 	tests/acl2/peer-host-tests \
-	tests/acl2/sha256-stobj-tests \
 	tests/acl2/topic-history-identity-disjoint-tests \
 	books/public-exposure \
 	tests/acl2/public-exposure-tests \

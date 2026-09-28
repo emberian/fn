@@ -3,9 +3,9 @@
 ; The v1 identity profile of `specs/encoding.md`, adopted.  Every content
 ; identity in the system is
 ;
-;     subject-v1    = SHA-256("fn/subject/v1" || 0x00
+;     subject-v1    = BLAKE3("fn/subject/v1" || 0x00
 ;                             || uint32-be(len(payload)) || payload)
-;     obligation-v1 = SHA-256("fn/obligation/v1" || 0x00
+;     obligation-v1 = BLAKE3("fn/obligation/v1" || 0x00
 ;                             || uint32-be(len(msgid)) || msgid
 ;                             || uint32-be(len(subject)) || subject)
 ;
@@ -106,7 +106,10 @@
 
 ; The profile version and the hash suite, carried in the container.
 (defconst *fn-id-version* 1)
-(defconst *fn-id-algorithm-sha256* 1)
+; Algorithm 2 is BLAKE3 (books/crypto-attach.lisp, store format 10); algorithm
+; 1 (SHA-256, formats up to 9) is not read: a format-10 store never holds one
+; (D34, fresh deploys), and an older store is refused at open by its format.
+(defconst *fn-id-algorithm-blake3* 2)
 
 ; label || separator || version || algorithm, then the digest.
 (defconst *fn-id-header-octets* 3)
@@ -165,15 +168,15 @@
   (append label
           (cons *fn-id-separator*
                 (cons *fn-id-version*
-                      (cons *fn-id-algorithm-sha256* digest)))))
+                      (cons *fn-id-algorithm-blake3* digest)))))
 
 (defun fn-id-subject (digest)
-  ; The host entry point: `digest` is SHA-256 of the subject preimage.
+  ; The host entry point: `digest` is the digest (BLAKE3) of the subject preimage.
   (declare (xargs :guard (fn-id-digestp digest)))
   (fn-id-render *fn-id-subject-label* digest))
 
 (defun fn-id-obligation (digest)
-  ; The host entry point: `digest` is SHA-256 of the obligation preimage.
+  ; The host entry point: `digest` is the digest (BLAKE3) of the obligation preimage.
   (declare (xargs :guard (fn-id-digestp digest)))
   (fn-id-render *fn-id-obligation-label* digest))
 
@@ -249,7 +252,7 @@
                      (equal (car tail) *fn-id-separator*)
                      (equal (car (cdr tail)) *fn-id-version*)
                      (equal (car (cdr (cdr tail)))
-                            *fn-id-algorithm-sha256*)))))))
+                            *fn-id-algorithm-blake3*)))))))
 
 (defun fn-id-subjectp (octets)
   (declare (xargs :guard t))

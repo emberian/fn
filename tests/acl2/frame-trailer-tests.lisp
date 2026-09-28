@@ -1,18 +1,19 @@
 ; Teeth for the one frame integrity trailer.
 ;
 ; `books/frame-trailer.lisp' includes `books/crypto-attach', so every term
-; here EVALUATES: `fn-frame-digest' is realised by `fn-sha256' and a ground
+; here EVALUATES: `fn-frame-digest' is realised by `fn-blake3' (BLAKE3, store
+; format 10; SHA-256 before) and a ground
 ; trailer is a concrete 32 octets.  That is what makes this book possible at
 ; all -- `tests/acl2/frame-tests.lisp' records, at its last tooth, that a
 ; separating witness for the specification decoder "cannot have one:
 ; `fn-frame-digest' is constrained (A-CRYPTO), so no ground term evaluates
 ; it".  Under the attachment it does.
 ;
-; The first section is the one that licenses deleting three host copies of
-; SHA-256: the octets ACL2 computes are the octets `hashlib.sha256` and
-; `fnn-sha256' computed, so no byte on disk changes.  Cross-checked outside
-; ACL2 at authoring time with CPython 3.13 `hashlib.sha256`, recorded in
-; planning/lanes/HANDOFF-w11-one-owner.md.
+; The first section pins the trailer's octets: the BLAKE3 values below are
+; tools/blake3_ref.py's pure-Python BLAKE3 (a third implementation), and the
+; first two are the BLAKE3 repository's own published values for "" and
+; "abc".  (Until store format 10 this section pinned SHA-256, the octets the
+; deleted host copies computed: planning/lanes/HANDOFF-w11-one-owner.md.)
 ;
 ; NOT tested here, because it is not true and no test can make it so:
 ; anything about collision or preimage resistance.  A-CRYPTO
@@ -23,24 +24,24 @@
 (include-book "../../books/frame-trailer")
 
 ; -----------------------------------------------------------------------------
-; 1. The trailer is SHA-256, on octets the host used to hash for itself.
+; 1. The trailer is BLAKE3, on octets the host used to hash for itself.
 ;
-; Two FIPS 180-4 vectors first, so a reader can check the function is the
+; Two BLAKE3 vectors first, so a reader can check the function is the
 ; hash it is claimed to be without trusting the frame layout, and then the
 ; frame case: the protected prefix of the one-record store frame, and the
 ; trailer over it.
 
 (assert-event
  (equal (fn-frame-trailer nil)
-        ; SHA-256 of the empty message.
-        '(227 176 196 66 152 252 28 20 154 251 244 200 153 111 185 36
-          39 174 65 228 100 155 147 76 164 149 153 27 120 82 184 85)))
+        ; BLAKE3 of the empty message.
+        '(175 19 73 185 245 249 161 166 160 64 77 234 54 220 201 73
+          155 203 37 201 173 193 18 183 204 154 147 202 228 31 50 98)))
 
 (assert-event
  (equal (fn-frame-trailer '(97 98 99))
-        ; SHA-256 of "abc".
-        '(186 120 22 191 143 1 207 234 65 65 64 222 93 174 34 35
-          176 3 97 163 150 23 122 156 180 16 255 97 242 0 21 173)))
+        ; BLAKE3 of "abc".
+        '(100 55 179 172 56 70 81 51 255 182 59 117 39 58 141 181
+          72 197 88 70 93 121 219 3 253 53 156 108 213 189 157 133)))
 
 ; The store frame's protected prefix, spelled out: FNST, version 1, kind 1,
 ; a four-octet big-endian length of 3, and the record.  This is the byte
@@ -50,20 +51,19 @@
 (assert-event
  (equal (fn-frame-store-protected '(1 2 3)) *fn-frame-trailer-t-prefix*))
 
-; And the trailer over it.  Deleting `FrameSession.seal''s `hashlib.sha256',
-; `fnn-seal''s `fnn-sha256' and `Acl2Owner.feed_frames''s `hashlib.sha256'
-; changes this byte string not at all; that is the whole content of the
-; migration, and it is checked here rather than asserted in prose.
+; And the trailer over it (BLAKE3 of the prefix; the host copies of the
+; digest were deleted when the trailer moved into ACL2, and every host asks
+; `fn-frame-trailer' for these octets).
 (assert-event
  (equal (fn-frame-trailer *fn-frame-trailer-t-prefix*)
-        '(183 162 160 5 37 20 123 28 147 194 61 218 190 130 161 178
-          246 131 69 54 36 252 244 95 20 124 177 90 71 84 36 157)))
+        '(205 109 140 213 55 4 42 226 118 170 158 232 33 189 42 208
+          177 165 152 88 92 252 16 186 129 188 95 134 108 90 94 37)))
 
 ; -----------------------------------------------------------------------------
 ; 2. The boundary guard.
 ;
 ; A host that sends something that is not an octet list is refused rather
-; than handed the digest of a coerced value.  `fn-sha256' fixes its argument,
+; than handed the digest of a coerced value.  `fn-blake3' fixes its argument,
 ; so without this test the wrapper's `:bad' arm would be untested and a host
 ; bug would come back as a plausible 32 octets.
 

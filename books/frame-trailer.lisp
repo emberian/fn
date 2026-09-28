@@ -1,7 +1,8 @@
 ; fn: the frame integrity trailer, computed once, by ACL2.
 ;
 ; `books/frame-octets.lisp' constrains `fn-frame-digest' to be 32 octets and
-; `books/crypto-attach.lisp' attaches `fn-sha256' to it, so a ground call of
+; `books/crypto-attach.lisp' attaches BLAKE3 (`fn-blake3-stobj'; SHA-256 up
+; to store format 9) to it, so a ground call of
 ; the trailer function EVALUATES.  Before this book nothing used that: the
 ; trailer was computed by three separate hosts, each with its own SHA-256 --
 ;

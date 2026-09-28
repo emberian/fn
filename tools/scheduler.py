@@ -18,11 +18,13 @@ scheduler charges a retry only for a submit permission ACL2 granted.
 from __future__ import annotations
 
 from dataclasses import dataclass
-import hashlib
 import json
 import os
 from pathlib import Path
 from typing import Callable, Optional, Sequence
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
 # The durability barrier and every ACL2 result parse have exactly one owner.
 try:
@@ -204,7 +206,7 @@ class DecisionLog:
     def record(self, protected: bytes) -> Path:
         if not isinstance(protected, (bytes, bytearray)) or not protected:
             raise PlanError("ACL2 refused the decision record")
-        framed = bytes(protected) + hashlib.sha256(bytes(protected)).digest()
+        framed = bytes(protected) + blake3_ref.blake3(bytes(protected))
         if len(framed) > MAX_DECISION_RECORD:
             raise PlanError("decision record exceeds bound")
         sequence = len(self.entries())

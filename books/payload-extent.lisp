@@ -22,11 +22,11 @@
 ;
 ; The served read of an extent handle goes through the host's realizer
 ; (A-DURABLE-EXTENT), which preads the entry's protected prefix and asks
-; ACL2 `fn-arx-entry-ok': SHA-256 of the octets read equals the trailer the
+; ACL2 `fn-arx-entry-ok': BLAKE3 of the octets read equals the trailer the
 ; open recorded.  fn-arx-entry-ok-of-durable: a faithful read passes (no
 ; false refusal).  A mismatch is refused by name (arena-extent-digest), a
 ; recovery event; it is never served.  The figure for a forged prefix that
-; passes: a SHA-256 second preimage against the recorded trailer (the
+; passes: a BLAKE3 second preimage against the recorded trailer (the
 ; A-CRYPTO-TRAILER event); the collision figure, 2^-128, is the one to quote.
 
 (in-package "ACL2")
@@ -34,7 +34,7 @@
 (include-book "store-log")
 (include-book "store-intern")
 (include-book "store-recover-stream")
-(include-book "sha256-stobj")
+(include-book "blake3-stobj")
 ; The held row from one parse of the article (lane snapshot-open-3).
 (include-book "store-intern-once")
 
@@ -513,7 +513,7 @@
 ; 6. The served read's check and the read cache's bound.
 
 ; The realizer's check over the entry as read, its protected prefix
-; (ELEN octets) and then its trailer: SHA-256 of the prefix is the trailer
+; (ELEN octets) and then its trailer: BLAKE3 of the prefix is the trailer
 ; (the frame's own trailer, fn-frame-digest under the host's attachment,
 ; which the open's scan checked when it read the entry).
 (defun fn-arx-entry-ok (octets elen)
@@ -521,7 +521,7 @@
   (let ((prefix (take (min (nfix elen) (len octets)) (true-list-fix octets)))
         (trailer (nthcdr (nfix elen) (true-list-fix octets))))
     (and (equal (len octets) (+ (nfix elen) *fn-frame-trailer-octets*))
-         (equal (fn-sha256-stobj prefix) trailer))))
+         (equal (fn-blake3-stobj prefix) trailer))))
 
 (local
  (defthm fn-arx-durable-true-listp
@@ -545,11 +545,11 @@
 (defthm fn-arx-entry-ok-of-durable
   (implies (and (natp elen)
                 (equal (fn-durable-octets file (+ eoff elen) *fn-frame-trailer-octets*)
-                       (fn-sha256 (fn-durable-octets file eoff elen))))
+                       (fn-blake3 (fn-durable-octets file eoff elen))))
            (fn-arx-entry-ok (append (fn-durable-octets file eoff elen)
                                     (fn-durable-octets file (+ eoff elen) *fn-frame-trailer-octets*))
                             elen))
-  :hints (("Goal" :in-theory (enable fn-sha256-stobj-is-sha256))))
+  :hints (("Goal" :in-theory (enable fn-blake3-stobj-is-blake3))))
 
 ; The realizer's cache: at most this many verified entries (each at most the
 ; log's entry bound, fnn-store-log-max): the bound on the octets the host

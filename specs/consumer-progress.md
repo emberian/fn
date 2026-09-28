@@ -262,7 +262,7 @@ crosses back by B's feed; A's consumer polls A, verifies Q with its own
 keyring and correlates it with R.
 
 Each hop keeps separate identities: the application operation
-(application-id, operation-id), the authored source (its SHA-256), the
+(application-id, operation-id), the authored source (its digest), the
 signature carrier (the two signatures), and the hop-local stored projection
 (the received article, which carries that node's `Path`). The authored
 source and both signatures are the submission artifact's at every hop; the

@@ -54,7 +54,7 @@
 #   fn/bin/fn                    the one command (packaging/fn)
 #   fn/libexec/fn/               the frozen launcher, the production core,
 #                                source-revision, runtime/ (SBCL) and lib/
-#                                (libsodium, libfn-mldsa65; libzstd on
+#                                (libsodium, libfn-mldsa65, libfn-blake3; libzstd on
 #                                OpenBSD).  TLS is the system's libssl.
 #   fn/share/fn/                 fn.toml.example, systemd/fn.service.in or
 #                                rc.d/fn.rc.in, docs/install.md, web.md,

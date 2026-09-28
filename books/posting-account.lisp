@@ -3,14 +3,15 @@
 ; RFC 5536 section 3.2.8 lets an injecting agent name the account an
 ; article was posted from, "posting-account", and says it may be obscured.
 ; fn obscures it with a key only the node holds (PKT-574; gpt-6 wave-5
-; review section 3): the value is the lowercase hexadecimal HMAC-SHA256 of
+; review section 3): the value is the lowercase hexadecimal keyed BLAKE3 of
 ; the login under the posting-account purpose key of the owner's key ring,
-; HKDF-SHA256 of the current epoch's root with the node identity as salt
-; and the info label `fn/posting-account/v1' (books/node-secret.lisp
+; BLAKE3 derive_key of the current epoch's root and node identity under the
+; context `fn/posting-account/v2' (HMAC-SHA256 under HKDF-SHA256 up to store
+; format 9) (books/node-secret.lisp
 ; fn-ns-posting-account-key, fn-ns-posting-account-mac; the root is
 ; STORE/keys/node-secret.key, mode 0600, never in fn.toml, never printed,
 ; carried by the owner as fn-own-node-secret).  The Cancel-Lock key is the
-; same root under `fn/cancel-lock/v1'; the two HKDF inputs never coincide
+; same root under `fn/cancel-lock/v2'; the two derivation inputs never coincide
 ; (fn-ns-cancel-lock-and-posting-account-inputs-differ).  A key rotation
 ; changes every login's value.
 ; What this book proves (PRF-206 (c)), over the functions the injecting
@@ -28,12 +29,13 @@
 ;     value for a friend's login answers exactly "this article came from that
 ;     login's session" when the two agree.
 ; What it does NOT prove: that two logins with one value are one login.
-; That is HMAC-SHA256's collision resistance, a cryptographic assumption
+; That is keyed BLAKE3's collision resistance, a cryptographic assumption
 ; about the real function (AGENTS.md: an abstract model proves nothing about
 ; a real hash).  The pessimistic figure: for n distinct logins under one key
 ; the chance that any two share a value is at most n(n-1)/2^257 (birthday
 ; bound on 256 bits); a stranger without the key who tests a candidate login
-; must forge an HMAC value (2^-256 per guess), not merely hash a dictionary.
+; must forge a keyed-BLAKE3 value (2^-256 per guess), not merely hash a
+; dictionary.
 
 (in-package "ACL2")
 (include-book "node-secret")
@@ -94,7 +96,7 @@
            :use ((:instance fn-ns-posting-account-mac-shape (ring secret))))))
 
 (defthm fn-pa-mac-is-octets
-  (fn-sha256-octet-listp (fn-pa-mac secret login))
+  (fn-b3-octet-listp (fn-pa-mac secret login))
   :hints (("Goal" :in-theory (disable fn-ns-posting-account-mac)
            :use ((:instance fn-ns-posting-account-mac-shape (ring secret))))))
 
@@ -165,8 +167,8 @@
            :use ((:instance fn-pa-octet-hex-injective (a (car x)) (b (car y))))))
   :rule-classes nil)
 
-(defthm fn-pa-octetsp-of-sha256
-  (implies (fn-sha256-octet-listp x) (fn-pa-octetsp x)))
+(defthm fn-pa-octetsp-of-b3-octets
+  (implies (fn-b3-octet-listp x) (fn-pa-octetsp x)))
 
 (defthm fn-pa-account-value-determines-the-mac
   (implies (equal (fn-pa-account-value secret1 login1)

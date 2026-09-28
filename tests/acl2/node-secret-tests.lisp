@@ -1,7 +1,8 @@
-; Teeth for books/node-secret.lisp (SEC-006, PRF-210): HMAC-SHA256 against
-; RFC 4231, HKDF-SHA256 against RFC 5869, the info-label separation
-; fn-ns-expand-input-separates-info with a witness and one removal per
-; hypothesis, and the key file's round trip fn-ns-file-parse-of-render.
+; Teeth for books/node-secret.lisp (SEC-006, PRF-210): the BLAKE3 purpose-key
+; derivation and MAC against the Rust blake3 crate, the info-label
+; separation fn-ns-purpose-inputs-separate-by-definition with a witness and
+; the removal of its hypothesis, and the key file's round trip
+; fn-ns-file-parse-of-render.
 (in-package "ACL2")
 (include-book "../../books/node-secret")
 (include-book "must-fail-checked")
@@ -19,34 +20,26 @@
 (defun nst-range (lo hi) (declare (xargs :measure (nfix (- hi lo))))
   (if (and (natp lo) (natp hi) (< lo hi)) (cons lo (nst-range (1+ lo) hi)) nil))
 
-; RFC 4231 test cases 2 and 6 (a key over the block length is hashed first).
+; The derivation against an independent implementation: the values below are
+; the Rust `blake3' crate's (the Python `blake3' package 1.x over it,
+; derive_key_context / key=), not this tree's.  The purpose key is BLAKE3
+; derive_key under the info label with ROOT || IDENTITY as the material, and
+; the MAC is keyed_hash under the purpose key.
+(defconst *nst-root7* (make-list 32 :initial-element 7))
+(defconst *nst-root9* (make-list 32 :initial-element 9))
 (assert-event
- (equal (nst-hex (fn-ns-hmac-sha256 (nst-octets "Jefe")
-                                    (nst-octets "what do ya want for nothing?")))
-        "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"))
+ (equal (nst-hex (fn-blake3-derive-key (nst-octets "fn/cancel-lock/v2")
+                                       (append *nst-root7* (nst-octets "hbox.ember.software"))))
+        "60f52b6a4767d15cb475d0c3ac76376e19de0762151235c2cb533c5731b50f62"))
 (assert-event
- (equal (nst-hex (fn-ns-hmac-sha256
-                  (make-list 131 :initial-element 170)
-                  (nst-octets "Test Using Larger Than Block-Size Key - Hash Key First")))
-        "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"))
-
-; RFC 5869 appendix A, test cases 1 and 3 (SHA-256): PRK and the first
-; 32 octets of OKM (T(1)).
-(assert-event
- (and (equal (nst-hex (fn-ns-hkdf-extract (nst-range 0 13) (make-list 22 :initial-element 11)))
-             "077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5")
-      (equal (nst-hex (fn-ns-hkdf-sha256-32 (nst-range 0 13) (make-list 22 :initial-element 11)
-                                            (nst-range 240 250)))
-             "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf")))
-(assert-event
- (and (equal (nst-hex (fn-ns-hkdf-extract nil (make-list 22 :initial-element 11)))
-             "19ef24a32c717b167f33a91d6f648bdf96596776afdb6377ac434c1c293ccb04")
-      (equal (nst-hex (fn-ns-hkdf-sha256-32 nil (make-list 22 :initial-element 11) nil))
-             "8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d")))
+ (equal (nst-hex (fn-ns-mac (fn-blake3-derive-key (nst-octets "fn/posting-account/v2")
+                                                  (append *nst-root9* (nst-octets "hbox.ember.software")))
+                            (nst-octets "alice")))
+        "5a74675107b96d06e1d2d127d27eee4910272b51baee042b52790bd3803ca5ee"))
 
 ; The info labels are the ones the review names.
-(assert-event (equal *fn-ns-cancel-lock-info* (nst-octets "fn/cancel-lock/v1")))
-(assert-event (equal *fn-ns-posting-account-info* (nst-octets "fn/posting-account/v1")))
+(assert-event (equal *fn-ns-cancel-lock-info* (nst-octets "fn/cancel-lock/v2")))
+(assert-event (equal *fn-ns-posting-account-info* (nst-octets "fn/posting-account/v2")))
 (assert-event (equal (fn-ns-secret-width) 32))
 
 ; A ring of two epochs: epoch 2 current, epoch 1 retained.
@@ -65,29 +58,30 @@
 (assert-event (equal (fn-ns-entry-identity (fn-ns-create-entry nil (make-list 32 :initial-element 7)))
                      (nst-octets "local")))
 
-; fn-ns-expand-input-separates-info.  Witness: the two labels the node uses.
+; The purpose keys the node derives are the reference values above: the
+; entry's key material is ROOT || IDENTITY and the context is the label.
 (assert-event
- (and (true-listp *fn-ns-cancel-lock-info*) (true-listp *fn-ns-posting-account-info*)
-      (not (equal *fn-ns-cancel-lock-info* *fn-ns-posting-account-info*))
-      (not (equal (fn-ns-expand-input *fn-ns-cancel-lock-info*)
-                  (fn-ns-expand-input *fn-ns-posting-account-info*)))
-      ; and the purpose keys of one entry differ
+ (and (equal (nst-hex (fn-ns-cancel-lock-key *nst-e1*))
+             "60f52b6a4767d15cb475d0c3ac76376e19de0762151235c2cb533c5731b50f62")
+      (equal (nst-hex (fn-ns-posting-account-mac *nst-ring* (nst-octets "alice")))
+             "5a74675107b96d06e1d2d127d27eee4910272b51baee042b52790bd3803ca5ee")))
+
+; fn-ns-purpose-inputs-separate-by-definition.  Witness: the two labels the
+; node uses, under one entry, and the purpose keys they give.
+(assert-event
+ (and (not (equal *fn-ns-cancel-lock-info* *fn-ns-posting-account-info*))
+      (not (equal (fn-ns-purpose-input *nst-e2* *fn-ns-cancel-lock-info*)
+                  (fn-ns-purpose-input *nst-e2* *fn-ns-posting-account-info*)))
       (not (equal (fn-ns-cancel-lock-key *nst-e2*) (fn-ns-posting-account-key *nst-ring*)))))
-; Removal of "distinct": equal labels expand the same input.
+; Removal of "distinct": equal labels give the same input, and the same key.
 (assert-event
- (and (true-listp *fn-ns-cancel-lock-info*)
-      (equal (fn-ns-expand-input *fn-ns-cancel-lock-info*)
-             (fn-ns-expand-input *fn-ns-cancel-lock-info*))))
-; Removal of true-listp: labels differing only in their final cdr expand
-; the same input.
-(assert-event
- (let ((i1 '(102 110 . 5)) (i2 '(102 110 . 6)))
-   (and (true-listp nil) (not (true-listp i1)) (not (equal i1 i2))
-        (equal (fn-ns-expand-input i1) (fn-ns-expand-input i2)))))
+ (and (equal (fn-ns-purpose-input *nst-e2* *fn-ns-cancel-lock-info*)
+             (fn-ns-purpose-input *nst-e2* *fn-ns-cancel-lock-info*))
+      (equal (fn-ns-purpose-key *nst-e2* *fn-ns-cancel-lock-info*)
+             (fn-ns-cancel-lock-key *nst-e2*))))
 (must-fail-checked
  (defthm nst-separation-needs-distinct-labels
-   (implies (and (true-listp i1) (true-listp i2))
-            (not (equal (fn-ns-expand-input i1) (fn-ns-expand-input i2))))))
+   (not (equal (fn-ns-purpose-input entry i1) (fn-ns-purpose-input entry i2)))))
 
 ; The derived keys are bound to the node identity and the epoch: another
 ; identity or another root gives another key.

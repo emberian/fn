@@ -859,8 +859,8 @@ exactly "no obligation in the flattened list names the article" together
 with the rule.
 
 **The tombstone** replaces the payload octets of the article record and
-nothing else: NUL `FN-RCL1`, a source flag, the payload's SHA-256, the
-SHA-256 of its D25 source under its own agent, the payload length and that
+nothing else: NUL `FN-RCL1`, a source flag, the payload's BLAKE3 digest, the
+BLAKE3 digest of its D25 source under its own agent, the payload length and that
 agent (`books/reclaim-tombstone`). The record keeps its Message-ID,
 sequence, txid, generation, groups, memberships, obligation identity,
 content subject, release evidence, charge and stamp, so the history entry,
@@ -880,7 +880,7 @@ history (`fn-acceptedp` for every Message-ID; a reclaimed ID is refused
 again, never resurrected), group numbering (per-group next numbers), each
 article's bindings, and the D25 duplicate-versus-conflict verdict the host
 calls (`fn-store-existing-action`, `fn-rcl-action-over` over the stored
-bytes) up to a SHA-256 collision on the compared
+bytes) up to a BLAKE3 collision (about 2^-128 per chosen pair) on the compared
 pair. Verdict lookup reads the Store's verdict slot, which reclamation does
 not touch, and an article with a verdict is not reclaimed.
 
@@ -1152,7 +1152,7 @@ reclamation (`fn-lgr-decide`, PRF-271). The pack verbs refuse by name
 open reads (the profile frame, the allocation frontier the log derives, each
 configuration record and each committed record in sequence order: the
 checkpoint's records then the log's, T8) with a MANIFEST whose names and
-digest lines ACL2 renders (`fn-digest`, the store's digest); the genesis is
+digest lines ACL2 renders (`fn-digest`, the store's digest: BLAKE3, b3sum's line format); the genesis is
 not exported (it is the node's: its identity, salt and clock reading).
 `store import DIR [--FIELD N ...]` builds a new format-10 store from it,
 with its OWN genesis, writing the records into the log through its own append
