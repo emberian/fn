@@ -7485,9 +7485,7 @@
       ],
       "progress_note": "Lane log-recovery 2026-09-27: restated over the record log (the import writes format 9; fn-bs-profile-logp replaces fn-bs-profile-validp after the weakened theorem was proved); admitted in the persvati REPL; certification is the batch's.",
       "events": [
-        "fn-sxp-import-of-export-replays-the-same-history",
-        "fn-sxp-log-profile-is-a-valid-log-profile",
-        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
+        "fn-sxp-import-of-export-replays-the-same-history"
       ]
     },
     {
@@ -7534,7 +7532,9 @@
         "fn-heap-operation-decide-holds-the-store",
         "fn-heap-storeless-decide-is-small-and-fits",
         "fn-heap-status-decide-is-the-launchers-run-reservation",
-        "fn-heap-reserve-full-store-accepted-is-within-the-machine"
+        "fn-heap-reserve-full-store-accepted-is-within-the-machine",
+        "fn-heap-store-history-holds-payload-and-memberships",
+        "fn-heap-arena-octets-slope"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -9514,8 +9514,7 @@
       ],
       "progress_note": "Retired 2026-09-28 (lane one-format, D38 withdrawn by ember: no migrations: fresh deploys at 6.6.0): its subject was removed with it (the profile-layout refusal :profile-layout, older-release/newer-release, fn-spo-layout-*). A frame of this build's word with another width is now the generic fault: a layout change changes the word. What covers the property now: PRF-382 (fn-spo-config-open-store-format-is-exactly-a-foreign-frame). The id is kept.",
       "events": [
-        "fn-spo-open-of-another-layout-refuses-by-name",
-        "fn-spo-layout-fields-of-a-layout-frame"
+        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
       ]
     },
     {
@@ -11238,8 +11237,7 @@
         "fn-intern-events-budget-octets-are-the-stored-octets",
         "fn-cvec-article-refusal-word-names-the-memberships",
         "fn-cvec-record-keeps-the-vector",
-        "fn-heap-membership-bound-holds-the-charged-memberships",
-        "fn-heap-membership-term-is-at-most-twice-h",
+        "fn-heap-store-history-holds-payload-and-memberships",
         "fn-heap-store-figure-holds-every-store",
         "fn-cvec-statement-admission-keeps-the-vector",
         "fn-cvec-statement-row-within-its-figure",
@@ -12006,9 +12004,7 @@
         "fn-lzr-record-is-not-a-frame",
         "fn-lzr-append-replay-reads-the-record",
         "fn-lzr-append-plan-off",
-        "fn-lzr-config-min-without-a-row-is-off",
-        "fn-sxp-config-decode-archive-is-valid",
-        "fn-sxp-config-decode-archive-of-a-current-frame"
+        "fn-lzr-config-min-without-a-row-is-off"
       ]
     },
     {
@@ -12457,14 +12453,7 @@
       ],
       "progress_note": "Retired 2026-09-28 (lane one-format, D38 withdrawn by ember: no migrations: fresh deploys at 6.6.0): its subject was removed with it (the open's :store-format-9 refusal, the SHA-256 reader books/store-format-9.lisp, the import's format-9 archive path fn-sxp-import-of-a-format-9-export, the record translation's article theorems, tests/test_native_format_9_migration.py). What covers the property now: PRF-382 (the one check) and PRF-205 (backup and restore of this format). The id is kept.",
       "events": [
-        "fn-spo-open-of-a-format-9-frame-refuses-by-name",
-        "fn-spo-open-of-a-valid-profile-opens-it",
-        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
-        "fn-f9-config-decode-of-a-format-9-frame",
-        "fn-f9-format-9-frame-does-not-decode",
-        "fn-sxp-import-of-a-format-9-export",
-        "fn-f9r-article-identities-are-format-10s",
-        "fn-f9r-article-keeps-every-other-field"
+        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
       ]
     },
     {
@@ -12628,11 +12617,7 @@
       ],
       "progress_note": "Retired 2026-09-28 (lane one-format, D38 withdrawn by ember: no migrations: fresh deploys at 6.6.0): its subject was removed with it (books/store-format-9-records.lisp, the format-9 record translation fn-f9r-*, tests/test_native_format_9_every_kind.py and its fixture). What covers the property now: PRF-382 (a store of another format is refused by name, never translated). The id is kept.",
       "events": [
-        "fn-f9r-composite-keeps-what-it-binds",
-        "fn-f9r-composite-identities-are-format-10s",
-        "fn-f9r-step-of-a-composite",
-        "fn-f9r-step-carries-identity-free-kinds-verbatim",
-        "fn-f9r-loop-keeps-sequences"
+        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
       ]
     },
     {
@@ -13053,7 +13038,7 @@
       "events": [
         "fn-sxp-stream-is-the-export",
         "fn-sxp-record-entries-of-append",
-        "fn-sxp-manifest-under-of-append"
+        "fn-sxp-manifest-of-append"
       ]
     },
     {
@@ -13344,7 +13329,7 @@
         "PRF-362"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-admin-peer-budget.lisp",
         "books/native-admin-peer.lisp",
@@ -13358,7 +13343,10 @@
         "planning/evidence/manifests/certify-20260928T175634Z-806289.json",
         "planning/evidence/peer-list-depth-2026-09-28.md"
       ],
-      "events": []
+      "events": [
+        "fn-napb-rows-with-key-loop-is-rev-onto",
+        "fn-napb-peer-names-loop-is-rev-onto"
+      ]
     },
     {
       "id": "PRF-376",
@@ -13370,7 +13358,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/feed-link-backoff.lisp",
         "tests/acl2/feed-link-backoff-tests.lisp",
@@ -13398,7 +13386,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/feed-pause.lisp",
         "tests/acl2/feed-pause-tests.lisp",
@@ -13474,7 +13462,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/memory-credits.lisp",
         "tests/acl2/memory-credits-tests.lisp",
