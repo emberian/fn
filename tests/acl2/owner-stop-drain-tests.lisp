@@ -126,3 +126,57 @@
 ; The service log's lines.
 (assert-event (equal (fn-osd-log-line :release *osdt-f0* (osdt-at 6000) *osdt-l* 1)
                      (fn-osch-text "stopping: the drain deadline passed after 6000 ms; the posts in flight are told the outcome is uncertain")))
+
+; --- fn-osd-drain-next (the host's call; lane sigterm-hang): the step, and
+; the release remembered from the step that made it.
+(assert-event (equal (mv-list 2 (fn-osd-drain-next *osdt-f0* (osdt-at 6000) *osdt-l* 1 0 nil))
+                     '(:release t)))
+(assert-event (equal (mv-list 2 (fn-osd-drain-next *osdt-f0* (osdt-at 500) *osdt-l* 1 0 nil))
+                     '(:wait nil)))
+(assert-event (equal (mv-list 2 (fn-osd-drain-next *osdt-f0* (osdt-at 7000) *osdt-l* 1 0 t))
+                     '(:wait t)))
+
+; --- fn-osd-drain-stops-by-the-deadline (KEYSTONE, lane sigterm-hang).
+; The host's composition of two calls: the second takes the first's RELEASED.
+(defun osdt-two (s1 a1 u1 s2 a2 u2 released)
+  (mv-let (step1 released1) (fn-osd-drain-next *osdt-f0* s1 *osdt-l* a1 u1 released)
+    (mv-let (step2 released2) (fn-osd-drain-next *osdt-f0* s2 *osdt-l* a2 u2 released1)
+      (declare (ignore released2))
+      (list step1 step2))))
+; Positive: 8 posters mid-commit awaiting and 8 replies unsent (connections
+; mid-article count in neither) at 16,000 and 16,100 ms, not yet released:
+; the first releases, the second stops.  Both hypotheses hold.
+(assert-event (fn-osd-past-grace-p *osdt-f0* (osdt-at 16000) *osdt-l*))
+(assert-event (fn-osd-past-grace-p *osdt-f0* (osdt-at 16100) *osdt-l*))
+(assert-event (equal (osdt-two (osdt-at 16000) 8 8 (osdt-at 16100) 8 8 nil) '(:release :stop)))
+; Already released (at H by the host's cadence): the first stops.
+(assert-event (equal (car (osdt-two (osdt-at 16000) 8 8 (osdt-at 16100) 8 8 t)) :stop))
+; Only connections mid-article (nothing awaits, nothing unsent) and nothing
+; in flight: the drain stops at its first observation, long before the grace.
+(assert-event (equal (fn-osd-drain-step *osdt-idle0* *osdt-idle1* *osdt-l* 0 0 nil) :stop))
+; Hypothesis removal, the first past the grace: (500, 16000): wait, then
+; release; neither stops (the conclusion fails); the second hypothesis holds.
+(assert-event (not (fn-osd-past-grace-p *osdt-f0* (osdt-at 500) *osdt-l*)))
+(assert-event (equal (osdt-two (osdt-at 500) 8 8 (osdt-at 16000) 8 8 nil) '(:wait :release)))
+; The second past the grace removed: (16000, 10000) (a clock read back):
+; release, then wait; the first hypothesis holds.
+(assert-event (not (fn-osd-past-grace-p *osdt-f0* (osdt-at 10000) *osdt-l*)))
+(assert-event (equal (osdt-two (osdt-at 16000) 8 8 (osdt-at 10000) 8 8 nil) '(:release :wait)))
+(must-fail-checked
+ (defthm osdt-stops-without-the-first-past-grace
+   (implies (fn-osd-past-grace-p s0 s2 limits)
+            (mv-let (step1 released1)
+              (fn-osd-drain-next s0 s1 limits awaiting1 unsent1 released)
+              (or (equal step1 :stop)
+                  (equal (mv-nth 0 (fn-osd-drain-next s0 s2 limits awaiting2 unsent2
+                                                      released1))
+                         :stop))))))
+(must-fail-checked
+ (defthm osdt-stops-without-the-second-past-grace
+   (implies (fn-osd-past-grace-p s0 s1 limits)
+            (mv-let (step1 released1)
+              (fn-osd-drain-next s0 s1 limits awaiting1 unsent1 released)
+              (or (equal step1 :stop)
+                  (equal (mv-nth 0 (fn-osd-drain-next s0 s2 limits awaiting2 unsent2
+                                                      released1))
+                         :stop))))))

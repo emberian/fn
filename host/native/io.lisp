@@ -3670,11 +3670,13 @@ last (fn-store-sco-last-record-octets)."
 ;;; `store export DIR' and `store import DIR' (D34, books/store-export.lisp).
 
 (defun fnn-archive-write-file (path octets)
-  "Create PATH (it must not exist), write OCTETS, fence it."
+  "Create PATH (it must not exist) and write OCTETS, no fence: the export's
+data share one sync at the end (books/store-export-durability.lisp, the
+step pair :create/:write-all of fn-sxd-entry-steps)."
   (let ((fd (fnn-open path (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
                                     +fnn-o-nofollow+)
                       #o600)))
-    (unwind-protect (progn (fnn-write-all fd (fnn-octets octets)) (fnn-fsync-file fd))
+    (unwind-protect (fnn-write-all fd (fnn-octets octets))
       (fnn-close fd))))
 
 (defun fnn-archive-name (octets)
@@ -3688,19 +3690,87 @@ last (fn-store-sco-last-record-octets)."
 allocation quantum per call, never a bound on the store; every record is in
 exactly one step.")
 
-(defun fnn-export-entries (dir entries)
-  "Write each (NAME . OCTETS) of ENTRIES, an ACL2 export step's, under DIR."
+;; books/store-export-durability.lisp fn-sxd-program's cuts, in program order.
+;; export-entry-written repeats (per entry); the selected cut stops the export
+;; at its first occurrence.
+(defparameter +fnn-export-model-cuts+
+  '("export-entry-written" "export-data-written" "export-data-durable"
+    "export-manifest-staged" "export-manifest-renamed" "export-durable"))
+
+(defun fnn-export-test-fault ()
+  "Developer-only FN_NATIVE_EXPORT_FAULT=MODEL-CUT:eio|kill selector for
+fn-sxd-program's cuts: (CUT-KEYWORD ACTION), or NIL."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_EXPORT_FAULT")))
+    (when raw
+      (let ((colon (position #\: raw :from-end t)))
+        (unless colon
+          (fnn-fault "invalid FN_NATIVE_EXPORT_FAULT (expected MODEL-CUT:eio|kill)"))
+        (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
+          (unless (member label +fnn-export-model-cuts+ :test #'string=)
+            (fnn-fault "unknown FN_NATIVE_EXPORT_FAULT cut: ~a" label))
+          (list (intern (string-upcase label) :keyword)
+                (cond ((string= action "eio") 'fnn-os-error)
+                      ((string= action "kill") :fnn-test-kill)
+                      (t (fnn-fault "invalid FN_NATIVE_EXPORT_FAULT action: ~a" action)))))))))
+
+(defun fnn-export-at (fault cut)
+  "The cut CUT of fn-sxd-program: a developer image's armed fault fires here
+(SIGKILL: the next command observes a new process; eio: an OS error)."
+  (when (and fault (eq (first fault) (intern (string-upcase cut) :keyword)))
+    (if (eq (second fault) :fnn-test-kill)
+        (progn (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
+               (fnn-fault "test SIGKILL did not terminate the process"))
+        (fnn-os-fail sb-posix:eio))))
+
+#+linux
+(sb-alien:define-alien-routine ("syncfs" fnn-%syncfs) sb-alien:int (fd sb-alien:int))
+
+(defun fnn-export-sync-tree (dir)
+  "Where syncfs(2) is not available: fence every regular file and directory
+under DIR, a directory entry at a time (the archive's names are not held)."
+  (let ((handle (fnn-posix (dir) (sb-posix:opendir dir))))
+    (unwind-protect
+         (loop
+           (let ((entry (fnn-posix (dir) (sb-posix:readdir handle))))
+             (when (sb-alien:null-alien entry) (return))
+             (let ((name (sb-posix:dirent-name entry)))
+               (unless (or (string= name ".") (string= name ".."))
+                 (let* ((path (fnn-join dir name)) (st (fnn-lstat path)))
+                   (cond ((null st))
+                         ((fnn-regular-p st) (fnn-fsync-regular path))
+                         ((fnn-directory-p st) (fnn-export-sync-tree path))))))))
+      (fnn-posix (dir) (sb-posix:closedir handle))))
+  (fnn-fsync-dir dir))
+
+(defun fnn-export-sync-data (dir)
+  "fn-sxd-program's :sync-all: ONE sync of the filesystem DIR is on (Linux
+syncfs(2)); every entry written before it is durable after it.  Elsewhere
+every file and directory under DIR is fenced (fnn-export-sync-tree): the
+same postcondition, one barrier per file."
+  #+linux
+  (let ((fd (fnn-open dir (logior sb-posix:o-rdonly +fnn-o-directory+))))
+    (unwind-protect
+         (when (< (fnn-%syncfs fd) 0)
+           (fnn-os-fail (sb-alien:get-errno) dir))
+      (fnn-close fd)))
+  #-linux
+  (fnn-export-sync-tree dir))
+
+(defun fnn-export-entries (dir entries fault)
+  "Write each (NAME . OCTETS) of ENTRIES, an ACL2 export step's, under DIR:
+fn-sxd-entry-steps, the cut after each entry."
   (unless (listp entries)
     (fnn-fault "ACL2 returned malformed archive entries"))
   (dolist (entry entries)
-    (fnn-archive-write-file (fnn-join dir (fnn-archive-name (car entry))) (cdr entry))))
+    (fnn-archive-write-file (fnn-join dir (fnn-archive-name (car entry))) (cdr entry))
+    (fnn-export-at fault "export-entry-written")))
 
-(defun fnn-export-step (dir manifest-fd step)
+(defun fnn-export-step (dir manifest-fd step fault)
   "An export step's value (ENTRIES . LINES): write the entries, then append
 the MANIFEST lines to the staged MANIFEST."
   (unless (and (consp step) (fnn-octet-list-p (cdr step)))
     (fnn-fault "ACL2 returned a malformed archive step"))
-  (fnn-export-entries dir (car step))
+  (fnn-export-entries dir (car step) fault)
   (fnn-write-all manifest-fd (fnn-octets (cdr step))))
 
 (defun fnn-command-store-export (root dir)
@@ -3714,18 +3784,24 @@ history is built.  ACL2 decides every entry and MANIFEST line: the head
 chunk fn-sxp-export-chunk; books/store-export-stream.lisp
 fn-sxp-stream-is-the-export proves that, for every chunking, the entries
 written in this order are fn-sxp-entries of the whole history and the
-MANIFEST's octets are fn-sxp-manifest of them.  The MANIFEST's lines are
-appended to DIR/MANIFEST.partial as the steps go and it is renamed onto
-DIR/MANIFEST only after every entry is fenced: an interrupted export (a crash
-or a refusal of the history read) leaves DIR without a MANIFEST, which the
-import refuses by name (archive-incomplete entry=MANIFEST), never a MANIFEST
-over a prefix of the history."
+MANIFEST's octets are fn-sxp-manifest of them.
+
+Durability is books/store-export-durability.lisp fn-sxd-program, step for
+step, with its cuts (+fnn-export-model-cuts+): the entries are written with
+no per-file fence and the MANIFEST's lines go to DIR/MANIFEST.partial; then
+ONE sync of the data (fnn-export-sync-data); then MANIFEST.partial, records/
+and config/ are fenced, MANIFEST.partial is renamed onto DIR/MANIFEST, and
+DIR is fenced.  KEYSTONE fn-sxd-crash-is-incomplete-or-complete: a crash
+anywhere leaves no MANIFEST, which the import refuses by name
+(archive-incomplete entry=MANIFEST, fn-sxd-archive-verdict), or the
+MANIFEST over every entry with its octets."
   (when (fnn-lstat dir)
     (fnn-refuse "export refused reason=archive-exists"))
   (multiple-value-bind (store count) (fnn-open-live-store root nil)
     (declare (ignore count))
     (unwind-protect
-         (let* ((profile (fnn-octet-list (fnn-read-regular-bounded (fnn-config-path store) 16384)))
+         (let* ((fault (fnn-export-test-fault))
+                (profile (fnn-octet-list (fnn-read-regular-bounded (fnn-config-path store) 16384)))
                 ;; Format 9 holds no frontier file: the archive carries the
                 ;; frontier the log derived at this open (ACL2's frame of
                 ;; fn-store-log-next-txid), so the entry means what a
@@ -3740,6 +3816,7 @@ over a prefix of the history."
            (unless (and (consp head) (consp (car head)))
              (fnn-fault "ACL2 returned a malformed archive"))
            (fnn-mkdir dir #o700)
+           ;; fn-sxd-head-steps
            (fnn-mkdir (fnn-join dir "config") #o700)
            (fnn-mkdir (fnn-join dir "records") #o700)
            (let ((fd (fnn-open staged (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
@@ -3749,9 +3826,13 @@ over a prefix of the history."
              (unwind-protect
                   (flet ((flush ()
                            (when chunk
-                             (fnn-export-step dir fd (fnn-core 'fn-sxp-export-chunk (nreverse chunk)))
+                             (fnn-export-step dir fd
+                                              (fnn-core 'fn-sxp-export-chunk (nreverse chunk))
+                                              fault)
                              (setq chunk nil n 0))))
-                    (fnn-export-step dir fd head)
+                    ;; fn-sxd-entry-steps, then the MANIFEST's lines
+                    ;; (fn-sxd-tail-steps).
+                    (fnn-export-step dir fd head fault)
                     (fnn-log-history-each
                      store
                      (lambda (record)
@@ -3762,12 +3843,20 @@ over a prefix of the history."
                        (incf records)
                        (when (>= n +fnn-export-chunk+) (flush))))
                     (flush)
+                    (fnn-export-at fault "export-data-written")
+                    ;; :sync-all
+                    (fnn-export-sync-data dir)
+                    (fnn-export-at fault "export-data-durable")
+                    ;; fn-sxd-publish-program
                     (fnn-fsync-file fd))
                (fnn-close fd)))
            (fnn-fsync-dir (fnn-join dir "records"))
            (fnn-fsync-dir (fnn-join dir "config"))
+           (fnn-export-at fault "export-manifest-staged")
            (fnn-replace staged (fnn-join dir "MANIFEST"))
+           (fnn-export-at fault "export-manifest-renamed")
            (fnn-fsync-dir dir)
+           (fnn-export-at fault "export-durable")
            (fnn-out "exported records=~d configuration=~d" records (length configs))
            +fnn-exit-ok+)
       (fnn-store-close store))))
@@ -3937,18 +4026,31 @@ are present."
 
 (defun fnn-command-store-import (root dir request &optional policy)
   "Offline: make a new store at ROOT (it must not exist) from the archive at
-DIR.  ACL2's plan (fn-sxp-import-plan) checks the MANIFEST, the order and the
-profile (REQUEST's field overrides over the archive's) and refuses by name;
-the host writes the plan's files into ROOT.import-XXXX as init writes its
-files, opens that store the ordinary way (full replay, marker catch-up), and
-publishes it by a no-replace rename onto ROOT only when the open admitted
-it, then fences ROOT's parent: books/store-import-publication.lisp
-fn-bs-imp-program, step for step, with its cuts (+fnn-import-model-cuts+).
-A staged directory left beside ROOT by an earlier import is classified by
-fn-bs-imp-classify and refused by name before anything is written.  An OS
-error before the rename is a known failure (exit 1, the staged directory
-named); at or after it the outcome is uncertain (exit 3) and the observed
-presence of the two names is classified by fn-bs-imp-classify."
+DIR, a chunk of +fnn-export-chunk+ records at a time (PRF-369,
+books/store-import-stream.lisp).  Pass one (`fnn-import-pass', no sink)
+reads the archive and asks ACL2 per step: fn-sxi-head and fn-sxi-start over
+the profile, frontier and configuration records, then per chunk fn-sxi-want
+(the MANIFEST octets the chunk's entries must be) and fn-sxi-step over the
+octets read at that place, then fn-sxi-final; KEYSTONE
+fn-sxi-stream-plan-is-the-import-plan: for every chunking and every MANIFEST
+this decides what fn-sxp-import-plan decides over the whole archive, so a
+refused archive is refused by the same name with nothing written.  No list
+of the archive's records, and never the MANIFEST as one list, is built: the
+work and allocation per step are one chunk's.  An accepted plan is written
+into ROOT.import-XXXX as init writes its files, and pass two runs the same
+steps inside the staged publication, appending each chunk's records (the
+step's own, translated for a format-9 archive) to the stage's log; a pass
+two that does not decide what pass one decided (fn-sxi-same-verdict: the
+archive changed under the import) is refused by name before the open.  The
+ordinary open (full replay, marker catch-up) admits the stage and it is
+published by a no-replace rename onto ROOT, then ROOT's parent fenced:
+books/store-import-publication.lisp fn-bs-imp-program, step for step, with
+its cuts (+fnn-import-model-cuts+).  A staged directory left beside ROOT by
+an earlier import is classified by fn-bs-imp-classify and refused by name
+before anything is written.  An OS error before the rename is a known
+failure (exit 1, the staged directory named); at or after it the outcome is
+uncertain (exit 3) and the observed presence of the two names is classified
+by fn-bs-imp-classify."
   (let* ((root-path (string-right-trim "/" root))
          (leftover (fnn-import-leftover-stage root-path)))
     (when leftover
@@ -3962,46 +4064,9 @@ presence of the two names is classified by fn-bs-imp-classify."
         (t (fnn-fault "ACL2 classified a present staged directory as absent")))))
   (when (fnn-lstat root)
     (fnn-refuse "import refused reason=store-exists"))
-  (let* ((profile (fnn-octet-list (fnn-archive-entry dir "profile" 16384)))
-         (frontier (fnn-octet-list (fnn-archive-entry dir "frontier" 4096)))
-         (config-names (fnn-archive-read-dir dir "config"))
-         (record-names (fnn-archive-read-dir dir "records"))
-         ;; Work bounds, not data bounds: one record file is read within the
-         ;; archive profile's record bound (the bound it was committed under),
-         ;; and the MANIFEST within one line per entry.  A profile the codec
-         ;; does not decode gives no bound: no record is read, and the plan
-         ;; below refuses the archive by name (its MANIFEST check comes first
-         ;; and names the profile when its octets changed; lane fuzz-nntp,
-         ;; planning/evidence/fuzz-nntp-2026-09-27.md).
-         ;; This format's profile, or a format-9 archive's translated
-         ;; (books/store-export.lisp fn-sxp-config-decode-archive).
-         (decoded (fnn-core 'fn-sxp-config-decode-archive profile))
-         (record-bound (and decoded (fnn-core 'fn-store-profile-read-bound decoded)))
-         (manifest (fnn-octet-list
-                    (fnn-archive-entry
-                     dir "MANIFEST"
-                     (* 512 (+ 2 (length config-names) (length record-names))))))
-         (configs (mapcar (lambda (name)
-                            (cons name (fnn-octet-list
-                                        (fnn-archive-entry
-                                         dir (fnn-join "config" name)
-                                         +fnn-config-record-bytes+))))
-                          config-names))
-         ;; The sequence is ACL2's decode of the record, whatever it is: a
-         ;; record that does not decode is not a natural, and
-         ;; fn-sxp-out-of-sequence refuses it by name (after the MANIFEST
-         ;; check), instead of the host faulting on ACL2's answer.
-         (records (and record-bound
-                       (mapcar (lambda (name)
-                                 (let ((octets (fnn-archive-entry
-                                                dir (fnn-join "records" name)
-                                                record-bound)))
-                                   (cons (fnn-core 'fn-store-archive-record-sequence
-                                                   (fnn-octet-list octets))
-                                         (fnn-octet-list octets))))
-                               record-names)))
-         (plan (fnn-core 'fn-sxp-import-plan manifest profile frontier configs records
-                         (or request '(:current nil)))))
+  (when (fnn-lstat root)
+    (fnn-refuse "import refused reason=store-exists"))
+  (multiple-value-bind (plan count) (fnn-import-pass dir request nil)
     (unless (and (consp plan) (member (first plan) '(:import :refused)))
       (fnn-fault "ACL2 returned a malformed import plan"))
     (when (eq (first plan) :refused)
@@ -4014,7 +4079,8 @@ presence of the two names is classified by fn-bs-imp-classify."
                   ;; :record-translation names the archive record's sequence.
                   (and (eq (second plan) :record-translation)
                        (natp (fourth plan)) (fourth plan))))
-    (destructuring-bind (values frontier configs records) (rest plan)
+    (destructuring-bind (values frontier configs) (rest plan)
+      (declare (ignore frontier))
       (let* ((root-path (string-right-trim "/" root))
              (stage-root (format nil "~a.import-~a" root-path (fnn-random-hex 6)))
              (stage (make-fnn-store stage-root :writable t :fault (fnn-import-test-fault)))
@@ -4040,23 +4106,125 @@ presence of the two names is classified by fn-bs-imp-classify."
                  (list (cons (fnn-segment-path stage)
                              (fnn-make-octets
                               (fnn-nat (fnn-core 'fn-store-log-initial-extent))))))
-         (length records)
+         count
          ;; The imported store is a new store on the filesystem ROOT is on
          ;; (its stage is ROOT's sibling): its record, under the import's
          ;; policy (fn-smid-init-policy: 1), before the ordinary open.  On
          ;; format 9 the stage's segment (staged above) then receives the
-         ;; history from the genesis (fnn-log-write-history) before that open
-         ;; admits it.
+         ;; history from the genesis (fnn-log-write-history), pass two's
+         ;; records a chunk at a time, before that open admits it.
          (lambda (stage)
            (fnn-record-filesystem-at-init stage request policy)
            (fnn-log-init-segment stage)
-           (fnn-log-write-history stage values records))
+           (fnn-log-write-history
+            stage values
+            (lambda (sink)
+              (multiple-value-bind (again again-count) (fnn-import-pass dir request sink)
+                (unless (fnn-core 'fn-sxi-same-verdict (cons again-count again)
+                                  (cons count plan))
+                  (fnn-refuse "import refused reason=archive-changed stage=~a: the archive changed while it was imported; no store was published; remove ~a and import again"
+                              stage-root stage-root))))))
          ;; The staged tree's subdirectories: a format-9 store's are init's
          ;; (journal/ among them: fnn-log-init-segment's caller makes it
          ;; since log-2's initializer program).
          (fnn-core 'fn-bs-init-log-subdir-names))
-        (fnn-out "imported records=~d configuration=~d" (length records) (length configs))
+        (fnn-out "imported records=~d configuration=~d" count (length configs))
         +fnn-exit-ok+))))
+
+(defun fnn-read-up-to (fd n)
+  "At most N octets from FD's position, fewer only at end of file."
+  (let ((data (fnn-make-octets n)) (at 0))
+    (loop while (< at n) do
+      (let* ((buffer (fnn-make-octets (- n at)))
+             (count (fnn-read-fd fd buffer)))
+        (when (zerop count) (return))
+        (replace data buffer :start1 at :end2 count)
+        (incf at count)))
+    (if (= at n) data (subseq data 0 at))))
+
+(defun fnn-import-pass (dir request sink)
+  "One pass over the archive at DIR: (values PLAN COUNT), PLAN fn-sxi-final's
+verdict and COUNT the records read.  SINK, when given, receives every record
+the steps return, (SEQUENCE . OCTETS), in order (pass two).  The archive is
+external input: an entry that is absent or past its work bound is refused by
+its name (fnn-archive-entry), never a host fault."
+  ;; The MANIFEST first: an archive counts as complete only once its MANIFEST
+  ;; is durable (the export renames it into place last), so an archive
+  ;; without one is refused by that name before any entry is read
+  ;; (books/store-export-durability.lisp fn-sxd-archive-verdict, KEYSTONE
+  ;; fn-sxd-import-verdict-is-incomplete-or-complete).
+  (case (fnn-core 'fn-sxd-archive-verdict
+                  (and (fnn-check-regular (fnn-join dir "MANIFEST")) t))
+    (:archive-incomplete
+     (fnn-refuse "import refused reason=archive-incomplete entry=MANIFEST"))
+    (:read)
+    (t (fnn-fault "ACL2 returned a malformed archive verdict")))
+  (let* ((profile (fnn-octet-list (fnn-archive-entry dir "profile" 16384)))
+         (frontier (fnn-octet-list (fnn-archive-entry dir "frontier" 4096)))
+         (config-names (fnn-archive-read-dir dir "config"))
+         (record-names (fnn-archive-read-dir dir "records"))
+         ;; Work bounds, not data bounds: one record file is read within the
+         ;; archive profile's record bound (the bound it was committed under).
+         ;; A profile the codec does not decode gives no bound: no record is
+         ;; read, and fn-sxi-final refuses the archive by name (its MANIFEST
+         ;; check comes first and names the profile when its octets changed;
+         ;; lane fuzz-nntp, planning/evidence/fuzz-nntp-2026-09-27.md).
+         ;; This format's profile, or a format-9 archive's translated
+         ;; (books/store-export.lisp fn-sxp-config-decode-archive).
+         (decoded (fnn-core 'fn-sxp-config-decode-archive profile))
+         (record-bound (and decoded (fnn-core 'fn-store-profile-read-bound decoded)))
+         (configs (mapcar (lambda (name)
+                            (cons name (fnn-octet-list
+                                        (fnn-archive-entry
+                                         dir (fnn-join "config" name)
+                                         +fnn-config-record-bytes+))))
+                          config-names))
+         (manifest-path (fnn-join dir "MANIFEST")))
+    (let ((fd (fnn-open manifest-path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
+          (count 0))
+      (unwind-protect
+           (let* ((head (fnn-core 'fn-sxi-head profile frontier configs))
+                  (f9p (first head))
+                  (lines (cddr head))
+                  (st (fnn-core 'fn-sxi-start f9p (second head) lines
+                                (fnn-octet-list (fnn-read-up-to fd (length lines)))))
+                  (chunk nil) (n 0) (stop nil))
+             (flet ((flush ()
+                      (when chunk
+                        (let* ((records (nreverse chunk))
+                               (want (fnn-core 'fn-sxi-want f9p records))
+                               (r (fnn-core 'fn-sxi-step f9p st records want
+                                            (fnn-octet-list (fnn-read-up-to fd (length want))))))
+                          (unless (consp r)
+                            (fnn-fault "ACL2 returned a malformed import step"))
+                          (setq st (car r) chunk nil n 0)
+                          ;; A MANIFEST mismatch is the verdict: stop reading.
+                          (setq stop (fnn-core 'fn-sxi-st-mm st))
+                          (when sink
+                            (dolist (record (cdr r)) (funcall sink record)))))))
+               (when record-bound
+                 (dolist (name record-names)
+                   (when stop (return))
+                   ;; The sequence is ACL2's decode of the record, whatever it
+                   ;; is: a record that does not decode is not a natural, and
+                   ;; fn-sxp-out-of-sequence refuses it by name (after the
+                   ;; MANIFEST check), instead of the host faulting on it.
+                   (let ((octets (fnn-octet-list
+                                  (fnn-archive-entry dir (fnn-join "records" name)
+                                                     record-bound))))
+                     (push (cons (fnn-core 'fn-store-archive-record-sequence octets) octets)
+                           chunk)
+                     (incf n)
+                     (incf count)
+                     (when (>= n +fnn-export-chunk+) (flush))))
+                 (flush)))
+             (values (fnn-core 'fn-sxi-final st
+                               ;; What follows the last chunk's lines: at
+                               ;; most one octet (the MANIFEST must end).
+                               (fnn-octet-list (fnn-read-up-to fd 1))
+                               profile frontier configs (or request '(:current nil)))
+                     count))
+        (fnn-close fd)))))
 
 (defun fnn-staged-publication (kind stage root-path files record-count
                                record-filesystem subdirs)
@@ -4383,6 +4551,29 @@ measured at (books/native-live-status.lisp `fn-nls-reclaim-words')."
     (write-sequence (fnn-octets report) *fnn-stdout*)
     (finish-output *fnn-stdout*)))
 
+(defun fnn-write-report-pages (pages)
+  "Write the pages of one paged report, in order; render nothing."
+  (dolist (page pages)
+    (unless (typep page 'fnn-octets)
+      (fnn-fault "ACL2 returned a malformed report page"))
+    (write-sequence page *fnn-stdout*))
+  (finish-output *fnn-stdout*))
+
+(defun fnn-command-live-pages (store)
+  "Write the paged report of the Store this process replayed, a page at a
+time (books/native-live-pages.lisp `fn-nlp-offline-step'; KEYSTONE
+fn-nlp-offline-pages-join-to-the-report): the report is never held whole."
+  (declare (ignore store))
+  (let ((cursor (fnn-core 'fn-native-live-pages-host-offline-start *the-live-state*)))
+    (loop
+      (let ((step (fnn-core 'fn-native-live-pages-host-offline-step cursor)))
+        (unless (and (consp step) (fnn-octet-list-p (first step)))
+          (fnn-fault "ACL2 returned a malformed report page"))
+        (write-sequence (fnn-octets (first step)) *fnn-stdout*)
+        (when (third step) (return))
+        (setq cursor (second step)))))
+  (finish-output *fnn-stdout*))
+
 (defun fnn-command-live-report (root kind)
   "The status report of KIND over the Store at ROOT, opened read-only.
 
@@ -4394,10 +4585,12 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
     (declare (ignore records))
     (unwind-protect
          (progn
-           (fnn-write-report
-            (fnn-core 'fn-native-live-status-host-offline kind
-                      (fnn-store-config store) (fnn-store-observation store)
-                      (fnn-live-arena) *the-live-state*))
+           (if (fnn-core 'fn-native-live-pages-host-pagedp kind)
+               (fnn-command-live-pages store)
+             (fnn-write-report
+              (fnn-core 'fn-native-live-status-host-offline kind
+                        (fnn-store-config store) (fnn-store-observation store)
+                        (fnn-live-arena) *the-live-state*)))
            +fnn-exit-ok+)
       (fnn-store-close store))))
 
@@ -5162,7 +5355,7 @@ tree root), or stop the build."
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
-    "FN_NATIVE_STATE_CHECKPOINT_FAULT" "FN_NATIVE_IMPORT_FAULT"
+    "FN_NATIVE_STATE_CHECKPOINT_FAULT" "FN_NATIVE_IMPORT_FAULT" "FN_NATIVE_EXPORT_FAULT"
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_EXTENT_CACHE_TEST_OFF"
@@ -6739,10 +6932,12 @@ fenced (fn-lgc-fence-failed) and the store with it."
       (setf (fnn-store-fenced store) fenced))
     t))
 
-(defun fnn-log-write-history (store values records)
+(defun fnn-log-write-history (store values feed)
   "`store import' onto the record log (design 2026-09-27 storage-log section
-5.3): the fresh segment of the staged STORE (profile VALUES) receives
-RECORDS, a list of (SEQUENCE . OCTETS) in increasing sequence, from the
+5.3): the fresh segment of the staged STORE (profile VALUES) receives the
+records FEED hands it -- FEED is called once with a function of one record,
+(SEQUENCE . OCTETS), and calls it for each in increasing sequence (the import's
+pass two, a chunk at a time: no list of the history is built) -- from the
 genesis, through the kernel the open recovered from it and the commit
 route's own steps: per record the take (fn-lgc-take at the kernel's own next
 txid: the import allocates nothing; the open derives the frontier from the
@@ -6773,7 +6968,9 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
     (fnn-log-batch-reset log)
     (unwind-protect
          (let ((*fnn-log-batch* t))
-           (dolist (record records)
+           (funcall
+            feed
+            (lambda (record)
              ;; The import appends the archive's records in their order and
              ;; allocates nothing: each is taken at the kernel's own next txid
              ;; (an archived history may hold several records of one
@@ -6782,7 +6979,7 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
              ;; (fn-store-log-next-txid).
              (setf (fnn-log-reserved log) (fnn-core 'fn-lgc-next-txid (fnn-log-kernel log)))
              (fnn-log-take store (fnn-log-compress store (cdr record)))
-             (fnn-log-batch-finish store))
+             (fnn-log-batch-finish store)))
            (fnn-log-commit-open-batch store)
            (fnn-log-batch-finish store))
       (fnn-close (fnn-log-fd log))

@@ -283,6 +283,15 @@ class ProofCostTests(unittest.TestCase):
         self.assertEqual(verdict.failing, [])
         self.assertIn("IMPROVED books/grew", "\n".join(verdict.improved))
 
+    def test_a_kept_steps_row_still_lowers_its_seconds(self):
+        selected = self.measurement("books/cat", 6.4, steps=1050, run="certify-fast")
+        verdict = proof_cost.ratchet(selected, {"books/cat"},
+                                     {"books/cat": {"seconds": 10.36, "steps": 1000,
+                                                    "run": "certify-old"}}, 10, near=5.0)
+        self.assertEqual(verdict.failing, [])
+        row = verdict.proposed["books/cat"]
+        self.assertEqual((row["seconds"], row["steps"], row["run"]), (6.4, 1000, "certify-fast"))
+
     def test_near_seconds_round_trips_through_the_baseline(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "b.json"

@@ -33,11 +33,8 @@ A failed certification measures no cost: it prints FAILED, keeps its baseline
 row, and is never IMPROVED. Measurements at more than RATCHET_JOBS jobs print
 RECORDED and never ratchet; a manifest without `jobs_effective` is unknown and
 skipped with a warning. `--write-baseline` drops improved books, lowers steps
-and seconds, never raises steps and refuses to add a row unless
-`--allow-regression` is given. The steps only shrink.  A row with steps
-takes the current bytes' seconds whenever their fastest measurement is
-quiet, higher or lower (`refreshed`): on such a row the seconds are a
-description, the steps the ratchet.
+and seconds, never raises either and refuses to add a row unless
+`--allow-regression` is given. The baseline only shrinks.
 
 The NEAR line (`near_seconds` in the baseline, set by `--write-baseline
 --near SECONDS`; 5 s since 2026-09-28): a book at or over it, measured at 2
@@ -608,24 +605,6 @@ def lowered(prior: dict, record: Measurement) -> dict:
     return value
 
 
-def refreshed(prior: dict, record: Measurement) -> dict:
-    """A steps row after a measurement within its step band.
-
-    Its steps are the ratchet and only shrink; its seconds describe the book
-    and are the current bytes' fastest measurement when that one is quiet (a
-    kept row once read 10.36 s for a book measured quietly at 6.44 s, lane
-    d26-books-2).  A loaded measurement refreshes nothing it would raise."""
-    value = lowered(prior, record)
-    if record.quiet is True and record.seconds != float(value["seconds"]):
-        steps = value.get("steps")
-        for key in ("load", "cpus"):
-            value.pop(key, None)
-        value.update(entry(record))
-        if steps is not None:
-            value["steps"] = steps
-    return value
-
-
 def ratchet(selected: dict[tuple[str, str, str, str], Measurement], books: set[str],
             baseline: dict[str, dict], threshold: float,
             tolerance: float = TOLERANCE,
@@ -696,9 +675,16 @@ def ratchet(selected: dict[tuple[str, str, str, str], Measurement], books: set[s
                 result.kept.append(
                     f"KEPT {book}: steps={record.steps:,} is within "
                     f"{step_tolerance:.0%} of baseline {prior_steps:,}; baseline not raised")
-                result.proposed[book] = refreshed(prior, record)
+                # The steps row is kept, but a faster measurement still
+                # lowers its seconds (d26-books-2: tau off took catalog from
+                # 10.4 to 6.4 s with steps a little up, and the row kept
+                # 10.36 s).
+                value = dict(prior)
+                if record.seconds < float(prior["seconds"]):
+                    value.update({k: v for k, v in entry(record).items() if k != "steps"})
+                result.proposed[book] = value
             else:
-                result.proposed[book] = refreshed(prior, record)
+                result.proposed[book] = lowered(prior, record)
             continue
         # A row or a measurement without steps: the seconds ratchet, quiet rule.
         limit = float(prior["seconds"]) * (1 + tolerance)

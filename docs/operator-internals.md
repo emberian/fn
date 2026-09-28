@@ -563,6 +563,24 @@ connection's configuration pin (the generation it reads under);
 obligations are not in this report: they belong to the DTN image's
 `bp-obligation status`.
 
+`obligations` has one line per held article, so it grows with the store
+(244 MB at a million articles). It is sent page by page and never rendered
+whole (books/native-live-pages.lisp): the first request starts the report
+over the ledger the owner holds then and is answered with a version token
+and the first page; each later request names the token and the next page,
+and the owner renders just that page (at most 128 KiB) from the cursor the
+token names, under its mutex. The report is the ledger at its first page:
+a POST between two pages does not change what that version prints. The
+owner keeps four report cursors; a version it no longer holds (four newer
+reports started, or the owner restarted) is answered `version-gone` by
+name, and the client starts again from the first page, up to eight times,
+then exits uncertain (3). The pages joined are the report
+(`fn-nlp-pages-join-to-the-report`), which is the whole report the owner
+used to render (`fn-nlp-live-report-is-the-report`). With no owner running
+the offline command writes the same report a page at a time. A client that
+predates this asks for the whole report and is refused (1) by the name
+`report-is-paged`.
+
 When the configuration's control socket is live, the command asks the owner
 over it (FNLS frames, pages of at most 128 KiB, joined by the client) and the
 owner renders the report from the Store, configuration and connection pins it

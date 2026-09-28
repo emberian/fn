@@ -12302,63 +12302,6 @@
       ]
     },
     {
-      "id": "PRF-372",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-hrecs-at-is-nth"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrecs-read-is-nth"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrecs-get-is-nth"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrecs-get-fuel-enough"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrecs-serve-keeps"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrecs-fill-keeps"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrecs-flush-keeps"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrecs-append-appends"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrecs-load-is-events"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrecs-count-is-len"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrc-at-is-nth"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrc-flush-one-rel"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrs-loop-placement"
-        }
-      ]
-    },
-    {
       "id": "PRF-364",
       "events": [
         {
@@ -12521,6 +12464,14 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-osd-drain-stops-by-the-deadline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osd-drain-next-step-unfolds"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-osd-deadline-is-past-the-slow-deadline"
         }
       ]
@@ -12596,6 +12547,158 @@
           "kind": "theorem",
           "name": "fn-sxp-manifest-under-of-append",
           "note": "Lemma: MANIFEST lines distribute over append."
+        }
+      ]
+    },
+    {
+      "id": "PRF-369",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sxi-stream-plan-is-the-import-plan",
+          "note": "KEYSTONE (no hypotheses). Host: host/native/io.lisp fnn-import-pass calls fn-sxi-head, fn-sxi-start, fn-sxi-want and fn-sxi-step per chunk, fn-sxi-final; fnn-command-store-import runs it twice. Teeth: tests/acl2/store-import-stream-tests.lisp (every chunking, format 9, each refusal by name incl. a cross-chunk sequence and a later MANIFEST mismatch outranking an earlier translation refusal; mutation witnesses: swapped and dropped chunks, an uncarried sequence)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-370",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sxd-crash-is-incomplete-or-complete",
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-export (the program's steps and cuts, tests/campaign/native_cuts.py verify_export_cut_map). Teeth: tests/acl2/store-export-durability-tests.lisp (a full run, both arms reached; mutation: the MANIFEST renamed before the sync; hypothesis removal: a stale MANIFEST, a short write reported :ok, an entry named MANIFEST)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxd-import-verdict-is-incomplete-or-complete",
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-import-pass asks fn-sxd-archive-verdict before reading any entry."
+        }
+      ]
+    },
+    {
+      "id": "PRF-372",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-at-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-read-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-get-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-get-fuel-enough"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-serve-keeps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-fill-keeps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-flush-keeps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-append-appends"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-load-is-events"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrecs-count-is-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrc-at-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrc-flush-one-rel"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hrs-loop-placement"
+        }
+      ]
+    },
+    {
+      "id": "PRF-371",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-report-is-the-obligations-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-live-report-is-the-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-take-cuts-the-stream"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-request-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-reply-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-pages-join-to-the-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-report-is-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-pages-reach-the-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-answer-keeps-other-versions"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nlp-offline-pages-join-to-the-report"
+        }
+      ]
+    },
+    {
+      "id": "PRF-374",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-invite-expiry-agrees-across-the-running-and-stopped-paths"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-invite-delta-is-live-at-its-stamp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clock-reading-latest-milliseconds-of-an-owner-reading"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clock-reading-latest-milliseconds-of-a-record-stamp-reading"
         }
       ]
     }

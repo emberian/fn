@@ -36,6 +36,7 @@
 (include-book "auth-secret")
 (include-book "identity")
 (include-book "native-admin-shape")
+(include-book "clock-unit")
 (local (include-book "identity-invariants"))
 (local (include-book "records-canonicality"))
 
@@ -775,10 +776,16 @@
 ;
 ; The code is the hexadecimal text of 16 CSPRNG octets the host read; ACL2
 ; renders it and its digest, and the configuration keeps only the digest.
-; The expiry is in the unit of the record's clock (books/clock.lisp: wall
-; milliseconds since 2000-01-01, DTN time), which is what
-; `fn-cfg-account-livep' compares it with: the upper end of the issuing
-; observation's error interval plus SECONDS.
+; The expiry is in milliseconds of DTN time (books/clock.lisp: wall
+; milliseconds since 2000-01-01), the unit of the owner's clock that
+; `fn-cfg-account-livep' compares it with when the redeem plan runs
+; (host/native-admin-host.lisp fn-acct-host-owner-redeem-stage passes
+; fn-own-clock): the upper end of the issuing reading's error interval plus
+; SECONDS, both converted to milliseconds from the reading's own unit
+; (books/clock-unit.lisp).  The running node issues from the owner's clock
+; (milliseconds); the stopped node from its configuration record's stamp
+; (seconds).  Bug M1 (PRF-374): the stopped path's seconds stamp was added
+; to milliseconds, so its codes were already expired.
 
 (defconst *fn-acct-code-entropy-octets* 16)
 (defconst *fn-acct-default-expiry-seconds* 604800)
@@ -805,47 +812,122 @@
   (declare (xargs :guard t))
   (coerce (explode-nonnegative-integer (nfix n) 10 nil) 'string))
 
-(defun fn-acct-invite-expiry (seconds stamp)
+(defun fn-acct-invite-expiry (seconds reading)
   (declare (xargs :guard t))
-  (if (and (posp seconds)
-           (fn-clock-has-wall stamp)
-           (natp (fn-clock-wall stamp))
-           (natp (fn-clock-wall-error stamp)))
-      (+ (fn-clock-wall stamp) (fn-clock-wall-error stamp) (* 1000 seconds))
-    nil))
+  (let ((latest (fn-clock-reading-latest-milliseconds reading)))
+    (if (and (posp seconds) latest)
+        (+ latest (fn-clock-seconds-in-milliseconds seconds))
+      nil)))
 
-; The pending row's delta for a code's digest text, or nil when the stamp
+; The pending row's delta for a code's digest text, or nil when the reading
 ; carries no usable wall clock (an invite cannot expire without one).
-(defun fn-acct-invite-delta (digest seconds stamp)
+(defun fn-acct-invite-delta (digest seconds reading)
   (declare (xargs :guard t))
-  (let ((expiry (fn-acct-invite-expiry seconds stamp)))
+  (let ((expiry (fn-acct-invite-expiry seconds reading)))
     (if expiry
         (fn-cfg-account-invite digest *fn-acct-issuer*
                                (fn-acct-decimal-text expiry))
       nil)))
 
-; A pending row's code is live at the issuing stamp and at every later stamp
-; whose error interval ends before SECONDS have passed.
+; The two readings an invitation is issued at.  Running: the live owner's
+; clock, milliseconds.  Stopped: the offline configuration record's stamp,
+; seconds (host/native/admin.lisp fnn-admin-clock-plan,
+; books/native-admin.lisp fn-native-admin-clock-observation), exactly as
+; fn-store-cfg-peer-delta-record stamps the record.
+(defun fn-acct-live-invite-reading (clock)
+  (declare (xargs :guard t))
+  (fn-clock-reading *fn-clock-owner-unit* clock))
+
+(defun fn-acct-offline-invite-reading (monotonic wall)
+  (declare (xargs :guard t))
+  (fn-clock-reading *fn-clock-record-stamp-unit*
+                    (fn-clock-observation (nfix monotonic) (nfix wall) 0 t)))
+
+; A pending row's code is live at the issuing reading and at every later
+; reading whose error interval ends before SECONDS have passed.
 (defthm fn-acct-invite-delta-is-live-at-its-stamp
-  (implies (fn-acct-invite-expiry seconds stamp)
-           (< (+ (fn-clock-wall stamp) (fn-clock-wall-error stamp))
-              (fn-acct-invite-expiry seconds stamp))))
+  (implies (fn-acct-invite-expiry seconds reading)
+           (< (fn-clock-reading-latest-milliseconds reading)
+              (fn-acct-invite-expiry seconds reading))))
 
 ; `account list' is books/account-list.lisp's report (PKT-391); the older
 ; fn-acct-list-report, which listed a binding row as pending, was removed
 ; with its last caller (PKT-473).
 
 ; The pending row an accepted `account invite DIGEST SECONDS' plan stages at
-; STAMP (the live owner's clock, or the offline record's), or nil.
-(defun fn-acct-admin-deltas (plan stamp)
+; READING (fn-acct-live-invite-reading of the live owner's clock, or
+; fn-acct-offline-invite-reading of the offline record's stamp), or nil.
+(defun fn-acct-admin-deltas (plan reading)
   (declare (xargs :guard t))
   (if (and (equal (fn-native-admin-result-status plan) :accepted)
            (equal (fn-native-admin-result-kind plan) :account-invite))
       (let ((d (fn-acct-invite-delta
                 (fn-record-octets-string (fn-native-admin-result-name plan))
-                (fn-native-admin-result-capacity plan) stamp)))
+                (fn-native-admin-result-capacity plan) reading)))
         (if d (list d) nil))
     nil))
+
+; KEYSTONE (PRF-374, bug M1).  The host calls fn-acct-admin-deltas from
+; host/native-admin-host.lisp: fn-native-admin-host-owner-reconfigure (the
+; running node, at fn-acct-live-invite-reading of fn-own-clock) and
+; fn-native-admin-host-apply (the stopped node, at
+; fn-acct-offline-invite-reading of the record's stamp).  On both paths an
+; accepted invite plan stages exactly one pending row whose expiry is
+; now + expires in MILLISECONDS: the running path's is the owner clock's
+; upper end plus 1000 x expires; the stopped path's is 1000 x the stamp's
+; seconds plus 1000 x expires.
+(defthm fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths
+  (implies (and (equal (fn-native-admin-result-status plan) :accepted)
+                (equal (fn-native-admin-result-kind plan) :account-invite)
+                (posp (fn-native-admin-result-capacity plan))
+                (natp wall)
+                (natp err))
+           (and (equal (fn-acct-admin-deltas
+                        plan (fn-acct-live-invite-reading
+                              (fn-clock-observation monotonic wall err t)))
+                       (list (fn-cfg-account-invite
+                              (fn-record-octets-string
+                               (fn-native-admin-result-name plan))
+                              *fn-acct-issuer*
+                              (fn-acct-decimal-text
+                               (+ wall err
+                                  (* 1000 (fn-native-admin-result-capacity
+                                           plan)))))))
+                (equal (fn-acct-admin-deltas
+                        plan (fn-acct-offline-invite-reading monotonic wall))
+                       (list (fn-cfg-account-invite
+                              (fn-record-octets-string
+                               (fn-native-admin-result-name plan))
+                              *fn-acct-issuer*
+                              (fn-acct-decimal-text
+                               (+ (* 1000 wall)
+                                  (* 1000 (fn-native-admin-result-capacity
+                                           plan)))))))))
+  :hints (("Goal" :in-theory (enable fn-clock-reading-latest-milliseconds
+                                     fn-clock-reading fn-clock-readingp
+                                     fn-clock-reading-unit
+                                     fn-clock-reading-observation))))
+
+; KEYSTONE (PRF-374).  The two paths agree: an invitation issued stopped at
+; the wall instant W milliseconds (its record stamp is floor(W/1000)
+; seconds, fnn-admin-clock-plan) expires at most one second before, and
+; never after, one issued running at W with no error bound.  The factor of
+; 1000 bug M1 was is exactly what this refutes.
+(defthm fn-acct-invite-expiry-agrees-across-the-running-and-stopped-paths
+  (implies (and (posp seconds) (natp w))
+           (let ((running (fn-acct-invite-expiry
+                           seconds (fn-acct-live-invite-reading
+                                    (fn-clock-observation m1 w 0 t))))
+                 (stopped (fn-acct-invite-expiry
+                           seconds (fn-acct-offline-invite-reading
+                                    m2 (floor w 1000)))))
+             (and (equal running (+ w (* 1000 seconds)))
+                  (<= stopped running)
+                  (< (- running 1000) stopped))))
+  :hints (("Goal" :in-theory (enable fn-clock-reading-latest-milliseconds
+                                     fn-clock-reading fn-clock-readingp
+                                     fn-clock-reading-unit
+                                     fn-clock-reading-observation))))
 
 ; -----------------------------------------------------------------------------
 ; Account deletion (public-node-2): `account delete LOGIN', delta code 27
