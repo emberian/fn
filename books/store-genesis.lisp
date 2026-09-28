@@ -13,7 +13,8 @@
 ;     magic "fn-g" (text), format word (text), node identity (blob, 32),
 ;     schema digest (blob, 32), profile digest (blob, 32), history salt
 ;     (u64 field, below 2^32), created-at (u64 field: the wall-clock
-;     reading at `init', seconds since 1970), image revision (text)
+;     reading at `init' in DTN seconds since 2000-01-01, the unit of the
+;     configuration stamps), image revision (text)
 ;
 ; and whose trailer (the frame's last 32 octets, `fn-frame-digest' of its
 ; protected prefix) is the chain value segment 1's first entry names as its
@@ -159,17 +160,23 @@
 ; What `init' and `store import' write
 
 ; The genesis record for the host's recorded readings: NODE (32 CSPRNG
-; octets), SALT (a CSPRNG natural, reduced to 32 bits here), CREATED (the
+; octets), SALT (4 CSPRNG octets, read here big-endian as the 32-bit salt), CREATED (the
 ; clock reading) and REVISION (the image's source revision as octets), under
 ; the profile PROFILE the store is born with.  NIL when a reading does not
 ; fit the record (a node identity that is not 32 octets, a revision that is
 ; not frame text): the host faults, the store is not made.
+(defun fn-gen-salt-of (octets)
+  (declare (xargs :guard t))
+  (if (and (fn-cbor-octet-listp octets) (equal (len octets) 4))
+      (fn-cbor-u32-from octets)
+    :bad))
+
 (defun fn-gen-record-for (node salt created revision profile)
   (declare (xargs :guard t :verify-guards nil))
   (let ((g (fn-gen-make *fn-bs-meta-format-10* node
                         (fn-gen-image-schema-digest)
                         (fn-gen-profile-digest-of profile)
-                        (mod (nfix salt) *fn-gen-salt-modulus*)
+                        (fn-gen-salt-of salt)
                         (nfix created)
                         revision)))
     (if (and (fn-bs-profile-validp profile) (fn-gen-p g)) g nil)))

@@ -1,5 +1,6 @@
-; fn: the developer initializer of a format-9 store over the byte store
-; (lane log-2, 2026-09-27; PKT-COL-2 of lane commit-onto-log's record).
+; fn: the developer initializer of a format-10 store over the byte store
+; (lane log-2, 2026-09-27; PKT-COL-2 of lane commit-onto-log's record; the
+; genesis at position 0, lane format-bump-10).
 ;
 ; `store ROOT init' and `fn init' build the store in place
 ; (host/native/io.lisp fnn-initialize).  For a format-9 profile (ACL2's
@@ -9,14 +10,16 @@
 ; (a format-9 store reads neither), and the record log's segment
 ; journal/000001.log created, its extent of zeros written (posix_fallocate
 ; on Linux: its range reads zeros, A-HOST), fenced, and journal/ fenced, each
-; syscall followed by its cut.  The fresh path only, as for format 8: an
+; syscall followed by its cut.  Before the segment, the genesis
+; journal/000000.log (books/store-genesis.lisp) is published as config.json
+; is: staged, fenced, linked, the root fenced, the stage unlinked.  The fresh path only, as for format 8: an
 ; existing directory, lock or segment is the host's retry branch (kept, not
 ; recreated) and is not this program.
 ;
 ; fn-bsi-log-init-program-establishes-the-empty-log: from the empty byte
 ; store, the run of every step ok ends with journal/ named durably in the
-; root, the segment named durably in journal/ with exactly EXTENT zeros
-; durable, config.json and config/00000001.cfg durable with their octets,
+; root, the genesis named durably in journal/ with its octets, the segment
+; named durably in journal/ with exactly EXTENT zeros durable, config.json and config/00000001.cfg durable with their octets,
 ; and nothing named in the root for a frontier file or transactions/.
 ; With books/store-init-log-publication.lisp fn-bs-init-log-segment-is-the-
 ; empty-log, the first open's recovery reads the empty log.
@@ -34,7 +37,8 @@
         (list :fsync-dir :journal)
         (list :cut "init-journal-segment-fenced")))
 
-(defun fn-bsi-log-init-program (config config-record config-stage record-stage extent)
+(defun fn-bsi-log-init-program (config config-record config-stage record-stage extent
+                                        genesis genesis-stage)
   (declare (xargs :guard t :verify-guards nil))
   (append
    (list (list :mkdir :parent "store" :root)
@@ -59,6 +63,12 @@
    (fn-bsi-publish-steps "init-history-" record-stage :config *fn-bsi-config-record-name* config-record)
    (list (list :fsync-dir :config)
          (list :cut "init-config-history-fenced"))
+   ; Format 10: position 0 of the log, the genesis (books/store-genesis.lisp),
+   ; published into journal/ before segment 1, which chains from its trailer;
+   ; its name is fenced in journal/ before the segment is created.
+   (fn-bsi-publish-steps "init-genesis-" genesis-stage :journal "000000.log" genesis)
+   (list (list :fsync-dir :journal)
+         (list :cut "init-genesis-journal-fenced"))
    (fn-bsi-log-segment-steps extent)
    (list (list :fsync-file :root *fn-bs-config-name*)
          (list :cut "init-final-config-file-fenced")
@@ -106,11 +116,13 @@
    (equal (fn-bs-take n (fn-bs-zeros n)) (fn-bs-zeros n))
    :hints (("Goal" :in-theory (enable fn-bs-take fn-bs-zeros)))))
 
-(defun fn-bsi-log-final (config config-record config-stage record-stage extent)
+(defun fn-bsi-log-final (config config-record config-stage record-stage extent
+                                genesis genesis-stage)
   (declare (xargs :guard t :verify-guards nil))
   (car (car (last (fn-bs-run *fn-bs-empty-store* (fn-sf-initial-state)
                              (fn-bsi-log-init-program config config-record
-                                                      config-stage record-stage extent)
+                                                      config-stage record-stage extent
+                                                      genesis genesis-stage)
                              nil nil nil)))))
 
 ; The staging names need not be names (audit packet G4-5, lane audit-fixes):
@@ -119,12 +131,16 @@
 (defthm fn-bsi-log-init-program-establishes-the-empty-log
   (implies (and (fn-cbor-octet-listp config) (consp config)
                 (fn-cbor-octet-listp config-record) (consp config-record)
+                (fn-cbor-octet-listp genesis) (consp genesis)
                 (posp extent))
-           (let* ((s (fn-bsi-log-final config config-record config-stage record-stage extent))
+           (let* ((s (fn-bsi-log-final config config-record config-stage record-stage extent
+                                       genesis genesis-stage))
                   (seg (fn-bs-durable-entry s :journal "000001.log")))
              (and (equal (fn-bs-durable-entry s :root "journal") :journal)
                   seg
                   (equal (fn-bs-durable-content s seg) (fn-bs-zeros extent))
+                  (equal (fn-bs-durable-content s (fn-bs-durable-entry s :journal "000000.log"))
+                         genesis)
                   (equal (fn-bs-durable-content s (fn-bs-durable-entry s :root *fn-bs-config-name*))
                          config)
                   (equal (fn-bs-durable-content

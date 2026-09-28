@@ -28,6 +28,8 @@
 (include-book "../books/byte-store-txn-name")
 (include-book "../books/store-budget-naming")
 (include-book "../books/store-profile-facts")
+; Format 10: the genesis at position 0 of the log (lane format-bump-10).
+(include-book "../books/store-genesis")
 (include-book "../books/store-replay-bound")
 (include-book "../books/store-profile-open")
 (include-book "../books/store-mount-identity")
@@ -582,3 +584,36 @@
 ; The whole POST admission boundary is `fn-sbud-post-boundary'
 ; (books/store-budget-naming.lisp), over the persisted PROFILE the caller was
 ; handed at open; both hosts call it by that name.  No host constant enters it.
+
+;; -----------------------------------------------------------------------------
+;; The genesis (books/store-genesis.lisp; lane format-bump-10).  `init' and
+;; `store import' write the file ACL2 builds from the host's recorded
+;; readings (the CSPRNG node identity and salt, the clock reading, the image
+;; revision); every open reads it through ACL2's open, which refuses by name;
+;; the verdict is kept for the owner's install (the history salt) and for
+;; `store digest'.  The host passes octets and verdicts through unread.
+(defun fn-store-genesis-file-name ()
+  (fn-gen-file-name))
+
+(defun fn-store-genesis-octets (node salt created revision profile)
+  (fn-gen-octets-for node salt created revision profile))
+
+(defun fn-store-genesis-open (octets profile)
+  (fn-gen-open octets profile))
+
+(defun fn-store-genesis-refusal-text (verdict)
+  (fn-gen-refusal-text verdict))
+
+;; The chain value segment 1 starts from: the verdict's trailer.
+(defun fn-store-genesis-chain (verdict)
+  (if (and (consp verdict) (equal (car verdict) :genesis)
+           (consp (cdr verdict)) (consp (cddr verdict)))
+      (caddr verdict)
+    nil))
+
+;; The open's verdict, kept for this process: the owner's install reads the
+;; salt from it (fn-gen-verdict-salt), `store digest' its record.
+(defun fn-store-genesis-install (verdict state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-store-genesis verdict state)))
+    (mv nil t state)))

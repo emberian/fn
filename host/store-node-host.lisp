@@ -1643,4 +1643,14 @@ reopen predicate, writer-lock observation and observed final namespace."
                 (fn-store-sn-digest-line "config" (fn-sdg-digest cfg))
                 (fn-store-sn-digest-line "canonical"
                                          (fn-sha256-stobj (append history config-history))))))
-    (value (append body (fn-store-sn-digest-line "state" (fn-sha256-stobj body))))))
+    ; Format 10: the genesis record the open read (books/store-genesis.lisp),
+    ; printed AFTER the state line and outside it: no folded field reads a
+    ; genesis field (the history salt keys only the owner's derived index),
+    ; so two stores holding the same records under different genesis
+    ; records print every line above equal and this one different
+    ; (tests/test_native_replay_determinism.py).
+    (value (append body (fn-store-sn-digest-line "state" (fn-sha256-stobj body))
+                   (fn-store-sn-digest-line
+                    "genesis"
+                    (fn-sdg-digest (and (boundp-global 'fn-store-genesis state)
+                                        (f-get-global 'fn-store-genesis state))))))))
