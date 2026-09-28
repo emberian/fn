@@ -226,7 +226,7 @@ machine is the least of its physical memory, the cgroup's `memory.max`
 store's next `run` over the store on disk (`fn-heap-status-decide`, the same
 decision as the launcher's probe): `heap=MB MB profile=WORD machine=M MB
 stack=KB KB threads=N`. The thread stacks are added by
-books/heap-reservation.lisp (30 threads: 12 fixed, 2 I/O loops, 16 control
+books/heap-reservation.lisp (<!--limit:fixed-threads + mux-loops + control-clients-->30<!--/limit--> threads: <!--limit:fixed-threads-->12<!--/limit--> fixed, <!--limit:mux-loops-->2<!--/limit--> I/O loops, <!--limit:control-clients-->16<!--/limit--> control
 clients; a connection is no thread since connection-multiplexing). The
 installed launcher ignores the caller's `SBCL_USER_ARGS` and
 `FN_TEST_HEAP_MB`; a checkout's `packaging/fn` takes the tests'
@@ -668,7 +668,7 @@ accepted operator health
 | 20 | `fenced` | a clone fence awaits its incarnation rollover (`reason=clone-fence`); a process holds the store's writer lock and nothing answers on the configured control socket yet (`reason=starting`: an owner recovering its store before it listens, or an offline command); a process holds the lock and no control socket is configured, or the lock could not be probed (`reason=store-held`); or the socket accepted and did not answer (`reason=owner-unanswering`) | `starting`: wait and ask again, `status` answers once the owner listens; otherwise find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
 | 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no profile raises it |
 | 22 | `unqualified-profile` | the persisted profile is not valid (`fn-bs-profile-validp`), or it is the development profile. The line prints the store's format (`format=9` for the record log) | reinstall: `store export`, then `store import --FIELD N` (or `init --profile scale`) |
-| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | a reinstall with a larger field (`store export`, `store import --FIELD N`), `capacity`, or release obligations |
+| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default <!--limit:headroom-min-percent-->10<!--/limit-->) on transactions, history octets or retention charge | a reinstall with a larger field (`store export`, `store import --FIELD N`), `capacity`, or release obligations |
 | 24 | `no-route` | forwarding obligations are held and the configuration has no `bp-route` | `bp-route add PATTERN BOUNDARY` |
 | 25 | `stranded-transfer` | an outbound feed entry was dropped at its retry bound; nothing re-offers it | fix the peer, then re-feed the article |
 | 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection, or it keeps deferring them (`deferred=N`: a full peer answers IHAVE/TAKETHIS `436` with `reason=unaffordable` in its log; planning/evidence/friend-blockers-2026-09-27.md, PKT-711), or its outbound feed queue is saturated (`saturated=N`: the queue holds only undelivered articles, and while one of the post's target peers has no room every POST is refused `441 ... (feed-queue-full)` and a relayed article is answered `436`; PRF-335) | check the peer's host and port (`peer list`), its reachability, and ask its operator whether its store is full |
@@ -1744,6 +1744,18 @@ start it publishes the file's bindings as configuration records, and when
 `bind` or `unbind` runs against a running node (the configuration names a
 `[control] path`) the verb asks the owner to re-read the file and publish
 the change at once (PKT-221; `books/login-binding-live.lisp`).
+A login `auth.toml` does not hold (a redeemed invitation's, PKT-560,
+PRF-388) is answered `:account` by `fn-native-auth-admin-bind`, nothing
+written; the verb then sends the administrative vector `account bind LOGIN
+HEX` (`account unbind LOGIN`) the operator planned from the same words
+(`fn-native-operator-result-principal-account-result`), live to the owner
+or offline into the store, where `fn-lb-account-bind-plan` stages one
+`:login-binding` record only while LOGIN holds a redeemed account, else
+refuses `unknown-login`. The start publication leaves the binding of a
+redeemed account the file does not name as the configuration holds it
+(`fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings`),
+so it survives restarts (`fn-lb-an-account-binding-survives-the-next-start`);
+a file login's binding stays the file's.
 `principal set-password` asks the same (control request 14): the owner
 rebuilds its credential table from the file with the load it ran at start
 (`host/native/auth.lisp` `fnn-native-auth-reload-config`, ACL2's
@@ -2047,7 +2059,7 @@ durable; the node keeps only its digest, so a lost code is issued again, never
 recovered. Without `--expires` a code lives 604800 seconds. The friend, on a TLS
 connection, sends `XREDEEM CODE LOGIN`, then `XREDEEM PASS PASSWORD`, and is
 answered `281` once the account is durable; from the next connection they log
-in with AUTHINFO USER/PASS as LOGIN, bound to the login's local principal, with
+in with AUTHINFO USER/PASS as LOGIN, authenticated as the login's local principal (a signing binding is `principal bind`'s, above), with
 no auth.toml edit and no restart. A code redeems once; the same exchange after a
 lost reply answers `281` again and binds nothing new. `account list` shows
 `redeemed LOGIN PRINCIPAL-HEX` and `pending expires EXPIRY` lines, never a code,
