@@ -13486,7 +13486,9 @@
       "evidence": [
         "books/number-durability.lisp",
         "tests/acl2/number-durability-tests.lisp",
-        "tools/power_loss.py"
+        "tools/power_loss.py",
+        "planning/evidence/manifests/certify-20260928T214017Z-2864778.json",
+        "planning/evidence/durability-numbers-2026-09-28.md"
       ],
       "progress_note": "Lane durability-bugs (row I3 item 2), 2026-09-28. Open: the premise (fn-sf-prefixp fenced recovered) is over Store rows; a live arena that sealed a payload for a POST refused after its seal numbers later payload handles differently from the fresh intern at the open, so for such runs the live and recovered rows differ in handles although the numbering reads no payload (PKT-886). Teeth: tests/acl2/number-durability-tests.lisp. The extension premise is a hypothesis here; at a crash it is T2's conclusion (fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer, under A-CRYPTO-TRAILER) on a device that honours its flushes (A-DURABILITY; the power-loss rig's model)."
     }
