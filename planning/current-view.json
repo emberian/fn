@@ -68,53 +68,35 @@
         "host/owner-host.lisp": "3984db58fd316e4ab047750bd3d96dbd77db323f2c6806008cf19a58fa9a8117"
       }
     },
-    "902de488": {
-      "source": "902de48824120056127b525e67be266d366b3484",
+    "a3553e6b": {
+      "source": "a3553e6b4a230515dc661fe2e175be4a90400805",
       "qualification": null,
       "closure_manifest": null,
-      "release": "fn-6.6.0-linux-x86_64.tar.gz sha256 08553f3fc211bb5c06957a9619b709e663c950845e4b0e9f89a4a31ff7fb6af5 (source 957d43dd7 plus two certification manifests; release-gate green-check 585/585 on hbox, planning/evidence/public-node-deploy-2026-09-27.md; not a qualified image)",
-      "host_sha256": {
-        "host/bp-native-app-host.lisp": "ec5f8a19934fff5da14979340cc80e685ff8b50e1da9fb2414035922a130ce4e",
-        "host/checkpoint-host.lisp": "fe7c5bd15cde4bc9a5e60124b3bc520d90c4b6813c78f447acc865072e1af7bc",
-        "host/native/bp-service.lisp": "5c2c0e2beeb980cd7d619ebd6229b5cd28d53c56bd9120544f2e41a01682b081",
-        "host/owner-host.lisp": "6823984d56e6ddf67e217db6e7a69a0a122da51e76b6be1aa5b1078a88c2b02d"
-      },
-      "book_sha256": {
-        "books/bp-node-forward-retry.lisp": "5ea9cb4daf6e3f2777dea2073bceb41dda0baddc1e7bd2c798e793d94e1c95ff",
-        "books/bp-node-job-offer.lisp": "e5aa4ab48e12702780e1010c270436d874fc87c371cb052b31d3d4b8f09ee644",
-        "books/bp-transit-join.lisp": "69130d3184083186e9301bd1ebcb2a4e9a3b2b9d70de39a0bc815dbf2bae00bd",
-        "books/byte-store-k0-recovery.lisp": "890ba98e7b22b2bb03764400fcb131d743392288757d2abacb65e01c6772ac53",
-        "books/config-owner-carried.lisp": "16d19afdfb23e9d0f8d980c7994c437a91910fca369575fdba8dc66547b60900",
-        "books/config-owner-publish.lisp": "935975930d3c12512667f151386006bb8fb0c99fa200dde35b3913a483ef76ef",
-        "books/nntp-auth-invariants.lisp": "be238aac84aa00ff0e5d4b9eb2f28b4de11e5ffc1aedb92d285a671694d1608b",
-        "books/nntp-pinned-msgid.lisp": "904aa2a15c8c26a6a1ea6da20afb96ce1c33851f39d37f3ea4e7d1e988298156",
-        "books/owner-feed-subject.lisp": "deb165aa130ef597c8c5653f94aa10b80e82d8094e30f4bc8d3bf40144696006",
-        "books/owner-invariants-served.lisp": "310186d671106c2a0f75d26105143451d6877cac27c642ddc3887dc5d0f2f73e",
-        "books/owner-list-counts-read.lisp": "c698a1367060237e75730a8b73d901e8877c18f8b2be18dd898b2a4b4097db86",
-        "books/owner-parse-carried.lisp": "3e11867aa57c388924571f750050d964ab6eea4630f009b2fa669bfc8d7e0a5a",
-        "books/owner-prepare-outcome.lisp": "05423388d7e9866b28500f076362efc5c9ba81e761af811f36e8149d845375d8",
-        "books/owner-served-carried.lisp": "557dff89f3965cbc76d8e80ff1ba56a380ce8019d0b959facec0fa902a0bbf33",
-        "books/owner-served-invariants.lisp": "7704cdaaf2925aa922da10d856b49b32874c474c73d1944822a30663e1d1d69d",
-        "books/owner-store-budget.lisp": "603ae8f9267a3e3c0d30164b3393151ff76ff45c23dde6cb3d18229bc095b1c1",
-        "books/owner-tls-prefix.lisp": "dedddbb5d016bf3ae3ab28518bc2aa6a12cc0c1a91905ee28a60313df42da40b",
-        "books/owner-verdict-read.lisp": "d55cac809049917dc82119a06d289f78b271849cd691d492d36aaf846386ea5d",
-        "books/poster-bytes-invariants.lisp": "4fc4e0c087aef5e7d8b3cbf234b06a6850cd07b260539d16666bf52a7572a067",
-        "books/served-carried.lisp": "40c402cc92a6dd89e72b2d390022c5b6b7103857f749652086da1aded7f7675e",
-        "books/store-intern.lisp": "cf17b055b161f763a1875f963f4c79bbee2e615f98ce333640aafa7faee52a1b",
-        "books/store-log-reclaim.lisp": "a9fa795fbf725fc33ced121ac72c0ceabfbd7518d08a502d7f16274530ff99ce"
-      }
+      "release": "fn-6.6.0-linux-x86_64.tar.gz sha256 401c6324bb7a7e29d96fb552f92a38ec6c3ea3244071519324aa907ff6786bf0 (source dev a3553e6b4; release-gate green-check 609/609 on hbox, planning/evidence/node-migrate-2026-09-28.md; not a qualified image)"
     }
   },
   "deployment": {
-    "where": "`fn.fg-goose.online` on the fsn1 anchor `dregg-anchor-fsn1` (floating IP 88.99.126.35; 119 STARTTLS and 563 implicit TLS, Let's Encrypt certificate)",
-    "image": "902de488",
-    "record": "planning/evidence/public-node-deploy-2026-09-27.md",
+    "image": "a3553e6b",
+    "profile_text": "release `fn-6.6.0-linux-x86_64.tar.gz` (sha256 `401c6324bb7a7e29d96fb552f92a38ec6c3ea3244071519324aa907ff6786bf0`, source dev `a3553e6b4`), native under systemd with MemoryMax=2G, the store migrated to format 10 by `store export`/`store import` (max-transactions 32,768), small-community mission plus the edge exposure policy, logins by invitation only, peered with node #2 (inbound only: node #2 dials in; its push is blocked by PKT-882), DTN profile not deployed; first deployed 2026-09-27 21:49Z on `18a7137a`, redeployed 2026-09-28 03:29Z on `902de488`, migrated 2026-09-28 16:28Z",
     "profiles": [
       "default"
     ],
-    "profile_text": "release `fn-6.6.0-linux-x86_64.tar.gz` (sha256 `08553f3fc211bb5c06957a9619b709e663c950845e4b0e9f89a4a31ff7fb6af5`, source `957d43dd7` plus two manifests), native under systemd with MemoryMax=2G, the format-9 store kept across the upgrade (max-transactions 32,768), small-community mission plus the edge exposure policy, logins by invitation only, no peers (peer add lines ready in the record), DTN profile not deployed; first deployed 2026-09-27 21:49Z on `18a7137a`, redeployed 2026-09-28 03:29Z"
+    "record": "planning/evidence/node-migrate-2026-09-28.md",
+    "where": "`fn.fg-goose.online` on the fsn1 anchor `dregg-anchor-fsn1` (floating IP 88.99.126.35; 119 STARTTLS and 563 implicit TLS, Let's Encrypt certificate)"
   },
   "earlier_deployments": [
+    {
+      "image": "902de488",
+      "record": "planning/evidence/public-node-deploy-2026-09-27.md",
+      "state": "release `fn-6.6.0-linux-x86_64.tar.gz` (sha256 `08553f3fc211bb5c06957a9619b709e663c950845e4b0e9f89a4a31ff7fb6af5`), redeployed 2026-09-28 03:29Z, replaced 2026-09-28 16:28Z by `a3553e6b` with the store migrated to format 10 (kept at `/opt/fn-902de4882412` with its format-9 store `/var/lib/fn/store.format9-20260928T162825Z`: the rollback, planning/evidence/node-migrate-2026-09-28.md)",
+      "where": "`fn.fg-goose.online` on the fsn1 anchor `dregg-anchor-fsn1` (floating IP 88.99.126.35; 119 STARTTLS and 563 implicit TLS, Let's Encrypt certificate)"
+    },
+    {
+      "image": "6702ff8b",
+      "record": "planning/evidence/hbox-node-2026-09-28.md",
+      "state": "release `fn-6.6.0-linux-x86_64.tar.gz` (sha256 `14c962e8bf61c00f31d2697026b94a34ca92ff1833a246ac689cdae9cb6e8373`), deployed 2026-09-28 03:14Z, replaced 2026-09-28 15:51Z by `a3553e6b` with the store migrated to format 10 (kept at `/tank/fn/node/fn-6702ff8b2b46` with its format-9 store `/tank/fn/node/store.format9-20260928T155147Z`, planning/evidence/node-migrate-2026-09-28.md)",
+      "where": "node #2, hbox `/tank/fn/node` (LAN 192.168.50.39 only, behind NAT; 119 STARTTLS and 563 implicit TLS, self-signed hbox.ember.software)"
+    },
     {
       "where": "`fn.fg-goose.online` on the fsn1 anchor `dregg-anchor-fsn1` (floating IP 88.99.126.35; 119 STARTTLS and 563 implicit TLS, Let's Encrypt certificate)",
       "image": "18a7137a",
@@ -433,10 +415,10 @@
   ],
   "other_deployments": [
     {
-      "where": "node #2, hbox `/tank/fn/node` (LAN 192.168.50.39 only, behind NAT; 119 STARTTLS and 563 implicit TLS, self-signed hbox.ember.software)",
-      "image": "6702ff8b",
-      "record": "planning/evidence/hbox-node-2026-09-28.md",
-      "state": "release `fn-6.6.0-linux-x86_64.tar.gz` (sha256 `14c962e8bf61c00f31d2697026b94a34ca92ff1833a246ac689cdae9cb6e8373`, source `5e064ad83` plus one manifest), system unit fn-node.service with MemoryMax=2G, a fresh store at format 9 (max-transactions 32,768), small-community mission plus the exposure policy, logins by invitation only, no peers (peer add commands ready in the record); deployed 2026-09-28 03:14Z; a release build, not a qualified image"
+      "image": "a3553e6b",
+      "record": "planning/evidence/node-migrate-2026-09-28.md",
+      "state": "release `fn-6.6.0-linux-x86_64.tar.gz` (sha256 `401c6324bb7a7e29d96fb552f92a38ec6c3ea3244071519324aa907ff6786bf0`, source dev `a3553e6b4`), system unit fn-node.service with MemoryMax=2G, the store migrated to format 10 by `store export`/`store import` (max-transactions 32,768), small-community mission plus the exposure policy, logins by invitation only, peered with fn.fg-goose.online (pulls every 60 s; its push is blocked by PKT-882); migrated 2026-09-28 15:51Z; a release build, not a qualified image",
+      "where": "node #2, hbox `/tank/fn/node` (LAN 192.168.50.39 only, behind NAT; 119 STARTTLS and 563 implicit TLS, self-signed hbox.ember.software)"
     }
   ]
 }
