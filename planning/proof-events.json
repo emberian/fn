@@ -6977,7 +6977,7 @@
         {
           "kind": "theorem",
           "name": "fn-sxp-import-of-export-replays-the-same-history",
-          "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-import calls fn-sxp-import-plan; fnn-command-store-export calls fn-sxp-entries and fn-sxp-manifest. Teeth: tests/acl2/store-export-tests.lisp."
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-import calls fn-sxp-import-plan; fnn-command-store-export writes fn-sxp-entries and fn-sxp-manifest a chunk at a time (PRF-366, fn-sxp-stream-is-the-export). Teeth: tests/acl2/store-export-tests.lisp."
         },
         {
           "kind": "theorem",
@@ -12261,6 +12261,26 @@
         {
           "kind": "theorem",
           "name": "fn-rcl-store-counts-is-the-model-over-alpha"
+        }
+      ]
+    },
+    {
+      "id": "PRF-366",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-stream-is-the-export",
+          "note": "KEYSTONE (no hypotheses). Host: host/native/io.lisp fnn-command-store-export calls fn-sxp-export-head, then fn-sxp-export-chunk per chunk of fnn-log-history-each's records. Teeth: tests/acl2/store-export-stream-tests.lisp (positive witness at a three-chunk chunking; mutation witnesses: swapped and dropped chunks)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-record-entries-of-append",
+          "note": "Lemma: record entries distribute over append."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-manifest-under-of-append",
+          "note": "Lemma: MANIFEST lines distribute over append."
         }
       ]
     }

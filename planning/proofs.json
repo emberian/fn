@@ -12724,9 +12724,10 @@
       "evidence": [
         "books/store-export-stream.lisp",
         "tests/acl2/store-export-stream-tests.lisp",
-        "host/native/io.lisp"
+        "host/native/io.lisp",
+        "planning/evidence/scale-reads-export-2026-09-28.md"
       ],
-      "progress_note": "Lane scale-reads-export 2026-09-28: store export of 1,000,000 records exhausted a 32 GB heap (every record as an octet list); now streamed.",
+      "progress_note": "Lane scale-reads-export 2026-09-28: store export of 1,000,000 records exhausted a 32 GB heap (every record as an octet list); now streamed. Certified: certify-20260928T102940Z-867568 (persvati). Native store_export 6/6, format_9_migration 1/1 on hbox. 1M export: 7.08 GB peak RSS (the open alone 7.07 GB), before: heap exhausted at 32 GB.",
       "events": [
         "fn-sxp-stream-is-the-export",
         "fn-sxp-record-entries-of-append",
