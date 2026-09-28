@@ -2666,7 +2666,7 @@
         "PRF-046"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/tcpcl-delivery.lisp",
         "books/tcpcl-delivery-invariants.lisp",
@@ -9441,7 +9441,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/payload-lz.lisp",
         "tests/acl2/payload-lz-tests.lisp",
@@ -11942,7 +11942,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/octet-text.lisp",
         "tests/acl2/octet-text-tests.lisp",
@@ -12250,7 +12250,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/web-request.lisp",
         "tests/acl2/web-request-tests.lisp",
@@ -12368,7 +12368,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/web-2047.lisp",
         "books/web-render.lisp",
@@ -12760,14 +12760,19 @@
         "PRF-198"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/heap-open-nursery.lisp",
         "tests/acl2/heap-open-nursery-tests.lisp",
         "host/native/io.lisp",
         "planning/evidence/manifests/certify-20260928T095103Z-512720.json"
       ],
-      "progress_note": "Lane f1-bisect (2026-09-28): both books certified on persvati (certify-20260928T095103Z-512720, 2 passed, none over 10 s). Teeth: positive witnesses at the F1 store (17,553,520), past the cap, unobserved and fresh; the hypothesis-removal witness for NATP HISTORY; one must-fail. F1 before/after on hbox in the lane's LANEDUMP."
+      "progress_note": "Lane f1-bisect (2026-09-28): both books certified on persvati (certify-20260928T095103Z-512720, 2 passed, none over 10 s). Teeth: positive witnesses at the F1 store (17,553,520), past the cap, unobserved and fresh; the hypothesis-removal witness for NATP HISTORY; one must-fail. F1 before/after on hbox in the lane's LANEDUMP.",
+      "events": [
+        "fn-heap-open-nursery-trigger-bounds",
+        "fn-heap-store-figure-holds-every-store-at-the-open-trigger",
+        "fn-heap-open-nursery-trigger-natp"
+      ]
     }
   ]
 }

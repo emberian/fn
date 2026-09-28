@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1421 |
-| Certification roots in the Makefile | 1392 |
-| Books inside the root closure | 1419 |
-| `defthm` and `defthmd` events | 22713 |
-| `defun` events | 15434 |
+| Books read | 1425 |
+| Certification roots in the Makefile | 1396 |
+| Books inside the root closure | 1423 |
+| `defthm` and `defthmd` events | 22809 |
+| `defun` events | 15460 |
 | Functions with verified guards | 2956 |
-| Functions declared `:verify-guards nil` and never verified | 1791 |
-| Functions left at the default with an explicit guard | 8448 |
-| Functions left at the default with no guard | 2239 |
-| `assert-event` checks | 20206 |
-| `must-fail` checks | 2239 |
+| Functions declared `:verify-guards nil` and never verified | 1802 |
+| Functions left at the default with an explicit guard | 8459 |
+| Functions left at the default with no guard | 2243 |
+| `assert-event` checks | 20212 |
+| `must-fail` checks | 2243 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 139 |
 | Theorems flagged SUSPECT by shape | 1098 |
 | Export-hygiene warnings | 277 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 240 |
-| Include-hygiene warnings | 1935 |
-| Host-names warnings | 1772 |
+| Include-hygiene warnings | 1940 |
+| Host-names warnings | 1778 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -427,6 +427,7 @@ that `make certify` requests.
 | `books/history-pages-grow.lisp` | root | 36 | 10 | 0/1/5/4 | 0 | 0 | 0 |
 | `books/history-pages-import.lisp` | root | 25 | 4 | 0/0/1/3 | 0 | 0 | 0 |
 | `books/history-pages-nest.lisp` | root | 13 | 7 | 0/6/0/1 | 0 | 0 | 0 |
+| `books/history-pages-owner.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/history-pages-placed-write.lisp` | root | 18 | 5 | 0/5/0/0 | 0 | 0 | 0 |
 | `books/history-pages-placed.lisp` | root | 58 | 17 | 0/3/10/4 | 0 | 0 | 0 |
 | `books/history-pages-read.lisp` | root | 31 | 7 | 0/1/5/1 | 0 | 0 | 0 |
@@ -609,6 +610,7 @@ that `make certify` requests.
 | `books/pagestore-gc.lisp` | root | 69 | 44 | 0/3/17/24 | 0 | 0 | 2 |
 | `books/pagestore-keystones.lisp` | root | 271 | 56 | 0/0/0/56 | 0 | 0 | 4 |
 | `books/pagestore-reclaim.lisp` | root | 91 | 8 | 0/0/0/8 | 0 | 0 | 0 |
+| `books/pagestore-refine.lisp` | root | 70 | 16 | 0/6/6/4 | 0 | 0 | 0 |
 | `books/pagestore-words-blake3.lisp` | root | 25 | 4 | 0/0/3/1 | 0 | 0 | 0 |
 | `books/pagestore-words.lisp` | root | 33 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/pagestore.lisp` | root | 6 | 70 | 0/2/67/1 | 0 | 0 | 0 |
@@ -1157,6 +1159,7 @@ that `make certify` requests.
 | `tests/acl2/history-pages-grow-five-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 1 | 0 | 0 |
 | `tests/acl2/history-pages-grow-then-append-tests.lisp` | root | 7 | 2 | 0/0/0/2 | 1 | 1 | 0 |
 | `tests/acl2/history-pages-import-tests.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/history-pages-owner-tests.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 4 | 0 |
 | `tests/acl2/history-pages-placed-tests.lisp` | root | 20 | 1 | 0/0/0/1 | 1 | 0 | 0 |
 | `tests/acl2/history-pages-read-tests.lisp` | root | 11 | 1 | 0/0/0/1 | 1 | 8 | 0 |
 | `tests/acl2/history-pages-relocate-tests.lisp` | root | 7 | 1 | 0/0/0/1 | 1 | 0 | 0 |
@@ -1294,6 +1297,7 @@ that `make certify` requests.
 | `tests/acl2/owner-tls-pin-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/owner-verdict-read-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 32 | 6 | 0 |
 | `tests/acl2/owner-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
+| `tests/acl2/pagestore-refine-tests.lisp` | root | 0 | 10 | 0/5/5/0 | 6 | 0 | 0 |
 | `tests/acl2/pagestore-tests.lisp` | root | 0 | 39 | 0/0/2/37 | 41 | 0 | 0 |
 | `tests/acl2/payload-arena-extent-tests.lisp` | root | 6 | 3 | 0/0/1/2 | 4 | 6 | 0 |
 | `tests/acl2/payload-arena-paged-tests.lisp` | root | 41 | 12 | 0/6/2/4 | 5 | 20 | 0 |
