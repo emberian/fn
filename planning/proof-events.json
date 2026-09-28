@@ -12764,6 +12764,19 @@
           "name": "fn-acct-offline-invite-refusal-is-no-clock-exactly-without-a-wall"
         }
       ]
+    },
+    {
+      "id": "PRF-383",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-napb-rows-with-key-loop-is-rev-onto"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-napb-peer-names-loop-is-rev-onto"
+        }
+      ]
     }
   ]
 }
