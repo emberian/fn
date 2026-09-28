@@ -11550,6 +11550,14 @@
         {
           "kind": "theorem",
           "name": "fn-hp-append-dirty-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-header-is-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-at-is-nth"
         }
       ]
     },

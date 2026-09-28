@@ -182,7 +182,9 @@
     "PRF-348:fn-ot-b64-accepted-is-canonical": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it",
     "PRF-348:fn-ot-b64-refuses-outside-alphabet": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it",
     "PRF-348:fn-ot-ci-equal-is-downcase-equal": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it",
-    "PRF-348:fn-ot-split-wsp-loses-nothing": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it"
+    "PRF-348:fn-ot-split-wsp-loses-nothing": "SPEC shared-books (2026-09-28): octet-text is the shared codec library; no host line calls it until a wire book adopts it",
+    "PRF-342:fn-hp-x-header-is-image": "SPEC (arena-store-2 m2, 2026-09-28): the host-called reads over the page store (need-verdicts); no host line calls them until the owner's open over the page store (fnps-open over the fn-hist image), the lane's next milestone",
+    "PRF-342:fn-hp-x-at-is-nth": "SPEC (arena-store-2 m2, 2026-09-28): the host-called reads over the page store (need-verdicts); no host line calls them until the owner's open over the page store (fnps-open over the fn-hist image), the lane's next milestone"
   },
   "note": "Registry events whose subject no host line reaches, that the tree accepts for now.  tools/reach_check.py --strict fails on any orphan NOT listed here, so the number can shrink and cannot grow silently.  Remove an entry by hosting the subject, not by editing this file.  Every entry says SPEC (a model kept, and why), or HOST (the packet that will host it); `reach_check.py --strict` refuses the placeholder reason."
 }
