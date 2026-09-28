@@ -532,6 +532,11 @@ def cmd_opens(args) -> int:
         for rel in fixture.stores:
             copy = work / "copy" / rel.replace("/", "-").replace(".", "self")
             shutil.copytree(source / rel, copy, symlinks=True)
+            # A fixture made without a lock file (syn100k-2k, syn1m-2k) is
+            # used as its README says: the copy gets writer.lock, mode 600.
+            lock = copy / "writer.lock"
+            if not lock.exists():
+                lock.touch(mode=0o600)
             ctx = Context(image, "", work / "ctx", copy, fixture.mem)
             started = time.time()
             try:
