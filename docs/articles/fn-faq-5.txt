@@ -5,7 +5,7 @@ Date: Sun, 27 Sep 2026 12:02:00 +0000
 Message-ID: <fn-faq-5-20260927@fn.fg-goose.online>
 Archive-name: fn-faq/part5
 Posting-Frequency: when fn changes
-Last-modified: 2026-09-27
+Last-modified: 2026-09-28
 Summary: Uncertain answers, crashes, a full store, backups, releases.
 
 fn never stops without one line saying why.
@@ -38,15 +38,12 @@ with an export, then an import with --max-transactions.
 
 *Backups:* Stop, copy the node folder, start. Exports omit keys.
 
-*New releases:* A fresh install; the node folder stays. If the new
-release refuses the store (store-format-9, store-format or
-older-release), export with the old release first, then import with
-the new. Format 10 gives the store a new genesis (a new node identity
-and history salt, recorded in the log) and a new digest, BLAKE3: your
-articles and groups are unchanged, but after the import accounts must
-be enrolled again, pending invitations are void, posting-account
-pseudonyms change, and a poster cannot cancel an older article with
-their own Cancel-Lock (an operator cancel still works):
+*New releases:* A fresh install; the node folder stays. A release
+opens only a store of its own format. If it refuses the store
+(open refused reason=store-format: not an fn store of this release:
+redeploy fresh), there is no migration: set the node up again with
+init. Export and import move a store between installs of the same
+format:
 
     fn operator CONFIG store export /var/lib/fn-export
     fn operator CONFIG store import /var/lib/fn-export
