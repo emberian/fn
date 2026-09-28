@@ -10994,6 +10994,51 @@
       ]
     },
     {
+      "id": "PRF-342",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hp-decode-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-page-digest-is-leaf"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-append-changes-only-dirty"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-append-dirty-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-header-is-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-at-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-append-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-header-is-placed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-at-is-nth-placed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hp-x-append-refines-placed"
+        }
+      ]
+    },
+    {
       "id": "PRF-344",
       "events": [
         {
@@ -11496,35 +11541,6 @@
         {
           "kind": "theorem",
           "name": "fn-nls-octets-string-is-record-octets-string"
-        }
-      ]
-    },
-    {
-      "id": "PRF-342",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-hp-decode-image"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-page-digest-is-leaf"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-append-changes-only-dirty"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-append-dirty-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-header-is-image"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hp-x-at-is-nth"
         }
       ]
     },
