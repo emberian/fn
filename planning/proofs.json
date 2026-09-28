@@ -7467,7 +7467,7 @@
     {
       "id": "PRF-205",
       "title": "store export and store import: the import of an export replays the same history under the same profile",
-      "statement": "books/store-export.lisp fn-sxp-import-of-export-replays-the-same-history: for a format-9 profile VALUES (fn-bs-profile-logp, which implies fn-bs-profile-validp), records in strictly increasing sequence and configuration names in order, fn-sxp-import-plan over the archive fn-sxp-entries and fn-sxp-manifest render (the export's, host/native/io.lisp fnn-command-store-export: on format 9 the history the open recovered, the checkpoint's records then the log's) with no field raised is (:import VALUES FRONTIER CONFIGS RECORDS): the same profile, frontier, configuration records and records in the same order, which host/native/io.lisp fnn-command-store-import writes into the stage's record log from the genesis (fnn-log-write-history: fn-olr-consume-to, fn-olr-take, P-BATCH's append and barrier) and admits through the ordinary open. fn-sxp-log-profile-is-a-valid-log-profile: every valid archive profile, a format-8 one the previous release exported included, is imported as a valid format-9 profile with the archive's fields (the migration). The MANIFEST is a transport check under the abstract digest seam, not an integrity proof.",
+      "statement": "books/store-export.lisp fn-sxp-import-of-export-replays-the-same-history: for a profile VALUES of this format (fn-bs-profile-logp, which implies fn-bs-profile-validp), records in strictly increasing sequence and configuration names in order, fn-sxp-import-plan over the archive fn-sxp-entries and fn-sxp-manifest render (the export's, host/native/io.lisp fnn-command-store-export: the history the open recovered, the checkpoint's records then the log's) with no field raised is (:import VALUES FRONTIER CONFIGS RECORDS): the same profile, frontier, configuration records and records in the same order, which host/native/io.lisp fnn-command-store-import writes into the stage's record log from the genesis (fnn-log-write-history: fn-olr-consume-to, fn-olr-take, P-BATCH's append and barrier) and admits through the ordinary open. The MANIFEST is a transport check under the abstract digest seam, not an integrity proof. An archive whose profile frame this format does not decode is refused (:profile :store-format), never translated (lane one-format: no migrations, D38 withdrawn).",
       "milestone": "M5",
       "requirements": [
         "STO-028",
@@ -7485,9 +7485,7 @@
       ],
       "progress_note": "Lane log-recovery 2026-09-27: restated over the record log (the import writes format 9; fn-bs-profile-logp replaces fn-bs-profile-validp after the weakened theorem was proved); admitted in the persvati REPL; certification is the batch's.",
       "events": [
-        "fn-sxp-import-of-export-replays-the-same-history",
-        "fn-sxp-log-profile-is-a-valid-log-profile",
-        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
+        "fn-sxp-import-of-export-replays-the-same-history"
       ]
     },
     {
@@ -9490,7 +9488,7 @@
     },
     {
       "id": "PRF-258",
-      "title": "A store made by another release is refused at open by the name of its profile layout, never the generic fault",
+      "title": "RETIRED (no migrations: fresh deploys at 6.6.0; D38 withdrawn, lane one-format): A store made by another release is refused at open by the name of its profile layout, never the generic fault",
       "statement": "books/store-profile-open.lisp fn-spo-open-of-another-layout-refuses-by-name (format 10): for every natural N other than *fn-spo-release-layout-fields* (15) and every VALUES of the layout fn-spo-layout-spec N (the format word fn-store-10, then N u64 fields) whose payload fits a profile frame (600 octets), fn-spo-config-open, the open host/native/io.lisp fnn-metadata-config-decode calls through host/store-host.lisp fn-store-metadata-config-open on every open (fnn-load-config from fnn-acquire), answers (:refused :profile-layout N) on the frame that layout's encoder writes (fn-spo-layout-frame N VALUES); fn-spo-refusal-text renders `open refused reason=older-release: store made by an older release (profile layout N fields, this release expects 15): export it with the release that made it, then import it here` (newer-release above 15), which the host prints at exit 1. fn-spo-config-open-of-a-decoded-frame-by-definition: every frame fn-bs-config-decode decodes is opened as its values, so no refusal is ever a decoded frame. Another format word is PRF-350's (:store-format-9 by name, :store-format otherwise); the generic fault remains for octets with this layout that the relation refuses or with no layout (fn-spo-config-open-rejected-has-this-layout-or-none-by-definition). Nothing is translated (D34).",
       "milestone": "M5",
       "requirements": [
@@ -9508,14 +9506,11 @@
         "host/native/io.lisp",
         "host/store-host.lisp",
         "packaging/install.sh",
-        "tests/older_release_store.py",
-        "tests/test_native_older_release_open.py",
         "planning/evidence/fixtures-refresh-2026-09-27.md"
       ],
-      "progress_note": "Lane fixtures-refresh 2026-09-27 (PKT-705). Restated for format 10 (lane format-bump-10): one text before the u64 run, 15 fields.",
+      "progress_note": "Retired 2026-09-28 (lane one-format, D38 withdrawn by ember: no migrations: fresh deploys at 6.6.0): its subject was removed with it (the profile-layout refusal :profile-layout, older-release/newer-release, fn-spo-layout-*). A frame of this build's word with another width is now the generic fault: a layout change changes the word. What covers the property now: PRF-382 (fn-spo-config-open-store-format-is-exactly-a-foreign-frame). The id is kept.",
       "events": [
-        "fn-spo-open-of-another-layout-refuses-by-name",
-        "fn-spo-layout-fields-of-a-layout-frame"
+        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
       ]
     },
     {
@@ -12006,9 +12001,7 @@
         "fn-lzr-record-is-not-a-frame",
         "fn-lzr-append-replay-reads-the-record",
         "fn-lzr-append-plan-off",
-        "fn-lzr-config-min-without-a-row-is-off",
-        "fn-sxp-config-decode-archive-is-valid",
-        "fn-sxp-config-decode-archive-of-a-current-frame"
+        "fn-lzr-config-min-without-a-row-is-off"
       ]
     },
     {
@@ -12432,7 +12425,7 @@
     },
     {
       "id": "PRF-350",
-      "title": "Format 10: a format-9 store is refused at open by name with the way out, and store import reads the format-9 archive",
+      "title": "RETIRED (no migrations: fresh deploys at 6.6.0; D38 withdrawn, lane one-format): Format 10: a format-9 store is refused at open by name with the way out, and store import reads the format-9 archive",
       "statement": "books/store-profile-open.lisp fn-spo-open-of-a-format-9-frame-refuses-by-name: for all octets whose profile frame, opened under the SHA-256 trailer format 9 sealed with (books/store-format-9.lisp fn-f9-saved-format-word), names fn-store-9, fn-spo-config-open (host/native/io.lisp fnn-metadata-config-decode through host/store-host.lisp fn-store-metadata-config-open, every open) is (:refused :store-format-9), whose line names the way out (export with that release, import here), exit 1, whatever the seam's digest (fn-f9-format-9-frame-does-not-decode: such a frame never decodes as format 10). fn-spo-open-of-a-valid-profile-opens-it: every frame init or import seals opens as its values. fn-spo-config-open-store-format-is-exactly-a-foreign-frame: :store-format exactly for a sealed frame of another word. books/store-format-9.lisp fn-f9-config-decode-of-a-format-9-frame (D38's witness): every format-9 profile that translates reads back from its SHA-256-sealed frame as its format-10 translation (word fn-store-10, fields 2-13 and 15-17 in order, the frontier word and the history marker dropped; refusals by name otherwise). books/store-export.lisp fn-sxp-import-of-a-format-9-export: the import plan (host/native/io.lisp fnn-command-store-import) over a format-9 archive with its SHA-256 MANIFEST imports under that translation with the same configuration records and records. books/store-format-9-records.lisp fn-f9r-article-identities-are-format-10s and fn-f9r-article-keeps-every-other-field: the import (fn-sxp-import-plan's fn-f9r-records) re-derives each article record's subject and obligation identity under this format's digest (BLAKE3, algorithm 2) exactly as a format-10 node derives them (the derivation books/hybrid-store.lisp checks at replay) and keeps every other field; retention events are rewritten through the articles' map; an unknown format-9 identity (:unknown-identity) is refused by name; every other kind is PRF-355's. Native: tests/test_native_format_9_migration.py (hbox native-n4: a batch AY format-9 image exports n1k-2k, this image refuses it by name, imports it, and its re-export holds the same 1,000 records with the identities re-derived, checked independently). The other kinds: PRF-355.",
       "milestone": "M5",
       "requirements": [
@@ -12447,27 +12440,14 @@
       "evidence": [
         "books/store-profile-open.lisp",
         "tests/acl2/store-profile-open-tests.lisp",
-        "books/store-format-9.lisp",
-        "tests/acl2/store-format-9-tests.lisp",
         "books/store-export.lisp",
         "tests/acl2/store-export-tests.lisp",
         "host/native/io.lisp",
-        "host/store-host.lisp",
-        "tests/older_release_store.py",
-        "tests/test_native_older_release_open.py",
-        "books/store-format-9-records.lisp",
-        "tests/test_native_format_9_migration.py"
+        "host/store-host.lisp"
       ],
-      "progress_note": "Lane format-bump-10 (2026-09-28). persvati certify-20260928T035927Z-1472047 (986 roots, 792 passed at the merge) + certify-20260928T041705Z-1638417 (the 9 fresh) + certify-20260928T043810Z-1835473 (732 passed after the comment-only edits); hbox native-n4 (cfdb53c99): format_9_migration, store_export, older_release_open, replay_determinism, initializer_fidelity OK.",
+      "progress_note": "Retired 2026-09-28 (lane one-format, D38 withdrawn by ember: no migrations: fresh deploys at 6.6.0): its subject was removed with it (the open's :store-format-9 refusal, the SHA-256 reader books/store-format-9.lisp, the import's format-9 archive path fn-sxp-import-of-a-format-9-export, the record translation's article theorems, tests/test_native_format_9_migration.py). What covers the property now: PRF-382 (the one check) and PRF-205 (backup and restore of this format). The id is kept.",
       "events": [
-        "fn-spo-open-of-a-format-9-frame-refuses-by-name",
-        "fn-spo-open-of-a-valid-profile-opens-it",
-        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
-        "fn-f9-config-decode-of-a-format-9-frame",
-        "fn-f9-format-9-frame-does-not-decode",
-        "fn-sxp-import-of-a-format-9-export",
-        "fn-f9r-article-identities-are-format-10s",
-        "fn-f9r-article-keeps-every-other-field"
+        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
       ]
     },
     {
@@ -12613,7 +12593,7 @@
     },
     {
       "id": "PRF-355",
-      "title": "Format 9 to 10: every record kind a format-9 node writes translates, keeping what it asserts, or is refused by name",
+      "title": "RETIRED (no migrations: fresh deploys at 6.6.0; D38 withdrawn, lane one-format): Format 9 to 10: every record kind a format-9 node writes translates, keeping what it asserts, or is refused by name",
       "statement": "books/store-format-9-records.lisp, the import's record translation (host/native/io.lisp fnn-command-store-import via books/store-export.lisp fn-sxp-import-plan's fn-f9r-records, a guard-verified loop fn-f9r-loop over fn-f9r-step). Accepted composites (fn-e kind 4: schema 0, schema 1 verified, schema 1 carried): fn-f9r-composite-keeps-what-it-binds -- sequence, txid, generation, keyring generation, profile, schema, the exact verdict bytes and the exact authored source are the archive's and the embedded article is the translated archive article (fn-f9r-article: payload with both signatures, Message-ID, groups, evidence, charge and stamp kept); fn-f9r-composite-identities-are-format-10s -- its content subject is its translated article's and its authored-source identity is fn-hsig-authored-source-id of the carried source (the derivation replay checks; schema 0 keeps none); fn-f9r-step-of-a-composite -- the step admits a composite only as that translation and only when it binds (fn-stxa-bindsp, the check replay runs), otherwise (:refused :composite-binding). No signature is re-made: the D09 signed preimage is the domain tag, principal, keys and source (books/hybrid-signature.lisp fn-hsig-signed-preimage), none of which the translation changes. fn-f9r-step-carries-identity-free-kinds-verbatim: statement verdicts (kind 2), keyring snapshots (kind 3: enrollment, succession, revocation, a key statement's key change), consumer events (fnce) and the topic administrator's install (fnto 2) import as exactly their archive octets. Topic anchors and admissions (fnto 0/1) are refused (:signed-format-9-identity) with their sequence: replay re-prepares them from the root's or report's SIGNED source, which names the controller key set, topic, policy and parents by format-9 identities that format 10 neither parses (fn-id-labelledp requires algorithm 2) nor could re-sign. fn-f9r-loop-keeps-sequences: the translated records are the archive's sequences in order. Teeth: tests/acl2/store-format-9-records-tests.lisp (each kind's format-9 twin translates to the format-10 fixture itself; the verified composite binds the enrolled snapshot again, fn-hsig-article-event-snapshot-bindsp-v1; an unbound composite and a format-9 anchor are refused by name). Native: tests/test_native_format_9_every_kind.py. Not claimed: that a local account's credential, invitation or posting-account value survives (they are derived under the old digest or keyed MAC; specs/storage.md, the migration); that a principal derived from a login under SHA-256 is still that login's (the snapshot keeps the format-9 principal verbatim).",
       "milestone": "M5",
       "requirements": [
@@ -12625,20 +12605,13 @@
       "assumptions": [],
       "status": "uncertified-at-current-digest",
       "evidence": [
-        "books/store-format-9-records.lisp",
-        "tests/acl2/store-format-9-records-tests.lisp",
         "books/store-export.lisp",
         "host/native/io.lisp",
-        "tests/test_native_format_9_every_kind.py",
         "planning/evidence/format10-import-2026-09-28.md"
       ],
-      "progress_note": "Lane format10-import (2026-09-28).",
+      "progress_note": "Retired 2026-09-28 (lane one-format, D38 withdrawn by ember: no migrations: fresh deploys at 6.6.0): its subject was removed with it (books/store-format-9-records.lisp, the format-9 record translation fn-f9r-*, tests/test_native_format_9_every_kind.py and its fixture). What covers the property now: PRF-382 (a store of another format is refused by name, never translated). The id is kept.",
       "events": [
-        "fn-f9r-composite-keeps-what-it-binds",
-        "fn-f9r-composite-identities-are-format-10s",
-        "fn-f9r-step-of-a-composite",
-        "fn-f9r-step-carries-identity-free-kinds-verbatim",
-        "fn-f9r-loop-keeps-sequences"
+        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
       ]
     },
     {
@@ -13057,13 +13030,13 @@
       "events": [
         "fn-sxp-stream-is-the-export",
         "fn-sxp-record-entries-of-append",
-        "fn-sxp-manifest-under-of-append"
+        "fn-sxp-manifest-of-append"
       ]
     },
     {
       "id": "PRF-369",
       "title": "store import a chunk at a time: the streamed plan is the whole-archive import plan",
-      "statement": "books/store-import-stream.lisp fn-sxi-stream-plan-is-the-import-plan (no hypotheses): for every chunking CHUNKS of the archive's records and every MANIFEST octet string M, the host's loop (host/native/io.lisp fnn-import-pass: fn-sxi-head and fn-sxi-start over the profile, frontier and configuration records, then per chunk of at most +fnn-export-chunk+ records fn-sxi-want and fn-sxi-step over the MANIFEST octets read at the chunk's place, then fn-sxi-final over what follows the last chunk's lines) decides exactly what fn-sxp-import-plan decides over the whole archive: the same refusal by the same name, or the same profile, configuration records and records (the steps' records joined in order). So PRF-205's round trip and the format-9 migration hold of the streamed import. The import's work and allocation per ACL2 call are one chunk's; the MANIFEST is never held whole. Pass two (the records appended to the stage's log) re-runs the same steps and is refused by name (archive-changed) when it does not decide what pass one decided.",
+      "statement": "books/store-import-stream.lisp fn-sxi-stream-plan-is-the-import-plan (no hypotheses): for every chunking CHUNKS of the archive's records and every MANIFEST octet string M, the host's loop (host/native/io.lisp fnn-import-pass: fn-sxi-head and fn-sxi-start over the profile, frontier and configuration records, then per chunk of at most +fnn-export-chunk+ records fn-sxi-want and fn-sxi-step over the MANIFEST octets read at the chunk's place, then fn-sxi-final over what follows the last chunk's lines) decides exactly what fn-sxp-import-plan decides over the whole archive: the same refusal by the same name, or the same profile, configuration records and records (the steps' records joined in order). So PRF-205's round trip holds of the streamed import. The import's work and allocation per ACL2 call are one chunk's; the MANIFEST is never held whole. Pass two (the records appended to the stage's log) re-runs the same steps and is refused by name (archive-changed) when it does not decide what pass one decided.",
       "milestone": "M5",
       "requirements": [
         "STO-028",
@@ -13183,6 +13156,32 @@
         "fn-nlp-pages-reach-the-report",
         "fn-nlp-answer-keeps-other-versions",
         "fn-nlp-offline-pages-join-to-the-report"
+      ]
+    },
+    {
+      "id": "PRF-382",
+      "title": "One store format: the open refuses by name every store whose format word is not this build's (not an fn store of this release: redeploy fresh)",
+      "statement": "books/store-profile-open.lisp fn-spo-config-open-store-format-is-exactly-a-foreign-frame (no hypotheses): fn-spo-config-open, the open host/native/io.lisp fnn-metadata-config-decode calls through host/store-host.lisp fn-store-metadata-config-open on every open (fnn-load-config from fnn-acquire: owner start, store recover, inspect, checkpoint, status, health) and fnn-refuse-another-format before any other check, answers (:refused :store-format) exactly for a sealed profile frame (FNSM kind 1 under this build's frame digest) whose format word is not this build's (fn-spo-foreign-formatp); fn-spo-refusal-text renders `open refused reason=store-format: not an fn store of this release: redeploy fresh`, exit 1. fn-spo-open-of-a-valid-profile-opens-it: every valid profile's frame (what init and store import seal) opens as its values. Anything else (a corrupted or differently sealed file) is the host's fault. Nothing is translated, imported across formats or upgraded in place (D34; D38 withdrawn 2026-09-28: fresh deploys at 6.6.0, no migrations). Native: tests/test_native_foreign_format_open.py (a fresh store whose config.json is the ACL2-pinned fn-store-11 frame is refused at seven opens with its files unchanged; its own config.json put back opens).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-profile-open.lisp",
+        "tests/acl2/store-profile-open-tests.lisp",
+        "host/native/io.lisp",
+        "host/store-host.lisp",
+        "packaging/install.sh",
+        "tests/foreign_format_store.py",
+        "tests/test_native_foreign_format_open.py"
+      ],
+      "progress_note": "Lane one-format 2026-09-28 (ember: one format, no migrations): the open's refusals reduced to this one; REPL-admitted and certified on persvati (certify-20260928T171316Z-400900); the batch certifies.",
+      "events": [
+        "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
+        "fn-spo-open-of-a-valid-profile-opens-it"
       ]
     }
   ]
