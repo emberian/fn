@@ -5485,11 +5485,11 @@
         ],
         "native": true,
         "record": "planning/evidence/format10-import-2026-09-28.md",
-        "log": "planning/evidence/format10-import-2026-09-28/native-m3-format_9_every_kind.log"
+        "log": "planning/evidence/format10-import-2026-09-28/native-m4-format_9_every_kind.log"
       },
       "evidence": [
         "tests/test_native_format_9_every_kind.py",
-        "planning/evidence/format10-import-2026-09-28/native-m3-format_9_every_kind.log",
+        "planning/evidence/format10-import-2026-09-28/native-m4-format_9_every_kind.log",
         "planning/evidence/format10-import-2026-09-28.md"
       ]
     },
