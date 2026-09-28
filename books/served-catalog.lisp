@@ -1765,7 +1765,7 @@
                   :guard (and (natp v)
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil)
-           (ignorable archive))
+           (ignorable archive trie))
   (if (null args)
       (let ((group (fn-nntp-session-group session))
             (current (fn-nntp-session-current session)))
@@ -1791,7 +1791,9 @@
                   (fn-nntp-single session (fn-proto-text * :no-number))))))
         (if (not (and (fn-nntp-message-id-tokenp token) (fn-octet-listp token)))
             (fn-nntp-single session (fn-proto-text * :syntax))
-          (let ((article (fn-midx-lookup (fn-nntp-token-string token) trie)))
+          ;; The catalog's Message-ID column (join-f2: the served arms read
+          ;; no Message-ID trie; KEYSTONE A, fn-scat-msgid-article-is-find-article).
+          (let ((article (fn-scat-msgid-article (fn-nntp-token-string token) v fn-arena fn-cat)))
             (if (consp article)
                 (fn-rcompat-article-reply
                  session article (fn-nntp-msgid-local-number session article)
@@ -1799,16 +1801,30 @@
               (fn-nntp-single session
                               (fn-proto-text * :no-msgid)))))))))
 
+(local
+ (defthm fn-scat-msgid-token-key
+   (implies (fn-nntp-message-id-tokenp token)
+            (and (stringp (fn-nntp-token-string token))
+                 (consp (fn-midx-key-chars (fn-nntp-token-string token)))))
+   :hints (("Goal" :use ((:instance fn-nntp-message-id-token-has-nonempty-index-key))
+            :in-theory (e/d (fn-nntp-message-id-tokenp)
+                            (fn-nntp-message-id-token-has-nonempty-index-key))))))
+
 (defthm fn-rcompat-retrieval-cat-is-retrieval
   (implies (and (equal (fn-state-articles archive)
                        (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-midx-correspondencep trie (fn-state-articles archive))
                 (fn-cnx-freshp fn-cat))
            (equal (fn-rcompat-retrieval-cat session archive trie kind args server v
                                             fn-arena fn-cat)
                   (fn-rcompat-retrieval session archive trie kind args server fn-arena)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-rcompat-retrieval-cat fn-rcompat-retrieval)
-                           (fn-scat-number-article fn-scat-available-article
+           :in-theory (e/d (fn-rcompat-retrieval-cat fn-rcompat-retrieval fn-midx-correspondencep
+                            fn-scat-msgid-article-is-find-article
+                            fn-midx-lookup-of-build-is-find-article-for-nonempty
+                            fn-scat-msgid-token-key)
+                           (fn-scat-msgid-article fn-find-article fn-midx-build fn-midx-key-chars
+                            fn-scat-number-article fn-scat-available-article
                             fn-nntp-find-group-number fn-nntp-available-article
                             fn-rcompat-article-reply fn-nntp-single fn-midx-lookup
                             fn-cat-view-articles fn-nntp-number-tokenp
@@ -1898,7 +1914,7 @@
                   :guard (and (natp v)
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil)
-           (ignorable archive))
+           (ignorable archive trie))
   (let ((rest (and (consp args) (cdr args))))
     (if (null rest)
         (let ((group (fn-nntp-session-group session))
@@ -1941,7 +1957,7 @@
             (if (not (and (fn-nntp-message-id-tokenp token)
                           (fn-octet-listp token)))
                 (fn-nntp-single session (fn-proto-text * :syntax))
-              (let* ((article (fn-midx-lookup (fn-nntp-token-string token) trie))
+              (let* ((article (fn-scat-msgid-article (fn-nntp-token-string token) v fn-arena fn-cat))
                      (content (fn-rcompat-xref-content server article fn-arena)))
                 (if (not (consp article))
                     (fn-nntp-single session (fn-proto-text * :no-msgid))
@@ -1957,12 +1973,17 @@
 (defthm fn-rcompat-hdr-cat-is-hdr
   (implies (and (equal (fn-state-articles archive)
                        (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-midx-correspondencep trie (fn-state-articles archive))
                 (fn-cnx-freshp fn-cat))
            (equal (fn-rcompat-hdr-cat session archive trie args legacyp server v fn-arena fn-cat)
                   (fn-rcompat-hdr session archive trie args legacyp server fn-arena)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-rcompat-hdr-cat fn-rcompat-hdr)
-                           (fn-scat-available-article fn-nntp-available-article
+           :in-theory (e/d (fn-rcompat-hdr-cat fn-rcompat-hdr fn-midx-correspondencep
+                            fn-scat-msgid-article-is-find-article
+                            fn-midx-lookup-of-build-is-find-article-for-nonempty
+                            fn-scat-msgid-token-key)
+                           (fn-scat-msgid-article fn-find-article fn-midx-build fn-midx-key-chars
+                            fn-scat-available-article fn-nntp-available-article
                             fn-rcompat-hdr-lines-cat fn-rcompat-hdr-lines
                             fn-scat-range-numbers fn-nntp-group-range-numbers
                             fn-rcompat-xref-content fn-nntp-hdr-okp fn-nntp-hdr-line
@@ -2002,6 +2023,7 @@
 (defthm fn-rcompat-reply-cat-is-rcompat-reply
   (implies (and (equal (fn-state-articles archive)
                        (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles archive))
                 (fn-cnx-freshp fn-cat))
            (equal (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
                   (fn-rcompat-reply session archive index env keyword args fn-arena)))
@@ -2012,7 +2034,8 @@
                             fn-rcompat-newgroups fn-rcompat-active-times
                             fn-rcompat-subscriptions fn-rcompat-hdr
                             fn-nntp-xref-server fn-gidx-pinp fn-gidx-pin-trie
-                            fn-rcompat-list-keywordp fn-cat-view-articles fn-cnx-freshp)))))
+                            fn-rcompat-list-keywordp fn-cat-view-articles fn-cnx-freshp
+                            fn-midx-correspondencep)))))
 
 ;; The withdrawn test of a by-number line: the article's absence is read
 ;; from the catalog's number table (one probe), not by a walk of the pinned

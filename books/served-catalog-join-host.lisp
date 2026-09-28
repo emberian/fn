@@ -159,7 +159,7 @@
                 (fn-scj-rows-clearp (fn-sf-records (fn-sn-files (fn-own-store o))))
                 (fn-sjh-linkp o pending fn-arena fn-cat))
            (fn-sjh-okp o pending fn-arena fn-cat))
-  :hints (("Goal" :use fn-sjh-okp-unfolds)))
+  :hints (("Goal" :in-theory '(fn-sjh-okp fn-sjh-files-okp fn-sjh-linkp))))
 
 (in-theory (disable fn-sjh-okp-when-parts))
 
