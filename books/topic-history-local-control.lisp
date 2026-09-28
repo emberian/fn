@@ -2,6 +2,7 @@
 ; peer UID is an OS observation supplied separately, never a request field.
 (in-package "ACL2")
 (include-book "native-control")
+(include-book "topic-history-metadata")
 
 (defconst *fn-thlc-request-kind* 7)
 (defconst *fn-thlc-reply-kind* 8)

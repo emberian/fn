@@ -22,6 +22,7 @@
 ;    named refusal (:oversize) for a report the poll reply cannot carry.
 (in-package "ACL2")
 (include-book "consumer-owner-local")
+(include-book "byte-store-frame")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md

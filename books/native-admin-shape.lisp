@@ -13,6 +13,7 @@
 (include-book "records-shape")
 (include-book "acceptance-alloc")
 (include-book "byte-store-txn-name")
+(include-book "consumer-position")
 
 (defconst *fn-native-admin-max-arguments* 16)
 (defconst *fn-native-admin-max-argument-octets* 512)
