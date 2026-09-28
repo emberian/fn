@@ -11687,9 +11687,11 @@
       "evidence": [
         "books/web-request.lisp",
         "tests/acl2/web-request-tests.lisp",
-        "planning/evidence/web-native-2026-09-28.md"
+        "planning/evidence/web-native-2026-09-28.md",
+        "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
       ],
-      "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): admitted with its test book in the hbox REPL; certified by the batch.",
+      "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
         "fn-wrq-scan-work-bound",
         "fn-wrq-scan-is-fold",
@@ -11716,9 +11718,11 @@
         "books/web-render.lisp",
         "books/web-render-keystones.lisp",
         "tests/acl2/web-render-tests.lisp",
-        "planning/evidence/web-native-2026-09-28.md"
+        "planning/evidence/web-native-2026-09-28.md",
+        "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
       ],
-      "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): admitted with its test book in the hbox REPL; certified by the batch.",
+      "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
         "fn-wr-emit-writes-vocabulary-or-escaped",
         "fn-wr-emit-reads-only-its-spans",
@@ -11744,9 +11748,11 @@
         "books/web-session.lisp",
         "books/web-session-keystones.lisp",
         "tests/acl2/web-session-tests.lisp",
-        "planning/evidence/web-native-2026-09-28.md"
+        "planning/evidence/web-native-2026-09-28.md",
+        "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
       ],
-      "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): admitted with its test book in the hbox REPL; certified by the batch.",
+      "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
         "fn-web-session-route-needs-its-session",
         "fn-web-session-sends-only-to-its-connection",
@@ -11771,9 +11777,11 @@
         "host/web-host.lisp",
         "host/native/web-host.lisp",
         "tests/test_native_web.py",
-        "planning/evidence/web-native-2026-09-28.md"
+        "planning/evidence/web-native-2026-09-28.md",
+        "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
+        "planning/evidence/manifests/certify-20260928T040154Z-3932533.json"
       ],
-      "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): admitted with its test book in the hbox REPL; certified by the batch.",
+      "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
         "fn-web-config-plan-answers"
       ]
