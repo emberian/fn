@@ -1311,7 +1311,7 @@ which makes AUTHINFO answer 483 until a TLS layer is active. What changed on
 | salt | exactly 16 octets, one per credential, chosen at enrolment |
 | preimage | `salt \|\| secret` (the salt's length is fixed, so the boundary is unambiguous) |
 | tag | `"fn-authinfo-v1"`, the crypto seam's domain separation |
-| stored | `(:fn-authsec-v1 salt (fn-digest-tagged tag preimage))` |
+| stored | `(:fn-authsec-v2 salt (fn-digest-tagged tag preimage) stored-key server-key)`, the two keys SCRAM-SHA-256's (see "AUTHINFO SASL (NNT-056)") |
 | check | the supplied octets pass iff re-deriving the digest under the stored salt yields the stored digest |
 
 The digest is the seam's, and the seam is now executable:

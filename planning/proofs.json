@@ -13570,7 +13570,7 @@
         "tests/acl2/hmac-sha256-tests.lisp",
         "tests/acl2/scram-tests.lisp"
       ],
-      "progress_note": "Lane sasl increment 1 (2026-09-28): the two books and their test books certify (persvati run-20260928T221347Z-9d5b, certify-20260928T221526Z-3212938: 4 passed, none over 10 s). NO EVENTS ARE CITED: no host line calls SCRAM yet (reach_check); the events are cited with increment 2, when books/nntp-auth.lisp's AUTHINFO SASL arm calls books/sasl.lisp."
+      "progress_note": "Lane sasl increment 1 (2026-09-28): the two books and their test books certify (persvati run-20260928T221347Z-9d5b, certify-20260928T221526Z-3212938: 4 passed, none over 10 s). Increment 2 (lane sasl): the served AUTHINFO SASL arm calls it through books/sasl.lisp, and the events are cited."
     },
     {
       "id": "PRF-386",
@@ -13629,6 +13629,50 @@
         "fn-ocf-start-next-while-control-waits-is-within-the-budget",
         "fn-ocp-no-start-next-while-a-shut-out-class-waits"
       ]
+    },
+    {
+      "id": "PRF-916",
+      "title": "The SASL exchanges and the stored verifier v2: PLAIN is the USER/PASS check, SCRAM succeeds only for a stored key and only bound to its own exchange, and the enrolled password authenticates by every mechanism",
+      "statement": "books/sasl.lisp: fn-sasl-plain-succeeds-exactly-on-the-stored-check; fn-sasl-scram-unknown-login-never-succeeds; fn-sasl-scram-y-flag-with-a-binding-is-refused (RFC 5802 section 6); KEYSTONE fn-sasl-scram-final-success-is-bound-to-the-exchange. books/auth-secret.lisp verifier v2 (:fn-authsec-v2 salt digest stored-key server-key): K5 fn-authsec-enrolled-secret-proves-by-scram. books/accounts.lisp: the 224-hex row text is the verifier (fn-acct-text-verifier-of-verifier-text). The server nonce's unpredictability is the host CSPRNG's (A-CRYPTO).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-056"
+      ],
+      "depends_on": [
+        "PRF-915"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/sasl.lisp",
+        "books/auth-secret.lisp",
+        "books/accounts.lisp",
+        "tests/acl2/auth-secret-tests.lisp",
+        "tests/acl2/nntp-auth-sasl-tests.lisp"
+      ],
+      "progress_note": "Lane sasl increment 2 (2026-09-28): REPL-green; certification pending."
+    },
+    {
+      "id": "PRF-917",
+      "title": "AUTHINFO SASL on the served step: a login by SASL is PASS's acceptance of the credential the snapshot holds, the capability block names exactly the mechanisms accepted now, and the SASL line survives authentication",
+      "statement": "books/nntp-auth.lisp fn-auth-step and fn-auth-step-pinned (the host's served step through fn-served-dispatch): the AUTHINFO SASL arm (fn-auth-sasl-command), the continuation branch taken for every line while an exchange is kept (fn-auth-sasl-continue), and the host's (:sasl-context SEED BINDING) event (fn-auth-install-context). fn-auth-sasl-finish-binds-only-on-success; KEYSTONE fn-auth-step-binds-a-peer-role-by-sasl-only-to-a-found-credential (books/nntp-auth-roles.lisp; with PRF-049's keystone, PASS and SASL are the only ways to a role); fn-auth-sasl-is-advertised-exactly-when-a-mechanism-is-offered; fn-auth-sasl-line-is-the-same-before-and-after-authentication (RFC 4643 section 2.2); fn-auth-sasl-mechanisms-never-offer-plain-before-tls; the step still preserves fn-auth-session-consistentp.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-056"
+      ],
+      "depends_on": [
+        "PRF-916",
+        "PRF-049"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/nntp-auth.lisp",
+        "books/nntp-auth-roles.lisp",
+        "tests/acl2/nntp-auth-sasl-tests.lisp",
+        "tests/test_native_sasl.py"
+      ],
+      "progress_note": "Lane sasl increment 2 (2026-09-28): REPL-green; certification and SCN-205 pending."
     }
   ]
 }

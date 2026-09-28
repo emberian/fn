@@ -313,7 +313,7 @@ about a book is not a claim about a listener.
 | §2.3.2 | MUST NOT return 381 to AUTHINFO PASS | implemented: 381 exists on the USER branch only |
 | §2.3.2 / §2.5 | A cleartext mechanism needs a protected channel | **keystone** `fn-auth-step-protected-only-refuses-authinfo-before-tls` (2026-09-22), over the function `fn-served-dispatch` calls: under a protected-only policy with no TLS layer an AUTHINFO line is answered 483, the session is the one the command arrived on so no name is cached, no submission leaves, and the secret is never compared. `fn-auth-protected-only-refuses-authinfo-before-tls` is the same statement over `fn-auth-authinfo`, which no host line calls. 381 under TLS is witnessed. The label half is `fn-auth-authinfo-is-not-advertised-before-tls-under-protected-only`: the mechanism is not offered on the channel it would be refused on. Teeth, one violating value per hypothesis, in `tests/acl2/nntp-auth-teeth-tests.lisp` |
 | §2.3.2 | Authentication grants privileges to this connection | the posting allowance is the authenticated principal's `fn-auth-cred-postingp`, not the connection's: two principals are witnessed, one that may post and one that may not, and the POST capability label follows each |
-| §2.4 SASL | AUTHINFO SASL with a mechanism list | **deferred**, answered `502 no SASL mechanism is offered` (§2.4.1 note [2]), and no SASL argument is advertised. PLAIN was considered and not shipped: over a protected channel it is USER/PASS with a base64 wrapper and adds no property fn can state, and the mechanisms that would add one (SCRAM, EXTERNAL over a client certificate) need either an executable digest — the same `OB-AUTH-DIGEST` below — or certificate material the book does not see |
+| §2.4 SASL | AUTHINFO SASL with a mechanism list | **implemented** (NNT-056, PRF-915..917): PLAIN over TLS (483 before), SCRAM-SHA-256, and SCRAM-SHA-256-PLUS with the RFC 9266 tls-exporter binding; 383/281/283/481/482/503/504 as §2.4.1-2.4.2; `AUTHINFO USER SASL` and `SASL m...` advertised, the SASL line kept after authentication (§2.2). DIGEST-MD5, §2.4.2's mandatory mechanism, is not implemented (RFC 6331 made it Historic): a stated deviation. specs/nntp.md "AUTHINFO SASL (NNT-056)" |
 | §2.5 | Security considerations: the cleartext secret | the STORED secret is now a salted digest (`books/auth-secret.lisp`); the WIRE secret is still cleartext, which is what the mechanism is. See `OB-AUTH-DIGEST` below |
 
 ### OB-AUTH-DIGEST (CLOSED 2026-09-20; the record of why it was open stays)
@@ -331,7 +331,7 @@ in the clear and `fn-auth-checkp` compared the supplied octets to it with
 guard-verified SHA-256 (BLAKE3's `books/blake3.lisp` since store format 10) and `books/crypto-attach.lisp` attaches it to
 `fn-digest`. `books/auth-secret.lisp` is the scheme over it — a 16-octet
 salt per credential, the tagged digest of `salt || secret`, the stored
-verifier `(:fn-authsec-v1 salt digest)` — and `fn-auth-checkp` is
+verifier `(:fn-authsec-v2 salt digest stored-key server-key)` — and `fn-auth-checkp` is
 `fn-authsec-checkp` on that verifier. `fn-auth-credp` recognizes a
 `fn-authsec-verifierp` where it recognized a printable token, so by
 `fn-authsec-verifier-is-not-octets` a cleartext secret is not even
