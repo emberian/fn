@@ -209,6 +209,7 @@
   "fn-otm-dec-octets": "walks a number's decimal digits (log n)",
   "fn-otm-disk-effects": "walks one served command's reply-effects list; small, per-command",
   "fn-otm-jline": "walks one journal entry's small fixed number tuple",
+  "fn-otm-jw-lf-pos": "walks one journal chunk read backwards at the open, at most *fn-otm-jw-open-chunk* = 4096 octets (fn-otm-jw-open-first/-open-step; host/native/owner.lisp reads [start, end) with end - start <= 4096), never the whole journal",
   "fn-own-feed-distribution-targets": "walks peer names; bounded by the peer config table",
   "fn-own-feed-forget": "walks the peer feed table; bounded by the peer config table",
   "fn-own-feed-intent-records": "walks peer names; bounded by the peer config table",
