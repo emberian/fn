@@ -34,9 +34,6 @@
 (defun fn-bpn-host-lifecycle-record-name (token)
   (fn-bpn-lifecycle-record-name token))
 
-(defun fn-bpn-host-lifecycle-max-namespace-entries ()
-  (fn-bpn-lifecycle-max-namespace-entries))
-
 (defun fn-bpn-host-lifecycle-namespace-plan (names)
   (fn-bpn-lifecycle-namespace-plan names))
 
