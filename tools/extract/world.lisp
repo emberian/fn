@@ -142,6 +142,8 @@
 (include-book "../../books/anchor-replace")
 (include-book "../../books/store-export")
 (include-book "../../books/store-export-stream")
+(include-book "../../books/store-import-stream")
+(include-book "../../books/store-export-durability")
 (include-book "../../books/store-import-publication")
 (include-book "../../books/store-init-publication")
 (include-book "../../books/store-checkpoint-buffer")
