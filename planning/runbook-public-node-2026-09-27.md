@@ -132,6 +132,10 @@ systemctl daemon-reload
 /usr/local/sbin/fn-cert-sync
 ls -l /var/lib/fn/tls'
 #   "fn-cert-sync: installed subject=CN=fn.fg-goose.online issuer=... notAfter=..."
+#   then, since the node is not started yet (A7), "node not running (...):
+#   reload skipped, the node reads the pair at start" and exit 0
+#   (dregg-infra fn-public-node-fsn1 a3b7518; before it, this first run
+#   answered "refused operator tls" and exit 1: the deploy record's D3)
 #   cert.pem 0644 and key.pem 0600, both owned by fn
 ```
 
@@ -379,3 +383,25 @@ corrections from the rehearsals:
 - Backups: none exist yet (packet I3). Until a timer exists, take one by
   hand: stop the node, `store export`, start it, and copy the export off
   the box.
+
+## Until the cutover: the ACME renewal clash (D2)
+
+The deploy opened tcp/443 egress on the anchor (`dregg-fn-acme-egress`,
+dregg-infra migrate-fsn1 c339cfd) while the fsn1 quarantine holds, so the
+anchor's Caddy now reaches Let's Encrypt. The anchor is a clone of the
+Ashburn edge and shares its ACME account key. From about 2026-10-01 its Caddy
+will try to renew the names that still point at Ashburn:
+pathofangels.network, www. and beta. (notAfter 2026-10-31), and companion,
+node.pathofangels, dregg.net and www.dregg.net (2026-11-02/03). HTTP-01 fails
+for each (the names resolve to Ashburn), and each failure counts toward LE's
+failed-validation limit per account per hostname per hour, on the account
+Ashburn renews with.
+
+- Harmless if the cutover (dregg-infra MIGRATION-FSN1 6(a)/6(b)) happens
+  before 2026-10-01.
+- Otherwise detach `dregg-fn-acme-egress` until the cutover: keep
+  `fn_host = "anchor"` and apply with only that attachment removed. fn's own
+  certificate (notAfter 2026-12-26) enters renewal only around 2026-11-26.
+
+Record: [the deploy record](evidence/public-node-deploy-2026-09-27.md),
+observation D2.

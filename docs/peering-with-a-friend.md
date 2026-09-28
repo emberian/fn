@@ -8,7 +8,7 @@ This page connects your node with a friend's node. Afterwards, articles
 posted on either node appear on both. The link is encrypted, and each node
 logs in to the other. The steps were tested between two real machines in
 September 2026. Words you may not know are in
-[the short glossary](README.md#words-you-will-meet).
+[the short glossary](articles/fn-faq-1.txt).
 
 The examples use these values. Replace them with yours:
 

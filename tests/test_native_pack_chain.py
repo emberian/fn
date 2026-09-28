@@ -3,7 +3,7 @@
 On format 9 there are no packs (design 2026-09-27 storage-log section 6,
 section 9 row 5): `operator CONFIG store compact' publishes a state
 checkpoint with the log ROTATED and DROPS the segments it covers
-(books/store-log-segments.lisp, T8 fn-lg-segment-drop-preserves-the-open).
+(books/store-log-stream.lisp, T8 fn-lgw-segment-drop-preserves-the-open).
 What P5 required of compacting a store bigger than one unit of work stays:
 a store of CUT_N probe articles (default 4500) and, gated, the scale store
 of N (default 20000) compact; the committed history (the `store export'

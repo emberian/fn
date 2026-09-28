@@ -2,7 +2,7 @@
 # Run a release cut's mechanical gates in order; stop at the first red.
 #
 #   tools/cut_release.sh [--dry-run] [--rev REV] [--out DIR] [--from N]
-#       [--runtime-from DIR] [--openbsd-host SSH --openbsd-root DIR]
+#       [--to N] [--runtime-from DIR] [--openbsd-vm NAME]
 #
 # The checklist is planning/release-vVERSION.md (VERSION is the one line of
 # the file VERSION at REV, an entry of planning/release-sequence.json, D37);
@@ -15,6 +15,7 @@
 #   VERDICT GREEN vVERSION REV          every gate green
 #   VERDICT RED at NN NAME              the first red gate; nothing after it ran
 #   VERDICT DRY-RUN ...                 --dry-run (below)
+#   VERDICT PARTIAL ...                 --to N below 17: gates FROM..N green
 #
 # It creates no tag: the last gate prints the `git tag' command for the
 # coordinator.  It never touches /tank/fn/node and deploys nothing.
@@ -36,38 +37,80 @@
 #   03    fundamentals: every row of the checklist's      local
 #         fundamentals table MET with evidence at REV
 #   04    changelog: CHANGELOG.md is what                 local
-#         tools/changelog.py writes at REV
+#         tools/changelog.py writes at REV, and what it
+#         writes survives its own commit byte for byte
 #   05    closure: every book green at its digest         local
 #         (green_check --strict, and --profile default)
 #   06    make check (registries, current view,           local
 #         proof cost, the throughput comparison)
 #   07    docs_check --check                              local
 #   08    runpath_check (static)                          local
-#   09    the four images and every native module         hbox (hbox_native.sh)
+#   09    the six images and every native module          hbox (hbox_native.sh)
 #   10    the throughput gate, quiet (not --under-load)   hbox
 #   11    the hostile campaign, every family              hbox
 #   12    the Linux tarball: built from `git archive      hbox (+ debian:12)
 #         REV' with the glibc-floor runtime, runpath
 #         --tarball, installed fresh, test_release_tarball,
 #         `fn --version' on Debian 12
-#   13    the OpenBSD tarball: the same in the build VM   --openbsd-host
+#   13    the OpenBSD tarball: the same in the build VM,  hbox (the VM)
+#         the installed `fn --version' under both stock
+#         login classes, and tools/openbsd_smoke.sh (init,
+#         run, POST, kill -9, recover) under 4096M
 #   14    the power-loss cut list on the release image    hbox (sudo -n)
 #   15    the friends session from the Linux tarball      hbox
-#   16    the tag: print the command                      local
+#   16    extract-check: `make extract-check' (the        local
+#         N-version differential) when REV has the
+#         target; SKIPPED until then
+#   17    the tag: print the command                      local
 #
-# Box paths: everything under /tank/fn/scratch/cut-VERSION/ (S); the native
-# gate's tree is S/native-REV12/tree (T), whose build/ holds the four
-# images the later gates use.  --from N resumes at gate N (the earlier
-# gates' verdict lines are kept from OUT/verdict.txt).
+# Box paths: everything under /tank/fn/scratch/cut-VERSION-REV12/ (S); the native
+# gate's tree is S/native-REV12/tree (T), whose build/ holds the six
+# images the later gates use (fn-host, fn-host-developer, fn-host-dtn,
+# fn-host-dtn-developer, and tests.test_native_image_differential's pair:
+# fn-host-reference, fn-host-developer-stripped).  --from N resumes at gate
+# N (the earlier gates' verdict lines are kept from OUT/verdict.txt); --to N
+# stops after gate N (VERDICT PARTIAL: one gate, or a prefix, run for real).
+#
+# The OpenBSD build VM (gate 13).  A configuration of
+# tools/power_loss_openbsd.py on hbox: OB_BASE/NAME/cfg.json and its raw
+# disks, NAME `cutbld' by default (--openbsd-vm), OB_BASE
+# /tank/fn/scratch/power-loss-openbsd: the cut's own VM, so a lane using a
+# sibling VM never blocks a cut.  Its root disk is a raw copy of
+# OB_BASE/vm/root-base.qcow2, the release-openbsd install (OpenBSD 7.9
+# amd64, syspatch 002-021; pkg sbcl 2.6.3, libsodium 1.0.22, python 3.13,
+# bash, gmake; ACL2 8.7 and its certified system books under
+# /usr/local/fn-work).  The gate writes its own literal ACL2 launcher there
+# (4 GiB heap, --tls-limit 65536 as hbox's image builds since batch AV).
+# Its second disk is the build space, FFS2 on sd1a, mounted
+# wxallowed at /bw.  qemu runs in the fn-openbsd-qemu:local container with
+# /dev/kvm; root logs in with OB_BASE/vm/id_ed25519 on 127.0.0.1:PORT
+# (cfg.json's `ssh').  Provisioned once on hbox (2026-09-27, lane
+# release-machinery), as openbsd-release-fixes provisioned its orfbld
+# (planning/evidence/openbsd-release-fixes-2026-09-27.md section 1):
+#   python3 tools/power_loss_openbsd.py prepare cutbld --cache writeback \
+#     --ssh 2293 --nntp 11693 --smp 8 --mem 7168 --store-size 48G \
+#     --format raw --ffs 2
+# then, in the guest, root's login class lifted past the 4 GiB heap (the
+# `daemon' class caps datasize at 4096M; SBCL's 4096 MB dynamic space plus
+# the runtime does not fit: "mmap: Cannot allocate memory"):
+#   sed -i '/^daemon:/,/^$/s/:datasize=4096M:/:datasize=infinity:/' /etc/login.conf
+# (a build VM only; a node keeps its class).
+# The gate boots it (`power_loss_openbsd.py start', refused if it is
+# already running: someone else's), certifies REV's default closure in the
+# guest into a cache of the cut's own, builds the tarball with
+# packaging/release-tarball.sh, runs runpath --tarball, installs it fresh,
+# runs tests.test_release_tarball, checks the installed `fn --version' under
+# root's own login limits, copies the tarball and the logs to S/openbsd/out
+# and shuts the VM down (`stop', on every exit).
 set -u
 
 usage() {
-  echo 'usage: cut_release.sh [--dry-run] [--rev REV] [--out DIR] [--from N] [--runtime-from DIR] [--openbsd-host SSH --openbsd-root DIR]' >&2
+  echo 'usage: cut_release.sh [--dry-run] [--rev REV] [--out DIR] [--from N] [--to N] [--runtime-from DIR] [--openbsd-vm NAME]' >&2
   exit 2
 }
-DRY=no REV_ARG=HEAD OUT="" FROM=1
+DRY=no REV_ARG=HEAD OUT="" FROM=1 TO=17
 RUNTIME=/tank/fn/scratch/glibc-floor/runtime-2.6.8
-OB_HOST="" OB_ROOT=""
+OB_VM=cutbld OB_BASE=/tank/fn/scratch/power-loss-openbsd
 HOST=${FN_HBOX:-hbox}
 BOX_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
 BOX_CACHE=/tank/fn/certcache
@@ -77,13 +120,14 @@ while [ "$#" -gt 0 ]; do
     --rev) [ "$#" -ge 2 ] || usage; REV_ARG=$2; shift 2 ;;
     --out) [ "$#" -ge 2 ] || usage; OUT=$2; shift 2 ;;
     --from) [ "$#" -ge 2 ] || usage; FROM=$2; shift 2 ;;
+    --to) [ "$#" -ge 2 ] || usage; TO=$2; shift 2 ;;
     --runtime-from) [ "$#" -ge 2 ] || usage; RUNTIME=$2; shift 2 ;;
-    --openbsd-host) [ "$#" -ge 2 ] || usage; OB_HOST=$2; shift 2 ;;
-    --openbsd-root) [ "$#" -ge 2 ] || usage; OB_ROOT=$2; shift 2 ;;
+    --openbsd-vm) [ "$#" -ge 2 ] || usage; OB_VM=$2; shift 2 ;;
     *) usage ;;
   esac
 done
-case $FROM in ''|*[!0-9]*) usage ;; esac
+case $FROM$TO in ''|*[!0-9]*) usage ;; esac
+case $OB_VM in ''|*[!A-Za-z0-9_-]*) usage ;; esac
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT" || exit 2
@@ -95,7 +139,7 @@ OUT=${OUT:-$ROOT/build/cut/v$VERSION-$SHORT}
 case $OUT in /*) ;; *) OUT=$ROOT/$OUT ;; esac
 mkdir -p "$OUT"
 V=$OUT/verdict.txt
-S=/tank/fn/scratch/cut-$VERSION
+S=/tank/fn/scratch/cut-$VERSION-$SHORT
 T=$S/native-$SHORT/tree
 CHECKLIST=planning/release-v$VERSION.md
 PY=${PYTHON:-python3}
@@ -113,6 +157,7 @@ else
 fi
 
 FIRST_RED=
+SKIPS=
 # box CMD: one shell command on hbox (never in a dry run).
 box() { ssh -n -o BatchMode=yes "$HOST" "$1"; }
 # box_script NAME TEXT: TEXT becomes S/NAME.sh on hbox (no quoting through
@@ -123,7 +168,7 @@ would() { echo "would: $*"; }
 # gate NN NAME FUNCTION: run it, log it, record it; stop on red unless dry.
 gate() {
   nn=$1 name=$2 fn=$3
-  [ "$nn" -ge "$FROM" ] || return 0
+  [ "$nn" -ge "$FROM" ] && [ "$nn" -le "$TO" ] || return 0
   log=$OUT/$nn-$name.log
   echo "== $nn $name"
   started=$(stamp)
@@ -133,11 +178,13 @@ gate() {
   case $rc in
     0) word=GREEN ;;
     10) word=DRY ;;
+    11) word=SKIPPED ;;
     *) word=RED ;;
   esac
   line="$nn $name $word ($started..$(stamp)): $last"
   echo "$line" >> "$V"
   echo "   $word: $last"
+  [ "$word" != SKIPPED ] || SKIPS="$SKIPS $nn"
   if [ "$word" = RED ]; then
     [ -n "$FIRST_RED" ] || FIRST_RED="$nn $name"
     if [ "$DRY" = no ]; then
@@ -197,13 +244,28 @@ g_fundamentals() {
 }
 
 g_changelog() {
+  # What changelog.py writes at REV must be the committed file, and must
+  # survive its own commit: the file is committed as a direct commit after
+  # the last lane merge, so REV + that file regenerates byte for byte.  The
+  # scratch commit below (git commit-tree onto REV, no ref moved, nothing
+  # checked out) is that check, made whether or not REV's file is current.
   "$PY" tools/changelog.py --rev "$REV" > "$OUT/CHANGELOG.expected" || { echo "tools/changelog.py failed"; return 1; }
+  "$PY" tools/changelog.py --rev "$REV" | cmp -s - "$OUT/CHANGELOG.expected" || { echo "tools/changelog.py is not deterministic at REV"; return 1; }
+  blob=$(git hash-object -w "$OUT/CHANGELOG.expected") &&
+  tree=$(git ls-tree "$REV" | awk -v b="$blob" -F'\t' '$2 != "CHANGELOG.md" { print } END { printf "100644 blob %s\tCHANGELOG.md\n", b }' | git mktree) &&
+  scratch=$(echo "changelog stability check" | git commit-tree "$tree" -p "$REV") || { echo "the scratch commit failed"; return 1; }
+  "$PY" tools/changelog.py --rev "$scratch" > "$OUT/CHANGELOG.after-commit" || { echo "tools/changelog.py failed at the scratch commit"; return 1; }
+  if ! cmp -s "$OUT/CHANGELOG.expected" "$OUT/CHANGELOG.after-commit"; then
+    diff "$OUT/CHANGELOG.expected" "$OUT/CHANGELOG.after-commit" | head -10
+    echo "CHANGELOG.md is not byte-stable across its own commit ($scratch): tools/changelog.py's range"; return 1
+  fi
+  echo "regenerated at REV: byte-stable across its own commit (scratch $(printf %s "$scratch" | cut -c1-12))"
   git show "$REV:CHANGELOG.md" > "$OUT/CHANGELOG.committed" 2>/dev/null || { echo "no CHANGELOG.md at REV"; return 1; }
   if cmp -s "$OUT/CHANGELOG.expected" "$OUT/CHANGELOG.committed"; then
     echo "CHANGELOG.md is current at REV"
   else
     diff "$OUT/CHANGELOG.committed" "$OUT/CHANGELOG.expected" | head -20
-    echo "CHANGELOG.md is stale at REV: python3 tools/changelog.py --write, commit, cut again"; return 1
+    echo "CHANGELOG.md is stale at REV: python3 tools/changelog.py --write && git commit CHANGELOG.md; that commit is the cut's REV"; return 1
   fi
 }
 
@@ -247,7 +309,7 @@ gate_envs() {
 g_native() {
   mods=$(modules | tr '\n' ' ')
   # shellcheck disable=SC2046
-  set -- --name "cut-$VERSION" --label "$SHORT" --images developer,production,dtn,dtn-developer \
+  set -- --name "cut-$VERSION-$SHORT" --label "$SHORT" --images developer,production,dtn,dtn-developer,reference,developer-stripped \
     --deadline 43200 $(gate_envs) "$REV"
   echo "modules ($(echo $mods | wc -w | tr -d ' ')): $mods"
   if [ "$DRY" = yes ]; then
@@ -265,7 +327,7 @@ g_native() {
   box "cat $S/native-$SHORT/run.log" > "$OUT/native-run.log" 2>&1
   grep '^== modules' "$OUT/native-run.log" || true
   [ "$rc" -eq 0 ] || { echo "hbox_native status $rc: a module FAILED or SKIPPED ($HOST:$S/native-$SHORT)"; return 1; }
-  echo "four images built at REV; every module OK ($HOST:$S/native-$SHORT)"
+  echo "six images built at REV; every module OK ($HOST:$S/native-$SHORT)"
 }
 
 g_throughput() {
@@ -305,6 +367,9 @@ grep -F $tb $S/release/SHA256SUMS"
   if [ "$DRY" = yes ]; then
     would "git archive --format=tar $REV | ssh $HOST 'cat > $S/source.tar'"
     echo "$script" | sed 's/^/would (hbox): /'
+    box "test -x $RUNTIME/sbcl" || { echo "no glibc-floor runtime $HOST:$RUNTIME (--runtime-from)"; return 1; }
+    box "docker image inspect debian:12 >/dev/null 2>&1" || echo "note: debian:12 is not pulled on $HOST (the gate pulls it)"
+    echo "preconditions on $HOST: the glibc-floor runtime $RUNTIME"
     return 10
   fi
   git archive --format=tar "$REV" | ssh -o BatchMode=yes "$HOST" "mkdir -p $S && cat > $S/source.tar" || { echo "shipping the archive failed"; return 1; }
@@ -315,31 +380,95 @@ grep -F $tb $S/release/SHA256SUMS"
 
 g_tarball_openbsd() {
   tb=fn-$VERSION-openbsd-amd64.tar.gz
-  if [ -z "$OB_HOST" ] || [ -z "$OB_ROOT" ]; then
-    echo "no --openbsd-host/--openbsd-root: the OpenBSD tarball is not built (the build VM of planning/evidence/release-openbsd-2026-09-26.md section 2)"
-    return 1
-  fi
-  R=$OB_ROOT/cut-$VERSION
-  script="set -eu
-[ ! -e $R/release ] || { echo 'exists: $R/release'; exit 4; }
-mkdir -p $R/src $R/fresh && tar -xf $R/source.tar -C $R/src && cd $R/src
-: \${FN_CERT_CACHE:?} \${FN_ACL2:?}
-sh packaging/release-tarball.sh openbsd-amd64 $REV $R/release $R/source.tar
-python3 tools/runpath_check.py --tarball $R/release/$tb
-cd $R/fresh && cp $R/release/$tb $R/release/SHA256SUMS . && sha256 -C SHA256SUMS $tb
-tar xzf $tb && sh fn/install.sh --prefix $R/fresh/usr/local/fn --node $R/fresh/var/fn --no-service
-cd $R/src && FN_RELEASE_TARBALL=$R/release/$tb python3 -m unittest -v tests.test_release_tarball 2> $R/release-test.log; tail -1 $R/release-test.log
-[ \"\$(tail -1 $R/release-test.log)\" = OK ] || { echo 'test_release_tarball: not OK with no skips'; exit 1; }
-sha256 $R/release/$tb"
+  B=$OB_BASE R=$S/openbsd W=/bw/cut-$VERSION
+  cfg=$B/$OB_VM/cfg.json
+  # The guest half (OpenBSD ksh, as root): certify REV's default closure into
+  # a cache of its own, build the tarball from the archive, check it, install
+  # it fresh.  The release-openbsd / openbsd-release-fixes recipe
+  # (planning/evidence/openbsd-release-fixes-2026-09-27.md section 1).
+  guest="set -e
+mount | grep -q ' /bw '
+ulimit -d \$(ulimit -H -d)
+[ \$(ulimit -d) = unlimited ] || [ \$(ulimit -d) -ge 6291456 ] || { echo \"datasize \$(ulimit -d) KiB: under the 4 GiB heap plus runtime; lift root's login class (tools/cut_release.sh header)\"; exit 1; }
+L=/usr/local/fn-work/acl2-lit-4g-tls64k
+printf '%s\\n' '#!/bin/sh' 'export SBCL_HOME=/usr/local/lib/sbcl/' 'exec /usr/local/bin/sbcl --tls-limit 65536 --dynamic-space-size 4096 --control-stack-size 64 --disable-ldb --core /usr/local/fn-work/acl2-8.7/saved_acl2.core --end-runtime-options --no-userinit --eval \"(acl2::sbcl-restart)\" \"\$@\"' > \$L
+chmod 0755 \$L
+export FN_ACL2=\$L ACL2_SYSTEM_BOOKS=/usr/local/fn-work/acl2-8.7/books
+export FN_ACL2_SLOTS=7 FN_ACL2_TIMEOUT_SECONDS=3000 FN_CERT_CACHE=$W/certcache
+rm -rf $W/cert $W/certified $W/src $W/certcache $W/release $W/fresh; mkdir -p $W/cert $W/certcache $W/release $W/fresh
+cd $W/cert && tar -xf $W/source.tar
+echo \"== certify \$(date -u +%FT%TZ)\"
+python3 tools/certify_books.py --jobs 7 --closure \$(python3 tools/proof_artifacts.py roots --profile default) > $W/certify.log 2>&1 || { grep -v '^ACL2 did not produce' $W/certify.log | tail -5; grep -o 'Books that failed: [^,]*, [^,]*, [^,]*' $W/certify.log; exit 1; }
+# A live certifying tree is not an origin another target may use while it
+# exists (certs.usable_origin): moved aside, and the release runs from an
+# extraction at another path.
+cd $W && mv cert certified && mkdir src && cd src && tar -xf $W/source.tar
+echo \"== release \$(date -u +%FT%TZ)\"
+FN_FREEZE_SODIUM=/usr/local/lib/libsodium.so.11.1 FN_FREEZE_DYNAMIC_SPACE_MB=1024 sh packaging/release-tarball.sh openbsd-amd64 $REV $W/release $W/source.tar > $W/release.log 2>&1 || { tail -15 $W/release.log; exit 1; }
+tail -4 $W/release.log
+python3 tools/runpath_check.py --tarball $W/release/$tb
+cd $W/fresh && cp $W/release/$tb $W/release/SHA256SUMS . && sha256 -C SHA256SUMS $tb
+tar xzf $tb && sh fn/install.sh --prefix $W/fresh/usr/local/fn --node $W/fresh/var/fn --no-service > $W/install.log 2>&1 || { tail -5 $W/install.log; exit 1; }
+# The test installs under TMPDIR: an OpenBSD image maps its core RWX, so
+# that is a wxallowed file system (/bw), as /usr/local is on a node.  Its one
+# skip here is the Linux-only glibc-floor case; any other skip is red.
+mkdir -p $W/tmp && cd $W/src && TMPDIR=$W/tmp FN_RELEASE_TARBALL=$W/release/$tb python3 -m unittest -v tests.test_release_tarball 2> $W/release-test.log; tail -1 $W/release-test.log
+case \"\$(tail -1 $W/release-test.log)\" in 'OK'|'OK (skipped=1)') ;; *) grep -E '^(FAIL|ERROR)' $W/release-test.log | head; echo 'test_release_tarball: not OK'; exit 1 ;; esac
+[ \$(grep -c ' skipped ' $W/release-test.log) -eq \$(grep -c ' skipped .the glibc floor is the Linux release' $W/release-test.log) ] || { grep ' skipped ' $W/release-test.log; echo 'test_release_tarball: a skip other than the glibc floor'; exit 1; }
+echo \"== done \$(date -u +%FT%TZ)\""
+  # The box half (hbox): the VM up, the archive in, the guest half, the
+  # smoke under root's own login limits, the evidence out, the VM down.
+  script="set -u
+B=$B VM=$OB_VM R=$R
+[ -f $cfg ] || { echo 'no OpenBSD build VM $OB_VM ($cfg): see the header of tools/cut_release.sh'; exit 4; }
+[ -f $S/source.tar ] || { echo 'no archive $S/source.tar'; exit 4; }
+rm -rf $R; mkdir -p $R/src $R/out && tar -xf $S/source.tar -C $R/src tools || exit 4
+PORT=\$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[\"ssh\"])' $cfg)
+vm() { ssh -p \$PORT -i $B/vm/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ServerAliveInterval=30 root@127.0.0.1 \"\$@\"; }
+python3 $R/src/tools/power_loss_openbsd.py --base $B start $OB_VM || exit 4
+trap 'python3 $R/src/tools/power_loss_openbsd.py --base $B stop $OB_VM' EXIT
+vm 'mount | grep -q \" /bw \" || { rm -rf /bw; mkdir -p /bw && mount -o wxallowed /dev/sd1a /bw; }; mount | grep -q \" /bw \" && rm -rf $W && mkdir -p $W' || { echo 'the build space /bw (sd1a) did not mount'; exit 4; }
+vm 'cat > $W/source.tar' < $S/source.tar || exit 4
+vm 'cat > $W/gate.sh' < $S/openbsd-guest.sh || exit 4
+vm 'ksh $W/gate.sh'; rc=\$?
+for f in certify.log release.log install.log release-test.log; do vm \"cat $W/\$f\" > $R/out/\$f 2>/dev/null; done
+vm 'cat $W/release/SHA256SUMS' > $R/out/SHA256SUMS 2>/dev/null
+vm 'cat $W/release/$tb' > $R/out/$tb 2>/dev/null
+[ \$rc -eq 0 ] || { echo \"the guest half failed (exit \$rc; logs in $R/out)\"; exit 1; }
+v=\$(vm '$W/fresh/usr/local/fn/bin/fn --version' 2>&1)
+echo \"fn --version (root's login limits: \$(vm 'ulimit -d')): \$v\"
+[ \"\$v\" = 'fn $VERSION ($SHORT)' ] || { echo \"the installed fn --version is not 'fn $VERSION ($SHORT)'\"; exit 1; }
+# A node keeps OpenBSD's stock daemon class (datasize 4096M), which the
+# build VM lifted, and a login of the default class has 1536M: the same
+# smoke under each (a limit below the image is the launcher's named fault,
+# tests.test_native_heap_from_profile.DatasizeTests; lane openbsd-datasize).
+for ds in 4194304 1572864; do
+  v=\$(vm \"ulimit -d \$ds; $W/fresh/usr/local/fn/bin/fn --version\" 2>&1)
+  echo \"fn --version (a stock login class, datasize \$ds KiB): \$v\"
+  [ \"\$v\" = 'fn $VERSION ($SHORT)' ] || { echo \"under the stock datasize \$ds KiB fn --version is not 'fn $VERSION ($SHORT)'\"; exit 1; }
+done
+# The node itself under the daemon class's 4096M: init, run, a POST and its
+# ARTICLE, kill -9, recover, the article again (tools/openbsd_smoke.sh).
+vm \"ksh $W/src/tools/openbsd_smoke.sh $W/fresh/usr/local/fn/bin/fn 4194304 $W/smoke 11620\" > $R/out/smoke.log 2>&1; rc=\$?
+cat $R/out/smoke.log
+[ \$rc -eq 0 ] || { echo \"the node smoke under the stock daemon class failed (exit \$rc; $R/out/smoke.log)\"; exit 1; }
+cd $R/out && sha256sum $tb && grep -F $tb SHA256SUMS"
   if [ "$DRY" = yes ]; then
-    would "git archive --format=tar $REV | ssh $OB_HOST 'cat > $R/source.tar'"
-    echo "$script" | sed 's/^/would (openbsd): /'
+    would "git archive --format=tar $REV | ssh $HOST 'cat > $S/source.tar'"
+    echo "$script" | sed 's/^/would (hbox): /'
+    printf '%s\n' "$guest" | sed 's/^/would (openbsd guest): /'
+    box "test -f $cfg && test -f $B/vm/id_ed25519" \
+      || { echo "no OpenBSD build VM $OB_VM on $HOST ($cfg, $B/vm/id_ed25519): provision it as the header of tools/cut_release.sh says"; return 1; }
+    running=$(box "docker inspect -f '{{.State.Running}}' pl-obsd-$OB_VM 2>/dev/null")
+    [ "$running" != true ] || { echo "the build VM $OB_VM is running now (pl-obsd-$OB_VM: someone's; the gate refuses to take it)"; return 1; }
+    echo "preconditions on $HOST: the build VM $OB_VM provisioned and stopped"
     return 10
   fi
-  git archive --format=tar "$REV" | ssh -o BatchMode=yes "$OB_HOST" "mkdir -p $R && cat > $R/source.tar" || { echo "shipping the archive failed"; return 1; }
-  printf '%s\n' "$script" | ssh -o BatchMode=yes "$OB_HOST" "cat > $R/gate.sh" || { echo "shipping the gate script failed"; return 1; }
-  ssh -n -o BatchMode=yes "$OB_HOST" "sh $R/gate.sh" || { echo "the OpenBSD tarball gate failed"; return 1; }
-  echo "$tb built in the VM, runpath clean, installed fresh, test_release_tarball OK"
+  git archive --format=tar "$REV" | ssh -o BatchMode=yes "$HOST" "mkdir -p $S && cat > $S/source.tar" || { echo "shipping the archive failed"; return 1; }
+  box_script openbsd-guest "$guest" || { echo "shipping the guest script failed"; return 1; }
+  box_script tarball-openbsd "$script" || { echo "shipping the gate script failed"; return 1; }
+  box "sh $S/tarball-openbsd.sh" || { echo "the OpenBSD tarball gate failed ($HOST:$R/out)"; return 1; }
+  echo "$tb built in the VM $OB_VM, runpath clean, installed fresh, test_release_tarball OK, fn --version fn $VERSION ($SHORT) ($HOST:$R/out)"
 }
 
 g_power_loss() {
@@ -355,7 +484,12 @@ $C rig-down $W
 $C index $W
 $C cuts $W --image $img --plan init=8,post=150,checkpoint=60,compact=60,reclaim=50,control=8 --recover-crash 0.2 --seed 930 --label cut
 $C summary $W/cuts-*.jsonl | tee $W/summary.md"
-  if [ "$DRY" = yes ]; then echo "$script" | sed 's/^/would (hbox, in a systemd-run --user unit): /'; return 10; fi
+  if [ "$DRY" = yes ]; then
+    echo "$script" | sed 's/^/would (hbox, in a systemd-run --user unit): /'
+    box "sudo -n true" 2>/dev/null || { echo "power-loss needs sudo -n on $HOST (the block layer): not available"; return 1; }
+    echo "preconditions on $HOST: sudo -n for the block layer"
+    return 10
+  fi
   box_script power-loss "$script" || { echo "shipping the gate script failed"; return 1; }
   box "systemd-run --user --scope -q -p MemoryMax=24G sh $S/power-loss.sh" > "$OUT/power-loss.out" 2>&1
   rc=$?
@@ -379,6 +513,17 @@ g_friends() {
   echo "friends session: the friend's node on the release tarball's bin/fn, OK"
 }
 
+# The N-version differential (lane extract-2): `make extract-check' when REV's
+# Makefile has the target; until then the gate says SKIPPED, never green.
+g_extract() {
+  if ! git show "$REV:Makefile" 2>/dev/null | grep -q '^extract-check:'; then
+    echo "no make target extract-check at REV (lane extract-2): skipped"; return 11
+  fi
+  if [ "$DRY" = yes ]; then would make extract-check; return 10; fi
+  make extract-check || { echo "make extract-check failed"; return 1; }
+  echo "make extract-check green"
+}
+
 g_tag() {
   echo "for the coordinator, at the cut: git tag -a v$VERSION -m 'fn $VERSION' $REV && git push origin v$VERSION"
   [ "$DRY" = yes ] && return 10
@@ -400,12 +545,15 @@ gate 12 tarball-linux g_tarball_linux
 gate 13 tarball-openbsd g_tarball_openbsd
 gate 14 power-loss g_power_loss
 gate 15 friends g_friends
-gate 16 tag g_tag
+gate 16 extract g_extract
+gate 17 tag g_tag
 
 if [ "$DRY" = yes ]; then
   echo "VERDICT DRY-RUN v$VERSION $REV: first red ${FIRST_RED:-none} ($(stamp))" >> "$V"
+elif [ "$TO" -lt 17 ]; then
+  echo "VERDICT PARTIAL v$VERSION $REV: gates $FROM to $TO green; not a cut ($(stamp))" >> "$V"
 else
-  echo "VERDICT GREEN v$VERSION $REV ($(stamp))" >> "$V"
+  echo "VERDICT GREEN v$VERSION $REV${SKIPS:+ (skipped:$SKIPS)} ($(stamp))" >> "$V"
 fi
 tail -1 "$V"
 echo "verdict: $V"

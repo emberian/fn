@@ -411,6 +411,37 @@
                   (fn-auth-account-cred row)))
   :hints (("Goal" :in-theory (disable fn-auth-credp fn-record-string-octets))))
 
+;; public-node-2: an account deletion (books/config.lisp code 27) leaves
+;; the login no redeemed row, so the second producer offers no credential
+;; under it.
+(local (defthm fn-auth-account-creds-of-rows-deleting-account-omit-the-login
+  (not (fn-auth-find-cred (fn-record-string-octets login)
+                          (fn-auth-account-creds
+                           (fn-cfg-rows-deleting-account rows login))))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-account-deleted-row
+                                   fn-cfg-same-login-p fn-auth-account-cred)
+                                  (fn-auth-credp fn-record-string-octets))))))
+
+; KEYSTONE (the login is gone).  After `account delete LOGIN''s record, the
+; credential every later connection's snapshot (fn-auth-config-with-accounts,
+; which books/owner-config.lisp fn-ocfg-open pins at open) finds under the
+; login is auth.toml's, and nothing when auth.toml does not name it: AUTHINFO
+; PASS as that login is 481 on every connection opened after the record.
+; A connection opened before it keeps the snapshot it pinned until it closes.
+(defthm fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential
+  (equal (fn-auth-find-cred
+          (fn-record-string-octets login)
+          (fn-auth-config-creds
+           (fn-auth-config-with-accounts
+            acfg (fn-cfg-apply-delta v gen stamp (fn-cfg-account-delete login)))))
+         (fn-auth-find-cred (fn-record-string-octets login)
+                            (fn-auth-config-creds acfg)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-configp)
+                                  (fn-auth-cred-listp fn-auth-account-creds
+                                   fn-auth-find-cred fn-cfg-apply-delta
+                                   fn-record-string-octets))
+           :use ((:instance fn-acct-delete-apply-unfolds)))))
+
 ; -----------------------------------------------------------------------------
 ; The session: the peer session, the pinned configuration, and three bits of
 ; per-connection authentication state.  Opaque.
@@ -791,12 +822,22 @@
 ;   STARTTLS        advertised only when a certificate is configured and no
 ;                   TLS layer is active.  "MUST NOT be advertised once a TLS
 ;                   layer is active" (RFC 4642 section 2.1).
-;   AUTHINFO USER   advertised only while the connection is unauthenticated
-;                   AND a credential is configured AND the channel is not
-;                   the one protected-only refuses.  RFC 4643 section 2.1:
-;                   the arguments are the USER/PASS and SASL variants the
-;                   server will accept NOW, and with no credential in the
-;                   configuration every PASS is 481.
+;   AUTHINFO USER   advertised exactly while the connection is
+;                   unauthenticated AND the channel is not the one
+;                   protected-only refuses AND the connection has a login to
+;                   offer: a credential is in its snapshot, or the pinned
+;                   configuration requires authentication.  RFC 4643
+;                   section 2.1: "USER" says AUTHINFO USER/PASS "is
+;                   supported as defined by Section 2.3", which
+;                   fn-auth-authinfo is on every connection it is not 483 or
+;                   502 for; a connection that answers 480 to the reader
+;                   commands (fn-auth-gatedp) is one whose client must be
+;                   told the mechanism that lifts the 480, even while no
+;                   account is redeemed yet (an invitation-only node before
+;                   its first XREDEEM: PASS answers 481 until one is).  A
+;                   connection that requires nothing and holds no credential
+;                   keeps the label off: there is nothing to log in to and
+;                   nothing to lift.
 ;   POST            the reader's own label, which fn-nntp-capability-lines
 ;                   already gates on the posting bit.  On an authenticating
 ;                   connection that bit is the CONJUNCTION of the pinned
@@ -811,12 +852,12 @@
    (if (and (fn-auth-config-tls-availablep acfg) (not tlsp))
        (list (fn-nntp-string-octets "STARTTLS"))
      nil)
-   ; RFC 4643 section 2.1: the arguments are the mechanisms the
-   ; server will accept NOW.  With no credential configured every
-   ; PASS is 481, so the label would promise a mechanism that
-   ; cannot succeed; with one, it is the honest offer.
+   ; RFC 4643 section 2.1: the mechanisms this connection accepts
+   ; now.  Required authentication offers the mechanism even with
+   ; no credential redeemed yet (public-node-2, D1).
    (if (or subject
-           (not (consp (fn-auth-config-creds acfg)))
+           (not (or (consp (fn-auth-config-creds acfg))
+                    (fn-auth-config-requiredp acfg)))
            (and (fn-auth-config-protected-onlyp acfg) (not tlsp)))
        nil
      (list (fn-nntp-string-octets "AUTHINFO USER")))))
@@ -2276,6 +2317,34 @@
                             fn-nntp-tokenize fn-nntp-command-inputp
                             fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp)))))
+
+; KEYSTONE (public-node-2, D1).  Exactly where AUTHINFO USER is offered, on
+; every connection: unauthenticated, on a channel protected-only does not
+; refuse, and with a login to offer -- a credential in the snapshot, or a
+; configuration that requires authentication.  The case the public node met:
+; an invitation-only node (anonymous none, protected-only, no account
+; redeemed yet) now lists the mechanism after STARTTLS, where RFC 4643
+; section 2.1 has it name what section 2.3 supports; before this, the label
+; waited for the first redeemed row and a newsreader that gates its login on
+; the capability offered none.  The subject is the list the CAPABILITIES arm
+; renders (fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines).
+(defthm fn-auth-authinfo-is-advertised-exactly-when-a-login-is-offered-on-any-connection
+  (iff (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                     (fn-auth-capability-lines-for-peer
+                      acfg subject tlsp postingp record))
+       (and (not subject)
+            (or (consp (fn-auth-config-creds acfg))
+                (fn-auth-config-requiredp acfg))
+            (or tlsp (not (fn-auth-config-protected-onlyp acfg)))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
+                                   fn-auth-access-capability-lines
+                                   fn-peer-capability-lines
+                                   fn-nntp-capability-lines)
+                                  (fn-auth-config-tls-availablep
+                                   fn-auth-config-protected-onlyp
+                                   fn-auth-config-requiredp
+                                   fn-auth-config-creds
+                                   fn-cfg-peer-inbound)))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE.  382 is emitted at most once per connection, from the one branch

@@ -491,6 +491,63 @@
                       (in-arena-fn-peer-step *sr-arena* *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK not-a-message-id")))
                      (list (pt-reply "501 syntax error"))))
 
+;
+; (f) the disk-slow posture hypothesis (PKT-858): the live session is not
+; under it (so the witnesses above are reachable), and with it the held
+; Message-ID is not a duplicate refusal: IHAVE 436 with the reason and no
+; article mode, CHECK 431, the session unchanged.
+(assert-event (not (fn-peer-shed-p *pt-ps0-live*)))
+(defconst *pt-ps0-shed*
+  (fn-peer-with-refused *pt-ps0-live*
+                        (cons *fn-peer-shed-entry* (fn-peer-session-refused *pt-ps0-live*))))
+(assert-event (fn-peer-shed-p *pt-ps0-shed*))
+(assert-event (fn-peer-sessionp *pt-ps0-shed*))
+(assert-event (equal (fn-post-result-effects
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps0-shed* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
+                     (list (pt-reply "436 retry later; the disk is slow"))))
+(assert-event (equal (fn-post-result-session
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps0-shed* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
+                     *pt-ps0-shed*))
+(assert-event (equal (fn-post-result-effects
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps0-shed* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
+                     (list (pt-echo "431 " *pt-id1*))))
+
+; KEYSTONE fn-peer-shed-offer-is-disk-slow, positive witness: an offer the
+; node would want (the Message-ID it does not hold, 335 / 238 in (a) above)
+; is :defer :disk-slow under the posture, every hypothesis affirmed.
+(assert-event (let ((cfg (fn-peer-session-cfg *pt-ps0-shed*)) (peer "innA"))
+                (and (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))
+                     (fn-cfg-peer-inbound (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))
+                     (fn-af-message-idp *pt-idloop*)
+                     (fn-peer-shed-p *pt-ps0-shed*)
+                     (equal (fn-peer-decide-offer (fn-peer-session-node *pt-ps0-shed*) cfg peer
+                                                  *pt-ps0-shed* *pt-idloop* nil 0)
+                            (fn-peer-decision :defer :disk-slow)))))
+(assert-event (equal (fn-post-result-effects
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps0-shed* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <loop@example.invalid>")))
+                     (list (pt-reply "436 retry later; the disk is slow"))))
+(assert-event (equal (fn-post-result-effects
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps0-shed* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <loop@example.invalid>")))
+                     (list (pt-echo "431 " *pt-idloop*))))
+; Hypothesis removal: without the posture the same offer is wanted (a); a
+; non-peer (ghost), a feed-only record and a malformed token keep their
+; refusals under the posture (the conclusion fails for each).
+(assert-event (not (equal (fn-peer-decide-offer (fn-peer-session-node *pt-ps0-live*)
+                                                (fn-peer-session-cfg *pt-ps0-live*) "innA"
+                                                *pt-ps0-live* *pt-idloop* nil 0)
+                          (fn-peer-decision :defer :disk-slow))))
+(assert-event (equal (fn-peer-decide-offer (fn-peer-session-node *pt-ps0-shed*)
+                                           (fn-peer-session-cfg *pt-ps0-shed*) "ghost"
+                                           *pt-ps0-shed* *pt-idloop* nil 0)
+                     (fn-peer-decision :refuse :not-a-peer)))
+(assert-event (equal (fn-peer-decide-offer (fn-peer-session-node *pt-ps0-shed*)
+                                           *pt-cfg-feedonly* "outC"
+                                           *pt-ps0-shed* *pt-idloop* nil 0)
+                     (fn-peer-decision :refuse :no-inbound)))
+(assert-event (equal (fn-post-result-effects
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps0-shed* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE not-a-message-id")))
+                     (list (pt-reply "501 syntax error"))))
+
 ; -----------------------------------------------------------------------------
 ; Transcript: CHECK/TAKETHIS refused by groups (RFC 4644 section 2.4.3 shape)
 
@@ -532,6 +589,11 @@
 ; decision kind and completion, for both commands.
 (assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :defer :busy) nil) 436))
 (assert-event (equal (fn-peer-transit-code :ihave (fn-peer-decision :defer :capacity) nil) 436))
+;; PRF-335: fn-peer-full-feed-queue-is-a-retry-code-by-definition; a full outbound feed
+;; queue is 436 for both forms, while a named Store refusal stays 437/439.
+(assert-event (equal (fn-peer-transit-code :ihave (fn-peer-decision :accept nil) :feed-queue-full) 436))
+(assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :accept nil) :feed-queue-full) 436))
+(assert-event (equal (fn-peer-transit-code :ihave (fn-peer-decision :accept nil) :duplicate) 437))
 (assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :want nil) :uncertain) 436))
 (assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :want nil) :clock-unusable) 436))
 (assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :refuse :loop) nil) 439))

@@ -329,6 +329,9 @@
         (load "host/native/io.lisp")
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
+        ; The LZ4 block encoder of the compressed append (lib/libfn-lz4;
+        ; untrusted: ACL2's proved decoder checks every candidate).
+        (load "host/native/lz4.lisp")
         ; Build-time entry profile.  tools/build_native_host.sh always supplies
         ; one of these two values.  It is serialized into the image: the
         ; restarted process cannot expose diagnostics by changing its
@@ -345,12 +348,22 @@
         ; The build-time feature check: the system libssl pair (OpenSSL 3.0+
         ; or LibreSSL 3+) resolves every function tls.lisp calls.
         (fnn-tls-initialize)
+        ; Native SHA-256 (lane digest-native, A-CRYPTO-NATIVE): the pinned
+        ; libcrypto's EVP SHA-256 replaces the raw definitions of
+        ; fn-sha256-stobj, fn-sha256-of-string and fn-sha256-of-prefixed-buffer
+        ; after a known-answer and reference check.  Checked here, then reset
+        ; so the saved core holds the ACL2 references; every start re-checks
+        ; and re-installs after the TLS pair is pinned.
+        (load "host/native/digest.lisp")
+        (fnn-digest-initialize)
+        (fnn-digest-reset)
         ; D09's ML-DSA-65 is the vendored PQClean library in lib/ beside the
         ; core (tools/build_mldsa65.sh; FN_MLDSA_LIBRARY names it during the
         ; build); Ed25519 is libsodium.  Neither uses the TLS library.  Each
         ; start re-loads and re-checks all three for that process.
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
+        (fnn-lz4-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
           ; A refused start exits 5 with its reason (io.lisp).
@@ -358,8 +371,11 @@
                                 (fnn-crypto-startup)
                                 (fnn-tls-reset)
                                 (fnn-tls-initialize)
+                                (fnn-digest-startup)
                                 (fnn-hsig-reset)
-                                (fnn-hsig-initialize)))
+                                (fnn-hsig-initialize)
+                                (fnn-lz4-reset)
+                                (fnn-lz4-initialize)))
           (fnn-main)
           (values nil :exited *the-live-state*))
         ; Bounded raw file read only; parsing, defaults and availability are

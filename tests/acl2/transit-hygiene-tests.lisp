@@ -274,6 +274,19 @@
             (equal (fn-peer-decide-offer node cfg peer session msgid clock inflight)
                    (fn-peer-decision :refuse (fn-peer-remembered-reason msgid session))))))
 
+; Hypothesis removal (the disk-slow posture, PKT-858): the same session with
+; the posture's entry in its memory defers the remembered Message-ID instead
+; of refusing it; the owner's run of transfers never holds that entry.
+(assert-event (not (fn-peer-shed-p *th-ps-b*)))
+(assert-event (not (fn-rof-lookup :disk-slow *th-run*)))
+(assert-event (equal (fn-peer-decide-offer *th-node* *th-cfg* "innB"
+                                           (fn-peer-with-refused *th-ps-b* (cons *fn-peer-shed-entry* *th-mem*))
+                                           (th-o "<bp@example.invalid>") nil 0)
+                     (fn-peer-decision :defer :disk-slow)))
+(assert-event (equal (th-code (fn-peer-with-refused *th-ps-b* (cons *fn-peer-shed-entry* *th-mem*))
+                              "CHECK" "<bp@example.invalid>")
+                     431))
+
 ; The owner's recording step: only an intrinsic refusal is recorded, and the
 ; recorded reason is the octets', never the word the host relayed.
 (assert-event (equal (fn-peer-refused-record nil *th-cfg* (th-o "<g@example.invalid>") *th-good*) nil))

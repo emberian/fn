@@ -517,3 +517,86 @@
                  (:instance fn-lg-open-kernel-is-the-recovered-kernel)))))
 
 (in-theory (disable fn-lgw-step fn-lgw-window fn-lgw-run fn-lgw-kernel))
+
+; -----------------------------------------------------------------------------
+; The open over several segments, as the host runs it (host/native/io.lisp
+; fnn-log-scan-segments): each segment streamed from the genesis carried from
+; the one before (fnn-log-stream-segment, fn-lgw-run from fn-lgw-start GENESIS
+; 1), its records handed on in order, and the next genesis the stream's kernel's
+; last trailer (fn-lgc-last of fn-lgw-kernel).  CS are the segments' durable
+; octets in index order (the last the active one).
+
+(defun fn-lgw-segment-records (c genesis unit max)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (records st) (fn-lgw-run c (fn-lgw-start genesis 1) unit max)
+    (declare (ignore st))
+    records))
+
+(defun fn-lgw-segment-last (c genesis unit max)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (records st) (fn-lgw-run c (fn-lgw-start genesis 1) unit max)
+    (declare (ignore records))
+    (fn-lgc-last (fn-lgw-kernel st))))
+
+(defun fn-lgw-open-chain-last (cs genesis unit max)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp cs)
+      (fn-lgw-open-chain-last (cdr cs) (fn-lgw-segment-last (car cs) genesis unit max) unit max)
+    genesis))
+
+(defun fn-lgw-open-chain-records (cs genesis unit max)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp cs)
+      (append (fn-lgw-segment-records (car cs) genesis unit max)
+              (fn-lgw-open-chain-records (cdr cs) (fn-lgw-segment-last (car cs) genesis unit max)
+                                         unit max))
+    nil))
+
+; One segment's stream is the model's scan of it (fn-lgw-run-is-the-open: the
+; records are the recovered kernel's, and its last is the kernel's).
+(defthm fn-lgw-segment-is-the-scan
+  (and (equal (fn-lgw-segment-records c genesis unit max) (car (fn-lg-scan c genesis unit max)))
+       (equal (fn-lgw-segment-last c genesis unit max) (fn-lg-scan-last c genesis unit max)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-lgw-segment-records fn-lgw-segment-last fn-lgt-recover)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-lgw-run-is-the-open (floor 1))
+                 (:instance fn-lgs-chain-step-is-the-kernel-by-definition
+                            (prev genesis)
+                            (next (fn-lgt-next-after (car (fn-lg-scan c genesis unit max)) 1)))
+                 (:instance fn-lgc-observers-of-abstraction
+                            (ks (fn-lgt-recover c genesis unit max 1)))))))
+
+; The host's fold is the model's chain over the segments' octets.
+(defthm fn-lgw-open-chain-is-the-chain
+  (and (equal (fn-lgw-open-chain-records cs genesis unit max)
+              (fn-lgs-chain-records cs genesis unit max))
+       (equal (fn-lgw-open-chain-last cs genesis unit max)
+              (fn-lgs-chain-last cs genesis unit max)))
+  :hints (("Goal" :induct (fn-lgw-open-chain-last cs genesis unit max)
+           :in-theory (union-theories '(fn-lgw-open-chain-records fn-lgw-open-chain-last
+                                        fn-lgs-chain-records fn-lgs-chain-last
+                                        fn-lgw-segment-is-the-scan)
+                                      (theory 'minimal-theory)))))
+
+; KEYSTONE T8 over the host's streamed open (PRF-270).  COVERED are the
+; segments below the F row's first suffix segment, REMAINING that segment and
+; the ones after it (their durable octets).  If the checkpoint's capture is the
+; covered segments' streamed records and the F row's genesis is the covered
+; stream's last trailer (the rotation takes it from the closed segment's
+; kernel, fn-lgs-rotate), the history the open hands to the replay once the
+; covered segments are unlinked -- the checkpoint's records, then the host's
+; stream over the remaining segments from the named genesis -- is the host's
+; stream over every segment.  The replay of that split is the full replay by
+; fn-sn-recover-from-checkpoint-equals-full-recover.
+(defthm fn-lgw-segment-drop-preserves-the-open
+  (implies (and (equal prefix (fn-lgw-open-chain-records covered genesis0 unit max))
+                (equal genesis (fn-lgw-open-chain-last covered genesis0 unit max)))
+           (equal (append prefix (fn-lgw-open-chain-records remaining genesis unit max))
+                  (fn-lgw-open-chain-records (append covered remaining) genesis0 unit max)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-lgw-open-chain-is-the-chain fn-lgs-chain-records-of-append)
+                                      (theory 'minimal-theory)))))
+
+(in-theory (disable fn-lgw-segment-records fn-lgw-segment-last
+                    fn-lgw-open-chain-records fn-lgw-open-chain-last))

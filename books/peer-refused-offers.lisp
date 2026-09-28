@@ -249,11 +249,27 @@
 ; -----------------------------------------------------------------------------
 ; The offer answers the memory
 
+; The owner's memory, built from transfers, is keyed by Message-ID strings:
+; it never holds the disk-slow posture's entry (books/peer-inbound.lisp
+; fn-peer-shed-p), which a shed read adds for itself and takes out after it
+; (books/owner-time-admission.lisp fn-otm-read-span, PKT-858).
+(defthm fn-prof-first-keeps-no-posture
+  (implies (not (fn-rof-lookup :disk-slow xs))
+           (not (fn-rof-lookup :disk-slow (fn-rof-first n xs))))
+  :hints (("Goal" :in-theory (enable fn-rof-first fn-rof-lookup))))
+
+(defthm fn-prof-run-keeps-no-posture
+  (implies (not (fn-rof-lookup :disk-slow mem))
+           (not (fn-rof-lookup :disk-slow (fn-prof-run mem cfg transfers))))
+  :hints (("Goal" :in-theory (enable fn-prof-run fn-peer-refused-record fn-rof-record
+                                     fn-rof-lookup fn-record-octets-string))))
+
 (defthm fn-peer-decide-offer-answers-the-memory
   (let ((record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))))
     (implies (and record
                   (fn-cfg-peer-inbound record)
                   (fn-af-message-idp msgid)
+                  (not (fn-peer-shed-p session))
                   (not (fn-peer-history-hasp (fn-record-octets-string msgid) node))
                   (fn-peer-remembered-reason msgid session))
              (equal (fn-peer-decide-offer node cfg peer session msgid clock
@@ -261,7 +277,7 @@
                     (fn-peer-decision :refuse
                                       (fn-peer-remembered-reason msgid session)))))
   :hints (("Goal" :in-theory (e/d (fn-peer-decide-offer)
-                                  (fn-peer-remembered-reason fn-cfg-peer-find
+                                  (fn-peer-shed-p fn-peer-remembered-reason fn-cfg-peer-find
                                    fn-af-message-idp fn-peer-history-hasp
                                    fn-record-octets-string)))))
 
@@ -315,6 +331,7 @@
                                                                 (fn-prof-run nil cfg0 transfers))
                                                  transfers))))
                         (:instance fn-peer-decide-offer-answers-the-memory)
+                        (:instance fn-prof-run-keeps-no-posture (mem nil) (cfg cfg0))
                         (:instance fn-peer-decide-transfer-refuses-what-the-octets-refuse
                                    (clock clock2)
                                    (msgid (car (fn-prof-witness
@@ -327,8 +344,8 @@
                                                  (fn-rof-lookup (fn-record-octets-string msgid)
                                                                 (fn-prof-run nil cfg0 transfers))
                                                  transfers)))))
-           :in-theory (e/d (fn-peer-remembered-reason)
-                           (fn-prof-run-is-sound fn-prof-witness-facts
+           :in-theory (e/d (fn-peer-remembered-reason fn-peer-shed-p)
+                           (fn-prof-run-keeps-no-posture fn-prof-run-is-sound fn-prof-witness-facts
                             fn-peer-decide-offer-answers-the-memory
                             fn-peer-decide-transfer-refuses-what-the-octets-refuse
                             fn-peer-intrinsic-refusal-is-an-intrinsic-reason
