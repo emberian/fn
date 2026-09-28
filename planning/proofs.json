@@ -12087,7 +12087,9 @@
         "planning/evidence/manifests/certify-20260928T003941Z-3754893.json",
         "planning/evidence/sca-join-2026-09-27.md",
         "planning/evidence/manifests/certify-20260928T041204Z-1591020.json",
-        "planning/evidence/manifests/certify-20260928T041318Z-3967241.json"
+        "planning/evidence/manifests/certify-20260928T041318Z-3967241.json",
+        "planning/evidence/manifests/certify-20260928T081655Z-3859883.json",
+        "planning/evidence/manifests/certify-20260928T080217Z-3731531.json"
       ],
       "progress_note": "Lane sca-join-5 (2026-09-28): REPL-admitted and certified on persvati (affected roots of catalog, served-catalog, served-catalog-chain, served-catalog-tests: certify-20260928T003009Z-3659350, 172 passed; served-catalog-join-inv re-proved over batch AY's fn-otm-read-span: certify-20260928T003941Z-3754893). Lookup counts before/after in planning/evidence/sca-join-2026-09-27.md. Native on hbox (709b2824a, /tank/fn/scratch/sca-join-5/native-f2): served_differential OK 7, reader_index OK 7, reader_freshness OK 2; served_cost FAILED 1 (test_owner_calls_fast_span_entry: its static text check expects the pre-batch-AY host call shape; host code not changed by this lane). f2_lookups at 1k/10k/100k: every measured command O(1) + the O(log N) bisection, LISTGROUP/OVER proportional to their output; VERDICT MET."
     },
@@ -12567,7 +12569,7 @@
         "planning/evidence/manifests/certify-20260928T081655Z-3859883.json",
         "planning/evidence/manifests/certify-20260928T081023Z-3803492.json"
       ],
-      "progress_note": "Lane scale-latency 2026-09-28: REPL-admitted on persvati (catalog, served-catalog-view, served-catalog and the three test books, dependencies from source in encapsulates). Measured cause: syn100k fixture, 8 posters + 8 readers GROUP every 20 reads: fn-scat-range-keep (the pass) 70% of the owner's CPU samples, POST p50 404 ms, GROUP p90 510 ms. Certified on persvati: the affected roots of catalog, served-catalog-view, served-catalog and the two test books (61 roots) certify-20260928T080217Z-3731531, and after the keystone hints were tightened certify-20260928T081655Z-3859883 (35 recertified); at two jobs certify-20260928T081023Z-3803492 (catalog 13.5 s, served-catalog 17.0 s, served-catalog-view 2.6 s; both were over 10 s before this lane: 11-12 s and 13.7 s).",
+      "progress_note": "Lane scale-latency 2026-09-28: REPL-admitted on persvati (catalog, served-catalog-view, served-catalog and the three test books, dependencies from source in encapsulates). Measured cause: syn100k fixture, 8 posters + 8 readers GROUP every 20 reads: fn-scat-range-keep (the pass) 70% of the owner's CPU samples, POST p50 404 ms, GROUP p90 510 ms. Certified on persvati: the affected roots of catalog, served-catalog-view, served-catalog and the two test books (61 roots) certify-20260928T080217Z-3731531, and after the keystone hints were tightened certify-20260928T081655Z-3859883 (35 recertified); at two jobs certify-20260928T081023Z-3803492 (catalog 13.5 s, served-catalog 17.0 s, served-catalog-view 2.6 s; catalog and served-catalog were already past 10 s before this lane in every archived measurement, the fastest 11.2 s and 10.9 s at 12 jobs).",
       "events": [
         "fn-scv-count-is-count-p",
         "fn-scv-first-is-first-p",

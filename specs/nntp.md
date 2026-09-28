@@ -462,7 +462,7 @@ view is one batch below the catalog's count. The group's count, least and
 greatest number at that view are the catalog's live summary at its count
 (kept by commit and withdrawal) corrected over the numbers of the rows
 appended since the view and of the rows withdrawn at or after it (the
-catalog lists withdrawals per version, `fn-cat-withdrawn-at`), never a
+catalog lists withdrawals per version, `fn-cat-withdrawn-at-is-from`), never a
 pass over the group's numbers (`fn-scv-summary`, equal to the pass by
 `fn-scv-count-is-count-p`, `fn-scv-first-is-first-p`,
 `fn-scv-last-is-last-p` and `fn-scat-group-summary-is-pass`). The answer
