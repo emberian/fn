@@ -18,6 +18,12 @@ validate or chain), never the bound.  SIZE only feeds the rig's `workload=`
 flag, which is not read.  The segment is read while an owner may run: the
 scan reads the durable prefix a crash would keep, and an entry being written
 is not yet complete (it validates only once whole).
+
+GENESIS: a store's segment 1 chains from its genesis record
+(journal/000000.log, books/store-genesis.lisp), whose trailer ACL2 reads
+(host/store-host.lisp fn-store-genesis-scan-chain); without it the scan
+starts from the log's constant genesis and a real store's first entry reads
+log-chain-broken.
 """
 from pathlib import Path
 import re
@@ -26,6 +32,7 @@ import subprocess
 UNIT = 4096
 MAX = 4294967295
 SEGMENT = Path("journal") / "000001.log"
+GENESIS = Path("journal") / "000000.log"
 
 
 class CommittedHistory:
@@ -50,10 +57,11 @@ class CommittedHistory:
 
 def committed_history(image, store, env=None, cwd=None):
     segment = Path(store) / SEGMENT
+    genesis = Path(store) / GENESIS
     extent = segment.stat().st_size
     result = subprocess.run(
         [str(image), "--fn", "log", "scan", str(segment), str(extent), str(UNIT),
-         str(MAX), "0"],
+         str(MAX), "0", *((str(genesis),) if genesis.exists() else ())],
         cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         timeout=180, check=False)
     text = result.stdout.decode("utf-8", "replace")

@@ -7123,7 +7123,7 @@ observation (the COMPLETE re-signals it under the owner)."
 ;; fence and its acknowledgements, flushed).
 (defun fnn-command-log (command argv)
   (unless (member command '("scan" "recover" "append") :test #'equal)
-    (error 'fnn-usage-error :message "log scan|recover|append SEGMENT EXTENT UNIT MAX SIZE [BATCHES PER]"))
+    (error 'fnn-usage-error :message "log scan|recover|append SEGMENT EXTENT UNIT MAX SIZE [GENESIS | BATCHES PER]"))
   (when (and (not (string= command "scan")) (not (fnn-developer-image-p)))
     (error 'fnn-usage-error :message (format nil "log ~a is a developer-image verb" command)))
   (when (< (length argv) (if (string= command "append") 7 5))
@@ -7135,12 +7135,24 @@ observation (the COMPLETE re-signals it under the owner)."
         (size (fnn-log-nat-arg (fifth argv) "SIZE")))
     (cond
       ((string= command "scan")
-       (let ((fd (fnn-log-open-segment path extent unit t)))
+       ;; A format-10 store's segment 1 chains from its genesis record
+       ;; (journal/000000.log), named by the optional GENESIS path; without
+       ;; it the scan starts from the log's constant genesis (a bare rig
+       ;; segment).  ACL2 reads the chain value out of the record.
+       (let* ((genesis (if (sixth argv)
+                           (let ((chain (fnn-core 'fn-store-genesis-scan-chain
+                                                  (fnn-octet-list
+                                                   (fnn-read-regular-bounded (sixth argv) 1024)))))
+                             (unless chain
+                               (fnn-refuse "log scan: ~a is not a genesis record" (sixth argv)))
+                             chain)
+                         *fn-lg-genesis*))
+              (fd (fnn-log-open-segment path extent unit t)))
          (unwind-protect
               (fnn-log-rig-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
                                                   :extent extent
                                                   :kernel (nth-value 1 (fnn-log-open-kernel
-                                                                        fd extent unit max)))
+                                                                        fd extent unit max genesis)))
                             size)
            (fnn-close fd))))
       (t
