@@ -2677,7 +2677,8 @@
         "planning/evidence/manifests/certify-20260923T185812Z-4118399.json",
         "books/tcpcl-host-drive.lisp",
         "planning/evidence/manifests/certify-20260923T191855Z-4158317.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
       ],
       "progress_note": "ACL2 8.7 certified the exact host-drive event order, ordered held-list projection and conditional delivery plan. Reachable witnesses cover coalesced prior-transfer partial ACK/refusal, two completed bundles in one read, and missing-held/path-type counterexamples. Native source executes the selected message list; combined-image A2 callback runtime remains pending.",
       "events": [
@@ -9453,7 +9454,8 @@
         "tests/acl2/payload-lz-tests.lisp",
         "planning/evidence/codec-c1-2026-09-27.md",
         "planning/evidence/octets-bulk-2026-09-27.md",
-        "planning/evidence/manifests/certify-20260927T084350Z-1875336.json"
+        "planning/evidence/manifests/certify-20260927T084350Z-1875336.json",
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
       ],
       "progress_note": "Lane codec-c1 (Opus 5.5, 2026-09-27): a prototype book with no host wiring. Teeth: tests/acl2/payload-lz-tests.lisp (a held-out 1993 Usenet article from usenet-20news-19997 and its liblz4-HC 9 blocks with and without a dictionary seal as :lz and denote the article; a corrupted block and a block of other octets seal as :raw and still denote it; literal blocks of 5 and 300 octets; the refusals :truncated, :offset (0 and past dict ++ out), :overflow and :short; the article's block decoded in quanta of seven steps reaches the same octets as one budget; hypothesis removal by must-fail and a ground counterexample for the octet-list and true-list hypotheses). Measured on hbox (i9-12900, one P-core) over the 9,733 held-out articles: see the record.",
       "pending_subject": "No host line calls fn-lz-* yet: lane C2 (arena-compressed) makes the compressed arena attachment whose seal is fn-lz-seal-form and whose reader is fn-lz-decode-buf, after the records flip lands.",
@@ -11932,7 +11934,8 @@
       "evidence": [
         "books/octet-text.lisp",
         "tests/acl2/octet-text-tests.lisp",
-        "planning/evidence/manifests/certify-20260928T025149Z-846867.json"
+        "planning/evidence/manifests/certify-20260928T025149Z-846867.json",
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
       ],
       "pending_subject": "No host function calls these codecs yet (lane shared-books built them as the shared library the wire books re-derived); each wire book that adopts one names its host caller then.",
       "progress_note": "Lane shared-books (Opus 5.5, 2026-09-28), id assigned at the batch AY merge. Certified on persvati: certify-20260928T025149Z-846867 (under 10 s). Teeth: tests/acl2/octet-text-tests.lisp with the RFC 4648 section 10 vectors. Proof-style findings in docs/proof-style.md.",
@@ -12223,7 +12226,8 @@
         "planning/evidence/manifests/certify-20260928T041645Z-3974438.json",
         "planning/evidence/manifests/certify-20260928T040154Z-3932533.json",
         "planning/evidence/manifests/certify-20260928T042412Z-1705234.json",
-        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json"
+        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json",
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
       ],
       "progress_note": "Lane web-native (Opus 5.5, 2026-09-28): certified on hbox with its test book, farm run-20260928T041456Z-eea4 (certify-20260928T041645Z-3974438: 10 roots passed at 942e2b056; web-session 12.9 s and web-session-keystones 18.2 s at 2 jobs under load 28-31 on 24 CPUs, unquiet; 3.1 s and 3.3 s in certify-20260928T040154Z-3932533), native tests.test_native_web OK (7 ran) on the w4c developer image.",
       "events": [
@@ -12339,7 +12343,8 @@
         "tests/acl2/web-render-tests.lisp",
         "planning/evidence/web-native-2-2026-09-28.md",
         "planning/evidence/manifests/certify-20260928T043449Z-1806205.json",
-        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json"
+        "planning/evidence/manifests/certify-20260928T050040Z-4079099.json",
+        "planning/evidence/manifests/certify-20260928T111552Z-1291526.json"
       ],
       "progress_note": "Lane web-native-2 (Opus 5.5, 2026-09-28): certified on persvati with tests/acl2/web-render-tests (certify-20260928T043449Z-1806205, 9 passed at 2 jobs; web-render 4.2 s).",
       "events": [
@@ -12692,7 +12697,7 @@
         "PRF-352"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/nntp-projection.lisp",
         "books/nntp-index-runtime.lisp",
