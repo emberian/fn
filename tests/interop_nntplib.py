@@ -1,6 +1,6 @@
 """Independent NNTP client probe (requires Python <=3.12's stdlib nntplib).
 
-Start tools/run_reader.py separately, then pass its printed loopback port. This
+Start a native owner (`fn operator CONFIG run`), then pass its LISTENING port. This
 is reader-only interoperability evidence, not a full RFC conformance audit.
 """
 import argparse
