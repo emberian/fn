@@ -1289,3 +1289,213 @@ Status: DECIDED (ember). Consequences: release order is a SEQUENCE, never a nume
 ### 2026-09-28: D38 — WITHDRAWN: no reader of a previous format (~18:00 UTC; ember)
 goal: (proposed 2026-09-27 by lanes format-bump-10 and compression-extents-2: every format or layout change ships a reader for the previous one's archive, with a witness). ember, verbatim: "there are no such thing as future migrations :) when we cut 6.6.0 will be the first time that anyone else uses this, and we'll be redeploying all our nodes. ideally we would be tidying up our code to remove all legacy/prototype format support and attendant migrations, so that the code is as simple as possible."
 Status: WITHDRAWN (ember). Consequences (lane one-format): fresh deploys, one format; no migrations. The code supports exactly one store format and contains no migration machinery: the format-9 reader and its record translation (books/store-format-9.lisp, books/store-format-9-records.lisp), the open's `:store-format-9' and profile-layout (older-release / newer-release) refusals and the migration natives are deleted. The open keeps ONE check: a sealed profile frame whose format word is not this build's is refused by name, "not an fn store of this release: redeploy fresh" (books/store-profile-open.lisp, fn-spo-config-open-store-format-is-exactly-a-foreign-frame). `store export` / `store import` stay as backup and restore of a store of this format (books/store-export.lisp: an archive of another format is refused `:profile :store-format`, never translated). D37's sentence on the older-release refusal describes the code before this withdrawal. At the cut (not lane one-format) the format word becomes fn-store-1.
+
+### 2026-09-28: D39 — complete everything before the cut; qualify once; no ACL2 patch; the reorganisation not adopted (ember)
+
+Recorded by lane records-steward from the coordinator transcripts (session
+1db4b0cd and b53753a1; times are the transcripts' UTC stamps; the
+coordinator's files label some of the same messages about an hour later,
+e.g. D38's "~18:00").
+
+- **Complete before the cut** (20:21Z): "i'm not happy with that call! id
+  on't want to defer any of the major work we've identified .... i ideally
+  would like to complete th eowkr ! get it all on dev. get everything gucci.
+  *and then* we can cut 6.6.0. it isn't a race :)". Consequence: the list is
+  `build/coordinator/COMPLETE-BEFORE-6.6.0.md`; no pile of the backlog
+  ("after the fundamentals", "after v6.7.0", "after v1") is a deferral any
+  more; each open line is done, a duplicate, a row of that list, won't with
+  a decision cited, or a question below. Supersedes ember's 2026-09-27 23:15Z
+  "we don't have to wait until after the cut ! i'm gonna hold off the cut
+  for a decent amount of time".
+- **Qualify once; the F8 split and the F4 bars adopted** (16:57Z): "regarding
+  the other decisions: F8 split seems fine, F4 bars honestly whatever, seems
+  fine, idk why we're doing that kind of theater on our overloaded shared
+  multiuser dev boxes, but yes. i don't want to be wasting a lot of time
+  redoing tests and qualifications right now. we're spending a LOT of time
+  doing work that we only need to do once, during the prerelease convergence
+  checklist." Consequences: F8 is three measures (virtual, accountable
+  physical, working set) with a named small profile at 256 MiB accountable
+  and at most 128 MiB working set, the old "reserved under 256 MB" verdict
+  kept visibly unmet; F4's bars are GPT-6's (cached health p99 at most 250
+  ms and at most 1 s under an injected stall, warm reads at most 1 s, cold
+  reads a declared 5 s dependency timeout, D = 5 s, H = 30 s plus at most 1 s
+  notification slack; the time-model design's 60 s becomes 30 s:
+  COMPLETE-BEFORE row F1); lanes implement, prove, certify their affected
+  roots and run the natives their change exercises; the full native set,
+  the OpenBSD guest, F1-F8, scale runs and the extraction gate run once, in
+  release-v6.6.0.md section 2b.
+- **Scale by curve** (16:23Z): "instead of doing all these expensive
+  replays at 1M, we can simply extrapolate from the curve at 1k 2k 5k 10k 25k
+  50k 100k. and even that will take like probably <5 minutes". A 1M run only
+  when the fit is ambiguous.
+- **No ACL2 patch** (18:11Z), to the question "patch our ACL2 build so
+  `throw-or-attach`'s temporary isn't special?": "uhhhhhhhhh yeah i don't
+  think we should do that lmao." toolchain-unify finished on stock ACL2 8.7
+  (w28) on both boxes; the TLS ceiling is met by one image umbrella (row C3).
+- **The source-tree reorganisation is not adopted.** ember first agreed
+  (18:12Z, "yes, we should do that reorganization and soforth"), then (19:02Z)
+  "i think we need to issue a Fable architect-scholar subagent to study this
+  and experiment and make its recommendation, because i'm not fully sold...",
+  and on its report (20:16Z): "ok, that was good advice." Consequence:
+  planning/architecture-recommendation-2026-09-28.md (wall time is the
+  65-deep include chain; 20 jobs slow each book 2.4-4.4x): chain-first
+  scheduling with fewer jobs, targeted fan-in cuts, one image umbrella
+  (rows C1-C3), no api/impl/proofs migration; reorg-2026-09-28.md stays as
+  the not-adopted design.
+- **Old nodes may go** (15:32Z): "we can feel free to throw away /migrate the
+  old nodes if we wish". With D38's withdrawal: every node is redeployed
+  fresh at the cut.
+- **Divide the work across the three machines** (02:52Z): "we need to be
+  dividing our work among our three machines instead of hammering one,
+  deciding it's overloaded, and migrating EVERYTHING to the next machine".
+- **Ask the lanes what obstructs them** (00:01Z): "remember to ask all our
+  children what is obstructing them and how things could be better; we can
+  always be helping our children" (every LANEDUMP's "Obstructions and asks").
+
+### 2026-09-28: ember's decisions of 2026-09-25 to 2026-09-27 not yet in this register (recorded by lane records-steward)
+
+Each is quoted from the transcripts (UTC); the packet ids are the backlog's.
+
+- **BLAKE3 is fn's digest** (2026-09-27 21:47Z "are we required to use
+  sha-256? blake3 is usually considered the fastest good hash these days";
+  23:41Z, reversing the coordinator's "no second C library": "bro bad call. i
+  don't mind pulling in a blake3 c library. i STRONGLY DISPREFER the legacy
+  SHA."). Store format 10; SHA-256 stays only where an RFC fixes it
+  (Cancel-Lock, RFC 8315).
+- **Persistence: no heap images, the on-disk structure is the in-memory
+  one** (2026-09-27 17:47Z "is it not possible to just store an image of our
+  heap...??? ... this serde shit is NOT houyhnhnm computing"; 17:57Z "now
+  *that* sounds more reasonable. let's keep exploring"; 18:00Z "the log can
+  contain configuration events that set seeds and nonces etc :)"; on F6's
+  open time, "HOW is it possible that we're doing SO much work at startup.
+  I'm extremely disgruntled"). The design is the coordinator handoff's §1
+  (a copy-on-write page store, the log as truth and the snapshot a cache of
+  its fold, non-determinism recorded as events, no SBCL core snapshots);
+  F6 keeps its strict bar. This answers PKT-293/PKT-167 (the records freeze,
+  asked 2026-09-26) by superseding it, with ember's 2026-09-26 23:47Z "I don't
+  understand how we haven't managed to replace the representation yet.
+  That's a priority."; the arena store landed (arena-store-2 to -6).
+- **Extraction** (2026-09-27 18:58Z): "i honestly love the idea of extract
+  something. is it possible for us to use chicken scheme or something like
+  that that is really epic???????? it's fine if not." The extractor over
+  ACL2's translated exec terms with pluggable backends; Chicken works (rows
+  E1, E2). Whether 6.6.0 ships a served image without ACL2 is still open
+  (below).
+- **Memberships are charged to the history budget; `init` refuses a profile
+  the machine cannot hold** (2026-09-27 17:35Z, "(hi btw good
+  recommendations)", to the lane's two recommendations). No fixed cross-post cap; this settles PKT-582's
+  refusal-by-name default (image-floor-3's preset closes the refusal on real
+  machines).
+- **A real time model for slow disks; rotation without a development hook**
+  (2026-09-27, quoted in the coordinator's summary of 22:49Z: "maybe we need
+  a much more robust scheduler/time/event model, because a laggy/disk that
+  needs maintenance is a real fact of life that we shouldn't sandpaper away
+  with our model"; "How do you feel about this rotation? Maybe we oughta do
+  that? ... not opposed to SCN-077 on all images"). F7 met by bp-rotation;
+  F4's bars adopted 2026-09-28 (D39).
+- **No TCPCLv3** (2026-09-27 01:56Z, PKT-649): "we will not be doing any
+  TCPCLv3 yet, we can just wait right..?" fn waits for ION's TCPCLv4.
+- **OpenBSD durability is documented, not engineered around** (2026-09-27
+  03:28Z, PKT-683, PKT-684, PKT-724): "let's just deal with the fact that we
+  won't be fully durable on openbsd idk.... also not sure what bug you want me
+  to report... is this really a bug?" The operator docs and the A-CRASH-IMAGE
+  assumption name OpenBSD's missing cache flush; the drafted upstream reports
+  are not sent.
+- **A consumer identity bound to a login** (2026-09-27 01:52Z, PKT-642):
+  "(seems reasonable, re identity / login bound)".
+- **The storage tier is decided by measurement** (2026-09-26 18:07Z,
+  PKT-442, PKT-477 (2), PKT-579): "why do you keep asking me about the
+  storage tier for the fresh node? wtf do you even mean by "pool" and "log
+  device"." Lane node-disk timed every disk and chose. hbox's pool:
+  "472GB is plenty lol. leave it" (2026-09-27 07:32Z, PKT-580 (3)); "we can
+  clear out all the old shit from /tank, anything older than 5 weeks that
+  looks like its just build vapor" (03:51Z).
+- **The public node** (PKT-793): Let's Encrypt (2026-09-26 18:07Z "i think we
+  can just do Let's Encrypt"); the fleet on Falkenstein, a cx33 workhorse
+  and a cx23 anchor (2026-09-26 22:43Z, 23:44Z, PKT-794's direction); the
+  deploy (2026-09-27 21:41Z "let's do whatever you want and get a real fn
+  deployed up ... want me to make the A record for fn.fg-goose.online to
+  88.99.126.35 right now ?"; 21:42Z "ok made."). The peering partners and
+  pushing the dregg-infra branches remain hers (below).
+- **The web reader is not Python** (2026-09-27 23:33Z "wait i just noticed the
+  webreader is python?? we shouldn't have that ;)"; 23:35Z "i'm thinking it
+  should be something nice built in ... lispwise"); **Python down by a third
+  to a half** (23:35Z "i wish we could delete more of the python :) like maybe
+  1/3-1/2 of it overall"; row L1).
+- **The site** (2026-09-27 22:10Z): "at most like 1/4 or 1/5 the number of
+  words ... more retro 80s/90s ... like you're browsing a static rendeition
+  of a usegroup that has the site/docs in it"; 22:12Z "yeah we can post to
+  fn.docs on the live node :)". The license: "AGPL-3.0 please" (06:21Z).
+- **Working rules**: no path-of-angels (2026-09-26 23:29Z "we don't need the
+  path of angels thing at all"); no timeboxes (2026-09-27 06:06Z "i want to let
+  things actually just close out, no matter how much wall time it takes");
+  dev is the only branch (23:45Z "make sure to push dev up to the absoulute
+  latest ... i don't wanna be having a sidebranch"); batch validation (2026-09-26
+  15:05Z "highly approved regarding batch validation by convergences");
+  top-level deputies are Fable (2026-09-25 22:50Z).
+
+Closed by these decisions, no answer needed: PKT-235 (mark the live store
+`required`: every node is redeployed fresh); PKT-587 (with no upgrade verb,
+D31's unconditional marker means `init` writes the covering marker, required
+at birth); PKT-432, PKT-440, PKT-444 (2), PKT-471 and the format-10 migration
+plan (rollback, translation and repair of older stores: D38 withdrawn);
+PKT-766 (a heap figure for octet-list history: the page store and the F8
+split replace it; rows B2 and B5 carry the remainder); PKT-792's F6 half (the
+strict bar stands).
+
+### 2026-09-28: still open for ember (each with the number that decides it)
+
+1. **F1's reopen measure** (row J2): the anonymous peak (155 MiB on 02018d9e6,
+   a loaded box) or the settled RSS (94.8 MiB), against the 128 MiB bar.
+2. **F3's bar** (PKT-792, row J2): "well under 7" barriers per POST; the edge
+   measured 0.31-0.47 fsyncs per POST at 117-225 POST/s, the design says
+   0.125 at batch 8.
+3. **F8's admission model** (row B5, building credits by default): credits
+   about 200 MiB with today's image and 120 MiB stripped, records charged to
+   history about 811 MiB, the worst case 1,179 MiB; only credits reach the
+   256 MiB accountable target.
+4. **The aggregate certification budget's tolerance** (row C5): GPT-6
+   proposes 10 percent over the previous convergence's prover-steps sum and
+   heaviest chain; `tools/proof_cost.py` uses 10 percent until set.
+5. **Time-bound** (row P1): push dregg-infra's `migrate-fsn1` (c339cfd) and
+   `fn-public-node-fsn1` (a3b7518) (PKT-794: `tofu plan` on main shows 8 to
+   destroy); which host issues the Let's Encrypt certificate before its
+   renewal clash about 2026-10-01; redeem the public node's invitation before
+   2026-10-04; read and commit Mini's reply
+   (~/dev/minidregg/docs/FN-UPSTREAM-REPLY-2026-09-27.md).
+6. **Peering partners** (row M1, PKT-793): claude46 (OpenBSD 7.9, 1 CPU,
+   2 GB, no SBCL unless Endtropy installs it; else the bundled runtime),
+   spwashi, pug: each one's node name, host:port, certificate, shared groups,
+   and whether it runs fn or INN.
+7. **The node secret at the 6.6.0 redeploy** (PKT-618): copy
+   `STORE/keys/node-secret.key` onto each fresh node (logins keep their
+   Cancel-Lock keys) or start fresh (every login's key changes; earlier posts
+   cancel only by a signed canceller); the count that matters is the public
+   node's logins and pending invitations.
+8. **A served image without ACL2 in 6.6.0** (rows E1, E2): GPT-6 says qualify
+   it separately, read-only first; Chicken is 3.4x from the ACL2 image today.
+9. **MemoryMax as the store size**: 1.5 GB holds 16,384 transactions, 3 GB
+   65,536; the public node runs MemoryMax=2G with 32,768.
+10. **hbox's ZFS ARC cap** (24 GiB, set at runtime, reverted by writing 0):
+    make it persistent or not.
+11. **The Message-ID table** (PKT-774): keep the unkeyed EQUAL table (62-bit
+    sxhash multicollisions unmeasured) or a keyed digest per process or the
+    trie.
+12. **The TLS handshake remainder** (PKT-639): after connection-multiplexing
+    (200 half-open connections take 9 threads, not 207), count a failed
+    handshake against its source address or not.
+13. **Consumers**: whether a non-owner peer's bound requests are ever admitted
+    on the consumer socket (PKT-673); a revoked author's retry settles only
+    through the stored copy (PKT-322, default keep the gate order).
+14. **Compression dictionaries and Bao** (optional per GPT-6): persist
+    dictionaries as configuration events (the lane's recommendation) or not;
+    Bao for resumable large transfers or not.
+15. **Standing defaults ember has not confirmed** (each implemented unless
+    marked; silence keeps them): PKT-164 (the login and posting gates before
+    "already stored"), PKT-165 (no content-holding consumer mode), PKT-173
+    a/b/c, PKT-175 (`HDR :fn-enrollment`; recommended, NOT implemented),
+    PKT-228 (a witness-driven rebase for a restored store; NOT implemented),
+    PKT-229, PKT-296, PKT-127, PKT-323, PKT-584, PKT-586 (article numbers
+    never reused; the high-water mark kept after a cancel), PKT-592 (P-B,
+    P-C, P-D), PKT-670, PKT-688 (1) (no render thread), PKT-746 (the marker is
+    the log's tail).
