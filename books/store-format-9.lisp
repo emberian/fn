@@ -142,11 +142,44 @@
               (fn-frame-parse-value parsed)
             nil))))))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-f9-take-loop (n xs acc)
+  (declare (xargs :guard (and (natp n) (true-listp acc)) :verify-guards nil))
+  (if (zp n)
+      (revappend acc nil)
+    (fn-f9-take-loop (1- n)
+                     (if (consp xs) (cdr xs) nil)
+                     (cons (if (consp xs) (car xs) nil) acc))))
+
 (defun fn-f9-take (n xs)
-  (declare (xargs :guard (natp n)))
-  (if (zp n) nil
-    (cons (if (consp xs) (car xs) nil)
-          (fn-f9-take (1- n) (if (consp xs) (cdr xs) nil)))))
+  (declare (xargs :verify-guards nil :guard (natp n)))
+  (mbe :logic
+       (if (zp n) nil
+         (cons (if (consp xs) (car xs) nil)
+               (fn-f9-take (1- n) (if (consp xs) (cdr xs) nil))))
+       :exec (fn-f9-take-loop n xs nil)))
+
+(local
+ (defthm fn-f9-take-loop-is-revappend
+   (equal (fn-f9-take-loop n xs acc)
+          (revappend acc (fn-f9-take n xs)))
+   :hints (("Goal" :induct (fn-f9-take-loop n xs acc)
+                   :in-theory (union-theories '(fn-f9-take-loop fn-f9-take revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-f9-take-loop)
+
+(verify-guards fn-f9-take
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-f9-take)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-f9-take-loop-is-revappend (acc nil))))))
+
 
 ; The format-10 profile of format-9 values: the word 10, fields 2 to 13,
 ; then fields 15 to 17 (the two dropped fields are 1, the frontier word,

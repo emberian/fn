@@ -177,12 +177,44 @@
           ((zp n) (car xs))
           (t (fn-b3-nthx (- n 1) (cdr xs))))))
 
-(defun fn-b3-firstn (n xs)
-  (declare (xargs :guard t :measure (nfix n)))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-b3-firstn-loop (n xs acc)
+  (declare (xargs :measure (nfix n) :guard (true-listp acc) :verify-guards nil))
   (let ((n (nfix n)))
     (if (or (zp n) (atom xs))
-        nil
-      (cons (car xs) (fn-b3-firstn (- n 1) (cdr xs))))))
+        (revappend acc nil)
+      (fn-b3-firstn-loop (- n 1) (cdr xs) (cons (car xs) acc)))))
+
+(defun fn-b3-firstn (n xs)
+  (declare (xargs :verify-guards nil :guard t :measure (nfix n)))
+  (mbe :logic
+       (let ((n (nfix n)))
+         (if (or (zp n) (atom xs))
+             nil
+           (cons (car xs) (fn-b3-firstn (- n 1) (cdr xs)))))
+       :exec (fn-b3-firstn-loop n xs nil)))
+
+(local
+ (defthm fn-b3-firstn-loop-is-revappend
+   (equal (fn-b3-firstn-loop n xs acc)
+          (revappend acc (fn-b3-firstn n xs)))
+   :hints (("Goal" :induct (fn-b3-firstn-loop n xs acc)
+                   :in-theory (union-theories '(fn-b3-firstn-loop fn-b3-firstn revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-b3-firstn-loop)
+
+(verify-guards fn-b3-firstn
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-b3-firstn)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-b3-firstn-loop-is-revappend (acc nil))))))
+
 
 (defun fn-b3-nthcdrx (n xs)
   (declare (xargs :guard t :measure (nfix n)))
@@ -199,11 +231,42 @@
   (equal (len (fn-b3-firstn n xs))
          (min (nfix n) (len xs))))
 
-(defun fn-b3-fix-octets-walk (m)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-b3-fix-octets-walk-loop (m acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp m)
-      (cons (fn-b3-octet (car m)) (fn-b3-fix-octets-walk (cdr m)))
-    nil))
+      (fn-b3-fix-octets-walk-loop (cdr m) (cons (fn-b3-octet (car m)) acc))
+    (revappend acc nil)))
+
+(defun fn-b3-fix-octets-walk (m)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp m)
+           (cons (fn-b3-octet (car m)) (fn-b3-fix-octets-walk (cdr m)))
+         nil)
+       :exec (fn-b3-fix-octets-walk-loop m nil)))
+
+(local
+ (defthm fn-b3-fix-octets-walk-loop-is-revappend
+   (equal (fn-b3-fix-octets-walk-loop m acc)
+          (revappend acc (fn-b3-fix-octets-walk m)))
+   :hints (("Goal" :induct (fn-b3-fix-octets-walk-loop m acc)
+                   :in-theory (union-theories '(fn-b3-fix-octets-walk-loop fn-b3-fix-octets-walk revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-b3-fix-octets-walk-loop)
+
+(verify-guards fn-b3-fix-octets-walk
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-b3-fix-octets-walk)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-b3-fix-octets-walk-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-b3-fix-octets-walk-of-octets
   (implies (fn-b3-octet-listp m)
@@ -641,32 +704,105 @@
 
 (in-theory (disable fn-b3-le-word))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-b3-words-loop (k octets acc)
+  (declare (xargs :measure (nfix k) :guard (true-listp acc) :verify-guards nil))
+  (if (zp (nfix k))
+      (revappend acc nil)
+    (fn-b3-words-loop (- (nfix k) 1)
+                      (fn-b3-nthcdrx 4 octets)
+                      (cons (fn-b3-le-word (fn-b3-nthx 0 octets)
+                                           (fn-b3-nthx 1 octets)
+                                           (fn-b3-nthx 2 octets)
+                                           (fn-b3-nthx 3 octets))
+                            acc))))
+
 (defun fn-b3-words (k octets)
   ; K little-endian words from the front of OCTETS, the octets past its end
   ; read as zero: a short final block is zero-padded (section 2.1).
-  (declare (xargs :guard t :measure (nfix k)))
-  (if (zp (nfix k))
-      nil
-    (cons (fn-b3-le-word (fn-b3-nthx 0 octets) (fn-b3-nthx 1 octets)
-                         (fn-b3-nthx 2 octets) (fn-b3-nthx 3 octets))
-          (fn-b3-words (- (nfix k) 1) (fn-b3-nthcdrx 4 octets)))))
+  (declare (xargs :verify-guards nil :guard t :measure (nfix k)))
+  (mbe :logic
+       (if (zp (nfix k))
+           nil
+         (cons (fn-b3-le-word (fn-b3-nthx 0 octets) (fn-b3-nthx 1 octets)
+                              (fn-b3-nthx 2 octets) (fn-b3-nthx 3 octets))
+               (fn-b3-words (- (nfix k) 1) (fn-b3-nthcdrx 4 octets))))
+       :exec (fn-b3-words-loop k octets nil)))
+
+(local
+ (defthm fn-b3-words-loop-is-revappend
+   (equal (fn-b3-words-loop k octets acc)
+          (revappend acc (fn-b3-words k octets)))
+   :hints (("Goal" :induct (fn-b3-words-loop k octets acc)
+                   :in-theory (union-theories '(fn-b3-words-loop fn-b3-words revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-b3-words-loop)
+
+(verify-guards fn-b3-words
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-b3-words)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-b3-words-loop-is-revappend (acc nil))))))
+
 
 (defthm fn-b3-words-shape
   (and (fn-b3-word-listp (fn-b3-words k octets))
        (true-listp (fn-b3-words k octets))
        (equal (len (fn-b3-words k octets)) (nfix k))))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
+; same step.
+(defun fn-b3-words-octets-loop (rev acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rev)
+      (fn-b3-words-octets-loop (cdr rev)
+                               (let ((w (fn-b3-word (car rev))))
+                                 (list* (mod w 256)
+                                        (mod (floor w 256) 256)
+                                        (mod (floor w 65536) 256)
+                                        (mod (floor w 16777216) 256)
+                                        acc)))
+    acc))
+
 (defun fn-b3-words-octets (ws)
   ; Each word's four octets, least significant first.
-  (declare (xargs :guard t))
-  (if (consp ws)
-      (let ((w (fn-b3-word (car ws))))
-        (list* (mod w 256)
-               (mod (floor w 256) 256)
-               (mod (floor w 65536) 256)
-               (mod (floor w 16777216) 256)
-               (fn-b3-words-octets (cdr ws))))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp ws)
+           (let ((w (fn-b3-word (car ws))))
+             (list* (mod w 256)
+                    (mod (floor w 256) 256)
+                    (mod (floor w 65536) 256)
+                    (mod (floor w 16777216) 256)
+                    (fn-b3-words-octets (cdr ws))))
+         nil)
+       :exec (fn-b3-words-octets-loop (fn-ag-rev-onto ws nil) nil)))
+
+(local
+ (defthm fn-b3-words-octets-loop-of-rev-onto
+   (equal (fn-b3-words-octets-loop (fn-ag-rev-onto ws zs) nil)
+          (fn-b3-words-octets-loop zs (fn-b3-words-octets ws)))
+   :hints (("Goal" :induct (fn-ag-rev-onto ws zs)
+                   :in-theory (union-theories '(fn-b3-words-octets-loop fn-b3-words-octets fn-ag-rev-onto
+                                                car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-b3-words-octets-loop)
+
+(verify-guards fn-b3-words-octets
+  :hints (("Goal" :in-theory (union-theories '(fn-b3-words-octets fn-b3-words-octets-loop)
+                                                  (union-theories (theory 'minimal-theory)
+                                                                  (executable-counterpart-theory :here)))
+                  :use ((:instance fn-b3-words-octets-loop-of-rev-onto (zs nil))))))
+
 
 (defthm fn-b3-words-octets-shape
   (and (fn-b3-octet-listp (fn-b3-words-octets ws))

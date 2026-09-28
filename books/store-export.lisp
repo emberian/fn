@@ -172,12 +172,52 @@
             (fn-sxp-octets-or-nil name)
             (list 10))))
 
-(defun fn-sxp-manifest-under (f9p entries)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-sxp-manifest-under-loop (f9p entries acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp entries)
-      (append (fn-sxp-manifest-line-under f9p (car entries))
-              (fn-sxp-manifest-under f9p (cdr entries)))
-    nil))
+      (fn-sxp-manifest-under-loop f9p
+                                  (cdr entries)
+                                  (fn-ag-rev-onto (fn-sxp-manifest-line-under f9p
+                                                                              (car entries))
+                                                  acc))
+    (revappend acc nil)))
+
+(defun fn-sxp-manifest-under (f9p entries)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp entries)
+           (append (fn-sxp-manifest-line-under f9p (car entries))
+                   (fn-sxp-manifest-under f9p (cdr entries)))
+         nil)
+       :exec (fn-sxp-manifest-under-loop f9p entries nil)))
+
+(local
+ (defthm fn-sxp-manifest-under-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-sxp-manifest-under-loop-is-revappend
+   (equal (fn-sxp-manifest-under-loop f9p entries acc)
+          (revappend acc (fn-sxp-manifest-under f9p entries)))
+   :hints (("Goal" :induct (fn-sxp-manifest-under-loop f9p entries acc)
+                   :in-theory (union-theories '(fn-sxp-manifest-under-loop fn-sxp-manifest-under revappend car-cons cdr-cons fn-sxp-manifest-under-loop-rev-onto-append)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-sxp-manifest-under-loop)
+
+(verify-guards fn-sxp-manifest-under
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-sxp-manifest-under)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-sxp-manifest-under-loop-is-revappend (acc nil))))))
+
 
 ; What `store export' renders (host/native/io.lisp): this format's lines.
 (defun fn-sxp-manifest (entries)

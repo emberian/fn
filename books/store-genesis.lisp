@@ -76,11 +76,44 @@
   (if (zp n) (if (consp x) (car x) nil)
     (fn-gen-nth (1- n) (if (consp x) (cdr x) nil))))
 
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-gen-take-loop (n xs acc)
+  (declare (xargs :guard (and (natp n) (true-listp acc)) :verify-guards nil))
+  (if (zp n)
+      (revappend acc nil)
+    (fn-gen-take-loop (1- n)
+                      (if (consp xs) (cdr xs) nil)
+                      (cons (if (consp xs) (car xs) nil) acc))))
+
 (defun fn-gen-take (n xs)
-  (declare (xargs :guard (natp n)))
-  (if (zp n) nil
-    (cons (if (consp xs) (car xs) nil)
-          (fn-gen-take (1- n) (if (consp xs) (cdr xs) nil)))))
+  (declare (xargs :verify-guards nil :guard (natp n)))
+  (mbe :logic
+       (if (zp n) nil
+         (cons (if (consp xs) (car xs) nil)
+               (fn-gen-take (1- n) (if (consp xs) (cdr xs) nil))))
+       :exec (fn-gen-take-loop n xs nil)))
+
+(local
+ (defthm fn-gen-take-loop-is-revappend
+   (equal (fn-gen-take-loop n xs acc)
+          (revappend acc (fn-gen-take n xs)))
+   :hints (("Goal" :induct (fn-gen-take-loop n xs acc)
+                   :in-theory (union-theories '(fn-gen-take-loop fn-gen-take revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-gen-take-loop)
+
+(verify-guards fn-gen-take
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-gen-take)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-gen-take-loop-is-revappend (acc nil))))))
+
 
 (defun fn-gen-make (format node schema profile salt created revision)
   (declare (xargs :guard t))
@@ -138,12 +171,47 @@
    "fn-store-10;profile=max-transactions,max-history-octets,max-record-octets,max-article-octets,max-groups-per-article,max-group-name-octets,max-open-suffix,max-consumers,max-bp-rows,max-config-generations,max-credentials,max-policy-members,max-header-fields,max-header-lines,max-header-octets;log=FNLG/1:record=1,batch=2,genesis=3;genesis=fn-g/0;record=FNST;event=fn-r,fn-e;identity=v1;digest=fn-digest"
    'list))
 
-(defun fn-gen-schema-chars-octets (chars)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-gen-schema-chars-octets-loop (chars acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp chars)
-      (cons (if (characterp (car chars)) (char-code (car chars)) 0)
-            (fn-gen-schema-chars-octets (cdr chars)))
-    nil))
+      (fn-gen-schema-chars-octets-loop (cdr chars)
+                                       (cons (if (characterp (car chars))
+                                                 (char-code (car chars))
+                                               0)
+                                             acc))
+    (revappend acc nil)))
+
+(defun fn-gen-schema-chars-octets (chars)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp chars)
+           (cons (if (characterp (car chars)) (char-code (car chars)) 0)
+                 (fn-gen-schema-chars-octets (cdr chars)))
+         nil)
+       :exec (fn-gen-schema-chars-octets-loop chars nil)))
+
+(local
+ (defthm fn-gen-schema-chars-octets-loop-is-revappend
+   (equal (fn-gen-schema-chars-octets-loop chars acc)
+          (revappend acc (fn-gen-schema-chars-octets chars)))
+   :hints (("Goal" :induct (fn-gen-schema-chars-octets-loop chars acc)
+                   :in-theory (union-theories '(fn-gen-schema-chars-octets-loop fn-gen-schema-chars-octets revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-gen-schema-chars-octets-loop)
+
+(verify-guards fn-gen-schema-chars-octets
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-gen-schema-chars-octets)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-gen-schema-chars-octets-loop-is-revappend (acc nil))))))
+
 
 ; This image's schema digest.  A function, not a constant: a defconst never
 ; evaluates the digest's attachment.
