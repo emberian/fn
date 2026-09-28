@@ -65,7 +65,7 @@ class SequenceTests(unittest.TestCase):
             self.assertFalse(rs.is_next(a, b), (a, b))
 
     def test_not_in_sequence(self):
-        for v in ["6.6.7", "6.8.0", "6.6.6.7", "6.7", "6.6.6.66", "1.0.0", "6.7.01"]:
+        for v in ["6.6.7", "6.8.0", "6.6.6.7", "6.7", "6.6.6.66", "0.1.0", "5.0.1", "6.7.01"]:
             with self.assertRaises(ValueError, msg=v):
                 rs.position(v)
 
@@ -73,6 +73,23 @@ class SequenceTests(unittest.TestCase):
         self.assertEqual(rs.newest(["6.7.12", "6.6.6", "6.7.3"]), "6.6.6")
         self.assertEqual(rs.newest(["6.6.5", "6.7.0"]), "6.7.0")
         self.assertIsNone(rs.newest([]))
+
+
+class PrehistoryTests(unittest.TestCase):
+    PRE = ["v1.0.0", "v2.0.0", "v3.0.0", "v4.0.0", "v5.0.0"]
+
+    def test_prehistory_sorts_first_but_is_not_a_release(self):
+        self.assertLess(rs.position("5.0.0"), rs.position("6.6.0"))
+        self.assertTrue(rs.is_prehistory("3.0.0"))
+        self.assertFalse(rs.is_prehistory("6.6.0"))
+        self.assertEqual(rs.first(), "6.6.0")
+
+    def test_cut_check_ignores_prehistory_tags(self):
+        self.assertTrue(rs.cut_check("6.6.0", self.PRE)[0])
+        self.assertTrue(rs.cut_check("6.6.1", self.PRE + ["v6.6.0"])[0])
+        self.assertFalse(rs.cut_check("6.6.1", self.PRE)[0])
+        self.assertFalse(rs.cut_check("5.0.0", self.PRE[:4])[0])
+        self.assertFalse(rs.cut_check("1.0.0", [])[0])
 
 
 class CutCheckTests(unittest.TestCase):
