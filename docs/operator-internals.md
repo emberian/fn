@@ -456,7 +456,22 @@ PRF-271, equated with the streamed decision the host calls by
 `fn-lgr-decide-stream-is-lgr-decide`). It prints `reclaimed=N
 freed-octets=F ...` and one `reclaimed MSGID` line each; `--dry-run` prints
 `dry-run would-reclaim=N ...` and changes nothing; nothing to do is
-`reclaimed=0`. `store checkpoint` publishes the checkpoint alone (the same
+`reclaimed=0`. Beside the store-wide retention rule, a per-group expiry
+policy releases content (Q14, RET-008, books/expiry*.lisp):
+`retention expire {GROUP | *} {clear | [keep DAYS] [default DAYS] [purge
+DAYS] [octets N]}` (INN expire.ctl's keep, default and purge; a posted
+`Expires:` is honoured between keep and purge; `octets` keeps the newest
+articles of the group whose payloads fit; `*` is every group without its
+own; no policy expires nothing). The reclaim's context carries the set the
+policy expires at the reclaim's recorded instant, an article leaves only when
+every group it is filed in expires it, and every holder still keeps what it
+holds; `expired=E` (`would-expire=E`) is the policy's share of the report.
+An expired article is served `430`/`423 article reclaimed`, its Message-ID is
+still refused as a duplicate and its numbers are never reused. Reclamation
+frees bytes, never transactions: `transactions-used` counts the records the
+tombstones keep, so a store whose transaction count is exhausted is not
+brought back by expiry (Q11; the way back today is `store export`, a fresh
+`init` with a larger `--max-transactions`, `store import`). `store checkpoint` publishes the checkpoint alone (the same
 rotate and drop). `store ROOT digest` opens the store read-only (refused while an
 owner runs) and prints ACL2's BLAKE3 digests of the state the open folded
 (`fn-store-sn-replay-digest-report`, host/store-node-host.lisp, over

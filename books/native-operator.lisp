@@ -647,7 +647,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG motd {set LINE [LINE ...] | clear} (LIST MOTD shows one LINE per argument, each at most 256 octets)")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "retention")
-         "usage: fn operator CONFIG retention set {keep-forever | released-by-all-holders | release-after DAYS} (D13: the content-retention rule; keep-forever is the default)")
+         "usage: fn operator CONFIG retention set {keep-forever | released-by-all-holders | release-after DAYS} (D13: the content-retention rule; keep-forever is the default) | retention expire {GROUP | *} {clear | [keep DAYS] [default DAYS] [purge DAYS] [octets N]} (Q14: a group's expiry policy; an Expires: header is honoured between keep and purge; `store reclaim' applies it)")
         ((equal subject "moderation")
          "usage: fn operator CONFIG moderation {list GROUP | approve MESSAGE-ID --moderator LOGIN | reject MESSAGE-ID --moderator LOGIN [--reason TEXT]} (list: the posts held for moderated GROUP in its queue, held, approved or rejected, from the running owner or offline from the store; approve posts the held article with Approved: LOGIN, reject withdraws its envelope; both need the running owner and a LOGIN that moderates the group)")
         ((equal subject "article")
