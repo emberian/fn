@@ -2633,7 +2633,12 @@ preparing another batch (books/owner-commit-fairness.lisp)."
                     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
                       (values (fnn-owner-gate-sched gate)
                               (coerce (fnn-owner-gate-waiting gate) 'list)))
-                  (fnn-core 'fn-otm-committer-wake sched returned queued waiting))))
+                  (progn
+                    ;; Developer image only: the counts a wake read.
+                    (when (and queued (not returned)
+                               (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE"))
+                      (fnn-err "pipeline: wake waiting=~a" waiting))
+                    (fnn-core 'fn-otm-committer-wake sched returned queued waiting)))))
       (unless (member wake '(:collect :start-next :wait))
         (fnn-fault "owner returned a malformed committer wake ~a" wake))
       wake)))

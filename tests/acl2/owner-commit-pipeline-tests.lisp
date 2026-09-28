@@ -96,18 +96,28 @@
 (assert-event (equal (fn-ocp-wake :staged nil t t nil) :collect))
 (assert-event (equal (fn-ocp-wake :staged nil nil nil nil) :wait))
 ;; The added hypothesis (lane durability-bugs): the same staged batch with a
-;; member queued and no next batch open prepares the next one only when no
-;; shut-out class waits; a waiting control (slot 0), poster (2) or transit
-;; (3) request stops it, a waiting reader (1), commit (4) or inspect (5)
-;; does not.
+;; member queued and no next batch open prepares the next one unless a
+;; shut-out class -- control (slot 0), poster (2) or transit (3) -- waits AND
+;; has been passed over by *fn-ocp-pass-bound* :commit quanta in flight.  A
+;; waiting reader (1), commit (4) or inspect (5) never stops it.
 (assert-event (equal (fn-ocp-wake :staged nil nil t nil) :start-next))
 (assert-event (equal (fn-ocp-wake :staged nil nil t t) :wait))
-(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* nil t '(1 0 0 0 0 0)) :wait))
-(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* nil t '(0 0 1 0 0 0)) :wait))
-(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* nil t '(0 0 0 1 0 0)) :wait))
-(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* nil t '(0 5 0 0 1 1)) :start-next))
+(assert-event (equal (fn-ocp-passes *ocpt-s1*) 0))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* nil t '(1 0 0 0 0 0)) :start-next))
+;; Four :commit picks in flight while control waits exhaust the budget.
+(defconst *ocpt-cc* '(1 0 0 0 1 0))
+(defconst *ocpt-p4* (ocpt-pick (ocpt-pick (ocpt-pick (ocpt-pick *ocpt-s1* *ocpt-cc*)
+                                                     *ocpt-cc*) *ocpt-cc*) *ocpt-cc*))
+(assert-event (equal (ocpt-class *ocpt-s1* *ocpt-cc*) :commit))
+(assert-event (equal (fn-ocp-passes *ocpt-p4*) 4))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-p4* nil t '(1 0 0 0 0 0)) :wait))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-p4* nil t '(0 0 1 0 0 0)) :wait))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-p4* nil t '(0 0 0 1 0 0)) :wait))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-p4* nil t '(0 5 0 0 1 1)) :start-next))
+;; A pick at which no shut-out class waits resets the budget.
+(assert-event (equal (fn-ocp-passes (ocpt-pick *ocpt-p4* '(0 1 0 0 0 0))) 0))
 ;; The syncer's return is collected whatever waits.
-(assert-event (equal (fn-ocp-committer-wake *ocpt-s1* t t '(1 0 1 1 0 0)) :collect))
+(assert-event (equal (fn-ocp-committer-wake *ocpt-p4* t t '(1 0 1 1 0 0)) :collect))
 
 ; -----------------------------------------------------------------------------
 ; keystone-audit 2026-09-27.

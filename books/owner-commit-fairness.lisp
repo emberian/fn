@@ -12,10 +12,13 @@
 ; control bound (fn-osch-control-waits-at-most-the-bound) counts only the
 ; picks OUTSIDE flight, and there were none.
 ;
-; The rule.  The committer's wake (fn-ocp-wake, BLOCKED) never prepares a
-; next batch while a shut-out class waits at the gate.  The batches already
-; sealed or open complete, the owner leaves flight, and the four classes'
-; cyclic pick serves the waiter.
+; The rule.  The committer's wake (fn-ocp-wake, BLOCKED) prepares no next
+; batch once a shut-out class has waited through *fn-ocp-pass-bound* (4)
+; :commit quanta in flight (the pass budget, books/owner-commit-pipeline.lisp:
+; background waiters -- the feeds' transit ticks, a maintenance step -- arrive
+; during nearly every barrier, and stopping at the first would unpipeline every
+; batch).  The batches already sealed or open complete, the owner leaves
+; flight, and the four classes' cyclic pick serves the waiter.
 ;
 ; The bound (KEYSTONE fn-ocf-control-waits-at-most-the-bound).  The subject is
 ; the host's scheduling surface: fn-otm-next (host/native/owner.lisp
@@ -35,11 +38,12 @@
 ; Then before the first control pick (or the owner's stop), the quanta that
 ; are neither :inspect, nor a :reader or an empty START-NEXT while a batch is
 ; in flight, number at most fn-ocf-potential of the starting value, which is
-; at most 10 (fn-ocf-potential-at-most-ten): at most 3 of the four classes'
-; (PRF-248), at most one START outside flight, and the COMPLETEs of at most
-; three batches.  And at most TWO batches are sealed in that time
-; (fn-ocf-control-waits-at-most-two-seals): the next batch already open, and
-; one START that was already due.
+; at most 22 (fn-ocf-potential-at-most-twenty-two): at most 3 of the four
+; classes' (PRF-248), at most one START outside flight, the COMPLETEs of the
+; batches, and the START-NEXTs the pass budget still allows.  And at most SIX
+; batches are sealed in that time (fn-ocf-seal-potential-at-most-six): the
+; next batch already open, one START that was already due, and one per
+; budgeted pass.
 ;
 ; What is not counted, and why it is bounded otherwise:
 ;   - :inspect quanta alternate (fn-ocs-inspect-waits-at-most-one, PRF-267);
@@ -48,10 +52,11 @@
 ;     so readers delay the waiter by at most one quantum per barrier;
 ;   - a START-NEXT that took nobody is an owner quantum with no I/O
 ;     (books/owner-time-model.lisp's read bound counts it the same way).
-; So a control request's wall-clock wait is at most three barriers
+; So a control request's wall-clock wait is at most seven barriers
 ; (books/owner-time-model.lisp bounds each by the disk's deadline H, after
-; which the stall answers) plus ten owner quanta plus the interleaved
-; :inspect quanta and one reader quantum per barrier.
+; which the stall answers) plus 22 owner quanta plus the interleaved
+; :inspect quanta and one reader quantum per barrier (in practice two or
+; three barriers: the budget is four quanta, two per budgeted batch).
 (in-package "ACL2")
 (include-book "owner-time-model")
 
@@ -176,13 +181,19 @@
        (cond ((eq p :staged) 2) ((fn-ocs-in-flight-p p) 1) (t 0)))
      (if (fn-otm-open-next s) 2 0)))
 
+; K the in-flight :commit quanta the pass budget still allows while a
+; shut-out class waits.
+(defun fn-ocf-k (s)
+  (declare (xargs :guard t))
+  (nfix (- *fn-ocp-pass-bound* (fn-ocp-passes (fn-otm-ocp s)))))
+
 (defun fn-ocf-potential (s)
   (declare (xargs :guard t))
-  (+ (fn-ocf-m s) (* 3 (fn-ocf-due s)) (fn-ocf-b s)))
+  (+ (fn-ocf-m s) (* 3 (fn-ocf-due s)) (fn-ocf-b s) (* 3 (fn-ocf-k s))))
 
 (defun fn-ocf-seal-potential (s)
   (declare (xargs :guard t))
-  (+ (fn-ocf-due s) (if (fn-otm-open-next s) 1 0)))
+  (+ (fn-ocf-due s) (if (fn-otm-open-next s) 1 0) (fn-ocf-k s)))
 
 ; =============================================================================
 ; Theorems.
@@ -367,13 +378,56 @@
   (equal (fn-osch-waits 0 (fn-ocs-w4 w)) (fn-osch-waits 0 w))
   :hints (("Goal" :in-theory (enable fn-ocs-w4 fn-osch-waits fn-osch-nth))))
 
-; The rule, over the host's wake: while control waits the committer never
-; prepares another batch.
-(defthm fn-ocf-no-start-next-while-control-waits
-  (implies (posp (fn-osch-waits 0 w))
-           (not (equal (fn-otm-committer-wake s r q w) :start-next)))
+; The pass budget, over the host's entries: the committer's START-NEXT while
+; control waits spends it; the gate's :commit picks in flight while control
+; waits count it; the commit's events keep it.
+(defthm fn-ocf-start-next-while-control-waits-is-within-the-budget
+  (implies (and (posp (fn-osch-waits 0 w))
+                (equal (fn-otm-committer-wake s r q w) :start-next))
+           (< (fn-ocp-passes (fn-otm-ocp s)) *fn-ocp-pass-bound*))
+  :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-otm-committer-wake fn-ocp-committer-wake fn-ocp-wake
                                      fn-ocp-excluded-waits-p))))
+
+(defthm fn-ocf-passes-of-commit-event
+  (equal (fn-ocp-passes (fn-otm-ocp (mv-nth 1 (fn-otm-commit-event s e))))
+         (fn-ocp-passes (fn-otm-ocp s)))
+  :hints (("Goal" :in-theory (enable fn-otm-commit-event fn-ocp-commit-event fn-ocp-make
+                                     fn-ocp-passes fn-otm-make fn-otm-ocp))))
+
+(defthm fn-ocf-passes-of-next-while-control-waits
+  (implies (posp (fn-osch-waits 0 w))
+           (equal (fn-ocp-passes (fn-otm-ocp (mv-nth 1 (fn-otm-next s w))))
+                  (if (and (equal (mv-nth 0 (fn-otm-next s w)) :commit)
+                           (fn-ocs-in-flight-p (fn-otm-phase s)))
+                      (+ 1 (fn-ocp-passes (fn-otm-ocp s)))
+                    (fn-ocp-passes (fn-otm-ocp s)))))
+  :hints (("Goal" :in-theory (e/d (fn-otm-next fn-ocp-next fn-ocp-make fn-ocp-passes fn-otm-make
+                                   fn-otm-ocp fn-otm-phase fn-ocp-excluded-waits-p)
+                                  (fn-ocs-next fn-ocs-in-flight-p fn-ocs-phase)))))
+
+; A START-NEXT that took members opens the next batch: two more batch units,
+; no seal.
+(defthm fn-ocf-events-next-started
+  (implies (fn-ocs-in-flight-p (fn-otm-phase s))
+           (mv-let (stopped seals s3) (fn-ocf-events s '(:next-started))
+             (and (equal (fn-ocf-ocm s3) (fn-ocf-ocm s))
+                  (equal seals 0)
+                  (implies (not stopped)
+                           (and (<= (fn-ocf-b s3) (+ 2 (fn-ocf-b s)))
+                                (<= (if (fn-otm-open-next s3) 1 0)
+                                    (+ 1 (if (fn-otm-open-next s) 1 0))))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ocf-events fn-ocf-b fn-ocp-commit-step fn-ocs-in-flight-p)
+                                  (fn-otm-commit-event fn-ocf-ocm fn-otm-phase fn-otm-open-next)))))
+
+(defthm fn-ocf-passes-of-events
+  (equal (fn-ocp-passes (fn-otm-ocp (mv-nth 2 (fn-ocf-events s events))))
+         (fn-ocp-passes (fn-otm-ocp s)))
+  :hints (("Goal" :induct (fn-ocf-events s events)
+           :in-theory (union-theories '(fn-ocf-events fn-ocf-passes-of-commit-event
+                                        car-cons cdr-cons mv-nth zp-open)
+                                      (theory 'minimal-theory)))))
 
 (local
  (defthm fn-ocf-osch-next-not-inspect
@@ -451,13 +505,14 @@
   :hints (("Goal"
            :cases ((fn-ocs-in-flight-p (fn-otm-phase s)))
            :in-theory (e/d (fn-ocf-step fn-ocf-quantum-okp fn-ocf-countedp fn-ocf-potential
-                            fn-ocf-seal-potential fn-ocf-m fn-ocf-due)
+                            fn-ocf-seal-potential fn-ocf-m fn-ocf-due fn-ocf-k)
                            (fn-otm-next fn-ocf-events fn-ocf-ocm fn-otm-phase fn-otm-open-next
                             fn-ocm-next fn-ocs-w4 fn-ocs-commit-waits-p fn-osch-measure
                             fn-osch-cursor fn-ocm-sched fn-ocm-skipped fn-osch-waits
                             fn-otm-committer-wake fn-ocs-in-flight-p fn-otm-next-is-ocp-next
                             fn-ocp-next-is-ocs-next fn-otm-commit-event-is-ocp-commit-event
-                            fn-ocs-next fn-ocp-next fn-osch-pick fn-ocf-b))
+                            fn-ocs-next fn-ocp-next fn-osch-pick fn-ocf-b fn-ocp-passes
+                            fn-otm-ocp))
            :use ((:instance fn-ocf-idle-pick-potential (w (fn-ocf-item-w item)))
                  (:instance fn-ocf-next-in-flight (w (fn-ocf-item-w item)))
                  (:instance fn-ocf-events-in-flight
@@ -469,6 +524,12 @@
                  (:instance fn-ocf-events-seals
                             (s (mv-nth 1 (fn-otm-next s (fn-ocf-item-w item))))
                             (events (fn-ocf-item-events item)))
+                 (:instance fn-ocf-passes-of-next-while-control-waits (w (fn-ocf-item-w item)))
+                 (:instance fn-ocf-events-next-started
+                            (s (mv-nth 1 (fn-otm-next s (fn-ocf-item-w item)))))
+                 (:instance fn-ocf-start-next-while-control-waits-is-within-the-budget
+                            (s (mv-nth 1 (fn-otm-next s (fn-ocf-item-w item))))
+                            (w (fn-ocf-item-w item)) (r nil) (q t))
                  (:instance fn-ocf-due-bounds (s s))
                  (:instance fn-ocf-b-bounds (s s))
                  (:instance fn-ocf-b-bounds (s (mv-nth 1 (fn-otm-next s (fn-ocf-item-w item)))))))))
@@ -488,16 +549,21 @@
   (natp (fn-ocf-seal-potential s))
   :rule-classes :type-prescription)
 
-(defthm fn-ocf-potential-at-most-ten
-  (<= (fn-ocf-potential s) 10)
+(defthm fn-ocf-k-bounds
+  (and (natp (fn-ocf-k s)) (<= (fn-ocf-k s) *fn-ocp-pass-bound*))
+  :rule-classes ((:linear :corollary (<= (fn-ocf-k s) *fn-ocp-pass-bound*))
+                 (:type-prescription :corollary (natp (fn-ocf-k s)))))
+
+(defthm fn-ocf-potential-at-most-twenty-two
+  (<= (fn-ocf-potential s) 22)
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-ocf-b fn-ocf-due)
+  :hints (("Goal" :in-theory (disable fn-ocf-b fn-ocf-due fn-ocf-k)
            :use ((:instance fn-ocf-b-bounds) (:instance fn-ocf-due-bounds)))))
 
-(defthm fn-ocf-seal-potential-at-most-two
-  (<= (fn-ocf-seal-potential s) 2)
+(defthm fn-ocf-seal-potential-at-most-six
+  (<= (fn-ocf-seal-potential s) 6)
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-ocf-due) :use ((:instance fn-ocf-due-bounds)))))
+  :hints (("Goal" :in-theory (disable fn-ocf-due fn-ocf-k) :use ((:instance fn-ocf-due-bounds)))))
 
 (defthm fn-ocf-delay-at-most-the-potential
   (implies (fn-ocf-okp s items)
@@ -527,15 +593,16 @@
 ; fn-otm-committer-wake (fnn-owner-commit-wake, and its recheck inside the
 ; START-NEXT quantum).  From ANY scheduler value, while a control request
 ; waits at every pick and the committer's quanta take the host's shapes,
-; before that request is admitted (or the owner stops): at most TEN quanta
+; before that request is admitted (or the owner stops): at most 22 quanta
 ; that are not :inspect, not an in-flight :reader and not an empty
-; START-NEXT, and at most TWO batches sealed.
+; START-NEXT, and at most SIX batches sealed.
 (defthm fn-ocf-control-waits-at-most-the-bound
   (implies (fn-ocf-okp s items)
-           (and (<= (fn-ocf-delay s items) 10)
-                (<= (fn-ocf-seals s items) 2)))
+           (and (<= (fn-ocf-delay s items) 22)
+                (<= (fn-ocf-seals s items) 6)))
   :hints (("Goal" :in-theory (disable fn-ocf-delay fn-ocf-seals fn-ocf-okp fn-ocf-potential
                                       fn-ocf-seal-potential))))
 
 (in-theory (disable fn-ocf-events fn-ocf-step fn-ocf-delay fn-ocf-seals fn-ocf-okp
-                    fn-ocf-potential fn-ocf-seal-potential fn-ocf-m fn-ocf-due fn-ocf-b))
+                    fn-ocf-potential fn-ocf-seal-potential fn-ocf-m fn-ocf-due fn-ocf-b
+                    fn-ocf-k))

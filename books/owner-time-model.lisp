@@ -1226,7 +1226,7 @@
 ;   - the commit class waits only when the committer's wake is :start-next
 ;     (fn-ocp-committer-wake with the syncer NOT returned, a member
 ;     queued and, since lane durability-bugs, no control, poster or transit
-;     request waiting at that pick: host/native/owner.lisp fnn-owner-commit-pipeline enters the
+;     request waiting at that pick past its pass budget: host/native/owner.lisp fnn-owner-commit-pipeline enters the
 ;     gate as :commit during a barrier only then; its COMPLETE is entered
 ;     only after the syncer returned, which is where the walk ends).
 ; The event a :commit reports is any: the bound does not depend on what the
@@ -1377,8 +1377,11 @@
  (defthm fn-otm-wake-start-next
    (equal (equal (fn-otm-committer-wake s nil t w) :start-next)
           (and (equal (fn-otm-phase s) :staged) (not (fn-otm-open-next s))
-               (not (fn-ocp-excluded-waits-p w))))
-   :hints (("Goal" :in-theory (enable fn-otm-committer-wake fn-ocp-committer-wake fn-ocp-wake)))))
+               (not (and (fn-ocp-excluded-waits-p w)
+                         (<= *fn-ocp-pass-bound* (fn-ocp-passes (fn-otm-ocp s)))))))
+   :hints (("Goal" :in-theory (e/d (fn-otm-committer-wake fn-ocp-committer-wake fn-ocp-wake
+                                    fn-otm-phase fn-otm-open-next)
+                                   (fn-ocp-excluded-waits-p fn-ocp-passes))))))
 
 (local (in-theory (disable fn-otm-next fn-otm-commit-event fn-otm-committer-wake
                            fn-otm-next-is-ocp-next fn-otm-commit-event-is-ocp-commit-event

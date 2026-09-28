@@ -563,15 +563,19 @@ batch behind every barrier, so under sustained POST load a batch was always
 in flight and a control, poster or transit request was never admitted. Now
 the committer's wake (`fn-ocp-wake`, BLOCKED; host
 `fnn-owner-commit-wake`, which reads the gate's waiting counts, and again
-inside the START-NEXT quantum) prepares no next batch while one of those
-classes waits, and the keystone `fn-ocf-control-waits-at-most-the-bound`
-(PRF-901, books/owner-commit-fairness.lisp) holds over the host's pick,
-wake and commit events from any scheduler value: while a control request
-waits at every pick, before it is admitted (or the owner stops) at most ten
-quanta run that are not `:inspect`, a reader during a barrier or a
-START-NEXT that took nobody, and at most two batches are sealed (the one
-already open behind the barrier and one START already due), so its wait is
-at most three barriers plus those quanta. A quantum is one bounded semantic
+inside the START-NEXT quantum) prepares no next batch once one of those
+classes has waited through four `:commit` quanta in flight (the pass budget
+`*fn-ocp-pass-bound*`, counted by the gate's pick and reset at a pick where
+none waits: background waiters, the feeds' transit ticks and maintenance
+steps, arrive during nearly every barrier, and stopping at the first would
+unpipeline every batch), and the keystone
+`fn-ocf-control-waits-at-most-the-bound` (PRF-901,
+books/owner-commit-fairness.lisp) holds over the host's pick, wake and
+commit events from any scheduler value: while a control request waits at
+every pick, before it is admitted (or the owner stops) at most 22 quanta run
+that are not `:inspect`, a reader during a barrier or a START-NEXT that took
+nobody, and at most six batches are sealed, so its wait is at most seven
+barriers plus those quanta (in practice two or three). A quantum is one bounded semantic
 step, unchanged by this requirement (a served read with its drain, one control request, one transit
 step); the journal writes stay inside it. The exposure charge (PRF-161) is
 decided in the same critical section as the step it admits. What leaves the

@@ -42,8 +42,10 @@
 (include-book "owner-commit-steps")
 
 ; -----------------------------------------------------------------------------
-; The scheduler value: (OCS NEXT), OCS books/owner-commit-steps.lisp's value,
-; NEXT whether a next batch is open behind the batch in flight.
+; The scheduler value: (OCS NEXT PASSES), OCS books/owner-commit-steps.lisp's
+; value, NEXT whether a next batch is open behind the batch in flight, PASSES
+; the :commit quanta run in flight while a control, poster or transit request
+; waited, since a pick at which none waited (lane durability-bugs).
 
 (defun fn-ocp-ocs (s)
   (declare (xargs :guard t))
@@ -53,13 +55,24 @@
   (declare (xargs :guard t))
   (if (and (consp s) (consp (cdr s)) (cadr s)) t nil))
 
-(defun fn-ocp-make (ocs next)
+(defun fn-ocp-passes (s)
   (declare (xargs :guard t))
-  (list ocs (if next t nil)))
+  (if (and (consp s) (consp (cdr s)) (consp (cddr s))) (nfix (caddr s)) 0))
+
+(defun fn-ocp-make (ocs next passes)
+  (declare (xargs :guard t))
+  (list ocs (if next t nil) (nfix passes)))
 
 (defun fn-ocp-init ()
   (declare (xargs :guard t))
-  (fn-ocp-make (fn-ocs-init) nil))
+  (fn-ocp-make (fn-ocs-init) nil 0))
+
+; While a shut-out class waits, the pipeline may still run this many :commit
+; quanta in flight (a START-NEXT and its COMPLETE are two) before it stops
+; preparing batches: background waiters that arrive during every barrier (the
+; feeds' transit ticks, a maintenance step) cost one unpipelined barrier per
+; this many quanta, not one per batch.
+(defconst *fn-ocp-pass-bound* 4)
 
 ; -----------------------------------------------------------------------------
 ; The commit's steps.  PHASE is the ocs phase (:idle :staged :fenced
@@ -113,14 +126,16 @@
 
 ; The committer's wake while a batch is in flight: RETURNED whether the
 ; syncer returned, QUEUED whether a member waits, BLOCKED whether a class the
-; batch in flight shuts out waits at the gate.  :collect (report the sync's
+; batch in flight shuts out waits at the gate and has already been passed over
+; by *fn-ocp-pass-bound* :commit quanta in flight.  :collect (report the sync's
 ; word in a :commit quantum), :start-next, or :wait.
 ;
 ; Lane durability-bugs (PKT-700/701, scheduler-3's finding): with no BLOCKED
 ; the pipeline under sustained POST load always had a batch in flight -- the
 ; COMPLETE sealed the next batch, which a START-NEXT had prepared behind the
 ; barrier -- so a control, poster or transit waiter was never admitted.  A
-; waiting shut-out class now stops the pipeline from preparing another batch:
+; shut-out class that has waited through *fn-ocp-pass-bound* in-flight :commit
+; quanta now stops the pipeline from preparing another batch:
 ; the batches already sealed or open complete and the owner leaves flight,
 ; where books/owner-scheduler.lisp's cyclic pick (PRF-248) serves it.  The
 ; bound is books/owner-commit-fairness.lisp's.
@@ -137,12 +152,17 @@
 (defun fn-ocp-next (s w)
   (declare (xargs :guard t))
   (mv-let (class ocs) (fn-ocs-next (fn-ocp-ocs s) w)
-    (mv class (fn-ocp-make ocs (fn-ocp-open-next s)))))
+    (mv class (fn-ocp-make ocs (fn-ocp-open-next s)
+                           (cond ((not (fn-ocp-excluded-waits-p w)) 0)
+                                 ((and (eq class :commit)
+                                       (fn-ocs-in-flight-p (fn-ocs-phase (fn-ocp-ocs s))))
+                                  (+ 1 (fn-ocp-passes s)))
+                                 (t (fn-ocp-passes s)))))))
 
 (defun fn-ocp-observe (s class hold-ms wait-ms)
   (declare (xargs :guard t))
   (fn-ocp-make (fn-ocs-observe (fn-ocp-ocs s) class hold-ms wait-ms)
-               (fn-ocp-open-next s)))
+               (fn-ocp-open-next s) (fn-ocp-passes s)))
 
 (defun fn-ocp-health-lines (s)
   (declare (xargs :guard t))
@@ -154,12 +174,14 @@
     (mv-let (action phase next)
       (fn-ocp-commit-step (fn-ocs-phase ocs) (fn-ocp-open-next s) event)
       (mv action (fn-ocp-make (fn-ocs-make (fn-ocs-ocm ocs) phase (fn-ocs-lasti ocs))
-                              next)))))
+                              next (fn-ocp-passes s))))))
 
 (defun fn-ocp-committer-wake (s returned queued w)
   (declare (xargs :guard t))
   (fn-ocp-wake (fn-ocs-phase (fn-ocp-ocs s)) (fn-ocp-open-next s)
-               (if returned t nil) (if queued t nil) (fn-ocp-excluded-waits-p w)))
+               (if returned t nil) (if queued t nil)
+               (and (fn-ocp-excluded-waits-p w)
+                    (<= *fn-ocp-pass-bound* (fn-ocp-passes s)))))
 
 ; =============================================================================
 ; Theorems.
@@ -236,7 +258,8 @@
 ; A waiting control, poster or transit request stops the pipeline: the
 ; committer's wake never prepares another batch while one waits.
 (defthm fn-ocp-no-start-next-while-a-shut-out-class-waits
-  (implies (fn-ocp-excluded-waits-p w)
+  (implies (and (fn-ocp-excluded-waits-p w)
+                (<= *fn-ocp-pass-bound* (fn-ocp-passes s)))
            (not (equal (fn-ocp-committer-wake s returned queued w) :start-next))))
 
 ; KEYSTONE.  A next batch is open only while the ocs phase is in flight, so

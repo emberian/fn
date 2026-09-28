@@ -47,7 +47,10 @@
 (assert-event (equal (ocft-class *ocft-open* *ocft-crc*) :commit))
 (defconst *ocft-w1* (ocft-quantum *ocft-open* *ocft-crc* '(:fenced :completed)))
 (assert-event (and (equal (fn-otm-phase *ocft-w1*) :staged) (not (fn-otm-open-next *ocft-w1*))))
-(assert-event (equal (fn-otm-committer-wake *ocft-w1* nil t *ocft-crc*) :wait))
+;; The pass budget: one :commit quantum ran in flight while control waited,
+;; so a START-NEXT is still allowed (*fn-ocp-pass-bound* = 4) ...
+(assert-event (equal (fn-ocp-passes (fn-otm-ocp *ocft-w1*)) 1))
+(assert-event (equal (fn-otm-committer-wake *ocft-w1* nil t *ocft-crc*) :start-next))
 (assert-event (equal (ocft-class *ocft-w1* *ocft-cr*) :reader))
 (defconst *ocft-w2* (ocft-pick *ocft-w1* *ocft-cr*))
 (assert-event (equal (ocft-class *ocft-w2* *ocft-crc*) :commit))
@@ -58,8 +61,8 @@
 ; batch's), both within the keystone's bound.
 (assert-event (equal (fn-ocf-delay *ocft-open* *ocft-walk*) 2))
 (assert-event (equal (fn-ocf-seals *ocft-open* *ocft-walk*) 1))
-(assert-event (and (<= (fn-ocf-delay *ocft-open* *ocft-walk*) 10)
-                   (<= (fn-ocf-seals *ocft-open* *ocft-walk*) 2)))
+(assert-event (and (<= (fn-ocf-delay *ocft-open* *ocft-walk*) 22)
+                   (<= (fn-ocf-seals *ocft-open* *ocft-walk*) 6)))
 
 ; --- The starvation counterexample: the policy BEFORE this lane (the wake
 ; ignored the waiting control request).  Under it the committer prepares a
@@ -97,26 +100,29 @@
            (list *ocft-crc* '(:fenced :completed))
            (ocft-unfair (- n 1)))))
 
-(defconst *ocft-starve* (ocft-unfair 6))
+(defconst *ocft-starve* (ocft-unfair 12))
 (assert-event (ocft-old-okp *ocft-w1* *ocft-starve*))
 (assert-event (not (fn-ocf-okp *ocft-w1* *ocft-starve*)))
-(assert-event (equal (fn-ocf-seals *ocft-w1* *ocft-starve*) 6))
-(assert-event (equal (fn-ocf-delay *ocft-w1* *ocft-starve*) 12))
-(assert-event (not (<= (fn-ocf-delay *ocft-w1* *ocft-starve*) 10)))
+(assert-event (equal (fn-ocf-seals *ocft-w1* *ocft-starve*) 12))
+(assert-event (equal (fn-ocf-delay *ocft-w1* *ocft-starve*) 24))
+(assert-event (not (<= (fn-ocf-delay *ocft-w1* *ocft-starve*) 22)))
+(assert-event (not (<= (fn-ocf-seals *ocft-w1* *ocft-starve*) 6)))
 
 ; --- Hypothesis removal: control does NOT wait at the picks.  Every other
 ; clause holds (the wake is :start-next at each START-NEXT, the shapes are
 ; the host's), and the conclusion fails: without a waiter nothing stops the
 ; pipeline, which is the point.
-(defconst *ocft-nocontrol*
-  (list (list *ocft-rc* '(:next-started)) (list *ocft-rc* '(:fenced :completed))
-        (list *ocft-rc* '(:next-started)) (list *ocft-rc* '(:fenced :completed))
-        (list *ocft-rc* '(:next-started)) (list *ocft-rc* '(:fenced :completed))))
+(defun ocft-busy (n)
+  (if (zp n)
+      nil
+    (list* (list *ocft-rc* '(:next-started)) (list *ocft-rc* '(:fenced :completed))
+           (ocft-busy (- n 1)))))
+(defconst *ocft-nocontrol* (ocft-busy 7))
 (assert-event (not (posp (fn-osch-waits 0 *ocft-rc*))))
 (assert-event (equal (fn-otm-committer-wake *ocft-w1* nil t *ocft-rc*) :start-next))
 (assert-event (not (fn-ocf-okp *ocft-w1* *ocft-nocontrol*)))
-(assert-event (equal (fn-ocf-seals *ocft-w1* *ocft-nocontrol*) 3))
-(assert-event (not (<= (fn-ocf-seals *ocft-w1* *ocft-nocontrol*) 2)))
+(assert-event (equal (fn-ocf-seals *ocft-w1* *ocft-nocontrol*) 7))
+(assert-event (not (<= (fn-ocf-seals *ocft-w1* *ocft-nocontrol*) 6)))
 
 ; --- Hypothesis removal: a :commit quantum outside the host's shapes (a
 ; START that seals, completes and starts again inside one quantum).  Control
@@ -130,14 +136,13 @@
 (assert-event (equal (fn-ocm-skipped (fn-ocf-ocm *ocft-due*)) 4))
 (assert-event (equal (ocft-class *ocft-due* *ocft-crc*) :commit))
 (defconst *ocft-bad-shape*
-  (list (list *ocft-crc* '(:started :fenced :completed :started :fenced :completed :started))))
+  (list (list *ocft-crc* '(:started :fenced :completed :started :fenced :completed :started :fenced :completed :started :fenced :completed :started :fenced :completed :started :fenced :completed :started))))
 (assert-event (posp (fn-osch-waits 0 *ocft-crc*)))
 (assert-event (not (fn-ocf-quantum-okp (ocft-pick *ocft-due* *ocft-crc*) *ocft-crc*
-                                       '(:started :fenced :completed :started :fenced
-                                         :completed :started))))
+                                       '(:started :fenced :completed :started :fenced :completed :started :fenced :completed :started :fenced :completed :started :fenced :completed :started :fenced :completed :started))))
 (assert-event (not (fn-ocf-okp *ocft-due* *ocft-bad-shape*)))
-(assert-event (equal (fn-ocf-seals *ocft-due* *ocft-bad-shape*) 3))
-(assert-event (not (<= (fn-ocf-seals *ocft-due* *ocft-bad-shape*) 2)))
+(assert-event (equal (fn-ocf-seals *ocft-due* *ocft-bad-shape*) 7))
+(assert-event (not (<= (fn-ocf-seals *ocft-due* *ocft-bad-shape*) 6)))
 ; The same due START in the host's shape: one seal, then the control pick
 ; after its COMPLETE.
 (defconst *ocft-good-shape*
@@ -146,3 +151,24 @@
 (assert-event (fn-ocf-okp *ocft-due* *ocft-good-shape*))
 (assert-event (equal (fn-ocf-seals *ocft-due* *ocft-good-shape*) 1))
 (assert-event (equal (fn-ocf-delay *ocft-due* *ocft-good-shape*) 2))
+
+;; --- The budget spent: from *ocft-w1* (one pass) the committer still
+; prepares a batch behind the barrier while control waits; each START-NEXT
+; and COMPLETE is a :commit quantum in flight that counts a pass; at four the
+; wake stops the pipeline, the batches complete, the owner leaves flight and
+; control is admitted.
+(defconst *ocft-budget-walk*
+  (list (list *ocft-crc* '(:next-started)) (list *ocft-crc* '(:fenced :completed))
+        (list *ocft-crc* '(:fenced :completed)) (list *ocft-crc* nil)))
+(assert-event (fn-ocf-okp *ocft-w1* *ocft-budget-walk*))
+(assert-event (equal (fn-ocf-seals *ocft-w1* *ocft-budget-walk*) 1))
+(assert-event (equal (fn-ocf-delay *ocft-w1* *ocft-budget-walk*) 3))
+(defconst *ocft-b3* (ocft-quantum (ocft-quantum *ocft-w1* *ocft-crc* '(:next-started))
+                                  *ocft-crc* '(:fenced :completed)))
+(assert-event (equal (fn-ocp-passes (fn-otm-ocp *ocft-b3*)) 3))
+(assert-event (equal (fn-otm-phase *ocft-b3*) :staged))
+(defconst *ocft-b4* (ocft-pick *ocft-b3* *ocft-crc*))
+(assert-event (equal (fn-ocp-passes (fn-otm-ocp *ocft-b4*)) 4))
+(assert-event (equal (fn-otm-committer-wake *ocft-b4* nil t *ocft-crc*) :wait))
+; A START-NEXT at the fourth pass is outside the hypothesis (its wake is :wait).
+(assert-event (not (fn-ocf-okp *ocft-b3* (list (list *ocft-crc* '(:next-started))))))

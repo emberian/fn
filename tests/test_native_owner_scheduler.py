@@ -457,10 +457,11 @@ class SchedulerNativeTests(unittest.TestCase):
         # three barriers plus its own quantum, while the posters keep going.
         self.reap(self.owner)
         hold = 1.5
-        self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000))},
+        self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000)),
+                                       "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE": "1"},
                                       image=DEVELOPER)
         stop = threading.Event()
-        errors, accepted = [], []
+        errors, accepted, deferred = [], [], []
 
         def poster(index):
             try:
@@ -468,8 +469,26 @@ class SchedulerNativeTests(unittest.TestCase):
                 with conn:
                     n = 0
                     while not stop.is_set():
-                        self.post(stream, b"load-%d-%d@example.invalid" % (index, n),
-                                  b"sustained %d %d\r\n" % (index, n))
+                        stream.write(b"POST\r\n")
+                        stream.flush()
+                        line = stream.readline()
+                        if line.startswith(b"440"):
+                            # RFC 3977 6.3.1: posting not permitted now
+                            # (the in-flight memory admission); try later.
+                            deferred.append(line)
+                            time.sleep(0.2)
+                            continue
+                        if not line.startswith(b"340"):
+                            errors.append("poster %d: POST answered %r" % (index, line))
+                            return
+                        stream.write(b"From: author@example.invalid\r\nNewsgroups: fn.test\r\n"
+                                     b"Subject: load\r\nMessage-ID: <load-%d-%d@example.invalid>"
+                                     b"\r\n\r\nsustained\r\n.\r\n" % (index, n))
+                        stream.flush()
+                        line = stream.readline()
+                        if not line.startswith(b"240"):
+                            errors.append("poster %d: article answered %r" % (index, line))
+                            return
                         accepted.append(time.monotonic())
                         n += 1
                     stream.write(b"QUIT\r\n")
@@ -487,20 +506,24 @@ class SchedulerNativeTests(unittest.TestCase):
             created = self.operator("group", "create", "fn.fair", timeout=60)
             answered = time.monotonic() - started
             during = sum(1 for t in accepted if started <= t <= started + answered)
-            time.sleep(hold)
+            time.sleep(2 * hold)
             after = sum(1 for t in accepted if t > started + answered)
         finally:
             stop.set()
             for thread in threads:
                 thread.join(timeout=60)
+        self.reap(self.owner)
+        trace = [l for l in self.owner.stderr.since(0).splitlines() if b"pipeline" in l]
+        print("pipeline trace (last 12): %r" % trace[-12:])
         print("control under sustained POST (barrier %.1fs): group create answered in %.3fs; "
-              "POSTs accepted while it waited %d, in the next %.1fs %d; total %d"
-              % (hold, answered, during, hold, after, len(accepted)))
+              "POSTs accepted while it waited %d, in the next %.1fs %d; total %d; 440 deferrals %d"
+              % (hold, answered, during, 2 * hold, after, len(accepted), len(deferred)))
         self.assertEqual(errors, [])
         self.assertEqual(created.returncode, 0, created.stderr.decode())
-        # Three barriers (the batch in flight, the one open behind it, one
-        # START that was due) plus the request's own quantum and slack.
-        self.assertLess(answered, 3 * hold + 3.0, answered)
+        # At most seven barriers by the keystone (the batch in flight, the
+        # one open behind it, one START that was due, the pass budget's);
+        # in practice two or three.  Before the lane: never, while POSTs came.
+        self.assertLess(answered, 7 * hold + 3.0, answered)
         # The posters were never starved in turn: POSTs kept being accepted.
         self.assertGreater(after, 0)
 

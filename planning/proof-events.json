@@ -12777,11 +12777,15 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ocf-potential-at-most-ten"
+          "name": "fn-ocf-potential-at-most-twenty-two"
         },
         {
           "kind": "theorem",
-          "name": "fn-ocf-no-start-next-while-control-waits"
+          "name": "fn-ocf-seal-potential-at-most-six"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocf-start-next-while-control-waits-is-within-the-budget"
         },
         {
           "kind": "theorem",
