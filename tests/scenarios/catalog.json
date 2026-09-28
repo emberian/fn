@@ -5662,6 +5662,23 @@
         "books/owner-commit-fairness.lisp",
         "tests/test_native_owner_scheduler.py"
       ]
+    },
+    {
+      "id": "SCN-205",
+      "title": "A reader logs in with AUTHINFO SASL: PLAIN over TLS, SCRAM-SHA-256 in clear and over TLS, and SCRAM-SHA-256-PLUS bound to the connection's tls-exporter value",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-056"
+      ],
+      "steps": [
+        "A node with a plaintext reader listener offering STARTTLS, an implicit-TLS listener, required authentication and one credential written by `principal set-password`.",
+        "CAPABILITIES in clear, over TLS and after a login; AUTHINFO SASL PLAIN, SCRAM-SHA-256 and SCRAM-SHA-256-PLUS exchanges, a wrong password and a replayed final message."
+      ],
+      "expected": [
+        "The SASL label lists the mechanisms offered now and survives the login; PLAIN in clear is 483; SCRAM answers 383 then 283 with the server's v=; a wrong password and a replayed final message are 481; PLUS succeeds only with the connection's own exporter value."
+      ],
+      "execution_scope": "Specified by lane sasl increment 1 (the mechanism books); the served arm and tests/test_native_sasl.py come with increment 2."
     }
   ]
 }

@@ -5026,9 +5026,7 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-915",
-        "PRF-916",
-        "PRF-917"
+        "PRF-915"
       ],
       "verification": [
         "proof",
