@@ -1467,10 +1467,6 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (value (len (fn-sn-keyring (f-get-global 'fn-store-sn state)))))
 
-(defun fn-store-sn-keyring-generation (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-sn-keyring-generation (f-get-global 'fn-store-sn state))))
-
 ; Acceptance evidence carried by the ACL2 state.  Kind-4 results are durable
 ; historical evidence.  A legacy fn-r result is only a current-process
 ; observation and disappears on recovery because fn-r has no verdict bytes.
