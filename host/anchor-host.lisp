@@ -89,22 +89,6 @@
                   (fn-anchor-host-fields fields) verdict one-nonce)))
     (list (fn-anchor-status outcome) (fn-anchor-reason outcome))))
 
-; Advancing this node's incarnation under one observation.  OBJ-006: the new
-; incarnation is opened only under an anchor strictly newer than the one the
-; node holds, which `fn-anchor-incarnation-advances-only-under-a-newer-anchor'
-; is about.
-(defun fn-anchor-host-advance (pinned latest-fields incarnation fields verdict
-                               one-nonce)
-  (let ((outcome (fn-anchor-node-advance-observed
-                  (fn-anchor-node pinned (fn-anchor-host-fields latest-fields)
-                                  incarnation)
-                  (fn-anchor-host-fields fields) verdict one-nonce)))
-    (list (fn-anchor-status outcome)
-          (fn-anchor-reason outcome)
-          (if (equal (fn-anchor-status outcome) :accepted)
-              (fn-anchor-node-incarnation (fn-anchor-payload outcome))
-            incarnation))))
-
 ; The restore decision over an image the host read off disk.
 (defun fn-anchor-host-restore (pinned image-incarnation image-fields
                                presented-fields verdict one-nonce)
