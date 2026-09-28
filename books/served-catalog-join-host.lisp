@@ -77,16 +77,37 @@
 ; -----------------------------------------------------------------------------
 ; LINK and the carried predicate.
 
-(defun-nx fn-sjh-linkp (o pending fn-cat)
-  (let* ((s (fn-own-store o))
-         (files (fn-sn-files s))
-         (records (fn-sf-records files)))
-    (implies (and (fn-ccar-completion-enabledp s) pending)
-             (and (fn-pc-p pending)
-                  (equal (fn-scj-load-h (car (last records))) (fn-pc-held pending))
+;; The store's in-flight row: the staged candidate at the record phases, the
+;; last record while it completes.
+(defun-nx fn-sjh-inflight (files)
+  (let ((phase (fn-sf-phase files)))
+    (cond ((fn-sf-record-phasep phase) (fn-sf-record-candidate files))
+          ((equal phase :completing) (car (last (fn-sf-records files))))
+          (t nil))))
+
+;; LINK.  The completion names the last record; a staged candidate is a
+;; well-formed composite without a withdrawal (so appending it keeps S); and
+;; the host's pending row is exactly the in-flight row's catalog row, with the
+;; token of that row's pair and the catalog's count -- or, without a pending
+;; row, no in-flight row loads one.
+(defun-nx fn-sjh-linkp (o pending fn-arena fn-cat)
+  (let* ((files (fn-sn-files (fn-own-store o)))
+         (phase (fn-sf-phase files))
+         (r (fn-sjh-inflight files)))
+    (and (implies (equal phase :completing)
+                  (and (consp (fn-sf-records files))
+                       (equal (fn-sf-completion files) (fn-sf-record-pair r))))
+         (implies (fn-sf-record-phasep phase)
+                  (and (fn-row-composite-okp r fn-arena)
+                       (fn-scj-rows-clearp (list r))))
+         (if pending
+             (and (or (fn-sf-record-phasep phase) (equal phase :completing))
+                  (fn-pc-p pending)
+                  (equal (fn-scj-load-h r) (fn-pc-held pending))
                   (equal (fn-pc-token pending)
-                         (cons (nfix (cdr (fn-sf-completion files))) (fn-pc-expected pending)))
-                  (equal (fn-pc-expected pending) (len fn-cat))))))
+                         (cons (nfix (cdr (fn-sf-record-pair r))) (fn-pc-expected pending)))
+                  (equal (fn-pc-expected pending) (len fn-cat)))
+           (not (fn-scj-load-h r))))))
 
 (defun-nx fn-sjh-okp (o pending fn-arena fn-cat)
   (let ((records (fn-sf-records (fn-sn-files (fn-own-store o)))))
@@ -99,7 +120,77 @@
          (fn-scj-versions-okp o)
          (fn-rows-composites-okp records fn-arena)
          (fn-scj-rows-clearp records)
-         (fn-sjh-linkp o pending fn-cat))))
+         (fn-sjh-linkp o pending fn-arena fn-cat))))
+
+; -----------------------------------------------------------------------------
+; LINK at an enabled completion: the completion record is the last record
+; (sequences are positions, fn-sf-record-listp), so the pending row is its
+; catalog row; and a completion of a held row has a pending row at all.
+
+(defthm fn-sjh-last-sequence
+  (implies (and (fn-sf-record-listp records seq lower frontier) (consp records))
+           (equal (fn-store-event-sequence (car (last records)))
+                  (+ seq (len records) -1)))
+  :hints (("Goal" :induct (fn-sf-record-listp records seq lower frontier)
+           :in-theory (enable fn-sf-record-listp))))
+
+(defthm fn-sjh-find-last-record
+  (implies (and (fn-sf-record-listp records seq lower frontier) (consp records) (natp seq))
+           (equal (fn-sn-find-record (fn-sf-record-pair (car (last records))) records)
+                  (car (last records))))
+  :hints (("Goal" :induct (fn-sf-record-listp records seq lower frontier)
+           :in-theory (e/d (fn-sf-record-listp fn-sn-find-record fn-sf-record-pair)
+                           (fn-store-event-p)))
+          ("Subgoal *1/2" :use ((:instance fn-sjh-last-sequence (records (cdr records))
+                                           (seq (+ 1 seq))
+                                           (lower (+ 1 (fn-store-event-txid (car records)))))))))
+(defthm fn-sjh-completion-record-is-last
+  (implies (and (fn-sn-statep s)
+                (consp (fn-sf-records (fn-sn-files s)))
+                (equal (fn-sf-completion (fn-sn-files s))
+                       (fn-sf-record-pair (car (last (fn-sf-records (fn-sn-files s)))))))
+           (equal (fn-ccar-completion-record s)
+                  (car (last (fn-sf-records (fn-sn-files s))))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-completion-record fn-sn-statep fn-sf-statep)
+                                  (fn-sn-find-record fn-sf-record-pair fn-node-statep fn-sf-phase-shapep
+                                   fn-sf-success-listp))
+           :use ((:instance fn-ccar-completion-record-is-completion-record)
+                 (:instance fn-sjh-find-last-record (records (fn-sf-records (fn-sn-files s)))
+                            (seq 0) (lower 0) (frontier (fn-sf-frontier (fn-sn-files s))))))))
+(defthm fn-sjh-load-h-of-held
+  (implies (fn-held-p r) (equal (fn-scj-load-h r) r))
+  :hints (("Goal" :in-theory (e/d (fn-scj-load-h) (fn-held-p fn-cat-rowp))
+           :use ((:instance fn-held-p-implies-cat-rowp (x r))))))
+
+(defthm fn-sjh-linkp-at-enabled-completion
+  (implies (and (fn-sjh-linkp o pending fn-arena fn-cat)
+                (fn-ccar-completion-enabledp (fn-own-store o))
+                pending)
+           (let* ((files (fn-sn-files (fn-own-store o)))
+                  (records (fn-sf-records files)))
+             (and (fn-pc-p pending)
+                  (equal (fn-scj-load-h (car (last records))) (fn-pc-held pending))
+                  (equal (fn-pc-token pending)
+                         (cons (nfix (cdr (fn-sf-completion files))) (fn-pc-expected pending)))
+                  (equal (fn-pc-expected pending) (len fn-cat)))))
+  :hints (("Goal" :in-theory (e/d (fn-sjh-linkp fn-sjh-inflight fn-sf-record-phasep)
+                                  (fn-ccar-completion-enabledp fn-sf-record-pair fn-scj-load-h fn-pc-p))
+           :use ((:instance fn-scj-enabled-is-completing (s (fn-own-store o)))))))
+
+(defthm fn-sjh-durable-needs-pending
+  (implies (and (fn-sjh-linkp o pending fn-arena fn-cat)
+                (fn-sn-statep (fn-own-store o))
+                (fn-ccar-completion-enabledp (fn-own-store o))
+                (fn-held-p (fn-ccar-completion-record (fn-own-store o))))
+           pending)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-sjh-linkp fn-sjh-inflight fn-sf-record-phasep)
+                                  (fn-ccar-completion-enabledp fn-sf-record-pair fn-scj-load-h fn-pc-p
+                                   fn-held-p fn-sn-statep))
+           :use ((:instance fn-scj-enabled-is-completing (s (fn-own-store o)))
+                 (:instance fn-sjh-completion-record-is-last (s (fn-own-store o)))
+                 (:instance fn-sjh-load-h-of-held
+                            (r (fn-ccar-completion-record (fn-own-store o))))))))
 
 ; -----------------------------------------------------------------------------
 ; The host's article finish (host/owner-host.lisp fn-owner-finish-submission-
@@ -223,10 +314,10 @@
              (and (fn-scjs-seenp o2)
                   (fn-scjs-historyp o2)
                   (fn-scj-versions-okp o2)
-                  (fn-sjh-linkp o2 pending2 c2))))
+                  (fn-sjh-linkp o2 nil fn-arena c2))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-scjs-seenp fn-scjs-store-seenp fn-scjs-seen-records fn-scjs-historyp
-                            fn-scj-versions-okp fn-sjh-linkp)
+                            fn-scj-versions-okp fn-sjh-linkp fn-sjh-inflight fn-sf-record-phasep)
                            (fn-ccar-own-finish fn-ccar-completion-enabledp fn-own-store-idlep
                             fn-scj-conns-versions-atmostp nthcdr len))
            :use ((:instance fn-sjh-finish-store-image)
@@ -248,9 +339,24 @@
                                   (fn-sn-statep))
            :use ((:instance fn-ccar-completion-record-is-completion-record)))))
 
+;; The catalog's finish under LINK's token and count answers the completion
+;; and holds no pending row after.
+(defthm fn-sjh-sca-finish-clears-pending
+  (implies (and pending
+                (equal token (fn-pc-token pending))
+                (equal (fn-pc-expected pending) (len fn-cat)))
+           (equal (mv-nth 1 (fn-sca-finish token pending view-index targets fn-cat)) nil))
+  :hints (("Goal" :in-theory (e/d (fn-sca-finish fn-sca-complete fn-cat-complete fn-cat-complete-hidden)
+                                  (fn-sca-withdraw-targets fn-cat-commit fn-delta-of-row fn-cat-at
+                                   fn-midx-lookup)))))
+
 ; KEYSTONE (the join carried across the host's article finish).  Over
-; fn-ccar-own-finish, the owner finish the host's call equals (below); the
-; owner relation after is fn-ocmt-post-commit-preserves-ocl-relation's.
+; fn-ccar-own-finish, the owner finish the host's call equals (below): under
+; the owner relation and fn-sjh-okp before and the finish's :durable, the
+; host holds a pending row (fn-sjh-durable-needs-pending), and the catalog
+; fn-sca-finish leaves, with no pending row, satisfies fn-sjh-okp with the
+; finished owner; the owner relation after is
+; fn-ocmt-post-commit-preserves-ocl-relation's.
 (defthm fn-sjh-okp-at-host-article-finish
   (let* ((o (fn-ocfg-owner oc))
          (s (fn-own-store o))
@@ -264,15 +370,16 @@
                              fn-cat)))
     (implies (and (fn-ocl-relation oc)
                   (fn-sjh-okp o pending fn-arena fn-cat)
-                  (equal (car res) :durable)
-                  pending)
-             (and (fn-sjh-okp o2 (mv-nth 1 fin) fn-arena (mv-nth 2 fin))
+                  (equal (car res) :durable))
+             (and pending
+                  (equal (mv-nth 1 fin) nil)
+                  (fn-sjh-okp o2 nil fn-arena (mv-nth 2 fin))
                   (fn-ocl-relation (fn-ocfg-with-owner oc o2)))))
+  :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories '(fn-sjh-okp fn-sjh-linkp fn-sjh-ocfg-owner-of-with-owner
+           :in-theory (union-theories '(fn-sjh-okp fn-sjh-ocfg-owner-of-with-owner
                                         (:executable-counterpart fn-held-p)
                                         fn-sjh-durable-finish-is-enabled
-                                        fn-sjh-durable-finish-names-a-held-row
                                         fn-ccar-ocl-relation-carries-sn-statep
                                         fn-sjh-held-row-is-no-other-event
                                         fn-sjh-ocl-acceptance-statep
@@ -281,11 +388,18 @@
                                         fn-sjh-ocl-gives-view-statep
                                         fn-sjh-invp-gives-view-gidx fn-sjh-finish-keeps-view-gidx
                                         fn-sjh-finish-keeps-view-indexed fn-sjh-view-indexesp-of-parts
-                                        fn-sjh-completion-record-needs-records)
+                                        fn-sjh-completion-record-needs-records
+                                        fn-sjh-linkp-at-enabled-completion)
                                       (theory 'minimal-theory))
            :use ((:instance fn-sjh-finish-store-image (o (fn-ocfg-owner oc)))
                  (:instance fn-sjh-durable-finish-names-a-held-row (o (fn-ocfg-owner oc)))
+                 (:instance fn-sjh-durable-needs-pending (o (fn-ocfg-owner oc)))
                  (:instance fn-sjh-completion-record-needs-records (s (fn-own-store (fn-ocfg-owner oc))))
+                 (:instance fn-sjh-sca-finish-clears-pending
+                            (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))) (fn-pc-expected pending)))
+                            (view-index (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))
+                            (targets (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
+                                                        (fn-own-view-withdrawals (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))))
                  (:instance fn-sjh-ocl-gives-cst
                             (oc (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))
                  (:instance fn-sjh-ocl-gives-visible
@@ -295,26 +409,14 @@
                  (:instance fn-scj-vvp-of-host-finish (o (fn-ocfg-owner oc)))
                  (:instance fn-scj-vvp-parts (o (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena))))
                  (:instance fn-sjh-finish-side-facts (o (fn-ocfg-owner oc))
-                            (pending2 (mv-nth 1 (fn-sca-finish
-                                                 (cons (nfix (cdr (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
-                                                       (fn-pc-expected pending))
-                                                 pending
-                                                 (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena))))
-                                                 (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
-                                                                    (fn-own-view-withdrawals (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))
-                                                 fn-cat)))
-                            (c2 (mv-nth 2 (fn-sca-finish
-                                                 (cons (nfix (cdr (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
-                                                       (fn-pc-expected pending))
-                                                 pending
-                                                 (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena))))
-                                                 (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
-                                                                    (fn-own-view-withdrawals (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))
-                                                 fn-cat))))
+                            (c2 (mv-nth 2 (fn-sca-finish (cons (nfix (cdr (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))) (fn-pc-expected pending))
+                                          pending (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena))))
+                                          (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
+                                                             (fn-own-view-withdrawals (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))
+                                          fn-cat))))
                  (:instance fn-scj-invp-at-host-article-finish-carried
                             (o (fn-ocfg-owner oc))
-                            (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
-                                         (fn-pc-expected pending))))))))
+                            (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))) (fn-pc-expected pending))))))))
 
 ; The same over the function the host calls, fn-apc-own-finish, under the two
 ; facts that make it fn-own-finish (fn-apc-own-finish-is-own-finish): a
@@ -335,9 +437,11 @@
                   (fn-hist-of-storep fn-hist s)
                   (fn-ocl-relation oc)
                   (fn-sjh-okp o pending fn-arena fn-cat)
-                  (equal (car res) :durable)
-                  pending)
-             (and (fn-sjh-okp o2 (mv-nth 1 fin) fn-arena (mv-nth 2 fin))
+                  (equal (car res) :durable))
+             (and pending
+                  (equal (mv-nth 1 fin) nil)
+                  (fn-sjh-okp o2 nil fn-arena (mv-nth 2 fin))
                   (fn-ocl-relation (fn-ocfg-with-owner oc o2)))))
+  :rule-classes nil
   :hints (("Goal" :in-theory '(fn-apc-own-finish-is-own-finish fn-ccar-own-finish-is-own-finish)
            :use ((:instance fn-sjh-okp-at-host-article-finish)))))
