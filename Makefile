@@ -1297,6 +1297,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-pages-tests \
 	books/history-pages-words \
 	books/history-pages-exec \
+	books/history-pages-row \
 	books/history-pages-read \
 	tests/acl2/history-pages-read-tests
 

@@ -13,7 +13,7 @@
 ; hold the image's words (`fn-hp-vhold'), an answer (VERDICT :ok) is the
 ; history's event at SEQ.
 (in-package "ACL2")
-(include-book "history-pages-exec")
+(include-book "history-pages-row")
 (local (include-book "arithmetic/top" :dir :system))
 ; -----------------------------------------------------------------------------
 ; D. The reads as the host calls them: need-verdicts, never a fill.
