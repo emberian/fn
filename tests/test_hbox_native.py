@@ -75,6 +75,17 @@ class HboxNativeDryRunTests(unittest.TestCase):
                       lines[prof[0]])
         self.assertIn("FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k", lines[prof[0]])
 
+    def test_run_log_carries_the_boxs_load(self):
+        # feed-queue: one case read 20.9 s and then 2.7 s on a loaded box.
+        answer = dry("HEAD", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        script = answer.stdout
+        self.assertIn('echo "== load at start: $(uptime)"', script)
+        finish = script[script.index("finish() {"):]
+        self.assertIn('echo "== load at end: $(uptime)"', finish.split("}")[0])
+        tstep = script[script.index("tstep() {"):]
+        self.assertIn("/proc/loadavg", tstep.split("\n}")[0])
+
     def test_explicit_env_is_exported_and_wins(self):
         answer = dry("--images", "dtn-developer", "--env", "FN_NATIVE_BP_HOST=/x/y",
                      "--env", "FN_OTHER=1", "HEAD", "tests.test_bp_service_native")

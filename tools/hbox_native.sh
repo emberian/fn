@@ -55,6 +55,10 @@
 #      the commit, or HEAD+dirty for `.`) for every module;
 #   5. writes every log to logs/ and SHA256SUMS (images and logs), then
 #      `status` holding the first failing step's exit code, 0 if none.
+#      run.log carries the box's load (`uptime`) at the start and the end
+#      and the load average before each module, so a timing taken on a
+#      loaded box can be judged (feed-queue: 20.9 s against 2.7 s for one
+#      case at load 19-37).
 #
 # It prints the scratch path, then waits for `status` (tools/wait_for.sh) and
 # prints the summary; start it with run_in_background.  --detach returns after
@@ -105,7 +109,7 @@ DRY=0
 DEADLINE=5400
 ENVS=
 POSITIONAL=
-usage() { sed -n '2,74p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,78p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 while [ $# -gt 0 ]; do
     case $1 in
         --name) NAME=$2; shift 2 ;;
@@ -227,7 +231,7 @@ failed=0
 passed=0 skipped=0 broke=0
 tstep() {
     name=\$1; shift
-    echo "== \$name \$(date -u +%H:%M:%SZ)"
+    echo "== \$name \$(date -u +%H:%M:%SZ) load \$(cut -d' ' -f1-3 /proc/loadavg)"
     "\$@" > \$L/\$name.log 2>&1
     rc=\$?
     verdict=\$(python3 tools/test_budget.py --verdict \$L/\$name.log)
@@ -243,12 +247,14 @@ need() {
     [ -x "\$3" ] || { echo "hbox_native: \$1 reads \$2: \$3 is not in the tree (build it with --images)"; finish 2; }
 }
 finish() {
+    echo "== load at end: \$(uptime)"
     (cd \$S && find tree/build -maxdepth 1 -name 'fn-host*' -type f -exec sha256sum {} + ; sha256sum logs/*.log) > \$S/SHA256SUMS 2>/dev/null
     echo \$1 > \$S/status
     echo "== done status \$1; \$S/SHA256SUMS"
     exit \$1
 }
 echo "== source $SOURCE"
+echo "== load at start: \$(uptime)"
 BOX
     if [ $BUILD -eq 1 ]; then
         cat <<BOX
