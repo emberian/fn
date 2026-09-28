@@ -59,6 +59,41 @@ def current_state(root: Path, book: str) -> tuple[str, list[str]]:
             certs.closure_listing(certs.closure(root, book)))
 
 
+def uncited_books(root: Path, books, tracked_only: bool = True) -> list[str]:
+    """The BOOKS no committed manifest certified at their current digest and closure.
+
+    `certifies` is the rule `manifest_failures` holds a registry row's cited
+    run to; a book installed from the certificate cache satisfies ACL2 but
+    not this, when the run that certified it never had its manifest
+    committed (batch AY, 2026-09-28: the union cite installed 15 books so,
+    and green_check and certified_claims still owed them until a
+    --recertify run).  `tracked_only` reads the archive's git-tracked
+    manifests (a tree with no git reads every archived one).
+    """
+    archive = root / evidence_manifests.ARCHIVE_REL
+    tracked = evidence_manifests.tracked_manifests(root) if tracked_only else set()
+    paths = sorted(archive.glob("certify-*.json"))
+    if tracked:
+        paths = [path for path in paths if path.stem in tracked]
+    passed: dict[str, list[dict]] = {}
+    for path in paths:
+        for manifest in certs.load_manifests(root, path):
+            for book, verdict in (manifest.get("book_results") or {}).items():
+                if verdict == "passed":
+                    passed.setdefault(book, []).append(manifest)
+    uncited: list[str] = []
+    for book in books:
+        try:
+            digest, listing = current_state(root, book)
+        except (OSError, ValueError, certs.UnreadableBook):
+            uncited.append(book)
+            continue
+        if not any(certifies(manifest, book, digest, listing)[0]
+                   for manifest in passed.get(book, [])):
+            uncited.append(book)
+    return uncited
+
+
 def manifest_failures(proofs: list[dict], owners: dict[str, set[str]],
                       root: Path = ROOT) -> list[str]:
     """A certified row names the archived run that certified each event book."""
