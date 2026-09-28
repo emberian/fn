@@ -2930,7 +2930,9 @@
                                       fn-cfg-record-octet-count
                                       fn-cfg-encode fn-cfg-record-items))))
 
-(in-theory (disable fn-cfg-record-fitsp))
+; The keystone is a statement, not a rewrite: left enabled it would turn
+; every fitsp a downstream proof carries into the encoder's length.
+(in-theory (disable fn-cfg-record-fitsp fn-cfg-record-fitsp-is-the-decoder-limits))
 
 ; -----------------------------------------------------------------------------
 ; Configuration replay: the fold of configuration records into (generation
