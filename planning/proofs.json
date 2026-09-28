@@ -11993,9 +11993,11 @@
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-builders.lisp",
+        "books/protocol-codes-rows.lisp",
         "books/protocol-codes.lisp",
         "books/protocol-framing.lisp",
         "tests/acl2/protocol-codes-tests.lisp",
+        "tests/acl2/protocol-codes-hra-tests.lisp",
         "tests/test_protocol_fuzz_grammar.py",
         "planning/evidence/manifests/certify-20260928T001508Z-3191332.json",
         "planning/evidence/manifests/certify-20260928T032046Z-3695293.json",
