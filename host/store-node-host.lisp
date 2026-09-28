@@ -887,7 +887,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; the record octets left in `fn-store-cfg-last-octets', or :refused with the
 ; reason in `fn-store-cfg-last-reason'.  Nothing here mutates the store: the
 ; record becomes durable in Python and is replayed at the next open.
-(defun fn-store-cfg-reconfigure (kind name-octets n monotonic wall state)
+(defun fn-store-cfg-reconfigure (kind name-octets n stamp state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((s (f-get-global 'fn-store-sn state))
          (cfg (f-get-global 'fn-store-cfg state))
@@ -914,7 +914,6 @@ reopen predicate, writer-lock observation and observed final namespace."
                              ((equal kind :set-capacity)
                               (list (fn-cfg-set-capacity (nfix n))))
                              (t nil)))
-               (stamp (fn-clock-observation (nfix monotonic) (nfix wall) 0 t))
                (record (fn-cfg-record-make (fn-cfg-generation cfg)
                                            (fn-state-next-txid (fn-node-acceptance node))
                                            generation deltas stamp)))
@@ -990,7 +989,7 @@ reopen predicate, writer-lock observation and observed final namespace."
                       auth))))
         (if (fn-cfg-peerp p) p nil)))))
 
-(defun fn-store-cfg-peer-delta-record (deltas monotonic wall state)
+(defun fn-store-cfg-peer-delta-record (deltas stamp state)
   ; The configuration record carrying one peer delta, admitted by the
   ; predicate replay applies.  :ok leaves the octets in
   ; `fn-store-cfg-last-octets'; :refused leaves the reason in
@@ -1002,7 +1001,6 @@ reopen predicate, writer-lock observation and observed final namespace."
          (cn (fn-cnode-make node cfg))
          (state (f-put-global 'fn-store-cfg-last-octets nil state))
          (generation (+ 1 (fn-cfg-generation cfg)))
-         (stamp (fn-clock-observation (nfix monotonic) (nfix wall) 0 t))
          (record (fn-cfg-record-make (fn-cfg-generation cfg)
                                      (fn-state-next-txid (fn-node-acceptance node))
                                      generation deltas stamp)))
@@ -1045,7 +1043,7 @@ reopen predicate, writer-lock observation and observed final namespace."
                               in-groups-octets in-max-octets in-inflight
                               out-groups-octets out-streaming out-max-queue
                               out-backoff auth-kind auth-octets carries
-                              monotonic wall state)
+                              stamp state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((p (fn-store-cfg-peer-record
              name-octets path-octets host-octets port in-groups-octets
@@ -1063,7 +1061,7 @@ reopen predicate, writer-lock observation and observed final namespace."
            (fn-store-cfg-peer-delta-record
             (list (fn-cfg-set-peer (fn-cfg-peer-name p)
                                    (append (fn-cfg-peer-rows p) extra)))
-            monotonic wall state)))))
+            stamp state)))))
 
 ; The node's own policy slots (`fn policy set|get`).  The one peering needs
 ; is "path-identity": `fn-peer-local-identity` (books/peer-inbound.lisp)
@@ -1078,7 +1076,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; The delta, its admissibility and the record octets are `books/config`'s,
 ; through the same `fn-cnode-record-acceptablep` `peer add` and
 ; `group create` use.
-(defun fn-store-cfg-set-policy (slot-octets id-octets monotonic wall state)
+(defun fn-store-cfg-set-policy (slot-octets id-octets stamp state)
   (declare (xargs :stobjs state :mode :program))
   (let ((slot (fn-store-octets->string slot-octets))
         (id (fn-store-octets->string id-octets)))
@@ -1086,7 +1084,7 @@ reopen predicate, writer-lock observation and observed final namespace."
         (let ((state (f-put-global 'fn-store-cfg-last-reason :policy-slot state)))
           (value :refused))
       (fn-store-cfg-peer-delta-record (list (fn-cfg-set-policy slot id))
-                                      monotonic wall state))))
+                                      stamp state))))
 
 (defun fn-store-cfg-policy (slot-octets state)
   (declare (xargs :stobjs state :mode :program))
@@ -1097,7 +1095,7 @@ reopen predicate, writer-lock observation and observed final namespace."
               (fn-cfg-policy (fn-cfg-value (f-get-global 'fn-store-cfg state))
                              slot))))))
 
-(defun fn-store-cfg-remove-peer (name-octets monotonic wall state)
+(defun fn-store-cfg-remove-peer (name-octets stamp state)
   (declare (xargs :stobjs state :mode :program))
   (let ((name (fn-store-octets->string name-octets)))
     (if (equal name :bad)
@@ -1108,7 +1106,7 @@ reopen predicate, writer-lock observation and observed final namespace."
           (let ((state (f-put-global 'fn-store-cfg-last-reason :no-such-peer state)))
             (value :refused))
         (fn-store-cfg-peer-delta-record (list (fn-cfg-remove-peer-delta name))
-                                        monotonic wall state)))))
+                                        stamp state)))))
 
 ; The listing.  Names first, then one slot at a time in the codec's own
 ; vocabulary (books/peer-config, `fn-cfg-peer-rows'): nothing about a peer is

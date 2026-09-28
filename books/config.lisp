@@ -30,7 +30,7 @@
 (in-package "ACL2")
 (include-book "records-invariants")
 (include-book "rev-onto") ; the loop twins' step (PKT-877)
-(include-book "clock")
+(include-book "clock-unit")
 
 ; Nothing in this book opens the CBOR or record codec: every definition here
 ; is `:guard t', and the ground witnesses at the end are decided by
@@ -92,14 +92,13 @@
                                      fn-record-nonempty-at-mostp))))
 
 (defun fn-cfg-stampp (s)
-  ; A clock observation whose three times fit the schema-0 uint32 fields.
-  ; The narrower domain is a format ceiling, not a claim about clocks: the
-  ; 64-bit stamp is an open item for the next codec schema.
+  ; A configuration record's stamp is a clock observation in the owner
+  ; clock's unit, MILLISECONDS (books/clock-unit.lisp
+  ; *fn-clock-record-stamp-unit*; PRF-378), every time a u64 item of the
+  ; codec.  It was the seconds projection, uint32 fields, so an expiry in
+  ; milliseconds compared with it was never reached (fn-cfg-account-livep).
   (declare (xargs :guard t))
-  (and (fn-clock-observationp s)
-       (fn-record-uint32p (fn-clock-monotonic s))
-       (fn-record-uint32p (fn-clock-wall s))
-       (fn-record-uint32p (fn-clock-wall-error s))))
+  (fn-clock-observationp s))
 
 ; -----------------------------------------------------------------------------
 ; A configuration row.
@@ -1247,7 +1246,8 @@
                                (- (nfix (car xs)) 48)))
     (nfix acc)))
 
-; An expiry: one to twenty decimal digits, the width of a 64-bit second.
+; An expiry: one to twenty decimal digits, the width of a 64-bit
+; millisecond count.
 (defun fn-cfg-account-expiryp (text)
   (declare (xargs :guard t))
   (and (stringp text)
@@ -1589,14 +1589,18 @@
 
 ; A pending row is live at a stamp only when the stamp carries a wall clock
 ; whose whole error interval lies before the expiry: an unknown or uncertain
-; clock refuses (fail closed).
+; clock refuses (fail closed).  Both sides are milliseconds: the expiry is
+; written in the owner clock's unit (books/accounts.lisp
+; fn-acct-invite-expiry) and the stamp is read as a record-stamp reading,
+; whose unit is the same (books/clock-unit.lisp; PRF-378).  When record
+; stamps were seconds this compared seconds with milliseconds and a record's
+; :account-expired never fired.
 (defun fn-cfg-account-livep (row stamp)
   (declare (xargs :guard t))
-  (and (fn-clock-has-wall stamp)
-       (natp (fn-clock-wall stamp))
-       (natp (fn-clock-wall-error stamp))
-       (< (+ (fn-clock-wall stamp) (fn-clock-wall-error stamp))
-          (fn-cfg-account-expiry (fn-cfg-row-c row)))))
+  (let ((latest (fn-clock-reading-latest-milliseconds
+                 (fn-clock-reading *fn-clock-record-stamp-unit* stamp))))
+    (and latest
+         (< latest (fn-cfg-account-expiry (fn-cfg-row-c row))))))
 
 ; The one row an account delta carries has the delta's key pair and the
 ; state its kind names.
@@ -2645,9 +2649,12 @@
 (defun fn-cfg-titem (text)
   (declare (xargs :guard t))
   (cons :bytes (fn-record-string-octets text)))
+; An item is a u64 (a record stamp's millisecond times need it); each field
+; keeps its own narrower recognizer, which `fn-cfg-recordp' checks after
+; the decode.
 (defun fn-cfg-uitemp (x)
   (declare (xargs :guard t))
-  (and (consp x) (equal (car x) :uint) (fn-record-uint32p (cdr x))))
+  (and (consp x) (equal (car x) :uint) (fn-record-uint64p (cdr x))))
 (defun fn-cfg-titemp (x)
   (declare (xargs :guard t))
   (and (consp x) (equal (car x) :bytes) (fn-cbor-octet-listp (cdr x))

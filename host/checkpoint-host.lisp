@@ -208,12 +208,12 @@
 ;; :reclaim-instant).  KEYSTONE fn-rci-recorded-context-is-the-decided-context:
 ;; the configuration this record yields names the rule and instant the
 ;; decision used.
-(defun fn-store-reclaim-instant-record (clock monotonic wall state)
+(defun fn-store-reclaim-instant-record (clock stamp state)
   (declare (xargs :stobjs state :mode :program))
   (mv-let (rule now) (fn-store-reclaim-rule-and-stamp clock state)
     (declare (ignore rule))
     (if (fn-rci-representablep now)
-        (fn-store-cfg-peer-delta-record (list (fn-rci-delta now)) monotonic wall state)
+        (fn-store-cfg-peer-delta-record (list (fn-rci-delta now)) stamp state)
       (let ((state (f-put-global 'fn-store-cfg-last-reason :reclaim-instant state)))
         (value :refused)))))
 

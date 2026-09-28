@@ -1592,14 +1592,15 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
 
 (defun fnn-bridge-config-initial (names)
   "Generation 1 of a fresh store, built and admitted by the core."
-  ;; PKT-665: the record carries this host's clock (DTN seconds), the
-  ;; creation time of every initial group.
+  ;; PKT-665: the record carries this host's clock (milliseconds, the
+  ;; record stamp's unit, PRF-378), the creation time of every initial
+  ;; group; ACL2 keeps the wall claim or its absence (PRF-379).
   (let ((value (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
                  (fnn-core 'fn-cfg-host-initial-octets-at
                            (mapcar (lambda (n) (fnn-octet-list (fnn-string-octets n))) names)
                            (floor (* (get-internal-real-time) 1000)
-                                  (* 1000 internal-time-units-per-second))
-                           (if has-wall (floor wall 1000) 0)))))
+                                  internal-time-units-per-second)
+                           wall has-wall))))
     (when (or (keywordp value) (not (fnn-octet-list-p value)))
       (fnn-refuse "refused initial group table"))
     (fnn-octets value)))

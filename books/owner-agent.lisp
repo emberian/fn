@@ -93,18 +93,18 @@
 ;; keeps the stamp of the configuration record that created it
 ;; (books/config.lisp `fn-cfg-groups-create': `init''s record for the
 ;; initial groups, the `group create' record for a later one), already
-;; durable with the record.  A configuration stamp is the seconds projection
-;; of a clock observation (books/owner-config.lisp `fn-ocfg-config-stamp');
-;; the fact carries the millisecond observation it projects back to and the
-;; DTN millisecond time of its wall reading.  A stamp with no wall claim (a
-;; store initialized before 2026-09-27, whose record carries the zero
-;; stamp) yields no fact: its group has no creation time, and NEWGROUPS and
-;; LIST ACTIVE.TIMES omit it rather than invent one (specs/nntp.md).
+;; durable with the record.  A configuration stamp is the owner's clock
+;; observation in milliseconds (books/owner-config.lisp
+;; `fn-ocfg-config-stamp', PRF-378); the fact carries that observation and
+;; the DTN millisecond time of its wall reading.  A stamp with no wall claim
+;; (the zero stamp of a store initialized without a readable clock) yields
+;; no fact: its group has no creation time, and NEWGROUPS and LIST
+;; ACTIVE.TIMES omit it rather than invent one (specs/nntp.md).
 (defun fn-oag-stamp-observation (stamp)
   (declare (xargs :guard t))
-  (fn-clock-observation (* 1000 (nfix (fn-clock-monotonic stamp)))
-                        (* 1000 (nfix (fn-clock-wall stamp)))
-                        (* 1000 (nfix (fn-clock-wall-error stamp)))
+  (fn-clock-observation (nfix (fn-clock-monotonic stamp))
+                        (nfix (fn-clock-wall stamp))
+                        (nfix (fn-clock-wall-error stamp))
                         (fn-clock-has-wall stamp)))
 
 (defun fn-oag-group-fact-of (e)
@@ -114,7 +114,7 @@
              (fn-clock-has-wall stamp)
              (fn-nntp-safe-group-namep (fn-cfg-group-name e)))
         (list (fn-nntp-group-fact (fn-cfg-group-name e)
-                                  (* 1000 (nfix (fn-clock-wall stamp)))
+                                  (nfix (fn-clock-wall stamp))
                                   (fn-oag-stamp-observation stamp)))
       nil)))
 
@@ -138,8 +138,8 @@
                 (fn-nntp-safe-group-namep (fn-cfg-group-name e)))
            (member-equal (fn-nntp-group-fact
                           (fn-cfg-group-name e)
-                          (* 1000 (nfix (fn-clock-wall
-                                         (fn-cfg-group-created-stamp e))))
+                          (nfix (fn-clock-wall
+                                 (fn-cfg-group-created-stamp e)))
                           (fn-oag-stamp-observation
                            (fn-cfg-group-created-stamp e)))
                          (fn-oag-group-facts es gen)))

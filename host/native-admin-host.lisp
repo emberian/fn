@@ -62,7 +62,10 @@
      ;; No delta for this plan over the live owner's tables: the result
      ;; says so, never a previous request's reason (PKT-453 (a)).
      (t (value (fn-ores-config-refused :no-delta))))))
-(defun fn-native-admin-host-apply (plan monotonic wall state)
+(defun fn-native-admin-host-apply (plan stamp state)
+  ;; STAMP is the record stamp fn-native-admin-clock-observation built
+  ;; (host/native/admin.lisp fnn-admin-clock-plan); every record this
+  ;; builds carries it unchanged (PRF-378, PRF-379).
   (declare (xargs :stobjs state :mode :program))
   (let ((kind (fn-native-admin-result-kind plan)))
     (cond ;; PKT-709: offline, a bind of an unregistered consumer name is
@@ -101,56 +104,54 @@
                                 ;; PKT-575: the operator's withdrawal row.
                                 :withdraw-article))
            (fn-store-cfg-peer-delta-record
-            (fn-native-admin-plan-deltas plan) monotonic wall state))
+            (fn-native-admin-plan-deltas plan) stamp state))
           ; PRF-099: `peer carries' / `peer budget' over the replayed table.
           ((equal kind :extend-peer)
            (let ((deltas (fn-native-admin-plan-deltas-over
                           plan (fn-cfg-peers
                                 (fn-cfg-value (f-get-global 'fn-store-cfg state))))))
              (if deltas
-                 (fn-store-cfg-peer-delta-record deltas monotonic wall state)
+                 (fn-store-cfg-peer-delta-record deltas stamp state)
                (let ((state (f-put-global 'fn-store-cfg-last-reason :no-such-peer
                                           state)))
                  (value :refused)))))
           ;; PRF-164: offline, the pending row expires from the record's
-          ;; own stamp (the one fn-store-cfg-peer-delta-record builds), a
-          ;; SECONDS reading (fn-acct-offline-invite-reading; PRF-374, bug
-          ;; M1: it was read as milliseconds, so the code was born expired).
+          ;; own stamp, the observation fn-store-cfg-peer-delta-record
+          ;; writes (milliseconds, PRF-378).  PRF-379: a stamp with no wall
+          ;; claim refuses by name (fn-acct-offline-invite-refusal), never
+          ;; a code born expired.
           ((equal kind :account-invite)
-           (let ((deltas (fn-acct-admin-deltas
-                          plan (fn-acct-offline-invite-reading monotonic wall))))
-             (if deltas
-                 (fn-store-cfg-peer-delta-record deltas monotonic wall state)
-               (let ((state (f-put-global 'fn-store-cfg-last-reason :no-clock
-                                          state)))
-                 (value :refused)))))
+           (let ((refusal (fn-acct-offline-invite-refusal plan stamp)))
+             (if refusal
+                 (let ((state (f-put-global 'fn-store-cfg-last-reason refusal
+                                            state)))
+                   (value :refused))
+               (fn-store-cfg-peer-delta-record
+                (fn-acct-admin-deltas plan (fn-acct-offline-invite-reading stamp))
+                stamp state))))
           ((equal kind :set-peer)
            (fn-store-cfg-peer-delta-record
             (list (fn-native-admin-set-peer-delta plan))
-            monotonic wall state))
+            stamp state))
           ((equal kind :remove-peer)
            (fn-store-cfg-remove-peer (fn-native-admin-result-name plan)
-                                     monotonic wall state))
+                                     stamp state))
           ((equal kind :set-policy)
            (fn-store-cfg-set-policy (fn-native-admin-result-name plan)
                                     (fn-native-admin-result-value plan)
-                                    monotonic wall state))
+                                    stamp state))
           (t (fn-store-cfg-reconfigure
               kind (fn-native-admin-result-name plan)
               (fn-native-admin-result-capacity plan)
-              monotonic wall state)))))
+              stamp state)))))
 (defun fn-native-admin-host-config-name (generation)
   (fn-native-admin-config-name generation))
-(defun fn-native-admin-host-clock-observation (monotonic wall)
-  (fn-native-admin-clock-observation monotonic wall))
+(defun fn-native-admin-host-clock-observation (monotonic wall has-wall)
+  (fn-native-admin-clock-observation monotonic wall has-wall))
 (defun fn-native-admin-host-clock-status (result)
   (fn-native-admin-clock-status result))
 (defun fn-native-admin-host-clock-stamp (result)
   (fn-native-admin-clock-stamp result))
-(defun fn-native-admin-host-clock-monotonic (stamp)
-  (fn-clock-monotonic stamp))
-(defun fn-native-admin-host-clock-wall (stamp)
-  (fn-clock-wall stamp))
 (defun fn-native-admin-host-publication-status (result)
   (fn-native-admin-publication-status result))
 (defun fn-native-admin-host-publication-reason (result)
