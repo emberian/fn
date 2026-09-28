@@ -11993,7 +11993,8 @@
         "tests/acl2/protocol-codes-tests.lisp",
         "tests/test_protocol_fuzz_grammar.py",
         "planning/evidence/manifests/certify-20260928T001508Z-3191332.json",
-        "planning/evidence/manifests/certify-20260928T032046Z-3695293.json"
+        "planning/evidence/manifests/certify-20260928T032046Z-3695293.json",
+        "planning/evidence/manifests/certify-20260928T034446Z-1337917.json"
       ],
       "progress_note": "Lane defprotocol (Opus 5.5, 2026-09-28). Certified on hbox: the 484 affected roots of books/nntp, books/protocol-table and books/protocol-builders (506 books, certify-20260928T001508Z-3191332, passed). Teeth: 120 witnesses asserting the keystone's conclusion and the exact code per row, 25 must-fail row theorems with a witnessed code removed, the framing witnesses and a must-fail without the :article exclusion; the codes a two-article archive cannot reach are named at the end of the test book (pending-fixture hostile-reader-archive). The keystones made literal defthms: hbox certify-20260928T032046Z-3695293 (protocol-codes, protocol-framing, the test book: passed). Open: books/protocol-codes 18.6 s at 3 jobs (D26 debt; the per-row theorems, HDR 2.2M steps and OVER 0.9M; split the row theorems into their own book).",
       "events": [
