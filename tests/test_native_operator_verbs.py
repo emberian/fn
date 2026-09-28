@@ -38,8 +38,21 @@ DEVELOPER = Path(os.environ.get(
 EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_FAULT, EXIT_USAGE = 0, 1, 3, 4, 5
 
 
+def deployed_stack(env):
+    """PKT-693: the saved image's own launcher passes `--control-stack-size
+    64' (MB), so a test that runs build/fn-host directly gives every thread
+    64 MiB, while the installed launcher (packaging/fn) passes the profile's
+    figure (books/heap-reservation.lisp fn-heap-stack-kib, 1,024 KiB).  With
+    FN_TEST_CONTROL_STACK_KB set, the image runs at that figure instead
+    (SBCL_USER_ARGS comes after the launcher's own option, so it wins)."""
+    kib = os.environ.get("FN_TEST_CONTROL_STACK_KB")
+    if kib and kib.isdigit():
+        env["SBCL_USER_ARGS"] = "--control-stack-size {}KB".format(kib)
+    return env
+
+
 def environment():
-    env = dict(os.environ)
+    env = deployed_stack(dict(os.environ))
     env["ACL2_CUSTOMIZATION"] = "NONE"
     env.pop("ACL2_SYSTEM_BOOKS", None)
     env.pop("FN_HOST", None)

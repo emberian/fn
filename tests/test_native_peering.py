@@ -15,6 +15,8 @@ import subprocess
 import tempfile
 import threading
 import time
+
+from tests.test_native_operator_verbs import deployed_stack
 import unittest
 
 from tests.native_process import wait_for_announcement
@@ -160,7 +162,7 @@ class NativePeeringTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-peering-")
         self.addCleanup(self.temporary.cleanup)
         self.base = Path(self.temporary.name)
-        self.env = dict(os.environ)
+        self.env = deployed_stack(dict(os.environ))
         self.env["ACL2_CUSTOMIZATION"] = "NONE"
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
         self.env.pop("FN_HOST", None)
