@@ -116,11 +116,7 @@
 
 (defun fn-bpcc-remove (w xs)
   (declare (xargs :guard t))
-  (if (consp xs)
-      (if (equal (car xs) w)
-          (fn-bpcc-remove w (cdr xs))
-        (cons (car xs) (fn-bpcc-remove w (cdr xs))))
-    nil))
+  (remove-equal w (true-list-fix xs)))
 
 (defun fn-bpcc-apply (c record)
   (declare (xargs :guard t))
