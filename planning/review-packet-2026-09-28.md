@@ -66,7 +66,7 @@ Coordinator's (ember may reverse):
 | Served reads | OVER 1-2000 332-399 → 70-78 ms; HDR 153-230 → 9.5-14 ms (parse once at intern). HDR :fn-verified whole range at 100k 30+ min → 1.1 s. |
 | Deployed stack | Tests ran with a 64 MiB stack; nodes run 1 MiB. At 1 MiB a node could not restart past ~30k articles, and 26 commands killed the owner at 100k. ~320 walks became mbe loops (logic unchanged); a shrink-only lint now fails any new article-depth recursion. Every protocol command completes at 1M. |
 | Page store | COW page store, FNADTSN2 layout, growth proved, BLAKE3 page digest, 570 crash/power cuts with 0 violations. Prototype-host open: 10.5 ms at 100k AND 1M (served open today: 11.2 s / 135 s). |
-| Format 10 | On dev, with import of every format-9 kind (signed composites carried byte-for-byte, identities re-derived). |
+| Format 10 | On dev. Import covers every format-9 kind EXCEPT signed topic anchors/admissions, which are refused by name (`:signed-format-9-identity`: their signed sources name format-9 identities format 10 cannot interpret). Signed composites carry byte-for-byte, identities re-derived. (Corrected after GPT-6's review.) |
 | Extraction | Chicken Scheme program extracted from ACL2's translated terms serves a real store byte-identically (9 transcripts, 44,960 generated inputs): 5.3 MB, 14 MB RSS at start vs 466 MB; 3.4x slower per command. |
 | Generators | defkeystone (teeth generated from one form; differential clean) and defprotocol (the NNTP table; the dispatcher generated and proved equal to the hand-written one; 342 reply strings from the table). |
 | Web face | The node serves its own HTTP reader; parse/route/render/session decided in ACL2 (every page proved fixed markup or escaped text). 16/16 Chromium checks. Python readers deleted (7,412 lines). |
@@ -173,7 +173,10 @@ not yet undertaken.
    than moving them one by one (a generic refinement lemma per access pattern)?
 2. **F8: the admission and reservation model** (RUNNING, f8-reservation: an itemised
    breakdown and a proposal). Today's model sums worst cases (1.2 GB at init vs a 256 MB
-   bar). *Scout:* prior art for provable admission control with measured use and a
+   bar): core file 204 MiB + 30 thread stacks 150 MiB + heap figure ~833 MiB (records
+   384 MiB). Core and stacks are address space, not resident, so the bar's definition is
+   open. Connections are NOT charged at all: one connection mid-article at an 11 MiB limit
+   holds ~383 MB of lists outside the figure (being fixed by zero-copy-commit). *Scout:* prior art for provable admission control with measured use and a
    bounded overdraft (servers, databases, real-time allocators)?
 3. **Zero-copy commit** (RUNNING): one per-connection body buffer through the four
    layers; the buffer becomes the reserve. *Scout:* the right bound when many
