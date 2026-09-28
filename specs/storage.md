@@ -750,8 +750,19 @@ byte primitives, verifies it against its table entry and asks again; the
 first read of a row pays at most its four cells' pages and its pool entry's
 pages. Proved: over any page store state whose verified pages hold the
 image's words, the header check and the row read answer the history.
-Not yet the owner's path: the writer, the host wiring and the snapshot
-commit are the next milestones.
+The writer (lane arena-store-3; `books/history-pages-write*.lisp`) appends
+an event into the page store's words from the header answer the host
+carries (N, the lengths, the starts): six blocks (the header's words 6-17,
+one cell per column, the padded tree in the pool), written only when every
+page they touch is verified (else the need-verdict, nothing written) and
+only while no region changes its cap (else the named verdict (:grow R),
+nothing written). Proved: the appended history's image words are the old
+ones with those blocks in place; over any state whose verified pages hold
+the image, an :ok leaves them holding the appended history's image,
+answers its header, and marks dirty only pages of the proved dirty list
+above, each verified, so the commit writes exactly the new image's pages.
+Not yet the owner's path: the region growth (FNADTSN2), the host wiring and
+the snapshot commit are the next milestones.
 
 ## History classes and lifetimes
 
