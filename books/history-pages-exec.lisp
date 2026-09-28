@@ -39,7 +39,7 @@
  (defthm fn-hp-row-cells-of-row
    (equal (adt-row-cells *fn-hp-schema* (fn-hp-row ev salt) pos)
           (cons (fn-hp-cells-of ev salt pos) (+ (nfix pos) (len (fn-hp-pad8 (fn-scc-encode ev))))))
-   :hints (("Goal" :in-theory (e/d (adt-enc) (fn-scc-encode fn-hp-mkey))))))
+   :hints (("Goal" :in-theory (e/d (adt-enc) (fn-scc-encode fn-scc-program fn-hp-mkey fn-hp-pad8))))))
 
 (local
  (defun fn-hp-ci-ind (i h pos salt)
@@ -51,7 +51,8 @@
            (equal (nth i (adt-rows-cells *fn-hp-schema* (fn-hp-rows h salt) pos))
                   (fn-hp-cells-of (nth i h) salt (+ pos (fn-hp-enc-len (take i h))))))
   :hints (("Goal" :induct (fn-hp-ci-ind i h pos salt)
-           :in-theory (e/d (nth take) (fn-hp-cells-of fn-hp-row adt-row-cells fn-scc-encode fn-hp-pad8)))))
+           :in-theory (e/d (nth take) (fn-hp-cells-of fn-hp-row adt-row-cells fn-scc-encode fn-scc-program
+                                       fn-hp-pad8 fn-hp-mkey)))))
 
 ; Pool entries, abstracted: EV's entry is its padded tree.
 (defun fn-hp-pe (ev)
@@ -112,7 +113,8 @@
            (equal (nth r (adt-dec-cols ws n starts useds b))
                   (adt-unle-list (nfix (nth r ws)) n
                                  (take (nfix (nth r useds)) (nthcdr (* *adt-page* (nfix (nth r starts))) b)))))
-  :hints (("Goal" :induct (fn-hp-r-ind r ws starts useds) :in-theory (enable nth))))
+  :hints (("Goal" :induct (fn-hp-r-ind r ws starts useds) :expand ((adt-dec-cols ws n starts useds b))
+           :in-theory (e/d (nth) (adt-dec-cols adt-unle-list take nthcdr)))))
 
 (local
  (defun fn-hp-ul-ind (i n x)
@@ -359,10 +361,10 @@
  (defthm fn-hp-list5
    (implies (and (true-listp x) (equal (len x) 5))
             (equal (list (nth 0 x) (nth 1 x) (nth 2 x) (nth 3 x) (nth 4 x)) x))
-   :hints (("Goal" :expand ((nth 0 x) (nth 1 x) (nth 2 x) (nth 3 x) (nth 4 x)
-                            (nth 0 (cdr x)) (nth 1 (cdr x)) (nth 2 (cdr x)) (nth 3 (cdr x))
-                            (nth 0 (cddr x)) (nth 1 (cddr x)) (nth 2 (cddr x))
-                            (nth 0 (cdddr x)) (nth 1 (cdddr x)) (nth 0 (cddddr x)))))))
+   :hints (("Goal" :in-theory (e/d (nth) (len true-listp))
+            :expand ((len x) (len (cdr x)) (len (cddr x)) (len (cdddr x)) (len (cddddr x)) (len (cdr (cddddr x)))
+                     (true-listp x) (true-listp (cdr x)) (true-listp (cddr x)) (true-listp (cdddr x))
+                     (true-listp (cddddr x)) (true-listp (cdr (cddddr x))))))))
 
 (defthm fn-hp-lens-col-sizes
   (implies (and (fn-hp-okp h salt) (natp r) (< r 4))
@@ -414,3 +416,229 @@
                            (fn-hp-header-fixed-octets fn-hp-header-meta-octets fn-hp-lens-col-sizes fn-hp-list5
                             fn-hp-iw fn-hp-image fn-hp-okp adt-unle adt-regs fn-hp-rows adt-starts-l adt-end-l
                             adt-lens fn-hp-lens fn-hp-starts)))))
+
+; -----------------------------------------------------------------------------
+; C. The row reader over the words: the event at SEQ.
+
+(defthm fn-hp-evp-nth
+  (implies (and (fn-hp-events-okp h) (natp i) (< i (len h)))
+           (fn-hp-evp (nth i h)))
+  :hints (("Goal" :in-theory (e/d (nth) (fn-hp-evp)))))
+
+(defthm fn-hp-len-pad8
+  (equal (len (fn-hp-pad8 x)) (+ (len x) (fn-hp-pad8-count (len x))))
+  :hints (("Goal" :in-theory (enable fn-hp-pad8))))
+
+(defthm fn-hp-pe-mod-8
+  (equal (mod (len (fn-hp-pe ev)) 8) 0)
+  :hints (("Goal" :in-theory (e/d (fn-hp-pe) (mod))
+           :use ((:instance fn-hp-pad-to-8 (n (len (fn-scc-encode ev))))))))
+
+(defthm fn-hp-pes-len-mod-8
+  (equal (mod (fn-hp-pes-len h) 8) 0)
+  :hints (("Goal" :in-theory (disable fn-hp-pe-mod-8 mod) :induct (fn-hp-pes-len h))
+          ("Subgoal *1/2" :use ((:instance fn-hp-pe-mod-8 (ev (car h)))
+                                (:instance fn-hp-mod-8-sum (x (len (fn-hp-pe (car h)))) (y (fn-hp-pes-len (cdr h))))))))
+
+(defthm fn-hp-lens-4
+  (equal (nth 4 (fn-hp-lens h salt)) (fn-hp-pes-len h))
+  :hints (("Goal" :in-theory (e/d (adt-regs) (fn-hp-rows)))))
+
+(defthm fn-hp-take-of-pe
+  (implies (fn-hp-evp ev)
+           (equal (take (len (fn-scc-encode ev)) (fn-hp-pe ev)) (fn-scc-encode ev)))
+  :hints (("Goal" :in-theory (e/d (fn-hp-pe fn-hp-pad8) (fn-scc-encode)))))
+
+(defthm fn-hp-len-enc-le-pe
+  (<= (len (fn-scc-encode ev)) (len (fn-hp-pe ev)))
+  :hints (("Goal" :in-theory (e/d (fn-hp-pe fn-hp-pad8) (fn-scc-encode))))
+  :rule-classes :linear)
+
+(defthm fn-hp-pe-is-pad8
+  (equal (fn-hp-pad8 (fn-scc-encode ev)) (fn-hp-pe ev))
+  :hints (("Goal" :in-theory (enable fn-hp-pe))))
+
+(defthm fn-hp-decode-enc
+  (implies (fn-hp-evp ev)
+           (equal (fn-scc-decode-tree (fn-scc-encode ev)) (list :ok ev)))
+  :hints (("Goal" :use ((:instance fn-scc-decode-tree-of-encode (x ev)))
+           :in-theory (disable fn-scc-decode-tree-of-encode fn-scc-decode-tree fn-scc-encode))))
+
+(defun fn-hp-w-at (seq w salt n lens starts)
+  ; the event at SEQ read from the image's words W, given the header's N,
+  ; LENS and STARTS: (:ok EV) or (:refused REASON)
+  (declare (xargs :verify-guards nil))
+  (let* ((mkey (nth (+ (* 2048 (nth 0 starts)) seq) w))
+         (tl (nth (+ (* 2048 (nth 1 starts)) seq) w))
+         (off (nth (+ (* 2048 (nth 2 starts)) seq) w))
+         (plen (nth (+ (* 2048 (nth 3 starts)) seq) w)))
+    (cond ((not (and (natp seq) (< seq (nfix n)))) (list :refused :seq))
+          ((not (and (natp off) (natp plen) (natp tl) (equal (mod off 8) 0) (equal (mod plen 8) 0)
+                     (<= tl plen) (<= (+ off plen) (nfix (nth 4 lens)))))
+           (list :refused :cells))
+          (t (let ((bytes (pgs-words-le-octets
+                           (take (floor plen 8) (nthcdr (+ (* 2048 (nth 4 starts)) (floor off 8)) w)))))
+               (if (not (equal bytes (fn-hp-pad8 (take tl bytes))))
+                   (list :refused :padding)
+                 (let ((d (fn-scc-decode-tree (take tl bytes))))
+                   (cond ((not (eq (car d) :ok)) (list :refused :tree))
+                         ((not (equal mkey (fn-hp-mkey (cadr d) salt))) (list :refused :mkey))
+                         (t d)))))))))
+
+(local
+ (defthm fn-hp-octetsp-meta
+   (adt-octetsp (adt-meta starts lens))
+   :hints (("Goal" :in-theory (enable adt-meta)))))
+
+(defthm fn-hp-octetsp-header
+  (adt-octetsp (adt-header *fn-hp-schema* n regs))
+  :hints (("Goal" :in-theory (e/d (adt-header adt-header-content adt-hdr-const (:executable-counterpart adt-hdr-const))
+                                  (adt-zeros adt-le)))))
+
+(local
+ (defthm fn-hp-octetsp-col-regs
+   (adt-all-octetsp (adt-col-regs ws cols))
+   :hints (("Goal" :in-theory (enable adt-all-octetsp)))))
+
+(local
+ (defthm fn-hp-all-octetsp-append
+   (implies (and (adt-all-octetsp x) (adt-all-octetsp y)) (adt-all-octetsp (append x y)))
+   :hints (("Goal" :in-theory (enable adt-all-octetsp)))))
+
+
+(local
+ (defthm fn-hp-octetsp-of-scc-octets-x
+   (implies (fn-scc-octet-listp x) (adt-octetsp x))))
+
+(defthm fn-hp-octetsp-pe
+  (implies (fn-hp-evp ev) (adt-octetsp (fn-hp-pe ev)))
+  :hints (("Goal" :in-theory (e/d (fn-hp-pe) (fn-scc-program)))))
+
+(defthm fn-hp-octetsp-pes
+  (implies (fn-hp-events-okp h) (adt-octetsp (fn-hp-pes h)))
+  :hints (("Goal" :in-theory (disable fn-hp-evp))))
+
+(defthm fn-hp-octetsp-image
+  (implies (fn-hp-events-okp h) (adt-octetsp (fn-hp-image h salt)))
+  :hints (("Goal" :do-not-induct t :in-theory (e/d (adt-ser adt-regs adt-all-octetsp) (adt-ser-is-header-body adt-header fn-hp-rows)))))
+
+(defthm fn-hp-len-image
+  (equal (len (fn-hp-image h salt)) (* 16384 (fn-hp-npages h salt)))
+  :hints (("Goal" :in-theory (disable adt-ser adt-regs fn-hp-rows adt-end-is-end-l))))
+
+(defthm fn-hp-npages-is-end-l
+  (equal (fn-hp-npages h salt) (adt-end-l (fn-hp-lens h salt) 1))
+  :hints (("Goal" :in-theory (disable adt-regs fn-hp-rows))))
+
+(defthm fn-hp-nat-listp-lens
+  (nat-listp (fn-hp-lens h salt)))
+
+(defthm fn-hp-iw-cell
+  (implies (and (fn-hp-okp h salt) (natp r) (< r 4) (natp i) (< i (len h)))
+           (equal (nth (+ (* 2048 (nth r (fn-hp-starts h salt))) i) (fn-hp-iw h salt))
+                  (nth r (fn-hp-cells-of (nth i h) salt (fn-hp-pes-len (take i h))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hp-iw-word (j (+ (* 2048 (nth r (fn-hp-starts h salt))) i)))
+                 (:instance fn-hp-col-octets)
+                 (:instance fn-hp-region-within-end (lens (fn-hp-lens h salt)) (start 1))
+                 (:instance fn-hp-lens-col-sizes)
+                 (:instance fn-hp-natp-nth-starts-l (lens (fn-hp-lens h salt)) (s 1))
+                 (:instance fn-hp-starts-is))
+           :in-theory (disable fn-hp-iw-word fn-hp-col-octets fn-hp-region-within-end fn-hp-lens-col-sizes
+                               fn-hp-natp-nth-starts-l fn-hp-iw fn-hp-image fn-hp-okp fn-hp-cells-of
+                               fn-hp-starts fn-hp-lens fn-hp-npages adt-unle adt-starts-l adt-end-l))))
+
+(defthm fn-hp-octetsp-nthcdr-x
+  (implies (adt-octetsp b) (adt-octetsp (nthcdr n b)))
+  :hints (("Goal" :in-theory (enable nthcdr))))
+(defthm fn-hp-words-slice
+  (implies (and (natp e) (adt-octetsp b) (equal (len b) (* 16384 e)) (natp s) (natp o) (natp p)
+                (equal (mod o 8) 0) (equal (mod p 8) 0) (<= (+ (* 16384 s) o p) (* 16384 e)))
+           (equal (pgs-words-le-octets (take (floor p 8) (nthcdr (+ (* 2048 s) (floor o 8)) (fn-hp-pack8 (* 2048 e) b))))
+                  (take p (nthcdr (+ (* 16384 s) o) b))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hp-floor-8-exact (x o)) (:instance fn-hp-floor-8-exact (x p))
+                 (:instance fn-hp-nthcdr-pack8 (m (+ (* 2048 s) (floor o 8))) (n (* 2048 e)))
+                 (:instance fn-hp-take-pack8 (m (floor p 8)) (n (- (* 2048 e) (+ (* 2048 s) (floor o 8))))
+                            (b (nthcdr (* 8 (+ (* 2048 s) (floor o 8))) b)))
+                 (:instance fn-hp-words-le-octets-of-pack8 (n (floor p 8)) (b (nthcdr (* 8 (+ (* 2048 s) (floor o 8))) b))))
+           :in-theory (disable floor mod fn-hp-floor-8-exact fn-hp-nthcdr-pack8 fn-hp-take-pack8
+                               fn-hp-words-le-octets-of-pack8 pgs-words-le-octets fn-hp-pack8))))
+
+(defthm fn-hp-okp-events
+  (implies (fn-hp-okp h salt) (fn-hp-events-okp h))
+  :rule-classes :forward-chaining)
+
+(defthm fn-hp-iw-pool
+  (implies (and (fn-hp-okp h salt) (natp i) (< i (len h)))
+           (equal (pgs-words-le-octets
+                   (take (floor (len (fn-hp-pe (nth i h))) 8)
+                         (nthcdr (+ (* 2048 (nth 4 (fn-hp-starts h salt))) (floor (fn-hp-pes-len (take i h)) 8))
+                                 (fn-hp-iw h salt))))
+                  (fn-hp-pe (nth i h))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hp-pool-octets) (:instance fn-hp-octetsp-image)
+                 (:instance fn-hp-region-within-end (lens (fn-hp-lens h salt)) (start 1) (r 4))
+                 (:instance fn-hp-pes-len-take-bound)
+                 (:instance fn-hp-natp-start-4)
+                 (:instance fn-hp-starts-is)
+                 (:instance fn-hp-words-slice (e (fn-hp-npages h salt)) (b (fn-hp-image h salt))
+                            (s (nth 4 (fn-hp-starts h salt))) (o (fn-hp-pes-len (take i h)))
+                            (p (len (fn-hp-pe (nth i h))))))
+           :in-theory (disable fn-hp-pool-octets fn-hp-region-within-end fn-hp-pes-len-take-bound fn-hp-natp-start-4
+                               fn-hp-words-slice floor mod
+                               fn-hp-image fn-hp-okp fn-hp-starts fn-hp-lens fn-hp-npages adt-starts-l adt-end-l
+                               fn-hp-pes-len pgs-words-le-octets fn-hp-pack8))))
+
+(defthmd fn-hp-cells-of-is
+  (equal (fn-hp-cells-of ev salt pos)
+         (list (fn-hp-mkey ev salt) (len (fn-scc-encode ev)) (nfix pos) (len (fn-hp-pe ev))))
+  :hints (("Goal" :in-theory (e/d (fn-hp-pe) (fn-scc-encode fn-hp-len-pad8)))))
+
+(defthm fn-hp-w-at-when
+  (implies (and (natp seq) (< seq (nfix n))
+                (equal (nth (+ (* 2048 (nth 0 starts)) seq) w) k)
+                (equal (nth (+ (* 2048 (nth 1 starts)) seq) w) tl)
+                (equal (nth (+ (* 2048 (nth 2 starts)) seq) w) off)
+                (equal (nth (+ (* 2048 (nth 3 starts)) seq) w) plen)
+                (natp off) (natp plen) (natp tl) (equal (mod off 8) 0) (equal (mod plen 8) 0)
+                (<= tl plen) (<= (+ off plen) (nfix (nth 4 lens)))
+                (equal (pgs-words-le-octets (take (floor plen 8) (nthcdr (+ (* 2048 (nth 4 starts)) (floor off 8)) w)))
+                       bytes)
+                (equal bytes (fn-hp-pad8 (take tl bytes)))
+                (equal (fn-scc-decode-tree (take tl bytes)) (list :ok ev))
+                (equal k (fn-hp-mkey ev salt)))
+           (equal (fn-hp-w-at seq w salt n lens starts) (list :ok ev)))
+  :hints (("Goal" :in-theory (disable fn-hp-mkey fn-scc-decode-tree pgs-words-le-octets floor mod take nthcdr nth))))
+
+(defthmd fn-hp-pe-def
+  (equal (fn-hp-pe ev) (fn-hp-pad8 (fn-scc-encode ev)))
+  :hints (("Goal" :in-theory (enable fn-hp-pe))))
+
+(defthm fn-hp-w-at-of-image
+  (implies (and (fn-hp-okp h salt) (natp seq) (< seq (len h)))
+           (equal (fn-hp-w-at seq (fn-hp-iw h salt) salt (len h) (fn-hp-lens h salt) (fn-hp-starts h salt))
+                  (list :ok (nth seq h))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hp-w-at-when (w (fn-hp-iw h salt)) (n (len h)) (lens (fn-hp-lens h salt))
+                            (starts (fn-hp-starts h salt)) (ev (nth seq h))
+                            (k (fn-hp-mkey (nth seq h) salt)) (tl (len (fn-scc-encode (nth seq h))))
+                            (off (fn-hp-pes-len (take seq h))) (plen (len (fn-hp-pe (nth seq h))))
+                            (bytes (fn-hp-pe (nth seq h))))
+                 (:instance fn-hp-iw-cell (r 0) (i seq)) (:instance fn-hp-iw-cell (r 1) (i seq))
+                 (:instance fn-hp-iw-cell (r 2) (i seq)) (:instance fn-hp-iw-cell (r 3) (i seq))
+                 (:instance fn-hp-cells-of-is (ev (nth seq h)) (pos (fn-hp-pes-len (take seq h))))
+                 (:instance fn-hp-iw-pool (i seq))
+                 (:instance fn-hp-evp-nth (i seq))
+                 (:instance fn-hp-pes-len-take-bound (i seq))
+                 (:instance fn-hp-pes-len-mod-8 (h (take seq h)))
+                 (:instance fn-hp-pe-mod-8 (ev (nth seq h)))
+                 (:instance fn-hp-take-of-pe (ev (nth seq h)))
+                 (:instance fn-hp-pe-def (ev (nth seq h)))
+                 (:instance fn-hp-decode-enc (ev (nth seq h)))
+                 (:instance fn-hp-len-enc-le-pe (ev (nth seq h))))
+           :in-theory (theory 'minimal-theory))
+          ("Goal'" :in-theory (e/d (fn-hp-lens-4) (fn-hp-w-at fn-hp-iw fn-hp-image fn-hp-okp fn-hp-starts fn-hp-lens
+                                   fn-hp-npages fn-hp-pes-len fn-hp-pe fn-scc-encode fn-scc-decode-tree fn-hp-evp
+                                   pgs-words-le-octets floor mod fn-hp-mkey fn-hp-cells-of fn-hp-len-pad8 fn-scc-program adt-len-region-below-body adt-body
+                                   fn-hp-pad8-count fn-hp-pe-is-pad8 fn-hp-pad8 nth take nthcdr fn-hp-events-okp)))))

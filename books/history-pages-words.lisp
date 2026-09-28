@@ -98,3 +98,19 @@
            (equal (pgs-words-le-octets (take 2048 (nthcdr (* 2048 k) (fn-hp-pack8 (* 2048 e) b))))
                   (take 16384 (nthcdr (* 16384 k) b))))
   :hints (("Goal" :do-not-induct t)))
+
+; Word alignment arithmetic (the pool entries are padded to 8 octets).
+(defthm fn-hp-pad-to-8
+  (implies (natp n) (equal (mod (+ n (mod (- 8 (mod n 8)) 8)) 8) 0)))
+
+(defthm fn-hp-mod-8-sum
+  (implies (and (natp x) (natp y) (equal (mod x 8) 0) (equal (mod y 8) 0))
+           (equal (mod (+ x y) 8) 0)))
+
+(defthm fn-hp-floor-8-exact
+  (implies (and (natp x) (equal (mod x 8) 0))
+           (equal (* 8 (floor x 8)) x)))
+
+(defthm fn-hp-floor-8-plus
+  (implies (and (natp x) (natp y) (equal (mod x 8) 0))
+           (equal (floor (+ (* 16384 y) x) 8) (+ (* 2048 y) (floor x 8)))))
