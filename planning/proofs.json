@@ -12967,6 +12967,8 @@
         "fn-osd-stops-only-when-nothing-is-owed",
         "fn-osd-releases-only-at-the-deadline",
         "fn-osd-drain-ends-by-the-deadline",
+        "fn-osd-drain-stops-by-the-deadline",
+        "fn-osd-drain-next-step-unfolds",
         "fn-osd-deadline-is-past-the-slow-deadline"
       ]
     },
