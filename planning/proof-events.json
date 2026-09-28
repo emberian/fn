@@ -11455,6 +11455,36 @@
           "note": "blake3-digest (b1/b2): BLAKE3 in ACL2 and its buffer twin, the digest seams' realiser (books/crypto-attach.lisp)."
         }
       ]
+    },
+    {
+      "id": "PRF-355",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-composite-keeps-what-it-binds",
+          "note": "KEYSTONE (a composite keeps its signed source, verdict, keyring generation and article). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-composite-identities-are-format-10s",
+          "note": "KEYSTONE (a composite's identities are the ones replay derives). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-step-of-a-composite",
+          "note": "KEYSTONE (a composite imports bound or is refused by name). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-step-carries-identity-free-kinds-verbatim",
+          "note": "KEYSTONE (verdicts, keyring snapshots, consumer events, topic install: verbatim). Host: host/native/io.lisp fnn-command-store-import via fn-sxp-import-plan's fn-f9r-records. Teeth: tests/acl2/store-format-9-records-tests.lisp; native tests/test_native_format_9_every_kind.py."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-f9r-loop-keeps-sequences",
+          "note": "The translated history keeps the archive's sequences in order."
+        }
+      ]
     }
   ]
 }
