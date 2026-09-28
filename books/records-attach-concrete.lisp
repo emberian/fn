@@ -10,9 +10,12 @@
 ; (books/records-codec-concrete.lisp): the implementation with the record
 ; recognised over its strings in place, EQUAL to fn-record-encode-impl on
 ; every input with no hypothesis
-; (fn-rcon-record-encode-impl-is-record-encode-impl).  The decoder keeps
-; its attachment; a seam's functions are attached together, so it is
-; named again.
+; (fn-rcon-record-encode-impl-is-record-encode-impl).  The decoder is
+; attached to its executable twin, fn-record-decode-exact-exec
+; (books/records-exec.lisp, G9): an mbe whose :logic is
+; fn-record-decode-exact-impl and whose :exec checks each payload once
+; (PRF-333).  No proof book includes records-exec, so an edit to that :exec
+; recertifies this book's includers only.
 ;
 ; Why a second attachment book rather than an edit of records-attach: the
 ; attachment is not logic, so the two attachments evaluate every ground
@@ -26,11 +29,12 @@
 (in-package "ACL2")
 (include-book "records-attach")
 (include-book "records-codec-concrete")
+(include-book "records-exec")
 
 ; The implementation facts are stated of fn-record-encode-impl; the twin's
 ; keystone rewrites the attached function to it.
 (defattach (fn-record-encode fn-rcon-record-encode-impl)
-           (fn-record-decode-exact fn-record-decode-exact-impl)
+           (fn-record-decode-exact fn-record-decode-exact-exec)
            :hints (("Goal"
                     :use (fn-record-impl-encode-domain
                           fn-record-impl-round-trip
@@ -42,5 +46,6 @@
                           fn-record-impl-encode-narrow-length-bound
                           fn-record-impl-encode-producer-length-bound)
                     :in-theory (union-theories
-                                 '(fn-rcon-record-encode-impl-is-record-encode-impl)
+                                 '(fn-rcon-record-encode-impl-is-record-encode-impl
+                                   fn-record-decode-exact-exec-is-impl-by-definition)
                                  (theory 'minimal-theory)))))
