@@ -128,6 +128,7 @@ class NativeFeedTlsReadTests(unittest.TestCase):
     post = protected.NativeProtectedPeeringTests.post
     await_article = protected.NativeProtectedPeeringTests.await_article
     article_from = protected.NativeProtectedPeeringTests.article_from
+    protected_client = protected.NativeProtectedPeeringTests.protected_client
     make_certificate = protected.NativeProtectedPeeringTests.make_certificate
     initialize = protected.NativeProtectedPeeringTests.initialize
     profile = protected.NativeProtectedPeeringTests.profile
