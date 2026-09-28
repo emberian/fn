@@ -123,11 +123,6 @@
  (let ((request (fn-bpaj-request request-octets)))
   (value (and request (fn-bpaj-receipt-id request)))))
 
-(defun fn-bprj-request-source-eid (request-octets state)
- (declare (xargs :stobjs state :mode :program))
- (let ((request (fn-bpaj-request request-octets)))
-  (value (and request (fn-bpa-request-source-eid request)))))
-
 (defun fn-bprj-request-bound-inbound-id (request-octets state)
  (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp request-octets)))
