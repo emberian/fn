@@ -174,8 +174,9 @@ def render_registry(decls: list[dict], reading: dict) -> str:
                         "(books/definterface.lisp) in host/interfaces.lisp and "
                         "host/interfaces-extract.lisp; ACL2 checks each against the world "
                         "at image build.  Do not edit; regenerate."),
+        # The raw host's total entry count is printed, not written: it moves
+        # with every host change, and a registry row should not.
         "coverage": {"declared": len(decls),
-                     "host_dispatched_entries": reading["entries"],
                      "declared_and_dispatched": sum(1 for d in decls
                                                     if d["name"] in reading["dispatched"]),
                      "guard_verified": sum(1 for d in decls
