@@ -103,3 +103,9 @@
     (fn-midx-refresh nil (list *fn-midx-a*)
                      (list *fn-midx-b* *fn-midx-a*))
     (list *fn-midx-b* *fn-midx-a*))))
+
+; The walk by a loop (PKT-876, PRF-352): the :exec branch runs here, in
+; order, and over 50,000 elements.
+(assert-event (equal (fn-midx-build (list *fn-midx-b* *fn-midx-a*))
+                     (fn-midx-extend *fn-midx-b* (fn-midx-extend *fn-midx-a* nil))))
+(assert-event (consp (fn-midx-build (make-list 50000 :initial-element *fn-midx-a*))))

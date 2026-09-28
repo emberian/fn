@@ -2356,3 +2356,10 @@
 (assert-event (own-dist-antecedent *own-cancel-queued* "out"))
 (must-fail-checked (assert-event (own-dist-antecedent-q *own-cancel-queued* "out")))
 (must-fail-checked (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-queued*))))
+
+; The walk by a loop (PKT-876, PRF-352): the :exec branch runs here, in
+; order, and over 50,000 elements.
+(assert-event (equal (fn-own-take 3 '(a b c d)) '(a b c)))
+(assert-event (equal (fn-own-take 9 '(a b . c)) '(a b)))
+(assert-event (equal (fn-own-take 0 '(a b)) nil))
+(assert-event (equal (len (fn-own-take 50000 (make-list 60000))) 50000))
