@@ -90,9 +90,8 @@
 ;; the host's pending row is exactly the in-flight row's catalog row, with the
 ;; token of that row's pair and the catalog's count -- or, without a pending
 ;; row, no in-flight row loads one.
-(defun-nx fn-sjh-linkp (o pending fn-arena fn-cat)
-  (let* ((files (fn-sn-files (fn-own-store o)))
-         (phase (fn-sf-phase files))
+(defun-nx fn-sjh-files-linkp (files pending fn-arena fn-cat)
+  (let* ((phase (fn-sf-phase files))
          (r (fn-sjh-inflight files)))
     (and (implies (equal phase :completing)
                   (and (consp (fn-sf-records files))
@@ -108,6 +107,9 @@
                          (cons (nfix (cdr (fn-sf-record-pair r))) (fn-pc-expected pending)))
                   (equal (fn-pc-expected pending) (len fn-cat)))
            (not (fn-scj-load-h r))))))
+
+(defun-nx fn-sjh-linkp (o pending fn-arena fn-cat)
+  (fn-sjh-files-linkp (fn-sn-files (fn-own-store o)) pending fn-arena fn-cat))
 
 (defun-nx fn-sjh-okp (o pending fn-arena fn-cat)
   (let ((records (fn-sf-records (fn-sn-files (fn-own-store o)))))
@@ -173,7 +175,7 @@
                   (equal (fn-pc-token pending)
                          (cons (nfix (cdr (fn-sf-completion files))) (fn-pc-expected pending)))
                   (equal (fn-pc-expected pending) (len fn-cat)))))
-  :hints (("Goal" :in-theory (e/d (fn-sjh-linkp fn-sjh-inflight fn-sf-record-phasep)
+  :hints (("Goal" :in-theory (e/d (fn-sjh-linkp fn-sjh-files-linkp fn-sjh-inflight fn-sf-record-phasep)
                                   (fn-ccar-completion-enabledp fn-sf-record-pair fn-scj-load-h fn-pc-p))
            :use ((:instance fn-scj-enabled-is-completing (s (fn-own-store o)))))))
 
@@ -184,7 +186,7 @@
                 (fn-held-p (fn-ccar-completion-record (fn-own-store o))))
            pending)
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-sjh-linkp fn-sjh-inflight fn-sf-record-phasep)
+  :hints (("Goal" :in-theory (e/d (fn-sjh-linkp fn-sjh-files-linkp fn-sjh-inflight fn-sf-record-phasep)
                                   (fn-ccar-completion-enabledp fn-sf-record-pair fn-scj-load-h fn-pc-p
                                    fn-held-p fn-sn-statep))
            :use ((:instance fn-scj-enabled-is-completing (s (fn-own-store o)))
@@ -317,7 +319,7 @@
                   (fn-sjh-linkp o2 nil fn-arena c2))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-scjs-seenp fn-scjs-store-seenp fn-scjs-seen-records fn-scjs-historyp
-                            fn-scj-versions-okp fn-sjh-linkp fn-sjh-inflight fn-sf-record-phasep)
+                            fn-scj-versions-okp fn-sjh-linkp fn-sjh-files-linkp fn-sjh-inflight fn-sf-record-phasep)
                            (fn-ccar-own-finish fn-ccar-completion-enabledp fn-own-store-idlep
                             fn-scj-conns-versions-atmostp nthcdr len))
            :use ((:instance fn-sjh-finish-store-image)
@@ -445,3 +447,129 @@
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn-apc-own-finish-is-own-finish fn-ccar-own-finish-is-own-finish)
            :use ((:instance fn-sjh-okp-at-host-article-finish)))))
+
+; -----------------------------------------------------------------------------
+; The store's io steps (host/owner-host.lisp fn-owner-io: fn-rcon-ocfg-io, which
+; is fn-ocfg-step of (:store (:io OPERATION RESULT)), and the log route's
+; reserve and order): a file step keeps the rows' facts and LINK -- the
+; record-directory append moves the staged candidate into the history as the
+; completing last record, every other step keeps the candidate or has none.
+
+(defun-nx fn-sjh-files-okp (files pending fn-arena fn-cat)
+  (and (fn-rows-composites-okp (fn-sf-records files) fn-arena)
+       (fn-scj-rows-clearp (fn-sf-records files))
+       (fn-sjh-files-linkp files pending fn-arena fn-cat)))
+
+(defthm fn-sjh-composites-okp-of-snoc
+  (equal (fn-rows-composites-okp (append rows (list r)) fn-arena)
+         (and (fn-rows-composites-okp rows fn-arena) (fn-row-composite-okp r fn-arena)))
+  :hints (("Goal" :induct (fn-rows-composites-okp rows fn-arena)
+           :in-theory (e/d (fn-rows-composites-okp) (fn-row-composite-okp)))))
+
+(defthm fn-sjh-rows-clearp-of-snoc
+  (equal (fn-scj-rows-clearp (append rows (list r)))
+         (and (fn-scj-rows-clearp rows) (fn-scj-rows-clearp (list r))))
+  :hints (("Goal" :induct (fn-scj-rows-clearp rows)
+           :in-theory (e/d (fn-scj-rows-clearp) (fn-scj-load-h)))))
+
+(defthm fn-sjh-car-last-of-snoc
+  (equal (car (last (append x (list c)))) c))
+
+(defthm fn-sjh-consp-of-snoc
+  (consp (append x (list c))))
+
+(defthm fn-sjh-file-step-keeps-files-okp
+  (implies (fn-sjh-files-okp files pending fn-arena fn-cat)
+           (fn-sjh-files-okp (fn-sn-file-step files operation result) pending fn-arena fn-cat))
+  :hints (("Goal" :in-theory (e/d (fn-sjh-files-okp fn-sjh-files-linkp fn-sjh-inflight
+                                   fn-sn-file-step fn-sf-start-frontier fn-sf-frontier-file-result
+                                   fn-sf-frontier-replace-result fn-sf-frontier-dir-result
+                                   fn-sf-record-file-result fn-sf-record-link-result
+                                   fn-sf-record-dir-result fn-sf-recovery-barrier
+                                   fn-sf-record-phasep)
+                                  (fn-sf-statep fn-row-composite-okp fn-scj-load-h fn-pc-p
+                                   fn-sf-record-pair fn-rows-composites-okp fn-scj-rows-clearp)))))
+
+(defthm fn-sjh-okp-is-parts
+  (equal (fn-sjh-okp o pending fn-arena fn-cat)
+         (and (fn-scj-invp o fn-arena fn-cat)
+              (fn-scjs-seenp o)
+              (fn-scjs-historyp o)
+              (fn-scar-view-indexedp o)
+              (fn-scj-seqs-sortedp fn-cat)
+              (fn-cnx-freshp fn-cat)
+              (fn-scjs-versionsp o)
+              (fn-sjh-files-okp (fn-sn-files (fn-own-store o)) pending fn-arena fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-sjh-okp fn-sjh-files-okp fn-sjh-linkp fn-scj-versions-okp fn-scjs-versionsp))))
+
+(defthm fn-sjh-io-store-files
+  (implies (fn-sn-statep s)
+           (equal (fn-sn-files (fn-snrt-step s (list :io operation result)))
+                  (fn-sn-file-step (fn-sn-files s) operation result)))
+  :hints (("Goal" :in-theory (e/d (fn-snrt-step fn-snt-step fn-sn-io) (fn-sn-file-step fn-sn-statep)))))
+
+(defthm fn-sjh-refresh-version
+  (equal (fn-own-view-version (fn-own-view (fn-own-refresh o)))
+         (if (fn-own-store-idlep (fn-own-store o))
+             (len (fn-sf-records (fn-sn-files (fn-own-store o))))
+           (fn-own-view-version (fn-own-view o))))
+  :hints (("Goal" :in-theory (e/d (fn-own-refresh)
+                                  (fn-own-store-idlep fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
+                                   fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-visible-state-of)))))
+
+(defthm fn-sjh-store-step-historyp
+  (implies (and (fn-scjs-historyp o)
+                (fn-scjs-seenp o)
+                (not (member-equal (car ev) '(:finish :crash :recover))))
+           (fn-scjs-historyp (fn-own-store-step o ev)))
+  :hints (("Goal" :in-theory (e/d (fn-scjs-historyp fn-own-store-step fn-ocl-owner-with-store)
+                                  (fn-snrt-step fn-own-refresh fn-own-store-idlep fn-scjs-store-framep))
+           :use ((:instance fn-scjs-seenp-unfolds)
+                 (:instance fn-scjs-snrt-step-framep (s (fn-own-store o)) (event ev)
+                            (v (fn-own-view-version (fn-own-view o))))
+                 (:instance fn-scjs-frame-records-facts
+                            (o2 (fn-own-make (fn-snrt-step (fn-own-store o) ev) (fn-own-view o)
+                                             (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
+                                             (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
+                                             (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
+                                             (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)
+                                             (fn-own-refused o))))))))
+
+(defthm fn-sjh-store-step-store
+  (equal (fn-own-store (fn-own-store-step o ev))
+         (fn-snrt-step (fn-own-store o) ev))
+  :hints (("Goal" :in-theory (e/d (fn-own-store-step) (fn-snrt-step fn-own-refresh)))))
+
+(defthm fn-sjh-ocfg-store-step-owner
+  (equal (fn-ocfg-owner (fn-ocfg-step oc (list :store ev) fn-arena))
+         (fn-own-store-step (fn-ocfg-owner oc) ev))
+  :hints (("Goal" :in-theory '(fn-ocfg-step fn-ocfg-pass fn-own-step fn-ocfg-owner-of-fn-ocfg-make
+                               fn-ocfg-with-owner car-cons cdr-cons (:e equal)))))
+
+; KEYSTONE (the store's io steps).  host/owner-host.lisp fn-owner-io calls
+; fn-rcon-ocfg-io, equal to fn-ocfg-step of (:store (:io OPERATION RESULT))
+; (fn-rcon-ocfg-io-is-ocfg-step): the carried predicate with the same pending
+; row.  The view's archive after is a state: fn-ocl-relation after the step
+; carries it (fn-acar-ocl-relation-carries-view-statep).
+(defthm fn-sjh-okp-of-ocfg-io
+  (let* ((o (fn-ocfg-owner oc))
+         (o2 (fn-ocfg-owner (fn-ocfg-step oc (list :store (list :io operation result)) fn-arena))))
+    (implies (and (fn-ocl-relation oc)
+                  (fn-sjh-okp o pending fn-arena fn-cat)
+                  (fn-statep (fn-own-view-archive (fn-own-view o2))))
+             (fn-sjh-okp o2 pending fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-sjh-ocfg-store-step-owner fn-sjh-store-step-store
+                                        fn-ccar-ocl-relation-carries-sn-statep
+                                        fn-sjh-io-store-files fn-sjh-file-step-keeps-files-okp
+                                        car-cons (:e member-equal) (:e car))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-sjh-okp-is-parts (o (fn-ocfg-owner oc)))
+                 (:instance fn-sjh-okp-is-parts
+                            (o (fn-ocfg-owner (fn-ocfg-step oc (list :store (list :io operation result)) fn-arena))))
+                 (:instance fn-scjs-ocfg-store-step-keeps-invp (ev (list :io operation result)))
+                 (:instance fn-scjs-ocfg-store-step-keeps-versions (ev (list :io operation result)))
+                 (:instance fn-sjh-store-step-historyp (o (fn-ocfg-owner oc)) (ev (list :io operation result)))
+                 (:instance fn-oix-ocfg-step-keeps-view-indexed (event (list :store (list :io operation result))))))))
