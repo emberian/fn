@@ -9,12 +9,11 @@ Runs ON hbox (Linux).  From the laptop:
     ssh hbox python3 /tank/fn/scratch/arena-store-host/tree/tools/proto/pagestore_bench.py build
     ssh hbox python3 .../pagestore_bench.py q1|q2|q3|q4|cut-map|summarize [--out DIR]
 
-`build` certifies books/pagestore-words, pagestore, pagestore-exec,
-pagestore-keystones, pagestore-reclaim and pagestore-gc in the w28 ACL2 (their
-include closure's digest certificates -- blake3-stobj, blake3, octets-stobj,
-octet-window, cbor -- come from the proof REPL tree),
-includes pagestore-gc, loads
-host/native/proto-pagestore.lisp and saves one image
+`build` certifies books/pagestore-gc, history-pages-import and
+history-pages-view with their closure (tools/certify_books.py --incremental
+in the w28 ACL2 against the box's certificate cache), includes them, loads
+host/native/proto-pagestore.lisp and host/native/proto-history-pages.lisp
+(m4, lane arena-store-4: the history image's host) and saves one image
 (/tank/fn/scratch/arena-store-host/fnps-image.core) under swarm-build.
 Every command after that is one process of that image under
 `systemd-run --user --scope -p MemoryMax=24G`, fed `:q` and one
@@ -43,7 +42,6 @@ import time
 ROOT = Path("/tank/fn/scratch/arena-store-host")
 TREE = ROOT / "tree"
 CORE = ROOT / "fnps-image.core"
-REPL_BOOKS = Path("/tank/fn/gates/proto-pagestore-repl/books")
 SBCL = "/tank/fn/sbcl/bin/sbcl"
 ACL2_CORE = "/tank/fn/acl2-8.7/saved_acl2.core"
 DYN = "16000"
@@ -52,62 +50,59 @@ ZFS = ROOT / "data"                            # tank (ZFS)
 LANE = Path(__file__).resolve().parents[2]
 
 
-def sbcl_argv(core):
-    return [SBCL, "--tls-limit", "16384", "--dynamic-space-size", DYN,
+def sbcl_argv(core, dyn=None):
+    return [SBCL, "--tls-limit", "65536", "--dynamic-space-size", dyn or DYN,
             "--control-stack-size", "64", "--disable-ldb", "--core", str(core),
             "--end-runtime-options", "--no-userinit", "--eval", "(acl2::sbcl-restart)"]
 
 
 def ship(_a):
-    subprocess.run(["rsync", "-a", "--delete", "--exclude", "build/", "--exclude", ".git",
-                    "--include", "books/***", "--include", "host/***", "--include", "tools/***",
-                    "--exclude", "*", f"{LANE}/", f"hbox:{TREE}/"], check=True)
+    # The whole worktree (certify_books reads the registries); certificates
+    # are neither sent nor deleted (the box's are installed from its cache).
+    subprocess.run(["rsync", "-a", "--delete", "--exclude", "/build/", "--exclude", ".git",
+                    "--exclude", "*.cert", "--exclude", "*.fasl", "--exclude", "*.port",
+                    "--exclude", "*.certify.log", "--exclude", "__pycache__/",
+                    f"{LANE}/", f"hbox:{TREE}/"], check=True)
     print("shipped", LANE, "->", TREE)
 
 
-# The page digest's include closure (books/pagestore-words.lisp includes
-# blake3-stobj), certified in the proof REPL tree.
-DIGEST_CLOSURE = ("cbor", "octets-stobj", "octet-window", "blake3", "blake3-stobj")
-
-BOOKS = ("pagestore-words", "pagestore", "pagestore-exec", "pagestore-keystones",
-         "pagestore-reclaim", "pagestore-gc")
+# The image's books: the page store's (pagestore-gc includes the rest) and
+# the history image's host-called ones (m4).  Certified by the project's
+# runner against the box's certificate cache (--incremental: what the cache
+# holds at its digest is installed, the rest certified), under swarm-build.
+ROOTS = ("books/pagestore-gc", "books/history-pages-import", "books/history-pages-view")
+FARM_ACL2 = "/tank/fn/toolchains/w28/acl2-literal-4g"   # tools/farm.py HOSTS["hbox"]
+CERT_CACHE = "/tank/fn/certcache"
 
 
 def build(_a):
-    books = TREE / "books"
-    for stem in DIGEST_CLOSURE:
-        for ext in (".cert", ".fasl", ".port"):
-            f = REPL_BOOKS / (stem + ext)
-            if f.exists():
-                shutil.copy2(f, books / f.name)
     log = ROOT / "build.log"
     out = open(log, "w")
-    for b in BOOKS:
-        for ext in (".cert", ".fasl", ".port"):
-            (books / (b + ext)).unlink(missing_ok=True)
-    for b in BOOKS:
-        t0 = time.time()
-        script = f"""(set-cbd "{TREE}/books/")
-(certify-book "{b}" ? t)
-"""
-        out.write(f"== certify {b}\n"); out.flush()
-        p = subprocess.run(["swarm-build"] + sbcl_argv(ACL2_CORE), input=script, text=True,
-                           stdout=out, stderr=subprocess.STDOUT, cwd=TREE)
-        ok = (books / (b + ".cert")).exists()
-        out.write(f"== certify {b} rc {p.returncode} cert {ok} {time.time() - t0:.1f} s\n"); out.flush()
-        print("certify", b, "rc", p.returncode, "cert", ok, f"{time.time() - t0:.1f} s", flush=True)
-        if not ok:
-            return 1
+    t0 = time.time()
+    env = dict(os.environ, FN_ACL2=FARM_ACL2, FN_CERT_CACHE=CERT_CACHE, FN_CERT_ORIGIN_KIND="run",
+               FN_ACL2_TIMEOUT_SECONDS="1800")
+    out.write("== certify_books --incremental " + " ".join(ROOTS) + "\n"); out.flush()
+    p = subprocess.run(["swarm-build", "python3", "tools/certify_books.py", "--jobs", "8", "--incremental"]
+                       + list(ROOTS), stdout=out, stderr=subprocess.STDOUT, cwd=TREE, env=env)
+    ok = all((TREE / (r + ".cert")).exists() for r in ROOTS)
+    print("certify rc", p.returncode, "certs", ok, f"{time.time() - t0:.1f} s", flush=True)
+    if p.returncode != 0 or not ok:
+        out.close()
+        return 1
     script = f"""(set-cbd "{TREE}/books/")
 (include-book "pagestore-gc")
+(include-book "history-pages-import")
+(include-book "history-pages-view")
 :q
 (load "{TREE}/host/native/proto-pagestore.lisp")
+(load "{TREE}/host/native/proto-history-pages.lisp")
 (save-exec "{ROOT}/fnps-image" "arena-store-host")
 """
     CORE.unlink(missing_ok=True)
     out.write("== image\n"); out.flush()
+    env = dict(os.environ, ACL2_BOOK_HASH_ALISTP="NIL", ACL2_CUSTOMIZATION="NONE")
     p = subprocess.run(["swarm-build"] + sbcl_argv(ACL2_CORE), input=script, text=True,
-                       stdout=out, stderr=subprocess.STDOUT, cwd=TREE)
+                       stdout=out, stderr=subprocess.STDOUT, cwd=TREE, env=env)
     out.close()
     text = log.read_text()
     bad = [l for l in text.splitlines() if "ACL2 Error" in l or "debugger invoked" in l]
@@ -119,13 +114,13 @@ def lisp_str(s):
     return '"' + str(s).replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def run(args, env=None, timeout=3600, strace=None):
+def run(args, env=None, timeout=3600, strace=None, main="fnps-main", memmax="24G", dyn=None):
     """One image process: returns (rc, [json records], raw output)."""
-    form = "(fnps-main (list " + " ".join(lisp_str(a) for a in args) + "))"
-    argv = ["systemd-run", "--user", "--scope", "--quiet", "-p", "MemoryMax=24G"]
+    form = f"({main} (list " + " ".join(lisp_str(a) for a in args) + "))"
+    argv = ["systemd-run", "--user", "--scope", "--quiet", "-p", f"MemoryMax={memmax}"]
     if strace:
         argv += ["strace", "-f", "-c", "-o", strace, "-e", "trace=fsync,fdatasync"]
-    argv += sbcl_argv(CORE)
+    argv += sbcl_argv(CORE, dyn)
     e = dict(os.environ)
     e.update(env or {})
     p = subprocess.run(argv, input=f":q\n{form}\n", text=True, capture_output=True,
@@ -493,6 +488,251 @@ def reclaim_smoke(a):
     return 0 if bad == 0 else 1
 
 
+# ---------------------------------------------------------------------------
+# m4 (lane arena-store-4): the history image over the page store.
+
+NATIVE_CORE = Path("/tank/fn/scratch/batch-ay/native-n3-9127a2912/tree/build/fn-host-developer.core")
+FIXTURES = Path("/tank/fn/scratch/fixtures")
+M4 = ROOT / "m4"
+EVS = NVME / "m4"
+
+
+def export(a):
+    """The fixture's records through the native image's own open
+    (tools/proto/history_export.lisp): a copy of FIXTURES/NAME/store (its
+    README: copy, touch writer.lock mode 600, `store COPY
+    rebind-filesystem' since fixtures are built on tmpfs), one read-only
+    open, each record's `fn-scc-encode' framed into EVS/NAME.evs.  Prints the export line and the process's peak RSS."""
+    name = a.fixture
+    fx = M4 / "fx" / name
+    shutil.rmtree(fx, ignore_errors=True)
+    fx.mkdir(parents=True)
+    subprocess.run(["cp", "-a", str(FIXTURES / name / "store"), str(fx / "store")], check=True)
+    lock = fx / "store" / "writer.lock"
+    lock.touch(); os.chmod(lock, 0o600)
+    # The fixture was built on tmpfs (README, PKT-579): the copy is rebound.
+    rb = subprocess.run([str(NATIVE_CORE.with_suffix("")), "--fn", "store", str(fx / "store"), "rebind-filesystem"],
+                        capture_output=True, text=True)
+    print("rebind-filesystem rc", rb.returncode, (rb.stdout + rb.stderr).strip()[-300:], flush=True)
+    if rb.returncode != 0:
+        return 1
+    EVS.mkdir(parents=True, exist_ok=True)
+    out = EVS / f"{name}.evs"
+    log = M4 / f"export-{name}.log"
+    env = dict(os.environ, FNHX_ROOT=str(fx / "store"), FNHX_OUT=str(out),
+               SBCL_HOME="/tank/fn/sbcl/lib/sbcl/")
+    argv = ["/usr/bin/time", "-v", "systemd-run", "--user", "--scope", "--quiet", "-p", f"MemoryMax={a.memmax}",
+            SBCL, "--tls-limit", "65536", "--dynamic-space-size", a.dyn, "--control-stack-size", "64",
+            "--disable-ldb", "--core", str(NATIVE_CORE), "--noinform", "--end-runtime-options",
+            "--no-userinit", "--eval", f'(load "{TREE}/tools/proto/history_export.lisp")',
+            "--eval", "(acl2::sbcl-restart)", "--disable-debugger", "--end-toplevel-options"]
+    t0 = time.time()
+    with open(log, "w") as f:
+        p = subprocess.run(argv, stdin=subprocess.DEVNULL, stdout=f, stderr=subprocess.STDOUT, env=env)
+    text = log.read_text(errors="replace")
+    lines = [l for l in text.splitlines() if "FNHX-JSON" in l or "Maximum resident" in l]
+    print("export rc", p.returncode, f"{time.time() - t0:.1f} s", "log", log)
+    print("\n".join(lines))
+    return p.returncode
+
+
+def frames(path, upto):
+    """The events file's first UPTO frames as hex (the harness's oracle:
+    the octets the export wrote are the octets a record must read back)."""
+    out = []
+    with open(path, "rb") as f:
+        while len(out) < upto:
+            h = f.read(8)
+            if len(h) < 8:
+                break
+            out.append(f.read(int.from_bytes(h, "little")).hex().upper())
+    return out
+
+
+def hp_run(args, env=None, **kw):
+    return run(args, env=env, main="fnhp-main", **kw)
+
+
+HDR = ("n", "lens", "starts", "np")
+
+
+def hdr(rec):
+    return {k: rec.get(k) for k in HDR}
+
+
+def hp_reopen(store, salt, mode, want_n, fr):
+    """Reopen: the header, records 0 and -1 in hex, the image digest."""
+    rc, recs, raw = hp_run(["open", store, str(salt), mode, "0", "-1"],
+                           env={"FNPS_DIGEST": "1", "FNHP_HEX": "1"})
+    o = ev(recs, "hp-open")
+    got = o[0] if o else None
+    rs = ev(recs, "hp-record"); dg = ev(recs, "digest")
+    return rc, got, rs, (dg[0] if dg else None), raw
+
+
+def records_ok(rs, n, fr):
+    """Records 0 and n-1 read back as the export's frames."""
+    if n == 0:
+        return not rs
+    return {r["i"] for r in rs} == {0, n - 1} and \
+        all(r["result"] == "ok" and r["enc-hex"] == fr[r["i"]] for r in rs)
+
+
+def hp_cuts(a):
+    """The history image's process-death campaign (m4).  (1) The import:
+    a fresh store, --n0 events imported and committed with FNPS_CUT at
+    every cut of *pgs-snapshot-cuts*; reopened, the store holds no history
+    (the cut preceded the record) or exactly the import's (ACL2's header
+    answer, its image digest, records 0 and n-1 as exported).  (2) Appends:
+    one store of --n events, then --cuts appends of 1..60 events killed at
+    each cut in turn; reopened, the header answer, the digest and the
+    records are the last complete commit's: the old history or the new,
+    nothing else."""
+    d = out_dir(a)
+    res = d / "hp-cuts.jsonl"
+    rng = random.Random(a.seed)
+    evs = a.evs
+    salt = a.salt
+    fr = frames(evs, a.n + a.cuts * 60 + 1)
+    after_new = {"record-written", "record-synced"}
+    viol = 0
+    counts = {}
+
+    def tally(kind, name, reached, ok):
+        c = counts.setdefault(kind + ":" + name, {"cuts": 0, "reached": 0, "violations": 0})
+        c["cuts"] += 1; c["reached"] += int(reached); c["violations"] += int(not ok)
+
+    # (1) import cuts.
+    for i in range(a.import_cuts):
+        name = BOOK_CUTS[i % len(BOOK_CUTS)]
+        k = rng.randint(1, 3) if name == "page-written" else (rng.choice([1, 2]) if name == "table-written" else 1)
+        store = str(NVME / "hp-imp")
+        shutil.rmtree(store, ignore_errors=True)
+        n0 = rng.choice([1, 7, 40, 200])
+        rc, recs, raw = hp_run(["import", store, evs, str(salt), "64", str(n0)],
+                               env={"FNPS_CUT": f"{name}:{k}", "FNPS_DIGEST": "1"})
+        pre = ev(recs, "hp-pre")
+        reached = rc == 77
+        if not pre or (rc not in (0, 77)):
+            print(raw[-3000:]); return 1
+        land_new = (not reached) or name in after_new
+        mode = rng.choice(["eager", "lazy"])
+        rc2, got, rs, dg, raw2 = hp_reopen(store, salt, mode, n0, fr)
+        if land_new:
+            ok = bool(got) and got["landed"] and hdr(got) == hdr(pre[0]) and dg is not None \
+                and dg["digest"] == pre[0]["next-digest"] and records_ok(rs, n0, fr)
+        else:
+            ok = bool(got) and not got["landed"]
+        tally("import", name, reached, ok)
+        viol += int(not ok)
+        append(res, {"phase": "import", "i": i, "cut": f"{name}:{k}", "n0": n0, "rc": rc, "reached": reached,
+                     "open_mode": mode, "want": "new" if land_new else "none", "got": got,
+                     "digest": dg, "records": [(r["i"], r["result"], r["enc-len"]) for r in rs], "ok": ok})
+        if not ok:
+            print("VIOLATION import", i, name, raw2[-2000:], flush=True)
+        print("import", i, f"{name}:{k}", "n0", n0, "rc", rc, "landed", got and got.get("landed"), "ok", ok, flush=True)
+    # (2) append cuts.
+    store = str(NVME / "hp-app")
+    shutil.rmtree(store, ignore_errors=True)
+    rc, recs, raw = hp_run(["import", store, evs, str(salt), "256", str(a.n)], env={"FNPS_DIGEST": "1"})
+    pre = ev(recs, "hp-pre"); imp = ev(recs, "hp-import")
+    if rc != 0 or not pre or not imp:
+        print(raw[-3000:]); return 1
+    cur = {"txid": imp[0]["commit"]["txid"], "hdr": hdr(pre[0]), "digest": pre[0]["next-digest"]}
+    for i in range(a.cuts):
+        name = BOOK_CUTS[i % len(BOOK_CUTS)]
+        k = rng.randint(1, 3) if name == "page-written" else (rng.choice([1, 1, 2]) if name == "table-written" else 1)
+        count = rng.choice([1, 1, 3, 17, 60])
+        n = cur["hdr"]["n"]
+        amode = rng.choice(["eager", "lazy"])
+        rc, recs, raw = hp_run(["append", store, evs, str(n), str(count), str(salt), amode],
+                               env={"FNPS_CUT": f"{name}:{k}", "FNPS_DIGEST": "1"})
+        pre = ev(recs, "hp-pre")
+        reached = rc == 77
+        if not pre or not pre[0].get("next-digest") or rc not in (0, 77):
+            print(raw[-3000:]); return 1
+        new = {"txid": cur["txid"] + 1, "hdr": hdr(pre[0]), "digest": pre[0]["next-digest"]}
+        land_new = (not reached) or name in after_new
+        want = new if land_new else cur
+        mode = rng.choice(["eager", "lazy"])
+        rc2, got, rs, dg, raw2 = hp_reopen(store, salt, mode, want["hdr"]["n"], fr)
+        ok = bool(got) and got["landed"] and got["txid"] == want["txid"] and hdr(got) == want["hdr"] \
+            and dg is not None and dg["digest"] == want["digest"] and records_ok(rs, want["hdr"]["n"], fr)
+        tally("append", name, reached, ok)
+        viol += int(not ok)
+        grew = new["hdr"]["np"] != cur["hdr"]["np"]
+        append(res, {"phase": "append", "i": i, "cut": f"{name}:{k}", "count": count, "append_mode": amode,
+                     "rc": rc, "reached": reached, "open_mode": mode, "want": "new" if land_new else "old",
+                     "relocated": grew, "want_hdr": want["hdr"], "got": got, "digest_ok": bool(dg) and dg["digest"] == want["digest"],
+                     "records": [(r["i"], r["result"], r["enc-len"]) for r in rs], "ok": ok})
+        if not ok:
+            print("VIOLATION append", i, name, raw2[-2000:], flush=True)
+        if got and got.get("landed") and got["txid"] in (cur["txid"], new["txid"]):
+            cur = want if ok else cur
+        print("append", i, f"{name}:{k}", "count", count, "rc", rc, "landed", got and got.get("txid"),
+              "n", got and got.get("n"), "grew", grew, "ok", ok, flush=True)
+    summary = {"evs": evs, "n": a.n, "import_cuts": a.import_cuts, "append_cuts": a.cuts,
+               "violations": viol, "by_cut": counts,
+               "relocating_appends": sum(1 for l in res.read_text().splitlines()
+                                         if json.loads(l).get("relocated"))}
+    append(d / "hp-cuts-summary.jsonl", summary)
+    print(json.dumps(summary, indent=1))
+    shutil.rmtree(store, ignore_errors=True)
+    shutil.rmtree(str(NVME / "hp-imp"), ignore_errors=True)
+    return 0 if viol == 0 else 1
+
+
+def hp_measure(a):
+    """One matched measurement of the history image on the page store (m4):
+    per fixture, the import of every exported event (one commit), the open
+    (page store open + fn-hp-x-header) lazy with the page cache dropped and
+    then warm, and eager warm, records 0 and N/2 through fn-hp-records-at
+    (fills included), the RSS after open and after the reads.  Before the
+    opens, the commit of 1,000 appended events and then of 1 (so the lazy
+    open verifies what a one-event commit wrote, as q1).  One run each; every command line is in
+    the jsonl."""
+    d = out_dir(a)
+    res = d / "hp-measure.jsonl"
+    for name in a.fixtures.split(","):
+        evs = str(EVS / f"{name}.evs")
+        store = str(NVME / f"hp-{name}")
+        shutil.rmtree(store, ignore_errors=True)
+        kw = {"memmax": a.memmax, "dyn": a.dyn, "timeout": 4 * 3600}
+
+        def step(label, args, env=None, cold=False):
+            if cold:
+                drop_caches()
+            t0 = time.time()
+            rc, recs, raw = hp_run(args, env=env, **kw)
+            rec = {"fixture": name, "step": label, "argv": args, "env": env or {}, "cold": cold,
+                   "rc": rc, "wall_s": round(time.time() - t0, 2), "recs": recs}
+            append(res, rec)
+            print(name, label, "rc", rc, f"wall {rec['wall_s']} s", flush=True)
+            if rc != 0:
+                print(raw[-3000:])
+            return rc, recs
+
+        rc, recs = step("import", ["import", store, evs, str(a.salt), "4096"])
+        if rc != 0:
+            return 1
+        imp = ev(recs, "hp-import")[0]
+        n = imp["n"]
+        # The commits, then the opens: the last commit is the 1-event one,
+        # so a lazy open verifies the pages that commit wrote (q1's steady
+        # state), not the import's every page.
+        step("append-1000", ["append", store, evs, "0", "1000", str(a.salt), "lazy"])
+        step("append-1", ["append", store, evs, "1000", "1", str(a.salt), "lazy"])
+        n += 1001
+        for label, cold in (("open-cold", True), ("open-warm", False)):
+            step(label, ["open", store, str(a.salt), "lazy", "0", str(n // 2)], cold=cold)
+        step("open-eager-warm", ["open", store, str(a.salt), "eager", "0", str(n // 2)])
+        du = subprocess.run(["du", "-sb", store], capture_output=True, text=True).stdout.split()[0]
+        append(res, {"fixture": name, "step": "size", "bytes": int(du)})
+        if not a.keep:
+            shutil.rmtree(store, ignore_errors=True)
+    return 0
+
+
 def summarize(a):
     """Tables (medians) from the jsonl files in --out; writes summary.md."""
     import re
@@ -589,6 +829,28 @@ def main(argv=None):
         p.add_argument("--seed", type=int, default=931)
         p.add_argument("--keep", action="store_true")
         p.add_argument("--reclaim", action="store_true", help="FNPS_RECLAIM=1 on every commit")
+    p = sub.add_parser("hp-cuts")
+    p.set_defaults(fn=hp_cuts)
+    p.add_argument("--out", default=str(M4 / "results"))
+    p.add_argument("--evs", default=str(EVS / "syn100k-2k.evs"))
+    p.add_argument("--salt", type=int, default=0)
+    p.add_argument("--n", type=int, default=1000)
+    p.add_argument("--cuts", type=int, default=70)
+    p.add_argument("--import-cuts", type=int, default=21)
+    p.add_argument("--seed", type=int, default=928)
+    p = sub.add_parser("hp-measure")
+    p.set_defaults(fn=hp_measure)
+    p.add_argument("--out", default=str(M4 / "results"))
+    p.add_argument("--fixtures", default="syn100k-2k,syn1m-2k")
+    p.add_argument("--salt", type=int, default=0)
+    p.add_argument("--memmax", default="80G")
+    p.add_argument("--dyn", default="32000")
+    p.add_argument("--keep", action="store_true")
+    p = sub.add_parser("export")
+    p.set_defaults(fn=export)
+    p.add_argument("fixture")
+    p.add_argument("--memmax", default="24G")
+    p.add_argument("--dyn", default="20000")
     a = ap.parse_args(argv)
     return a.fn(a) or 0
 

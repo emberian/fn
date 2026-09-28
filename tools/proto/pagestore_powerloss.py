@@ -73,7 +73,7 @@ def workload(a):
     def log(**rec):
         pl.out_line(wl, **rec)
 
-    for layout, fsyncs in (("inline", "1"),):
+    for layout, fsyncs in (() if a.no_inline else (("inline", "1"),)):
         store = mnt / ("s-" + layout)
         pl.mark("phase:" + layout)
         pl.mark("try-%s-1" % layout)
@@ -102,8 +102,70 @@ def workload(a):
                 mode=mode, syncs=c["syncs"], dirty=c["dirty"], tables=c["tables-written"],
                 tag="commit")
         print(layout, "done", flush=True)
+    if a.hp_evs:
+        workload_hp(a, mnt, log, rng)
     pl.mark("end")
     log(tag="done")
+
+
+def workload_hp(a, mnt, log, rng):
+    """Phase `hp' (m4, lane arena-store-4): the history image over the page
+    store.  `import' of --hp-n events (txid 1), then --commits appends of
+    1..60 events, each one commit; each txid's expected header answer
+    (ACL2's, before the commit) and image digest are logged."""
+    store = mnt / "s-hp"
+    pl.mark("phase:hp")
+    pl.mark("try-hp-1")
+    rc, recs, raw = pb.hp_run(["import", str(store), a.hp_evs, "0", "256", str(a.hp_n)],
+                              env={"FNPS_DIGEST": "1"}, timeout=600)
+    pre = pb.ev(recs, "hp-pre")
+    if rc != 0 or not pre:
+        raise SystemExit("hp import failed: " + raw[-2000:])
+    pl.mark("ack-hp-1")
+    log(layout="hp", txid=1, digest=pre[0]["next-digest"], hdr=pb.hdr(pre[0]), tag="init")
+    n = pre[0]["n"]
+    for i in range(a.commits):
+        count = rng.choice([1, 3, 17, 60])
+        txid = i + 2
+        mode = rng.choice(["lazy", "eager"])
+        pl.mark("try-hp-%d" % txid)
+        rc, recs, raw = pb.hp_run(["append", str(store), a.hp_evs, str(n), str(count), "0", mode],
+                                  env={"FNPS_DIGEST": "1"}, timeout=600)
+        pre = pb.ev(recs, "hp-pre"); com = pb.ev(recs, "hp-append")
+        if rc != 0 or not pre or not com or com[0]["commit"]["txid"] != txid:
+            raise SystemExit("hp append failed: " + raw[-2000:])
+        pl.mark("ack-hp-%d" % txid)
+        n = pre[0]["n"]
+        log(layout="hp", txid=txid, digest=pre[0]["next-digest"], hdr=pb.hdr(pre[0]), count=count,
+            mode=mode, tag="commit")
+    print("hp done", flush=True)
+
+
+def check_hp(store, want_lo, want_hi, expected, hdrs, fr, before_ack1, violations, rec):
+    """As `check', through the history's open: the landed txid in range,
+    its image digest, its header answer, records 0 and n-1 as exported."""
+    if not store.exists():
+        rec["store"] = "absent"
+        if not before_ack1:
+            violations.append("store-absent-after-ack")
+        return
+    rc, got, rs, dg, raw = pb.hp_reopen(str(store), 0, "eager", None, fr)
+    rec["open_rc"] = rc
+    if not got or not got.get("landed"):
+        rec["landed"] = None
+        if not before_ack1:
+            violations.append("no-commit-opens-after-ack")
+        return
+    t = got["txid"]
+    rec["landed"] = t
+    if not (want_lo <= t <= want_hi):
+        violations.append("landed-%d-outside-%d..%d" % (t, want_lo, want_hi))
+    elif dg is None or expected.get(t) != dg["digest"]:
+        violations.append("digest-mismatch-at-%d" % t)
+    elif pb.hdr(got) != hdrs.get(t):
+        violations.append("header-mismatch-at-%d" % t)
+    elif not pb.records_ok(rs, got["n"], fr):
+        violations.append("records-mismatch-at-%d" % t)
 
 
 def check(image_mnt, store, want_lo, want_hi, expected, before_ack1, violations, rec):
@@ -140,20 +202,24 @@ def cuts(a):
     marks = [tuple(x) for x in idx["marks"]]
     wl = [json.loads(l) for l in (work / "workload.jsonl").read_text().splitlines()]
     expected = {}
+    hdrs = {}
     for r in wl:
         if r.get("tag") in ("init", "commit"):
             expected.setdefault(r["layout"], {})[r["txid"]] = r["digest"]
+            if r.get("hdr"):
+                hdrs[r["txid"]] = r["hdr"]
+    fr = pb.frames(a.hp_evs, max([h["n"] for h in hdrs.values()] or [0])) if hdrs else []
     tries, acks = {}, {}
     for i, t in marks:
         for pre, dst in (("try-", tries), ("ack-", acks)):
             if t.startswith(pre):
                 lay, n = t[len(pre):].rsplit("-", 1)
                 dst.setdefault(lay, []).append((i, int(n)))
-    plan = {"inline": a.per_phase}
+    plan = {"inline": a.per_phase, "hp": a.per_phase if hdrs else 0}
     chosen = pl.choose_cuts(ents, marks, plan, a.seed)
     crng = random.Random(a.seed + 1)
     controls = {}
-    for lay in ("inline",):
+    for lay in ("inline", "hp") if hdrs else ("inline",):
         ak = acks.get(lay, [])
         cands = [(at, n) for at, n in ak if any(m == n + 1 for _, m in ak)]
         for at, n in crng.sample(cands, min(a.controls, len(cands))):
@@ -198,8 +264,12 @@ def cuts(a):
                     rec["e2fsck_out"] = fsck.stdout[-600:]
                 pl.sudo("mount", "-t", "ext4", loop, mnt)
                 pl.sudo("chown", "-R", "%d:%d" % (os.getuid(), os.getgid()), mnt)
-                check(mnt, mnt / ("s-" + lay), lo, hi, expected.get(lay, {}), lo == 0,
-                      violations, rec)
+                if lay == "hp":
+                    check_hp(mnt / "s-hp", lo, hi, expected.get(lay, {}), hdrs, fr, lo == 0,
+                             violations, rec)
+                else:
+                    check(mnt, mnt / ("s-" + lay), lo, hi, expected.get(lay, {}), lo == 0,
+                          violations, rec)
         except Exception as e:  # a harness failure is not a verdict
             rec["harness_error"] = repr(e)[-400:]
         finally:
@@ -252,11 +322,17 @@ def main(argv=None):
     p.set_defaults(fn=lambda a: pl.rig_down(Path(a.work)))
     p = sub.add_parser("workload"); p.add_argument("work")
     p.add_argument("--n", type=int, default=20000); p.add_argument("--commits", type=int, default=40)
-    p.add_argument("--seed", type=int, default=77); p.set_defaults(fn=workload)
+    p.add_argument("--seed", type=int, default=77)
+    p.add_argument("--hp-evs", default=None, help="events file: add phase hp (the history image, m4)")
+    p.add_argument("--hp-n", type=int, default=2000)
+    p.add_argument("--no-inline", action="store_true", help="the hp phase alone")
+    p.set_defaults(fn=workload)
     p = sub.add_parser("index"); p.add_argument("work"); p.set_defaults(fn=lambda a: pl.index(a))
     p = sub.add_parser("cuts"); p.add_argument("work")
     p.add_argument("--per-phase", type=int, default=100); p.add_argument("--controls", type=int, default=8)
-    p.add_argument("--seed", type=int, default=931); p.set_defaults(fn=cuts)
+    p.add_argument("--seed", type=int, default=931)
+    p.add_argument("--hp-evs", default=None, help="the events file the workload's hp phase read")
+    p.set_defaults(fn=cuts)
     p = sub.add_parser("summary"); p.add_argument("work"); p.set_defaults(fn=summary)
     a = ap.parse_args(argv)
     a.fn(a)
