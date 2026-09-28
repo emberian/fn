@@ -109,6 +109,13 @@ class StatusScaleTests(unittest.TestCase):
                 pass
         return total
 
+    @staticmethod
+    def report_part(stdout):
+        """The obligations report: its header line and one line per obligation."""
+        lines = stdout.split(b"\n")
+        count = int(lines[0].split(b" ")[0].split(b"=")[1])
+        return b"\n".join(lines[:count + 1])
+
     def obligations(self, name, config, owner):
         """`obligations' from the live owner: checked, timed, twice at once."""
         env = dict(verbs.environment(), FN_REPORT_TIMING="1")
@@ -121,7 +128,9 @@ class StatusScaleTests(unittest.TestCase):
         self.assertTrue(lines[0].startswith(b"obligations="), lines[0][:200])
         count = int(lines[0].split(b" ")[0].split(b"=")[1])
         self.assertEqual(len([l for l in lines[1:] if l.startswith(b"obligation id=")]), count)
-        self.assertEqual(done.stdout.count(b"\n"), count + 1)
+        # The report is the header and COUNT lines; the heap and result
+        # lines follow it.
+        self.assertTrue(all(l.startswith(b"obligation id=") for l in lines[1:count + 1]))
         # Two at once: the crash at syn1m-2k was the second whole render.
         both = [subprocess.Popen([str(verbs.IMAGE), "--fn", "operator", str(config),
                                   "obligations"], env=verbs.environment(),
@@ -130,7 +139,7 @@ class StatusScaleTests(unittest.TestCase):
         outs = [p.communicate(timeout=3600) for p in both]
         for p, (out, err) in zip(both, outs):
             self.assertEqual(p.returncode, 0, err[-2000:])
-            self.assertEqual(out, done.stdout)
+            self.assertEqual(self.report_part(out), self.report_part(done.stdout))
         print("STATUS-SCALE {} concurrent-obligations exit={}".format(
             name, [p.returncode for p in both]), flush=True)
         after, _ = self.verb(name, config, ["status"])
@@ -158,7 +167,7 @@ class StatusScaleTests(unittest.TestCase):
                 # The offline words of the same Store, a page at a time.
                 offline, _ = self.verb(name, config, ["obligations"])
                 self.assertEqual(offline.returncode, 0, offline.stderr[-2000:])
-                self.assertEqual(offline.stdout, live)
+                self.assertEqual(self.report_part(offline.stdout), self.report_part(live))
                 # Again with a report in flight when the stop comes.
                 owner, listening, _ = self.start_owner(name, "scale-2", root, config, err_path)
                 self.state = {"owner": owner, "err_at": 0}

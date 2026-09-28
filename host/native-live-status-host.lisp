@@ -133,7 +133,8 @@
                  *fn-nls-chunk-octets*))
 
 (defun fn-native-live-pages-host-requestp (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (equal (car (fn-nlp-request-decode octets)) :page))
 
 (defun fn-native-live-pages-host-pagedp (kind)

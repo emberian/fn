@@ -12567,19 +12567,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-nlp-run-joins-the-entry"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-nlp-pages-join-to-the-report"
         },
         {
           "kind": "theorem",
           "name": "fn-nlp-report-is-octets"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-nlp-run-reaches-the-entry"
         },
         {
           "kind": "theorem",

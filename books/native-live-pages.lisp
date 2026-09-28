@@ -839,15 +839,16 @@ the owner holds now; it is read only by a request that starts a report."
                         (theory 'minimal-theory))))))
 
 ; The pages from a named version, joined: what was left of its report.
-(defthm fn-nlp-run-joins-the-entry
-  (implies (and (posp v) (fn-record-uint32p v) (fn-record-uint32p page)
-                (equal (car (fn-nlp-run fuel cache ret w v page)) :done))
-           (equal (cadr (fn-nlp-run fuel cache ret w v page))
-                  (fn-nlp-entry-stream v page cache)))
-  :hints (("Goal" :induct (fn-nlp-run fuel cache ret w v page)
-           :in-theory '(fn-nlp-run fn-nlp-step-of-a-version fn-nlp-next-page-u32
-                        car-cons cdr-cons zp natp posp
-                        (:e zp)))))
+(local
+ (defthm fn-nlp-run-joins-the-entry
+   (implies (and (posp v) (fn-record-uint32p v) (fn-record-uint32p page)
+                 (equal (car (fn-nlp-run fuel cache ret w v page)) :done))
+            (equal (cadr (fn-nlp-run fuel cache ret w v page))
+                   (fn-nlp-entry-stream v page cache)))
+   :hints (("Goal" :induct (fn-nlp-run fuel cache ret w v page)
+            :in-theory '(fn-nlp-run fn-nlp-step-of-a-version fn-nlp-next-page-u32
+                         car-cons cdr-cons zp natp posp
+                         (:e zp))))))
 
 (local
  (defthm fn-nlp-stream-of-the-start
@@ -907,6 +908,7 @@ the owner holds now; it is read only by a request that starts a report."
   (implies (equal (car (fn-nlp-run fuel cache ret w 0 0)) :done)
            (equal (cadr (fn-nlp-run fuel cache ret w 0 0))
                   (fn-nlp-report ret)))
+  :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :expand ((fn-nlp-run fuel cache ret w 0 0))
            :use ((:instance fn-nlp-step-of-a-start)
@@ -1074,31 +1076,32 @@ the owner holds now; it is read only by a request that starts a report."
  (defthm fn-nlp-nthcdr-is-not-none
    (implies (true-listp x) (not (equal (nthcdr m x) :none)))))
 
-(defthm fn-nlp-run-reaches-the-entry
-  (implies (and (posp w) (<= w *fn-nls-chunk-octets*)
-                (posp v) (fn-record-uint32p v) (fn-record-uint32p page)
-                (not (equal (fn-nlp-entry-stream v page cache) :none))
-                (fn-cbor-octet-listp (fn-nlp-entry-stream v page cache))
-                (posp fuel)
-                (<= (len (fn-nlp-entry-stream v page cache)) (* w fuel)))
-           (equal (fn-nlp-run fuel cache ret w v page)
-                  (list :done (fn-nlp-entry-stream v page cache))))
-  :hints (("Goal" :induct (fn-nlp-run fuel cache ret w v page)
-           :in-theory (union-theories
-                       '(fn-nlp-run fn-nlp-step-of-a-version-progress fn-nlp-next-page-u32
-                         fn-nlp-octets-of-nthcdr fn-nlp-len-nthcdr fn-nlp-fuel-arith
-                         fn-nlp-append-take-nthcdr fn-nlp-entry-stream-is-a-list
-                         fn-nlp-nthcdr-is-not-none
-                         posp natp nfix zp car-cons cdr-cons (:e zp)
-                         (:type-prescription len) unicity-of-1 commutativity-of-* fix
-                         (:compound-recognizer zp-compound-recognizer)
-                         (:compound-recognizer posp-compound-recognizer)
-                         (:compound-recognizer natp-compound-recognizer))
-                       (theory 'minimal-theory)))
-          (and stable-under-simplificationp
-               '(:use ((:instance fn-nlp-fuel-arith
-                                  (l (len (fn-nlp-entry-stream v page cache))))
-                       fn-nlp-step-of-a-version-progress)))))
+(local
+ (defthm fn-nlp-run-reaches-the-entry
+   (implies (and (posp w) (<= w *fn-nls-chunk-octets*)
+                 (posp v) (fn-record-uint32p v) (fn-record-uint32p page)
+                 (not (equal (fn-nlp-entry-stream v page cache) :none))
+                 (fn-cbor-octet-listp (fn-nlp-entry-stream v page cache))
+                 (posp fuel)
+                 (<= (len (fn-nlp-entry-stream v page cache)) (* w fuel)))
+            (equal (fn-nlp-run fuel cache ret w v page)
+                   (list :done (fn-nlp-entry-stream v page cache))))
+   :hints (("Goal" :induct (fn-nlp-run fuel cache ret w v page)
+            :in-theory (union-theories
+                        '(fn-nlp-run fn-nlp-step-of-a-version-progress fn-nlp-next-page-u32
+                          fn-nlp-octets-of-nthcdr fn-nlp-len-nthcdr fn-nlp-fuel-arith
+                          fn-nlp-append-take-nthcdr fn-nlp-entry-stream-is-a-list
+                          fn-nlp-nthcdr-is-not-none
+                          posp natp nfix zp car-cons cdr-cons (:e zp)
+                          (:type-prescription len) unicity-of-1 commutativity-of-* fix
+                          (:compound-recognizer zp-compound-recognizer)
+                          (:compound-recognizer posp-compound-recognizer)
+                          (:compound-recognizer natp-compound-recognizer))
+                        (theory 'minimal-theory)))
+           (and stable-under-simplificationp
+                '(:use ((:instance fn-nlp-fuel-arith
+                                   (l (len (fn-nlp-entry-stream v page cache))))
+                        fn-nlp-step-of-a-version-progress))))))
 
 (local
  (defthm fn-nlp-report-is-a-list
@@ -1324,6 +1327,7 @@ the owner holds now; it is read only by a request that starts a report."
   (implies (equal (car (fn-nlp-offline-run fuel (fn-nlp-offline-start ret) w)) :done)
            (equal (cadr (fn-nlp-offline-run fuel (fn-nlp-offline-start ret) w))
                   (fn-nlp-report ret)))
+  :rule-classes nil
   :hints (("Goal" :use ((:instance fn-nlp-offline-run-joins-the-stream
                                    (cursor (fn-nlp-offline-start ret))))
            :in-theory '(fn-nlp-offline-start car-cons cdr-cons fn-nlp-cursor-pend fn-nlp-cursor-items
