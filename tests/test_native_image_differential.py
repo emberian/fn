@@ -552,7 +552,7 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
             probe.work.mkdir(exist_ok=True)
             got = probe.run(["--version"], FN_WORLD_DEPS_USE=use)
             reads = probe.reads()
-            lines = [r for k, r in reads if k in ("TRAPPED", "UNTRAPPED")]
+            lines = [(k, r) for k, r in reads if k in ("TRAPPED", "UNTRAPPED")]
             if use == "ens":
                 self.assertTrue(any(k == "PROVER-READ" and r.startswith("ENS ")
                                     for k, r in reads), reads)
@@ -560,8 +560,9 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
             print("NATIVE-DIFF trap {}: exit {} {}".format(use, got.returncode, lines))
             self.assertEqual(got.returncode, 72)
             self.assertEqual(len(lines), 1, lines)
-            self.assertTrue(lines[0].startswith("TRAPPED ") and "FNN-STRIPPED" in lines[0]
-                            and name in lines[0], lines)
+            kind, text = lines[0]
+            self.assertEqual(kind, "TRAPPED", lines)
+            self.assertIn("FNN-STRIPPED :NAME " + name, text)
 
     def test_zz_the_check_catches_a_required_property_removed(self):
         """The mutation witness: remove one symbol-class the status verb reads
