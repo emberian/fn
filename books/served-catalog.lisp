@@ -2587,6 +2587,135 @@
            :use ((:instance fn-nntp-message-id-token-has-nonempty-index-key)))))
 
 
+;;; HDR :fn-control and HDR :fn-enrollment over the catalog (lane
+;;; join-f2-midx): the article a Message-ID names is found in the catalog's
+;;; Message-ID column at the pin's version, not the pinned trie; each arm is
+;;; equated to the pinned arm under the pin's correspondence.
+
+(defun fn-scat-control-held (msgid visible withdrawn v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (or (fn-ctl-msgid-withdrawn msgid withdrawn)
+      (if (and (stringp msgid) (< 0 (length msgid)))
+          (let ((hit (fn-scat-msgid-article msgid v fn-arena fn-cat)))
+            (if (consp hit) hit nil))
+        (fn-ctl-msgid-withdrawn msgid visible))))
+
+(defthm fn-scat-control-held-is-find-held
+  (implies (equal visible (fn-cat-view-articles v fn-arena fn-cat))
+           (equal (fn-scat-control-held msgid visible withdrawn v fn-arena fn-cat)
+                  (fn-ctl-find-held msgid visible withdrawn)))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-find-held fn-scat-msgid-article-is-find-article)
+                                  (fn-scat-msgid-article fn-find-article fn-ctl-msgid-withdrawn
+                                   fn-cat-view-articles fn-ctl-find-article-is-msgid-withdrawn))
+           :use ((:instance fn-ctl-find-article-is-msgid-withdrawn (xs visible))))))
+
+(defun fn-scat-control-status (c cbytes visible withdrawn ws verdicts v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (let* ((msgid (and (consp c) (fn-article-msgid c)))
+         (target (and (consp c) (fn-ctl-target-octets cbytes)))
+         (plan (fn-ctl-withdrawal-plan msgid (fn-ctl-lookup-verdict msgid verdicts)
+                                       target
+                                       (and (consp c)
+                                            (fn-ctl-keys-octets cbytes))
+                                       nil)))
+    (cond ((not target) (list :none))
+          ((not (fn-ctl-withdrawalp plan)) (list :declined (fn-ctl-at 1 plan)))
+          (t (let ((rec (fn-ctl-cause-record ws msgid target)))
+               (if (not rec)
+                   (list :declined :no-record)
+                 (let ((held (fn-scat-control-held target visible withdrawn v fn-arena fn-cat)))
+                   (if (not held)
+                       (list :owed)
+                     (let ((effect (fn-ctl-withdrawal-effect
+                                    rec (fn-article-groups held)
+                                    (fn-ctl-lookup-verdict target verdicts)
+                                    (fn-article-payload held))))
+                       (if (fn-ctl-effect-withdrawsp effect)
+                           (list :executed effect)
+                         (list :declined (fn-ctl-at 1 effect))))))))))))
+
+(defthm fn-scat-control-status-is-control-status
+  (implies (equal visible (fn-cat-view-articles v fn-arena fn-cat))
+           (equal (fn-scat-control-status c cbytes visible withdrawn ws verdicts v fn-arena fn-cat)
+                  (fn-ctl-control-status c cbytes visible withdrawn ws verdicts)))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-control-status fn-scat-control-held-is-find-held)
+                                  (fn-scat-control-held fn-ctl-find-held fn-cat-view-articles
+                                   fn-ctl-withdrawal-plan fn-ctl-withdrawalp
+                                   fn-ctl-withdrawal-effect fn-ctl-effect-withdrawsp
+                                   fn-ctl-cause-record fn-ctl-target-octets fn-ctl-keys-octets
+                                   fn-ctl-lookup-verdict)))))
+
+(defun fn-nntp-control-hdr-response-cat (session archive index verdicts args v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (if (and (consp args) (consp (cdr args)) (null (cddr args))
+           (fn-nntp-message-id-tokenp (cadr args))
+           (fn-octet-listp (cadr args)))
+      (let* ((control (fn-gidx-pin-control index))
+             (visible (fn-state-articles archive))
+             (withdrawn (fn-ctl-pin-withdrawn control))
+             (c (fn-scat-control-held (fn-nntp-token-string (cadr args))
+                                        visible withdrawn v fn-arena fn-cat)))
+        (if (not (consp c))
+            (fn-nntp-single session (fn-proto-text "HDR" :no-msgid))
+          (let* ((cbytes (fn-nntp-article-bytes c fn-arena))
+                 (item (fn-nntp-string-octets
+                        (fn-ctl-control-item
+                         (fn-scat-control-status c cbytes visible withdrawn
+                                                   (fn-ctl-pin-ws control) verdicts v fn-arena fn-cat)
+                         (fn-ctl-target-octets cbytes)))))
+            (if (fn-nntp-control-cleanp item)
+                (fn-nntp-multi
+                 session (fn-nntp-hdr-initial nil)
+                 (list (fn-nntp-hdr-line (fn-nntp-decimal-field 0) item)))
+              (fn-nntp-single session (fn-proto-text "HDR" :no-control-status))))))
+    (fn-nntp-single session (fn-proto-text "HDR" :syntax))))
+
+(defthm fn-nntp-control-hdr-response-cat-is-pinned
+  (implies (and (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles archive)))
+           (equal (fn-nntp-control-hdr-response-cat session archive index verdicts args v fn-arena fn-cat)
+                  (fn-nntp-control-hdr-response session archive index verdicts args fn-arena)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-control-hdr-response-cat fn-nntp-control-hdr-response
+                            fn-scat-control-held-is-find-held fn-scat-control-status-is-control-status
+                            fn-ctl-served-held-is-find-held fn-ctl-served-status-is-control-status)
+                           (fn-scat-control-held fn-ctl-served-held fn-scat-control-status
+                            fn-ctl-served-status fn-ctl-find-held fn-ctl-control-status
+                            fn-cat-view-articles fn-midx-correspondencep fn-nntp-article-bytes
+                            fn-ctl-control-item fn-nntp-string-octets fn-nntp-control-cleanp
+                            fn-nntp-multi fn-nntp-single fn-nntp-hdr-line fn-nntp-message-id-tokenp)))))
+
+(defun fn-nntp-enrollment-hdr-response-cat (session index verdicts args v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (if (and (consp args) (consp (cdr args)) (null (cddr args))
+           (fn-nntp-message-id-tokenp (cadr args))
+           (fn-octet-listp (cadr args)))
+      (let ((msgid (fn-nntp-token-string (cadr args))))
+        (if (not (consp (fn-scat-msgid-article msgid v fn-arena fn-cat)))
+            (fn-nntp-single session (fn-proto-text * :no-msgid))
+          (fn-nntp-multi
+           session (fn-nntp-hdr-initial nil)
+           (list (fn-nntp-hdr-line
+                  (fn-nntp-decimal-field 0)
+                  (fn-enr-item (fn-stx-reader-lookup msgid verdicts)
+                               (fn-gidx-pin-control index)))))))
+    (fn-nntp-single session (fn-proto-text * :syntax))))
+
+(defthm fn-nntp-enrollment-hdr-response-cat-is-pinned
+  (implies (and (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles archive)))
+           (equal (fn-nntp-enrollment-hdr-response-cat session index verdicts args v fn-arena fn-cat)
+                  (fn-nntp-enrollment-hdr-response session archive index verdicts args)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-enrollment-hdr-response-cat fn-nntp-enrollment-hdr-response
+                            fn-scat-msgid-article-is-find-article fn-midx-correspondencep
+                            fn-midx-lookup-of-build-is-find-article-for-nonempty)
+                           (fn-scat-msgid-article fn-find-article fn-midx-lookup fn-midx-build
+                            fn-cat-view-articles fn-nntp-token-string fn-nntp-message-id-tokenp
+                            fn-enr-item fn-stx-reader-lookup fn-nntp-multi fn-nntp-single
+                            fn-nntp-hdr-line fn-gidx-pin-trie fn-gidx-pin-control))
+           :use ((:instance fn-nntp-message-id-token-has-nonempty-index-key (token (cadr args)))))))
+
 ;;; The dispatcher: fn-nntp-archive-command-pinned's case split with the two
 ;;; retrieval arms reading the catalog.  Every other arm is the pinned arm
 ;;; (it reads the archive and the pinned index until step 8).  Its guards are
@@ -2672,11 +2801,11 @@
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-CONTROL"))
-        (fn-nntp-control-hdr-response session archive index verdicts args fn-arena))
+        (fn-nntp-control-hdr-response-cat session archive index verdicts args v fn-arena fn-cat))
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-ENROLLMENT"))
-        (fn-nntp-enrollment-hdr-response session archive index verdicts args))
+        (fn-nntp-enrollment-hdr-response-cat session index verdicts args v fn-arena fn-cat))
        ((fn-nntp-keywordp keyword "GROUP")
         (if (and (consp args) (null (cdr args)) (fn-nntp-printable-tokenp (car args)))
             (fn-nntp-group-result-cat session archive (fn-nntp-token-string (car args)) v fn-cat)
@@ -2851,9 +2980,12 @@
                             fn-nntp-single fn-gidx-build fn-midx-build fn-statep
                             fn-nntp-over-range-indexed-is-walk
                             fn-nntp-xref-reply-cat fn-nntp-msgid-withdrawn-p-cat
-                            fn-nntp-xref-reply-cat-is-col fn-nntp-msgid-withdrawn-p-cat-is-trie))
+                            fn-nntp-xref-reply-cat-is-col fn-nntp-msgid-withdrawn-p-cat-is-trie
+                            fn-nntp-control-hdr-response-cat fn-nntp-enrollment-hdr-response-cat))
            :use ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-nntp-control-hdr-response-cat-is-pinned)
+                 (:instance fn-nntp-enrollment-hdr-response-cat-is-pinned)
                  (:instance fn-scat-statep-article-listp)
                  (:instance fn-scat-pin-trie-is-built)
                  (:instance fn-scat-pin-buckets-are-built)))))
