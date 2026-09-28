@@ -24,6 +24,11 @@
 ; PKT-613 (PRF-231): the host's syntax and the TLS check the words select.
 (include-book "peer-host")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; A decimal word is a string, which is all the guards below need of it; with
 ; this the guard proofs keep the decimal recognizer and its value closed.
 (local (defthm fn-native-admin-decimalp-is-a-string

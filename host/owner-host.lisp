@@ -175,6 +175,9 @@
 ;; host/native/owner.lisp fnn-owner-drain-service calls in every image.
 (include-book "../books/owner-stop-drain")
 (include-book "../books/owner-time-admission")
+;; Lane zero-copy-commit: the articles in flight within the slots the figure
+;; holds (fn-oas-read-span, over fn-otm-read-span).
+(include-book "../books/owner-article-slots")
 ; lane health-truth-journal (PKT-872, PRF-360): the journal writer never keeps a torn line.
 (include-book "../books/owner-time-journal-writer")
 (include-book "../books/owner-reader-read")
@@ -944,6 +947,14 @@
         (value (fn-ores-config-refused memory))
       (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state))))
 
+(defun fn-owner-article-slots (state)
+  ; The slots the run installed (fn-owner-connection-budget), or one before
+  ; any run has: a node always admits one article in flight.
+  (declare (xargs :stobjs state :mode :program))
+  (let ((slots (and (boundp-global 'fn-owner-article-slots state)
+                    (f-get-global 'fn-owner-article-slots state))))
+    (if (posp slots) slots 1)))
+
 (defun fn-owner-connection-budget (machine dynamic core threads stack nursery profile
                                            tlsp state)
   ; Once per run, after recovery and before listen (host/native/mux.lisp
@@ -960,6 +971,12 @@
                                  article tlsp))
          (state (f-put-global 'fn-owner-connection-bound
                               (and (equal (car d) :hold) (fn-cbud-held-bound d))
+                              state))
+         ;; The articles in flight the dynamic space holds (books/heap-store-
+         ;; figure.lisp fn-heap-article-slots), which every served read admits
+         ;; within (fn-owner-chunk-span-at).
+         (state (f-put-global 'fn-owner-article-slots
+                              (fn-heap-article-slots profile)
                               state))
          (state (f-put-global 'fn-owner-connection-budget-line
                               (fn-record-string-octets
@@ -3341,9 +3358,17 @@
         ;; disk-slow posture (PKT-858: 436 / 431) (books/owner-time-
         ;; admission.lisp fn-otm-read-span; admitted it is fn-orr-read-span,
         ;; fn-otm-read-span-when-admitted-unfolds).
-        (let* ((result (fn-otm-read-span
+        ;; Lane zero-copy-commit (books/owner-article-slots.lisp): a read that
+        ;; would put this connection into article mode past the slots the
+        ;; dynamic space holds is refused by name (POST 440; IHAVE, TAKETHIS
+        ;; 400 and close); within them it is fn-otm-read-span exactly
+        ;; (fn-oas-read-span-when-held-unfolds).  The slots are the run's
+        ;; (fn-owner-connection-budget); before a run installs them, one.
+        (let* ((result (fn-oas-read-span
                         (fn-owner-ocfg state) (fn-owner-reader-views state)
-                        id start end sched fn-octets fn-arena fn-cat))
+                        id start end sched
+                        (fn-owner-article-slots state)
+                        fn-octets fn-arena fn-cat))
                (effects (fn-own-tls-result-effects result))
                (consumed (fn-own-tls-result-consumed result))
                (state (fn-owner-install-ocfg

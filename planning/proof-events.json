@@ -7984,10 +7984,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cbud-launch-decide-keeps-the-store-figure"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cbud-step-read-octets-is-bounded"
         },
         {
@@ -12733,6 +12729,73 @@
         {
           "kind": "theorem",
           "name": "fn-clock-reading-latest-milliseconds-of-a-record-stamp-reading"
+        }
+      ]
+    },
+    {
+      "id": "PRF-377",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-oas-read-span-admits-within-the-slots"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oas-read-span-never-blocks-an-admitted-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oas-refused-read-is-not-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-article-slots-are-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-article-slots-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-articles-octets-monotone"
+        }
+      ]
+    },
+    {
+      "id": "PRF-378",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-record-redeeming-an-expired-code-is-refused-and-faults-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-delta-reason-of-a-redeem-past-its-expiry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-account-livep-fails-at-or-past-the-expiry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-account-livep-unfolds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clock-reading-latest-milliseconds-without-a-wall"
+        }
+      ]
+    },
+    {
+      "id": "PRF-379",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-admin-clock-observation-keeps-the-wall-claim"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-offline-invite-refusal-is-no-clock-exactly-without-a-wall"
         }
       ]
     }

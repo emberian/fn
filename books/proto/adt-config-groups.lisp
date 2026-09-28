@@ -25,7 +25,7 @@
 (defadt-keyed cfgroup :order :append :key name
   (name (:string))
   (created-gen :u32)
-  (created-stamp (:prod (:enum :fn-clock-observation) (:u32) (:u32) (:u32) (:bool)))
+  (created-stamp (:prod (:enum :fn-clock-observation) (:u64) (:u64) (:u64) (:bool)))
   (retired-gen (:alt nil (:u32)))
   (policy-id (:string))
   (next :u32))
@@ -105,7 +105,7 @@
                                      fn-cfg-stampp fn-clock-observationp fn-clock-observation-shapep
                                      fn-clock-monotonic fn-clock-wall fn-clock-wall-error
                                      fn-clock-has-wall fn-record-group-namep fn-record-ascii-stringp
-                                     fn-cfg-labelp fn-record-uint32p adt-val-okp nth))))
+                                     fn-cfg-labelp fn-record-uint32p fn-clock-timep adt-val-okp nth))))
 
 (defthm fn-cfg-group-listp-is-cfgroup-seq
   (implies (fn-cfg-group-listp es) (adt-nseq-p *cfgroup-nschema* es))
@@ -136,7 +136,7 @@
   ; else append it
   (declare (xargs :stobjs cfgroup
                   :guard (and (stringp name) (stringp policy) (unsigned-byte-p 32 gen)
-                              (adt-nval :k '(:prod (:enum :fn-clock-observation) (:u32) (:u32) (:u32) (:bool))
+                              (adt-nval :k '(:prod (:enum :fn-clock-observation) (:u64) (:u64) (:u64) (:bool))
                                         stamp))
                   :guard-hints (("Goal" :use ((:instance adt-nseq-p-kfind (s *cfgroup-nschema*)
                                                          (j 0) (k name) (a cfgroup)))

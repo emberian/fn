@@ -129,6 +129,14 @@ def _acquires(function: ast.AST, acquirers: set[str]) -> bool:
                for call in ast.walk(function))
 
 
+def _names_acl2(text: str) -> bool:
+    """TEXT mentions acl2 other than as an upper-case environment variable
+    name such as ACL2_CUSTOMIZATION (tools/scale_curve.py launches the fn
+    image with that variable in its traced env); cfg.acl2_image still counts."""
+    return any(not re.match(r"_[A-Z]", text[m.end():m.end() + 2])
+               for m in re.finditer(r"acl2", text, re.IGNORECASE))
+
+
 def unpooled_launches(source: str, filename: str = "<source>") -> list[tuple[int, str]]:
     """(line, program) for every ACL2 launch outside the pool.
 
@@ -158,8 +166,7 @@ def unpooled_launches(source: str, filename: str = "<source>") -> list[tuple[int
                                                           and node.args) else None
             if argv is not None and argv.elts:
                 texts = _program_texts(argv.elts[0], values)
-                if any(re.search(r"acl2", text, re.IGNORECASE) and "tools" not in text
-                       for text in texts):
+                if any(_names_acl2(text) and "tools" not in text for text in texts):
                     found.append((node.lineno, " = ".join(dict.fromkeys(texts))))
         for child in ast.iter_child_nodes(node):
             visit(child, pooled)

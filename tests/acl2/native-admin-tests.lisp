@@ -181,9 +181,42 @@
 ; Raw clocks are observations only.  ACL2 accepts a schema-representable pair
 ; and refuses an out-of-domain value without wrapping it.
 (assert-event (equal (fn-native-admin-clock-status
-                      (fn-native-admin-clock-observation 7 9)) :accepted))
+                      (fn-native-admin-clock-observation 7 9 t)) :accepted))
 (assert-event (equal (fn-native-admin-clock-status
-                      (fn-native-admin-clock-observation -1 9)) :refused))
+                      (fn-native-admin-clock-observation -1 9 t)) :refused))
+
+; KEYSTONE fn-native-admin-clock-observation-keeps-the-wall-claim (PRF-379).
+; Positive witnesses, one per value of the host's wall flag: accepted, the
+; stamp is a record stamp, its claim is the flag, and its upper end is the
+; millisecond reading (a 2026 instant, past uint32) or nil.
+(defconst *nat-ms* 812345678901)
+(assert-event
+ (let ((r (fn-native-admin-clock-observation 7 *nat-ms* t)))
+   (and (equal (fn-native-admin-clock-status r) :accepted)
+        (fn-cfg-stampp (fn-native-admin-clock-stamp r))
+        (fn-clock-has-wall (fn-native-admin-clock-stamp r))
+        (equal (fn-clock-reading-latest-milliseconds
+                (fn-clock-reading *fn-clock-record-stamp-unit*
+                                  (fn-native-admin-clock-stamp r)))
+               *nat-ms*))))
+(assert-event
+ (let ((r (fn-native-admin-clock-observation 7 *nat-ms* nil)))
+   (and (equal (fn-native-admin-clock-status r) :accepted)
+        (fn-cfg-stampp (fn-native-admin-clock-stamp r))
+        (not (fn-clock-has-wall (fn-native-admin-clock-stamp r)))
+        (null (fn-clock-reading-latest-milliseconds
+               (fn-clock-reading *fn-clock-record-stamp-unit*
+                                 (fn-native-admin-clock-stamp r)))))))
+; Hypothesis removal (accepted): a refused observation carries no stamp, so
+; the stamp conjunct fails.
+(assert-event
+ (let ((r (fn-native-admin-clock-observation -1 *nat-ms* t)))
+   (and (not (equal (fn-native-admin-clock-status r) :accepted))
+        (not (fn-cfg-stampp (fn-native-admin-clock-stamp r))))))
+; Mutation witness (labelled): the pre-PRF-379 observation, which set the
+; claim regardless of the flag, claims a wall the host did not read.
+(assert-event
+ (fn-clock-has-wall (fn-clock-observation 7 0 0 t)))
 
 ; Publication authorization cannot be reached without the observed exclusive
 ; lock.  This separates the raw lock observation from the ACL2 authority it

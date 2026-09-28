@@ -58,6 +58,8 @@
 ;; fn-otm-start-line) and the 440 at the POST command (fn-otm-read-span).
 (include-book "books/owner-time-journal")
 (include-book "books/owner-time-admission")
+;; Lane zero-copy-commit: fn-oas-read-span (the articles in flight).
+(include-book "books/owner-article-slots")
 (include-book "books/owner-open-carried")
 ;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
 (include-book "books/reader-open-carried")

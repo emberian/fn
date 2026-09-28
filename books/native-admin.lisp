@@ -1256,14 +1256,42 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
 (defun fn-native-admin-clock-stamp (result)
   (declare (xargs :guard t)) (fn-ag-car (fn-ag-cdr (fn-ag-cdr result))))
 
-(defun fn-native-admin-clock-observation (monotonic wall)
-  "The configuration-record codec, not raw Lisp, decides whether the two host
-clock observations fit its schema-0 representation."
+; The stopped node's record stamp (PRF-378, PRF-379): the host's two
+; readings, both MILLISECONDS (the owner clock's unit, the record stamp's
+; unit), and whether the wall reading was usable (host/native/io.lisp
+; fnn-owner-wall-milliseconds's second value, which fnn-admin-clock-plan
+; used to drop, stamping every record with a wall claim).  Without a wall
+; the stamp claims none and carries the zero wall, so no decision reads an
+; instant from it (books/accounts.lisp fn-acct-offline-invite-refusal).
+; The configuration-record codec, not raw Lisp, decides whether the
+; observation fits its representation.
+(defun fn-native-admin-clock-observation (monotonic wall has-wall)
   (declare (xargs :guard t))
-  (let ((stamp (fn-clock-observation monotonic wall 0 t)))
+  (let ((stamp (fn-clock-observation monotonic (if has-wall wall 0) 0
+                                     has-wall)))
     (if (fn-cfg-stampp stamp)
         (fn-native-admin-clock-result :accepted nil stamp)
       (fn-native-admin-clock-result :refused :clock-unrepresentable nil))))
+
+; KEYSTONE (PRF-379).  An accepted stamp claims a wall exactly when the
+; host read one, and then its record-stamp reading's upper end is the
+; reading itself, in milliseconds; without one it has no upper end.
+(defthm fn-native-admin-clock-observation-keeps-the-wall-claim
+  (let ((result (fn-native-admin-clock-observation monotonic wall has-wall)))
+    (implies (equal (fn-native-admin-clock-status result) :accepted)
+             (and (fn-cfg-stampp (fn-native-admin-clock-stamp result))
+                  (iff (fn-clock-has-wall (fn-native-admin-clock-stamp result))
+                       has-wall)
+                  (equal (fn-clock-reading-latest-milliseconds
+                          (fn-clock-reading *fn-clock-record-stamp-unit*
+                                            (fn-native-admin-clock-stamp result)))
+                         (if has-wall wall nil)))))
+  :hints (("Goal" :in-theory (enable fn-cfg-stampp fn-clock-observationp
+                                     fn-clock-timep
+                                     fn-clock-reading-latest-milliseconds
+                                     fn-clock-reading fn-clock-readingp
+                                     fn-clock-reading-unit
+                                     fn-clock-reading-observation))))
 
 (defun fn-native-admin-publication-result (status reason generation name publication)
   (declare (xargs :guard t))

@@ -525,6 +525,44 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
             print("NATIVE-DIFF   " + row)
         self.assertGreater(len(kept), 0, "the check saw no reads: was it loaded?")
         self.assertEqual(omitted, [])
+        # The prover state the strip replaced (lane image-strip): still
+        # trapped at every stripped run's exit; nothing rebuilt it.
+        # trapped at every stripped run's exit, nothing rebuilt it, and no
+        # function that reads it was called.
+        stripped = [r for k, r in reads if k == "STRIPPED"]
+        rebuilt = sorted({r for k, r in reads if k == "REBUILT"})
+        prover = sorted({r for k, r in reads if k == "PROVER-READ"})
+        REPORT["prover-state"] = {"exits": len(stripped), "rebuilt": rebuilt,
+                                  "prover-reads": prover}
+        print("NATIVE-DIFF prover state: {} exits checked, rebuilt {}, prover reads {}".format(
+            len(stripped), rebuilt, prover))
+        self.assertGreater(len(stripped), 0, "no stripped run reported its prover state")
+        self.assertTrue(all(r.endswith(" rebuilt=0") for r in stripped), stripped)
+        self.assertEqual(rebuilt, [])
+        self.assertEqual(prover, [])
+
+    def test_zz_a_prover_read_of_stripped_state_fails_loudly(self):
+        """The trace and trap witness (FN_WORLD_DEPS_USE, before start): a
+        call of ens is traced as a PROVER-READ; a use of what it returns, or
+        of a type-set table's value, from code compiled with safety fails
+        with an error naming the stripped item."""
+        for use, name in (("ens", "GLOBAL-ENABLED-STRUCTURE"),
+                          ("type-set-table", "*TYPE-SET-BINARY-+-TABLE*")):
+            probe = Image(STRIPPED, True, self.tmp / ("trap-" + use))
+            probe.work.mkdir(exist_ok=True)
+            got = probe.run(["--version"], FN_WORLD_DEPS_USE=use)
+            reads = probe.reads()
+            lines = [(k, r) for k, r in reads if k in ("TRAPPED", "UNTRAPPED")]
+            if use == "ens":
+                self.assertTrue(any(k == "PROVER-READ" and r.startswith("ENS ")
+                                    for k, r in reads), reads)
+            REPORT.setdefault("trap", {})[use] = {"exit": got.returncode, "lines": lines}
+            print("NATIVE-DIFF trap {}: exit {} {}".format(use, got.returncode, lines))
+            self.assertEqual(got.returncode, 72)
+            self.assertEqual(len(lines), 1, lines)
+            kind, text = lines[0]
+            self.assertEqual(kind, "TRAPPED", lines)
+            self.assertIn("FNN-STRIPPED :NAME " + name, text)
 
     def test_zz_the_check_catches_a_required_property_removed(self):
         """The mutation witness: remove one symbol-class the status verb reads

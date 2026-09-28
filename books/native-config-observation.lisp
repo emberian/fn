@@ -12,6 +12,11 @@
 ; 2026-09-25, packet 4).
 (include-book "config")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; The listing bound is the operator's: the profile's `max-config-generations'
 ; (books/byte-store-frame.lisp field 11, `fn-bs-profile-max-config-generations'),
 ; which the host reads once from the profile it opened and passes as

@@ -35,6 +35,11 @@
 (include-book "frame-invariants")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; The codecs cluster withdrew its vocabulary at export (2026-09-19).  These
 ; proofs induct with the CBOR u16/u32 byte facts, so the book re-enables
 ; that one bundle.  It does NOT re-enable fn-record-record-vocabulary or

@@ -6,6 +6,11 @@
 (include-book "nntp-session")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; The books below this one withdraw their definitions at their export events
 ; (2026-09-19 split of books/nntp.lisp).  This book is the continuation of
 ; that single file, so it re-enables exactly them, locally: within the

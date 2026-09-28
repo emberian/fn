@@ -61,6 +61,9 @@ if __name__ == "__main__":
     for name, chunks in POSTS.items():
         write(out / "post" / (name + ".chunks"), chunks)
         print(name, len(chunks), sum(len(c) for c in chunks))
+    # The expected cases, for the gate (check.sh): each must be compared once.
+    import json
+    (out / "manifest.json").write_text(json.dumps({"cases": sorted(CASES), "post": sorted(POSTS)}) + "\n")
     if len(sys.argv) > 2:
         # the chunk lists as ACL2 constants for the reference evaluation
         with open(sys.argv[2], "w") as h:

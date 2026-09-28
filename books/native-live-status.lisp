@@ -47,6 +47,11 @@
 (include-book "store-reclaim-holders")
 (include-book "records-stamp")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; -----------------------------------------------------------------------------
 ; Words
 
@@ -629,6 +634,7 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
         ((equal code 5) :control) ((equal code 6) :health)
         ((equal code 7) :accounts) (t nil)))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defun fn-nls-seal (kind payload)
   (declare (xargs :guard t))
   (if (not (and (fn-cbor-octetp kind)
@@ -638,6 +644,7 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
     (let ((protected (fn-frame-protected *fn-nls-magic* *fn-nls-version*
                                          kind payload)))
       (append protected (fn-frame-trailer protected)))))
+(local (in-theory (disable (tau-system))))
 
 (defun fn-nls-open (octets expected-kind)
   (declare (xargs :guard t))
@@ -685,12 +692,14 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
   (declare (xargs :guard t))
   (if (equal status :accepted) 1 2))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defun fn-nls-reply-payload (status total digest chunk)
   (declare (xargs :guard t))
   (append (fn-cbor-encode (cons :uint (fn-nls-status-code status)))
           (fn-cbor-encode (cons :uint total))
           (fn-record-item-encode (cons :bytes digest))
           (fn-record-item-encode (cons :bytes chunk))))
+(local (in-theory (disable (tau-system))))
 
 (defun fn-nls-reply-encode (status total digest chunk)
   (declare (xargs :guard t))
@@ -935,6 +944,7 @@ malformed page."
                             fn-frame-protected fn-frame-trailer
                             fn-frame-protected-prefix))))))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (encapsulate ()
 (local
  (defthm fn-nls-octets-of-append
@@ -984,6 +994,7 @@ malformed page."
                            (fn-nls-reply-encode fn-nls-open fn-nls-seal fn-record-read-uint
                             fn-record-read-bytes (:e fn-cbor-encode)
                             fn-cbor-encode fn-record-item-encode))))))
+(local (in-theory (disable (tau-system))))
 
 (encapsulate ()
 (local
@@ -996,6 +1007,7 @@ malformed page."
   :rule-classes :linear
   :hints (("Goal" :in-theory (enable fn-record-item-encode fn-cbor-encode-bounded)))))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (encapsulate ()
 (local
  (defthm fn-nls-octets-of-append-r
@@ -1042,6 +1054,7 @@ malformed page."
                             fn-frame-result-okp fn-frame-ok fn-frame-result-payload)
                            (fn-nls-request-encode fn-nls-open fn-nls-seal fn-record-read-uint
                             fn-cbor-encode (:e fn-cbor-encode)))))))
+(local (in-theory (disable (tau-system))))
 
 (encapsulate ()
 (local
@@ -1222,6 +1235,7 @@ malformed page."
 ; than the reply's u32 total can say.  Within the width it is an accepted
 ; page (`fn-nls-client-step-of-owner-page' says which) or, for an offset
 ; past the report, the unnamed refusal it always was.
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (encapsulate ()
 (local
  (defthm fn-nls-reply-refusals
@@ -1276,6 +1290,7 @@ malformed page."
                             fn-cbor-octet-listp
                             fn-frame-trailer take nthcdr fn-nls-page-width)))))
 )
+(local (in-theory (disable (tau-system))))
 
 ; Every later page of one request reads the buffer its first page rendered:
 ; a request from offset 0 renders and stores it, and a positive offset of
