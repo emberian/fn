@@ -46,6 +46,41 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertNotIn("flock", [l for l in small.stdout.splitlines()
                                    if l.startswith("tstep test-")][0])
 
+    def test_jobs_runs_modules_in_parallel_and_tallies_in_order(self):
+        # G3: --jobs N runs the modules N at a time against one image set;
+        # each writes its own exit code, the tally keeps the named order.
+        answer = dry("--jobs", "3", "HEAD", "tests.test_native_owner", "tests.test_native_web")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        script = answer.stdout
+        self.assertIn("seq 1 2 | xargs -P 3 -n 1 sh $S/module.sh", script)
+        self.assertIn("echo $rc > $S/rc/$name", script)
+        self.assertIn("for name in test-tests.test_native_owner test-tests.test_native_web ;", script)
+        self.assertIn("--jobs auto", dry("HEAD", "tests.test_native_owner").stdout)
+        serial = dry("HEAD", "tests.test_native_owner")
+        self.assertIn("xargs -P 1 ", serial.stdout)
+        self.assertIn("--jobs 5 ", dry("--certify-jobs", "5", "HEAD", "tests.test_native_owner").stdout)
+        for bad in ("0", "x", ""):
+            self.assertEqual(dry("--jobs", bad, "HEAD", "tests.test_native_owner").returncode, 2)
+
+    def test_the_developer_images_identity_is_exported_when_built(self):
+        answer = dry("HEAD", "tests.test_native_owner")
+        self.assertIn("if [ -x build/fn-host-developer ]; then", answer.stdout)
+        self.assertIn("identity --image build/fn-host-developer --prefix FN_NATIVE_DEVELOPER_ --export",
+                      answer.stdout)
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp:
+            image = Path(temp) / "fn-host-developer"
+            image.write_text("#!/bin/sh\n")
+            Path(str(image) + ".core").write_bytes(b"core")
+            out = subprocess.run(
+                ["python3", str(ROOT / "tools" / "native_env.py"), "identity", "--image", str(image),
+                 "--prefix", "FN_NATIVE_DEVELOPER_", "--export"],
+                capture_output=True, text=True, timeout=30)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        names = [line.split("=")[0] for line in out.stdout.splitlines()]
+        self.assertEqual(names, ["export FN_NATIVE_DEVELOPER_LAUNCHER_SHA256",
+                                 "export FN_NATIVE_DEVELOPER_CORE_SHA256"])
+
     def test_each_image_gets_the_runbooks_triple(self):
         answer = dry("--images", "production,developer,dtn,dtn-developer",
                      "HEAD", "tests.test_bp_service_native")

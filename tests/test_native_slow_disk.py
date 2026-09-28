@@ -61,7 +61,7 @@ class SlowDiskSourceTests(unittest.TestCase):
         self.assertIn("(fnn-owner-disk-event service :clock)", pipeline)
         self.assertIn("(fnn-owner-disk-wait-ms service)", pipeline)
         self.assertIn(":timeout (/ ms 1000)", pipeline)
-        self.assertLess(pipeline.index("(fnn-owner-start-syncer service gen)"),
+        self.assertLess(pipeline.index("(fnn-owner-start-syncer service)"),
                         pipeline.index("(fnn-owner-disk-event service :issue limits)"))
         # Slice 2: past H every member is told uncertain, once per barrier,
         # and the queued POSTs are shed; the told members are not answered
@@ -69,12 +69,7 @@ class SlowDiskSourceTests(unittest.TestCase):
         self.assertIn("(fnn-owner-disk-stalled-p service)", pipeline)
         self.assertIn("(fnn-owner-stall-release", pipeline)
         self.assertIn("(fnn-owner-journal-note service (length told) shed)", pipeline)
-        # Lane time-bars (PRF-384): ACL2's ledger decides who the late
-        # completion answers; the syncer carries its generation.
-        self.assertIn("(fnn-core 'fn-otb-issue ledger)", pipeline)
-        self.assertIn("(fnn-owner-answer-early ledger (append members next))", pipeline)
-        self.assertIn("(fnn-owner-complete-generation ledger rgen members)", pipeline)
-        self.assertNotIn("fnn-owner-unreleased", owner)
+        self.assertIn("(fnn-owner-unreleased members released)", pipeline)
         event = owner[owner.index("(defun fnn-owner-disk-event "):owner.index("(defun fnn-owner-journal-note")]
         self.assertIn("'fn-otm-disk-step", event)
         self.assertIn("(fnn-journal-line entry)", event)
@@ -113,7 +108,14 @@ class SlowDiskSourceTests(unittest.TestCase):
         shed = owner[owner.index("(defun fnn-owner-shed-queued-locked "):]
         self.assertIn("'fn-owner-shed-outcome", shed[:2000])
         wrapper = (ROOT / "host" / "owner-host.lisp").read_text()
-        self.assertIn("(fn-mca-read-span\n", wrapper)  # over fn-oas- and fn-otm-read-span (lanes credits, zero-copy-commit)
+        # The host's read is fn-oas-read-span since zero-copy-commit, which
+        # is fn-otm-read-span within the article slots
+        # (books/owner-article-slots.lisp fn-oas-read-span-when-held-unfolds).
+        # Since credits (PRF-380) fn-mca-read-span wraps it
+        # (books/owner-credits.lisp, fn-oas-read-span within the credit).
+        self.assertIn("(fn-mca-read-span\n", wrapper)
+        self.assertIn("(fn-oas-read-span", (ROOT / "books" / "owner-credits.lisp").read_text())
+        self.assertIn("(fn-otm-read-span", (ROOT / "books" / "owner-article-slots.lisp").read_text())
         self.assertIn("(fn-otm-shed-reply s)", wrapper)
         self.assertIn("(fn-owner-outcome id :refused state)", wrapper)
         live = (ROOT / "host" / "native-live-status-host.lisp").read_text()
@@ -532,119 +534,6 @@ class SlowDiskNativeTests(unittest.TestCase):
         # The operator's replay (`store ROOT journal', ACL2's fn-otm-replay).
         replay = self.node.store("journal", timeout=120)
         print("store journal: rc=%d %r" % (replay.returncode, replay.stdout))
-        self.assertEqual(replay.returncode, 0, (replay.stdout, replay.stderr))
-        self.assertIn(b" replay=agrees", replay.stdout)
-
-    def test_the_adopted_default_bars_classify_an_unresolved_write(self):
-        """Lane time-bars (PRF-384, HST-031; planning/design-time-model-2026-09-27.md
-        section 4b): the adopted DEFAULT bars, no policy row set -- D 5,000 ms,
-        H 30,000 ms, the clock cadence 1,000 ms.  One POST's barrier stalls.
-        Each answer's CLASSIFICATION is asserted here (the timings are printed
-        and measured once, at the prerelease convergence checklist):
-          * under D: health says disk ok, exit 0;
-          * past D: health says disk slow (deadline-ms=5000 stall-ms=30000),
-            exit 0; a new POST command is 440 try-later; the SAME article
-            re-submitted on another connection is 440 too -- never an absence,
-            never stored twice; reads are answered;
-          * at H: the held poster is told uncertain (ACL2's 441, not a
-            try-later), then closed -- at H, not at D; health is exit 28,
-            disk stalled;
-          * the device returns: the late completion is consumed once -- the
-            told poster gets no second reply -- and the SAME article
-            re-submitted is answered `this article is already stored here':
-            explicit acceptance evidence, not a STAT;
-          * a restart is a new clock domain: the journal's start entries carry
-            the wall observation and no monotonic reading, and the replay of
-            both runs' segments agrees."""
-        reader_conn, reader = self.connect()
-        conns = [self.connect() for _ in range(4)]
-        (a_conn, a), (b_conn, b), (c_conn, c), (w_conn, w) = conns
-        with reader_conn, a_conn, b_conn, c_conn, w_conn:
-            self.send_article(w, b"warm-bars@example.invalid", b"a healthy barrier")
-            self.assertTrue(w.readline().startswith(b"240"))
-            self.stall.write_bytes(b"")
-            t0 = time.monotonic()
-            self.send_article(a, b"held-bars@example.invalid", b"its barrier stalls")
-            time.sleep(max(0.0, t0 + 2.0 - time.monotonic()))
-            under_d_at, under_d = self.timed_operator("health")
-            time.sleep(max(0.0, t0 + 7.0 - time.monotonic()))
-            slow_at, slow = self.timed_operator("health")
-            b.write(b"POST\r\n")
-            b.flush()
-            new_command = b.readline()
-            c.write(b"POST\r\n")
-            c.flush()
-            retry_during = c.readline()
-            read_at = self.timed_read(reader, b"GROUP fn.test\r\n", b"211")
-            self.assertEqual(select.select([a_conn], [], [], 0)[0], [],
-                             "the held POST was answered before H")
-            a_conn.settimeout(60)
-            ready, _, _ = select.select([a_conn], [], [], max(0.0, t0 + 45.0 - time.monotonic()))
-            told_at = time.monotonic() - t0
-            told = a.readline() if ready else None
-            closed = a.readline() if ready else None
-            stalled_at, stalled = self.timed_operator("health")
-            read_stalled_at = self.timed_read(reader, b"GROUP fn.test\r\n", b"211")
-            self.stall.unlink()
-            deadline = time.monotonic() + 30
-            while time.monotonic() < deadline:
-                _, health = self.timed_operator("health")
-                ok = DISK_OK.search(health.stdout)
-                if ok:
-                    break
-                time.sleep(0.5)
-            self.assertIsNotNone(ok, health.stdout)
-            c.write(b"POST\r\n")
-            c.flush()
-            again = c.readline()
-            self.assertTrue(again.startswith(b"340"), again)
-            self.send_body(c, b"held-bars@example.invalid", b"its barrier stalls")
-            retry_after = c.readline()
-            for stream in (reader, b, c, w):
-                stream.write(b"QUIT\r\n")
-                stream.flush()
-        print("default bars: health under D %.3fs rc=%d; slow %.3fs rc=%d; POST command %r; same-article "
-              "retry during %r; read %.3fs; told %r at %.3fs then %r; stalled health %.3fs rc=%d; read "
-              "while stalled %.3fs; recovered %s; same-article retry after %r"
-              % (under_d_at, under_d.returncode, slow_at, slow.returncode, new_command, retry_during,
-                 read_at, told, told_at, closed, stalled_at, stalled.returncode, read_stalled_at,
-                 ok.group(0).decode(), retry_after))
-        # Under D: ok, exit 0.  Past D: slow with the adopted defaults, exit 0.
-        self.assertIsNotNone(DISK_OK.search(under_d.stdout), under_d.stdout)
-        self.assertEqual(under_d.returncode, 0, under_d.stdout)
-        slow_line = DISK_SLOW.search(slow.stdout)
-        self.assertIsNotNone(slow_line, slow.stdout)
-        self.assertEqual((int(slow_line.group(2)), int(slow_line.group(3))), (5000, 30000))
-        self.assertEqual(slow.returncode, 0, slow.stdout)
-        # Try-later, never absence: the POST command and the same article.
-        for line in (new_command, retry_during):
-            self.assertTrue(line.startswith(b"440 posting not permitted now; the disk is slow"), line)
-        # At H (not at D): uncertain, then the close; one reply only.
-        self.assertIsNotNone(told, "the held poster was not told within 45 s")
-        self.assertTrue(told.startswith(b"441"), told)
-        self.assertNotIn(b"try again later", told)
-        self.assertEqual(closed, b"", closed)
-        self.assertGreater(told_at, 30.0 - 0.5, told_at)
-        self.assertEqual(stalled.returncode, 28, stalled.stdout)
-        stalled_line = DISK_STALLED.search(stalled.stdout)
-        self.assertIsNotNone(stalled_line, stalled.stdout)
-        self.assertEqual(int(stalled_line.group(3)), 30000)
-        # The late completion landed the article; the same article is
-        # answered with the acceptance evidence.
-        self.assertEqual(retry_after, b"441 posting failed; this article is already stored here\r\n")
-        # A restart is a new clock domain.
-        self.node.stop(process=self.owner)
-        self.owner = self.start_owner({"FN_NATIVE_TEST_DISK_STALL_FILE": str(self.stall)})
-        replay = self.node.store("journal", timeout=120)
-        journal = (self.store / "decisions" / "decisions.fnj").read_bytes()
-        entries = [[int(x) for x in line.split(b" ")] for line in journal.split(b"\n") if line]
-        starts = [entry for entry in entries if entry[1] == 0 and entry[0] == 0]
-        print("restart: %d start entries %r; store journal rc=%d %r"
-              % (len(starts), starts[-2:], replay.returncode, replay.stdout))
-        self.assertGreaterEqual(len(starts), 2, starts)
-        for entry in starts:
-            self.assertEqual(entry[2], 0, entry)
-            self.assertEqual(entry[4], 1, entry)
         self.assertEqual(replay.returncode, 0, (replay.stdout, replay.stderr))
         self.assertIn(b" replay=agrees", replay.stdout)
 

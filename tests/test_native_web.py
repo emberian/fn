@@ -13,6 +13,7 @@ the browser and the node.
 FN_NATIVE_DEVELOPER_HOST names the developer image (default
 build/fn-host-developer).  The test creates and removes only its own Store.
 """
+import errno
 import html
 import http.client
 import re
@@ -265,6 +266,13 @@ class FaceCases:
                             break
                         answer += chunk
                 except (ConnectionError, ssl.SSLError):
+                    answer = b""
+                except OSError as error:
+                    # The server closed first (a reset before our half
+                    # close): shutdown reports ENOTCONN.  A timeout stays
+                    # an error.
+                    if error.errno != errno.ENOTCONN:
+                        raise
                     answer = b""
             self.assertTrue(answer == b"" or re.match(rb"HTTP/1\.1 [1-5]\d\d ", answer),
                             (raw[:120], answer[:120]))

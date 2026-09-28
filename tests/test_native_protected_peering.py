@@ -347,9 +347,13 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         source.wait(timeout=30)
         source.finish()
         before = inspect_feed_journal(journal, message_id, b"once-b")
-        self.assertEqual(before["state_before_restart"], "done", before)
-        self.assertEqual(before["state_after_restart"], "done", before)
-        self.assertEqual(before["queue_length"], 1, before)
+        # The acknowledged entry is RETIRED by its outcome record (fn-feed-done:
+        # it leaves the queue, the outcome record keeps which it was), before
+        # and after the restart fold: nothing is left to offer.
+        self.assertEqual(before["state_before_restart"], "nil", before)
+        self.assertEqual(before["state_after_restart"], "nil", before)
+        self.assertEqual(before["queue_length"], 0, before)
+        self.assertGreaterEqual(before["records"].get("feed-commit", 0), 1, before)
         self.assertGreaterEqual(before["records"].get("feed-outcome", 0), 1, before)
 
         self.start(a)
@@ -360,7 +364,8 @@ class NativeProtectedPeeringTests(unittest.TestCase):
                     "b": self.verify_process_identity(b)}
         self.stop_all(a, b)
         after = inspect_feed_journal(journal, message_id, b"once-b")
-        self.assertEqual(after["state_after_restart"], "done", after)
+        self.assertEqual(after["state_after_restart"], "nil", after)
+        self.assertEqual(after["queue_length"], 0, after)
         self.assertEqual(after["records"].get("feed-offer", 0),
                          before["records"].get("feed-offer", 0), (before, after))
         self.assertEqual(after["records"].get("feed-sent", 0),
@@ -429,7 +434,9 @@ class NativeProtectedPeeringTests(unittest.TestCase):
                     "b": self.verify_process_identity(b)}
         self.stop_all(a, b)
         settled = inspect_feed_journal(journal, message_id, b"sent-b")
-        self.assertEqual(settled["state_after_restart"], "done", settled)
+        self.assertEqual(settled["state_after_restart"], "nil", settled)
+        self.assertEqual(settled["queue_length"], 0, settled)
+        self.assertGreaterEqual(settled["records"].get("feed-outcome", 0), 1, settled)
         self.assertGreater(settled["records"].get("feed-offer", 0),
                            interrupted["records"].get("feed-offer", 0))
         status = b.operator("status", expect=EXIT_OK)

@@ -73,7 +73,10 @@
 # served image's load exhausted SBCL's thread-local storage at 16384 on
 # 2026-09-27 (batch AV's native-av-bb1a and recover-memory-2); give the
 # toolchain's own path to build at 16384),
-# --jobs N|auto (certify, default auto: tools/chain_schedule.py), --no-build (reuse the images already in that
+# --jobs N (modules run N at a time against the one image set, default 1:
+# each is its own process, its own MemoryMax scope and its own ports; a
+# group of 20 modules at 4 jobs on hbox takes about a quarter of the serial
+# time), --certify-jobs N|auto (certify, default auto: tools/chain_schedule.py), --no-build (reuse the images already in that
 # scratch tree), --env NAME=VALUE (repeatable; paths may use $T, the tree),
 # --deadline S (default 5400), --dry-run (print the box script; the refusal
 # and the per-module environment show there).  Options may come before or
@@ -108,20 +111,24 @@ IMAGES=developer
 MEM=24G
 IMAGE_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k
 JOBS=auto
+MODULE_JOBS=1
 BUILD=1
 DETACH=0
 DRY=0
 DEADLINE=5400
 ENVS=
 POSITIONAL=
-usage() { sed -n '2,78p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,89p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 while [ $# -gt 0 ]; do
     case $1 in
         --name) NAME=$2; shift 2 ;;
         --label) LABEL=$2; shift 2 ;;
         --images) IMAGES=$2; shift 2 ;;
         --mem) MEM=$2; shift 2 ;;
-        --jobs) JOBS=$2; shift 2 ;;
+        --jobs)
+            case $2 in ''|*[!0-9]*|0) echo "hbox_native: --jobs takes a positive integer" >&2; exit 2 ;; esac
+            MODULE_JOBS=$2; shift 2 ;;
+        --certify-jobs) JOBS=$2; shift 2 ;;
         --no-build) BUILD=0; shift ;;
         --detach) DETACH=1; shift ;;
         --dry-run) DRY=1; shift ;;
@@ -229,24 +236,6 @@ step() {
         finish \$rc
     fi
 }
-# A test module runs to the end whatever the others did; its verdict goes in
-# run.log: OK (N ran, K skipped), FAILED, or SKIPPED (N of N), with every
-# skip's reason (a skipped witness is not evidence).  SKIPPED is status 4.
-failed=0
-passed=0 skipped=0 broke=0
-tstep() {
-    name=\$1; shift
-    echo "== \$name \$(date -u +%H:%M:%SZ) load \$(cut -d' ' -f1-3 /proc/loadavg)"
-    "\$@" > \$L/\$name.log 2>&1
-    rc=\$?
-    verdict=\$(python3 tools/test_budget.py --verdict \$L/\$name.log)
-    vrc=\$?
-    echo "   \$name exit \$rc: \$verdict"
-    echo "   (\$L/\$name.log)"
-    [ \$rc -ne 0 ] || rc=\$vrc
-    case \$rc in 0) passed=\$((passed+1)) ;; 4) skipped=\$((skipped+1)) ;; *) broke=\$((broke+1)) ;; esac
-    [ \$rc -eq 0 ] || [ \$failed -ne 0 ] || failed=\$rc
-}
 # A module reads an image variable: the image must be in the tree.
 need() {
     [ -x "\$3" ] || { echo "hbox_native: \$1 reads \$2: \$3 is not in the tree (build it with --images)"; finish 2; }
@@ -324,6 +313,9 @@ BOX
 if [ -x "$identity_image" ]; then
     eval "\$(python3 tools/native_env.py identity --image "$identity_image" --source $SOURCE_ID --export)"
 fi
+if [ -x build/fn-host-developer ]; then
+    eval "\$(python3 tools/native_env.py identity --image build/fn-host-developer --prefix FN_NATIVE_DEVELOPER_ --export)"
+fi
 BOX
     for assignment in $ENVS; do
         echo "export $assignment"
@@ -343,11 +335,60 @@ BOX
         ''|*[!0-9]*) ;;
         *) [ "${MEM%G}" -ge 48 ] && BIGMEM="flock /tank/fn/scratch/.hbox-native-bigmem.lock" ;;
     esac
+    # The modules run from $S/module.sh, one process per module, --jobs at
+    # a time (xargs -P; 1 keeps the old serial order).  Each writes its exit
+    # code to $S/rc/test-MODULE and prints its verdict as one line when it
+    # ends, so parallel modules never share a counter or split a block;
+    # the tally below reads the codes in the order the modules were named.
+    # Parallel modules are independent processes: each harness Node binds
+    # its own ephemeral ports and makes its own temporary directories, and
+    # each module keeps its own MemoryMax scope (N jobs can hold N x --mem).
+    echo "export S T L FN_TEST_OPENSSL_BIN"
+    echo "rm -rf \$S/rc; mkdir -p \$S/rc"
+    echo "cat > \$S/module.sh <<'MODULE'"
+    cat <<'MOD'
+#!/bin/sh
+set -u
+cd "$T" || exit 0
+# A test module runs to the end whatever the others did; its verdict goes in
+# run.log: OK (N ran, K skipped), FAILED, or SKIPPED (N of N), with every
+# skip's reason (a skipped witness is not evidence).  SKIPPED is status 4.
+tstep() {
+    name=$1; shift
+    echo "== $name $(date -u +%H:%M:%SZ) load $(cut -d' ' -f1-3 /proc/loadavg)"
+    "$@" > $L/$name.log 2>&1
+    rc=$?
+    verdict=$(python3 tools/test_budget.py --verdict $L/$name.log)
+    vrc=$?
+    [ $rc -ne 0 ] || rc=$vrc
+    echo "   $name exit $rc $(date -u +%H:%M:%SZ): $verdict ($L/$name.log)"
+    echo $rc > $S/rc/$name
+}
+case $1 in
+MOD
+    i=0
     echo "$PLAN" | while read -r module assignments; do
+        i=$((i+1))
         cat <<BOX
+$i)
 tstep test-$module $BIGMEM env $assignments systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=$MEM -p MemorySwapMax=0 -- sh -c 'echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one $module'
+;;
 BOX
     done
+    echo "esac"
+    echo "exit 0"
+    echo "MODULE"
+    count=$(echo "$PLAN" | grep -c .)
+    echo "echo \"== modules: $count, $MODULE_JOBS at a time\""
+    echo "seq 1 $count | xargs -P $MODULE_JOBS -n 1 sh \$S/module.sh"
+    echo 'failed=0 passed=0 skipped=0 broke=0'
+    echo "for name in $(echo "$PLAN" | while read -r module assignments; do printf 'test-%s ' "$module"; done); do"
+    cat <<'BOX'
+    rc=$(cat $S/rc/$name 2>/dev/null || echo 125)
+    case $rc in 0) passed=$((passed+1)) ;; 4) skipped=$((skipped+1)) ;; *) broke=$((broke+1)) ;; esac
+    [ $rc -eq 0 ] || [ $failed -ne 0 ] || failed=$rc
+done
+BOX
     echo 'echo "== modules: $passed OK, $skipped SKIPPED (no test executed), $broke FAILED"'
     echo "finish \$failed"
 }

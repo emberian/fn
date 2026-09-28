@@ -142,6 +142,20 @@ class NativeCapacityVectorTests(_Bp):
         shutil.rmtree(archive, ignore_errors=True)
         return tree
 
+    @staticmethod
+    def same_but_the_instant(got, reference):
+        """GOT is REFERENCE's history but for the reclaim's own instant: the
+        same files, and only the newest configuration record (the instant
+        record, whose stamp is the clock of the run that made it) and the
+        MANIFEST that digests it differ.  A second instant record (a fresh
+        reclaim after the death instead of the recorded one) is a different
+        file set and fails."""
+        if set(got) != set(reference):
+            return False
+        configs = sorted(name for name in reference if name.startswith("config/"))
+        allowed = {"MANIFEST", *configs[-1:]}
+        return all(got[name] == reference[name] for name in reference if name not in allowed)
+
     def cuts(self, store, verb):
         """A death at every rotation and drop cut of VERB on a copy of STORE;
         returns the failures."""
@@ -156,8 +170,18 @@ class NativeCapacityVectorTests(_Bp):
             env = {"FN_NATIVE_LOG_FAULT": point}
             first = "exit-%d" % self.verb(ccfg, "store", verb, env=env)[0]
             reopened = self.status(ccfg)
-            rerun = self.verb(ccfg, "store", verb)
-            converged = self.history(copy) == reference
+            if verb == "reclaim":
+                # PKT-857: a reclaim publishes its instant (the
+                # `retention-reclaim-at' configuration record) before it
+                # rewrites anything, and every cut here is after it.  The
+                # recovery completes THAT reclaim (`--recorded': the
+                # decision from the recorded instant, nothing new recorded;
+                # host/native/checkpoint.lisp fnn-log-reclaim-steps).
+                rerun = self.verb(ccfg, "store", verb, "--recorded")
+                converged = self.same_but_the_instant(self.history(copy), reference)
+            else:
+                rerun = self.verb(ccfg, "store", verb)
+                converged = self.history(copy) == reference
             # A cut the verb never reaches (nothing to rotate or drop) is an
             # unexercised cut, not a pass.
             reached = first == "exit--9"
