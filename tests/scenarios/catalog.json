@@ -5624,7 +5624,8 @@
         "test": "tools/power_loss.py",
         "cases": [],
         "native": true,
-        "record": "planning/evidence/durability-numbers-2026-09-28.md"
+        "record": "planning/evidence/durability-numbers-2026-09-28.md",
+        "log": "planning/evidence/durability-numbers-2026-09-28/obs1.log"
       },
       "requirements": [
         "OBJ-005",
@@ -5636,7 +5637,8 @@
       ],
       "evidence": [
         "planning/evidence/durability-numbers-2026-09-28.md",
-        "tools/power_loss.py"
+        "tools/power_loss.py",
+        "planning/evidence/durability-numbers-2026-09-28/cuts-obs1.jsonl"
       ],
       "expected": "No observed number reissued or lost; a lost unacknowledged POST's number may be taken by the next POST (never observed)."
     }

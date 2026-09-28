@@ -928,6 +928,15 @@ def cuts(a):
                            if at < cut and n in seen_mid}
         if phase == "control":
             acked.append(controls[cut])
+            # The observed oracle's tooth: the control POST's number (from
+            # the uncut run's overview) is judged as seen by a reader before
+            # the cut.  When the control's premise holds (its writes all
+            # follow the cut: the acknowledged oracle catches it too), the
+            # oracle MUST report that number lost or reissued.
+            mid_c = msgid(controls[cut])
+            if mid_c in REF_OVER:
+                ctx["observed"] = dict(ctx["observed"])
+                ctx["observed"][REF_OVER[mid_c]] = mid_c
         if phase == "stmtcontrol":
             acked.append(stmt_controls[cut])
         rec = {"cut": cut, "phase": phase, "mode": mode, "seed": seed, "acked": len(acked),
@@ -958,6 +967,8 @@ def cuts(a):
         rec["violations"] = violations
         if phase == "control":
             rec["control_caught"] = bool(violations)
+            rec["control_observed_caught"] = any(v.startswith("observed-number-")
+                                                 for v in violations)
         elif phase == "stmtcontrol":
             rec["control_caught"] = any(v.startswith("statement-change-mismatch")
                                         for v in violations)
