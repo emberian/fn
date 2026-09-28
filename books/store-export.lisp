@@ -72,7 +72,7 @@
 ; A record's entry name: records/ and the store's own transaction name of its
 ; sequence (books/byte-store-txn-name.lisp).
 (defun fn-sxp-record-name (sequence)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (append *fn-sxp-records-prefix*
           (fn-sxp-text-octets (fn-bs-txn-name-impl (nfix sequence)))))
 
@@ -84,24 +84,100 @@
 ; observation names them.  RECORDS: ((SEQUENCE . OCTETS) ...), each record's
 ; sequence as ACL2's decoder reads it (host/store-host.lisp
 ; `fn-store-record-sequence').
-(defun fn-sxp-config-entries (configs)
-  (declare (xargs :guard t))
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-sxp-config-entries-loop (configs acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
   (if (consp configs)
-      (cons (cons (fn-sxp-config-name (if (consp (car configs)) (caar configs) nil))
-                  (if (consp (car configs)) (cdar configs) nil))
-            (fn-sxp-config-entries (cdr configs)))
-    nil))
+      (fn-sxp-config-entries-loop (cdr configs)
+                                  (cons (cons (fn-sxp-config-name (if (consp (car configs))
+                                                                      (caar configs)
+                                                                    nil))
+                                              (if (consp (car configs))
+                                                  (cdar configs)
+                                                nil))
+                                        acc))
+    (revappend acc nil)))
+
+(defun fn-sxp-config-entries (configs)
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp configs)
+           (cons (cons (fn-sxp-config-name (if (consp (car configs)) (caar configs) nil))
+                       (if (consp (car configs)) (cdar configs) nil))
+                 (fn-sxp-config-entries (cdr configs)))
+         nil)
+       :exec (fn-sxp-config-entries-loop configs nil)))
+
+(local
+ (defthm fn-sxp-config-entries-loop-is-revappend
+   (equal (fn-sxp-config-entries-loop configs acc)
+          (revappend acc (fn-sxp-config-entries configs)))
+   :hints (("Goal" :induct (fn-sxp-config-entries-loop configs acc)
+                   :in-theory (union-theories '(fn-sxp-config-entries-loop fn-sxp-config-entries revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-sxp-config-entries-loop)
+
+(verify-guards fn-sxp-config-entries
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-sxp-config-entries)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-sxp-config-entries-loop-is-revappend (acc nil))))))
+
+
+; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
+; control-stack frame per element.  The :logic is the recursion, unchanged;
+; the :exec collects onto an accumulator and reverses it (revappend).
+(defun fn-sxp-record-entries-loop (records acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp records)
+      (fn-sxp-record-entries-loop (cdr records)
+                                  (cons (cons (fn-sxp-record-name (if (consp (car records))
+                                                                      (caar records)
+                                                                    0))
+                                              (if (consp (car records))
+                                                  (cdar records)
+                                                nil))
+                                        acc))
+    (revappend acc nil)))
 
 (defun fn-sxp-record-entries (records)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp records)
-      (cons (cons (fn-sxp-record-name (if (consp (car records)) (caar records) 0))
-                  (if (consp (car records)) (cdar records) nil))
-            (fn-sxp-record-entries (cdr records)))
-    nil))
+  (declare (xargs :verify-guards nil :guard t))
+  (mbe :logic
+       (if (consp records)
+           (cons (cons (fn-sxp-record-name (if (consp (car records)) (caar records) 0))
+                       (if (consp (car records)) (cdar records) nil))
+                 (fn-sxp-record-entries (cdr records)))
+         nil)
+       :exec (fn-sxp-record-entries-loop records nil)))
+
+(local
+ (defthm fn-sxp-record-entries-loop-is-revappend
+   (equal (fn-sxp-record-entries-loop records acc)
+          (revappend acc (fn-sxp-record-entries records)))
+   :hints (("Goal" :induct (fn-sxp-record-entries-loop records acc)
+                   :in-theory (union-theories '(fn-sxp-record-entries-loop fn-sxp-record-entries revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-sxp-record-entries-loop)
+
+(verify-guards fn-sxp-record-entries
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-sxp-record-entries)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-sxp-record-entries-loop-is-revappend (acc nil))))))
+
 
 (defun fn-sxp-entries (profile frontier configs records)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (list* (cons *fn-sxp-profile-name* profile)
          (cons *fn-sxp-frontier-name* frontier)
          (append (fn-sxp-config-entries configs)

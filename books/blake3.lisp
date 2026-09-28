@@ -40,6 +40,7 @@
 ; constrained over any object; on an octet list the coercion is the identity.
 
 (in-package "ACL2")
+(include-book "rev-onto") ; the loop twins' step (PKT-877)
 
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
