@@ -568,7 +568,7 @@ d26-books-2) that halved the proof time of `served-catalog`, `catalog` and
 `heap-reservation` at unchanged steps; each keeps
 `(local (in-theory (disable (tau-system))))` after its includes and enables
 it in the one guard proof that was shorter with it. `heap-reservation` also
-names `arithmetic-5`'s rules as a local theory (`fn-heap-arithmetic`) and
+names `arithmetic-5`'s rules as one local theory and
 closes them past the definitions that need them: a 30,000-step theorem
 took 1.1 s with them enabled and 0.4 s without.
 
