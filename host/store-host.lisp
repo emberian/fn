@@ -207,9 +207,6 @@
 (defun fn-store-frame-store-protected (record)
   (fn-frame-store-protected record))
 
-(defun fn-store-frame-receipt-protected (kind values)
-  (fn-frame-receipt-protected kind values))
-
 ; Native application journals hold the logical record values used by
 ; bp-workflow-records and bp-receipt-records: text fields are ACL2 strings.
 ; The durable frame grammar holds text octets.  Keep that representation
