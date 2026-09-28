@@ -6715,11 +6715,15 @@ observation (the COMPLETE re-signals it under the owner)."
 ;;; check uses (fn-peer-tls-verification: the typed HOST, SNI for a DNS name
 ;;; only, the PEM file given or the system roots), and every line printed
 ;;; (fn-redeem-text).  The password is read from the terminal without echo,
-;;; else from standard input; it never enters argv.
+;;; else from standard input; it never enters argv.  A connection that ends
+;;; or never opens is ACL2's fn-redeem-lost at the stage it ended in, and the
+;;; exit code is fn-outcome-code of fn-redeem-outcome-class: uncertain, never
+;;; refused (the OpenBSD rehearsal's finding 8: the web reader counted an
+;;; unreachable node as a refused code).
 (defun fnn-redeem-read-line (read-chunk pending)
   "One reply line (without CRLF) and the octets after it, reading chunks with
 READ-CHUNK until an LF; at most 4096 octets (RFC 3977 s3.1: 512 is the
-largest reply line)."
+largest reply line).  :LOST when the server closed or did not answer."
   (let ((buffer pending))
     (loop
       (let ((lf (position 10 buffer)))
@@ -6732,7 +6736,7 @@ largest reply line)."
         (fnn-refuse "refused redeem reply: the server's line exceeds 4096 octets"))
       (let ((chunk (funcall read-chunk)))
         (when (or (eq chunk :timeout) (zerop (length chunk)))
-          (fnn-refuse "refused redeem connection: the server closed or did not answer"))
+          (return (values :lost buffer)))
         (setq buffer (concatenate 'fnn-octets buffer chunk))))))
 
 (defun fnn-redeem-read-password ()
@@ -6746,8 +6750,11 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
          (attributes nil) (old-flags nil))
     (unwind-protect
          (progn
-           (format *error-output* "Password for the new account: ")
-           (finish-output *error-output*)
+           ;; The prompt only to a terminal: a caller feeding standard
+           ;; input (the web reader) reads fn's last line as its answer.
+           (when tty
+             (format *error-output* "Password for the new account: ")
+             (finish-output *error-output*))
            (when tty
              (let ((fd (sb-sys:fd-stream-fd tty)))
                (setq attributes (sb-posix:tcgetattr fd)
@@ -6793,7 +6800,7 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                                      (or cafile :system-roots)))
              (password (fnn-redeem-read-password))
              (socket nil) (context nil) (channel nil) (pending (fnn-make-octets 0))
-             (last nil))
+             (last nil) (stage :connect))
         (unless (eq (first verification) :verify)
           (fnn-refuse "refused redeem ~a: ~a"
                       (if (eq (second verification) :trust) "trust" "host")
@@ -6816,22 +6823,28 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                    line))
                (finish (outcome)
                  (let ((text (fnn-octets-string
-                              (fnn-octets (fnn-core 'fn-redeem-text outcome login last)))))
-                   (if (equal outcome '(:done))
-                       (progn (fnn-out "~a" text) +fnn-exit-ok+)
-                     (progn (fnn-err "~a" text) +fnn-exit-refused+)))))
+                              (fnn-octets (fnn-core 'fn-redeem-text outcome login last))))
+                       (class (fnn-core 'fn-redeem-outcome-class outcome)))
+                   (if (eq class :accepted)
+                       (fnn-out "~a" text)
+                     (fnn-err "~a" text))
+                   (fnn-core 'fn-outcome-code class))))
           (unwind-protect
                (handler-case
                (progn
                  (setq socket (fnn-connect host port :timeout 30))
-                 (let ((stage (if tls :greeting-tls :greeting-starttls)))
+                 (setq stage (if tls :greeting-tls :greeting-starttls))
+                 (progn
                    (when tls
                      (setq context (fnn-tls-open-client-context (fourth verification))
                            channel (fnn-tls-connect context (fnn-socket-fd socket)
                                                     (second verification) 30
                                                     :sni (third verification))))
                    (loop
-                     (let ((step (fnn-core 'fn-redeem-step stage (reply))))
+                     (let* ((line (reply))
+                            (step (if (eq line :lost)
+                                      (fnn-core 'fn-redeem-lost stage)
+                                    (fnn-core 'fn-redeem-step stage line))))
                        (case (first step)
                          (:starttls (send "STARTTLS") (setq stage :starttls))
                          (:handshake
@@ -6849,8 +6862,14 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                           (send (format nil "XREDEEM PASS ~a"
                                         (map 'string #'code-char password)))
                           (setq stage :password))
+                         ((:uncertain :unreachable) (return (finish step)))
                          (t (ignore-errors (send "QUIT"))
                             (return (finish step))))))))
+                 ;; The node could not be reached, or the connection failed
+                 ;; under the exchange: ACL2's lost outcome at this stage.
+                 ((or fnn-os-error fnn-tls-io-error
+                      sb-bsd-sockets:socket-error sb-bsd-sockets:name-service-error) ()
+                   (finish (fnn-core 'fn-redeem-lost stage)))
                  ;; A certificate the given trust does not verify, a name
                  ;; that does not match, or a failed handshake: refused by
                  ;; name, never an unchecked session.

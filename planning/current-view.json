@@ -67,17 +67,61 @@
         "host/native/bp-service.lisp": "bc694bd5c94f4c8beb411893bbf4191fe80b4be25960e9123435416df24292bb",
         "host/owner-host.lisp": "3984db58fd316e4ab047750bd3d96dbd77db323f2c6806008cf19a58fa9a8117"
       }
+    },
+    "18a7137a": {
+      "source": "18a7137a379456b942721bdad14d4c6193c41f0f",
+      "qualification": null,
+      "closure_manifest": null,
+      "release": "fn-6.7.0-linux-x86_64.tar.gz sha256 54e6a3630e2d1ceff3918dad9e788ecfca94a725715bef099a247a681d7d2b13 (release-gate green-check 574/574 on hbox, planning/evidence/public-node-deploy-2026-09-27.md; not a qualified image)",
+      "host_sha256": {
+        "host/bp-native-app-host.lisp": "2d4c4bb9e1e3cfd9ca93206463ba02db21fcfb6bf17492cf432d37abb836bf31",
+        "host/checkpoint-host.lisp": "fbeb2542747f2cf4505ddb2fc1bfb49ea9219972b3f62556b792fbd913ceb952",
+        "host/native/bp-service.lisp": "c2cdf3422cb8779584ac9db90271c53839f13f042ab7e16ca98e07fac6b0834c",
+        "host/owner-host.lisp": "1e763be4927b39740a3721f4b887ec36fb109959c81db1051c829a47ace34857"
+      },
+      "book_sha256": {
+        "books/bp-node-forward-retry.lisp": "5ea9cb4daf6e3f2777dea2073bceb41dda0baddc1e7bd2c798e793d94e1c95ff",
+        "books/bp-node-job-offer.lisp": "e5aa4ab48e12702780e1010c270436d874fc87c371cb052b31d3d4b8f09ee644",
+        "books/bp-transit-join.lisp": "69130d3184083186e9301bd1ebcb2a4e9a3b2b9d70de39a0bc815dbf2bae00bd",
+        "books/byte-store-k0-recovery.lisp": "0796b4a844c17d3e18c325ee08620b2a6d77b89f89a5b0908fec62cfe1ed04fa",
+        "books/config-owner-carried.lisp": "16d19afdfb23e9d0f8d980c7994c437a91910fca369575fdba8dc66547b60900",
+        "books/config-owner-publish.lisp": "935975930d3c12512667f151386006bb8fb0c99fa200dde35b3913a483ef76ef",
+        "books/nntp-auth-invariants.lisp": "be238aac84aa00ff0e5d4b9eb2f28b4de11e5ffc1aedb92d285a671694d1608b",
+        "books/nntp-pinned-msgid.lisp": "904aa2a15c8c26a6a1ea6da20afb96ce1c33851f39d37f3ea4e7d1e988298156",
+        "books/owner-feed-subject.lisp": "deb165aa130ef597c8c5653f94aa10b80e82d8094e30f4bc8d3bf40144696006",
+        "books/owner-invariants-served.lisp": "310186d671106c2a0f75d26105143451d6877cac27c642ddc3887dc5d0f2f73e",
+        "books/owner-list-counts-read.lisp": "c698a1367060237e75730a8b73d901e8877c18f8b2be18dd898b2a4b4097db86",
+        "books/owner-parse-carried.lisp": "951f9cfca10086822d34daab4bbc4803cbdbf45c14863ec0d9721aa1997d2f97",
+        "books/owner-prepare-outcome.lisp": "3991c7c1f3094f7072987c56c687304baa95e1b4fbeab88549fe168201dcb418",
+        "books/owner-served-carried.lisp": "557dff89f3965cbc76d8e80ff1ba56a380ce8019d0b959facec0fa902a0bbf33",
+        "books/owner-served-invariants.lisp": "7704cdaaf2925aa922da10d856b49b32874c474c73d1944822a30663e1d1d69d",
+        "books/owner-store-budget.lisp": "603ae8f9267a3e3c0d30164b3393151ff76ff45c23dde6cb3d18229bc095b1c1",
+        "books/owner-tls-prefix.lisp": "dedddbb5d016bf3ae3ab28518bc2aa6a12cc0c1a91905ee28a60313df42da40b",
+        "books/owner-verdict-read.lisp": "d55cac809049917dc82119a06d289f78b271849cd691d492d36aaf846386ea5d",
+        "books/poster-bytes-invariants.lisp": "a2975002b3ccd1ade4c0c9d126b22d7ee3c6426667bf0a42cf69f5c36c4aa6d5",
+        "books/served-carried.lisp": "40c402cc92a6dd89e72b2d390022c5b6b7103857f749652086da1aded7f7675e",
+        "books/store-intern.lisp": "ac6acc4dae31fda023e7720c65c79ff0985ae80114c1f09d5df8cc12801c5489",
+        "books/store-log-reclaim.lisp": "907ac16890659fb81caf6960aa973f085b34aca9e4a2a32fccd3ef360b1998de"
+      }
     }
   },
   "deployment": {
-    "where": "hbox `/tank/fn/node`",
-    "image": "bbf52159",
-    "record": "planning/evidence/node-hbox-bbf52159-2026-09-25.md",
+    "where": "`fn.fg-goose.online` on the fsn1 anchor `dregg-anchor-fsn1` (floating IP 88.99.126.35; 119 STARTTLS and 563 implicit TLS, Let's Encrypt certificate)",
+    "image": "18a7137a",
+    "record": "planning/evidence/public-node-deploy-2026-09-27.md",
     "profiles": [
       "default"
     ],
-    "profile_text": "production default image, store profile scale (4096 transactions) at format 8 with the committed-history marker unmarked (config.json.format-7 and a pre-upgrade snapshot kept), LAN-only, no peers configured, DTN profile not deployed; six earlier releases kept for rollback"
+    "profile_text": "release `fn-6.7.0-linux-x86_64.tar.gz` (sha256 `54e6a3630e2d1ceff3918dad9e788ecfca94a725715bef099a247a681d7d2b13`), native under systemd with MemoryMax=2G, a fresh store at format 9 (max-transactions 32,768), small-community mission plus the edge exposure policy, logins by invitation only, no peers, DTN profile not deployed; deployed 2026-09-27 21:49Z"
   },
+  "earlier_deployments": [
+    {
+      "where": "hbox `/tank/fn/node`",
+      "image": "bbf52159",
+      "record": "planning/evidence/node-hbox-bbf52159-2026-09-25.md",
+      "state": "fn-node.service inactive when the public node was deployed (checked 2026-09-27 21:45Z and 21:52Z, planning/evidence/public-node-deploy-2026-09-27.md section 6); its store is format 8, which the current release refuses by name (D34)"
+    }
+  ],
   "superseded": [
     "planning/evidence/node-hbox-47bdb9a4-2026-09-24.md",
     "planning/evidence/matrix-47bdb9a4-2026-09-24.md",

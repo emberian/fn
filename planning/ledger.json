@@ -1294,23 +1294,23 @@
     "books": 1327,
     "books_in_root_closure": 1325,
     "roots": 1287,
-    "theorems": 19829,
-    "functions": 13794,
-    "assert_events": 19236,
-    "must_fails": 2143,
+    "theorems": 19847,
+    "functions": 13808,
+    "assert_events": 19314,
+    "must_fails": 2155,
     "prover_refusals": 0,
     "encapsulates": 102,
     "guards": {
       "verified": 2504,
       "declared-off": 1668,
-      "default-guarded": 7727,
-      "default-unguarded": 1895
+      "default-guarded": 7739,
+      "default-unguarded": 1897
     },
     "suspect_theorems": 1034,
     "export_hygiene_warnings": 244,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 214,
-    "include_hygiene_warnings": 1817,
+    "include_hygiene_warnings": 1818,
     "host_names_warnings": 1441,
     "hand_written_record_warnings": 18
   },
@@ -1485,12 +1485,12 @@
       "book": "books/accounts.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 40,
-      "functions": 16,
+      "theorems": 52,
+      "functions": 18,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 16,
+        "default-guarded": 18,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -8202,7 +8202,7 @@
       "book": "books/config-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 63,
+      "theorems": 64,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -8688,11 +8688,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 59,
-      "functions": 238,
+      "functions": 246,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 237,
+        "default-guarded": 245,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -11771,7 +11771,7 @@
       "book": "books/native-admin.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 30,
+      "theorems": 31,
       "functions": 49,
       "guards": {
         "verified": 0,
@@ -12291,7 +12291,7 @@
       "book": "books/nntp-auth.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 169,
+      "theorems": 172,
       "functions": 84,
       "guards": {
         "verified": 46,
@@ -16255,12 +16255,12 @@
       "book": "books/peer-host.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 11,
-      "functions": 19,
+      "theorems": 12,
+      "functions": 21,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 19,
+        "default-guarded": 21,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -23454,7 +23454,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 6,
+      "assert_events": 7,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 6,
@@ -23481,11 +23481,11 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 8,
-      "must_fails": 1,
+      "assert_events": 14,
+      "must_fails": 2,
       "prover_refusals": 0,
       "defconsts": 5,
-      "defmacros": 5,
+      "defmacros": 7,
       "encapsulates": 0,
       "includes": [
         "../../books/crypto-attach",
@@ -23509,11 +23509,11 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 54,
-      "must_fails": 10,
+      "assert_events": 82,
+      "must_fails": 17,
       "prover_refusals": 0,
       "defconsts": 12,
-      "defmacros": 21,
+      "defmacros": 28,
       "encapsulates": 0,
       "includes": [
         "../../books/accounts",
@@ -31108,10 +31108,10 @@
         "default-unguarded": 9
       },
       "verify_guards_events": 0,
-      "assert_events": 223,
+      "assert_events": 231,
       "must_fails": 14,
       "prover_refusals": 0,
-      "defconsts": 65,
+      "defconsts": 67,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -31585,10 +31585,10 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 294,
+      "assert_events": 298,
       "must_fails": 25,
       "prover_refusals": 0,
-      "defconsts": 59,
+      "defconsts": 60,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -31671,11 +31671,11 @@
         "default-unguarded": 13
       },
       "verify_guards_events": 0,
-      "assert_events": 337,
-      "must_fails": 84,
+      "assert_events": 346,
+      "must_fails": 88,
       "prover_refusals": 0,
-      "defconsts": 122,
-      "defmacros": 27,
+      "defconsts": 124,
+      "defmacros": 28,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
@@ -34402,7 +34402,7 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 65,
+      "assert_events": 83,
       "must_fails": 9,
       "prover_refusals": 0,
       "defconsts": 10,
@@ -34410,6 +34410,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/native-admin-peer",
+        "../../books/outcome-class",
         "../../books/peer-host",
         "../../books/peer-pull",
         "must-fail-checked"
@@ -35647,18 +35648,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 5,
+      "functions": 7,
       "guards": {
         "verified": 0,
         "declared-off": 3,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 19,
+      "assert_events": 23,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 7,
+      "defconsts": 9,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -39465,7 +39466,7 @@
     {
       "theorem": "fn-acct-redeem-bounded-plan-is-the-plan-unless-it-redeems",
       "book": "books/accounts.lisp",
-      "line": 570,
+      "line": 711,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-acct-redeem-bounded-plan and the conclusion is that arm's value"
       ]
@@ -39614,7 +39615,7 @@
     {
       "theorem": "fn-auth-consistent-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 564,
+      "line": 595,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp"
       ]
@@ -39622,7 +39623,7 @@
     {
       "theorem": "fn-auth-moderation-config-without-a-login",
       "book": "books/nntp-auth.lisp",
-      "line": 1289,
+      "line": 1330,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-moderation-config and the conclusion is that arm's value"
       ]
@@ -39630,7 +39631,7 @@
     {
       "theorem": "fn-auth-redeem-outcome-is-inert-unless-it-answers",
       "book": "books/nntp-auth.lisp",
-      "line": 1558,
+      "line": 1599,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-redeem-outcome and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-auth-redeem-outcome and the conclusion is that branch's value"
@@ -39639,7 +39640,7 @@
     {
       "theorem": "fn-auth-session-peer-folds",
       "book": "books/nntp-auth.lisp",
-      "line": 2761,
+      "line": 2830,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-auth-session-peer"
@@ -39656,7 +39657,7 @@
     {
       "theorem": "fn-auth-token-argp-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 955,
+      "line": 996,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp"
       ]
@@ -42156,7 +42157,7 @@
     {
       "theorem": "fn-native-admin-plan-deltas-over-other-plans-by-definition",
       "book": "books/native-admin.lisp",
-      "line": 840,
+      "line": 854,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-native-admin-plan-deltas-over and the conclusion is that arm's value"
       ]
@@ -42172,7 +42173,7 @@
     {
       "theorem": "fn-native-operator-control-outcome-passes-a-bindable-path",
       "book": "books/native-operator.lisp",
-      "line": 2411,
+      "line": 2414,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-native-operator-control-outcome and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-native-operator-control-outcome and the conclusion is that branch's value"
@@ -42473,7 +42474,7 @@
     {
       "theorem": "fn-nop-native-action-of-unaccepted",
       "book": "books/native-operator.lisp",
-      "line": 1766,
+      "line": 1769,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-native-operator-result-native-action and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value"
@@ -48460,7 +48461,7 @@
       {
         "theorem": "fn-native-admin-name-components-first-is-the-first-component",
         "book": "books/native-admin.lisp",
-        "line": 1364,
+        "line": 1390,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -48478,19 +48479,19 @@
       {
         "theorem": "fn-auth-session-peer-of-fn-auth-make-session",
         "book": "books/nntp-auth.lisp",
-        "line": 646,
+        "line": 677,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-auth-session-peer-of-fn-auth-with-base",
         "book": "books/nntp-auth.lisp",
-        "line": 651,
+        "line": 682,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines",
         "book": "books/nntp-auth.lisp",
-        "line": 2244,
+        "line": 2285,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -50610,19 +50611,19 @@
       {
         "check": "aut-peer-open-pins-the-open-config",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1089,
+        "line": 1170,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-not-posting",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1190,
+        "line": 1271,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-the-post-command-event",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1230,
+        "line": 1311,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -51231,7 +51232,7 @@
       },
       {
         "book": "books/account-list.lisp",
-        "line": 25,
+        "line": 27,
         "include": "accounts",
         "included": "books/accounts.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -61394,6 +61395,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/peer-host-tests.lisp",
+        "line": 11,
+        "include": "../../books/outcome-class",
+        "included": "books/outcome-class.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/peer-inbound-tests.lisp",
         "line": 8,
         "include": "../../books/peer-inbound-invariants",
@@ -64386,21 +64394,21 @@
       },
       {
         "host": "host/native-admin-host.lisp",
-        "line": 191,
+        "line": 193,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/native-admin-host.lisp",
-        "line": 221,
+        "line": 223,
         "name": "symbolp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/native-admin-host.lisp",
-        "line": 221,
+        "line": 223,
         "name": "string-downcase",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -69937,56 +69945,56 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6633,
+        "line": 6637,
         "name": "open",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6633,
+        "line": 6637,
         "name": "logandc2",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6667,
+        "line": 6674,
         "name": "fnn-tls-send-all",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6667,
+        "line": 6674,
         "name": "fnn-tls-read",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6667,
+        "line": 6674,
         "name": "fnn-tls-open-client-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6667,
+        "line": 6674,
         "name": "fnn-tls-connect",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6667,
+        "line": 6674,
         "name": "fnn-tls-close-channel",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6667,
+        "line": 6674,
         "name": "fnn-tls-close-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"

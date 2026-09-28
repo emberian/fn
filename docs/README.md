@@ -4,6 +4,7 @@ The guides are Usenet articles, posted to fn.announce and fn.docs and
 kept in [articles/](articles/). The website renders them as a newsreader.
 
 - [Welcome](articles/fn-welcome.txt) and [the public node](articles/fn-public-node.txt)
+  ([getting an account there, step by step](public-node.md))
 - [1: words and answers](articles/fn-faq-1.txt) ·
   [2: reading and posting](articles/fn-faq-2.txt) ·
   [3: installing a node](articles/fn-faq-3.txt) ([OpenBSD](articles/fn-faq-3-openbsd.txt)) ·

@@ -8,6 +8,7 @@ calls. Every answer is accepted, refused or uncertain.
   `tin -T -r -A -p 563 -g fn.fg-goose.online`.
 - As plain text: [docs/articles/](docs/articles/), from
   [the welcome](docs/articles/fn-welcome.txt).
+- An account on the public node: [docs/public-node.md](docs/public-node.md).
 - Engineers: [docs/README.md](docs/README.md), [AGENTS.md](AGENTS.md).
 
 A first check needs Python 3.11: `make check`.

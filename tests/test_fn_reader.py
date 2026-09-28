@@ -352,6 +352,22 @@ class ReaderTests(unittest.TestCase):
         self.assertIn("the invitation code or the login was refused", page)
         self.assertNotIn("fnr_session", self.cookies)
 
+    def test_an_unreachable_node_is_said_and_never_counted_as_a_refused_code(self):
+        # The OpenBSD rehearsal's finding 8: `fn redeem' exits 3 (fenced,
+        # ACL2's fn-redeem-lost) when the node is not reached; the page says
+        # so with fn's own line and the try is not counted, so a friend is
+        # never paced out by a node that was down.
+        _, script = self.fake_fn(3, "unreachable redeem: the node could not be reached")
+        self.start(password=PASSWORD, fn=str(script), reader={"node_failures": 2})
+        for _ in range(3):
+            status, _, page = self.redeem()
+            self.assertEqual(status, 503)
+            self.assertIn("could not reach the server", page)
+            self.assertIn("unreachable redeem: the node could not be reached", page)
+            self.assertNotIn("used up", page)
+        self.assertEqual(self.server.node_refused(), 0)
+        self.assertNotIn("fnr_session", self.cookies)
+
     def test_redeem_shapes_never_reach_the_command_line_as_options(self):
         directory, script = self.fake_fn(0, "redeemed")
         self.start(password=PASSWORD, fn=str(script))

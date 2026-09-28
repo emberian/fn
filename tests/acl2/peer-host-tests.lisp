@@ -8,6 +8,7 @@
 (include-book "../../books/native-admin-peer")
 (include-book "../../books/peer-pull")
 (include-book "must-fail-checked")
+(include-book "../../books/outcome-class")
 
 (defun pht (s) (fn-record-string-octets s))
 
@@ -172,3 +173,43 @@
                      (list :handshake)))
 (assert-event (equal (fn-redeem-reply-code (fn-record-string-octets "2811 x")) nil))
 (assert-event (consp (fn-redeem-text (list :done) "carol" *rd-281*)))
+
+; -----------------------------------------------------------------------------
+; fn redeem, a lost connection (public-node-3; the OpenBSD rehearsal's
+; finding 8): fn-redeem-lost-is-fenced-and-server-answers-are-not.
+; Conjunct 1 (no hypothesis): each stage's lost outcome is fenced.
+(assert-event (equal (fn-redeem-lost :connect) (list :unreachable :connect)))
+(assert-event (equal (fn-redeem-outcome-class (fn-redeem-lost :connect)) :fenced))
+(assert-event (equal (fn-redeem-lost :code) (list :unreachable :code)))
+(assert-event (equal (fn-redeem-outcome-class (fn-redeem-lost :code)) :fenced))
+(assert-event (equal (fn-redeem-lost :password) (list :uncertain :password)))
+(assert-event (equal (fn-redeem-outcome-class (fn-redeem-lost :password)) :fenced))
+(assert-event (equal (fn-redeem-lost 'other) (list :unreachable :stage)))
+; Conjunct 2: uncertain exactly after the password; both arms.
+(assert-event (not (equal (fn-redeem-lost :starttls) (list :uncertain :password))))
+; Conjunct 3, positive: the 281 after the password is accepted, the 482 after
+; it and a greeting refusal are refused (antecedent and conclusion asserted).
+(assert-event (and (member-equal (car (fn-redeem-step :password *rd-281*)) '(:done :refused))
+                   (equal (fn-redeem-outcome-class (fn-redeem-step :password *rd-281*))
+                          :accepted)))
+(assert-event (and (member-equal (car (fn-redeem-step :password *rd-481*)) '(:done :refused))
+                   (equal (fn-redeem-outcome-class (fn-redeem-step :password *rd-481*))
+                          :refused)))
+(assert-event (and (member-equal (car (fn-redeem-step :greeting-tls *rd-481*)) '(:done :refused))
+                   (equal (fn-redeem-outcome-class (fn-redeem-step :greeting-tls *rd-481*))
+                          :refused)))
+; Conjunct 3, hypothesis removed: a step that is no final outcome (the 381 to
+; the code: send the password) fails the antecedent and the conclusion.
+(assert-event (not (member-equal (car (fn-redeem-step :code *rd-381*)) '(:done :refused))))
+(assert-event (not (equal (fn-redeem-outcome-class (fn-redeem-step :code *rd-381*))
+                          :refused)))
+; The exit codes the host prints: accepted 0, refused 1, the lost outcomes 3
+; (books/outcome-class.lisp), which tools/fn_reader.py reads as not sure.
+(assert-event (equal (fn-outcome-code (fn-redeem-outcome-class (list :done))) 0))
+(assert-event (equal (fn-outcome-code (fn-redeem-outcome-class (list :refused :code))) 1))
+(assert-event (equal (fn-outcome-code (fn-redeem-outcome-class (fn-redeem-lost :connect))) 3))
+; The words the friend reads name the case.
+(assert-event (equal (take 18 (fn-redeem-text (fn-redeem-lost :connect) "carol" nil))
+                     (fn-record-string-octets "unreachable redeem")))
+(assert-event (equal (take 16 (fn-redeem-text (fn-redeem-lost :password) "carol" nil))
+                     (fn-record-string-octets "uncertain redeem")))
