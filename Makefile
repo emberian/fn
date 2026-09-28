@@ -833,6 +833,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-attach-concrete \
 	books/msgid-index-concrete \
 	books/octets-stobj \
+	books/octet-text \
 	books/payload-arena-bytes \
 	books/payload-arena-paged \
 	books/payload-arena-extent-logic \
@@ -884,6 +885,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-arena-load \
 	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \
+	tests/acl2/octet-text-tests \
+	tests/acl2/hostile-reader-archive \
 	tests/acl2/octets-bulk-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/payload-arena-paged-tests \
