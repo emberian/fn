@@ -362,8 +362,8 @@ A book that is a data table read by tools as well as by ACL2
 probability is a rational (`1/5`), never `0.2`, which ACL2 refuses as input;
 the tool's reader converts.
 
-A reply the table owns reaches a book through `fn-proto-text`, a macro: the
-admitted term is the literal, so no proof sees a lookup and none may. A table
+A reply the table owns reaches a book through the fn-proto-text macro that
+`books/protocol-table.lisp` generates: the admitted term is the literal, so no proof sees a lookup and none may. A table
 read that must stay a function at run time is disabled where it is defined
 and exported as one `-unfolds` equality per (row, key) the proofs use, never
 left enabled for the rewriter to open in every subgoal. When a book slows
