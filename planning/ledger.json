@@ -1380,16 +1380,16 @@
     "books": 1403,
     "books_in_root_closure": 1401,
     "roots": 1373,
-    "theorems": 22471,
-    "functions": 15208,
-    "assert_events": 20166,
-    "must_fails": 2234,
+    "theorems": 22481,
+    "functions": 15213,
+    "assert_events": 20168,
+    "must_fails": 2236,
     "prover_refusals": 0,
     "encapsulates": 136,
     "guards": {
-      "verified": 2559,
-      "declared-off": 1784,
-      "default-guarded": 8627,
+      "verified": 2561,
+      "declared-off": 1786,
+      "default-guarded": 8628,
       "default-unguarded": 2238
     },
     "suspect_theorems": 1099,
@@ -12555,15 +12555,15 @@
       "book": "books/native-health.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 71,
-      "functions": 88,
+      "theorems": 73,
+      "functions": 90,
       "guards": {
-        "verified": 12,
+        "verified": 14,
         "declared-off": 1,
         "default-guarded": 75,
         "default-unguarded": 0
       },
-      "verify_guards_events": 12,
+      "verify_guards_events": 14,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -22762,12 +22762,12 @@
       "book": "books/store-reclaim-holders.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
-      "functions": 22,
+      "theorems": 46,
+      "functions": 23,
       "guards": {
         "verified": 4,
         "declared-off": 3,
-        "default-guarded": 15,
+        "default-guarded": 16,
         "default-unguarded": 0
       },
       "verify_guards_events": 4,
@@ -40331,18 +40331,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 5,
+      "functions": 7,
       "guards": {
         "verified": 0,
-        "declared-off": 2,
+        "declared-off": 4,
         "default-guarded": 0,
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 37,
-      "must_fails": 8,
+      "assert_events": 39,
+      "must_fails": 10,
       "prover_refusals": 0,
-      "defconsts": 25,
+      "defconsts": 26,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -41917,7 +41917,7 @@
     {
       "theorem": "fn-auth-consistent-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 596,
+      "line": 605,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp"
       ]
@@ -41925,7 +41925,7 @@
     {
       "theorem": "fn-auth-moderation-config-without-a-login",
       "book": "books/nntp-auth.lisp",
-      "line": 1331,
+      "line": 1340,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-moderation-config and the conclusion is that arm's value"
       ]
@@ -41933,7 +41933,7 @@
     {
       "theorem": "fn-auth-redeem-outcome-is-inert-unless-it-answers",
       "book": "books/nntp-auth.lisp",
-      "line": 1600,
+      "line": 1609,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-redeem-outcome and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-auth-redeem-outcome and the conclusion is that branch's value"
@@ -41942,7 +41942,7 @@
     {
       "theorem": "fn-auth-session-peer-folds",
       "book": "books/nntp-auth.lisp",
-      "line": 2831,
+      "line": 2840,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-auth-session-peer"
@@ -41959,7 +41959,7 @@
     {
       "theorem": "fn-auth-token-argp-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 997,
+      "line": 1006,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp"
       ]
@@ -43531,7 +43531,7 @@
     {
       "theorem": "fn-ctg-assign-fields",
       "book": "books/catalog.lisp",
-      "line": 1082,
+      "line": 1101,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -43539,7 +43539,7 @@
     {
       "theorem": "fn-ctg-corr-live-facts",
       "book": "books/catalog.lisp",
-      "line": 2689,
+      "line": 2708,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-cat$corr-live"
       ]
@@ -43547,7 +43547,7 @@
     {
       "theorem": "fn-ctg-mark-withdrawn-is-update",
       "book": "books/catalog.lisp",
-      "line": 1280,
+      "line": 1299,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-mark-withdrawn and the conclusion is that arm's value"
       ]
@@ -43555,7 +43555,7 @@
     {
       "theorem": "fn-ctg-withdrawn-of-assign",
       "book": "books/catalog.lisp",
-      "line": 1107,
+      "line": 1126,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -43563,7 +43563,7 @@
     {
       "theorem": "fn-ctg-withdrawn-of-with-context",
       "book": "books/catalog.lisp",
-      "line": 2995,
+      "line": 3014,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -43571,7 +43571,7 @@
     {
       "theorem": "fn-ctg-withdrawn-of-with-withdrawn",
       "book": "books/catalog.lisp",
-      "line": 2926,
+      "line": 2945,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -44180,7 +44180,7 @@
     {
       "theorem": "fn-inj-decide-without-a-clock-refuses-clock-unusable",
       "book": "books/nntp-post.lisp",
-      "line": 758,
+      "line": 776,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-inj-decide and the conclusion is that arm's value"
       ]
@@ -46465,7 +46465,7 @@
     {
       "theorem": "fn-post-reader-env-facts",
       "book": "books/nntp-post.lisp",
-      "line": 403,
+      "line": 421,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -46473,7 +46473,7 @@
     {
       "theorem": "fn-post-reader-env-listing",
       "book": "books/nntp-post.lisp",
-      "line": 411,
+      "line": 429,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -46481,7 +46481,7 @@
     {
       "theorem": "fn-post-reader-env-observation",
       "book": "books/nntp-post.lisp",
-      "line": 396,
+      "line": 414,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -46489,7 +46489,7 @@
     {
       "theorem": "fn-post-reader-env-posting",
       "book": "books/nntp-post.lisp",
-      "line": 389,
+      "line": 407,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -46682,7 +46682,7 @@
     {
       "theorem": "fn-rcl-article-alpha-accessors",
       "book": "books/store-reclaim-holders.lisp",
-      "line": 384,
+      "line": 440,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -46690,7 +46690,7 @@
     {
       "theorem": "fn-rcl-class-count-in-of-cons",
       "book": "books/store-reclaim-holders.lisp",
-      "line": 580,
+      "line": 678,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-rcl-class-count-in and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-rcl-class-count-in and the conclusion is that branch's value"
@@ -46708,7 +46708,7 @@
     {
       "theorem": "fn-rcl-held-count-in-of-cons",
       "book": "books/store-reclaim-holders.lisp",
-      "line": 631,
+      "line": 729,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-rcl-held-count-in and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-rcl-held-count-in and the conclusion is that branch's value"
@@ -47182,7 +47182,7 @@
     {
       "theorem": "fn-scat-article-idp-is-msgid-idp",
       "book": "books/served-catalog.lisp",
-      "line": 511,
+      "line": 522,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -47190,7 +47190,7 @@
     {
       "theorem": "fn-scat-built-listgroup-is-fold",
       "book": "books/served-catalog.lisp",
-      "line": 1748,
+      "line": 1759,
       "reasons": [
         "instance-corollary: the statement is fn-gidx-listgroup-command-of-build instantiated, discharging nothing"
       ]
@@ -47198,7 +47198,7 @@
     {
       "theorem": "fn-scat-built-trie-corresponds",
       "book": "books/served-catalog.lisp",
-      "line": 1737,
+      "line": 1748,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
@@ -47206,7 +47206,7 @@
     {
       "theorem": "fn-scat-pin-trie-is-built",
       "book": "books/served-catalog.lisp",
-      "line": 1730,
+      "line": 1741,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-midx-correspondencep"
       ]
@@ -47505,7 +47505,7 @@
     {
       "theorem": "fn-scjs-configure-keeps-fields",
       "book": "books/served-catalog-join-frame-store.lisp",
-      "line": 774,
+      "line": 806,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -47513,7 +47513,7 @@
     {
       "theorem": "fn-scjs-configure-keeps-versions",
       "book": "books/served-catalog-join-frame-store.lisp",
-      "line": 1483,
+      "line": 1516,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -47521,7 +47521,7 @@
     {
       "theorem": "fn-scjs-no-rowsp-nthcdr-of-list-fix",
       "book": "books/served-catalog-join-frame-store.lisp",
-      "line": 247,
+      "line": 278,
       "reasons": [
         "closed-theory-corollary: proved only by fn-scjs-no-rowsp-of-list-fix, fn-scjs-nthcdr-of-list-fix"
       ]
@@ -47529,7 +47529,7 @@
     {
       "theorem": "fn-scjs-own-take-of-short",
       "book": "books/served-catalog-join-frame-store.lisp",
-      "line": 1178,
+      "line": 1211,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-own-take and the conclusion is that arm's value"
       ]
@@ -47537,7 +47537,7 @@
     {
       "theorem": "fn-scjs-seenp-unfolds",
       "book": "books/served-catalog-join-frame-store.lisp",
-      "line": 562,
+      "line": 594,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-scjs-seenp"
@@ -47546,7 +47546,7 @@
     {
       "theorem": "fn-scjs-sn-update-fields",
       "book": "books/served-catalog-join-frame-store.lisp",
-      "line": 199,
+      "line": 224,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -47554,7 +47554,7 @@
     {
       "theorem": "fn-scjs-store-framep-reflexive",
       "book": "books/served-catalog-join-frame-store.lisp",
-      "line": 336,
+      "line": 367,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
@@ -50563,7 +50563,7 @@
     {
       "theorem": "fn-wss-car-of-cons-type",
       "book": "books/web-session-keystones.lisp",
-      "line": 133,
+      "line": 144,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-wss-car and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-wss-car and the conclusion is that branch's value"
@@ -51033,7 +51033,7 @@
       {
         "theorem": "fn-cat-total-octets-is-octets-of",
         "book": "books/catalog.lisp",
-        "line": 3164,
+        "line": 3183,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -51363,13 +51363,13 @@
       {
         "theorem": "fn-nh-report-exit-of-render",
         "book": "books/native-health.lisp",
-        "line": 968,
+        "line": 1012,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-nh-report-exit-of-render-and-more",
         "book": "books/native-health.lisp",
-        "line": 1199,
+        "line": 1243,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -51381,19 +51381,19 @@
       {
         "theorem": "fn-auth-session-peer-of-fn-auth-make-session",
         "book": "books/nntp-auth.lisp",
-        "line": 678,
+        "line": 687,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-auth-session-peer-of-fn-auth-with-base",
         "book": "books/nntp-auth.lisp",
-        "line": 683,
+        "line": 692,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines",
         "book": "books/nntp-auth.lisp",
-        "line": 2286,
+        "line": 2295,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -51411,25 +51411,25 @@
       {
         "theorem": "fn-post-body-octets-iter-is-body-octets",
         "book": "books/nntp-post.lisp",
-        "line": 246,
+        "line": 264,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-post-reader-env-facts",
         "book": "books/nntp-post.lisp",
-        "line": 403,
+        "line": 421,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-post-reader-env-listing",
         "book": "books/nntp-post.lisp",
-        "line": 411,
+        "line": 429,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-post-reader-env-closed",
         "book": "books/nntp-post.lisp",
-        "line": 418,
+        "line": 436,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -51855,7 +51855,7 @@
       {
         "theorem": "fn-scat-article-idp-is-msgid-idp",
         "book": "books/served-catalog.lisp",
-        "line": 511,
+        "line": 522,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -52299,7 +52299,7 @@
       {
         "theorem": "fn-wss-car-of-cons-type",
         "book": "books/web-session-keystones.lisp",
-        "line": 133,
+        "line": 144,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -79433,7 +79433,7 @@
       },
       {
         "book": "books/nntp-auth.lisp",
-        "line": 111,
+        "line": 120,
         "shape": "fn-auth-config-shapep",
         "shapes": 3,
         "accessors": 14,
@@ -79442,7 +79442,7 @@
       },
       {
         "book": "books/nntp-post.lisp",
-        "line": 64,
+        "line": 82,
         "shape": "fn-post-result-shapep",
         "shapes": 2,
         "accessors": 5,
