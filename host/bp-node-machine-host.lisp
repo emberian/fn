@@ -4,9 +4,6 @@
 
 (in-package "ACL2")
 
-(defun fn-bpn-host-answer-state (answer)
-  (fn-bpn-answer-state answer))
-
 (defun fn-bpn-host-answer-effects (answer)
   (fn-bpn-answer-effects answer))
 
