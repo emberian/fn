@@ -12,9 +12,8 @@ re-sends the SAME article, the node answers `441 ... already stored here`
 (books/visibility-join.lisp `fn-vj-a-completion-keeps-a-held-message-id-
 answered` over host/native/owner.lisp `fnn-owner-attempt`), no transaction
 and no article number is allocated, and the client reports accepted with the
-original outcome kept.  Both clients are exercised: tools/fn_client.py
-(`post --draft`, `reconcile`) and tools/fn_web.py (the outbox and
-`/reconcile`).
+original outcome kept, through tools/fn_client.py (`post --draft`,
+`reconcile`).
 
 The authorization case: on a protected node the poster's login loses its
 posting permission after the lost reply; the re-send is refused by a policy
@@ -29,25 +28,18 @@ Run: FN_NATIVE_HOST=<developer launcher> FN_TEST_OPENSSL=<openssl 3.5>
      python3 -m unittest -v tests.test_native_visibility_join
 """
 
-import http.client
 import json
 import os
 from pathlib import Path
-import re
 import socket
 import subprocess
 import sys
 import tempfile
-import threading
 import unittest
-from types import SimpleNamespace
-from urllib.parse import urlencode
 
 from tests.native_process import wait_for_announcement
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "tools"))
-import fn_web  # noqa: E402
 from tools.wire_stream import whole_stream
 from tests import native_log_observation
 
@@ -214,43 +206,11 @@ class NativeVisibilityJoinTests(unittest.TestCase):
             self.command([IMAGE, "--fn", "hybrid-author", node["control"], "1", source,
                           ed_sig, ml_sig, ml_public])
 
-    # ------------------------------------------------------------ web
-
-    def web(self, node, outbox):
-        args = SimpleNamespace(host="127.0.0.1", port=node["port"], timeout=30.0,
-                               plain=True, cafile=None)
-        server = fn_web.WebServer(0, fn_web.Backend(args, "", ""), outbox)
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        return server, thread
-
-    def http(self, server, method, path, fields=None):
-        conn = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=90)
-        headers, payload = {}, None
-        if method == "POST":
-            headers = {"Content-Type": "application/x-www-form-urlencoded",
-                       "Origin": "http://127.0.0.1:%d" % server.server_port}
-            payload = urlencode(dict({"csrf": server.token}, **(fields or {})))
-        conn.request(method, path, body=payload, headers=headers)
-        reply = conn.getresponse()
-        answer = reply.status, reply.getheader("Location"), reply.read().decode("utf-8")
-        conn.close()
-        if answer[0] == 303:
-            return self.http(server, "GET", answer[1])
-        return answer
-
-    @staticmethod
-    def close_web(server, thread):
-        server.shutdown()
-        server.server_close()
-        thread.join(5)
-
     # ------------------------------------------------------------ cases
 
     def test_lost_reply_then_withdrawal_reconciles_to_already_stored(self):
         node = self.initialize("withdrawn")
         draft = node["root"] / "draft.json"
-        outbox = node["root"] / "outbox"
         # 1. fn_client: the POST commits and the owner dies before the reply.
         self.start(node, fault=True)
         rc, posted = self.client(node, "post", "fn.test", "--subject", "lost reply",
@@ -261,55 +221,32 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         kept = json.loads(draft.read_text())
         target = kept["message_id"]
         self.assertEqual(kept["original"]["outcome"], "uncertain")
-        # 2. fn_web: the same cut through the outbox.
-        self.start(node, fault=True)
-        server, thread = self.web(node, outbox)
-        form = self.http(server, "GET", "/compose?group=fn.test")
-        token = re.search(r"name='submission_id' value='([^']+)'", form[2]).group(1)
-        page = self.http(server, "POST", "/post", {
-            "submission_id": token, "group": "fn.test", "action": "post",
-            "subject": "web lost reply", "sender": "Human <h@local.invalid>",
-            "references": "", "body": "the web source kept exactly"})
-        self.assertIn("badge uncertain", page[2])
-        self.assertIn("badge unresolved", page[2])
-        self.assertEqual(self.killed(node), -9)
-        web_target = json.loads((outbox / (token + ".json")).read_text())["message_id"]
-        # 3. Restart; both targets are stored and served.
+        # 2. Restart; the target is stored and served.
         self.start(node)
-        served_before = {m: self.first_line(node, b"ARTICLE " + m.encode() + b"\r\n")
-                         for m in (target, web_target)}
-        # 4. An authorized cancel withdraws both.
-        self.withdraw(node, [target, web_target])
-        # 5. A fresh reader: 430 for both; the lookup is a visibility observation.
+        served_before = {target: self.first_line(node, b"ARTICLE " + target.encode() + b"\r\n")}
+        # 3. An authorized cancel withdraws it.
+        self.withdraw(node, [target])
+        # 4. A fresh reader: 430; the lookup is a visibility observation.
         rc_show, shown = self.client(node, "show", target)
-        after_cancel = {m: self.first_line(node, b"ARTICLE " + m.encode() + b"\r\n")
-                        for m in (target, web_target)}
+        after_cancel = {target: self.first_line(node, b"ARTICLE " + target.encode() + b"\r\n")}
         before = self.transactions(node)
         group_before = self.first_line(node, b"GROUP fn.test\r\n")
-        # 6. Reconciliation re-sends the same article: already stored.
+        # 5. Reconciliation re-sends the same article: already stored.
         rc_rec, reconciled = self.client(node, "reconcile", str(draft))
-        self.close_web(server, thread)
-        server, thread = self.web(node, outbox)   # a restarted web client
-        web_page = self.http(server, "POST", "/reconcile", {"submission_id": token})
-        web_saved = json.loads((outbox / (token + ".json")).read_text())
         after = self.transactions(node)
         group_after = self.first_line(node, b"GROUP fn.test\r\n")
-        # 7. A second reconcile is idempotent on the node too.
+        # 6. A second reconcile is idempotent on the node too.
         rc_again, again = self.client(node, "reconcile", str(draft))
         final = json.loads(draft.read_text())
-        self.close_web(server, thread)
         self.stop(node)
         self.witness = {
             "fn-client-post": [rc, posted.get("outcome"), posted.get("status_lines")],
-            "web-post-original": "uncertain",
             "served-before-cancel": served_before,
             "article-after-cancel": after_cancel,
             "fn-client-show": [rc_show, shown.get("detail"), shown.get("visibility")],
             "fn-client-reconcile": [rc_rec, reconciled.get("outcome"),
                                     reconciled.get("settled"), reconciled.get("status_lines")],
             "fn-client-reconcile-again": [rc_again, again.get("outcome"), again.get("settled")],
-            "web-reconciliation": web_saved.get("reconciliation"),
-            "web-original": web_saved.get("result"),
             "transactions-before-after": [len(before), len(after)],
             "group-before-after": [group_before, group_after],
         }
@@ -333,11 +270,6 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         self.assertEqual([r["settled"] for r in final["reconciliations"]],
                          ["already-stored", "already-stored"])
         self.assertEqual(final["message_id"], target)
-        self.assertEqual(web_saved["result"]["word"], "uncertain")
-        self.assertEqual(web_saved["reconciliation"]["settled"], "already-stored")
-        self.assertEqual(web_saved["message_id"], web_target)
-        self.assertIn("badge uncertain", web_page[2])
-        self.assertIn("the original post was accepted", web_page[2])
 
     def test_lost_reply_then_authorization_change_is_unresolved(self):
         node = self.initialize("authorization", protected=True)

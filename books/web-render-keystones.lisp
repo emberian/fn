@@ -47,6 +47,20 @@
             :in-theory (disable fn-wr-emit-unstuffed-is-append fn-wr-escape-octet)))))
 
 (local
+ (defthm fn-wr-slice-take
+   (implies (and (natp n) (natp e) (<= e n))
+            (equal (fn-oct-slice-list s e (take n in)) (fn-oct-slice-list s e in)))
+   :hints (("Goal" :induct (fn-oct-slice-list s e in) :in-theory (enable fn-oct-slice-list)))))
+
+(local
+ (defthm fn-wr-emit-decoded-take
+   (implies (and (natp n) (natp e) (<= e n))
+            (equal (fn-wr-emit-decoded s e (take n in) out) (fn-wr-emit-decoded s e in out)))
+   :hints (("Goal" :in-theory (e/d (fn-wr-emit-decoded)
+                                   (fn-wr-emit-decoded-is-append fn-wr-emit-span-is-append
+                                    fn-wr-emit-list-is-append fn-wr-emit-span))))))
+
+(local
  (defthm fn-wr-emit-take-natp
    (implies (and (fn-wr-segsp segs) (natp n) (fn-wr-segs-within segs n))
             (equal (fn-wr-emit segs (take n in) out) (fn-wr-emit segs in out)))
@@ -54,7 +68,8 @@
             :in-theory (e/d (fn-wr-segsp fn-wr-segs-within)
                             (fn-wr-emit-is-seq fn-wr-emit-span-is-append
                              fn-wr-emit-unstuffed-is-append fn-wr-emit-span
-                             fn-wr-emit-unstuffed))))))
+                             fn-wr-emit-unstuffed fn-wr-emit-decoded
+                             fn-wr-emit-decoded-is-append))))))
 
 (local
  (defthm fn-wr-segs-within-nfix

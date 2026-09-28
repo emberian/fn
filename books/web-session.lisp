@@ -202,10 +202,10 @@
   (let ((o (fn-octets-get i fn-web-in)))
     (cond ((equal o 43) (cons 32 (1+ i)))
           ((and (equal o 37) (< (+ 2 i) e)
-                (fn-wrq-hexval (fn-octets-get (+ 1 i) fn-web-in))
-                (fn-wrq-hexval (fn-octets-get (+ 2 i) fn-web-in)))
-           (cons (+ (* 16 (fn-wrq-hexval (fn-octets-get (+ 1 i) fn-web-in)))
-                    (fn-wrq-hexval (fn-octets-get (+ 2 i) fn-web-in)))
+                (fn-ot-hex-value (fn-octets-get (+ 1 i) fn-web-in))
+                (fn-ot-hex-value (fn-octets-get (+ 2 i) fn-web-in)))
+           (cons (+ (* 16 (fn-ot-hex-value (fn-octets-get (+ 1 i) fn-web-in)))
+                    (fn-ot-hex-value (fn-octets-get (+ 2 i) fn-web-in)))
                  (+ 3 i)))
           (t (cons o (1+ i))))))
 
@@ -303,7 +303,7 @@
   :hints (("Goal" :expand ((:free (x y) (fn-wrq-urldecode (cons x y)))
                            (fn-oct-slice-list (+ 1 i) e fn-web-in)
                            (fn-oct-slice-list (+ 2 i) e fn-web-in))
-           :in-theory (disable fn-oct-slice-list-is-take-nthcdr fn-wrq-hexval))))
+           :in-theory (disable fn-oct-slice-list-is-take-nthcdr fn-ot-hex-value))))
 
 (local
  (defthm fn-wss-append-assoc
@@ -318,7 +318,7 @@
                                         bol pcr))))
   :hints (("Goal" :induct (fn-wss-emit-body i e bol pcr fn-web-in fn-web-out)
            :in-theory (disable fn-wss-decode-at fn-oct-slice-list-is-take-nthcdr
-                               fn-wrq-urldecode fn-wrq-hexval fn-wss-stuff
+                               fn-wrq-urldecode fn-ot-hex-value fn-wss-stuff
                                fn-wss-slice-open))))
 
 ; -----------------------------------------------------------------------------
@@ -335,9 +335,9 @@
   (declare (xargs :stobjs fn-web-in :guard (natp i)))
   (let ((n (fn-octets-len fn-web-in)))
     (and (natp i) (< (+ 3 i) n)
-         (fn-wrq-digitp (fn-octets-get i fn-web-in))
-         (fn-wrq-digitp (fn-octets-get (+ 1 i) fn-web-in))
-         (fn-wrq-digitp (fn-octets-get (+ 2 i) fn-web-in))
+         (fn-ot-digitp (fn-octets-get i fn-web-in))
+         (fn-ot-digitp (fn-octets-get (+ 1 i) fn-web-in))
+         (fn-ot-digitp (fn-octets-get (+ 2 i) fn-web-in))
          (member (fn-octets-get (+ 3 i) fn-web-in) '(32 13))
          (+ (* 100 (- (fn-octets-get i fn-web-in) 48))
             (* 10 (- (fn-octets-get (+ 1 i) fn-web-in) 48))
@@ -479,11 +479,11 @@
 (defun fn-wss-active-row (fields fn-web-in)
   (declare (xargs :stobjs fn-web-in :guard t))
   (let* ((name (fn-wss-span-slice (fn-wrq-nth 0 fields) fn-web-in))
-         (high (fn-wrq-decimal (fn-wss-span-slice (fn-wrq-nth 1 fields) fn-web-in)))
-         (low (fn-wrq-decimal (fn-wss-span-slice (fn-wrq-nth 2 fields) fn-web-in)))
+         (high (fn-ot-decimal-parse (fn-wss-span-slice (fn-wrq-nth 1 fields) fn-web-in) nil))
+         (low (fn-ot-decimal-parse (fn-wss-span-slice (fn-wrq-nth 2 fields) fn-web-in) nil))
          (status (fn-wss-span-slice (fn-wrq-nth 3 fields) fn-web-in))
          (count (if (and high low (<= low high) (< 0 high)) (+ 1 (- high low)) 0)))
-    (list name (fn-web-decimal count) (equal status (list 110)))))
+    (list name (fn-ot-decimal-octets count) (equal status (list 110)))))
 
 (defun fn-wss-active-rows (j be fn-web-in)
   (declare (xargs :stobjs fn-web-in
@@ -777,7 +777,7 @@
         (append (fn-wr-octets-only name) (list 61) (fn-wr-octets-only value)
                 (fn-wrq-oct "; Path=/; HttpOnly; SameSite=Lax")
                 (if secure (fn-wrq-oct "; Secure") nil)
-                (if (natp max-age) (append (fn-wrq-oct "; Max-Age=") (fn-web-decimal max-age)) nil))))
+                (if (natp max-age) (append (fn-wrq-oct "; Max-Age=") (fn-ot-decimal-octets max-age)) nil))))
 
 (defconst *fn-wss-html-fields*
   (list (cons (fn-wrq-oct "Content-Type") (fn-wrq-oct "text/html; charset=utf-8"))
@@ -847,7 +847,7 @@
 (defun fn-wss-b64url-octets-p (x)
   (declare (xargs :guard t))
   (if (consp x)
-      (and (or (fn-wrq-digitp (car x)) (fn-wrq-alphap (car x)) (member (car x) '(45 95)))
+      (and (or (fn-ot-digitp (car x)) (fn-ot-alphap (car x)) (member (car x) '(45 95)))
            (fn-wss-b64url-octets-p (cdr x)))
     (null x)))
 
@@ -880,7 +880,7 @@
 (defun fn-wss-groupp (x) (declare (xargs :guard t)) (fn-wss-argp x 497))
 (defun fn-wss-numberp (x)
   (declare (xargs :guard t))
-  (and (fn-wrq-shortp x 10) (fn-wrq-decimal x) (< 0 (fn-wrq-decimal x)) t))
+  (and (fn-wrq-shortp x 10) (fn-ot-decimal-parse x nil) (< 0 (fn-ot-decimal-parse x nil)) t))
 (defun fn-wss-msgidp (x)
   (declare (xargs :guard t))
   (and (fn-wss-argp x 250) (equal (car x) 60) (equal (car (last x)) 62)))
@@ -1349,16 +1349,16 @@
       (:group
        (if (equal code 211)
            (let* ((f (fn-wss-status-fields fn-web-in))
-                  (low (fn-wrq-decimal (fn-wrq-nth 2 f)))
-                  (high (fn-wrq-decimal (fn-wrq-nth 3 f)))
-                  (before (fn-wrq-decimal (fn-wrq-nth 1 data)))
+                  (low (fn-ot-decimal-parse (fn-wrq-nth 2 f) nil))
+                  (high (fn-ot-decimal-parse (fn-wrq-nth 3 f) nil))
+                  (before (fn-ot-decimal-parse (fn-wrq-nth 1 data) nil))
                   (hi (if (and before high (< before high)) (- before 1) (nfix high)))
                   (lo (max (nfix low) (- hi (1- *fn-wss-window*)))))
              (if (and low high (<= 1 hi) (<= lo hi))
                  (fn-wss-send-session :group :over (list group lo (nfix low))
                                       (fn-wss-cmd (list (fn-wrq-oct "OVER")
-                                                        (append (fn-web-decimal lo) (list 45)
-                                                                (fn-web-decimal hi))))
+                                                        (append (fn-ot-decimal-octets lo) (list 45)
+                                                                (fn-ot-decimal-octets hi))))
                                       session ctx sessions fn-web-out)
                (mv-let (a fn-web-out)
                  (fn-wss-page 200 nil group (fn-wr-group-main group nil nil) ctx config
@@ -1375,7 +1375,7 @@
                             (fn-wr-group-main group
                                               (fn-wss-over-rows (min (fn-wss-reply-bs r) (fn-wss-reply-be r))
                                                                 (fn-wss-reply-be r) nil fn-web-in)
-                                              (if (< low lo) (fn-web-decimal lo) nil))
+                                              (if (< low lo) (fn-ot-decimal-octets lo) nil))
                             ctx config fn-web-in fn-web-out)
                (mv a sessions fn-web-out)))
          (fn-wss-trouble 503 (fn-wrq-oct "The server said no") *fn-wss-msg-unreachable*

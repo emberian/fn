@@ -42,7 +42,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-CLIENTS = {"fn_reader", "fn_web", "fn_client", "fn_agent", "fn_consumer", "fn_verify", "nntp_session"}
+CLIENTS = {"fn_client", "fn_agent", "fn_consumer", "fn_verify", "nntp_session"}
 STORE = {"run_store", "run_owner", "checkpoint", "synth_log_store"}
 BUILD = {"proof_repl", "farm", "certs", "certify_books", "acl2_slots", "acl2_toolchain", "proof_artifacts",
          "test_budget", "check_steps", "labs", "cert_cache_sync", "cert_alists", "bridge_image",

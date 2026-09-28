@@ -186,3 +186,74 @@
                    (fn-wr-emit segs fn-web-in fn-web-out)))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t :in-theory (disable fn-wr-emit fn-wr-segsp)))))
+
+; -----------------------------------------------------------------------------
+; RFC 2047 (books/web-2047.lisp, PRF-353): the (:w) segment.
+
+(defun wrnt-2047 (s)
+  (declare (xargs :guard (stringp s)))
+  (fn-w47-decode (wrnt-octs s)))
+
+; Witnesses over the list model: B and Q, a joined pair (6.2), a word then
+; text (the space kept), ISO-8859-1 to UTF-8, a charset suffix (RFC 2231).
+(assert-event (equal (wrnt-2047 "=?UTF-8?B?R3LDvMOfZQ==?=") '(71 114 195 188 195 159 101)))
+(assert-event (equal (wrnt-2047 "=?utf-8?q?a_=3Cb=3E?= =?utf-8?q?c?=") (wrnt-octs "a <b>c")))
+(assert-event (equal (wrnt-2047 "=?utf-8?q?a?= x") (wrnt-octs "a x")))
+(assert-event (equal (wrnt-2047 "=?iso-8859-1?q?caf=E9?=") '(99 97 102 195 169)))
+(assert-event (equal (wrnt-2047 "Re: =?UTF-8*en?Q?x?=  tail") (wrnt-octs "Re: x  tail")))
+; Shown as they are: another charset, a malformed B text, 8-bit octets
+; under US-ASCII, an unterminated word, a word over 75 octets.
+(assert-event (equal (wrnt-2047 "=?koi8-r?q?a?=") (wrnt-octs "=?koi8-r?q?a?=")))
+(assert-event (equal (wrnt-2047 "=?utf-8?b?***?=") (wrnt-octs "=?utf-8?b?***?=")))
+(assert-event (equal (wrnt-2047 "=?us-ascii?q?caf=E9?=") (wrnt-octs "=?us-ascii?q?caf=E9?=")))
+(assert-event (equal (wrnt-2047 "=?utf-8?q?abc") (wrnt-octs "=?utf-8?q?abc")))
+(defconst *wrnt-long-word*
+  (append (wrnt-octs "=?utf-8?q?") (make-list 70 :initial-element 97) (wrnt-octs "?=")))
+(assert-event (equal (fn-w47-decode *wrnt-long-word*) *wrnt-long-word*))
+
+; KEYSTONE fn-w47-decode-without-openers-is-identity.  Positive: the
+; antecedent and the conclusion on a field with "=" and "?" but no "=?".
+(assert-event (let ((x (wrnt-octs "Re: a = b? (? =)")))
+                (and (fn-w47-no-openersp x) (equal (fn-w47-decode x) x))))
+; Hypothesis removal: a field with an opener fails the hypothesis and the
+; conclusion.
+(assert-event (let ((x (wrnt-octs "=?utf-8?q?a?=")))
+                (and (not (fn-w47-no-openersp x)) (not (equal (fn-w47-decode x) x)))))
+(must-fail-checked
+ (defthm wrnt-tooth-2047-identity-needs-no-openers
+   (equal (fn-w47-decode xs) xs)
+   :rule-classes nil))
+
+; KEYSTONE fn-w47-decode-octets.  Positive, and hypothesis removal: a
+; non-octet field is not made octets (it has no opener, so it is shown as
+; it is).
+(assert-event (let ((x (wrnt-octs "=?utf-8?q?=FF?=")))
+                (and (fn-cbor-octet-listp x) (fn-cbor-octet-listp (fn-w47-decode x))
+                     (equal (fn-w47-decode x) '(255)))))
+(assert-event (and (not (fn-cbor-octet-listp '(300)))
+                   (not (fn-cbor-octet-listp (fn-w47-decode '(300))))))
+(must-fail-checked
+ (defthm wrnt-tooth-2047-octets-need-octets
+   (fn-cbor-octet-listp (fn-w47-decode xs))
+   :rule-classes nil))
+
+; A field past *fn-w47-max* is shown as it is (fn-w47-decode-of-long):
+; the same word decodes inside the bound and not past it.
+(defconst *wrnt-long-field*
+  (append (wrnt-octs "=?utf-8?q?a?=") (make-list *fn-w47-max* :initial-element 32)))
+(assert-event (and (< *fn-w47-max* (len *wrnt-long-field*))
+                   (equal (fn-w47-decode *wrnt-long-field*) *wrnt-long-field*)
+                   (equal (fn-w47-decode (take 13 *wrnt-long-field*)) '(97))))
+
+; The page: an encoded "<b>" is decoded, then escaped by the host-called
+; emitter; the same span as (:s) is shown raw.  Both pieces are safe text.
+(defconst *wrnt-w-in* (wrnt-octs "=?utf-8?q?=3Cb=3E_&?="))
+(assert-event (equal (wrnt-emit (list (cons :w (cons 0 (len *wrnt-w-in*)))) *wrnt-w-in*)
+                     (wrnt-octs "&lt;b&gt; &amp;")))
+(assert-event (equal (wrnt-emit (list (cons :s (cons 0 (len *wrnt-w-in*)))) *wrnt-w-in*)
+                     (wrnt-octs "=?utf-8?q?=3Cb=3E_&amp;?=")))
+(assert-event (fn-wr-pieces-okp (fn-wr-pieces (list (cons :w (cons 0 (len *wrnt-w-in*))))
+                                              *wrnt-w-in*)))
+; The emitter's long branch (read in place) writes what the model says.
+(assert-event (equal (wrnt-emit (list (cons :w (cons 0 (len *wrnt-long-field*)))) *wrnt-long-field*)
+                     *wrnt-long-field*))

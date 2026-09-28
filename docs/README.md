@@ -12,7 +12,8 @@ kept in [articles/](articles/). The website renders them as a newsreader.
   [5: when things go wrong](articles/fn-faq-5.txt) ·
   [6: health codes and refusals](articles/fn-faq-6.txt) ·
   [7: peering](articles/fn-faq-7.txt) · [8: agents](articles/fn-faq-8.txt) ·
-  [9: the proofs](articles/fn-faq-9.txt) · [10: contributing](articles/fn-faq-10.txt)
+  [9: the proofs](articles/fn-faq-9.txt) · [10: contributing](articles/fn-faq-10.txt) ·
+  [11: the web page](articles/fn-faq-11.txt)
 
 For engineers: [architecture](architecture.md), [terminology](glossary.md),
 [proof strategy](proofs.md), the references for [the operator](operator-internals.md)

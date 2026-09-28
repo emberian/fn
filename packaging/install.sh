@@ -16,15 +16,15 @@
 #              if absent (root only).
 #   --no-service  create no account and install no unit: the rendered
 #              service file is written to NODE/ for you to use or not.
-#   --reader   also install the friends' web reader (clients/bin/fn-reader,
-#              docs/web.md) as its own service: its own account (fn-reader;
-#              _fnreader on OpenBSD) and folder (/var/lib/fn-reader;
-#              /var/fn-reader), which holds its settings (reader.conf,
-#              written once from clients/share/fn-reader.conf.example) and
-#              what friends have read and sent.  The reader's account cannot
-#              read the node folder.  It needs python3; it starts nothing.
-#              With --no-service, reader.conf and the rendered unit go to
-#              NODE/ instead.
+#   --reader   turn on the node's own web face (docs/web.md): add a [web]
+#              table to NODE/fn.toml, listening on 127.0.0.1:8920 behind
+#              an HTTPS proxy on this machine (proxied = true; the Caddy
+#              block is share/fn/caddy/fn-web.caddy).  The face is part of
+#              the node: no other account, service or program.  An fn.toml
+#              that already has a [web] table is left as it is; with no
+#              fn.toml yet (before `mission'), run this again afterwards
+#              (sh PREFIX/install.sh --reader).  The node reads the table
+#              when it starts.
 #
 # It checks every file of the release against SHA256SUMS first.  When the
 # node directory already holds a configuration and a store, it asks the
@@ -62,18 +62,6 @@ case $user in ''|*[!A-Za-z0-9_-]*) echo "install: invalid account name $user" >&
 if [ "$system" = OpenBSD ]; then template=$here/share/fn/rc.d/fn.rc.in
 else template=$here/share/fn/systemd/fn.service.in; fi
 [ -s "$template" ] || { echo "install: this release is not built for $system (no $template)" >&2; exit 4; }
-if [ "$system" = OpenBSD ]; then
-  ruser=_fnreader rstate=/var/fn-reader rtemplate=$here/clients/share/rc.d/fn_reader.rc.in
-else
-  ruser=fn-reader rstate=/var/lib/fn-reader rtemplate=$here/clients/share/systemd/fn-reader.service.in
-fi
-if [ "$reader" = yes ]; then
-  [ -s "$rtemplate" ] && [ -x "$here/clients/bin/fn-reader" ] || {
-    echo "install: --reader: this release carries no web reader ($rtemplate)" >&2; exit 4; }
-  command -v python3 >/dev/null 2>&1 || {
-    echo "install: --reader: the web reader needs python3 (Debian: apt install python3; OpenBSD: pkg_add python3); install it, then run this again" >&2
-    exit 4; }
-fi
 
 echo "== checking the release against SHA256SUMS"
 if command -v sha256sum >/dev/null 2>&1; then
@@ -109,23 +97,31 @@ if [ "$here" != "$prefix" ]; then
 fi
 
 render() {
-  sed -e "s|@PREFIX@|$prefix|g" -e "s|@NODE@|$node|g" -e "s|@USER@|$user|g" \
-      -e "s|@STATE@|$rstate|g" -e "s|@RUSER@|$ruser|g" "$1"
+  sed -e "s|@PREFIX@|$prefix|g" -e "s|@NODE@|$node|g" -e "s|@USER@|$user|g" "$1"
+}
+# --reader: the node's own web face, a [web] table in its fn.toml (docs/web.md).
+web_face() {
+  [ "$reader" = yes ] || return 0
+  if [ ! -f "$config" ]; then
+    echo "--reader: no $config yet: after \`fn operator $config mission ...' writes it, run: sh $prefix/install.sh --reader"
+    return 0
+  fi
+  if grep -q '^[[:space:]]*\[web\]' "$config"; then
+    echo "--reader: $config already has a [web] table; left as it is"
+    return 0
+  fi
+  domain=$(uname -n)
+  case $domain in ''|*[!A-Za-z0-9.-]*) domain=localhost ;; esac
+  printf '\n[web]\nport = 8920\nhost = "127.0.0.1"\nproxied = true\nsite = "Friends news"\ndomain = "%s"\n' \
+    "$domain" >> "$config"
+  echo "--reader: added [web] to $config (127.0.0.1:8920, behind the HTTPS proxy: $prefix/share/fn/caddy/fn-web.caddy); edit site and domain, then restart the node"
 }
 if [ "$service" = no ]; then
   mkdir -p "$node"
   if [ "$system" = OpenBSD ]; then out=$node/fn.rc; else out=$node/fn.service; fi
   render "$template" > "$out"
   echo "rendered $out (not installed; --no-service)"
-  if [ "$reader" = yes ]; then
-    rstate=$node/reader
-    mkdir -p "$rstate"
-    chmod 0700 "$rstate"
-    if [ "$system" = OpenBSD ]; then rout=$node/fn_reader.rc; else rout=$node/fn-reader.service; fi
-    render "$rtemplate" > "$rout"
-    [ -e "$rstate/reader.conf" ] || render "$here/clients/share/fn-reader.conf.example" > "$rstate/reader.conf"
-    echo "rendered $rout and $rstate/reader.conf (not installed; --no-service)"
-  fi
+  web_face
   exit 0
 fi
 [ "$(id -u)" -eq 0 ] || { echo 'install: installing the service needs root (or pass --no-service)' >&2; exit 2; }
@@ -150,41 +146,4 @@ else
   systemctl daemon-reload
   echo "installed /etc/systemd/system/fn.service (start it: systemctl enable --now fn)"
 fi
-[ "$reader" = yes ] || exit 0
-
-# The web reader: its own account and folder, never the node's.
-[ "$ruser" != "$user" ] || { echo "install: the reader's account must not be the node's ($user)" >&2; exit 2; }
-mkdir -p "$rstate"
-if ! id "$ruser" >/dev/null 2>&1; then
-  if [ "$system" = OpenBSD ]; then
-    useradd -L daemon -d "$rstate" -s /sbin/nologin -c 'fn web reader' "$ruser"
-  else
-    useradd --system --home-dir "$rstate" --no-create-home --shell /usr/sbin/nologin "$ruser"
-  fi
-  echo "created account $ruser"
-fi
-mkdir -p "$rstate"
-chown "$ruser" "$rstate"
-chmod 0700 "$rstate"
-if [ ! -e "$rstate/reader.conf" ]; then
-  render "$here/clients/share/fn-reader.conf.example" > "$rstate/reader.conf"
-  chown "$ruser" "$rstate/reader.conf"
-  echo "wrote $rstate/reader.conf (edit node and site, then start the reader)"
-fi
-# The node's certificate is public; the reader checks the node against a
-# copy of it in its own folder (it cannot read the node folder).
-if [ -s "$node/tls/cert.pem" ] && [ ! -e "$rstate/node-cert.pem" ]; then
-  cp "$node/tls/cert.pem" "$rstate/node-cert.pem"
-  chown "$ruser" "$rstate/node-cert.pem"
-  chmod 0644 "$rstate/node-cert.pem"
-  echo "copied the node's certificate to $rstate/node-cert.pem"
-fi
-if [ "$system" = OpenBSD ]; then
-  render "$rtemplate" > /etc/rc.d/fn_reader
-  chmod 0555 /etc/rc.d/fn_reader
-  echo "installed /etc/rc.d/fn_reader (start it: rcctl enable fn_reader; rcctl start fn_reader)"
-else
-  render "$rtemplate" > /etc/systemd/system/fn-reader.service
-  systemctl daemon-reload
-  echo "installed /etc/systemd/system/fn-reader.service (start it: systemctl enable --now fn-reader)"
-fi
+web_face
