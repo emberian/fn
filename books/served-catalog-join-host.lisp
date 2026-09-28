@@ -163,6 +163,39 @@
 
 (in-theory (disable fn-sjh-okp-when-parts))
 
+; What the owner relation the host's owner satisfies gives the join's proofs.
+(defthm fn-sjh-ocl-gives-cst
+  (implies (fn-ocl-relation oc)
+           (fn-cst-relation (fn-own-store (fn-ocfg-owner oc))))
+  :hints (("Goal" :in-theory '(fn-ocl-relation))))
+
+(defthm fn-sjh-ocl-gives-visible
+  (implies (fn-ocl-relation oc)
+           (equal (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))
+                  (fn-ctl-visible-articles (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc)))
+                                           (fn-own-view-withdrawals (fn-own-view (fn-ocfg-owner oc)))
+                                           (fn-own-view-verdicts (fn-own-view (fn-ocfg-owner oc))))))
+  :hints (("Goal" :in-theory '(fn-ocl-relation fn-ocl-view-visiblep)
+           :use ((:instance fn-ocl-view-historyp-is-visible (o (fn-ocfg-owner oc)))))))
+
+(defthm fn-sjh-ocl-gives-view-statep
+  (implies (fn-ocl-relation oc)
+           (fn-statep (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc)))))
+  :hints (("Goal" :in-theory '(fn-acar-view-statep)
+           :use ((:instance fn-acar-ocl-relation-carries-view-statep)))))
+
+(defthm fn-sjh-ocfg-owner-of-with-owner
+  (equal (fn-ocfg-owner (fn-ocfg-with-owner oc owner)) owner)
+  :hints (("Goal" :in-theory (enable fn-ocfg-with-owner))))
+
+(defthm fn-sjh-ocl-facts-for-prepare
+  (implies (fn-ocl-relation oc)
+           (and (fn-statep (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))
+                (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))))
+  :hints (("Goal" :in-theory '(fn-acar-view-statep fn-ocl-relation)
+           :use ((:instance fn-acar-ocl-relation-carries-view-statep)
+                 (:instance fn-ocl-view-historyp-is-visible (o (fn-ocfg-owner oc)))))))
+
 ; -----------------------------------------------------------------------------
 ; LINK at an enabled completion: the completion record is the last record
 ; (sequences are positions, fn-sf-record-listp), so the pending row is its

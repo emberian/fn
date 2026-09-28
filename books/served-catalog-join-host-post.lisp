@@ -324,14 +324,6 @@
                                    fn-sbud-oc-store)
                                   (fn-psrv-prepare fn-pout-stagedp fn-sbud-admitp fn-psrv-event-servedp)))))
 
-(defthm fn-sjh-ocl-facts-for-prepare
-  (implies (fn-ocl-relation oc)
-           (and (fn-statep (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))
-                (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))))
-  :hints (("Goal" :in-theory '(fn-acar-view-statep fn-ocl-relation)
-           :use ((:instance fn-acar-ocl-relation-carries-view-statep)
-                 (:instance fn-ocl-view-historyp-is-visible (o (fn-ocfg-owner oc)))))))
-
 ; KEYSTONE (the host's form): host/owner-host.lisp fn-owner-prepare-buffer
 ; calls fn-pout-prepare-article over the row fn-apc-intern-row-at builds at
 ; the arena's count (fn-intern-row-at under the parse carry,

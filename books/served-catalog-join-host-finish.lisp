@@ -72,30 +72,6 @@
                  (:instance fn-ccar-completion-enabledp-is-reference (s (fn-own-store o)))
                  (:instance fn-scj-records-kept-by-ccar-finish (s (fn-own-store o)))))))
 
-(defthm fn-sjh-ocl-gives-cst
-  (implies (fn-ocl-relation oc)
-           (fn-cst-relation (fn-own-store (fn-ocfg-owner oc))))
-  :hints (("Goal" :in-theory '(fn-ocl-relation))))
-
-(defthm fn-sjh-ocl-gives-visible
-  (implies (fn-ocl-relation oc)
-           (equal (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))
-                  (fn-ctl-visible-articles (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc)))
-                                           (fn-own-view-withdrawals (fn-own-view (fn-ocfg-owner oc)))
-                                           (fn-own-view-verdicts (fn-own-view (fn-ocfg-owner oc))))))
-  :hints (("Goal" :in-theory '(fn-ocl-relation fn-ocl-view-visiblep)
-           :use ((:instance fn-ocl-view-historyp-is-visible (o (fn-ocfg-owner oc)))))))
-
-(defthm fn-sjh-ocl-gives-view-statep
-  (implies (fn-ocl-relation oc)
-           (fn-statep (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc)))))
-  :hints (("Goal" :in-theory '(fn-acar-view-statep)
-           :use ((:instance fn-acar-ocl-relation-carries-view-statep)))))
-
-(defthm fn-sjh-ocfg-owner-of-with-owner
-  (equal (fn-ocfg-owner (fn-ocfg-with-owner oc owner)) owner)
-  :hints (("Goal" :in-theory (enable fn-ocfg-with-owner))))
-
 (defthm fn-sjh-versions-atmost-monotone
   (implies (and (fn-scj-conns-versions-atmostp conns n) (<= (nfix n) (nfix m)))
            (fn-scj-conns-versions-atmostp conns m))
