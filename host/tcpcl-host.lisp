@@ -92,9 +92,6 @@
 (defun fn-tcl-host-encode (m)
   (fn-tcl-encode m))
 
-(defun fn-tcl-host-kind (m)
-  (fn-tcl-msg-kind m))
-
 (defun fn-tcl-host-phase (s)
   (fn-tcl-session-phase s))
 
