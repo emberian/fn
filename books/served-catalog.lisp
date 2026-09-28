@@ -40,6 +40,7 @@
 ; stated under archive = the view's articles.
 (in-package "ACL2")
 (include-book "catalog-number-index")
+(include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "nntp")
 (include-book "nntp-range-indexed-invariants")
 (include-book "nntp-list-counts")
@@ -148,14 +149,14 @@
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil))
   (if (not (fn-nntp-message-id-tokenp token))
-      (fn-nntp-single session "501 syntax error")
+      (fn-nntp-single session (fn-proto-text * :syntax))
     (let ((article (fn-scat-msgid-article (fn-nntp-token-string token)
                                           v fn-arena fn-cat)))
       (if (consp article)
           (fn-nntp-article-response
            session article (fn-nntp-msgid-local-number session article)
            kind nil nil fn-arena)
-        (fn-nntp-single session "430 no article with that message-id")))))
+        (fn-nntp-single session (fn-proto-text * :no-msgid))))))
 
 (defun fn-nntp-number-retrieval-cat (session v kind token fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
@@ -163,15 +164,15 @@
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil))
   (if (not (fn-nntp-number-tokenp token))
-      (fn-nntp-single session "501 syntax error")
+      (fn-nntp-single session (fn-proto-text * :syntax))
     (let ((group (fn-nntp-session-group session))
           (number (fn-nntp-decimal-value token)))
       (if (null group)
-          (fn-nntp-single session "412 no newsgroup selected")
+          (fn-nntp-single session (fn-proto-text * :no-group-selected))
         (let ((article (fn-scat-number-article group number v fn-arena fn-cat)))
           (if (consp article)
               (fn-nntp-article-response session article number kind t group fn-arena)
-            (fn-nntp-single session "423 no article with that number")))))))
+            (fn-nntp-single session (fn-proto-text * :no-number))))))))
 
 (verify-guards fn-nntp-msgid-retrieval-cat)
 (verify-guards fn-nntp-number-retrieval-cat)
@@ -609,16 +610,16 @@
   (let ((group (fn-nntp-session-group session))
         (range (fn-nntp-parse-range token)))
     (if (null group)
-        (fn-nntp-single session "412 no newsgroup selected")
+        (fn-nntp-single session (fn-proto-text * :no-group-selected))
       (let* ((numbers (fn-scat-range-numbers
                        group (nfix (fn-nntp-range-low range))
                        (nfix (fn-nntp-range-high range)) v fn-cat))
              (lines (fn-nov-lines-for-numbers-cat group numbers v fn-arena fn-cat)))
         (if (consp lines)
-            (fn-nntp-multi session "224 overview information follows" lines)
+            (fn-nntp-multi session (fn-proto-text * :overview) lines)
           (fn-nntp-single
-           session (if legacyp "420 no article(s) selected"
-                     "423 no articles in that range")))))))
+           session (if legacyp (fn-proto-text * :none-selected)
+                     (fn-proto-text * :empty-range))))))))
 
 (defthm fn-nntp-over-range-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat)
@@ -982,7 +983,7 @@
          next-session
          (list (fn-nntp-reply-effect
                 (fn-nntp-crlf (fn-scat-group-initial archive group v fn-cat))))))
-    (fn-nntp-single session "411 no such newsgroup")))
+    (fn-nntp-single session (fn-proto-text * :no-group))))
 
 (defthm fn-nntp-group-result-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat) group
@@ -1009,7 +1010,7 @@
                               (append (fn-scat-group-initial archive group v fn-cat)
                                       (fn-nntp-string-octets " list follows"))
                               (fn-nntp-number-lines shown)))
-    (fn-nntp-single session "411 no such newsgroup")))
+    (fn-nntp-single session (fn-proto-text * :no-group))))
 
 (defthm fn-nntp-listgroup-result-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat) group
@@ -1031,11 +1032,11 @@
     (if (null args)
         (let ((group (fn-nntp-session-group session)))
           (if (null group)
-              (fn-nntp-single session "412 no newsgroup selected")
+              (fn-nntp-single session (fn-proto-text * :no-group-selected))
             (if (mbe :logic (member-equal group (fn-state-groups archive))
                      :exec (fn-ag-member group (fn-state-groups archive)))
                 (fn-nntp-listgroup-result-cat session archive group all-range v fn-cat)
-              (fn-nntp-single session "412 no newsgroup selected"))))
+              (fn-nntp-single session (fn-proto-text * :no-group-selected)))))
       (if (and (consp args) (null (cdr args))
                (fn-nntp-printable-tokenp (car args)))
           (fn-nntp-listgroup-result-cat session archive
@@ -1046,8 +1047,8 @@
               (if (fn-nntp-range-okp range)
                   (fn-nntp-listgroup-result-cat session archive
                                                 (fn-nntp-token-string (car args)) range v fn-cat)
-                (fn-nntp-single session "501 syntax error")))
-          (fn-nntp-single session "501 syntax error"))))))
+                (fn-nntp-single session (fn-proto-text * :syntax))))
+          (fn-nntp-single session (fn-proto-text * :syntax)))))))
 
 (defthm fn-nntp-listgroup-command-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat)
@@ -1082,19 +1083,19 @@
 (defun fn-nntp-list-counts-command-cat (session archive args v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
   (if (null args)
-      (fn-nntp-multi session "215 list of newsgroups follows"
+      (fn-nntp-multi session (fn-proto-text "LIST" :newsgroups)
                      (fn-scat-counts-lines archive (fn-state-groups archive) v fn-cat))
     (if (and (consp args) (null (cdr args)))
         (let ((parsed (fn-wildmat-parse (car args))))
           (if (fn-wildmat-result-okp parsed)
-              (fn-nntp-multi session "215 list of newsgroups follows"
+              (fn-nntp-multi session (fn-proto-text "LIST" :newsgroups)
                              (fn-scat-counts-lines
                               archive
                               (fn-nntp-filter-groups-by-wildmat
                                (fn-wildmat-result-value parsed) (fn-state-groups archive))
                               v fn-cat))
-            (fn-nntp-single session "501 syntax error")))
-      (fn-nntp-single session "501 syntax error"))))
+            (fn-nntp-single session (fn-proto-text * :syntax))))
+      (fn-nntp-single session (fn-proto-text * :syntax)))))
 
 (defthm fn-scat-safe-group-list-has-no-nil
   (implies (fn-nntp-safe-group-listp groups)
@@ -1157,18 +1158,18 @@
 (defun fn-nntp-hdr-command-cat (session args v legacyp fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard) :verify-guards nil))
   (if (not (and (consp args) (fn-nntp-hdr-fieldp (car args))))
-        (fn-nntp-single session "501 syntax error")
+        (fn-nntp-single session (fn-proto-text * :syntax))
       (let ((field (car args)) (rest (cdr args))
             (group (fn-nntp-session-group session)))
         (if (null rest)
             (let ((current (fn-nntp-session-current session)))
               (if (null group)
-                  (fn-nntp-single session "412 no newsgroup selected")
+                  (fn-nntp-single session (fn-proto-text * :no-group-selected))
                 (if (null current)
-                    (fn-nntp-single session "420 no current article")
+                    (fn-nntp-single session (fn-proto-text * :no-current))
                   (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
                     (if (not (consp article))
-                        (fn-nntp-single session "420 no current article")
+                        (fn-nntp-single session (fn-proto-text * :no-current))
                       (let ((content (fn-nntp-hdr-content field article fn-arena)))
                         (if (fn-nntp-hdr-okp content)
                             (fn-nntp-multi
@@ -1176,12 +1177,12 @@
                              (list (fn-nntp-hdr-line (fn-nntp-decimal-field current)
                                                      (fn-nntp-hdr-octets content))))
                           (fn-nntp-single
-                           session "503 stored article framing unavailable"))))))))
+                           session (fn-proto-text * :no-framing)))))))))
           (if (and (consp rest) (null (cdr rest)))
               (let ((token (car rest)))
                 (if (fn-nntp-range-okp (fn-nntp-parse-range token))
                     (if (null group)
-                        (fn-nntp-single session "412 no newsgroup selected")
+                        (fn-nntp-single session (fn-proto-text * :no-group-selected))
                       (let* ((range (fn-nntp-parse-range token))
                              (numbers (fn-scat-range-numbers
                                        group (nfix (fn-nntp-range-low range))
@@ -1191,13 +1192,13 @@
                         (if (consp lines)
                             (fn-nntp-multi session (fn-nntp-hdr-initial legacyp) lines)
                           (if legacyp
-                              (fn-nntp-single session "420 no article(s) selected")
-                            (fn-nntp-single session "423 no articles in that range")))))
+                              (fn-nntp-single session (fn-proto-text * :none-selected))
+                            (fn-nntp-single session (fn-proto-text * :empty-range))))))
                   (if (fn-nntp-message-id-tokenp token)
                       (let ((article (fn-scat-msgid-article (fn-nntp-token-string token)
                                                             v fn-arena fn-cat)))
                         (if (not (consp article))
-                            (fn-nntp-single session "430 no article with that message-id")
+                            (fn-nntp-single session (fn-proto-text * :no-msgid))
                           (let ((content (fn-nntp-hdr-content field article fn-arena)))
                             (if (fn-nntp-hdr-okp content)
                                 (fn-nntp-multi
@@ -1206,9 +1207,9 @@
                                                              (fn-nov-scrub token)
                                                            (fn-nntp-decimal-field 0))
                                                          (fn-nntp-hdr-octets content))))
-                              (fn-nntp-single session "503 stored article framing unavailable")))))
-                    (fn-nntp-single session "501 syntax error"))))
-            (fn-nntp-single session "501 syntax error"))))))
+                              (fn-nntp-single session (fn-proto-text * :no-framing))))))
+                    (fn-nntp-single session (fn-proto-text * :syntax)))))
+            (fn-nntp-single session (fn-proto-text * :syntax)))))))
 
 (defthm fn-nntp-hdr-command-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat)
@@ -1270,18 +1271,18 @@
   (if (not (and (consp args) (fn-nntp-hdr-fieldp (car args))
                 (consp (cdr args))
                 (consp (cdr (cdr args)))))
-      (fn-nntp-single session "501 syntax error")
+      (fn-nntp-single session (fn-proto-text * :syntax))
     (let* ((field (car args))
            (token (car (cdr args)))
            (joined (fn-nntp-xpat-join (cdr (cdr args))))
            (parsed (fn-wildmat-parse-text joined)))
       (if (not (fn-wildmat-result-okp parsed))
-          (fn-nntp-single session "501 syntax error")
+          (fn-nntp-single session (fn-proto-text * :syntax))
         (let ((patterns (fn-wildmat-result-value parsed))
               (group (fn-nntp-session-group session)))
           (if (fn-nntp-range-okp (fn-nntp-parse-range token))
               (if (null group)
-                  (fn-nntp-single session "412 no newsgroup selected")
+                  (fn-nntp-single session (fn-proto-text * :no-group-selected))
                 (fn-nntp-multi
                  session (fn-nntp-hdr-initial t)
                  (fn-nntp-xpat-lines-for-numbers-cat
@@ -1294,13 +1295,13 @@
                 (let ((article (fn-scat-msgid-article (fn-nntp-token-string token)
                                                       v fn-arena fn-cat)))
                   (if (not (consp article))
-                      (fn-nntp-single session "430 no article with that message-id")
+                      (fn-nntp-single session (fn-proto-text * :no-msgid))
                     (if (not (fn-nntp-hdr-okp (fn-nntp-hdr-content field article fn-arena)))
-                        (fn-nntp-single session "503 stored article framing unavailable")
+                        (fn-nntp-single session (fn-proto-text * :no-framing))
                       (fn-nntp-multi session (fn-nntp-hdr-initial t)
                                      (fn-nntp-xpat-msgid-lines field patterns token
                                                                article fn-arena)))))
-              (fn-nntp-single session "501 syntax error"))))))))
+              (fn-nntp-single session (fn-proto-text * :syntax)))))))))
 
 (defthm fn-nntp-xpat-response-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat)
@@ -1355,34 +1356,34 @@
       (let ((group (fn-nntp-session-group session))
             (current (fn-nntp-session-current session)))
         (if (null group)
-            (fn-nntp-single session "412 no newsgroup selected")
+            (fn-nntp-single session (fn-proto-text * :no-group-selected))
           (if (null current)
-              (fn-nntp-single session "420 no current article")
+              (fn-nntp-single session (fn-proto-text * :no-current))
             (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
               (if (consp article)
                   (fn-rcompat-article-reply session article current kind t
                                             group server fn-arena)
-                (fn-nntp-single session "420 no current article"))))))
+                (fn-nntp-single session (fn-proto-text * :no-current)))))))
     (let ((token (and (consp args) (car args))))
       (if (fn-nntp-number-tokenp token)
           (let ((group (fn-nntp-session-group session))
                 (number (fn-nntp-decimal-value token)))
             (if (null group)
-                (fn-nntp-single session "412 no newsgroup selected")
+                (fn-nntp-single session (fn-proto-text * :no-group-selected))
               (let ((article (fn-scat-number-article group number v fn-arena fn-cat)))
                 (if (consp article)
                     (fn-rcompat-article-reply session article number kind t
                                               group server fn-arena)
-                  (fn-nntp-single session "423 no article with that number")))))
+                  (fn-nntp-single session (fn-proto-text * :no-number))))))
         (if (not (and (fn-nntp-message-id-tokenp token) (fn-octet-listp token)))
-            (fn-nntp-single session "501 syntax error")
+            (fn-nntp-single session (fn-proto-text * :syntax))
           (let ((article (fn-midx-lookup (fn-nntp-token-string token) trie)))
             (if (consp article)
                 (fn-rcompat-article-reply
                  session article (fn-nntp-msgid-local-number session article)
                  kind nil nil server fn-arena)
               (fn-nntp-single session
-                              "430 no article with that message-id"))))))))
+                              (fn-proto-text * :no-msgid)))))))))
 
 (defthm fn-rcompat-retrieval-cat-is-retrieval
   (implies (and (equal (fn-state-articles archive)
@@ -1446,12 +1447,12 @@
         (let ((group (fn-nntp-session-group session))
               (current (fn-nntp-session-current session)))
           (if (null group)
-              (fn-nntp-single session "412 no newsgroup selected")
+              (fn-nntp-single session (fn-proto-text * :no-group-selected))
             (if (null current)
-                (fn-nntp-single session "420 no current article")
+                (fn-nntp-single session (fn-proto-text * :no-current))
               (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
                 (if (not (consp article))
-                    (fn-nntp-single session "420 no current article")
+                    (fn-nntp-single session (fn-proto-text * :no-current))
                   (let ((content (fn-rcompat-xref-content server article fn-arena)))
                     (if (fn-nntp-hdr-okp content)
                         (fn-nntp-multi
@@ -1459,15 +1460,15 @@
                          (list (fn-nntp-hdr-line
                                 (fn-nntp-decimal-field current)
                                 (fn-nntp-hdr-octets content))))
-                      (fn-nntp-single session "423 article reclaimed"))))))))
+                      (fn-nntp-single session (fn-proto-text * :reclaimed)))))))))
       (if (not (and (consp rest) (null (cdr rest))))
-          (fn-nntp-single session "501 syntax error")
+          (fn-nntp-single session (fn-proto-text * :syntax))
         (let ((token (car rest)))
           (if (fn-nntp-range-okp (fn-nntp-parse-range token))
               (let ((group (fn-nntp-session-group session))
                     (range (fn-nntp-parse-range token)))
                 (if (null group)
-                    (fn-nntp-single session "412 no newsgroup selected")
+                    (fn-nntp-single session (fn-proto-text * :no-group-selected))
                   (let ((lines (fn-rcompat-hdr-lines-cat
                                 group
                                 (fn-scat-range-numbers
@@ -1478,15 +1479,15 @@
                         (fn-nntp-multi session (fn-nntp-hdr-initial legacyp)
                                        lines)
                       (fn-nntp-single session
-                                      (if legacyp "420 no article(s) selected"
-                                        "423 no articles in that range"))))))
+                                      (if legacyp (fn-proto-text * :none-selected)
+                                        (fn-proto-text * :empty-range)))))))
             (if (not (and (fn-nntp-message-id-tokenp token)
                           (fn-octet-listp token)))
-                (fn-nntp-single session "501 syntax error")
+                (fn-nntp-single session (fn-proto-text * :syntax))
               (let* ((article (fn-midx-lookup (fn-nntp-token-string token) trie))
                      (content (fn-rcompat-xref-content server article fn-arena)))
                 (if (not (consp article))
-                    (fn-nntp-single session "430 no article with that message-id")
+                    (fn-nntp-single session (fn-proto-text * :no-msgid))
                   (if (fn-nntp-hdr-okp content)
                       (fn-nntp-multi
                        session (fn-nntp-hdr-initial legacyp)
@@ -1494,7 +1495,7 @@
                               (if legacyp (fn-nov-scrub token)
                                 (fn-nntp-decimal-field 0))
                               (fn-nntp-hdr-octets content))))
-                    (fn-nntp-single session "430 article reclaimed")))))))))))
+                    (fn-nntp-single session (fn-proto-text * :reclaimed-msgid))))))))))))
 
 (defthm fn-rcompat-hdr-cat-is-hdr
   (implies (and (equal (fn-state-articles archive)
@@ -1679,7 +1680,7 @@
        ((fn-nntp-keywordp keyword "GROUP")
         (if (and (consp args) (null (cdr args)) (fn-nntp-printable-tokenp (car args)))
             (fn-nntp-group-result-cat session archive (fn-nntp-token-string (car args)) v fn-cat)
-          (fn-nntp-single session "501 syntax error")))
+          (fn-nntp-single session (fn-proto-text * :syntax))))
        ((fn-nntp-keywordp keyword "HDR")
         (fn-nntp-hdr-command-cat session args v nil fn-arena fn-cat))
        ((fn-nntp-keywordp keyword "XHDR")

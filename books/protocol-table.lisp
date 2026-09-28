@@ -728,6 +728,69 @@
              (440 :refused :auth :principal "440 posting not permitted for this principal")
              (440 :refused :post :not-permitted "440 posting not permitted")
              (441 :refused :post :refused "441 posting failed; REASON" :computed)
+             (441 :refused :post :refused-unparsable
+              "441 posting failed; the article is not valid syntax")
+             (441 :refused :post :refused-header-fields-limit
+              "441 posting failed; the header has more fields than the profile's max-header-fields")
+             (441 :refused :post :refused-header-lines-limit
+              "441 posting failed; the header has more lines than the profile's max-header-lines")
+             (441 :refused :post :refused-header-octets-limit
+              "441 posting failed; the header has more octets than the profile's max-header-octets")
+             (441 :refused :post :refused-group-read-only
+              "441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)")
+             (441 :refused :post :refused-approval-not-moderator
+              "441 posting failed; Approved is accepted only from a moderator of each moderated group named (LIST ACTIVE status m)")
+             (441 :refused :post :refused-moderation-unavailable
+              "441 posting failed; a moderated group is named and the article could not be forwarded to its moderation queue")
+             (441 :refused :post :refused-injection-info
+              "441 posting failed; Injection-Info must not be supplied")
+             (441 :refused :post :refused-xref
+              "441 posting failed; Xref must not be supplied")
+             (441 :refused :post :refused-injection-date-present
+              "441 posting failed; Injection-Date must not be supplied")
+             (441 :refused :post :refused-path-present
+              "441 posting failed; Path must not be supplied")
+             (441 :refused :post :refused-path-malformed
+              "441 posting failed; Path is not a valid path")
+             (441 :refused :post :refused-path-duplicate
+              "441 posting failed; Path appears more than once")
+             (441 :refused :post :refused-path-posted
+              "441 posting failed; Path must not carry a POSTED diagnostic")
+             (441 :refused :post :refused-newsgroups-missing
+              "441 posting failed; Newsgroups is required")
+             (441 :refused :post :refused-newsgroups-duplicate
+              "441 posting failed; Newsgroups appears more than once")
+             (441 :refused :post :refused-newsgroups-invalid
+              "441 posting failed; Newsgroups is not a valid newsgroup list")
+             (441 :refused :post :refused-message-id-duplicate
+              "441 posting failed; Message-ID appears more than once")
+             (441 :refused :post :refused-message-id-invalid
+              "441 posting failed; Message-ID is not a valid identifier")
+             (441 :refused :post :refused-from-missing
+              "441 posting failed; From is required")
+             (441 :refused :post :refused-from-duplicate
+              "441 posting failed; From appears more than once")
+             (441 :refused :post :refused-from-invalid
+              "441 posting failed; From is not a valid mailbox list")
+             (441 :refused :post :refused-subject-missing
+              "441 posting failed; Subject is required")
+             (441 :refused :post :refused-subject-duplicate
+              "441 posting failed; Subject appears more than once")
+             (441 :refused :post :refused-date-duplicate
+              "441 posting failed; Date appears more than once")
+             (441 :refused :post :refused-no-groups
+              "441 posting failed; no newsgroup was named")
+             (441 :refused :post :refused-unknown-group
+              "441 posting failed; a named newsgroup is not carried here")
+             (441 :refused :post :refused-oversize
+              "441 posting failed; the article exceeds the configured size")
+             (441 :refused :post :refused-clock-unusable
+              "441 posting failed; this server has no usable clock reading")
+             (441 :refused :post :refused-clock-out-of-range
+              "441 posting failed; this server clock is outside the modelled range")
+             (441 :refused :post :refused-posting-disallowed
+              "441 posting failed; posting is not permitted")
+             (441 :refused :post :refused-unnamed "441 posting failed")
              (441 :refused :post :not-received "441 posting failed; the article was not received")
              (403 :uncertain :post :malformed-session
                   "403 internal fault; the posting session is malformed")
@@ -756,6 +819,8 @@
              (436 :refused :peer :not-received "436 transfer failed; the article was not received")
              (436 :refused :peer :closing "436 the article was not received; closing")
              (437 :refused :peer :rejected "437 transfer rejected; REASON" :computed)
+             (437 :refused :peer :rejected-by-acceptance "437 transfer rejected; refused by acceptance")
+             (436 :refused :peer :retry-no-clock "436 retry later; no usable clock reading")
              (501 :refused :peer :syntax "501 syntax error"))
    :faq "A peer offers an article by Message-ID (peers only).")
 

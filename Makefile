@@ -1163,6 +1163,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/protocol-codes \
 	books/protocol-framing \
 	tests/acl2/protocol-codes-tests \
+	tests/acl2/protocol-text-tests \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \

@@ -15,6 +15,14 @@ JSON for the programs that used to keep their own copy:
     python3 tools/protocol_emit.py                # JSON on stdout
     python3 tools/protocol_emit.py --check        # rows well formed; names defined
     python3 tools/protocol_emit.py --text GROUP no-group
+    python3 tools/protocol_emit.py --expand books/nntp-post.lisp
+
+`--expand BOOK` prints BOOK with each `(fn-proto-text ROW KEY)` replaced by
+the quoted literal the macro expands to: the byte-identical-expansion
+differential of a book converted to table lookups is
+`diff <(git show BASE:BOOK) <(protocol_emit.py --expand BOOK)`.  It mirrors
+the macro (books/protocol-table.lisp fn-proto-text-of, fn-proto-shared-text)
+for that comparison only; the books admit what ACL2's macro expands.
 
 `--check` refuses a row whose :parser/:model/:cat/:xref names a function no
 book defines (a stale name after a rename), and a :fuzz production the
@@ -144,6 +152,34 @@ def text(table: dict, name: str, key: str) -> str:
     raise KeyError((name, key))
 
 
+def shared_text(table: dict, key: str):
+    """fn-proto-shared-text: KEY's literal text in every row that has one, or None."""
+    found = None
+    for r in table["rows"]:
+        here = next((e["text"] for e in r["replies"]
+                     if e["key"] == key and "computed" not in e["flags"]), None)
+        if here is None:
+            continue
+        if found is not None and here != found:
+            return None
+        found = here
+    return found
+
+
+PROTO_TEXT = re.compile(r'\(fn-proto-text\s+(\*|"[^"]*")\s+:([^\s()]+)\s*\)')
+
+
+def expand(table: dict, source: str) -> str:
+    """SOURCE with every (fn-proto-text ROW KEY) replaced by its quoted literal."""
+    def one(m):
+        name, key = m.group(1), m.group(2).lower()
+        t = shared_text(table, key) if name == "*" else text(table, name.strip('"'), key)
+        if t is None:
+            raise KeyError((name, key))
+        return '"%s"' % t.replace("\\", "\\\\").replace('"', '\\"')
+    return PROTO_TEXT.sub(one, source)
+
+
 def defined_functions() -> set[str]:
     names = set()
     pat = re.compile(r"^\s*\((?:defun|defund|defmacro|define)\s+([^\s()]+)", re.M)
@@ -197,8 +233,12 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--text", nargs=2, metavar=("COMMAND", "KEY"))
+    ap.add_argument("--expand", metavar="BOOK")
     args = ap.parse_args(argv)
     table = load()
+    if args.expand:
+        sys.stdout.write(expand(table, Path(args.expand).read_text(encoding="utf-8")))
+        return 0
     if args.text:
         print(text(table, args.text[0], args.text[1]))
         return 0
