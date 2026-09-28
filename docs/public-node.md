@@ -1,0 +1,78 @@
+# The public node: fn.fg-goose.online
+
+`fn.fg-goose.online` is ember's public fn node: a news server, the kind
+you read and post to with a newsreader. It went up on 2026-09-27. This page
+is for friends who want an account there.
+
+## How to reach it
+
+- **Address:** `fn.fg-goose.online`.
+- **Port 563:** encrypted from the first byte (NNTPS). Use this one if your
+  reader offers it.
+- **Port 119:** starts plain and switches to encryption with STARTTLS.
+- The certificate is a normal public one (Let's Encrypt), so you do not need
+  a certificate file.
+- There is no anonymous reading: you need a login even to look.
+
+## Getting an account
+
+1. **Ask ember for an invitation code.** It is a long line of letters and
+   digits. It works once, and it expires (usually after a week).
+2. **Pick a login name and redeem the code.** With fn unpacked on your
+   machine ([installing fn](install.md)), run this. It asks for the password
+   you want:
+
+   ```sh
+   fn redeem fn.fg-goose.online:563 CODE LOGIN --tls
+   ```
+
+   `redeemed: the account LOGIN is ready` means it worked. Without fn, a
+   program can do the same over TLS: send `XREDEEM CODE LOGIN`, then
+   `XREDEEM PASS PASSWORD`. A newsreader cannot do this step.
+3. **Log in with your newsreader**, using that login and password. Start a
+   new connection for it: the one that redeemed the code cannot log in.
+
+If the code has expired or was already used, ask ember for a new one.
+
+## Newsreaders
+
+Any newsreader that can use TLS should work. tin, slrn, pan and Thunderbird
+were tried against fn in September 2026; [newsreaders](human-web-client.md)
+has the details for each. For this node:
+
+- Server `fn.fg-goose.online`, port 563 with TLS (or 119 with STARTTLS).
+- Turn on "server requires authentication" (or similar) and give your login.
+- Leave certificate checking on; the certificate is a public one.
+
+## The groups
+
+| Group | For |
+| --- | --- |
+| `fn.announce` | news about the node and fn |
+| `fn.docs` | the fn FAQ, as articles ([also here](articles/)) |
+| `fn.general` | talking about anything |
+| `fn.test` | test posts |
+| `local.general` | talking, on this node only |
+| `local.test` | test posts, on this node only |
+| `control.cancel` | cancels (your reader uses it when you cancel a post) |
+
+A reader that asks the node which groups to start with (LIST SUBSCRIPTIONS)
+is told `fn.announce`, `fn.general` and `local.general`.
+
+## Peering
+
+Swapping articles with other nodes (peering) is coming, but not yet. A
+known problem in the current release stops a node that peers from taking
+its own users' posts after it has fed 1,024 articles on, so this node does
+not peer until the fix lands. Until then, what is posted here stays here.
+
+## What to expect
+
+- fn is an experiment. The node may be restarted or upgraded; your posts are
+  kept across both.
+- A post is either accepted (saved), refused (with the reason), or, rarely,
+  uncertain: then check whether it arrived before sending it again.
+- You can cancel your own posts from your reader.
+- Words you may not know are in [the glossary](glossary.md), and
+  [part 1 of the FAQ](articles/fn-faq-1.txt) explains the answers you will
+  see.

@@ -2801,7 +2801,8 @@
         "PRF-320",
         "PRF-321",
         "PRF-330",
-        "PRF-326"
+        "PRF-326",
+        "PRF-341"
       ],
       "verification": [
         "proof",
@@ -3524,7 +3525,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-181"
+        "PRF-181",
+        "PRF-348"
       ],
       "verification": [
         "proof",
@@ -4859,6 +4861,34 @@
         "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
       ],
       "implementation_note": "fn guarantee and local policy, not an RFC requirement: XFNCATCHUP is a private extension (RFC 3977 section 3.3.1); its reply is one RFC 3977 section 3.1.1 multi-line response; the local acceptance is RFC 3977 section 6.3.2 IHAVE on the peer's logical transit connection. The 1 MiB serve quantum, the 256 KiB request quantum and the 1 MiB line budget are local policy. `fn operator CONFIG peer catch-up NAME SECONDS` sets the interval row."
+    },
+    {
+      "id": "STO-035",
+      "title": "The owner's snapshot as a copy-on-write page store: commits write only dirty pages, a crash opens on the committed or the previous state, forks are isolated, allocation is fresh and reclamation never frees a live page",
+      "specification": "specs/storage.md#the-snapshot-page-store-sto-035",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-344",
+        "PRF-342"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/pagestore.lisp",
+        "books/pagestore-keystones.lisp",
+        "books/pagestore-reclaim.lisp",
+        "books/pagestore-exec.lisp",
+        "books/pagestore-gc.lisp",
+        "tests/acl2/pagestore-tests.lisp",
+        "planning/evidence/arena-store-2026-09-27.md",
+        "books/history-pages.lisp",
+        "tests/acl2/history-pages-tests.lisp",
+        "planning/evidence/arena-store-2-2026-09-28.md"
+      ],
+      "implementation_note": "Lane arena-store (2026-09-27): the model, keystones, reclamation and the executable layer are proved; the host driver host/native/proto-pagestore.lisp runs them on hbox (process death and power loss, 0 violations); page 0 (the owner's root slots) is the model's reserved page, kept by pgs-disk-keeps and marked by pgs-g-start; the scenario is SCN-186. Limitation L-PGS-LAZY-SHAPE (record section 5): the host's lazy open shape-checks only the table pages its own commit wrote, the model's lazy open every table page. The owner does not use it yet (fn-hist on pages is the next step, lane arena-store-2)."
     }
   ]
 }

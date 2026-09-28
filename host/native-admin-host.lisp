@@ -90,6 +90,8 @@
                                 :set-group-description :set-motd
                                 ;; PRF-222: a login's group access.
                                 :account-access
+                                ;; public-node-2: an account's deletion.
+                                :account-delete
                                 ;; PRF-234: a consumer's account binding.
                                 :consumer-bind
                                 ;; PRF-243: the default subscription list.

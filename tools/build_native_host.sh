@@ -67,12 +67,24 @@ case $(uname -s) in
   *) FN_MLDSA_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-mldsa65.so ;;
 esac
 export FN_MLDSA_LIBRARY
+# The LZ4 block encoder (vendored LZ4 1.10.0, third_party/lz4/UPSTREAM.txt),
+# built into the same lib/: the append's candidate blocks (host/native/lz4.lisp);
+# ACL2's proved decoder checks every candidate and does every read.
+sh tools/build_lz4.sh "$LIBDIR" >&2
+case $(uname -s) in
+  Darwin) FN_LZ4_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-lz4.dylib ;;
+  *) FN_LZ4_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-lz4.so ;;
+esac
+export FN_LZ4_LIBRARY
 openssl_hint() {
     if grep -q -E 'OpenSSL|LibreSSL|TLS library|libcrypto|libssl' "$LOG" 2>/dev/null; then
         echo "build_native_host: the log names the TLS library; the system needs OpenSSL 3.0+ or LibreSSL 3+ (FN_OPENSSL_PREFIX now: ${FN_OPENSSL_PREFIX:-unset})" >&2
     fi
     if grep -q -E 'ML-DSA' "$LOG" 2>/dev/null; then
         echo "build_native_host: the log names ML-DSA-65; the library is $FN_MLDSA_LIBRARY (tools/build_mldsa65.sh)" >&2
+    fi
+    if grep -q -E 'LZ4' "$LOG" 2>/dev/null; then
+        echo "build_native_host: the log names LZ4; the library is $FN_LZ4_LIBRARY (tools/build_lz4.sh)" >&2
     fi
 }
 LOG="${FN_NATIVE_LOG:-build/native-host-build.log}"

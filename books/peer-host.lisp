@@ -366,16 +366,70 @@ Answers (:starttls), (:handshake), (:send-code), (:send-password),
             (and (equal stage :code)
                  (equal (fn-redeem-reply-code line) 381)))))
 
+;   The connection ends, or never opens, at STAGE (:connect before a
+; greeting; otherwise the stage fn-redeem-step would have been asked about;
+; the OpenBSD rehearsal's finding 8, packet C).  Before the password is sent
+; nothing is redeemed: the server keeps the code until the password
+; (books/nntp-auth.lisp fn-auth-xredeem), so the outcome is (:unreachable
+; STAGE).  Once the password is sent the server may have bound the account
+; and its 281 was lost: (:uncertain :password); the same `fn redeem' again
+; answers ready for the same login and password.  Neither is a refusal.
+(defun fn-redeem-lost (stage)
+  "The outcome when the connection ends or never opens at STAGE."
+  (declare (xargs :guard t))
+  (if (equal stage :password)
+      (list :uncertain :password)
+    (list :unreachable
+          (if (member-equal stage '(:connect :greeting-starttls :greeting-tls
+                                    :starttls :code))
+              stage
+            :stage))))
+
+(defun fn-redeem-outcome-class (outcome)
+  "The outcome class (books/outcome-class.lisp) `fn redeem' exits with:
+:accepted only for (:done), :refused for the server's refusal by name
+((:refused WORD)), and :fenced for anything else: a lost or unreachable
+exchange, and (fail closed) a word that is no final outcome."
+  (declare (xargs :guard t))
+  (cond ((equal outcome (list :done)) :accepted)
+        ((and (consp outcome) (equal (car outcome) :refused)) :refused)
+        (t :fenced)))
+
+; KEYSTONE.  A connection that ends or never opens is never reported as a
+; refusal and never as an account made: `fn redeem' exits uncertain, so the
+; web reader (tools/fn_reader.py Node.redeem) never counts it as a refused
+; code, and the server's answers keep their classes: the class is accepted
+; exactly on the 281 after the password, and every other answer
+; fn-redeem-step ends with is refused.
+(defthm fn-redeem-lost-is-fenced-and-server-answers-are-not
+  (and (equal (fn-redeem-outcome-class (fn-redeem-lost stage)) :fenced)
+       (iff (equal (fn-redeem-lost stage) (list :uncertain :password))
+            (equal stage :password))
+       (implies (member-equal (car (fn-redeem-step stage line)) '(:done :refused))
+                (equal (fn-redeem-outcome-class (fn-redeem-step stage line))
+                       (if (and (equal stage :password)
+                                (equal (fn-redeem-reply-code line) 281))
+                           :accepted
+                         :refused)))))
+
 (defun fn-redeem-text (outcome login server-line)
   "The line the friend reads for OUTCOME ((:done) or (:refused WORD)); LOGIN
 and SERVER-LINE (the server's last reply, octets) are named in it."
   (declare (xargs :guard t))
   (let ((login-octets (if (stringp login) (fn-record-string-octets login) nil))
         (said (if (true-listp server-line) server-line nil)))
-    (if (equal outcome (list :done))
-        (append (fn-record-string-octets "redeemed: the account ")
-                login-octets
-                (fn-record-string-octets " is ready; put it and its password in your newsreader (it logs in with AUTHINFO on a new connection)"))
+    (cond
+     ((equal outcome (list :done))
+      (append (fn-record-string-octets "redeemed: the account ")
+              login-octets
+              (fn-record-string-octets " is ready; put it and its password in your newsreader (it logs in with AUTHINFO on a new connection)")))
+     ((equal outcome (list :uncertain :password))
+      (append (fn-record-string-octets "uncertain redeem: the connection ended after the password was sent, so the account ")
+              login-octets
+              (fn-record-string-octets " may be ready; try logging in, or run the same fn redeem again (a redeemed code answers ready for the same login and password)")))
+     ((and (consp outcome) (equal (car outcome) :unreachable))
+      (fn-record-string-octets "unreachable redeem: the node could not be reached, or closed or stopped answering before the code was taken; nothing was redeemed, so try again later (check the host, the port, and --tls for a TLS port)"))
+     (t
       (append (fn-record-string-octets "refused redeem ")
               (fn-record-string-octets
                (let ((word (and (consp outcome) (consp (cdr outcome)) (cadr outcome))))
@@ -385,4 +439,4 @@ and SERVER-LINE (the server's last reply, octets) are named in it."
                        ((equal word :password) "password: the password was refused")
                        (t "stage"))))
               (fn-record-string-octets "; the server said: ")
-              said))))
+              said)))))

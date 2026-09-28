@@ -6,9 +6,11 @@ FN_CERTIFY_JOBS ?= 1
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
+	books/defkeystone \
 	books/deftransition \
 	books/acceptance-alloc \
 	tests/acl2/defrecord-tests \
+	tests/acl2/defkeystone-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
@@ -406,6 +408,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-lz-record \
 	books/payload-lz-replay \
 	tests/acl2/payload-lz-record-tests \
+	books/payload-lz-append \
+	tests/acl2/payload-lz-append-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
@@ -833,6 +837,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-attach-concrete \
 	books/msgid-index-concrete \
 	books/octets-stobj \
+	books/octet-text \
 	books/payload-arena-bytes \
 	books/payload-arena-paged \
 	books/payload-arena-extent-logic \
@@ -867,6 +872,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-open \
 	books/served-catalog-join-entry \
 	books/served-catalog-join-finish \
+	books/served-catalog-join-conns \
+	books/served-catalog-join-frame \
+	books/served-catalog-join-frame-conns \
+	books/served-catalog-join-frame-store \
+	books/served-catalog-join-pinned \
+	books/served-catalog-join-read \
+	books/served-catalog-join-inv \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -879,6 +891,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-arena-load \
 	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \
+	tests/acl2/octet-text-tests \
+	tests/acl2/hostile-reader-archive \
 	tests/acl2/octets-bulk-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/payload-arena-paged-tests \
@@ -903,6 +917,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-join-open-tests \
 	tests/acl2/served-catalog-join-entry-tests \
 	tests/acl2/served-catalog-join-finish-tests \
+	tests/acl2/served-catalog-join-frame-conns-tests \
+	tests/acl2/served-catalog-join-frame-store-tests \
+	tests/acl2/served-catalog-join-pinned-tests \
+	tests/acl2/served-catalog-join-inv-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
 	books/payload-kinds \
@@ -1056,6 +1074,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-columns-relation \
 	tests/acl2/history-columns-relation-tests \
 	tests/acl2/history-columns-tests \
+	books/pagestore-words \
+	books/pagestore-words-sha \
+	books/pagestore \
+	books/pagestore-keystones \
+	books/pagestore-reclaim \
+	books/pagestore-exec \
+	books/pagestore-gc \
+	tests/acl2/pagestore-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \
 	books/snapshot-segments \
@@ -1297,7 +1323,20 @@ ACL2_BOOKS ?= books/defrecord \
 	books/proto/adt-lib \
 	books/proto/adt \
 	books/proto/adt-consumer-position \
-	tests/acl2/proto-adt-tests
+	tests/acl2/proto-adt-tests \
+	books/proto/adt-key-lib \
+	books/proto/adt-nest-lib \
+	books/proto/adt-keyed \
+	books/proto/adt-bytes-lib \
+	books/proto/adt-bytes \
+	books/proto/adt-compact-lib \
+	books/proto/adt-config-policy \
+	books/proto/adt-config-groups \
+	books/proto/adt-topic-accepted-type \
+	books/proto/adt-topic-accepted \
+	tests/acl2/proto-adt-2-tests \
+	books/history-pages \
+	tests/acl2/history-pages-tests
 
 .PHONY: site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
@@ -1530,6 +1569,7 @@ check:
 # and cannot grow silently.  Deliberately generous about what counts as a
 # subject, so every orphan it reports is real and it misses some.
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
+	@$(CHECK_STEP) $(PYTHON) tools/keystone_emit.py --check
 # Which host entries walk retained state (PKT-334, answers 2026-09-26 §2): a
 # function called once per request that traverses the Store history, the
 # held BP fragments or the queued BP jobs.  tools/hot_path_check.py follows the

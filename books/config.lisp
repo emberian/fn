@@ -783,7 +783,7 @@
     :add-peer-rows :remove-peer-rows :set-group-description
     :set-group-status :account-access :set-group-moderation
     :consumer-bind
-    :set-default-subscriptions :withdraw-article))
+    :set-default-subscriptions :withdraw-article :account-delete))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -814,6 +814,8 @@
         ((equal kind :set-default-subscriptions) 25)
         ; PKT-575 (CT3): the operator's withdrawal authorization.
         ((equal kind :withdraw-article) 26)
+        ; public-node-2: an account's deletion (its tombstone, mark 7).
+        ((equal kind :account-delete) 27)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -844,6 +846,7 @@
         ((equal code 24) :consumer-bind)
         ((equal code 25) :set-default-subscriptions)
         ((equal code 26) :withdraw-article)
+        ((equal code 27) :account-delete)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -1426,14 +1429,98 @@
   (let ((row (fn-cfg-account-row rows digest)))
     (and (consp row) (equal (fn-cfg-row-n row) 1))))
 
-; Whether a redeemed row already holds LOGIN.
+; Whether a redeemed row, or a deleted account's tombstone (mark 7), holds
+; LOGIN: a deleted login is never given to another redeem, so its
+; posting-account and local principal never name a second person.
 (defun fn-cfg-account-login-takenp (rows login)
   (declare (xargs :guard t))
   (if (consp rows)
-      (or (and (equal (fn-cfg-row-n (car rows)) 1)
+      (or (and (or (equal (fn-cfg-row-n (car rows)) 1)
+                   (equal (fn-cfg-row-n (car rows)) 7))
                (equal (fn-cfg-row-b (car rows)) login))
           (fn-cfg-account-login-takenp (cdr rows) login))
     nil))
+
+;; Account deletion (public-node-2; specs/nntp.md "Invitation-code
+;; accounts").  The operator's `account delete LOGIN' is one record
+;;
+;;   (:account-delete LOGIN "" 0 ())                                 code 27
+;;
+;; which turns every redeemed row (mark 1) holding LOGIN into its tombstone
+;; (DIGEST LOGIN "" 7): the code's digest stays keyed, so the code is never
+;; redeemed again (:account-row); the login stays taken
+;; (fn-cfg-account-login-takenp); the verifier is gone, so the credential
+;; table's second producer (books/nntp-auth.lisp fn-auth-account-creds,
+;; mark 1 only) no longer offers the login to a connection opened after the
+;; record.  Nothing is withdrawn: articles the login posted stay.  It is
+;; admitted only while the login holds no obligation -- a role another row
+;; names it in: a signing binding (mark 2), a moderator role (mark 4), a
+;; consumer binding (mark 6) -- which the operator resolves first; an access
+;; rule (mark 3) restricts and is no obligation.  A login already deleted
+;; admits the record again as a no-op (the resume after a crash between the
+;; publication and the verb's reply).
+(defun fn-cfg-account-delete (login)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :account-delete login "" 0 nil))
+
+(defun fn-cfg-account-tombstone-rowp (row)
+  (declare (xargs :guard t))
+  (equal (fn-cfg-row-n row) 7))
+
+; Logins compare as the octets they spell, as the credential table looks
+; them up (books/nntp-auth.lisp fn-auth-account-cred).
+(defun fn-cfg-same-login-p (text login)
+  (declare (xargs :guard t))
+  (equal (fn-record-string-octets text) (fn-record-string-octets login)))
+
+(defun fn-cfg-account-deleted-row (row)
+  ; A redeemed row's tombstone: the same digest and login, no verifier.
+  (declare (xargs :guard t))
+  (fn-cfg-row-make (fn-cfg-row-a row) (fn-cfg-row-b row) "" 7))
+
+(defun fn-cfg-rows-deleting-account (rows login)
+  ; ROWS with every redeemed row holding LOGIN replaced by its tombstone.
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (cons (if (and (equal (fn-cfg-row-n (car rows)) 1)
+                     (fn-cfg-same-login-p (fn-cfg-row-b (car rows)) login))
+                (fn-cfg-account-deleted-row (car rows))
+              (car rows))
+            (fn-cfg-rows-deleting-account (cdr rows) login))
+    nil))
+
+; Whether a redeemed row or a tombstone holds LOGIN.
+(defun fn-cfg-account-heldp (rows login)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (or (and (member-equal (fn-cfg-row-n (car rows)) '(1 7))
+               (fn-cfg-same-login-p (fn-cfg-row-b (car rows)) login))
+          (fn-cfg-account-heldp (cdr rows) login))
+    nil))
+
+; The first row of ROWS that makes LOGIN an obligation, or nil.
+(defun fn-cfg-account-obligation (rows login)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (let ((row (car rows)))
+        (if (or (and (member-equal (fn-cfg-row-n row) '(2 4))
+                     (fn-cfg-same-login-p (fn-cfg-row-a row) login))
+                (and (equal (fn-cfg-row-n row) 6)
+                     (fn-cfg-same-login-p (fn-cfg-row-b row) login)))
+            row
+          (fn-cfg-account-obligation (cdr rows) login)))
+    nil))
+
+(defun fn-cfg-account-delete-reason (v d)
+  (declare (xargs :guard t))
+  (let ((login (fn-cfg-delta-a d)) (rows (fn-cfg-accounts v)))
+    (cond ((not (fn-cfg-account-loginp login)) :account-login)
+          ((not (and (equal (fn-cfg-delta-b d) "")
+                     (null (fn-cfg-delta-rows d))))
+           :account-row)
+          ((not (fn-cfg-account-heldp rows login)) :account-unknown)
+          ((fn-cfg-account-obligation rows login) :account-obligations)
+          (t nil))))
 
 ; A pending row is live at a stamp only when the stamp carries a wall clock
 ; whose whole error interval lies before the expiry: an unknown or uncertain
@@ -1989,6 +2076,15 @@
                                   (fn-cfg-accounts v) a)
                                  rows)
                          (fn-cfg-descriptions v)))
+     ; An account's deletion tombstones its redeemed rows (public-node-2).
+     ((equal kind :account-delete)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)
+                         (fn-cfg-rows-deleting-account (fn-cfg-accounts v) a)
+                         (fn-cfg-descriptions v)))
      ; A login binding replaces that login's binding row (PKT-221).
      ((equal kind :login-binding)
       (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
@@ -2218,6 +2314,7 @@
      ((equal kind :set-group-moderation)
       (fn-cfg-set-group-moderation-reason v gen d))
      ((equal kind :withdraw-article) (fn-cfg-withdraw-article-reason v d))
+     ((equal kind :account-delete) (fn-cfg-account-delete-reason v d))
      ((equal kind :set-default-subscriptions)
       (fn-cfg-set-default-subscriptions-reason v gen d))
      (t nil))))

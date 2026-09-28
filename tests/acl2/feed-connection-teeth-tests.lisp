@@ -27,11 +27,21 @@
 ; `must-fail' for the nearby statement that is false: the same rendering
 ; claim over a credential that did NOT come through `fn-fap-decode'.
 ;
+; Since 2026-09-27 each keystone is one `defkeystone' form
+; (books/defkeystone.lisp), the pilot of that macro: it admits the statement
+; under its hints as NAME, checks its formula equals the source keystone's
+; (:restates), evaluates the complete antecedent and conclusion at the
+; positive witness, and per hypothesis evaluates the removal witness (the
+; retained hypotheses hold, the dropped one and the conclusion fail) beside
+; `(local (must-fail-checked (defthm NAME-without-LABEL ...)))'.  The
+; scenario values and the hand-written observations stay as they were.
+;
 ; Every expected observation list is written out here from RFC 3977, 4642
 ; and 4643's reply codes, never computed by the function under test.
 
 (in-package "ACL2")
 (include-book "../../books/feed-connection-invariants")
+(include-book "../../books/defkeystone")
 (include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
@@ -144,27 +154,6 @@
                                          (:auth-user nil nil)))))
 (assert-event (not (fn-fc-gate-okp 0 nil '((:tls 382 nil) (:ready 203 nil)))))
 
-; Each must-fail below is the keystone with one hypothesis dropped, under the
-; keystone's own hints; `fct-gate-full', the keystone itself through the same
-; macro, is admitted first so that a must-fail cannot pass on a hint that
-; stopped working.
-(defmacro fct-gate-thm (name hyps)
-  `(defthm ,name
-     (implies (and ,@hyps)
-              (fn-fc-gate-okp (fn-fc-gate-start (fn-fc-security st))
-                              (fn-fc-loginp st)
-                              (fn-fc-drive st events)))
-     :hints (("Goal" :do-not-induct t
-              :use ((:instance fn-fc-gate-holds-above-the-floor
-                               (k (fn-fc-gate-start (fn-fc-security st)))))
-              :in-theory (e/d (fn-fc-opening-phasep fn-fc-gate-floor
-                               fn-fc-gate-start)
-                              (fn-fc-gate-holds-above-the-floor
-                               fn-fc-protected-profilep fn-fc-loginp
-                               fn-fc-drive fn-fc-gate-okp))))))
-(fct-gate-thm fct-gate-full
-  ((fn-fc-protected-profilep st) (fn-fc-opening-phasep st)))
-
 ; Teeth.  Without `fn-fc-protected-profilep': a clear peer with no credential
 ; goes live on the greeting, at stage 0; and a clear peer whose profile DID
 ; permit clear text sends USER at stage 0 -- which is what the credential
@@ -182,9 +171,6 @@
                      '((:auth-user 200 nil))))
 (assert-event (not (fn-fc-gate-okp 0 t (fn-fc-drive *fct-clear-permitted*
                                                     (list *fct-200*)))))
-(local
- (must-fail-checked
-  (fct-gate-thm fct-gate-without-protected-profile ((fn-fc-opening-phasep st)))))
 
 ; Without `fn-fc-opening-phasep': a STARTTLS connection with a credential
 ; that is already in the ready phase (never through 382, TLS or 281) hands
@@ -198,9 +184,34 @@
                      '((:reply 238 nil))))
 (assert-event (not (fn-fc-gate-okp 0 nil (fn-fc-drive *fct-ready-unopened*
                                                       (list *fct-238*)))))
-(local
- (must-fail-checked
-  (fct-gate-thm fct-gate-without-opening-phase ((fn-fc-protected-profilep st)))))
+
+; The keystone and its teeth (books/defkeystone.lisp): the statement under
+; its own hints, checked equal to the source keystone's formula; the full
+; trace above as the positive witness; and, per hypothesis, the value above
+; at which the other hypothesis holds, this one fails and the gate fails,
+; beside the weakened theorem under must-fail.
+(defkeystone fct-gate
+  (implies (and (fn-fc-protected-profilep st)
+                (fn-fc-opening-phasep st))
+           (fn-fc-gate-okp (fn-fc-gate-start (fn-fc-security st))
+                           (fn-fc-loginp st)
+                           (fn-fc-drive st events)))
+  :id "PRF-047"
+  :subject fn-fc-drive
+  :restates fn-fc-offers-and-credentials-wait-for-tls-and-login
+  :hyps (protected-profile opening-phase)
+  :witness ((st *fct-starttls*) (events *fct-full-trace*))
+  :breaks ((protected-profile ((st *fct-clear-open*) (events (list *fct-200*))))
+           (opening-phase ((st *fct-ready-unopened*) (events (list *fct-238*)))
+                          :corrupt "a :ready STARTTLS connection built by fn-fc-make-state, never through 382, TLS or 281"))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-fc-gate-holds-above-the-floor
+                            (k (fn-fc-gate-start (fn-fc-security st)))))
+           :in-theory (e/d (fn-fc-opening-phasep fn-fc-gate-floor
+                            fn-fc-gate-start)
+                           (fn-fc-gate-holds-above-the-floor
+                            fn-fc-protected-profilep fn-fc-loginp
+                            fn-fc-drive fn-fc-gate-okp)))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone 2: fn-fc-refused-login-closes-without-an-offer.
@@ -224,56 +235,6 @@
 ; And USER answered 481 (no PASS asked for) is refused the same way.
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-at-user* *fct-481*)) :refused))
 
-; The one conclusion keystones 2 and 3 share, and the hints both use: each
-; must-fail below is this theorem with one hypothesis dropped.
-(defmacro fct-closes-quietly-thm (name hyps)
-  `(defthm ,name
-     (implies (and ,@hyps)
-              (let ((r (fn-fc-step st octets)))
-                (and (equal (fn-fc-kind r) :refused)
-                     (equal (fn-fc-phase (fn-fc-next-state r)) :closed)
-                     (fn-fc-quiet-obsp (fn-fc-drive (fn-fc-next-state r) events)))))
-     :hints (("Goal" :do-not-induct t
-              :in-theory (e/d (fn-fc-step fn-fc-from-line fn-fc-result
-                               fn-fc-kind fn-fc-next-state)
-                              (fn-fc-statep fn-fwi-step fn-fwi-chunkp
-                               fn-own-feed-response-code fn-fc-drive
-                               fn-fc-with-input-phase fn-fc-with-input-ihave fn-fc-phase
-                               fn-fc-security fn-fc-user fn-fc-allow-clear
-                               fn-fc-input fn-fc-streamingp fn-fc-conn
-                               fn-fwi-kind fn-fwi-line fn-fwi-next-state))))))
-
-(defconst *fct-hyp-statep* '(fn-fc-statep st))
-(defconst *fct-hyp-login-phase*
-  '(member-equal (fn-fc-phase st) '(:auth-user :auth-pass)))
-(defconst *fct-hyp-starttls-phase* '(equal (fn-fc-phase st) :starttls))
-(defconst *fct-hyp-line*
-  '(equal (fn-fwi-kind (fn-fwi-step (fn-fc-input st) octets)) :line))
-(defconst *fct-hyp-not-281*
-  '(not (equal (fn-own-feed-response-code
-                (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))
-               281)))
-(defconst *fct-hyp-not-381*
-  '(or (equal (fn-fc-phase st) :auth-pass)
-       (not (equal (fn-own-feed-response-code
-                    (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))
-                   381))))
-(defconst *fct-hyp-not-382*
-  '(not (equal (fn-own-feed-response-code
-                (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))
-               382)))
-
-; The keystones themselves, through the macro and its hints, are admitted
-; first, so that no must-fail below can pass on a hint that stopped working.
-(make-event
- `(fct-closes-quietly-thm fct-refused-login-full
-    (,*fct-hyp-statep* ,*fct-hyp-login-phase* ,*fct-hyp-line*
-     ,*fct-hyp-not-281* ,*fct-hyp-not-381*)))
-(make-event
- `(fct-closes-quietly-thm fct-starttls-refusal-full
-    (,*fct-hyp-statep* ,*fct-hyp-starttls-phase* ,*fct-hyp-line*
-     ,*fct-hyp-not-382*)))
-
 ; Without `fn-fc-statep': a list in the :auth-pass phase whose security is no
 ; security the machine knows is not a connection, and the step refuses to
 ; interpret it at all (:invalid), which is not the :refused the host closes on.
@@ -281,20 +242,10 @@
   (fn-fc-make-state (fn-fwi-initial-state) t :auth-pass 14 :bogus))
 (assert-event (not (fn-fc-statep *fct-not-a-state*)))
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-not-a-state* *fct-481*)) :invalid))
-(local
- (must-fail-checked
-  (make-event
-   `(fct-closes-quietly-thm fct-refused-login-without-statep
-      (,*fct-hyp-login-phase* ,*fct-hyp-line* ,*fct-hyp-not-281* ,*fct-hyp-not-381*)))))
 
 ; Without the login-phase hypothesis: the same 481 line in the ready phase is
 ; a feed reply, not a refusal.
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-ready-unopened* *fct-481*)) :reply))
-(local
- (must-fail-checked
-  (make-event
-   `(fct-closes-quietly-thm fct-refused-login-without-phase
-      (,*fct-hyp-statep* ,*fct-hyp-line* ,*fct-hyp-not-281* ,*fct-hyp-not-381*)))))
 
 ; Without the complete-line hypothesis: half a reply is retained, not refused.
 (defconst *fct-half* '(52 56))
@@ -306,27 +257,52 @@
                                                      *fct-half*)))
                           281)))
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-at-pass* *fct-half*)) :need-input))
-(local
- (must-fail-checked
-  (make-event
-   `(fct-closes-quietly-thm fct-refused-login-without-a-line
-      (,*fct-hyp-statep* ,*fct-hyp-login-phase* ,*fct-hyp-not-281* ,*fct-hyp-not-381*)))))
 
 ; Without "not 281": 281 is the login, and the connection proceeds to MODE.
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-at-pass* *fct-281*)) :mode))
-(local
- (must-fail-checked
-  (make-event
-   `(fct-closes-quietly-thm fct-refused-login-without-not-281
-      (,*fct-hyp-statep* ,*fct-hyp-login-phase* ,*fct-hyp-line* ,*fct-hyp-not-381*)))))
 
 ; Without "USER not answered 381": 381 to USER asks for the password.
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-at-user* *fct-381*)) :auth-pass))
-(local
- (must-fail-checked
-  (make-event
-   `(fct-closes-quietly-thm fct-refused-login-without-not-381
-      (,*fct-hyp-statep* ,*fct-hyp-login-phase* ,*fct-hyp-line* ,*fct-hyp-not-281*)))))
+
+; The keystone and its teeth, one removal witness per hypothesis from the
+; values above.
+(defkeystone fct-refused-login
+  (implies (and (fn-fc-statep st)
+                (member-equal (fn-fc-phase st) '(:auth-user :auth-pass))
+                (equal (fn-fwi-kind (fn-fwi-step (fn-fc-input st) octets)) :line)
+                (not (equal (fn-own-feed-response-code
+                             (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))
+                            281))
+                (or (equal (fn-fc-phase st) :auth-pass)
+                    (not (equal (fn-own-feed-response-code
+                                 (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))
+                                381))))
+           (let ((r (fn-fc-step st octets)))
+             (and (equal (fn-fc-kind r) :refused)
+                  (equal (fn-fc-phase (fn-fc-next-state r)) :closed)
+                  (fn-fc-quiet-obsp (fn-fc-drive (fn-fc-next-state r) events)))))
+  :id "PRF-051"
+  :subject fn-fc-step
+  :restates fn-fc-refused-login-closes-without-an-offer
+  :hyps (statep phase a-line not-281 not-381)
+  :witness ((st *fct-at-pass*) (octets *fct-481*)
+            (events (list *fct-281* :tls-up *fct-203* *fct-238*)))
+  :breaks ((statep ((st *fct-not-a-state*))
+                   :corrupt "security :bogus, which no dial installs")
+           (phase ((st *fct-ready-unopened*))
+                  :corrupt "a :ready connection built by fn-fc-make-state")
+           (a-line ((octets *fct-half*)))
+           (not-281 ((octets *fct-281*)))
+           (not-381 ((st *fct-at-user*) (octets *fct-381*))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-fc-step fn-fc-from-line fn-fc-result
+                            fn-fc-kind fn-fc-next-state)
+                           (fn-fc-statep fn-fwi-step fn-fwi-chunkp
+                            fn-own-feed-response-code fn-fc-drive
+                            fn-fc-with-input-phase fn-fc-with-input-ihave fn-fc-phase
+                            fn-fc-security fn-fc-user fn-fc-allow-clear
+                            fn-fc-input fn-fc-streamingp fn-fc-conn
+                            fn-fwi-kind fn-fwi-line fn-fwi-next-state)))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone 3: fn-fc-starttls-refusal-closes-before-the-credential.
@@ -350,19 +326,9 @@
 (assert-event (not (fn-fc-statep *fct-not-a-state-starttls*)))
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-not-a-state-starttls* *fct-580*))
                      :invalid))
-(local
- (must-fail-checked
-  (make-event
-   `(fct-closes-quietly-thm fct-starttls-refusal-without-statep
-      (,*fct-hyp-starttls-phase* ,*fct-hyp-line* ,*fct-hyp-not-382*)))))
 
 ; Without the phase: 580 in the ready phase is a feed reply.
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-ready-unopened* *fct-580*)) :reply))
-(local
- (must-fail-checked
-  (make-event
-   `(fct-closes-quietly-thm fct-starttls-refusal-without-phase
-      (,*fct-hyp-statep* ,*fct-hyp-line* ,*fct-hyp-not-382*)))))
 
 ; Without the complete-line hypothesis: half a reply waits.
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-at-starttls* '(53 56))) :need-input))
@@ -370,19 +336,42 @@
                            (fn-fwi-line (fn-fwi-step (fn-fc-input *fct-at-starttls*)
                                                      '(53 56))))
                           382)))
-(local
- (must-fail-checked
-  (make-event
-   `(fct-closes-quietly-thm fct-starttls-refusal-without-a-line
-      (,*fct-hyp-statep* ,*fct-hyp-starttls-phase* ,*fct-hyp-not-382*)))))
 
 ; Without "not 382": 382 starts the handshake.
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-at-starttls* *fct-382*)) :tls))
-(local
- (must-fail-checked
-  (make-event
-   `(fct-closes-quietly-thm fct-starttls-refusal-without-not-382
-      (,*fct-hyp-statep* ,*fct-hyp-starttls-phase* ,*fct-hyp-line*)))))
+
+(defkeystone fct-starttls-refusal
+  (implies (and (fn-fc-statep st)
+                (equal (fn-fc-phase st) :starttls)
+                (equal (fn-fwi-kind (fn-fwi-step (fn-fc-input st) octets)) :line)
+                (not (equal (fn-own-feed-response-code
+                             (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))
+                            382)))
+           (let ((r (fn-fc-step st octets)))
+             (and (equal (fn-fc-kind r) :refused)
+                  (equal (fn-fc-phase (fn-fc-next-state r)) :closed)
+                  (fn-fc-quiet-obsp (fn-fc-drive (fn-fc-next-state r) events)))))
+  :id "PRF-047"
+  :subject fn-fc-step
+  :restates fn-fc-starttls-refusal-closes-before-the-credential
+  :hyps (statep phase a-line not-382)
+  :witness ((st *fct-at-starttls*) (octets *fct-580*)
+            (events (list *fct-382* :tls-up *fct-281*)))
+  :breaks ((statep ((st *fct-not-a-state-starttls*))
+                   :corrupt "security :bogus, which no dial installs")
+           (phase ((st *fct-ready-unopened*))
+                  :corrupt "a :ready connection built by fn-fc-make-state")
+           (a-line ((octets '(53 56))))
+           (not-382 ((octets *fct-382*))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-fc-step fn-fc-from-line fn-fc-result
+                            fn-fc-kind fn-fc-next-state)
+                           (fn-fc-statep fn-fwi-step fn-fwi-chunkp
+                            fn-own-feed-response-code fn-fc-drive
+                            fn-fc-with-input-phase fn-fc-with-input-ihave fn-fc-phase
+                            fn-fc-security fn-fc-user fn-fc-allow-clear
+                            fn-fc-input fn-fc-streamingp fn-fc-conn
+                            fn-fwi-kind fn-fwi-line fn-fwi-next-state)))))
 
 ; -----------------------------------------------------------------------------
 ; Keystones 4 and 5: the AUTHINFO renderers the host calls send the
@@ -412,39 +401,41 @@
              (append *fn-fc-auth-pass-prefix* *fct-smuggled* '(13 10)))))
 (assert-event (equal (fn-fc-auth-user-command *fct-improper-state*) nil))
 (assert-event (equal (fn-fc-auth-pass-command *fct-improper-state*) nil))
-; As above: the keystones through the macro first, then one hypothesis
-; dropped from each.
 ;
 ; fn-fc-auth-user-command-sends-the-configured-name-alone
-(defmacro fct-render-thm (name command field prefix hyps)
-  `(defthm ,name
-     (implies (and ,@hyps)
-              (equal (,command st) (append ,prefix (,field st) '(13 10))))
-     :hints (("Goal" :do-not-induct t
-              :in-theory (e/d (,command) (fn-fc-auth-command fn-fap-tokenp))))))
-(fct-render-thm fct-user-command-full fn-fc-auth-user-command fn-fc-user
-  *fn-fc-auth-user-prefix*
-  ((fn-fap-tokenp (fn-fc-user st)) (true-listp (fn-fc-user st))))
-(fct-render-thm fct-pass-command-full fn-fc-auth-pass-command fn-fc-pass
-  *fn-fc-auth-pass-prefix*
-  ((fn-fap-tokenp (fn-fc-pass st)) (true-listp (fn-fc-pass st))))
-(local
- (must-fail-checked
-  (fct-render-thm fct-user-command-without-tokenp fn-fc-auth-user-command
-    fn-fc-user *fn-fc-auth-user-prefix* ((true-listp (fn-fc-user st))))))
-(local
- (must-fail-checked
-  (fct-render-thm fct-user-command-without-true-listp fn-fc-auth-user-command
-    fn-fc-user *fn-fc-auth-user-prefix* ((fn-fap-tokenp (fn-fc-user st))))))
+(defkeystone fct-user-command
+  (implies (and (fn-fap-tokenp (fn-fc-user st)) (true-listp (fn-fc-user st)))
+           (equal (fn-fc-auth-user-command st)
+                  (append *fn-fc-auth-user-prefix* (fn-fc-user st) '(13 10))))
+  :id "PRF-051"
+  :subject fn-fc-auth-user-command
+  :restates fn-fc-auth-user-command-sends-the-configured-name-alone
+  :hyps (tokenp true-listp)
+  :witness ((st *fct-at-user*))
+  :breaks ((tokenp ((st *fct-smuggling-state*))
+                   :corrupt "a name fn-fap-decode refuses, so no profile installs it")
+           (true-listp ((st *fct-improper-state*))
+                       :corrupt "an improper token no decode produces"))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-fc-auth-user-command)
+                           (fn-fc-auth-command fn-fap-tokenp)))))
 ; fn-fc-auth-pass-command-sends-the-configured-secret-alone
-(local
- (must-fail-checked
-  (fct-render-thm fct-pass-command-without-tokenp fn-fc-auth-pass-command
-    fn-fc-pass *fn-fc-auth-pass-prefix* ((true-listp (fn-fc-pass st))))))
-(local
- (must-fail-checked
-  (fct-render-thm fct-pass-command-without-true-listp fn-fc-auth-pass-command
-    fn-fc-pass *fn-fc-auth-pass-prefix* ((fn-fap-tokenp (fn-fc-pass st))))))
+(defkeystone fct-pass-command
+  (implies (and (fn-fap-tokenp (fn-fc-pass st)) (true-listp (fn-fc-pass st)))
+           (equal (fn-fc-auth-pass-command st)
+                  (append *fn-fc-auth-pass-prefix* (fn-fc-pass st) '(13 10))))
+  :id "PRF-051"
+  :subject fn-fc-auth-pass-command
+  :restates fn-fc-auth-pass-command-sends-the-configured-secret-alone
+  :hyps (tokenp true-listp)
+  :witness ((st *fct-at-pass*))
+  :breaks ((tokenp ((st *fct-smuggling-state*))
+                   :corrupt "a secret fn-fap-decode refuses, so no profile installs it")
+           (true-listp ((st *fct-improper-state*))
+                       :corrupt "an improper token no decode produces"))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-fc-auth-pass-command)
+                           (fn-fc-auth-command fn-fap-tokenp)))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone 6: fn-fc-decoded-profile-renders-verbatim-in-every-state.  No
@@ -459,27 +450,41 @@
 (defconst *fct-bad-profile*
   '(70 78 65 85 84 72 49 10 110 111 100 101 10 115 13 10))
 (assert-event (equal (fn-fap-decode *fct-bad-profile*) '(:bad nil nil)))
-(defmacro fct-custody-thm (name user pass)
-  `(defthm ,name
-     (let ((st (fn-fc-drive-state
-                (fn-fc-initial-auth-state streamingp conn security
-                                          ,user ,pass allow-clear)
-                events)))
-       (and (equal (fn-fc-auth-user-command st)
-                   (append *fn-fc-auth-user-prefix* ,user '(13 10)))
-            (equal (fn-fc-auth-pass-command st)
-                   (append *fn-fc-auth-pass-prefix* ,pass '(13 10)))))
-     :hints (("Goal" :do-not-induct t
-              :cases ((equal (car (fn-fap-decode profile)) :ok))
-              :use ((:instance fn-fap-decode-yields-two-renderable-tokens
-                               (octets profile)))
-              :in-theory (e/d (fn-fc-initial-auth-state fn-fc-user fn-fc-pass)
-                              (fn-fap-tokenp
-                               fn-fap-decode-yields-two-renderable-tokens
-                               fn-fc-drive-state fn-fc-auth-user-command
-                               fn-fc-auth-pass-command))))))
-(fct-custody-thm fct-decoded-credential-full
-  (cadr (fn-fap-decode profile)) (caddr (fn-fap-decode profile)))
-(local
- (must-fail-checked
-  (fct-custody-thm fct-undecoded-credential-renders-verbatim user pass)))
+(defkeystone fct-decoded-credential
+  (let ((st (fn-fc-drive-state
+             (fn-fc-initial-auth-state streamingp conn security
+                                       (cadr (fn-fap-decode profile))
+                                       (caddr (fn-fap-decode profile))
+                                       allow-clear)
+             events)))
+    (and (equal (fn-fc-auth-user-command st)
+                (append *fn-fc-auth-user-prefix*
+                        (cadr (fn-fap-decode profile)) '(13 10)))
+         (equal (fn-fc-auth-pass-command st)
+                (append *fn-fc-auth-pass-prefix*
+                        (caddr (fn-fap-decode profile)) '(13 10)))))
+  :id "PRF-051"
+  :subject fn-fap-decode
+  :restates fn-fc-decoded-profile-renders-verbatim-in-every-state
+  :witness ((profile *fct-profile*) (streamingp t) (conn 7) (security :starttls)
+            (allow-clear nil) (events *fct-full-trace*))
+  :mutations
+  ((undecoded
+    (let ((st (fn-fc-drive-state
+               (fn-fc-initial-auth-state streamingp conn security
+                                         user pass allow-clear)
+               events)))
+      (and (equal (fn-fc-auth-user-command st)
+                  (append *fn-fc-auth-user-prefix* user '(13 10)))
+           (equal (fn-fc-auth-pass-command st)
+                  (append *fn-fc-auth-pass-prefix* pass '(13 10)))))
+    ((user *fct-smuggled*) (pass *fct-smuggled*) (events nil))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((equal (car (fn-fap-decode profile)) :ok))
+           :use ((:instance fn-fap-decode-yields-two-renderable-tokens
+                            (octets profile)))
+           :in-theory (e/d (fn-fc-initial-auth-state fn-fc-user fn-fc-pass)
+                           (fn-fap-tokenp
+                            fn-fap-decode-yields-two-renderable-tokens
+                            fn-fc-drive-state fn-fc-auth-user-command
+                            fn-fc-auth-pass-command)))))

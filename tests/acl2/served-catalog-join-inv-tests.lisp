@@ -1,0 +1,161 @@
+; served-catalog-join-inv-tests.lisp -- teeth for books/served-catalog-join-
+; inv.lisp, -frame.lisp and -read.lisp (lane sca-join-4, step 5: the
+; catalog invariant fn-scj-invp at the opens, across the refresh and across
+; the host's served read).
+;
+; The owner is served-catalog-join-entry-tests' replaying two-article open
+; (*scje-oc*: catalog-entries-tests' journal under the default
+; configuration, opened by fn-ock-recover-extended), the catalog the host's
+; load of its rows under its view's index over an arena holding the
+; payloads.  The invariant's five conjuncts are evaluated on live stobjs
+; (scji-parts).
+;
+;   1. REACHABLE WITNESS of fn-scj-invp-at-recover: every antecedent, and the
+;      five conjuncts of the conclusion (non-vacuous: two articles visible,
+;      the live view's view-of is the count 2).
+;   2. REACHABLE WITNESS of fn-scj-invp-of-refresh at that owner (idle, VV,
+;      no record past the view): every antecedent and the conclusion.
+;   3. HYPOTHESIS REMOVAL (fn-scj-live-okp-of-joined-view, the fact the open
+;      keystone turns on): a view whose group index is not its articles'
+;      build (the retained hypotheses checked, the omitted one false) is not
+;      live over the catalog.
+;   4. WHY THE HOST ROUTES ARTICLES THROUGH THE CATALOG (labelled: a
+;      corrupted pairing, not a reachable host state): the same owner paired
+;      with the catalog of its FIRST row only -- what the catalog would be
+;      had the second article completed without the catalog's finish --
+;      fails the invariant's join and rows conjuncts while VV and the pins
+;      hold.
+
+(in-package "ACL2")
+
+(include-book "served-catalog-join-entry-tests")
+(include-book "../../books/served-catalog-join-inv")
+
+(defun scji-rows-of (i fn-cat)
+  (declare (xargs :stobjs fn-cat :mode :program))
+  (if (< i (fn-cat-count fn-cat))
+      (cons (fn-cat-at i fn-cat) (scji-rows-of (+ 1 i) fn-cat))
+    nil))
+
+(defun scji-load-list (events)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-cat
+    (mv-let (r fn-cat)
+      (let ((fn-cat (fn-sca-load-held-rows-from events nil fn-cat)))
+        (mv (scji-rows-of 0 fn-cat) fn-cat))
+      r)))
+
+; fn-scr-catalogp's body, executed.
+(defun scji-catalogp (archive index v fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (and (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat))
+       (fn-nntp-projectionp archive)
+       (fn-gidx-pin-correspondencep index archive)
+       (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles archive))
+       (fn-cnx-freshp (scji-rows-of 0 fn-cat))
+       t))
+
+(defun scji-conns-pinp (conns fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (if (consp conns)
+      (let ((conn (car conns)))
+        (and (scji-catalogp (fn-own-conn-archive conn)
+                            (if (fn-own-conn-group-index conn)
+                                (fn-gidx-pin-with-control (fn-own-conn-index conn)
+                                                          (fn-own-conn-group-index conn)
+                                                          (fn-own-conn-control conn))
+                              (fn-own-conn-index conn))
+                            (fn-scr-view-of (fn-own-conn-version conn) fn-cat) fn-arena fn-cat)
+             (scji-conns-pinp (cdr conns) fn-arena fn-cat)))
+    t))
+
+; The five conjuncts of fn-scj-invp, and the live view's view-of.
+(defun scji-parts (o fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((view (fn-own-view o))
+         (s (fn-own-store o))
+         (c (scji-rows-of 0 fn-cat))
+         (records (fn-sf-records (fn-sn-files s)))
+         (idx (if (fn-own-view-group-index view)
+                  (fn-gidx-pin-with-control (fn-own-view-index view) (fn-own-view-group-index view)
+                                            (fn-own-view-control view))
+                (fn-own-view-index view))))
+    (list (and (equal (fn-cat-view-articles (fn-cat-count fn-cat) fn-arena fn-cat)
+                      (fn-state-articles (fn-own-view-archive view)))
+               (fn-scj-marks-below c (fn-cat-count fn-cat))
+               (fn-scj-seqs-below c (fn-own-view-version view))
+               t)
+          (equal (fn-scj-arts-map c)
+                 (fn-scj-arts-map (scji-load-list (fn-own-take (fn-own-view-version view) records))))
+          (and (equal (fn-own-view-raw view) (fn-state-articles (fn-node-acceptance (fn-sn-node s))))
+               (equal (fn-own-view-verdicts view) (fn-sn-verdicts s)))
+          (scji-catalogp (fn-own-view-archive view) idx
+                         (fn-scr-view-of (fn-own-view-version view) fn-cat) fn-arena fn-cat)
+          (scji-conns-pinp (fn-own-conns o) fn-arena fn-cat)
+          (fn-scr-view-of (fn-own-view-version view) fn-cat))))
+
+; Load ROWS under the view's index of O2 into the arena of the payloads and
+; evaluate the parts at O.
+(defun scji-run (o rows fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many *scje-payloads* fn-arena))
+         (fn-cat (fn-sca-load-held-rows rows (fn-own-view-index (fn-own-view o)) fn-arena fn-cat)))
+    (mv (list (scji-parts o fn-arena fn-cat)
+              (and (fn-arena-p fn-arena)
+                   (fn-rows-handles-inp rows fn-arena)
+                   (fn-rows-composites-okp rows fn-arena)
+                   t))
+        fn-arena fn-cat)))
+
+(defun scji-exec (o rows)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (scji-run o rows fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+; -----------------------------------------------------------------------------
+; 1. fn-scj-invp-at-recover at the two-article open (prefix nil, suffix the rows).
+
+(assert-event (not (equal *scje-oc* :fault)))
+(assert-event (fn-scj-rows-clearp (append nil *scje-rows*)))
+(assert-event (true-listp *scje-rows*))
+(assert-event (fn-nntp-projectionp (fn-own-view-archive *scje-view*)))
+(assert-event (equal (fn-own-conns *scje-o*) nil))
+(assert-event (equal (scji-exec *scje-o* *scje-srows*)
+                     (list (list t t t t t 2) t)))
+
+; -----------------------------------------------------------------------------
+; 2. fn-scj-invp-of-refresh at that owner.
+
+(defconst *scji-refreshed* (fn-own-refresh *scje-o*))
+(assert-event (fn-scar-view-indexedp *scje-o*))
+(assert-event (natp (fn-own-view-version *scje-view*)))
+(assert-event (<= (fn-own-view-version *scje-view*) (len *scje-srows*)))
+(assert-event (fn-scj-no-rowsp (nthcdr (fn-own-view-version *scje-view*) *scje-srows*)))
+(assert-event (fn-nntp-projectionp (fn-own-view-archive (fn-own-view *scji-refreshed*))))
+(assert-event (fn-own-store-idlep (fn-own-store *scje-o*)))
+(assert-event (equal (scji-exec *scji-refreshed* *scje-srows*)
+                     (list (list t t t t t 2) t)))
+
+; -----------------------------------------------------------------------------
+; 3. Removal: the group index not the articles' build.
+
+(defconst *scji-bad-gidx* (update-nth 5 '((:none)) *scje-view*))
+(assert-event (not (equal (fn-own-view-group-index *scji-bad-gidx*)
+                          (fn-gidx-build (fn-state-articles (fn-own-view-archive *scji-bad-gidx*))))))
+(assert-event (equal (fn-own-view-index *scji-bad-gidx*)
+                     (fn-midx-build (fn-state-articles (fn-own-view-archive *scji-bad-gidx*)))))
+(assert-event (fn-nntp-projectionp (fn-own-view-archive *scji-bad-gidx*)))
+(assert-event (equal (scji-exec (update-nth 1 *scji-bad-gidx* *scje-o*) *scje-srows*)
+                     (list (list t t t nil t 2) t)))
+
+; -----------------------------------------------------------------------------
+; 4. The catalog of the first row only, against the two-article owner.
+
+(assert-event (equal (scji-exec *scje-o* (take 1 *scje-srows*))
+                     (list (list nil nil t nil t 1) t)))
