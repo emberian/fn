@@ -115,12 +115,16 @@ class NativeControlEvidenceTests(filing.NativeControlFilingTests):
         # The operator's status family ends with the store's heap line
         # (PKT-016, host/native/operator.lisp fnn-operator-execute-status);
         # the evidence is every line before it.
-        absent = [line for line in live_absent.splitlines() if not line.startswith("heap=")]
-        self.assertEqual(absent, ["evidence message-id=<absent@example.invalid> stored=no"])
+        # (the heap figure follows the store's size on disk, so it may move
+        # between the live and the offline report).
+        def words(text):
+            return [line for line in text.splitlines() if not line.startswith("heap=")]
+        self.assertEqual(words(live_absent),
+                         ["evidence message-id=<absent@example.invalid> stored=no"])
         # Offline (recovery's decision over the replayed Store): the same words.
-        self.assertEqual(offline_log, live_log)
-        self.assertEqual(offline_cancel, live_cancel)
-        self.assertEqual(offline_target, live_target)
+        self.assertEqual(words(offline_log), words(live_log))
+        self.assertEqual(words(offline_cancel), words(live_cancel))
+        self.assertEqual(words(offline_target), words(live_target))
 
 
 if __name__ == "__main__":
