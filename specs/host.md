@@ -654,9 +654,26 @@ refusal) still waits for its batch's barrier: the record it names may be one
 the barrier has not fenced.
 When the device returns the batches complete: an article whose poster was
 told uncertain IS stored. That is the documented ambiguity, and it is RFC
-3977's: section 6.3.1 has the client that did not get a clear answer check
-(STAT) before it reposts, which is what the uncertain reply tells it; a
-member told uncertain is never answered again. F4-W
+3977's (section 6.3.1: a client without a clear answer checks before it
+reposts). fn's check is the SAME article re-sent under the SAME Message-ID
+(NNT-019), never a STAT: a 430 while the barrier is pending proves nothing,
+because the barrier may still complete. The re-sent article is refused
+try-later while the disk sheds (nothing is stored twice) and, after the
+completion, answered `441 posting failed; this article is already stored
+here` or `240`. A member told uncertain is never answered again: the stall's
+release is an early answer in ACL2's ledger of the request in flight, and
+the barrier's late completion is consumed once, into its own generation,
+answering only the members not told (HST-031, PRF-384,
+`fn-otb-a-member-is-answered-once`,
+`fn-otb-a-late-completion-is-consumed-once`; the sealed batch stays the
+syncer's until then, `fn-otb-a-deadline-keeps-the-io-owned`). The adopted
+bars (D 5 s, H 30 s with at most 1 s notification slack, a cold read's 5 s
+dependency deadline and its 403) are planning/design-time-model-2026-09-27.md
+section 4b. A restart is a new clock domain: the decision journal's start
+entry records the wall observation and whether it is usable, never a
+monotonic origin, and no decision of a run reads an earlier run's reading
+(`fn-otb-a-restart-forgets-the-previous-clock-domain`; the push feed's
+back-off, PRF-385). F4-W
 (`fn-otm-f4w-stall-within-h`): the committer's clock events, each within
 its wait plus the timer's lateness L, enter `stalled` at most H + L after
 the barrier's issue (its wait never reaches past H), so every POST is

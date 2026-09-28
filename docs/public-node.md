@@ -71,7 +71,11 @@ not peer until the fix lands. Until then, what is posted here stays here.
 - fn is an experiment. The node may be restarted or upgraded; your posts are
   kept across both.
 - A post is either accepted (saved), refused (with the reason), or, rarely,
-  uncertain: then check whether it arrived before sending it again.
+  uncertain: then send the same article again, with the same Message-ID
+  (your newsreader's "send again" of the saved draft, or
+  `fn_client.py reconcile`): the node answers that it already has it, or
+  takes it once. Do not post a new copy, and do not trust a "no such
+  article" while the node says its disk is slow: the write may still land.
 - You can cancel your own posts from your reader.
 - Words you may not know are in [the glossary](glossary.md), and
   [part 1 of the FAQ](articles/fn-faq-1.txt) explains the answers you will

@@ -13468,6 +13468,61 @@
         "planning/evidence/f8-reservation-2026-09-28.md"
       ],
       "progress_note": "Lane f8-reservation (2026-09-28): books/memory-credits.lisp and its test book are certified (persvati certify-20260928T171227Z-391318, hbox certify-20260928T173440Z-1769341): fn-mcr-transitions-keep-funded, fn-mcr-acquire-refuses-exactly-past-the-budget, fn-mcr-grow-within-the-reserve-is-admitted, fn-mcr-retain-moves-the-credit, fn-mcr-evict-returns-what-was-evicted, fn-mcr-overdraw-is-within-the-completion-reserve. NO EVENTS ARE CITED: no host line calls the ledger yet (reach_check), so the running server exercises none of it. The events are cited when an allocation site calls it; the first is the article slots (lane zero-copy-commit, fn-oas-read-span, PRF-377), U + R one reserve a slot. Teeth: tests/acl2/memory-credits-tests.lisp."
+    },
+    {
+      "id": "PRF-384",
+      "title": "The adopted F4 bars in the owner: an unresolved request's late completion is consumed exactly once into its own generation (every member answered once, no second reply, the I/O-owned batch kept until the completion applies); a read's late page is a named 403, never absence; a restart forgets the previous run's clock domain",
+      "statement": "Subjects (books/owner-time-bars.lisp): fn-otb-issue, fn-otb-answer-early and fn-otb-complete, which host/native/owner.lisp fnn-owner-commit-pipeline calls at each barrier's issue (the syncer carries the generation), at the stall's uncertain release and every stop's release, and at the COMPLETE after the syncer's join (the host faults on a verdict other than :apply). The ledger is (GEN OPEN TOLD). KEYSTONE fn-otb-a-member-is-answered-once: from a ledger open at G, any early answers and then the completion for G over members CIDS (no duplicates): it applies; the early-told are fresh and each told once; the completion answers only members, none already told; every member is told before, early or by the completion. KEYSTONE fn-otb-a-late-completion-is-consumed-once: a completion applies iff open at its generation; one that does not apply answers no one and changes nothing; after one applied no completion applies again, and after the next issue every earlier generation's completion is :stale. KEYSTONE fn-otb-a-deadline-keeps-the-io-owned: early answers keep OPEN and GEN; an issue is refused while open. KEYSTONE fn-otb-a-late-page-is-unavailable-never-absent: fn-otb-dependency-step is :unavailable iff the page has not completed and the declared deadline (the read-dependency-ms row, default 5,000 ms) has passed, :serve whenever it completed, and its wait ends exactly at the deadline; fn-otb-unavailable-line's code is 403, not 430 or 423 (the interface row A4's asynchronous page fault calls; no host call site yet). KEYSTONE fn-otb-a-restart-forgets-the-previous-clock-domain: when a run's segment E1 replays to agreement, E1 then the next run's start entry (fn-otm-start-entry WALL USABLE: the wall observation, no monotonic origin) then E2 replays exactly as E2 from fn-otm-init (fn-otm-replay, called by the operator's `store ROOT journal' through fn-otm-journal-report and fn-otm-journal-exit).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-031"
+      ],
+      "depends_on": [
+        "PRF-311",
+        "PRF-322",
+        "PRF-360"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-time-bars.lisp",
+        "books/owner-time-journal.lisp",
+        "books/owner-time-journal-writer.lisp",
+        "tests/acl2/owner-time-bars-tests.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/time-bars-2026-09-28.md"
+      ],
+      "events": [
+        "fn-otb-a-member-is-answered-once",
+        "fn-otb-a-late-completion-is-consumed-once",
+        "fn-otb-a-deadline-keeps-the-io-owned",
+        "fn-otb-a-late-page-is-unavailable-never-absent",
+        "fn-otb-a-restart-forgets-the-previous-clock-domain"
+      ],
+      "progress_note": "Lane time-bars (Opus 5.5, 2026-09-28). REPL-admitted on hbox against certified dependencies. Teeth: tests/acl2/owner-time-bars-tests.lisp (prefix otbt-): a reached pipeline of ledgers (a normal completion; a stall telling the batch in flight and the next; the late completion answering no one; the successor answering only its untold member); per keystone a reached positive witness of the whole antecedent and conclusion, hypothesis-removal witnesses (a consumed ledger; a member listed twice; a stale then a fresh completion; a regressed dependency reading; a tampered earlier segment), a must-fail for the open hypothesis, and the splice tooth (run 2's readings on run 1's domain do not replay as run 2). Native: tests.test_native_slow_disk test_the_adopted_default_bars_classify_an_unresolved_write."
+    },
+    {
+      "id": "PRF-385",
+      "title": "The push feed's restart forgets the previous process's back-off deadline: a restarted feed does not depend on it, has none, and admits the new process's first observation",
+      "statement": "Subject fn-feed-restart (books/peer-feed.lisp), reached at every open through host/owner-host.lisp fn-owner-feed-restart (books/owner-feed-port.lisp fn-own-feed-port-restart-fold, the :restart event of fn-feed-live-next) and in the model's reopen (books/owner.lisp fn-own-reopen, fn-own-feed-restart-all). KEYSTONE fn-feed-restart-forgets-the-previous-clock-domain (books/feed-restart-domain.lisp): for a feed and any natural deadline B, the restart of the feed with B in place of its deadline is the restart of the feed; the restarted feed's deadline is 0; so the back-off conjunct of fn-feed-selection holds at every observation. The attempt counts (the semantic observation) are kept and set the next back-off.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-031"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/peer-feed.lisp",
+        "books/feed-restart-domain.lisp",
+        "tests/acl2/feed-restart-domain-tests.lisp",
+        "planning/evidence/time-bars-2026-09-28.md"
+      ],
+      "events": [
+        "fn-feed-restart-forgets-the-previous-clock-domain"
+      ],
+      "progress_note": "Lane time-bars (Opus 5.5, 2026-09-28). Found by the restart clock-domain audit: fn-feed-restart kept backoff-until, a reading of the previous process's monotonic clock rebuilt by the replay of :feed-retry/:feed-lost, and fn-feed-with-backoff never lowers it, so a peer backing off at the stop was not fed for about the previous run's uptime. Teeth: tests/acl2/feed-restart-domain-tests.lisp (prefix frd-): a feed backed off at 259,200,000 ms (three days up), restarted, offers again at 1,500 ms; the same through the replayed journal; the defect as a tooth (no restart: nothing offered); a non-feed keeps its deadline (the feedp hypothesis)."
     }
   ]
 }
