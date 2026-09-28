@@ -1,11 +1,15 @@
 ; Witnesses and teeth for books/store-log-segments.lisp (lane log-recovery):
 ; the segment names, the open's plan, the chain-broken classification, the
-; rotation kernel and T8 (fn-lg-segment-drop-preserves-the-open) over a
+; rotation kernel and T8 (books/store-log-stream.lisp
+; fn-lgw-segment-drop-preserves-the-open, the streamed open's) over a
 ; two-segment ground log of the log core's workload records.
 (in-package "ACL2")
-(include-book "../../books/store-log-segments")
+(include-book "../../books/store-log-stream")
 (include-book "../../books/frame-trailer")
 (include-book "must-fail-checked")
+; The record codec seam's attachment: the log's txid reads the record through
+; fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 ; -----------------------------------------------------------------------------
 ; Names.
@@ -114,68 +118,68 @@
 (assert-event (not (fn-lgs-rotate-needed-p (fn-lgs-rotate *slst-ks1*))))
 
 ; -----------------------------------------------------------------------------
-;; T8, reachable, over the host's fold (fn-lg-open-kernel per segment, read
-; as a string): the checkpoint at the rotation captures segment 1's records,
-; its F row's genesis is segment 1's last trailer; the drop leaves segment 2
-; and the history the open replays is the full fold's.
-(defun slst-chars (octets)
-  (if (consp octets) (cons (code-char (nfix (car octets))) (slst-chars (cdr octets))) nil))
-(defun slst-text (octets) (coerce (slst-chars octets) 'string))
-(make-event `(defconst *slst-t1* ',(slst-text *slst-seg1*)))
-(make-event `(defconst *slst-t2* ',(slst-text *slst-seg2*)))
+;; T8, reachable, over the host's streamed open (fn-lgw-open-chain-*: each
+; segment streamed by fn-lgw-run from the genesis carried from the one before,
+; host/native/io.lisp fnn-log-scan-segments): the checkpoint at the rotation
+; captures segment 1's records, its F row's genesis is segment 1's last
+; trailer; the drop leaves segment 2 and the history the open replays is the
+; full stream's.
 (defconst *slst-prefix* (list *slst-r1* *slst-r2*))
-; The host's string classifier is the model's (fn-lgs-chain-broken-string-p-
-; is-the-model), at the honest and the stale segment.
-(make-event `(defconst *slst-t-stale2* ',(slst-text *slst-stale2*)))
-(assert-event (not (fn-lgs-chain-broken-string-p *slst-t1* *slst-g0* *slst-unit* *slst-max*)))
-(assert-event (not (fn-lgs-chain-broken-string-p *slst-t2* *slst-g1* *slst-unit* *slst-max*)))
-(assert-event (fn-lgs-chain-broken-string-p *slst-t-stale2* *slst-g1* *slst-unit* *slst-max*))
-(assert-event (fn-lgs-octets-of (list *slst-t1* *slst-t2*)))
-(assert-event (equal (fn-lgs-octets-of (list *slst-t1* *slst-t2*)) (list *slst-seg1* *slst-seg2*)))
+; The stream's splice verdict is the model's at the honest and the stale
+; segment (fn-lgw-run-is-the-open's third conjunct).
+(assert-event (mv-let (records st) (fn-lgw-run *slst-seg2* (fn-lgw-start *slst-g1* 1) *slst-unit* *slst-max*)
+                (and (equal records (list *slst-r3*)) (not (fn-lgw-broken st)))))
+(assert-event (mv-let (records st) (fn-lgw-run *slst-stale2* (fn-lgw-start *slst-g1* 1) *slst-unit* *slst-max*)
+                (and (equal records nil) (fn-lgw-broken st))))
+; The stream over each segment is the scan (fn-lgw-open-chain-is-the-chain).
+(assert-event (equal (fn-lgw-open-chain-records (list *slst-seg1* *slst-seg2*) *slst-g0* *slst-unit* *slst-max*)
+                     (fn-lgs-chain-records (list *slst-seg1* *slst-seg2*) *slst-g0* *slst-unit* *slst-max*)))
+(assert-event (equal (fn-lgw-open-chain-last (list *slst-seg1* *slst-seg2*) *slst-g0* *slst-unit* *slst-max*)
+                     (fn-lgs-chain-last (list *slst-seg1* *slst-seg2*) *slst-g0* *slst-unit* *slst-max*)))
 (assert-event
- (and (equal *slst-prefix* (fn-lgs-open-chain-records (list *slst-t1*) *slst-g0* *slst-unit* *slst-max*))
-      (equal *slst-g1* (fn-lgs-open-chain-last (list *slst-t1*) *slst-g0* *slst-unit* *slst-max*))
+ (and (equal *slst-prefix* (fn-lgw-open-chain-records (list *slst-seg1*) *slst-g0* *slst-unit* *slst-max*))
+      (equal *slst-g1* (fn-lgw-open-chain-last (list *slst-seg1*) *slst-g0* *slst-unit* *slst-max*))
       (equal (append *slst-prefix*
-                     (fn-lgs-open-chain-records (list *slst-t2*) *slst-g1* *slst-unit* *slst-max*))
-             (fn-lgs-open-chain-records (list *slst-t1* *slst-t2*) *slst-g0* *slst-unit* *slst-max*))
-      (equal (fn-lgs-open-chain-records (list *slst-t1* *slst-t2*) *slst-g0* *slst-unit* *slst-max*)
+                     (fn-lgw-open-chain-records (list *slst-seg2*) *slst-g1* *slst-unit* *slst-max*))
+             (fn-lgw-open-chain-records (list *slst-seg1* *slst-seg2*) *slst-g0* *slst-unit* *slst-max*))
+      (equal (fn-lgw-open-chain-records (list *slst-seg1* *slst-seg2*) *slst-g0* *slst-unit* *slst-max*)
              (list *slst-r1* *slst-r2* *slst-r3*))))
 
 ; Without the genesis hypothesis: the F row names the zero genesis; the prefix
-; hypothesis holds, the genesis one fails, the suffix scans to nothing and the
+; hypothesis holds, the genesis one fails, the suffix streams to nothing and the
 ; conclusion fails.
-(assert-event (equal *slst-prefix* (fn-lgs-open-chain-records (list *slst-t1*) *slst-g0* *slst-unit* *slst-max*)))
-(assert-event (not (equal *slst-g0* (fn-lgs-open-chain-last (list *slst-t1*) *slst-g0* *slst-unit* *slst-max*))))
+(assert-event (equal *slst-prefix* (fn-lgw-open-chain-records (list *slst-seg1*) *slst-g0* *slst-unit* *slst-max*)))
+(assert-event (not (equal *slst-g0* (fn-lgw-open-chain-last (list *slst-seg1*) *slst-g0* *slst-unit* *slst-max*))))
 (assert-event
  (not (equal (append *slst-prefix*
-                     (fn-lgs-open-chain-records (list *slst-t2*) *slst-g0* *slst-unit* *slst-max*))
-             (fn-lgs-open-chain-records (list *slst-t1* *slst-t2*) *slst-g0* *slst-unit* *slst-max*))))
+                     (fn-lgw-open-chain-records (list *slst-seg2*) *slst-g0* *slst-unit* *slst-max*))
+             (fn-lgw-open-chain-records (list *slst-seg1* *slst-seg2*) *slst-g0* *slst-unit* *slst-max*))))
 (must-fail-checked
  (with-prover-step-limit
   20000
   (defthm slst-t8-without-genesis
-    (implies (equal prefix (fn-lgs-open-chain-records covered genesis0 unit max))
-             (equal (append prefix (fn-lgs-open-chain-records remaining genesis unit max))
-                    (fn-lgs-open-chain-records (append covered remaining) genesis0 unit max)))
-    :hints (("Goal" :in-theory (disable fn-lgs-open-chain-records fn-lgs-open-chain-last))))))
+    (implies (equal prefix (fn-lgw-open-chain-records covered genesis0 unit max))
+             (equal (append prefix (fn-lgw-open-chain-records remaining genesis unit max))
+                    (fn-lgw-open-chain-records (append covered remaining) genesis0 unit max)))
+    :hints (("Goal" :in-theory (disable fn-lgw-open-chain-records fn-lgw-open-chain-last))))))
 
 ; Without the prefix hypothesis: the checkpoint captured record 1 only; the
 ; genesis hypothesis holds, the prefix one fails, the history misses record 2.
-(assert-event (equal *slst-g1* (fn-lgs-open-chain-last (list *slst-t1*) *slst-g0* *slst-unit* *slst-max*)))
+(assert-event (equal *slst-g1* (fn-lgw-open-chain-last (list *slst-seg1*) *slst-g0* *slst-unit* *slst-max*)))
 (assert-event (not (equal (list *slst-r1*)
-                          (fn-lgs-open-chain-records (list *slst-t1*) *slst-g0* *slst-unit* *slst-max*))))
+                          (fn-lgw-open-chain-records (list *slst-seg1*) *slst-g0* *slst-unit* *slst-max*))))
 (assert-event
  (not (equal (append (list *slst-r1*)
-                     (fn-lgs-open-chain-records (list *slst-t2*) *slst-g1* *slst-unit* *slst-max*))
-             (fn-lgs-open-chain-records (list *slst-t1* *slst-t2*) *slst-g0* *slst-unit* *slst-max*))))
+                     (fn-lgw-open-chain-records (list *slst-seg2*) *slst-g1* *slst-unit* *slst-max*))
+             (fn-lgw-open-chain-records (list *slst-seg1* *slst-seg2*) *slst-g0* *slst-unit* *slst-max*))))
 (must-fail-checked
  (with-prover-step-limit
   20000
   (defthm slst-t8-without-prefix
-    (implies (equal genesis (fn-lgs-open-chain-last covered genesis0 unit max))
-             (equal (append prefix (fn-lgs-open-chain-records remaining genesis unit max))
-                    (fn-lgs-open-chain-records (append covered remaining) genesis0 unit max)))
-    :hints (("Goal" :in-theory (disable fn-lgs-open-chain-records fn-lgs-open-chain-last))))))
+    (implies (equal genesis (fn-lgw-open-chain-last covered genesis0 unit max))
+             (equal (append prefix (fn-lgw-open-chain-records remaining genesis unit max))
+                    (fn-lgw-open-chain-records (append covered remaining) genesis0 unit max)))
+    :hints (("Goal" :in-theory (disable fn-lgw-open-chain-records fn-lgw-open-chain-last))))))
 
 ; -----------------------------------------------------------------------------
 ; fn-lgs-open-plan-scan-ignores-covered (the drop's crash points).

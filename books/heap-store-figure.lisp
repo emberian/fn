@@ -35,9 +35,18 @@
 ;              for a realistic 45-character Message-ID in the two tries
 ;              (per-record-state section 2): 12 KiB.  The 5 KiB it replaces
 ;              was measured before the catalog and the carried retention trie
-;              and was BELOW the measurement.  *fn-heap-membership-octets* a
-;              group the record is posted to (measured 137 + 45 octets), G
-;              groups a record at most (the profile's max-groups-per-article).
+;              and was BELOW the measurement.
+;     memberships *fn-heap-membership-octets* a membership (a group a
+;              record is filed in; measured 137 + 45 octets), twice for the
+;              collector.  Since lane membership-budget (2026-09-27, ember's
+;              decision) every membership is CHARGED to the history budget at
+;              `*fn-sbud-membership-octets*' (books/store-budget.lisp; the
+;              same 320), so a store the profile admits holds at most
+;              H / 320 memberships (`fn-sbud-record-octets-pays-the-
+;              memberships'): the term is at most 2 x 320 x floor(H / 320)
+;              <= 2 H.  Before, nothing but G bounded them and the term was
+;              2 x T x 320 x G: 41 TB on the scale gate (T 2^20, G 65,535;
+;              planning/evidence/reservation-figure-2026-09-27.md section 1).
 ;              Lane history-columns lowers the record term (the history as
 ;              columns: 200 octets a record is its target) with its record.
 ;
@@ -83,7 +92,8 @@
 ;
 ; KEYSTONE `fn-heap-store-figure-holds-every-store': in any dynamic space of
 ; at least the figure, every store the profile admits (USED <= H payload
-; octets, N <= T records, each in at most G groups) fits with its open's
+; octets, N <= T records, M memberships whose charge 320 M is within H)
+; fits with its open's
 ; transient, the request in flight, the buffers, the image and the
 ; collector's room at the trigger the host sets there.
 
@@ -236,15 +246,45 @@
   (natp (fn-heap-arena-octets used))
   :rule-classes :type-prescription)
 
-; The state a store of USED payload octets and N records keeps.
-(defun fn-heap-store-state-octets (profile used n)
-  (declare (xargs :guard t))
+; The state a store of USED payload octets, N records and M memberships
+; keeps.
+(defun fn-heap-store-state-octets (profile used n m)
+  (declare (xargs :guard t) (ignore profile))
   (+ (fn-heap-arena-octets used)
      (* *fn-heap-handle-octets* (nfix n))
-     (* 2 (nfix n)
-        (+ *fn-heap-record-octets*
-           (* *fn-heap-membership-octets*
-              (nfix (fn-bs-profile-max-groups-per-article profile)))))))
+     (* 2 (nfix n) *fn-heap-record-octets*)
+     (* 2 *fn-heap-membership-octets* (nfix m))))
+
+; The memberships a store of the profile holds at most: the history budget
+; charges each `*fn-sbud-membership-octets*' and holds at most H.
+(defun fn-heap-membership-bound (profile)
+  (declare (xargs :guard t))
+  (floor (nfix (fn-bs-profile-max-history-octets profile))
+         *fn-sbud-membership-octets*))
+
+(defthm fn-heap-membership-bound-natp
+  (natp (fn-heap-membership-bound profile))
+  :rule-classes :type-prescription)
+
+(defthm fn-heap-nfix-of-membership-bound
+  (equal (nfix (fn-heap-membership-bound profile))
+         (fn-heap-membership-bound profile)))
+
+; KEYSTONE (the membership term is a function of H).  A store's
+; memberships, whose charge is within H, are at most the bound, and the
+; bound's heap term is at most 2 H.
+(defthm fn-heap-membership-bound-holds-the-charged-memberships
+  (implies (<= (* *fn-sbud-membership-octets* (nfix m))
+               (nfix (fn-bs-profile-max-history-octets profile)))
+           (<= (nfix m) (fn-heap-membership-bound profile)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bs-profile-max-history-octets))))
+
+(defthm fn-heap-membership-term-is-at-most-twice-h
+  (<= (* 2 *fn-heap-membership-octets* (fn-heap-membership-bound profile))
+      (* 2 (nfix (fn-bs-profile-max-history-octets profile))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bs-profile-max-history-octets))))
 
 ; The open's transient over an input of OU octets in ON records: one chunk
 ; and one entry as lists (at most the chunk and a record of R octets), the
@@ -267,12 +307,13 @@
      (* 2 (fn-ock-capture-budget profile))))
 
 ; THE MODEL: what a process needs of its dynamic space at the collector's
-; TRIGGER while it holds a store of USED octets in N records, having opened
+; TRIGGER while it holds a store of USED octets in N records with M
+; memberships, having opened
 ; (or opening) an input of OU octets in ON records.
-(defun fn-heap-store-need (profile core used n ou on trigger)
+(defun fn-heap-store-need (profile core used n m ou on trigger)
   (declare (xargs :guard t))
   (+ (fn-heap-core-dynamic core)
-     (fn-heap-store-state-octets profile used n)
+     (fn-heap-store-state-octets profile used n m)
      (fn-heap-store-open-octets profile ou on)
      (fn-heap-store-inflight-octets profile)
      (* 2 (nfix trigger))))
@@ -321,7 +362,8 @@
   (declare (xargs :guard t))
   (+ (fn-heap-core-dynamic core)
      (fn-heap-store-state-octets profile (fn-bs-profile-max-history-octets profile)
-                                 (fn-bs-profile-max-transactions profile))
+                                 (fn-bs-profile-max-transactions profile)
+                                 (fn-heap-membership-bound profile))
      (fn-heap-store-open-octets profile
                                 (fn-heap-open-octets-bound profile observed)
                                 (fn-heap-open-records-bound profile observed))
@@ -354,12 +396,12 @@
 ; The need grows with the store and the input: at most the base and the room.
 (local
  (defthm fn-heap-store-state-octets-monotone
-   (implies (and (<= (nfix used) (nfix h)) (<= (nfix n) (nfix tt)))
-            (<= (fn-heap-store-state-octets profile used n)
-                (fn-heap-store-state-octets profile h tt)))
+   (implies (and (<= (nfix used) (nfix h)) (<= (nfix n) (nfix tt))
+                 (<= (nfix m) (nfix mm)))
+            (<= (fn-heap-store-state-octets profile used n m)
+                (fn-heap-store-state-octets profile h tt mm)))
    :rule-classes nil
-   :hints (("Goal" :in-theory (disable fn-bs-profile-max-groups-per-article
-                                       fn-heap-arena-octets)
+   :hints (("Goal" :in-theory (disable fn-heap-arena-octets)
             :use ((:instance fn-heap-arena-octets-monotone (u1 used) (u2 h)))
             :nonlinearp t))))
 
@@ -390,26 +432,30 @@
  (defthm fn-heap-store-need-within-the-base
    (implies (and (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                 (<= (nfix m) (fn-heap-membership-bound profile))
                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
-            (<= (fn-heap-store-need profile core used n ou on trigger)
+            (<= (fn-heap-store-need profile core used n m ou on trigger)
                 (+ (fn-heap-store-base-octets profile core observed) (* 2 (nfix trigger)))))
    :hints (("Goal" :in-theory (e/d (fn-heap-store-need fn-heap-store-base-octets)
                                    (fn-heap-store-state-octets fn-heap-store-open-octets
                                     fn-heap-store-inflight-octets fn-heap-core-dynamic
                                     fn-heap-open-octets-bound fn-heap-open-records-bound
+                                    fn-heap-membership-bound
                                     fn-bs-profile-max-history-octets
                                     fn-bs-profile-max-transactions nfix))
             :use ((:instance fn-heap-store-state-octets-monotone
                              (h (fn-bs-profile-max-history-octets profile))
-                             (tt (fn-bs-profile-max-transactions profile)))
+                             (tt (fn-bs-profile-max-transactions profile))
+                             (mm (fn-heap-membership-bound profile)))
                   (:instance fn-heap-store-open-octets-monotone
                              (h (fn-heap-open-octets-bound profile observed))
                              (tt (fn-heap-open-records-bound profile observed))))))))
 
 ; KEYSTONE.  In a dynamic space of D octets, D at least the figure, every
 ; store the profile admits -- USED payload octets within H, N records within
-; T -- fits, with the open's transient over any input within the observed
+; T, M memberships whose charge (`*fn-sbud-membership-octets*' each) is
+; within H -- fits, with the open's transient over any input within the observed
 ; bound (OU octets, ON records), the request in flight, both buffers, the
 ; image's dynamic content and the collector's room at the trigger the host
 ; sets in D.
@@ -418,16 +464,19 @@
                 (<= (fn-heap-store-figure-octets profile core nursery observed) d)
                 (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
                 (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                (<= (* *fn-sbud-membership-octets* (nfix m))
+                    (nfix (fn-bs-profile-max-history-octets profile)))
                 (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
                 (<= (nfix on) (fn-heap-open-records-bound profile observed)))
-           (<= (fn-heap-store-need profile core used n ou on
+           (<= (fn-heap-store-need profile core used n m ou on
                                    (fn-heap-nursery-trigger d nursery))
                d))
   :hints (("Goal" :in-theory (union-theories
                                '(fn-heap-store-figure-octets fn-heap-store-base-octets-natp
                                  fn-heap-nfix-of-nursery-trigger)
                                (theory 'minimal-theory))
-           :use ((:instance fn-heap-store-need-within-the-base
+           :use (fn-heap-membership-bound-holds-the-charged-memberships
+                 (:instance fn-heap-store-need-within-the-base
                             (trigger (fn-heap-nursery-trigger d nursery)))
                  (:instance fn-heap-with-nursery-holds-the-trigger
                             (base (fn-heap-store-base-octets profile core observed)))))))
@@ -478,14 +527,23 @@
                             (b1 (fn-heap-store-base-octets profile core observed))
                             (b2 (fn-heap-store-base-octets profile core nil)))))))
 
-; The figure grows with the profile's bounds.
+; The figure grows with the profile's bounds.  (A hypothesis on the
+; max-groups-per-article field G was removed after proving the weakened
+; theorem, lane membership-budget: the memberships are bounded by H, and the
+; figure no longer reads G.)
+(local
+ (defthm fn-heap-membership-bound-monotone
+   (implies (<= (nfix (fn-bs-profile-max-history-octets p1))
+                (nfix (fn-bs-profile-max-history-octets p2)))
+            (<= (fn-heap-membership-bound p1) (fn-heap-membership-bound p2)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable fn-bs-profile-max-history-octets)))))
+
 (defthm fn-heap-store-base-octets-grows-with-the-profile
   (implies (and (<= (nfix (fn-bs-profile-max-history-octets p1))
                     (nfix (fn-bs-profile-max-history-octets p2)))
                 (<= (nfix (fn-bs-profile-max-transactions p1))
                     (nfix (fn-bs-profile-max-transactions p2)))
-                (<= (nfix (fn-bs-profile-max-groups-per-article p1))
-                    (nfix (fn-bs-profile-max-groups-per-article p2)))
                 (<= (nfix (fn-bs-profile-max-record-octets p1))
                     (nfix (fn-bs-profile-max-record-octets p2)))
                 (<= (nfix (fn-bs-profile-field 17 p1))
@@ -497,7 +555,7 @@
   :hints (("Goal" :in-theory (e/d (fn-heap-store-base-octets fn-heap-store-state-octets
                                    fn-heap-store-open-octets fn-heap-store-inflight-octets)
                                   (fn-ock-capture-budget fn-heap-open-bounds-of-nil
-                                   fn-heap-arena-octets
+                                   fn-heap-arena-octets fn-heap-membership-bound
                                    fn-heap-open-octets-bound fn-heap-open-records-bound
                                    fn-bs-profile-max-history-octets
                                    fn-bs-profile-max-transactions
@@ -506,11 +564,12 @@
                                    fn-bs-profile-field))
            :use ((:instance fn-heap-open-bounds-of-nil (profile p1))
                  (:instance fn-heap-open-bounds-of-nil (profile p2))
+                 (:instance fn-heap-membership-bound-monotone)
                  (:instance fn-heap-arena-octets-monotone
                             (u1 (fn-bs-profile-max-history-octets p1))
                             (u2 (fn-bs-profile-max-history-octets p2))))
            :nonlinearp t)))
 
-(in-theory (disable fn-heap-store-need fn-heap-store-base-octets
+(in-theory (disable fn-heap-store-need fn-heap-store-base-octets fn-heap-membership-bound
                     fn-heap-store-figure-octets fn-heap-core-dynamic fn-heap-core-file
                     fn-heap-open-octets-bound fn-heap-open-records-bound))

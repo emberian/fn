@@ -1,7 +1,7 @@
 ;; fn: K0 over the recovery program (P10, lane p10-k0-recovery).
 ;;
 ;; The last seven of the campaign's 25 cut coordinates
-;; (tests/campaign/native_cuts.py RECOVERY_CUTS): recover-replayed, the five
+;; (tests/campaign/native_cuts.py RECOVERY_CUTS): recover-replayed, the three
 ;; recover-barrier cuts of fn-bs-recover-program, and recovery-stage-unlinked
 ;; of fn-bs-recover-stage-cleanup-program; and the issued-link error arm of
 ;; P-RECORD.
@@ -35,9 +35,9 @@
 ;;       it is not, (:recover) lands in :fault; the host faults before
 ;;       recover-replayed (io.lisp:1478-1480) and no cut is reached.
 ;;
-;; Both run theorems say the byte state is the image at every pair (the five
+;; Both run theorems say the byte state is the image at every pair (the three
 ;; fences drain nothing on a quiet store) and the last pair's kernel is :ready
-;; at five barriers.  fn-bs-host-recovery-sweep-starts-related composes that
+;; at three barriers.  fn-bs-host-recovery-sweep-starts-related composes that
 ;; last pair with fn-bs-recover-sweep-keeps-relation-at-every-cut: every
 ;; recovery-stage-unlinked cut of the sweep is related.
 ;;
@@ -430,7 +430,7 @@
                             (k0r-quiet-durable-is-self fn-bs-statep))))))
 
 ;; Indices: 0 (:recover), 1 recover-replayed, then per barrier fsync, observe,
-;; cut; the five recover-barrier cuts are pairs 4, 7, 10, 13 and 16.
+;; cut; the three recover-barrier cuts are pairs 4, 7 and 10.
 (defthm fn-bs-recover-program-run-from-a-quiet-image
   (implies (and (fn-bs-statep image) (equal (fn-bs-pending image) nil)
                 (fn-record-uint32p f) (fn-sf-record-listp r 0 0 f)
@@ -447,13 +447,7 @@
                         (cons image (fn-bs-recovered-kernel f r 2))
                         (cons image (fn-bs-recovered-kernel f r 2))
                         (cons image (fn-bs-recovered-kernel f r 3))
-                        (cons image (fn-bs-recovered-kernel f r 3))
-                        (cons image (fn-bs-recovered-kernel f r 3))
-                        (cons image (fn-bs-recovered-kernel f r 4))
-                        (cons image (fn-bs-recovered-kernel f r 4))
-                        (cons image (fn-bs-recovered-kernel f r 4))
-                        (cons image (fn-bs-recovered-kernel f r 5))
-                        (cons image (fn-bs-recovered-kernel f r 5)))))
+                        (cons image (fn-bs-recovered-kernel f r 3)))))
   :rule-classes nil
   :hints (("Goal" :expand ((:free (b k s o) (fn-bs-run b k s o groups capacity)))
            :in-theory (e/d (fn-bs-recover-program fn-bs-step fn-bs-fsync-file fn-bs-fsync-dir)
@@ -491,7 +485,7 @@
                             fn-bs-authority-knownp k0r-recovered-kernel-is-state)))))
 
 ;; ---------------------------------------------------------------------------
-;; 5. The six recovery-program cuts, from any kernel whose (:recover)
+;; 5. The four recovery-program cuts, from any kernel whose (:recover)
 ;; observation lands on the recovered kernel at zero barriers.
 (defthm fn-bs-recover-program-keeps-relation-at-every-cut
   (implies (and (fn-bs-store-relation bs ks arena)
@@ -502,9 +496,9 @@
                                                rows 0)))
            (let ((run (fn-bs-run image k (fn-bs-recover-program) nil groups capacity)))
              (and (fn-bs-run-relatedp run arena)
-                  (equal (len run) 17)
-                  (equal (car (nth 16 run)) image)
-                  (equal (cdr (nth 16 run))
+                  (equal (len run) 11)
+                  (equal (car (nth 10 run)) image)
+                  (equal (cdr (nth 10 run))
                          (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store image))
                                                  rows
                                                  *fn-sf-recovery-barrier-count*)))))
@@ -518,9 +512,7 @@
                  (:instance fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel (img image) (n 0))
                  (:instance fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel (img image) (n 1))
                  (:instance fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel (img image) (n 2))
-                 (:instance fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel (img image) (n 3))
-                 (:instance fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel (img image) (n 4))
-                 (:instance fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel (img image) (n 5)))
+                 (:instance fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel (img image) (n 3)))
            :in-theory (e/d (fn-bs-run-relatedp)
                            (fn-bs-run fn-bs-store-relation fn-bs-recovered-kernel fn-bs-statep
                             fn-bs-scan-store fn-bs-scan-okp fn-bs-scan-frontier fn-bs-scan-records
@@ -557,9 +549,9 @@
                                  (fn-bs-recover-program) nil groups capacity)))
              (and (fn-bs-store-relation image (fn-bs-recovery-entry-kernel image rows) arena)
                   (fn-bs-run-relatedp run arena)
-                  (equal (len run) 17)
-                  (equal (car (nth 16 run)) image)
-                  (equal (fn-sf-phase (cdr (nth 16 run))) :ready))))
+                  (equal (len run) 11)
+                  (equal (car (nth 10 run)) image)
+                  (equal (fn-sf-phase (cdr (nth 10 run))) :ready))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-crash-image-relates-to-recovery-entry-kernel
@@ -599,9 +591,9 @@
                   (run (fn-bs-run image host (fn-bs-recover-program) nil groups capacity)))
              (and (fn-bs-store-relation image host arena)
                   (fn-bs-run-relatedp run arena)
-                  (equal (len run) 17)
-                  (equal (car (nth 16 run)) image)
-                  (equal (fn-sf-phase (cdr (nth 16 run))) :ready))))
+                  (equal (len run) 11)
+                  (equal (car (nth 10 run)) image)
+                  (equal (fn-sf-phase (cdr (nth 10 run))) :ready))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-crash-image-recovery-facts
@@ -640,7 +632,7 @@
                                       (fn-cpo-open-observed configs
                                                             (fn-bs-scan-frontier (fn-bs-scan-store image))
                                                             rows))))
-                  (last (nth 16 (fn-bs-run image host (fn-bs-recover-program) nil groups capacity))))
+                  (last (nth 10 (fn-bs-run image host (fn-bs-recover-program) nil groups capacity))))
              (and (fn-bs-store-relation (car last) (cdr last) arena)
                   (fn-bs-sweep-run-okp
                    (fn-bs-run (car last) (cdr last) (fn-bs-recover-sweep-program names) outcomes
@@ -649,7 +641,7 @@
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-host-recovery-keeps-relation-at-every-cut
-                 (:instance k0r-run-relatedp-nth (k 16)
+                 (:instance k0r-run-relatedp-nth (k 10)
                   (pairs (fn-bs-run image
                                     (fn-sn-files (fn-sn-open-state
                                                   (fn-cpo-open-observed configs
@@ -657,13 +649,13 @@
                                                                         rows)))
                                     (fn-bs-recover-program) nil groups capacity)))
                  (:instance fn-bs-recover-sweep-keeps-relation-at-every-cut
-                  (bs (car (nth 16 (fn-bs-run image
+                  (bs (car (nth 10 (fn-bs-run image
                                               (fn-sn-files (fn-sn-open-state
                                                             (fn-cpo-open-observed configs
                                                                                   (fn-bs-scan-frontier (fn-bs-scan-store image))
                                                                                   rows)))
                                               (fn-bs-recover-program) nil groups capacity))))
-                  (ks (cdr (nth 16 (fn-bs-run image
+                  (ks (cdr (nth 10 (fn-bs-run image
                                               (fn-sn-files (fn-sn-open-state
                                                             (fn-cpo-open-observed configs
                                                                                   (fn-bs-scan-frontier (fn-bs-scan-store image))

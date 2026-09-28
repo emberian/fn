@@ -87,7 +87,7 @@
   ;; :new :handshake :hs-wait :serving :draining :done
   (phase :new)
   input
-  out (out-at 0) out-deadline out-op after close-after-handshake
+  out (out-at 0) out-deadline out-op after
   want resume-at idle-at hs-deadline drain-deadline
   greeting done
   ;; The service class this connection's quanta are admitted as (:reader, or
@@ -417,9 +417,17 @@ the same octets are handed to the next step."
          (incoming (fnn-mux-conn-input conn))
          (channel (fnn-mux-conn-channel conn))
          (results (multiple-value-list
-                   (fnn-owner-handle-chunk service (fnn-mux-conn-cid conn) incoming
-                                           (fnn-mux-conn-socket conn)
-                                           (fnn-mux-conn-class conn)))))
+                   ;; PKT-858: a peer connection's read enters as ACL2's
+                   ;; class for it (fnn-owner-peer-read-class: :reader while
+                   ;; the disk sheds, so IHAVE/CHECK are answered 436/431
+                   ;; at once instead of waiting for the barrier).
+                   (let ((peerp (eq (fnn-mux-conn-class conn) :transit)))
+                     (fnn-owner-handle-chunk service (fnn-mux-conn-cid conn) incoming
+                                             (fnn-mux-conn-socket conn)
+                                             (if peerp
+                                                 (fnn-owner-peer-read-class service)
+                                               (fnn-mux-conn-class conn))
+                                             peerp)))))
     ;; Format 9 (lane commit-onto-log): the step queued its submission for the
     ;; next commit quantum.  The rest is the submitted step's handling, with
     ;; the plan built when the completion arrives (fnn-mux-await-done).
@@ -468,8 +476,11 @@ the same octets are handed to the next step."
           (fnn-fault "owner requested STARTTLS on a protected channel"))
         (unless (fnn-owner-service-tls-context service)
           (fnn-fault "owner requested STARTTLS without a TLS context")))
-      (setf (fnn-mux-conn-close-after-handshake conn) (and starttls closing))
-      (let ((after (cond (starttls :starttls) (closing :close) (t nil))))
+      ;; STARTTLS is ACL2's handshake owed (books/served-plan.lisp
+      ;; fn-splan-step-handshake-owed): never with the step's own close or the
+      ;; exposure's.  CLOSING with it is only a service stop (the drain was
+      ;; uncertain), and a stopping service is closed, not upgraded.
+      (let ((after (cond (closing :close) (starttls :starttls) (t nil))))
         (if (and (consp plan) (eq (first plan) :await))
             (fnn-mux-await loop conn (second plan) (third plan) after)
           (fnn-mux-queue-plan loop conn plan after))))))
@@ -540,8 +551,13 @@ no exposure wait pending."
 (defun fnn-mux-idle (loop conn)
   "RFC 3977 3.1's autologout, decided by ACL2 (fn-exp-idle): the close sends
 nothing."
-  (if (eq (fnn-owner-exposure-idle (fnn-mux-service loop) (fnn-mux-conn-cid conn)
-                                   (fnn-mux-conn-class conn))
+  ;; PKT-858: the idle quantum is exposure accounting only (fn-exp-idle: no
+  ;; offer, no session, no store), a reader-class quantum for a peer
+  ;; connection as for a reader: as :transit it waited at the gate for the
+  ;; batch in flight -- the whole barrier when the disk stalls -- and held
+  ;; this I/O loop, every connection it serves included (the native case
+  ;; found it: the peer's IHAVE during a stall was never read).
+  (if (eq (fnn-owner-exposure-idle (fnn-mux-service loop) (fnn-mux-conn-cid conn) :reader)
           :close)
       (progn (setf (fnn-mux-conn-idle-at conn) nil)
              (fnn-mux-begin-drain loop conn))
@@ -616,9 +632,7 @@ handshake."
         (fnn-mux-start-waiting-handshake loop)
         (let ((greeting (fnn-mux-conn-greeting conn)))
           (setf (fnn-mux-conn-greeting conn) nil)
-          (cond ((fnn-mux-conn-close-after-handshake conn)
-                 (fnn-mux-begin-drain loop conn))
-                ((and greeting (> (length greeting) 0))
+          (cond ((and greeting (> (length greeting) 0))
                  (fnn-mux-queue loop conn greeting :send-greeting nil))
                 (t (fnn-mux-after loop conn nil))))))))
 

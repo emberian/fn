@@ -43,6 +43,7 @@
 
 (in-package "ACL2")
 (include-book "byte-store-invariants")
+(include-book "payload-lz-value")
 
 ; -----------------------------------------------------------------------------
 ; A-DURABILITY.  "A completed platform barrier preserves the named bytes and
@@ -542,3 +543,90 @@
   :hints (("Goal" :induct (fn-durable-ind off len))))
 
 (in-theory (disable fn-durable-octets-unfold))
+
+; -----------------------------------------------------------------------------
+; A-DURABLE-LZ (lane compression-extents, 2026-09-27; PRF-326; brief C2 of
+; planning/evidence/article-compression-2026-09-27.md section 6).
+;
+; "The host's realizer for a COMPRESSED extent answers the value its C
+; decodes to."
+;
+; A compressed extent (books/payload-lz-record.lisp) is an LZ4 block C at
+; [POFF, POFF+PLEN) inside a log entry (protected prefix [EOFF, EOFF+ELEN),
+; trailer TRAILER), decoding against the dictionary DICT to N octets.
+; `(fn-durable-realize-lz file eoff elen poff plen trailer n dict)' is the
+; host's realizer (host/native/extent.lisp): it reads C through the extent
+; realizer above (one pread of the entry, ACL2's trailer check,
+; `fn-durable-realize-octets'), runs ACL2's decoder on it
+; (`fn-lzr-lz-value''s decode, books/payload-lz-value.lisp) and answers the
+; octets ACL2 produced; where the decode fails it REFUSES by name
+; (:lz-decode, a recovery event) and answers nothing.  The constraint says
+; what it answers is `fn-lzr-lz-value' of C's durable octets.  It is a
+; named contract on host code (a cache keeps the last decoded payload so a
+; reader that reads octet by octet decodes once), not on the decoder: the
+; decoder is ACL2's, and what the octets are is A-DURABLE-EXTENT's.
+;
+; Theorems that take it: fn-arena-seal-lz-extent-payload and
+; fn-arena-reseat-lz-extent-keeps-a-faithful-arena (books/payload-arena.lisp)
+; through the arena's compressed exports, and every consumer theorem over
+; the arena through them.
+(encapsulate
+  (((fn-durable-realize-lz * * * * * * * *) => *))
+
+  (local (defun fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
+           (declare (ignore eoff elen trailer))
+           (fn-lzr-lz-value dict (fn-durable-octets file poff plen) n)))
+
+  (defthm fn-durable-realize-lz-is-the-lz-value
+    (equal (fn-durable-realize-lz file eoff elen poff plen trailer n dict)
+           (fn-lzr-lz-value dict (fn-durable-octets file poff plen) n))))
+
+; A-PGS-HOST-IO (lane arena-store, 2026-09-27; the page store,
+; books/pagestore*.lisp; the host I/O half of what the prototype called
+; A-PGS-OBSERVE).
+;
+; "The page file holds, at page ADDR, the 2048 little-endian u64 words the
+; host last durably wrote there; and the host's fill answers them."
+;
+; What is PROVED at this boundary, and so not assumed: the word digest the
+; host calls is SHA-256 of the words' octets (pgs-x-words-digest-is-sha256,
+; books/pagestore-words-sha.lisp); a table page's and the directory
+; run's words are the encodings of the model's table pages and directory,
+; and decoding them gives those back (pgs-x-table-page-words,
+; pgs-x-dir-run-words, pgs-decode-encode-table); the open's verdicts over the
+; decoded words are the model's (pgs-x-dir-verdict-is-model,
+; pgs-x-table-verdict-is-model); the commit the host runs refines the model's
+; (pgs-x-commit-refines) -- all in books/pagestore-exec.lisp.
+;
+; What is ASSUMED: `(fn-pgs-page-words file addr)' is the list of 2048 u64
+; words the page file FILE holds at page ADDR, and
+; `(fn-pgs-fill-realize file addr)', the host's fill
+; (host/native/proto-pagestore-io.lisp `fnps-fill-from-file': pread on the
+; stobj array's storage, short counts looped, EINTR retried, end of file and
+; every other error a named condition, never a silent zero fill; the
+; little-endian check at load, A-PGS-LE), answers exactly those words.
+; Durability of what was written is A-DURABILITY's (a completed fdatasync);
+; the page store's crash model is books/pagestore.lisp `pgs-crash'
+; (any subset of the commit's writes), which the power-loss rig checks
+; against dm-log-writes replays.
+;
+; Theorems that should take it (a page read by the host is the page the
+; model's `pgs-lookup' answers): the composition of pgs-x-table-verdict-is-model
+; and pgs-x-dir-verdict-is-model with the fill, not yet stated.
+(encapsulate
+  (((fn-pgs-page-words * *) => *)
+   ((fn-pgs-fill-realize * *) => *))
+
+  (local (defun fn-pgs-page-words (file addr)
+           (declare (ignore file addr))
+           (make-list 2048 :initial-element 0)))
+
+  (local (defun fn-pgs-fill-realize (file addr)
+           (fn-pgs-page-words file addr)))
+
+  (defthm fn-pgs-page-words-shape
+    (and (true-listp (fn-pgs-page-words file addr))
+         (equal (len (fn-pgs-page-words file addr)) 2048)))
+
+  (defthm fn-pgs-fill-realize-is-page-words
+    (equal (fn-pgs-fill-realize file addr) (fn-pgs-page-words file addr))))

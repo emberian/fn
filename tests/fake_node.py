@@ -26,6 +26,9 @@ Every switch names one thing about a node a client has to survive:
     drop_before_greeting  the connection is accepted and closed, unspoken
     close_after_382     STARTTLS is agreed to and the socket then closes
     host                where it listens, so `::1` can be reached as `::1`
+    implicit_tls        TLS from the first octet (RFC 8143, the node's
+                        `tls_port'): the greeting comes inside the layer and
+                        STARTTLS is never offered
 
 The last two arrived from the frozen 915d5c72 node on 2026-09-22
 (planning/evidence/fn-client-915-2026-09-22.md).  `drop_before_greeting` is
@@ -53,7 +56,8 @@ class FakeNode(threading.Thread):
                  uncertain_post=False, drop_after_article=False, fail_article=None,
                  echo_password=False, groups=("fn.agents",), drop_before_greeting=False,
                  host="127.0.0.1", refusal="441 posting failed; the article was refused",
-                 close_after_382=False, d25=False, commit_then_drop=False):
+                 close_after_382=False, d25=False, commit_then_drop=False,
+                 implicit_tls=False):
         super().__init__(daemon=True)
         self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.context.load_cert_chain(cert, key)
@@ -68,6 +72,7 @@ class FakeNode(threading.Thread):
         self.drop_after_article = drop_after_article
         self.drop_before_greeting = drop_before_greeting
         self.close_after_382 = close_after_382
+        self.implicit_tls = implicit_tls
         self.fail_article = fail_article
         self.echo_password = echo_password
         # d25: a POST under a held Message-ID is answered from what is held,
@@ -99,6 +104,13 @@ class FakeNode(threading.Thread):
 
     def stop(self):
         self.stopping = True
+        # On Linux close() alone leaves a thread blocked in accept() holding
+        # the listening socket, which then accepts one more connection;
+        # shutdown() wakes it (the reader's "unreachable node" test on hbox).
+        try:
+            self.listener.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
         self.listener.close()
 
     # ---- the article table ---------------------------------------------
@@ -204,6 +216,9 @@ class FakeNode(threading.Thread):
             # refused connection a stopped listener gives.
             conn.close()
             return
+        if self.implicit_tls:
+            conn = self.context.wrap_socket(conn, server_side=True)
+            tls = True
         send("200 fake node ready")
         try:
             while True:
@@ -215,7 +230,7 @@ class FakeNode(threading.Thread):
                     caps = ["VERSION 2", "READER"]
                     if self.accept_post:
                         caps.append("POST")
-                    if self.offer_starttls and not tls:
+                    if self.offer_starttls and not tls and not self.implicit_tls:
                         caps.append("STARTTLS")
                     if not authenticated and (tls or not self.protected_only):
                         caps.append("AUTHINFO USER")

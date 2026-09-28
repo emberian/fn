@@ -920,21 +920,21 @@
 
 ; books/owner-commit-carried.lisp fn-ccar-own-finish
 ; (fn-owner-finish-submission).
-(defun fn-apc-own-finish (o cfg fn-arena carry)
-  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store o))))
+(defun fn-apc-own-finish (o cfg fn-arena fn-hist carry)
+  (declare (xargs :stobjs (fn-arena fn-hist) :guard (fn-sn-statep (fn-own-store o))))
   (if (fn-ccar-completion-enabledp (fn-own-store o))
       (cons (if (fn-apc-completion-names-submission-p o cfg fn-arena carry)
                 :durable :fault)
-            (fn-rix-own-complete-enabled o))
+            (fn-rix-own-complete-enabled o fn-hist))
     (cons :fault o)))
 
-; The completion refreshes over the Store's event index
+; The completion refreshes over the history stobj
 ; (books/owner-refresh-indexed.lisp fn-rix-own-complete-enabled-is-ccar):
-; hence fn-ceis-indexedp of the owner's Store, which every owner the host
-; holds carries (fn-osi-live-owner-store-is-indexed).
+; hence R, the stobj IS the owner's Store's history, which the host
+; establishes before the call (host/store-node-host.lisp fn-host-hist-sync).
 (defthm fn-apc-own-finish-is-ccar-own-finish
-  (implies (and (fn-apc-p carry) (fn-ceis-indexedp (fn-own-store o)))
-           (equal (fn-apc-own-finish o cfg fn-arena carry)
+  (implies (and (fn-apc-p carry) (fn-hist-of-storep fn-hist (fn-own-store o)))
+           (equal (fn-apc-own-finish o cfg fn-arena fn-hist carry)
                   (fn-ccar-own-finish o cfg fn-arena)))
   :hints (("Goal" :in-theory '(fn-apc-own-finish fn-ccar-own-finish
                                fn-rix-own-complete-enabled-is-ccar
@@ -942,8 +942,8 @@
 
 ; KEYSTONE for the host line: the word and the owner are fn-own-finish's.
 (defthm fn-apc-own-finish-is-own-finish
-  (implies (and (fn-apc-p carry) (fn-ceis-indexedp (fn-own-store o)))
-           (equal (fn-apc-own-finish o cfg fn-arena carry)
+  (implies (and (fn-apc-p carry) (fn-hist-of-storep fn-hist (fn-own-store o)))
+           (equal (fn-apc-own-finish o cfg fn-arena fn-hist carry)
                   (fn-own-finish o cfg fn-arena)))
   :hints (("Goal" :in-theory '(fn-apc-own-finish-is-ccar-own-finish
                                fn-ccar-own-finish-is-own-finish))))

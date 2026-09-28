@@ -79,7 +79,8 @@
 ; records field is not canonical.  Copying its field is not fn-sf-make of its
 ; list.  (CORRUPTED state, labelled: no transition builds it.)
 (defconst *sf-noncanon*
-  (fn-sf-make-fields :ready 0 nil *sl-bad* nil nil (fn-sl-of nil) 5))
+  (fn-sf-make-fields :ready 0 nil *sl-bad* nil nil (fn-sl-of nil)
+                     *fn-sf-recovery-barrier-count*))
 (assert-event (not (fn-sf-shapep *sf-noncanon*)))
 (assert-event (not (equal (fn-sf-make-fields :ready 0 nil (fn-sf-records-field *sf-noncanon*)
                                              nil nil (fn-sf-successes-field *sf-noncanon*) 5)

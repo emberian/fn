@@ -41,7 +41,7 @@
   (let ((identity (fn-replay-identity records))
         (consumer (fn-cpe-projection-replay nil records 0))
         (topic (fn-th-prefix-project records))
-        (event-index (fn-cei-build records)))
+        (event-index nil)) ; field 13 retired (lane history-columns-3)
     (if (and (equal (fn-stxk-context-kind identity) :ok)
              (equal (car consumer) :ok)
              (equal (fn-th-at 0 topic) :ok))

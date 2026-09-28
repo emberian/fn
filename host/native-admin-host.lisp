@@ -90,6 +90,8 @@
                                 :set-group-description :set-motd
                                 ;; PRF-222: a login's group access.
                                 :account-access
+                                ;; public-node-2: an account's deletion.
+                                :account-delete
                                 ;; PRF-234: a consumer's account binding.
                                 :consumer-bind
                                 ;; PRF-243: the default subscription list.
@@ -167,6 +169,7 @@
 (defun fn-acct-host-salt-octets () *fn-authsec-salt-octets*)
 (defun fn-acct-host-code-text (entropy) (fn-acct-code-text entropy))
 (defun fn-acct-host-code-digest-text (code-octets)
+  (declare (xargs :guard (fn-cbor-octet-listp code-octets) :verify-guards nil))
   (fn-acct-code-digest-text code-octets))
 (defun fn-acct-host-invite-argv (digest seconds)
   (list (fn-record-string-octets "account")

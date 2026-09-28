@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 
@@ -423,6 +424,20 @@ class CacheTests(unittest.TestCase):
                 "origins": {"/home/ember/fn-gates/dev-head": 300,
                             "/home/ember/fn-gates/tool-cache": 38}})
             self.assertEqual(farm.cache_summary(record), "330+8/2")
+
+    def test_a_submit_with_nothing_to_certify_says_so_loudly(self):
+        everything = ("install-partial: 12 books, cache /home/ember/fn-certcache\n"
+                      "  toolchain tool-p; installed 10, kept 2, missing 0, removed 0; "
+                      "roots installed 3 of 3; origins /home/ember/fn-gates/dev-head=12\n")
+        fake = Fake([], certs=everything)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            err = io.StringIO()
+            with driving(fake, root / "cache"), contextlib.redirect_stderr(err):
+                farm.submit("persvati", root, ["books/alpha"], jobs=8, timeout_seconds=60,
+                            affected_by=[], remote=Path("/home/ember/fn-gates/dev-head"))
+        self.assertIn("ALL 12 BOOKS CAME FROM THE CACHE -- this run certified NOTHING",
+                      err.getvalue())
 
     def test_recertify_reaches_the_cache_preflight_and_the_runner(self):
         fake = Fake([], certs=PARTIAL)
@@ -943,6 +958,42 @@ class FrictionTests(unittest.TestCase):
         self.assertIn("form starting at host/io.lisp:1 never closes", text)
         self.assertEqual(fake.commands, [])
 
+    def test_a_selection_the_runner_refuses_is_refused_before_the_sync(self):
+        # shared-books: a book in no Makefile root's closure cost a whole mirror.
+        fake = Fake([])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            seed_books(root)
+            (root / "tools").mkdir(exist_ok=True)
+            (root / "tools" / "certify_books.py").write_text(
+                "import sys\nprint('certify_books: in no Makefile root closure: '"
+                " + sys.argv[-1], file=sys.stderr)\nsys.exit(2)\n")
+            with driving(fake, root / "cache"):
+                with self.assertRaises(farm.FarmError) as refused:
+                    farm.submit("persvati", root, [], jobs=2, timeout_seconds=60,
+                                affected_by=["books/alpha"])
+        text = str(refused.exception)
+        self.assertIn("before any sync", text)
+        self.assertIn("in no Makefile root closure: books/alpha", text)
+        self.assertEqual(fake.commands, [])
+
+    def test_submit_with_no_box_picks_the_least_loaded(self):
+        picked = farm.pick_host(lambda *a, **k: SimpleNamespace(returncode=0,
+                                                               stdout="persvati\n"))
+        self.assertEqual(picked, "persvati")
+        with self.assertRaises(farm.FarmError):
+            farm.pick_host(lambda *a, **k: SimpleNamespace(returncode=3, stdout=""))
+        calls = []
+        with mock.patch.object(farm, "pick_host", lambda: "hbox"), \
+                mock.patch.object(farm, "submit",
+                                  lambda host, root, books, *a, **k: calls.append(
+                                      (host, books)) or "run-x"), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(farm.main(["submit", "books/wire", "books/x"]), 0)
+            self.assertEqual(farm.main(["submit", "auto", "books/y"]), 0)
+        self.assertEqual(calls, [("hbox", ["books/wire", "books/x"]), ("hbox", ["books/y"])])
+
     def test_valid_words_with_lisp_suffix_pass_validation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
@@ -1000,6 +1051,66 @@ class FrictionTests(unittest.TestCase):
         self.assertIn("FAILED tests/acl2/beta-tests: timed out after 300 s", text)
         self.assertIn("12.5 s  books/alpha  (at 2 jobs)", text)
         self.assertNotIn("books/beta  (at", text)
+
+    def test_verdict_names_installed_books_no_committed_manifest_certified(self):
+        # Batch AY, 2026-09-28: a union cite installed books from the cache
+        # whose certifying run was never committed; green_check owed them.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / "books").mkdir()
+            for name in ("cited", "uncited", "top"):
+                (root / f"books/{name}.lisp").write_text(f'(in-package "ACL2")\n; {name}\n')
+            digest = farm.certs.content_hash(root / "books/cited.lisp")
+            archive = root / "planning/evidence/manifests"
+            archive.mkdir(parents=True)
+            (archive / "certify-20260925T000000Z-9.json").write_text(json.dumps({
+                "book_results": {"books/cited": "passed"},
+                "source_digests_sha256": {"books/cited.lisp": digest}}))
+            self.write_run(root, {
+                "status": "passed", "book_results": {"books/top": "passed"},
+                "book_provenance": {"books/top": "certified", "books/cited": "installed",
+                                    "books/uncited": "installed"}}, {})
+            text = "\n".join(farm.verdict_lines(root, "run-v", 0))
+            self.assertIn("installed-without-cited-manifest: 1: books/uncited", text)
+            self.assertIn("--recertify-uncited", text)
+            import certified_claims
+            self.assertEqual(certified_claims.uncited_books(
+                root, ["books/cited", "books/uncited"]), ["books/uncited"])
+
+    def test_a_signal_exit_is_killed_not_failed(self):
+        manifest = {
+            "status": "failed", "jobs_effective": 8,
+            "book_results": {"books/alpha": "passed", "books/beta": "failed",
+                             "books/gamma": "failed"},
+            "book_failures": {"books/beta": ["ACL2 exited -9"],
+                              "books/gamma": ["ACL2 exited 1"]},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.write_run(root, manifest, {})
+            lines = farm.verdict_lines(root, "run-v", 143)
+        text = "\n".join(lines)
+        self.assertTrue(lines[0].startswith("== verdict run-v: exit 143 -- KILLED by "
+                                            "SIGTERM (earlyoom"), lines[0])
+        self.assertIn("not failed", lines[0])
+        self.assertIn("KILLED books/beta: ACL2 ended by SIGKILL (no verdict)", text)
+        self.assertNotIn("FAILED books/beta", text)
+        self.assertIn("FAILED books/gamma", text)
+        self.assertIn("passed 1, failed 1, killed 1;", text)
+        self.assertEqual(farm.killed_signal(137), 9)
+        self.assertEqual(farm.killed_signal(-15), 15)
+        self.assertIsNone(farm.killed_signal(1))
+        self.assertIsNone(farm.killed_signal("running"))
+
+    def test_a_run_that_certified_nothing_says_so_loudly(self):
+        manifest = {"status": "passed", "book_results": {},
+                    "book_provenance": {"books/alpha": "installed",
+                                        "books/beta": "installed"}}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.write_run(root, manifest, {})
+            text = "\n".join(farm.verdict_lines(root, "run-v", 0))
+        self.assertIn("ALL 2 BOOKS CAME FROM THE CACHE -- this run certified NOTHING", text)
 
     def test_verdict_without_a_manifest_is_unknown_not_green(self):
         with tempfile.TemporaryDirectory() as directory:

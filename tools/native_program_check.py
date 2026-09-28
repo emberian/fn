@@ -10,8 +10,7 @@ For each byte-model program the native cut table names
   `fnn-at` cuts on the straight-line success path, read in source order,
   must equal the program's step list in `books/byte-store-programs.lisp`,
   step for step.  A step compares by kind AND directory: `(fnn-fsync-dir
-  (fnn-transactions store))` is `(:fsync-dir :transactions)`, never
-  `:root`.  A file name compares only where the host expression is a fixed
+  (fnn-staging store))` is `(:fsync-dir :staging)`, never `:root`.  A file name compares only where the host expression is a fixed
   name (config.json, allocation-frontier.json); a `stage`/`final` variable
   matches a model variable and nothing else.  File contents are not compared.
   Calls to other `io.lisp` functions that reach a step primitive are expanded
@@ -36,7 +35,7 @@ For each byte-model program the native cut table names
 It CANNOT decide, and does not claim: runtime control flow -- which arm of a
 `handler-case`, `ignore-errors`, `when`/`unless`/`if` runs; every form is read
 as executed once, in source order, and a `loop`/`dolist` other than
-`fnn-recover`'s barrier loop (expanded to its five lambdas) is read as one
+`fnn-recover`'s barrier loop (expanded to its three lambdas) is read as one
 iteration; whether an opaque ACL2 call (`OPAQUE_CALLS`) performs the
 transitions it is declared to; what a `funcall` of any other callback or a
 function defined outside io.lisp does; operating-system semantics of the
@@ -100,7 +99,6 @@ SEQUELS = {
 # Model directory ids for host directory expressions.
 DIR_ACCESSORS = {
     "fnn-store-root": ":root",
-    "fnn-transactions": ":transactions",
     "fnn-staging": ":staging",
 }
 

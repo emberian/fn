@@ -83,7 +83,7 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
                                           cut.occurrence, cut.book)
                    for cut in native_cuts.RECOVERY_CUTS
                    if cut.model_name == "recover-barrier"]
-        self.assertEqual(len(indices), 5)
+        self.assertEqual(len(indices), 3)  # *fn-sf-recovery-barrier-count*
         self.assertEqual(indices, sorted(set(indices)))
         self.assertIn("(fnn-recover-log store)", function_body(self.io, "fnn-recover"))
         self.assert_ordered(function_body(self.io, "fnn-recover-log"), [

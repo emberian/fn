@@ -25,6 +25,16 @@
 ; which is also the form for a failure that IS a translation-time refusal
 ; (a macro that must reject malformed input).  tools/must_fail_check.py
 ; refuses a bare must-fail anywhere in tests/acl2.
+;
+; Step limit.  FORM runs under (with-prover-step-limit N FORM), N =
+; *fn-mfc-default-step-limit* unless the call says :step-limit N (a larger
+; number, or nil for none).  A false theorem otherwise grinds without end:
+; arena-store-2's ground 744 subgoals past proof_repl's 600 s load timeout
+; (2026-09-27).  The limit changes no green verdict: a FORM that fails now
+; fails sooner.  What it costs: a TRUE claim that needs more than N steps
+; fails too, so a tooth whose failure is expected to take long says so with
+; :step-limit, and a failed proof search is never a counterexample
+; (AGENTS.md); the tooth's claim is "this does not prove within N steps".
 (in-package "ACL2")
 (include-book "std/testing/must-fail" :dir :system)
 
@@ -118,23 +128,57 @@
 
 (logic)
 
+; Generous next to the teeth the tree carries (a must-fail that does its work
+; costs thousands of steps), small next to a runaway (millions per minute).
+(defconst *fn-mfc-default-step-limit* 300000)
+
 (defmacro must-fail-translates (form)
   `(make-event
     (er-progn (fn-mfc-check ',form 20 'must-fail-checked state)
               (value '(value-triple :must-fail-translates)))
     :check-expansion nil))
 
+(defun fn-mfc-drop-kwarg (key args)
+  ; ARGS without KEY and its value
+  (declare (xargs :guard (true-listp args)))
+  (cond ((or (atom args) (atom (cdr args))) args)
+        ((equal (car args) key) (cddr args))
+        (t (list* (car args) (cadr args) (fn-mfc-drop-kwarg key (cddr args))))))
+
+(defun fn-mfc-limited (form limit)
+  (declare (xargs :guard t))
+  (if limit
+      `(with-prover-step-limit ,limit ,form)
+    form))
+
 (defmacro must-fail-checked (form &rest args)
   (let* ((unchecked (fn-mfc-kwarg :unchecked args))
-         (rest (if (member-eq :unchecked args)
-                   (let ((tail (member-eq :unchecked args)))
-                     (append (take (- (len args) (len tail)) args)
-                             (cddr tail)))
-                 args)))
-    (cond ((member-eq :unchecked args)
+         (limit (if (member-eq :step-limit args)
+                    (fn-mfc-kwarg :step-limit args)
+                  '*fn-mfc-default-step-limit*))
+         (rest (fn-mfc-drop-kwarg :step-limit (fn-mfc-drop-kwarg :unchecked args)))
+         (limited (fn-mfc-limited form limit)))
+    (cond ((not (or (null limit) (natp limit) (eq limit '*fn-mfc-default-step-limit*)))
+           (er hard 'must-fail-checked ":step-limit is a number of prover steps ~
+                                   or nil, not ~x0." limit))
+          ((member-eq :unchecked args)
            (if (and (stringp unchecked) (< 0 (length unchecked)))
-               `(must-fail ,form ,@rest)
+               `(must-fail ,limited ,@rest)
              (er hard 'must-fail-checked ":unchecked needs a non-empty reason ~
                                      string.")))
           (t `(progn (must-fail-translates ,form)
-                     (must-fail ,form ,@rest))))))
+                     (must-fail ,limited ,@rest))))))
+
+; The limit binds: a true theorem that needs more than a handful of steps
+; fails under :step-limit 10, and the default leaves a cheap one alone.
+(local (defun fn-mfc-witness-len (x)
+         (if (consp x) (+ 1 (fn-mfc-witness-len (cdr x))) 0)))
+(local (must-fail-checked
+        (defthm fn-mfc-witness-append-len
+          (equal (fn-mfc-witness-len (append x y))
+                 (+ (fn-mfc-witness-len x) (fn-mfc-witness-len y))))
+        :step-limit 10))
+(local (defthm fn-mfc-witness-append-len
+         (equal (fn-mfc-witness-len (append x y))
+                (+ (fn-mfc-witness-len x) (fn-mfc-witness-len y)))))
+(local (must-fail-checked (assert-event (equal 1 2))))

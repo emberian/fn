@@ -1605,6 +1605,7 @@
 ; exact authored octets through fn-own-control-submit: a signature binds
 ; those octets, and neither path is this verb.
 ; The handle of the node's article with MSGID, or :absent.
+(fn-payload-kind fn-own-stored-handle :source "returns the stored article's handle")
 (defun fn-own-stored-handle (node msgid)
   (declare (xargs :guard t))
   (let ((article (fn-find-article (fn-record-octets-string msgid)
@@ -2326,6 +2327,7 @@
 ; The article one peer is owed, from the committed node.  The feed queue
 ; holds Message-IDs and no bytes (specs/peering.md sec. 3.1); this is where
 ; the bytes come from, at the moment the peer says it wants them.
+(fn-payload-kind fn-own-feed-article :source "returns the article's handle (the host reads octets through fn-ofa-feed-article)")
 (defun fn-own-feed-article (o msgid)
   (declare (xargs :guard t))
   (let ((a (fn-find-article
@@ -2379,8 +2381,12 @@
 ; (fn-own-feed-parse-response), maps it (fn-feed-observe) and renders what
 ; follows; the host frames bytes and takes no decision.  The result is
 ; (effects . owner); an unknown peer or an unreadable line changes nothing.
-(defun fn-own-feed-reply (o peer octets obs)
-  (declare (xargs :guard t))
+;; The article the feed port sends after a 335/238 is the row's BYTES: the
+;; handle fn-own-feed-article returns, read through the arena (only read).
+;; The host entry reads the same bytes (host/owner-host.lisp
+;; fn-owner-feed-octets, books/owner-feed-article.lisp fn-ofa-feed-article).
+(defun fn-own-feed-reply (o peer octets obs fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let* ((tbl (fn-own-feeds o))
          (e (fn-own-feed-entry-of peer tbl)))
     (if (null e)
@@ -2391,7 +2397,9 @@
         (if (null response)
             (cons nil o)
           (mv-let (g effects)
-            (fn-feed-observe f response (fn-own-feed-article o msgid) obs)
+            (fn-feed-observe f response
+                             (fn-handle-bytes (fn-own-feed-article o msgid) fn-arena)
+                             obs)
             (cons (if (null effects) nil (list (cons peer effects)))
                   (fn-own-with-feeds
                    o (fn-own-feed-put peer (fn-own-feed-entry-record e) g
@@ -2581,8 +2589,8 @@
     o))
 
 ; The Store refusal words the host may relay.  Each is the kind an ACL2
-; step decided: :duplicate and :conflict are fn-pb-existing-action's
-; (books/poster-bytes.lisp, the decision the host calls since D25),
+; step decided: :duplicate and :conflict are fn-store-existing-action's
+; (books/store-intern.lisp, the decision the host calls since D25),
 ; :malformed is fn-owner-prepare's :invalid, :unaffordable is the persisted
 ; profile's or the capacity's refusal, :storage-failed is a write that failed
 ; before publication whose reservation fn-owner-known-abort consumed, and
@@ -2964,7 +2972,7 @@
     (:tick (cdr (fn-own-tick o (cadr event))))
     (:tick-peer (cdr (fn-own-tick-peer o (cadr event) (caddr event))))
     (:feed-octets (cdr (fn-own-feed-reply o (cadr event) (caddr event)
-                                          (cadddr event))))
+                                          (cadddr event) fn-arena)))
     (otherwise o)))
 
 (defun fn-own-run (o events fn-arena)

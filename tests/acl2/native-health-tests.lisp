@@ -382,7 +382,9 @@
                      '(:answered (104 101))))
 ; Each conjunct of the iff's right side, failed alone, loses :starting.
 (assert-event (equal (fn-nh-health-step t :before-submission :held t t) '(:fenced :clone-fence)))
-(assert-event (equal (fn-nh-health-step t :before-submission :free nil t) '(:offline)))
+; A free lock where an owner would listen is not :starting: the node is not
+; running (friend-path-2).
+(assert-event (equal (fn-nh-health-step t :before-submission :free nil t) '(:not-running)))
 (assert-event (equal (fn-nh-health-step t :before-submission :held nil nil) '(:fenced :store-held)))
 (assert-event (equal (fn-nh-health-step t :after-submission :held nil t) '(:fenced :owner-unanswering)))
 (assert-event (equal (fn-nh-health-step t :refused :held nil t) '(:refused)))
@@ -470,6 +472,82 @@
    (implies (and (equal v *nht-v26*) (equal more 7) (<= (len v) 8))
             (equal (fn-nh-report-exit (append (fn-nh-render v) more)) (fn-nh-exit-code v)))
    :rule-classes nil))
+
+; ---------------------------------------------------------------------------
+; friend-path-2: the node that is not running.
+;
+; fn-nh-not-running-exactly-when-nothing-runs.  Positive, the whole right side:
+; no clone fence, a listener expected, the lock free (and absent), the route
+; :offline (no socket node, or a stale one refusing the connect): not running.
+(assert-event (equal (fn-nls-route nil :none) :offline))
+(assert-event (equal (fn-nh-health-step nil :none :free nil t) '(:not-running)))
+(assert-event (equal (fn-nh-health-step nil :none :absent nil t) '(:not-running)))
+(assert-event (equal (fn-nh-health-step t :before-submission :free nil t) '(:not-running)))
+; Each conjunct failed alone loses it: a clone fence, no listener expected, the
+; lock held or unreadable, a route that is not :offline, an owner answering.
+(assert-event (equal (fn-nh-health-step nil :none :free t t) '(:fenced :clone-fence)))
+(assert-event (equal (fn-nh-health-step nil :none :free nil nil) '(:offline)))
+(assert-event (equal (fn-nh-health-step nil :none :held nil t) '(:fenced :starting)))
+(assert-event (equal (fn-nh-health-step nil :none :unknown nil t) '(:fenced :store-held)))
+(assert-event (equal (fn-nh-health-step t :after-submission :free nil t)
+                     '(:fenced :owner-unanswering)))
+(assert-event (equal (fn-nh-health-step t '(:done (104 101)) :free nil t)
+                     '(:answered (104 101))))
+; The iff without its lock conjunct fails (a held lock is starting, not down).
+(must-fail-checked
+ (defthm nht-not-running-without-lock
+   (iff (equal (fn-nh-health-step sp outcome lock clone listener) '(:not-running))
+        (and (not clone) listener (equal (fn-nls-route sp outcome) :offline)))
+   :hints (("Goal" :in-theory (enable fn-nh-health-step fn-nh-answeredp
+                                      fn-nh-fence-of fn-nls-route)))
+   :rule-classes nil))
+
+; fn-nh-not-running-report-exit: the report over the witness store opens
+; `health exit=18 state=not-running', says why, and its exit is 18.
+(defconst *nht-stop-reason*
+  (fn-record-string-octets "owner core/store fault; process stopped: feed connection/reply authorized an empty command"))
+(defconst *nht-log*
+  (append (fn-record-string-octets "accepted reader connection=1") (list 10)
+          (fn-nh-run-started-line) (list 10)
+          (fn-record-string-octets "LISTENING 119") (list 10)
+          (fn-nh-run-stopped-line 4 *nht-stop-reason*) (list 10)))
+(defconst *nht-last* (fn-nh-last-run *nht-log*))
+(defconst *nht-down*
+  (fn-nh-not-running-report *nht-profile* *nht-s* *nht-cfg* 10 *nht-last*))
+(assert-event (equal (fn-nh-report-exit *nht-down*) 18))
+(defconst *nht-down-head*
+  (fn-record-string-octets
+   "health exit=18 state=not-running (no process holds the store and nothing answers on its control socket: the node is not running)"))
+(assert-event (equal (take (len *nht-down-head*) *nht-down*) *nht-down-head*))
+(assert-event
+ (equal *nht-last*
+        (cons :stopped
+              (fn-record-string-octets
+               "exit=04 reason=owner core/store fault; process stopped: feed connection/reply authorized an empty command"))))
+(assert-event
+ (equal (fn-nh-last-run-words *nht-last*)
+        (append (fn-record-string-octets
+                 "last-stop exit=04 reason=owner core/store fault; process stopped: feed connection/reply authorized an empty command")
+                (list 10))))
+; The last run line wins: a start after the stop is a run with no stop line
+; (killed); a log with no run line is unrecorded; a line that only contains
+; the words is not one.
+(assert-event (equal (fn-nh-last-run (append *nht-log* (fn-nh-run-started-line) (list 10)))
+                     '(:started)))
+(assert-event (equal (fn-nh-last-run (fn-record-string-octets "LISTENING 119\n")) nil))
+(assert-event (equal (fn-nh-last-run nil) nil))
+(assert-event (equal (fn-nh-last-run (fn-record-string-octets "x run stopped exit=04\n")) nil))
+; A stop line cut short at the tail's end (no final LF) is still read.
+(assert-event (equal (car (fn-nh-last-run (fn-nh-run-stopped-line 0 nil))) :stopped))
+; A reason is one clean line: a newline and a control octet become spaces,
+; a non-ASCII octet a `?', and it is bounded.
+(assert-event (equal (fn-nh-run-stopped-line 4 (list 97 10 98 7 200))
+                     (fn-record-string-octets "run stopped exit=04 reason=a b ?")))
+(assert-event (equal (len (fn-nh-run-stopped-line 4 (make-list 5000 :initial-element 97)))
+                     (+ 12 7 8 *fn-nh-reason-max-octets*)))
+; status's first lines when nothing runs.
+(assert-event (equal (take 11 (fn-nh-not-running-lines *nht-last*))
+                     (fn-record-string-octets "not-running")))
 
 ;; PRF-335: fn-nh-feed-queue-full-intent-is-held, over the owner.  owner-tests'
 ;; control submission targets peer "out" (max-queue 1); with its feed holding

@@ -101,12 +101,12 @@ peer holds (`fn-cfg-add-peer-rows-refuses-exactly-past-the-work-bound`,
 `fn-cfg-apply-delta-adds-at-most-the-work-bound`); the published deltas
 apply as the whole-group extension did
 (`fn-pcb-extend-deltas-apply-as-the-extend-delta`), and the record count is
-the profile's `max-config-generations`. A checkpoint or pack generation
+the profile's `max-config-generations`. A checkpoint generation
 number is a uint32, the width of its name and selection codec, and the
 generations a store retains are the profile's capacity, `max-transactions`
 plus one: the allocator refuses exactly at that capacity
-(`fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity`,
-`fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity`), so
+(`fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity`; the pack
+allocator's twin went with the pack layer), so
 a reinstall with a larger T (`store import --max-transactions N`) raises it and a store no longer meets a lifetime
 figure of 4,096 publications. No store format changed: an older image
 refuses a configuration log holding codes 18 or 19 and a checkpoint
@@ -160,8 +160,15 @@ relation admits (`fn-bpnpf-read-of-octets`: a saved profile opens), and
 every valid profile opens a machine with exactly those limits
 (`fn-bpnpf-valid-profile-opens`; profile 2:
 `fn-bpnpf-profile-read-of-octets`). `bp-node profile JOURNAL NODE ROWS
-OCTETS [ADU BUNDLE]` only raises it (`fn-bpnpf-write-never-lowers`,
-`fn-bpnpf-profile-write-never-lowers`). A journal whose rows or held octets
+OCTETS [ADU BUNDLE [ROTATE]]` only raises it (`fn-bpnpf-write-never-lowers`,
+`fn-bpnpf-profile-write-never-lowers`). Profile 3 (lane bp-rotation) is one
+frame of `fn-bp-profile-3`, which adds `rotate-records`, the rotation
+threshold a node verb's open consults (specs/bp-node-machine.md 3.6,
+"Natural rotation"); formats 1 and 2, or no file, read with 4,096
+(`fn-bpnpf-node-profile-read-of-older`), a saved profile 3 opens
+(`fn-bpnpf-node-profile-read-of-octets`), and a write never lowers a held or
+codec field while the threshold may move either way
+(`fn-bpnpf-node-profile-write-never-lowers`). A journal whose rows or held octets
 exceed the profile it opens under is refused at replay with the named
 verdict `:held-beyond-profile`, never truncated
 (`fn-bpnpf-replay-past-the-profile-is-refused`,
@@ -367,6 +374,28 @@ detected corruption; do not silently reinterpret it as successful rollback.
 Detecting rollback of an entire otherwise valid store requires an independent
 trusted anchor and is outside the crash-only claim until D14 supplies one.
 
+The record log's open applies that distinction (lane log-corruption,
+2026-09-27, PRF-316, `books/store-log-damage.lisp`). A crash leaves at most
+the ONE pending write torn at the frontier over the segment's preallocated
+zeros, so after the scan stops ACL2 probes every write unit of the rest of
+the segment. An entry there that validates under the predecessor it claims
+is damage to committed data followed by valid history: the open refuses
+`reason=log-damaged at=SEGMENT:OFFSET first-valid=Q valid-after=N records=M`,
+exit 1, writes nothing, and the owner does not start (`status` and `recover`
+alike; `log-chain-broken` keeps its meaning). No valid entry after the stop
+is the torn tail: recovered to the last complete entry with a
+`log torn-tail at=SEGMENT:OFFSET debris-units=D` line. Damage confined to
+the LAST entry cannot be told from a torn tail and is recovered with that
+line. The operator's choice is explicit: `store ROOT recover --repair
+truncate SEGMENT:OFFSET` names exactly the refused damage of the active
+segment; the segment's octets are kept as `quarantine/SEGMENT.damaged-at-OFFSET`
+first, then the log recovers to the stop and replays the prefix (`log
+repaired ... dropped-valid-entries=N dropped-records=M`). A repair naming
+anything else is the same refusal. Restoring the damaged entry from a
+snapshot or a peer is not offered yet (open). The history read again for a
+checkpoint or an export refuses by name when the closed segments no longer
+chain to the active segment's genesis.
+
 The current journal experiment distinguishes contiguous journal sequence from
 acceptance transaction IDs, which are consumed even on a known abort. Its
 durable acknowledgement anchor is an explicit assumed input, not a mechanism
@@ -449,7 +478,7 @@ at any rotation or drop cut reopens to the same history: before
 `rotate-durable` the new segment is an interrupted rotation the open
 completes, and a covered segment left by a drop is dropped again
 (`fn-lgs-open-plan-scan-ignores-covered`). The history the open replays after
-the drop is the full chain's (T8, `fn-lg-segment-drop-preserves-the-open`).
+the drop is the full chain's (T8, `fn-lgw-segment-drop-preserves-the-open`, over the streamed open).
 `store compact` on a `fn-store-9` store is a checkpoint with rotation
 followed by the drop; the owner's automatic checkpoint does the same.
 The open reads each segment one entry at a time (books/store-log-stream.lisp,
@@ -669,6 +698,61 @@ journal replays.
   witness at batch sizes 1, 3 and 1000 is in
   tests/acl2/store-checkpoint-tables-tests.lisp.
 
+### The snapshot page store (STO-035)
+
+STO-035: The snapshot page store. The owner's snapshot is to become a copy-on-write page store (lane
+arena-store, 2026-09-27; `books/pagestore*.lisp`; record
+`planning/evidence/arena-store-2026-09-27.md`). One page file of 16 KiB pages
+(2048 little-endian u64 words). A commit record (two slots per root, in page 0
+for the owner's root: one barrier per commit; page 0 is the model's reserved
+page, which `pgs-disk-keeps` keeps and the reclamation cycle's start marks,
+so no allocation or sweep ever hands it out) names a directory run whose
+entries (address, writing txid, SHA-256) name table pages of 341 entries,
+whose entries name the data pages. A snapshot writes only its dirty data
+pages, the table pages holding them, the directory run and the record, all to
+fresh space, then one fdatasync. The open verifies the record's check, the
+directory, and (lazy) the pages its own commit wrote or (eager) every page;
+the rest is verified at first touch and a mismatch is refused by name.
+Limitation (L-PGS-LAZY-SHAPE): the model's lazy open checks the shape of every
+table page; the host's lazy open checks only the table pages the record's own
+commit wrote and checks the others (digest and shape) at first touch, so a
+malformed older table page is refused at its first touch, not at the open. Every
+decision is ACL2's; the host has two byte primitives. Proved (PRF-344):
+commit-then-open denotes the committed state; a crash anywhere opens on the
+committed or the previous state, the previous one unless the record landed;
+other roots and forks are isolated; allocation always answers fresh
+addresses; reclamation never frees a page a valid record of any root keeps.
+Named: A-PGS-HOST-IO. Scenario: SCN-186. Not yet the owner's path: the owner's state (fn-hist
+first) moves onto these pages in a later step.
+
+The history's image (PRF-342, lane arena-store-2; `books/history-pages.lisp`).
+The first owner state on these pages is the history (fn-hist). Its snapshot
+is the FNADTSN1 byte form (`books/proto/adt-bytes.lisp`) of one row per
+event: MKEY (1 + the salted FNV-1a bucket of the event's key Message-ID, 0
+when none), the length of the event's tree octets (the checkpoint's proved
+tree codec, `fn-scc-encode`), and those octets zero-padded to a multiple of 8
+(so every append writes whole words). Image page K is the page store's
+logical page K, and the page store's per-page digest is the image's
+page-digest leaf: there is no second digest table. Proved: the decoder
+inverts the image; an append changes only the header page and, per region,
+the pages its new octets overlap, at most 11 + (32 K + the new trees'
+octets) / 16384 pages for K events while no region doubles. Limitation
+(L-HP-DOUBLING): FNADTSN1 places regions contiguously, so a region that
+doubles moves every region after it and that commit writes them (amortized
+O(1) per row). The Message-ID bucket heads are not in the image (FNADTSN1's
+keyed form carries the live records, not the index). The open reads the
+image's page 0 only: the header check (magic, version, the schema digest,
+the region count, placement, column sizes, the page count) answers N and the
+regions, and another schema's image is refused by name (:schema), never
+rebuilt. Reads return need-verdicts: a page not yet verified answers
+(:need-table T PHYS) / (:need-page P PHYS) and the host fills it with its two
+byte primitives, verifies it against its table entry and asks again; the
+first read of a row pays at most its four cells' pages and its pool entry's
+pages. Proved: over any page store state whose verified pages hold the
+image's words, the header check and the row read answer the history.
+Not yet the owner's path: the writer, the host wiring and the snapshot
+commit are the next milestones.
+
 ## History classes and lifetimes
 
 STO-010: every class of durable state the store holds has a stated lifetime,
@@ -795,7 +879,8 @@ STO-014: Content reclamation under D13: an operator retention rule, a per-articl
 Status: decision, tombstone and served projection proved (PRF-088); the
 host asks the tombstone-aware D25 verdict at every site; OVER, XOVER and
 NEWNEWS drop a reclaimed article; `status` prints the rule and the
-reclaimable, held and reclaimed counts. The durable `store reclaim` verb is
+reclaimable, held, reclaimed, signed and kept counts (every article in one
+class, PKT-844). The durable `store reclaim` verb is
 not implemented: the K0 byte model has no step that replaces a committed
 transaction's content (planning/evidence/reclaim-host-2026-09-25.md).
 
@@ -848,9 +933,25 @@ article check and is not a served ingress.
 history (`fn-acceptedp` for every Message-ID; a reclaimed ID is refused
 again, never resurrected), group numbering (per-group next numbers), each
 article's bindings, and the D25 duplicate-versus-conflict verdict the host
-calls (`fn-rcl-existing-action`) up to a SHA-256 collision on the compared
+calls (`fn-store-existing-action`, `fn-rcl-action-over` over the stored
+bytes) up to a SHA-256 collision on the compared
 pair. Verdict lookup reads the Store's verdict slot, which reclamation does
 not touch, and an article with a verdict is not reclaimed.
+
+**The classes** (PKT-844; `fn-rcl-class-in`, books/store-reclaim-holders).
+`status` prints each article in exactly one class: `reclaimable`, `held`
+(a holder), `reclaimed` (a tombstone), `signed` and `kept`, and the five
+sum to the report's `articles=N`
+(`fn-rcl-store-classes-partition-the-articles`). `signed` is an article
+an accepted authorship verdict other than `:absent` names: every kind-4
+composite (a signed article, a served key statement among them). Its
+payload is retained with the identity state that verdict belongs to and
+article retention never releases it, under every rule, clock and holder
+set (`fn-rcl-signed-article-is-never-reclaimable`); it is `signed` even
+where the rule would keep it anyway, because the verdict, not the rule, is
+its reason to stay. `kept` is the rest the rule keeps (keep-forever, too
+recent, a rule the store cannot apply). Before PKT-844 a signed or
+rule-kept article was counted in `articles` and in no class.
 
 **Served**: ARTICLE, HEAD, BODY and STAT of a reclaimed article answer
 `423 article reclaimed` by number and `430 article reclaimed` by
@@ -858,68 +959,79 @@ Message-ID. OVER answers 503 for it and NEWNEWS still lists it (open).
 
 ### Content reclamation's durable step: `store reclaim` (STO-017)
 
-STO-017: Packing, history compaction and content reclamation are distinct operations; `store reclaim` removes released payload octets through a reclaiming pack and returns them to the file system.
+STO-017: History compaction and content reclamation are distinct; `store reclaim` removes released payload octets by checkpointing the rewritten history on the record log and dropping the covered segments, returning them to the file system.
 
-On a `fn-store-9` store (the record log, STO-034) there are no packs:
-`store compact` is the checkpoint's rotation and the drop, and `store
-reclaim` rewrites the history exactly as the reclaiming pack would (the same
-per-article decision over every holder, STO-014: `fn-lgr-decide`,
-books/store-log-reclaim.lisp, KEYSTONE `fn-lgr-decide-checkpoints-the-rewrite`),
-replays the rewritten history, publishes its state checkpoint with the log
-rotated and drops the segments it covers: the released payload octets leave
-the disk with those segments. A death before the checkpoint's install
-reopens the history as it was and a rerun reclaims again; from the install
-on the open reads the rewritten history and a rerun reclaims nothing more
-(`fn-rclp-events-idempotent`). The pack path below is the `fn-store-8`
-layout's.
+On the record log (format 9, the one store format; STO-034) `store reclaim`
+rewrites the history, replays the rewritten history, publishes its state
+checkpoint with the log rotated and drops the segments it covers: the
+released payload octets leave the disk with those segments
+(host/native/checkpoint.lisp `fnn-log-reclaim-steps`). A death before the
+checkpoint's install reopens the history as it was and a rerun reclaims
+again; from the install on the open reads the rewritten history and a rerun
+reclaims nothing more (`fn-rclp-events-idempotent`,
+`fn-rclp-a-reclaimed-event-stays-reclaimed`).
 
-The three operations (the Fable mandate, section 8):
+The two operations (the Fable mandate, section 8):
 
-- **Packing** (`store compact`, books/store-compact-verb.lisp) reduces
-  filesystem objects and keeps the exact event history: the selected pack
-  holds every committed record's canonical bytes.
 - **History compaction** (replacing history by a summary sufficient for
   every future decision) is not implemented. Nothing here claims it.
-- **Content reclamation** (`store reclaim`, books/store-reclaim-pack.lisp)
-  changes only the payload octets of released article records. Every
-  event keeps its sequence, transaction ID, generation, Message-ID, groups,
-  obligation ID, content subject, release evidence and stamp, and its
-  charge falls to the one permanent history unit (below); every
-  event that is not a legacy article record (an accepted-statement
-  composite, a keyring snapshot, a statement verdict, a retention, consumer
-  or topic event) keeps its bytes (`fn-rclp-events-keep-every-other-kind`).
+  `store compact` (STO-012) keeps the exact event history: the checkpoint
+  covers it and the drop removes only what the checkpoint covers.
+- **Content reclamation** (`store reclaim`, books/store-reclaim-pack.lisp's
+  rewrite, books/store-log-reclaim.lisp's decision) changes only the payload
+  octets of released article records. Every event keeps its sequence,
+  transaction ID, generation, Message-ID, groups, obligation ID, content
+  subject, release evidence and stamp, and its charge falls to the one
+  permanent history unit (below); every event that is not a legacy article
+  record (an accepted-statement composite, a keyring snapshot, a statement
+  verdict, a retention, consumer or topic event) keeps its bytes
+  (`fn-rclp-events-keep-every-other-kind`).
 
 The verb, offline under the exclusive lock after the ordinary open:
 
-    fn operator CONFIG store reclaim [--dry-run]
+    fn operator CONFIG store reclaim [--dry-run | --recorded]
     fn operator CONFIG retention set {keep-forever | released-by-all-holders | release-after DAYS}
 
-`fn-rclp-decide` answers over the replayed Store and the compact verb's
-observation: nothing (`reclaimed=0`, exit 0, and nothing written: with no
-authorized release this is the bounded answer, `fn-rclp-keep-forever-writes-nothing`),
-`--dry-run` (the Message-IDs and the octets a run would free, nothing
-written), compact first (the history is not one selected pack with no
-transaction file left: the ordinary compact steps run, then the decision
-is asked again), a named refusal (`temporary-space`, `capture`,
-`observation`, `profile`; exit 1, nothing written) or the steps:
+The instant is recorded (PKT-857, books/reclaim-instant.lisp, PRF-327).
+Under `release-after DAYS` the context reads the clock; before a reclaim
+rewrites anything it publishes one configuration record whose only delta is
+the limit row `retention-reclaim-at` (the stamp plus one, 0 when the clock had
+no wall reading), through the administrative authorization, publication and
+read-back, and the report names it (`instant-record=NAME generation=G`). The
+configuration that record yields names the rule and the instant the decision
+used (KEYSTONE `fn-rci-recorded-context-is-the-decided-context`), and the
+decision over it is the decision taken (KEYSTONE
+`fn-rci-recorded-decision-is-the-decision`): the rewritten history is a
+function of the pre-reclaim history and the record, so a copy of the
+pre-reclaim store given that record reproduces the reclaim with
+`store reclaim --recorded`, which reclaims at the recorded instant, records
+nothing, and is refused by name (`no-recorded-instant`) where no reclaim was
+ever recorded. A process death after the record and before the checkpoint's
+install leaves the instant recorded and the history unrewritten: `--recorded`
+completes it; a plain rerun records a later instant. This is not a store
+format change: a `:set-limit` row of a slot no reader names is admitted by
+every image and read by none (a new record-log event kind would be one: the
+open refuses any record it cannot decode). Each reclaim takes one
+configuration generation of the profile's `max-config-generations`; a
+refused publication refuses the reclaim before any rewrite.
 
-1. drop the derived state checkpoint (it holds payload octets and an open
-   would read it in place of the history); cuts
-   `reclaim-state-checkpoint-unlink`, `reclaim-state-checkpoint-directory`;
-2. publish the reclaiming generation unselected (the pack publication and
-   its `candidate-*` cuts); cut `reclaim-pack-published`;
-3. select it (the marker replacement and its `selection-*` cuts), the one
-   commit point; cut `reclaim-pack-selected`;
-4. retire the older generations (`pack-retire-*`): the unlink that returns
-   the octets and the inode to the file system; cut `reclaim-retired`.
-
-A reopen after any cut opens the old selected pack (the full history) or
-the new one (the reclaimed history), and a rerun converges: an event the
-pack rewrote is never rewritten again under any later context
-(`fn-rclp-a-reclaimed-event-stays-reclaimed`).
+The host streams the history one record at a time into ACL2's fold
+(`fn-rcls-step` under the store's context `fn-rclp-ctx`) and keeps each
+record's rewrite (`fn-rclp-event`); `fn-lgr-decide-stream` then answers over
+the fold (KEYSTONE `fn-lgr-decide-stream-is-lgr-decide`: the whole-history
+decision, whose rewritten history is those rewrites): nothing
+(`reclaimed=0`, exit 0, nothing written), `--dry-run` (the Message-IDs and
+the octets a run would free, nothing written), a named refusal (`profile`),
+or the reclaim, whose checkpoint holds exactly the rewrite of the committed
+history (KEYSTONE `fn-lgr-decide-checkpoints-the-rewrite`). Which records
+change: only a legacy article record whose article no holder names, whose
+verdict does not need its payload, under a releasing rule
+(`fn-rclp-events-never-touch-a-held-article`); what a changed record is: the
+same record with the tombstone of its payload
+(`fn-rclp-event-decodes-to-the-tombstoned-record`).
 
 What becomes available again, precisely: the payload octets of each
-reclaimed record, on disk when the older generation is retired, and in the
+reclaimed record, on disk when the covered segments are dropped, and in the
 committed-record octets the admission gate sums (`bytes-used` of
 `status`'s headroom line; `fn-rclp-freed-is-the-admission-count`), and the
 retention charge of the reclaimed article's archive pin less one permanent
@@ -929,22 +1041,27 @@ obligation, and no other obligation's charge changes. The release is the
 operator's authorized retention rule. The transaction count is not released
 (sequence numbers are history).
 
+Retired with the pack layer (lane flip-cleanup, 2026-09-27): the reclaiming
+pack (the decision that dropped the derived checkpoint, published, selected and
+retired a pack generation, with its reclaim-* cuts), whose native steps
+PKT-838 deleted.
+
 ### The maintenance reservation (STO-019)
 
 STO-019: Admission leaves room for the release record and checks maintenance's temporary space against the disk, so a full store can always finish or safely abandon its own maintenance.
 
 The decision (PKT-169, 2026-09-26) and its two halves:
 
-- **The disk.** `store compact` and `store reclaim` write one new pack
-  beside the files present. The host reports the free octets of the
-  store's filesystem (statvfs: `f_bavail` blocks of `f_frsize` octets) and
-  ACL2 refuses by name (`temporary-space`, exit 1, nothing written) when
-  the pack's accounted octets exceed them or the observation failed
-  (`fn-cverb-pack-fits-the-disk`, `fn-rclp-pack-fits-the-disk`). The
-  history bound `max_history_octets` bounds the open's replay input (the
-  transaction files past the selected pack); the selected pack is read
-  under the compaction unit. So H is not maintenance's budget, and a store
-  at its history bound compacts and reclaims.
+- **The disk.** `store compact` and `store reclaim` write one state
+  checkpoint beside the files present. The host reports the free octets of
+  the store's filesystem (statvfs: `f_bavail` blocks of `f_frsize` octets)
+  and ACL2 decides whether the checkpoint's estimate fits them
+  (books/owner-checkpoint-writer.lisp `fn-ockp-decide`, through
+  `fn-scka-publication-setup`). The history bound `max_history_octets`
+  bounds the open's replay input; so H is not maintenance's budget, and a
+  store at its history bound compacts and reclaims. (The pack's disk
+  keystones went with the pack layer; the checkpoint's check has no
+  keystone in PRF-129 yet.)
 - **The release record.** A release is a Store record (the `:release`
   retention event). The served gates (`fn-smr-verdict-at` for every record
   kind, `fn-smr-article-budget-for` for the served POST and BP transit,
@@ -1020,89 +1137,31 @@ torn. `status` prints `maintenance-reserve octets=R transactions=N debt=D
 held|short`.
 
 
-### Chained packs (P5, 2026-09-25; STO-012)
+### Compaction of any length (P5; STO-012)
 
-STO-012: Compaction chains packs: each compaction packs only the uncovered
-suffix into a link naming its predecessor by digest, the open walks the chain,
-retire keeps it.
+STO-012: Compaction covers a history of any length: `store compact` checkpoints the whole history with the log rotated and drops the covered segments; no unit of work bounds the history
 
-Each compaction packs only the uncovered suffix, so the pack no longer bounds
-the history (`books/checkpoint-pack-chain.lisp`, prefix `fn-ccc-`):
+On the record log (format 9, the one store format) `store compact` is the
+state checkpoint published at the history's end with the log rotated, then
+the drop of the segments it covers (host/native/checkpoint.lisp
+`fnn-command-compact`; STO-034). The drop preserves the history the open
+replays (`fn-lgw-segment-drop-preserves-the-open`, PRF-270), and the open
+reads the checkpoint, then the segments its F row names. The checkpoint is
+written from the state in bounded steps (`fn-store-sco-pass-step`), so no
+unit of work bounds the history: tests/test_native_pack_chain.py compacts a
+store of several thousand articles, and gated, the 20,000-article scale
+store, over the log.
 
-1. A pack is one **link** (`fn-x` version 1): it covers events
-   `[lower, boundary)` and names its predecessor by generation and by the
-   predecessor's frame digest (the 32-octet trailer). The first link has
-   `lower = 0` and no predecessor; a version-0 pack decodes as a first link.
-   A link holds one scheduling quantum (`*fn-cc-max-events*` 4096 events and
-   `*fn-cc-max-octets*` 4 MiB of summary) and always at least one record, so
-   a record up to the profile's R is never refused by the quantum; one link
-   file is at most `fn-ccc-link-octet-bound` = 128 + max(4 MiB, R) octets,
-   the open's largest single pack read.
-2. **Contiguity**: a link's `lower` is its predecessor's `boundary` and its
-   lower frontier is its predecessor's frontier (`fn-ccc-links-okp`). The
-   selection marker names the newest link. The open walks the chain from the
-   newest (host/native/checkpoint.lisp `fnn-pack-walk`, one bounded read and
-   one `fn-ccc-entry-step` per link) and hands ACL2 the walked chain
-   (`fn-ccc-observe-chain`, `fn-ccc-coverage-chain`).
-3. **Walk bound**: the walk is given the profile's max-transactions T links
-   (`fn-ccc-walk-bound`). Every link covers a record, so a chain has at most
-   `boundary` links (`fn-ccc-links-count-within-boundary`) and an admitted
-   store never exhausts the fuel. There is no separate chain-length field.
-4. **Retire** keeps every generation the selected chain names and removes
-   only generations outside it (`fn-ccc-retire-plan-keeps-the-chain`).
-5. **Preservation**: the chain's records are one valid prefix
-   (`fn-ccc-links-okp-composes-a-prefix`); a capture over the uncovered
-   suffix extends the chain and keeps it a prefix of the history
-   (`fn-ccc-capture-extends-the-chain`); the open over the chain and the
-   transaction files from any sequence N at or below the chain's boundary
-   to the end of the history answers exactly the history
-   (`fn-ccc-chain-reconstructs-the-history`: N is 0 before a reclaim, the
-   boundary after it, anything between at a reclaim cut, so no reclaimed
-   file is needed); a reclaim keeps that answer at every cut
-   (`fn-ccc-reclaim-preserves-reconstructed-history`, PRF-073 over a
-   chain). The served view replays the records this open returns
-   (`fnn-pack-recover-records`, called by both reopen paths of the store
-   open), so an article in a link is framed from the same record bytes as
-   before it was packed. Each link is published and selected by the existing pack
-   program (immutable generation, then the selection marker); at every cut
-   the walk from the image's marker reads the old chain or the new link
-   followed by the old chain (`fn-ccc-publication-crash-walks-old-or-new-chain`,
-   stated under the two facts the pack program's keystones give). Between
-   two links the host has one more process-death cut, `pack-chain-link`
-   (after the link's selection returned durable, before the next link's
-   admit, with no syscall between): it is the chain program's cut
-   (`fn-ccc-chain-program`), where the state is exactly the selection's
-   (`fn-ccc-chain-cut-state-is-previous-state`), the marker names link N and
-   the walk reads links N..1 on the chain selected before
-   (`fn-ccc-chain-link-cut-walks-the-extended-chain`), and the reopen answers
-   the history (`fn-ccc-chain-link-cut-reopens-to-the-history`).
-6. `store compact` extends the chain one link at a time until it covers
-   every committed record (`fnn-pack-extend-chain`); it never repacks what
-   earlier links cover, and it no longer refuses a history above 4096
-   transactions. `status` prints `pack-chain links=L boundary=B
-   generations=...`. Its temporary-space check (STO-019) is per link: before
-   every link the verb asks the one decision again over a fresh free-octet
-   observation, and refuses `temporary-space` by name, nothing of that link
-   written, when the link's accounted octets (`fn-cverb-link-octets`: the
-   128-octet header bound, the quantum's summary size and the trailer)
-   exceed it (`fn-cverb-pack-fits-the-disk`, over the link the host
-   captures). Links already selected stay; a rerun continues from them.
-7. `store reclaim` (STO-017) over a chain publishes one reclaiming pack, a
-   version-0 pack that decodes as the first link of a new chain covering
-   exactly what the selected chain covered
-   (`fn-rclp-reclaiming-pack-is-a-first-link`); its selection makes a
-   one-link chain, and retirement removes every link of the old one. A
-   rewritten history past one quantum is refused `spans-links` by name,
-   nothing written: rewriting it needs a chain of rewritten links published
-   before one selection, which is not built (PKT-332).
-
-Open: the link codec's round trip is executed in the test book, not proved;
-pack generation names stay below `*fn-cpp-max-generations*` (4096), so a
-store can be compacted at most 4096 times before retire must free names,
-which it cannot for names the chain holds (a finding for the next packet).
-
-Chaining is still packing. It does not relieve the transaction budget or the
-replay input. That is H's job.
+Retired (lane flip-cleanup, 2026-09-27; design 2026-09-27 storage-log
+section 9 row 5): the chain of packs this section specified (P5,
+2026-09-25: digest-linked `fn-x` links of one scheduling quantum each, the
+chain walk and its decode-once memo, per-link temporary-space checks, the
+reclaiming pack as a first link). Its native verbs went with the per-file
+layout (PKT-838); its books (checkpoint-pack-chain, checkpoint-pack-chain-once,
+checkpoint-pack-retire, checkpoint-compaction-preservation,
+byte-store-compaction-correspondence, store-compact-verb,
+store-compact-window) and host wrappers followed here. PRF-073, PRF-085 and
+PRF-279 are retired.
 
 ## First executable scope
 
@@ -1175,12 +1234,13 @@ directory), never "no store was created". `store export` is Store-history
 export, not a node backup (docs/operator.md).
 
 `operator init` publishes the empty store by the same program (P-INIT-PUB,
-books/store-init-publication.lisp `fn-bs-init-pub-program`: init's plan --
-the three subdirectories, `config.json`, the allocation frontier and the
-generation-1 configuration record -- staged in `ROOT.init-XXXX`, init's cut
-names). A crash leaves no store at ROOT or the complete empty store, nothing
-named in `transactions/` (PRF-217,
-`fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store`).
+books/store-init-log-publication.lisp `fn-bs-init-log-program`: init's plan --
+the three subdirectories `staging/`, `config/` and `journal/`, `config.json`,
+the generation-1 configuration record and the empty log segment
+`journal/000001.log` -- staged in `ROOT.init-XXXX`, init's cut names from
+books/store-init-publication.lisp). A crash leaves no store at ROOT or the
+complete empty store, whose segment is the empty log (PRF-268,
+`fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log`).
 Before writing, ACL2's admission (`fn-bs-init-pub-admission`) refuses a
 leftover staged directory by name (`interrupted-init`: remove it and init
 again; `publication-uncertain`) and an existing ROOT without the store's

@@ -34,7 +34,14 @@
 (local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
 
 (defconst *fn-sf-max-uint* 4294967295)
-(defconst *fn-sf-recovery-barrier-count* 5)
+;; The open's recovery barriers after P-LOG-RECOVER's segment fence:
+;; journal/, the root, the root's parent (host/native/io.lisp
+;; fnn-store-recovery-barriers).  Three, not five (lane open-barriers,
+;; 2026-09-27): the config file's and the segment's fences are the identity
+;; at the open (books/store-log-open-barriers.lisp
+;; fn-lgob-three-barrier-open-is-the-five-at-every-cut), and none of the three
+;; can go (the same book's one counterexample per omitted barrier).
+(defconst *fn-sf-recovery-barrier-count* 3)
 
 ; -----------------------------------------------------------------------------
 ; The kernel state record (opaque below its lemmas, docs/proof-style.md s1).
@@ -1097,7 +1104,7 @@
 (defthm fn-sf-incomplete-recovery-barrier-is-not-ready
   (implies (and (fn-sf-statep s)
                 (equal (fn-sf-phase s) :recovering)
-                (< (fn-sf-barriers s) 4))
+                (< (1+ (fn-sf-barriers s)) *fn-sf-recovery-barrier-count*))
            (not (equal (fn-sf-phase (fn-sf-recovery-barrier s :ok))
                        :ready))))
 

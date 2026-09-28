@@ -29,7 +29,38 @@ def stop_and_diagnostics(process, timeout=10, stderr_path=None):
                 text += handle.read()
         except OSError as error:
             text += "(cannot read {}: {})".format(stderr_path, error).encode()
-    return "{} {}".format(status, text[-8192:].decode("utf-8", "replace"))
+    return "{} {}".format(status, stderr_digest(text))
+
+
+# The tail of stderr kept in a startup diagnostic, and how many of its
+# refusal lines are quoted first.
+STDERR_TAIL = 8192
+REFUSAL_LINES = 8
+
+
+def stderr_digest(text):
+    """STDERR (octets) as a diagnostic: every `refused' line first, then the tail.
+
+    A start refused for memory (lane ops-fixes) prints its refusal and then
+    the parts that do not fit; a long enough breakdown pushed the one line
+    that says why (`fn: refused init-budget-cannot-hold-profile ...',
+    `machine-cannot-hold-profile') out of the kept tail, and a lane read the
+    failure as a silent one (feed-queue, 2026-09-27).  The refusal lines are
+    read from the whole of stderr, whatever its length."""
+    decoded = (text or b"").decode("utf-8", "replace")
+    refusals = [line.strip() for line in decoded.splitlines()
+                if " refused " in " {} ".format(line) or line.startswith("refused ")]
+    parts = []
+    if refusals:
+        parts.append("refused lines ({}): {}".format(
+            len(refusals), " | ".join(refusals[:REFUSAL_LINES])))
+    size = len(text or b"")
+    if size > STDERR_TAIL:
+        parts.append("stderr (last {} of {} octets):\n{}".format(
+            STDERR_TAIL, size, decoded[-STDERR_TAIL:]))
+    else:
+        parts.append("stderr:\n{}".format(decoded))
+    return "\n".join(parts)
 
 
 def wait_for_announcement(process, prefix, timeout=180, max_bytes=8192, stderr_path=None):
@@ -61,9 +92,11 @@ def wait_for_announcement(process, prefix, timeout=180, max_bytes=8192, stderr_p
             buffered += chunk
         raise AssertionError("native startup output exceeded byte bound")
     except (AssertionError, OSError) as error:
+        # stderr first and on its own lines: it is where the node says why
+        # it did not start (feed-queue's ask, 2026-09-27).
         diagnostic = stop_and_diagnostics(process, stderr_path=stderr_path)
-        raise AssertionError("{}; stdout={!r}; stderr={}".format(
-            error, observed, diagnostic)) from error
+        raise AssertionError("{}; process {}\nstdout={!r}".format(
+            error, diagnostic, observed)) from error
 
 
 def runtime_sbcl(image):

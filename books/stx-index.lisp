@@ -348,6 +348,13 @@
 
 (in-theory (disable (:d fn-stx-index-add1)))
 
+;; The index of an article list whose payloads are OCTETS (the octet model's
+;; articles).  A retained article's payload is a handle since the records
+;; flip, so the store's opens build the index from the rows' bytes
+;; (books/store-intern.lisp, books/records-freeze.lisp), and an open with no
+;; keyring builds the empty index directly (fn-stx-index-of-store-without-a-
+;; keyring: no statement verifies without a key, whatever the payloads).
+(fn-payload-kind fn-stx-index-of-store :wire "its articles are the octet model's; opens pass rows' bytes, or no keyring and build (fn-stx-index-empty)")
 (defun fn-stx-index-of-store (articles keyring)
   (declare (xargs :guard (fn-prin-keyringp keyring)))
   (if (consp articles)
@@ -355,6 +362,17 @@
                         (fn-stx-delta (fn-article-payload (car articles))
                                       keyring))
     (fn-stx-index-empty)))
+
+;; KEYSTONE (PKT-859).  Without a keyring no statement verifies, so the
+;; index of ANY article list -- handles, octets, anything -- is the empty
+;; index.  The opens that have no keyring yet (books/config-observed.lisp,
+;; books/store-checkpoint-open.lisp, books/replay-identity-index.lisp) build
+;; (fn-stx-index-empty) and so never walk the retained articles parsing a
+;; handle as a statement's octets.
+(defthm fn-stx-index-of-store-without-a-keyring
+  (equal (fn-stx-index-of-store articles nil) (fn-stx-index-empty))
+  :hints (("Goal" :induct (fn-stx-index-of-store articles nil)
+           :in-theory (enable fn-stx-delta fn-stx-verifiedp fn-prin-verifiedp))))
 
 ; -----------------------------------------------------------------------------
 ; The three served-path queries

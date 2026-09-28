@@ -1,29 +1,15 @@
-; fn: witnesses and teeth for books/store-reclaim-stream.lisp (PKT-686 item
-; 2): the reclaim decision folded one record at a time answers what
-; `fn-rclp-decide' answers over the history, on each of its reachable
-; answers over store-reclaim-pack-tests' owner fixture; per hypothesis a
-; counterexample and the must-fail of the keystone without it.
+; fn: witnesses for books/store-reclaim-stream.lisp (PKT-686 item 2): the
+; reclaim's fold, one record at a time, carries the whole-history quantities
+; of books/store-reclaim-pack.lisp (`fn-rcls-fold-of-init'), over the owner
+; fixture of owner-served-invariants-tests.  The keystone this fold feeds is
+; books/store-log-reclaim.lisp's `fn-lgr-decide-stream-is-lgr-decide' (its
+; teeth are store-log-reclaim-tests').
 (in-package "ACL2")
 (include-book "../../books/store-reclaim-stream")
-(include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
 
 (defconst *rst-s* (fn-own-store (cdr (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*))))
 
-; The arena of the fixture's history (audit-fixes, 2026-09-27): the payloads
-; the host's entry interned from the owner's journal, in handle order, so
-; that sealing them in order rebuilds the arena its articles' handles name.
-(defun rcl-prior-payloads (prior i fuel)
-  (declare (xargs :verify-guards nil :measure (nfix fuel)))
-  (if (zp fuel)
-      nil
-    (let ((b (fn-hrt-bytes prior i)))
-      (if (consp b)
-          (cons b (rcl-prior-payloads prior (+ 1 i) (- fuel 1)))
-        nil))))
-(defconst *rst-payloads* (rcl-prior-payloads *osi-completing-prior* 0 64))
-(bpr-lift fn-rclp-decide 12)
-(bpr-lift fn-rcls-decide 12)
 (defun rst-encode-all (rs)
   (declare (xargs :mode :program))
   (if (consp rs) (cons (fn-store-event-encode (car rs)) (rst-encode-all (cdr rs))) nil))
@@ -31,80 +17,26 @@
 (defmacro rst-events () '(rst-encode-all *rst-wire*))
 (defconst *rst-rule* '(:released-by-all-holders))
 (defconst *rst-ctx* (fn-rclp-ctx *rst-rule* 0 *rst-s*))
-(defconst *rst-profile* *fn-bs-profile-development*)
-(defmacro rst-n () '(len (rst-events)))
 (defmacro rst-long () '(append (rst-events) (make-list 4096 :initial-element '(1 2 3))))
 
 (defun rst-acc (events)
   (declare (xargs :mode :program))
   (fn-rcls-fold events *rst-ctx* (fn-rcls-init)))
 
-(defmacro rst-both (events lower gens selected disk dry)
-  `(list (in-arena-fn-rcls-decide *rst-payloads* *rst-profile* *rst-rule* 0 *rst-s* (rst-acc ,events)
-                         (len ,events) ,lower nil ,gens ,selected ,disk ,dry)
-         (in-arena-fn-rclp-decide *rst-payloads* *rst-profile* *rst-rule* 0 *rst-s* ,events
-                         (len ,events) ,lower nil ,gens ,selected ,disk ,dry)))
+; The fold of the fixture's history is the whole-history quantities: the
+; count, the rewritten Message-IDs (at least one: the fixture's released
+; article) and the freed octets (positive: the payload became its tombstone).
+(assert-event (let ((acc (rst-acc (rst-events))))
+                (and (true-listp (rst-events))
+                     (equal (nth 0 acc) (len (rst-events)))
+                     (consp (nth 1 acc))
+                     (equal (rev (nth 1 acc)) (fn-rclp-rewritten-msgids (rst-events) *rst-ctx*))
+                     (equal (nth 2 acc) (fn-rclp-freed (rst-events) *rst-ctx*))
+                     (< 0 (nth 2 acc)))))
 
-; The witnesses: every reachable answer agrees -- the reclaim (with the
-; summary it publishes), the dry run, compact-first, the named spans-links
-; refusal of a history past one link, the temporary-space refusal, and
-; keep-forever's none.
-(assert-event (let ((b (rst-both (rst-events) (rst-n) '(0) 0 1000000 nil)))
-                (and (equal (car (first b)) :reclaim) (equal (first b) (second b)))))
-(assert-event (let ((b (rst-both (rst-events) (rst-n) '(0) 0 1000000 t)))
-                (and (equal (car (first b)) :dry-run) (equal (first b) (second b)))))
-(assert-event (let ((b (rst-both (rst-events) 0 nil nil 1000000 nil)))
-                (and (equal (first b) '(:compact-first)) (equal (first b) (second b)))))
-(assert-event (let ((b (rst-both (rst-long) (len (rst-long)) '(0) 0 1000000 nil)))
-                (and (equal (first b) '(:refused :spans-links)) (equal (first b) (second b)))))
-(assert-event (let ((b (rst-both (rst-events) (rst-n) '(0) 0 10 nil)))
-                (and (equal (first b) '(:refused :temporary-space)) (equal (first b) (second b)))))
-(assert-event (equal (in-arena-fn-rcls-decide *rst-payloads* *rst-profile* '(:keep-forever) 0 *rst-s*
-                                     (fn-rcls-fold (rst-events)
-                                                   (fn-rclp-ctx '(:keep-forever) 0 *rst-s*)
-                                                   (fn-rcls-init))
-                                     (rst-n) (rst-n) nil '(0) 0 1000000 nil)
-                     (in-arena-fn-rclp-decide *rst-payloads* *rst-profile* '(:keep-forever) 0 *rst-s* (rst-events)
-                                     (rst-n) (rst-n) nil '(0) 0 1000000 nil)))
-; The fold keeps no rewritten history past one link: the long history's
-; accumulator holds none.
-(assert-event (and (nth 5 (rst-acc (rst-long))) (null (nth 3 (rst-acc (rst-long))))))
-
-; Without ACC the fold of the records: the empty history's fold (nothing to
-; rewrite) answers :none where the history reclaims.
-(assert-event (not (equal (in-arena-fn-rcls-decide *rst-payloads* *rst-profile* *rst-rule* 0 *rst-s* (fn-rcls-init)
-                                          (rst-n) (rst-n) nil '(0) 0 1000000 nil)
-                          (in-arena-fn-rclp-decide *rst-payloads* *rst-profile* *rst-rule* 0 *rst-s* (rst-events)
-                                          (rst-n) (rst-n) nil '(0) 0 1000000 nil))))
-(must-fail-checked
- (defthm rst-without-fold
-   (implies (true-listp records)
-            (equal (fn-rcls-decide profile rule now s acc frontier lower names generations
-                                   selected disk-free dry fn-arena)
-                   (fn-rclp-decide profile rule now s records frontier lower names
-                                   generations selected disk-free dry fn-arena)))
-   :hints (("Goal" :do-not-induct t
-            :in-theory (union-theories '(fn-rcls-decide fn-rclp-decide)
-                                       (theory 'minimal-theory))))))
-
-; Without a true list of records: the history ending in an atom.  The fold
-; reads the same records; the whole-history decision captures the dotted
-; rewritten list and answers otherwise.
-(defmacro rst-dotted () '(append (rst-events) 7))
-(assert-event (not (true-listp (rst-dotted))))
-(assert-event (not (equal (in-arena-fn-rcls-decide *rst-payloads* *rst-profile* *rst-rule* 0 *rst-s*
-                                          (rst-acc (rst-dotted))
-                                          (rst-n) (rst-n) nil '(0) 0 1000000 nil)
-                          (in-arena-fn-rclp-decide *rst-payloads* *rst-profile* *rst-rule* 0 *rst-s* (rst-dotted)
-                                          (rst-n) (rst-n) nil '(0) 0 1000000 nil))))
-(must-fail-checked
- (defthm rst-without-true-list
-   (implies (equal acc (fn-rcls-fold records (fn-rclp-ctx rule now s) (fn-rcls-init)))
-            (equal (fn-rcls-decide profile rule now s acc frontier lower names generations
-                                   selected disk-free dry fn-arena)
-                   (fn-rclp-decide profile rule now s records frontier lower names
-                                   generations selected disk-free dry fn-arena)))
-   :hints (("Goal" :do-not-induct t
-            :use ((:instance fn-rcls-fold-of-init (ctx (fn-rclp-ctx rule now s))))
-            :in-theory (union-theories '(fn-rcls-decide fn-rclp-decide)
-                                       (theory 'minimal-theory))))))
+; The fold carries three quantities and no history: a long history's fold
+; is three elements, and its count is the long history's length.
+(assert-event (let ((acc (rst-acc (rst-long))))
+                (and (equal (len acc) 3)
+                     (equal (nth 0 acc) (len (rst-long)))
+                     (equal (rev (nth 1 acc)) (fn-rclp-rewritten-msgids (rst-events) *rst-ctx*)))))

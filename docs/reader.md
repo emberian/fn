@@ -6,8 +6,9 @@ need only a browser, on a computer or a phone. Nothing to install.
 ## For a friend
 
 1. Open the address you were given.
-2. Sign in with the name and password you chose when you accepted your
-   invitation. They are the same ones a newsreader like tin uses.
+2. The first time, press **Make your account**, type the invitation code
+   you were given, and choose a name and a password. After that, sign in
+   with them. They are the same ones a newsreader like tin uses.
 3. Pick a group. New posts are marked **new**. Open a conversation to read
    it; replies sit under the post they answer.
 4. **Reply** under any post, or **Write a new post** at the top of a group.
@@ -36,6 +37,10 @@ Groups you are not allowed to see do not appear, and their addresses say
 
 ## For the person running the node
 
+The release carries the reader and its service: follow
+[Read it in your browser](web.md). What follows is the same reader run by
+hand from fn's source.
+
 Run the reader next to your node. It needs Python 3, the node's
 certificate, and a certificate for the web side (friends type their
 passwords into it):
@@ -48,9 +53,11 @@ Without `--https-cert` it serves plain HTTP on `127.0.0.1` only, for a TLS
 proxy or an ssh tunnel in front of it. It refuses to serve plain HTTP on
 any other address.
 
-Invite each friend as usual (`account invite`). They redeem the code once
-with `fn redeem` ([how](operator.md#accounts-and-invitation-codes)) and
-then sign in here. The reader adds no accounts and no
+Invite each friend as usual (`account invite`). They redeem the code once,
+on the reader's **Make your account** page (the reader runs the node's own
+`fn redeem`, so start it with `--fn /opt/fn/bin/fn` when it is not the
+release's `clients/bin/fn-reader`), or with `fn redeem`
+([how](articles/fn-faq-4.txt); the full reference: [operator.md](operator.md#accounts-and-invitation-codes)), and then sign in here. The reader adds no accounts and no
 permissions of its own: the node checks every password and decides every
 group, post, approval and removal. The reader keeps, per login, only what
 the friend has read, their display name and a record of what they sent, in

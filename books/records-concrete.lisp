@@ -408,29 +408,18 @@
 (defun fn-rcon-sn-io (s operation result)
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (if (mbe :logic (fn-sn-statep s) :exec t)
-      (let* ((old-files (fn-sn-files s))
-             (files (fn-rcon-sn-file-step old-files operation result))
-             (updated (fn-sn-update s files (fn-sn-node s))))
-        (if (and (eq operation :record-directory) (eq result :ok)
-                 (eq (fn-sf-phase old-files) :record-attempted))
-            (let* ((candidate (fn-sf-record-candidate old-files))
-                   (sequence (fn-rcon-store-event-sequence candidate)))
-              (fn-sn-with-event-index
-               updated (fn-cei-put sequence candidate
-                                   (fn-sn-event-index s))))
-          updated))
+      (fn-sn-update s (fn-rcon-sn-file-step (fn-sn-files s) operation result)
+                    (fn-sn-node s))
     s))
 (defthm fn-rcon-sn-io-is-sn-io
   (equal (fn-rcon-sn-io s operation result) (fn-sn-io s operation result))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-rcon-sn-io fn-sn-io
-                                fn-rcon-sn-file-step-is-sn-file-step
-                                fn-rcon-store-event-sequence-is-store-event-sequence)
+                                fn-rcon-sn-file-step-is-sn-file-step)
                               (theory 'minimal-theory)))))
 (verify-guards fn-rcon-sn-io
   :hints (("Goal" :use ((:guard-theorem fn-sn-io))
-                  :in-theory (e/d (fn-rcon-sn-file-step-is-sn-file-step
-                                   fn-rcon-store-event-sequence-is-store-event-sequence)
+                  :in-theory (e/d (fn-rcon-sn-file-step-is-sn-file-step)
                                   (fn-sn-statep fn-sf-statep fn-node-statep)))))
 
 (in-theory (disable fn-rcon-sf-record-dir-result fn-rcon-sn-file-step fn-rcon-sn-io))

@@ -20,7 +20,9 @@ IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 class NativeOperatorPrincipalCompositionTests(unittest.TestCase):
     def test_operator_calls_existing_acl2_credential_plan_and_executor(self):
         model = (ROOT / "books" / "native-operator.lisp").read_text(encoding="ascii")
-        host = (ROOT / "host" / "native" / "operator.lisp").read_text(encoding="ascii")
+        # `principal' is the credentials surface: host/native/operator-live.lisp
+        # carries its executor and registers it with operator.lisp's dispatch.
+        host = (ROOT / "host" / "native" / "operator-live.lisp").read_text(encoding="ascii")
         # The ACL2 credential parser reads the words after `principal', so
         # the operator must hand it the tail of argv: `cdr' itself, or a
         # book function whose definition is the guard-total tail.
@@ -42,6 +44,8 @@ class NativeOperatorPrincipalCompositionTests(unittest.TestCase):
             self.assertEqual(len(set(definitions[0])), 1, f"{tail} is not the tail of its argument")
         self.assertIn("'fn-native-operator-host-result-principal-plan result", host)
         self.assertIn("(fnn-native-auth-admin-execute", host)
+        self.assertIn("(fnn-operator-register-action :principal "
+                      "#'fnn-operator-execute-principal)", host)
 
 
 def invoke(config, *words):

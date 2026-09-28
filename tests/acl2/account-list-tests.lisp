@@ -58,3 +58,10 @@
  (let ((row (car (fn-cfg-accounts (alt-v1)))))
    (and (equal (fn-cfg-row-n row) 0)
         (equal (fn-acct-kind-word (fn-acct-row-kind row)) "pending "))))
+
+; public-node-2: a tombstone (mark 7) is listed as `deleted LOGIN', never
+; with its digest.
+(assert-event (equal (fn-acct-list-line
+                      (fn-cfg-row-make "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                                       "robin" "" 7))
+                     (concatenate 'string "deleted robin" (string #\Newline))))

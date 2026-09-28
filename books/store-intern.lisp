@@ -807,6 +807,7 @@
 
 ; The wire index with a seed: fn-stx-index-of-store is the fold from the
 ; empty index, oldest article innermost.
+(fn-payload-kind fn-stx-index-of-store-from :wire "its articles are fn-rows-articles-newest-first's, built with fn-row-bytes (octets)")
 (local (defun fn-stx-index-of-store-from (articles index keyring)
   (declare (xargs :guard (fn-prin-keyringp keyring)))
   (if (consp articles)
@@ -1027,11 +1028,8 @@
 ; ALPHA of the acceptance articles: each article's handle replaced by its
 ; bytes (a handle outside the arena reads as no bytes, as fn-row-bytes).
 
-(defun fn-handle-bytes (h fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (if (and (natp h) (< h (fn-arena-count fn-arena)))
-      (fn-arena-payload h fn-arena)
-    nil))
+; fn-handle-bytes (the octets at a handle, nil outside the arena) is defined
+; in books/payload-arena.lisp, beside the arena, so the owner reads it too.
 
 (defun fn-articles-wire-of (articles fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))

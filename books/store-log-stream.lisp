@@ -120,8 +120,103 @@
 ;; The entry's verdict and records from ONE frame open (fn-lg-entry-okp and
 ;; fn-lg-slice-records each open the frame, and each open digests the entry:
 ;; fn-lgw-decide-is-okp-and-records says the one open answers both).
+; The batch body's unpack, guard-verified (lane snapshot-open-2).  fn-lg-unpack
+; and fn-lg-unpack-exactp (books/store-log.lisp) are :verify-guards nil, so
+; the step ran their *1* bodies, whose every nthcdr and take re-checked the
+; remaining body's true-listp: at a 20 KB batch entry that was 60 percent of
+; the step (planning/evidence/snapshot-open-2-2026-09-27.md).  These twins are
+; the same recursions, EQUAL to them on every value
+; (fn-lgw-unpack-is-unpack, fn-lgw-unpack-exactp-is-exactp); their guard is an
+; octet list, and the step's decision calls them where the frame's payload is
+; one (fn-frame-decode-payload-octets).
+(local
+ (defthm fn-lgw-bs-take-is-take
+   (implies (<= (nfix n) (len xs))
+            (equal (fn-bs-take n xs) (take n xs)))
+   :hints (("Goal" :in-theory (enable fn-bs-take)))))
+
+(local
+ (defthm fn-lgw-octet-listp-nthcdr
+   (implies (fn-cbor-octet-listp x)
+            (fn-cbor-octet-listp (nthcdr k x)))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+
+(local
+ (defthm fn-lgw-octet-listp-take
+   (implies (and (fn-cbor-octet-listp x) (<= (nfix k) (len x)))
+            (fn-cbor-octet-listp (take k x)))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+
+(local
+ (defthm fn-lgw-up-len-nthcdr
+   (equal (len (nthcdr k x)) (nfix (- (len x) (nfix k))))))
+
+(local
+ (defthm fn-lgw-nthcdr-shorter
+   (implies (and (posp k) (consp x))
+            (< (len (nthcdr k x)) (len x)))
+   :rule-classes :linear))
+
+(defun fn-lgw-unpack (x)
+  (declare (xargs :guard (fn-cbor-octet-listp x) :measure (len x)
+                  :hints (("Goal" :in-theory (disable fn-cbor-u32-from take nthcdr len)))
+                  :verify-guards nil))
+  (if (and (consp x) (<= 4 (len x)))
+      (let ((n (nfix (fn-cbor-u32-from (take 4 x)))))
+        (if (<= (+ 4 n) (len x))
+            (cons (take n (nthcdr 4 x)) (fn-lgw-unpack (nthcdr (+ 4 n) x)))
+          nil))
+    nil))
+
+(defun fn-lgw-unpack-exactp (x)
+  (declare (xargs :guard (fn-cbor-octet-listp x) :measure (len x)
+                  :hints (("Goal" :in-theory (disable fn-cbor-u32-from take nthcdr len)))
+                  :verify-guards nil))
+  (if (consp x)
+      (and (<= 4 (len x))
+           (let ((n (nfix (fn-cbor-u32-from (take 4 x)))))
+             (and (<= (+ 4 n) (len x))
+                  (fn-lgw-unpack-exactp (nthcdr (+ 4 n) x)))))
+    t))
+
+(verify-guards fn-lgw-unpack
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp))))
+(verify-guards fn-lgw-unpack-exactp
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp))))
+
+(defthm fn-lgw-unpack-is-unpack
+  (equal (fn-lgw-unpack x) (fn-lg-unpack x))
+  :hints (("Goal" :induct (fn-lgw-unpack x)
+           :in-theory (enable fn-lg-unpack))))
+
+(defthm fn-lgw-unpack-exactp-is-exactp
+  (equal (fn-lgw-unpack-exactp x) (fn-lg-unpack-exactp x))
+  :hints (("Goal" :induct (fn-lgw-unpack-exactp x)
+           :in-theory (enable fn-lg-unpack-exactp))))
+
+(defun fn-lgw-unpack-okp (x max)
+  (declare (xargs :guard (fn-cbor-octet-listp x)))
+  (and (fn-lgw-unpack-exactp x)
+       (let ((records (fn-lgw-unpack x)))
+         (and (consp (cdr records))
+              (fn-lg-recordsp records max)))))
+
+(defthm fn-lgw-unpack-okp-is-okp
+  (equal (fn-lgw-unpack-okp x max) (fn-lg-unpack-okp x max))
+  :hints (("Goal" :in-theory (e/d (fn-lg-unpack-okp) (fn-lgw-unpack fn-lgw-unpack-exactp
+                                                         fn-lg-unpack fn-lg-unpack-exactp)))))
+
 (defun fn-lgw-decide (e prev max)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (e/d (fn-frame-open)
+                                                        (fn-lgw-unpack-okp fn-lgw-unpack
+                                                         fn-lg-unpack-okp fn-lg-unpack
+                                                         fn-frame-decode))
+                                 :use ((:instance fn-frame-decode-payload-octets
+                                                  (octets e)
+                                                  (digest (fn-frame-digest
+                                                           (fn-frame-protected-prefix e)))
+                                                  (max-payload (fn-lg-open-bound e max))))))))
   (if (not (consp e))
       (mv nil nil)
     (let* ((r (ec-call (fn-frame-open e (ec-call (fn-lg-open-bound e max)))))
@@ -131,10 +226,15 @@
                (equal (fn-frame-result-magic r) *fn-lg-magic*)
                (equal (fn-frame-result-version r) *fn-lg-version*)
                (or (equal (fn-frame-result-kind r) *fn-lg-record-kind*)
-                   (and batchp (ec-call (fn-lg-unpack-okp body max))))
+                   (and batchp
+                        (mbe :logic (ec-call (fn-lg-unpack-okp body max))
+                             :exec (fn-lgw-unpack-okp body max))))
                (equal (ec-call (fn-bs-take *fn-frame-trailer-octets* (fn-frame-result-payload r)))
                       prev))
-          (mv t (if batchp (ec-call (fn-lg-unpack body)) (list body)))
+          (mv t (if batchp
+                    (mbe :logic (ec-call (fn-lg-unpack body))
+                         :exec (fn-lgw-unpack body))
+                  (list body)))
         (mv nil nil)))))
 
 (defthm fn-lgw-decide-is-okp-and-records
@@ -417,3 +517,86 @@
                  (:instance fn-lg-open-kernel-is-the-recovered-kernel)))))
 
 (in-theory (disable fn-lgw-step fn-lgw-window fn-lgw-run fn-lgw-kernel))
+
+; -----------------------------------------------------------------------------
+; The open over several segments, as the host runs it (host/native/io.lisp
+; fnn-log-scan-segments): each segment streamed from the genesis carried from
+; the one before (fnn-log-stream-segment, fn-lgw-run from fn-lgw-start GENESIS
+; 1), its records handed on in order, and the next genesis the stream's kernel's
+; last trailer (fn-lgc-last of fn-lgw-kernel).  CS are the segments' durable
+; octets in index order (the last the active one).
+
+(defun fn-lgw-segment-records (c genesis unit max)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (records st) (fn-lgw-run c (fn-lgw-start genesis 1) unit max)
+    (declare (ignore st))
+    records))
+
+(defun fn-lgw-segment-last (c genesis unit max)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (records st) (fn-lgw-run c (fn-lgw-start genesis 1) unit max)
+    (declare (ignore records))
+    (fn-lgc-last (fn-lgw-kernel st))))
+
+(defun fn-lgw-open-chain-last (cs genesis unit max)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp cs)
+      (fn-lgw-open-chain-last (cdr cs) (fn-lgw-segment-last (car cs) genesis unit max) unit max)
+    genesis))
+
+(defun fn-lgw-open-chain-records (cs genesis unit max)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp cs)
+      (append (fn-lgw-segment-records (car cs) genesis unit max)
+              (fn-lgw-open-chain-records (cdr cs) (fn-lgw-segment-last (car cs) genesis unit max)
+                                         unit max))
+    nil))
+
+; One segment's stream is the model's scan of it (fn-lgw-run-is-the-open: the
+; records are the recovered kernel's, and its last is the kernel's).
+(defthm fn-lgw-segment-is-the-scan
+  (and (equal (fn-lgw-segment-records c genesis unit max) (car (fn-lg-scan c genesis unit max)))
+       (equal (fn-lgw-segment-last c genesis unit max) (fn-lg-scan-last c genesis unit max)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-lgw-segment-records fn-lgw-segment-last fn-lgt-recover)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-lgw-run-is-the-open (floor 1))
+                 (:instance fn-lgs-chain-step-is-the-kernel-by-definition
+                            (prev genesis)
+                            (next (fn-lgt-next-after (car (fn-lg-scan c genesis unit max)) 1)))
+                 (:instance fn-lgc-observers-of-abstraction
+                            (ks (fn-lgt-recover c genesis unit max 1)))))))
+
+; The host's fold is the model's chain over the segments' octets.
+(defthm fn-lgw-open-chain-is-the-chain
+  (and (equal (fn-lgw-open-chain-records cs genesis unit max)
+              (fn-lgs-chain-records cs genesis unit max))
+       (equal (fn-lgw-open-chain-last cs genesis unit max)
+              (fn-lgs-chain-last cs genesis unit max)))
+  :hints (("Goal" :induct (fn-lgw-open-chain-last cs genesis unit max)
+           :in-theory (union-theories '(fn-lgw-open-chain-records fn-lgw-open-chain-last
+                                        fn-lgs-chain-records fn-lgs-chain-last
+                                        fn-lgw-segment-is-the-scan)
+                                      (theory 'minimal-theory)))))
+
+; KEYSTONE T8 over the host's streamed open (PRF-270).  COVERED are the
+; segments below the F row's first suffix segment, REMAINING that segment and
+; the ones after it (their durable octets).  If the checkpoint's capture is the
+; covered segments' streamed records and the F row's genesis is the covered
+; stream's last trailer (the rotation takes it from the closed segment's
+; kernel, fn-lgs-rotate), the history the open hands to the replay once the
+; covered segments are unlinked -- the checkpoint's records, then the host's
+; stream over the remaining segments from the named genesis -- is the host's
+; stream over every segment.  The replay of that split is the full replay by
+; fn-sn-recover-from-checkpoint-equals-full-recover.
+(defthm fn-lgw-segment-drop-preserves-the-open
+  (implies (and (equal prefix (fn-lgw-open-chain-records covered genesis0 unit max))
+                (equal genesis (fn-lgw-open-chain-last covered genesis0 unit max)))
+           (equal (append prefix (fn-lgw-open-chain-records remaining genesis unit max))
+                  (fn-lgw-open-chain-records (append covered remaining) genesis0 unit max)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-lgw-open-chain-is-the-chain fn-lgs-chain-records-of-append)
+                                      (theory 'minimal-theory)))))
+
+(in-theory (disable fn-lgw-segment-records fn-lgw-segment-last
+                    fn-lgw-open-chain-records fn-lgw-open-chain-last))

@@ -225,17 +225,19 @@
 
 ; P-RECOVER (Store.recover, 786-838).  Reads first (_load_frontier 795,
 ; durable_records 796, staging_orphans 797: reads of the view, no step),
-; then five fences on already-durable objects.
+; then the three recovery fences on the authority namespace: the
+; transactions directory, the root, its parent.  The per-file layout is
+; unreachable (every store an image opens is format 9: books/store-profile-
+; open.lisp); this program keeps *fn-sf-recovery-barrier-count* with the
+; format-9 open (books/store-log-route-programs.lisp fn-lg-open-program).
+; The config file's and the frontier file's fences (815, 816) are gone: each
+; file is fenced before its name is published (fn-bs-init-file-steps,
+; P-FRONTIER), so from a state whose only pending operations are entry
+; operations they drain nothing (lane open-barriers, 2026-09-27).
 (defun fn-bs-recover-program ()
   (declare (xargs :guard t :verify-guards nil))
   (list (list :observe '(:recover))                        ; 798 acl2.recover
         (list :cut "recover-replayed")                     ; 809
-        (list :fsync-file :root *fn-bs-config-name*)       ; 815 fsync_regular
-        (list :observe '(:recovery-barrier :ok))
-        (list :cut "recover-barrier")
-        (list :fsync-file :root *fn-bs-frontier-name*)     ; 816
-        (list :observe '(:recovery-barrier :ok))
-        (list :cut "recover-barrier")
         (list :fsync-dir :transactions)                    ; 817
         (list :observe '(:recovery-barrier :ok))
         (list :cut "recover-barrier")
@@ -252,7 +254,7 @@
 (defconst *fn-bs-recover-on-barrier-error* '((:observe (:recovery-barrier :uncertain))))
 
 ; Recovery removes bounded staging orphans AFTER fn-bs-recover-program has
-; run to its end: the host sweeps only once the fifth recovery barrier
+; run to its end: the host sweeps only once the last recovery barrier
 ; observation has reached :ready (host/native/io.lisp `fnn-recover', whose
 ; sweep is the model's, enabled only in that phase), and runs this program
 ; once per removed orphan.  The native `recovery-stage-unlinked` death point
@@ -281,7 +283,7 @@
 ; P-INIT (Store.initialize and _publish_initial_file, 612-667): mkdir root,
 ; transactions, staging; each of config and frontier is staged, fenced,
 ; linked (EEXIST reported, never replaced), the root fenced, the stage
-; unlinked; then the five recovery fences.  Same shape as P-RECORD with
+; unlinked; then the recovery fences.  Same shape as P-RECORD with
 ; :root as the authority directory.  The host has no cuts here today; these
 ; are the sites P2 adds.
 (defun fn-bs-init-file-steps (stage name octets)

@@ -564,7 +564,8 @@ three parts have three different owners of the *reply*, all of them ACL2.
    distinct `441` line (`fn-post-outcome-store-refusal-kinds-are-distinct`):
    `:duplicate` "this article is already stored here", `:conflict` "a
    different article with this Message-ID is stored here" (the two answers of
-   `fn-pb-existing-action`, which since D25 compares the poster's *source*:
+   the Store's entry `fn-store-existing-action`, D25's `fn-pb-action-over`
+   over the stored bytes, which since D25 compares the poster's *source*:
    each article's source is recovered by the injection inverse
    `fn-inj-source-of`, under the agent the submission's own Path line names,
    and two sources are compared octet for octet; an article that inverse does
@@ -798,8 +799,8 @@ Message-ID (D25). The node answers it from the Store, not from a reader view:
 What is proved, over the decision the host calls
 (`books/visibility-join.lisp`; `host/native/owner.lisp` `fnn-owner-attempt`
 through `host/owner-host.lisp` `fn-owner-existing-action-buffer`, whose
-decision is `fn-rclb-existing-action`; the carried-signature ingress through
-`fn-owner-existing-action`, `fn-rcl-existing-action`): once a Message-ID is
+decision is `fn-pidx-existing-action`; the carried-signature ingress through
+`fn-owner-existing-action`, `fn-store-existing-action`): once a Message-ID is
 held, the decision answers `:duplicate` or `:conflict`, never nil, after any
 Store completion (`fn-vj-a-completion-keeps-a-held-message-id-answered`; the
 cancel that withdraws the target is such a completion, `fn-sn-finish`) and
@@ -835,7 +836,7 @@ identity table. What each identity is, and which equality holds:
 | --- | --- | --- |
 | Application operation | the client's own (a persisted Message-ID) | a client that omits Message-ID has no retry identity: its resend is a new article (NNT-005) |
 | Message-ID | RFC 5536 s3.1.3 | transit (IHAVE, CHECK, TAKETHIS) and BP admission decide duplicates by it alone (RFC 3977 s6.3.2, RFC 4644); `fn-peer-decide-offer`, `fn-peer-decide-transfer` |
-| Authored source | the poster's octets, recovered by the injection inverse (`fn-inj-source-of`) | on the injecting routes (served POST, `operator post`, `hybrid-author`) the D25 verdict the host calls, `fn-rcl-existing-action`: same source at any later clock is "already stored here" (`fn-sr-a-retry-is-already-stored`), one changed authored byte is "a different article" (`fn-sr-a-changed-source-is-a-conflict`); a supplied Path tail is source (D32); no field is normalized, so a signed carrier is stored octet for octet after the injected block |
+| Authored source | the poster's octets, recovered by the injection inverse (`fn-inj-source-of`) | on the injecting routes (served POST, `operator post`, `hybrid-author`) the D25 verdict the host calls, `fn-store-existing-action` (books/store-intern.lisp; over the octet model `fn-rcl-action-over`): same source at any later clock is "already stored here" (`fn-sr-a-retry-is-already-stored`), one changed authored byte is "a different article" (`fn-sr-a-changed-source-is-a-conflict`); a supplied Path tail is source (D32); no field is normalized, so a signed carrier is stored octet for octet after the injected block |
 | Stored representation | the record payload (`store inspect`), its SHA-256 | the injected octets on the injecting node; on a receiving node the same octets with that node's path identity spliced into Path and any Xref dropped (`fn-peer-relayed-octets`); an injection is never a tombstone (`fn-sr-an-injection-is-not-a-tombstone`) |
 | Tombstone | SHA-256 of the octets and of the source, and the injecting agent | a retry after reclamation is still the duplicate and a changed source the conflict, up to a SHA-256 collision on the two sources (`fn-sr-a-retry-after-reclaim-is-already-stored`, `fn-sr-a-changed-source-after-reclaim-is-a-conflict`); marked unreachable-in-composition when no program wrote tombstones; `store reclaim` over the record log now rewrites a reclaimed article's record to its tombstone (`fn-lgr-decide`, books/store-log-reclaim.lisp, PRF-271, lane log-recovery 2026-09-27), and the mark has not been re-examined against it |
 | Bundle identity | RFC 9171 (source EID, creation time, sequence) | one per carried request; a re-offer of an uncertain forwarding attempt keeps it (specs/bp-node-machine.md s4.3.1) |
@@ -1446,8 +1447,9 @@ gives them.
   a stamp without a wall clock) `:account-expired`, under a login a redeemed
   row holds `:account-login-taken`, and of a redeemed row
   `:account-redeemed` unless it is the identical row.
-- **Once only** (PRF-164): a redeemed row is the same row after every later
-  acceptable record the owner replays (`fn-acct-redeemed-row-stays-across-replay`);
+- **Once only** (PRF-164): a redeemed row is the same row, or its tombstone
+  once `account delete` names its login, after every later acceptable record
+  the owner replays (`fn-acct-bound-row-succeeds-across-replay`);
   the redeem plan (`fn-acct-redeem-plan`, a pure function of the
   configuration value and the request) plans a redeem only of a delta the
   configuration admits (`fn-acct-redeem-plan-is-admitted-and-redeems`), and

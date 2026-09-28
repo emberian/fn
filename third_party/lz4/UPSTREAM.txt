@@ -1,0 +1,34 @@
+LZ4 1.10.0, the block format's reference implementation (lz4.c, lz4hc.c).
+
+Upstream:  https://github.com/lz4/lz4
+Release:   v1.10.0 (2024-07-22)
+Tarball:   https://github.com/lz4/lz4/archive/refs/tags/v1.10.0.tar.gz
+           SHA-256 537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b
+           (the same digest Homebrew's lz4 1.10.0 formula pins)
+Copied:    lib/lz4.c, lib/lz4.h, lib/lz4hc.c, lib/lz4hc.h, lib/LICENSE
+           -> this directory (unmodified)
+Licence:   LICENSE (BSD 2-Clause) for everything copied.
+Not copied: the frame format (lz4frame.*), xxhash, lz4file, the programs:
+           fn stores LZ4 BLOCKS inside its own record frame
+           (books/payload-lz-record.lisp), so neither the frame format nor its
+           checksum is used.
+
+Role: an UNTRUSTED encoder.  fn calls it only to produce a candidate block for
+a record's payload span (host/native/fn-lz4.c, host/native/lz4.lisp); ACL2's
+proved decoder (books/payload-lz.lisp fn-lz-decode) checks the candidate
+decodes to exactly the span before the record is taken
+(books/payload-lz-append.lisp fn-lzr-append-decide), and every read decodes
+through ACL2.  No vendored decoder is called.
+
+Refresh: fetch the release tarball, check its SHA-256 against the release's
+published digest, re-copy the same five files, update the lines above and the
+digests below, rebuild (tools/build_lz4.sh) and rerun
+tests/acl2/payload-lz-append-tests.lisp's real blocks and
+tests/test_lz4_candidate.py.
+
+SHA-256 of the vendored files (shasum -a 256, from this directory):
+8b58c446121a109ccf32edc094bba3010a3d85e4ee3702950db55e4d3e87736c  LICENSE
+9396f7de527bc8435de9c7569fb7998e56545a84b4f3c2d808c0235c01774539  lz4.c
+26b82efc53d1570f3b54eef02e9c4764c1ad374ff03cac04e2ced5ea4d4c552f  lz4.h
+126cafafdb91767e6e55238298a910903851b35b2cee27ce80ae2280469ee232  lz4hc.c
+e43824e8a9ba16f54100c4ccbccfa5782a858ca9ab83c48aac303fea3e76e21e  lz4hc.h

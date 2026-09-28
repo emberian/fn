@@ -117,6 +117,9 @@
 ;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
 (include-book "books/bp-held-projection")
 (include-book "books/bp-node-retire")
+;; Natural rotation at a node verb's open (fnn-bps-rotate-when-due calls
+;; fn-bpnrd-due-rotation-event; profile 3).
+(include-book "books/bp-node-rotation-due")
 (include-book "books/bp-report-observe")
 (include-book "books/bp-report-guards")
 (include-book "books/bp-app-handoff")
@@ -147,16 +150,17 @@
 ;; as in build.lisp: fn-owner-prepare-buffer and
 ;; fn-owner-existing-action-buffer (host/owner-host.lisp, which
 ;; host/native-admin-host.lisp `ld`s) take the fn-octets stobj and call
-;; fn-pbb-existing-action.  Without them the DTN image did not build at
+;; fn-pidx-existing-action (its comparison fn-pbb-same-articlep).  Without
+;; them the DTN image did not build at
 ;; 32842f50 (planning/evidence/native-drift-2026-09-25.md, finding 3);
 ;; tools/build_lists_check.py `included` checks this now.
 (include-book "books/octets-stobj")
 (include-book "books/poster-bytes-buffer")
 ;; host/native/io.lisp fnn-subject-id-buffer calls fn-shb-subject-id-bounded, as in build.lisp.
 (include-book "books/sha256-buffer")
-;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
-;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
-;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
+;; D13 (STO-014): the tombstone-aware same-article test over the buffer
+;; (fn-rclb-same-articlep), which fn-pidx-existing-action, the served POST's
+;; duplicate verdict, calls.
 (include-book "books/store-reclaim-buffer")
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
@@ -172,7 +176,8 @@
 (include-book "books/owner-prepare-served")
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
-;; tries and the one-dispatch history recognizer).
+;; tries and the one-dispatch history recognizer), and the store's recover
+;; entries their fusion fn-rii-sco-extend-open (PRF-321).
 (include-book "books/replay-identity-index")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
@@ -191,14 +196,15 @@
 ;; The served read over the octet buffer (ingress-span): host/owner-host.lisp
 ;; fn-owner-chunk-span calls fn-scar-ocfg-read-span.
 (include-book "books/served-span")
+;; Lane time-model-2: host/native/io.lisp fnn-owner-wall-milliseconds calls
+;; fn-otm-wall-reading (the wall clock's validity is ACL2's).
+(include-book "books/clock-wall-reading")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file
 ; the DTN images could not `store init' (native-subsets-6c0626c5, failure 2).
 ; Every host file build.lisp loads and this one omits is listed, with its
 ; reason, in tools/build_lists_check.py, which `make check' runs.
-; The pack chain's walk, coverage and observation (PRF-240).
-(include-book "books/checkpoint-pack-chain-once")
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the
 ; octet-list helpers store-host defines above it, as run_store.py's bridge does.
@@ -252,24 +258,40 @@
         (load "host/native/io.lisp")
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
+        ; The LZ4 block encoder of the compressed append (lib/libfn-lz4;
+        ; untrusted: ACL2's proved decoder checks every candidate).
+        (load "host/native/lz4.lisp")
         ; Select once during construction, before any diagnostic module loads.
         ; A restart-time FN_NATIVE_PROFILE cannot promote this saved image.
         (fnn-select-image-profile)
-        ; The release version (VERSION at the tree root, 6.7.N), serialized
+        ; The release version (VERSION at the tree root, D37), serialized
         ; into the image for `fn --version'; a missing or malformed file
         ; stops the build.
         (fnn-select-release-version)
         (load "host/native/tls.lisp")
         (fnn-tls-initialize)
+        ; Native SHA-256 (lane digest-native, A-CRYPTO-NATIVE): the pinned
+        ; libcrypto's EVP SHA-256 replaces the raw definitions of
+        ; fn-sha256-stobj, fn-sha256-of-string and fn-sha256-of-prefixed-buffer
+        ; after a known-answer and reference check.  Checked here, then reset
+        ; so the saved core holds the ACL2 references; every start re-checks
+        ; and re-installs after the TLS pair is pinned.
+        (load "host/native/digest.lisp")
+        (fnn-digest-initialize)
+        (fnn-digest-reset)
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
+        (fnn-lz4-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
           (fnn-crypto-startup)
           (fnn-tls-reset)
           (fnn-tls-initialize)
+          (fnn-digest-startup)
           (fnn-hsig-reset)
           (fnn-hsig-initialize)
+          (fnn-lz4-reset)
+          (fnn-lz4-initialize)
           (fnn-main)
           (values nil :exited *the-live-state*))
         (load "host/native/immutable-publish.lisp")
@@ -301,11 +323,12 @@
         (load "host/native/bp-node.lisp")
         ; What this image leaves out of the owner and operator it loaded:
         ; the NNTP service (TLS, auth, the feed service, the listener), the
-        ; credential store and the control socket.  The operator refuses a
-        ; plan needing one as an unsupported entry (io.lisp
-        ; `*fnn-image-omitted-surfaces*'), and the developer-only raw `owner'
-        ; verb, whose only use is that NNTP service, is withdrawn.
-        (setq *fnn-image-omitted-surfaces* '(:nntp-service :credentials :control))
+        ; credential store and the control socket.  It does not load
+        ; host/native/operator-live.lisp, which registers those surfaces'
+        ; operator actions and the live-owner arms, so the operator refuses
+        ; a plan needing one by the surface's name (the usage exit) and
+        ; takes the offline arms; the developer-only raw `owner' verb,
+        ; whose only use is that NNTP service, is withdrawn.
         (fnn-unregister-verb "owner")
         ; The saved image is a host, not a session: no ACL2 banner on stdout,
         ; and `--noinform' below keeps SBCL's own banner off it too.  The

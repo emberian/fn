@@ -29,7 +29,7 @@ client run as the invoking user):
            reference is read.  Last, `store export` writes the archive to
            the same file system and `store import` publishes it as a second
            store beside the first (phase `import': fn-bs-imp-program; the
-           `init' phase is fn-bs-init-pub-program, see publication_phases).
+           `init' phase is fn-bs-init-log-program, see publication_phases).
   index    the log device parsed (dm-log-writes' on-disk format: a super
            sector, then per entry a sector of {sector, nr_sectors, flags,
            data_len} and the data); the full replay must equal the data
@@ -77,6 +77,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(ROOT))
+import native_env  # noqa: E402
 
 MAGIC = 0x6A736677736872
 FLUSH, FUA, DISCARD, MARK, METADATA = 1, 2, 4, 8, 16
@@ -93,8 +94,8 @@ CKPT = re.compile(rb"CHECKPOINT auto sequence=(\d+)")
 def publication_phases():
     from tests.campaign import native_cuts
     return {
-        "init": {"program": "fn-bs-init-pub-program",
-                 "book": "books/store-init-publication.lisp",
+        "init": {"program": "fn-bs-init-log-program",
+                 "book": "books/store-init-log-publication.lisp",
                  "cuts": [c.name for c in native_cuts.INIT_PUB_CUTS],
                  "oracle": "ROOT absent (at most one ROOT.init-*, which the next "
                            "init names as interrupted-init; init succeeds once it "
@@ -193,8 +194,12 @@ def config2_for(work, store, port):
 
 
 def native(image, *argv, timeout=1800):
+    # Lane membership-budget: the scale stores here are made for hbox; name
+    # that target budget (tools/native_env.py, once), or `init' refuses a
+    # profile its unit cannot hold.
+    env = native_env.harness_store_env()
     r = subprocess.run([str(image), "--fn"] + [str(a) for a in argv], stdout=subprocess.PIPE,
-                       stderr=subprocess.PIPE, timeout=timeout)
+                       stderr=subprocess.PIPE, timeout=timeout, env=env)
     return r.returncode, r.stdout.decode("utf-8", "replace"), r.stderr.decode("utf-8", "replace")
 
 
@@ -970,7 +975,7 @@ def stages_beside(root, kind):
 
 
 def check_init(ctx, violations):
-    """A cut during `init` (fn-bs-init-pub-program): nothing was
+    """A cut during `init` (fn-bs-init-log-program): nothing was
     acknowledged.  The keystone: ROOT is absent or the complete empty store.
     Absent: at most one ROOT.init-*, which the next `init` names
     (interrupted-init) and after whose removal `init` succeeds; present: it
@@ -1171,11 +1176,16 @@ def check_store(image, cfg, port, work, phase, acked, attempted, ref, ref2, viol
     if code:
         violations.append("status-exit-%d" % code)
     # Outstanding retention work never disappears: every committed article
-    # is reclaimable, held or reclaimed (the status line's three counts).
-    counts = dict(re.findall(r"\b(articles|reclaimable|held|reclaimed)=(\d+)", so))
+    # is in exactly one retention class ACL2 names on the status line
+    # (reclaimable, held, reclaimed, signed, kept; PKT-844,
+    # fn-rcl-store-classes-partition-the-articles).  A status without the
+    # signed/kept fields predates PKT-844: its three counts are compared.
+    counts = dict(re.findall(r"\b(articles|reclaimable|held|reclaimed|signed|kept)=(\d+)", so))
     rule = re.search(r"reclaim rule=(\S+)", so)
-    if rule and rule.group(1) != "keep-forever" and "reclaimed" in counts and "articles" in counts:
-        total = sum(int(counts[k]) for k in ("reclaimable", "held", "reclaimed"))
+    if rule and "reclaimed" in counts and "articles" in counts and (
+            rule.group(1) != "keep-forever" or "kept" in counts):
+        total = sum(int(counts.get(k, 0))
+                    for k in ("reclaimable", "held", "reclaimed", "signed", "kept"))
         rec["reclaim_accounting"] = [int(counts["articles"]), total]
         if total != int(counts["articles"]):
             violations.append("reclaim-accounting:%s" % counts)

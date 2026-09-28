@@ -601,8 +601,7 @@
 (defthm fn-psrv-prepare-preserves-invariant
   (implies (and (fn-lgoc-invariantp oc)
                 (fn-prc-carryp carry)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                (fn-ceis-indexedp (fn-sbud-oc-store oc)))
+                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
            (fn-lgoc-invariantp (fn-psrv-prepare oc record budget carry)))
   :hints (("Goal"
            :cases ((fn-psrv-event-servedp (fn-ocfg-config oc) record))

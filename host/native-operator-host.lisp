@@ -216,6 +216,9 @@
 (defun fn-native-operator-host-result-status-control-path-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-status-control-path-octets result))
+(defun fn-native-operator-host-result-status-log-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-status-log-path-octets result))
 (defun fn-native-operator-host-result-health-min-percent (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-health-min-percent result))
@@ -226,7 +229,8 @@
   (fn-native-operator-preflight-needs-config-path-p result))
 
 (defun fn-native-operator-host-mission-run (path-octets argv-octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp path-octets)))
   (fn-native-operator-mission-run path-octets argv-octets))
 
 (defun fn-native-operator-host-mission-outcome (result existsp)

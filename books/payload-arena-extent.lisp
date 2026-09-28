@@ -162,6 +162,8 @@
 (defun fn-arx-entry (e x s)
   (declare (xargs :guard t :verify-guards nil))
   (cond ((fn-arn-extentp e) (fn-durable-octets (nth 0 e) (nth 3 e) (nth 4 e)))
+        ((fn-arn-lz-extentp e)
+         (fn-lzr-lz-value (nth 7 e) (fn-durable-octets (nth 0 e) (nth 3 e) (nth 4 e)) (nth 6 e)))
         ((eq e :staged) (fn-arx-stage-octets s))
         (t x)))
 
@@ -181,11 +183,17 @@
            (equal (fn-arx-entry e x s)
                   (fn-durable-octets (nth 0 e) (nth 3 e) (nth 4 e)))))
 
+(defthm fn-arx-entry-of-lz-extent
+  (implies (fn-arn-lz-extentp e)
+           (equal (fn-arx-entry e x s)
+                  (fn-lzr-lz-value (nth 7 e) (fn-durable-octets (nth 0 e) (nth 3 e) (nth 4 e))
+                                   (nth 6 e)))))
+
 (defthm fn-arx-entry-of-staged
   (equal (fn-arx-entry :staged x s) (fn-arx-stage-octets s)))
 
 (defthm fn-arx-entry-of-resident
-  (implies (and (not (fn-arn-extentp e)) (not (equal e :staged)))
+  (implies (and (not (fn-arn-extentp e)) (not (fn-arn-lz-extentp e)) (not (equal e :staged)))
            (equal (fn-arx-entry e x s) x)))
 
 ;; The stage slot matters only through its payload.
@@ -388,6 +396,7 @@
                               (fn-arena$x-wfp fn-arena$x))))
   (let ((e (fn-arena$x-exti h fn-arena$x)))
     (cond ((fn-arn-extentp e) (nth 4 e))
+          ((fn-arn-lz-extentp e) (nth 6 e))
           ((eq e :staged) (fn-arx-stage-len h fn-arena$x))
           (t (stobj-let ((fn-arena-paged (fn-arena$x-inner fn-arena$x)))
                         (n)
@@ -402,6 +411,9 @@
   (let ((e (fn-arena$x-exti h fn-arena$x)))
     (cond ((fn-arn-extentp e)
            (fn-durable-realize-octet (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e) i))
+          ((fn-arn-lz-extentp e)
+           (fn-oct-nth i (fn-durable-realize-lz (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e)
+                                                (nth 5 e) (nth 6 e) (nth 7 e))))
           ((eq e :staged) (fn-arx-stage-get h i fn-arena$x))
           (t (stobj-let ((fn-arena-paged (fn-arena$x-inner fn-arena$x)))
                         (v)
@@ -415,6 +427,9 @@
   (let ((e (fn-arena$x-exti h fn-arena$x)))
     (cond ((fn-arn-extentp e)
            (fn-durable-realize-octets (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e)))
+          ((fn-arn-lz-extentp e)
+           (fn-durable-realize-lz (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e)
+                                  (nth 6 e) (nth 7 e)))
           ((eq e :staged) (fn-arx-stage-payload h fn-arena$x))
           (t (stobj-let ((fn-arena-paged (fn-arena$x-inner fn-arena$x)))
                         (v)
@@ -517,13 +532,34 @@
                               (fn-arn-extent-guardp file eoff elen poff plen trailer))))
   (fn-arx-mark h (list file eoff elen poff plen trailer) fn-arena$x))
 
+; The compressed seal and reseat (lane compression-extents, PRF-326): as the
+; extent's, with the compressed extent in EXT.
+(defun fn-arena$x-seal-lz-extent (file eoff elen poff plen trailer n dict fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x
+                  :guard (and (fn-arn-lz-guardp file eoff elen poff plen trailer n dict)
+                              (fn-arena$x-wfp fn-arena$x))))
+  (let* ((h (fn-arena$x-count fn-arena$x))
+         (fn-arena$x (stobj-let ((fn-arena-paged (fn-arena$x-inner fn-arena$x)))
+                                (fn-arena-paged)
+                                (fn-arena-paged-seal-list nil fn-arena-paged)
+                                fn-arena$x)))
+    (fn-arx-mark h (list file eoff elen poff plen trailer n dict) fn-arena$x)))
+
+(defun fn-arena$x-reseat-lz-extent (h file eoff elen poff plen trailer n dict fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x
+                  :guard (and (natp h) (< h (fn-arena$x-count fn-arena$x))
+                              (fn-arena$x-wfp fn-arena$x)
+                              (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))))
+  (fn-arx-mark h (list file eoff elen poff plen trailer n dict) fn-arena$x))
+
 ; The release: the stage slot of an EXTENT handle is emptied (no other
 ; handle's slot is touched, and a staged handle keeps its copy).
 (defun fn-arena$x-release (h fn-arena$x)
   (declare (xargs :stobjs fn-arena$x :guard (natp h)))
   (if (and (< h (fn-arena$x-ext-length fn-arena$x))
            (< h (fn-arena$x-stage-length fn-arena$x))
-           (fn-arn-extentp (fn-arena$x-exti h fn-arena$x)))
+           (or (fn-arn-extentp (fn-arena$x-exti h fn-arena$x))
+               (fn-arn-lz-extentp (fn-arena$x-exti h fn-arena$x))))
       (stobj-let ((fn-arena-page (fn-arena$x-stagei h fn-arena$x)))
                  (fn-arena-page)
                  (resize-fn-arena-page-bytes 0 fn-arena-page)
@@ -780,9 +816,19 @@
 (defthm fn-arx-not-extentp-0
   (not (fn-arn-extentp 0)))
 
+(defthm fn-arx-lz-extentp-plen
+  (implies (fn-arn-lz-extentp e) (natp (nth 6 e)))
+  :rule-classes (:rewrite :type-prescription))
+
+(defthm fn-arx-not-lz-extentp-0
+  (not (fn-arn-lz-extentp 0)))
+
+(defthm fn-arx-lz-extent-is-not-staged
+  (implies (fn-arn-lz-extentp e) (not (equal e :staged))))
+
 (in-theory (disable fn-arx-mark fn-arx-stage-grow fn-arx-stage-write fn-arx-stage-len
                     fn-arx-stage-get fn-arx-stage-payload
-                    fn-arena$xp nth update-nth fn-arn-extentp fn-arx-view))
+                    fn-arena$xp nth update-nth fn-arn-extentp fn-arn-lz-extentp fn-arx-view))
 
 ; -----------------------------------------------------------------------------
 ; The obligations, each as `defabsstobj-missing-events' states it.
@@ -978,6 +1024,58 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
 
+(defthm fn-arena-extent-seal-lz-extent{correspondence}
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena-extent)
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
+           (fn-arena$xcorr (fn-arena$x-seal-lz-extent file eoff elen poff plen trailer n dict
+                                                      fn-arena$x)
+                           (fn-arena$a-seal-lz-extent file eoff elen poff plen trailer n dict
+                                                      fn-arena-extent)))
+  :rule-classes nil)
+
+(defthm fn-arena-extent-seal-lz-extent{guard-thm}
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena-extent)
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
+           (and (fn-arn-lz-guardp file eoff elen poff plen trailer n dict)
+                (fn-arena$x-wfp fn-arena$x)))
+  :rule-classes nil)
+
+(defthm fn-arena-extent-seal-lz-extent{preserved}
+  (implies (and (fn-arena$ap fn-arena-extent)
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
+           (fn-arena$ap (fn-arena$a-seal-lz-extent file eoff elen poff plen trailer n dict
+                                                   fn-arena-extent)))
+  :rule-classes nil)
+
+(defthm fn-arena-extent-reseat-lz-extent{correspondence}
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena-extent)
+                (natp h) (< h (fn-arena$a-count fn-arena-extent))
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
+           (fn-arena$xcorr (fn-arena$x-reseat-lz-extent h file eoff elen poff plen trailer n dict
+                                                        fn-arena$x)
+                           (fn-arena$a-reseat-lz-extent h file eoff elen poff plen trailer n dict
+                                                        fn-arena-extent)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-arx-view-of-update-inside fn-oct-update-is-update-nth))))
+
+(defthm fn-arena-extent-reseat-lz-extent{guard-thm}
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena-extent)
+                (natp h) (< h (fn-arena$a-count fn-arena-extent))
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
+           (and (natp h) (< h (fn-arena$x-count fn-arena$x))
+                (fn-arena$x-wfp fn-arena$x)
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict)))
+  :rule-classes nil)
+
+(defthm fn-arena-extent-reseat-lz-extent{preserved}
+  (implies (and (fn-arena$ap fn-arena-extent)
+                (natp h) (< h (fn-arena$a-count fn-arena-extent))
+                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
+           (fn-arena$ap (fn-arena$a-reseat-lz-extent h file eoff elen poff plen trailer n dict
+                                                     fn-arena-extent)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
+
 (defthm fn-arx-extent-is-not-staged
   (implies (fn-arn-extentp e) (not (equal e :staged)))
   :hints (("Goal" :in-theory (enable fn-arn-extentp))))
@@ -1033,4 +1131,8 @@
             (fn-arena-extent-reseat-extent :logic fn-arena$a-reseat-extent
                                            :exec fn-arena$x-reseat-extent :protect t)
             (fn-arena-extent-release :logic fn-arena$a-release :exec fn-arena$x-release
-                                     :protect t)))
+                                     :protect t)
+            (fn-arena-extent-seal-lz-extent :logic fn-arena$a-seal-lz-extent
+                                            :exec fn-arena$x-seal-lz-extent :protect t)
+            (fn-arena-extent-reseat-lz-extent :logic fn-arena$a-reseat-lz-extent
+                                              :exec fn-arena$x-reseat-lz-extent :protect t)))

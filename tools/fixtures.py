@@ -61,6 +61,8 @@ import sys
 import time
 
 TREE = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(TREE / "tools"))
+import native_env  # noqa: E402
 ROOT = Path("/tank/fn/scratch/fixtures")
 WORK = Path("/dev/shm/fn-fixtures")
 PY = sys.executable or "python3"
@@ -146,8 +148,14 @@ class Context:
     def __init__(self, image: Path, rev: str, work: Path, dest: Path, mem: str):
         self.image, self.rev, self.work, self.dest, self.mem = image, rev, work, dest, mem
         self.commands: list[list[str]] = []
-        self.env = dict(os.environ, ACL2_CUSTOMIZATION="NONE",
-                        FN_NATIVE_DEVELOPER_HOST=str(image), FN_FIXTURE_REV=rev)
+        # Lane membership-budget (ember, 2026-09-27): `init' refuses a profile
+        # whose full store the budget (the recipe's unit) cannot hold, unless
+        # a target budget is named; the fixtures are stores made for hbox and
+        # their recipes run the image directly: tools/native_env.py names the
+        # target once (harness_store_env).
+        self.env = native_env.harness_store_env(dict(
+            os.environ, ACL2_CUSTOMIZATION="NONE",
+            FN_NATIVE_DEVELOPER_HOST=str(image), FN_FIXTURE_REV=rev))
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
         # The ACL2 bridge the BP recipe's harness starts (as hbox_native.sh
         # exports it).
@@ -197,9 +205,7 @@ def recipe_posted(ctx: Context, script: str, n: int) -> None:
     else:
         ctx.run([PY, TREE / EVIDENCE / "post-identity-index-2026-09-26/postmeasure.py", "load",
                  ctx.image, work, n], env=env)
-    load = json.loads((work / "load.json").read_text())
-    if load.get("init_rc") != 0 or load.get("n") != n:
-        raise RuntimeError("load.json: init_rc={} n={}".format(load.get("init_rc"), load.get("n")))
+    check_load(work, n)
     copy_entries(work, ctx.dest, ["store"])
     shutil.copy2(work / "load.json", ctx.dest / "origin.json")
 
@@ -247,6 +253,105 @@ def recipe_rep_store(ctx: Context, n: int, octets: int) -> None:
     copy_entries(store, ctx.dest, sorted(p.name for p in store.iterdir()
                                          if not p.name.startswith("store-checkpoint")
                                          and not p.name.endswith(".sock")))
+
+
+# The synthesized stores' seeds: profiles with room for N x 2 KiB articles
+# whose init reservation (books/heap-reservation.lisp fn-heap-init-decide: the
+# FULL store's run at T and H) the fixture's scope holds; the old single
+# CAPACITY_SYNTH (T 4,000,000, H 8 GB, R 17 MB) asks 188,365 MB since the init
+# budget check (ax-fix-init-budget) and init refuses it, which left the
+# recipe with no store (extract-2, 2026-09-27).  Measured on hbox with the
+# dev image ea2cc5121 (lane-tools-1-fx): SYNTH_100K reserves 10,078 MB
+# (a 24 GiB scope holds it), SYNTH_1M 57,158 MB (an 80 GiB scope; a consumer opens a copy in
+# one at least that size).  R 196,608 is the small preset's record bound (a
+# 2 KiB article's record is about 2.9 KB); H holds N records with margin.
+# K stays 65,536: the owner's automatic checkpoint rotates the log every K
+# records, and synth_log_store needs the seed's whole history in one
+# segment (K 128 left the seed's journal at 000007.log; the reservation is
+# the same either way).
+SYNTH_SMALL_BOUNDS = ("--max-record-octets", "196608", "--max-article-octets", "32768",
+                      "--max-groups-per-article", "16", "--max-open-suffix", "65536")
+SYNTH_100K = ("--max-transactions", "131072", "--max-history-octets", "536870912",
+              *SYNTH_SMALL_BOUNDS)
+SYNTH_1M = ("--max-transactions", "1048576", "--max-history-octets", "2800000000",
+            *SYNTH_SMALL_BOUNDS)
+
+
+def check_load(work: Path, n: int) -> dict:
+    """The load phase's load.json, refused unless init succeeded and N posted."""
+    try:
+        load = json.loads((work / "load.json").read_text())
+    except (OSError, ValueError) as error:
+        raise RuntimeError("load.json unreadable in {}: {}".format(work, error))
+    if load.get("init_rc") != 0 or load.get("n") != n:
+        raise RuntimeError("load.json: init_rc={} n={} init: {}".format(
+            load.get("init_rc"), load.get("n"), (load.get("init_tail") or "").strip()))
+    return load
+
+
+def recipe_synth(ctx: Context, n: int, flags: tuple) -> None:
+    """tools/synth_log_store.py: a seed of 1,000 POSTed 2 KiB articles (the
+    n1k-2k recipe under FLAGS, then capacity 4,000,000), renumbered
+    to N article records written as the log directly (batch-8 entries, no
+    checkpoint): the first open is a full replay of N records
+    (planning/evidence/snapshot-open-2-2026-09-27.md section 5)."""
+    work = ctx.work / "seed"
+    env = dict(ctx.env, FN_FIXTURE_INIT_FLAGS=" ".join(flags))
+    ctx.run([PY, TREE / EVIDENCE / "post-identity-index-2026-09-26/postmeasure.py", "load",
+             ctx.image, work, 1000], env=env)
+    check_load(work, 1000)
+    ctx.run([PY, TREE / EVIDENCE / "snapshot-open-3-2026-09-27/capseed.py", ctx.image,
+             work / "store", 4000000])
+    # The seed's history is its journal: no checkpoint goes into the copy.
+    for path in (work / "store").glob("store-checkpoint*"):
+        path.unlink()
+    ctx.dest.mkdir(parents=True)
+    ctx.run([PY, TREE / "tools/synth_log_store.py", work / "store", ctx.dest / "store", n,
+             "--batch", 8])
+    (ctx.dest / "store" / "writer.lock").unlink(missing_ok=True)
+    shutil.copy2(work / "load.json", ctx.dest / "seed-load.json")
+
+
+def recipe_synth_lz(ctx: Context, n: int, threshold: int = 64) -> None:
+    """recipe_synth's store with its records COMPRESSED (lane
+    compression-extents-2): the synthesized store (built in WORK/plain) is
+    exported and imported by the developer image with
+    FN_NATIVE_IMPORT_COMPRESS_MIN_TEST=THRESHOLD, so every article record goes
+    through the compressed append (ACL2's plan, the LZ4 candidate, the proved
+    decoder's check) exactly as a POST under `policy set compress-min-octets'
+    would; then that configuration row is set, so an owner started on a copy
+    keeps compressing.  A function of recipe_synth: rebuilt after any format
+    change with it."""
+    plain = Context(ctx.image, ctx.rev, ctx.work / "plain-work", ctx.work / "plain", ctx.mem)
+    plain.work.mkdir(parents=True, exist_ok=True)
+    plain.log = ctx.log
+    # The registered plain fixture when it is present (its bytes are
+    # recipe_synth's; rebuilding the seed needs an init budget for capacity
+    # 4,000,000 that a swarm-build scope refuses on hbox), else the recipe.
+    registered = ROOT / "syn100k-2k" / "store"
+    if n == 100000 and (registered / "journal").is_dir():
+        plain.dest.mkdir(parents=True)
+        shutil.copytree(registered, plain.dest / "store", symlinks=True)
+    else:
+        recipe_synth(plain, n, SYNTH_100K if n == 100000 else SYNTH_1M)
+    lock = plain.dest / "store" / "writer.lock"
+    lock.touch()
+    os.chmod(lock, 0o600)
+    archive = ctx.work / "archive"
+    ctx.run([ctx.image, "--fn", "store", plain.dest / "store", "export", archive], env=ctx.env)
+    ctx.dest.mkdir(parents=True)
+    store = ctx.dest / "store"
+    ctx.run([ctx.image, "--fn", "store", store, "import", archive],
+            env=dict(ctx.env, FN_NATIVE_IMPORT_COMPRESS_MIN_TEST=str(threshold)))
+    config = ctx.work / "fn.toml"
+    config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = 1\n'
+                      '[control]\npath = "%s"\n' % (store, ctx.work / "c.sock"))
+    ctx.run([ctx.image, "--fn", "operator", config, "policy", "set", "compress-min-octets",
+             threshold], env=ctx.env)
+    ctx.run([ctx.image, "--fn", "store", store, "compression"], env=ctx.env)
+    (store / "writer.lock").unlink(missing_ok=True)
+    shutil.rmtree(plain.dest, ignore_errors=True)
+    shutil.rmtree(archive, ignore_errors=True)
 
 
 def recipe_bp_open(ctx: Context) -> None:
@@ -307,6 +412,24 @@ REGISTRY = [
             readme="SCN-077's first half (1,311 held rows): pre-rotation.tar and post-rotation.tar "
                    "of the BP journal t/, built by fixture.py; measure.py LABEL TREE IMAGE times "
                    "the three opens."),
+    Fixture("syn100k-2k", lambda c: recipe_synth(c, 100000, SYNTH_100K), mem="24G",
+            readme="100,000 x 2 KiB article records synthesized as the log (tools/synth_log_store.py "
+                   "from a 1,000-article seed initialized with SYNTH_100K: T 131072, H 512 MiB, "
+                   "R 196608, A 32768, G 16, K 65536; init reservation 10,078 MB; capacity "
+                   "4,000,000, batch-8 entries, no checkpoint): the open is a full replay "
+                   "(OWNER-OPEN open=full-replay). Copy store/ and touch writer.lock (mode 600) "
+                   "before use; seed-load.json is the seed's init line."),
+    Fixture("syn100k-2k-lz", lambda c: recipe_synth_lz(c, 100000), mem="40G",
+            readme="syn100k-2k with every article record COMPRESSED (LZ4-HC block frames, "
+                   "dictionary 0, threshold 64; tools/fixtures.py recipe_synth_lz: the "
+                   "synthesized store exported and imported through the compressed append), "
+                   "and the `compress-min-octets 64' configuration row. `store ROOT compression' "
+                   "reports it. Copy store/ and touch writer.lock (mode 600) before use."),
+    Fixture("syn1m-2k", lambda c: recipe_synth(c, 1000000, SYNTH_1M), mem="80G",
+            readme="1,000,000 x 2 KiB article records, as syn100k-2k (2.56 GB of entries), seed "
+                   "initialized with SYNTH_1M: T 1048576, H 2,800,000,000, the same R A G K; its "
+                   "init reservation is 57,158 MB, so open a copy under MemoryMax 80G (a 40G or "
+                   "24G scope refuses it: machine-cannot-hold-profile)."),
     Fixture("usenet-20news-19997", static=True,
             readme="The 20 Newsgroups corpus (a corpus, not a store): verified, never rebuilt."),
 ]
@@ -457,6 +580,11 @@ def cmd_opens(args) -> int:
         for rel in fixture.stores:
             copy = work / "copy" / rel.replace("/", "-").replace(".", "self")
             shutil.copytree(source / rel, copy, symlinks=True)
+            # A fixture made without a lock file (syn100k-2k, syn1m-2k) is
+            # used as its README says: the copy gets writer.lock, mode 600.
+            lock = copy / "writer.lock"
+            if not lock.exists():
+                lock.touch(mode=0o600)
             ctx = Context(image, "", work / "ctx", copy, fixture.mem)
             started = time.time()
             try:

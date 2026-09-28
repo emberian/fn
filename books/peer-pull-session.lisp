@@ -170,7 +170,14 @@
 ; The feed-machine events one host event amounts to: EV, then nil (drain the
 ; retained input) while the machine just sent a command, at most FUEL more.
 (defun fn-pull-pre-events (fc ev fuel)
-  (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
+  (declare (xargs :guard (natp fuel) :measure (nfix fuel)
+                  ;; The machine's step is opaque here: its termination and
+                  ;; guard proofs do not open it (1,691,836 steps before).
+                  :hints (("Goal" :in-theory (disable fn-fc-event-result fn-fc-kind
+                                                      fn-fc-next-state)))
+                  :guard-hints (("Goal" :in-theory (disable fn-fc-event-result
+                                                            fn-fc-kind
+                                                            fn-fc-next-state)))))
   (let ((r (fn-fc-event-result fc ev)))
     (if (and (not (zp fuel)) (fn-pull-pre-continuep (fn-fc-kind r)))
         (cons ev (fn-pull-pre-events (fn-fc-next-state r) nil (1- fuel)))
@@ -347,8 +354,12 @@
 (defthm fn-pull-s-fc-of-begin
   (equal (fn-pull-s-fc (car (fn-pull-session-begin plan cursor now credential)))
          (fn-pull-session-fc0 plan credential))
-  :hints (("Goal" :in-theory (disable fn-pull-session-fc0 fn-pull-fail
-                                      fn-pull-begin-ready))))
+  ;; 352 prover steps; 982,026 before the begin's parts were kept shut.
+  :hints (("Goal" :in-theory (e/d (fn-pull-session-begin)
+                                  (fn-pull-session-fc0 fn-pull-fail fn-pull-begin-ready
+                                   fn-pull-session-refusal fn-pull-begin-effects
+                                   fn-pull-tls-effect fn-fc-phase fn-pull-plan-security
+                                   fn-pull-plan-wildmat fn-pull-plan-bound)))))
 
 ; KEYSTONE (PRF-125, instantiating PRF-051
 ; `fn-fc-offers-and-credentials-wait-for-tls-and-login').  A pull over a TLS
@@ -484,16 +495,42 @@
                                    fn-fc-drive-state fn-pull-obs-effects
                                    fn-pull-session-fc-events fn-pull-pre-okp)))))
 
+;; The three conjuncts below, one induction each (1,076,487 prover steps as
+;; one induction).
+(local
+ (defthm fn-pull-session-run-keeps-the-cursor
+   (equal (fn-pull-round-cursor (fn-pull-s-round (car (fn-pull-session-run s events))))
+          (fn-pull-round-cursor (fn-pull-s-round s)))
+   :hints (("Goal" :induct (fn-pull-session-run s events)
+            :in-theory (e/d (fn-pull-session-run)
+                            (fn-pull-session-step fn-pull-roundp fn-pull-round-cursor
+                             fn-pull-list fn-pull-journal-effects))))))
+
+(local
+ (defthm fn-pull-session-run-keeps-roundp
+   (implies (fn-pull-roundp (fn-pull-s-round s))
+            (fn-pull-roundp (fn-pull-s-round (car (fn-pull-session-run s events)))))
+   :hints (("Goal" :induct (fn-pull-session-run s events)
+            :in-theory (e/d (fn-pull-session-run)
+                            (fn-pull-session-step fn-pull-roundp fn-pull-round-cursor
+                             fn-pull-list fn-pull-journal-effects))))))
+
+(local
+ (defthm fn-pull-session-run-journals-nothing
+   (equal (fn-pull-journal-effects (mv-nth 1 (fn-pull-session-run s events))) nil)
+   :hints (("Goal" :induct (fn-pull-session-run s events)
+            :in-theory (e/d (fn-pull-session-run fn-pull-list)
+                            (fn-pull-session-step fn-pull-roundp fn-pull-round-cursor))))))
+
 (defthm fn-pull-session-run-keeps-the-cursor-and-journals-nothing
   (and (equal (fn-pull-round-cursor (fn-pull-s-round (car (fn-pull-session-run s events))))
               (fn-pull-round-cursor (fn-pull-s-round s)))
        (implies (fn-pull-roundp (fn-pull-s-round s))
                 (fn-pull-roundp (fn-pull-s-round (car (fn-pull-session-run s events)))))
        (equal (fn-pull-journal-effects (mv-nth 1 (fn-pull-session-run s events))) nil))
-  :hints (("Goal" :induct (fn-pull-session-run s events)
-           :in-theory (e/d (fn-pull-session-run fn-pull-list)
-                           (fn-pull-session-step fn-pull-roundp
-                            fn-pull-round-cursor)))))
+  :hints (("Goal" :in-theory '(fn-pull-session-run-keeps-the-cursor
+                               fn-pull-session-run-keeps-roundp
+                               fn-pull-session-run-journals-nothing))))
 
 (defthm fn-pull-session-begin-round
   (and (equal (fn-pull-round-cursor
@@ -710,3 +747,219 @@
                  ((not (fn-pull-session-readyp s)) " at=preamble")
                  ((fn-pull-tls-securityp (fn-pull-s-security s)) " transport=tls")
                  (t " transport=clear")))))
+
+; -----------------------------------------------------------------------------
+; Why a peer connection failed, by name (lane friend-path-2, 2026-09-27).
+;
+; A friend's pull logged `pull peer=friend round=failed cursor=held
+; at=preamble' and nothing more: the peer had refused the login (481) because
+; a password change was waiting for a restart.  Every failed step now names
+; its reason: `fn-pull-session-failure' reads the step (the session before it,
+; the event, the session after it) and names the refusal, the peer's reply
+; code when there was one, and where the connection was.  The host carries the
+; first reason of a round and logs `fn-pull-session-log-line-why'.  The same
+; words name a refused outbound feed connection (`fn-peer-feed-failure-line',
+; host/owner-host.lisp fn-owner-feed-reply-chunk).
+
+; The feed-connection machine's refusal (books/feed-connection.lisp
+; fn-fc-from-line) in the phase it was refused in.  A 200/201 greeting that
+; is refused is this node declining to send a password in clear.
+(defun fn-peer-failure-word (phase kind code)
+  (declare (xargs :guard t))
+  (cond ((equal kind :refused)
+         (cond ((equal phase :greeting)
+                (if (member-equal code '(200 201)) "clear-login-refused" "greeting-refused"))
+               ((equal phase :starttls) "starttls-refused")
+               ((member-equal phase '(:auth-user :auth-pass)) "login-refused")
+               ((equal phase :mode) "mode-refused")
+               (t "refused")))
+        ((equal kind :closed) "peer-closed")
+        ((equal kind :invalid) "invalid-reply")
+        (t "failed")))
+
+; The host's cause of a lost connection, the second word of (:lost CAUSE)
+; (host/native/pull-service.lisp): the dial, the TLS handshake, a send, a read
+; timeout, end of file, a read error, or the local transit connection.
+(defun fn-peer-lost-word (cause)
+  (declare (xargs :guard t))
+  (cond ((equal cause :dial) "lost-dial")
+        ((equal cause :tls) "lost-tls")
+        ((equal cause :send) "lost-send")
+        ((equal cause :timeout) "lost-timeout")
+        ((equal cause :eof) "lost-eof")
+        ((equal cause :read) "lost-read")
+        ((equal cause :local) "lost-local")
+        (t "lost")))
+
+(defun fn-peer-phase-word (phase)
+  (declare (xargs :guard t))
+  (cond ((equal phase :greeting) "greeting")
+        ((equal phase :starttls) "starttls")
+        ((equal phase :tls) "tls")
+        ((equal phase :auth-user) "auth-user")
+        ((equal phase :auth-pass) "auth-pass")
+        ((equal phase :mode) "mode")
+        ((equal phase :ready) "ready")
+        ((equal phase :date) "date")
+        ((equal phase :newnews) "newnews")
+        ((equal phase :local-greeting) "local-greeting")
+        ((equal phase :offer) "offer")
+        ((equal phase :article) "article")
+        ((equal phase :forward) "forward")
+        ((equal phase :list) "list")
+        (t "other")))
+
+; The first event the machine refuses, walking it from ST over EVS: (WORD
+; CODE PHASE), or nil when none is refused.
+(defun fn-pull-preamble-why (st evs)
+  (declare (xargs :guard t :measure (len evs)
+                  :hints (("Goal" :in-theory (disable fn-fc-event-result
+                                                      fn-fc-line-code
+                                                      fn-fc-next-state fn-fc-kind
+                                                      fn-fc-phase)))
+                  :guard-hints (("Goal" :in-theory (disable fn-fc-event-result
+                                                            fn-fc-line-code
+                                                            fn-fc-next-state fn-fc-kind
+                                                            fn-fc-phase)))))
+  (if (consp evs)
+      (let ((r (fn-fc-event-result st (car evs))))
+        (if (member-equal (fn-fc-kind r)
+                          '(:need-input :starttls :tls :auth-user :auth-pass :ready))
+            (fn-pull-preamble-why (fn-fc-next-state r) (cdr evs))
+          (let ((code (fn-fc-line-code st (car evs))))
+            (list (fn-peer-failure-word (fn-fc-phase st) (fn-fc-kind r) code)
+                  code
+                  (fn-peer-phase-word (fn-fc-phase st))))))
+    nil))
+
+(defthm fn-pull-preamble-why-names-a-word
+  (implies (fn-pull-preamble-why st evs)
+           (stringp (car (fn-pull-preamble-why st evs))))
+  :hints (("Goal" :in-theory (disable fn-fc-event-result fn-fc-line-code
+                                      fn-fc-next-state fn-fc-kind fn-fc-phase))))
+
+(defun fn-pull-lost-cause (event)
+  (declare (xargs :guard t))
+  (if (and (consp event) (consp (cdr event))) (cadr event) nil))
+
+; KEYSTONE SUBJECT.  Why the step from S on EVENT to S2 failed the round:
+; (WORD CODE PHASE), or nil when it did not fail it.  The host
+; (host/native/pull-service.lisp fnn-pull-round) calls it through
+; `fn-pull-session-step-triple'.
+(defun fn-pull-session-failure (s event s2)
+  (declare (xargs :guard t))
+  (if (and (not (fn-pull-done-p (fn-pull-s-round s)))
+           (equal (fn-pull-r-phase (fn-pull-s-round s2)) :failed))
+      (cond ((fn-pull-session-readyp s)
+             (let ((phase (fn-peer-phase-word (fn-pull-r-phase (fn-pull-s-round s)))))
+               (cond ((and (consp event) (equal (car event) :lost))
+                      (list (fn-peer-lost-word (fn-pull-lost-cause event)) nil phase))
+                     ((and (consp event) (equal (car event) :local))
+                      (list "local-reply-refused" nil phase))
+                     (t (list "peer-reply-refused" nil phase)))))
+            ((or (equal event '(:tls-up))
+                 (and (consp event) (equal (car event) :remote)))
+             (or (fn-pull-preamble-why (fn-pull-s-fc s) (fn-pull-session-fc-events s event))
+                 (list "failed" nil "preamble")))
+            (t (list (fn-peer-lost-word (fn-pull-lost-cause event)) nil "preamble")))
+    nil))
+
+(defun fn-pull-session-step-triple (s event)
+  (declare (xargs :guard t))
+  (mv-let (s2 effects) (fn-pull-session-step s event)
+    (list s2 effects (fn-pull-session-failure s event s2))))
+
+; What the host calls is the triple: the step's two values and the failure.
+(defthm fn-pull-session-step-triple-by-definition
+  (equal (fn-pull-session-step-triple s event)
+         (list (car (fn-pull-session-step s event))
+               (mv-nth 1 (fn-pull-session-step s event))
+               (fn-pull-session-failure s event (car (fn-pull-session-step s event)))))
+  :hints (("Goal" :in-theory (e/d (fn-pull-session-step-triple)
+                                  (fn-pull-session-step fn-pull-session-failure)))))
+
+; ` reason=WORD[ code=NNN][ phase=PHASE]', or nothing for no failure.
+(defun fn-peer-failure-words (why)
+  (declare (xargs :guard t))
+  (if (and (consp why) (stringp (car why)))
+      (append (fn-record-string-octets " reason=")
+              (fn-record-string-octets (car why))
+              (if (and (consp (cdr why)) (natp (cadr why)))
+                  (append (fn-record-string-octets " code=")
+                          (fn-nntp-decimal-field (cadr why)))
+                nil)
+              (if (and (consp (cdr why)) (consp (cddr why)) (stringp (caddr why)))
+                  (append (fn-record-string-octets " phase=")
+                          (fn-record-string-octets (caddr why)))
+                nil))
+    nil))
+
+(defun fn-pull-session-log-line-why (s why)
+  (declare (xargs :guard t))
+  (append (fn-pull-session-log-line s) (fn-peer-failure-words why)))
+
+; The feed's one line for a connection the peer refused, closed, or answered
+; with what the machine cannot read (host/owner-host.lisp
+; fn-owner-feed-reply-chunk, the :connection-refused/:closed/:invalid arm):
+; `refused feed peer=P connection=failed reason=WORD[ code=NNN] phase=PHASE'.
+; INPUT is the machine before the chunk, STEP the result of `fn-fc-step' on
+; it and OCTETS.
+(defun fn-peer-feed-failure-line (peer input step octets)
+  (declare (xargs :guard t))
+  (let ((code (fn-fc-line-code input octets)))
+    (append (fn-record-string-octets "refused feed peer=")
+            (if (stringp peer) (fn-record-string-octets peer) nil)
+            (fn-record-string-octets " connection=failed")
+            (fn-peer-failure-words
+             (list (fn-peer-failure-word (fn-fc-phase input) (fn-fc-kind step) code)
+                   code
+                   (fn-peer-phase-word (fn-fc-phase input)))))))
+
+(defthm fn-peer-failure-words-begin-with-reason
+  (implies (and (consp why) (stringp (car why)))
+           (equal (take 8 (fn-peer-failure-words why))
+                  (fn-record-string-octets " reason=")))
+  :hints (("Goal" :in-theory (e/d (fn-peer-failure-words) (fn-nntp-decimal-field)))))
+
+(defthm fn-pull-session-failure-shape
+  (let ((why (fn-pull-session-failure s event s2)))
+    (implies why (and (consp why) (stringp (car why)))))
+  :hints (("Goal" :in-theory (e/d (fn-pull-session-failure)
+                                  (fn-pull-done-p fn-pull-session-readyp
+                                   fn-pull-preamble-why fn-pull-session-fc-events
+                                   fn-peer-lost-word fn-peer-phase-word)))))
+
+(defthm fn-pull-session-failure-iff
+  (iff (fn-pull-session-failure s event s2)
+       (and (not (fn-pull-done-p (fn-pull-s-round s)))
+            (equal (fn-pull-r-phase (fn-pull-s-round s2)) :failed)))
+  :hints (("Goal" :in-theory (e/d (fn-pull-session-failure)
+                                  (fn-pull-done-p fn-pull-session-readyp
+                                   fn-pull-preamble-why fn-pull-session-fc-events
+                                   fn-peer-lost-word fn-peer-phase-word)))))
+
+; KEYSTONE (friend-path-2).  Every step that fails a round names why: the
+; failure the host carries is non-nil exactly when the step moved a round
+; that had not ended to :failed, and its words then say ` reason=' and a
+; word; a step that does not fail a round names nothing.
+(defthm fn-pull-session-failure-names-every-failed-step
+  (let* ((s2 (car (fn-pull-session-step s event)))
+         (why (fn-pull-session-failure s event s2)))
+    (and (iff why
+              (and (not (fn-pull-done-p (fn-pull-s-round s)))
+                   (equal (fn-pull-r-phase (fn-pull-s-round s2)) :failed)))
+         (implies why
+                  (equal (take 8 (fn-peer-failure-words why))
+                         (fn-record-string-octets " reason=")))))
+  :hints (("Goal" :in-theory '(fn-pull-session-failure-iff
+                               fn-pull-session-failure-shape
+                               fn-peer-failure-words-begin-with-reason))))
+
+; The feed's line for a connection lost before its reply (host/native/feed-service.lisp
+; the :need-input arm at end of file): the same words.
+(defun fn-peer-feed-lost-line (peer cause)
+  (declare (xargs :guard t))
+  (append (fn-record-string-octets "refused feed peer=")
+          (if (stringp peer) (fn-record-string-octets peer) nil)
+          (fn-record-string-octets " connection=failed")
+          (fn-peer-failure-words (list (fn-peer-lost-word cause) nil nil))))

@@ -457,12 +457,10 @@ class StoreFaultMatrixTests(unittest.TestCase):
                 else:
                     self.assertEqual(self.assert_recovered(path, 1, 1), [0])
 
-    def test_recovery_read_and_all_five_barrier_matrix(self):
+    def test_recovery_read_and_all_three_barrier_matrix(self):
         """Read and every recovery rebarrier failure close an already-live gate."""
         cases = (("read", "transaction", timing) for timing in ("before", "after"))
         cases = tuple(cases) + tuple(
-            ("file-fsync", target, timing)
-            for target in ("config", "frontier") for timing in ("before", "after")) + tuple(
             ("directory", target, timing)
             for target in ("transactions", "root", "parent") for timing in ("before", "after"))
         for boundary, target_name, timing in cases:

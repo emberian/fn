@@ -30,7 +30,10 @@ session. None of them is a gate or a claim; each says what it does at the top.
   the one-exchange two-Store join (R at A, protected A→B peering, B's
   receiver verdict, Mini's poll/transaction/ACK at B, Mini's signed reply at
   B, B→A, restart both, Mini reads at A), with per-step logs and
-  ACCEPTED/REFUSED/UNCERTAIN verdicts. See
+  ACCEPTED/REFUSED/UNCERTAIN verdicts. `--mini-a-FIELD` / `--mini-b-FIELD`
+  (FIELD one of pinned-config, genesis, birth-intent, custody-key, policy)
+  give each side its own Mini deployment, so A and B are independent Mini
+  identities; an absent one is the common input. See
   `planning/evidence/two-store-join-harness-2026-09-24.md`.
 
 After `hbox-node-deploy.sh`, the check from the laptop is `tools/node_probe.py`

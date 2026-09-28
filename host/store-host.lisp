@@ -20,6 +20,12 @@
 (include-book "../books/payload-commit-extent")
 ; The served read's entry check over the realizer's buffer (PRF-295).
 (include-book "../books/payload-extent-read")
+; Compressed records (PRF-326, PRF-341): the append's plan and decision
+; (fnn-log-compress), the read's expansion (fnn-log-read-record), the
+; replay's compressed extents, the commit's compressed reseat, and the
+; realizer's decode (host/native/extent.lisp fn-durable-realize-lz).
+(include-book "../books/payload-lz-append")
+(include-book "../books/payload-lz-replay")
 (include-book "../books/store-config")
 (include-book "../books/identity")
 (include-book "../books/crypto-attach")
@@ -40,6 +46,14 @@
 ;; fnn-log-*): the committed records' count in place of their list.
 (include-book "../books/store-log-kernel-concrete")
 (include-book "../books/store-log-stream")
+;; The open tells a torn tail from damage (lane log-corruption).
+(include-book "../books/store-log-damage")
+;; The walk over the entry's octet buffer (lane snapshot-open-3; KEYSTONE
+;; fn-lgw-step-buf-is-step): host/native/io.lisp fnn-log-stream-segment.
+(include-book "../books/store-log-buffer")
+;; The full replay decodes each record once (lane snapshot-open-3; KEYSTONE
+;; fn-lgw-run-nf-then-fold-is-run): fnn-log-stream-segment, fnn-recover-log-stream-flush.
+(include-book "../books/store-log-walk-once")
 (include-book "../books/store-log-segments")
 (include-book "../books/store-log-extend")
 (include-book "../books/store-init-log-publication")
@@ -77,27 +91,17 @@
             (cons (fn-store-octets->string (car xs)) rest))))
     (if (null xs) nil :bad)))
 
-(defun fn-store-txn-observation (observed maximum)
-  (declare (xargs :mode :program))
-  (let ((names (fn-store-octet-lists->strings observed)))
-    (if (and (natp maximum) (true-listp observed)
-             (not (equal names :bad)) (<= (len names) maximum))
-        ;; The byte-store scan owns exact names and contiguous sequences.
-        (fn-bs-txn-observation-pairs names 0)
-      :invalid)))
-
 ; The bound and the grammar are `fn-profile-txn-observation'
-; (books/store-profile-facts.lisp); this wrapper converts octets.
+; (books/store-profile-facts.lisp); this wrapper converts octets.  The
+; per-file layout's namespace: its one caller left is the Python store's
+; bridge (host/store-node-host.lisp fn-store-txn-observation-octets, from
+; tools/frame_bridge.py txn_observation for tools/run_store.py).
 (defun fn-store-txn-observation-selected (observed maximum selected-lower)
   (declare (xargs :mode :program))
   (let ((names (fn-store-octet-lists->strings observed)))
     (if (and (true-listp observed) (not (equal names :bad)))
         (fn-profile-txn-observation names maximum selected-lower)
       :invalid)))
-
-; The transaction-prefix reclaim plan is `fn-bs-pack-reclaim-plan'
-; (books/byte-store-compaction-correspondence), whose namespace gate is
-; `fn-profile-txn-observation'; host/native/checkpoint.lisp calls it directly.
 
 ; The record wrappers recognise and dispatch through the concrete twins of
 ; books/records-concrete.lisp.  What the codec decodes is a WIRE event
@@ -108,7 +112,8 @@
 (defun fn-store-decode-records (octet-records)
   ; books/store-recover-stream.lisp fn-srs-decode: the chunked open's step
   ; decodes with the same function.
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-octet-list-listp octet-records)))
   (fn-srs-decode octet-records))
 
 ; THE INTERN AT THE OPEN (records-flip; PKT-635): the decoded wire events
@@ -140,11 +145,13 @@
 ; streaming open makes inside its one decode (fn-srs-checked-decode,
 ; KEYSTONE fn-srs-checked-decode-is-the-per-file-check).
 (defun fn-store-record-sequence (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-srs-record-sequence octets))
 
 (defun fn-store-record-txid (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (let ((decoded (fn-store-event-decode-exact octets)))
     (if (and (consp decoded) (equal (car decoded) :ok)
              (consp (cdr decoded)) (fn-rcon-wire-event-p (car (cdr decoded))))
@@ -410,6 +417,7 @@
 ;; frame of another format (D34), or (:rejected) for a frame that is no saved
 ;; profile.  The refusal's line is ACL2's and names the reinstall and import.
 (defun fn-store-metadata-config-open (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-spo-config-open octets))
 
 (defun fn-store-metadata-config-refusal-text (verdict)
@@ -449,10 +457,6 @@
         (fn-store-log-next-txid-loop (cdr records)
                                      (if (natp txid) (max acc (+ 1 txid)) acc)))
     acc))
-
-(defun fn-store-log-next-txid (records floor)
-  (declare (xargs :mode :program))
-  (fn-store-log-next-txid-loop records (nfix floor)))
 
 ;; The same fold one record at a time (the format-9 open streams its records,
 ;; host/native/io.lisp fnn-recover-log): (fn-store-log-next-txid-loop R ACC)
@@ -536,6 +540,7 @@
   (fn-bs-frontier-encode n))
 
 (defun fn-store-metadata-frontier-decode (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-bs-frontier-decode octets))
 
 (defun fn-store-metadata-frontier-next (n)
@@ -570,6 +575,7 @@
 
 
 (defun fn-store-group-codes (name-octets domain-octets)
+  (declare (xargs :guard (and (fn-octet-list-listp name-octets) (fn-octet-list-listp domain-octets)) :verify-guards nil))
   ; Distinct group names, as octet lists, become their codes in the replayed
   ; allocation domain the caller was handed at open (`fn-store-cfg-domain').
   ; Python carries that list back verbatim; it never computes a code.
@@ -582,3 +588,10 @@
 ; The whole POST admission boundary is `fn-sbud-post-boundary'
 ; (books/store-budget-naming.lisp), over the persisted PROFILE the caller was
 ; handed at open; both hosts call it by that name.  No host constant enters it.
+
+;; `store ROOT compression' (lane compression-extents-2): the threshold of the
+;; store's replayed configuration (books/payload-lz-append.lisp
+;; fn-lzr-config-min; no row is 0, off).
+(defun fn-store-compress-min-octets (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-lzr-config-min (fn-cfg-value (f-get-global 'fn-store-cfg state)))))

@@ -17,7 +17,9 @@ the difference explicit instead:
 
   omitted     every host file in build.lisp's transitive `ld` closure and not
               in build-dtn.lisp's is a key of DTN_OMITTED, with a reason;
-  stale       every key of DTN_OMITTED is in fact omitted;
+  stale       every key of DTN_OMITTED is in fact omitted, and every name it
+              or DTN_RAW_REACH excuses is still reached (batch AX: an
+              excuse outlives its call silently otherwise);
   reached     no name an omitted file defines is spelled as a quoted symbol
               (`'name`, how `fnn-core` and its siblings name a counterpart) in
               a raw module build-dtn.lisp loads, or called from a host file in
@@ -84,87 +86,35 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
     "host/native-auth-admin-host.lisp": (
         "credential administration; used only by auth-admin.lisp, not loaded", {}),
     "host/native-control-host.lisp": (
-        "control socket; used by control/hybrid-control/operator/topic-local/consumer-local; "
-        "the DTN image loads only operator.lisp of these",
-        {**{name: "operator.lisp's `post` executor and live-owner admin arm; the DTN "
-               "image names :nntp-service and :control in *fnn-image-omitted-surfaces*, "
-               "so the operator refuses `post` (exit 5) and never takes the live arm"
-         for name in ("fn-native-control-host-status-class",
-                      "fn-native-control-host-status-exit-code",
-                      "fn-native-control-host-refusal-status",
-                      "fn-native-control-host-reply-detail")},
-         **{name: "operator.lisp's offline control/peer liveness decision (PKT-344); "
-                 "the DTN image names :control in *fnn-image-omitted-surfaces*, so "
-                 "fnn-operator-execute-admin takes :offline without calling it"
-           for name in ("fn-native-control-host-liveness",
-                        "fn-native-control-host-liveness-note")},
-         "fn-native-control-host-moderation-encode":
-             "operator.lisp's `moderation approve|reject` and `article withdraw` "
-             "executor (PKT-657); fnn-operator-dispatch-plan maps :moderate to the "
-             ":control surface, which build-dtn.lisp names in "
-             "*fnn-image-omitted-surfaces*, so the DTN operator refuses it (the usage "
-             "exit) before this call"}),
+        "control socket; used by control/hybrid-control/operator-live/topic-local/"
+        "consumer-local, none of which the DTN image loads",
+        {"fn-native-control-host-refusal-status":
+             "owner.lisp's fnn-owner-control-submit-serialized, reached only from "
+             "control.lisp's request handlers (the operator post and "
+             "fnn-owner-moderation-serialized); the DTN image loads no control.lisp"}),
     "host/peer-invite-host.lisp": (
         "peering invitations (PRF-097); used only by host/native/peer-invite.lisp, "
-        "which build-dtn.lisp does not load: the operator refuses `peer "
-        "genesis|invite|accept|confirm` on an image that omits :control", {}),
+        "which build-dtn.lisp does not load: its operator has no :peering executor "
+        "(host/native/operator-live.lisp registers it) and refuses `peer "
+        "genesis|invite|accept|confirm` by the :control surface's name", {}),
     "host/tls-reload-host.lisp": (
         "`tls reload` and the served certificate line (PRF-212); used only by "
-        "host/native/tls-reload.lisp, which build-dtn.lisp does not load: the "
-        "operator refuses `tls` on an image that omits :control, and `status` asks "
-        "no owner there", {}),
+        "host/native/tls-reload.lisp, which build-dtn.lisp does not load: its "
+        "operator has no :tls executor and no live owner (host/native/operator-live.lisp "
+        "installs both), so it refuses `tls` and `status` asks no owner", {}),
     "host/native-hybrid-control-host.lisp": (
         "hybrid authoring control; used by control.lisp and hybrid-control.lisp, not loaded", {}),
     "host/topic-history-metadata-host.lisp": (
         "includes books/topic-history-authorship for topic-local.lisp, not loaded; defines nothing", {}),
 }
 
-# (raw module that calls, raw function defined only outside the DTN image) -> why
-DTN_RAW_REACH: dict[tuple[str, str], str] = {
-    ("host/native/owner.lisp", "fnn-anchor-csprng-nonce"):
-        "only in fnn-owner-topic-local-serialized, which only control.lisp calls; "
-        "control.lisp is not loaded",
-    **{("host/native/operator.lisp", name):
-       "operator.lisp's `run` executor (the NNTP service), `post` executor and "
-       "live-owner admin arm; build-dtn.lisp names :nntp-service and :control in "
-       "*fnn-image-omitted-surfaces*, so the operator refuses `run` and `post` "
-       "(exit 5) and never takes the live arm"
-       for name in ("fnn-control-admin", "fnn-control-live-status", "fnn-control-owner-run-normalized",
-                    "fnn-control-remove-stale-offline",
-                    "fnn-control-socket-path-p", "fnn-control-submit",
-                    "fnn-feed-service-close", "fnn-feed-service-start",
-                    "fnn-pull-service-close", "fnn-pull-service-start", "fnn-pull-service-wake",
-                    "fnn-feed-service-wake", "fnn-native-auth-startup-hook")},
-    ("host/native/operator.lisp", "fnn-pinv-execute"):
-        "operator.lisp's peering executor; fnn-operator-dispatch-plan maps :peering "
-        "to the :control surface, which build-dtn.lisp names in "
-        "*fnn-image-omitted-surfaces*, so the DTN operator refuses it (the usage exit) "
-        "before this call",
-    ("host/native/operator.lisp", "fnn-keys-execute"):
-        "operator.lisp's `keys redecide` executor (host/native/keys.lisp, PRF-166); "
-        "fnn-operator-dispatch-plan maps :keys to the :control surface, which "
-        "build-dtn.lisp names in *fnn-image-omitted-surfaces*, so the DTN operator "
-        "refuses it (the usage exit) before this call",
-    ("host/native/operator.lisp", "fnn-tls-execute"):
-        "operator.lisp's `tls reload` executor (host/native/tls-reload.lisp, PRF-212); "
-        "fnn-operator-dispatch-plan maps :tls to the :control surface, which "
-        "build-dtn.lisp names in *fnn-image-omitted-surfaces*, so the DTN operator "
-        "refuses it (the usage exit) before this call",
-    ("host/native/operator.lisp", "fnn-tls-status-line"):
-        "operator.lisp's live `status` arm (PRF-212's served line); it runs only when "
-        "the owner answered over the control socket, and fnn-operator-status-once "
-        "takes that arm only when the image does not omit :control, which "
-        "build-dtn.lisp names in *fnn-image-omitted-surfaces*",
-    ("host/native/operator.lisp", "fnn-control-reasoned-exchange"):
-        "operator.lisp's `moderation approve|reject` and `article withdraw` "
-        "executor (control request 21, PKT-657); fnn-operator-dispatch-plan maps "
-        ":moderate to the :control surface, which build-dtn.lisp names in "
-        "*fnn-image-omitted-surfaces*, so the DTN operator refuses it (the usage "
-        "exit) before this call",
-    ("host/native/operator.lisp", "fnn-native-auth-admin-execute"):
-        "operator.lisp's `principal` executor; build-dtn.lisp names :credentials in "
-        "*fnn-image-omitted-surfaces*, so the operator refuses it (exit 5)",
-}
+# (raw module that calls, raw function defined only outside the DTN image) -> why.
+# Empty since batch AX: operator.lisp called 21 such functions behind a
+# run-time surface flag; they moved to host/native/operator-live.lisp, which
+# the DTN image does not load (tools/host_check.py --load --build
+# host/native/build-dtn.lisp is the dynamic half).  A new entry is a call the
+# DTN image loads and cannot run; prefer the file split.
+DTN_RAW_REACH: dict[tuple[str, str], str] = {}
 
 LD = re.compile(r'^\s*\(ld\s+"([^"]+)"', re.M)
 LOAD = re.compile(r'\(load\s+"([^"]+)"')
@@ -213,11 +163,17 @@ def raw_findings(root: Path, default_text: str, dtn_text: str,
             for name in RAW_DEF.findall(code[path]):
                 absent.setdefault(name.lower(), path)
     out = []
+    used = set()
     for user in dtn_raw:
         for name in sorted({use.lower() for use in RAW_USE.findall(code[user])}):
-            if name in absent and name not in present and (user, name) not in reach:
-                out.append(f"raw: {user} calls {name}, defined only in {absent[name]}, "
-                           f"which {DTN_BUILD} does not load")
+            if name in absent and name not in present:
+                used.add((user, name))
+                if (user, name) not in reach:
+                    out.append(f"raw: {user} calls {name}, defined only in {absent[name]}, "
+                               f"which {DTN_BUILD} does not load")
+    for user, name in sorted(set(reach) - used):
+        out.append(f"stale: DTN_RAW_REACH excuses {user} calling {name}, which it no "
+                   "longer does (or the DTN image now loads its definition)")
     return out
 
 
@@ -263,18 +219,19 @@ def findings(root: Path = ROOT, default_text: str | None = None,
         allowed = omitted.get(path, ("", {}))[1]
         names = {n.lower() for n in DEF.findall((root / path).read_text(encoding="utf-8"))}
         for name in sorted(names - provided):
-            if name in allowed:
-                continue
             quoted = re.compile(r"'" + re.escape(name) + r"(?![\w\-*+$!?%&<>=/.:])", re.I)
             called = re.compile(r"\(" + re.escape(name) + r"(?![\w\-*+$!?%&<>=/.:])", re.I)
-            for user, text in corpus.items():
-                if quoted.search(text):
-                    out.append(f"reached: {user} names '{name}, defined only in {path}, "
-                               f"which {DTN_BUILD} does not load")
-            for user, text in host.items():
-                if called.search(text):
-                    out.append(f"reached: {user} calls {name}, defined only in {path}, "
-                               f"which {DTN_BUILD} does not load")
+            reached = ([f"reached: {user} names '{name}, defined only in {path}, "
+                        f"which {DTN_BUILD} does not load"
+                        for user, text in corpus.items() if quoted.search(text)]
+                       + [f"reached: {user} calls {name}, defined only in {path}, "
+                          f"which {DTN_BUILD} does not load"
+                          for user, text in host.items() if called.search(text)])
+            if name not in allowed:
+                out.extend(reached)
+            elif not reached:
+                out.append(f"stale: DTN_OMITTED excuses {name} ({path}), which nothing "
+                           f"{DTN_BUILD} loads names any more")
     out.extend(raw_findings(root, default_text, dtn_text,
                             DTN_RAW_REACH if reach is None else reach))
     out.extend(include_findings(root, dtn_text))

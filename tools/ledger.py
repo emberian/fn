@@ -417,6 +417,9 @@ class Book:
     in_theory_forms: list[object] = field(default_factory=list)
     # Each ``must-fail`` as (line, arguments), for the teeth-form lint.
     must_fail_forms: list[tuple[int, list]] = field(default_factory=list)
+    # The theorem names of must-fails a ``defkeystone`` generated beside a
+    # ground counterexample (its removal or mutant witness).
+    paired_must_fails: set[str] = field(default_factory=set)
     # (line, reason) for each `must-fail' labelled `; teeth: prover-refusal
     # REASON' in the comment block directly above it: a refusal of proof
     # search, not a necessity witness (PKT-341; see PROVER_REFUSAL).
@@ -681,6 +684,213 @@ def defrecord_export_expansion(form: list) -> list:
             [Sym("in-theory"), [Sym("disable"), Sym(theory)]]]
 
 
+# --------------------------------------------------------------------------
+# defkeystone
+# --------------------------------------------------------------------------
+#
+# `(defkeystone NAME TERM . OPTIONS)` (books/defkeystone.lisp) generates a
+# keystone's teeth.  This is its expansion as the ledger sees it, form for
+# form the same as the Lisp `fn-dk-expand`: tests/acl2/defkeystone-tests.lisp
+# pins the Lisp side to one literal expansion and tests/test_ledger.py pins
+# this side to the same literal.  A form the Lisp macro would refuse
+# (`fn-dk-refusal`) expands to nothing here: certification is the authority
+# on the refusal, and a guess at a refused form's events would be a lie.
+
+DEFKEYSTONE_KEYS = {":subject", ":id", ":restates", ":hyps", ":witness", ":breaks",
+                    ":mutations", ":corrupt", ":hints", ":rule-classes", ":otf-flg"}
+
+
+def _dk_bindingsp(x: object) -> bool:
+    if not isinstance(x, list):
+        return False
+    names = []
+    for item in x:
+        if not (isinstance(item, list) and len(item) == 2 and isinstance(item[0], Sym)):
+            return False
+        names.append(str(item[0]))
+    return len(names) == len(set(names))
+
+
+def defkeystone_parts(form: list) -> dict | None:
+    """The parsed parts of a well-formed defkeystone form, or None.
+
+    The checks are `fn-dk-refusal`'s, in the same order; None where the
+    Lisp macro would refuse."""
+    if not (len(form) >= 3 and isinstance(form[1], Sym)):
+        return None
+    name, term, tail = form[1], form[2], list(form[3:])
+    if len(tail) % 2 or not all(isinstance(tail[i], Sym) and str(tail[i]).startswith(":")
+                                for i in range(0, len(tail), 2)):
+        return None
+    options = keyword_plist(tail)
+    if any(str(tail[i]) not in DEFKEYSTONE_KEYS for i in range(0, len(tail), 2)):
+        return None
+    implies = (isinstance(term, list) and len(term) == 3 and head(term) == "implies")
+    if implies:
+        hyps = term[1][1:] if head(term[1]) == "and" else [term[1]]
+        concl = term[2]
+    else:
+        hyps, concl = [], term
+    subject = options.get(":subject")
+    witness = options.get(":witness")
+    if not (isinstance(subject, Sym) and str(subject) != "nil"):
+        return None
+    if not (witness and _dk_bindingsp(witness)):
+        return None
+    if ":hyps" in options:
+        labels = options[":hyps"]
+        labels = [] if isinstance(labels, Sym) and str(labels) == "nil" else labels
+    else:
+        labels = [Sym(f"h{i}") for i in range(1, len(hyps) + 1)]
+    if not (isinstance(labels, list) and all(isinstance(x, Sym) for x in labels)
+            and len({str(x) for x in labels}) == len(labels) == len(hyps)):
+        return None
+    breaks = options.get(":breaks", [])
+    breaks = [] if isinstance(breaks, Sym) and str(breaks) == "nil" else breaks
+    by_label: dict[str, list] = {}
+    if not isinstance(breaks, list):
+        return None
+    for entry in breaks:
+        if not (isinstance(entry, list) and entry and isinstance(entry[0], Sym)
+                and len(entry) in (2, 4) and _dk_bindingsp(entry[1])):
+            return None
+        if len(entry) == 4 and not (str(entry[2]) == ":corrupt"
+                                    and isinstance(entry[3], str)
+                                    and not isinstance(entry[3], Sym) and entry[3]):
+            return None
+        if str(entry[0]) in by_label:
+            return None
+        by_label[str(entry[0])] = entry
+    if any(label not in {str(x) for x in labels} for label in by_label):
+        return None
+    if any(str(label) not in by_label for label in labels):
+        return None
+    mutations = options.get(":mutations", [])
+    mutations = [] if isinstance(mutations, Sym) and str(mutations) == "nil" else mutations
+    if not (isinstance(mutations, list) and all(
+            isinstance(m, list) and len(m) == 3 and isinstance(m[0], Sym)
+            and _dk_bindingsp(m[2]) for m in mutations)):
+        return None
+    corrupt = options.get(":corrupt", [])
+    corrupt = [] if isinstance(corrupt, Sym) and str(corrupt) == "nil" else corrupt
+    if not (isinstance(corrupt, list) and all(
+            isinstance(c, list) and len(c) == 2 and isinstance(c[0], Sym)
+            and _dk_bindingsp(c[1]) for c in corrupt)):
+        return None
+    if not hyps and not mutations:
+        return None
+    return {"name": name, "term": term, "hyps": hyps, "concl": concl,
+            "labels": labels, "witness": witness, "breaks": by_label,
+            "mutations": mutations, "corrupt": corrupt, "options": options,
+            "subject": subject, "id": options.get(":id"),
+            "restates": options.get(":restates")}
+
+
+def _dk_override(base: list, over: list) -> list:
+    over = list(over)
+    out = []
+    for binding in base:
+        match = next((b for b in over if str(b[0]) == str(binding[0])), None)
+        if match is not None:
+            out.append(match)
+            over.remove(match)
+        else:
+            out.append(binding)
+    return out + over
+
+
+def _dk_at(bindings: list, term: object) -> list:
+    return [Sym("let*"), bindings,
+            [Sym("declare"), [Sym("ignorable")] + [b[0] for b in bindings]], term]
+
+
+def _dk_logical(term: object) -> list:
+    return [Sym("with-guard-checking"), Sym(":none"), term]
+
+
+def _dk_implies(hyps: list, concl: object) -> object:
+    if not hyps:
+        return concl
+    if len(hyps) == 1:
+        return [Sym("implies"), hyps[0], concl]
+    return [Sym("implies"), [Sym("and")] + list(hyps), concl]
+
+
+def _dk_conj(terms: list) -> object:
+    return terms[0] if len(terms) == 1 else [Sym("and")] + list(terms)
+
+
+def _dk_quote(x: object) -> list:
+    return [Sym("quote"), x]
+
+
+def defkeystone_names(parts: dict) -> dict[str, list[str]]:
+    """The theorem names a well-formed form admits and asks to fail."""
+    name = str(parts["name"])
+    return {"keystone": [name],
+            "without": [f"{name}-without-{label}" for label in parts["labels"]],
+            "mutant": [f"{name}-mutant-{m[0]}" for m in parts["mutations"]]}
+
+
+def defkeystone_expansion(form: list) -> list:
+    """The events ``(defkeystone ...)`` generates, as the ledger sees them:
+    one ``progn``, or nothing for a form the Lisp macro refuses."""
+    parts = defkeystone_parts(form)
+    if parts is None:
+        return []
+    name, options = parts["name"], parts["options"]
+    upper = str(name).upper()
+    hint_args = [Sym(":hints"), options[":hints"]] if ":hints" in options else []
+    thm = [Sym("defthm"), name, parts["term"]] + hint_args
+    for key in (":rule-classes", ":otf-flg"):
+        if key in options:
+            thm += [Sym(key), options[key]]
+    events: list = [thm]
+    witness, hyps, concl = parts["witness"], parts["hyps"], parts["concl"]
+    if parts["restates"] is not None:
+        world = [Sym("w"), Sym("state")]
+        events.append([Sym("assert-event"),
+                       [Sym("equal"),
+                        [Sym("getpropc"), _dk_quote(name), _dk_quote(Sym("theorem")),
+                         Sym("nil"), world],
+                        [Sym("getpropc"), _dk_quote(parts["restates"]),
+                         _dk_quote(Sym("theorem")), Sym("nil"), world]],
+                       Sym(":msg"), f"{upper}: restates"])
+    events.append([Sym("assert-event"),
+                   _dk_conj([_dk_at(witness, h) for h in hyps] + [_dk_at(witness, concl)]),
+                   Sym(":msg"), f"{upper}: witness"])
+    for index, label in enumerate(parts["labels"]):
+        entry = parts["breaks"][str(label)]
+        bindings = _dk_override(witness, entry[1])
+        retained = hyps[:index] + hyps[index + 1:]
+        why = f" (corrupted state: {entry[3]})" if len(entry) == 4 else ""
+        events.append([Sym("assert-event"),
+                       _dk_logical([Sym("and")]
+                                   + [_dk_at(bindings, h) for h in retained]
+                                   + [[Sym("not"), _dk_at(bindings, hyps[index])],
+                                      [Sym("not"), _dk_at(bindings, concl)]]),
+                       Sym(":msg"), f"{upper}: without {str(label).upper()}{why}"])
+        events.append([Sym("local"), [Sym("must-fail-checked"),
+                                      [Sym("defthm"), Sym(f"{name}-without-{label}"),
+                                       _dk_implies(retained, concl)] + hint_args]])
+    for mutation in parts["mutations"]:
+        bindings = _dk_override(witness, mutation[2])
+        events.append([Sym("assert-event"),
+                       _dk_logical([Sym("not"), _dk_at(bindings, mutation[1])]),
+                       Sym(":msg"), f"{upper}: mutant {str(mutation[0]).upper()}"])
+        events.append([Sym("local"), [Sym("must-fail-checked"),
+                                      [Sym("defthm"), Sym(f"{name}-mutant-{mutation[0]}"),
+                                       mutation[1]] + hint_args]])
+    for corrupt in parts["corrupt"]:
+        bindings = _dk_override(witness, corrupt[1])
+        events.append([Sym("assert-event"),
+                       _dk_logical([Sym("and"),
+                                    [Sym("not"), _dk_at(bindings, _dk_conj(hyps))],
+                                    [Sym("not"), _dk_at(bindings, concl)]]),
+                       Sym(":msg"), f"{upper}: corrupt {str(corrupt[0]).upper()}"])
+    return [[Sym("progn")] + events]
+
+
 def record(book: Book, form: object, line: int, *, local: bool,
            suppressed: bool, generated: bool = False) -> None:
     name = head(form)
@@ -717,6 +927,18 @@ def record(book: Book, form: object, line: int, *, local: bool,
         expansion = (defrecord_expansion(form) if name == "fn-defrecord"
                      else defrecord_export_expansion(form))
         for item in expansion:
+            record(book, item, line, local=local, suppressed=suppressed,
+                   generated=True)
+        return
+    if name == "defkeystone":
+        parts = defkeystone_parts(form)
+        if parts is not None and not suppressed:
+            # Each generated must-fail stands beside an evaluated ground
+            # counterexample to the same weakened statement, so it is not a
+            # bare general claim (`teeth_form`).
+            names = defkeystone_names(parts)
+            book.paired_must_fails |= set(names["without"] + names["mutant"])
+        for item in defkeystone_expansion(form):
             record(book, item, line, local=local, suppressed=suppressed,
                    generated=True)
         return
@@ -1718,6 +1940,9 @@ def teeth_form(tree: "Tree") -> list[dict]:
                 continue
             if concrete_witness(statement_of(body)):
                 continue
+            if (head(body) != "thm" and len(body) > 1
+                    and str(body[1]) in book.paired_must_fails):
+                continue  # a defkeystone tooth: its counterexample is evaluated
             name = str(body[1]) if (head(body) != "thm" and len(body) > 1
                                     and isinstance(body[1], Sym)) else "thm"
             findings.append({
@@ -2955,6 +3180,16 @@ def apply_events(regenerated: dict[str, list[str]],
     state: dict[str, tuple[str, list[str]]] = {}
     for entry in registry["proofs"]:
         names = regenerated.get(entry["id"], [])
+        # proofs.json's events are GENERATED from planning/proof-events.json:
+        # an event added to proofs.json by hand is dropped here.  Say so, so
+        # the edit is moved to proof-events.json instead of lost (lanes kept
+        # tripping on it, 2026-09-27).
+        dropped = [name for name in entry.get("events", []) if name not in names]
+        if dropped:
+            print(f"WARN: {entry['id']}: proofs.json events not in "
+                  f"planning/proof-events.json are dropped (edit proof-events.json; "
+                  f"proofs.json's events are generated): {', '.join(dropped)}",
+                  file=sys.stderr)
         if names:
             entry["events"] = names
         else:

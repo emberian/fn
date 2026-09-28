@@ -50,6 +50,13 @@ per-book publish it reports ``installed 21``
 the box once more when it returns, on every exit code and on its timeout
 path, and a sweep that printed nothing says so rather than passing for a
 sweep that found nothing.
+
+Two verdict words (lane tooling-leftovers, 2026-09-27).  A run whose every
+book came from the cache certified nothing, and `submit` and the verdict
+say so in capitals: its green is the cache's, not the change's.  A run or
+a book ended by a signal (exit 128+N, or an ACL2 exit -N: earlyoom's
+SIGTERM is 143) is KILLED, not failed: it has no verdict, and the verdict
+block lists it apart from the proof failures.
 """
 
 from __future__ import annotations
@@ -427,6 +434,26 @@ def refuse_bad_book_names(root: Path, books: list[str], affected_by: list[str],
         raise FarmError("no farm run started: " + "; ".join(problems))
 
 
+def refuse_unselectable(root: Path, books: list[str], affected_by: list[str],
+                        closure: bool) -> None:
+    """Refuse, before any rsync, a selection the box's runner would refuse.
+
+    The box runs exactly `selection_words` as its preflight (exit 13), but
+    only after the whole mirror: shared-books lost a sync to a book in no
+    Makefile root's closure.  The same command here, in this tree, refuses
+    first.
+    """
+    words = selection_words(books, affected_by, closure)
+    if not (root / words[1]).is_file():
+        return  # no runner in this tree: the box's preflight says so (exit 10)
+    done = subprocess.run([sys.executable, *words[1:]], cwd=root, capture_output=True,
+                          text=True, check=False)
+    if done.returncode != 0:
+        raise FarmError("no farm run started: the runner refuses this selection here, "
+                        "before any sync: "
+                        + (done.stderr.strip() or done.stdout.strip())[-600:])
+
+
 def refuse_unbalanced_sources(root: Path) -> None:
     """Refuse, before any rsync or ssh, a tree with an unbalanced form.
 
@@ -645,6 +672,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
                         "install; --closure and --require-origin do not make one")
     refuse_unmerged_source(root)
     refuse_bad_book_names(root, books, affected_by, list(recertify))
+    refuse_unselectable(root, books, affected_by, closure)
     refuse_unbalanced_sources(root)
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
@@ -665,6 +693,8 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
               f"{cached['certify']} ({cached['roots_installed']} of "
               f"{cached['roots']} roots already certified at these bytes)",
               file=sys.stderr)
+        if cached.get("certify") == 0 and cached.get("books"):
+            print(all_from_cache_words(identifier, cached["books"]), file=sys.stderr)
     script = remote_script(host, remote, identifier, books, jobs,
                            timeout_seconds, affected_by, closure, cache, acl2,
                            no_publish, pcert, budget_seconds, require_origin,
@@ -797,7 +827,9 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
     except ValueError:
         code = 1
     collect(host, identifier, root, remote, cache)
-    print(f"{identifier} on {host}: finished with exit code {code}")
+    signalled = killed_signal(code)
+    print(f"{identifier} on {host}: finished with exit code {code}"
+          + (f" -- {killed_words(signalled)}" if signalled is not None else ""))
     return code
 
 
@@ -913,6 +945,49 @@ def book_log(directory: Path, book: str) -> Path | None:
     return waves[-1] if waves else None
 
 
+def all_from_cache_words(identifier: str, books: int) -> str:
+    """The loud line for a run that certified nothing: every book came from the cache.
+
+    Lanes read such a run's green as "my change certified" (2026-09-27);
+    it means the cache already held a certificate for these exact bytes,
+    which is only a certification of the change if the change is in them.
+    """
+    return (f"{identifier}: ALL {books} BOOKS CAME FROM THE CACHE -- this run certified "
+            "NOTHING. Its green says the cache holds certificates for these exact bytes; "
+            "if you expected your change to be certified here, it is not in the bytes "
+            "you shipped (wrong tree, uncommitted edit, --affected-by naming another "
+            "book), or --recertify BOOK forces a fresh run")
+
+
+# What a signal exit means on the farm.  earlyoom (hbox) sends SIGTERM to
+# the biggest process, then SIGKILL; the kernel OOM killer sends SIGKILL.
+# The shell records a signalled child as 128 + N; Python's returncode as -N.
+SIGNAL_NAMES = {9: "SIGKILL", 15: "SIGTERM", 2: "SIGINT", 1: "SIGHUP", 6: "SIGABRT"}
+KILLED_REASON = re.compile(r"ACL2 exited (-?\d+)\b")
+
+
+def killed_signal(code: object) -> int | None:
+    """The signal number a runner or ACL2 exit code means, or None."""
+    try:
+        number = int(code)
+    except (TypeError, ValueError):
+        return None
+    if number < 0:
+        return -number
+    if 128 < number < 160:
+        return number - 128
+    return None
+
+
+def killed_words(signal_number: int) -> str:
+    name = SIGNAL_NAMES.get(signal_number, f"signal {signal_number}")
+    cause = {15: "earlyoom, a systemd stop or a kill",
+             9: "the kernel OOM killer, earlyoom's second signal, or kill -9"}.get(
+        signal_number, "a signal")
+    return (f"KILLED by {name} ({cause}), not failed: the books it had not finished "
+            "have no verdict; rerun them (at fewer --jobs if memory killed it)")
+
+
 def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
     """The fixed-form end of `farm.py wait`: what failed, where, and why.
 
@@ -922,6 +997,9 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
     `root`; with none, the verdict is unknown and says so.
     """
     head = f"== verdict {identifier}: exit {code}"
+    signalled = killed_signal(code)
+    if signalled is not None:
+        head += " -- " + killed_words(signalled)
     log = root / "build" / "farm" / f"{identifier}.log"
     try:
         directories = sorted(set(EVIDENCE.findall(log.read_text(encoding="utf-8"))))
@@ -941,6 +1019,7 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
                 f"read {log}"]
     lines = [head]
     failing: list[str] = []
+    killed: list[str] = []
     slow: list[tuple[float, str, object]] = []
     passed = installed = 0
     for directory, manifest in manifests:
@@ -952,8 +1031,18 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
         for book in sorted(set(reasons) | {book for book, value in results.items()
                                            if value != "passed"}):
             where = book_log(directory, book)
+            stated = "; ".join(reasons.get(book) or [])
+            match = KILLED_REASON.search(stated)
+            book_signal = killed_signal(match.group(1)) if match else None
+            if book_signal is not None:
+                # A book whose ACL2 was killed has no verdict: not a proof failure.
+                killed.append(f"  KILLED {book}: ACL2 ended by "
+                              f"{SIGNAL_NAMES.get(book_signal, f'signal {book_signal}')}"
+                              " (no verdict)")
+                killed.append(f"    log: {where or directory}")
+                continue
             first = first_failure_line(where) if where else None
-            why = first or "; ".join(reasons.get(book) or []) or results.get(book, "failed")
+            why = first or stated or results.get(book, "failed")
             failing.append(f"  FAILED {book}: {why}")
             failing.append(f"    log: {where or directory}")
         jobs = manifest.get("jobs_effective") or manifest.get("jobs")
@@ -962,9 +1051,30 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
                 slow.append((seconds, book, jobs))
         lines.append(f"  manifest {directory / 'manifest.json'}: "
                      f"status {manifest.get('status', 'unknown')}")
-    lines.append(f"  certified here: passed {passed}, failed {len(failing) // 2}; "
-                 f"installed from the cache {installed}")
+    # Judged here, where the committed archive is (the box's tree has no git).
+    installed_books = sorted({book for _, manifest in manifests
+                              for book, value in (manifest.get("book_provenance")
+                                                  or {}).items()
+                              if value == "installed"})
+    uncited: list[str] = []
+    if installed_books:
+        import certified_claims  # noqa: E402
+        try:
+            uncited = certified_claims.uncited_books(root, installed_books)
+        except Exception as error:  # a report line, never the verdict
+            lines.append(f"  (could not judge the installed books' citations: {error})")
+    if uncited:
+        lines.append(f"  installed-without-cited-manifest: {len(uncited)}: "
+                     + ", ".join(uncited[:20]) + (" ..." if len(uncited) > 20 else ""))
+        lines.append("    green_check and certified_claims owe these until a committed "
+                     "manifest certifies them: submit again with --recertify-uncited")
+    lines.append(f"  certified here: passed {passed}, failed {len(failing) // 2}"
+                 + (f", killed {len(killed) // 2}" if killed else "")
+                 + f"; installed from the cache {installed}")
+    if passed == 0 and not failing and not killed and installed:
+        lines.append("  " + all_from_cache_words(identifier, installed))
     lines.extend(failing)
+    lines.extend(killed)
     if slow:
         lines.append(f"  books over {SLOW_SECONDS:g} s (D26 measures at two jobs):")
         for seconds, book, jobs in sorted(slow, reverse=True):
@@ -1110,6 +1220,32 @@ def status(host: str, remote: Path, local_root: Path | None = None) -> int:
     return 0
 
 
+def uncited_in_selection(root: Path, books: list[str], affected_by: list[str]) -> list[str]:
+    """The closure books of this selection no committed manifest certified at
+    their current digest (`certified_claims.uncited_books`)."""
+    import certify_books  # noqa: E402
+    import certified_claims  # noqa: E402
+    import ledger  # noqa: E402
+    roots = books or ledger.makefile_roots()
+    if affected_by:
+        roots = certify_books.affected_roots(roots, affected_by)
+    return certified_claims.uncited_books(root, certify_books.with_dependencies(roots))
+
+
+def pick_host(runner=subprocess.run) -> str:
+    """The build box with the lowest load per core now (tools/boxes.sh --pick).
+
+    It prints both loads and the choice on stderr; `submit` names the box in
+    the run id's line, so `wait` can be told it.
+    """
+    done = runner(["sh", str(Path(__file__).resolve().parent / "boxes.sh"), "--pick"],
+                  stdout=subprocess.PIPE, text=True, check=False)
+    host = (done.stdout or "").strip()
+    if done.returncode != 0 or host not in HOSTS:
+        raise FarmError("no farm run started: no build box answered (tools/boxes.sh)")
+    return host
+
+
 def cache_summary(record: dict) -> str:
     """What `submit` installed for a run, from its local record, in one word.
 
@@ -1128,7 +1264,8 @@ def cache_summary(record: dict) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=("submit", "wait", "status"))
-    parser.add_argument("host")
+    parser.add_argument("host", help="hbox or persvati; submit: 'auto' (or no box at "
+                                     "all) picks the one with the lowest load per core")
     parser.add_argument("rest", nargs="*",
                         help="submit: book roots; wait: the run id")
     parser.add_argument("--jobs", type=int,
@@ -1150,6 +1287,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="certify this book of the closure afresh instead of "
                              "installing its cached pair (repeatable; passed to "
                              "the cache preflight and the runner)")
+    parser.add_argument("--recertify-uncited", action="store_true",
+                        help="add to --recertify every book of the closure no "
+                             "committed manifest certified at its current digest "
+                             "(the books a run would otherwise install uncited)")
     parser.add_argument("--timeout-seconds", type=int, default=1800,
                         help="per-ACL2-invocation timeout on the host")
     parser.add_argument("--wait-seconds", type=int, default=DEFAULT_WAIT_SECONDS,
@@ -1171,6 +1312,21 @@ def main(argv: list[str] | None = None) -> int:
                              "certificates installable in any local worktree")
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
+    if arguments.action == "submit" and arguments.host not in HOSTS:
+        if arguments.host != "auto":
+            # `farm.py submit books/x`: no box named, so the first word is a book.
+            arguments.rest.insert(0, arguments.host)
+        arguments.host = pick_host()
+    elif arguments.host == "auto":
+        parser.error(f"{arguments.action} needs the box the run is on (its submit "
+                     "printed it); auto picks a box only for submit")
+    if arguments.action == "submit" and arguments.recertify_uncited:
+        arguments.recertify = sorted(set(arguments.recertify)
+                                     | set(uncited_in_selection(
+                                         root, list(arguments.rest),
+                                         list(arguments.affected_by))))
+        print(f"--recertify-uncited: recertifying {len(arguments.recertify)} book(s)",
+              file=sys.stderr)
     try:
         if arguments.action == "submit":
             identifier = submit(arguments.host, root, list(arguments.rest),
@@ -1183,6 +1339,8 @@ def main(argv: list[str] | None = None) -> int:
                                 require_origin=arguments.require_origin,
                                 recertify=list(arguments.recertify))
             print(identifier)
+            print(f"{identifier}: on {arguments.host}; wait with `farm.py wait "
+                  f"{arguments.host} {identifier}`", file=sys.stderr)
             return 0
         if arguments.action == "wait":
             if len(arguments.rest) != 1:

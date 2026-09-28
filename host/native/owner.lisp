@@ -101,6 +101,7 @@
   (synced nil)
   (commit-lock (sb-thread:make-mutex :name "fn owner commit"))
   (commit-ready (sb-thread:make-waitqueue :name "fn owner commit ready"))
+  ;; guarded-by: fnn-owner-service-commit-lock (every access below takes it)
   (awaiting (make-hash-table)) (done (make-hash-table)) (sparing nil))
 
 ;;; Inside a commit quantum (fnn-owner-commit-queued-locked) the effects that
@@ -325,6 +326,10 @@ the owner's keyword check, not the Store's."
 ;;; seconds and the sub-second part cannot come from two different instants;
 ;;; get-universal-time, which this used, has one-second resolution and gives
 ;;; every submission inside a second the same reading.
+(defvar *fnn-owner-time-service* nil
+  "The running service whose gate records the served reads' clock events
+(lane time-model-2); nil outside `fnn-owner-run'.")
+
 (defun fnn-owner-advance-clock ()
   "Hand the owner one fresh reading of this host's clocks.
 
@@ -334,11 +339,17 @@ inject, refuses to declare a group and answers DATE 503, each with its own
 line, and the next reading is admitted whatever it says.  :invalid means this
 function supplied no observation at all, which is a defect here."
   (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
-    (let ((outcome (fnn-owner-action
-                    'fn-owner-observe
-                    (floor (* (get-internal-real-time) 1000)
-                           internal-time-units-per-second)
-                    wall +fnn-owner-wall-error-ms+ has-wall)))
+    ;; Lane time-model-2 (N3 of lane proto-determinism): the monotonic
+    ;; reading is a recorded event -- a :served clock event on the running
+    ;; service's gate, journaled with the wall reading
+    ;; (books/owner-time-journal.lisp) -- and the owner's observation is
+    ;; made from that same reading.
+    (let* ((mono (if *fnn-owner-time-service*
+                     (nth-value 1 (fnn-owner-disk-event *fnn-owner-time-service* :served
+                                                        (list wall has-wall)))
+                   (fnn-owner-monotonic-ms)))
+           (outcome (fnn-owner-action
+                     'fn-owner-observe mono wall +fnn-owner-wall-error-ms+ has-wall)))
       (when (eq outcome :invalid)
         (fnn-fault "owner was handed a malformed clock reading"))
       outcome)))
@@ -770,7 +781,8 @@ checkpoint's S, or NIL."
             ;; SEC-006: the node secret, handed to the owner after the
             ;; recovery that built it (fnn-owner-load-node-secret).
             (fnn-owner-load-node-secret store)
-            ;; Five fresh namespace observations, now delivered to fn-owner.
+            ;; The recovery barriers again (three, fnn-store-recovery-barriers):
+            ;; fresh namespace observations, now delivered to fn-owner.
             (let ((phase nil))
               (dolist (barrier (fnn-store-recovery-barriers store))
                 (handler-case (funcall barrier)
@@ -943,26 +955,84 @@ event is appended on demand first, so the figures are at the render's time."
 ;;; never two producers' readings arriving out of order.  The gate mutex is
 ;;; held for the reading and the one ACL2 call.
 
-(defun fnn-owner-disk-event (service kind &optional (deadline 0))
-  "Append the disk event KIND (:clock, :issue with DEADLINE, :return) at a
-fresh reading to ACL2's value and write the service log line ACL2 renders
-for its word.  Returns the word."
+(defun fnn-owner-disk-event (service kind &optional (arg 0))
+  "Append the disk event KIND (:clock, :served with ARG (WALL HAS-WALL),
+:issue with ARG the limits, :return) at a fresh reading to ACL2's value
+(books/owner-time-journal.lisp fn-otm-disk-step), offer its journal entry to
+the writer and write the service log line ACL2 renders for its word.
+Returns (values WORD READING)."
   (let* ((gate (fnn-owner-service-gate service))
-         (word nil) (line nil))
+         (word nil) (line nil) (entry nil) (reading nil))
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
-      (destructuring-bind (w sched)
-          (fnn-call 'fn-otm-disk-event (fnn-owner-gate-sched gate) kind
-                    (fnn-owner-monotonic-ms) deadline)
-        (unless (member w '(:issued :returned :recovered :became-slow :none
-                            :clock-regressed :fault))
+      (setq reading (fnn-owner-monotonic-ms))
+      (destructuring-bind (w sched jline lline)
+          (fnn-core 'fn-otm-disk-step (fnn-owner-gate-sched gate) kind reading arg)
+        (unless (member w '(:issued :returned :recovered :recovered-from-stall
+                            :became-slow :became-stalled :none :clock-regressed :fault))
           (fnn-fault "owner returned a malformed disk event word ~a" w))
         (when (eq w :fault)
           (fnn-fault "owner refused the disk event ~a" kind))
         (setf (fnn-owner-gate-sched gate) sched
               word w
-              line (fnn-core 'fn-otm-log-line sched w))))
+              entry jline
+              line lline)))
+    (fnn-journal-line entry)
     (when line (fnn-log-line line))
+    (values word reading)))
+
+(defun fnn-owner-journal-note (service a b)
+  "Journal a note (books/owner-time-journal.lisp fn-otm-note-step): a
+decision that changed nothing in the value, with its two counts."
+  (let ((gate (fnn-owner-service-gate service)) (entry nil))
+    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (destructuring-bind (sched jline)
+          (fnn-core 'fn-otm-note-step (fnn-owner-gate-sched gate) a b)
+        (setf (fnn-owner-gate-sched gate) sched entry jline)))
+    (fnn-journal-line entry)))
+
+(defun fnn-owner-disk-admission (service)
+  "The write admission at the gate's recorded time (fn-otm-admit-post):
+:admit or :shed.  Appends nothing: the caller's own clock event came first."
+  (let* ((gate (fnn-owner-service-gate service))
+         (word (fnn-core 'fn-otm-admit-post
+                         (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                           (fnn-owner-gate-sched gate)))))
+    (unless (member word '(:admit :shed))
+      (fnn-fault "owner returned a malformed admission ~a" word))
     word))
+
+(defun fnn-owner-gate-sched-value (service)
+  "The gate's scheduler value (books/owner-time-model.lisp), read once under
+the gate mutex: the admission, the reason lines and the peer read's class
+are ACL2's over this one value."
+  (let ((gate (fnn-owner-service-gate service)))
+    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (fnn-owner-gate-sched gate))))
+
+(defun fnn-owner-peer-read-class (service)
+  "The class a peer connection's read enters the gate as (PKT-858,
+books/owner-time-admission.lisp fn-otm-peer-read-class): :reader while the
+disk sheds at the gate's recorded time (the read runs under the disk-slow
+posture, so IHAVE is answered 436 and CHECK 431 at once), else :transit
+(which waits for a batch in flight).  Appends nothing: the committer's timed
+wakes append the clock events that move the disk past its deadline."
+  (let ((class (let ((gate (fnn-owner-service-gate service)))
+                 ;; Under the gate mutex, as fnn-owner-gate-pick's fn-otm-next.
+                 (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                   (fnn-core 'fn-otm-peer-read-class (fnn-owner-gate-sched gate))))))
+    (unless (member class '(:reader :transit))
+      (fnn-fault "owner returned a malformed peer read class ~a" class))
+    class))
+
+(defun fnn-owner-disk-stalled-p (service)
+  "Whether the pending barrier's :stalled mode was entered (a clock event
+past H): the committer then tells the batch's posters uncertain."
+  (let ((gate (fnn-owner-service-gate service)))
+    (and (fnn-core 'fn-otm-disk-stalled
+                   (fnn-core 'fn-otm-disk
+                             (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                               (fnn-owner-gate-sched gate))))
+         t)))
 
 (defun fnn-owner-disk-wait-ms (service)
   "ACL2's timed wait for the committer (fn-otm-wait-ms): milliseconds, or nil."
@@ -978,13 +1048,7 @@ for its word.  Returns the word."
   "A served POST's admission (fn-otm-admit-post): a clock event is appended
 on demand first.  :admit or :shed."
   (fnn-owner-disk-event service :clock)
-  (let* ((gate (fnn-owner-service-gate service))
-         (word (fnn-core 'fn-otm-admit-post
-                         (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
-                           (fnn-owner-gate-sched gate)))))
-    (unless (member word '(:admit :shed))
-      (fnn-fault "owner returned a malformed admission ~a" word))
-    word))
+  (fnn-owner-disk-admission service))
 
 (defun fnn-owner-shed-queued-locked (service)
   "The disk is slow: every queued served POST, oldest first, is answered
@@ -1071,8 +1135,17 @@ fence; no semantic action of any worker, that one included, can run after it
   "Stop this owner image after an ambiguous Store or FNFD observation."
   (fnn-owner-stop-service service +fnn-exit-uncertain+))
 
+(defvar *fnn-owner-last-fault* nil
+  "The first owner fault's text in this run (friend-path-2): `run' writes it
+into the service log's stop line and its own result line, so `health',
+`status' and the service manager's journal say why the node stopped.")
+
 (defun fnn-owner-fault-service (service cid condition)
   "Contain an invalid core/store image, distinct from client refusal or EOF."
+  (unless *fnn-owner-last-fault*
+    (setq *fnn-owner-last-fault*
+          (ignore-errors
+           (format nil "owner core/store fault; process stopped: ~a" condition))))
   (fnn-owner-gated (service :control)
     (unless (fnn-owner-service-stopping service)
       (when cid
@@ -1218,6 +1291,14 @@ the current connection."
 (defun fnn-owner-taken-groups (taken)
   (mapcar #'fnn-octets (fnn-core 'fn-ores-taken-groups taken)))
 
+(defun fnn-owner-refresh-compression (log)
+  "The log's compression threshold from the owner's live configuration
+(fn-owner-compress-min-octets: the `compress-min-octets' row, 0 off), read
+where the batch bounds are read, so a reconfiguration applies from the next
+record on (lane compression-extents-2)."
+  (when log
+    (setf (fnn-log-lz-min log) (fnn-nat (fnn-owner-core 'fn-owner-compress-min-octets)))))
+
 (defun fnn-owner-publish-prepared (service label)
   "Publish and finish the one ACL2-prepared owner transaction."
   (let* ((store (fnn-owner-service-store service))
@@ -1228,6 +1309,7 @@ the current connection."
                     (fnn-owner-core 'fn-owner-pending-sequence))))
     (unless (fnn-octet-list-p record)
       (fnn-fault "owner returned malformed ~a transaction" label))
+    (when (fnn-store-logp store) (fnn-owner-refresh-compression (fnn-store-log store)))
     (handler-case
         (fnn-publish store sequence (fnn-octets record))
       (fnn-store-indeterminate (e) (error e))
@@ -1266,13 +1348,13 @@ here: its budget is part of its prepare (fn-owner-prepare)."
 ;; The Store refusal kinds relayed to fn-own-outcome, each named by the ACL2
 ;; step that refused (books/owner.lisp fn-own-refusal-wordp).  fn-owner-prepare
 ;; answers :invalid for inputs outside its domain; its other non-prepared
-;; answers are fn-pb-existing-action's :duplicate / :conflict (books/poster-bytes.lisp,
+;; answers are D25's :duplicate / :conflict (books/store-intern.lisp fn-store-existing-action,
 ;; keyed on the poster's source through the injection inverse, D25), :clock-unusable,
 ;; :unaffordable (the Store's transaction budget, fn-sbud-refusal-kind), or
 ;; :refused.
 (defun fnn-owner-prepare-refusal-word (prepared)
   (case prepared
-    ((:duplicate :conflict :clock-unusable :refused :unaffordable) prepared)
+    ((:duplicate :conflict :clock-unusable :refused :unaffordable :memberships) prepared)
     (:invalid :malformed)
     (t (fnn-fault "owner prepare returned ~a" prepared))))
 
@@ -1769,8 +1851,13 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 (defun fnn-owner-identity-commit (service event)
   "Publish one ACL2-constructed keyring snapshot or atomic acceptance event."
   (let ((store (fnn-owner-service-store service)))
-    (fnn-owner-preflight-publication
-     service (fnn-core 'fn-store-event-kind event))
+    ;; ACL2's verdict over the event itself (host/owner-host.lisp
+    ;; fn-owner-identity-publication-verdict): a composite is charged its
+    ;; figure with its article's memberships.
+    (unless (eq (fnn-owner-core 'fn-owner-identity-publication-verdict event)
+                :admissible)
+      (fnn-refuse "Store transaction budget refuses ~(~a~) transaction"
+                  (fnn-core 'fn-wire-event-kind event)))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
@@ -1839,7 +1926,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
    (lambda ()
      (let* ((entropy-id
               (and (eq operation :install)
-                   (fnn-octet-list (fnn-anchor-csprng-nonce 32))))
+                   (fnn-csprng-octets 32 "topic installed ID")))
             (proposal
               (fnn-owner-core 'fn-owner-topic-propose
                               operation source-sequence observed-uid
@@ -2293,6 +2380,7 @@ nil when nothing was queued (or the store does not commit through the log)."
           (log (fnn-store-log store)))
       (destructuring-bind (bmax omax) (fnn-owner-core 'fn-owner-log-bounds)
         (setf (fnn-log-bmax log) bmax (fnn-log-omax log) omax))
+      (fnn-owner-refresh-compression log)
       (let ((*fnn-log-batch* t)
             (*fnn-owner-deferred* deferred))
         (handler-case
@@ -2505,6 +2593,28 @@ word is left for the COMPLETE and the committer is woken."
       :name "fn owner syncer")
      result)))
 
+(defun fnn-owner-unreleased (members released)
+  "MEMBERS whose connection was not already told uncertain at a stall."
+  (if released
+      (remove-if (lambda (m) (member (first m) released)) members)
+    members))
+
+(defun fnn-owner-stall-release (service members)
+  "The stall (books/owner-time-model.lisp fn-otm-stall-releases): every
+MEMBER (CID REPLY WORD RENDER) is answered as ACL2 names -- its uncertain
+reply and a close, or the close alone; never its acceptance or refusal.
+Returns the cids told."
+  (let ((releases (fnn-core 'fn-otm-stall-releases
+                            (loop for m in members
+                                  collect (list (third m) (and (fourth m) t))))))
+    (unless (and (listp releases) (= (length releases) (length members))
+                 (every (lambda (r) (member r '(:own-uncertain :uncertain-reply :close)))
+                        releases))
+      (fnn-fault "owner returned malformed stall releases ~a" releases))
+    (loop for m in members for r in releases
+          do (fnn-owner-commit-release-member service m r))
+    (mapcar #'first members)))
+
 (defun fnn-owner-commit-pipeline (service)
   "Batches through ACL2's pipelined commit (books/owner-commit-pipeline.lisp
 fn-ocp-commit-step): START (a :commit quantum; it seals the batch), the
@@ -2517,13 +2627,18 @@ flight).  While any batch is in flight or open ACL2's pick admits only
 leave only in its COMPLETE, after its barrier returned
 (fn-ocp-complete-only-after-the-barrier)."
   (let ((members nil) (uncertain nil) (deferred nil) (action nil)
-        (next nil) (next-deferred nil) (syncer nil) (result nil) (deadline 0))
+        (next nil) (next-deferred nil) (syncer nil) (result nil) (limits nil)
+        ;; Lane time-model-2: the cids told uncertain at a stall (their
+        ;; replies are not delivered again), and whether this barrier's
+        ;; stall was answered.
+        (released nil) (stall-told nil))
     (fnn-owner-serialized
      service nil
      (lambda ()
-       ;; Lane time-model: the barrier's deadline, from the configuration
-       ;; generation current at the START (fn-owner-barrier-deadline).
-       (setq deadline (fnn-owner-core 'fn-owner-barrier-deadline))
+       ;; Lane time-model: the barrier's limits (D H C), from the
+       ;; configuration generation current at the START
+       ;; (fn-owner-barrier-limits).
+       (setq limits (fnn-owner-core 'fn-owner-barrier-limits))
        ;; PKT-828: the view the readers read while this batch is in flight.
        (fnn-owner-reader-capture :start)
        (multiple-value-setq (members uncertain deferred)
@@ -2541,8 +2656,8 @@ leave only in its COMPLETE, after its barrier returned
       (multiple-value-setq (syncer result) (fnn-owner-start-syncer service))
       ;; Lane time-model (PRF-311): the barrier is a request with a
       ;; deadline; its issue is a disk event at this reading.
-      (fnn-owner-disk-event service :issue deadline)
-      (setq action nil)
+      (fnn-owner-disk-event service :issue limits)
+      (setq action nil stall-told nil)
       ;; While the barrier runs: ACL2 wakes the committer to START-NEXT (a
       ;; queued member, no next batch open) or to COLLECT the barrier's word.
       ;; The wait is timed by ACL2 (fn-otm-wait-ms: to the deadline, then the
@@ -2568,10 +2683,35 @@ leave only in its COMPLETE, after its barrier returned
                     ;; Timed out: SBCL returns without the mutex held, so
                     ;; leave WITH-MUTEX touching nothing it protects.
                     (setq expired t)
-                    (return-from waiting))))))
+                    (return-from waiting))
+                  ;; Lane time-model-2: woken before the wait expired --
+                  ;; a clock event first, so the next wait is measured
+                  ;; from the time of this wake, never from a stale one
+                  ;; (the F4-W hypothesis, fn-otm-clock-run-okp).
+                  (fnn-owner-disk-event service :clock)))))
           (when expired
             (fnn-owner-disk-event service :clock)
             (setq wake :expired))
+          ;; Lane time-model-2 (PRF-311): past H the disk is :stalled (entered
+          ;; by whichever clock event came first: this committer's, a served
+          ;; read's, a status render's).  Once per barrier: every member of
+          ;; the batch in flight and of the next batch is told the outcome
+          ;; is uncertain -- never accepted, never refused; the bytes may
+          ;; still land (books/owner-time-model.lisp
+          ;; fn-otm-stall-tells-no-member-its-outcome) -- and the queued
+          ;; POSTs behind them are refused try-later, nothing stored.
+          (when (and (not (eq wake :collect)) (not stall-told)
+                     (fnn-owner-disk-stalled-p service))
+            (setq stall-told t)
+            (let ((told (fnn-owner-stall-release
+                         service (fnn-owner-unreleased (append members next) released)))
+                  (shed 0))
+              (setq released (append told released))
+              (fnn-owner-gated (service :reader)
+                (fnn-owner-shared-action-locked
+                 service nil
+                 (lambda () (setq shed (fnn-owner-shed-queued-locked service)))))
+              (fnn-owner-journal-note service (length told) shed)))
           (when (eq wake :collect)
             ;; The barrier's completion, observed: a disk event at this
             ;; reading (:recovered after a slow episode).
@@ -2604,7 +2744,8 @@ leave only in its COMPLETE, after its barrier returned
                      ;; Every member of both batches is uncertain; the owner
                      ;; stops (its COMPLETE below finds it stopping).
                      (fnn-owner-commit-complete-locked
-                      service :stop (append members next) deferred)
+                      service :stop (fnn-owner-unreleased (append members next) released)
+                      deferred)
                      (setq members nil next nil))))))))))
       (sb-thread:join-thread syncer :default nil)
       (destructuring-bind (word . condition) (car result)
@@ -2617,8 +2758,8 @@ leave only in its COMPLETE, after its barrier returned
                  (let ((step (fnn-owner-commit-event service word))
                        (store (fnn-owner-service-store service)))
                    ;; The next batch's barrier (sealed below) gets the
-                   ;; deadline of the configuration current now.
-                   (setq deadline (fnn-owner-core 'fn-owner-barrier-deadline))
+                   ;; limits of the configuration current now.
+                   (setq limits (fnn-owner-core 'fn-owner-barrier-limits))
                    (fnn-owner-shared-action-locked
                     service nil
                     (lambda ()
@@ -2631,10 +2772,11 @@ leave only in its COMPLETE, after its barrier returned
                              ;; Stopped during the barrier: no member is
                              ;; answered (uncertain to its client).
                              (fnn-owner-reader-capture :drop)
-                             (dolist (m (append members next))
+                             (dolist (m (fnn-owner-unreleased (append members next) released))
                                (fnn-owner-deliver service (first m) :uncertain)))
                             ((eq step :complete)
-                             (fnn-owner-commit-complete-locked service :complete members deferred)
+                             (fnn-owner-commit-complete-locked
+                              service :complete (fnn-owner-unreleased members released) deferred)
                              ;; PKT-828: in the same quantum as the replies,
                              ;; the readers' view advances past this batch
                              ;; (to the next batch's capture, or the working
@@ -2648,12 +2790,15 @@ leave only in its COMPLETE, after its barrier returned
                                    (fnn-store-indeterminate (e)
                                      (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
                                      (fnn-owner-reader-capture :drop)
-                                     (fnn-owner-commit-complete-locked service :stop next next-deferred)
+                                     (fnn-owner-commit-complete-locked
+                                      service :stop (fnn-owner-unreleased next released)
+                                      next-deferred)
                                      (setq next nil))))))
                             ((eq step :stop)
                              (fnn-owner-reader-capture :drop)
                              (fnn-owner-commit-complete-locked
-                              service :stop (append members next) deferred)
+                              service :stop (fnn-owner-unreleased (append members next) released)
+                              deferred)
                              (setq next nil))
                             (t (fnn-fault "owner named ~a after a barrier" step)))
                       (setq done t))))
@@ -2732,6 +2877,7 @@ owner's recovery fence."
                 (fnn-store-fault (condition) (error condition))
                 (fnn-store-error () :refused))))
     (unless (member word '(:durable :duplicate :conflict :malformed :unaffordable
+                           :memberships
                            :storage-failed :refused :clock-unusable :uncertain))
       (fnn-fault "owner bound commit returned ~a" word))
     word))
@@ -3071,7 +3217,7 @@ waits."
             (fnn-octet-list (fnn-owner-account-redeem service cid))))
      class)))
 
-(defun fnn-owner-handle-chunk (service cid incoming &optional socket (class :reader))
+(defun fnn-owner-handle-chunk (service cid incoming &optional socket (class :reader) peerp)
   "One served read (fnn-owner-handle-chunk-read, a quantum of CLASS) and,
 when it left an XREDEEM PASS waiting, the publication's own quantum
 (fnn-owner-redeem-quantum); the step's plan carries the redeem reply after
@@ -3080,7 +3226,7 @@ fnn-owner-handle-chunk-read's: (values PLAN CLOSING STARTTLS CONSUMED
 REDEEMED SUBMITTED), (values :defer MS), or (values :await STEP REDEEM
 CLOSING STARTTLS CONSUMED)."
   (let ((results (multiple-value-list
-                  (fnn-owner-handle-chunk-read service cid incoming socket class))))
+                  (fnn-owner-handle-chunk-read service cid incoming socket class peerp))))
     (case (first results)
       (:redeem
        (destructuring-bind (tag step completion closing starttls consumed submitted) results
@@ -3096,9 +3242,11 @@ CLOSING STARTTLS CONSUMED)."
       (t (values-list results)))))
 
 
-(defun fnn-owner-handle-chunk-read (service cid incoming socket class)
+(defun fnn-owner-handle-chunk-read (service cid incoming socket class &optional peerp)
   "Run one owner read and its serial writer drain under the service mutex,
-admitted by the gate as CLASS (:reader, or :transit for a peer connection).
+admitted by the gate as CLASS (:reader, or :transit for a peer connection;
+PEERP: a peer connection's read, admitted as :reader while the disk sheds by
+fnn-owner-peer-read-class).
 
 Returns (values PLAN CLOSING STARTTLS CONSUMED REDEEMED SUBMITTED), PLAN the
 immutable render plan of this step's whole reply (books/served-plan.lisp
@@ -3118,6 +3266,7 @@ EPIPE and the client saw a bare close)."
   (fnn-owner-serialized
    service cid
    (lambda ()
+     (let ((admit :admit) (sched nil))
      (block step
        ;; One reading per read, before the transition that decides under it.
        ;; books/owner.lisp fn-own-open: "The injection clock is not pinned:
@@ -3126,6 +3275,25 @@ EPIPE and the client saw a bare close)."
        ;; 3.4)."  Without this the owner's current observation is whatever the
        ;; process started with, and every article of a run carries one Date.
        (fnn-owner-advance-clock)
+       ;; Lane time-model-2: the write admission at this read's recorded
+       ;; time (the :served clock event above): while the disk sheds, the
+       ;; read runs with posting not permitted (a POST command is answered
+       ;; 440 before its article: host/owner-host.lisp fn-owner-chunk-span)
+       ;; and a submitted POST is shed below (441).
+       ;; Lane log-leftovers: the gate's value itself goes to the read
+       ;; (fn-otm-read-span: the admission and the disk's reason lines are
+       ;; ACL2's over it), read once here.
+       (setq sched (fnn-owner-gate-sched-value service)
+             admit (fnn-core 'fn-otm-admit-post sched))
+       (unless (member admit '(:admit :shed))
+         (fnn-fault "owner returned a malformed admission ~a" admit))
+       ;; PKT-858: a peer's read admitted as :reader runs only while the disk
+       ;; sheds (fn-otm-peer-read-proceeds-p): recovered since the class was
+       ;; chosen, it is deferred and retried as transit (a reader-class read
+       ;; of the live node without the posture could reveal the batch in
+       ;; flight).
+       (unless (or (not peerp) (fnn-core 'fn-otm-peer-read-proceeds-p class sched))
+         (return-from step (values :defer 1)))
        ;; PRF-161: the work budget (books/public-exposure.lisp fn-exp-charge):
        ;; :proceed, or the milliseconds to wait.  Waiting reads nothing more
        ;; from this socket, so the client meets TCP backpressure and nothing
@@ -3145,7 +3313,7 @@ EPIPE and the client saw a bare close)."
        ;; step's typed result carries the effects, the plan the caller
        ;; renders off the mutex.
        (fnn-octets-fill incoming)
-       (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming))))
+       (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming) sched)))
          (when (eq step :unknown)
            (fnn-refuse "owner no longer knows connection ~d" cid))
          (fnn-owner-refresh-read-octets service)
@@ -3159,7 +3327,7 @@ EPIPE and the client saw a bare close)."
              (fnn-fault "owner returned malformed refusal log lines"))
            (dolist (line lines) (fnn-log-line line)))
          (let ((closing (fnn-core 'fn-splan-step-closep step))
-               (starttls (fnn-core 'fn-splan-step-starttlsp step))
+               (starttls (fnn-core 'fn-splan-step-handshake-owed step))
                (submitted (fnn-core 'fn-splan-step-submittedp step))
                (consumed (fnn-core 'fn-splan-step-consumed step))
                (completion nil)
@@ -3191,7 +3359,7 @@ EPIPE and the client saw a bare close)."
              ;; delivered as a completion (this connection's is taken at
              ;; once by its await).  Otherwise the submission waits for the
              ;; next batch, as before.
-             (when (eq (fnn-owner-disk-admit service) :shed)
+             (when (eq admit :shed)
                (fnn-owner-shed-queued-locked service))
              (fnn-owner-note-queued service)
              (return-from step
@@ -3227,7 +3395,7 @@ EPIPE and the client saw a bare close)."
                        consumed submitted)
              (values (fnn-core 'fn-splan-step-plan step completion nil)
                      (or closing uncertain) starttls consumed nil
-                     submitted))))))
+                     submitted)))))))
    class))
 
 (defun fnn-owner-exposure-idle (service cid &optional (class :reader))
@@ -3342,7 +3510,8 @@ the crash keystone) and serving continues."
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   ;; It reads the live arena outside the owner's mutex: no staged page is
   ;; released while it runs (host/native/io.lisp fnn-log-reseat-fenced).
-  (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
+  ;; Its caller counted it under the mutex, before this thread existed
+  ;; (fnn-owner-maybe-publish); the count is returned below.
   (unwind-protect
   (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
                         base-payloads)
@@ -3472,12 +3641,11 @@ reads run as a :control quantum; the thread's registration is the roster's."
           ;; and the checkpoint's F row names the new segment.  A failed
           ;; rotation is a failed publication: logged, serving continues.
           (let* ((store (fnn-owner-service-store service))
-                 (position (and (fnn-store-logp store)
-                                (handler-case (fnn-log-rotate store)
-                                  ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
-                                  (fnn-store-error (e)
-                                    (fnn-err "CHECKPOINT auto failed: ~a" e)
-                                    :failed))))
+                 (position (handler-case (fnn-log-rotate store)
+                             ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
+                             (fnn-store-error (e)
+                               (fnn-err "CHECKPOINT auto failed: ~a" e)
+                               :failed)))
                  (captured (and (not (eq position :failed))
                                 (fnn-owner-core 'fn-owner-sco-capture
                                                 (fnn-checkpoint-budget-test-override nil)
@@ -3485,11 +3653,24 @@ reads run as a :control quantum; the thread's registration is the roster's."
             (unless (or (eq position :failed)
                         (and (true-listp captured) (= (length captured) 11)))
               (fnn-fault "owner returned a malformed checkpoint capture"))
+            ;; The publication reads the live arena outside the mutex, so it
+            ;; is counted as such a reader here, under the mutex, before its
+            ;; thread starts: counted on its own thread, a commit completing
+            ;; between this capture and that count could release a staged
+            ;; page it reads (fnn-log-reseat-fenced runs under the mutex).
+            ;; The thread returns the count when it ends; a thread that was
+            ;; never made returns it here.
             (fnn-with-roster (service)
               (let ((thread (and (not (eq position :failed))
-                                 (sb-thread:make-thread
-                                  (lambda () (fnn-owner-publish-captured service captured position))
-                                  :name "fn owner checkpoint"))))
+                                 (let ((made nil))
+                                   (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
+                                   (unwind-protect
+                                        (setq made (sb-thread:make-thread
+                                                    (lambda () (fnn-owner-publish-captured
+                                                                service captured position))
+                                                    :name "fn owner checkpoint"))
+                                     (unless made
+                                       (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*))))))))
                 (setf (fnn-owner-service-publisher service) thread)
                 (push thread (fnn-owner-service-workers service))))))))))
 
@@ -3498,6 +3679,36 @@ reads run as a :control quantum; the thread's registration is the roster's."
 ;;; Append-only, created 0640, never through a symlink, as at run.  The
 ;;; descriptor is swapped under the log mutex, so every line lands whole in
 ;;; the renamed file or in the new one; the old descriptor is closed after.
+(defun fnn-owner-journal-open (service)
+  "Open STORE/decisions/decisions.fnj for append and offer this run's start
+entry (fn-otm-start-line: the first monotonic and wall readings).  A journal
+that cannot be opened is reported and the run continues without it: the
+journal records decisions that stored nothing, so its absence costs replay
+of those decisions, never durable state."
+  (let* ((root (fnn-store-root (fnn-owner-service-store service)))
+         ;; Its own directory, never the record log's journal/: that holds
+         ;; the log's segments and nothing else (batch AX: a file there broke
+         ;; the log's segment listing in test_native_log_compaction).
+         (dir (fnn-join root "decisions")))
+    (handler-case
+        (progn
+          (handler-case (fnn-mkdir dir #o750)
+            (fnn-os-error () nil))
+          (setq *fnn-journal-fd* (fnn-owner-open-log (fnn-join dir "decisions.fnj")))
+          (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
+            (declare (ignore has-wall))
+            (fnn-journal-line (fnn-core 'fn-otm-start-line (fnn-owner-monotonic-ms) wall))))
+      (fnn-os-error (condition)
+        (setq *fnn-journal-fd* nil)
+        (fnn-err "decision journal not opened (~a); decisions that store nothing are not journaled this run"
+                 condition)))))
+
+(defun fnn-owner-journal-close ()
+  "After the writer stopped: close the journal's descriptor."
+  (let ((fd *fnn-journal-fd*))
+    (setq *fnn-journal-fd* nil)
+    (when fd (ignore-errors (fnn-close fd)))))
+
 (defun fnn-owner-open-log (path)
   (fnn-open path
             (logior sb-posix:o-wronly sb-posix:o-append
@@ -3612,6 +3823,12 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
            (unwind-protect
                 (progn
                   (setq service (fnn-owner-install root max-connections fault))
+                  ;; Lane time-model-2: the decision journal
+                  ;; (books/owner-time-journal.lisp), a segment per run
+                  ;; opened by its start entry; the served reads' clock
+                  ;; readings are events on this service's gate from here.
+                  (fnn-owner-journal-open service)
+                  (setq *fnn-owner-time-service* service)
                   ;; PRF-161: the listener this run binds decides the default
                   ;; of every absent exposure row (fn-exp-address-publicp).
                   (unless (member (fnn-owner-action 'fn-owner-exposure-install-set
@@ -3736,7 +3953,9 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                (when tls-listener (fnn-socket-shut tls-listener))
                (when listener (fnn-socket-shut listener)))))
       ;; Drain and stop the writer before the caller closes `[log] path'.
+      (setq *fnn-owner-time-service* nil)
       (fnn-log-writer-stop)
+      (fnn-owner-journal-close)
       (setq *fnn-sigterm-wakeup-fd* old-wakeup-fd
             *fnn-sigterm-requested* old-requested
             *fnn-sigterm-owner-active* old-active))))

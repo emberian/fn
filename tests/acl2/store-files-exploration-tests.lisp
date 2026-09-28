@@ -366,10 +366,14 @@
 
 ; The counts are computed from the actual graph above; these assertions pin
 ; the recorded run so a silent change in the kernel or the domain is noticed.
-(assert-event (equal *sfe-states* 240))
-(assert-event (equal *sfe-applications* 8337))
-(assert-event (equal *sfe-transitions* 1127))
-(assert-event (equal *sfe-transition-pairs* 524))
+; Lane open-barriers (2026-09-27): *fn-sf-recovery-barrier-count* 5 -> 3
+; removes the :recovering and :fenced-recovery states at barrier counts 3 and
+; 4 (240 -> 188 states; 8337 -> 6517 applications; 1127 -> 867 transitions;
+; 524 -> 420 transition pairs).
+(assert-event (equal *sfe-states* 188))
+(assert-event (equal *sfe-applications* 6517))
+(assert-event (equal *sfe-transitions* 867))
+(assert-event (equal *sfe-transition-pairs* 420))
 (assert-event (equal *sfe-transient-states* 8))
 
 ; Every semantic phase that can be reached in this domain occurs.  The three
@@ -462,8 +466,8 @@
                                        '(:crash :new :present)
                                        (sfe-result-edges *sfe-result*)))
 
-; Repeated recovery is in the event domain, and all five barrier counts are
-; reached.  Readiness is therefore gated by the final barrier in the explored
+; Repeated recovery is in the event domain, and all three barrier counts below
+; the last are reached, and none at the count (that one is :ready).  Readiness is therefore gated by the final barrier in the explored
 ; states, while uncertainty reaches a fenced recovery state.
 (assert-event (sfe-any-changing-eventp '(:recover) (sfe-result-edges *sfe-result*)))
 (assert-event (sfe-any-edge-at-phasep :recovering '(:recover)
@@ -474,7 +478,5 @@
                                                  (sfe-result-states *sfe-result*)))
 (assert-event (sfe-any-recovering-barrier-countp 2
                                                  (sfe-result-states *sfe-result*)))
-(assert-event (sfe-any-recovering-barrier-countp 3
-                                                 (sfe-result-states *sfe-result*)))
-(assert-event (sfe-any-recovering-barrier-countp 4
-                                                 (sfe-result-states *sfe-result*)))
+(assert-event (not (sfe-any-recovering-barrier-countp 3
+                                                      (sfe-result-states *sfe-result*))))

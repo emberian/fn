@@ -582,13 +582,28 @@
        ; (books/owner-log-route.lisp fn-olr-bmax / fn-olr-omax read these
        ; `:set-limit' rows), each keyed (SLOT, ""), staged, published and
        ; replayed like the transit limits.  A bound is positive and under the
-       ; row's ceiling.
+       ; row's ceiling.  Lane time-model-2 (PRF-311): the disk's profile
+       ; fields ride the same rows, `policy set barrier-deadline-ms N' (D),
+       ; `barrier-stall-ms N' (H; read as at least D,
+       ; books/owner-time-model.lisp fn-otm-limits) and `clock-event-ms N'
+       ; (the committer's cadence), each positive milliseconds; a batch in
+       ; flight keeps the limits it was issued with, the next one reads the
+       ; new row.  Lane compression-extents-2: `policy set
+       ; compress-min-octets N', the compression threshold, rides the same
+       ; row kind; an article record appended after it with a payload span
+       ; of at least N octets is offered to the encoder.
        ((and (equal (len words) 4)
              (equal (car words) "policy")
              (equal (cadr words) "set")
-             (member-equal (caddr words) '("log-batch-records" "log-batch-octets"))
+             (member-equal (caddr words) '("log-batch-records" "log-batch-octets"
+                                           "barrier-deadline-ms" "barrier-stall-ms"
+                                           "clock-event-ms" "compress-min-octets"))
              (fn-native-admin-decimalp (cadddr words))
-             (posp (fn-native-admin-decimal-value (coerce (cadddr words) 'list)))
+             ; Lane compression-extents-2 (PRF-341): `compress-min-octets'
+             ; (books/payload-lz-append.lisp fn-lzr-config-min) also admits
+             ; 0, which is off, as no row is.
+             (or (posp (fn-native-admin-decimal-value (coerce (cadddr words) 'list)))
+                 (equal (caddr words) "compress-min-octets"))
              (<= (fn-native-admin-decimal-value (coerce (cadddr words) 'list))
                  (fn-cfg-limit-ceiling (caddr words))))
         (fn-native-admin-result :accepted nil :set-transit-limit (caddr argv)
@@ -625,7 +640,8 @@
                (not (equal (caddr words) "")))
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
          ((and (consp (cdr words))
-               (member-equal (cadr words) '("budget" "carries" "pull" "distributions")))
+               (member-equal (cadr words) '("budget" "carries" "pull" "distributions"
+                                            "catch-up")))
           (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
        ; PRF-164 (PKT-439): invitation-code accounts.  `account list' is a
@@ -664,6 +680,18 @@
              (equal (car words) "account")
              (equal (cadr words) "access"))
         (fn-native-admin-access-plan (cddr words) (cddr argv)))
+       ; public-node-2: `account delete LOGIN' stages one :account-delete
+       ; record (code 27), offline or live; the configuration admits it
+       ; only while LOGIN holds an account and no obligation
+       ; (books/accounts.lisp
+       ; fn-acct-delete-is-admitted-exactly-when-held-and-unobligated).
+       ((and (equal (len words) 3)
+             (equal (car words) "account")
+             (equal (cadr words) "delete"))
+        (if (fn-cfg-account-loginp (caddr words))
+            (fn-native-admin-result :accepted nil :account-delete (caddr argv)
+                                    0 nil nil)
+          (fn-native-admin-result :refused :account-login nil nil 0 nil nil)))
        ((and (consp words) (equal (car words) "account"))
         (fn-native-admin-result :refused :account nil nil 0 nil nil))
        ; PRF-234: consumer bindings (books/consumer-bound.lisp).  `consumer
@@ -759,6 +787,8 @@
              (list (fn-cfg-consumer-bind
                     name
                     (fn-record-octets-string (fn-native-admin-result-value plan)))))
+            ((equal kind :account-delete)
+             (list (fn-cfg-account-delete name)))
             ((equal kind :account-access)
              (list (fn-cfg-account-access
                     name
@@ -832,6 +862,18 @@
   (implies (not (equal (fn-native-admin-result-kind plan) :extend-peer))
            (equal (fn-native-admin-plan-deltas-over plan peers)
                   (fn-native-admin-plan-deltas plan))))
+
+; public-node-2: the record an accepted `account delete LOGIN' stages, live
+; (through fn-native-admin-plan-deltas-over) or offline, is exactly the
+; configuration's deletion of the login the plan admitted.  An unfold.
+(defthm fn-native-admin-plan-deltas-of-account-delete-unfolds
+  (implies (and (equal (fn-native-admin-result-status plan) :accepted)
+                (equal (fn-native-admin-result-kind plan) :account-delete))
+           (equal (fn-native-admin-plan-deltas-over plan peers)
+                  (list (fn-cfg-account-delete
+                         (fn-record-octets-string
+                          (fn-native-admin-result-name plan))))))
+  :hints (("Goal" :in-theory (enable fn-native-admin-plan-deltas))))
 
 ; The sub-plans, closed (D26): none plans a group creation or retirement,
 ; so the plan theorems below need not open them (merged with group-access's

@@ -177,7 +177,7 @@
 (defthm fn-auth-fold-control-hdr-response-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects
-         (fn-nntp-control-hdr-response session archive index verdicts args))))
+         (fn-nntp-control-hdr-response session archive index verdicts args fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response fn-post-offeredp
                                    fn-nntp-reply-effect)
                                   (fn-nntp-single fn-nntp-multi
@@ -257,6 +257,18 @@
                                    fn-nntp-multi-octets fn-nntp-keywordp
                                    fn-nntp-xref-server fn-nntp-stuff-lines
                                    fn-nntp-crlf fn-rcompat-served-article)))))
+
+;; peer-catchup's XFNCATCHUP arm of fn-nntp-command-pinned: every reply it
+; renders is a single line or a multi-line block, neither offers a POST.
+(defthm fn-auth-fold-cu-serve-reply-has-no-offer
+  (not (fn-post-offeredp
+        (fn-nntp-result-effects
+         (fn-cu-serve-reply session archive index args fn-arena))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cu-serve-reply)
+                           (fn-nntp-single fn-nntp-multi-octets fn-post-offeredp
+                            fn-cu-select fn-cu-initial-line fn-cu-render-lines
+                            fn-cu-chain-over fn-cu-parse-request)))))
 
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
   (not (fn-post-offeredp

@@ -68,3 +68,41 @@
                              (fn-cfg-accounts (as-v2)))))))
 ; Removal of fn-auth-configp: a malformed policy is passed through unchanged.
 (assert-event (equal (fn-auth-config-with-accounts :junk (as-v2)) :junk))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential
+; (public-node-2).  No hypothesis: the witness is one account deleted, the
+; tooth is the same statement over another delta.
+(defmacro as-del (login) `(fn-cfg-account-delete ,login))
+(defmacro as-v3 () '(fn-cfg-apply-delta (as-v2) 3 *as-stamp* (as-del "robin")))
+; Before: the snapshot finds robin's redeemed credential.
+(assert-event (fn-auth-find-cred *as-login* (fn-auth-config-creds (as-snap (as-v2)))))
+; After: robin is found nowhere (auth.toml does not name robin), and a new
+; connection's AUTHINFO PASS as robin would find no credential: 481.
+(assert-event (null (fn-cfg-delta-reason (as-v2) 3 *as-stamp* 0 0 (as-del "robin"))))
+(assert-event (null (fn-auth-find-cred *as-login* (fn-auth-config-creds (as-snap (as-v3))))))
+(assert-event (null (fn-auth-find-cred *as-login* (fn-auth-config-creds (as-acfg)))))
+; auth.toml's credential for a login is kept: deleting "ember" (no redeemed
+; row) leaves the operator's credential found.
+(assert-event (equal (fn-auth-find-cred
+                      (fn-record-string-octets "ember")
+                      (fn-auth-config-creds
+                       (as-snap (fn-cfg-apply-delta (as-v2) 3 *as-stamp* (as-del "ember")))))
+                     (as-operator-cred)))
+; The tooth: over an access rule for robin instead of the deletion, robin's
+; credential is still offered, so the statement is the deletion's.
+(must-fail-checked
+ (defthm as-delete-keystone-over-another-delta
+   (equal (fn-auth-find-cred
+           (fn-record-string-octets login)
+           (fn-auth-config-creds
+            (fn-auth-config-with-accounts
+             acfg (fn-cfg-apply-delta v gen stamp
+                                      (fn-cfg-account-access login "*" "*")))))
+          (fn-auth-find-cred (fn-record-string-octets login)
+                             (fn-auth-config-creds acfg)))))
+(assert-event (fn-auth-find-cred
+               *as-login*
+               (fn-auth-config-creds
+                (as-snap (fn-cfg-apply-delta (as-v2) 3 *as-stamp*
+                                             (fn-cfg-account-access "robin" "*" "*"))))))

@@ -17,7 +17,10 @@ apart:
   same source digest as this revision, i.e. the qualified image carries the
   source this view describes;
 - deployed: the same comparison against the deployed node's image, and the
-  capability's profile is one the node runs.
+  capability's profile is one the node runs. A node image that is a release
+  build rather than a qualified image has no closure manifest; its book and
+  host digests are pinned from its source revision (`--pin-image`), and the
+  view says it is unqualified: deployed never implies qualified.
 
 The sidecar holds only what a person decides: the capability's contract, its
 keystone, bridge and host function names, which image or lab record tested
@@ -154,8 +157,9 @@ def carried(evidence: Evidence, image: dict, files: list[str]) -> tuple[bool, st
     Books come from the image's closure manifest; host files from the
     digests `--pin-image` read out of the image's source revision.
     """
-    sources = dict(evidence.manifest(image["closure_manifest"]).get("source_digests_sha256")
-                   or {})
+    sources = (dict(evidence.manifest(image["closure_manifest"]).get("source_digests_sha256")
+                    or {}) if image.get("closure_manifest") else {})
+    sources.update(image.get("book_sha256") or {})
     sources.update(image.get("host_sha256") or {})
     changed, absent = [], []
     for rel in files:
@@ -186,9 +190,27 @@ def build(root: Path = ROOT) -> str:
     node = view["deployment"]
     node_image = images[node["image"]]
     for name, image in images.items():
+        if image.get("qualification") is None:
+            if name != node["image"]:
+                raise ViewError(f"image {name} has no qualification record; only the "
+                                "node's release image may be unqualified")
+            if not image.get("book_sha256"):
+                raise ViewError(f"image {name} has neither a closure manifest nor pinned "
+                                f"book digests; run `python3 tools/current_view.py "
+                                f"--pin-image {name}`")
+            continue
         record_link(root, image["qualification"], image["source"])
         evidence.manifest(image["closure_manifest"])
-    node_link = record_link(root, node["record"], node["image"], node_image["closure_manifest"])
+    node_link = record_link(root, node["record"], node["image"],
+                            node_image.get("closure_manifest") or "")
+    node_qualified = ("" if node_image.get("qualification") else
+                      "; its image is a release build of that source, not a qualified image")
+    earlier_nodes = [f"{n['where']} on `{n['image']}` ({record_link(root, n['record'], n['image'])}), "
+               f"{n['state']}" for n in view.get("earlier_deployments", [])]
+    # Further live nodes beside the one the deployed column is computed against
+    # (node #2 on hbox, planning/evidence/hbox-node-2026-09-28.md).
+    other_nodes = [f"{n['where']} on `{n['image']}` ({record_link(root, n['record'], n['image'])}), "
+                   f"{n['state']}" for n in view.get("other_deployments", [])]
 
     summary, records = [], []
     for cap in view["capabilities"]:
@@ -212,6 +234,8 @@ def build(root: Path = ROOT) -> str:
         tested = cap["tested"]
         if "image" in tested:
             image = images[tested["image"]]
+            if not image.get("qualification"):
+                raise ViewError(f"{ident}: tested image {tested['image']} is unqualified")
             ok, how = carried(evidence, image, files)
             qual_link = record_link(root, image["qualification"])
             qualified = f"yes: {tested['image']}" if ok else f"no: source changed since {tested['image']}"
@@ -282,7 +306,10 @@ def build(root: Path = ROOT) -> str:
         "The prose lines are hand-maintained and name their record. The history",
         "stays in [`evidence/`](evidence/), immutable.",
         "",
-        f"Live node: {node['where']} on `{node['image']}` ({node_link}), {node['profile_text']}.",
+        f"Live node: {node['where']} on `{node['image']}` ({node_link}), "
+        f"{node['profile_text']}{node_qualified}.",
+        *([f"Also live: {line}." for line in other_nodes]),
+        *([f"Earlier node: {line}." for line in earlier_nodes]),
         f"Superseded image records: {superseded}.",
         "",
         "| capability | keystone | implemented | proved | qualified | deployed |",
@@ -303,14 +330,32 @@ def pin_image(name: str, root: Path = ROOT) -> int:
     view = json.loads(path.read_text(encoding="utf-8"))
     image = view["images"][name]
     files = sorted({cap["host"]["file"] for cap in view["capabilities"]})
+    books: list[str] = []
+    if not image.get("closure_manifest"):
+        # A release image with no archived closure manifest: pin the
+        # keystone and bridge books from its source revision too.
+        tree = ledger.load_tree()
+        books = sorted({theorem(tree, name_).book
+                        for cap in view["capabilities"]
+                        for name_ in (cap["keystone"], cap.get("bridge")) if name_})
     digests = {}
     for rel in files:
         blob = subprocess.run(["git", "-C", str(root), "show", f"{image['source']}:{rel}"],
                               check=True, capture_output=True).stdout
         digests[rel] = hashlib.sha256(blob).hexdigest()
     image["host_sha256"] = digests
+    if books:
+        pinned = {}
+        for rel in books:
+            found = subprocess.run(["git", "-C", str(root), "show", f"{image['source']}:{rel}"],
+                                   capture_output=True)
+            if found.returncode == 0:
+                pinned[rel] = hashlib.sha256(found.stdout).hexdigest()
+        image["book_sha256"] = pinned
     path.write_text(json.dumps(view, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"pinned {len(digests)} host files for image {name}")
+    print(f"pinned {len(digests)} host files"
+          + (f" and {len(image.get('book_sha256', {}))} books" if books else "")
+          + f" for image {name}")
     return 0
 
 

@@ -97,8 +97,9 @@ class NativeRecoverySourceMapTests(unittest.TestCase):
                                      r"\(format nil \"(\.[a-z-]+-)~d", source):
                 staged.add(match.group(1))
         # Six since the per-file layout's allocator and marker stages went
-        # (PKT-838).
-        self.assertGreaterEqual(len(staged), 6, staged)
+        # (PKT-838); five since lane matrix-reds retired the generation
+        # checkpoints and their .checkpoint- stage (PKT-848).
+        self.assertGreaterEqual(len(staged), 5, staged)
         for prefix in staged:
             self.assertTrue(any(prefix.startswith(p) for p in prefixes),
                             "{} is staged but not swept".format(prefix))

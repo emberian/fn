@@ -4,11 +4,11 @@
 ; 4.7 ms near N = 0; planning/performance-2026-09-26.md row 5) because three
 ; tests walked a list of N entries with EQUAL:
 ;
-;   1. fn-rclb-existing-action (books/store-reclaim-buffer.lisp) finds the
-;      held article with fn-find-article over the store node's article list.
-;      host/owner-host.lisp fn-owner-existing-action-buffer and
-;      fn-owner-prepare-buffer call it, both from host/native/owner.lisp
-;      fnn-owner-attempt: twice per POST.
+;   1. the buffer verdict (then fn-rclb-existing-action, retired since,
+;      PKT-860) found the held article with fn-find-article over the store
+;      node's article list.  host/owner-host.lisp
+;      fn-owner-existing-action-buffer and fn-owner-prepare-buffer called it,
+;      both from host/native/owner.lisp fnn-owner-attempt: twice per POST.
 ;   2. fn-accept-prepare (books/acceptance.lisp) refuses an accepted
 ;      Message-ID with fn-acceptedp over the same list.  It is reached from
 ;      fn-owner-prepare-buffer through fn-pcar-sbud-prepare ->
@@ -181,7 +181,8 @@
 ; (1) The duplicate-versus-conflict decision the host asks before a prepare.
 
 (defun fn-pidx-existing-action (msgid fn-octets groups o fn-arena)
-  ; fn-rclb-existing-action with the article found through the view trie and,
+  ; D25's tombstone-aware verdict (fn-rclb-same-articlep, the buffer twin of
+  ; fn-rcl-same-articlep) with the article found through the view trie and,
   ; after the records flip, its stored bytes read through the arena by the
   ; article's handle (books/store-intern.lisp fn-handle-bytes).
   (declare (xargs :stobjs (fn-octets fn-arena) :guard t))
@@ -461,7 +462,7 @@
 ; The function host/owner-host.lisp fn-owner-prepare-buffer installs.  The
 ; budget test reads the committed count the Store's event index carries
 ; (fn-sbud-count, books/store-budget.lisp), not fn-sbud-used's LEN of the
-; history (PRF-242): equal under fn-ceis-indexedp (fn-sbud-count-is-used),
+; history (PRF-242): equal under fn-ceis-indexedp (fn-sbud-count-is-used-by-definition),
 ; which every owner the host reaches carries (PRF-144,
 ; fn-osi-live-owner-store-is-indexed).
 (defun fn-pidx-sbud-prepare (oc record budget)
@@ -479,17 +480,16 @@
 ; about fn-sbud-prepare is a theorem about the host's call.
 (defthm fn-pidx-sbud-prepare-is-pcar-sbud-prepare
   (implies (and (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                (fn-ceis-indexedp (fn-sbud-oc-store oc)))
+                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
            (equal (fn-pidx-sbud-prepare oc record budget)
                   (fn-pcar-sbud-prepare oc record budget)))
   :hints (("Goal" :in-theory (e/d (fn-pidx-sbud-prepare fn-pcar-sbud-prepare
                                    fn-pidx-view-okp fn-scar-view-indexedp)
                                   (fn-pcar-opc-prepare fn-sbud-admitp
                                    fn-sbud-used fn-sbud-count fn-ocl-view-visiblep
-                                   fn-midx-correspondencep fn-ceis-indexedp
+                                   fn-midx-correspondencep
                                    fn-sbud-oc-store
                                    fn-pcar-sbud-prepare-is-sbud-prepare))
-           :use ((:instance fn-sbud-count-is-used (s (fn-sbud-oc-store oc)))))))
+           :use ((:instance fn-sbud-count-is-used-by-definition (s (fn-sbud-oc-store oc)))))))
 
 (in-theory (disable fn-pidx-sbud-prepare))

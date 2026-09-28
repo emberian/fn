@@ -1,0 +1,24 @@
+#!/bin/ksh
+#
+# OpenBSD rc.d(8) script for the friends' web reader of an fn release
+# (clients/share/rc.d/fn_reader.rc.in).  `install.sh --reader' renders
+# @PREFIX@ (/usr/local/fn), @STATE@ (the reader's own folder, /var/fn-reader)
+# and @RUSER@ (its own account, _fnreader) and installs it as
+# /etc/rc.d/fn_reader (mode 0555); then `rcctl enable fn_reader; rcctl start
+# fn_reader`.  The reader runs as its own account, which cannot read the
+# node folder (owned by the node's account, mode 0750).  The launcher execs
+# python3 on clients/lib/fn_reader.py, so pexp matches that process.
+
+daemon="@PREFIX@/clients/bin/fn-reader"
+daemon_flags="--settings @STATE@/reader.conf"
+daemon_user="@RUSER@"
+daemon_logger="daemon.info"
+daemon_execdir="@STATE@"
+
+. /etc/rc.d/rc.subr
+
+pexp="python3 @PREFIX@/clients/lib/fn_reader.py ${daemon_flags}"
+rc_bg=YES
+rc_reload=NO
+
+rc_cmd $1

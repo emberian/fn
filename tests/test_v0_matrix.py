@@ -433,6 +433,37 @@ class ValidateRefusesTypingTests(unittest.TestCase):
         problems = v0_matrix.validate(doc)
         self.assertTrue(any("summary" in p for p in problems), problems)
 
+    def test_every_late_row_names_when_it_entered_the_plan(self):
+        for spec in v0_matrix.PLAN:
+            if spec.since is not None:
+                self.assertRegex(spec.since, r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$",
+                                 spec.key)
+
+    def test_a_historical_file_is_held_to_the_plan_at_its_own_date(self):
+        # A file generated before the late rows entered the plan, without
+        # them: valid as history, and against today's plan it lacks exactly
+        # those rows.
+        stamp = "2026-09-21T04:41:21Z"
+        then = set(v0_matrix.planned_ids_as_of(stamp))
+        later = sorted(set(PLANNED_IDS) - then)
+        self.assertTrue(later)
+        doc = json.loads(json.dumps(self.doc))
+        doc["generated_at"] = stamp
+        doc.update(v0_matrix.derive([r for r in doc["rows"] if r["id"] in then]))
+        self.assertEqual(v0_matrix.validate(doc, historical=True), [])
+        self.assertEqual(v0_matrix.validate(doc),
+                         ["planned rows missing from the file: {}".format(later)])
+        # A row the plan did not yet have is refused in history.
+        self.assertTrue(any("not in the tool's PLAN" in p for p in
+                            v0_matrix.validate(self.doc | {"generated_at": stamp},
+                                               historical=True)))
+
+    def test_a_historical_file_without_its_date_is_refused(self):
+        doc = dict(self.doc)
+        doc.pop("generated_at", None)
+        problems = v0_matrix.validate(doc, historical=True)
+        self.assertTrue(any("generated_at" in p for p in problems), problems)
+
     def test_a_client_rewritten_by_hand_is_refused(self):
         doc = json.loads(json.dumps(self.doc))
         doc["rows"][0]["client"] = "a newsreader that never ran"

@@ -31,6 +31,7 @@
 ; flip refuses everything but a handle.
 (in-package "ACL2")
 (include-book "records-shape")
+(include-book "payload-kinds")
 (include-book "defrecord")
 (include-book "stx-accept-records")
 
@@ -107,7 +108,7 @@
            (fn-held-txid fn-record-uint64p)
            (fn-held-generation fn-record-uint64p)
            (fn-held-msgid fn-record-msgidp)
-           (fn-held-payload natp)
+           (fn-held-payload fn-payload-handle-p)
            (fn-held-groups fn-record-groups-validp)
            (fn-held-obligation-id fn-record-metadata-bytes-p)
            (fn-held-content-subject fn-record-metadata-bytes-p)
@@ -155,15 +156,18 @@
 
 (defthm fn-held-p-of-nth-of-held-listp
   (implies (and (fn-held-listp xs) (natp i) (< i (len xs)))
-           (fn-held-p (nth i xs))))
+           (fn-held-p (nth i xs)))
+  :hints (("Goal" :in-theory (disable fn-held-p))))
 
 (defthm fn-held-listp-of-update-nth
   (implies (and (fn-held-listp xs) (fn-held-p h) (natp i) (< i (len xs)))
-           (fn-held-listp (update-nth i h xs))))
+           (fn-held-listp (update-nth i h xs)))
+  :hints (("Goal" :in-theory (disable fn-held-p))))
 
 (defthm fn-held-listp-of-append-one
   (implies (and (fn-held-listp xs) (fn-held-p h))
-           (fn-held-listp (append xs (list h)))))
+           (fn-held-listp (append xs (list h))))
+  :hints (("Goal" :in-theory (disable fn-held-p))))
 
 ; A held record's head is a natural (its sequence), which tells it from every
 ; symbol-headed event by shape.

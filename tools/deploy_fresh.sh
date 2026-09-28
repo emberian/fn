@@ -28,7 +28,8 @@
 #     TARGET/fn-REV12, from either layout: top fn-REV12 (the friends release)
 #     or top fn (D35's release product, whose libexec/fn/source-revision must
 #     be the expected revision); `bin/fn --version` must print it too
-#     (`fn 6.7.N (REV12)` from a versioned release, `fn REV` before VERSION).
+#     (`fn VERSION (REV12)` from a versioned release, VERSION an entry of
+#     D37's release sequence; `fn REV` before VERSION).
 #  4. the store: `--store fresh` (default) inits TARGET/store and enrols the
 #     retired credentials.txt logins (the password fed on stdin, never argv);
 #     `--store import` is `cp -a` of the STOPPED retired store (the release
@@ -365,11 +366,12 @@ if [ "$MODE" = go ]; then
   say "  $FN --version: $ver"
   case $ver in
     "fn $EXPECT_REV") ;;
-    "fn 6.7."*" ($REV12)") n=${ver#fn 6.7.}; n=${n% ($REV12)}
-      case $n in 0) ;; ''|0*|*[!0-9]*) die "--version printed '$ver', not a release version 6.7.N" ;; esac ;;
-    *) die "--version printed '$ver', expected 'fn 6.7.N ($REV12)' or 'fn $EXPECT_REV'" ;;
+    "fn "*" ($REV12)") v=${ver#fn }; v=${v% ($REV12)}
+      python3 "$HERE/release_sequence.py" position "$v" >/dev/null 2>&1 ||
+        die "--version printed '$ver', not an entry of the release sequence (D37)" ;;
+    *) die "--version printed '$ver', expected 'fn VERSION ($REV12)' or 'fn $EXPECT_REV'" ;;
   esac
-else echo "  would: $FN --version (must print fn 6.7.N ($REV12), or fn $EXPECT_REV before VERSION)"; fi
+else echo "  would: $FN --version (must print fn VERSION ($REV12), VERSION in the release sequence, or fn $EXPECT_REV before VERSION)"; fi
 
 step "configuration"
 if [ -f "$TARGET/fn.toml" ]; then say "  skip: $TARGET/fn.toml present"

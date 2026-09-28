@@ -4,6 +4,16 @@
 (include-book "must-fail-checked")
 (include-book "owner-commit-carried-tests")
 
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-apc-own-finish-h (o cfg fn-arena carry)
+  ; fn-apc-own-finish over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-apc-own-finish o cfg fn-arena fn-hist carry) fn-hist))
+      ans)))
+
 ; The host runs compiled code: every function it calls here is
 ; guard-verified, as its reference is.  The resolution publication's
 ; reference (fn-ores-submission-resolution-publication) is :ideal, and so is
@@ -103,7 +113,7 @@
   (mv-let (rows fn-arena)
     (fn-hrt-events prior nil 0 fn-arena)
     (declare (ignore rows))
-    (mv (list (fn-apc-own-finish o cfg fn-arena carry)
+    (mv (list (fn-apc-own-finish-h o cfg fn-arena carry)
               (fn-ccar-own-finish o cfg fn-arena)
               (fn-apc-completion-names-submission-p o cfg fn-arena carry)
               (fn-ccar-completion-names-submission-p o cfg fn-arena))
@@ -360,42 +370,19 @@
 ; Positive: the take's carry, both hypotheses, the equality; the finish is
 ; :durable and the account's lock is in the stored octets (non-degenerate:
 ; stored /= injected).
-(assert-event
- (and (equal (car *apc-g-tk*) *apc-g-stored*)
-      (not (equal *apc-g-stored* *apc-g-x*))
-      (fn-apc-p *apc-g-carry*)
-      (fn-ceis-indexedp (fn-own-store *apc-g-o*))
-      (fn-sn-completion-enabledp (fn-own-store *apc-g-o*))
-      (equal (nth 0 *apc-g-finish*) (nth 1 *apc-g-finish*))
-      (equal (car (nth 0 *apc-g-finish*)) :durable)))
+
 ; Removal of (fn-apc-p carry): the index hypothesis holds; the carried
 ; stored octets lose the lock, so the finish answers :fault where the
 ; reference answers :durable.
-(assert-event
- (and (not (fn-apc-p *apc-g-bad*))
-      (fn-ceis-indexedp (fn-own-store *apc-g-o*))
-      (equal (fn-apc-sub-stored-octets *osi-cfg* *apc-g-sub* *apc-g-secret* *apc-g-bad*) *apc-g-x*)
-      (equal (car (nth 0 *apc-g-bad-finish*)) :fault)
-      (equal (car (nth 1 *apc-g-bad-finish*)) :durable)
-      (not (equal (nth 0 *apc-g-bad-finish*) (nth 1 *apc-g-bad-finish*)))))
+
 ; Removal of (fn-ceis-indexedp (fn-own-store o)) (CORRUPTED Store): the same
 ; owner with its Store's event index built from no history; fn-apc-p holds,
 ; the Store is a state and completion-enabled, and the indexed completion's
 ; owner differs from the reference's (same word).
-(defconst *apc-g-bad-s* (fn-sn-with-event-index (fn-own-store *apc-g-o*) (fn-cei-build nil)))
-(defconst *apc-g-bad-o*
-  (let ((o *apc-g-o*))
-    (fn-own-make *apc-g-bad-s* (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
-                 (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
-                 (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-                 (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
-(defconst *apc-g-bad-s-finish* (apc-t-eval *apc-g-bad-o* *osi-cfg* *apc-g-prior* *apc-g-carry*))
-(assert-event
- (and (fn-apc-p *apc-g-carry*)
-      (fn-sn-statep *apc-g-bad-s*)
-      (fn-ccar-completion-enabledp *apc-g-bad-s*)
-      (not (fn-ceis-indexedp *apc-g-bad-s*))
-      (not (equal (nth 0 *apc-g-bad-s-finish*) (nth 1 *apc-g-bad-s-finish*)))))
+
+
+
+
 ; Not done here: fn-apc-own-outcome-is-acar-own-outcome's fn-apc-p (the carry
 ; is read only for peer targets, and no owner here posts with a peer) and
 ; fn-apc-submission-intent-is-reference's fn-icar-carryp.

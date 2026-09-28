@@ -624,7 +624,7 @@
 ; for every clock reading, which is why a stored injection is recognisable
 ; when the same proto-article is submitted again under a later clock
 ; (books/owner.lisp `fn-own-operator-decision', books/poster-bytes.lisp
-; `fn-pb-existing-action').
+; `fn-pb-action-over').
 
 (local
  (defthm fn-inj-strip-of-append-left

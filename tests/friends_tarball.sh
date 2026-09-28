@@ -12,7 +12,9 @@
 # REV its 40-digit source revision; SCRATCH an absolute, absent directory
 # (never /tank/fn/node).  The system provides libssl (OpenSSL 3.0+); the
 # tarball bundles no TLS library (HST-016).  Prints the tarball's SHA-256
-# and the module's result; exit is the module's.
+# and the module's result; exit is the module's.  The install is --reader
+# too: the friends' web reader's unit and settings must render and its
+# installed launcher run (clients/, outside the node's path).
 #
 # The freeze bundles the glibc-floor SBCL runtime (packaging/floor-runtime.sh's
 # output, the build's SBCL rebuilt on glibc 2.36): the package's runpath step
@@ -41,8 +43,18 @@ mkdir -p "$scratch/friend"
 cp "$scratch/release/$name" "$scratch/release/SHA256SUMS" "$scratch/friend/"
 (cd "$scratch/friend" && sha256sum -c --ignore-missing SHA256SUMS \
    && tar xzf "$name" \
-   && sh fn/install.sh --prefix "$scratch/friend/opt/fn" --node "$scratch/friend/node" --no-service)
+   && sh fn/install.sh --prefix "$scratch/friend/opt/fn" --node "$scratch/friend/node" --no-service --reader)
 echo "friends_tarball: installed $scratch/friend/opt/fn"
+# The web reader came with it (clients/, packaging/install-clients.sh): its
+# unit and settings rendered beside the node, and the installed launcher runs.
+for rendered in fn-reader.service reader/reader.conf; do
+  [ -s "$scratch/friend/node/$rendered" ] || { echo "friends_tarball: no $rendered" >&2; exit 4; }
+done
+grep -q "^ExecStart=$scratch/friend/opt/fn/clients/bin/fn-reader --settings " \
+  "$scratch/friend/node/fn-reader.service" || { echo 'friends_tarball: the reader unit starts something else' >&2; exit 4; }
+"$scratch/friend/opt/fn/clients/bin/fn-reader" --help > /dev/null
+python3 tools/runpath_check.py --quiet --tree "$scratch/friend/opt/fn"
+echo "friends_tarball: the web reader is installed beside the node"
 FN_NATIVE_HOST="$scratch/frozen/fn-host-developer" \
 FN_FRIEND_FN="$scratch/friend/opt/fn/bin/fn" \
   python3 -m unittest -v tests.test_native_friends_feed
