@@ -5457,6 +5457,25 @@
         "record": "planning/evidence/peer-catchup-2026-09-27.md",
         "log": "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
       }
+    },
+    {
+      "id": "SCN-187",
+      "title": "The node's own web face: a friend makes an account from an invitation code, signs in, reads, posts, sees the post, removes it, signs out and in again, over plain HTTP from loopback and over the face's own HTTPS",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "WEB-005"
+      ],
+      "steps": [
+        "A scratch store with [auth] required and protected_only and a [web] table; `operator CONFIG run' announces LISTENING-WEB; `account invite' makes a code.",
+        "tests/test_native_web.py drives the face over HTTP and HTTPS: make the account, read the groups, post (a body with a '.' line and markup), read the group and the article, remove the post, sign out, a wrong password, sign in again; malformed requests; a second use of the code."
+      ],
+      "expected": [
+        "Every outcome is the node's: 303 to / after XREDEEM and AUTHINFO 281; the post accepted, listed, read back escaped; removed (STAT 430) and gone from the group; 401 'don't match' for the wrong password; 505/501/400/411 for the malformed requests; 403 for the second use of the code; no page carries the password; every page has CSP default-src 'none'; the session cookie is HttpOnly, SameSite=Lax, and Secure over HTTPS."
+      ],
+      "evidence": [
+        "tests/test_native_web.py"
+      ]
     }
   ]
 }

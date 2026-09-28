@@ -4846,6 +4846,39 @@
         "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
       ],
       "implementation_note": "fn guarantee and local policy, not an RFC requirement: XFNCATCHUP is a private extension (RFC 3977 section 3.3.1); its reply is one RFC 3977 section 3.1.1 multi-line response; the local acceptance is RFC 3977 section 6.3.2 IHAVE on the peer's logical transit connection. The 1 MiB serve quantum, the 256 KiB request quantum and the 1 MiB line budget are local policy. `fn operator CONFIG peer catch-up NAME SECONDS` sets the interval row."
+    },
+    {
+      "id": "WEB-005",
+      "title": "The node serves its own web face: an HTTP/1.1 listener in the native image whose every decision is ACL2's, sessions bound to the node's own authenticated reader connections, pages rendered from their replies with escaping proved",
+      "specification": "specs/human-client.md#the-nodes-own-web-face",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-337",
+        "PRF-338",
+        "PRF-339",
+        "PRF-340"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "books/web-request.lisp",
+        "books/web-render.lisp",
+        "books/web-session.lisp",
+        "books/web-session-keystones.lisp",
+        "books/web-config.lisp",
+        "host/web-host.lisp",
+        "host/native/web-host.lisp",
+        "tests/acl2/web-request-tests.lisp",
+        "tests/acl2/web-render-tests.lisp",
+        "tests/acl2/web-session-tests.lisp",
+        "tests/test_native_web.py",
+        "planning/evidence/web-native-2026-09-28.md"
+      ],
+      "implementation_note": "Replaces tools/fn_reader.py and tools/fn_web.py (a second implementation of the boundary in Python) with the node's own face; the continuation lane packages it (install.sh --reader) and retires the Python readers."
     }
   ]
 }
