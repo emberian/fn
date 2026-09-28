@@ -38,7 +38,7 @@
 ; The boundary, named (prototype; not yet theorems):
 ;   A-PGS-OBSERVE: the words the fill primitive leaves in the stobj are the
 ;     page's content, and `pgs-x-words-digest' of them is `pgs-digest' of
-;     that content (the SHA-256 correspondence books/sha256-buffer.lisp
+;     that content (the SHA-256 correspondence the retired sha256-buffer book
 ;     proves for the octet buffer is not proved here for the word array);
 ;     `pgs-x-decode-ptab' of the encoded table is the table.
 ;   A-CRYPTO (books/crypto-seam.lisp, books/assumptions.lisp): the torn-write
