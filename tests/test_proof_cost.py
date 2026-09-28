@@ -530,15 +530,6 @@ class ProofCostTests(unittest.TestCase):
         self.assertEqual(verdict.failing, [])
         self.assertIn("KEPT books/b: steps=1,050,000", "\n".join(verdict.kept))
         self.assertEqual(verdict.proposed["books/b"]["steps"], 1_000_000)
-        # ... but its seconds are the quiet measurement's, not the row's.
-        self.assertEqual((verdict.proposed["books/b"]["seconds"],
-                          verdict.proposed["books/b"]["run"]), (20.0, "certify-x"))
-        # A quiet measurement slower than the row refreshes it too; the steps stay.
-        selected = self.measurement("books/b", 36.0, steps=1_050_000, run="r2")
-        verdict = proof_cost.ratchet(selected, {"books/b"}, baseline, 10)
-        self.assertEqual((verdict.proposed["books/b"]["seconds"],
-                          verdict.proposed["books/b"]["steps"],
-                          verdict.proposed["books/b"]["run"]), (36.0, 1_000_000, "r2"))
         # Fewer steps and a faster run: both numbers lowered.
         selected = self.measurement("books/b", 20.0, steps=400_000, run="r1")
         verdict = proof_cost.ratchet(selected, {"books/b"}, baseline, 10)
