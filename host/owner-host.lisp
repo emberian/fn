@@ -1305,7 +1305,13 @@
   (declare (xargs :stobjs (state fn-arena) :mode :program))
   (mv-let (word next)
     (fn-pout-refuse-reservation (fn-owner-ocfg state) fn-arena)
-    (let ((state (fn-owner-install-ocfg next state)))
+    (let* ((state (fn-owner-install-ocfg next state))
+           ; The store holds no transaction now, so the catalog holds no
+           ; pending row either (books/served-catalog-join-host-post.lisp
+           ; fn-sjh-okp-at-owner-refuse-reservation: LINK with none).
+           (state (if (equal word :refused)
+                      (f-put-global 'fn-owner-cat-pending nil state)
+                    state)))
       (value word))))
 
 ; fn-owner-prepare with the payload in the octet buffer (books/octets-stobj.lisp;
@@ -1635,7 +1641,16 @@
   (declare (xargs :stobjs (state fn-arena) :mode :program))
   (mv-let (word next)
     (fn-pout-known-abort (fn-owner-ocfg state) fn-arena)
-    (let ((state (fn-owner-install-ocfg next state)))
+    (let* ((state (fn-owner-install-ocfg next state))
+           ; The aborted transaction's catalog row goes with it: its pending
+           ; row is no longer the store's in-flight row, and a later
+           ; non-sealing identity completion would otherwise run the
+           ; catalog's finish with it (a :stale-token fault;
+           ; books/served-catalog-join-host-post.lisp
+           ; fn-sjh-okp-at-owner-known-abort: LINK with none).
+           (state (if (equal word :aborted)
+                      (f-put-global 'fn-owner-cat-pending nil state)
+                    state)))
       (value word))))
 
 (defun fn-owner-pending-octets (fn-arena state)

@@ -365,3 +365,153 @@
                  (:instance fn-sjh-sbud-prepare-staged-store
                             (record (fn-intern-row-at w keyring generation (fn-arena-count fn-arena))))
                  (:instance fn-sjh-okp-of-post-prepare-sealed)))))
+
+; -----------------------------------------------------------------------------
+; The two ends of a transaction the host abandons: the known abort (a staging
+; failure after the reservation, the store back at :ready) and the refused
+; reservation.  The host clears its pending row on each (owner-host.lisp).
+
+(defthm fn-sjh-files-okp-at-ready
+  (implies (and (fn-sjh-files-okp files pending fn-arena fn-cat)
+                (equal (fn-sf-records files2) (fn-sf-records files))
+                (equal (fn-sf-phase files2) :ready))
+           (fn-sjh-files-okp files2 nil fn-arena fn-cat))
+  :hints (("Goal" :in-theory (enable fn-sjh-files-okp fn-sjh-files-linkp fn-sjh-inflight fn-sf-record-phasep))))
+
+(defthm fn-sjh-framep-at-ready-keeps-records
+  (implies (and (fn-scjs-files-framep files files2)
+                (equal (fn-sf-phase files2) :ready))
+           (equal (fn-sf-records files2) (fn-sf-records files)))
+  :hints (("Goal" :in-theory (enable fn-scjs-files-framep))))
+
+(defthm fn-sjh-known-abort-store-files
+  (implies (fn-sn-known-abort-enabledp s)
+           (equal (fn-sn-files (fn-snrt-step s (list :known-abort)))
+                  (fn-sn-known-abort-files (fn-sn-files s))))
+  :hints (("Goal" :in-theory (e/d (fn-snrt-step fn-sn-known-abort fn-sjh-sn-update-files)
+                                  (fn-sn-known-abort-files fn-sn-known-abort-enabledp)))))
+
+(defthm fn-sjh-refuse-reservation-store-files
+  (implies (fn-sn-refuse-reservation-enabledp s txid)
+           (equal (fn-sn-files (fn-snrt-step s (list :refuse-reservation txid)))
+                  (fn-sf-refuse-reservation (fn-sn-files s) txid)))
+  :hints (("Goal" :in-theory (e/d (fn-snrt-step fn-sn-refuse-reservation fn-sjh-sn-update-files)
+                                  (fn-sf-refuse-reservation fn-sn-refuse-reservation-enabledp)))))
+
+(defthm fn-sjh-aborted-is-enabled
+  (implies (equal (mv-nth 0 (fn-pout-known-abort oc fn-arena)) :aborted)
+           (and (fn-sn-known-abort-enabledp (fn-own-store (fn-ocfg-owner oc)))
+                (equal (mv-nth 1 (fn-pout-known-abort oc fn-arena))
+                       (fn-ocfg-step oc (list :store (list :known-abort)) fn-arena))))
+  :hints (("Goal" :in-theory '(fn-sbud-oc-store fn-sjh-ocfg-store-step-owner fn-sjh-store-step-store
+                               (:definition fn-snrt-step) car-cons (:e car) (:e equal))
+           :use ((:instance fn-pout-known-abort-answers-the-host-test)
+                 (:instance fn-sn-known-abort-disabled-is-no-op (s (fn-own-store (fn-ocfg-owner oc))))))))
+
+(defthm fn-sjh-known-abort-keeps-files-okp
+  (implies (and (fn-sn-known-abort-enabledp s)
+                (fn-sjh-files-okp (fn-sn-files s) pending fn-arena fn-cat))
+           (fn-sjh-files-okp (fn-sn-files (fn-snrt-step s (list :known-abort))) nil fn-arena fn-cat))
+  :hints (("Goal" :in-theory '(fn-sjh-known-abort-store-files)
+           :use ((:instance fn-pout-known-abort-reaches-ready)
+                 (:instance fn-scjs-known-abort-files-framep (files (fn-sn-files s)))
+                 (:instance fn-sjh-framep-at-ready-keeps-records
+                            (files (fn-sn-files s)) (files2 (fn-sn-known-abort-files (fn-sn-files s))))
+                 (:instance fn-sjh-files-okp-at-ready
+                            (files (fn-sn-files s)) (files2 (fn-sn-known-abort-files (fn-sn-files s))))
+                 (:instance fn-sjh-known-abort-store-files)
+                 (:instance (:definition fn-sn-known-abort))
+                 (:instance fn-sjh-sn-update-files (files (fn-sn-known-abort-files (fn-sn-files s)))
+                            (node (if (fn-held-p (fn-sf-record-candidate (fn-sn-files s)))
+                                      (fn-node-complete (fn-sn-node s)
+                                                        (fn-record-txid (fn-sf-record-candidate (fn-sn-files s)))
+                                                        (fn-record-generation (fn-sf-record-candidate (fn-sn-files s)))
+                                                        :aborted)
+                                    (fn-replay-advance-txid (fn-sn-node s)
+                                                            (fn-sf-frontier (fn-sn-files s))))))))))
+
+(defthm fn-sjh-okp-of-store-step-parts
+  (implies (and (fn-sjh-okp o pending fn-arena fn-cat)
+                (fn-scj-invp (fn-own-store-step o ev) fn-arena fn-cat)
+                (fn-scjs-seenp (fn-own-store-step o ev))
+                (fn-scjs-versionsp (fn-own-store-step o ev))
+                (fn-scar-view-indexedp (fn-own-store-step o ev))
+                (fn-scjs-historyp (fn-own-store-step o ev))
+                (fn-sjh-files-okp (fn-sn-files (fn-snrt-step (fn-own-store o) ev)) pending2 fn-arena fn-cat))
+           (fn-sjh-okp (fn-own-store-step o ev) pending2 fn-arena fn-cat))
+  :hints (("Goal" :in-theory '(fn-sjh-okp fn-sjh-store-step-store fn-sjh-versionsp-is-versions-okp))))
+
+(defthm fn-sjh-okp-at-owner-known-abort
+  (let* ((o (fn-ocfg-owner oc))
+         (r (fn-pout-known-abort oc fn-arena))
+         (o2 (fn-ocfg-owner (mv-nth 1 r))))
+    (implies (and (fn-ocl-relation oc)
+                  (fn-sjh-okp o pending fn-arena fn-cat)
+                  (equal (mv-nth 0 r) :aborted)
+                  (fn-statep (fn-own-view-archive (fn-own-view o2))))
+             (fn-sjh-okp o2 nil fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-sjh-ocfg-store-step-owner fn-sjh-aborted-is-enabled
+                                        fn-sjh-okp-of-store-step-parts
+                                        car-cons (:e member-equal) (:e car))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-sjh-okp-is-parts (o (fn-ocfg-owner oc)))
+                 (:instance fn-sjh-known-abort-keeps-files-okp (s (fn-own-store (fn-ocfg-owner oc))))
+                 (:instance fn-scjs-ocfg-store-step-keeps-invp (ev (list :known-abort)))
+                 (:instance fn-scjs-ocfg-store-step-keeps-versions (ev (list :known-abort)))
+                 (:instance fn-sjh-store-step-historyp (o (fn-ocfg-owner oc)) (ev (list :known-abort)))
+                 (:instance fn-oix-ocfg-step-keeps-view-indexed (event (list :store (list :known-abort))))))))
+
+(defthm fn-sjh-refused-reservation-facts
+  (let* ((s (fn-own-store (fn-ocfg-owner oc)))
+         (ev (list :refuse-reservation (1- (fn-sf-frontier (fn-sn-files s))))))
+    (implies (equal (mv-nth 0 (fn-pout-refuse-reservation oc fn-arena)) :refused)
+             (and (equal (mv-nth 1 (fn-pout-refuse-reservation oc fn-arena))
+                         (fn-ocfg-step oc (list :store ev) fn-arena))
+                  (not (equal (fn-snrt-step s ev) s))
+                  (equal (fn-sf-phase (fn-sn-files (fn-snrt-step s ev))) :ready))))
+  :hints (("Goal" :in-theory '(fn-sbud-oc-store fn-sjh-ocfg-store-step-owner fn-sjh-store-step-store
+                               car-cons (:e car) (:e equal))
+           :use ((:instance fn-pout-refuse-reservation-answers-the-host-test)))))
+
+(defthm fn-sjh-refuse-reservation-keeps-files-okp
+  (implies (and (not (equal (fn-snrt-step s (list :refuse-reservation txid)) s))
+                (equal (fn-sf-phase (fn-sn-files (fn-snrt-step s (list :refuse-reservation txid)))) :ready)
+                (fn-sjh-files-okp (fn-sn-files s) pending fn-arena fn-cat))
+           (fn-sjh-files-okp (fn-sn-files (fn-snrt-step s (list :refuse-reservation txid))) nil fn-arena fn-cat))
+  :hints (("Goal" :in-theory '(fn-sjh-refuse-reservation-store-files (:definition fn-snrt-step) fn-sjh-sn-update-files
+                               (:definition fn-sn-refuse-reservation) car-cons cdr-cons (:e car) (:e equal))
+           :use ((:instance fn-scjs-sf-refuse-reservation-framep (files (fn-sn-files s)))
+                 (:instance fn-sjh-framep-at-ready-keeps-records
+                            (files (fn-sn-files s)) (files2 (fn-sf-refuse-reservation (fn-sn-files s) txid)))
+                 (:instance fn-sjh-files-okp-at-ready
+                            (files (fn-sn-files s)) (files2 (fn-sf-refuse-reservation (fn-sn-files s) txid)))))))
+
+; KEYSTONE (the refused reservation): host/owner-host.lisp
+; fn-owner-refuse-reservation installs fn-pout-refuse-reservation's owner and,
+; on :refused, clears the pending row: fn-sjh-okp with none.
+(defthm fn-sjh-okp-at-owner-refuse-reservation
+  (let* ((o (fn-ocfg-owner oc))
+         (r (fn-pout-refuse-reservation oc fn-arena))
+         (o2 (fn-ocfg-owner (mv-nth 1 r))))
+    (implies (and (fn-ocl-relation oc)
+                  (fn-sjh-okp o pending fn-arena fn-cat)
+                  (equal (mv-nth 0 r) :refused)
+                  (fn-statep (fn-own-view-archive (fn-own-view o2))))
+             (fn-sjh-okp o2 nil fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-sjh-ocfg-store-step-owner fn-sjh-refused-reservation-facts
+                                        fn-sjh-okp-of-store-step-parts
+                                        car-cons (:e member-equal) (:e car))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-sjh-okp-is-parts (o (fn-ocfg-owner oc)))
+                 (:instance fn-sjh-refuse-reservation-keeps-files-okp (s (fn-own-store (fn-ocfg-owner oc)))
+                            (txid (1- (fn-sf-frontier (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))))
+                 (:instance fn-scjs-ocfg-store-step-keeps-invp
+                            (ev (list :refuse-reservation (1- (fn-sf-frontier (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))))
+                 (:instance fn-scjs-ocfg-store-step-keeps-versions
+                            (ev (list :refuse-reservation (1- (fn-sf-frontier (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))))
+                 (:instance fn-sjh-store-step-historyp (o (fn-ocfg-owner oc))
+                            (ev (list :refuse-reservation (1- (fn-sf-frontier (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))))
+                 (:instance fn-oix-ocfg-step-keeps-view-indexed
+                            (event (list :store (list :refuse-reservation (1- (fn-sf-frontier (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))))))))))
