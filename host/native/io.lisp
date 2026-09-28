@@ -6140,8 +6140,12 @@ acknowledges past the committed records' count)."
   ;; The oracle's records are the segment's own, decoded again from its
   ;; bytes (the concrete kernel keeps only their count).
   (let ((ks (fnn-log-kernel log))
+        ;; From the segment's own genesis (a store's segment 1 chains from
+        ;; its genesis record: `log scan-store'), the log's constant one
+        ;; for a bare rig segment.
         (records (fnn-log-open-kernel (fnn-log-fd log) (fnn-log-extent log)
-                                      (fnn-log-unit log) (fnn-log-max log))))
+                                      (fnn-log-unit log) (fnn-log-max log)
+                                      (or (fnn-log-genesis log) *fn-lg-genesis*))))
     (fnn-out "~a records=~d frontier=~d next=~d last=~a workload=~(~a~)"
              what (fnn-core 'fn-lgc-acked ks) (fnn-core 'fn-lgc-frontier ks)
              (fnn-core 'fn-lgc-next-txid ks) (fnn-hex (fnn-core 'fn-lgc-last ks))
@@ -7142,7 +7146,7 @@ crash would keep, while an owner may run (tests/native_log_observation.py)."
          (fd (fnn-log-open-segment path extent unit t)))
     (unwind-protect
          (fnn-log-rig-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
-                                             :extent extent
+                                             :extent extent :genesis genesis
                                              :kernel (nth-value 1 (fnn-log-open-kernel
                                                                    fd extent unit max genesis)))
                        0)
