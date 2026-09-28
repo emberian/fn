@@ -463,3 +463,29 @@
                                     (sa-field-value (car (fn-scram-split *sa-q-sf*)))
                                     *sa-bare* *sa-q-sf*))))
 (assert-event (null (fn-auth-session-peer (fn-post-result-session *sa-q2-bad*))))
+
+; -----------------------------------------------------------------------------
+; Teeth for the hypothesis (not (fn-auth-sasl-waitingp as)) that the
+; command-line keystones gained (books/nntp-auth.lisp, nntp-auth-invariants,
+; nntp-help, public-exposure, nntp-auth-roles): on a session that keeps an
+; exchange -- well formed, not handshaking, not authenticated, authentication
+; required -- each keystone's own line is the exchange's response and is
+; answered 504 (not base64), never the keystone's conclusion (480, 440, 483,
+; the 101 block, 500, the peer's transit answer, 381).
+(defconst *sa-waiting* *sa-s-wait*)
+(assert-event (fn-auth-sessionp *sa-waiting*))
+(assert-event (not (fn-auth-session-handshakingp *sa-waiting*)))
+(assert-event (null (fn-auth-session-subject *sa-waiting*)))
+(assert-event (fn-auth-config-requiredp (fn-auth-session-config *sa-waiting*)))
+(assert-event (fn-auth-sasl-waitingp *sa-waiting*))
+(defmacro sa-504-for (line)
+  `(assert-event (equal (fn-post-result-effects (sa-send *sa-waiting* ,line))
+                        (sa-single "504 base64 encoding error"))))
+(sa-504-for "GROUP fn.letters")          ; the 480 gate
+(sa-504-for "POST")                      ; the POST refusals
+(sa-504-for "AUTHINFO USER reader")      ; 381 / protected-only's 483
+(sa-504-for "AUTHINFO PASS correct-horse") ; the PASS keystones
+(sa-504-for "CAPABILITIES")              ; the capability block
+(sa-504-for "XREDEEM code reader")       ; XREDEEM's 483 and hold
+(sa-504-for "IHAVE <x@example.invalid>") ; the transit delegation
+(sa-504-for "NOSUCHCOMMAND")             ; HELP's 500
