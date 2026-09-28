@@ -532,6 +532,7 @@
  (must-fail-checked
   (defthm aut-483-without-sessionp
     (implies (and (not (fn-auth-session-handshakingp as))
+                  (not (fn-zc-activep (fn-auth-session-compress as)))
                   (not (fn-auth-session-subject as))
                   (fn-auth-config-protected-onlyp (fn-auth-session-config as))
                   (not (fn-auth-session-tlsp as))
@@ -565,6 +566,7 @@
   (defthm aut-483-without-not-handshaking
     (implies (and (fn-auth-sessionp as)
                   (not (fn-auth-session-subject as))
+                  (not (fn-zc-activep (fn-auth-session-compress as)))
                   (fn-auth-config-protected-onlyp (fn-auth-session-config as))
                   (not (fn-auth-session-tlsp as))
                   (fn-nntp-command-inputp line)
@@ -598,6 +600,7 @@
  (must-fail-checked
   (defthm aut-483-without-no-subject
     (implies (and (fn-auth-sessionp as)
+                  (not (fn-zc-activep (fn-auth-session-compress as)))
                   (not (fn-auth-session-handshakingp as))
                   (fn-auth-config-protected-onlyp (fn-auth-session-config as))
                   (not (fn-auth-session-tlsp as))
@@ -629,6 +632,7 @@
  (must-fail-checked
   (defthm aut-483-without-protected-only
     (implies (and (fn-auth-sessionp as)
+                  (not (fn-zc-activep (fn-auth-session-compress as)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-session-subject as))
                   (not (fn-auth-session-tlsp as))
@@ -659,6 +663,7 @@
  (must-fail-checked
   (defthm aut-483-without-not-tls
     (implies (and (fn-auth-sessionp as)
+                  (not (fn-zc-activep (fn-auth-session-compress as)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-session-subject as))
                   (fn-auth-config-protected-onlyp (fn-auth-session-config as))
@@ -703,6 +708,7 @@
  (must-fail-checked
   (defthm aut-483-without-command-inputp
     (implies (and (fn-auth-sessionp as)
+                  (not (fn-zc-activep (fn-auth-session-compress as)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-session-subject as))
                   (fn-auth-config-protected-onlyp (fn-auth-session-config as))
@@ -748,6 +754,7 @@
  (must-fail-checked
   (defthm aut-483-without-arguments-at-most
     (implies (and (fn-auth-sessionp as)
+                  (not (fn-zc-activep (fn-auth-session-compress as)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-session-subject as))
                   (fn-auth-config-protected-onlyp (fn-auth-session-config as))
@@ -782,6 +789,7 @@
  (must-fail-checked
   (defthm aut-483-without-the-authinfo-keyword
     (implies (and (fn-auth-sessionp as)
+                  (not (fn-zc-activep (fn-auth-session-compress as)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-session-subject as))
                   (fn-auth-config-protected-onlyp (fn-auth-session-config as))
@@ -1739,7 +1747,8 @@
     (p11 . (fn-auth-checkp
             (fn-auth-find-cred (fn-auth-session-pending as)
                                (fn-auth-config-creds (fn-auth-session-config as)))
-            (caddr (fn-nntp-tokenize line))))))
+            (caddr (fn-nntp-tokenize line))))
+    (p12 . (not (fn-zc-activep (fn-auth-session-compress as))))))
 (defconst *aut-k9-conclusion*
   '(and (equal (fn-post-result-effects
                 (fn-auth-step as archive config observation injection
@@ -1767,7 +1776,7 @@
   `(aut-tooth ,name ,keys ,*aut-k9-hyps* ,*aut-k9-conclusion*
               fn-auth-step-principal-login-binds-exactly-the-unique-match))
 
-(aut-k9 aut-k9-full (p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11))
+(aut-k9 aut-k9-full (p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12))
 
 ; The witnesses are the four logins above: on the one-peer table the role is
 ; the match, "principal-peer"; on the duplicate, mismatch and shadow tables
@@ -1794,13 +1803,13 @@
 (assert-event (not (fn-auth-sessionp *aut-forged-role*)))
 (assert-event (null (fn-auth-session-peer *aut-forged-role*)))
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-forged-role* *aut-pass*) nil))
-(local (must-fail-checked (aut-k9 aut-k9-without-p1 (p2 p3 p4 p5 p6 p7 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p1 (p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12))))
 
 ; P2 dropped: handshaking, with a cached name.  Nothing is answered.
 (defconst *aut-hs-role* (aut-mk *aut-reader-base* *aut-role-policy* *aut-name* nil nil t))
 (assert-event (fn-auth-sessionp *aut-hs-role*))
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-hs-role* *aut-pass*) nil))
-(local (must-fail-checked (aut-k9 aut-k9-without-p2 (p1 p3 p4 p5 p6 p7 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p2 (p1 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12))))
 
 ; P3 dropped: a source-address peer with a cached name logs in; 281 and the
 ; subject, but the role is still "transit" and not the match.
@@ -1811,7 +1820,7 @@
                      "transit"))
 (assert-event (equal (fn-auth-principal-match *aut-principal* *aut-cfg-one*)
                      "principal-peer"))
-(local (must-fail-checked (aut-k9 aut-k9-without-p3 (p1 p2 p4 p5 p6 p7 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p3 (p1 p2 p4 p5 p6 p7 p8 p9 p10 p11 p12))))
 
 ; P4 dropped: already authenticated is 502.
 (defconst *aut-authed-user*
@@ -1819,13 +1828,13 @@
 (assert-event (fn-auth-sessionp *aut-authed-user*))
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-authed-user* *aut-pass*)
                      (aut-single "502 already authenticated")))
-(local (must-fail-checked (aut-k9 aut-k9-without-p4 (p1 p2 p3 p5 p6 p7 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p4 (p1 p2 p3 p5 p6 p7 p8 p9 p10 p11 p12))))
 
 ; P5 dropped: protected-only without TLS is 483, even with a cached name.
 (defconst *aut-prot-user* (aut-mk *aut-reader-base* *aut-role-protected* *aut-name* nil nil nil))
 (assert-event (fn-auth-sessionp *aut-prot-user*))
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-prot-user* *aut-pass*) (aut-single *aut-483*)))
-(local (must-fail-checked (aut-k9 aut-k9-without-p5 (p1 p2 p3 p4 p6 p7 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p5 (p1 p2 p3 p4 p6 p7 p8 p9 p10 p11 p12))))
 
 ; P6 dropped: the same three tokens on a line past the 510-octet command
 ; bound.  The preflight refuses it and the reader answers; no 281.
@@ -1838,33 +1847,33 @@
 (assert-event (not (equal (fn-post-result-effects
                            (in-arena-fn-auth-step *aut-arena* *aut-r-one-user* *aut-node-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-long-pass*)))
                           *aut-281*)))
-(local (must-fail-checked (aut-k9 aut-k9-without-p6 (p1 p2 p3 p4 p5 p7 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p6 (p1 p2 p3 p4 p5 p7 p8 p9 p10 p11 p12))))
 
 ; P7 dropped: another keyword with the same arguments is not a login.
 (assert-event (not (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "XAUTHINFO PASS correct-horse")
                           *aut-281*)))
-(local (must-fail-checked (aut-k9 aut-k9-without-p7 (p1 p2 p3 p4 p5 p6 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p7 (p1 p2 p3 p4 p5 p6 p8 p9 p10 p11 p12))))
 
 ; P8 dropped: USER with the secret as its argument caches a name, 381.
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "AUTHINFO USER correct-horse")
                      (aut-single "381 password required")))
-(local (must-fail-checked (aut-k9 aut-k9-without-p8 (p1 p2 p3 p4 p5 p6 p7 p9 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p8 (p1 p2 p3 p4 p5 p6 p7 p9 p10 p11 p12))))
 
 ; P9 dropped: PASS with the secret and one more token is 501.
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "AUTHINFO PASS correct-horse extra")
                      (aut-single "501 syntax error")))
-(local (must-fail-checked (aut-k9 aut-k9-without-p9 (p1 p2 p3 p4 p5 p6 p7 p8 p10 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p9 (p1 p2 p3 p4 p5 p6 p7 p8 p10 p11 p12))))
 
 ; P10 dropped: PASS before USER is 482.
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one* *aut-pass*)
                      (aut-single "482 authentication commands issued out of sequence")))
-(local (must-fail-checked (aut-k9 aut-k9-without-p10 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p11))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p10 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p11 p12))))
 
 ; P11 dropped: a secret that does not check is 481, under the real digest (BLAKE3).
 (assert-event (not (fn-auth-checkp *aut-cred* (fn-nntp-string-octets "wrong-horse"))))
 (assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "AUTHINFO PASS wrong-horse")
                      (aut-single "481 authentication failed")))
-(local (must-fail-checked (aut-k9 aut-k9-without-p11 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p10))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p11 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p12))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE 10: fn-auth-step-starttls-clears-a-principal-role
@@ -1886,7 +1895,13 @@
     (s3 . (not (fn-auth-redeem-waitp
                 (fn-post-result-session
                  (fn-auth-step as archive config observation injection
-                               wire-event fn-arena)))))))
+                               wire-event fn-arena)))))
+    ; RFC 8054: the hold is not a COMPRESS layer's.
+    (s4 . (not (fn-zc-owedp
+                (fn-auth-session-compress
+                 (fn-post-result-session
+                  (fn-auth-step as archive config observation injection
+                                wire-event fn-arena))))))))
 (defconst *aut-k10-conclusion*
   '(and (null (fn-auth-session-subject
                (fn-post-result-session
@@ -1911,12 +1926,12 @@
   `(aut-tooth ,name ,keys ,*aut-k10-hyps* ,*aut-k10-conclusion*
               fn-auth-step-starttls-clears-a-principal-role))
 
-(aut-k10 aut-k10-full (s1 s2 s3))
+(aut-k10 aut-k10-full (s1 s2 s3 s4))
 ; S3 dropped: the XREDEEM hold is handshaking with a pending redemption
 ; state, so `no cached name' fails for it (books/nntp-auth.lisp
 ; fn-auth-step-pinned-xredeem-pass-holds-for-the-owner; the evaluated
 ; witness is tests/acl2/accounts-wire-tests.lisp's *awt-wait*).
-(local (must-fail-checked (aut-k10 aut-k10-without-s3 (s1 s2))))
+(local (must-fail-checked (aut-k10 aut-k10-without-s3 (s1 s2 s4))))
 
 ; The witness: the bound connection sends STARTTLS.  382, handshaking, and
 ; the role, the subject and the cached name are gone.
@@ -1953,13 +1968,13 @@
 (assert-event (fn-auth-sessionp (aut-hs-bound)))
 (assert-event (fn-auth-session-handshakingp (in-arena-aut-role-after *aut-arena* (aut-hs-bound) "CAPABILITIES")))
 (assert-event (fn-auth-principal-rolep (in-arena-aut-role-after *aut-arena* (aut-hs-bound) "CAPABILITIES")))
-(local (must-fail-checked (aut-k10 aut-k10-without-s1 (s2))))
+(local (must-fail-checked (aut-k10 aut-k10-without-s1 (s2 s4))))
 
 ; S2 dropped: any step that does not enter the handshake, here CAPABILITIES
 ; on the bound connection, keeps the principal-derived role.
 (assert-event (not (fn-auth-session-handshakingp (in-arena-aut-role-after *aut-arena* (aut-bound) "CAPABILITIES"))))
 (assert-event (fn-auth-principal-rolep (in-arena-aut-role-after *aut-arena* (aut-bound) "CAPABILITIES")))
-(local (must-fail-checked (aut-k10 aut-k10-without-s2 (s1))))
+(local (must-fail-checked (aut-k10 aut-k10-without-s2 (s1 s4))))
 
 ; =============================================================================
 ; P1 at the host-called step (keystones 11 to 17, books/nntp-auth-invariants,
@@ -2124,7 +2139,8 @@
     (g5 . (not (fn-auth-session-tlsp as)))
     (g6 . (fn-nntp-command-inputp line))
     (g7 . (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line)))
-    (g8 . (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO"))))
+    (g8 . (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO"))
+    (g9 . (not (fn-zc-activep (fn-auth-session-compress as))))))
 (defconst *aut-k12-conclusion*
   '(and (equal (fn-post-result-effects
                 (fn-auth-step-pinned as archive index verdicts config
@@ -2145,7 +2161,7 @@
   `(aut-p1-tooth ,name ,keys ,*aut-k12-hyps* ,*aut-k12-conclusion*
                  fn-auth-step-pinned-protected-only-refuses-authinfo-before-tls))
 
-(aut-k12 aut-k12-full (g1 g2 g3 g4 g5 g6 g7 g8))
+(aut-k12 aut-k12-full (g1 g2 g3 g4 g5 g6 g7 g8 g9))
 
 ; The witness: a clear connection under protected-only sends the correct
 ; secret.  483, and the session is the one it arrived on: no name is
@@ -2168,37 +2184,37 @@
 ; G1 dropped: the forged protected session is answered nothing.
 (assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-forged-prot* "AUTHINFO USER reader")
                      nil))
-(local (must-fail-checked (aut-k12 aut-k12-without-g1 (g2 g3 g4 g5 g6 g7 g8))))
+(local (must-fail-checked (aut-k12 aut-k12-without-g1 (g2 g3 g4 g5 g6 g7 g8 g9))))
 ; G2 dropped: a handshaking session is answered nothing.
 (assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-prot-handshaking* "AUTHINFO USER reader")
                      nil))
-(local (must-fail-checked (aut-k12 aut-k12-without-g2 (g1 g3 g4 g5 g6 g7 g8))))
+(local (must-fail-checked (aut-k12 aut-k12-without-g2 (g1 g3 g4 g5 g6 g7 g8 g9))))
 ; G3 dropped: an authenticated session is 502.
 (assert-event (equal (in-arena-aut-pinned-reply *aut-arena* (aut-prot-authed) "AUTHINFO USER reader")
                      (aut-single "502 already authenticated")))
-(local (must-fail-checked (aut-k12 aut-k12-without-g3 (g1 g2 g4 g5 g6 g7 g8))))
+(local (must-fail-checked (aut-k12 aut-k12-without-g3 (g1 g2 g4 g5 g6 g7 g8 g9))))
 ; G4 dropped: required but not protected-only answers 381 in the clear.
 (assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-req* "AUTHINFO USER reader")
                      (aut-single "381 password required")))
-(local (must-fail-checked (aut-k12 aut-k12-without-g4 (g1 g2 g3 g5 g6 g7 g8))))
+(local (must-fail-checked (aut-k12 aut-k12-without-g4 (g1 g2 g3 g5 g6 g7 g8 g9))))
 ; G5 dropped: over TLS, 381 (witness above).
-(local (must-fail-checked (aut-k12 aut-k12-without-g5 (g1 g2 g3 g4 g6 g7 g8))))
+(local (must-fail-checked (aut-k12 aut-k12-without-g5 (g1 g2 g3 g4 g6 g7 g8 g9))))
 ; G6 dropped: the over-long AUTHINFO line is delegated.
 (assert-event
  (not (equal (fn-post-result-effects
               (in-arena-aut-pinned-octets *aut-arena* *aut-s-prot* *aut-authinfo-over-long-line*))
              (aut-single *aut-483*))))
-(local (must-fail-checked (aut-k12 aut-k12-without-g6 (g1 g2 g3 g4 g5 g7 g8))))
+(local (must-fail-checked (aut-k12 aut-k12-without-g6 (g1 g2 g3 g4 g5 g7 g8 g9))))
 ; G7 dropped: the over-long AUTHINFO argument is delegated.
 (assert-event
  (not (equal (fn-post-result-effects
               (in-arena-aut-pinned-octets *aut-arena* *aut-s-prot* *aut-authinfo-over-long-argument-line*))
              (aut-single *aut-483*))))
-(local (must-fail-checked (aut-k12 aut-k12-without-g7 (g1 g2 g3 g4 g5 g6 g8))))
+(local (must-fail-checked (aut-k12 aut-k12-without-g7 (g1 g2 g3 g4 g5 g6 g8 g9))))
 ; G8 dropped: STARTTLS on the same connection is 382.
 (assert-event (not (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-prot* "STARTTLS")
                           (aut-single *aut-483*))))
-(local (must-fail-checked (aut-k12 aut-k12-without-g8 (g1 g2 g3 g4 g5 g6 g7))))
+(local (must-fail-checked (aut-k12 aut-k12-without-g8 (g1 g2 g3 g4 g5 g6 g7 g9))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONES 13 and 14: the same two answers from fn-served-dispatch, where
@@ -2333,7 +2349,8 @@
     (e5 . (not (fn-auth-session-tlsp (fn-served-conn-session conn))))
     (e6 . (fn-nntp-command-inputp line))
     (e7 . (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line)))
-    (e8 . (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO"))))
+    (e8 . (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO"))
+    (e9 . (not (fn-zc-activep (fn-auth-session-compress (fn-served-conn-session conn)))))))
 (defconst *aut-k14-conclusion*
   '(and (equal (fn-served-result-conn
                 (fn-served-dispatch conn (list :command line) fn-arena))
@@ -2348,7 +2365,7 @@
     ,name ,keys ,*aut-k14-hyps* ,*aut-k14-conclusion*
     fn-served-dispatch-of-authinfo-on-a-clear-connection-is-483-and-changes-nothing))
 
-(aut-k14 aut-k14-full (e1 e2 e3 e4 e5 e6 e7 e8))
+(aut-k14 aut-k14-full (e1 e2 e3 e4 e5 e6 e7 e8 e9))
 
 ; The witness: the clear protected-only connection sends USER, then PASS
 ; with the right secret.  Each is 483 and leaves the connection as it was.
@@ -2366,42 +2383,42 @@
 (assert-event (equal (fn-served-result-effects
                       (in-arena-aut-dispatch *aut-arena* *aut-conn-forged-prot* "AUTHINFO USER reader"))
                      nil))
-(local (must-fail-checked (aut-k14 aut-k14-without-e1 (e2 e3 e4 e5 e6 e7 e8))))
+(local (must-fail-checked (aut-k14 aut-k14-without-e1 (e2 e3 e4 e5 e6 e7 e8 e9))))
 ; E2 dropped: handshaking answers nothing.
 (assert-event (equal (fn-served-result-effects
                       (in-arena-aut-dispatch *aut-arena* *aut-conn-prot-hs* "AUTHINFO USER reader"))
                      nil))
-(local (must-fail-checked (aut-k14 aut-k14-without-e2 (e1 e3 e4 e5 e6 e7 e8))))
+(local (must-fail-checked (aut-k14 aut-k14-without-e2 (e1 e3 e4 e5 e6 e7 e8 e9))))
 ; E3 dropped: authenticated (over TLS) is 502.
 (assert-event (equal (fn-served-result-effects
                       (in-arena-aut-dispatch *aut-arena* (aut-conn-prot-authed) "AUTHINFO USER reader"))
                      (aut-single "502 already authenticated")))
-(local (must-fail-checked (aut-k14 aut-k14-without-e3 (e1 e2 e4 e5 e6 e7 e8))))
+(local (must-fail-checked (aut-k14 aut-k14-without-e3 (e1 e2 e4 e5 e6 e7 e8 e9))))
 ; E4 dropped: the required policy in the clear caches the name.
 (assert-event (equal (fn-served-result-effects
                       (in-arena-aut-dispatch *aut-arena* *aut-conn-req* "AUTHINFO USER reader"))
                      (aut-single "381 password required")))
-(local (must-fail-checked (aut-k14 aut-k14-without-e4 (e1 e2 e3 e5 e6 e7 e8))))
+(local (must-fail-checked (aut-k14 aut-k14-without-e4 (e1 e2 e3 e5 e6 e7 e8 e9))))
 ; E5 dropped: over TLS, 381.
 (assert-event (equal (fn-served-result-effects
                       (in-arena-aut-dispatch *aut-arena* *aut-conn-prot-tls* "AUTHINFO USER reader"))
                      (aut-single "381 password required")))
-(local (must-fail-checked (aut-k14 aut-k14-without-e5 (e1 e2 e3 e4 e6 e7 e8))))
+(local (must-fail-checked (aut-k14 aut-k14-without-e5 (e1 e2 e3 e4 e6 e7 e8 e9))))
 ; E6 dropped: the over-long AUTHINFO line.
 (assert-event (not (equal (fn-served-result-effects
                            (in-arena-aut-dispatch-octets *aut-arena* *aut-conn-prot* *aut-authinfo-over-long-line*))
                           (aut-single *aut-483*))))
-(local (must-fail-checked (aut-k14 aut-k14-without-e6 (e1 e2 e3 e4 e5 e7 e8))))
+(local (must-fail-checked (aut-k14 aut-k14-without-e6 (e1 e2 e3 e4 e5 e7 e8 e9))))
 ; E7 dropped: the over-long AUTHINFO argument.
 (assert-event (not (equal (fn-served-result-effects
                            (in-arena-aut-dispatch-octets *aut-arena* *aut-conn-prot* *aut-authinfo-over-long-argument-line*))
                           (aut-single *aut-483*))))
-(local (must-fail-checked (aut-k14 aut-k14-without-e7 (e1 e2 e3 e4 e5 e6 e8))))
+(local (must-fail-checked (aut-k14 aut-k14-without-e7 (e1 e2 e3 e4 e5 e6 e8 e9))))
 ; E8 dropped: STARTTLS is 382 and moves the connection into the handshake.
 (assert-event (not (equal (fn-served-result-effects
                            (in-arena-aut-dispatch *aut-arena* *aut-conn-prot* "STARTTLS"))
                           (aut-single *aut-483*))))
-(local (must-fail-checked (aut-k14 aut-k14-without-e8 (e1 e2 e3 e4 e5 e6 e7))))
+(local (must-fail-checked (aut-k14 aut-k14-without-e8 (e1 e2 e3 e4 e5 e6 e7 e9))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONES 15 to 17: the posting allowance follows the credential.
@@ -2826,3 +2843,14 @@
                      (not (fn-auth-redeem-waitp as2))
                      (fn-zc-owedp (fn-auth-session-compress as2))
                      (fn-auth-session-subject as2))))
+
+; KEYSTONES 12 and 14, the hypothesis the COMPRESS layer added (G9, E9):
+; an ACTIVE layer answers AUTHINFO 502, not 483 (RFC 8054 section 2.2.2).
+; Reachable by a connection that speaks for a source-address peer; stated
+; over the protected-only reader's fields with the layer set.
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-z-prot-active* "AUTHINFO USER reader")
+                     (aut-single *aut-z-layer*)))
+(local (must-fail-checked (aut-k12 aut-k12-without-g9 (g1 g2 g3 g4 g5 g6 g7 g8))))
+(local (must-fail-checked (aut-k14 aut-k14-without-e9 (e1 e2 e3 e4 e5 e6 e7 e8))))
+(local (must-fail-checked (aut-k9 aut-k9-without-p12 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11))))
+(local (must-fail-checked (aut-k10 aut-k10-without-s4 (s1 s2 s3))))
