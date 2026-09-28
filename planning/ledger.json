@@ -21,6 +21,7 @@
     "books/cbor-invariants",
     "tests/acl2/cbor-tests",
     "tests/acl2/cbor-teeth-tests",
+    "books/utf8",
     "books/wildmat",
     "books/wildmat-utf8-invariants",
     "books/wildmat-parser-invariants",
@@ -1273,6 +1274,7 @@
     "books/owner-time-admission",
     "tests/acl2/owner-time-model-tests",
     "books/owner-article-slots",
+    "books/owner-article-held",
     "tests/acl2/owner-article-slots-tests",
     "books/owner-time-journal-writer",
     "tests/acl2/owner-time-journal-writer-tests",
@@ -1425,23 +1427,23 @@
     "tests/acl2/history-records-tests"
   ],
   "totals": {
-    "books": 1453,
-    "books_in_root_closure": 1450,
-    "roots": 1421,
-    "theorems": 23523,
-    "functions": 15844,
-    "assert_events": 20408,
+    "books": 1455,
+    "books_in_root_closure": 1452,
+    "roots": 1423,
+    "theorems": 23589,
+    "functions": 15860,
+    "assert_events": 20440,
     "must_fails": 2259,
     "prover_refusals": 0,
     "encapsulates": 139,
     "guards": {
       "verified": 2990,
       "declared-off": 1879,
-      "default-guarded": 8651,
-      "default-unguarded": 2324
+      "default-guarded": 8660,
+      "default-unguarded": 2331
     },
-    "suspect_theorems": 1109,
-    "export_hygiene_warnings": 276,
+    "suspect_theorems": 1119,
+    "export_hygiene_warnings": 277,
     "enabled_projection_warnings": 50,
     "teeth_form_warnings": 247,
     "include_hygiene_warnings": 1762,
@@ -10285,7 +10287,7 @@
       "encapsulates": 0,
       "includes": [
         "frame-octets",
-        "wildmat"
+        "utf8"
       ],
       "system_includes": [
         "arithmetic/top"
@@ -14721,16 +14723,52 @@
       "read_error": null
     },
     {
-      "book": "books/owner-article-slots.lisp",
+      "book": "books/owner-article-held.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
-      "functions": 12,
+      "theorems": 59,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 12,
-        "default-unguarded": 0
+        "default-guarded": 6,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-article-slots"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-oah-keeps-refl",
+        "fn-oah-ocfg-owner-of-make",
+        "fn-oah-ocfg-owner-of-with-owner",
+        "fn-oah-owner-accessors-of-make",
+        "fn-oah-set-conns-fields",
+        "fn-oah-steps-bound",
+        "fn-oah-steps-refl",
+        "fn-oah-tls-accessors",
+        "fn-oah-with-read-owner-owner"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-article-slots.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 22,
+      "functions": 16,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 15,
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -14746,6 +14784,7 @@
       "suspects": [
         "fn-oas-conns-of-set-conns",
         "fn-oas-ocfg-owner-of-with-owner",
+        "fn-oas-queue-of-set-conns",
         "fn-oas-read-span-when-held-unfolds"
       ],
       "read_error": null
@@ -25183,6 +25222,32 @@
       "read_error": null
     },
     {
+      "book": "books/utf8.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 21,
+      "guards": {
+        "verified": 21,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 21,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "cbor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/visibility-join.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -25528,23 +25593,24 @@
       "book": "books/wildmat.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
-      "functions": 62,
+      "theorems": 17,
+      "functions": 41,
       "guards": {
-        "verified": 62,
+        "verified": 41,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 62,
+      "verify_guards_events": 41,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "cbor"
+        "cbor",
+        "utf8"
       ],
       "system_includes": [],
       "suspects": [],
@@ -35496,23 +35562,23 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 3,
+      "functions": 7,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 24,
+      "assert_events": 56,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 10,
+      "defconsts": 31,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/heap-figure",
-        "../../books/owner-article-slots",
+        "../../books/owner-article-held",
         "owner-time-model-tests"
       ],
       "system_includes": [],
@@ -46422,9 +46488,81 @@
       ]
     },
     {
+      "theorem": "fn-oah-keeps-refl",
+      "book": "books/owner-article-held.lisp",
+      "line": 189,
+      "reasons": [
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-oah-ocfg-owner-of-make",
+      "book": "books/owner-article-held.lisp",
+      "line": 208,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-oah-ocfg-owner-of-with-owner",
+      "book": "books/owner-article-held.lisp",
+      "line": 421,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-oah-owner-accessors-of-make",
+      "book": "books/owner-article-held.lisp",
+      "line": 195,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-oah-set-conns-fields",
+      "book": "books/owner-article-held.lisp",
+      "line": 282,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-oah-steps-bound",
+      "book": "books/owner-article-held.lisp",
+      "line": 578,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-oah-steps"
+      ]
+    },
+    {
+      "theorem": "fn-oah-steps-refl",
+      "book": "books/owner-article-held.lisp",
+      "line": 192,
+      "reasons": [
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-oah-tls-accessors",
+      "book": "books/owner-article-held.lisp",
+      "line": 213,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-oah-with-read-owner-owner",
+      "book": "books/owner-article-held.lisp",
+      "line": 265,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-oas-conns-of-set-conns",
       "book": "books/owner-article-slots.lisp",
-      "line": 213,
+      "line": 264,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -46432,7 +46570,15 @@
     {
       "theorem": "fn-oas-ocfg-owner-of-with-owner",
       "book": "books/owner-article-slots.lisp",
-      "line": 208,
+      "line": 259,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-oas-queue-of-set-conns",
+      "book": "books/owner-article-slots.lisp",
+      "line": 356,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -46440,10 +46586,9 @@
     {
       "theorem": "fn-oas-read-span-when-held-unfolds",
       "book": "books/owner-article-slots.lisp",
-      "line": 199,
+      "line": 250,
       "reasons": [
-        "arm-of-definition: the hypotheses select one IF/COND arm of fn-oas-read-span and the conclusion is that arm's value",
-        "branch-of-definition: the hypothesis negates a branch test of fn-oas-read-span and the conclusion is that branch's value"
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-oas-read-span and the conclusion is that arm's value"
       ]
     },
     {
@@ -53003,6 +53148,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-oah-article-conns-is-count",
+        "book": "books/owner-article-held.lisp",
+        "line": 60,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-ccar-completion-record-is-completion-record",
         "book": "books/owner-commit-carried.lisp",
         "line": 190,
@@ -54433,8 +54584,8 @@
       },
       {
         "function": "fn-wildmat-result-value",
-        "book": "books/wildmat.lisp",
-        "line": 52,
+        "book": "books/utf8.lisp",
+        "line": 41,
         "stated_in": [
           "books/nntp-search-scope.lisp",
           "books/wildmat-parser-invariants.lisp",
@@ -54444,8 +54595,8 @@
       },
       {
         "function": "fn-wildmat-utf8-rest",
-        "book": "books/wildmat.lisp",
-        "line": 59,
+        "book": "books/utf8.lisp",
+        "line": 48,
         "stated_in": [
           "books/wildmat-utf8-invariants.lisp"
         ],
@@ -54454,7 +54605,7 @@
       {
         "function": "fn-wildmat-pattern-items",
         "book": "books/wildmat.lisp",
-        "line": 273,
+        "line": 128,
         "stated_in": [
           "books/wildmat-work.lisp"
         ],
@@ -54463,7 +54614,7 @@
       {
         "function": "fn-wildmat-scan-items",
         "book": "books/wildmat.lisp",
-        "line": 332,
+        "line": 187,
         "stated_in": [
           "books/wildmat-parser-invariants.lisp",
           "books/wildmat-utf8-invariants.lisp"
@@ -54473,7 +54624,7 @@
       {
         "function": "fn-wildmat-scan-rest",
         "book": "books/wildmat.lisp",
-        "line": 335,
+        "line": 190,
         "stated_in": [
           "books/wildmat-parser-invariants.lisp"
         ],
@@ -64451,7 +64602,7 @@
       },
       {
         "book": "tests/acl2/owner-article-slots-tests.lisp",
-        "line": 11,
+        "line": 12,
         "include": "owner-time-model-tests",
         "included": "tests/acl2/owner-time-model-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

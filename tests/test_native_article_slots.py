@@ -62,6 +62,14 @@ DEADLOCK_PROFILE = ("--profile", "development", "--max-transactions", "1024",
                     "--max-record-octets", "4199563",
                     "--max-article-octets", str(A600K),
                     "--max-groups-per-article", "16")
+def transit(message_id, total):
+    """ARTICLE with a Date line, as a transit article must carry (RFC 5536
+    section 3.1.1; otherwise 437 "no Injection-Date or Date")."""
+    data = article(message_id, total)
+    first, rest = data.split(b"\r\n", 1)
+    return first + b"\r\nDate: Mon, 28 Sep 2026 12:00:00 +0000\r\n" + rest
+
+
 MEMORY_400 = b"400 the articles in flight fill the memory; try again later"
 MEMORY_440 = ("440 posting not permitted now; the articles in flight fill the "
               "memory, try again later")
@@ -186,7 +194,7 @@ class ArticleSlotsTests(JoinFixture):
         uploader = Poster(self.port)
         try:
             held_id = "<slots-ihave@example.invalid>"
-            held = dot_stuff(article(held_id, 64 * 1024)) + b".\r\n"
+            held = dot_stuff(transit(held_id, 64 * 1024)) + b".\r\n"
             uploader.stream.write(b"IHAVE " + held_id.encode("ascii") + b"\r\n")
             uploader.stream.flush()
             offered = uploader.stream.readline()
@@ -198,7 +206,7 @@ class ArticleSlotsTests(JoinFixture):
             time.sleep(1)
             streamed_id = "<slots-takethis@example.invalid>"
             streamed = (b"TAKETHIS " + streamed_id.encode("ascii") + b"\r\n"
-                        + dot_stuff(article(streamed_id, 600)) + b".\r\n")
+                        + dot_stuff(transit(streamed_id, 600)) + b".\r\n")
             with socket.create_connection(("127.0.0.1", self.port), timeout=60) as peer:
                 stream = peer.makefile("rwb")
                 self.assertTrue(stream.readline().startswith(b"200"))
