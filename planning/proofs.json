@@ -8375,7 +8375,6 @@
         "fn-cbud-run-decide-refuses-exactly-past-the-limit",
         "fn-cbud-admitted-connections-fit-the-machine",
         "fn-cbud-deltas-refusal-keeps-the-capacity-held",
-        "fn-cbud-launch-decide-keeps-the-store-figure",
         "fn-cbud-step-read-octets-is-bounded",
         "fn-cbud-read-covers-the-step"
       ]
@@ -12798,7 +12797,7 @@
         "PRF-346"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/catalog.lisp",
         "books/served-catalog-view.lisp",
@@ -13198,7 +13197,7 @@
         "PRF-164"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/clock-unit.lisp",
         "books/accounts.lisp",
