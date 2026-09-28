@@ -65,7 +65,8 @@
   "resumable": {
     "note": "Finds whose walk is bounded by a work quantum, each naming the bound.",
     "fn-bpnjc-scan": "A contact's ask reads the jobs from its cursor C to one past its answer and advances C over exactly those (fn-bpnjc-scan-position-is-the-segment); the asks of one contact read at most the job list's length in all (fn-bpnjc-drain-visits-are-linear, PRF-226, books/bp-node-job-cursor.lisp).",
-    "fn-bpnjc-advance": "Once per contact, at its close: walks from the peer's frontier F to at most the contact's position C, the positions the contact's asks already read (fn-bpnjc-contact-close, PRF-226)."
+    "fn-bpnjc-advance": "Once per contact, at its close: walks from the peer's frontier F to at most the contact's position C, the positions the contact's asks already read (fn-bpnjc-contact-close, PRF-226).",
+    "fn-nlp-fill": "One page of the paged obligations report: renders obligation lines until W = *fn-nls-chunk-octets* octets are filled (every line is at least one octet, so at most W lines), then yields the cursor to the next request (fn-nlp-take-cuts-the-stream, PRF-371, books/native-live-pages.lisp)."
   },
   "formal_seeds": {
     "note": "A formal whose list grows in a dimension though no accessor returns it: the host threads it across calls. Function -> {formal name: dimension}.",

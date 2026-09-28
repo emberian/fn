@@ -15,6 +15,9 @@
 (include-book "../books/owner-time-model")
 ; PKT-209: `control log' and `control evidence MSGID' (books/control-evidence.lisp).
 (include-book "../books/control-evidence")
+; lane obligations-paged: `obligations' page by page with a version token
+; (books/native-live-pages.lisp).
+(include-book "../books/native-live-pages")
 
 (defun fn-native-live-status-host-offline (kind profile obs fn-arena state)
   ; `status', `pins', `obligations' and `peer list' with no owner running:
@@ -44,8 +47,14 @@
   ;; PKT-209: FNLS frame kind 3 carries a control report kind and its
   ;; argument (fn-cev-any-request-decode reads either frame).
   (let ((decoded (fn-cev-any-request-decode request)))
-    (if (not (equal (car decoded) :live-status))
-        (list (fn-nls-reply-encode :refused 0 nil nil) cached)
+    (cond
+     ((not (equal (car decoded) :live-status))
+      (list (fn-nls-reply-encode :refused 0 nil nil) cached))
+     ;; lane obligations-paged: a paged kind is never rendered whole; the
+     ;; whole-report exchange refuses it by name (fn-nlp-pagedp).
+     ((fn-nlp-pagedp (cadr decoded))
+      (list (fn-nls-reply-encode :refused 0 nil *fn-nlp-refusal-paged*) cached))
+     (t
       (let* ((kind (cadr decoded))
              (offset (caddr decoded))
              (stored (fn-nls-cached-buffer kind offset cached))
@@ -110,7 +119,47 @@
                                    (fn-otm-disk-lines sched)))
                           (t nil))))))))
         (list (fn-nls-page buffer offset)
-              (if stored cached (fn-nls-cache-put kind buffer cached)))))))
+              (if stored cached (fn-nls-cache-put kind buffer cached))))))))
+
+; lane obligations-paged (books/native-live-pages.lisp).  The running owner's
+; page of a paged report, under its mutex (host/native/control.lisp
+; `fnn-control-live-pages-answer'): (REPLY CACHE').  CACHE is the owner's
+; report cursors, carried by the host and chosen here; the retention is read
+; only by a request that starts a report (fn-nlp-answer).  Answering changes
+; no state: the wrapper returns no `state'.
+(defun fn-native-live-pages-host-answer (request cache state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-nlp-answer request cache (fn-nlp-live-retention (fn-owner-ocfg state))
+                 *fn-nls-chunk-octets*))
+
+(defun fn-native-live-pages-host-requestp (octets)
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
+  (equal (car (fn-nlp-request-decode octets)) :page))
+
+(defun fn-native-live-pages-host-pagedp (kind)
+  (declare (xargs :mode :program))
+  (fn-nlp-pagedp kind))
+
+(defun fn-native-live-pages-host-request-encode (kind version page)
+  (declare (xargs :mode :program))
+  (fn-nlp-request-encode kind version page))
+
+(defun fn-native-live-pages-host-client-step (version page reply)
+  ; (:done CHUNK) (:next CHUNK VERSION' PAGE') (:restart) (:refused)
+  ; (:transport): KEYSTONE fn-nlp-pages-join-to-the-report.
+  (declare (xargs :mode :program))
+  (fn-nlp-client-step version page reply))
+
+(defun fn-native-live-pages-host-offline-start (state)
+  ; The replayed Store's report cursor (fn-nlp-offline-start).
+  (declare (xargs :stobjs state :mode :program))
+  (fn-nlp-offline-start (fn-nls-retention (f-get-global 'fn-store-sn state))))
+
+(defun fn-native-live-pages-host-offline-step (cursor)
+  ; (CHUNK CURSOR' DONEP): KEYSTONE fn-nlp-offline-pages-join-to-the-report.
+  (declare (xargs :mode :program))
+  (fn-nlp-offline-step cursor *fn-nls-chunk-octets*))
 
 (defun fn-native-live-status-host-requestp (octets)
   (declare (xargs :mode :program
