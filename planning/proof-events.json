@@ -11663,6 +11663,23 @@
           "name": "fn-proto-offers-only-post-by-table"
         }
       ]
+    },
+    {
+      "id": "PRF-345",
+      "events": [
+        {
+          "kind": "guarded-function",
+          "name": "fn-record-octets-chars"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-record-string-octets-aux"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-article-msgids"
+        }
+      ]
     }
   ]
 }
