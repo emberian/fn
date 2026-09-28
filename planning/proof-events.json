@@ -11951,6 +11951,19 @@
           "name": "fn-ocp-unstaged-start-issues-no-sync"
         }
       ]
+    },
+    {
+      "id": "PRF-353",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-w47-decode-without-openers-is-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-w47-decode-octets"
+        }
+      ]
     }
   ]
 }

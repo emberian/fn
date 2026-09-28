@@ -256,7 +256,7 @@ is an operator tool (docs/proofs.md), kept unless ember says otherwise.
 | T1b | 14 measurement tools archived | their lanes closing | 0 (moved) |
 | T2 | tests/native_harness.py, then 121 modules in groups of 10 | nothing | ~3,950 |
 | T2b | the v0 matrix | fundamentals.py landing (lane/release-machinery) | 9,609 |
-| T3 | fn_reader, fn_web and their tests; fn_agent, fn_consumer to Mini/DREGG with Astra's packet reply | lane web-native; Astra | 8,095 |
+| T3 | fn_reader, fn_web and their tests (DONE, lane web-native-2: 7,118 Python lines, evidence/web-native-2-2026-09-28.md); fn_agent, fn_consumer to Mini/DREGG with Astra's packet reply | lane web-native; Astra | 8,095 |
 | T4 | lints shrink as defkeystone/defprotocol/definterface land; the Lisp reader becomes a world dump; synth_log_store into ACL2 | lane/defkeystone, lane/defprotocol, G7 | 11,203 |
 | T5 | the Python host, its gates, benches and tests; transcribe_check | T2 (the native modules' imports) | 25,588 |
 | | **total** | | **~59,160** |

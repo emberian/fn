@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1387 |
-| Certification roots in the Makefile | 1357 |
-| Books inside the root closure | 1385 |
-| `defthm` and `defthmd` events | 22047 |
-| `defun` events | 15001 |
+| Books read | 1388 |
+| Certification roots in the Makefile | 1358 |
+| Books inside the root closure | 1386 |
+| `defthm` and `defthmd` events | 22072 |
+| `defun` events | 15007 |
 | Functions with verified guards | 2521 |
 | Functions declared `:verify-guards nil` and never verified | 1749 |
-| Functions left at the default with an explicit guard | 8509 |
+| Functions left at the default with an explicit guard | 8515 |
 | Functions left at the default with no guard | 2222 |
-| `assert-event` checks | 19975 |
-| `must-fail` checks | 2225 |
+| `assert-event` checks | 19971 |
+| `must-fail` checks | 2224 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 113 |
-| Theorems flagged SUSPECT by shape | 1094 |
+| `encapsulate` events | 112 |
+| Theorems flagged SUSPECT by shape | 1091 |
 | Export-hygiene warnings | 264 |
 | Enabled-projection warnings | 49 |
-| Teeth-form warnings | 238 |
+| Teeth-form warnings | 240 |
 | Include-hygiene warnings | 1901 |
 | Host-names warnings | 1575 |
 | Hand-written-record warnings | 18 |
@@ -518,7 +518,7 @@ that `make certify` requests.
 | `books/octet-text.lisp` | root | 120 | 64 | 0/0/61/3 | 0 | 0 | 0 |
 | `books/octets-stobj.lisp` | root | 105 | 49 | 0/1/42/6 | 0 | 0 | 2 |
 | `books/outcome-class.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
-| `books/owner-ack-after-barrier.lisp` | root | 34 | 27 | 0/1/26/0 | 0 | 0 | 3 |
+| `books/owner-ack-after-barrier.lisp` | root | 30 | 26 | 0/1/25/0 | 0 | 0 | 0 |
 | `books/owner-advance-carried.lisp` | root | 23 | 7 | 0/2/5/0 | 0 | 0 | 0 |
 | `books/owner-agent.lisp` | root | 40 | 13 | 0/0/13/0 | 0 | 0 | 3 |
 | `books/owner-batch.lisp` | root | 61 | 31 | 0/14/17/0 | 0 | 0 | 4 |
@@ -529,8 +529,8 @@ that `make certify` requests.
 | `books/owner-commit-carried.lisp` | root | 39 | 18 | 8/0/10/0 | 0 | 0 | 0 |
 | `books/owner-commit-class.lisp` | root | 4 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/owner-commit-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 2 |
-| `books/owner-commit-pipeline.lisp` | root | 10 | 11 | 0/0/11/0 | 0 | 0 | 0 |
-| `books/owner-commit-steps.lisp` | root | 31 | 31 | 0/0/31/0 | 0 | 0 | 1 |
+| `books/owner-commit-pipeline.lisp` | root | 9 | 11 | 0/0/11/0 | 0 | 0 | 0 |
+| `books/owner-commit-steps.lisp` | root | 27 | 27 | 0/0/27/0 | 0 | 0 | 1 |
 | `books/owner-config-observe.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-config.lisp` | root | 44 | 44 | 0/6/38/0 | 0 | 0 | 5 |
 | `books/owner-control-read.lisp` | root | 62 | 2 | 0/2/0/0 | 0 | 0 | 2 |
@@ -861,10 +861,11 @@ that `make certify` requests.
 | `books/transit-bound.lisp` | root | 25 | 1 | 0/0/1/0 | 0 | 0 | 2 |
 | `books/transit-header-limits.lisp` | root | 8 | 1 | 0/0/1/0 | 0 | 0 | 1 |
 | `books/visibility-join.lisp` | root | 10 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/web-2047.lisp` | root | 29 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/web-config.lisp` | root | 2 | 9 | 0/0/9/0 | 0 | 0 | 0 |
-| `books/web-render-keystones.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/web-render.lisp` | root | 52 | 48 | 0/0/46/2 | 0 | 0 | 3 |
-| `books/web-request.lisp` | root | 47 | 115 | 0/0/115/0 | 0 | 0 | 2 |
+| `books/web-render-keystones.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/web-render.lisp` | root | 60 | 51 | 0/0/49/2 | 0 | 0 | 3 |
+| `books/web-request.lisp` | root | 42 | 106 | 0/0/106/0 | 0 | 0 | 2 |
 | `books/web-session-keystones.lisp` | root | 48 | 7 | 0/0/7/0 | 0 | 0 | 1 |
 | `books/web-session.lisp` | root | 33 | 143 | 0/0/143/0 | 0 | 0 | 2 |
 | `books/wildmat-matcher-invariants.lisp` | root | 19 | 5 | 0/0/0/5 | 0 | 0 | 0 |
@@ -1204,7 +1205,7 @@ that `make certify` requests.
 | `tests/acl2/octets-stobj-tests.lisp` | root | 31 | 16 | 0/5/1/10 | 24 | 20 | 0 |
 | `tests/acl2/open-one-pass-tests.lisp` | root | 0 | 8 | 0/6/0/2 | 56 | 1 | 0 |
 | `tests/acl2/outcome-class-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 37 | 7 | 0 |
-| `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |
+| `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 31 | 0 | 0 |
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 47 | 11 | 0 |
 | `tests/acl2/owner-agent-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 3 | 0 |
 | `tests/acl2/owner-batch-tests.lisp` | root | 0 | 35 | 0/25/7/3 | 17 | 0 | 0 |
@@ -1215,7 +1216,7 @@ that `make certify` requests.
 | `tests/acl2/owner-commit-carried-tests.lisp` | root | 0 | 6 | 0/2/0/4 | 26 | 5 | 0 |
 | `tests/acl2/owner-commit-class-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 16 | 2 | 0 |
 | `tests/acl2/owner-commit-pipeline-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 40 | 2 | 0 |
-| `tests/acl2/owner-commit-steps-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 89 | 9 | 0 |
+| `tests/acl2/owner-commit-steps-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 75 | 6 | 0 |
 | `tests/acl2/owner-config-observe-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 1 | 0 |
 | `tests/acl2/owner-config-tests.lisp` | root | 0 | 4 | 0/1/0/3 | 149 | 1 | 0 |
 | `tests/acl2/owner-enrollment-read-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 31 | 9 | 0 |
@@ -1463,7 +1464,7 @@ that `make certify` requests.
 | `tests/acl2/transit-hygiene-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 86 | 3 | 0 |
 | `tests/acl2/visibility-join-tests.lisp` | root | 0 | 6 | 0/3/0/3 | 23 | 5 | 0 |
 | `tests/acl2/web-config-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 8 | 1 | 0 |
-| `tests/acl2/web-render-tests.lisp` | root | 3 | 2 | 0/0/2/0 | 14 | 8 | 0 |
+| `tests/acl2/web-render-tests.lisp` | root | 3 | 3 | 0/0/3/0 | 33 | 10 | 0 |
 | `tests/acl2/web-request-tests.lisp` | root | 1 | 7 | 0/0/7/0 | 57 | 4 | 0 |
 | `tests/acl2/web-session-tests.lisp` | root | 0 | 11 | 0/0/2/9 | 39 | 8 | 0 |
 | `tests/acl2/wildmat-parser-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
@@ -1863,9 +1864,6 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-nop-native-action-of-unaccepted` | `books/native-operator.lisp` | 1796 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-operator-result-native-action and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value |
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | arm-of-definition: the hypotheses select one IF/COND arm of fn-nov-header-content and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
 | `fn-nss-hdr-lines-of-no-numbers` | `books/nntp-search-scope.lisp` | 78 | arm-of-definition: the hypotheses select one IF/COND arm of fn-nntp-hdr-lines-for-numbers and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-nntp-hdr-lines-for-numbers and the conclusion is that branch's value |
-| `fn-oab-drain-and-kept-of-atom` | `books/owner-ack-after-barrier.lisp` | 361 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oab-drain and the conclusion is that arm's value |
-| `fn-oab-drain-kept-step-unfolds` | `books/owner-ack-after-barrier.lisp` | 347 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oab-drain and the conclusion is that arm's value |
-| `fn-oab-drain-told-step-unfolds` | `books/owner-ack-after-barrier.lisp` | 355 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oab-drain and the conclusion is that arm's value |
 | `fn-oag-conns-of-set-conns` | `books/owner-agent.lisp` | 696 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-oag-tls-served-conn-config` | `books/owner-agent.lisp` | 624 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-oag-with-wire-keeps-the-config` | `books/owner-agent.lisp` | 504 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -2520,7 +2518,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-th-decode-refuses-oversize-by-definition` | `books/topic-history-metadata.lisp` | 292 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-decode and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-th-decode and the conclusion is that branch's value |
 | `fn-th-prefix-step-failure-sticks` | `books/topic-history-prefix.lisp` | 102 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-prefix-step and the conclusion is that arm's value |
 | `fn-th-topic-decode-refuses-oversize` | `books/topic-history-store-events.lisp` | 200 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-topic-event-decode-exact and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-th-topic-event-decode-exact and the conclusion is that branch's value |
-| `fn-web-client-address-without-proxy-unfolds` | `books/web-request.lisp` | 1323 | arm-of-definition: the hypotheses select one IF/COND arm of fn-web-client-address and the conclusion is that arm's value |
+| `fn-web-client-address-without-proxy-unfolds` | `books/web-request.lisp` | 1252 | arm-of-definition: the hypotheses select one IF/COND arm of fn-web-client-address and the conclusion is that arm's value |
 | `fn-wire-after-line-ignores-line-accumulator` | `books/wire-invariants.lisp` | 164 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wire-drive-closed-is-noop` | `books/wire-invariants.lisp` | 847 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-drive and the conclusion is that arm's value |
 | `fn-wire-drive-of-empty-chunk` | `books/wire-invariants.lisp` | 841 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-drive and the conclusion is that arm's value |
@@ -2548,10 +2546,10 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-wm-pattern-match-work-cost-decomposition` | `books/wildmat-work.lisp` | 394 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wm-work-cost-result` | `books/wildmat-work.lisp` | 21 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wm-work-value-result` | `books/wildmat-work.lisp` | 18 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wr-car-txt` | `books/web-render.lisp` | 828 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wr-car-url` | `books/web-render.lisp` | 829 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wr-slice-empty` | `books/web-render.lisp` | 332 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-slice-list and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-oct-slice-list and the conclusion is that branch's value |
-| `fn-wrq-slice-empty` | `books/web-request.lisp` | 882 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-slice-list and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-oct-slice-list and the conclusion is that branch's value |
+| `fn-wr-car-txt` | `books/web-render.lisp` | 882 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wr-car-url` | `books/web-render.lisp` | 883 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wr-slice-empty` | `books/web-render.lisp` | 352 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-slice-list and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-oct-slice-list and the conclusion is that branch's value |
+| `fn-wrq-slice-empty` | `books/web-request.lisp` | 835 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-slice-list and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-oct-slice-list and the conclusion is that branch's value |
 | `fn-wscan-after-line-after-run` | `books/wire-scan.lisp` | 488 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wscan-feed-byte-ordinary` | `books/wire-scan.lisp` | 340 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed-byte and the conclusion is that branch's value |
 | `fn-wsp-events-of-fn-wsp-make` | `books/wire-span.lisp` | 60 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

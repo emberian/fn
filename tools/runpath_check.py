@@ -39,13 +39,14 @@ object name the saved core may dlopen (the lib*.so strings in the core) must
 be carried by the release, the C library, or the system TLS library D35
 chose (SYSTEM_TLS); each service file (template) must start `PREFIX/bin/fn`.
 
-The release's `clients/` (packaging/install-clients.sh: the friends' web
-reader and the other client programs, which are Python) is checked under
-its own rule, `clients_check': Python source there and nowhere else, no
-object code, launchers that run only python3 on clients/lib/, its one service
-template starting `PREFIX/clients/bin/fn-reader`; and the separation: no
-script, launcher or service of the node's names `clients/`, so nothing the
-node runs can start a client.  The node's own walk skips clients/.
+The release's `clients/` (packaging/install-clients.sh: fn-client and the
+other client programs, which are Python; the web face is the node's own,
+[web] in fn.toml) is checked under its own rule, `clients_check': Python
+source there and nowhere else, no object code, launchers that run only
+python3 on clients/lib/, and no service template (a client is never a
+service); and the separation: no script, launcher or service of the node's
+names `clients/`, so nothing the node runs can start a client.  The node's
+own walk skips clients/.
 
 It cannot decide what an operator-supplied program is (the ION helper path
 is an argument), what a shell variable holds at run time (it lists
@@ -93,8 +94,6 @@ SHIPPED_SERVICES = ("packaging/fn-native.service.in", "packaging/net.fn.native.p
 CLIENTS = "clients"
 CLIENT_LAUNCHER = "packaging/fn-client-launcher"
 CLIENT_LAUNCHER_COMMANDS = {"readlink", "dirname", "basename", "tr", "python3"}
-CLIENT_SERVICES = ("packaging/fn-reader.service.in", "packaging/fn_reader.rc.in")
-CLIENT_SERVICE_PROGRAM = "/clients/bin/fn-reader"
 FREEZE_SCRIPT = "packaging/freeze-native-image.sh"
 
 SH_BUILTINS = {
@@ -354,8 +353,7 @@ def freeze_launcher_template(root: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
-def check_service(label: str, text: str, findings: Findings, prefix: str | None,
-                  program_suffix: str = "/bin/fn") -> None:
+def check_service(label: str, text: str, findings: Findings, prefix: str | None) -> None:
     starts = re.findall(r"^ExecStart=(\S+)", text, re.MULTILINE)
     starts += re.findall(r"<key>ProgramArguments</key>\s*<array>\s*<string>([^<]+)</string>", text)
     starts += re.findall(r"^daemon=\"?([^\"\s]+)", text, re.MULTILINE)
@@ -364,8 +362,8 @@ def check_service(label: str, text: str, findings: Findings, prefix: str | None,
     for program in starts:
         if PYTHON_RE.search(program):
             findings.fail(f"{label}: starts {program}")
-        if not program.endswith(program_suffix):
-            findings.fail(f"{label}: starts {program}, not PREFIX{program_suffix}")
+        if not program.endswith("/bin/fn"):
+            findings.fail(f"{label}: starts {program}, not PREFIX/bin/fn")
         if prefix is not None and not program.startswith(prefix):
             findings.fail(f"{label}: starts {program}, outside the release prefix {prefix}")
         findings.note(f"{label}: starts {program}")
@@ -398,9 +396,6 @@ def static_check(root: Path) -> Findings:
             findings.fail(f"{rel}: runs a program under {CLIENTS}/")
     check_client_launcher(CLIENT_LAUNCHER, (root / CLIENT_LAUNCHER).read_text(encoding="utf-8"),
                           findings)
-    for rel in CLIENT_SERVICES:
-        check_service(rel, (root / rel).read_text(encoding="utf-8"), findings, None,
-                      CLIENT_SERVICE_PROGRAM)
     return findings
 
 
@@ -433,7 +428,7 @@ def clients_check(top: Path, findings: Findings) -> None:
     if not root.is_dir():
         findings.note(f"no {CLIENTS}/ in this release")
         return
-    python = services = 0
+    python = 0
     for path in sorted(p for p in root.rglob("*") if p.is_file() or p.is_symlink()):
         rel = path.relative_to(top).as_posix()
         if path.is_symlink():
@@ -456,11 +451,10 @@ def clients_check(top: Path, findings: Findings) -> None:
         elif executable:
             findings.fail(f"{rel}: executable outside {CLIENTS}/bin/")
         elif path.name.endswith(".service.in") or path.parent.name == "rc.d":
-            check_service(rel, path.read_text(encoding="utf-8"), findings, None,
-                          CLIENT_SERVICE_PROGRAM)
-            services += 1
-    findings.note(f"{CLIENTS}/: {python} Python programs (Python 3.9+, {CLIENTS}/README.txt), "
-                  f"{services} service template(s); none on the node's path")
+            findings.fail(f"{rel}: a service template in {CLIENTS}/ (a client is never a "
+                          "service; the web face is the node's [web] table)")
+    findings.note(f"{CLIENTS}/: {python} Python programs (Python 3.9+, {CLIENTS}/README.txt); "
+                  "none on the node's path")
 
 
 def elf_needed(data: bytes) -> list[str] | None:

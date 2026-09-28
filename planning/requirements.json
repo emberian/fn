@@ -1944,18 +1944,15 @@
       "title": "Optional durable local human submission outbox",
       "specification": "specs/human-client.md#separate-human-client-submission-contract",
       "milestone": "M6",
-      "status": "implemented",
+      "status": "deferred",
       "proof_targets": [],
       "verification": [
         "test",
         "scenario"
       ],
-      "evidence": [
-        "tools/fn_web.py",
-        "tests/test_fn_web.py"
-      ],
+      "evidence": [],
       "implementation_note": "The separate loopback client persists editable drafts without NNTP, then exact in-flight POST intent before opening NNTP; it restores in-flight records as uncertain, retains three distinct replies and read-only ARTICLE observations, and never automatically retries an identifier. Private locked bounded spool writes use atomic replacement and file/directory fsync, including an outbox-parent startup barrier.",
-      "note": "Real local HTTP and fake NNTP socket tests cover draft save/restart/edit, POST restart, lost reply, duplicate/concurrent handlers, full spool, target mismatch, parent-barrier failure and persistence failures before and after network. This is client behavior, not native-node qualification, a physical power-loss proof, server acceptance, or an fn retention record."
+      "note": "Retired 2026-09-28 (lane web-native-2) with tools/fn_web.py and tools/fn_reader.py: the web page is the node's own face (WEB-005). Its durable outbox settled the browser-to-reader-to-node ambiguity; on the node's face a POST is the node's own served POST on the session's connection, so the remaining ambiguity is the browser's (a lost HTTP reply), which no outbox on this side resolves. fn_client post --draft/reconcile keeps the command-line contract (NNT-019). History: planning/evidence/m6-web-2026-09-24.md."
     },
     {
       "id": "NNT-010",
@@ -2300,8 +2297,6 @@
         "books/nntp-responses.lisp",
         "tests/acl2/nntp-xpat-tests.lisp",
         "tests/acl2/nntp-legacy-tests.lisp",
-        "tools/fn_web.py",
-        "tests/test_fn_web.py",
         "planning/evidence/reader-surface-2026-09-25.md"
       ],
       "implementation_note": "RFC 2980 section 2.9 is the rule: additional pattern arguments are joined by one SP into one pattern (as INN does); the comma is the alternative (RFC 3977 section 4.2); matching is case-sensitive (RFC 3977 section 4.2). The label is a private-extension label (RFC 3977 section 3.3.3). The web reader passes the reader's wildmat verbatim."
@@ -2452,11 +2447,9 @@
       "evidence": [
         "books/nntp-search-scope.lisp",
         "tests/acl2/nntp-search-scope-tests.lisp",
-        "tools/fn_web.py",
-        "tests/test_fn_web.py",
         "planning/evidence/reader-daily-2026-09-25.md"
       ],
-      "implementation_note": "fn guarantee and local client policy, not an RFC requirement: RFC 2980 section 2.9 defines XPAT and RFC 3977 sections 6.2.4 and 8.5 define STAT and HDR; the withdrawal answers are fn's C3. The node decides scope, visibility and match (PRF-122); tools/fn_web.py sends the commands, shows the node's lines and orders them for display. The article page's fourth fact reads the node's HDR :fn-enrollment (NNT-036, PRF-168) and its fifth is the reader's own check (WEB-002).",
+      "implementation_note": "fn guarantee and local client policy, not an RFC requirement: RFC 2980 section 2.9 defines XPAT and RFC 3977 sections 6.2.4 and 8.5 define STAT and HDR; the withdrawal answers are fn's C3. The node decides scope, visibility and match (PRF-122); A client sends the commands and shows the node's lines (the Python web reader that did, tools/fn_web.py, was retired 2026-09-28). The article page's fourth fact reads the node's HDR :fn-enrollment (NNT-036, PRF-168) and its fifth is the reader's own check (WEB-002).",
       "note": "Scripted walk and fake-socket tests; a scripted walk is not a human usability study. Current enrollment is not served by the node (PKT-175)."
     },
     {
@@ -2558,9 +2551,7 @@
         "tests/acl2/visibility-join-tests.lisp",
         "tests/test_native_visibility_join.py",
         "tools/fn_client.py",
-        "tools/fn_web.py",
         "tests/test_fn_client.py",
-        "tests/test_fn_web.py",
         "docs/agents.md",
         "docs/human-web-client.md",
         "planning/evidence/visibility-join-2026-09-25.md"
@@ -2570,7 +2561,7 @@
         "fn-vj-reclamation-keeps-a-held-message-id-answered",
         "fn-vj-a-held-message-id-is-answered-441"
       ],
-      "implementation_note": "A stronger fn guarantee and a client contract, not an RFC requirement (RFC 3977 6.3.1 allows 441 for any posting failure; the duplicate/conflict answers are D25's). Proved over the host-called decision (fn-pidx-existing-action via host/owner-host.lisp fn-owner-existing-action-buffer from host/native/owner.lisp fnn-owner-attempt; fn-store-existing-action via fn-owner-existing-action): a held Message-ID is answered :duplicate or :conflict across every fn-sn-finish (the withdrawing cancel's acceptance is one) and across reclamation, and the in-flight reply is one of the two 441 lines. Clients: fn_client post --draft/reconcile (exit 4 unresolved), fn_web /reconcile; both keep the original outcome and re-send the stored bytes. Native (SCN-060) passes on the developer image. Not covered: a native reclamation (no host verb yet); a poster whose authorization changed is answered by the login gate or posting allowance before the Store and stays unresolved (PKT-164)."
+      "implementation_note": "A stronger fn guarantee and a client contract, not an RFC requirement (RFC 3977 6.3.1 allows 441 for any posting failure; the duplicate/conflict answers are D25's). Proved over the host-called decision (fn-pidx-existing-action via host/owner-host.lisp fn-owner-existing-action-buffer from host/native/owner.lisp fnn-owner-attempt; fn-store-existing-action via fn-owner-existing-action): a held Message-ID is answered :duplicate or :conflict across every fn-sn-finish (the withdrawing cancel's acceptance is one) and across reclamation, and the in-flight reply is one of the two 441 lines. Client: fn_client post --draft/reconcile (exit 4 unresolved; fn_web's /reconcile was retired 2026-09-28 with it), which keeps the original outcome and re-send the stored bytes. Native (SCN-060) passes on the developer image. Not covered: a native reclamation (no host verb yet); a poster whose authorization changed is answered by the login gate or posting allowance before the Store and stays unresolved (PKT-164)."
     },
     {
       "id": "NNT-020",
@@ -3001,8 +2992,6 @@
         "tools/docs_check.py",
         "tests/test_docs_check.py",
         "tests/acl2/docs-operator-grammar-tests.lisp",
-        "tools/fn_web.py",
-        "tests/test_fn_web.py",
         "planning/evidence/sanding-2026-09-26.md"
       ],
       "implementation_note": "RFC 4642 section 2.2 is STARTTLS; section 1 describes the separate TLS port and discourages it, so the implicit-TLS listener is a local policy for readers (tin 2.6) that speak only that form, and it runs the STARTTLS session machine (PRF-162). The inspect answer is the store node's Message-ID lookup rendered by ACL2; it does not compare article text (D25 is the re-send's).",
@@ -3189,14 +3178,11 @@
         "books/nntp-enrollment.lisp",
         "books/owner-enrollment-read.lisp",
         "tests/acl2/owner-enrollment-read-tests.lisp",
-        "tools/fn_web.py",
-        "tests/test_fn_web.py",
-        "tests/test_fn_web_native.py",
         "specs/human-client.md",
         "planning/evidence/reader-2-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T101956Z-272280.json"
       ],
-      "implementation_note": "fn guarantee, not an RFC requirement: RFC 3977 section 8.5 lets a server offer HDR metadata items (the `:` prefix). PKT-175 implemented as the coordinator's default (a); (b), authenticated readers only, is a one-line policy switch on the served step. The historical signature verdict, historical local acceptance, current enrollment and current administrative authority stay separate (mandate section 5.4). ACL2 decides the item (fn-enr-item); tools/fn_web.py shows the node's words as the fourth provenance fact.",
+      "implementation_note": "fn guarantee, not an RFC requirement: RFC 3977 section 8.5 lets a server offer HDR metadata items (the `:` prefix). PKT-175 implemented as the coordinator's default (a); (b), authenticated readers only, is a one-line policy switch on the served step. The historical signature verdict, historical local acceptance, current enrollment and current administrative authority stay separate (mandate section 5.4). ACL2 decides the item (fn-enr-item); A client shows the node's words (tools/fn_web.py's fourth provenance fact, retired 2026-09-28; the node's own face does not show it yet).",
       "note": "The keyring view is pinned per committed view like the verdicts, so a reader opened before a rotation or revocation still reads the enrollment of its view."
     },
     {
@@ -3204,21 +3190,17 @@
       "title": "The web reader verifies a signed article independently with the reader's own keyring and says whose keyring",
       "specification": "specs/human-client.md#reader-metadata-lines",
       "milestone": "M6",
-      "status": "implemented",
+      "status": "deferred",
       "proof_targets": [],
       "verification": [
         "test"
       ],
       "evidence": [
-        "tools/fn_web.py",
         "tools/fn_verify.py",
-        "tests/test_fn_web.py",
-        "tests/test_fn_web_native.py",
-        "docs/web.md",
         "planning/evidence/reader-2-2026-09-26.md"
       ],
       "implementation_note": "PKT-253: a permitted external client check, not a node decision. tools/fn_web.py --keyring FILE runs tools/fn_verify.py check-article over the article's exact bytes (as tools/fn_consumer.py does) and renders verified here (principal, whose keyring), failed here (reason) or not performed (why). The node's keyring file is never read.",
-      "note": "Client behaviour; it proves nothing about the node's verdict and the page keeps the two apart."
+      "note": "Retired 2026-09-28 (lane web-native-2) with tools/fn_web.py and tools/fn_reader.py: the web page is the node's own face (WEB-005). An independent check with the reader's own keyring is by definition not the node's; the node's face cannot provide it. tools/fn_verify.py check-article still does, from the command line."
     },
     {
       "id": "NNT-034",
@@ -4500,7 +4482,7 @@
     },
     {
       "id": "WEB-003",
-      "title": "The friends' web reader signs in only by the node's AUTHINFO answer over verified TLS and decides nothing",
+      "title": "The friends' web reader signs in only by the node's AUTHINFO answer and decides nothing",
       "specification": "specs/human-client.md#the-friends-reader",
       "milestone": "M6",
       "status": "implemented",
@@ -4509,15 +4491,15 @@
         "test"
       ],
       "evidence": [
-        "tools/fn_reader.py",
-        "tests/test_fn_reader.py",
-        "tests/fn_reader_scratch.py",
-        "tests/fn_reader_drive.mjs",
+        "books/web-session.lisp",
+        "books/web-session-keystones.lisp",
+        "tests/test_native_web.py",
+        "tests/web_face_drive.mjs",
         "docs/reader.md",
-        "planning/evidence/web-reader-2-2026-09-27.md"
+        "planning/evidence/web-native-2-2026-09-28.md"
       ],
-      "implementation_note": "A permitted external client (AGENTS.md: Python is a client and test tool, never a second decision engine). Every accept, refuse, hold, approval, withdrawal and group visibility shown is the node's NNTP answer; the reader's own state is read marks, a display name and submission records (exact lines before the POST).",
-      "note": "Client behaviour over a scratch production-image node (SCN-173); it proves nothing about the node beyond the answers recorded. Rejecting a held post waits on PKT-657 (PKT-704)."
+      "implementation_note": "Since 2026-09-28 the reader is the node's own face (WEB-005): a session is a logical reader connection of the owner and exists only after the node's AUTHINFO PASS answers 281 on it (fn-web-sessions-bound-by-281, PRF-339); every page is rendered by ACL2 from that connection's replies. Retired 2026-09-28 (lane web-native-2) with tools/fn_web.py and tools/fn_reader.py: the web page is the node's own face (WEB-005).",
+      "note": "Browser run: tests/web_face_drive.mjs, 16 checks against a scratch node's face (planning/evidence/web-native-2-2026-09-28.md). Moderation pages (approve), read marks and thread view are not built on the face."
     },
     {
       "id": "CNS-007",
@@ -4798,7 +4780,7 @@
     },
     {
       "id": "WEB-004",
-      "title": "The release carries the friends' web reader as its own service beside the node, reaching the node only as an NNTP client on its TLS port or with STARTTLS, redeeming invitations through fn redeem, its account shut out of the node folder",
+      "title": "The release turns on the node's own web face with install.sh --reader (a [web] table in fn.toml), with no reader service, account or Python beside the node",
       "specification": "specs/human-client.md#the-reader-in-the-release",
       "milestone": "M6",
       "status": "implemented",
@@ -4808,22 +4790,16 @@
         "integration"
       ],
       "evidence": [
-        "packaging/install-clients.sh",
         "packaging/install.sh",
-        "packaging/fn-reader.service.in",
-        "packaging/fn_reader.rc.in",
-        "packaging/fn-reader.caddy",
-        "tools/fn_reader.py",
-        "tools/fn_client.py",
-        "tools/nntp_session.py",
-        "tests/test_fn_reader.py",
-        "tests/test_fn_web_native.py",
+        "packaging/install-clients.sh",
+        "packaging/fn-web.caddy",
         "tests/friends_tarball.sh",
-        "docs/web.md",
-        "docs/operator-internals.md"
+        "tests/test_release_tarball.py",
+        "tools/runpath_check.py",
+        "docs/web.md"
       ],
-      "implementation_note": "A permitted external client (AGENTS.md): the node decides every login, account, group, post and withdrawal. The reader's own policy is local and stated as such: the pacing of refused logins below the node's exposure-auth-failures, the per-browser pause, the session and form tokens.",
-      "note": "The OpenBSD rc.d script is rendered and checked by runpath_check but was not run on an OpenBSD machine by this lane."
+      "implementation_note": "install.sh --reader appends one [web] table (127.0.0.1:8920, proxied = true, site, domain) to NODE/fn.toml, or says to run it again after mission; the node reads it at start (books/web-config.lisp fn-web-config-plan). clients/ carries no service (runpath_check's clients rule). Retired 2026-09-28 (lane web-native-2) with tools/fn_web.py and tools/fn_reader.py: the web page is the node's own face (WEB-005).",
+      "note": "friends_tarball.sh renders and checks the table on an ungated --frozen package; OpenBSD needs nothing beyond the node's own rc.d script and was not run by this lane."
     },
     {
       "id": "HST-029",
@@ -4912,7 +4888,8 @@
         "PRF-337",
         "PRF-338",
         "PRF-339",
-        "PRF-340"
+        "PRF-340",
+        "PRF-353"
       ],
       "verification": [
         "proof",
@@ -4921,6 +4898,7 @@
       ],
       "evidence": [
         "books/web-request.lisp",
+        "books/web-2047.lisp",
         "books/web-render.lisp",
         "books/web-render-keystones.lisp",
         "books/web-session.lisp",
@@ -4934,7 +4912,7 @@
         "tests/test_native_web.py",
         "planning/evidence/web-native-2026-09-28.md"
       ],
-      "implementation_note": "Replaces tools/fn_reader.py and tools/fn_web.py (a second implementation of the boundary in Python) with the node's own face; the continuation lane packages it (install.sh --reader) and retires the Python readers."
+      "implementation_note": "Replaces tools/fn_reader.py and tools/fn_web.py (a second implementation of the boundary in Python) with the node's own face; lane web-native-2 packaged it (install.sh --reader, WEB-004) and retired the Python readers."
     }
   ]
 }

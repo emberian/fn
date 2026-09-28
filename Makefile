@@ -1248,6 +1248,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-time-model-tests \
 	books/web-request \
 	tests/acl2/web-request-tests \
+	books/web-2047 \
 	books/web-render \
 	books/web-render-keystones \
 	tests/acl2/web-render-tests \

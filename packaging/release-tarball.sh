@@ -57,16 +57,17 @@
 #                                (libsodium, libfn-mldsa65, libfn-lz4; libzstd on
 #                                OpenBSD).  TLS is the system's libssl.
 #   fn/share/fn/                 fn.toml.example, systemd/fn.service.in or
-#                                rc.d/fn.rc.in, docs/install.md, web.md,
+#                                rc.d/fn.rc.in, caddy/fn-web.caddy (HTTPS
+#                                in front of the node's own web face,
+#                                install.sh --reader), docs/install.md, web.md,
 #                                agents.md, the guides' articles
 #                                (docs/articles/*.txt), native-artifacts.txt,
 #                                release-gate.txt, runpath-check.txt
 #   fn/clients/                  fn's client programs, separate from the node
-#                                (packaging/install-clients.sh): the friends'
-#                                web reader with its service template, its
-#                                settings example and a Caddy snippet, and
-#                                fn-web, fn-client, fn-agent, fn-consumer,
-#                                fn-verify.  They need Python 3.9+
+#                                (packaging/install-clients.sh): fn-client,
+#                                fn-agent, fn-consumer, fn-verify.  No
+#                                service: the web page is the node's own
+#                                face.  They need Python 3.9+
 #                                (clients/README.txt); the node never runs
 #                                them, and the runpath check holds the rest
 #                                of the tree to that (its clients rule).
