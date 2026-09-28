@@ -13,6 +13,11 @@
 (include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 (defconst *hrt-core* 192152584)              ; lane image-floor's fn-host.core
 (defconst *hrt-nursery* (* 64 1024 1024))    ; +fnn-gc-nursery-octets+
 (defconst *hrt-datasize* (* 1536 *fn-heap-mib*)) ; OpenBSD's default login class

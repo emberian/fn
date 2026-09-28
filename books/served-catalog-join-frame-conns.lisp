@@ -27,6 +27,11 @@
 (include-book "served-catalog-join-pinned")
 (include-book "served-catalog-join-read")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 (defun-nx fn-scj-view-pinned-connp (conn view)
   (and (equal (fn-own-conn-version conn) (fn-own-view-version view))
        (equal (fn-own-conn-archive conn) (fn-own-view-archive view))

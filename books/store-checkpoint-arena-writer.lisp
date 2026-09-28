@@ -34,6 +34,11 @@
 (include-book "owner-checkpoint-writer")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-scc-frames)
@@ -306,6 +311,7 @@
                   (fn-scc-nat-encodablep (len p)))))
   :hints (("Goal" :in-theory (e/d (fn-arena-p-is-payload-listp) (fn-scc-nat-encodablep)))))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defthm fn-scka-append-batch-is-body
   (implies (and (natp k) (<= k (len srcs)) (true-listp fn-octets))
            (let ((r (fn-scka-append-batch srcs k fn-arena fn-octets)))
@@ -317,6 +323,7 @@
            :in-theory (e/d (fn-oct-append-list-is-append) (fn-scka-payload-octets
                                                            fn-scka-src-payload
                                                            fn-scka-src-okp)))))
+(local (in-theory (disable (tau-system))))
 
 (defthm fn-scka-len-src-payloads
   (equal (len (fn-scka-src-payloads srcs fn-arena)) (len srcs)))

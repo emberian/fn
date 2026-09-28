@@ -45,6 +45,11 @@
 (include-book "store-events-carried")
 (include-book "owner-prepare-carried")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; -----------------------------------------------------------------------------
 ; The lookup.
 
@@ -915,11 +920,13 @@
 
 ; Preservation.  The owner after the carried commit satisfies the owner
 ; relation again (fn-own-complete-preserves-relation over the reference).
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defthm fn-ccar-own-finish-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (cdr (fn-ccar-own-finish o cfg fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-own-finish)
                                   (fn-own-relation fn-own-complete)))))
+(local (in-theory (disable (tau-system))))
 
 ; And the premise itself survives the commit with nothing else assumed:
 ; the new store is fn-sn-finish of the old or the old

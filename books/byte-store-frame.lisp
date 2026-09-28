@@ -23,6 +23,11 @@
 (include-book "frame-trailer")
 (local (include-book "arithmetic/top" :dir :system))
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; FNSM = fn store metadata.  It is deliberately a separate frame family from
 ; FNST transactions, so a metadata file cannot be accepted as a transaction.
 (defconst *fn-bs-meta-magic* '(70 78 83 77))
@@ -50,6 +55,7 @@
 ; CBOR profile.  Naming this small length fact before the encoder keeps the
 ; frame guard proof about the concrete five-octet payload rather than asking
 ; ACL2 to rediscover the four CBOR argument cases through fn-frame-seal.
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (local
  (defthm fn-bs-frontier-cbor-payload-bound
    (implies (and (natp n) (<= n *fn-cbor-max-uint*))
@@ -68,6 +74,7 @@
                                fn-cbor-valuep fn-cbor-valuep-bounded
                                fn-cbor-encode-argument
                                fn-cbor-octet-listp fn-cbor-octetp)))))
+(local (in-theory (disable (tau-system))))
 
 ; -----------------------------------------------------------------------------
 ; The store profile (D27: bound work, never data)

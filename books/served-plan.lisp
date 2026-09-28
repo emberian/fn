@@ -45,6 +45,11 @@
 (in-package "ACL2")
 (include-book "served-reply-buffer")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; -----------------------------------------------------------------------------
 ; The plan
 
@@ -248,8 +253,10 @@
         (not (consp (fn-served-reply-octets rest))))
 ))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defthm fn-splan-donep-iff-nothing-remains
   (iff (fn-splan-donep p) (not (consp (fn-splan-remaining p)))))
+(local (in-theory (disable (tau-system))))
 
 (defthm fn-splan-of-effects-remaining
   (equal (fn-splan-remaining (fn-splan-of-effects effects))

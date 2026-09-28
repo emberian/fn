@@ -567,7 +567,21 @@ includes and compare the `send-range` total. On 2026-09-28 (lane
 d26-books-2) that halved the proof time of `served-catalog`, `catalog` and
 `heap-reservation` at unchanged steps; each keeps
 `(local (in-theory (disable (tau-system))))` after its includes and enables
-it in the one guard proof that was shorter with it. `heap-reservation` also
+it in the one guard proof that was shorter with it.
+
+Across the tree that is `tools/tau_cost.py` (lane tau-pass, 2026-09-28): it
+`ld`s every book twice side by side at 2 jobs, as is and with tau off after
+its header includes, and ranks by runtime saved; `apply` writes
+`(local (in-theory (disable (tau-system))))` and wraps each form that fails
+without tau in a local enable/disable pair (`repair` finds the next one: a
+failing lemma fails everything that uses it, so failures come one at a
+time); `--variant applied` measures the result against the original again.
+Tau is not uniformly waste: of 1,445 books, tau off cost 1,400 s more than
+it saved in total (bp-node-foundation 2 s to 33 s, replay-identity-index 2 s
+to 45 s); 183 books saved a second or a fifth, and 109 of those still did
+when measured again on both boxes. Keep it on by default; turn it off in a
+book where the confirmation measured the saving.
+`heap-reservation` also
 names `arithmetic-5`'s rules as one local theory and
 closes them past the definitions that need them: a 30,000-step theorem
 took 1.1 s with them enabled and 0.4 s without.

@@ -60,6 +60,11 @@
 (include-book "consumer-wait")
 (include-book "consumer-reason")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; The progress book's unfolding of the poll (a rewrite rule whose hypothesis
 ; is the poll's page) expands fn-col-poll and its scan inside every goal
 ; that mentions a poll; the lemmas here reason about the two scans instead.

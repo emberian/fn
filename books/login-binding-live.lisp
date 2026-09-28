@@ -35,6 +35,11 @@
 (local (include-book "identity-invariants"))
 (local (include-book "records-canonicality"))
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; -----------------------------------------------------------------------------
 ; The table the configuration holds
 
@@ -194,10 +199,12 @@
                                      fn-cfg-hex-digit-octetsp
                                      fn-cfg-hex-digit-octetp)))))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (local (defthm fn-lb-hex-listp-is-ascii
   (implies (fn-id-hex-listp x) (fn-record-ascii-octet-listp x))
   :hints (("Goal" :in-theory (enable fn-id-hex-listp fn-id-hex-digitp
                                      fn-record-ascii-octet-listp)))))
+(local (in-theory (disable (tau-system))))
 
 (local (defthm fn-lb-evenp-len-hex-octets
   (evenp (len (fn-id-hex-octets x)))

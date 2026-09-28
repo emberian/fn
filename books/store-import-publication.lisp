@@ -33,6 +33,11 @@
 (include-book "byte-store-programs")
 (include-book "byte-store-invariants")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; -----------------------------------------------------------------------------
 ; The directory rename.  byte-store's fn-bs-rename moves a file entry; a
 ; directory entry (a directory id) moves the same way: ONE :set-entry on the

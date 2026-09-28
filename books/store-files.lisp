@@ -30,6 +30,11 @@
 (include-book "records-seam")
 (include-book "snoc-list")
 
+;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
+;; Its work is proof time no prover step counts (docs/proof-style.md
+;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
+(local (in-theory (disable (tau-system))))
+
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-store-event-p and the record accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
@@ -375,6 +380,7 @@
                                  (1+ (fn-store-event-txid record)) frontier)))
     (null records)))
 
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defun fn-sf-candidatep (record records frontier)
   (declare (xargs :guard (and (fn-sf-record-valuesp records)
                               (natp frontier))
@@ -384,6 +390,7 @@
        (equal (1+ (fn-store-event-txid record)) frontier)
        (<= (fn-sf-next-lower records 0) (fn-store-event-txid record))
        (equal (fn-store-event-generation record) (fn-store-event-txid record))))
+(local (in-theory (disable (tau-system))))
 
 (defun fn-sf-record-has-pairp (pair records)
   (declare (xargs :guard t :verify-guards nil))
@@ -1018,9 +1025,11 @@
 (verify-guards fn-sf-record-valuesp)
 (verify-guards fn-sf-next-lower)
 (verify-guards fn-sf-record-listp)
+(local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (verify-guards fn-sf-candidatep
  :hints (("Goal" :in-theory (disable fn-store-event-p fn-store-event-sequence
                                      fn-store-event-txid fn-store-event-generation))))
+(local (in-theory (disable (tau-system))))
 (verify-guards fn-sf-record-has-pairp)
 (verify-guards fn-sf-success-listp)
 (verify-guards fn-sf-frontier-phasep)
