@@ -4331,9 +4331,7 @@
         "fn-cbor-decode-prechecked-wide-uint-reencode-prefix",
         "fn-record-impl-round-trip",
         "fn-record-impl-accepted-input-is-canonical",
-        "fn-record-impl-encode-narrow-length-bound",
-        "fn-bs-profile-v1-valid-is-valid",
-        "fn-bs-profile-v1-valid-stays-valid"
+        "fn-record-impl-encode-narrow-length-bound"
       ]
     },
     {
@@ -4354,8 +4352,8 @@
       ],
       "status": "uncertified-at-current-digest",
       "events": [
-        "fn-sha256-of-prefixed-buffer-is-sha256",
-        "fn-shb-subject-id-is-id-subject-of-sha256-preimage"
+        "fn-blake3-of-prefixed-buffer-is-blake3",
+        "fn-sidb-subject-id-is-id-subject-of-payload"
       ],
       "evidence": [
         "planning/evidence/rep-wave-c-2026-09-25.md",
@@ -6616,12 +6614,8 @@
       "progress_note": "Lane control-reply-fit (2026-09-26), the coordinator's PKT-467 ruling and the control-reply sweep. Lane profile-open-refusal (2026-09-26): PKT-471, the named refusal at open and the one repair. Format 10 (lane format-bump-10, 2026-09-28): books/byte-store-profile-v1.lisp and its tests were deleted with format 9 (D34: every format-10 profile is written by a format-10 init or import under the current relation; the frozen pre-P6 relation and the PKT-467 window describe profiles no format-10 store holds); the events and paths that named them are removed from this row. Part (c)'s keystones (the window refusal) are retired; the open's refusals by name are PRF-350 and PRF-258.",
       "events": [
         "fn-bs-profile-valid-record-fits-a-poll-reply",
-        "fn-bs-profile-v1-valid-stays-valid",
-        "fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name",
         "fn-col-poll-report-of-an-admitted-payload-fits",
-        "fn-nls-page-refuses-exactly-past-the-total-width",
-        "fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name",
-        "fn-spo-config-open-refuses-only-what-the-old-open-rejected"
+        "fn-nls-page-refuses-exactly-past-the-total-width"
       ]
     },
     {
@@ -8657,7 +8651,6 @@
         "fn-cl-served-payload-projects-to-the-injected-octets",
         "fn-cl-ring-keys-open-every-retained-lock",
         "fn-cll-skip-of-the-generated-lines",
-        "fn-ns-expand-input-separates-info",
         "fn-ns-cancel-lock-and-posting-account-inputs-differ",
         "fn-ns-file-parse-of-render",
         "fn-cld-a-retry-by-any-account-or-epoch-is-already-stored",
@@ -9517,7 +9510,6 @@
       "progress_note": "Lane fixtures-refresh 2026-09-27 (PKT-705). Restated for format 10 (lane format-bump-10): one text before the u64 run, 15 fields.",
       "events": [
         "fn-spo-open-of-another-layout-refuses-by-name",
-        "fn-spo-config-open-layout-refusal-is-never-a-decoded-frame",
         "fn-spo-layout-fields-of-a-layout-frame"
       ]
     },
@@ -11437,7 +11429,7 @@
       ],
       "progress_note": "Lane snapshot-open-2 (2026-09-27): the checkpoint open's list hashing.",
       "events": [
-        "fn-sha256-of-prefixed-range-is-sha256",
+        "fn-blake3-of-prefixed-range-is-blake3",
         "fn-frame-digest-range-is-the-frame-digest",
         "fn-sccr-window-seal-is-seal"
       ]
@@ -11914,7 +11906,11 @@
         "fn-hp-append-changes-only-dirty",
         "fn-hp-append-dirty-bound",
         "fn-hp-x-header-is-image",
-        "fn-hp-x-at-is-nth"
+        "fn-hp-x-at-is-nth",
+        "fn-hp-x-append-refines",
+        "fn-hp-x-header-is-placed",
+        "fn-hp-x-at-is-nth-placed",
+        "fn-hp-x-append-refines-placed"
       ]
     },
     {
@@ -12003,7 +11999,7 @@
         "PRF-325"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-builders.lisp",
@@ -12076,7 +12072,7 @@
         "PRF-302"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-rcompat-reply-cat-is-rcompat-reply",
         "fn-rcompat-retrieval-cat-is-retrieval",
@@ -12518,7 +12514,35 @@
         "tests/acl2/stx-transit-tests.lisp",
         "tests/test_native_open_depth.py"
       ],
-      "progress_note": "Certified at the lane head before the last origin/dev merge: persvati certify-20260928T045804Z-2021342 (748 passed) + hbox certify-20260928T045829Z-4075806 (283 passed), 0 failed, the 1,130 affected roots. Native (hbox native-od5, production image at the launcher's 1024KB): syn100k-2k full replay 25.4 s, checkpoint open 11.7 s; syn1m-2k full replay 275.1 s, checkpoint open 143.6 s; each serves DATE and stops cleanly. The served whole-list reads (LIST ACTIVE, GROUP) still die at this stack past ~30k articles: PKT-877."
+      "progress_note": "Certified at the lane head before the last origin/dev merge: persvati certify-20260928T045804Z-2021342 (748 passed) + hbox certify-20260928T045829Z-4075806 (283 passed), 0 failed, the 1,130 affected roots. Native (hbox native-od5, production image at the launcher's 1024KB): syn100k-2k full replay 25.4 s, checkpoint open 11.7 s; syn1m-2k full replay 275.1 s, checkpoint open 143.6 s; each serves DATE and stops cleanly. The served whole-list reads (LIST ACTIVE, GROUP) still die at this stack past ~30k articles: PKT-877.",
+      "events": [
+        "fn-retain-obligation-ids",
+        "fn-retain-release-ids",
+        "fn-retain-sum",
+        "fn-retain-remove-id",
+        "fn-node-binding-msgids",
+        "fn-node-binding-ids",
+        "fn-replay-verdict-pairs",
+        "fn-stx-index-of-store",
+        "fn-mxc-build",
+        "fn-rii-kbuild-releases",
+        "fn-rii-kbuild-pins",
+        "fn-ctl-articles-withdrawals-in",
+        "fn-ctl-drop-via",
+        "fn-ctl-visible-filter",
+        "fn-ctl-subseq-diff",
+        "fn-own-take",
+        "fn-gidx-build-entries",
+        "fn-index-build",
+        "fn-midx-build",
+        "fn-scka-canon-rows",
+        "fn-scka-enc-lens-sum",
+        "fn-sct-payloads",
+        "fn-sbud-record-octets",
+        "fn-sbud-stored-octets",
+        "fn-pgc-obligation-ids",
+        "fn-pgc-release-ids"
+      ]
     },
     {
       "id": "PRF-354",
