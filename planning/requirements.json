@@ -1361,7 +1361,8 @@
         "PRF-067",
         "PRF-074",
         "PRF-189",
-        "PRF-206"
+        "PRF-206",
+        "PRF-904"
       ],
       "verification": [
         "proof",
@@ -3833,7 +3834,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-196"
+        "PRF-196",
+        "PRF-904"
       ],
       "verification": [
         "proof",
@@ -3852,9 +3854,10 @@
         "host/native-admin-host.lisp",
         "tests/acl2/group-status-tests.lisp",
         "tests/test_native_group_policy.py",
-        "planning/evidence/group-policy-2026-09-26.md"
+        "planning/evidence/group-policy-2026-09-26.md",
+        "tests/acl2/nntp-list-counts-tests.lisp"
       ],
-      "implementation_note": "RFC 3977 section 7.6.3 (the status field) and RFC 6048 section 2.1 (n: local postings not permitted; relayed articles still arrive): an RFC meaning, not a stronger fn guarantee. The 441 text naming the reason is a stronger fn guarantee (RFC 3977 section 6.3.1 permits a plain 441). The verb `group policy NAME n|y` is a durable configuration record (:set-group-status, delta code 21), offline or live; no store record, no format change. A control message is not gated; Supersedes is. LIST COUNTS still reports y (PKT-575 (1)); CT3, the operator's withdrawal, is PRF-256."
+      "implementation_note": "RFC 3977 section 7.6.3 (the status field) and RFC 6048 section 2.1 (n: local postings not permitted; relayed articles still arrive): an RFC meaning, not a stronger fn guarantee. The 441 text naming the reason is a stronger fn guarantee (RFC 3977 section 6.3.1 permits a plain 441). The verb `group policy NAME n|y` is a durable configuration record (:set-group-status, delta code 21), offline or live; no store record, no format change. A control message is not gated; Supersedes is. LIST COUNTS carries the same status (PRF-904, PKT-703; PKT-575 (1)); CT3, the operator's withdrawal, is PRF-256."
     },
     {
       "id": "SEC-006",
@@ -4236,7 +4239,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-228"
+        "PRF-228",
+        "PRF-904"
       ],
       "verification": [
         "proof",
@@ -4261,7 +4265,8 @@
         "host/native-admin-host.lisp",
         "books/moderation-verbs.lisp",
         "tests/acl2/moderation-verbs-tests.lisp",
-        "planning/evidence/moderation-verbs-2026-09-27.md"
+        "planning/evidence/moderation-verbs-2026-09-27.md",
+        "tests/acl2/nntp-list-counts-tests.lisp"
       ],
       "implementation_note": "RFC 5537 section 3.5 item 7 and 3.5.1 (forward, never post; method 1, application/news-transmission; usage=moderate), section 7 (verify the approver by transport authentication), sections 3.6 item 6 and 3.7 item 5 (relay/serving refusal); RFC 6048 section 2.1.1 (m). fn has no mail path: the forward is an envelope article into the group's queue group (an ordinary Store article: no new persistence domain). The moderator is an account with a role (accounts slot, marks 4 and 5; delta code 23). The 441 texts naming the reason are a stronger fn guarantee. A control message is not gated. The queue group is never offered to a peer and is served only to the moderators of the groups it queues for (PKT-658; group-access's restricted view with the queue hidden). `moderation list GROUP` reports the queue (FNLS kind 3 code 10). `moderation approve ID --moderator LOGIN` and `moderation reject ID --moderator LOGIN [--reason TEXT]` (PKT-657, FNCT request kind 21, books/moderation-verbs.lisp): only a moderator of the envelope's group, approve posts the held article with Approved under LOGIN's served decision, reject is the node's withdrawal (PRF-256). Not done: a PGPMoose-style signed approval."
     },
@@ -4453,7 +4458,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-230"
+        "PRF-230",
+        "PRF-905"
       ],
       "verification": [
         "proof",
@@ -4463,9 +4469,11 @@
         "books/byte-store-frame.lisp",
         "books/article-header-limits.lisp",
         "books/injection.lisp",
-        "planning/evidence/header-limits-profile-2026-09-27.md"
+        "planning/evidence/header-limits-profile-2026-09-27.md",
+        "books/article-line-bound.lisp",
+        "tests/test_native_header_lines.py"
       ],
-      "implementation_note": "Fields 13 to 15 (format 10) (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660)."
+      "implementation_note": "Fields 13 to 15 (format 10) (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660). A header LINE over RFC 5322 section 2.1.1's 998 octets is refused by its own name, :line-length (PRF-905, PKT-506): the line bound is the RFC's, not a limit on a field, which is admitted folded."
     },
     {
       "id": "HST-019",

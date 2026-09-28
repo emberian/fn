@@ -12759,6 +12759,60 @@
           "name": "fn-heap-breakdown-is-inits-reservation"
         }
       ]
+    },
+    {
+      "id": "PRF-904",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scat-counts-lines-status-is-the-active-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-counts-lines-status-is-the-active-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-counts-lines-status-is-the-active-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-counts-summary-line-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-active-status-line-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-list-counts-command-cat-is-archive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-list-counts-command-is-the-archive-fold"
+        }
+      ]
+    },
+    {
+      "id": "PRF-905",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-inj-decide-line-length-is-a-long-header-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-under-limit-is-a-long-header-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-limit-is-a-long-header-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-next-line-limit-is-a-long-line"
+        }
+      ]
     }
   ]
 }

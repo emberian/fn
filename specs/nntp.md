@@ -902,7 +902,15 @@ which is the RFC's meaning of the flag and not a stronger fn guarantee.
   group closed the answer is byte-for-byte the earlier one.
 - **The claim.** Keystone `fn-gst-post-gate-refuses-exactly-a-listed-n-group`:
   the gate refuses exactly when the article names a group whose listed
-  status is `n`. LIST COUNTS still reports `y` for every group (PKT-575).
+  status is `n`.
+- **LIST COUNTS (PRF-904, PKT-703).** RFC 6048 section 2.2.2: the last field
+  is LIST ACTIVE's status. Each counts line renders `fn-nntp-closed-status` of
+  the same closed list (`fn-nntp-counts-summary-line`, CLOSED from
+  `fn-nntp-env-closed` of the environment), so a read-only group reads `n`
+  and a moderated one `m` in both; keystone
+  `fn-scat-counts-lines-status-is-the-active-status` (the catalog arm the host
+  runs): line I of LIST COUNTS carries line I of LIST ACTIVE's status over
+  the same groups. Before PKT-703 the field was the constant `y`.
 
 ### Moderated groups (NNT-047)
 
