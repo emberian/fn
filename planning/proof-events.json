@@ -12175,6 +12175,21 @@
           "name": "fn-ocp-unstaged-start-issues-no-sync"
         }
       ]
+    },
+    {
+      "id": "PRF-356",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sdg-canon-rev-sink-is-the-chain-of-the-canon",
+          "note": "KEYSTONE (the streamed digest is the chain of the canonical octets; D27 boundary). Host: host/native/io.lisp fnn-command-store-digest via host/store-node-host.lisp fn-store-sn-replay-digest-report. Teeth: tests/acl2/state-digest-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sdg-chain-of-one-block",
+          "note": "KEYSTONE (a stream within one block digests as before). Teeth: tests/acl2/state-digest-tests.lisp."
+        }
+      ]
     }
   ]
 }

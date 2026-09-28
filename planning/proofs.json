@@ -12546,6 +12546,30 @@
         "fn-ocs-told-at-drain-p-by-definition",
         "fn-ocp-unstaged-start-issues-no-sync"
       ]
+    },
+    {
+      "id": "PRF-356",
+      "title": "store digest streams: the executable digest is the block chain of the canonical octets, one block of memory, and a value within one block is unchanged",
+      "statement": "books/state-digest.lisp fn-sdg-digest (host/native/io.lisp fnn-command-store-digest via host/store-node-host.lisp fn-store-sn-replay-digest-report) is (mbe :logic (fn-sdg-chain (fn-sdg-canon x)) :exec the streamed sink). KEYSTONE fn-sdg-canon-rev-sink-is-the-chain-of-the-canon: the sink the executable pushes every canonical octet into, in the order fn-sdg-canon produces them, finishes as fn-sdg-chain of fn-sdg-canon (the D27 boundary: the served path never materializes the canonical list). KEYSTONE fn-sdg-chain-of-one-block: a true list of at most *fn-sdg-block-octets* (65,536) octets chains to fn-digest of it, the value before this change. fn-sdg-rows-history and fn-sdg-arena-pool stream the same way. And `store status' counts retention classes by loops (books/store-reclaim-holders.lisp fn-rcl-summary-in, fn-rcl-held-count-in, fn-rcl-class-count-in: mbe forward loops, logic unchanged; host fn-native-live-status-host-offline via io.lisp fnn-command-live-report). Measured on hbox (syn1m-2k copy): store status exit 4 (control stack) -> exit 0, 3:11, 7.55 GB; store digest exit 1 (heap exhausted at 32.9 GB) -> exit 0, 7:46, 5.93 GB; syn100k digest 0:43/4.62 GB -> 0:58/1.41 GB. Not claimed: anything of the digest beyond A-CRYPTO; that the lines whose stream exceeds one block keep their pre-change values (they do not; no reader compares them across images).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/state-digest.lisp",
+        "tests/acl2/state-digest-tests.lisp",
+        "books/store-reclaim-holders.lisp",
+        "tests/acl2/store-reclaim-holders-tests.lisp",
+        "planning/evidence/format10-import-2026-09-28.md"
+      ],
+      "progress_note": "Lane format10-import part 2 (2026-09-28): persvati certify-20260928T054315Z-2440500, -055521Z-2553967, -055805Z-2578749; hbox native-scale2 replay_determinism OK (7 ran).",
+      "events": [
+        "fn-sdg-canon-rev-sink-is-the-chain-of-the-canon",
+        "fn-sdg-chain-of-one-block"
+      ]
     }
   ]
 }

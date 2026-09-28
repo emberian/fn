@@ -1277,6 +1277,18 @@ job), and every non-identity field of every record is the archive's.
 Format 10 is BLAKE3 now (lane blake3-digest's attachment, merged into this
 lane), so the second reading is the one in force.
 
+The digest streams (lane format10-import, PRF-356): each line's value is
+`fn-sdg-chain` of its canonical octets -- `fn-digest` of them when they are
+at most one 65,536-octet block (`fn-sdg-chain-of-one-block`: the value
+before), else a chain of blocks (the first block's `fn-digest`, then
+`fn-digest` of 66, the running digest and the next block). `store digest`
+pushes each octet into a one-block sink as the canonical encoding would
+produce it (`fn-sdg-canon-rev-sink-is-the-chain-of-the-canon`), so a
+1,000,000-record store digests in 5.9 GB, not past a 32 GB heap. The
+history, pool, files, node, canonical and state lines of a store whose
+stream exceeds a block changed value with this; no reader compares them
+across images.
+
 STO-036: the genesis. Position 0 of the log is `journal/000000.log`: exactly
 one FNLG frame (version 1) of KIND 3, never a record kind the scan reads
 (kinds 1 and 2), whose payload is the 32 zero octets of the empty chain and
