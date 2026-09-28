@@ -968,6 +968,8 @@ def fetch(host: str, identifier: str, root: Path,
         outcome = evidence_manifests.archive_run(
             local, root, f"{host}:{remote}/{directory}")
         archived[outcome] = archived.get(outcome, 0) + 1
+        if outcome in {"written", "present"}:
+            print(f"to cite it: {evidence_manifests.add_command(Path(directory).name)}")
     if archived:
         print("manifests archived under {}: {}".format(
             evidence_manifests.ARCHIVE_REL,

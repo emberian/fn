@@ -28,7 +28,16 @@ tracked with `git add -f`, which `sync` does.  Committing a manifest is
 therefore the same act as citing the run: an exploratory run nobody cites
 stays out of the history, and every run somebody cites is in it.
 
+Why the archive stays ignored (tooling-obstructions, 2026-09-28, asked to
+un-ignore it so lanes stop typing `git add -f`): a manifest is 1 kB to
+2.4 MB (the 2,458 tracked ones are 397 MB), every certify run on every
+lane files one, and un-ignoring would put each exploratory run in `git
+status` and one `git add` away from the history.  `add RUN-ID...` is the
+one step instead: it files the manifest when this disk has the run and
+tracks it, citation or not; the farm and the runner print that line.
+
     python3 tools/evidence_manifests.py archive build/acl2/certify-...
+    python3 tools/evidence_manifests.py add RUN-ID... [--from DIR ...]
     python3 tools/evidence_manifests.py sync [--add] [--from DIR ...]
     python3 tools/evidence_manifests.py harvest --host persvati [--root DIR]
     python3 tools/evidence_manifests.py check [--strict]
@@ -274,6 +283,40 @@ def cmd_archive(args: argparse.Namespace) -> int:
     return 0
 
 
+def add_command(run_id: str) -> str:
+    return f"python3 tools/evidence_manifests.py add {run_id}"
+
+
+def cmd_add(args: argparse.Namespace, root: Path = ROOT) -> int:
+    """File (when needed) and track the named runs' manifests: `git add -f`."""
+    wanted = []
+    for word in args.run_ids:
+        match = RUN_ID.search(word)
+        if not match:
+            print(f"evidence_manifests: {word!r} names no certify run id", file=sys.stderr)
+            return 2
+        wanted.append(match.group(0))
+    have = archived(root)
+    candidates = local_candidates(root, args.source) if set(wanted) - have else {}
+    missing = []
+    for run_id in wanted:
+        if run_id not in have and run_id in candidates:
+            manifest = candidates[run_id]
+            write_manifest(run_id, manifest.read_text(encoding="utf-8"),
+                           f"{socket.gethostname()}:{manifest.parent}", root)
+        if not (root / ARCHIVE_REL / f"{run_id}.json").is_file():
+            missing.append(run_id)
+    if missing:
+        print("evidence_manifests: no manifest on this disk for " + ", ".join(missing)
+              + " (try `harvest --host hbox|persvati`, or --from DIR)", file=sys.stderr)
+        return 1
+    paths = [f"{ARCHIVE_REL}/{run_id}.json" for run_id in wanted]
+    done = subprocess.run(["git", "-C", str(root), "add", "-f", *paths], check=False)
+    if done.returncode == 0:
+        print("tracked: " + " ".join(paths))
+    return done.returncode
+
+
 def cmd_sync(args: argparse.Namespace) -> int:
     cites = cited_run_ids()
     have = archived()
@@ -407,6 +450,13 @@ def main(argv: list[str] | None = None) -> int:
     one = subs.add_parser("archive", help="file one or more run directories")
     one.add_argument("paths", nargs="+")
     one.set_defaults(func=cmd_archive)
+
+    add = subs.add_parser("add", help="file and track (git add -f) the named runs' manifests")
+    add.add_argument("run_ids", nargs="+", metavar="RUN-ID",
+                     help="certify-<UTC>-<pid>, or a path or text containing one")
+    add.add_argument("--from", dest="source", action="append", default=[],
+                     help="an extra directory of certify-* run directories")
+    add.set_defaults(func=cmd_add)
 
     sync = subs.add_parser("sync", help="archive every cited run this laptop holds")
     sync.add_argument("--from", dest="source", action="append", default=[],

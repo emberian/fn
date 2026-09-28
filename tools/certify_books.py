@@ -807,7 +807,9 @@ def record(run_dir: Path, manifest: dict[str, Any]) -> None:
     log stays here, and the archived copy records where here was.
     """
     write_json(run_dir / "manifest.json", manifest)
-    evidence_manifests.archive_run(run_dir, ROOT)
+    if evidence_manifests.archive_run(run_dir, ROOT) in {"written", "present"}:
+        print(f"certify_books: to cite this run: "
+              f"{evidence_manifests.add_command(run_dir.name)}", file=sys.stderr, flush=True)
 
 
 def git_facts() -> dict[str, Any]:
