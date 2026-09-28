@@ -36,7 +36,8 @@
 (include-book "history-pages-view")
 (include-book "history-pages-import")
 
-(defthm fn-hpo-finalize-records
+(local
+ (defthm fn-hpo-finalize-records
   (implies (equal (fn-sn-open-kind (fn-sco-finalize e configs frontier)) :ok)
            (equal (fn-sf-records (fn-sn-files (fn-sn-open-state (fn-sco-finalize e configs frontier))))
                   (fn-sco-records e)))
@@ -46,7 +47,7 @@
                                    fn-sf-records fn-sf-records-field fn-sf-make fn-sf-make-fields)
                                   (fn-sn-statep fn-sco-cpr-finish fn-cnode-statep fn-replay-advance-okp
                                    fn-sn-observed-historyp fn-sn-observed-seed fn-replay-advance-txid
-                                   fn-stxk-context-kind fn-th-at fn-sl-of fn-sl-list)))))
+                                   fn-stxk-context-kind fn-th-at fn-sl-of fn-sl-list))))))
 
 (local
  (defthm fn-hpo-own-start-store

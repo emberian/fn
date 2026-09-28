@@ -68,10 +68,12 @@
   :rule-classes nil)
 (must-fail-checked
  (defthm hpo-installed-without-success
-   (let* ((pair (fn-rii-sco-extend-open c configs suffix frontier))
-          (oc (fn-ock-install (car (cadr pair)) (cadr (cadr pair)) max-conns)))
+   ; the keystone's conclusion without its hypothesis, at the witness's
+   ; checkpoint and suffix, for every configuration history
+   (let* ((pair (fn-rii-sco-extend-open *hpo-c* configs *hpo-suffix* 8))
+          (oc (fn-ock-install (car (cadr pair)) (cadr (cadr pair)) 4)))
      (equal (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
-            (append (true-list-fix (fn-sco-records c)) suffix)))
+            *hpo-events*))
    :hints (("Goal" :in-theory (disable fn-rii-sco-extend-open fn-ock-install)))))
 
 ; -----------------------------------------------------------------------------

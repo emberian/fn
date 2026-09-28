@@ -12263,6 +12263,27 @@
           "name": "fn-rcl-store-counts-is-the-model-over-alpha"
         }
       ]
+    },
+    {
+      "id": "PRF-365",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hpo-installed-records-are-checkpoint-then-suffix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hpo-records-at-is-installed-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hpo-records-at-is-nth-of-extension"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hpo-snapshot-image-is-next-checkpoint"
+        }
+      ]
     }
   ]
 }
