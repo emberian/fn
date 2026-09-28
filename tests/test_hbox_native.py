@@ -46,6 +46,22 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertNotIn("flock", [l for l in small.stdout.splitlines()
                                    if l.startswith("tstep test-")][0])
 
+    def test_jobs_runs_modules_in_parallel_and_tallies_in_order(self):
+        # G3: --jobs N runs the modules N at a time against one image set;
+        # each writes its own exit code, the tally keeps the named order.
+        answer = dry("--jobs", "3", "HEAD", "tests.test_native_owner", "tests.test_native_web")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        script = answer.stdout
+        self.assertIn("seq 1 2 | xargs -P 3 -n 1 sh $S/module.sh", script)
+        self.assertIn("echo $rc > $S/rc/$name", script)
+        self.assertIn("for name in test-tests.test_native_owner test-tests.test_native_web ;", script)
+        self.assertIn("--jobs 8", dry("HEAD", "tests.test_native_owner").stdout)
+        serial = dry("HEAD", "tests.test_native_owner")
+        self.assertIn("xargs -P 1 ", serial.stdout)
+        self.assertIn("--jobs 5 ", dry("--certify-jobs", "5", "HEAD", "tests.test_native_owner").stdout)
+        for bad in ("0", "x", ""):
+            self.assertEqual(dry("--jobs", bad, "HEAD", "tests.test_native_owner").returncode, 2)
+
     def test_each_image_gets_the_runbooks_triple(self):
         answer = dry("--images", "production,developer,dtn,dtn-developer",
                      "HEAD", "tests.test_bp_service_native")
