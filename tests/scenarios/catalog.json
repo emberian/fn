@@ -197,8 +197,6 @@
       "evidence": [
         "books/checkpoint-compaction.lisp",
         "tests/acl2/checkpoint-compaction-tests.lisp",
-        "books/checkpoint-pack-retire.lisp",
-        "tests/acl2/checkpoint-pack-retire-tests.lisp",
         "host/native/checkpoint.lisp",
         "tests/test_native_checkpoint.py"
       ],
@@ -2153,7 +2151,8 @@
         "On a copy per cut, stop or kill `store reclaim` at every publication, selection and retirement cut and kill and EIO at each reclaim-* cut; reopen with `status`, rerun `store reclaim`.",
         "Run `store reclaim`; record files, octets and du before and after, and `status` headroom; rerun it.",
         "Serve: GROUP, ARTICLE by Message-ID and number, OVER, STAT, NEWNEWS; re-POST a reclaimed article's original bytes.",
-        "On a store refused for history headroom, run `store compact` and `store reclaim`."
+        "On a store refused for history headroom, run `store compact` and `store reclaim`.",
+        "PKT-857 (tests/test_native_replay_determinism.py test f): `retention set released-by-all-holders` on a copy of the mixed store; `store reclaim` on copy A; copy the one new config/ file A published into copy B and run `store reclaim --recorded` on B; run `store reclaim --recorded` on copy C, which has no recorded instant."
       ],
       "expected": [
         "keep-forever writes nothing (reclaimed=0, exit 0).",
@@ -2161,7 +2160,8 @@
         "Every reopen exits 0 and every rerun exits 0 with the clean run's selected pack bytes.",
         "Files and octets fall by the old generation; bytes-used falls by the freed octets; a rerun reclaims 0.",
         "GROUP is unchanged; ARTICLE answers 430 and 423 article reclaimed; OVER 423; NEWNEWS lists no reclaimed article; the re-POST is 441 (a duplicate).",
-        "Both refuse by name (temporary-space), exit 1, nothing written: the maintenance reservation finding (PKT-169)."
+        "Both refuse by name (temporary-space), exit 1, nothing written: the maintenance reservation finding (PKT-169).",
+        "A's report names its instant record (instant-record=NAME) and it is the one new config/ file; B's report equals A's (reclaimed, freed octets, the Message-IDs) and B's `store digest` equals A's; C is refused by name (no-recorded-instant) and its digest is the pre-reclaim store's."
       ],
       "evidence": [
         "tests/reclaim_lifecycle_native.py",
@@ -2623,22 +2623,19 @@
     },
     {
       "id": "SCN-046",
-      "title": "A scale store above one pack's quantum compacts into a chain; reads and the next number are unchanged; every chain publication cut from both entries reopens whole and resumes",
+      "title": "A store above one unit of work compacts over the record log; reads and the next number are unchanged; a second compaction covers the new suffix",
       "milestone": "M5",
       "status": "implemented",
       "requirements": [
         "STO-012"
       ],
       "steps": [
-        "Init a scale-profile store with max-transactions 1048576 and max-article-octets 2048 and commit N = 20,000 2 KiB articles (store probe).",
-        "operator store compact; status; recover; GROUP, ARTICLE by number and Message-ID for a sample across the link boundaries; post one more article; compact again.",
-        "On a 4,500-record copy (three links of 4 MiB), stop and kill `operator store compact` and `checkpoint pack STORE select` at each chain publication cut (candidate-file, -link, -directory, selection-file, -replace, -directory, pack-chain-link), first and second link; reopen, then rerun the entry.",
-        "On a compacted 4,500-record copy with one more article, fail each syscall of the next link's publication with EIO (candidate stage, file-barrier, link, namespace; selection-file, -replace, -directory) from both entries; reopen, then rerun the entry."
+        "Commit CUT_N (default 4,500) 2 KiB probe articles to a scale-profile store, and gated (FN_P5_SCALE) the 20,000-article scale store.",
+        "operator store compact; recover; GROUP, ARTICLE by number and Message-ID for a sample; post one more article; compact again."
       ],
       "expected": [
-        "compact reports records=20000 reclaimed=20000 and links=L with L at least 5 (4096 events a link) and in practice about 12 (4 MiB a link of 2 KiB articles); status prints pack-chain links=L boundary=20000; no transaction file remains; the served view is identical and the next number is N+1; the second compaction adds one link and retires nothing.",
-        "After every cut the chain is the old one or the old one plus one complete link, recover reads every record, and the rerun completes the chain.",
-        "An EIO of a syscall that cannot have published the name (candidate stage, file barrier; selection file) is refused; a failed link, rename or directory barrier is uncertain. After each, the chain is the old one or the old one plus the new link, recover reads every record, and the rerun completes the chain."
+        "The committed history (the store export archive, file for file) and every sampled article are unchanged; the open after compaction replays the same counts; the next POST takes the next number; the second compaction covers the new suffix.",
+        "The kill cuts of the rotation and the drop are tests.test_native_log_compaction's (SCN of STO-034)."
       ],
       "evidence": [
         "tests/test_native_pack_chain.py",
@@ -2647,9 +2644,8 @@
       "implementation": {
         "test": "tests.test_native_pack_chain",
         "cases": [
-          "NativePackChainTests.test_every_chain_publication_cut_from_both_entries",
-          "NativePackChainTests.test_eio_at_each_link_publication_cut_from_both_entries",
-          "NativePackChainTests.test_chain_reclaim_retire_and_suffix_cuts_resume"
+          "NativePackChainTests.test_a_multi_unit_store_compacts_over_the_log",
+          "NativePackChainTests.test_scale_store_compacts_into_a_chain"
         ],
         "native": true,
         "log": "planning/evidence/bounds-p5-2026-09-25.md",
@@ -2658,9 +2654,9 @@
     },
     {
       "id": "SCN-064",
-      "title": "A chain's covered-file reclaim and generation retirement are cut at every unlink and barrier over a multi-link chain with an uncovered suffix; every cut reopens to the whole history and the reclaim and retire entries finish; a 20,000-record store compacted into a 12-link chain serves every article identically to its pre-compaction self and takes the next number",
+      "title": "RETIRED (the pack layer, lane flip-cleanup 2026-09-27): A chain's covered-file reclaim and generation retirement are cut at every unlink and barrier over a multi-link chain with an uncovered suffix; every cut reopens to the whole history and the reclaim and retire entries finish; a 20,000-record store compacted into a 12-link chain serves every article identically to its pre-compaction self and takes the next number",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "deferred",
       "requirements": [
         "STO-012"
       ],
@@ -5354,21 +5350,27 @@
     },
     {
       "id": "SCN-182",
-      "title": "A stalled disk: while a batch barrier is held 30 s, status, health and a reader's GROUP/ARTICLE stay flat; past the deadline health says disk slow and a new POST is refused try-later with the reason; the held POST's 240 follows the device's return; health recovers with the latency",
+      "title": "A stalled disk: while a batch barrier is held 30 s, status, health and a reader's GROUP/ARTICLE stay flat; past the deadline health says disk slow and a new POST is refused try-later with the reason; the held POST's 240 follows the device's return; health recovers with the latency; slice 2: past H the posters are told uncertain and their articles land after recovery, a POST command is answered 440, a mutating control request BUSY, and the decision journal holds the run in sequence",
       "milestone": "M5",
       "status": "specified",
       "requirements": [
-        "HST-026"
+        "HST-026",
+        "HST-028"
       ],
       "steps": [
-        "tests/test_native_slow_disk.py on the developer image: FN_NATIVE_TEST_DISK_STALL_FILE names a file; a healthy POST first; then the file is created (every barrier waits before its fdatasync while it exists) and POST A is sent; for 30 s: GROUP and ARTICLE on a reader connection, `operator status' every 0.5 s, and after 7 s `operator health' and a new POST B; then the file is removed."
+        "tests/test_native_slow_disk.py on the developer image: FN_NATIVE_TEST_DISK_STALL_FILE names a file; a healthy POST first; then the file is created (every barrier waits before its fdatasync while it exists) and POST A is sent; for 30 s: GROUP and ARTICLE on a reader connection, `operator status' every 0.5 s, and after 7 s `operator health' and a new POST B; then the file is removed.",
+        "Slice 2, the first case: `policy set barrier-stall-ms 120000' first; B's POST command answered 340 before the stall and its article sent while slow; a POST command on D while slow. The second case: `policy set barrier-deadline-ms 2000', `barrier-stall-ms 6000', `clock-event-ms 250'; the stall file; POSTs A (in flight), E (0.3 s later, prepared behind it) and F (0.6 s, queued); at 3 s `health' and `policy set clock-event-ms 500'; GROUP every 0.25 s until A, E and F are answered; `health'; a POST command on G; the file removed; `health' until ok; a POST; STAT of each; the journal file read.",
+        "Lane log-leftovers (PKT-858): `policy set barrier-deadline-ms 2000', `barrier-stall-ms 120000'; `peer add slowpeer ... 127.0.0.2 ... fn.* - 127.0.0.2 true'; a healthy POST W; a peer connection from 127.0.0.2: IHAVE of W and CHECK of a new id; the stall file; POST A; at 3.5 s `health', then IHAVE of a new id, CHECK of another, IHAVE of W; the file removed; A's reply; IHAVE of the new id repeated until not 436, then its article."
       ],
       "expected": [
-        "Every read under 2 s and every status under 5 s while the barrier is pending, no growth between the first and last third; health and status print `disk slow: barrier N ms pending'; B answered `441 posting failed; the disk is slow ...' within 2 s and not stored; A unanswered during the stall and answered 240 after the device returns; health then `disk ok' with last-barrier-ms at least the stall and slow-episodes=1; the next POST 240; the service log names the episode entered and left."
+        "Every read under 2 s and every status under 5 s while the barrier is pending, no growth between the first and last third; health and status print `disk slow: barrier N ms pending'; B answered `441 posting failed; the disk is slow ...' within 2 s and not stored; A unanswered during the stall and answered 240 after the device returns; health then `disk ok' with last-barrier-ms at least the stall and slow-episodes=1; the next POST 240; the service log names the episode entered and left.",
+        "B's article answered `441 posting failed; the disk is slow ...' and D's command `440 posting not permitted now; the disk is slow ...' each within 2 s. In the second case: the control request refused BUSY within 5 s; A and E each answered ACL2's uncertain 441 and closed between 5.5 and 7.5 s after the stall began, F `441 posting failed; the disk is stalled ...'; reads under 2 s; health `disk stalled: ... stalls=1 ... members=uncertain'; G `440 ... the disk is stalled'; after recovery STAT A and E 223 (the documented ambiguity), F 430, health `disk ok' stalls=1, the next POST 240; the log names the stall and the recovery after it; the journal's last segment has sequence 1..n, readings non-decreasing, the issue with limits 2000 6000 250, a :became-stalled, the note (2 members, 1 shed) and :recovered-from-stall.",
+        "Before the stall IHAVE of W 435 and CHECK 238; while slow IHAVE `436 retry later; the disk is slow', CHECK `431 <id>' and IHAVE of the held W also 436, each within 2 s, A unanswered; after the device returns A 240, the IHAVE 335 and the article 235."
       ],
       "evidence": [
         "tests/test_native_slow_disk.py",
-        "planning/evidence/time-model-2026-09-27.md"
+        "planning/evidence/time-model-2026-09-27.md",
+        "planning/evidence/time-model-2-2026-09-27.md"
       ],
       "implementation": {
         "test": "tests.test_native_slow_disk",
@@ -5378,6 +5380,86 @@
         ],
         "native": true,
         "record": "planning/evidence/time-model-2026-09-27.md"
+      }
+    },
+    {
+      "id": "SCN-183",
+      "title": "The developer image's fnn-call refuses, by name and before the entry runs, an arena handle where an entry's guard names octets, an octet vector, a handle in the second position and the wrong argument count; octets reach the entry",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-027"
+      ],
+      "steps": "Build the developer image; evaluate in its saved core, through fnn-core: fn-store-record-txid on the natural 7, on an octet vector of two elements, on two arguments, and on the octets (1 2 3); fn-owner-transit-decide on octets and the natural 7 (tests/test_native_entry_guard.py).",
+      "expected": "The first four answer the fault host-entry-guard naming the entry, the argument position, the formal and the kind (octets), with the natural's value or the vector's length; the octets reach fn-store-record-txid and answer its own verdict.",
+      "evidence": [
+        "tests/test_native_entry_guard.py",
+        "planning/evidence/entry-guards-2026-09-27.md"
+      ]
+    },
+    {
+      "id": "SCN-185",
+      "title": "A friend's node from the release: installed with --reader in a fresh Debian 12, the web reader behind Caddy on the node's TLS port; a friend makes an account from a code, reads a group, posts, sees the post and removes it",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "WEB-004",
+        "HST-029",
+        "WEB-003"
+      ],
+      "steps": [
+        "In a fresh Debian 12 container with systemd: the release tarball is checked, unpacked and installed as docs/install.md says, then `sh /opt/fn/install.sh --reader`; the node is set up with `mission small-community`, a self-made certificate, `tls_port = 563`, and started; reader.conf names the node's TLS port; `policy set exposure-trusted`; fn-reader and Caddy started as docs/web.md says (Caddy with its local CA: the container has no public name).",
+        "The operator posts a welcome article with the release's clients/bin/fn-client on port 563 and makes an invitation code; in a headless browser over an ssh tunnel, a friend makes an account from the code, signs in, reads the welcome post, posts, sees the post in the group, removes it, signs out and in again, and opens the groups on a 390-pixel phone viewport."
+      ],
+      "expected": [
+        "The install renders and installs fn-reader.service; the reader runs as fn-reader and cannot read /var/lib/fn; the account is made by the node (fn redeem's 281); the post is accepted, listed and read back; the removal leaves it answered 430 and gone from the group.",
+        "The session cookie is HttpOnly and Secure; no page carries the password; every page sends default-src 'none'; the phone page does not scroll sideways."
+      ],
+      "evidence": [
+        "tests/fn_reader_friend_drive.mjs",
+        "planning/evidence/release-web-reader-2026-09-27.md",
+        "planning/evidence/release-web-reader-2026-09-27/drive.json",
+        "planning/evidence/release-web-reader-2026-09-27/debian-transcript.md"
+      ],
+      "execution_scope": "One Debian 12 container on hbox and Chromium on the laptop over an ssh tunnel, with an ungated --frozen package of this lane's image. Not a public deployment, not OpenBSD, not a load test, not an external security audit.",
+      "implementation": {
+        "test": "tests/fn_reader_friend_drive.mjs",
+        "cases": [],
+        "native": true,
+        "log": "planning/evidence/release-web-reader-2026-09-27/drive.json",
+        "record": "planning/evidence/release-web-reader-2026-09-27.md"
+      }
+    },
+    {
+      "id": "SCN-184",
+      "title": "a new node catches up 1,000 articles from a peer in verified batches, and a kill mid catch-up resumes at the last journaled batch",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "NNT-053"
+      ],
+      "steps": [
+        "A holds 1,000 articles in fn.test (about 2 KiB each, several 256 KiB batches). B, new, adds peer A (inbound fn.*, outbound none) and `peer catch-up A 2`.",
+        "A second B is started on the developer image with FN_CATCHUP_TEST_KILL=before-write:3 and dies by SIGKILL after committing the third batch's records and before journaling its cursor; it is restarted."
+      ],
+      "expected": [
+        "B logs a done round at position 1000 whose digest is the chain over A's stored articles; B holds exactly A's Message-IDs in A's order, each article's octets A's apart from Path and Xref.",
+        "The restarted B resumes from the second batch's cursor: the third batch is offered again and drawn 435 (duplicate > 0), and B ends with exactly A's articles, none twice, and the same digest."
+      ],
+      "evidence": [
+        "tests/test_native_peer_catchup.py",
+        "planning/evidence/peer-catchup-2026-09-27.md",
+        "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_catchup",
+        "cases": [
+          "test_catch_up_imports_every_article",
+          "test_kill_mid_catch_up_resumes"
+        ],
+        "native": true,
+        "record": "planning/evidence/peer-catchup-2026-09-27.md",
+        "log": "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
       }
     },
     {

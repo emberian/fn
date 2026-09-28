@@ -1053,3 +1053,203 @@ class NativePeeringTests(unittest.TestCase):
             "commands": commands, "received": received,
             "identity": self.verify_process_identity(source),
         }, sort_keys=True))
+
+    # -----------------------------------------------------------------
+    # PRF-335 (the openbsd-rehearsal release blocker, 2026-09-27): a
+    # delivered feed entry stayed in the peer's queue, `peer add' fixes the
+    # queue at 1,024, so after 1,024 fed articles every local post was
+    # refused with an unnamed 441 while health said healthy.
+
+    def fill_node(self, marker, down_port=None):
+        """A node with two peers, both by source address: `injector'
+        (127.0.0.1, inbound only: the test's raw TAKETHIS client) and
+        `down' (127.0.0.2, outbound only, at DOWN_PORT)."""
+        root = self.base / marker
+        root.mkdir()
+        port = free_port()
+        # Room for 12,000 transactions with a record bound small enough that
+        # the heap the profile asks for fits the test's 24 GiB scope.
+        self.command([IMAGE, "--fn", "store", root / "store", "init",
+                      "--max-transactions", "12000", "--max-record-octets", "262144",
+                      "--max-history-octets", "134217728",
+                      "--max-article-octets", "8192",
+                      "--max-groups-per-article", "8", "fn.test"])
+        (root / "fn.toml").write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[control]\npath = "{}"\n'.format(root / "store", port,
+                                             root / "control.sock"),
+            encoding="ascii")
+        node = {"name": marker, "root": root, "store": root / "store",
+                "control": root / "control.sock", "config": root / "fn.toml",
+                "port": port}
+        self.command([IMAGE, "--fn", "operator", node["config"], "peer", "add",
+                      "injector", "injector.example.invalid", "127.0.0.1",
+                      str(free_port()), "fn.*", "-", "127.0.0.1", "true"])
+        if down_port is not None:
+            self.command([IMAGE, "--fn", "operator", node["config"], "peer", "add",
+                          "down", "down.example.invalid", "127.0.0.1",
+                          str(down_port), "-", "fn.*", "127.0.0.2", "true"])
+        return node
+
+    def start_drained(self, node):
+        """start, then read the node's stdout and stderr on threads: 1,000
+        transits log 1,000 lines, and an unread pipe blocks the node."""
+        self.start(node)
+        node["log"] = []
+        for pipe in (node["process"].stdout, node["process"].stderr):
+            threading.Thread(target=lambda p=pipe: [node["log"].append(l) for l in p],
+                             daemon=True).start()
+
+    def stop_timed(self, node):
+        started = time.monotonic()
+        node["process"].terminate()
+        node["process"].wait(timeout=300)
+        return round(time.monotonic() - started, 2)
+
+    def inject(self, node, ids):
+        replies = []
+        with socket.create_connection(("127.0.0.1", node["port"]), timeout=60) as client:
+            stream = whole_stream(client)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            for message_id in ids:
+                stream.write(b"TAKETHIS " + message_id.encode() + b"\r\n"
+                             + self.article(message_id, message_id[1:-1]) + b".\r\n")
+                replies.append(stream.readline())
+            stream.write(b"QUIT\r\n")
+        return replies
+
+    def nntp_post(self, node, message_id):
+        with socket.create_connection(("127.0.0.1", node["port"]), timeout=60) as client:
+            stream = whole_stream(client)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            stream.write(b"POST\r\n")
+            offer = stream.readline()
+            if not offer.startswith(b"340"):
+                return offer
+            stream.write(self.article(message_id, message_id[1:-1]) + b".\r\nQUIT\r\n")
+            return stream.readline()
+
+    def health(self, node):
+        return subprocess.run(
+            [str(IMAGE), "--fn", "operator", str(node["config"]), "health"],
+            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=120, check=False)
+
+    def test_feeding_past_the_queue_bound_keeps_local_posts_accepted(self):
+        """PRF-335: 1,100 transit articles are fed to a streaming peer (more
+        than `peer add''s max-queue of 1,024); every transfer is 239, every
+        article reaches the peer, a local POST afterwards is 240, health
+        does not hold unavailable-peer, and a restart opens in seconds (the
+        rehearsal measured 35 to 46 s with the delivered entries kept)."""
+        peer = ScriptedTransitPeer("203 streaming permitted")
+        self.addCleanup(peer.close)
+        node = self.fill_node("past-bound", peer.port)
+        self.start_drained(node)
+        ids = ["<past-{}@example.invalid>".format(n) for n in range(1100)]
+        # In batches the feed can drain: a batch past the peer's undelivered
+        # bound would be deferred (436), which is the saturated test's case.
+        for start in range(0, len(ids), 275):
+            batch = ids[start:start + 275]
+            replies = self.inject(node, batch)
+            codes = [r[:3] for r in replies]
+            self.assertEqual(set(codes), {b"239"},
+                             [r for r in replies if r[:3] != b"239"][:5])
+            self.assertIsNotNone(peer.await_article(batch[-1], timeout=600),
+                                 "the peer never received " + batch[-1])
+        with peer.lock:
+            received = set(peer.articles)
+        self.assertEqual(received, set(ids))
+        posted = "<past-local@example.invalid>"
+        reply = self.nntp_post(node, posted)
+        self.assertTrue(reply.startswith(b"240"), reply)
+        self.assertIsNotNone(peer.await_article(posted, timeout=120))
+        health = self.health(node)
+        self.assertIn(b"unavailable-peer clear", health.stdout, health.stdout)
+        stopped = self.stop_timed(node)
+        started = time.monotonic()
+        self.start_drained(node)
+        opened = time.monotonic() - started
+        reply = self.nntp_post(node, "<past-after-restart@example.invalid>")
+        self.assertTrue(reply.startswith(b"240"), reply)
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "feed-past-queue-bound-prf-335", "fed": len(received),
+            "post": reply.decode("ascii", "replace").strip(),
+            "restart_to_listening_s": round(opened, 2), "stop_s": stopped,
+            "identity": self.verify_process_identity(node)}, sort_keys=True))
+        # The rehearsal measured 35 to 46 s (90 s at hbox load 37); one
+        # loaded run of this case took 20.9 s, the next 2.7 s.
+        self.assertLess(opened, 30.0)
+
+    def test_a_saturated_feed_queue_names_the_refusal_and_holds_health(self):
+        """PRF-335: with the peer unreachable, its queue fills with
+        undelivered obligations.  At the bound the next transfer is 436 (the
+        sender keeps it, not the drop code 439), a local POST is the NAMED
+        refusal feed-queue-full, and health holds unavailable-peer with
+        saturated=1."""
+        closed = free_port()
+        node = self.fill_node("saturated", closed)
+        self.start_drained(node)
+        ids = ["<sat-{}@example.invalid>".format(n) for n in range(1026)]
+        replies = self.inject(node, ids)
+        codes = [r[:3] for r in replies]
+        self.assertEqual(set(codes[:1024]), {b"239"}, replies[:3])
+        self.assertEqual(set(codes[1024:]), {b"436"}, replies[1024:])
+        reply = self.nntp_post(node, "<sat-local@example.invalid>")
+        self.assertTrue(reply.startswith(b"441 "), reply)
+        self.assertIn(b"(feed-queue-full)", reply)
+        health = self.health(node)
+        self.assertNotEqual(health.returncode, 0, health.stdout)
+        self.assertIn(b"unavailable-peer held", health.stdout, health.stdout)
+        self.assertIn(b"saturated=1", health.stdout, health.stdout)
+        identity = self.verify_process_identity(node)
+        # The backlog is durable: after a restart the queue is still full
+        # and the refusal still named.  The open time with 1,024 undelivered
+        # entries is printed (a measurement, not a bound: fn-feedp is still
+        # re-checked per replayed record).
+        stopped = self.stop_timed(node)
+        started = time.monotonic()
+        self.start_drained(node)
+        opened = time.monotonic() - started
+        again = self.nntp_post(node, "<sat-local-2@example.invalid>")
+        self.assertIn(b"(feed-queue-full)", again)
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "feed-queue-saturated-prf-335",
+            "post": reply.decode("ascii", "replace").strip(),
+            "health": health.stdout.decode("ascii", "replace").splitlines()[:9],
+            "restart_to_listening_s": round(opened, 2), "stop_s": stopped,
+            "identity": identity}, sort_keys=True))
+
+    def test_obligations_report_of_five_thousand_articles_answers(self):
+        """PRF-336 (the openbsd-rehearsal, stop 2): `operator CONFIG
+        obligations' at about 1,029 held obligations (keep-forever, one per
+        article) exhausted the owner's 1,024 KB control stack in
+        fn-native-live-status-host-answer and stopped the node.  At 5,000
+        the report answers, the owner keeps running, and `status' still
+        answers after it."""
+        node = self.fill_node("obligations")
+        self.start_drained(node)
+        ids = ["<obl-{}@example.invalid>".format(n) for n in range(5000)]
+        # No outbound peer: nothing is fed, every article is held (keep-forever).
+        replies = self.inject(node, ids)
+        self.assertEqual(set(r[:3] for r in replies), {b"239"},
+                         [r for r in replies if r[:3] != b"239"][:5])
+        report = subprocess.run(
+            [str(IMAGE), "--fn", "operator", str(node["config"]), "obligations"],
+            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=300, check=False)
+        self.assertEqual(report.returncode, 0, report.stderr[-2000:])
+        first = report.stdout.split(b"\n", 1)[0]
+        self.assertTrue(first.startswith(b"obligations="), first)
+        held = int(first.split(b"=", 1)[1].split()[0])
+        self.assertGreaterEqual(held, 5000, first)
+        self.assertEqual(report.stdout.count(b"\nobligation id="), held, first)
+        self.assertIsNone(node["process"].poll(), "the owner stopped")
+        status = subprocess.run(
+            [str(IMAGE), "--fn", "operator", str(node["config"]), "status"],
+            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=120, check=False)
+        self.assertEqual(status.returncode, 0, status.stderr[-2000:])
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "obligations-five-thousand-prf-336", "held": held,
+            "octets": len(report.stdout),
+            "identity": self.verify_process_identity(node)}, sort_keys=True))

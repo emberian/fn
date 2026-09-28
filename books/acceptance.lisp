@@ -16,6 +16,7 @@
 (include-book "acceptance-alloc")
 (include-book "defrecord")
 (include-book "records-shape")
+(include-book "payload-kinds")
 
 ; -----------------------------------------------------------------------------
 ; Article: (message-id payload requested-groups memberships archive-pin)
@@ -26,12 +27,13 @@
 ; books/held-record.lisp holds the same handle at its payload position).  What
 ; the handle denotes is read through the arena by the entry that holds it;
 ; this machine decides identity, groups, memberships and transactions and
-; never reads a byte.
+; never reads a byte.  The field's recognizer names the kind
+; (books/payload-kinds.lisp fn-payload-handle-p, disjoint from octets).
 
 (fn-defrecord fn-article
   :constructor (fn-make-article msgid payload groups memberships pin stamp)
   :fields ((fn-article-msgid stringp)
-           (fn-article-payload natp)
+           (fn-article-payload fn-payload-handle-p)
            (fn-article-groups
             (fn-selection-validp (fn-article-groups x) configured))
            (fn-article-memberships

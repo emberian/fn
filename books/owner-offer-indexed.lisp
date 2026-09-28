@@ -255,7 +255,7 @@
 
 (defthm fn-oix-feed-reply-keeps-view-indexed
   (implies (fn-scar-view-indexedp o)
-           (fn-scar-view-indexedp (cdr (fn-own-feed-reply o a b c))))
+           (fn-scar-view-indexedp (cdr (fn-own-feed-reply o a b c fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-own-feed-reply )
                                   (fn-midx-correspondencep fn-own-refresh )))))
 

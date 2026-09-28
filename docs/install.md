@@ -1,8 +1,14 @@
 # Installing fn
 
+The short version is a Usenet article: [fn FAQ, part 3: installing a node](articles/fn-faq-3.txt),
+with [the OpenBSD follow-up](articles/fn-faq-3-openbsd.txt). Reinstalling
+and new releases: [part 5](articles/fn-faq-5.txt).
+This page stays the full reference; what changed after the articles were
+written (batch AY) is here first and folds into the articles next.
+
 This page takes you from the download to a running node that others can
 reach safely. Words you may not know are in
-[the short glossary](README.md#words-you-will-meet).
+[the short glossary](articles/fn-faq-1.txt).
 
 ## What you need
 
@@ -16,9 +22,13 @@ reach safely. Words you may not know are in
   [storage](operator.md#1-choose-the-disk-for-the-store) before you begin.
   On OpenBSD this matters most: the store needs its own FFS1 partition.
 
-Each release is one file per platform, `fn-6.7.N-linux-x86_64.tar.gz` or
-`fn-6.7.N-openbsd-amd64.tar.gz`, with a `SHA256SUMS` file beside it. N goes
-up by one with each release. The release brings everything it needs except
+Each release is one file per platform, `fn-VERSION-linux-x86_64.tar.gz` or
+`fn-VERSION-openbsd-amd64.tar.gz`, with a `SHA256SUMS` file beside it. The
+first release is 6.6.0. Releases follow a fixed sequence, not the size of
+the number: 6.6.0 to 6.6.5, then the 6.7.x series (6.7.0, 6.7.1, and so
+on), then 6.6.6, the final release, and after it one more `.6` each time
+(6.6.6.6). So 6.6.6 is newer than 6.7.12. The list and its rule are in
+[the release sequence](../planning/release-sequence.json). The release brings everything it needs except
 the system's TLS library.
 
 ## 1. Check, unpack and install
@@ -27,7 +37,7 @@ As root, on Linux:
 
 ```sh
 sha256sum -c --ignore-missing SHA256SUMS
-tar -xzf fn-6.7.N-linux-x86_64.tar.gz
+tar -xzf fn-VERSION-linux-x86_64.tar.gz
 sh fn/install.sh
 ```
 
@@ -36,15 +46,15 @@ the installer runs the unpacked copy, and there it halts with
 `RWX mmap not supported`):
 
 ```sh
-sha256 -C SHA256SUMS fn-6.7.N-openbsd-amd64.tar.gz
-mkdir -p /usr/local/src && tar -xzf fn-6.7.N-openbsd-amd64.tar.gz -C /usr/local/src
+sha256 -C SHA256SUMS fn-VERSION-openbsd-amd64.tar.gz
+mkdir -p /usr/local/src && tar -xzf fn-VERSION-openbsd-amd64.tar.gz -C /usr/local/src
 sh /usr/local/src/fn/install.sh
 ```
 
 Unpack under `/usr/local`: the installer runs fn once, and OpenBSD lets it
 run only from a file system mounted `wxallowed`.
 
-You will see the version, like `fn 6.7.N (REV)`. The installer:
+You will see the version, like `fn 6.6.0 (REV)`. The installer:
 
 - checks every file of the release;
 - copies fn to `/opt/fn` (OpenBSD: `/usr/local/fn`);
@@ -116,8 +126,22 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
    ```
 
    `init` also makes the node's secret key file, and sizes the store for
-   this machine. It prints how much memory it will use. The node's name
-   (`path-identity`) should be its public host name.
+   this machine. It prints how much memory it will use when the store is
+   full, so the node always starts again on this machine. If you named
+   limits this machine cannot hold, `init` refuses, prints both numbers
+   (`reservation=` what the store needs, `budget=` what the machine has)
+   and makes nothing; exit code 1. The node's name (`path-identity`) should
+   be its public host name.
+
+   If the service runs under a memory limit (the unit's `MemoryMax`, a
+   container's `mem_limit`), the store must be sized for that limit, not
+   for the machine: run `init` under the same limit, or name the limit in
+   MiB with `FN_INIT_BUDGET_MB=1536` in `init`'s environment. With a named
+   budget below what this machine gives, `init` sizes the store for the
+   named budget and says so on stderr with both numbers:
+   `fn: warning init-budget-below-machine named-budget=1536 MB machine-budget=5818 MB: ...`.
+   With neither, `init` sizes for the whole machine and the service then
+   refuses to start under its limit (`machine-cannot-hold-profile`).
 
 5. Leave the account's shell. As root, start the service:
 
@@ -149,6 +173,15 @@ Some readers (tin, for one) want TLS from the very start, on port 563. For
 them, add `tls_port = 563` under `[listener]` in `fn.toml`, then restart the
 service. See [newsreaders](human-web-client.md).
 
+### Read it in your browser
+
+The release has a web page for your node too: you and your friends read
+and write in a browser, phone included, and a friend makes their own
+account there from an invitation code. It runs beside the node, as its own
+service, and needs Python 3 and a web name. Install it with
+`sh /opt/fn/install.sh --reader`, then follow
+[Read it in your browser](web.md).
+
 ## 3. Friends and accounts
 
 - To connect your node with a friend's node, follow
@@ -162,12 +195,17 @@ service. See [newsreaders](human-web-client.md).
   fn operator /var/lib/fn/fn.toml account invite --expires 86400
   ```
 
-  The person uses it once to choose a login and password, with fn's own
-  command on their machine (it asks for the password):
+  The person uses it once to choose a login and password: on your
+  [web reader](web.md#5-invite-your-friends)'s **Make your account** page,
+  or with fn's own command on their machine (it asks for the password):
 
   ```sh
   fn redeem news.example.org CODE carol --cafile cert.pem
   ```
+
+  A node on another port than 119 (every OpenBSD node: its service cannot
+  use a port below 1024) is named with its port:
+  `fn redeem news.example.org:11563 CODE carol --cafile cert.pem`.
 
   See [accounts](operator.md#accounts-and-invitation-codes).
 
@@ -192,6 +230,18 @@ Export with the **old** release, before you remove it:
    rm -rf /opt/fn
    sh fn/install.sh
    ```
+
+   On OpenBSD, `/var/fn` is its own FFS1 partition, and `mv` refuses it
+   (`cannot rename a mount point`). Move what is in it instead, then
+   unpack the new release under `/usr/local/src` as in step 1:
+
+   ```sh
+   mkdir /var/fn.old && mv /var/fn/* /var/fn.old/
+   rm -rf /usr/local/fn /usr/local/src/fn
+   ```
+
+   Below, read `/var/fn` for `/var/lib/fn` and `/var/fn.old` for
+   `/var/lib/fn.old`.
 
 2. As the service account, write the settings again (or copy `fn.toml`,
    `tls/` and `log/` from the old folder: without `log/` the service stops
@@ -243,58 +293,5 @@ folder and the account.
 ## When the node refuses something
 
 fn never guesses. When it cannot do something, it names the reason. The same
-word shows in the reply, in `status` or `health`, and in the log. These two
-tables are made from fn's own code, so they list every word it can print.
-
-<!-- generated by docs_check --write: reasons (do not edit by hand) -->
-
-`health` ends with the code of the first problem it found, in this order. 0 means no problem. 19 means fn could not check something (the two peer checks need the node running):
-
-| code | problem | what it means, what to do |
-| --- | --- | --- |
-| 20 | `fenced` | something holds the store: the node is starting, or another command runs, or the node does not answer. Wait and ask again. Never delete the lock |
-| 21 | `exhausted` | the store used up a counter (transactions or held space) that nothing raises in place |
-| 22 | `unqualified-profile` | the store uses the test settings. Make the node again with a `mission` |
-| 23 | `space-pressure` | the store is nearly full. `capacity` says which part; release what is held, or move to larger settings |
-| 24 | `no-route` | articles wait to be forwarded and no BP route is set |
-| 25 | `stranded-transfer` | a peer kept refusing an article and fn stopped offering it. Fix the peer |
-| 26 | `unavailable-peer` | a peer has articles waiting and is not connected, or keeps saying "try later" (its store may be full: `deferred=N`). Check its address and port (`peer list`), that it is running, and ask its operator |
-| 27 | `receipt-debt` | articles were forwarded and wait for the receipts that confirm them |
-
-When fn refuses a post, the reply starts `441` and the log line starts `refused` and names the reason:
-
-| reason | the reply |
-| --- | --- |
-| `unparsable` | `441 posting failed; the article is not valid syntax` |
-| `header-fields-limit` | `441 posting failed; the header has more fields than the profile's max-header-fields` |
-| `header-lines-limit` | `441 posting failed; the header has more lines than the profile's max-header-lines` |
-| `header-octets-limit` | `441 posting failed; the header has more octets than the profile's max-header-octets` |
-| `group-read-only` | `441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)` |
-| `approval-not-moderator` | `441 posting failed; Approved is accepted only from a moderator of each moderated group named (LIST ACTIVE status m)` |
-| `moderation-unavailable` | `441 posting failed; a moderated group is named and the article could not be forwarded to its moderation queue` |
-| `injection-info` | `441 posting failed; Injection-Info must not be supplied` |
-| `xref` | `441 posting failed; Xref must not be supplied` |
-| `injection-date-present` | `441 posting failed; Injection-Date must not be supplied` |
-| `path-present` | `441 posting failed; Path must not be supplied` |
-| `path-malformed` | `441 posting failed; Path is not a valid path` |
-| `path-duplicate` | `441 posting failed; Path appears more than once` |
-| `path-posted` | `441 posting failed; Path must not carry a POSTED diagnostic` |
-| `newsgroups-missing` | `441 posting failed; Newsgroups is required` |
-| `newsgroups-duplicate` | `441 posting failed; Newsgroups appears more than once` |
-| `newsgroups-invalid` | `441 posting failed; Newsgroups is not a valid newsgroup list` |
-| `message-id-duplicate` | `441 posting failed; Message-ID appears more than once` |
-| `message-id-invalid` | `441 posting failed; Message-ID is not a valid identifier` |
-| `from-missing` | `441 posting failed; From is required` |
-| `from-duplicate` | `441 posting failed; From appears more than once` |
-| `from-invalid` | `441 posting failed; From is not a valid mailbox list` |
-| `subject-missing` | `441 posting failed; Subject is required` |
-| `subject-duplicate` | `441 posting failed; Subject appears more than once` |
-| `date-duplicate` | `441 posting failed; Date appears more than once` |
-| `no-groups` | `441 posting failed; no newsgroup was named` |
-| `unknown-group` | `441 posting failed; a named newsgroup is not carried here` |
-| `oversize` | `441 posting failed; the article exceeds the configured size` |
-| `clock-unusable` | `441 posting failed; this server has no usable clock reading` |
-| `clock-out-of-range` | `441 posting failed; this server clock is outside the modelled range` |
-| `posting-disallowed` | `441 posting failed; posting is not permitted` |
-
-<!-- end generated reasons -->
+word shows in the reply, in `status` or `health`, and in the log. Every word it can print, made from fn's own code (the health
+codes and the POST refusals): [fn FAQ, part 6](articles/fn-faq-6.txt).

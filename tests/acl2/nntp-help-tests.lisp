@@ -63,6 +63,7 @@
                        "ARTICLE HEAD BODY STAT"
                        "OVER XOVER HDR XHDR XPAT"
                        "IHAVE CHECK TAKETHIS"
+                       "XFNCATCHUP"
                        "."))))))
 
 ; The converse the keystone does not state (PKT-571), checked by evaluation:
@@ -72,7 +73,7 @@
   '("CAPABILITIES" "HELP" "QUIT" "MODE" "DATE" "POST" "AUTHINFO" "STARTTLS"
     "XREDEEM" "GROUP" "LISTGROUP" "LIST" "NEXT" "LAST" "NEWGROUPS" "NEWNEWS"
     "ARTICLE" "HEAD" "BODY" "STAT" "OVER" "XOVER" "HDR" "XHDR" "XPAT"
-    "IHAVE" "CHECK" "TAKETHIS"))
+    "IHAVE" "CHECK" "TAKETHIS" "XFNCATCHUP"))
 (defun nht-all-served (keywords fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp keywords)
@@ -83,9 +84,9 @@
     t))
 (bpr-lift nht-all-served 1)
 (assert-event (in-arena-nht-all-served *sr-arena* *nht-listed*))
-; The list is the whole table: 28 keywords, and a lower-case spelling is
+; The list is the whole table: 29 keywords, and a lower-case spelling is
 ; the same keyword (RFC 3977 section 3.1: case-insensitive).
-(assert-event (equal (len *nht-listed*) 28))
+(assert-event (equal (len *nht-listed*) 29))
 (defun nht-flatten (rows)
   (if (consp rows) (append (car rows) (nht-flatten (cdr rows))) nil))
 (assert-event (equal (nht-flatten *fn-nntp-served-command-table*) *nht-listed*))

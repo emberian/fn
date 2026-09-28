@@ -41,9 +41,9 @@ class Acl2ReceiptBridge:
   self.initialized=True;return self
  def valid_config(self,record): return acl2_boolean(
   self.store.call("(fn-bprj-valid-config "+record_form(record)+" state)"))
- def preflight(self,record): return acl2_symbol(self.store.call("(fn-bprj-preflight "+record_form(record)+" fn-arena state)"))=="ready"
+ def preflight(self,record): return acl2_symbol(self.store.call("(fn-bprj-preflight "+record_form(record)+" fn-arena fn-hist state)"))=="ready"
  def apply(self,record):
-  if acl2_symbol(self.store.call("(fn-bprj-apply "+record_form(record)+" fn-arena state)"))!="ready": raise JournalFault("ACL2 rejected durable receiver record")
+  if acl2_symbol(self.store.call("(fn-bprj-apply "+record_form(record)+" fn-arena fn-hist state)"))!="ready": raise JournalFault("ACL2 rejected durable receiver record")
  def preview_receipt(self,work_id,receipt_id):
   return acl2_octets(self.store.call("(fn-bprj-preview-receipt "+_string(work_id)+" "+_string(receipt_id)+" state)"))
  def receipt_adu(self,request_adu): return acl2_octets(self.store.call("(fn-bprj-receipt-adu "+_octets(request_adu)+" state)"))

@@ -331,7 +331,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"BP application handoff durable", delivered)
         self.stop_process(receiver)
 
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
         payloads = self.acl2_lifecycle_payloads(self.receiver_journal, 5)
         self.assertIn(bytes((1, 2, 3, 4)), payloads)
         self.assertIn(self.request_path.read_bytes(), payloads)
@@ -339,7 +339,7 @@ class NativeBpNodeTests(unittest.TestCase):
         restarted = self.dispatch_receiver()
         self.assertEqual(restarted.returncode, 0, restarted.stderr)
         self.assertIn(b"BP FNBS recovered held=2", restarted.stdout)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def conflicting_transit_bundle(self):
         """The unrouted transit identity (creation 0, sequence 77) with another
@@ -609,7 +609,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"BP application handoff durable", delivered)
         self.assertNotIn(b"request-refused", delivered)
         self.stop_process(receiver)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def test_permanently_busy_application_strands_row_until_resume(self):
         """BP-R17 at the retry budget: three :busy answers strand the row,
@@ -641,7 +641,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertNotIn(b"busy=4", seen)
         self.assertNotIn(b"request-refused", seen)
         self.assertNotIn(b"request-accepted", seen)
-        self.assertEqual(self.receiver_counts()[1], 0)
+        self.assertEqual(self.receiver_articles(), 0)
         # Restart twice: the durable count is what it was and the report repeats.
         arrivals = set()
         for _ in range(2):
@@ -653,7 +653,7 @@ class NativeBpNodeTests(unittest.TestCase):
                     if x.startswith(b"BP node delivery stranded busy=3 arrival=")]
             self.assertEqual(len(line), 1, restarted.stdout)
             arrivals.add(int(line[0].split(b"arrival=")[1].split()[0]))
-            self.assertEqual(self.receiver_counts()[1], 0)
+            self.assertEqual(self.receiver_articles(), 0)
         self.assertEqual(len(arrivals), 1, arrivals)
         arrival = arrivals.pop()
         resumed = self.resume_receiver(arrival)
@@ -662,7 +662,7 @@ class NativeBpNodeTests(unittest.TestCase):
         delivered = self.dispatch_receiver()
         self.assertEqual(delivered.returncode, 0, delivered.stderr)
         self.assertIn(b"BP node delivery request-accepted", delivered.stdout)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def other_boot_domain_frame(self):
         """ACL2's clock-domain frame for a boot ID that is not this boot's."""
@@ -1073,14 +1073,26 @@ class NativeBpNodeTests(unittest.TestCase):
             self.sender_workflow, "work-unrelated",
         )
 
-    def receiver_counts(self):
-        store, bridge, records = run_bp_ingress.open_live_bp_store(
-            self.receiver_store, False)
-        try:
-            return len(records), bridge.article_count(), bridge.pin_count()
-        finally:
-            bridge.close()
-            store.close()
+    def receiver_articles(self):
+        """The receiver Store's article count, from the node's own read-only
+        open (`store PATH status`, books/native-live-status.lisp
+        fn-nls-report's `articles=' word): it replays the format-9 record log
+        the way the served path does.  The Python Store (tools/run_store.py)
+        reads another layout and is not this Store's readback."""
+        status = self.invoke("store", self.receiver_store, "status", timeout=300)
+        self.assertEqual(status.returncode, 0, (status.stdout, status.stderr))
+        counts = re.findall(rb"^transactions=[0-9]+ articles=([0-9]+) ",
+                            status.stdout, re.MULTILINE)
+        self.assertEqual(len(counts), 1, status.stdout)
+        return int(counts[0])
+
+    def receiver_article(self, msgid):
+        """The stored octets of MSGID, from the node's lookup
+        (`store PATH inspect MSGID`)."""
+        inspected = self.invoke("store", self.receiver_store, "inspect",
+                                msgid.decode("ascii"), timeout=300)
+        self.assertEqual(inspected.returncode, 0, inspected.stderr[-4000:])
+        return inspected.stdout
 
     def receiver_listgroups(self, *groups):
         """GROUP replies of the receiver's Store, read through a reader port
@@ -1147,7 +1159,7 @@ class NativeBpNodeTests(unittest.TestCase):
         # Filed once in control.cancel; never in fn.test (its Newsgroups).
         self.assertTrue(control.startswith(b"211 1 "), control)
         self.assertTrue(fn_test.startswith(b"211 0 "), fn_test)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def test_request_above_peer_mru_is_fragmented_and_reassembled(self):
         """PKT-061: a bundle longer than the peer's Transfer MRU is cut.
@@ -1176,7 +1188,7 @@ class NativeBpNodeTests(unittest.TestCase):
             receiver, b"BP application handoff durable", timeout=120)
         self.stop_process(receiver)
         self.assertIn(b"BP fragment family durable", out)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def test_request_retry_queues_distinct_receipt_carriers_and_releases_pin(self):
         before = self.sender_status()
@@ -1202,18 +1214,12 @@ class NativeBpNodeTests(unittest.TestCase):
             len(tuple((self.receiver_journal / "lifecycle").glob("*.fnb"))),
             first_count,
         )
-        self.assertEqual(self.receiver_counts()[1], 1,
+        self.assertEqual(self.receiver_articles(), 1,
                          "the second carrier must not accept a second article")
-        store, bridge, _ = run_bp_ingress.open_live_bp_store(
-            self.receiver_store, False)
-        try:
-            relayed = bridge.lookup(self.msgid)
-            self.assertNotEqual(relayed, self.article)
-            self.assertIn(b"Path: receiver.bp.gate.invalid", relayed)
-            self.assertNotIn(b"Xref:", relayed)
-        finally:
-            bridge.close()
-            store.close()
+        relayed = self.receiver_article(self.msgid)
+        self.assertNotEqual(relayed, self.article)
+        self.assertIn(b"Path: receiver.bp.gate.invalid", relayed)
+        self.assertNotIn(b"Xref:", relayed)
 
         sender, port = self.start_node(False, once=False)
         self.relay.route(port)
@@ -1295,7 +1301,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"BP refused xfer=0 reason=no-trust-profile", out)
         self.assertNotIn(b"BP accepted", out)
         self.assertNotIn(b"BP node delivery", out)
-        self.assertEqual(self.receiver_counts()[1], 0)
+        self.assertEqual(self.receiver_articles(), 0)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
 
     def test_admitted_channel_without_inbound_scope_refuses_store_request(self):
@@ -1310,7 +1316,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"BP application handoff refused "
                       b"disposition=request-refused", out)
         self.assertNotIn(b"BP application handoff durable", out)
-        self.assertEqual(self.receiver_counts()[1], 0)
+        self.assertEqual(self.receiver_articles(), 0)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
 
     def test_absent_bp_trust_refuses_the_receipt_at_reception(self):
@@ -1370,7 +1376,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(receiver.returncode, 3, (out, err))
         self.assertIn(b"conflicting durable bytes", err)
         self.assertIn(b"BP application handoff durable", out)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def test_exact_receipt_with_wrong_carrier_peer_fences(self):
         self.kill_at_durable_cut(
@@ -1395,7 +1401,7 @@ class NativeBpNodeTests(unittest.TestCase):
         restarted = self.dispatch_receiver()
         self.assertEqual(restarted.returncode, 3, restarted.stderr)
         self.assertIn(b"conflicting durable bytes", restarted.stderr)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def kill_at_durable_cut(self, selector, marker):
         receiver, port = self.start_node(True, extra_env={selector: "1"})
@@ -1404,7 +1410,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.wait_for_output(receiver, marker, timeout=120)
         receiver.kill()
         receiver.wait(timeout=15)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def test_death_after_fnrj_receipt_decision_replays_one_article(self):
         self.kill_at_durable_cut(
@@ -1415,7 +1421,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(restarted.returncode, 0, restarted.stderr)
         self.assertIn(b"BP application handoff durable", restarted.stdout)
         self.assertIn(b"BP node receipt queued", restarted.stdout)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def test_death_after_kind_seven_replays_owed_outbox(self):
         self.kill_at_durable_cut(
@@ -1425,7 +1431,7 @@ class NativeBpNodeTests(unittest.TestCase):
         restarted = self.dispatch_receiver()
         self.assertEqual(restarted.returncode, 0, restarted.stderr)
         self.assertIn(b"BP node receipt queued", restarted.stdout)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def test_death_after_durable_outbox_does_not_allocate_second_sequence(self):
         self.kill_at_durable_cut(
@@ -1448,7 +1454,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(len(tuple(
             (self.receiver_journal / "lifecycle").glob("*.fnb"))),
             before_records + 2)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def test_ambiguous_outbox_publication_is_uncertain_not_refused(self):
         self.kill_at_durable_cut(
@@ -1472,7 +1478,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(recovered.returncode, 0,
                          (recovered.stdout, recovered.stderr))
         self.assertEqual(frontier.read_bytes(), after_fault_frontier)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def test_kind_five_ambiguous_publication_never_delivers_to_store(self):
         seed = self.dispatch_receiver()
@@ -1483,7 +1489,7 @@ class NativeBpNodeTests(unittest.TestCase):
         out, err = receiver.communicate(timeout=120)
         self.assertEqual(receiver.returncode, 3, (out, err))
         self.assertNotIn(b"BP application handoff durable", out)
-        self.assertEqual(self.receiver_counts()[1], 0)
+        self.assertEqual(self.receiver_articles(), 0)
         self.assertIn(sent.returncode, (1, LOST), sent.stderr)
 
     def test_ambiguous_fnrj_decision_fences_until_cold_replay(self):
@@ -1499,13 +1505,13 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(receiver.returncode, 3, (out, err))
         self.assertIn(b"BP node application uncertain", out)
         self.assertNotIn(b"BP application handoff durable", out)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
         restarted = self.dispatch_receiver()
         self.assertEqual(restarted.returncode, 0, restarted.stderr)
         self.assertIn(b"BP application handoff durable", restarted.stdout)
         self.assertIn(b"BP node receipt queued", restarted.stdout)
-        self.assertEqual(self.receiver_counts()[1], 1)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def test_expired_recovered_kind_five_never_enters_store(self):
         receiver, port = self.start_node(
@@ -1522,7 +1528,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(restarted.returncode, 0, restarted.stderr)
         self.assertNotIn(b"BP application handoff durable", restarted.stdout)
         self.assertNotIn(b"BP node receipt queued", restarted.stdout)
-        self.assertEqual(self.receiver_counts()[1], 0)
+        self.assertEqual(self.receiver_articles(), 0)
 
     def test_deletion_report_intent_recovers_and_observation_does_not_release(self):
         receiver, port = self.start_node(
@@ -1546,7 +1552,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.wait_for_output(candidate, b"BP NODE KIND10 DURABLE", timeout=120)
         candidate.kill()
         candidate.wait(timeout=15)
-        self.assertEqual(self.receiver_counts()[1], 0)
+        self.assertEqual(self.receiver_articles(), 0)
 
         report_payloads = self.acl2_lifecycle_payloads(
             self.receiver_journal, 10)
@@ -1570,7 +1576,7 @@ class NativeBpNodeTests(unittest.TestCase):
         restarted = self.dispatch_receiver(reports=True)
         self.assertEqual(restarted.returncode, 0, restarted.stderr)
         self.assertIn(b"BP queue accepted", restarted.stdout)
-        self.assertEqual(self.receiver_counts()[1], 0)
+        self.assertEqual(self.receiver_articles(), 0)
         frontier = self.receiver_journal / "sequence" / "frontier.fnb"
         frontier_bytes = frontier.read_bytes()
         lifecycle = self.receiver_journal / "lifecycle"

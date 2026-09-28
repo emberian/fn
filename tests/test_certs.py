@@ -17,6 +17,7 @@ from pathlib import Path
 import shutil
 import sys
 import tempfile
+import time
 import threading
 import unittest
 from unittest import mock
@@ -537,6 +538,30 @@ class CompiledFileTests(unittest.TestCase):
             self.assertIn("fasl 2 missing 0", report.lines()[1])
             again = self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertEqual((again.kept, again.fasl_installed), (2, 2))
+
+    def test_an_installed_certificate_is_no_older_than_its_source(self):
+        """ACL2's pcert Complete refuses an included book whose .cert is older
+        than its .lisp; a pair from the cache must not be (post-alloc-3)."""
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            root, manifest = self.source(one, ["books/base", "books/mid"])
+            cache = Path(two) / "cache"
+            certs.publish(root, cache, [manifest], origin=self.FARM, origin_kind="run")
+            target = worktree(two + "/target")
+            later = time.time() + 120
+            for name in ("books/base", "books/mid"):
+                os.utime(target / f"{name}.lisp", (later, later))
+            self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
+            for name in ("books/base", "books/mid"):
+                cert, fasl = target / f"{name}.cert", target / f"{name}.fasl"
+                source = target / f"{name}.lisp"
+                self.assertGreaterEqual(cert.stat().st_mtime, source.stat().st_mtime)
+                self.assertGreaterEqual(fasl.stat().st_mtime, cert.stat().st_mtime)
+            # A kept pair (bytes already equal) is dated too.
+            even_later = later + 60
+            os.utime(target / "books/mid.lisp", (even_later, even_later))
+            again = self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual(again.kept, 2)
+            self.assertGreaterEqual((target / "books/mid.cert").stat().st_mtime, even_later)
 
     def test_an_entry_without_a_compiled_file_installs_the_pair_alone(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:

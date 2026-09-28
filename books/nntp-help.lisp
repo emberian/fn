@@ -33,7 +33,7 @@
 ; NOT PROVED (PKT-571).  The converse -- every listed keyword draws some
 ; reply other than 500 for EVERY argument list and session -- would need a
 ; fact about every reply builder.  tests/acl2/nntp-help-tests.lisp checks it
-; by evaluation, on a served session, for each of the 28 keywords.
+; by evaluation, on a served session, for each of the 29 keywords.
 
 (in-package "ACL2")
 (include-book "nntp-auth")
@@ -45,7 +45,8 @@
 ; authentication layer; IHAVE, CHECK, TAKETHIS and MODE STREAM the peer
 ; layer on a peer connection (a reader connection answers the three transit
 ; verbs 502, RFC 3977 section 3.2.1, which is "understood" and not 500); the
-; rest books/nntp.lisp's two dispatchers.  PRF-194 (below):
+; rest books/nntp.lisp's two dispatchers (XFNCATCHUP, PRF-325, the pinned
+; one).  PRF-194 (below):
 ; a keyword outside this table is answered 500 by the served step, and
 ; HELP's lines are this table's rows.
 (defconst *fn-nntp-served-command-table*
@@ -54,7 +55,8 @@
     ("GROUP" "LISTGROUP" "LIST" "NEXT" "LAST" "NEWGROUPS" "NEWNEWS")
     ("ARTICLE" "HEAD" "BODY" "STAT")
     ("OVER" "XOVER" "HDR" "XHDR" "XPAT")
-    ("IHAVE" "CHECK" "TAKETHIS")))
+    ("IHAVE" "CHECK" "TAKETHIS")
+    ("XFNCATCHUP")))
 
 (defun fn-nntp-keyword-in-rowp (keyword row)
   (declare (xargs :guard t))
@@ -118,7 +120,8 @@
              (fn-nntp-keywordp k "HDR") (fn-nntp-keywordp k "XHDR")
              (fn-nntp-keywordp k "XPAT")
              (fn-nntp-keywordp k "IHAVE") (fn-nntp-keywordp k "CHECK")
-             (fn-nntp-keywordp k "TAKETHIS")))
+             (fn-nntp-keywordp k "TAKETHIS")
+             (fn-nntp-keywordp k "XFNCATCHUP")))
   :hints (("Goal" :in-theory (e/d (fn-nntp-served-keywordp
                                    fn-nntp-keyword-in-tablep
                                    fn-nntp-keyword-in-rowp)

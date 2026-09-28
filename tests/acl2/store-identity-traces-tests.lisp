@@ -115,7 +115,7 @@
                                    (fn-article-payload
                                     (car (fn-stx-store (fn-sn-node *sit-reopened*)))))
                      *sit-source*))
-(make-event `(defconst *sit-reopened-ready* ',(fn-sit-barriers *sit-reopened* 5)))
+(make-event `(defconst *sit-reopened-ready* ',(fn-sit-barriers *sit-reopened* *fn-sf-recovery-barrier-count*)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sit-reopened-ready*)) :ready))
 
 ; Refusal burns allocator txid 2 but consumes no journal sequence.  The next
@@ -213,7 +213,7 @@
 (assert-event (not (fn-sn-open-okp
                     (fn-sn-open-observed *sit-groups* 32 1 *sit-orphan-history*))))
 (assert-event (equal (fn-sf-phase
-                      (fn-sn-files (fn-sit-barriers *sit-orphan-recovered* 5)))
+                      (fn-sn-files (fn-sit-barriers *sit-orphan-recovered* *fn-sf-recovery-barrier-count*)))
                      :fault))
 
 ; The selected version-1 path publishes the received portable carrier while

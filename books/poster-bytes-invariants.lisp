@@ -1,5 +1,8 @@
 ; fn: D25 over the functions the host calls.  The duplicate-versus-conflict
-; verdict of fn-pb-existing-action (books/poster-bytes.lisp; host callers at
+; verdict of fn-pb-action-over (books/poster-bytes.lisp; over an octet-model
+; article list, which books/store-existing-alpha.lisp
+; fn-store-existing-action-is-pb-over-alpha equates with the host's entry
+; fn-store-existing-action over ALPHA of the Store's articles; host callers
 ; host/owner-host.lisp fn-owner-existing-action and fn-owner-prepare) is the
 ; word fn-own-outcome renders (host/owner-host.lisp fn-owner-outcome).  One
 ; source injected at any two clock readings is one article; two different
@@ -490,13 +493,13 @@
   :hints (("Goal" :use ((:instance fn-inj-source-of-an-ambiguous-v1-record)))))
 
 ; -----------------------------------------------------------------------------
-; The decision.  The two case equations restate fn-pb-existing-action; they
+; The decision.  The two case equations restate fn-pb-action-over; they
 ; are named -by-definition and are not the keystones.
 
-(defthm fn-pb-existing-action-is-duplicate-iff-same-article-by-definition
+(defthm fn-pb-action-over-is-duplicate-iff-same-article-by-definition
   (let ((held (fn-find-article
-               msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
-    (equal (equal (fn-pb-existing-action msgid payload groups s) :duplicate)
+               msgid articles)))
+    (equal (equal (fn-pb-action-over msgid payload groups articles) :duplicate)
            (and (if held t nil)
                 (fn-pb-same-articlep (fn-record-string-octets msgid) payload
                                      (fn-article-payload held))
@@ -504,14 +507,14 @@
   :rule-classes nil)
 
 ; The source decision refines the byte-identity one it replaced
-; (fn-sn-existing-action): it answers for exactly the same held Message-IDs,
+; (fn-sn-action-over): it answers for exactly the same held Message-IDs,
 ; and every byte-identical resend is still a duplicate.
-(defthm fn-pb-existing-action-refines-the-byte-identity-decision
-  (and (iff (fn-pb-existing-action msgid payload groups s)
-            (fn-sn-existing-action msgid payload groups s))
-       (implies (equal (fn-sn-existing-action msgid payload groups s) :duplicate)
-                (equal (fn-pb-existing-action msgid payload groups s) :duplicate)))
-  :hints (("Goal" :in-theory (enable fn-sn-existing-action)))
+(defthm fn-pb-action-over-refines-the-byte-identity-decision
+  (and (iff (fn-pb-action-over msgid payload groups articles)
+            (fn-sn-action-over msgid payload groups articles))
+       (implies (equal (fn-sn-action-over msgid payload groups articles) :duplicate)
+                (equal (fn-pb-action-over msgid payload groups articles) :duplicate)))
+  :hints (("Goal" :in-theory (enable fn-sn-action-over)))
   :rule-classes nil)
 
 ; A second post under a Message-ID the Store does not hold is not answered
@@ -520,13 +523,14 @@
 ; the matrix has a named subject.
 (defthm fn-pb-an-unheld-message-id-is-a-new-article-by-definition
   (implies (not (fn-find-article
-                 msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
-           (equal (fn-pb-existing-action msgid payload groups s) nil))
+                 msgid articles))
+           (equal (fn-pb-action-over msgid payload groups articles) nil))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
 ; The served reply.  host/native/owner.lisp fnn-owner-attempt returns the
-; verdict of fn-owner-existing-action (fn-pb-existing-action) as its word,
+; verdict of fn-owner-existing-action (fn-store-existing-action; D25 is
+; fn-pb-action-over over alpha) as its word,
 ; and host/owner-host.lisp fn-owner-outcome hands that word to fn-own-outcome.
 
 (defun fn-pb-served-reply (o id word)
@@ -547,7 +551,7 @@
 ; no completion has been consumed.
 (defthm fn-pb-same-article-is-answered-already-stored
   (let ((held (fn-find-article
-               msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
+               msgid articles)))
     (implies (and (fn-own-find-conn id (fn-own-conns o))
                   (fn-own-inflight o)
                   (equal (fn-own-sub-id (fn-own-inflight o)) id)
@@ -557,11 +561,11 @@
                                        (fn-article-payload held))
                   (equal groups (fn-article-groups held)))
              (equal (car (fn-own-outcome
-                          o id (fn-pb-existing-action msgid payload groups s)))
+                          o id (fn-pb-action-over msgid payload groups articles)))
                     (fn-pb-served-reply o id :duplicate))))
   :hints (("Goal" :in-theory (e/d (fn-own-outcome fn-own-outcome-completion
                                    fn-own-outcome-rendering fn-own-refusal-wordp
-                                   fn-post-store-refusalp fn-pb-existing-action)
+                                   fn-post-store-refusalp fn-pb-action-over)
                                   (fn-served-post-outcome fn-own-advance
                                    fn-own-feed-durable fn-own-find-conn
                                    fn-served-make-conn-group-indexed
@@ -572,7 +576,7 @@
 ; Message-ID is stored here', for another article or other groups.
 (defthm fn-pb-different-article-is-answered-conflict
   (let ((held (fn-find-article
-               msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
+               msgid articles)))
     (implies (and (fn-own-find-conn id (fn-own-conns o))
                   (fn-own-inflight o)
                   (equal (fn-own-sub-id (fn-own-inflight o)) id)
@@ -582,11 +586,11 @@
                                                 payload (fn-article-payload held)))
                       (not (equal groups (fn-article-groups held)))))
              (equal (car (fn-own-outcome
-                          o id (fn-pb-existing-action msgid payload groups s)))
+                          o id (fn-pb-action-over msgid payload groups articles)))
                     (fn-pb-served-reply o id :conflict))))
   :hints (("Goal" :in-theory (e/d (fn-own-outcome fn-own-outcome-completion
                                    fn-own-outcome-rendering fn-own-refusal-wordp
-                                   fn-post-store-refusalp fn-pb-existing-action)
+                                   fn-post-store-refusalp fn-pb-action-over)
                                   (fn-served-post-outcome fn-own-advance
                                    fn-own-feed-durable fn-own-find-conn
                                    fn-served-make-conn-group-indexed
@@ -599,7 +603,7 @@
 ; of readings, with the Date present or absent.
 (defthm fn-pb-a-resend-at-any-clock-is-answered-already-stored
   (let ((held (fn-find-article
-               msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
+               msgid articles))
         (da (fn-inj-decide source config a))
         (db (fn-inj-decide source config b)))
     (implies (and (fn-own-find-conn id (fn-own-conns o))
@@ -615,8 +619,8 @@
                   (equal groups (fn-article-groups held)))
              (equal (car (fn-own-outcome
                           o id
-                          (fn-pb-existing-action
-                           msgid (fn-inj-decision-octets db) groups s)))
+                          (fn-pb-action-over
+                           msgid (fn-inj-decision-octets db) groups articles)))
                     (fn-pb-served-reply o id :duplicate))))
   :hints (("Goal" :use ((:instance fn-pb-same-article-is-answered-already-stored
                                    (payload (fn-inj-decision-octets
@@ -631,7 +635,7 @@
 ; answered with the conflict line, at every pair of clock readings.
 (defthm fn-pb-a-changed-source-is-answered-conflict
   (let ((held (fn-find-article
-               msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
+               msgid articles))
         (da (fn-inj-decide source1 config a))
         (db (fn-inj-decide source2 config b)))
     (implies (and (fn-own-find-conn id (fn-own-conns o))
@@ -647,8 +651,8 @@
                   (not (equal source1 source2)))
              (equal (car (fn-own-outcome
                           o id
-                          (fn-pb-existing-action
-                           msgid (fn-inj-decision-octets db) groups s)))
+                          (fn-pb-action-over
+                           msgid (fn-inj-decision-octets db) groups articles)))
                     (fn-pb-served-reply o id :conflict))))
   :hints (("Goal" :use ((:instance fn-pb-different-article-is-answered-conflict
                                    (payload (fn-inj-decision-octets
@@ -658,21 +662,21 @@
                   :in-theory (theory 'minimal-theory)))
   :rule-classes nil)
 
-; KEYSTONE (no second obligation).  Whatever fn-pb-existing-action answers
+; KEYSTONE (no second obligation).  Whatever fn-pb-action-over answers
 ; -- duplicate, conflict, or nothing held -- the outcome leaves the owner's
 ; Store as it was (the held article, its local number and its obligation are
 ; the ones already there), writes no outcome record and moves no feed: none
 ; of its words is the durable completion.
 (defthm fn-pb-an-existing-action-writes-nothing
   (let ((next (cdr (fn-own-outcome
-                    o id (fn-pb-existing-action msgid payload groups s)))))
+                    o id (fn-pb-action-over msgid payload groups articles)))))
     (and (equal (fn-own-store next) (fn-own-store o))
          (equal (fn-own-feeds next) (fn-own-feeds o))
          (null (fn-own-outcome-records
-                o id (fn-pb-existing-action msgid payload groups s)))))
+                o id (fn-pb-action-over msgid payload groups articles)))))
   :hints (("Goal" :in-theory (e/d (fn-own-outcome fn-own-outcome-completion
                                    fn-own-outcome-records fn-own-refusal-wordp
-                                   fn-pb-existing-action)
+                                   fn-pb-action-over)
                                   (fn-served-post-outcome fn-own-advance
                                    fn-own-feed-durable fn-own-find-conn
                                    fn-served-make-conn-group-indexed

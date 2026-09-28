@@ -78,7 +78,6 @@
 
 (defconst *fn-so-barriers*
   '((:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
-    (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
     (:io :recovery-barrier :ok)))
 (defconst *fn-so-reserve*
   '((:io :start-frontier nil) (:io :frontier-file :ok)
@@ -246,7 +245,8 @@
 ; image, and the reopen refuses it.
 (defconst *fn-so-unrelated*
   (fn-sn-make *fn-so-live-groups* 10
-              (fn-sf-make :ready 1 nil (list *fn-so-alien*) nil nil '((0 . 0)) 5)
+              (fn-sf-make :ready 1 nil (list *fn-so-alien*) nil nil '((0 . 0))
+                          *fn-sf-recovery-barrier-count*)
               (fn-node-initial-state *fn-so-live-groups* 10)
               nil (fn-stx-index-empty)))
 (assert-event (fn-sn-statep *fn-so-unrelated*))

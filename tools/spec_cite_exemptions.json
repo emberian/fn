@@ -7,9 +7,9 @@
   "fn-record-decode-exact-refuses-another-header": "retired name kept as history: specs/acceptance-stamp.md records that T1's derived theorem of that name became fn-record-decode-exact-refuses-another-magic",
   "fn-nntp-hdr-labelled-line-is-block-text": "retired name kept as history: specs/nntp-audit.md records that books/nntp-effects' message-id lemma was rerouted off that open lemma onto fn-nntp-xpat-msgid-block-is-block-text",
   "fn-rev12-openbsd-amd64.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
-  "fn-6.7.n-platform.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
-  "fn-6.7.n-openbsd-amd64.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
-  "fn-6.7.n+rev12-platform.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
+  "fn-version-platform.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
+  "fn-version-openbsd-amd64.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
+  "fn-version+rev12-platform.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
   "fn-store-9": "a store format word, not a Lisp definition: the profile frame's first text field, books/byte-store-frame.lisp *fn-bs-meta-format-9* (lane commit-onto-log, STO-028)"
  },
  "stale": {
@@ -39,6 +39,10 @@
     "specs/storage.md"
    ],
    "fn-bp-profile-2": [
+    "specs/storage.md"
+   ],
+   "fn-bp-profile-3": [
+    "specs/bp-node-machine.md",
     "specs/storage.md"
    ],
    "fn-bp-receipt-overduep": [
@@ -643,9 +647,6 @@
    "fn-store-post-boundary": [
     "specs/reconfiguration.md"
    ],
-   "fn-store-sn": [
-    "specs/checkpoint.md"
-   ],
    "fn-stx-authored-source-is-octet-list": [
     "specs/substrate-transport.md"
    ],
@@ -733,18 +734,6 @@
    ],
    "fnn-transaction-name": [
     "specs/host.md"
-   ],
-   "fnn-pack-extend-chain": [
-    "specs/storage.md"
-   ],
-   "fnn-pack-recover-records": [
-    "specs/storage.md"
-   ],
-   "fnn-pack-walk": [
-    "specs/storage.md"
-   ],
-   "fnn-pack-prefix-reclaim": [
-    "specs/checkpoint.md"
    ]
   }
  }

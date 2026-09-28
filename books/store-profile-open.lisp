@@ -27,7 +27,7 @@
 ;     start, `store recover', `inspect', `checkpoint', `status' and the
 ;     offline `health').  It answers (:opened VALUES), the profile the store
 ;     runs under; (:refused :max-record-octets-above-the-poll-reply), a
-;     format-8 profile in the window; (:refused :store-format), a sealed
+;     saved profile in the window; (:refused :store-format), a sealed
 ;     profile frame of another format; or (:rejected), a frame that is no
 ;     saved profile at all (a corrupted file: the host's fault, as before).
 ;

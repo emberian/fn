@@ -66,3 +66,46 @@
   (declare (xargs :guard (natp h))
            (ignore h))
   fn-arena$a)
+
+; -----------------------------------------------------------------------------
+; COMPRESSED extents (lane compression-extents, PRF-326).  E = (FILE EOFF ELEN
+; POFF PLEN TRAILER N DICT): an LZ4 block C at [POFF, POFF+PLEN) inside the
+; entry, decoding against the dictionary octets DICT to N octets
+; (books/payload-lz-record.lisp).  The handle's payload is
+; `fn-lzr-lz-value DICT C N' of C's durable octets, read through the host's
+; realizer `fn-durable-realize-lz' (A-DURABLE-LZ).  DICT is the dictionary's
+; octets themselves (one shared list per dictionary): the value needs no
+; table.
+
+(defun fn-arn-lz-guardp (file eoff elen poff plen trailer n dict)
+  (declare (xargs :guard t))
+  (and (fn-arn-extent-guardp file eoff elen poff plen trailer)
+       (natp n)
+       (fn-cbor-octet-listp dict)))
+
+(defun fn-arn-lz-extentp (e)
+  (declare (xargs :guard t))
+  (and (true-listp e)
+       (equal (len e) 8)
+       (fn-arn-lz-guardp (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e)
+                         (nth 6 e) (nth 7 e))))
+
+(defthm fn-arn-lz-extentp-of-list
+  (equal (fn-arn-lz-extentp (list file eoff elen poff plen trailer n dict))
+         (fn-arn-lz-guardp file eoff elen poff plen trailer n dict)))
+
+(defthm fn-arn-lz-extent-not-extent
+  (implies (fn-arn-lz-extentp e) (not (fn-arn-extentp e))))
+
+(defun fn-arena$a-seal-lz-extent (file eoff elen poff plen trailer n dict fn-arena$a)
+  (declare (xargs :guard (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
+           (ignore eoff elen trailer))
+  (fn-oct-snoc fn-arena$a (fn-lzr-lz-value dict (fn-durable-octets file poff plen) n)))
+
+(defun fn-arena$a-reseat-lz-extent (h file eoff elen poff plen trailer n dict fn-arena$a)
+  (declare (xargs :guard (and (natp h) (< h (fn-arena$a-count fn-arena$a))
+                              (fn-arn-lz-guardp file eoff elen poff plen trailer n dict)))
+           (ignore eoff elen trailer))
+  (if (and (natp h) (< h (len fn-arena$a)))
+      (fn-oct-update h (fn-lzr-lz-value dict (fn-durable-octets file poff plen) n) fn-arena$a)
+    fn-arena$a))

@@ -255,6 +255,9 @@
                 (append (fn-cfg-rows-without-consumer-bind (fn-cfg-accounts v)
                                                            (fn-cfg-delta-a d))
                         (fn-cfg-delta-rows d)))
+               ((equal (fn-cfg-delta-kind d) :account-delete)
+                (fn-cfg-rows-deleting-account (fn-cfg-accounts v)
+                                              (fn-cfg-delta-a d)))
                (t (fn-cfg-accounts v))))
   :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-set-groups))))
 
@@ -311,21 +314,60 @@
   :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
                                      fn-cfg-rows-without-consumer-bind)))))
 
+;; The account deletion (public-node-2, code 27) rewrites a redeemed row in
+;; place as its tombstone: the digest a row is keyed on never changes, and
+;; the key's first row is the rewritten first row.
+(local (defthm fn-acct-rows-with-key-of-rows-deleting-account
+  (equal (fn-cfg-rows-with-key (fn-cfg-rows-deleting-account rows l) k)
+         (fn-cfg-rows-deleting-account (fn-cfg-rows-with-key rows k) l))
+  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
+                                     fn-cfg-account-deleted-row)))))
+
+(local (defthm fn-acct-ag-car-of-rows-deleting-account
+  (equal (fn-cfg-ag-car (fn-cfg-rows-deleting-account rows l))
+         (if (consp rows)
+             (if (and (equal (fn-cfg-row-n (car rows)) 1)
+                      (fn-cfg-same-login-p (fn-cfg-row-b (car rows)) l))
+                 (fn-cfg-account-deleted-row (car rows))
+               (car rows))
+           nil))
+  :hints (("Goal" :in-theory (enable fn-cfg-ag-car)))))
+
 ; -----------------------------------------------------------------------------
 ; Once only
+;
+; A code binds at most one login, ever.  A code's row is BOUND once it is
+; redeemed (mark 1) or its account deleted (mark 7, the tombstone); a bound
+; row's successor under an admitted delta is the row itself or, only for a
+; redeemed row, its tombstone: the digest and the login never change, the
+; verifier is only ever dropped, and a tombstone never changes again.
 
-; An admitted delta keeps a redeemed row the same row: invite and redeem of
-; another digest touch another key, an invite of this digest is refused as
-; reused, a redeem of it is admitted only as the identical row, and no other
-; kind writes the slot.
-(defthm fn-acct-redeemed-row-stays-by-a-delta
-  (implies (and (fn-cfg-account-redeemedp (fn-cfg-accounts v) digest)
+(defun fn-acct-boundp (rows digest)
+  (declare (xargs :guard t))
+  (let ((row (fn-cfg-account-row rows digest)))
+    (and (consp row)
+         (member-equal (fn-cfg-row-n row) '(1 7))
+         t)))
+
+(defun fn-acct-row-successorp (old new)
+  (declare (xargs :guard t))
+  (or (equal new old)
+      (and (equal (fn-cfg-row-n old) 1)
+           (equal new (fn-cfg-account-deleted-row old)))))
+
+; An admitted delta keeps a bound row or tombstones a redeemed one: invite
+; and redeem of another digest touch another key, an invite of this digest
+; is refused as reused, a redeem of it is admitted only as the identical
+; redeemed row, an account deletion tombstones exactly the redeemed rows of
+; its login, and no other kind writes the slot's account rows.
+(defthm fn-acct-bound-row-succeeds-by-a-delta
+  (implies (and (fn-acct-boundp (fn-cfg-accounts v) digest)
                 (not (fn-cfg-delta-reason v gen stamp reserved ceiling d)))
-           (equal (fn-cfg-account-row
-                   (fn-cfg-accounts (fn-cfg-apply-delta v gen stamp d)) digest)
-                  (fn-cfg-account-row (fn-cfg-accounts v) digest)))
+           (fn-acct-row-successorp
+            (fn-cfg-account-row (fn-cfg-accounts v) digest)
+            (fn-cfg-account-row
+             (fn-cfg-accounts (fn-cfg-apply-delta v gen stamp d)) digest)))
   :hints (("Goal" :in-theory (enable fn-cfg-delta-reason
-                                     fn-cfg-account-redeemedp
                                      fn-cfg-account-row
                                      fn-cfg-binding-rowp
                                      fn-cfg-access-rowp
@@ -335,48 +377,115 @@
                                      fn-cfg-ag-car)
            :cases ((equal (fn-cfg-delta-a d) digest)))))
 
-(local (defthm fn-acct-redeemed-stays-redeemed-by-a-delta
-  (implies (and (fn-cfg-account-redeemedp (fn-cfg-accounts v) digest)
-                (not (fn-cfg-delta-reason v gen stamp reserved ceiling d)))
-           (fn-cfg-account-redeemedp
-            (fn-cfg-accounts (fn-cfg-apply-delta v gen stamp d)) digest))
-  :hints (("Goal" :in-theory (e/d (fn-cfg-account-redeemedp)
-                                  (fn-cfg-account-row fn-cfg-delta-reason
-                                   fn-cfg-apply-delta
-                                   fn-acct-accounts-of-apply-delta-unfolds))
-           :use ((:instance fn-acct-redeemed-row-stays-by-a-delta))))))
+(local (defthm fn-acct-row-successorp-is-reflexive
+  (fn-acct-row-successorp x x)))
 
-(defthm fn-acct-redeemed-row-stays
-  (implies (and (fn-cfg-account-redeemedp (fn-cfg-accounts v) digest)
+(local (defthm fn-acct-successor-of-bound-is-bound
+  (implies (and (fn-acct-boundp rows digest)
+                (fn-acct-row-successorp (fn-cfg-account-row rows digest)
+                                        (fn-cfg-account-row rows2 digest)))
+           (fn-acct-boundp rows2 digest))
+  :hints (("Goal" :in-theory (enable fn-cfg-account-deleted-row)))))
+
+(local (defthm fn-acct-row-successorp-is-transitive
+  (implies (and (fn-acct-row-successorp a b) (fn-acct-row-successorp b c))
+           (fn-acct-row-successorp a c))
+  :hints (("Goal" :in-theory (enable fn-cfg-account-deleted-row)))))
+
+(local (defthm fn-acct-bound-stays-bound-by-a-delta
+  (implies (and (fn-acct-boundp (fn-cfg-accounts v) digest)
+                (not (fn-cfg-delta-reason v gen stamp reserved ceiling d)))
+           (fn-acct-boundp
+            (fn-cfg-accounts (fn-cfg-apply-delta v gen stamp d)) digest))
+  :hints (("Goal" :in-theory (disable fn-acct-boundp fn-acct-row-successorp
+                                      fn-cfg-account-row fn-cfg-delta-reason
+                                      fn-cfg-apply-delta
+                                      fn-acct-accounts-of-apply-delta-unfolds)
+           :use ((:instance fn-acct-bound-row-succeeds-by-a-delta)
+                 (:instance fn-acct-successor-of-bound-is-bound
+                            (rows (fn-cfg-accounts v))
+                            (rows2 (fn-cfg-accounts
+                                    (fn-cfg-apply-delta v gen stamp d)))))))))
+
+(local (defthm fn-acct-bound-row-succeeds-from
+  (implies (and (fn-acct-boundp (fn-cfg-accounts v) digest)
+                (fn-acct-row-successorp orig (fn-cfg-account-row (fn-cfg-accounts v) digest))
                 (fn-cfg-admissiblep v gen stamp reserved ceiling deltas))
-           (equal (fn-cfg-account-row
-                   (fn-cfg-accounts (fn-cfg-apply v gen stamp deltas)) digest)
-                  (fn-cfg-account-row (fn-cfg-accounts v) digest)))
+           (fn-acct-row-successorp
+            orig
+            (fn-cfg-account-row
+             (fn-cfg-accounts (fn-cfg-apply v gen stamp deltas)) digest)))
   :hints (("Goal" :induct (fn-cfg-apply v gen stamp deltas)
            :in-theory (e/d (fn-cfg-admissiblep fn-cfg-admissible-reason
                                                fn-cfg-apply)
-                           (fn-cfg-account-redeemedp fn-cfg-account-row
-                                                     fn-cfg-delta-reason
-                                                     fn-cfg-apply-delta
-                                                     fn-acct-accounts-of-apply-delta-unfolds)))))
+                           (fn-acct-boundp fn-cfg-account-row
+                            fn-acct-row-successorp
+                            fn-cfg-delta-reason
+                            fn-cfg-apply-delta
+                            fn-acct-accounts-of-apply-delta-unfolds)))
+          ("Subgoal *1/1" :use ((:instance fn-acct-bound-row-succeeds-by-a-delta
+                                           (d (car deltas)))
+                                (:instance fn-acct-bound-stays-bound-by-a-delta
+                                           (d (car deltas)))
+                                (:instance fn-acct-row-successorp-is-transitive
+                                           (a orig)
+                                           (b (fn-cfg-account-row (fn-cfg-accounts v) digest))
+                                           (c (fn-cfg-account-row
+                                               (fn-cfg-accounts
+                                                (fn-cfg-apply-delta v gen stamp (car deltas)))
+                                               digest))))))))
 
-;; One acceptable record keeps a redeemed row the same row.
-(local (defthm fn-acct-redeemed-row-stays-by-a-record
-  (implies (and (fn-cfg-account-redeemedp (fn-cfg-accounts (fn-cfg-value cfg))
-                                          digest)
+(defthm fn-acct-bound-row-succeeds
+  (implies (and (fn-acct-boundp (fn-cfg-accounts v) digest)
+                (fn-cfg-admissiblep v gen stamp reserved ceiling deltas))
+           (fn-acct-row-successorp
+            (fn-cfg-account-row (fn-cfg-accounts v) digest)
+            (fn-cfg-account-row
+             (fn-cfg-accounts (fn-cfg-apply v gen stamp deltas)) digest)))
+  :hints (("Goal" :in-theory (disable fn-acct-boundp fn-cfg-account-row
+                                      fn-acct-row-successorp
+                                      fn-acct-bound-row-succeeds-from
+                                      fn-cfg-admissiblep fn-cfg-apply)
+           :use ((:instance fn-acct-bound-row-succeeds-from
+                            (orig (fn-cfg-account-row (fn-cfg-accounts v)
+                                                      digest)))))))
+
+(local (defthm fn-acct-bound-stays-bound
+  (implies (and (fn-acct-boundp (fn-cfg-accounts v) digest)
+                (fn-cfg-admissiblep v gen stamp reserved ceiling deltas))
+           (fn-acct-boundp (fn-cfg-accounts (fn-cfg-apply v gen stamp deltas))
+                           digest))
+  :hints (("Goal" :induct (fn-cfg-apply v gen stamp deltas)
+           :in-theory (e/d (fn-cfg-admissiblep fn-cfg-admissible-reason
+                                               fn-cfg-apply)
+                           (fn-acct-boundp fn-cfg-account-row
+                            fn-acct-row-successorp
+                            fn-cfg-delta-reason
+                            fn-cfg-apply-delta
+                            fn-acct-accounts-of-apply-delta-unfolds))))))
+
+;; One acceptable record: a bound row succeeds and stays bound.
+(local (defthm fn-acct-bound-row-succeeds-by-a-record
+  (implies (and (fn-acct-boundp (fn-cfg-accounts (fn-cfg-value cfg)) digest)
                 (fn-cfg-record-acceptablep cfg r reserved ceiling))
-           (and (equal (fn-cfg-account-row
-                        (fn-cfg-accounts (fn-cfg-value (fn-cfg-apply-record cfg r)))
-                        digest)
-                       (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value cfg))
-                                           digest))
-                (fn-cfg-account-redeemedp
+           (and (fn-acct-row-successorp
+                 (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value cfg)) digest)
+                 (fn-cfg-account-row
+                  (fn-cfg-accounts (fn-cfg-value (fn-cfg-apply-record cfg r)))
+                  digest))
+                (fn-acct-boundp
                  (fn-cfg-accounts (fn-cfg-value (fn-cfg-apply-record cfg r)))
                  digest)))
   :hints (("Goal" :in-theory (e/d (fn-cfg-apply-record fn-cfg-record-acceptablep)
-                                  (fn-cfg-account-row fn-cfg-apply fn-cfgp
+                                  (fn-acct-boundp fn-acct-row-successorp
+                                   fn-cfg-account-row fn-cfg-apply fn-cfgp
                                    fn-cfg-recordp fn-cfg-admissiblep))
-           :use ((:instance fn-acct-redeemed-row-stays
+           :use ((:instance fn-acct-bound-row-succeeds
+                            (v (fn-cfg-value cfg))
+                            (gen (fn-cfg-record-generation r))
+                            (stamp (fn-cfg-record-stamp r))
+                            (deltas (fn-cfg-record-change r)))
+                 (:instance fn-acct-bound-stays-bound
                             (v (fn-cfg-value cfg))
                             (gen (fn-cfg-record-generation r))
                             (stamp (fn-cfg-record-stamp r))
@@ -385,25 +494,57 @@
 ; KEYSTONE (once only, across the history).  Across the configuration
 ; records the owner replays at open (`fn-config-replay-loop', the fold
 ; fn-owner-reconfigure-complete's published records are read back through),
-; a code's redeemed row is the same row after every later acceptable record:
-; the login and the verifier it bound never change and no second login is
-; ever bound to the code.
-(defthm fn-acct-redeemed-row-stays-across-replay
-  (implies (and (fn-cfg-account-redeemedp (fn-cfg-accounts (fn-cfg-value cfg))
-                                          digest)
+; a code's bound row is, after every later acceptable record, the same row
+; or -- only if it was redeemed -- its tombstone: the digest and the login it
+; bound never change, so no second login is ever bound to the code, and a
+; deleted account's code is never bound again.  (Restated by public-node-2
+; from fn-acct-redeemed-row-stays-across-replay, the row's EQUALITY, which
+; `account delete' falsifies by design.)
+(local (defthm fn-acct-bound-row-succeeds-across-replay-from
+  (implies (and (fn-acct-boundp (fn-cfg-accounts (fn-cfg-value cfg)) digest)
+                (fn-acct-row-successorp
+                 orig (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value cfg)) digest))
                 (not (equal (fn-config-replay-loop cfg reserved ceiling records)
                             :fault)))
-           (equal (fn-cfg-account-row
-                   (fn-cfg-accounts
-                    (fn-cfg-value (fn-config-replay-loop cfg reserved ceiling
-                                                         records)))
-                   digest)
-                  (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value cfg))
-                                      digest)))
+           (fn-acct-row-successorp
+            orig
+            (fn-cfg-account-row
+             (fn-cfg-accounts
+              (fn-cfg-value (fn-config-replay-loop cfg reserved ceiling records)))
+             digest)))
   :hints (("Goal" :induct (fn-config-replay-loop cfg reserved ceiling records)
            :in-theory (e/d (fn-config-replay-loop)
-                           (fn-cfg-account-redeemedp fn-cfg-account-row
-                            fn-cfg-apply-record fn-cfg-record-acceptablep)))))
+                           (fn-acct-boundp fn-acct-row-successorp
+                            fn-cfg-account-row
+                            fn-cfg-apply-record fn-cfg-record-acceptablep)))
+          ("Subgoal *1/3"
+           :use ((:instance fn-acct-bound-row-succeeds-by-a-record
+                            (r (car records)))
+                 (:instance fn-acct-row-successorp-is-transitive
+                            (a orig)
+                            (b (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value cfg)) digest))
+                            (c (fn-cfg-account-row
+                                (fn-cfg-accounts (fn-cfg-value (fn-cfg-apply-record cfg (car records))))
+                                digest))))))))
+
+(defthm fn-acct-bound-row-succeeds-across-replay
+  (implies (and (fn-acct-boundp (fn-cfg-accounts (fn-cfg-value cfg)) digest)
+                (not (equal (fn-config-replay-loop cfg reserved ceiling records)
+                            :fault)))
+           (fn-acct-row-successorp
+            (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value cfg)) digest)
+            (fn-cfg-account-row
+             (fn-cfg-accounts
+              (fn-cfg-value (fn-config-replay-loop cfg reserved ceiling records)))
+             digest)))
+  :hints (("Goal" :in-theory (disable fn-acct-boundp fn-cfg-account-row
+                                      fn-acct-row-successorp
+                                      fn-acct-bound-row-succeeds-across-replay-from
+                                      fn-config-replay-loop)
+           :use ((:instance fn-acct-bound-row-succeeds-across-replay-from
+                            (orig (fn-cfg-account-row
+                                   (fn-cfg-accounts (fn-cfg-value cfg))
+                                   digest)))))))
 
 ; KEYSTONE (a second redeem).  A redeem of a redeemed digest is refused
 ; unless it carries exactly the redeemed row: the same login and the same
@@ -700,3 +841,61 @@
                 (fn-native-admin-result-capacity plan) stamp)))
         (if d (list d) nil))
     nil))
+
+; -----------------------------------------------------------------------------
+; Account deletion (public-node-2): `account delete LOGIN', delta code 27
+;
+; books/config.lisp owns the record (fn-cfg-account-delete) and its
+; admission (fn-cfg-account-delete-reason); the verb's plan is
+; books/native-admin.lisp's and its delta is exactly this record
+; (fn-native-admin-plan-deltas-of-account-delete-unfolds).  The credential
+; half is books/nntp-auth.lisp's
+; fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential.
+
+; KEYSTONE (refuses with an obligation).  The deletion is admitted exactly
+; when the login is well formed, a redeemed row or a tombstone holds it, and
+; no row names it in a role (a signing binding, a moderator role, a consumer
+; binding): an account with an unresolved obligation is refused, whatever
+; else holds.
+(local (defthm fn-acct-account-delete-is-a-delta
+  (implies (fn-cfg-account-loginp login)
+           (fn-cfg-deltap (fn-cfg-account-delete login)))
+  :hints (("Goal" :in-theory (enable fn-cfg-deltap fn-cfg-account-delete
+                                     fn-cfg-account-loginp)))))
+
+(defthm fn-acct-delete-is-admitted-exactly-when-held-and-unobligated
+  (iff (fn-cfg-delta-reason v gen stamp reserved ceiling
+                            (fn-cfg-account-delete login))
+       (not (and (fn-cfg-account-loginp login)
+                 (fn-cfg-account-heldp (fn-cfg-accounts v) login)
+                 (not (fn-cfg-account-obligation (fn-cfg-accounts v) login)))))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-delta-reason
+                                   fn-cfg-account-delete-reason)
+                                  (fn-cfg-account-loginp
+                                   fn-cfg-account-heldp
+                                   fn-cfg-account-obligation fn-cfg-deltap))
+           :use ((:instance fn-acct-account-delete-is-a-delta))
+           :expand ((fn-cfg-account-delete login)))))
+
+; The deletion writes only the accounts slot: groups, articles' withdrawal
+; rows (the authorities slot), peers and every other slot are the value's.
+; Nothing is withdrawn.  An unfold of the arm, named for that.
+(defthm fn-acct-delete-apply-unfolds
+  (equal (fn-cfg-apply-delta v gen stamp (fn-cfg-account-delete login))
+         (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                                 (fn-cfg-quotas v) (fn-cfg-policies v)
+                                 (fn-cfg-listeners v) (fn-cfg-peers v)
+                                 (fn-cfg-limits v) (fn-cfg-authorities v)
+                                 (fn-cfg-invitations v)
+                                 (fn-cfg-rows-deleting-account
+                                  (fn-cfg-accounts v) login)
+                                 (fn-cfg-descriptions v)))
+  :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-account-delete))))
+
+; A deleted login is not redeemed again: a second code's redeem under it is
+; refused :account-login-taken, since its tombstone keeps it taken.
+(defthm fn-acct-delete-keeps-the-login-taken
+  (implies (fn-cfg-account-login-takenp rows login)
+           (fn-cfg-account-login-takenp
+            (fn-cfg-rows-deleting-account rows del) login))
+  :hints (("Goal" :in-theory (enable fn-cfg-account-deleted-row))))

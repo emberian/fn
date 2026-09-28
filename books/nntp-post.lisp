@@ -505,8 +505,9 @@
 ; its reason").  The owner renders the word it was handed only when the
 ; completion is a refusal (books/owner.lisp fn-own-outcome-rendering), so a
 ; kind here is never reached after a consumed completion.  :duplicate and
-; :conflict are fn-pb-existing-action's two answers (books/poster-bytes.lisp,
-; the decision the host calls since D25);
+; :conflict are D25's two answers (books/poster-bytes.lisp fn-pb-action-over,
+; which the host's books/store-intern.lisp fn-store-existing-action is over
+; alpha);
 ; :malformed is fn-owner-prepare's :invalid; :unaffordable is a refusal of
 ; the persisted profile (fn-store-publication-admissibility) or of the
 ; transaction capacity; :storage-failed is a Store write that failed before
@@ -519,6 +520,12 @@
   (declare (xargs :guard t))
   (and (member-equal completion
                      '(:refused :duplicate :conflict :malformed :unaffordable
+                       ;; A crosspost whose group memberships the history
+                       ;; budget cannot pay for, the article alone fitting
+                       ;; (books/store-capacity-vector.lisp
+                       ;; fn-cvec-article-refusal-word; lane membership-budget):
+                       ;; "441 posting failed; the store cannot pay for this article's groups: ..."
+                       :memberships
                        :storage-failed
                        ;; A signed POST refused at its FN-Authorship carrier
                        ;; (books/peer-authored-accept.lisp fn-pa-served-word):
@@ -535,7 +542,11 @@
                        :control-not-filed :control-malformed
                        ;; A bound login refused by the posting policy
                        ;; (books/login-binding.lisp fn-lb-gate).
-                       :login-not-bound :login-unsigned))
+                       :login-not-bound :login-unsigned
+                       ;; PRF-335: a peer's outbound feed queue has no room
+                       ;; for the article's feed obligation
+                       ;; (books/owner.lisp fn-own-intent-refusal-word).
+                       :feed-queue-full))
        t))
 
 ; The reason text of a Store refusal, one per kind: the one table.  POST's
@@ -553,6 +564,8 @@
     "the store refused the article as malformed")
    ((equal kind :unaffordable)
     "the store is full: no capacity for this article (unaffordable); the node's operator can raise it")
+   ((equal kind :memberships)
+    "the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)")
    ((equal kind :storage-failed)
     "the store could not write the article, nothing was stored")
    ((equal kind :article)
@@ -577,6 +590,8 @@
     "the login is not bound to this signing principal")
    ((equal kind :login-unsigned)
     "this login posts only articles signed by its bound principal")
+   ((equal kind :feed-queue-full)
+    "a peer's outbound feed queue is full, nothing was stored (feed-queue-full); the peer is behind, and the node's operator sees which one in health")
    (t "the article was refused")))
 
 (defun fn-post-store-refusal-line (kind)

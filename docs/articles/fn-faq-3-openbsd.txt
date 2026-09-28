@@ -1,0 +1,45 @@
+From: fn <docs@fn.fg-goose.online>
+Newsgroups: fn.docs
+Subject: Re: fn FAQ, part 3: installing a node
+Date: Sun, 27 Sep 2026 12:02:00 +0000
+Message-ID: <fn-faq-3-openbsd-20260927@fn.fg-goose.online>
+References: <fn-faq-3-20260927@fn.fg-goose.online>
+Archive-name: fn-faq/part3-openbsd
+Posting-Frequency: when fn changes
+Last-modified: 2026-09-27
+Summary: The OpenBSD 7.9 differences.
+
+OpenBSD 7.9 runs fn. Five things differ.
+
+*The disk:* FFS2, the installer's default, can lose the newest
+articles in a crash. So can a disk with a write cache. FFS1 on an
+uncached disk lost nothing. Before installing, give /var/fn its own
+FFS1 partition. This erases sd1:
+
+    fdisk -iy sd1
+    printf 'a a\n\n\n4.2BSD\nw\nq\n' | disklabel -E sd1
+    newfs -O 1 /dev/rsd1a
+    mkdir -p /var/fn
+    echo '/dev/sd1a /var/fn ffs rw,nodev,nosuid 1 2' >> /etc/fstab
+    mount /var/fn
+
+*Install:* Under /usr/local, which is mounted wxallowed:
+
+    sha256 -C SHA256SUMS fn-6.7.N-openbsd-amd64.tar.gz
+    mkdir -p /usr/local/src
+    tar -xzf fn-6.7.N-openbsd-amd64.tar.gz -C /usr/local/src
+    sh /usr/local/src/fn/install.sh
+
+*The names:* /usr/local/fn, the account _fn, the folder /var/fn,
+rcctl, and syslog for the log.
+
+    cd /var/fn
+    su -s /bin/sh _fn -c 'PATH=/usr/local/fn/bin:$PATH exec sh'
+
+*Ports:* _fn cannot bind below 1024. Use --port 11563 and a
+tls_port above 1024, or redirect with pf.
+
+*Memory:* Keep /etc/login.conf as it is. fn sizes itself within
+the datasize limit of the login class it runs under (4096M for
+_fn's daemon class, 1536M for a default login), and a store that
+needs more is refused by name with both numbers.

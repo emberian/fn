@@ -819,8 +819,9 @@
 ;; installs (fn-sn-config-history: every configuration record from
 ;; generation 1, contiguous, or the open faults `:config-sequence' in
 ;; books/config-physical-replay.lisp fn-cpr-loop); no transition removes a
-;; configuration record (reclaim and compaction write none,
-;; books/checkpoint-compaction-preservation.lisp), and the profile's
+;; configuration record (reclaim and compaction write none: they checkpoint
+;; the history and drop log segments, books/store-log-reclaim.lisp), and the
+;; profile's
 ;; `max-config-generations' refuses a new record rather than dropping an old
 ;; one, so the prefix through any statement's txid is always present.
 

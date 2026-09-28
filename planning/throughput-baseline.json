@@ -18,25 +18,29 @@
       "value": 1.634,
       "floor": 0.5,
       "release": 68.714,
-      "dev": 1.634
+      "dev": 1.634,
+      "rebaseline_buffered": 2.475
     },
     "probe_cpu_s": {
       "value": 1.63,
       "floor": 0.5,
       "release": 68.675,
-      "dev": 1.63
+      "dev": 1.63,
+      "rebaseline_buffered": 2.467
     },
     "probe_commit_ms": {
       "value": 0.536,
       "floor": 0.5,
       "release": 67.671,
-      "dev": 0.536
+      "dev": 0.536,
+      "rebaseline_buffered": 0.828
     },
     "probe_reopen_s": {
       "value": 0.892,
       "floor": 0.5,
       "release": 0.892,
-      "dev": 1.03
+      "dev": 1.03,
+      "rebaseline_buffered": 1.543
     },
     "probe_bytes_consed_per_commit": {
       "value": 1036100,
@@ -49,43 +53,61 @@
       "value": 1.545,
       "floor": 1.0,
       "release": 1.545,
-      "dev": 1.724
+      "dev": 1.724,
+      "rebaseline_buffered": 2.31
     },
     "post_p95_ms": {
       "value": 2.061,
       "floor": 2.0,
       "release": 2.061,
-      "dev": 2.385
+      "dev": 2.385,
+      "rebaseline_buffered": 3.781
     },
     "post_owner_cpu_ms": {
       "value": 1.6,
       "floor": 1.0,
       "release": 1.6,
-      "dev": 1.9
+      "dev": 1.9,
+      "rebaseline_buffered": 2.5
     },
     "article_median_ms": {
-      "value": 2.609,
+      "value": 0.41,
       "floor": 1.0,
       "release": 2.609,
-      "dev": 2.631
+      "dev": 2.631,
+      "rebaseline_buffered": 0.41
     },
     "article_p95_ms": {
-      "value": 2.725,
+      "value": 0.477,
       "floor": 2.0,
       "release": 2.725,
-      "dev": 3.069
+      "dev": 3.069,
+      "rebaseline_buffered": 0.477
     },
     "reopen_s": {
       "value": 0.145,
       "floor": 0.5,
       "release": 0.145,
-      "dev": 0.153
+      "dev": 0.153,
+      "rebaseline_buffered": 0.167
     },
     "checkpoint_publish_ms": {
       "value": 350,
       "floor": 50.0,
       "release": 350,
-      "dev": 405
+      "dev": 405,
+      "rebaseline_buffered": 516
     }
+  },
+  "timing_rebaseline": {
+    "run": "f370581bf9f3-rebaseline-buffered-20260927T204358Z.json",
+    "revision": "f370581bf9f365d210bb869f2f08e543d1ce0724",
+    "core_sha256": "65fe9d655ba706eeda59d8f84666ea298376209cef41af8f4f6327eb9a49384b",
+    "image": "hbox:/tank/fn/scratch/throughput-gate/native-img-f370581bf9f3/tree/build/fn-host-developer",
+    "client": "msgid_measure.Conn(buffered=True) (gate-regress, 1ee0953ab)",
+    "utc": "2026-09-27T20:44:03Z to 2026-09-27T21:16:18Z",
+    "quiet": false,
+    "load": "not quiet (the 30 min wait found 4 to 10 other lanes' scopes busy every minute, 20:03Z to 20:33Z and 20:44Z to 21:14Z); measured under-load: loadavg1 median 9.08 (max 9.36) on 24 CPUs, box CPU busy median 33.5% (max 45.6%)",
+    "rule": "each timing value is the smaller of its old value and this run's figure (the file's ratchet): the buffered client lowers the ARTICLE rows 6x (2.609 to 0.41 ms median); every other timing row measured higher under this load and keeps its old value. A quiet-box run of this image rewrites them again; probe_bytes_consed_per_commit is a deterministic counter and is not a timing figure (this image: 1,651,891)."
   }
 }

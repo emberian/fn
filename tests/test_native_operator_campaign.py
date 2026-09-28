@@ -7,7 +7,7 @@ from tests.campaign import native_operator_campaign as driver
 class OperatorCampaignParsingTests(unittest.TestCase):
     def test_recover_line_counts_are_read_exactly(self):
         line = (b"recovered transactions=2 articles=1 staging-orphans=0 "
-                b"anchor=none checkpoint=none\n")
+                b"anchor=none\n")
         self.assertEqual(driver.parse_recover(line),
                          {"transactions": 2, "articles": 1, "staging_orphans": 0})
 

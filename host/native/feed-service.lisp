@@ -36,6 +36,7 @@
 ;;; a syscall or an ACL2 call.
 (defparameter *fnn-feed-runtime-lock*
   (sb-thread:make-mutex :name "fn outbound feed runtimes"))
+;; guarded-by: *fnn-feed-runtime-lock*
 (defparameter *fnn-feed-runtimes* (make-hash-table :test #'eq))
 
 (defun fnn-feed-now ()
@@ -291,6 +292,10 @@ closed by this worker, preserving the one-closer rule."
          ;; A reply outcome (not a 335/238 prompt) has one ACL2-rendered
          ;; line: a peer's refusal or deferral is never silent.
          (fnn-owner-feed-log publication))
+       ;; friend-path-2: a refused, closed or unreadable connection names
+       ;; why, in ACL2's line (fn-peer-feed-failure-line).
+       (when (member word '(:connection-refused :closed :invalid))
+         (fnn-owner-feed-log publication))
        ;; The peer refused MODE STREAM: ACL2 recorded the stop and its line.
        (when (eq word :streaming-refused)
          (fnn-owner-feed-log publication))
@@ -428,6 +433,9 @@ ACL2 framer."
         (case word
           (:need-input
            (when eofp
+             (fnn-log-line (fnn-core 'fn-peer-feed-lost-line
+                                     (fnn-octets-string (fnn-feed-link-peer-octets link))
+                                     :eof))
              (multiple-value-bind (ignored host port backoff timeout security auth)
                  (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
                (declare (ignore ignored host port timeout security auth))

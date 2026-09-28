@@ -246,12 +246,13 @@
                                 (fn-cpo-install
                                  (fn-sn-update-replayed
                                   seed files advanced
-                                  (fn-stx-index-of-store (fn-stx-store advanced) nil)
+                                  (fn-stx-index-empty)
                                   identity)
                                  (fn-cnode-make advanced config) configs)
                                 (fn-cp-nth 1 consumer))
                                topic)
-                              (fn-sco-event-index c))))
+                              ; field 13 retired (lane history-columns-3)
+                              nil)))
                 (if (and (equal (fn-stxk-context-kind identity) :ok)
                          (consp consumer) (eq (car consumer) :ok)
                          (eq (fn-th-at 0 topic) :ok)
@@ -780,12 +781,13 @@
                               (fn-cpo-install
                                (fn-sn-update-replayed
                                 seed files advanced
-                                (fn-stx-index-of-store (fn-stx-store advanced) nil)
+                                (fn-stx-index-empty)
                                 identity)
                                (fn-cnode-make advanced config) configs)
                               (fn-cp-nth 1 consumer))
                              topic)
-                            (fn-sco-event-index c))))
+                            ; field 13 retired (lane history-columns-3)
+                            nil)))
               (if (and (equal (fn-stxk-context-kind identity) :ok)
                        (consp consumer) (eq (car consumer) :ok)
                        (eq (fn-th-at 0 topic) :ok)

@@ -13,41 +13,88 @@
 (defconst *fn-nhctrl-enroll-next-kind* 7)
 (defconst *fn-nhctrl-revoke-next-kind* 8)
 ; Field widths are the exact values each field carries (D27): the enrolment
-; keys (32, 32 and 1 952 octets), the v1 authored source (at most
-; `*fn-hsig-v1-max-source*'), the Ed25519 and ML-DSA signatures (64 and 3 309)
-; and the principal (32).  A value of those sizes encodes to the same octets
-; as under the earlier `:blob' specs, and the decoders still check each size.
+; keys (32, 32 and 1 952 octets), the authored source, the Ed25519 and ML-DSA
+; signatures (64 and 3 309) and the principal (32).  A value of those sizes
+; encodes to the same octets as under the earlier `:blob' specs, and the
+; decoders still check each size.
 (defconst *fn-nhctrl-enroll-spec*
   '(:nat (:blob . 32) (:blob . 32) (:blob . 1952)))
+; PKT-codex-003 (Mini/DREGG's upstream request, 2026-09-27): the author
+; request's source field was the v1 carrier's (`*fn-hsig-v1-max-source*',
+; 65 535), so a v2 source the served POST accepts (Mini's 191 283-octet grain
+; origin) was refused here.  The field is now as wide as the frame's u32
+; payload leaves beside the other four fields: a codec width, not a policy.
+; Whether the node takes the article is its profile's A, decided at
+; injection, exactly as for `operator post'.
+(defun fn-nhctrl-author-spec-at (width)
+  (declare (xargs :guard t))
+  (list :nat (cons :blob width) '(:blob . 64) '(:blob . 3309) :text))
+; The author payload's octets outside its source: the generation (8), the
+; source's u32 length (4), the two signatures with theirs (68 and 3 313) and
+; the key path's text (2 + 512).
+(defconst *fn-nhctrl-author-fixed-width*
+  (+ 8 4 (+ 4 64) (+ 4 3309) (+ 2 *fn-frame-max-text*)))
+(defconst *fn-nhctrl-max-source*
+  (- *fn-frame-max-payload* *fn-nhctrl-author-fixed-width*))
 (defconst *fn-nhctrl-author-spec*
-  (list :nat (cons :blob *fn-hsig-v1-max-source*) '(:blob . 64)
-        '(:blob . 3309) :text))
+  (fn-nhctrl-author-spec-at *fn-nhctrl-max-source*))
 (defconst *fn-nhctrl-revoke-spec* '(:nat (:blob . 32)))
 (defconst *fn-nhctrl-enroll-next-spec*
   '((:blob . 32) (:blob . 32) (:blob . 1952)))
 (defconst *fn-nhctrl-revoke-next-spec* '((:blob . 32)))
-; The hybrid payload cap is its widest spec's width, the author request at
-; the v1 source ceiling (a codec width; before D27 a fixed 65 536, which
-; refused a v1 source above about 62 000 octets).
+; The frame decoder's cap is the widest spec's width: the author request at
+; its widest source, which is the frame's own u32 payload width.
 (defconst *fn-nhctrl-max-payload*
   (max (fn-frame-specs-width *fn-nhctrl-author-spec*)
        (max (fn-frame-specs-width *fn-nhctrl-enroll-spec*)
             (fn-frame-specs-width *fn-nhctrl-revoke-spec*))))
+; The widest request other than an author request (enrolment is the widest).
+(defconst *fn-nhctrl-key-payload*
+  (max (fn-frame-specs-width *fn-nhctrl-enroll-spec*)
+       (max (fn-frame-specs-width *fn-nhctrl-revoke-spec*)
+            (max (fn-frame-specs-width *fn-nhctrl-enroll-next-spec*)
+                 (fn-frame-specs-width *fn-nhctrl-revoke-next-spec*)))))
+
+(defthm fn-nhctrl-author-spec-width
+  (implies (and (posp width) (<= width *fn-cbor-max-uint*))
+           (equal (fn-frame-specs-width (fn-nhctrl-author-spec-at width))
+                  (+ *fn-nhctrl-author-fixed-width* width)))
+  :hints (("Goal" :in-theory (enable fn-frame-specs-width fn-frame-field-width
+                                     fn-frame-wide-blob-specp))))
+
+(defthm fn-nhctrl-max-payload-is-the-frame-width
+  (equal *fn-nhctrl-max-payload* *fn-frame-max-payload*)
+  :rule-classes nil)
+
+; Every source a Store could hold fits the request: the stored carrier ends
+; with the exact source (books/hybrid-store-invariants.lisp), and no article
+; is longer than `*fn-article-max-octets*'.
+(defthm fn-nhctrl-author-request-covers-every-storable-article
+  (< *fn-article-max-octets* *fn-nhctrl-max-source*)
+  :rule-classes nil)
 
 ; The owner's read bound for one control connection when hybrid control is
-; loaded: an ordinary FNCT request under the profile's A and G, or a hybrid
-; request (host/native/control.lisp `fnn-control-start').  Before D27 the
-; hybrid bound replaced the ordinary one, which capped `operator post' at
-; 65 536 octets whenever hybrid control was built in.
+; loaded: an ordinary FNCT request under the profile's A and G, a key
+; request, or an author request whose source is at most A octets (a longer
+; source makes a carrier past A, which injection refuses by name).  Before
+; D27 the hybrid bound replaced the ordinary one, which capped `operator
+; post' at 65 536 octets whenever hybrid control was built in.
+(defun fn-nhctrl-author-frame-for (a)
+  (declare (xargs :guard t))
+  (+ *fn-frame-overhead-octets* *fn-nhctrl-author-fixed-width*
+     (min (nfix a) *fn-nhctrl-max-source*)))
+
 (defun fn-nhctrl-read-bound-for (a g)
   (declare (xargs :guard t))
   (max (fn-nctrl-read-bound-for a g)
-       (+ *fn-frame-overhead-octets* *fn-nhctrl-max-payload*)))
+       (max (+ *fn-frame-overhead-octets* *fn-nhctrl-key-payload*)
+            (fn-nhctrl-author-frame-for a))))
 
 (defthm fn-nhctrl-read-bound-covers-both
   (and (<= (fn-nctrl-read-bound-for a g) (fn-nhctrl-read-bound-for a g))
-       (<= (+ *fn-frame-overhead-octets* *fn-nhctrl-max-payload*)
-           (fn-nhctrl-read-bound-for a g)))
+       (<= (+ *fn-frame-overhead-octets* *fn-nhctrl-key-payload*)
+           (fn-nhctrl-read-bound-for a g))
+       (<= (fn-nhctrl-author-frame-for a) (fn-nhctrl-read-bound-for a g)))
   :rule-classes nil)
 
 (defun fn-native-hybrid-control-uint32 (text)
@@ -129,7 +176,7 @@
   (declare (xargs :guard t))
   (if (not (and (fn-record-uint32p keyring-generation)
                 (fn-cbor-octet-listp source)
-                (consp source) (<= (len source) *fn-hsig-v1-max-source*)
+                (consp source) (<= (len source) *fn-nhctrl-max-source*)
                 (fn-hsig-exact-octets-p ed-signature 64)
                 (fn-hsig-exact-octets-p ml-signature 3309))) :bad
     (fn-nhctrl-seal
@@ -143,11 +190,107 @@
     (if (and (true-listp v)
              (equal (len v) 5)
              (fn-record-uint32p (nth 0 v))
-             (fn-cbor-at-mostp (nth 1 v) *fn-hsig-v1-max-source*)
+             (fn-cbor-at-mostp (nth 1 v) *fn-nhctrl-max-source*)
              (consp (nth 1 v))
              (fn-hsig-exact-octets-p (nth 2 v) 64)
              (fn-hsig-exact-octets-p (nth 3 v) 3309))
         (cons :hybrid-author v) nil)))
+
+;; ---------------------------------------------------------------------------
+;; PKT-codex-003: the author request the owner's read bound admits.
+(local
+ (defthm fn-nhctrl-seal-length
+   (implies (and (fn-cbor-octetp kind)
+                 (not (equal (fn-nhctrl-seal kind specs values) :bad)))
+            (equal (len (fn-nhctrl-seal kind specs values))
+                   (+ *fn-frame-overhead-octets*
+                      (len (fn-frame-fields-octets specs values)))))
+   :hints (("Goal"
+            :do-not-induct t
+            :in-theory (e/d (fn-nhctrl-seal fn-frame-protected
+                             fn-frame-digestp fn-frame-magicp
+                             fn-frame-len-of-append)
+                            (fn-frame-fields-octets fn-frame-values-okp
+                             fn-frame-spec-listp))
+            :use ((:instance fn-frame-fields-octets-are-octets)
+                  (:instance fn-frame-header-octets
+                             (magic *fn-nctrl-magic*)
+                             (version *fn-nctrl-version*)
+                             (length (len (fn-frame-fields-octets specs values))))
+                  (:instance fn-frame-trailer-is-a-digest
+                             (octets
+                              (fn-frame-protected
+                               *fn-nctrl-magic* *fn-nctrl-version*
+                               kind (fn-frame-fields-octets specs values)))))))))
+
+(local
+ (defthm fn-nhctrl-seal-checks-its-values
+   (implies (not (equal (fn-nhctrl-seal kind specs values) :bad))
+            (fn-frame-values-okp specs values))
+   :hints (("Goal" :in-theory (e/d (fn-nhctrl-seal)
+                                   (fn-frame-values-okp fn-frame-protected
+                                    fn-frame-trailer))))))
+
+(local
+ (defthm fn-nhctrl-at-mostp-len
+   (implies (and (fn-cbor-at-mostp xs n) (natp n))
+            (<= (len xs) n))
+   :rule-classes :linear
+   :hints (("Goal" :induct (fn-cbor-at-mostp xs n)
+            :in-theory (enable fn-cbor-at-mostp)))))
+
+(local
+ (defthm fn-nhctrl-author-fields-length
+   (implies (fn-frame-values-okp *fn-nhctrl-author-spec* (list g s e m p))
+            (<= (len (fn-frame-fields-octets *fn-nhctrl-author-spec*
+                                             (list g s e m p)))
+                (+ *fn-nhctrl-author-fixed-width* (len s))))
+   :rule-classes :linear
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-frame-textp-len-bound (value p)))
+            :in-theory (e/d (fn-frame-fields-octets fn-frame-field-octets
+                             fn-frame-values-okp fn-frame-field-okp
+                             fn-frame-wide-blob-specp fn-frame-len-of-append
+                             fn-frame-u32-bytes-len fn-frame-u16-bytes-len
+                             fn-frame-u64-bytes-len fn-frame-blob-withinp)
+                            (fn-cbor-u32-bytes fn-cbor-u16-bytes
+                             fn-frame-u64-bytes fn-frame-textp))))))
+
+;  KEYSTONE (the hybrid read bound admits every author request its profile
+; admits).  Under a profile whose article bound is A, every author request
+; (`fn-native-hybrid-control-author-encode', which the client calls through
+; `fn-native-hybrid-control-host-author-encode' in host/native/hybrid-control.lisp
+; `fnn-command-hybrid-author') whose source is at most A octets is at most
+; `fn-nhctrl-read-bound-for A G' octets, the bound the owner reads a control
+; connection under (host/native/control.lisp `fnn-control-start' through
+; `fn-native-hybrid-control-host-read-bound').  So a v2 source (past 65 535
+; octets) reaches the owner whole, and the injection decision is what
+; refuses a carrier past A.
+(defthm fn-native-hybrid-control-author-request-within-read-bound
+  (let ((request (fn-native-hybrid-control-author-encode
+                  keyring-generation source ed-signature ml-signature ml-path)))
+    (implies (and (natp a)
+                  (<= (len source) a)
+                  (not (equal request :bad)))
+             (<= (len request) (fn-nhctrl-read-bound-for a g))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-native-hybrid-control-author-encode)
+                           (fn-nhctrl-seal fn-frame-fields-octets
+                            fn-frame-values-okp fn-nctrl-read-bound-for))
+           :use ((:instance fn-nhctrl-seal-checks-its-values
+                            (kind *fn-nhctrl-author-kind*)
+                            (specs *fn-nhctrl-author-spec*)
+                            (values (list keyring-generation source ed-signature
+                                          ml-signature ml-path)))
+                 (:instance fn-nhctrl-seal-length
+                            (kind *fn-nhctrl-author-kind*)
+                            (specs *fn-nhctrl-author-spec*)
+                            (values (list keyring-generation source ed-signature
+                                          ml-signature ml-path)))
+                 (:instance fn-nhctrl-author-fields-length
+                            (g keyring-generation) (s source) (e ed-signature)
+                            (m ml-signature) (p ml-path))))))
 
 (defun fn-native-hybrid-control-revoke-encode (keyring-generation principal)
   (declare (xargs :guard t))

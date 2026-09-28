@@ -528,6 +528,16 @@ def install_entry(directory: Path, selected: dict, cert: Path, port: Path,
     ``.fasl`` only when its write date is not older than the ``.cert``'s, so
     the installed one is dated no earlier than the certificate.  A pair
     without a compiled file still installs; ACL2 then processes its events.
+
+    The certificate itself is dated no earlier than its book's source.  A
+    copied pair keeps the cache's write date, which is older than the source
+    in a tree checked out after it, and ACL2's provisional certification
+    refuses exactly that at Complete ("Unable to complete the renaming ...
+    does not have a .cert file that is at least as recent as that included
+    book", `certify-book-finish-complete`): `certify_books.py --pcert` over
+    an installed closure failed until every such certificate was touched
+    (post-alloc-3, 2026-09-27).  Only write dates move; the bytes are the
+    cache's.
     """
     with entry_lock(directory, exclusive=False):
         if read_meta(directory) != selected or not entry_matches_meta(directory, selected):
@@ -540,6 +550,7 @@ def install_entry(directory: Path, selected: dict, cert: Path, port: Path,
                          not port.is_file() and not cached_port.is_file())
         if not cert_same:
             place(cached, cert)
+        date_after_source(cert)
         if cached_port.is_file():
             if not port_same:
                 place(cached_port, port)
@@ -560,6 +571,17 @@ def install_entry(directory: Path, selected: dict, cert: Path, port: Path,
             if report is not None:
                 report.fasl_missing += 1
         return not (cert_same and port_same)
+
+
+def date_after_source(cert: Path) -> None:
+    """Give CERT a write date no earlier than its book's (`X.cert` beside `X.lisp`)."""
+    source = cert.with_suffix(".lisp")
+    try:
+        wanted = source.stat().st_mtime
+        if cert.stat().st_mtime < wanted:
+            os.utime(cert, (wanted, wanted))
+    except FileNotFoundError:
+        return
 
 
 def cached_entries(cache: Path, key: str) -> list[tuple[Path, dict]]:

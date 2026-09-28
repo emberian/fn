@@ -7,6 +7,25 @@
 (in-package "ACL2")
 (include-book "../../books/owner-feed-article")
 (include-book "acceptance-payload-ref-tests")
+(include-book "must-fail-checked")
+
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-apr-feed-article-h (o msgid)
+  ; fn-apr-feed-article over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-apr-feed-article o msgid fn-hist) fn-hist))
+      ans)))
+(defun fn-ofa-feed-article-h (o msgid fn-arena)
+  ; fn-ofa-feed-article over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-ofa-feed-article o msgid fn-arena fn-hist) fn-hist))
+      ans)))
 
 (defconst *ofa-t-o* (cons *apr-t-s* nil))
 (defconst *ofa-t-msgid-1* (fn-record-string-octets "<apr-1@example.invalid>"))
@@ -23,7 +42,7 @@
   (with-local-stobj fn-arena
     (mv-let (r fn-arena)
       (let ((fn-arena (ofa-t-arena fn-arena)))
-        (mv (fn-ofa-feed-article o msgid fn-arena) fn-arena))
+        (mv (fn-ofa-feed-article-h o msgid fn-arena) fn-arena))
       r)))
 
 ; The keystone's right side, executably: fn-ofa-wire-feed-article's body (a
@@ -54,25 +73,78 @@
 (assert-event (equal (ofa-t-wire *ofa-t-o* *ofa-t-msgid-9*) nil))
 ; The defect this replaces: the payload position the host handed the port
 ; before the fix is the HANDLE, not the bytes.
-(assert-event (equal (fn-apr-feed-article *ofa-t-o* *ofa-t-msgid-1*) 1))
-(assert-event (not (equal (fn-apr-feed-article *ofa-t-o* *ofa-t-msgid-1*)
+(assert-event (equal (fn-apr-feed-article-h *ofa-t-o* *ofa-t-msgid-1*) 1))
+(assert-event (not (equal (fn-apr-feed-article-h *ofa-t-o* *ofa-t-msgid-1*)
                           (ofa-t-wire *ofa-t-o* *ofa-t-msgid-1*))))
 
-; Hypothesis removal: fn-apr-store-at-restp.  The same Store with its event
-; index emptied (acceptance-payload-ref-tests' *apr-t-unindexed*): the
-; omitted hypothesis fails and so does the conclusion (the index finds no
-; row; the acceptance field still holds the article).
-(defconst *ofa-t-unindexed* (cons *apr-t-unindexed* nil))
-(assert-event (not (fn-apr-store-at-restp (fn-own-store *ofa-t-unindexed*))))
-(assert-event (equal (ofa-t-article *ofa-t-unindexed* *ofa-t-msgid-1*) nil))
-(assert-event (equal (ofa-t-wire *ofa-t-unindexed* *ofa-t-msgid-1*) '(89 111 13 10)))
-(assert-event (not (equal (ofa-t-article *ofa-t-unindexed* *ofa-t-msgid-1*)
-                          (ofa-t-wire *ofa-t-unindexed* *ofa-t-msgid-1*))))
+; Hypothesis removal: R (lane history-columns-3; the event index is retired).
+; The same owner at rest, read through an EMPTY history stobj: R fails and so
+; does the conclusion (the stobj finds no row; the acceptance field still
+; holds the article).
+(defun ofa-t-article-nohist (o msgid)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (let ((fn-arena (ofa-t-arena fn-arena)))
+        (with-local-stobj fn-hist
+          (mv-let (a fn-hist)
+            (mv (fn-ofa-feed-article o msgid fn-arena fn-hist) fn-hist)
+            (mv a fn-arena))))
+      r)))
+(assert-event (fn-apr-store-at-restp (fn-own-store *ofa-t-o*)))
+(assert-event (consp (fn-sf-records (fn-sn-files (fn-own-store *ofa-t-o*)))))
+(assert-event (equal (ofa-t-article-nohist *ofa-t-o* *ofa-t-msgid-1*) nil))
+(assert-event (not (equal (ofa-t-article-nohist *ofa-t-o* *ofa-t-msgid-1*)
+                          (ofa-t-wire *ofa-t-o* *ofa-t-msgid-1*))))
+
+;  KEYSTONE fn-ofa-feed-article-is-the-owner-step-article (PKT-EG-2b): the
+; book owner's step reads the handle's bytes, the host's article.
+(defun ofa-t-model (o msgid)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (let ((fn-arena (ofa-t-arena fn-arena)))
+        (mv (fn-handle-bytes (fn-own-feed-article o msgid) fn-arena) fn-arena))
+      r)))
+(assert-event (fn-apr-store-at-restp (fn-own-store *ofa-t-o*)))
+(assert-event (equal (ofa-t-model *ofa-t-o* *ofa-t-msgid-1*) '(89 111 13 10)))
+(assert-event (equal (ofa-t-article *ofa-t-o* *ofa-t-msgid-1*)
+                     (ofa-t-model *ofa-t-o* *ofa-t-msgid-1*)))
+; Mutation (the defect): the model handing the HANDLE is not the host's bytes.
+(must-fail-checked (assert-event (equal (ofa-t-article *ofa-t-o* *ofa-t-msgid-1*)
+                                        (fn-own-feed-article *ofa-t-o* *ofa-t-msgid-1*))))
+; Hypothesis removal (fn-apr-store-at-restp): the same Store with its record
+; log emptied (history-columns-3 retired the event index and with it
+; acceptance-payload-ref-tests' unindexed Store).  The node is no longer the
+; replay of the records, so the Store is not at rest; R still holds (the
+; history stobj is loaded from the records the Store has, none); the host
+; finds no row, the model's acceptance field still names handle 1.
+(defconst *ofa-t-unrecorded*
+  (cons (update-nth 2 (update-nth 4 (fn-sl-of nil) (fn-sn-files *apr-t-s*))
+                    *apr-t-s*)
+        nil))
+(assert-event (not (consp (fn-sf-records (fn-sn-files (fn-own-store *ofa-t-unrecorded*))))))
+(assert-event (equal (fn-sn-node (fn-own-store *ofa-t-unrecorded*))
+                     (fn-sn-node (fn-own-store *ofa-t-o*))))
+(assert-event (not (fn-apr-store-at-restp (fn-own-store *ofa-t-unrecorded*))))
+(assert-event (equal (ofa-t-article *ofa-t-unrecorded* *ofa-t-msgid-1*) nil))
+(assert-event (equal (ofa-t-model *ofa-t-unrecorded* *ofa-t-msgid-1*) '(89 111 13 10)))
+(assert-event (not (equal (ofa-t-article *ofa-t-unrecorded* *ofa-t-msgid-1*)
+                          (ofa-t-model *ofa-t-unrecorded* *ofa-t-msgid-1*))))
+; Hypothesis removal (R, fn-hist-of-storep; batch AY: history-columns-3's
+; fn-hist argument): the owner at rest read through an EMPTY history stobj.
+; The retained hypothesis holds, R fails (the Store has records, the stobj
+; none) and so does the conclusion: no bytes against the handle's bytes.
+(assert-event (fn-apr-store-at-restp (fn-own-store *ofa-t-o*)))
+(assert-event (consp (fn-sf-records (fn-sn-files (fn-own-store *ofa-t-o*)))))
+(assert-event (equal (ofa-t-article-nohist *ofa-t-o* *ofa-t-msgid-1*) nil))
+(assert-event (not (equal (ofa-t-article-nohist *ofa-t-o* *ofa-t-msgid-1*)
+                          (ofa-t-model *ofa-t-o* *ofa-t-msgid-1*))))
 
 ; fn-ofa-feed-article-is-an-octet-list: the witness arena is an arena
 ; (fn-arena-p) and the bytes are octets; the handle is not.
 (assert-event (fn-cbor-octet-listp (ofa-t-article *ofa-t-o* *ofa-t-msgid-1*)))
-(assert-event (not (fn-cbor-octet-listp (fn-apr-feed-article *ofa-t-o* *ofa-t-msgid-1*))))
+(assert-event (not (fn-cbor-octet-listp (fn-apr-feed-article-h *ofa-t-o* *ofa-t-msgid-1*))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-ofa-publication-command-words-have-octets.

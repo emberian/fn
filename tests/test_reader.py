@@ -381,7 +381,8 @@ class ReaderSocketTests(unittest.TestCase):
             b"GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS\r\n"
             b"ARTICLE HEAD BODY STAT\r\n"
             b"OVER XOVER HDR XHDR XPAT\r\n"
-            b"IHAVE CHECK TAKETHIS\r\n.\r\n")
+            b"IHAVE CHECK TAKETHIS\r\n"
+            b"XFNCATCHUP\r\n.\r\n")
 
     def test_newnews_transcript_over_a_real_socket(self):
         """RFC 3977 section 7.4 framing, argument forms and refusals.

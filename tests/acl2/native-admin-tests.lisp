@@ -1400,3 +1400,70 @@
 (assert-event (equal (fn-native-admin-result-status
                       (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "log-batch-records" "x"))))
                      :refused))
+
+; public-node-2: `account delete LOGIN'.  The plan admits a well-formed
+; login and stages exactly the configuration's deletion of it
+; (fn-native-admin-plan-deltas-of-account-delete-unfolds: witness).
+(defconst *fn-na-account-delete*
+  (fn-native-admin-plan (fn-na-test-argv '("account" "delete" "probe"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-account-delete*) :accepted))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-account-delete*) :account-delete))
+(assert-event (equal (fn-native-admin-plan-deltas-over *fn-na-account-delete* nil)
+                     (list (fn-cfg-account-delete "probe"))))
+; Removal of the kind hypothesis: another accepted account plan stages
+; another record.
+(defconst *fn-na-account-access*
+  (fn-native-admin-plan (fn-na-test-argv '("account" "access" "probe" "--read" "*" "--post" "*"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-account-access*) :accepted))
+(assert-event (not (equal (fn-native-admin-plan-deltas-over *fn-na-account-access* nil)
+                          (list (fn-cfg-account-delete "probe")))))
+; A login outside the account grammar, and a missing or extra word, are
+; refused before anything is staged.
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("account" "delete" ""))))
+                     :refused))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("account" "delete"))))
+                     :refused))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("account" "delete" "a" "b"))))
+                     :refused))
+; Lane compression-extents-2 (PRF-341): `policy set compress-min-octets N',
+; one `:set-limit' row keyed (SLOT, "") that books/payload-lz-append.lisp
+; fn-lzr-config-min reads; 0 (off) is admitted, a non-decimal is refused.
+(defconst *fn-na-lz*
+  (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "compress-min-octets" "512"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-lz*) :accepted))
+(assert-event (equal (fn-native-admin-plan-deltas *fn-na-lz*)
+                     (list (fn-cfg-set-limit "compress-min-octets" 512))))
+(assert-event (equal (fn-native-admin-plan-deltas
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "compress-min-octets" "0"))))
+                     (list (fn-cfg-set-limit "compress-min-octets" 0))))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "compress-min-octets" "x"))))
+                     :refused))
+
+; Lane time-model-2 (PRF-311): the disk's profile fields, each one
+; `:set-limit' row read by host/owner-host.lisp fn-owner-barrier-limits
+; (books/owner-time-model.lisp fn-otm-limits): D, H and the cadence.
+(defconst *fn-na-disk-deadline*
+  (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "barrier-deadline-ms" "8000"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-disk-deadline*) :accepted))
+(assert-event (equal (fn-native-admin-plan-deltas *fn-na-disk-deadline*)
+                     (list (fn-cfg-set-limit "barrier-deadline-ms" 8000))))
+(assert-event (equal (fn-native-admin-plan-deltas
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "barrier-stall-ms" "12000"))))
+                     (list (fn-cfg-set-limit "barrier-stall-ms" 12000))))
+(assert-event (equal (fn-native-admin-plan-deltas
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "clock-event-ms" "250"))))
+                     (list (fn-cfg-set-limit "clock-event-ms" 250))))
+; Teeth: zero, a non-decimal and a misspelt slot are refused.
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "barrier-stall-ms" "0"))))
+                     :refused))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "clock-event-ms" "1s"))))
+                     :refused))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "barrier-deadline" "5000"))))
+                     :refused))

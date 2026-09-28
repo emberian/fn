@@ -4,6 +4,52 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-advance-frontier (store current-txid)
+  (declare (ignorable store current-txid))
+  (harness-stub-reached 'fnn-advance-frontier "host/native/io.lisp"))
+(defun fnn-indeterminate (control &rest args)
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-indeterminate "host/native/io.lisp"))
+(defun fnn-metadata-buffer (msgid)
+  (declare (ignorable msgid))
+  (harness-stub-reached 'fnn-metadata-buffer "host/native/io.lisp"))
+(defun fnn-nat (value)
+  (declare (ignorable value))
+  (harness-stub-reached 'fnn-nat "host/native/io.lisp"))
+(defun fnn-octets-fill (vector)
+  (declare (ignorable vector))
+  (harness-stub-reached 'fnn-octets-fill "host/native/io.lisp"))
+(defun fnn-owner-action (name &rest args)
+  (declare (ignorable name args))
+  (harness-stub-reached 'fnn-owner-action "host/native/owner.lisp"))
+(defun fnn-owner-buffer-arena-action (name &rest args)
+  (declare (ignorable name args))
+  (harness-stub-reached 'fnn-owner-buffer-arena-action "host/native/owner.lisp"))
+(defun fnn-owner-prepare-refusal-word (prepared)
+  (declare (ignorable prepared))
+  (harness-stub-reached 'fnn-owner-prepare-refusal-word "host/native/owner.lisp"))
+(defun fnn-owner-publish-prepared (service label)
+  (declare (ignorable service label))
+  (harness-stub-reached 'fnn-owner-publish-prepared "host/native/owner.lisp"))
+(defun fnn-seal-live-buffer ()
+  (harness-stub-reached 'fnn-seal-live-buffer "host/native/io.lisp"))
+(defun fnn-validate-post-boundary (verdict)
+  (declare (ignorable verdict))
+  (harness-stub-reached 'fnn-validate-post-boundary "host/native/io.lisp"))
+;;; ---- derived stubs: END ----
+
 ;; The deployed forms this boundary runs: the Store condition hierarchy from
 ;; io.lisp (the attempt handlers classify by it, including the p2-wire
 ;; fnn-store-io-refusal), then the attempt-handler macro and the attempt itself

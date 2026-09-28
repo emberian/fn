@@ -332,6 +332,72 @@ class NativeControlTests(unittest.TestCase):
             process.stdout.close()
             process.stderr.close()
 
+    def test_health_and_status_say_the_node_is_not_running_and_why(self):
+        # friend-path-2: with nothing running where an owner would listen,
+        # `health' says not-running (exit 18) and `status' says it first, each
+        # with the last run line ACL2 reads from the service log
+        # (books/native-health.lisp fn-nh-not-running-report,
+        # fn-nh-not-running-lines, fn-nh-last-run).
+        log = self.root / "log" / "fn.log"
+        log.parent.mkdir()
+        with open(self.config, "a", encoding="ascii") as config:
+            config.write('[log]\npath = "{}"\n'.format(log))
+        observed = {}
+
+        def down(label):
+            health = self.operator("health")
+            status = self.operator("status")
+            observed[label] = [health.returncode, health.stdout.decode()[:400],
+                               status.returncode, status.stdout.decode()[:300]]
+            self.assertEqual(health.returncode, 18, health.stderr.decode())
+            self.assertTrue(health.stdout.startswith(
+                b"health exit=18 state=not-running (no process holds the store and "
+                b"nothing answers on its control socket: the node is not running)\n"),
+                health.stdout)
+            self.assertEqual(status.returncode, 0, status.stderr.decode())
+            self.assertTrue(status.stdout.startswith(b"not-running ("), status.stdout)
+            # The store's own facts follow in both.
+            self.assertIn(b"exhausted ", health.stdout)
+            second = [line for line in health.stdout.split(b"\n")][1]
+            self.assertEqual(status.stdout.split(b"\n")[1], second)
+            return second
+
+        # Never run: the log holds no run line.
+        self.assertTrue(down("never").startswith(b"last-stop unrecorded"))
+        # A clean stop.
+        owner = self.start_owner()
+        owner.send_signal(signal.SIGTERM)
+        self.assertEqual(owner.wait(timeout=60), 0)
+        owner.stdout.close()
+        owner.stderr.close()
+        self.assertEqual(down("sigterm"), b"last-stop exit=00")
+        # Killed: its start is the last run line.
+        owner = self.start_owner()
+        owner.kill()
+        owner.wait(timeout=30)
+        owner.stdout.close()
+        owner.stderr.close()
+        self.assertTrue(down("sigkill").startswith(
+            b"last-stop none: the log's last run line is its start"))
+        # A run that cannot start (its port is taken) says why, in the log, in
+        # health and status, and on its own result line (the journal's last).
+        with socket.socket() as taken:
+            taken.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            taken.bind(("127.0.0.1", self.port))
+            taken.listen(1)
+            failed = self.operator("run", timeout=180)
+        self.assertNotEqual(failed.returncode, 0)
+        last_err = failed.stderr.decode("utf-8", "replace").strip().split("\n")[-1]
+        reason = down("port-taken")
+        print("NATIVE-NOT-RUNNING " + repr(observed) + " run-last-line=" + repr(last_err))
+        self.assertTrue(reason.startswith(
+            "last-stop exit=0{} reason=".format(failed.returncode).encode()), reason)
+        self.assertGreater(len(reason), len(b"last-stop exit=00 reason=") + 4)
+        self.assertRegex(last_err, r"operator run \S")
+        text = log.read_text(encoding="utf-8", errors="replace")
+        self.assertEqual(text.count("run started"), 3, text[-2000:])
+        self.assertEqual(text.count("run stopped exit="), 2, text[-2000:])
+
     def test_shared_control_path_is_not_stolen_by_another_store(self):
         owner = self.start_owner()
         second_store = self.root / "second-store"

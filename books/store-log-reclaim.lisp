@@ -3,12 +3,10 @@
 ; STO-017).
 ;
 ; On a format-9 store `store reclaim' is a checkpoint of the REWRITTEN history
-; followed by the drop: the decision (fn-lgr-decide) is the reclaiming pack's
-; (books/store-reclaim-pack.lisp fn-rclp-decide) over the same per-article
-; context -- STO-014's decision over every holder, fn-rclp-ctx, untouched --
-; without the pack's observation and link limits: every article record the
-; context releases becomes its tombstone (fn-rclp-events), and nothing else
-; changes.  The host (host/native/checkpoint.lisp fnn-command-reclaim) replays
+; followed by the drop: the decision (fn-lgr-decide) reads the per-article
+; context (books/store-reclaim-pack.lisp fn-rclp-ctx: STO-014's decision
+; over every holder): every article record the context releases becomes its
+; tombstone (fn-rclp-events), and nothing else changes.  The host (host/native/checkpoint.lisp fnn-command-reclaim) replays
 ; the rewritten history into the store node, publishes its state checkpoint
 ; with the log rotated, and drops the segments the checkpoint covers
 ; (books/store-log-segments.lisp, T8): the payload octets the released
@@ -20,6 +18,7 @@
 ; fn-rclp-a-reclaimed-event-stays-reclaimed).
 (in-package "ACL2")
 (include-book "store-reclaim-stream")
+(include-book "byte-store-frame") ; fn-bs-profile-admittedp
 
 ;   (:refused :profile)             the profile is not admitted
 ;   (:none COUNTS)                  nothing to rewrite

@@ -325,6 +325,118 @@ before the `:pull-cursor` record that commits it
 
 NNT-035: A pull and a feed survive a peer's partial and refusing behaviour: a peer that keeps listing an article it cannot produce no longer stalls the pull
 
+#### 1.2.9 Catching up from a peer
+
+A node that is new, or has been away, fetches a peer's articles as
+batches instead of one NEWNEWS listing and one ARTICLE per Message-ID. The
+row `(name "catch-up-interval" "" SECONDS)` of the peer's group, set by
+`fn operator CONFIG peer catch-up NAME SECONDS` (0 stops), makes the owner
+run a catch-up round every SECONDS against the peer's NNTP transport. The
+plan is the pull plan of the same rows with that interval
+(`fn-cu-plans`, books/peer-catchup.lisp): the transport, the credential
+policy and the preamble (STARTTLS, the verified handshake, AUTHINFO) are
+the pull's, decided by the same functions (`fn-pull-plan-verdict`), and the
+wildmat is the peer's inbound accept-groups.
+
+NNT-053: A node catches up from a peer by a batched stream of the peer's articles, each batch verified against the peer's digest chain before any record is offered, every record entering through the node's own IHAVE verdict, and a cut resuming at the last journaled batch
+
+**The verb** (a private extension, RFC 3977 section 3.3.1's X prefix;
+books/peer-catchup-serve.lisp, served by books/nntp.lisp
+`fn-nntp-command-pinned` and gated with the archive readers by
+books/nntp-auth.lisp; HELP lists it):
+
+```
+XFNCATCHUP WILDMAT FROM CHAIN QUANTUM
+291 NEXT END more|done CHAIN'        one multi-line response (3.1.1)
+R <msgid> <count>                    per record: a header line, then
+<the article's lines>                exactly count lines, dot-stuffed
+.
+```
+
+FROM, NEXT, END and a count are u64 values as sixteen hexadecimal digits;
+CHAIN is 32 octets in hexadecimal; QUANTUM is decimal. A 423 answers a
+FROM past the end, a 501 a malformed request.
+
+- **Positions** are ordinals oldest first over the connection's pinned
+  view (restricted by the login's READ rule, books/group-access.lisp); END
+  is the view's length, the peer's log position for this reader. A batch
+  examines entries from FROM on and answers NEXT, the first entry it did
+  not examine; it always examines one, so it always makes progress
+  (`fn-cu-select-makes-progress`). Positions count every entry, served or
+  not, so they do not depend on WILDMAT.
+- **What is served**: an entry is served exactly when ARTICLE <msgid> on
+  the same view would return it -- a valid Message-ID, in the view's
+  Message-ID trie (a withdrawn article is not), not reclaimed (D13),
+  CRLF-framed -- and WILDMAT's groups hold it at a number
+  (`fn-cu-select-serves-only-retrievable`). A record is a Message-ID and
+  the stored octets: no local article number is sent (the Xref field is
+  never stored, section 2.3).
+- **Work**: a batch serves records while their octets fit QUANTUM, capped
+  at 1 MiB (local policy, a work quantum and not a data cap); the first
+  record is always served, whole, so an article larger than the quantum is
+  never cut (`fn-cu-select-stays-within-the-quantum`). Finding FROM walks
+  the view (O(END) per batch): slice 1 has no ordinal index (below).
+- **The digest chain**: `c' = SHA-256(c || SHA-256(article) || msgid)` from
+  32 zero octets. The peer answers CHAIN' over the batch's records
+  continued from the requester's CHAIN; the chain over a whole catch-up is
+  the digest of the article set imported, in the peer's log order. It is a
+  transport and completeness check between two nodes, not an
+  authentication of the peer (an abstract hash proves nothing about the
+  peer's honesty).
+
+**The requester** (books/peer-catchup.lisp, driven by
+host/native/pull-service.lisp on the pull worker):
+
+- A batch is received whole (lines at most 1 MiB each, `:line-too-long`
+  otherwise), its chain recomputed over what arrived and compared with the
+  peer's claim. A mismatch ends the round `:failed` with the refusal
+  `digest-mismatch`, sends nothing to the local node and journals nothing
+  (`fn-cu-on-end-refuses-a-digest-mismatch`). While a round offers a
+  batch, the batch chains from the committed chain to the claim
+  (`fn-cu-step-keeps-offers-verified`).
+- Each record of a verified batch is offered, oldest first, by IHAVE on
+  the logical transit connection of that peer (`fn-owner-open-peer`, the
+  pull's), so the node's own prepare and verdict decide it: its Path,
+  duplicate suppression (K4), the peer's inbound groups and admission
+  profile, and a cancel's authority (a peer's cancel is an offered article,
+  not an authority, section 8). The body goes only after the local 335 to
+  that record's IHAVE (`fn-cu-step-installs-only-through-the-verdict`).
+  235 counts `imported`, 435 `duplicate`, 437 `refused`; a 436 holds the
+  round (`local-deferred`).
+- **The cursor** `(peer position chain)` is journaled in FNCU
+  (`<store>/catch-up/`, FNFD's envelope and filename codec; one
+  `:cu-cursor` record) only after every record of the batch was answered
+  235, 435 or 437; the open keeps the last complete record and truncates a
+  torn tail (`fn-cu-records-replay-is-the-last-cursor`); a round begun
+  from it asks from exactly that position and chain
+  (`fn-cu-resume-asks-from-the-journaled-cursor`). A process death
+  anywhere (FN_CATCHUP_TEST_KILL's cuts before-write, after-write,
+  after-fsync of an append) resumes at the last journaled batch: a record
+  of the interrupted batch committed before the cut is offered again and
+  answered 435, so none is skipped and none installed twice.
+- The owner log line: `catch-up peer=NAME round=done|failed position=P
+  end=E imported=I duplicate=D refused=R digest=HEX [reason=...]
+  transport=clear|tls`.
+
+**Not in slice 1.** The digest the peer claims is a function of the chain
+the requester presents; an absolute claim (the peer's own chain over its
+whole view at a position, which `store digest` could publish) needs an
+ordinal index. Positions are stable while the view only grows: a change of
+the login's READ rule or a reclaimed group reshapes the view, and a
+catch-up resumed across it may skip or repeat entries (repeats are 435;
+skips are not detected). The requester's batch buffer and the served reply
+are octet lists, as the pull's ARTICLE is (D27's concrete representation
+is open here as there).
+
+**The snapshot hook (design only; waits for arena-store).** A peer with
+columnar snapshots (arena-store) can offer a snapshot of its view at a
+position P with the chain at P; a requester would install the articles of
+the snapshot through the same verdict path (the snapshot is an offer, never
+a state to adopt), journal `(P, chain)` as its cursor, and continue with
+XFNCATCHUP from P. The FNCU cursor and the chain are the interface: a
+snapshot import is correct when its records chain to the peer's claim at P,
+exactly as a batch's.
+
 #### 1.2.1 Peer changes are not transport-only
 
 Reconfiguration §2.3 and theorem §3.7 call listener and peer changes "effects,
@@ -968,7 +1080,8 @@ K2 states the same equation for the feed side against the three host calls).
 ;; the record stays in the journal (an operator can re-feed).
 ```
 
-`235`/`239` and `435`/`438` both end the entry as `:done` because both mean
+`235`/`239` and `435`/`438` both end the entry as `:done` (as built, PRF-335:
+the entry is retired, it leaves the queue) because both mean
 the peer has the article; RFC 5537 §3.3 makes the peer's `438` its history
 answer, and that is what lets a restart resolve an unknown outcome by asking
 again (§3.3). Backoff on `431`/`436` is exponential with the peer record's
@@ -2256,7 +2369,8 @@ inbound half's rows are the sibling lane's and are not repeated here.
 | §3.1 "at most one entry in flight … up to inflight-window for streaming" | `(<= (fn-feed-inflight-count (fn-feed-queue f)) 1)` | fn does not take RFC 4644's streaming window yet. One in flight per peer is a conjunct of `fn-feedp`, which is what makes exactly-once an argument about one entry. Widening it is a later packet and would change the keystones' proofs, not their statements. |
 | §3.2 `fn-feed-observe` | the same code map | `335`/`238` send, `235`/`239`/`435`/`438`/`437`/`439` done, `431`/`436` exponential backoff with a one-hour ceiling then the retry bound, `400` and any other code loss. |
 | §3.3 FNFD, "one file per peer under `<journal>/feed/<peer>/`" | `<journal>/feed/<peer>.fnfd`, a 4-octet big-endian length before each frame | The length prefix is file layout, not a frame field: it is what lets the host hand ACL2 one whole record at a time, and a torn tail ends the record stream. |
-| §4 K5 `fn-feed-at-most-one-accepted-outcome` | `books/peer-feed-invariants.lisp`, same name | The hypothesis is `fn-feed-drivenp`, a check over the fold that each record was admissible in the state the fold had reached — never the conclusion. |
+| §4 K5 `fn-feed-at-most-one-accepted-outcome` | `books/peer-feed-invariants.lisp`, same name, from `fn-feed-accepted-outcomes-bounded-by-enqueues` | The hypothesis is `fn-feed-drivenp`, a check over the fold that each record was admissible in the state the fold had reached — never the conclusion. Since PRF-335 the entry the peer answered finally is RETIRED (it leaves the queue) rather than kept `:done`, so the feed no longer refuses a second enqueue of a delivered Message-ID by itself: the bound is the number of times the Message-ID was owed (enqueue/commit records), and at most one holds with the owed-once hypothesis. The owner owes a Message-ID once per durable acceptance. |
+| §3.2 `:done` | no delivered state (PRF-335) | A final answer (`235`/`239`/`435`/`438`/`437`/`439`) removes the entry (`fn-feed-queue-retire`); the outcome record keeps the answer. The queue holds only undelivered obligations: `fn-feed-queue-length-is-undelivered` (length = enqueues - final answers over any driven journal) and `fn-feed-final-outcome-retires-for-good`. Kept, `:done` entries counted against max-queue and after 1,024 fed articles every local post was refused (the openbsd-rehearsal record of 2026-09-27, stop 1). No FNFD format change: an existing journal heals on replay. A full queue refuses a POST by name (`feed-queue-full`) and a transit with `436`, and health holds `unavailable-peer` (`saturated=N`). |
 | §4 K5 `fn-feed-done-is-never-reoffered` | `fn-feed-done-is-never-selected` + `fn-feed-tick-step-offers-the-selection` + `fn-feed-tick-step-is-silent-without-a-selection` | Stated over `fn-feed-tick-step`, the function the host calls, rather than over `fn-ideal-run`, which does not yet carry the feed. `fn-feed-done-is-never-selected` gained the hypothesis `(fn-feed-selection f obs)` in lane `w6/peering-feed-4`: without it the statement is FALSE at `msgid` = `NIL`, and the third theorem covers the states it excludes. |
 | §4 K5 `fn-feed-replay-is-the-live-feed-modulo-inflight` | `fn-feed-replay-is-the-fold`, `fn-feed-replay-preserves-feedp`, `fn-feed-replay-preserves-peer` and the ground witness of `tests/acl2/peer-feed-tests.lisp` | **Open.** The general equation needs a second machine (a live run that emits its own journal) that no lane has built. The three replay theorems are proved (`w6/peering-feed-3` and `w6/peering-feed-4`), so what is missing is the live side, not the fold. |
 | §4 K5 `fn-feed-restart-resolves-by-offer` | `fn-feed-restart-emits-no-transfer` + `fn-feed-restart-then-tick-offers` | Stated over `fn-feed-send` (the only producer of a TAKETHIS or an article block) and `fn-feed-tick-step`, not over `fn-ideal-restart`. |

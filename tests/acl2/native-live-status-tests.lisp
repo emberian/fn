@@ -545,7 +545,8 @@ open-cost replay-records=")
 ; tuple) and fn-nls-articles-left-is-at-most-the-transactions-left
 ; (keystone-audit 2026-09-27: neither had a witness).  The headroom is the
 ; reachable store's (fn-sbud-headroom-at, the tuple the host prints: one
-; article used of 128, 2 record octets of the history bound) under the
+; article used of 128, 642 record octets of the history bound: its 2
+; payload octets and its two memberships at 320, lane membership-budget) under the
 ; development profile, and the same store under that profile with one field
 ; spent.  A lowered profile is not admitted (fn-sbud-budget answers 0 for
 ; it), so the spent tuples are written in the host's shape: fnn-out-headroom
@@ -554,7 +555,7 @@ open-cost replay-records=")
   (declare (xargs :verify-guards nil))
   (fn-sbud-headroom profile *nlst-s*))
 (defconst *nlst-hr* (nlst-headroom *nlst-profile*))
-(assert-event (equal *nlst-hr* '(1 128 2 25165824 2 10)))
+(assert-event (equal *nlst-hr* '(1 128 642 25165824 2 10)))
 ; Positive witness, first disjunct: the store's tuple after 127 more
 ; articles of 2 octets (128 used of 128); the second disjunct is false (the
 ; history bound is far from spent); the line says 0.
@@ -595,3 +596,23 @@ open-cost replay-records=")
 (defconst *nlst-hr-hshort* (quote (1 128 2 12 2 10)))
 (assert-event (and (equal (fn-nls-articles-left *nlst-hr-hshort*) 5)
                    (< (fn-nls-articles-left *nlst-hr-hshort*) (- 128 1))))
+
+;; PRF-336: the report's string and the obligation lines run as loops.  The
+;; twin equals the reference on octets and on a non-octet list; the lines of
+;; two obligations are the two lines in ledger order (the evaluation runs the
+;; loop, the right side the logical definition).
+(assert-event (equal (fn-nls-octets-string '(111 98 108 10)) "obl
+"))
+(assert-event (equal (fn-nls-octets-string '(111 98 108 10))
+                     (fn-record-octets-string '(111 98 108 10))))
+(assert-event (equal (fn-nls-octets-string '(300)) ""))
+(defconst *nlst-obligations*
+  (list (fn-retain-make-obligation "w1" "<one@x>" :forward nil 3)
+        (fn-retain-make-obligation "a1" "<two@x>" :archive nil 2)))
+(assert-event (equal (fn-nls-obligation-lines *nlst-obligations*)
+                     (append (fn-nls-obligation-line (car *nlst-obligations*))
+                             (fn-nls-obligation-line (cadr *nlst-obligations*)))))
+(assert-event (equal (fn-record-octets-string
+                      (fn-nls-obligation-line (car *nlst-obligations*)))
+                     "obligation id=w1 kind=forward charge=3 subject=<one@x>
+"))

@@ -59,9 +59,9 @@
 ;; The store bridge's record dispatchers (host/store-host.lisp,
 ;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
 (include-book "books/records-concrete")
-;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
-;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
-;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
+;; D13 (STO-014): the tombstone-aware same-article test over the buffer
+;; (fn-rclb-same-articlep), which fn-pidx-existing-action, the served POST's
+;; duplicate verdict, calls.
 (include-book "books/store-reclaim-buffer")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
@@ -76,6 +76,9 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        ; The LZ4 block encoder of the compressed append (lib/libfn-lz4;
+        ; untrusted: ACL2's proved decoder checks every candidate).
+        (load "host/native/lz4.lisp")
         ; A developer image by definition (the header): its `store' selectors
         ; are developer-image selectors, refused by a production profile.
         (fnn-select-image-profile "developer")
@@ -83,6 +86,7 @@
         (defun fn-native-entry (st)
           (declare (ignore st))
           (fnn-crypto-startup)
+          (fnn-lz4-reset)
           (fnn-main)
           (values nil :exited *the-live-state*))
         (setq *print-startup-banner* nil))

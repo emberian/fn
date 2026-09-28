@@ -157,18 +157,22 @@
           (equal a b)
         (equal payload held-payload)))))
 
-; The live Store's decision for an already held Message-ID, keyed on the
-; poster's source.  The host calls it at host/owner-host.lisp
-; fn-owner-existing-action and fn-owner-prepare and at
-; host/store-node-host.lisp's two prepare/query sites.  Its guard, like
-; fn-sn-existing-action's, is independent of fn-sn-statep, which walks the
-; store.  MSGID is the Store's string key; the injection inverse reads the
-; Message-ID line's octets, which are its codes.
-(defun fn-pb-existing-action (msgid payload groups s)
+; D25's decision for an already held Message-ID, keyed on the poster's
+; source, over an OCTET-MODEL article list (each payload the article's
+; bytes).  The host's entry is books/store-intern.lisp
+; fn-store-existing-action (host/owner-host.lisp fn-owner-existing-action and
+; fn-owner-prepare, host/store-node-host.lisp's prepare/query sites; the
+; buffer entry fn-pidx-existing-action), which reads the held bytes through
+; the arena; books/store-existing-alpha.lisp
+; fn-store-existing-action-is-pb-over-alpha equates it with this decision
+; over ALPHA of the Store's articles.  MSGID is the Store's string key; the
+; injection inverse reads the Message-ID line's octets, which are its codes.
+; The store-shaped twin fn-pb-existing-action compared the offered octets
+; with a handle and was retired (PKT-860, lane entry-guards-2).
+(fn-payload-kind fn-pb-action-over :wire "the verdict over an octet-model article list (alpha)")
+(defun fn-pb-action-over (msgid payload groups articles)
   (declare (xargs :guard t))
-  (let ((article (fn-find-article
-                  msgid (fn-state-articles
-                         (fn-node-acceptance (fn-sn-node s))))))
+  (let ((article (fn-find-article msgid articles)))
     (if article
         (if (and (fn-pb-same-articlep (fn-record-string-octets msgid) payload
                                       (fn-article-payload article))

@@ -15,12 +15,24 @@
 #   2. acquires and validates the image's artifact set (tools/proof_artifacts.py;
 #      the dtn profile too when a DTN image is asked);
 #   3. builds the requested images under swarm-build
-#      (--images from developer,production,dtn,dtn-developer; default
+#      (--images from developer,production,dtn,dtn-developer,reference,
+#      developer-stripped,prof; default
 #      developer).  dtn and dtn-developer are host/native/build-dtn.lisp's
 #      images (build/fn-host-dtn, build/fn-host-dtn-developer), built exactly
-#      as tools/runbooks/hbox-image-build.sh builds them;
+#      as tools/runbooks/hbox-image-build.sh builds them.  `prof` is the
+#      PROFILING developer image (tools/profile/build_native_profile.sh,
+#      build/fn-host-prof; sb-sprof when FN_PROF_OUT is set), a measurement
+#      tool and never a release or test subject.  It needs this run's own
+#      full certify and acquire (steps 1-2): copying another native tree and
+#      building only the image failed because that tree's certified set
+#      lacked books the profiling entry's world loads (served-columns,
+#      native-n1: outcome-class, replay, node).  Build it here, in the run
+#      that certifies, not by hand in a copied tree;
 #   4. runs each MODULE under systemd-run --user --scope -p MemoryMax (24G by
-#      default, --mem), against hbox's system libssl (OpenSSL 3.3.1; no
+#      default, --mem; a served-read measurement through
+#      tools/fundamentals/sr_measure.py or served_ab.sh needs 40G: at 24G the
+#      owner refuses its connections, connections-exceed-memory), against
+#      hbox's system libssl (OpenSSL 3.3.1; no
 #      FN_OPENSSL_PREFIX: HST-016), with every --env NAME=VALUE exported.
 #      OpenSSL 3.5.8 stays a TEST TOOL only (ML-DSA-65 keys and signatures
 #      made independently of the node): $FN_TEST_OPENSSL_BIN, a wrapper
@@ -37,8 +49,16 @@
 #      module runs through tools/test_budget.py --one, and its line in
 #      run.log is OK (N ran, K skipped), FAILED, or SKIPPED (N of N) with
 #      every skip's reason; a SKIPPED module makes the status 4;
+#      When the tree holds the production image (or the one --env
+#      FN_NATIVE_HOST names), tools/native_env.py identity exports its four
+#      identity variables (launcher, core and runtime SHA-256, and the source:
+#      the commit, or HEAD+dirty for `.`) for every module;
 #   5. writes every log to logs/ and SHA256SUMS (images and logs), then
 #      `status` holding the first failing step's exit code, 0 if none.
+#      run.log carries the box's load (`uptime`) at the start and the end
+#      and the load average before each module, so a timing taken on a
+#      loaded box can be judged (feed-queue: 20.9 s against 2.7 s for one
+#      case at load 19-37).
 #
 # It prints the scratch path, then waits for `status` (tools/wait_for.sh) and
 # prints the summary; start it with run_in_background.  --detach returns after
@@ -60,7 +80,22 @@
 # Replaces the hand-rolled rsync + image.sh + OpenSSL exports 145 lanes wrote
 # (friction review 2026-09-26 section 5).  Never touches /tank/fn/node.
 set -eu
-HERE=$(cd "$(dirname "$0")/.." && pwd)
+# Copy-then-run (lane tooling-leftovers, 2026-09-27): sh reads a script as it
+# runs it, and a run waits here for an hour or more, so a merge or an edit
+# of this file in the worktree mid-run changed the commands the running
+# instance read next.  The first thing it does is copy itself and
+# tools/wait_for.sh into a private directory and exec the copy; nothing
+# after this block reads the worktree's copy of either.
+if [ -z "${FN_HBOX_NATIVE_COPY:-}" ]; then
+    FN_HBOX_NATIVE_HERE=$(cd "$(dirname "$0")/.." && pwd)
+    FN_HBOX_NATIVE_COPY=$(mktemp -d "${TMPDIR:-/tmp}/hbox_native.XXXXXX") || exit 3
+    cp "$FN_HBOX_NATIVE_HERE/tools/hbox_native.sh" "$FN_HBOX_NATIVE_HERE/tools/wait_for.sh" \
+        "$FN_HBOX_NATIVE_COPY/" || exit 3
+    export FN_HBOX_NATIVE_COPY FN_HBOX_NATIVE_HERE
+    exec sh "$FN_HBOX_NATIVE_COPY/hbox_native.sh" "$@"
+fi
+trap 'rm -rf "$FN_HBOX_NATIVE_COPY"' EXIT
+HERE=$FN_HBOX_NATIVE_HERE
 HOST=${FN_HBOX:-hbox}
 NAME=$(basename "$HERE")
 LABEL=
@@ -74,7 +109,7 @@ DRY=0
 DEADLINE=5400
 ENVS=
 POSITIONAL=
-usage() { sed -n '2,52p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,78p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 while [ $# -gt 0 ]; do
     case $1 in
         --name) NAME=$2; shift 2 ;;
@@ -129,10 +164,10 @@ DTN_PRODUCTION=0
 DTN_DEVELOPER=0
 for image in $(echo "$IMAGES" | tr ',' ' '); do
     case $image in
-        developer|production|reference|developer-stripped) ;;
+        developer|production|reference|developer-stripped|prof) ;;
         dtn) DTN=1; DTN_PRODUCTION=1 ;;
         dtn-developer) DTN=1; DTN_DEVELOPER=1 ;;
-        *) echo "hbox_native: --images takes developer,production,dtn,dtn-developer,reference,developer-stripped" >&2; exit 2 ;;
+        *) echo "hbox_native: --images takes developer,production,dtn,dtn-developer,reference,developer-stripped,prof" >&2; exit 2 ;;
     esac
 done
 if [ $DTN_DEVELOPER -eq 1 ] && [ $DTN_PRODUCTION -eq 0 ]; then
@@ -143,10 +178,14 @@ ENVARGS=
 for assignment in $ENVS; do ENVARGS="$ENVARGS --env $assignment"; done
 PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS "$@") || exit 2
 if [ "$REV" = . ]; then
-    SOURCE="worktree $(git -C "$HERE" rev-parse --short=12 HEAD)$(git -C "$HERE" diff --quiet HEAD -- 2>/dev/null || echo '+dirty')"
+    # The image's declared source: HEAD, marked +dirty for uncommitted edits
+    # (before 2026-09-27 FN_NATIVE_IMAGE_SOURCE_SHA was the literal ".").
+    SOURCE_ID=$(git -C "$HERE" rev-parse HEAD)$(git -C "$HERE" diff --quiet HEAD -- 2>/dev/null || echo '+dirty')
+    SOURCE="worktree $SOURCE_ID"
     [ -n "$LABEL" ] || LABEL=wt-$(date -u +%Y%m%dT%H%M%SZ)
 else
     FULL=$(git -C "$HERE" rev-parse --verify "$REV^{commit}") || { echo "hbox_native: no commit $REV" >&2; exit 2; }
+    SOURCE_ID=$FULL
     SOURCE="commit $FULL"
     [ -n "$LABEL" ] || LABEL=$(echo "$FULL" | cut -c1-12)
 fi
@@ -192,7 +231,7 @@ failed=0
 passed=0 skipped=0 broke=0
 tstep() {
     name=\$1; shift
-    echo "== \$name \$(date -u +%H:%M:%SZ)"
+    echo "== \$name \$(date -u +%H:%M:%SZ) load \$(cut -d' ' -f1-3 /proc/loadavg)"
     "\$@" > \$L/\$name.log 2>&1
     rc=\$?
     verdict=\$(python3 tools/test_budget.py --verdict \$L/\$name.log)
@@ -208,12 +247,14 @@ need() {
     [ -x "\$3" ] || { echo "hbox_native: \$1 reads \$2: \$3 is not in the tree (build it with --images)"; finish 2; }
 }
 finish() {
+    echo "== load at end: \$(uptime)"
     (cd \$S && find tree/build -maxdepth 1 -name 'fn-host*' -type f -exec sha256sum {} + ; sha256sum logs/*.log) > \$S/SHA256SUMS 2>/dev/null
     echo \$1 > \$S/status
     echo "== done status \$1; \$S/SHA256SUMS"
     exit \$1
 }
 echo "== source $SOURCE"
+echo "== load at start: \$(uptime)"
 BOX
     if [ $BUILD -eq 1 ]; then
         cat <<BOX
@@ -244,6 +285,14 @@ BOX
         for image in $(echo "$IMAGES" | tr ',' ' '); do
             # The (profile, session script, image) triple per image, as
             # tools/runbooks/hbox-image-build.sh's four build lines.
+            if [ "$image" = prof ]; then
+                # The profiling entry is loaded before build.lisp's
+                # save-exec; the script owns the (developer, full) triple.
+                cat <<BOX
+step image-prof env FN_ACL2=${IMAGE_ACL2:-\$ACL2} swarm-build sh tools/profile/build_native_profile.sh build/fn-host-prof
+BOX
+                continue
+            fi
             case $image in
                 production) profile=production build=host/native/build.lisp out=build/fn-host world=stripped ;;
                 developer) profile=developer build=host/native/build.lisp out=build/fn-host-developer world=full ;;
@@ -257,19 +306,20 @@ step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} FN_NATIVE_PROFILE=$profile F
 BOX
         done
     fi
-    # The production image's identity (tests/test_native_peering and the
-    # protected gates check the running process against it): exported when
-    # the tree holds that image, so a module needs no --env for it; an
-    # --env below still wins.
-    cat <<'BOX'
-if [ -x build/fn-host ] && [ -f build/fn-host.core ]; then
-    export FN_NATIVE_LAUNCHER_SHA256=$(sha256sum build/fn-host | cut -c1-64)
-    export FN_NATIVE_CORE_SHA256=$(sha256sum build/fn-host.core | cut -c1-64)
-    fnrt=$(sed -n 's/^exec "\([^"]*\)" .*/\1/p' build/fn-host)
-    [ -n "$fnrt" ] && export FN_NATIVE_RUNTIME_SHA256=$(sha256sum "$fnrt" | cut -c1-64)
+    # The production image's identity (tests/test_native_peering and
+    # test_native_admin check the running process against it), computed by
+    # tools/native_env.py identity from the image FN_NATIVE_HOST names by
+    # --env, else build/fn-host, when the tree holds it; an --env below
+    # still wins.
+    identity_image=build/fn-host
+    for assignment in $ENVS; do
+        case $assignment in FN_NATIVE_HOST=*) identity_image=${assignment#FN_NATIVE_HOST=} ;; esac
+    done
+    cat <<BOX
+if [ -x "$identity_image" ]; then
+    eval "\$(python3 tools/native_env.py identity --image "$identity_image" --source $SOURCE_ID --export)"
 fi
 BOX
-    echo "export FN_NATIVE_IMAGE_SOURCE_SHA=$REV"
     for assignment in $ENVS; do
         echo "export $assignment"
     done
@@ -313,7 +363,7 @@ if [ $DETACH -eq 1 ]; then
     exit 0
 fi
 set +e
-"$HERE/tools/wait_for.sh" --host "$HOST" --deadline "$DEADLINE" --interval 30 --file "$S/status" >/dev/null
+sh "$FN_HBOX_NATIVE_COPY/wait_for.sh" --host "$HOST" --deadline "$DEADLINE" --interval 30 --file "$S/status" >/dev/null
 waited=$?
 set -e
 ssh -n "$HOST" "cat $S/run.log; echo '== SHA256SUMS'; cat $S/SHA256SUMS 2>/dev/null"

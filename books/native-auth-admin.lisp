@@ -667,21 +667,23 @@
            (phase (fn-native-auth-admin-recovery-start t final-presentp)))))))
 
 ;; When a durable credential change reaches service (PKT-102, PKT-221).  An
-;; owner reads the credential file's passwords once, at start
-;; (host/native/auth.lisp fnn-native-auth-startup-hook), so a password change
-;; is served only after a (re)start.  A login BINDING (`principal bind' /
-;; `unbind') is different since PKT-221: the owner publishes the file's
-;; bindings into its configuration (books/login-binding-live.lisp), at start
-;; and whenever the verb asks it to, so a binding change is served at once.
+;; owner builds its credential table from the file at start
+;; (host/native/auth.lisp fnn-native-auth-startup-hook) and publishes the
+;; file's login bindings into its configuration (books/login-binding-live.lisp).
+;; Whenever `principal set-password', `bind' or `unbind' asks it to (control
+;; request 14), a running owner rebuilds the table from the file with the same
+;; ACL2 load (fnn-native-auth-reload-config) and republishes the bindings, so
+;; the change is served to the next connection at once (lane friend-path-2;
+;; before it a password change waited for a restart).
 ;;
 ;; OBSERVATION is what the host saw of the configured store's writer lock
 ;; AFTER the file change was durable (host/native/io.lisp
 ;; fnn-store-owner-observation): :held (another process holds it: an owner
 ;; runs), :free, :absent (no store), or anything else when the probe failed.
-;; LIVE is the owner's answer to the binding reload the host sent after a
-;; bind or unbind (host/native/auth-admin.lisp): :accepted (the owner
-;; published the file's bindings), :uncertain, or anything else (refused, not
-;; asked).  Only a lock seen free or absent says the change takes effect at
+;; LIVE is the owner's answer to the reload the host sent after a
+;; set-password, bind or unbind (host/native/auth-admin.lisp): :accepted (the
+;; owner installed the file's table and published its bindings), :uncertain,
+;; or anything else (refused, not asked).  Only a lock seen free or absent says the change takes effect at
 ;; the next start with nothing to restart; only the owner's :accepted says
 ;; `applied'; an uncertain reload stays uncertain; an unknown observation is
 ;; answered as a running owner that still serves the old file.

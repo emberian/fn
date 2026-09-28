@@ -2,8 +2,9 @@
 ; section 5.1: allocation non-reuse over the durable history).
 ;
 ; The kernel (books/store-log-kernel.lisp) carries records as opaque octets.
-; This book reads each record's txid through the record codec
-; (fn-record-decode-exact-impl, books/records.lisp: the host's decoder) and
+; This book reads each record's txid through the record codec's seam
+; (fn-record-decode-exact, books/records-seam.lisp: the host's decoder is its
+; attachment) and
 ; adds the allocation rule to the kernel:
 ;
 ;   fn-lgt-prepare     admits a record only when its txid is the kernel's
@@ -28,15 +29,23 @@
 
 (include-book "store-log-recover")
 (include-book "records")
+(include-book "records-seam")
 
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
 ; The codec's txid.
 
+; Through the record codec's seam (books/records-seam.lisp), as the replay's
+; decode reads the same records (books/store-events.lisp
+; fn-store-event-decode-exact): the open decodes each record once and takes
+; both from that one decode (books/store-log-buffer.lisp fn-lgb-decode-next,
+; lane snapshot-open-3).  The image attaches the implementation
+; (books/records-attach.lisp); a test book that evaluates a txid includes
+; books/codec-attach.lisp.
 (defun fn-lgt-txid (record)
   (declare (xargs :guard t))
-  (let ((r (fn-record-decode-exact-impl record)))
+  (let ((r (fn-record-decode-exact record)))
     (if (fn-record-parse-okp r)
         (ec-call (fn-record-txid (fn-record-parse-value r)))
       nil)))

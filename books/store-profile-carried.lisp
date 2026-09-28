@@ -146,6 +146,18 @@
         :admissible
       :unaffordable)))
 
+(defun fn-pvc-statement-verdict-at (v profile used bytes-used group-count debt)
+  (declare (xargs :guard t))
+  (if (and (fn-sbud-admitp (fn-pvc-budget v profile :accepted-statement) used)
+           (fn-pvc-history-admissiblep v profile bytes-used
+                                       (fn-cvec-statement-figure group-count))
+           (fn-pvc-roomp v profile (+ 1 (nfix used))
+                         (+ (nfix bytes-used)
+                            (fn-cvec-statement-figure group-count))
+                         debt))
+      :admissible
+    :unaffordable))
+
 (defun fn-pvc-article-budget (v profile used bytes-used payload-length
                                 group-count debt)
   (declare (xargs :guard t))
@@ -233,6 +245,17 @@
                                   (fn-sbud-verdict-at fn-cvec-roomp
                                    fn-cvec-debt-step)))))
 
+(defthm fn-pvc-statement-verdict-at-is-cvec-statement-verdict-at
+  (implies (equal v (fn-bs-profile-admittedp profile))
+    (equal (fn-pvc-statement-verdict-at v profile used bytes-used group-count
+                                        debt)
+           (fn-cvec-statement-verdict-at profile used bytes-used group-count
+                                         debt)))
+  :hints (("Goal" :in-theory (e/d (fn-cvec-statement-verdict-at)
+                                  (fn-sbud-admitp fn-sbud-budget
+                                   fn-bs-history-admissiblep fn-cvec-roomp
+                                   fn-cvec-statement-figure)))))
+
 (defthm fn-pvc-article-budget-is-cvec-article-budget
   (implies (equal v (fn-bs-profile-admittedp profile))
     (equal (fn-pvc-article-budget v profile
@@ -257,7 +280,7 @@
                                      fn-bs-profile-max-groups-per-article))))
 
 (in-theory (disable fn-pvc-verdict-at fn-pvc-article-budget
-                    fn-pvc-post-boundary))
+                    fn-pvc-statement-verdict-at fn-pvc-post-boundary))
 
 ; -----------------------------------------------------------------------------
 ; The host-called functions
@@ -273,6 +296,14 @@
   (declare (xargs :guard t))
   (fn-pvc-verdict-at (fn-pvc-admittedp carry profile) profile
                      kind used bytes-used debt))
+
+(defun fn-pvc-statement-verdict-carried (carry profile used bytes-used
+                                                group-count debt)
+  "The publication verdict for one accepted-statement composite in
+GROUP-COUNT groups under the carried verdict."
+  (declare (xargs :guard t))
+  (fn-pvc-statement-verdict-at (fn-pvc-admittedp carry profile) profile
+                               used bytes-used group-count debt))
 
 (defun fn-pvc-post-boundary-carried (carry profile msgid payload-length
                                            group-count charge)
@@ -300,6 +331,17 @@
                                           debt)
                   (fn-cvec-verdict-at profile kind used bytes-used debt))))
 
+; KEYSTONE (the identity preflight's composite verdict; lane
+; bp-retention-leftovers).  Host line: host/owner-host.lisp
+; `fn-owner-identity-publication-verdict', asked by host/native/owner.lisp
+; `fnn-owner-identity-commit' for an accepted-statement composite.
+(defthm fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at
+  (implies (fn-pvc-carryp carry)
+           (equal (fn-pvc-statement-verdict-carried carry profile used
+                                                    bytes-used group-count debt)
+                  (fn-cvec-statement-verdict-at profile used bytes-used
+                                                group-count debt))))
+
 ; KEYSTONE (the POST admission boundary).
 (defthm fn-pvc-post-boundary-carried-is-sbud-post-boundary
   (implies (fn-pvc-carryp carry)
@@ -310,4 +352,5 @@
                                          group-count charge))))
 
 (in-theory (disable fn-pvc-article-budget-carried fn-pvc-verdict-carried
+                    fn-pvc-statement-verdict-carried
                     fn-pvc-post-boundary-carried))

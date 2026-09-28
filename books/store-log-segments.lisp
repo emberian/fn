@@ -19,17 +19,18 @@
 ; validates under another predecessor is refused `log-chain-broken', never read
 ; as a torn tail), and the rotation's next index (fn-lgs-next-segment).  The
 ; host (host/native/io.lisp fnn-recover-log, fnn-log-rotate, fnn-log-drop)
-; lists journal/, reads each segment through the per-segment kernel
-; (fn-lg-open-kernel = fn-lgt-recover: fn-lg-open-kernel-is-the-recovered-
-; kernel), and carries the genesis from one segment's kernel (fn-lgk-last) to
-; the next.
+; lists journal/, streams each segment (books/store-log-stream.lisp: the
+; stream's records and last trailer are the recovered kernel's,
+; fn-lgw-run-is-the-open), and carries the genesis from one segment's last
+; trailer to the next.
 ;
-; T8 (fn-lg-segment-drop-preserves-the-open): with the covered segments' chain
-; being the checkpoint's prefix and its last trailer the F row's genesis, the
-; history the open replays from the checkpoint over the remaining segments is
-; the full chain over all of them (the chain splits at any segment boundary,
-; fn-lgs-chain-records-of-append), and the replay of that split is the full
-; replay (fn-sn-recover-from-checkpoint-equals-full-recover).
+; T8 (books/store-log-stream.lisp fn-lgw-segment-drop-preserves-the-open):
+; with the covered segments' chain being the checkpoint's prefix and its last
+; trailer the F row's genesis, the history the open replays from the
+; checkpoint over the remaining segments is the full chain over all of them
+; (the chain splits at any segment boundary, fn-lgs-chain-records-of-append),
+; and the replay of that split is the full replay
+; (fn-sn-recover-from-checkpoint-equals-full-recover).
 (in-package "ACL2")
 (include-book "store-log-programs")
 
@@ -186,70 +187,8 @@
     (and (fn-lg-entry-okp slice (fn-lgs-claimed-prev slice max) max)
          (not (equal (fn-lgs-claimed-prev slice max) last)))))
 
-; The host's string form (the segment as fn-lg-decode reads it; host/native/
-; io.lisp fnn-log-open-kernel and fnn-log-scan-segments).  D27: no octet list
-; of the segment is built unless the octet at the scan's stop is not zero --
-; a zero there starts no frame, so the model's answer is NIL
-; (fn-lgs-chain-broken-string-p-is-the-model) -- which on a segment the
-; rotation and the recovery left is never the case but for a splice or a torn
-; tail's first damaged unit.
-(local (defthm fn-lgs-len-codes (equal (len (fn-lgd-codes x)) (len x))))
-(local (defthm fn-lgs-nth-codes
-  (implies (< (nfix i) (len x))
-           (equal (nth i (fn-lgd-codes x)) (char-code (nth i x))))))
-(local (defthm fn-lgs-car-nthcdr (equal (car (nthcdr n x)) (nth n x))))
-(local (defthm fn-lgs-slice-of-zero
-  (implies (equal (car x) 0) (not (fn-lg-slice x)))
-  :hints (("Goal" :in-theory (enable fn-lg-slice fn-lg-declared-len fn-bs-take)))))
-(local (defthm fn-lgs-nthcdr-past-end
-  (implies (and (natp n) (<= (len x) n)) (not (consp (nthcdr n x))))))
-(local (defthm fn-lgs-slice-of-atom
-  (implies (not (consp x)) (not (fn-lg-slice x)))
-  :hints (("Goal" :in-theory (enable fn-lg-slice fn-lg-declared-len)))))
-(local (defthm fn-lgs-open-kernel-frontier
-  (equal (fn-lgk-frontier (fn-lg-open-kernel s prev unit max floor))
-         (nfix (cdr (fn-lg-scan (fn-lgd-octets s) prev unit max))))
-  :hints (("Goal" :in-theory (e/d (fn-lgt-recover fn-lgk-recover fn-lgk-make fn-lgk-frontier)
-                                  (fn-lg-open-kernel fn-lg-scan fn-lg-scan-last fn-lgd-octets))))))
-
-(local
- (defthm fn-lgs-car-nthcdr-codes-of-null
-   (implies (equal (nth n x) (code-char 0))
-            (equal (car (nthcdr n (fn-lgd-codes x))) 0))
-   :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nth nthcdr)))))
-
-; The check at a stop the host already has: STOP is the frontier of the
-; kernel the host decoded from S (fn-lg-open-kernel), so no second decode runs
-; (host/native/io.lisp fnn-log-open-kernel, fnn-log-scan-segments).
-(defun fn-lgs-chain-broken-at (s stop prev unit max)
-  (declare (xargs :guard (and (stringp s) (natp stop)) :verify-guards nil))
-  (and (< stop (length s))
-       (not (equal (char s stop) (code-char 0)))
-       (fn-lgs-chain-broken-p (fn-lgd-octets s) prev unit max)))
-
-(defthm fn-lgs-chain-broken-at-is-the-model
-  (implies (and (stringp s)
-                (equal stop (fn-lgk-frontier (fn-lg-open-kernel s prev unit max floor))))
-           (equal (fn-lgs-chain-broken-at s stop prev unit max)
-                  (fn-lgs-chain-broken-p (fn-lgd-octets s) prev unit max)))
-  :hints (("Goal" :in-theory (e/d (fn-lgd-octets)
-                                  (fn-lg-open-kernel fn-lg-scan fn-lg-scan-last fn-lg-entry-okp
-                                   fn-lgs-claimed-prev fn-lg-slice nth nthcdr)))))
-
-(defun fn-lgs-chain-broken-string-p (s prev unit max)
-  (declare (xargs :guard (stringp s) :verify-guards nil))
-  (fn-lgs-chain-broken-at s (fn-lgk-frontier (fn-lg-open-kernel s prev unit max 1))
-                          prev unit max))
-
-(defthm fn-lgs-chain-broken-string-p-is-the-model
-  (implies (stringp s)
-           (equal (fn-lgs-chain-broken-string-p s prev unit max)
-                  (fn-lgs-chain-broken-p (fn-lgd-octets s) prev unit max)))
-  :hints (("Goal" :in-theory (union-theories '(fn-lgs-chain-broken-string-p)
-                                             (theory 'minimal-theory))
-                  :use ((:instance fn-lgs-chain-broken-at-is-the-model
-                                   (stop (fn-lgk-frontier (fn-lg-open-kernel s prev unit max 1)))
-                                   (floor 1))))))
+; The host decides a scan's stop by the stream (books/store-log-stream.lisp
+; fn-lgw-broken, which is fn-lgs-chain-broken-p by fn-lgw-run-is-the-open).
 
 ; -----------------------------------------------------------------------------
 ; The chain over several segments.
@@ -422,76 +361,9 @@
                   (fn-lgs-rotate ks)))
   :hints (("Goal" :in-theory (enable fn-lgk-recover))))
 
-;; -----------------------------------------------------------------------------
-; T8: the drop preserves the open.
-;
-; The host's open (host/native/io.lisp fnn-log-scan-segments) reads each
-; segment as a string and calls fn-lg-open-kernel on it with the genesis the
-; previous segment's kernel ended at (fn-lgk-last); the records it hands on
-; are each kernel's fn-lgk-committed, in order.  That fold:
-(defun fn-lgs-open-chain-last (texts genesis unit max)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp texts)
-      (fn-lgs-open-chain-last (cdr texts)
-                              (fn-lgk-last (fn-lg-open-kernel (car texts) genesis unit max 1))
-                              unit max)
-    genesis))
-
-(defun fn-lgs-open-chain-records (texts genesis unit max)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp texts)
-      (let ((ks (fn-lg-open-kernel (car texts) genesis unit max 1)))
-        (append (fn-lgk-committed ks)
-                (fn-lgs-open-chain-records (cdr texts) (fn-lgk-last ks) unit max)))
-    nil))
-
-(defthm fn-lgs-open-chain-records-of-append
-  (equal (fn-lgs-open-chain-records (append covered remaining) genesis unit max)
-         (append (fn-lgs-open-chain-records covered genesis unit max)
-                 (fn-lgs-open-chain-records remaining
-                                            (fn-lgs-open-chain-last covered genesis unit max)
-                                            unit max)))
-  :hints (("Goal" :induct (fn-lgs-open-chain-last covered genesis unit max)
-                  :in-theory (union-theories '(fn-lgs-open-chain-records fn-lgs-open-chain-last
-                                               fn-lgs-append-assoc car-cons cdr-cons
-                                               binary-append)
-                                             (theory 'minimal-theory)))))
-
-; KEYSTONE T8.  COVERED are the segments below the F row's first suffix
-; segment, REMAINING that segment and the ones after it (their durable
-; contents as the host reads them).  Hypotheses: the checkpoint's capture is
-; of the covered segments' records (the pipeline captures at the rotation;
-; fn-sct-load-of-publish-is-the-capture gives back what it captured) and the
-; F row's genesis is the covered chain's last trailer (the rotation takes it
-; from the closed segment's kernel, fn-lgs-rotate).  Then the history the
-; open hands to the replay once the covered segments are unlinked -- the
-; checkpoint's records, then the host's fold over the remaining segments from
-; the named genesis -- is the host's fold over every segment.  The replay of
-; that split is the full replay by fn-sn-recover-from-checkpoint-equals-full-
-; recover (the prefix and the suffix decode record by record into the events
-; that theorem splits).
-(defthm fn-lg-segment-drop-preserves-the-open
-  (implies (and (equal prefix (fn-lgs-open-chain-records covered genesis0 unit max))
-                (equal genesis (fn-lgs-open-chain-last covered genesis0 unit max)))
-           (equal (append prefix (fn-lgs-open-chain-records remaining genesis unit max))
-                  (fn-lgs-open-chain-records (append covered remaining) genesis0 unit max)))
-  :hints (("Goal" :in-theory (disable fn-lgs-open-chain-records fn-lgs-open-chain-last))))
-
-; The fold is the model's chain over the segments' octets (the kernel is the
-; recovered kernel: fn-lg-open-kernel-is-the-recovered-kernel).
-(defun fn-lgs-octets-of (texts)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp texts)
-      (cons (fn-lgd-octets (car texts)) (fn-lgs-octets-of (cdr texts)))
-    nil))
-
-(defthm fn-lgs-open-chain-is-the-chain
-  (and (equal (fn-lgs-open-chain-records texts genesis unit max)
-              (fn-lgs-chain-records (fn-lgs-octets-of texts) genesis unit max))
-       (equal (fn-lgs-open-chain-last texts genesis unit max)
-              (fn-lgs-chain-last (fn-lgs-octets-of texts) genesis unit max)))
-  :hints (("Goal" :induct (fn-lgs-open-chain-last texts genesis unit max)
-                  :in-theory (e/d (fn-lgt-recover fn-lgk-recover fn-lgk-make
-                                   fn-lgk-committed fn-lgk-last)
-                                  (fn-lg-open-kernel fn-lg-scan fn-lg-scan-last
-                                   fn-lgd-octets)))))
+; -----------------------------------------------------------------------------
+; T8, the drop preserves the open, is stated over the host's streamed open in
+; books/store-log-stream.lisp (fn-lgw-segment-drop-preserves-the-open, over
+; fn-lgw-open-chain-records, which is fn-lgs-chain-records by
+; fn-lgw-open-chain-is-the-chain); it rests on fn-lgs-chain-records-of-append
+; above.

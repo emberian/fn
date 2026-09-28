@@ -3,7 +3,7 @@
 On format 9 there are no packs (design 2026-09-27 storage-log section 6,
 section 9 row 5): `operator CONFIG store compact' publishes a state
 checkpoint with the log ROTATED and DROPS the segments it covers
-(books/store-log-segments.lisp, T8 fn-lg-segment-drop-preserves-the-open).
+(books/store-log-stream.lisp, T8 fn-lgw-segment-drop-preserves-the-open).
 What P5 required of compacting a store bigger than one unit of work stays:
 a store of CUT_N probe articles (default 4500) and, gated, the scale store
 of N (default 20000) compact; the committed history (the `store export'
@@ -39,6 +39,7 @@ import unittest
 # The module, not its TestCase: a TestCase imported by name is collected and
 # run again as this module's own (the checkpoint suite ran twice here).
 from tests import test_native_checkpoint as checkpoint
+from tools import native_env
 
 IMAGE = checkpoint.IMAGE
 
@@ -89,7 +90,12 @@ class NativePackChainTests(unittest.TestCase):
     def scale_store(self, name, n):
         store = self.base / name
         config, port = self.owner_config(store, name)
-        init = self.native("operator", config, "init", *PROFILE_FLAGS, "fn.letters", "fn.test")
+        # Lane membership-budget: the T = 2^20 profile's full store reserves
+        # about 37 GB, past this module's 24 GB unit; the store is made for
+        # hbox (FN_INIT_BUDGET_MB names that target, tools/native_env.py) and
+        # run directly.
+        init = self.native("operator", config, "init", *PROFILE_FLAGS, "fn.letters", "fn.test",
+                           env=native_env.harness_store_env(self.env))
         self.assertIn("accepted operator init", init.stderr)
         self.native("store", store, "probe", str(n), "article")
         return store, config, port

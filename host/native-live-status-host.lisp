@@ -102,7 +102,8 @@
               (if stored cached (fn-nls-cache-put kind buffer cached)))))))
 
 (defun fn-native-live-status-host-requestp (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (equal (car (fn-cev-any-request-decode octets)) :live-status))
 
 (defun fn-native-live-status-host-request-encode (kind offset)
@@ -145,6 +146,34 @@
     (if (equal (car step) :fenced)
         (list :fenced (fn-nh-fenced-report (cadr step)))
       step)))
+
+;; friend-path-2: the node that is not running (books/native-health.lisp).
+;; (:not-running) from the step above: the host opens the Store read-only and
+;; prints this report, with the last run line of the service log.
+(defun fn-native-health-host-not-running (profile min last state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-nh-not-running-report profile (f-get-global 'fn-store-sn state)
+                            (f-get-global 'fn-store-cfg state) min last))
+
+(defun fn-native-health-host-not-running-lines (last)
+  (declare (xargs :mode :program))
+  (fn-nh-not-running-lines last))
+
+(defun fn-native-health-host-log-tail-octets ()
+  (declare (xargs :mode :program))
+  (fn-nh-log-tail-octets))
+
+(defun fn-native-health-host-last-run (tail)
+  (declare (xargs :mode :program))
+  (fn-nh-last-run tail))
+
+(defun fn-native-health-host-run-started-line ()
+  (declare (xargs :mode :program))
+  (fn-nh-run-started-line))
+
+(defun fn-native-health-host-run-stopped-line (code reason)
+  (declare (xargs :mode :program))
+  (fn-nh-run-stopped-line code reason))
 
 (defun fn-native-health-host-exit (octets)
   (declare (xargs :mode :program))

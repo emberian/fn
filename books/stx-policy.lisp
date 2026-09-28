@@ -108,6 +108,7 @@
       (fn-stx-accept-batch (cons (car batch) store) (cdr batch))
     store))
 
+(fn-payload-kind fn-stx-batch-delta :wire "the batch model over octet articles")
 (defun fn-stx-batch-delta (batch keyring)
   (declare (xargs :guard (fn-prin-keyringp keyring)))
   (if (consp batch)

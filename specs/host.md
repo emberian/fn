@@ -72,6 +72,17 @@ library's loader, no RPATH outside, every DT_NEEDED carried or the C
 library; every shared-object name in the saved core carried, the C library,
 or the system TLS library HST-016 names).
 
+HST-029: A release's `clients/` (packaging/install-clients.sh: the friends'
+web reader and the other client programs, Python 3.9+) is held apart from the
+node's path. `tools/runpath_check.py --tree` walks the node without
+`clients/`, holds `clients/` to its own rule (Python source in `clients/lib/`
+only, no object code or bytecode, launchers in `clients/bin/` that run only
+`python3` and file-name tools, service templates that start
+`PREFIX/clients/bin/fn-reader`), and fails when any script, launcher or
+service of the node's names `clients/`: nothing the node runs can start a
+client. HST-018's claim is the node's; the clients' requirement (Python) is
+stated in `clients/README.txt`.
+
 HST-021: The Linux release runs on glibc 2.36 (Debian 12) and later. No
 ELF object it bundles (the SBCL runtime, libsodium, libfn-mldsa65) needs a
 `GLIBC_x.y` symbol version above `GLIBC_FLOOR` in `tools/runpath_check.py`,
@@ -151,6 +162,13 @@ HST-004: I/O, clocks, cryptographic primitives, and authentication are explicit
 trust-boundary entries. The production integration must not contaminate book
 certification with arbitrary raw-mode changes or hide trusted code inside a
 claimed proved function. Certify the pure core in a clean environment.
+
+The native SHA-256 (lane digest-native) is such an entry, visible by name:
+`host/native/digest.lisp` replaces, in the saved images only and after a
+start-up check against the ACL2 definitions, the raw bodies of the three
+SHA-256 realisers the digest seams attach to (A-CRYPTO-NATIVE,
+specs/failures.md). The books, their certificates and every theorem are
+unchanged; the ACL2 definitions stay the reference and the fallback.
 
 ## Durability barriers by platform
 
@@ -299,13 +317,13 @@ identifier, which made the logical peer lookup report an absent endpoint. It
 checks representation transport only; configured lookup, reconnection and
 two-node exchange still require the saved-image gate.
 
-The native transaction namespace observer bounds physical enumeration before
-allocation, then passes names to `fn-store-txn-observation`, which uses
-`fn-bs-txn-observation-pairs` and the byte-store filename codec. The returned
-sequence is compared to the decoded durable record before replay. Raw Lisp
-does not parse decimal transaction filenames or independently decide gaps.
-Configuration-history namespace recovery still has an assigned consolidation
-task; the transaction result does not cover that neighboring namespace.
+The per-file layout's transaction namespace observer: a format-9 store has
+no transactions/ directory, and the native open reads none; the record
+log's segments are named and ordered by ACL2 (`fn-lgs-open-plan`,
+books/store-log-segments.lisp). The one caller of the namespace decision
+left is the Python store (tools/run_store.py through tools/frame_bridge.py,
+`fn-store-txn-observation-octets` over `fn-store-txn-observation-selected`),
+which still reads the per-file layout.
 
 `build/fn-host` is one saved SBCL image: ACL2 8.7, the certified books the
 hosts drive, the `:program` wrappers in `host/*-host.lisp`, and the raw-Lisp
@@ -576,10 +594,72 @@ names the episode entered and left. The completion is the recovery
 barrier is pending and a reader waits, only `:inspect` and `:commit` quanta
 run before it, at most one START-NEXT that took members, and at most one
 more `:inspect` than `:commit`; the device's latency is not a quantity of
-the bound. Not yet: the stall deadline and the in-flight members' uncertain
-answer, 440 at the POST command, IHAVE's 436 and mutating control's
-try-later during `slow`, the inline barrier and configuration publication
-as requests (the design's slices 2 and 3).
+the bound.
+
+Slice 2 (lane time-model-2; PRF-311, PRF-323). The limits are three
+profile fields, the live configuration's `barrier-deadline-ms` (D),
+`barrier-stall-ms` (H, read as at least D) and `clock-event-ms` (the
+committer's cadence) rows, each set by `policy set SLOT N` (ACL2's
+books/native-admin.lisp: positive milliseconds; defaults 5,000, 30,000 and
+1,000) and carried by the barrier's issue; a batch in flight keeps the
+limits it was issued with. While the disk sheds (`slow` or `stalled`): a
+served read runs with posting not permitted, so a POST command is answered
+RFC 3977 section 6.3.1's 440 with the reason before any article is sent
+(`fn-otm-read-span-while-shedding`); an article whose POST was answered 340
+before is answered 441 with the reason as in slice 1 (both lines are ACL2's,
+`fn-otm-disk-effects`, in place of the served machine's generic texts, only
+when the connection's posting bit was on before the read); a peer's read is
+a reader-class quantum under the disk-slow posture, so IHAVE is answered 436
+"retry later; the disk is slow" (RFC 3977 section 6.3.2) and CHECK 431 (RFC
+4644 section 2.4), at once and whatever the node holds
+(`fn-peer-shed-offer-is-disk-slow`, PKT-858); an operator post, a live
+configuration change or a moderation request on the control socket is
+answered BUSY at once, before it waits for the gate. Past H the disk is
+`stalled`: once per barrier every poster of the batch in flight and of the
+batch prepared behind it is told ACL2's uncertain reply and closed -- never
+accepted, never refused (`fn-otm-stall-tells-no-member-its-outcome`): the
+barrier is pending, not failed, and its bytes may still become durable --
+and the POSTs queued behind them are refused try-later, nothing stored.
+When the device returns the batches complete: an article whose poster was
+told uncertain IS stored. That is the documented ambiguity, and it is RFC
+3977's: section 6.3.1 has the client that did not get a clear answer check
+(STAT) before it reposts, which is what the uncertain reply tells it; a
+member told uncertain is never answered again. F4-W
+(`fn-otm-f4w-stall-within-h`): the committer's clock events, each within
+its wait plus the timer's lateness L, enter `stalled` at most H + L after
+the barrier's issue (its wait never reaches past H), so every POST is
+answered accepted, refused, uncertain or try-later within H + L + one
+quantum of its article's arrival. `health` and `status` print `disk
+stalled: barrier N ms pending ... members=uncertain`; the service log names
+the stall and the recovery after it. Not yet: a transfer during `slow` (an
+IHAVE article after a 335 given before the disk went slow, a TAKETHIS) waits
+for the barrier as in slice 1, the inline barrier and
+configuration publication as requests (slice 3), `health`'s exit in
+`stalled` (PKT-853 (b)).
+
+HST-028: Every decision that stores nothing is reproducible from the
+decision journal (PRF-322, books/owner-time-journal.lisp). Each event the
+scheduler's disk-and-clock value takes -- a barrier's issue and completion,
+a clock event of the committer, of a status render or of a served read
+(whose monotonic and wall readings are the owner's clock for that read:
+N3 of lane proto-determinism; the wall reading's validity is ACL2's,
+`fn-otm-wall-reading`) -- and each note (the stall's release: members told,
+queued POSTs refused) is one entry `SEQ OP READING A B C WORD`, rendered by
+ACL2 and offered to the service-log writer thread, which appends it to
+`STORE/decisions/decisions.fnj`: never written on the owner and never waited
+on, so a journal on the disk that is stalled costs nothing but queue space,
+bounded by ACL2's sink; an entry the sink drops is counted and is a gap in
+SEQ. Keystone `fn-otm-journal-determines-the-decisions`: the journal of
+any run of the host's calls reads back whole and replays from the run's
+start (a start entry, SEQ 0, per run) to agreement at the run's disk and
+clock, and every decision the host asks of the value reads only those.
+The operator's replay is `fn store ROOT journal`: ACL2 reads the file back
+and replays it (`fn-otm-journal-report`, `fn-otm-journal-exit`: exit 0 when
+it agrees, 1 at a gap, divergence or malformed entry).
+What a process death with entries unflushed loses is exactly those entries:
+the replay of decisions that stored nothing. No durable state depends on an
+entry (a disk event keeps the pipeline; a refusal stores nothing), and the
+record log alone determines the durable state.
 
 ### The owner submission path
 
@@ -787,6 +867,48 @@ and a codec that accepts each journal record. A recognizer checks only the
 fields the host reads. The capture result carries the checkpoint
 pipeline's ten fields in its order; the served step's result is the owner
 scheduler's render plan (not this section's).
+
+### The host entry guard
+
+HST-027: The host hands an ACL2 entry only the kind of value its guard names; a payload handle where octets are meant, an octet vector where a list is meant, or the wrong argument count is refused by name before the entry runs
+
+Typed results (HST-019) check what comes back across the boundary; this
+checks what goes in. The image runs with `guard-checking-on` = `t`, but a
+`:program` wrapper, and a total (`:guard t`) function beneath it, accepts
+any value: a natural is a good argument to `consp` and `len`. Since the
+records flip the retained article's payload is an arena HANDLE
+(books/payload-kinds.lisp `fn-payload-handle-p`, disjoint from
+`fn-cbor-octet-listp` octets by PRF-319's keystones), and on 2026-09-27 six
+defects handed a handle, or the wrong argument count, to code that meant
+octets; each surfaced as a silent refusal downstream (441 on signed POSTs,
+ARTICLE 503, BP sends refused, a feed's empty command, moderation's
+envelope-malformed, stored-octets 0).
+
+`fnn-call` (host/native/io.lisp), the dispatcher every `fnn-core*` wrapper
+applies, runs `fnn-entry-guard` first. It reads the entry's formals,
+stobjs-in and guard from the image's world once per name (strip-world keeps
+them) and evaluates, on the actual arguments, the arity and exactly the
+conjuncts `(R v)` of that guard with `R` one of `*fn-entry-guard-kinds*`
+(each guard-t and at most linear in the argument it reads, which the entry
+consumes anyway) and `v` a non-stobj formal. A failure is
+`fnn-entry-guard-fault`, a store fault (exit 4) whose message is
+`host-entry-guard: ENTRY argument N (FORMAL) must be KIND (RECOGNIZER); the
+host passed DESCRIPTION`, the description bounded (a natural's value, a
+list's or vector's length, never contents). Any other conjunct, such as a
+whole-state invariant, stays ACL2's and is never evaluated here. The kinds
+are named in the entries' own guards: every host wrapper's byte-carrying
+formal (`tools/harness_check.py` entry-guards, gating), and every
+definition in books/ that reads a retained payload declares whether it
+works in handles or in the octet model (`fn-payload-kind`,
+`tools/payload_kind_check.py`, gating). The check has no waivers (lane
+entry-guards-2): each consumer it found reads the arena at the handle
+(control status and HDR :fn-control, reclaim's counts, the book owner's
+feed reply), or is the octet model a proved function over the arena equals
+(`fn-rcl-verdict`, `fn-rcl-summary`: `fn-rcl-store-counts-is-the-model-over-
+alpha`), or no longer reads a payload (`fn-rcl-reclaimable`, the standing
+verdict; the keyring-less opens build the empty statement index,
+`fn-stx-index-of-store-without-a-keyring`), or was retired (the five pre-flip
+duplicate-check twins).
 
 ### Differential evidence and measurements
 
