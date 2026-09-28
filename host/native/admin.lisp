@@ -409,8 +409,3 @@ turning a refusal into a physical mutation."
                           generation name verification)
                  +fnn-exit-ok+)))
         (when store (fnn-store-close store)))))
-
-(defun fnn-command-admin (root arguments)
-  "Unregistered internal test helper.  Production reaches fnn-admin-execute
-only through the ACL2 native-operator action plan."
-  (fnn-admin-execute root (fnn-admin-plan arguments)))
