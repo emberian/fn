@@ -327,8 +327,8 @@ def recipe_synth_lz(ctx: Context, n: int, threshold: int = 64) -> None:
     plain.work.mkdir(parents=True, exist_ok=True)
     plain.log = ctx.log
     # The registered plain fixture when it is present (its bytes are
-    # recipe_synth's; rebuilding the seed needs an init budget for capacity
-    # 4,000,000 that a swarm-build scope refuses on hbox), else the recipe.
+    # recipe_synth's; rebuilding it costs the seed's init and the synthesis
+    # again), else the recipe.
     registered = ROOT / "syn100k-2k" / "store"
     if n == 100000 and (registered / "journal").is_dir():
         plain.dest.mkdir(parents=True)
