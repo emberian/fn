@@ -326,3 +326,11 @@
 
 (in-theory (disable fn-sccb-append-list fn-sccb-cons-ops fn-sccb-renc
                     fn-sccb-slice-acc))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-sccb-treep)
+                    (:rewrite fn-sccb-cons-ops-is-append-repeat)))

@@ -330,3 +330,10 @@
              fn-frame-len-of-append fn-frame-u16-bytes-len
              fn-frame-u32-bytes-len fn-frame-u64-bytes-are-octets
              fn-frame-u64-bytes-len))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-frame-len-8-conses)))

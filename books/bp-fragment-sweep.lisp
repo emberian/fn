@@ -641,3 +641,10 @@
                                         0 :gap))
            :in-theory (disable fn-bpfw-spec-ok-shape fn-bpfw-spec
                                fn-bpfw-uncovered-cell-is-gap))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-bpfw-sweep-acc-is-sweep)))

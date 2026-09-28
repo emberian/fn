@@ -638,3 +638,10 @@
            :in-theory (e/d (fn-article-parse fn-article-parse-under)
                            (fn-article-parse-lines fn-cbor-at-mostp
                             fn-article-fields-octets)))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-article-octets-are-proper-list)))

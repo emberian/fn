@@ -475,3 +475,10 @@
 (in-theory (disable fn-hf-split-index fn-hf-crlf-count-onto fn-hf-crlf-count fn-hf-body-lines-of
                     fn-held-facts-of fn-held-context-of fn-held-wire
                     fn-held-wire-of fn-cat-intern-list fn-cat-intern))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:linear fn-hf-split-index-bound)))

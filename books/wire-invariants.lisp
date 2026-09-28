@@ -945,3 +945,11 @@
     fn-wire-suffixp-implies-length-bound fn-wire-octet-list-is-true-list))
 
 (in-theory (disable fn-wire-invariants-vocabulary fn-wire-drive))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-wire-next-event-needs-input)
+                    (:rewrite fn-wire-next-loop-event-needs-input)))

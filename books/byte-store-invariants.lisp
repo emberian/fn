@@ -837,3 +837,11 @@
     fn-bs-entry-after-of-tear-write fn-bs-member-of-append
     fn-bs-crash-select-entry-is-an-outcome))
 (in-theory (disable fn-bs-invariants-vocabulary fn-bs-entry-after))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-bs-inode-tablep-keys-are-inos)
+                    (:rewrite fn-bs-op-listp-implies-true-listp)))

@@ -105,3 +105,11 @@
 (defun fn-ipp-account-hash (secret login)
   (declare (xargs :guard t))
   (fn-pa-account-value secret (fn-ipp-octets login)))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-ipp-split-at)
+                    (:rewrite fn-ipp-addr-spec-has-no-quote-or-line-break)))

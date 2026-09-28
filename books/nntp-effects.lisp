@@ -1551,3 +1551,13 @@
 ; `fn-nntp-retrieval-initial-fits' are unconditional.  What is lost is the
 ; statement that the clamp never fires in range; the boundary values 0, 1 and
 ; 2147483647 are still pinned by `assert-event' in tests/acl2/nntp-tests.lisp.
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-nntp-clean-line-is-response-text)
+                    (:rewrite fn-nntp-decimal-token-is-response-text)
+                    (:rewrite fn-nntp-description-text-is-response-text)
+                    (:rewrite fn-nntp-printable-token-is-response-text)))

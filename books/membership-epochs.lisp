@@ -647,3 +647,12 @@
     fn-me-messagesp-implies-true-listp))
 
 (in-theory (disable fn-me-internals))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-me-messagep)
+                    (:definition fn-me-messagesp)
+                    (:rewrite fn-me-messagesp-implies-true-listp)))

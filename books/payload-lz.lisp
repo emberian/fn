@@ -1027,3 +1027,10 @@
            (equal (fn-lz-seal-form dict x (fn-lz-literal-block x))
                   (list :lz (len x) (fn-lz-literal-block x))))
   :hints (("Goal" :in-theory (disable fn-lz-decode fn-lz-literal-block))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-lz-run)))

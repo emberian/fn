@@ -1164,3 +1164,11 @@
 
 (in-theory (disable fn-oct-slice-list fn-oct-prefix-equalp fn-oct-suffix-equalp
                     fn-oct-line-end))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:rewrite fn-oct-bufp-cell-is-octet . 1)
+                    (:rewrite fn-oct-bufp-true-listp)))

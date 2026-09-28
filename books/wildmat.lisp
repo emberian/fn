@@ -818,3 +818,14 @@
     fn-wildmat-guard-pattern-row-length))
 
 (in-theory (disable fn-wildmat-guard-backchaining))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-wildmat-decode-aux)
+                    (:definition fn-wildmat-utf8-3-value)
+                    (:definition fn-wildmat-utf8-4-tailsp)
+                    (:definition fn-wildmat-utf8-4-value)
+                    (:definition fn-wildmat-utf8-next)))

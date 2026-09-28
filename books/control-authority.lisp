@@ -1112,3 +1112,13 @@
                                    fn-record-uint32p)
                                   (fn-cfg-namespace-patternp
                                    fn-cfg-principal-hexp fn-cfg-labelp)))))
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-ctl-covers-every-p)
+                    (:definition fn-ctl-pattern-covers-p)
+                    (:definition fn-ctl-some-pattern-covers-p)
+                    (:rewrite fn-ctl-authorize-execute-is-nonempty)))

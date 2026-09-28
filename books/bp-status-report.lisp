@@ -402,3 +402,14 @@
 (verify-guards fn-bpn-report-parse)
 (verify-guards fn-bpn-report-decode)
 (deftheory fn-bpn-report-codec-vocabulary nil)
+
+;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
+;; Each is tried in includers' proofs and pays for its frames in
+;; almost none (planning/evidence/rule-cost-*.json has the counts;
+;; docs/proof-style.md section 8).  An includer that needs one
+;; enables it where it is used.
+(in-theory (disable (:definition fn-bpn-report-assertionp)
+                    (:definition fn-bpn-report-encode-for-subject)
+                    (:definition fn-bpn-reportp)
+                    (:rewrite fn-bpn-report-at-most-is-length)
+                    (:rewrite fn-bpn-report-bounded-append-suffix)))
