@@ -129,7 +129,16 @@ class LogSinkNativeTests(unittest.TestCase):
         owner.terminate()
         self.assertEqual(owner.wait(timeout=60), 0)
         reader.join(timeout=10)
-        self.assertGreaterEqual(len(lines), written)
+        # `written' counts every item the one writer wrote: stderr lines and
+        # the decision journal's entries (STORE/decisions/decisions.fnj,
+        # destination :journal since PKT-872), one line each.  Lines the
+        # owner wrote before its writer started reach stderr uncounted.
+        journal = self.node.store_path / "decisions" / "decisions.fnj"
+        entries = journal.read_bytes().count(b"\n") if journal.exists() else 0
+        print("stderr lines={} journal entries={} written={}".format(
+            len(lines), entries, written))
+        self.assertGreaterEqual(len(lines) + entries, written)
+        self.assertGreaterEqual(len(lines), POSTS)
 
 
 if __name__ == "__main__":

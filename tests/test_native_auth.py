@@ -1,7 +1,6 @@
 """AUTHINFO through the installed native operator/owner, with no Python server."""
 import os
 import subprocess
-import sys
 import unittest
 
 from tests.native_harness import (
@@ -21,13 +20,10 @@ class NativeAuthTests(unittest.TestCase):
         self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
         self.node.write_config(extra='\n[auth]\nrequired = true\nprotected_only = false\n'
                                      'path = "{}"\n'.format(self.auth))
-        enrolled = subprocess.run(
-            [sys.executable, "bin/fn", "--config", str(self.config),
-             "principal", "set-password", "native-reader",
-             "--password", "correct-horse", "--posting"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=self.node.environment(), timeout=600, check=False)
-        self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+        # The native operator reads the password and its confirmation from
+        # standard input when there is no tty.
+        self.node.operator("principal", "set-password", "native-reader", "--posting",
+                           input=b"correct-horse\ncorrect-horse\n", expect=EXIT_OK)
 
     def start(self):
         """The owner for one connection (`run --once`)."""

@@ -126,3 +126,29 @@ class RegistryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HeapProbeTests(unittest.TestCase):
+    """The `heap` probe (the fold of f8_curve.py) against a stand-in hook."""
+
+    def test_heap_probe_reads_the_hook_and_names_its_series(self):
+        import os
+        import threading
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as d:
+            heap = Path(d)
+
+            def hook():
+                while not (heap / "go").exists():
+                    pass
+                tag = (heap / "go").read_text().strip()
+                (heap / "go").unlink()
+                (heap / ("heap-" + tag + ".txt")).write_text(
+                    "dynamic-usage 900\ndynamic-usage-after-gc 700\n")
+                (heap / ("done-" + tag)).write_text("")
+            threading.Thread(target=hook, daemon=True).start()
+            pt = SimpleNamespace(n=1000, env={"FN_HEAP_DIR": d},
+                                 owner=SimpleNamespace(pid=os.getpid()))
+            values = sc.PROBES["heap"][1](pt)
+        self.assertEqual((values["live_bytes"], values["garbage_bytes"]), (700, 200))
+        self.assertIn("heap", sc.VARIANTS)

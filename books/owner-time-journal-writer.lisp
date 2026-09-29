@@ -914,18 +914,18 @@
 ; A run's segment as the host offers it: the start entry
 ; (fn-otm-start-line's) and then the run's entries replay to agreement from
 ; any state, so the keystone applies to every segment the host writes.
-(defun fn-otm-jw-start-entry (reading wall)
+(defun fn-otm-jw-start-entry (wall usable)
   (declare (xargs :guard t))
-  (list 0 0 (nfix reading) (nfix wall) 0 0 0))
+  (fn-otm-start-entry wall usable))
 
 (defthm fn-otm-jw-start-line-is-the-start-entry
-  (equal (fn-otm-start-line reading wall)
-         (fn-otm-jline (fn-otm-jw-start-entry reading wall)))
+  (equal (fn-otm-start-line wall usable)
+         (fn-otm-jline (fn-otm-jw-start-entry wall usable)))
   :hints (("Goal" :in-theory (enable fn-otm-start-line))))
 
 (defthm fn-otm-jw-segment-agrees
   (implies (fn-otm-run-okp steps)
-           (let ((es (cons (fn-otm-jw-start-entry reading wall)
+           (let ((es (cons (fn-otm-jw-start-entry wall usable)
                            (mv-nth 0 (fn-otm-run (fn-otm-init) steps)))))
              (and (fn-otm-nat-lists-p es)
                   (equal (mv-nth 0 (fn-otm-replay s es)) :agrees))))
@@ -933,9 +933,9 @@
                         (:instance fn-otm-journal-read-of-jlines
                                    (es (mv-nth 0 (fn-otm-run (fn-otm-init) steps))))
                         (:instance fn-otm-run-entries-shape (s (fn-otm-init))))
-           :expand ((fn-otm-replay s (cons (fn-otm-jw-start-entry reading wall)
+           :expand ((fn-otm-replay s (cons (fn-otm-jw-start-entry wall usable)
                                            (mv-nth 0 (fn-otm-run (fn-otm-init) steps)))))
-           :in-theory (e/d (fn-otm-replay)
+           :in-theory (e/d (fn-otm-replay fn-otm-start-entry)
                            (fn-otm-journal-determines-the-decisions fn-otm-journal-read-of-jlines
                             fn-otm-run-entries-shape
                             fn-otm-run fn-otm-init (:e fn-otm-init) (:e fn-otm-run) fn-otm-jlines

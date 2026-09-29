@@ -3,7 +3,7 @@
 ;
 ; books/owner-article-slots.lisp admits a read by what the owner holds after
 ; it (fn-oas-held: the connections in article mode, the queued submissions,
-; the batch in flight).  This book shows three facts about the host's read,
+; the one submission in flight).  This book shows three facts about the host's read,
 ; fn-oas-read-span (host/owner-host.lisp fn-owner-chunk-span-at), from the
 ; shape of every layer under it: each touches connection ID's record only
 ; (fn-scar-finish-read replaces or removes it and enqueues at most the one
@@ -148,7 +148,7 @@
             (fn-oah-ex (fn-ocfg-owner oc) id)
             (fn-oah-art (fn-ocfg-owner oc) id)
             (len (fn-own-queue (fn-ocfg-owner oc)))
-            (len (fn-own-inflight (fn-ocfg-owner oc)))))
+            (fn-oas-inflight-count (fn-ocfg-owner oc))))
   :hints (("Goal" :in-theory (enable fn-oas-held fn-oah-extra fn-oah-others fn-oah-ex fn-oah-art))))
 
 (defthm fn-oah-articlep-is-art
@@ -437,6 +437,13 @@
                                   (fn-oas-conn-closed fn-own-replace-conn fn-own-find-conn
                                    fn-own-remove-conn fn-own-set-conns fn-oas-conn-articlep)))))
 
+(defthm fn-oah-owner-closed-inflight-count
+  (equal (fn-oas-inflight-count (fn-ocfg-owner (fn-oas-owner-closed oc id)))
+         (fn-oas-inflight-count (fn-ocfg-owner oc)))
+  :hints (("Goal" :in-theory (e/d (fn-oas-inflight-count) (fn-oah-owner-closed-fields
+                                                           fn-oas-owner-closed))
+           :use fn-oah-owner-closed-fields)))
+
 (defthm fn-oah-posting-off-read-steps
   (fn-oah-steps (fn-ocfg-owner (fn-own-tls-result-owner
                                 (fn-oas-posting-off-read oc views id i end s
@@ -590,9 +597,10 @@
         (o (fn-ocfg-owner oc)))
     (and (<= (fn-oah-ex o2 id) (fn-oah-ex o id))
          (<= (len (fn-own-queue o2)) (+ 1 (len (fn-own-queue o))))
-         (equal (len (fn-own-inflight o2)) (len (fn-own-inflight o)))))
+         (equal (fn-oas-inflight-count o2) (fn-oas-inflight-count o))))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (e/d (fn-oah-steps) (fn-otm-read-span fn-oah-otm-read-span-steps))
+  :hints (("Goal" :in-theory (e/d (fn-oah-steps fn-oas-inflight-count)
+                                  (fn-otm-read-span fn-oah-otm-read-span-steps))
            :use fn-oah-otm-read-span-steps)))
 
 ;; What the owner holds after the read before the slots, from an admitted

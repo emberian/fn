@@ -492,14 +492,38 @@
 ;    the flat table, (pgs-x-dir ND pgs-mem) the directory.  Logical views,
 ;    O(N): the host never builds them on a served path.
 
+(defun pgs-x-tab-from-loop (sel base i n acc pgs-mem)
+  ; entries I..N-1 reversed onto ACC, then the whole reversed (depth_check:
+  ; a loop twin)
+  (declare (xargs :stobjs pgs-mem
+                  :guard (and (pgs-x-sel-p sel) (natp base) (natp i) (natp n) (true-listp acc))
+                  :measure (nfix (- (nfix n) (nfix i)))))
+  (if (mbe :logic (zp (- (nfix n) (nfix i))) :exec (<= n i))
+      (revappend acc nil)
+    (pgs-x-tab-from-loop sel base (+ 1 (nfix i)) n
+                         (cons (pgs-x-get-entry sel base i pgs-mem) acc) pgs-mem)))
+
 (defun pgs-x-tab-from (sel base i n pgs-mem)
   (declare (xargs :stobjs pgs-mem
                   :guard (and (pgs-x-sel-p sel) (natp base) (natp i) (natp n))
-                  :measure (nfix (- (nfix n) (nfix i)))))
-  (if (mbe :logic (zp (- (nfix n) (nfix i))) :exec (<= n i))
-      nil
-    (cons (pgs-x-get-entry sel base i pgs-mem)
-          (pgs-x-tab-from sel base (+ 1 (nfix i)) n pgs-mem))))
+                  :measure (nfix (- (nfix n) (nfix i)))
+                  :verify-guards nil))
+  (mbe :logic (if (zp (- (nfix n) (nfix i)))
+                  nil
+                (cons (pgs-x-get-entry sel base i pgs-mem)
+                      (pgs-x-tab-from sel base (+ 1 (nfix i)) n pgs-mem)))
+       :exec (pgs-x-tab-from-loop sel base i n nil pgs-mem)))
+
+(local
+ (defthm pgs-x-tab-from-loop-is
+   (equal (pgs-x-tab-from-loop sel base i n acc pgs-mem)
+          (revappend acc (pgs-x-tab-from sel base i n pgs-mem)))
+   :hints (("Goal" :induct (pgs-x-tab-from-loop sel base i n acc pgs-mem)
+            :expand ((pgs-x-tab-from sel base i n pgs-mem))
+            :in-theory (disable pgs-x-get-entry)))))
+
+(verify-guards pgs-x-tab-from
+  :hints (("Goal" :in-theory (disable pgs-x-get-entry))))
 
 (defun pgs-x-tab (n pgs-mem)
   (declare (xargs :stobjs pgs-mem :guard (natp n)))

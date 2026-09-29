@@ -188,3 +188,38 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
 
 (defun acl2_*1*_acl2::fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
   (fn-durable-realize-lz file eoff elen poff plen trailer n dict))
+
+;;; A-PGS-HOST-IO's page fill (books/assumptions.lisp `fn-pgs-fill-realize';
+;;; lane arena-store-7, 2026-09-28): the 2048 little-endian u64 words page
+;;; ADDR of the page file FILE holds, FILE a file id from
+;;; `fnn-extent-register'.  One pread of the 16 KiB page; a short read or an
+;;; unknown file is refused by name (history-page-read: a store fault, a
+;;; recovery event), never answered with made-up words.  Whether the words
+;;; are the page the committed table names is ACL2's digest check
+;;; (books/history-records-disk.lisp: the lazy decode of the committed
+;;; history image `fn-hrs-disk-history', and fn-hrecs's retry loop).
+(defun fn-pgs-fill-realize (file addr)
+  (let ((fd (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+              (gethash file *fnn-extent-fds*)))
+        (octets (make-array 16384 :element-type '(unsigned-byte 8))))
+    (unless (and fd (integerp addr) (<= 0 addr))
+      (error 'fnn-extent-fault
+             :message (format nil "history-page-read: no page file ~a (page ~a)" file addr)))
+    (let ((got (fnn-extent-pread fd octets (* addr 16384))))
+      (unless (= got 16384)
+        (let ((path (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+                      (gethash file *fnn-extent-paths*))))
+          (error 'fnn-extent-fault
+                 :message (format nil "history-page-read: page ~a of ~a: ~a of 16384 octets"
+                                  addr path got)))))
+    (let ((acc nil))
+      (declare (type (simple-array (unsigned-byte 8) (16384)) octets))
+      (loop for k of-type fixnum from 2047 downto 0 do
+        (let ((w 0) (base (* 8 k)))
+          (loop for b of-type fixnum from 7 downto 0 do
+            (setq w (logior (ash w 8) (aref octets (+ base b)))))
+          (push w acc)))
+      acc)))
+
+(defun acl2_*1*_acl2::fn-pgs-fill-realize (file addr)
+  (fn-pgs-fill-realize file addr))

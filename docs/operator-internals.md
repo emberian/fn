@@ -24,10 +24,11 @@ details, the measured envelope.
 Everything the node runs is `bin/fn` (a shell script), the frozen launcher
 and the saved Lisp image it execs; no Python runs on a deployed node
 (D35, `tools/runpath_check.py`). Python remains for clients on other
-machines and for the tests. The sections "Install", "Initialize" and the
-per-user `~/fn-live` service further down describe the older Python
-development service (`bin/fn --config ...` in a checkout); a release has
-none of it, and its verbs are `fn operator CONFIG VERB ...`.
+machines and for the tests. The sections "Install" and "Run it as a service"
+and the per-user `~/fn-live` service further down still describe the older
+Python development service (the Python `bin/fn` in a checkout), which was
+retired on 2026-09-28 (python-diet T5); a release never had it, and its verbs
+are `fn operator CONFIG VERB ...`.
 
 ## Native component entry
 
@@ -1274,17 +1275,12 @@ recorded and what it replaced.
 ## Initialize
 
 ```
-fn --config /etc/fn/fn.toml init \
-        --store /var/lib/fn/store \
-        --group fn.letters --group fn.test \
-        --listen 127.0.0.1:1119 \
-        --agent "news@example.invalid" \
-        --anchor-server int08h \
-        --acl2 /usr/local/bin/acl2 \
-        --log /var/log/fn/fn.log
+fn operator /etc/fn/fn.toml init fn.letters fn.test
 ```
 
-This creates the store and writes the configuration file.
+This creates the store the configuration's `[store] path` names, serving the
+groups named; the configuration file itself (`[store]`, `[listener]`, `[log]`,
+`[control]`) is written by the operator beforehand (`packaging/fn.toml.example`).
 [`packaging/fn.toml.example`](../packaging/fn.toml.example) documents every
 table: `[store] path`, `[listener] host port`, `[posting] enabled`,
 `[anchor] server`, `[acl2] path slots`, `[log] path`, `[control] path`. This
@@ -1417,10 +1413,9 @@ maps writable-executable pages and will not start with it set.
 
 Two things the unit will bite you with, both learned by running it:
 
-- **`--config` precedes the verb.** `fn run --config <path>` exits 2 with
-  `unrecognized arguments`, and under `Restart=on-failure` that is a loop. The
-  shipped `ExecStart` is `fn --config <path> run`; keep that order if you edit
-  it. The unit carries `StartLimitIntervalSec=60` and `StartLimitBurst=5` so a
+- **The configuration precedes the verb.** The shipped `ExecStart` is
+  `fn operator <config> run`; a verb before the configuration is a usage
+  error, and under `Restart=on-failure` that is a loop. The unit carries `StartLimitIntervalSec=60` and `StartLimitBurst=5` so a
   service that cannot start gives up instead of spinning.
 - **The start limit latches.** Once a unit has hit it, every later `restart`
   is refused with `Start request repeated too quickly` **and exits 0**, which
@@ -1551,7 +1546,7 @@ Post through fn, which routes to the running owner's control socket when one
 is live and opens the store directly when one is not:
 
 ```
-fn --config /etc/fn/fn.toml post \
+fn operator /etc/fn/fn.toml post \
    --message-id '<2026-09-19.1@example.invalid>' \
    --payload /tmp/article.txt --group fn.letters
 ```
@@ -1613,17 +1608,17 @@ a box that is also peering with itself.
 
 ## Require a login (RFC 4643)
 
-Off by default. To turn it on, write the policy into the configuration and
-enrol at least one login:
+Off by default. To turn it on, write the policy into the configuration
+(`[auth] required = true`) and enrol at least one login:
 
 ```
-fn --config /etc/fn/fn.toml init --store /var/lib/fn/store --auth-required
-fn --config /etc/fn/fn.toml principal set-password alice --posting
-fn --config /etc/fn/fn.toml principal list
+fn operator /etc/fn/fn.toml principal set-password alice --posting
+fn operator /etc/fn/fn.toml principal list
 ```
 
-`set-password` prompts twice, derives the salted verifier in an ACL2 session
-over `books/auth-secret.lisp`, and writes `<store>/auth.toml` at mode 0600.
+`set-password` prompts twice (or reads two lines of standard input when there
+is no terminal), derives the salted verifier in ACL2 over
+`books/auth-secret.lisp`, and writes the credential file at mode 0600.
 The secret is not in that file and cannot be recovered from it. `principal
 list` reads the same file, which is the one the running service loads, and
 prints the login, its principal id and its posting flag; it never prints the

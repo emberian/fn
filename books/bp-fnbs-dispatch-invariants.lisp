@@ -5,6 +5,8 @@
 (include-book "bp-primary-invariants")
 (include-book "frame-trailer")
 (include-book "frame-invariants")
+(include-book "article")
+(include-book "consumer-position")
 
 (defthm fn-bpnp-dispatch-peer-reconstructs
   (implies (fn-bpp-eidp peer)

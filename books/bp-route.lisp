@@ -18,6 +18,7 @@
 (include-book "config")
 (include-book "bp-eid-shape")
 (include-book "native-admin-shape")
+(include-book "consumer-position")
 
 (defconst *fn-bprt-default-priority* 100)
 

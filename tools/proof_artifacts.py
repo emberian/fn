@@ -20,6 +20,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "extract"))
 import certs  # noqa: E402
 import acl2_toolchain  # noqa: E402
 
@@ -42,7 +43,7 @@ PROFILES = {
 INCLUDE = re.compile(r'^\s*\(include-book\s+"([^"]+)"')
 LOAD = re.compile(r'^\s*\(ld\s+"([^"]+)"')
 FAILURE_MARKERS = ("ACL2 Error", "HARD ACL2 ERROR", "ABORTING from raw Lisp",
-                   "Uncertified", "sub-book")
+                   "Uncertified", "sub-book", "FN_IMAGE_WORLD_OPEN")
 READY = "FN_ARTIFACT_SET_LOADED"
 
 
@@ -103,8 +104,21 @@ def profile_roots(root: Path, profile: str) -> list[str]:
 
 
 def load_driver(roots: list[str]) -> str:
+    """Include the roots.  When the first is the image's umbrella book
+    (tools/extract/world.py), the rest follow with the compiler off, as in
+    the build script: each is then redundant and loads nothing (a top-level
+    include-book reloads its closure's compiled files, and each load of a
+    constrained stub takes a TLS index SBCL never frees), and the closure
+    check prints FN_IMAGE_WORLD_OPEN if one of them added a book."""
+    import world  # noqa: PLC0415 (tools/extract/ is on sys.path above)
+    umbrella = bool(roots) and roots[0] in world.UMBRELLAS.values()
     lines = ['(in-package "ACL2")']
-    lines.extend('(include-book "{}")'.format(name) for name in roots)
+    for index, name in enumerate(roots):
+        lines.append('(include-book "{}")'.format(name))
+        if umbrella and index == 0:
+            lines.extend(world.PROLOGUE)
+    if umbrella:
+        lines.extend(world.EPILOGUE)
     lines.extend(['(cw "{}~%")'.format(READY), '(good-bye)'])
     return "\n".join(lines) + "\n"
 
@@ -156,8 +170,15 @@ class Acquisition:
 
 
 def acquire(root: Path, cache: Path, acl2: Path, profile: str,
-            timeout: int = 1800, run=subprocess.run) -> Acquisition:
-    """Try complete current sets until ACL2 accepts one without warnings."""
+            timeout: int = 1800, run=subprocess.run,
+            load_acl2: Path | None = None) -> Acquisition:
+    """Try complete current sets until ACL2 accepts one without warnings.
+
+    ACL2 (the certifying toolchain) names the artifact sets; LOAD_ACL2 (the
+    launcher the image is built with, default ACL2) loads them: the served
+    world is past SBCL's default --tls-limit (arena-store-7, 2026-09-28:
+    "Thread local storage exhausted" loading the compiled world), and the
+    image build already runs the tls64k wrapper."""
     roots = profile_roots(root, profile)
     fingerprint = acl2_toolchain.fingerprint(acl2)
     if not fingerprint.qualified or fingerprint.identity is None:
@@ -176,7 +197,7 @@ def acquire(root: Path, cache: Path, acl2: Path, profile: str,
             acl2=acl2)
         if report.artifact_set is None:
             break
-        loaded = validate(root, acl2, roots, timeout=timeout, run=run)
+        loaded = validate(root, load_acl2 or acl2, roots, timeout=timeout, run=run)
         attempts.append("{} {}: {}".format(
             report.artifact_set[:16], report.artifact_origin,
             "loaded" if loaded.ok else loaded.reason))
@@ -204,6 +225,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", default=str(ROOT))
     parser.add_argument("--cache", default=None)
     parser.add_argument("--acl2", default=os.environ.get("FN_ACL2", "acl2"))
+    parser.add_argument("--load-acl2", default=None,
+                        help="the launcher that LOADS the set (default --acl2); "
+                             "the image build's wrapper")
     parser.add_argument("--timeout", type=int, default=1800)
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
@@ -216,8 +240,10 @@ def main(argv: list[str] | None = None) -> int:
         print("proof_artifacts: ACL2 executable is absent: {}".format(acl2),
               file=sys.stderr)
         return 2
+    load_acl2 = (Path(arguments.load_acl2).expanduser().resolve()
+                 if arguments.load_acl2 else None)
     if arguments.action == "validate":
-        loaded = validate(root, acl2, roots, timeout=arguments.timeout)
+        loaded = validate(root, load_acl2 or acl2, roots, timeout=arguments.timeout)
         print("profile={} image={} roots={} result={}".format(
             arguments.profile, PROFILES[arguments.profile].image, len(roots),
             "loaded" if loaded.ok else loaded.reason))
@@ -226,7 +252,7 @@ def main(argv: list[str] | None = None) -> int:
     cache = (Path(arguments.cache).expanduser() if arguments.cache
              else certs.cache_directory())
     result = acquire(root, cache, acl2, arguments.profile,
-                     timeout=arguments.timeout)
+                     timeout=arguments.timeout, load_acl2=load_acl2)
     for attempt in result.attempts:
         print("attempt " + attempt)
     if not result.ok or result.report is None:

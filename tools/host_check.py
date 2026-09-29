@@ -376,6 +376,12 @@ def nowhere(kind: str, name: str, definers: dict[str, str] | None) -> str:
     return f"undefined {kind} {name.lower()}: no raw file, book or ld host file defines it"
 
 
+# A load-alone ERROR line: "FILE #N (DEFCONSTANT NAME): The variable X is
+# unbound."  Group 1 is the name the form defines, group 2 the unbound one.
+WORLD_UNBOUND = re.compile(r"\(DEF[A-Z-]*\s+([^\s()]+)\):\s+The variable ([^\s]+) is unbound",
+                           re.IGNORECASE)
+
+
 def classify_load(output: str, world_defined: set[str], world_source: str,
                   definers: dict[str, str] | None = None
                   ) -> tuple[list[str], dict[str, int], bool]:
@@ -405,6 +411,10 @@ def classify_load(output: str, world_defined: set[str], world_source: str,
             parts = line.split()
             if len(parts) >= 6 and in_world(parts[4], world_defined, world_source):
                 world_shadowed.add(parts[5].lower())
+        elif line.startswith((LOAD_TAG + "-ERROR ")):
+            unbound = WORLD_UNBOUND.search(line)
+            if unbound and in_world(unbound.group(2), world_defined, world_source):
+                world_shadowed.add(unbound.group(1).lower())
     for line in output.splitlines():
         if not line.startswith(LOAD_TAG + "-"):
             continue
@@ -415,7 +425,15 @@ def classify_load(output: str, world_defined: set[str], world_source: str,
             current = rest.strip()
             counts["files"] += 1
         elif word in ("ERROR", "READ-ERROR"):
-            findings.append(f"{word.lower()}: {rest.strip()}")
+            unbound = WORLD_UNBOUND.search(line) if word == "ERROR" else None
+            if unbound and in_world(unbound.group(2), world_defined, world_source):
+                # A load-time form reads a constant of the certified world
+                # (host/native/mux.lisp's +fnn-mux-loops+ is
+                # books/profile-limits.lisp's *fn-heap-mux-loops*, lane
+                # generators G5): the world's, like a load-time call of it.
+                counts["world_calls"] += 1
+            else:
+                findings.append(f"{word.lower()}: {rest.strip()}")
         elif word == "NEEDS":
             continue  # its CALLED line (printed first) classified the call
         elif word == "CALLED":
@@ -722,8 +740,8 @@ def world_of(build: str, root: Path = ROOT) -> tuple[set[str], list[str], list[s
 
 
 def stobj_names(path: Path) -> set[str]:
-    """The callable names a `defstobj' / `defabsstobj' introduces that the
-    ledger does not record: the exports, creator and recognizer, and a
+    """The callable names a `defstobj' / `defabsstobj' / `defevent' introduces
+    that the ledger does not record: the exports, creator and recognizer, and a
     concrete stobj's field accessors and updaters (by ACL2's naming)."""
     import ledger
     found: set[str] = set()
@@ -760,6 +778,15 @@ def stobj_names(path: Path) -> set[str]:
                     found.update({field, "update-" + field, field + "p",
                                   field + "-length", "resize-" + field,
                                   field + "i", "update-" + field + "i"})
+            return
+        if head == "defevent" and len(form) >= 2:
+            # books/defevent.lisp (lane generators G6): the encoder, the
+            # decoder and the recognizer it names are defuns it expands to.
+            rest = form[2:]
+            for i, item in enumerate(rest[:-1]):
+                if item in (":encode", ":decode", ":recognizer") and \
+                        isinstance(rest[i + 1], str):
+                    found.add(str(rest[i + 1]))
             return
         if head in ("local",):
             return
