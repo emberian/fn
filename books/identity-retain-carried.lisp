@@ -568,3 +568,124 @@
 (in-theory (disable fn-irc-sn-prepare-identity fn-irc-ocfg-prepare-identity
                     fn-irc-psrv-prepare-identity fn-irc-oiis-prepare-identity
                     fn-irc-pout-prepare-identity))
+
+;; A peer's transfer decision (books/peer-inbound.lisp fn-peer-decide-transfer,
+;; the owner's fn-owner-transit-decide for every IHAVE/TAKETHIS and BP transit
+;; article) with its capacity arm's admission through the carry: the one arm
+;; of the decision that scanned every pin and release (Q5a-2).  Every other
+;; arm is the reference's, term for term.
+(defun fn-irc-peer-decide-transfer (node cfg peer msgid octets clock id subject
+                                         carry)
+  (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
+  (let* ((record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))
+         (parsed (fn-article-parse octets))
+         (article (if (and (fn-article-result-okp parsed)
+                           (true-listp parsed))
+                      (fn-article-result-article parsed)
+                    nil))
+         (okp (and article (fn-article-syntax-p article)))
+         (check (if okp (fn-af-relayed-article-check article) nil)))
+    (cond ((not record) (fn-peer-decision :refuse :not-a-peer))
+          ((null (fn-cfg-peer-inbound record))
+           (fn-peer-decision :refuse :no-inbound))
+          ((not (fn-af-message-idp msgid))
+           (fn-peer-decision :refuse :message-id-syntax))
+          ((< (fn-cfg-peer-inbound-max-octets record) (len octets))
+           (fn-peer-decision :refuse :oversize))
+          ((fn-peer-intrinsic-refusal-of msgid okp article check
+                                         (fn-peer-parse-limitp parsed octets))
+           (fn-peer-decision :refuse
+                             (fn-peer-intrinsic-refusal-of msgid okp article
+                                                           check
+                                                           (fn-peer-parse-limitp parsed octets))))
+          ((fn-peer-date-futurep article cfg clock)
+           (fn-peer-decision :refuse :date-future))
+          ((fn-peer-path-missingp article cfg)
+           (fn-peer-decision :refuse :no-path))
+          ((fn-peer-history-hasp (fn-record-octets-string msgid) node)
+           (fn-peer-decision :have :history))
+          ((fn-path-names-p (fn-af-path-field-value article)
+                            (fn-peer-local-identity cfg))
+           (fn-peer-decision :refuse :loop))
+          ((null (fn-peer-scope-groups (fn-peer-check-groups check) record cfg))
+           (fn-peer-decision :refuse :out-of-scope))
+          ((and (fn-peer-moderated-namesp
+                 (fn-peer-scope-groups (fn-peer-check-groups check) record cfg)
+                 (fn-cfg-value cfg) (fn-cfg-generation cfg))
+                (fn-inj-absentp article *fn-mod-approved-name*))
+           (fn-peer-decision :refuse :unapproved-moderated))
+          ((not (fn-article-result-okp
+                 (fn-article-parse (fn-peer-relayed-octets cfg peer octets))))
+           (fn-peer-decision :refuse :oversize))
+          ((fn-peer-stagedp (fn-record-octets-string msgid) node)
+           (fn-peer-decision :defer :staged))
+          ((consp (fn-node-stage node)) (fn-peer-decision :defer :busy))
+          ((equal (fn-state-fenced (fn-node-acceptance node)) t)
+           (fn-peer-decision :defer :fenced))
+          ((not (fn-prc-admissiblep
+                 (fn-node-retention node) id subject
+                 :archive (fn-peer-evidence peer cfg)
+                 (fn-charge-for-payload
+                  (len (fn-peer-relayed-octets cfg peer octets)))
+                 carry))
+           (fn-peer-decision :refuse :capacity))
+          (t (fn-peer-decision :want nil)))))
+
+(defthm fn-irc-peer-decide-transfer-is-reference
+  (implies (fn-prc-carryp carry)
+           (equal (fn-irc-peer-decide-transfer node cfg peer msgid octets clock
+                                               id subject carry)
+                  (fn-peer-decide-transfer node cfg peer msgid octets clock id
+                                           subject)))
+  :hints (("Goal" :in-theory '(fn-irc-peer-decide-transfer
+                               fn-peer-decide-transfer
+                               fn-prc-admissiblep-is-admissiblep))))
+
+(verify-guards fn-irc-peer-decide-transfer
+  :hints (("Goal" :use ((:guard-theorem fn-peer-decide-transfer))
+                  :in-theory (disable (:d fn-node-statep) (:d fn-statep)
+                                      (:d fn-retain-statep)
+                                      (:d fn-node-state-shapep)
+                                      (:d fn-cfgp) (:d fn-cfg-peer-find)
+                                      (:d fn-af-message-idp)
+                                      (:d fn-peer-history-hasp)
+                                      (:d fn-peer-stagedp)
+                                      (:d fn-retain-admissiblep)
+                                      (:d fn-prc-admissiblep)
+                                      (:d fn-peer-evidence)
+                                      (:d fn-record-octets-string)
+                                      (:d fn-cfg-peer-inbound)
+                                      (:d fn-cfg-peer-inbound-groups)
+                                      (:d fn-cfg-peer-inbound-max-octets)
+                                      (:d fn-cfg-peer-inbound-max-inflight)
+                                      (:d fn-cfg-ag-car) (:d fn-cfg-ag-cdr)))))
+
+;; The host-called form: fn-peer-decide-transfer-under with the carry.
+(defun fn-irc-peer-decide-transfer-under
+    (node cfg peer msgid octets clock id subject limits carry)
+  (declare (xargs :guard (fn-node-statep node)))
+  (let ((d (fn-irc-peer-decide-transfer node cfg peer msgid octets clock id
+                                        subject carry)))
+    (if (member-equal (fn-peer-decision-kind d) '(:want :defer))
+        (let ((limit (fn-peer-header-limit-refusal cfg peer octets limits)))
+          (if limit (fn-peer-decision :refuse limit) d))
+      d)))
+
+;; KEYSTONE (the host's call, fn-owner-transit-decide and
+;; fn-owner-bp-transit-submit's refusal reason): with the carry refreshed to
+;; the Store node's ledger, the decision is fn-peer-decide-transfer-under's
+;; for every carry the host holds.
+(defthm fn-irc-peer-decide-transfer-under-of-refresh-is-reference
+  (implies (fn-prc-carryp carry)
+           (equal (fn-irc-peer-decide-transfer-under
+                   node cfg peer msgid octets clock id subject limits
+                   (fn-prc-refresh carry ledger))
+                  (fn-peer-decide-transfer-under node cfg peer msgid octets
+                                                 clock id subject limits)))
+  :hints (("Goal" :in-theory '(fn-irc-peer-decide-transfer-under
+                               fn-peer-decide-transfer-under
+                               fn-prc-carryp-of-refresh
+                               fn-irc-peer-decide-transfer-is-reference))))
+
+(in-theory (disable fn-irc-peer-decide-transfer
+                    fn-irc-peer-decide-transfer-under))

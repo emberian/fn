@@ -11,6 +11,7 @@
 (include-book "../../books/identity-retain-carried")
 (include-book "owner-identity-served-tests")
 (include-book "post-retain-carried-tests")
+(include-book "peer-inbound-tests")
 
 (defun irct-retention (oc)
   (fn-node-retention (fn-sn-node (fn-own-store (fn-ocfg-owner oc)))))
@@ -171,3 +172,70 @@
  (with-guard-checking :none
   (not (equal (fn-irc-apply-retention-event *prct-node1* *irct-u-ev* *irct-rbad*)
               (fn-replay-apply-retention-event *prct-node1* *irct-u-ev*)))))
+
+; -----------------------------------------------------------------------------
+; fn-irc-peer-decide-transfer-is-reference and the host's KEYSTONE
+; fn-irc-peer-decide-transfer-under-of-refresh-is-reference (Q5a-2, the
+; transfer decision's capacity arm).  peer-inbound-tests' nodes: NODE0 (empty
+; ledger) and NODE1 (A1 completed, so its ledger pins "ob-a1").  The carry is
+; the host's: the refresh of nil to the node's ledger.
+(defconst *irct-t0* (fn-prc-refresh nil (fn-node-retention *pt-node0*)))
+(defconst *irct-t1* (fn-prc-refresh nil (fn-node-retention *pt-node1*)))
+(assert-event (and (fn-prc-carryp *irct-t0*) (consp *irct-t0*)
+                   (equal (car *irct-t0*) (fn-node-retention *pt-node0*))))
+(assert-event (and (fn-prc-carryp *irct-t1*) (consp *irct-t1*)
+                   (equal (car *irct-t1*) (fn-node-retention *pt-node1*))))
+(assert-event (fn-rii-knownp "ob-a1" (fn-node-retention *pt-node1*)))
+; REACHABLE POSITIVE WITNESSES (the capacity arm reached, both answers): a
+; fresh id is admitted (:want), the pinned id is refused (:refuse :capacity),
+; each equal to the reference; the -under form, with the refreshed carry
+; (from nil, and the delta from NODE0's carry), is the host's call and equals
+; fn-peer-decide-transfer-under under the profile's limits (6 6 200 admit
+; the stored octets: transit-header-limits-tests).
+(assert-event
+ (equal (fn-irc-peer-decide-transfer *pt-node1* *pt-cfg* "innA" *pt-idloop*
+                                     *pt-noloop* nil "ob-new" "s" *irct-t1*)
+        (fn-peer-decision :want nil)))
+(assert-event
+ (equal (fn-peer-decide-transfer *pt-node1* *pt-cfg* "innA" *pt-idloop*
+                                 *pt-noloop* nil "ob-new" "s")
+        (fn-peer-decision :want nil)))
+(assert-event
+ (equal (fn-irc-peer-decide-transfer *pt-node1* *pt-cfg* "innA" *pt-idloop*
+                                     *pt-noloop* nil "ob-a1" "s" *irct-t1*)
+        (fn-peer-decision :refuse :capacity)))
+(assert-event
+ (equal (fn-peer-decide-transfer *pt-node1* *pt-cfg* "innA" *pt-idloop*
+                                 *pt-noloop* nil "ob-a1" "s")
+        (fn-peer-decision :refuse :capacity)))
+(assert-event
+ (equal (fn-irc-peer-decide-transfer-under
+         *pt-node1* *pt-cfg* "innA" *pt-idloop* *pt-noloop* nil "ob-a1" "s"
+         '(6 6 200) (fn-prc-refresh nil (fn-node-retention *pt-node1*)))
+        (fn-peer-decide-transfer-under
+         *pt-node1* *pt-cfg* "innA" *pt-idloop* *pt-noloop* nil "ob-a1" "s"
+         '(6 6 200))))
+(assert-event
+ (equal (fn-peer-decision-kind
+         (fn-irc-peer-decide-transfer-under
+          *pt-node1* *pt-cfg* "innA" *pt-idloop* *pt-noloop* nil "ob-new" "s"
+          '(6 6 200) (fn-prc-refresh *irct-t0* (fn-node-retention *pt-node1*))))
+        :want))
+; HYPOTHESIS-REMOVAL WITNESS (fn-prc-carryp omitted): NODE0's ledger with a
+; trie that also names "ob".  The omitted hypothesis fails, the refresh keeps
+; it (same ledger), and the conclusion fails: the twin refuses :capacity what
+; the reference wants.
+(defconst *irct-tbad*
+  (cons (fn-node-retention *pt-node0*) (fn-prc-add "ob" (cdr *irct-t0*))))
+(assert-event (not (fn-prc-carryp *irct-tbad*)))
+(assert-event (equal (fn-prc-refresh *irct-tbad* (fn-node-retention *pt-node0*))
+                     *irct-tbad*))
+(assert-event
+ (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop*
+                                 *pt-noloop* nil "ob" "s")
+        (fn-peer-decision :want nil)))
+(assert-event
+ (with-guard-checking :none
+  (equal (fn-irc-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop*
+                                      *pt-noloop* nil "ob" "s" *irct-tbad*)
+         (fn-peer-decision :refuse :capacity))))

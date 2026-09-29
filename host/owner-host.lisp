@@ -1509,7 +1509,8 @@
 ;; The carried obligation-id trie (books/post-retain-carried.lisp): the
 ;; global's writers are fn-owner-install-extended (every recovery: the
 ;; refresh of nil, so the first POST pays no build), fn-owner-prepare-buffer
-;; and fn-owner-prepare, which store fn-prc-refresh of the value read here;
+;; fn-owner-prepare and fn-owner-transit-decide, which store fn-prc-refresh
+;; of the value read here;
 ;; so it always satisfies fn-prc-carryp (fn-prc-carryp-of-refresh; nil by
 ;; fn-prc-carryp-when-atom).  The recognizer names no owner state, so no
 ;; owner step between two POSTs can falsify it.
@@ -2337,11 +2338,18 @@
          (state (if (equal result :refused)
                     (f-put-global
                      'fn-owner-app-refusal-reason
+                     ; the carried id trie answers the capacity arm
+                     ; (KEYSTONE
+                     ; fn-irc-peer-decide-transfer-under-of-refresh-is-reference);
+                     ; a refusal is rare, so the refreshed carry is not kept
                      (fn-peer-decision-reason
-                      (fn-peer-decide-transfer-under
+                      (fn-irc-peer-decide-transfer-under
                        (fn-sn-node (fn-own-store owner)) cfg peer msgid-octets
                        payload (fn-own-clock owner) id subject
-                       (fn-own-config-header-limits (fn-own-config owner))))
+                       (fn-own-config-header-limits (fn-own-config owner))
+                       (fn-prc-refresh (fn-owner-retain-carry state)
+                                       (fn-node-retention
+                                        (fn-sn-node (fn-own-store owner))))))
                      state)
                   state))
          (state (fn-owner-step
@@ -2632,9 +2640,17 @@
             (value :not-transit)
           ; PRF-230/PKT-660: under the opened profile's header limits, the
           ; owner's injection configuration's, exactly as a POST.
-          (let* ((d (fn-peer-decide-transfer-under
+          ; The capacity arm's admission from the carried obligation-id
+          ; trie, refreshed to the Store node's ledger and kept (KEYSTONE
+          ; fn-irc-peer-decide-transfer-under-of-refresh-is-reference: the
+          ; decision is fn-peer-decide-transfer-under's for every carry).
+          (let* ((carry (fn-prc-refresh (fn-owner-retain-carry state)
+                                        (fn-node-retention node)))
+                 (state (f-put-global 'fn-owner-retain-carry carry state))
+                 (d (fn-irc-peer-decide-transfer-under
                      node cfg peer msgid octets (fn-own-clock owner) id subject
-                     (fn-own-config-header-limits (fn-own-config owner))))
+                     (fn-own-config-header-limits (fn-own-config owner))
+                     carry))
                  (args (fn-peer-injection-arguments node cfg peer msgid octets
                                                     0 id subject
                                                     (fn-own-clock owner)))
