@@ -300,6 +300,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-resolution-tests \
 	tests/acl2/refusal-effect-tests \
 	tests/acl2/closure-open-tests \
+	tests/acl2/closure-export-tests \
 	tests/acl2/store-node-resolution-traces-tests \
 	tests/acl2/store-identity-traces-tests \
 	books/store-sweep \
