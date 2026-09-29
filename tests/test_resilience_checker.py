@@ -856,6 +856,112 @@ class PowerLossBackendTests(unittest.TestCase):
         self.assertEqual(violations, ["unacked-mismatch:2:b'220 x'"])
 
 
+class InnLabBackendTests(unittest.TestCase):
+    """W7e: the INN lab's findings as differential scenarios judged by the
+    checker; the normalization is named; the 2026-09-22 run's two failures
+    are violations of the rules that name them; the teeth: a differential
+    naming an authored field, a served sender Xref, a loop taken and a
+    transfer of a refused article are violations."""
+
+    @classmethod
+    def setUpClass(cls):
+        from tools.resilience.adapters import inn_lab
+        cls.il = inn_lab
+        cls.paths = inn_lab.records()
+
+    def test_the_normalized_fields_are_the_lab_s_and_named_with_their_rfc(self):
+        import tools.inn_lab as lab
+        self.assertEqual(sorted(self.il.NORMALIZED), sorted(lab.RELAY_MAY_CHANGE))
+        for field, why in self.il.NORMALIZED.items():
+            self.assertIn("RFC 5537", why, field)
+        for name in ("peer-idle", "peer-innd"):
+            self.assertEqual(REGISTRY[name]["backend"], "interop")
+            self.assertEqual(REGISTRY[name]["actions"], ["kill"])
+
+    def test_every_evidence_scenario_validates_and_reaches_the_lab_s_verdict(self):
+        self.assertGreaterEqual(len(self.paths), 3)
+        by_run = {}
+        for path in self.paths:
+            for s, j, v in self.il.check_findings(path):
+                with self.subTest(run=path.name, scenario=s.id):
+                    self.assertEqual(validate(s, REGISTRY), [], s.id)
+                    self.assertEqual(s.initial["normalized"], ["path", "xref"])
+                    self.assertEqual(v.kind, s.expected, v.to_json())
+                    self.assertTrue(v.green if v.kind == "consistent" else True)
+                    for r in j.of_kind("client"):
+                        if r.get("event") == "read" and r.get("differential") is not None:
+                            self.assertEqual(r["differential"]["normalized"], ["path", "xref"])
+                    by_run.setdefault(path.name, {})[s.id] = v
+        bad = by_run["inn-lab-dabebb84-2026-09-22.findings.json"]
+        self.assertEqual(sorted(k for k, v in bad.items() if v.kind == "violation"),
+                         ["inn-lab-inn-to-fn", "inn-lab-operator-post"])
+        self.assertIn("relay-changes-permitted", bad["inn-lab-inn-to-fn"].explanation["rules"])
+        self.assertEqual(bad["inn-lab-operator-post"].explanation["rules"], ["injection-complete"])
+        good = by_run["inn-lab-bc9be7ec-2026-09-23.findings.json"]
+        self.assertEqual({k: v.kind for k, v in good.items()},
+                         {k: "consistent" for k in good})
+        self.assertIn("relay-normalized", good["inn-lab-inn-to-fn"].witnesses_observed)
+        self.assertIn("loop-refused", good["inn-lab-inn-refusals"].witnesses_observed)
+
+    def held(self):
+        return self.il.load(next(p for p in self.paths if "bc9be7ec" in p.name))
+
+    def mutate(self, key, instance="", **fields):
+        findings = self.held()
+        for r in findings["rows"]:
+            if r["key"] == key and r.get("instance", "") == instance:
+                r.update(fields)
+        return findings
+
+    def check(self, findings, scenario_id):
+        for s, j in self.il.scenarios_for(findings):
+            if s.id == scenario_id:
+                return s, j, checker.check(s, j)
+        raise AssertionError(scenario_id)
+
+    def test_a_differential_naming_an_authored_field_is_a_violation(self):
+        findings = self.mutate("inn-serves-fn-article",
+                               observed="changed: path, subject; only in the second: xref; "
+                                        "body identical")
+        s, j, v = self.check(findings, "inn-lab-fn-to-inn")
+        self.assertEqual(v.kind, "violation", v.to_json())
+        self.assertIn("relay-changes-permitted", v.explanation["rules"])
+        read = [r for r in j.of_kind("client") if r.get("event") == "read"][0]
+        self.assertEqual(read["differential"]["changed"], ["path", "subject"])
+        findings = self.mutate("inn-serves-fn-article",
+                               observed="changed: path; only in the second: xref; BODY DIFFERS")
+        self.assertEqual(self.check(findings, "inn-lab-fn-to-inn")[2].kind, "violation")
+
+    def test_a_served_sender_xref_or_a_path_without_self_is_a_violation(self):
+        for key in ("fn-serves-no-sender-xref", "fn-serves-own-path-identity"):
+            with self.subTest(key=key):
+                s, j, v = self.check(self.mutate(key, verdict="violated"), "inn-lab-inn-to-fn")
+                self.assertEqual(v.kind, "violation", v.to_json())
+                self.assertIn("relay-changes-permitted", v.explanation["rules"])
+
+    def test_a_loop_taken_is_a_violation_on_either_agent(self):
+        s, j, v = self.check(self.mutate("fn-loop-refused", observed="335 send it / 235 ok"),
+                             "inn-lab-inn-to-fn")
+        self.assertEqual(v.kind, "violation", v.to_json())
+        self.assertEqual(v.explanation["rules"], ["loop-refused"])
+        s, j, v = self.check(self.mutate("inn-loop-437", observed="335 Send it / 235 ok"),
+                             "inn-lab-inn-refusals")
+        self.assertEqual(v.kind, "violation", v.to_json())
+
+    def test_a_transfer_taken_of_an_article_fn_refused_is_a_violation(self):
+        findings = self.mutate("fn-post-240", verdict="violated",
+                               observed="340 send article / 441 posting failed")
+        s, j, v = self.check(findings, "inn-lab-fn-to-inn")
+        self.assertEqual(v.kind, "violation", v.to_json())
+        self.assertEqual(v.explanation["record"]["event"], "peer-transfer")
+
+    def test_a_second_offer_taken_is_a_violation(self):
+        findings = self.mutate("inn-duplicate-435", "fn-article", observed="335 Send it / 235 ok")
+        s, j, v = self.check(findings, "inn-lab-fn-to-inn")
+        self.assertEqual(v.kind, "violation", v.to_json())
+        self.assertEqual(v.explanation["rules"], ["duplicate-is-no-op"])
+
+
 class ContractRuleTests(unittest.TestCase):
     def test_every_rule_names_its_source(self):
         for r in contract.RULES.values():

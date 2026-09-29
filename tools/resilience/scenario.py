@@ -42,14 +42,19 @@ WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
              "read-during-competing-work", "reclaim-freed", "recovery-completed",
              "memberships-listed", "checkpoint-installed",
              "receipt-delivered", "receipt-effect-once", "cross-route-retry-refused",
-             "init-old-or-new")
+             "init-old-or-new",
+             # the interop backend (W7e, adapters/inn_lab.py): a copy served
+             # by the other agent matched under the named normalization; a
+             # Path loop refused; a second offer refused as held
+             "relay-normalized", "loop-refused", "duplicate-refused")
 REPLAY = ("exact", "timed", "image")
 CONTRACTS = ("local-commit-log",)
 CANDIDATE_RULES = ("absent", "present", "either")
 # The routes a post's cut is reached by; the registry carries each route's
 # column where they differ (design §5: `operator post' and `store post' are
 # a batch of one, the served POST a member of the owner's quantum).
-ROUTES = ("store-post", "operator-post", "served-post", "bp-transit")
+ROUTES = ("store-post", "operator-post", "served-post", "bp-transit",
+          "peer-transit")     # NNTP transit from or to another news agent (W7e)
 HEALING_BOUND_KINDS = ("seconds", "experimental")
 EXPECTED = ("consistent", "violation", "inconclusive", "no-witness", "harness-failure",
             "healing-overran")
@@ -128,6 +133,8 @@ TABLE_SELECTORS = {
 RECLAIM_CUTS_SOURCE = "host/native/owner.lisp:+fnn-reclaim-cuts+"
 BLOCK_BOUNDARY = "power-loss"                   # adapters/power_loss.py (W7d)
 BLOCK_RECOVERY_BOUNDARY = "recovery-power-loss"
+INTEROP_IDLE_BOUNDARY = "peer-idle"              # adapters/inn_lab.py (W7e): fn owner SIGTERM
+INTEROP_PEER_BOUNDARY = "peer-innd"              # the peer daemon killed
 
 
 class ScenarioError(ValueError):
@@ -297,6 +304,19 @@ def boundary_registry() -> dict:
                           "rule": None, "rules": {}, "operations": ops,
                           "actions": ["drop-writes"], "selector": None,
                           "executable": True, "backend": "block-replay"}
+    # The interop backend's boundaries (W7e, adapters/inn_lab.py): the fn
+    # owner's SIGTERM with no transfer in flight (tools/inn_lab.py
+    # scenario_fn_term) and the peer daemon killed (scenario_innd_cut).
+    # Neither is a cut table's column: everything acknowledged stays
+    # (present), and the peer's own recovery is the peer's, never fn's rule.
+    for name, ops, rules in ((INTEROP_IDLE_BOUNDARY, ["probe"],
+                              {"served-post": "present", "operator-post": "present",
+                               "peer-transit": "present"}),
+                             (INTEROP_PEER_BOUNDARY, ["disconnect"], {})):
+        registry[name] = {"source": "tools/inn_lab.py (INN 2.7.4 on hbox)", "tables": [],
+                          "program": None, "book": None, "rule": None, "rules": rules,
+                          "operations": ops, "actions": ["kill"], "selector": None,
+                          "executable": True, "backend": "interop"}
     io = ROOT / "host" / "native" / "io.lisp"
     selectors = io.read_text() if io.is_file() else ""
     for name, row in PENDING_BOUNDARIES.items():
