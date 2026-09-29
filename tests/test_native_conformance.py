@@ -236,7 +236,7 @@ class ServedSurfaceRows(unittest.TestCase):
         cls.node = Node(class_case(cls), IMAGE)
         # fn.side takes the other cases' articles, so the reader profile's
         # GROUP holds exactly the one article whatever order the cases run in.
-        cls.node.init(GROUP, "fn.side")
+        cls.node.init(GROUP, "fn.side", "fn.xpat")
         cls.node.start()
         cls.message_id = "<native-conformance@example.invalid>"
         with cls.node.session() as client:
@@ -336,6 +336,32 @@ class ServedSurfaceRows(unittest.TestCase):
         dispatched = {label for label, reply in answered.items() if reply not in unavailable}
         self.assertEqual(sorted(set(advertised) & set(probes) - dispatched), [], answered)
         self.assertEqual(sorted(dispatched - set(advertised)), [], (advertised, answered))
+
+    def test_xpat_joins_ors_and_matches_case_sensitively(self):
+        """SCN-055 (NNT-016, RFC 2980 2.9): XPAT is listed; its pattern
+        arguments are joined with one space into one wildmat
+        (books/nntp-legacy.lisp), a comma separates alternatives (RFC 3977
+        4.2) and the match is case-sensitive.  fn.xpat holds only the probe
+        article, Subject `probe root'."""
+        probe = "<xpat-probe@example.invalid>"
+        with self.session() as client:
+            self.assertIn("XPAT", capability_labels(client))
+            _, final = post_over(client, article(probe, groups="fn.xpat",
+                                                 subject="probe root"))
+            self.assertEqual(code(final), "240", final)
+            self.assertEqual(code(client.command(b"GROUP fn.xpat")), "211")
+            answers = {}
+            for pattern in (b"*root*", b"*Root*", b"*zzz*,*root*", b"*zzz* *root*",
+                            b"probe root"):
+                status, body = client.multiline(b"XPAT Subject 1-9 " + pattern)
+                answers[pattern.decode()] = (code(status), body.splitlines())
+        print("NATIVE-XPAT-WITNESS " + repr(answers))
+        hit = ("221", [b"1 probe root"])
+        self.assertEqual(answers["*root*"], hit, answers)
+        self.assertEqual(answers["*zzz*,*root*"], hit, answers)
+        self.assertEqual(answers["probe root"], hit, answers)
+        self.assertEqual(answers["*Root*"], ("221", []), answers)
+        self.assertEqual(answers["*zzz* *root*"], ("221", []), answers)
 
     def test_a_reader_stays_live_across_another_connections_post(self):
         """V0-POST-CONCURRENT."""

@@ -5,7 +5,7 @@ import unittest
 
 from tests.native_harness import (
     EXIT, ROOT, Acl2Session, Node, environment, free_port, native_image,
-    requires, run, scratch, start)
+    openssl_with_ml_dsa, requires, run, scratch, start)
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
 # connection lost after it existed is EXIT.INTERRUPTED (connection-local:
@@ -312,6 +312,139 @@ class NativeBpApplicationTests(unittest.TestCase):
         refused = self.exchange()
         self.assertEqual(refused[1], EXIT.REFUSED)
         self.assertIn(b"reason=control-not-filed", refused[4])
+
+    def test_signed_cancel_over_bp_withdraws_its_authors_target(self):
+        """PKT-443 (4) (control-across-peers "Not done"): a SIGNED control
+        article over BP.  P's signed target and P's signed cancel of it are
+        authored on a separate node H (`hybrid-author`) and their stored
+        octets fetched; each is then carried to the receiver as a BP
+        application request.  The receiver has P enrolled and control.cancel
+        configured.  BP ingress takes the NNTP transit decision
+        (host/native/owner.lisp fnn-owner-attempt-transit): C1 files the
+        cancel in control.cancel (fn-owner-control-filing), the carrier is
+        present so the kind-4 event is built under P's current enrollment
+        (fn-owner-peer-carrier-plan), and the author basis withdraws the
+        target (books/control-authority.lisp
+        fn-ctl-cancel-executes-only-for-author-or-authority).  Observed from
+        a reader over the receiver's Store: the target is 223 after its own
+        arrival and `430 withdrawn' after the cancel's (books/nntp-control.lisp
+        fn-nntp-withdrawn-article-answers-430-withdrawn); the cancel is
+        stored in control.cancel only."""
+        openssl = openssl_with_ml_dsa()
+        if openssl is None:
+            self.skipTest("an OpenSSL with ML-DSA-65 (FN_TEST_OPENSSL)")
+        target_id, cancel_id = "<bp-signed-target@example.invalid>", \
+            "<bp-signed-cancel@example.invalid>"
+        keys = self.signer(openssl)
+
+        author = Node(self, IMAGE, root=self.temp / "author", name="h")
+        author.store("init", "fn.test", "control.cancel", expect=EXIT.OK)
+        author.start()
+        self.enroll(author, keys)
+        self.hybrid_author(author, keys, target_id, None)
+        self.hybrid_author(author, keys, cancel_id, "Control: cancel " + target_id)
+        octets = {}
+        with author.session(timeout=30, greeting=None) as client:
+            for msgid in (target_id, cancel_id):
+                status, body = client.multiline(b"ARTICLE " + msgid.encode())
+                self.assertTrue(status.startswith(b"220 "), (msgid, status))
+                octets[msgid] = body
+        author.stop(expect=None)
+
+        config = self.temp / "receiver-fn.toml"
+        created = self.invoke("operator", config, "group", "create", "control.cancel")
+        self.assertEqual(created.returncode, EXIT.OK, created.stderr.decode())
+        receiver = Node(self, IMAGE, root=self.temp / "receiver-node", name="receiver")
+        receiver.store_path = self.store
+        receiver.write_config()
+        receiver.start()
+        self.enroll(receiver, keys)
+        receiver.stop(expect=None)
+
+        def carry(msgid, spool):
+            self.sender_spool = self.temp / spool
+            self.request_path.write_bytes(self.request_for(octets[msgid], msgid.encode()))
+            return self.exchange()
+
+        def read(commands):
+            reader = Node(self, IMAGE, root=self.temp / ("reader-" + str(len(answers))))
+            reader.store_path = self.store
+            reader.write_config()
+            reader.start()
+            seen = {}
+            with reader.session(timeout=30, greeting=None) as client:
+                for command in commands:
+                    seen[command] = client.multiline(command.encode())[0].decode().strip()
+            reader.stop(expect=None)
+            answers.append(seen)
+            return seen
+
+        answers = []
+        target = carry(target_id, "sender-spool-target")
+        before = read(["ARTICLE " + target_id, "GROUP fn.test"])
+        cancel = carry(cancel_id, "sender-spool-cancel")
+        after = read(["ARTICLE " + target_id, "STAT " + cancel_id,
+                      "GROUP control.cancel", "GROUP fn.test"])
+        witness = {"target": [target[0], target[1], target[3].decode("utf-8", "replace")[-300:],
+                              target[4].decode("utf-8", "replace")[-300:]],
+                   "cancel": [cancel[0], cancel[1], cancel[3].decode("utf-8", "replace")[-300:],
+                              cancel[4].decode("utf-8", "replace")[-300:]],
+                   "answers": answers}
+        print("NATIVE-BP-SIGNED-CONTROL-WITNESS " + repr(witness))
+        self.assertEqual((target[0], target[1]), (EXIT.OK, EXIT.OK), witness)
+        self.assertIn(b"BP application accepted", target[3], witness)
+        self.assertTrue(before["ARTICLE " + target_id].startswith("220 "), witness)
+        self.assertTrue(before["GROUP fn.test"].startswith("211 1 "), witness)
+        self.assertEqual((cancel[0], cancel[1]), (EXIT.OK, EXIT.OK), witness)
+        self.assertIn(b"BP application accepted", cancel[3], witness)
+        self.assertEqual(after["ARTICLE " + target_id], "430 withdrawn", witness)
+        self.assertTrue(after["STAT " + cancel_id].startswith("223 "), witness)
+        self.assertTrue(after["GROUP control.cancel"].startswith("211 1 "), witness)
+
+    def signer(self, openssl):
+        """P of tests/test_native_control_across_peers.py: a fixed Ed25519
+        pair (RFC 8032 test 1) and a fresh ML-DSA-65 pair made by the test
+        tool OpenSSL, independently of the node."""
+        root = self.temp / "signer-p"
+        root.mkdir()
+        keys = {"principal": root / "principal.bin", "ed_public": root / "ed-public.bin",
+                "ed_secret": root / "ed-secret.bin", "ml_private": root / "ml.pem",
+                "ml_public": root / "ml-public.pem", "root": root, "generation": "1"}
+        ed_public = "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
+        ed_seed = "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+        keys["principal"].write_bytes(bytes([0x55]) * 32)
+        keys["ed_public"].write_bytes(bytes.fromhex(ed_public))
+        keys["ed_secret"].write_bytes(bytes.fromhex(ed_seed + ed_public))
+        for argv in ([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out",
+                      keys["ml_private"]],
+                     [openssl, "pkey", "-in", keys["ml_private"], "-pubout", "-out",
+                      keys["ml_public"]]):
+            made = run(argv)
+            self.assertEqual(made.returncode, 0, made)
+        return keys
+
+    def enroll(self, node, keys):
+        done = self.invoke("hybrid-enroll", node.control, keys["generation"],
+                           keys["principal"], keys["ed_public"], keys["ml_public"])
+        self.assertEqual(done.returncode, EXIT.OK, done)
+
+    def hybrid_author(self, node, keys, msgid, control):
+        path = keys["root"] / (msgid.strip("<>").replace("@", "_") + ".eml")
+        head = ["From: sender@example.invalid", "Newsgroups: fn.test",
+                "Subject: signed over BP " + msgid,
+                "Date: Mon, 21 Sep 2026 08:00:00 +0000", "Message-ID: " + msgid]
+        path.write_bytes(("\r\n".join(head + ([control] if control else []))
+                          + "\r\n\r\nbody over BP\r\n").encode("ascii"))
+        signed = self.invoke("hybrid-sign", keys["principal"], keys["ed_public"],
+                             keys["ed_secret"], keys["ml_public"], keys["ml_private"], path)
+        self.assertEqual(signed.returncode, EXIT.OK, signed)
+        parts = dict(line.split() for line in signed.stdout.decode().splitlines())
+        ed_sig, ml_sig = path.with_suffix(".ed"), path.with_suffix(".ml")
+        ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
+        ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
+        authored = self.invoke("hybrid-author", node.control, keys["generation"],
+                               path, ed_sig, ml_sig, keys["ml_public"])
+        self.assertEqual(authored.returncode, EXIT.OK, authored)
 
     def test_unsupported_receipt_profile_refuses_before_file_read(self):
         sender_store, workflow = self.prepare_sender_obligation()
