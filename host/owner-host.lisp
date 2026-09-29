@@ -1988,8 +1988,7 @@
 ; (books/consumer-bound.lisp fn-cbind-plain-ack-of-an-unbound-consumer-is-
 ; the-consumer-ack).
 (defun fn-owner-consumer-local-ack (cursor-octets state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
-                  :guard (fn-cbor-octet-listp cursor-octets)))
+  (declare (xargs :stobjs state :guard (and (boundp-global 'fn-owner state) (fn-cbor-octet-listp cursor-octets))))
   (value (fn-cbind-plain-ack (fn-owner-ocfg state) cursor-octets)))
 
 (defun fn-owner-consumer-local-position (consumer state)
@@ -2029,8 +2028,7 @@
   (value (fn-col-unregister (fn-owner-core state) consumer)))
 
 (defun fn-owner-checkpoint-clone-phase (marker-octets state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
-                  :guard (fn-cbor-octet-listp marker-octets)))
+  (declare (xargs :stobjs state :guard (and (boundp-global 'fn-owner state) (fn-cbor-octet-listp marker-octets))))
   (value (fn-cpa-clone-phase-of-octets
           (fn-owner-store state) marker-octets)))
 
@@ -2439,8 +2437,8 @@
 ; (`fn-native-control-refusal-status'), so an article past the profile's A
 ; reaches the operator as `article-exceeds-profile-bound', not a bare refusal.
 (defun fn-owner-operator-refusal-reason (msgid-octets group-octets payload fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :guard (boundp-global 'fn-owner state)
-                  :guard (and (fn-cbor-octet-listp msgid-octets)
+  (declare (xargs :stobjs (fn-arena state) :guard (and (boundp-global 'fn-owner state)
+                              (fn-cbor-octet-listp msgid-octets)
                               (fn-cbor-octet-listp payload)
                               (fn-octet-list-listp group-octets))))
   (let ((decision (fn-own-operator-decision-of
@@ -2670,7 +2668,8 @@
           ; decision is fn-peer-decide-transfer-under's, unchanged; the
           ; verdict is read from the store's carried index and keyring
           ; before any durable intent, and named beside the decision
-          ; (fn-owner-transit-authority; the transit log line carries it).
+          ; (the global fn-owner-transit-authority; the transit log line
+          ; fn-owner-transit-log-line carries it as authority=NAME).
           (mv-let (d authority)
             (fn-pta-decide (fn-sn-index (fn-own-store owner))
                            (fn-sn-keyring (fn-own-store owner))
@@ -2946,7 +2945,10 @@
                                     (fn-olog-field
                                      "authority"
                                      (fn-olog-symbol-text
-                                      (f-get-global 'fn-owner-transit-authority state)))))
+                                      ; unbound until a transit's authority
+                                      ; decision sets it: the empty authority
+                                      (and (boundp-global 'fn-owner-transit-authority state)
+                                           (f-get-global 'fn-owner-transit-authority state))))))
                              state)))
     (value :ok)))
 
@@ -2957,12 +2959,6 @@
 (defun fn-owner-transit-reason (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner-transit-reason state)))
   (value (f-get-global 'fn-owner-transit-reason state)))
-
-; W5b: the authority verdict fn-owner-transit-decide computed for the transit
-; take in flight (*fn-pta-verdicts*, or :none when the bytes were not wanted).
-(defun fn-owner-transit-authority (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (f-get-global 'fn-owner-transit-authority state)))
 
 (defun fn-owner-transit-evidence (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner-transit-evidence state)))
@@ -3193,8 +3189,7 @@
 ;; asks before it calls a commit callback (books/owner-bound-commit.lisp
 ;; fn-obc-commit-gate; KEYSTONE fn-obc-commit-only-after-filing).
 (defun fn-owner-bound-commit-gate (received group-octets state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
-                  :guard (fn-octet-list-listp group-octets)))
+  (declare (xargs :stobjs state :guard (and (boundp-global 'fn-owner state) (fn-octet-list-listp group-octets))))
   (value (fn-obc-commit-gate
           received group-octets
           (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
@@ -4229,8 +4224,7 @@
           (fn-owner-feed-record peer-octets state))))
 
 (defun fn-owner-feed-profile-decode (octets)
-  (declare (xargs :guard t
-                  :guard (fn-cbor-octet-listp octets)))
+  (declare (xargs :guard (fn-cbor-octet-listp octets)))
   (fn-fap-decode octets))
 
 (defun fn-owner-feed-profile-max-octets ()

@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 1224,
     "declared_and_dispatched": 1207,
-    "guard_verified": 546,
+    "guard_verified": 550,
     "with_keystone": 155
   },
   "entries": [
@@ -12083,10 +12083,14 @@
       "name": "fn-bpn-host-lifecycle-recovery-agrees-p",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -14088,7 +14092,7 @@
       "name": "fn-bpnr-publish-action",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -14104,10 +14108,17 @@
       "name": "fn-bpnr-publish-outcome",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnr-publish-outcome-is-pending-exactly-while-the-loop-runs"
+        },
+        {
+          "theorem": "fn-bpnr-publish-outcome-names-the-stopped-phase"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -14120,7 +14131,7 @@
       "name": "fn-bpnr-publish-step",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -19860,12 +19871,7 @@
         ]
       ],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-xrt-quiet-files-are-unnamed",
-          "via": "fn-xrt-quiet-files"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -19894,12 +19900,7 @@
         ]
       ],
       "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-xrt-reseat-checkpoint-frame-keeps-the-arena",
-          "via": "fn-xrt-reseat-checkpoint-frame"
-        }
-      ],
+      "keystones": [],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -21483,12 +21484,7 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "program",
-      "kinds": [
-        [
-          "octet-records",
-          "fn-octet-list-listp"
-        ]
-      ],
+      "kinds": [],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -21504,12 +21500,7 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "program",
-      "kinds": [
-        [
-          "octet-records",
-          "fn-octet-list-listp"
-        ]
-      ],
+      "kinds": [],
       "exempt": {},
       "keystones": [],
       "extraction": null,

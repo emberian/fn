@@ -27,8 +27,9 @@
 ; it compressed, and NIL otherwise.  The span is ACL2's: R decodes as a record
 ; (the codec, books/records-seam.lisp) and its payload opens at K
 ; (books/payload-extent.lisp fn-arx-record-suffix-len; checked, never
-; assumed).  A span above the host encoder's one-call input (2^30 - 1) is not planned (the host
-; primitive's domain; the policy keeps R).  With MIN = 0 the plan is NIL for
+; assumed).  No ceiling of its own: the span is the admitted article's
+; payload, so the operator's profile (its article-size admission limit) bounds
+; the encoder's and the decoder's work for one append.  With MIN = 0 the plan is NIL for
 ; every record (`fn-lzr-append-plan-off'): the host takes R, byte for byte
 ; what it took before this book.
 ;
@@ -50,13 +51,6 @@
 
 ; -----------------------------------------------------------------------------
 ; 1. The plan.
-
-; The largest source the plan hands the host's at-rest encoder: 2^30 - 1.
-; It was the retired C encoder's one-call limit (fn_deflate_payload); the
-; SBCL encoder that replaced it (host/native/deflate.lisp fnn-ldf-, lane
-; compress-7) has no such limit, so a larger record is merely stored as it
-; is.  The decoder has no such bound.
-(defconst *fn-lzr-encoder-max-input* 1073741823)
 
 (defthm fn-lzr-decoded-record-p
   (implies (fn-record-result-okp (fn-record-decode-exact r))
@@ -93,8 +87,7 @@
   (declare (xargs :guard (fn-cbor-octet-listp r)))
   (let ((s (fn-lzr-record-span r)))
     (if (and (consp s)
-             (fn-lzr-want-p min (cdr s))
-             (<= (cdr s) *fn-lzr-encoder-max-input*))
+             (fn-lzr-want-p min (cdr s)))
         s
       nil)))
 
