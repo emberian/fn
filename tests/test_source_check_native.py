@@ -64,6 +64,21 @@ class ImageFreeTests(unittest.TestCase):
         env = nsc.scrubbed_env({"FN_NATIVE_HOST": "x", "FN_RUN_E2E": "1", "PATH": "/bin"})
         self.assertEqual(sorted(env), ["PATH", "PYTHONDONTWRITEBYTECODE"])
 
+    def test_the_toolchain_sbcl_survives_the_scrub(self):
+        # It names the toolchain, not an image (PKT-614: a system SBCL
+        # cannot read the host).
+        with tempfile.TemporaryDirectory() as tmp:
+            sbcl = Path(tmp) / "sbcl" / "bin" / "sbcl"
+            sbcl.parent.mkdir(parents=True)
+            sbcl.write_text("#!/bin/sh\n")
+            sbcl.chmod(0o755)
+            launcher = Path(tmp) / "acl2"
+            launcher.write_text(f'#!/bin/sh\nexec "{sbcl}" --core x "$@"\n')
+            env = nsc.scrubbed_env({"FN_ACL2": str(launcher), "FN_NATIVE_HOST": "x"})
+            self.assertEqual(env["FN_SBCL"], str(sbcl))
+            self.assertNotIn("FN_ACL2", env)
+            self.assertEqual(nsc.scrubbed_env({"FN_SBCL": "/x/sbcl"})["FN_SBCL"], "/x/sbcl")
+
 
 if __name__ == "__main__":
     unittest.main()

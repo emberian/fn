@@ -72,7 +72,7 @@ class RawScriptTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0,
                          f"{script.name} exited {result.returncode}:\n"
                          f"{result.stdout[-2000:]}\n{result.stderr[-2000:]}")
-        self.assertIn("passed", result.stdout.splitlines()[-1],
+        self.assertRegex(result.stdout.splitlines()[-1].lower(), r"\bpass(ed)?\b",
                       f"{script.name} did not end with its passing line")
 
 

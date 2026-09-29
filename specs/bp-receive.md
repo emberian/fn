@@ -71,7 +71,7 @@ staging call deliberately defers BPA deletion, then reopens the inbox before
 reading the full framed ADU.  The adapter does not stage only the extracted
 legacy article, so request work/context remains durable with the payload.
 
-ACL2 function `fn-bpreq-article` decodes the wrapper and projects exact legacy
+(The receiver described here was the Python host's, with `host/bp-receive-host.lisp`; both are retired: python-diet T5b and Q7k, 2026-09-29. The native BP node receives through `host/bp-native-app-host.lisp`.) An ACL2 request decoder decodes the wrapper and projects exact legacy
 article octets.  The existing ACL2 article parser extracts the Message-ID;
 `run_store.metadata` derives per-article archive/subject/evidence from that
 ACL2 result and exact payload.  ACL2 verifies that the request subject equals
@@ -86,7 +86,7 @@ A committed exact request arriving under a new BID returns `outcome ==
 record, archive pin, receipt context, intent, or decision.  A persisted exact
 context lacking a receipt decision may finish that decision without accepting
 the article again.  If Store publication was durable before context
-publication, ACL2 `fn-bpreq-existing-record` finds and encodes only the exact
+publication, an ACL2 lookup finds and encodes only the exact
 ready/recovered Store record, which the receiver then binds into its first
 durable request context; it does not reserve or charge another transaction.
 A pending intent remains fenced by default.  The optional
