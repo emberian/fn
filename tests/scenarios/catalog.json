@@ -1655,25 +1655,24 @@
       "id": "SCN-055",
       "title": "XPAT is listed, joins its pattern arguments, ORs comma alternatives and matches case-sensitively on the served node",
       "milestone": "M6",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "NNT-016"
       ],
       "steps": [
         "CAPABILITIES on a served connection.",
-        "In a group holding an article with Subject `probe root`: XPAT Subject 1-9 *root*, *Root*, *zzz*,*root*, *zzz* *root*, probe root.",
-        "Search the group from the web reader with the wildmat *root*."
+        "In a group holding an article with Subject `probe root`: XPAT Subject 1-9 *root*, *Root*, *zzz*,*root*, *zzz* *root*, probe root."
       ],
       "expected": [
         "The capability block lists XPAT.",
-        "221 with the article's line for *root*, *zzz*,*root* and probe root; 221 with an empty list for *Root* and *zzz* *root*.",
-        "The web page names the XPAT command it sent, carrying the wildmat as typed, and lists the article."
+        "221 with the article's line for *root*, *zzz*,*root* and probe root; 221 with an empty list for *Root* and *zzz* *root*."
       ],
       "evidence": [
         "tests/acl2/nntp-xpat-tests.lisp",
-        "planning/evidence/reader-surface-2026-09-25.md"
+        "tests/test_native_conformance.py",
+        "planning/evidence/correctness-remainder-7-2026-09-29.md"
       ],
-      "note": "assurance-triage 2026-09-26: returned to specified: the served-node steps were not run (planning/evidence/reader-surface-2026-09-25.md \"Native: NOT RUN (blocked)\"); only the fake-node tests.test_fn_web ReaderSearchTests and the ACL2 book ran."
+      "note": "2026-09-29 correctness-remainder-7: the served-node steps ran natively (tests.test_native_conformance.ServedSurfaceRows.test_xpat_joins_ors_and_matches_case_sensitively, hbox developer image, planning/evidence/correctness-remainder-7-2026-09-29.md). The web-reader step is withdrawn: the Python readers were deleted (9ca2529fd, web-native-2) and the native web face has no search. Earlier: assurance-triage 2026-09-26: returned to specified: the served-node steps were not run (planning/evidence/reader-surface-2026-09-25.md \"Native: NOT RUN (blocked)\"); only the fake-node tests.test_fn_web ReaderSearchTests and the ACL2 book ran."
     },
     {
       "id": "SCN-047",

@@ -341,14 +341,16 @@ class NativeBpApplicationTests(unittest.TestCase):
         author.store("init", "fn.test", "control.cancel", expect=EXIT.OK)
         author.start()
         self.enroll(author, keys)
-        self.hybrid_author(author, keys, target_id, None)
-        self.hybrid_author(author, keys, cancel_id, "Control: cancel " + target_id)
+        # Each article's stored octets are fetched before the next is
+        # authored: once H holds the cancel, H itself withdraws the target.
         octets = {}
-        with author.session(timeout=30, greeting=None) as client:
-            for msgid in (target_id, cancel_id):
+        for msgid, control in ((target_id, None),
+                               (cancel_id, "Control: cancel " + target_id)):
+            self.hybrid_author(author, keys, msgid, control)
+            with author.session(timeout=30, greeting=None) as client:
                 status, body = client.multiline(b"ARTICLE " + msgid.encode())
-                self.assertTrue(status.startswith(b"220 "), (msgid, status))
-                octets[msgid] = body
+            self.assertTrue(status.startswith(b"220 "), (msgid, status))
+            octets[msgid] = body
         author.stop(expect=None)
 
         config = self.temp / "receiver-fn.toml"
@@ -374,7 +376,11 @@ class NativeBpApplicationTests(unittest.TestCase):
             seen = {}
             with reader.session(timeout=30, greeting=None) as client:
                 for command in commands:
-                    seen[command] = client.multiline(command.encode())[0].decode().strip()
+                    ask = (client.multiline if command.startswith("ARTICLE ")
+                           else client.command)
+                    reply = ask(command.encode())
+                    seen[command] = (reply[0] if isinstance(reply, tuple)
+                                     else reply).decode().strip()
             reader.stop(expect=None)
             answers.append(seen)
             return seen
