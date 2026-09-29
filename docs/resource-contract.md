@@ -647,6 +647,10 @@ class and quotes what has been measured with its scope.
   step (PKT-842).
 
 **D4** — on-disk growth per accepted article.
+- Per rotation, one rotation entry heads the new segment: 78 octets padded
+  to the write unit (`fn-lg-rotation-entry-len`), and the open reads one
+  head of `fn-lgl-head-len` octets per checkpoint before any record
+  (`fn-lgl-open-of-rotated-segment`; lane store-lineage, PRF-979).
 - Bounded: the record log, per article and at every crash point. An
   accepted article's record is in the bytes on disk: the kernel recovered
   from every admissible crash image of every cut of the host's append, of
@@ -868,7 +872,7 @@ not on this tree yet; its citations are checked once they land.
 | D1 | `books/store-capacity-vector`: `fn-cvec-roomp-is-within-the-profile`, `fn-cvec-held-row-within-its-figure`; `books/store-reclaim-pack`: `fn-rclp-events-keep-the-length` | PRF-138, PRF-119 | none |  |
 | D2 | `books/owner-time-model`: `fn-otm-admit-keeps-the-space-need`; `books/owner-time-journal-writer`: `fn-otm-jw-file-reads-agrees-or-gap` | PRF-359, PRF-360 | none |  |
 | D3 | `books/owner-checkpoint-writer`: `fn-ockp-decide-defers-by-the-estimate`; `books/store-maintenance-reserve`: `fn-smr-roomp-is-within-the-bound` | PRF-200, PRF-129 | none |  |
-| D4 | `books/store-log-durable`: `fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point`, `fn-lgu-acknowledged-article-is-recoverable-at-every-cut-of-recovery`; `books/store-log-crash`: `fn-lg-entry-len-is-units`; `books/store-log-extend`: `fn-olr-extension-target-is-an-extent` | PRF-936, PRF-244, PRF-268 | `planning/evidence/byte-model-2026-09-29.md` |  |
+| D4 | `books/store-log-durable`: `fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point`, `fn-lgu-acknowledged-article-is-recoverable-at-every-cut-of-recovery`; `books/store-log-crash`: `fn-lg-entry-len-is-units`; `books/store-log-extend`: `fn-olr-extension-target-is-an-extent`; `books/store-log`: `fn-lg-rotation-entry-len`; `books/store-log-lineage`: `fn-lgl-open-of-rotated-segment` | PRF-936, PRF-244, PRF-268, PRF-979 | `planning/evidence/byte-model-2026-09-29.md` |  |
 | D5 | `books/expiry-verdict`: `fn-xpy-releasablep-is-rule-or-expired-and-unheld`, `fn-xpy-held-article-is-not-expired` | PRF-918 | `planning/evidence/expiry-q11-2026-09-28.md` | lane/operations baec98157 (PKT-868, PRF-908: online compaction) |
 | X1 | `books/refusal-effect`: `fn-rfx-unserved-prepare-is-unchanged-by-definition`, `fn-rfx-unaffordable-prepare-is-unchanged-by-definition`, `fn-rfx-refused-reconfigure-is-unchanged-by-definition`, `fn-rfx-refused-post-keeps-records`, `fn-rfx-refused-post-keeps-configuration`, `fn-rfx-refused-post-consumes-one-txid`, `fn-rfx-config-record-txid-is-the-node-next-by-definition` | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |
 | X2 | none (measured or open) | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |

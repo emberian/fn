@@ -6889,9 +6889,12 @@ fn-lgs-rotate-is-the-recovered-kernel).  The rename is the only I/O here:
 journal/'s fence (cut rotate-durable) is fnn-log-make-durable's, taken by
 the new segment's first fence and by the checkpoint that names it, both off
 the owner mutex; until then no member in the new segment is acknowledged
-and no checkpoint names it.  Returns the log position the checkpoint's F
-row carries: (K GENESIS), the new segment and the closed one's last
-trailer.  No spare of the next index: refused (spare-unprepared), the
+and no checkpoint names it.  The new segment opens with its ROTATION ENTRY
+(lane store-lineage, PRF-979: fn-lgc-rotation-octets, written here at
+offset 0, cut rotate-headed; the kernel starts past it).  Returns the log
+position the checkpoint's F row carries: (K GENESIS), the new segment and
+its head's trailer, which the open checks the head against
+(fnn-log-lineage-genesis).  No spare of the next index: refused (spare-unprepared), the
 closed segment stays active; the caller prepares one and asks again.  A
 rename whose outcome is unknown is a recovery event (the name may or may not
 be in journal/ while the closed segment would take more records)."
@@ -6926,26 +6929,42 @@ be in journal/ while the closed segment would take more records)."
             (ignore-errors (when (fnn-lstat staged) (fnn-unlink staged)))
             (fnn-refuse "rotation refused reason=spare-rename-~(~a~)" renamed))
           (fnn-log-at :rotate-renamed)
-          (fnn-close (fnn-log-fd log))
-          (setf (fnn-log-path log) path
-                (fnn-log-fd log) fd
-                (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks)
-                (fnn-log-index log) next
-                (fnn-log-genesis log) (fnn-core 'fn-lgc-last ks)
-                (fnn-log-extent log) (fnn-nat (fnn-core 'fn-store-log-initial-extent))
-                (fnn-log-pending log) 0
-                (fnn-log-dir-pending log) (fnn-journal-dir store))
-          (fnn-log-batch-reset log)
-          (list next (fnn-core 'fn-lgc-last ks)))))))
+          ;; The head (lane store-lineage; books/store-log-lineage.lisp): the
+          ;; rotation entry chained from the closed segment's last trailer,
+          ;; at offset 0 of the new segment (cut rotate-headed).  No fence
+          ;; here: fnn-log-make-durable fences the file before journal/, so
+          ;; an F row never names an unheaded segment.  A write whose
+          ;; outcome is unknown is a recovery event, as the rename's is.
+          (let ((unit (fnn-log-unit log)))
+            (handler-case (fnn-log-pwrite fd 0 (fnn-core 'fn-lgc-rotation-octets ks next unit))
+              (fnn-os-error (e)
+                (fnn-indeterminate "log rotation's head write is uncertain: ~a" e)))
+            (fnn-log-at :rotate-headed)
+            (fnn-close (fnn-log-fd log))
+            (setf (fnn-log-path log) path
+                  (fnn-log-fd log) fd
+                  (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks next unit)
+                  (fnn-log-index log) next
+                  (fnn-log-genesis log) (fnn-core 'fn-lgc-last ks)
+                  (fnn-log-extent log) (fnn-nat (fnn-core 'fn-store-log-initial-extent))
+                  (fnn-log-pending log) 0
+                  (fnn-log-dir-pending log) (fnn-journal-dir store))
+            (fnn-log-batch-reset log)
+            ;; The F row's position: the new segment and its head's trailer,
+            ;; the chain value its records continue from.
+            (list next (fnn-core 'fn-lgc-last (fnn-log-kernel log)))))))))
 
 (defun fnn-log-make-durable (log)
-  "fn-lgs-rotate-durable-program: journal/ fenced (cut rotate-durable) while
-the rotated-to segment's name is pending.  Called off the owner mutex by the
-new segment's first fence (fnn-log-fence: no member there is acknowledged
-before its name is durable) and by the publication before its checkpoint
-names the segment.  Two callers may both fence; that is harmless."
+  "fn-lgs-rotate-durable-program: the rotated-to segment's file fenced (its
+head, the rotation entry of cut rotate-headed) and then journal/ (cut
+rotate-durable) while the segment's name is pending.  Called off the owner
+mutex by the new segment's first fence (fnn-log-fence: no member there is
+acknowledged before its name is durable) and by the publication before its
+checkpoint names the segment, so an F row never names an unheaded segment.
+Two callers may both fence; that is harmless."
   (let ((dir (fnn-log-dir-pending log)))
     (when dir
+      (fnn-fsync-file (fnn-log-fd log))
       (fnn-fsync-dir dir)
       (fnn-log-at :rotate-durable)
       (setf (fnn-log-dir-pending log) nil))))
@@ -6961,6 +6980,58 @@ compact', `store reclaim'): the spare, the switch, journal/'s fence."
   "The segments present below FIRST (a checkpoint's first suffix segment)."
   (let ((plan (fnn-core 'fn-lgs-open-plan (fnn-log-segment-names store) first)))
     (if (eq (first plan) :scan) (third plan) nil)))
+
+(defun fnn-log-lineage-genesis (store k g t0)
+  "The open's lineage decision (books/store-log-lineage.lisp fn-lgl-open,
+PRF-979) over the checkpoint's F row (K G): segment K's head -- its first
+fn-lgl-head-len octets, the rotation entry the rotation wrote (cut
+rotate-headed) -- must be a readable rotation entry naming K whose trailer
+is G; for K = 1 (no head) G must be the genesis record's trailer T0.
+Refused by name (foreign-lineage: a restored backup's or another store's
+checkpoint against this log, or this store's checkpoint against a restored
+log that diverged; segment-head-damaged; segment-misnamed).  Answers the
+chain value the scan of K starts from: the head's claimed predecessor
+(fn-lgl-head-prev, the closed segment's last trailer; the head then
+validates as K's first entry, with no record), or T0.  Nothing is written:
+an ordinary restart opens under the same (K G); the chain through the heads
+is the store's ancestry and changes only when the log does."
+  (let* ((unit (fnn-store-log-unit))
+         (max (fnn-store-log-max store))
+         (head (and (>= k 2)
+                    (let* ((path (fnn-segment-path-at store k))
+                           (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
+                      (unwind-protect
+                           (let ((octets (fnn-read-exact-fd
+                                          fd (fnn-nat (fnn-core 'fn-lgl-head-len unit)))))
+                             (and octets (fnn-octet-list octets)))
+                        (fnn-close fd)))))
+         (verdict (fnn-core 'fn-lgl-open k g head t0 max)))
+    (when verdict
+      (error 'fnn-store-open-refusal :message (fnn-core 'fn-lgl-refusal-text verdict)))
+    (if (>= k 2) (fnn-core 'fn-lgl-head-prev head max) g)))
+
+(defun fnn-log-head-segment (store log)
+  "An active segment K >= 2 the scan read to nothing (frontier 0): a rotation
+died between the rename and the head (cut rotate-renamed), or its torn head
+was truncated by P-LOG-RECOVER (cut log-truncated).  The writable open
+completes the rotation: the rotation entry from the chain the scan carried
+(fn-lgc-rotation-octets of the recovered kernel, whose LAST is that chain
+value) at offset 0, the file fenced, journal/ fenced, the kernel the
+rotation's (fn-lgc-rotate; fn-lgs-rotate-is-the-recovered-kernel).  Its
+byte states are those of the rotation's own cuts rotate-renamed and
+rotate-headed (the same entry at the same offset), so a death here is a
+death there.  A reader refuses the segment: it must not write.  A headed
+segment reads past its head and is left alone."
+  (when (and (>= (fnn-log-index log) 2)
+             (zerop (fnn-nat (fnn-core 'fn-lgc-frontier (fnn-log-kernel log)))))
+    (unless (fnn-store-writable store)
+      (fnn-refuse "log segment ~a is an interrupted rotation (no head): open it writable (recover)"
+                  (fnn-log-path log)))
+    (let ((ks (fnn-log-kernel log)) (k (fnn-log-index log)) (unit (fnn-store-log-unit)))
+      (fnn-log-pwrite (fnn-log-fd log) 0 (fnn-core 'fn-lgc-rotation-octets ks k unit))
+      (fnn-fsync-file (fnn-log-fd log))
+      (fnn-fsync-dir (fnn-journal-dir store))
+      (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks k unit)))))
 
 (defun fnn-log-scan-segments (store scan genesis sink &optional places)
   "Scan the segments SCAN (indices, the last the active one) from GENESIS,
@@ -6996,6 +7067,9 @@ the process's life) and the stream binds each record's place for SINK
                           (fnn-log-open-read-only path unit max genesis sink))))
               (setf (fnn-log-index log) k
                     (fnn-log-genesis log) genesis)
+              ;; An unheaded segment (a rotation that died before its head):
+              ;; headed now by a writable open, refused by a reader.
+              (fnn-log-head-segment store log)
               (return-from fnn-log-scan-segments log))))))
     (fnn-fault "the log's open plan named no segment")))
 
@@ -7123,7 +7197,14 @@ does, and records how the log holds the history (fnn-store-log-history) for
             ;; from its trailer, a checkpoint's first suffix segment from the
             ;; F row's genesis.
             (let* ((genesis (let ((chain (fnn-genesis-open store)))
-                              (if log-position (second log-position) chain)))
+                              ;; The lineage decision (lane store-lineage,
+                              ;; PRF-979): the F row's (K G) against segment
+                              ;; K's head; the scan of K starts from the
+                              ;; head's predecessor.
+                              (if log-position
+                                  (fnn-log-lineage-genesis store (first log-position)
+                                                           (second log-position) chain)
+                                chain)))
                    (full (and (not log-position) (not (eq status :ok))
                               (let ((choice (fnn-core 'fn-store-sco-select status sequence 0
                                                       (fnn-store-config store))))

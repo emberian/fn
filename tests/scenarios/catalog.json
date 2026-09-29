@@ -1413,6 +1413,39 @@
       }
     },
     {
+      "id": "SCN-207",
+      "title": "A restored backup that diverged is a new lineage: its checkpoint is refused by name against this log, and this store's against its, with or without a suffix; an ordinary restart is not a new lineage",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-035"
+      ],
+      "steps": [
+        "Init a development-profile store and post one article; copy the store's files to a second node (a restored backup); the copy posts two articles of its own and checkpoints (segment 2, three records, no suffix); the original posts two of its own and checkpoints likewise.",
+        "Put the copy's checkpoint file in the original's place and open (`status`); restore the original's; post one more article and repeat over the suffix.",
+        "Put the original's checkpoint file in the copy's place and open the copy."
+      ],
+      "expected": [
+        "status exits refused with `open refused reason=foreign-lineage` (segment 2's rotation head is chained from this store's records, not the copy's); nothing is written or dropped; with the store's own checkpoint back the open is open=checkpoint:3 suffix=0 (suffix=1 over the suffix).",
+        "The copy refuses the original's checkpoint the same way.",
+        "A rotation killed at rotate-headed (with rotate-created, rotate-fenced, rotate-renamed, rotate-durable) reopens and serves every article (tests/test_native_checkpoint_auto.py, tests/test_native_log_compaction.py)."
+      ],
+      "evidence": [
+        "tests/test_native_store_lineage.py",
+        "tests/acl2/store-log-lineage-tests.lisp",
+        "books/store-log-lineage.lisp"
+      ],
+      "implementation": {
+        "test": "tests.test_native_store_lineage",
+        "cases": [
+          "test_a_diverged_copy_checkpoint_with_an_empty_suffix_is_refused_by_name",
+          "test_a_diverged_copy_checkpoint_over_a_suffix_is_refused_by_name",
+          "test_this_checkpoint_against_the_copy_log_is_refused_by_name"
+        ],
+        "native": true
+      }
+    },
+    {
       "id": "SCN-044",
       "title": "An operator grants and revokes control authority live; a cancel withdraws its target only for its author or a covering authority",
       "milestone": "M3",
@@ -5149,7 +5182,7 @@
       ],
       "steps": [
         "A format-9 store filled by the served node (12 articles); `store compact`; 6 more articles; `store compact` again.",
-        "On the developer image, `store compact` killed at rotate-created, rotate-fenced, rotate-renamed, rotate-durable, drop-unlinked and drop-durable (FN_NATIVE_LOG_FAULT); `store recover`; `store compact`.",
+        "On the developer image, `store compact` killed at rotate-created, rotate-fenced, rotate-renamed, rotate-headed, rotate-durable, drop-unlinked and drop-durable (FN_NATIVE_LOG_FAULT); `store recover`; `store compact`.",
         "A stale copy of the active segment as the next one; the checkpoint's first segment renamed away; the checkpoint removed after a drop."
       ],
       "expected": [
@@ -5816,7 +5849,7 @@
         "HST-033"
       ],
       "steps": [
-        "A development-profile store (K = 128); for each of rotate-created, rotate-fenced, rotate-renamed, rotate-durable: the store restored, the developer owner started with FN_NATIVE_LOG_FAULT at that cut, 64 POSTs (the publication is then due), connections until the owner dies; `recover`; `store inspect` of each article; a fresh owner until CHECKPOINT auto; `status`."
+        "A development-profile store (K = 128); for each of rotate-created, rotate-fenced, rotate-renamed, rotate-headed, rotate-durable: the store restored, the developer owner started with FN_NATIVE_LOG_FAULT at that cut, 64 POSTs (the publication is then due), connections until the owner dies; `recover`; `store inspect` of each article; a fresh owner until CHECKPOINT auto; `status`."
       ],
       "expected": [
         "Each owner dies by SIGKILL; `recover` exits 0; the 64 transactions and every article are there; staging/ holds no .stage-segment-*; journal/ holds 000001.log alone at the spare's cuts and 000001.log and 000002.log after the rename; the fresh owner publishes sequence 64 and the store opens from checkpoint:64."

@@ -430,9 +430,16 @@ as `recover` does. The order: with no batch open, rotate the log
 (`fnn-log-prepare-spare`: the next segment staged as
 `staging/.stage-segment-NNNNNN`, preallocated and fenced, cuts
 `rotate-created`, `rotate-fenced`; `fnn-log-rotate`: renamed into
-`journal/NNNNNN.log`, cut `rotate-renamed`; `fnn-log-make-durable`:
-`journal/` fenced, cut `rotate-durable`); write and install the checkpoint, whose F row names that
-segment and the trailer its first entry chains from; then unlink every
+`journal/NNNNNN.log`, cut `rotate-renamed`, then headed with its rotation
+entry -- the log's chain value the closed segment ended on and the segment
+index, framed -- cut `rotate-headed`; `fnn-log-make-durable`: the segment's
+file and then `journal/` fenced, cut `rotate-durable`); write and install
+the checkpoint, whose F row names that segment and its head's trailer, which
+the next open checks the head against before it reads a record
+(`fnn-log-lineage-genesis`: `open refused reason=foreign-lineage` for a
+diverged copy's checkpoint, `segment-head-damaged`, `segment-misnamed`; a
+rotation that died before its head is completed by the next writable open,
+`fnn-log-head-segment`); then unlink every
 segment below it (`fnn-log-drop`; cuts `drop-unlinked`, `drop-durable`). The
 running owner's automatic checkpoint does the same, with only the rename
 under the owner mutex: the spare is made before the capture and `journal/`
