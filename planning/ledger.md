@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1666 |
+| Books read | 1669 |
 | Certification roots in the Makefile | 1602 |
 | Books inside the root closure | 1663 |
-| `defthm` and `defthmd` events | 27422 |
-| `defun` events | 17910 |
+| `defthm` and `defthmd` events | 27450 |
+| `defun` events | 17915 |
 | Functions with verified guards | 3355 |
-| Functions declared `:verify-guards nil` and never verified | 2066 |
+| Functions declared `:verify-guards nil` and never verified | 2071 |
 | Functions left at the default with an explicit guard | 9805 |
 | Functions left at the default with no guard | 2684 |
-| `assert-event` checks | 22786 |
+| `assert-event` checks | 22787 |
 | `must-fail` checks | 2475 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2373 |
+| Include-hygiene warnings | 2377 |
 | Host-names warnings | 1982 |
 | Hand-written-record warnings | 18 |
 
@@ -765,6 +765,7 @@ that `make certify` requests.
 | `books/productive-contract.lisp` | root | 29 | 8 | 0/2/6/0 | 0 | 0 | 0 |
 | `books/productive-observer.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/productive-read-chain.lisp` | - | 43 | 1 | 0/1/0/0 | 0 | 0 | 3 |
+| `books/productive-read-message-id.lisp` | - | 22 | 1 | 0/1/0/0 | 0 | 0 | 1 |
 | `books/productive-read.lisp` | - | 2 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/productive-transfer.lisp` | root | 8 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/profile-limits.lisp` | closure | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -1550,6 +1551,8 @@ that `make certify` requests.
 | `tests/acl2/posting-account-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 5 | 2 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
 | `tests/acl2/productive-contract-tests.lisp` | root | 0 | 8 | 0/7/1/0 | 24 | 5 | 0 |
+| `tests/acl2/productive-read-chain-tests.lisp` | - | 3 | 4 | 0/4/0/0 | 1 | 0 | 0 |
+| `tests/acl2/productive-read-message-id-tests.lisp` | - | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/productive-transfer-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 15 | 12 | 0 |
 | `tests/acl2/profile-monotonicity-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 23 | 0 | 0 |
 | `tests/acl2/proto-adt-2-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 26 | 0 | 0 |

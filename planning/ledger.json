@@ -1606,18 +1606,18 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1666,
+    "books": 1669,
     "books_in_root_closure": 1663,
     "roots": 1602,
-    "theorems": 27422,
-    "functions": 17910,
-    "assert_events": 22786,
+    "theorems": 27450,
+    "functions": 17915,
+    "assert_events": 22787,
     "must_fails": 2475,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
       "verified": 3355,
-      "declared-off": 2066,
+      "declared-off": 2071,
       "default-guarded": 9805,
       "default-unguarded": 2684
     },
@@ -1625,7 +1625,7 @@
     "export_hygiene_warnings": 317,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2373,
+    "include_hygiene_warnings": 2377,
     "host_names_warnings": 1982,
     "hand_written_record_warnings": 18
   },
@@ -22154,6 +22154,34 @@
         "fn-pcr-counted-accessors-of-make-by-definition",
         "fn-pcr-tls-served-wire-by-definition",
         "fn-pcr-with-wire-overwrite-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/productive-read-message-id.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 22,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "productive-read-chain"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-pcr-tls-served-wire-by-definition"
       ],
       "read_error": null
     },
@@ -44632,6 +44660,60 @@
         "../../books/productive-contract",
         "must-fail-checked",
         "owner-served-invariants-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/productive-read-chain-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-agent",
+        "../../books/productive-read-chain"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/productive-read-message-id-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/productive-read-message-id",
+        "productive-read-chain-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -69713,6 +69795,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/productive-read-message-id.lisp",
+        "line": 9,
+        "include": "productive-read-chain",
+        "included": "books/productive-read-chain.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/productive-read.lisp",
         "line": 57,
         "include": "owner-invariants-served",
@@ -78222,6 +78311,27 @@
         "line": 15,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/productive-read-chain-tests.lisp",
+        "line": 7,
+        "include": "../../books/productive-read-chain",
+        "included": "books/productive-read-chain.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/productive-read-chain-tests.lisp",
+        "line": 9,
+        "include": "../../books/owner-agent",
+        "included": "books/owner-agent.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/productive-read-message-id-tests.lisp",
+        "line": 5,
+        "include": "productive-read-chain-tests",
+        "included": "tests/acl2/productive-read-chain-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
