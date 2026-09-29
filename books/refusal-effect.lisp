@@ -125,8 +125,15 @@
            (equal (fn-sf-records
                    (fn-sn-files (fn-sn-refuse-reservation (fn-olr-sn-reserve s) txid)))
                   (fn-sf-records (fn-sn-files s))))
-  :hints (("Goal" :in-theory (disable fn-olr-sn-reserve fn-sn-refuse-reservation
-                                      fn-olr-sn-reserve-is-the-file-route-by-definition))))
+  ; The two facts are cited, not left to the rewriter: the certified theory
+  ; of the resolution book withdraws them (the REPL, with the phases book
+  ; from source, had them as rules; certification did not).
+  :hints (("Goal" :use (fn-olr-sn-reserve-reaches-reserved
+                        (:instance fn-snrt-refuse-keeps-records (s (fn-olr-sn-reserve s))))
+           :in-theory (disable fn-olr-sn-reserve fn-sn-refuse-reservation
+                               fn-olr-sn-reserve-is-the-file-route-by-definition
+                               fn-olr-sn-reserve-reaches-reserved
+                               fn-snrt-refuse-keeps-records))))
 
 ; ... the groups and the capacity it found ...
 (defthm fn-rfx-refused-post-keeps-configuration
@@ -137,8 +144,13 @@
                        (fn-sn-groups s))
                 (equal (fn-sn-capacity (fn-sn-refuse-reservation (fn-olr-sn-reserve s) txid))
                        (fn-sn-capacity s))))
-  :hints (("Goal" :in-theory (disable fn-olr-sn-reserve fn-sn-refuse-reservation
-                                      fn-olr-sn-reserve-is-the-file-route-by-definition))))
+  :hints (("Goal" :use (fn-rfx-reserve-keeps-the-configuration
+                        (:instance fn-sn-refuse-reservation-preserves-configuration
+                                   (s (fn-olr-sn-reserve s))))
+           :in-theory (disable fn-olr-sn-reserve fn-sn-refuse-reservation
+                               fn-olr-sn-reserve-is-the-file-route-by-definition
+                               fn-rfx-reserve-keeps-the-configuration
+                               fn-sn-refuse-reservation-preserves-configuration))))
 
 ; ... and what it consumes: exactly one transaction id.  With the
 ; reservation's txid (the frontier the store stood at) and a node that can
@@ -166,6 +178,8 @@
                          (fn-sn-node (fn-sn-refuse-reservation (fn-olr-sn-reserve s) txid))))
                        (+ 1 (fn-sf-frontier (fn-sn-files s))))))
   :hints (("Goal" :use (fn-rfx-reserve-preserves-state
+                        fn-olr-sn-reserve-reaches-reserved
+                        fn-rfx-reserve-keeps-the-node
                         (:instance fn-sn-refuse-reservation-is-exact-advance
                                    (s (fn-olr-sn-reserve s)))
                         (:instance fn-rfx-refuse-keeps-the-frontier
@@ -173,6 +187,8 @@
            :in-theory (e/d (fn-sn-refuse-reservation-enabledp)
                            (fn-olr-sn-reserve fn-sn-refuse-reservation
                             fn-olr-sn-reserve-is-the-file-route-by-definition
+                            fn-olr-sn-reserve-reaches-reserved
+                            fn-rfx-reserve-keeps-the-node
                             fn-sn-refuse-reservation-is-exact-advance
                             fn-rfx-refuse-keeps-the-frontier
                             fn-rfx-reserve-preserves-state)))))
