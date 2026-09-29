@@ -8026,9 +8026,16 @@ segment' (tests/test_native_topic_local.py)."
                  ((string= command "journal") (fnn-command-store-journal root))
                  ((string= command "export") (need 4) (fnn-command-store-export root (first rest)))
                  ((string= command "bless-snapshot")
-                  (unless (= (length rest) 1)
-                    (error 'fnn-usage-error :message "store ROOT bless-snapshot DIR"))
-                  (fnn-command-store-bless-snapshot (first rest)))
+                  ;; The direct store entry reuses the operator's grammar.
+                  ;; ROOT is the CLI context, never the copy that is opened.
+                  (let ((plan (fnn-core 'fn-nop-parse-store (cons command rest) nil)))
+                    (if (eq (fnn-core 'fn-native-operator-host-result-status plan) :accepted)
+                        (fnn-command-store-bless-snapshot
+                         (fnn-octets-string
+                          (fnn-core 'fn-native-operator-host-result-archive-path-octets plan)))
+                      (progn
+                        (fnn-operator-emit-result plan)
+                        (fnn-core 'fn-native-operator-host-result-exit-code plan)))))
                  ((string= command "import") (need 4) (fnn-command-store-import root (first rest) nil))
                  ((string= command "retention") (fnn-command-retention root))
                  ((string= command "compression") (fnn-command-compression root))

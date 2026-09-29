@@ -43,6 +43,8 @@ class SnapshotBlessTests(scp.StateCheckpointFixture):
         self.node.init(profile="development")
         ids = ["<snapshot-{}@example.invalid>".format(n) for n in range(3)]
         self.post(ids)
+        usage = self.store_cli("bless-snapshot", "relative")
+        self.assertEqual(usage.returncode, EXIT.USAGE, usage.stdout + usage.stderr)
         copied = Node(self, self.image, name="copy")
         shutil.copytree(self.store, copied.store_path, symlinks=True)
         marker = copied.store_path / "SNAPSHOT"

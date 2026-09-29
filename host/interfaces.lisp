@@ -4103,6 +4103,9 @@
 ;; snapshot request and status (host/native/admin.lisp), the blessing's
 ;; verdict (host/native/io.lisp fnn-command-store-bless-snapshot), the
 ;; marker's text and the client's lines (host/native/operator.lisp).
+(definterface fn-nop-parse-store
+  :class :common-lisp-compliant)
+
 (definterface fn-osn-bless-open-needed
   :class :common-lisp-compliant)
 
