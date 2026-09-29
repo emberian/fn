@@ -451,39 +451,39 @@
 ;; and the generation and OPEN are unchanged (the request is still in flight
 ;; and still owns its I/O).  fn-otb-a-member-is-answered-once above states
 ;; this over a run of early answers; this theorem is about the entry itself.
-(local (defthm fn-otb-in-is-member
+(local (defthm fn-otb-ae-in-is-member
          (iff (fn-otb-in x ys) (member-equal x ys))
          :hints (("Goal" :in-theory (enable fn-otb-in)))))
-(local (defthm fn-otb-member-of-dedup
+(local (defthm fn-otb-ae-member-of-dedup
          (iff (member-equal x (fn-otb-dedup xs)) (member-equal x xs))
          :hints (("Goal" :induct (fn-otb-dedup xs) :in-theory (enable fn-otb-dedup)))))
-(local (defthm fn-otb-member-of-minus
+(local (defthm fn-otb-ae-member-of-minus
          (iff (member-equal x (fn-otb-minus xs ys))
               (and (member-equal x xs) (not (member-equal x ys))))
          :hints (("Goal" :induct (fn-otb-minus xs ys) :in-theory (enable fn-otb-minus)))))
-(local (defthm fn-otb-member-of-append
+(local (defthm fn-otb-ae-member-of-append
          (iff (member-equal x (append a b))
               (or (member-equal x a) (member-equal x b)))))
-(local (defthm fn-otb-subsetp-cons-weaken
+(local (defthm fn-otb-ae-subsetp-cons-weaken
          (implies (subsetp-equal x y) (subsetp-equal x (cons a y)))))
-(local (defthm fn-otb-subsetp-reflexive
+(local (defthm fn-otb-ae-subsetp-reflexive
          (subsetp-equal xs xs)
          :hints (("Goal" :induct (len xs)))))
-(local (defthm fn-otb-subsetp-of-dedup
+(local (defthm fn-otb-ae-subsetp-of-dedup
          (subsetp-equal (fn-otb-dedup xs) xs)
          :hints (("Goal" :induct (fn-otb-dedup xs) :in-theory (enable fn-otb-dedup)))))
-(local (defthm fn-otb-subsetp-of-minus
+(local (defthm fn-otb-ae-subsetp-of-minus
          (subsetp-equal (fn-otb-minus xs ys) xs)
          :hints (("Goal" :induct (fn-otb-minus xs ys) :in-theory (enable fn-otb-minus)))))
-(local (defthm fn-otb-subsetp-transitive
+(local (defthm fn-otb-ae-subsetp-transitive
          (implies (and (subsetp-equal x y) (subsetp-equal y z)) (subsetp-equal x z))))
-(local (defthm fn-otb-subsetp-of-dedup-minus
+(local (defthm fn-otb-ae-subsetp-of-dedup-minus
          (subsetp-equal (fn-otb-dedup (fn-otb-minus xs ys)) xs)
          :hints (("Goal" :do-not-induct t
-                  :use ((:instance fn-otb-subsetp-transitive
+                  :use ((:instance fn-otb-ae-subsetp-transitive
                                    (x (fn-otb-dedup (fn-otb-minus xs ys)))
                                    (y (fn-otb-minus xs ys)) (z xs)))))))
-(local (defthm fn-otb-every-member-is-told-or-answered
+(local (defthm fn-otb-ae-every-member-is-told-or-answered
          (implies (subsetp-equal xs zs)
                   (subsetp-equal xs (append ys (fn-otb-dedup (fn-otb-minus zs ys)))))
          :hints (("Goal" :induct (len xs)))))
@@ -500,6 +500,6 @@
          (equal (fn-otb-open l2) (fn-otb-open l))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :in-theory (enable fn-otb-answer-early)
-           :use ((:instance fn-otb-subsetp-of-dedup-minus (xs cids) (ys (fn-otb-told l)))
-                 (:instance fn-otb-every-member-is-told-or-answered
+           :use ((:instance fn-otb-ae-subsetp-of-dedup-minus (xs cids) (ys (fn-otb-told l)))
+                 (:instance fn-otb-ae-every-member-is-told-or-answered
                             (xs cids) (zs cids) (ys (fn-otb-told l)))))))
