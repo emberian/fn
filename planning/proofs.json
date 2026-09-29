@@ -117,7 +117,11 @@
         "fn-own-served-local-number-is-never-reassigned",
         "fn-own-raw-local-number-is-never-reassigned",
         "fn-ocfg-read-step-without-selection-depends-only-on-its-connection-and-clock",
-        "fn-own-other-post-keeps-a-non-selecting-read-step"
+        "fn-own-other-post-keeps-a-non-selecting-read-step",
+        "fn-scl-step-counted-fast-of-with-live-selecting-nothing",
+        "fn-scl-own-read-tls-prefix-selecting-nothing-ignores-the-view",
+        "fn-scl-other-post-keeps-a-chunk-selecting-nothing",
+        "fn-scl-host-chunk-selecting-nothing-survives-other-post"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -7536,7 +7540,9 @@
         "fn-heap-status-decide-is-the-launchers-run-reservation",
         "fn-heap-reserve-full-store-accepted-is-within-the-machine",
         "fn-heap-store-history-holds-payload-and-memberships",
-        "fn-heap-arena-octets-slope"
+        "fn-heap-arena-octets-slope",
+        "fn-heap-records-retained-within-the-terms",
+        "fn-heap-small-profile-run-fits-a-two-gib-machine"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -8129,7 +8135,8 @@
         "fn-cnx-freshp-of-withdraw",
         "fn-cnx-freshp-of-redecide",
         "fn-cnx-freshp-of-create-and-clear",
-        "fn-cnx-freshp-of-cat-writers"
+        "fn-cnx-freshp-of-cat-writers",
+        "fn-cnxw-windows-is-range"
       ]
     },
     {
@@ -8487,9 +8494,7 @@
         "fn-auth-view-consistent",
         "fn-auth-view-consistent-back",
         "fn-auth-view-trie-corresponds",
-        "fn-auth-delegate-pinned-preserves-consistentp",
-        "fn-gac-views-find-is-restriction",
-        "fn-gac-access-views-covers-pattern"
+        "fn-auth-delegate-pinned-preserves-consistentp"
       ]
     },
     {
@@ -10859,7 +10864,53 @@
         "fn-scjs-invp-of-store-frame",
         "fn-scj-owner-catalogp-at-host-finish",
         "fn-scj-invp-at-host-article-finish-carried",
-        "fn-scj-invp-at-identity-finish"
+        "fn-scj-invp-at-identity-finish",
+        "fn-sjh-okp-at-owner-finish-submission",
+        "fn-sjh-okp-at-host-article-finish",
+        "fn-sjh-okp-of-ocfg-io",
+        "fn-sjh-okp-at-owner-prepare-buffer",
+        "fn-sjh-okp-at-owner-known-abort",
+        "fn-sjh-okp-at-owner-refuse-reservation",
+        "fn-sjh-okp-at-install",
+        "fn-sjh-okp-at-recover",
+        "fn-sjh-okp-at-full-open",
+        "fn-sjh-okp-at-owner-prepare-identity-sealed",
+        "fn-sjh-okp-at-owner-prepare-identity-unsealed",
+        "fn-sjh-okp-at-owner-finish-no-row",
+        "fn-sjh-okp-of-other-prepare",
+        "fn-sjh-okp-at-owner-finish-identity",
+        "fn-sjh-idf-finish-equations",
+        "fn-sjh-okp-of-ocfg-step-owner-event",
+        "fn-sjh-okp-at-owner-begin",
+        "fn-sjh-okp-at-owner-declare-group",
+        "fn-sjh-okp-at-owner-observe",
+        "fn-sjh-okp-at-owner-unstage",
+        "fn-sjh-okp-at-owner-node-secret",
+        "fn-sjh-okp-at-owner-install-profile",
+        "fn-sjh-okp-at-owner-open-peer",
+        "fn-sjh-okp-at-owner-chunk-span",
+        "fn-sjh-files-okp-exec-is-files-okp",
+        "fn-sjh-okp-at-owner-log-reserve",
+        "fn-sjh-okp-at-owner-log-order",
+        "fn-sjh-okp-at-owner-reconfigure-complete",
+        "fn-sjh-okp-at-owner-open",
+        "fn-sjh-okp-at-owner-open-captured",
+        "fn-sjh-okp-at-owner-exposure-open",
+        "fn-sjh-okp-at-owner-read-step",
+        "fn-sjh-colsp-at-full-open",
+        "fn-sjh-colsp-at-recover",
+        "fn-sjh-colsp-at-owner-prepare-buffer",
+        "fn-sjh-colsp-at-owner-prepare-identity-sealed",
+        "fn-sjh-colsp-at-finish",
+        "fn-sjh-colsp-at-commit-reseat",
+        "fn-sjh-okp-at-owner-chunk-span-carried",
+        "fn-sjh-viewsp-at-capture",
+        "fn-sjh-viewsp-at-owner-finish-identity",
+        "fn-sjh-viewsp-at-host-article-finish",
+        "fn-sjh-viewsp-of-ocfg-store-step",
+        "fn-sjh-viewsp-at-owner-chunk-span",
+        "fn-sjh-okp-at-owner-chunk-span-fully-carried",
+        "fn-sjh-okp-at-owner-open-captured-carried"
       ]
     },
     {
@@ -13326,8 +13377,12 @@
       "progress_note": "Lane zero-copy-commit (Opus 5.5, 2026-09-28). REPL-admitted on persvati (books/owner-article-slots 28 forms, tests/acl2/owner-article-slots-tests). Teeth (tests/acl2/owner-article-slots-tests.lisp, prefix oast-, the host's call on live stobjs over owner-reader-read-tests' owner): reachable positive witness for the admission keystone (one slot, a POST offered 340, one held); a CONSTRUCTED state (a queued submission) where the read before this lane offers the POST with two held in one slot (MUTATION: the old host call violates the conclusion) and the host's call answers the memory 440; hypothesis removal (a connection already mid-article with zero slots: held 1 > 0); the never-blocks keystone's witness and its hypothesis removal; the slots at the small preset (32 of 1,589,248) and at A = 4 MiB (1) and 600,000 (3). SCN-193 is the native case. Certified: persvati certify-20260928T170547Z-326567 (11 passed: the affected roots). Record: planning/evidence/zero-copy-commit-2026-09-28.md. Recertified after the loop twins: persvati certify-20260928T173234Z-581479 (owner-article-slots and its tests). Native (hbox native-s1, 0132d90b8, developer and production): tests.test_native_article_slots 2/2 OK (SCN-193), tests.test_native_mux 4/4 OK (SCN-153). Lane admission-gap (Opus 5.5, 2026-09-28): the gap above closed; books/owner-article-held.lisp (new, includes owner-article-slots); teeth in tests/acl2/owner-article-slots-tests.lisp (prefix oahx-): the TAKETHIS in one read on a CONSTRUCTED state (a peer connection opened under a configuration naming it, a queued submission, one slot) where fn-otm-read-span -- the old host call's result for any read not ending newly mid-article -- leaves two held in one slot (MUTATION) and the host's call refuses the whole read 400 and close with one held; the pipelined POST the same (tier a, the memory 440); positive and hypothesis-removal witnesses for the invariant, the frame (taken and refused TAKETHIS beside a connection mid-article; id2 = id) and never-blocks (the read completing an admitted article stops after its submission, PKT-600, and is the old read at zero slots). SCN-193 gains the native TAKETHIS case. Certified: hbox certify-20260928T204358Z-2060786 (3 passed: books/owner-article-slots, books/owner-article-held, tests/acl2/owner-article-slots-tests, the affected roots). Native (hbox native-wt-20260928T204601Z, lane tree 1e85b75fd+dirty, developer and production): tests.test_native_article_slots 3/3 OK (SCN-193 incl. the TAKETHIS in one read: 400 and close, then 235 and the retried 239; rerun on the same images after the test's transit articles gained a Date line), tests.test_native_mux 4/4 OK, tests.test_native_nntp_post_probe 10/10 OK. Follow-up (lane admission-gap, found by lane credits): fn-oas-held counted the in-flight field's LENGTH (4 to 6 fields of the one submission record), over-counting and refusing below the slots; it now counts that submission once (fn-oas-inflight-count). Witness (tests/acl2/owner-article-slots-tests.lisp, prefix oahi-, CONSTRUCTED state: a six-field record in flight): held 1, a POST with two slots admitted (340) and held 2, where the old count reads 7 (MUTATION). Certified: hbox certify-20260928T223156Z-2451106 (3 passed, the affected roots).",
       "events": [
         "fn-oas-read-span-admits-within-the-slots",
+        "fn-oah-read-span-keeps-held-within-the-slots",
+        "fn-oah-read-span-leaves-the-others-article-mode",
         "fn-oas-read-span-never-blocks-an-admitted-article",
-        "fn-oas-refused-read-is-not-article",
+        "fn-oah-admitted-read-keeps-what-it-completed",
+        "fn-oas-read-span-held-step",
+        "fn-oas-refusals-are-not-article",
         "fn-heap-article-slots-are-held",
         "fn-heap-article-slots-bounds",
         "fn-heap-articles-octets-monotone"
@@ -13439,8 +13494,8 @@
         "planning/evidence/peer-list-depth-2026-09-28.md"
       ],
       "events": [
-        "fn-napb-rows-with-key-loop-is-rev-onto",
-        "fn-napb-peer-names-loop-is-rev-onto"
+        "fn-cfg-rows-with-key-loop-is-rev-onto",
+        "fn-cfg-peer-names-loop-is-rev-onto"
       ]
     },
     {
@@ -13572,7 +13627,21 @@
         "tests/acl2/owner-credits-tests.lisp",
         "tests/test_native_credits.py"
       ],
-      "progress_note": "Lane f8-reservation (2026-09-28): books/memory-credits.lisp and its test book are certified (persvati certify-20260928T171227Z-391318, hbox certify-20260928T173440Z-1769341): fn-mcr-transitions-keep-funded, fn-mcr-acquire-refuses-exactly-past-the-budget, fn-mcr-grow-within-the-reserve-is-admitted, fn-mcr-retain-moves-the-credit, fn-mcr-evict-returns-what-was-evicted, fn-mcr-overdraw-is-within-the-completion-reserve. NO EVENTS ARE CITED: no host line calls the ledger yet (reach_check), so the running server exercises none of it. The events are cited when an allocation site calls it; the first is the article slots (lane zero-copy-commit, fn-oas-read-span, PRF-377), U + R one reserve a slot. Teeth: tests/acl2/memory-credits-tests.lisp. Lane credits (Opus 5.5, 2026-09-28, B5): wired to the served path (books/owner-credits.lisp); REPL-admitted on hbox (owner-credits 50 forms; owner-credits-tests 88 forms). Teeth: tests/acl2/owner-credits-tests.lisp (prefix mcat-)."
+      "progress_note": "Lane f8-reservation (2026-09-28): books/memory-credits.lisp and its test book are certified (persvati certify-20260928T171227Z-391318, hbox certify-20260928T173440Z-1769341): fn-mcr-transitions-keep-funded, fn-mcr-acquire-refuses-exactly-past-the-budget, fn-mcr-grow-within-the-reserve-is-admitted, fn-mcr-retain-moves-the-credit, fn-mcr-evict-returns-what-was-evicted, fn-mcr-overdraw-is-within-the-completion-reserve. NO EVENTS ARE CITED: no host line calls the ledger yet (reach_check), so the running server exercises none of it. The events are cited when an allocation site calls it; the first is the article slots (lane zero-copy-commit, fn-oas-read-span, PRF-377), U + R one reserve a slot. Teeth: tests/acl2/memory-credits-tests.lisp. Lane credits (Opus 5.5, 2026-09-28, B5): wired to the served path (books/owner-credits.lisp); REPL-admitted on hbox (owner-credits 50 forms; owner-credits-tests 88 forms). Teeth: tests/acl2/owner-credits-tests.lisp (prefix mcat-).",
+      "events": [
+        "fn-mcr-resize-and-move-keep-funded",
+        "fn-mcr-resize-refuses-exactly-past-the-budget",
+        "fn-mcr-total-of-move",
+        "fn-mca-read-span-keeps-funded",
+        "fn-mca-read-span-covers-the-connection",
+        "fn-mca-read-span-within-the-credit-unfolds",
+        "fn-mca-read-span-never-blocks-what-is-held",
+        "fn-mca-close-keeps-what-the-commit-owns",
+        "fn-mca-commit-steps-keep-funded",
+        "fn-mca-take-and-seal-keep-the-total",
+        "fn-mca-seal-and-batch-done-move-the-batch",
+        "fn-mca-initial-funds-exactly-the-articles"
+      ]
     },
     {
       "id": "PRF-386",
@@ -13968,16 +14037,7 @@
         "tests/acl2/nntp-post-tests.lisp",
         "planning/evidence/pkt-615-number-bound-2026-09-28.md"
       ],
-      "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound.",
-      "events": [
-        "fn-snb-replay-apply-record-keeps-nexts-bounded",
-        "fn-snb-replay-keeps-nexts-bounded",
-        "fn-snb-replayed-acceptance-is-projection",
-        "fn-psrv-prepare-refuses-exhausted",
-        "fn-psrv-store-prepare-refuses-exhausted",
-        "fn-snb-nexts-boundedp-of-advance",
-        "fn-snb-projectionp-unfolds"
-      ]
+      "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
     },
     {
       "id": "PRF-958",
@@ -13991,7 +14051,7 @@
         "PRF-921"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-number-bound.lisp",
         "tests/acl2/owner-number-bound-tests.lisp"
