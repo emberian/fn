@@ -112,8 +112,16 @@ never a partial one. Before writing anything `init` looks for a staged
 directory an earlier `init` left, and ACL2 answers
 (`fn-bs-init-pub-admission` over `fn-bs-imp-classify`):
 
-- `init refused reason=interrupted-init stage=PATH` (exit 1): ROOT is absent,
-  so no store was published. Remove PATH and run `init` again.
+- ROOT absent beside PATH, and no live `init` holds PATH (each `init` holds
+  an exclusive lock on its own stage from its creation to its end): an
+  earlier `init` died before its publication and PATH holds nothing any
+  command acknowledged. `init` removes PATH (`fn: init removed PATH`) and
+  proceeds (PKT-894). With the store's secret in the staged plan
+  (`keys/node-secret.key`), a crash at any cut leaves the old state (no
+  store; `init` runs) or the new (the complete store; `recover` opens it)
+  (`fn-bs-init-log-crash-retry-is-old-or-new`). No repair verb is involved.
+- `init refused reason=init-in-progress stage=PATH` (exit 1): another live
+  `init` holds PATH.
 - `init refused reason=publication-uncertain stage=PATH` (exit 1): ROOT is
   present as well; run `recover`, then remove PATH.
 - `init refused reason=store-path-exists` (exit 1): ROOT exists (an empty
