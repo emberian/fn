@@ -1431,6 +1431,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-invariants \
 	books/stx-lace \
 	books/stx-index \
+	books/stx-node-lace \
 	books/stx-policy \
 	books/stx-epochs \
 	books/stx-authority \
