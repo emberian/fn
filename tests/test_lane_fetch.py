@@ -74,5 +74,89 @@ class LaneFetchTests(unittest.TestCase):
         self.assertIn("removed stale", err)
 
 
+class RevertCheckTests(unittest.TestCase):
+    """obstructions-8 item 69: a merge of dev that brings in a revert of the
+    lane's own work is named, and --merge refuses it without --allow-revert."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self.tmp.name)
+        r = self.repo
+        sh(r, "init", "-q", "-b", "dev")
+        sh(r, "config", "user.name", "t")
+        sh(r, "config", "user.email", "t@t")
+        sh(r, "config", "commit.gpgsign", "false")
+        (r / "base").write_text("base\n")
+        sh(r, "add", "base")
+        sh(r, "commit", "-q", "-m", "base")
+        sh(r, "checkout", "-q", "-b", "lane/mine")
+        (r / "mine").write_text("work\n")
+        sh(r, "add", "mine")
+        sh(r, "commit", "-q", "-m", "my work")
+        sh(r, "checkout", "-q", "-b", "lane/other", "dev")
+        (r / "other").write_text("theirs\n")
+        sh(r, "add", "other")
+        sh(r, "commit", "-q", "-m", "their work")
+        sh(r, "checkout", "-q", "dev")
+        sh(r, "merge", "-q", "--no-ff", "-m", "Merge lane/mine", "lane/mine")
+        sh(r, "merge", "-q", "--no-ff", "-m", "Merge lane/other", "lane/other")
+        sh(r, "checkout", "-q", "lane/mine")
+        (r / "mine2").write_text("more work\n")
+        sh(r, "add", "mine2")
+        sh(r, "commit", "-q", "-m", "more of my work")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def revert(self, subject):
+        sha = subprocess.run(["git", "log", "-1", "--format=%H", "--grep", subject, "dev"],
+                             cwd=self.repo, text=True, capture_output=True).stdout.strip()
+        sh(self.repo, "checkout", "-q", "dev")
+        sh(self.repo, "revert", "--no-edit", "-m", "1", sha)
+        sh(self.repo, "checkout", "-q", "lane/mine")
+
+    def merge(self, allow=False):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = lane_fetch.merge("dev", self.repo, allow)
+        return code, out.getvalue() + err.getvalue()
+
+    def test_no_revert_merges_and_says_so(self):
+        code, text = self.merge()
+        self.assertEqual(code, 0, text)
+        self.assertIn("no revert commit in HEAD..dev", text)
+
+    def test_a_revert_of_another_lane_is_listed_and_merged(self):
+        self.revert("Merge lane/other")
+        found = lane_fetch.incoming_reverts("dev", self.repo)
+        self.assertEqual([(r["subject"], r["ours"]) for r in found],
+                         [('Revert "Merge lane/other"', False)])
+        code, text = self.merge()
+        self.assertEqual(code, 0, text)
+        self.assertIn('Revert "Merge lane/other"', text)
+        self.assertNotIn("REVERTS THIS LANE", text)
+
+    def test_a_revert_of_this_lanes_merge_is_refused_then_allowed(self):
+        self.revert("Merge lane/mine")
+        found = lane_fetch.incoming_reverts("dev", self.repo)
+        self.assertEqual(len(found), 1)
+        self.assertTrue(found[0]["ours"])
+        before = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.repo, text=True,
+                                capture_output=True).stdout
+        code, text = self.merge()
+        self.assertEqual(code, 4)
+        self.assertIn("REVERTS THIS LANE'S WORK", text)
+        self.assertIn("refusing to merge dev", text)
+        self.assertEqual(subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.repo, text=True,
+                                        capture_output=True).stdout, before)
+        code, text = self.merge(allow=True)
+        self.assertEqual(code, 0, text)
+
+    def test_ownership_by_the_first_parent_chain_without_a_branch_name(self):
+        self.revert("Merge lane/mine")
+        found = lane_fetch.incoming_reverts("dev", self.repo, branch="lane/renamed")
+        self.assertTrue(found[0]["ours"])  # the merged commit is on HEAD's first-parent chain
+
+
 if __name__ == "__main__":
     unittest.main()
