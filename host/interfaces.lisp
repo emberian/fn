@@ -3956,3 +3956,14 @@
 
 (definterface fn-xrt-step-handles
   :class ::common-lisp-compliant)
+
+; The live limits and the configuration's next txid (dev e15534ba4,
+; limits-live; declared at the union's merge).
+(definterface fn-store-cfg-next-txid
+  :class ::program)
+
+(definterface fn-store-lim-effective
+  :class ::program)
+
+(definterface fn-store-lim-use
+  :class ::program)
