@@ -77,8 +77,14 @@
  :stobjs-out '(nil fn-octets))
 
 ; 3. Hypothesis removal: the omitted antecedent fails and the conclusion
-; fails, on the logical definitions (no live buffer holds 300).
-(defconst *arbt-bad* (append '(300) (cdr *arbt-article*)))
+; fails, on the logical definitions (no live buffer holds 300).  The bad
+; cell is the body's first octet (offset 28): the reference's preflight
+; refuses the whole article, while the twin, which reads the body only for
+; its CRLF framing, parses it (a bad cell in the header line would be
+; refused by both through the shared header-field parse, separating
+; nothing).
+(defconst *arbt-bad*
+  (append (take 28 *arbt-article*) '(300) (nthcdr 29 *arbt-article*)))
 
 (defthm arbt-hypothesis-removal-witness
   (and (not (fn-octets-p *arbt-bad*))

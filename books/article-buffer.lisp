@@ -229,6 +229,14 @@
                          (:instance fn-ars-cdr-of-nthcdr (j (+ 1 j))))
                    :in-theory (disable fn-ars-cdr-of-nthcdr)))))
 
+; arithmetic/top leaves (< (+ -1 j) n) and (< j (+ 1 n)) as two terms; the
+; induction hypothesis meets the goal only through this shift.
+(local
+ (defthm fn-ars-lt-minus-one
+   (implies (and (integerp j) (integerp n))
+            (equal (< (+ -1 j) n) (< j (+ 1 n))))
+   :hints (("Goal" :cases ((< (+ -1 j) n))))))
+
 (local
  (defthm fn-ars-consp-of-nthcdr
    (implies (natp j)
@@ -300,8 +308,13 @@
                                     (fn-article-next-line (nthcdr j fn-octets)))))
                            fn-octets)
                    (fn-article-line-rest (fn-article-next-line (nthcdr j fn-octets)))))
-   :hints (("Goal" :in-theory (e/d (fn-article-next-line)
-                                   (fn-ars-reference-rest-is-suffix))
+   ; The accessors stay closed here: the instance and the linear rule are
+   ; stated over fn-article-line-rest, not its caddr.
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-article-next-line)
+                                   (fn-ars-reference-rest-is-suffix
+                                    fn-article-line-rest fn-article-line-okp
+                                    fn-article-next-line-aux nthcdr))
                    :use ((:instance fn-ars-reference-rest-is-suffix
                                     (ys (nthcdr j fn-octets)) (lr nil)
                                     (left *fn-article-max-line-octets*)))))))
@@ -488,23 +501,42 @@
             (<= (len r) (len xs)))
    :rule-classes :forward-chaining))
 
+; The chain with the suffixes as eliminable variables: a suffix's defining
+; equation mentions its own length, so the prover never substitutes it.
+(local
+ (defthm fn-ars-suffixp-chain
+   (implies (and (natp i) (natp j)
+                 (equal (nthcdr j xs) b) (equal (nthcdr i b) a))
+            (equal (nthcdr (+ i j) xs) a))
+   :hints (("Goal" :in-theory (disable nthcdr)))))
+
 (local
  (defthm fn-ars-suffixp-transitive
    (implies (and (fn-ars-suffixp a b) (fn-ars-suffixp b c))
             (fn-ars-suffixp a c))
-   :hints (("Goal" :in-theory (disable fn-ars-suffixp)
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-ars-suffixp) (nthcdr fn-ars-nthcdr-of-nthcdr))
                    :use ((:instance fn-ars-suffixp-len (r a) (xs b))
-                         (:instance fn-ars-suffixp-len (r b) (xs c))))
-           ("Goal'" :in-theory (enable fn-ars-suffixp)))))
+                         (:instance fn-ars-suffixp-len (r b) (xs c))
+                         (:instance fn-ars-suffixp-chain
+                                    (i (- (len b) (len a)))
+                                    (j (- (len c) (len b)))
+                                    (xs c)))))))
 
 (local
  (defthm fn-ars-next-line-rest-suffixp
    (implies (fn-article-line-okp (fn-article-next-line ys))
             (fn-ars-suffixp (fn-article-line-rest (fn-article-next-line ys)) ys))
-   :hints (("Goal" :in-theory (enable fn-article-next-line fn-article-line-okp
-                                      fn-article-line-rest)
+   :hints (("Goal" :do-not-induct t
+                   :in-theory (e/d (fn-ars-suffixp fn-article-next-line)
+                                   (fn-ars-reference-rest-is-suffix
+                                    fn-ars-reference-rest-len
+                                    fn-article-line-rest fn-article-line-okp
+                                    fn-article-next-line-aux nthcdr))
                    :use ((:instance fn-ars-reference-rest-is-suffix
-                                    (lr nil) (left *fn-article-max-line-octets*)))))))
+                                    (ys ys) (lr nil) (left *fn-article-max-line-octets*))
+                         (:instance fn-ars-reference-rest-len
+                                    (ys ys) (lr nil) (left *fn-article-max-line-octets*)))))))
 
 (local (in-theory (disable fn-ars-suffixp)))
 
