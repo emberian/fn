@@ -661,6 +661,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-receipt-send \
 	books/bp-fnbs-replay-append \
 	books/bp-node-rotation-codec \
+	tests/acl2/bp-node-rotation-codec-tests \
 	books/bp-node-rotation \
 	books/bp-node-rotation-slice \
 	books/bp-node-rotation-buffer \
@@ -1544,6 +1545,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/stx-keyring-records-tests \
 	tests/acl2/stx-accept-records-tests \
 	tests/acl2/store-node-index-tests \
+	tests/acl2/store-node-correspondence-tests \
 	tests/acl2/store-node-composite-index-tests \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests \
