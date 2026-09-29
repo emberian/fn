@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1577 |
+| Books read | 1578 |
 | Certification roots in the Makefile | 1521 |
 | Books inside the root closure | 1567 |
-| `defthm` and `defthmd` events | 25595 |
-| `defun` events | 16820 |
+| `defthm` and `defthmd` events | 25599 |
+| `defun` events | 16824 |
 | Functions with verified guards | 3047 |
 | Functions declared `:verify-guards nil` and never verified | 1998 |
 | Functions left at the default with an explicit guard | 9270 |
-| Functions left at the default with no guard | 2505 |
-| `assert-event` checks | 21620 |
+| Functions left at the default with no guard | 2509 |
+| `assert-event` checks | 21624 |
 | `must-fail` checks | 2323 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 143 |
-| Theorems flagged SUSPECT by shape | 1202 |
+| Theorems flagged SUSPECT by shape | 1204 |
 | Export-hygiene warnings | 318 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 254 |
 | Include-hygiene warnings | 2241 |
-| Host-names warnings | 2065 |
+| Host-names warnings | 1926 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -591,7 +591,7 @@ that `make certify` requests.
 | `books/owner-article-slots.lisp` | root | 26 | 18 | 0/0/17/1 | 0 | 0 | 6 |
 | `books/owner-batch.lisp` | root | 61 | 31 | 0/14/17/0 | 0 | 0 | 4 |
 | `books/owner-bound-commit.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/owner-checkpoint-open.lisp` | root | 21 | 7 | 4/0/3/0 | 0 | 0 | 1 |
+| `books/owner-checkpoint-open.lisp` | root | 20 | 7 | 4/0/3/0 | 0 | 0 | 1 |
 | `books/owner-checkpoint-pipeline.lisp` | root | 73 | 4 | 0/3/0/1 | 0 | 0 | 3 |
 | `books/owner-checkpoint-writer.lisp` | root | 53 | 34 | 2/5/27/0 | 0 | 0 | 0 |
 | `books/owner-commit-carried.lisp` | root | 39 | 18 | 8/0/10/0 | 0 | 0 | 0 |
@@ -847,7 +847,7 @@ that `make certify` requests.
 | `books/store-checkpoint-buffer.lisp` | root | 31 | 9 | 3/0/6/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-codec.lisp` | root | 39 | 18 | 9/1/8/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-digest.lisp` | - | 3 | 5 | 0/0/4/1 | 0 | 0 | 2 |
-| `books/store-checkpoint-open.lisp` | root | 37 | 30 | 11/0/19/0 | 0 | 0 | 0 |
+| `books/store-checkpoint-open.lisp` | root | 42 | 30 | 11/0/19/0 | 0 | 0 | 2 |
 | `books/store-checkpoint-reader.lisp` | root | 65 | 17 | 0/2/15/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-share.lisp` | root | 6 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-tables-reader.lisp` | root | 43 | 13 | 3/0/9/1 | 0 | 0 | 1 |
@@ -1527,6 +1527,7 @@ that `make certify` requests.
 | `tests/acl2/served-tests.lisp` | root | 0 | 4 | 0/2/0/2 | 116 | 0 | 0 |
 | `tests/acl2/served-tls-prefix-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 9 | 1 | 0 |
 | `tests/acl2/sha256-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 26 | 0 | 0 |
+| `tests/acl2/simulator.lisp` | - | 0 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `tests/acl2/snapshot-segments-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 7 | 0 | 0 |
 | `tests/acl2/snoc-list-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 37 | 0 | 0 |
 | `tests/acl2/source-projection-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 5 | 3 | 0 |
@@ -1544,7 +1545,7 @@ that `make certify` requests.
 | `tests/acl2/store-carried-folds-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 37 | 3 | 0 |
 | `tests/acl2/store-checkpoint-arena-tests.lisp` | root | 4 | 20 | 0/19/1/0 | 34 | 1 | 0 |
 | `tests/acl2/store-checkpoint-digest-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
-| `tests/acl2/store-checkpoint-open-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 29 | 10 | 0 |
+| `tests/acl2/store-checkpoint-open-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 33 | 10 | 0 |
 | `tests/acl2/store-checkpoint-tables-tests.lisp` | root | 2 | 8 | 0/8/0/0 | 18 | 9 | 0 |
 | `tests/acl2/store-event-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/store-events-carried-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 58 | 11 | 0 |
@@ -2110,7 +2111,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ocfg-staged-of-fn-ocfg-make` | `books/owner-config.lisp` | 90 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ocfg-with-view-keeps-the-rest` | `books/owner-reader-view.lisp` | 262 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ock-requested-next-without-request` | `books/owner-compact-request.lisp` | 51 | arm-of-definition: constant arguments select one IF/COND arm of fn-ock-requested-next and the conclusion is that arm's value |
-| `fn-ock-sco-records-of-capture` | `books/owner-checkpoint-open.lisp` | 198 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ock-sco-records-of-capture` | `books/owner-checkpoint-open.lisp` | 192 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ockp-later-done` | `books/owner-checkpoint-pipeline.lisp` | 393 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ockp-later and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-ockp-later and the conclusion is that branch's value |
 | `fn-ockp-remaining-done` | `books/owner-checkpoint-pipeline.lisp` | 399 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ockp-remaining and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-ockp-remaining and the conclusion is that branch's value |
 | `fn-ockp-rows-program-of-atom` | `books/owner-checkpoint-pipeline.lisp` | 242 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sct-rows-program and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-sct-rows-program and the conclusion is that branch's value |
@@ -2448,6 +2449,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-scl-with-live-fields` | `books/served-chunk-live-free.lisp` | 50 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scl-with-live-of-conn-with-wire` | `books/served-chunk-live-free.lisp` | 75 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scl-with-live-of-make-conn-live` | `books/served-chunk-live-free.lisp` | 65 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sco-fault-of-fault` | `books/store-checkpoint-open.lisp` | 449 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sco-identity-step-when-faulted` | `books/store-checkpoint-open.lisp` | 425 | arm-of-definition: the hypotheses select one IF/COND arm of fn-replay-identity-step and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-replay-identity-step and the conclusion is that branch's value |
 | `fn-sco-select-named-refuses-schema` | `books/store-checkpoint-tables.lisp` | 1047 | arm-of-definition: constant arguments select one IF/COND arm of fn-sco-select-named and the conclusion is that arm's value |
 | `fn-sco-select-named-unfolds` | `books/store-checkpoint-tables.lisp` | 1042 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sco-select-named and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-sco-select-named and the conclusion is that branch's value |
 | `fn-scr-auth-view-archive-unrestricted` | `books/served-catalog-chain.lisp` | 612 | arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-view-archive and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-auth-view-archive and the conclusion is that branch's value |
