@@ -279,13 +279,14 @@ class HboxNativeDryRunTests(unittest.TestCase):
         # PKT-490 (2): tests.test_native_bounds_join reads FN_NATIVE_HOST only
         # through test_native_operator_verbs' IMAGE (exposure-reply-size set it
         # by hand).  Built: it is set.  Not built: a note, not a refusal.
-        both = dry("--images", "developer,production", "HEAD", "tests.test_native_bounds_join")
+        both = dry("--images", "developer,production", "--allow-skips", "HEAD",
+                   "tests.test_native_bounds_join")
         self.assertEqual(both.returncode, 0, both.stderr)
         join = next(line for line in both.stdout.splitlines()
                     if line.startswith("tstep test-tests.test_native_bounds_join "))
         self.assertIn("FN_NATIVE_HOST=$T/build/fn-host ", join)
         self.assertIn("FN_NATIVE_DEVELOPER_HOST=$T/build/fn-host-developer ", join)
-        developer = dry("HEAD", "tests.test_native_bounds_join")
+        developer = dry("--allow-skips", "HEAD", "tests.test_native_bounds_join")
         self.assertEqual(developer.returncode, 0, developer.stderr)
         self.assertIn("reads FN_NATIVE_HOST through a tests/ helper", developer.stdout + developer.stderr)
         self.assertNotIn("FN_NATIVE_HOST=", next(
