@@ -209,6 +209,17 @@ class ClosureKeyTests(unittest.TestCase):
                 self.assertNotEqual(
                     certs.closure_key(root, "tests/acl2/mid-tests")[0], before, edited)
 
+    def test_the_world_a_certificate_was_made_in_is_part_of_its_key(self):
+        # An image-made certificate's portcullis is the image's includes; a
+        # plain world that installed it replayed them (batch BB, 2026-09-29).
+        with tempfile.TemporaryDirectory() as directory:
+            root = worktree(directory)
+            plain = certs.closure_key(root, "tests/acl2/mid-tests")[0]
+            imaged = certs.closure_key(root, "tests/acl2/mid-tests",
+                                       "base@tests/acl2:books/base")[0]
+            self.assertNotEqual(plain, imaged)
+            self.assertEqual(plain, certs.closure_key(root, "tests/acl2/mid-tests", "plain")[0])
+
     def test_canonical_text_keeps_every_token_and_drops_only_delimiters(self):
         canonical = certs.ledger.canonical_text
         same = [('(a  b)\n', '(a b)'), ('(a ; c\n b)', '(a b)'),
@@ -393,6 +404,30 @@ class PublishTests(unittest.TestCase):
             self.assertEqual(certs.closure_drift(
                 certs.closure_listing(certs.closure(root, "books/mid")),
                 again["source_digests_sha256"]), ["books/base.lisp"])
+
+    def test_an_image_made_pair_is_filed_and_found_only_in_its_world(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = worktree(directory, certified=["books/mid"])
+            (root / "tools").mkdir(exist_ok=True)
+            (root / "tools/cert-images.json").write_text(
+                '{"images": [{"name": "base", "roots": ["books/base"]}]}')
+            world = "base@books:books/base"
+            manifest = manifest_for(root, ["books/mid"], write=False)
+            manifest["cert_images"] = {"book_images": {"books/mid": world}}
+            cache = root / "cache"
+            report = certs.publish(root, cache, [manifest], ["books/mid"],
+                                   origin="/tank/fn/no-such-tree")
+            self.assertEqual(report.published, 1)
+            key = certs.closure_key(root, "books/mid", world)[0]
+            self.assertTrue((cache / key).is_dir())
+            self.assertFalse((cache / certs.closure_key(root, "books/mid")[0]).exists())
+            self.assertEqual(len(certs.book_entries(root, cache, "books/mid")), 1)
+            # A world the image rule does not allow is never filed.
+            manifest["cert_images"] = {"book_images": {"books/mid": "owner@books"}}
+            refused = certs.publish(root, root / "cache2", [manifest], ["books/mid"],
+                                    origin="/tank/fn/no-such-tree")
+            self.assertEqual(refused.published, 0)
+            self.assertIn("image rule", refused.unverified[0])
 
     def test_a_certificate_with_no_manifest_is_never_published(self):
         # The poisoning case: a stale pair from another checkout, sitting
@@ -1374,6 +1409,37 @@ class PartialInstallTests(unittest.TestCase):
             self.assertEqual(selected["books/base"][0], Path("base-old"))
             self.assertEqual(selected["books/mid"][0], Path("mid-old"))
             self.assertEqual(selected["tests/acl2/mid-tests"][0], Path("test"))
+
+    def test_a_root_that_fits_some_version_of_its_leaf_is_never_dropped(self):
+        """Two cached versions of a leaf; a root fits only one of them.
+
+        sasl-3 (2026-09-29): two versions of books/consumer-reason in hbox's
+        cache; the greedy search dropped the three image-world roots for good
+        and chose 666 of 667 although they fit the set it chose.  The shape
+        here is the smallest one the old search got wrong (it kept base
+        alone)."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = worktree(directory)
+            options = {
+                "books/base": [(Path("base-new"), {}), (Path("base-old"), {})],
+                "books/mid": [(Path("mid-stale"), {}), (Path("mid-fits"), {})],
+                "tests/acl2/mid-tests": [(Path("test-stale"), {}), (Path("test-fits"), {})],
+            }
+            fits = {("mid-fits", "base-new"), ("test-fits", "base-new"),
+                    ("test-fits", "base-old"), ("test-fits", "mid-fits"),
+                    ("test-fits", "mid-stale"), ("test-stale", "mid-stale")}
+
+            def probe(paths, pairs, acl2, probe_root):
+                return {pair: (True, (paths[pair[0]].parent.name,
+                                      paths[pair[1]].parent.name) in fits)
+                        for pair in pairs}
+
+            selected = certs.compatible_partial_choices(
+                root, options, Path("acl2"), pair_checker=probe,
+                prefer=["tests/acl2/mid-tests"])
+            self.assertEqual({name: str(entry[0]) for name, entry in selected.items()},
+                             {"books/base": "base-new", "books/mid": "mid-fits",
+                              "tests/acl2/mid-tests": "test-fits"})
 
     def test_incompatible_cached_parent_is_recertified_if_no_child_matches(self):
         with tempfile.TemporaryDirectory() as one, \
