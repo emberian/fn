@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1662 |
-| Certification roots in the Makefile | 1600 |
-| Books inside the root closure | 1661 |
-| `defthm` and `defthmd` events | 27369 |
-| `defun` events | 17899 |
+| Books read | 1664 |
+| Certification roots in the Makefile | 1602 |
+| Books inside the root closure | 1663 |
+| `defthm` and `defthmd` events | 27416 |
+| `defun` events | 17926 |
 | Functions with verified guards | 3355 |
 | Functions declared `:verify-guards nil` and never verified | 2063 |
-| Functions left at the default with an explicit guard | 9804 |
-| Functions left at the default with no guard | 2677 |
-| `assert-event` checks | 22771 |
+| Functions left at the default with an explicit guard | 9826 |
+| Functions left at the default with no guard | 2682 |
+| `assert-event` checks | 22786 |
 | `must-fail` checks | 2463 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2368 |
-| Host-names warnings | 1982 |
+| Include-hygiene warnings | 2370 |
+| Host-names warnings | 1983 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -516,7 +516,7 @@ that `make certify` requests.
 | `books/key-statements.lisp` | root | 53 | 36 | 4/0/32/0 | 0 | 0 | 0 |
 | `books/lace-invariants.lisp` | root | 65 | 1 | 0/0/0/1 | 0 | 0 | 2 |
 | `books/lace.lisp` | root | 5 | 20 | 0/0/20/0 | 0 | 0 | 0 |
-| `books/limits-live.lisp` | closure | 9 | 23 | 0/0/23/0 | 0 | 0 | 0 |
+| `books/limits-live.lisp` | closure | 11 | 30 | 0/0/30/0 | 0 | 0 | 0 |
 | `books/log-sink.lisp` | root | 5 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/login-binding-live.lisp` | root | 61 | 31 | 5/0/25/1 | 0 | 0 | 2 |
 | `books/login-binding.lisp` | root | 9 | 7 | 0/0/7/0 | 0 | 0 | 1 |
@@ -533,7 +533,7 @@ that `make certify` requests.
 | `books/native-admin-peer-budget.lisp` | closure | 26 | 13 | 4/0/9/0 | 0 | 0 | 2 |
 | `books/native-admin-peer.lisp` | root | 42 | 57 | 9/0/48/0 | 0 | 0 | 5 |
 | `books/native-admin-shape.lisp` | root | 6 | 17 | 2/0/15/0 | 0 | 0 | 0 |
-| `books/native-admin.lisp` | root | 42 | 65 | 10/0/55/0 | 0 | 0 | 4 |
+| `books/native-admin.lisp` | root | 43 | 66 | 10/0/56/0 | 0 | 0 | 4 |
 | `books/native-auth-admin.lisp` | root | 15 | 58 | 7/0/51/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 9 | 25 | 2/0/23/0 | 0 | 0 | 1 |
 | `books/native-config-observation.lisp` | root | 10 | 21 | 10/0/11/0 | 0 | 0 | 0 |
@@ -804,6 +804,7 @@ that `make certify` requests.
 | `books/relay-source-routes.lisp` | closure | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/relay-source.lisp` | root | 33 | 10 | 0/0/9/1 | 0 | 0 | 0 |
 | `books/relay.lisp` | root | 0 | 32 | 0/15/17/0 | 0 | 0 | 0 |
+| `books/replay-historical-limits.lisp` | root | 44 | 17 | 0/0/14/3 | 0 | 0 | 0 |
 | `books/replay-identity-index.lisp` | root | 67 | 39 | 21/0/18/0 | 0 | 0 | 0 |
 | `books/replay-invariants.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/replay.lisp` | root | 42 | 31 | 19/0/12/0 | 0 | 0 | 7 |
@@ -1376,7 +1377,7 @@ that `make certify` requests.
 | `tests/acl2/msgid-pages-tests.lisp` | root | 1 | 4 | 0/3/1/0 | 23 | 0 | 0 |
 | `tests/acl2/must-fail-checked.lisp` | closure | 1 | 7 | 0/0/2/5 | 0 | 2 | 0 |
 | `tests/acl2/native-admin-peer-budget-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 21 | 3 | 0 |
-| `tests/acl2/native-admin-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 259 | 14 | 0 |
+| `tests/acl2/native-admin-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 270 | 14 | 0 |
 | `tests/acl2/native-auth-admin-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/native-auth-admin-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 69 | 4 | 0 |
 | `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
@@ -1571,6 +1572,7 @@ that `make certify` requests.
 | `tests/acl2/refusal-effect-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/relay-source-routes-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 15 | 5 | 0 |
 | `tests/acl2/relay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 62 | 4 | 0 |
+| `tests/acl2/replay-historical-limits-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 4 | 0 | 0 |
 | `tests/acl2/replay-identity-index-tests.lisp` | root | 7 | 4 | 0/0/0/4 | 24 | 6 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 69 | 0 | 0 |
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 66 | 1 | 0 |
@@ -2134,7 +2136,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-mpxt-reach-opened` | `books/msgid-pages-exec.lisp` | 1757 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-mpxt-reach; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-mvb-held-article-is-the-model-body-by-definition` | `books/moderation-verbs.lisp` | 474 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-mvb-plan-unfolds` | `books/moderation-verbs.lisp` | 405 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-native-admin-plan-deltas-over-other-plans-by-definition` | `books/native-admin.lisp` | 1226 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-admin-plan-deltas-over and the conclusion is that arm's value |
+| `fn-native-admin-plan-deltas-over-other-plans-by-definition` | `books/native-admin.lisp` | 1245 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-admin-plan-deltas-over and the conclusion is that arm's value |
 | `fn-native-auth-load-protected-without-tls-refuses` | `books/native-auth-profile.lisp` | 383 | arm-of-definition: constant arguments select one IF/COND arm of fn-native-auth-load and the conclusion is that arm's value |
 | `fn-native-control-host-refusal-reason-of-a-class` | `books/native-control-reason.lisp` | 511 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-control-host-refusal-reason and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-native-control-host-refusal-reason and the conclusion is that branch's value |
 | `fn-native-control-host-refusal-reason-outside-is-none` | `books/native-control-reason.lisp` | 543 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-control-host-refusal-reason and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-native-control-host-refusal-reason and the conclusion is that branch's value |

@@ -2059,7 +2059,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-records.lisp",
         "books/bp-sequence-persistence.lisp",
@@ -3447,7 +3447,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-route.lisp",
         "books/bp-route-step.lisp",
@@ -3765,7 +3765,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-receipt-send.lisp",
         "tests/acl2/bp-node-receipt-send-tests.lisp",
@@ -4244,7 +4244,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-route-jobs.lisp",
         "books/bp-node-contact-driver.lisp",
@@ -4921,7 +4921,7 @@
       "assumptions": [
         "A-BP-CONTACT"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-job-offer.lisp",
         "books/bp-node-job-offer-progress.lisp",
@@ -5007,7 +5007,7 @@
         "PRF-114"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-fragment-sweep.lisp",
         "tests/acl2/bp-fragment-sweep-tests.lisp",
@@ -5350,7 +5350,7 @@
         "PRF-121"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-run-class.lisp",
         "books/bp-node-run-class.lisp",
@@ -5666,7 +5666,7 @@
         "PRF-134"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-fragment-step.lisp",
         "books/bp-node-fragment-guards.lisp",
@@ -5742,7 +5742,7 @@
         "PRF-120"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-bpnj-contact-next-is-the-two-scan-selection",
         "fn-bpnj-scan-finds-the-selected-job",
@@ -6491,7 +6491,7 @@
         "PRF-128"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-listener-set.lisp",
         "books/bp-node-forward-plan.lisp",
@@ -7948,7 +7948,7 @@
         "PRF-081"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-held-projection.lisp",
         "books/bp-node-machine-guards.lisp",
@@ -8041,7 +8041,7 @@
         "PRF-081"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-bpnrb-checkpoint-decode-is-decode",
         "fn-bpnrb-selection-plan-is-selection-plan",
@@ -8168,7 +8168,7 @@
         "PRF-120"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-job-cursor.lisp",
         "tests/acl2/bp-node-job-cursor-tests.lisp",
@@ -14364,7 +14364,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-progress.lisp",
         "tests/acl2/bp-node-forward-retry-tests.lisp"
@@ -15297,7 +15297,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-fnbs-deletion-publication.lisp",
         "tests/acl2/bp-fnbs-deletion-publication-tests.lisp"
@@ -15320,7 +15320,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-fnbs-family-publication.lisp",
         "tests/acl2/bp-fnbs-family-publication-tests.lisp"
@@ -15913,7 +15913,7 @@
         "PRF-250"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-bpfj-start-is-wf",
         "fn-bpfj-step-preserves-wf",
@@ -17211,7 +17211,7 @@
         "PRF-023"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-node-correspondence.lisp",
         "books/stx-lace-rows.lisp",
@@ -17236,7 +17236,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-fnbs-dispatch-publication.lisp",
         "tests/acl2/bp-fnbs-dispatch-publication-tests.lisp"
@@ -17258,7 +17258,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-fnbs-forward-publication.lisp",
         "tests/acl2/bp-fnbs-forward-publication-tests.lisp"
@@ -17419,7 +17419,7 @@
         "PRF-995"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-node-correspondence.lisp",
         "tests/acl2/store-node-correspondence-tests.lisp"
@@ -17473,7 +17473,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-report-observe.lisp",
         "tests/acl2/bp-report-observe-tests.lisp"
@@ -17495,7 +17495,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-report-outbox.lisp",
         "tests/acl2/bp-report-outbox-tests.lisp"
@@ -17517,7 +17517,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-fragment-step.lisp",
         "tests/acl2/bp-node-fragment-step-tests.lisp"
