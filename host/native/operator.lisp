@@ -438,6 +438,15 @@ observation into the outcome and this function only carries it out."
 ;;; value under the current epoch's `fn/posting-account/v1' key
 ;;; (books/native-operator.lisp fn-nop-account-hash), and the value is
 ;;; printed to stdout.  The secret is never printed; nothing is written.
+(defun fnn-operator-store-max-credentials (root)
+  "The store profile's max-credentials (D27, PRF-102), read from config.json
+without the writer lock: principal administration does not open the store.
+The profile is written once, at init or import (D34), so this read sees the
+bound the owner loads under."
+  (let ((store (make-fnn-store root)))
+    (fnn-load-config store)
+    (fnn-profile-nat 'fn-store-profile-max-credentials store)))
+
 (defun fnn-operator-execute-account-hash (result)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
         (login (fnn-core 'fn-native-operator-host-result-account-hash-login result))

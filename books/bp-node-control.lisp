@@ -4,6 +4,11 @@
 (include-book "native-control")
 (include-book "native-admin")
 
+; The limited live surface does not implement FNLS report requests.
+(defun fn-bpnc-status-unavailable ()
+  (declare (xargs :guard t))
+  (list :refused :unsupported-bp-control-request))
+
 (defun fn-bpnc-config-bound ()
   (declare (xargs :guard t))
   *fn-ncfg-max-octets*)

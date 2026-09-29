@@ -4539,3 +4539,6 @@
   :class ::common-lisp-compliant
   :keystones (fn-bpnc-open-run-live-iff-both-completions-succeed
               fn-bpnc-retirement-stops-the-control-listener))
+
+(definterface fn-bpnc-status-unavailable
+  :class ::common-lisp-compliant)

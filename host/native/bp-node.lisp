@@ -1083,13 +1083,14 @@ uncertain, as it does everywhere else."
                      (fnn-core 'fn-bprc-note
                                (fnn-bp-run-evidence (fnn-bps-tally bp))
                                session-word)))
-      (when control (fnn-bpnc-retire control))
+      (unwind-protect
+           (when control (fnn-bpnc-retire control))
       (dolist (bound listener) (fnn-socket-shut bound))
       (when owner
         (ignore-errors (fnn-owner-action 'fn-owner-app-unbind-receipt-store))
         (fnn-owner-feed-close-all owner)
         (fnn-store-close (fnn-owner-service-store owner)))
-      (fnn-bps-release bp))))
+      (fnn-bps-release bp)))))
 
 (defun fnn-dispatch-bp-node (command args)
   (when (string= command "resume")
@@ -1157,6 +1158,6 @@ uncertain, as it does everywhere else."
        (number 14 +fnn-bp-hop-limit+) (number 15 +fnn-tcl-transfer-mru+)
        (optional-number 16) (number 17 0)
        (string= (arg 18 "0") "1")
-       (arg 19) control-config))))))
+       (arg 19) control-config)))))
 
 (fnn-register-verb "bp-node" (fnn-bp-verb #'fnn-dispatch-bp-node))

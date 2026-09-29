@@ -3,7 +3,7 @@
 
 (defun fnn-bpnc-status-unavailable (path kind)
   (declare (ignore path kind))
-  '(:refused :unsupported-bp-control-request))
+  (fnn-core 'fn-bpnc-status-unavailable))
 
 (defun fnn-bpnc-status-tail (path kind)
   (declare (ignore path kind))

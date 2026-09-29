@@ -115,8 +115,12 @@
                      (setq fatal condition) :uncertain)
                    (fnn-store-fault (condition)
                      (setq fatal condition) :fault)
-                   (fnn-store-error () '(:reason :refused :store-error))
-                   (sb-bsd-sockets:socket-error () '(:reason :refused :socket-error))
+                   (fnn-store-error ()
+                     (list :reason :refused
+                           (fnn-core 'fn-native-control-host-refusal-reason :store-error)))
+                   (sb-bsd-sockets:socket-error ()
+                     (list :reason :refused
+                           (fnn-core 'fn-native-control-host-refusal-reason :socket-error)))
                    (error (condition)
                      (setq fatal condition)
                      (fnn-owner-fault-service (fnn-bpnc-owner node) nil condition)
