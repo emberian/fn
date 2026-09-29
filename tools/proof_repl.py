@@ -127,7 +127,8 @@ for a lease ending within `--lease-wait` minutes (default 2), else refuses;
 `--host auto` passes over the laptop when its cache lacks any of the book's
 dependencies; a remote start records its box before it runs
 (build/proof-repl/NAME/remote.json), and send/send-range/resync/status/
-stop/probe without --host go there (`--host laptop` runs here).
+stop/probe without --host go there (`--host laptop` runs here), into the
+lane tree the record names -- no FN_LANE needed after `start`.
 
 A session holds one slot of the machine's ACL2 pool for its whole life, so
 it belongs to its lane and ends with it (PKT-346: fifteen finished lanes'
@@ -3080,11 +3081,40 @@ def recorded_host(name: str | None) -> str | None:
     return None
 
 
+def recorded_session(name: str | None) -> dict:
+    """The record `start` wrote for session NAME (host, tree, book, lane), or {}."""
+    if not name:
+        return {}
+    with contextlib.suppress(OSError, ValueError, TypeError):
+        record = json.loads((session_dir(name) / "remote.json").read_text())
+        if isinstance(record, dict):
+            return record
+    return {}
+
+
+def remote_lane_and_tree(args, host: str) -> tuple[str | None, str]:
+    """The lane and box tree a --host command runs in.
+
+    `start` takes them from --lane/--remote-tree, else $FN_LANE or the
+    worktree's name.  Every later command about that session (send,
+    send-range, resync, status, stop, probe, diff, checkpoints) takes them
+    from the record `start` wrote when it is for the same box, so a shell
+    without FN_LANE -- the main checkout, a sub-agent's -- reaches the same
+    tree (obstructions-5 item 31); an explicit --lane/--remote-tree still wins.
+    """
+    record = {} if args.command == "start" else recorded_session(getattr(args, "name", None))
+    if record.get("host") != host:
+        record = {}
+    lane = getattr(args, "lane", None) or record.get("lane") or default_lane()
+    override = getattr(args, "remote_tree", None) or (
+        record.get("tree") if not getattr(args, "lane", None) else None)
+    return lane, remote_tree(host, lane, override)
+
+
 def run_remote(args, argv: list[str]) -> int:
     """This command, on args.host, in the lane's tree there, after syncing what it reads."""
     host = args.host
-    lane = getattr(args, "lane", None) or default_lane()
-    tree = remote_tree(host, lane, getattr(args, "remote_tree", None))
+    lane, tree = remote_lane_and_tree(args, host)
     forwarded = strip_remote_options(argv)
     books: list[str] = []
     extra: list[str] = []

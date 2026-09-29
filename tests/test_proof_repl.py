@@ -1765,5 +1765,69 @@ class PartialLoadTests(unittest.TestCase):
             self.assertIn("PARTIAL LOAD -- stopped at c", out.getvalue().splitlines()[-1])
 
 
+class SessionRecordLaneTests(unittest.TestCase):
+    """obstructions-5 item 31: a --host subcommand finds its lane and tree in
+    the record `start` wrote, with no FN_LANE in the environment."""
+
+    def setUp(self):
+        self.sessions = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.sessions, ignore_errors=True)
+        patcher = mock.patch.object(proof_repl, "SESSIONS", self.sessions)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        env = mock.patch.dict(os.environ, {}, clear=False)
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop("FN_LANE", None)
+        # From the main checkout: the tree's path names no lane.
+        lane = mock.patch.object(proof_repl, "ROOT", pathlib.Path("/main/fn"))
+        lane.start()
+        self.addCleanup(lane.stop)
+
+    def args(self, command, **extra):
+        return SimpleNamespace(command=command, name="s31", lane=None, remote_tree=None, **extra)
+
+    def test_send_reads_the_lane_and_tree_start_recorded(self):
+        proof_repl.remember_host("s31", "persvati", "fn-gates/mylane-repl", "books/x", "mylane")
+        lane, tree = proof_repl.remote_lane_and_tree(self.args("send"), "persvati")
+        self.assertEqual((lane, tree), ("mylane", "fn-gates/mylane-repl"))
+
+    def test_without_a_record_it_still_refuses_to_guess(self):
+        with self.assertRaises(SystemExit):
+            proof_repl.remote_lane_and_tree(self.args("status"), "persvati")
+
+    def test_a_record_for_another_box_is_not_used(self):
+        proof_repl.remember_host("s31", "hbox", "/tank/fn/gates/mylane-repl", "books/x", "mylane")
+        with self.assertRaises(SystemExit):
+            proof_repl.remote_lane_and_tree(self.args("stop"), "persvati")
+
+    def test_explicit_lane_wins_over_the_record(self):
+        proof_repl.remember_host("s31", "persvati", "fn-gates/mylane-repl", "books/x", "mylane")
+        args = self.args("send")
+        args.lane = "other"
+        self.assertEqual(proof_repl.remote_lane_and_tree(args, "persvati"),
+                         ("other", "fn-gates/other-repl"))
+
+    def test_start_never_reads_an_old_record(self):
+        proof_repl.remember_host("s31", "persvati", "fn-gates/old-repl", "books/x", "old")
+        with self.assertRaises(SystemExit):
+            proof_repl.remote_lane_and_tree(self.args("start"), "persvati")
+
+    def test_run_remote_sends_status_to_the_recorded_tree(self):
+        proof_repl.remember_host("s31", "persvati", "fn-gates/mylane-repl", "books/x", "mylane")
+        seen = []
+        with mock.patch.object(proof_repl, "box_settings",
+                               lambda host: {"acl2": "acl2", "cache": "/c"}), \
+                mock.patch.object(proof_repl.subprocess, "run",
+                                  lambda command, **kw: seen.append(command)
+                                  or SimpleNamespace(returncode=0)):
+            proof_repl.run_remote(SimpleNamespace(command="status", name="s31", lane=None,
+                                                  remote_tree=None, host="persvati"),
+                                  ["status", "s31", "--host", "persvati"])
+        script = seen[-1][-1]
+        self.assertIn("cd fn-gates/mylane-repl ", script)
+        self.assertIn("FN_LANE=mylane", script)
+
+
 if __name__ == "__main__":
     unittest.main()
