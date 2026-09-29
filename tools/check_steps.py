@@ -531,27 +531,36 @@ class Executor:
     def execute(self, steps: list[dict]) -> int:
         started = time.monotonic()
         writers = WRITERS | self.learned
-        first = [s for s in steps if s["name"] in writers or shlex.join(s["command"]) in writers]
-        rest = [s for s in steps if s not in first]
+        warm = [s for s in steps if s["warm"]]
+        first = [s for s in steps if not s["warm"]
+                 and (s["name"] in writers or shlex.join(s["command"]) in writers)]
+        rest = [s for s in steps if s not in first and s not in warm]
         rest.sort(key=lambda s: -self.durations.get(s["key"], 60.0))
         try:
-            for step in first:
-                self.perform(step, alone=True)
             if self.jobs == 1:
-                for step in sorted(rest, key=lambda s: s["index"]):
+                for step in warm + first + sorted(rest, key=lambda s: s["index"]):
                     self.perform(step, alone=True)
             else:
-                # Warm-ups first; the steps that read what they fill (by their
-                # last traced run; a step never traced counts) after them,
-                # while every other step already runs.
-                warm = [s for s in rest if s["warm"]]
-                late = [s for s in rest if not s["warm"] and warm
-                        and self.worlds.get(s["key"], True)]
-                early = [s for s in rest if s not in warm and s not in late]
+                # Warm-ups start at once.  A writer runs alone (after the
+                # warm-ups when it reads what they fill); then everything
+                # else fans out, the steps that read what the warm-ups fill
+                # (by their last traced run; a step never traced counts)
+                # once they have.
+                reads_world = lambda s: bool(warm) and self.worlds.get(s["key"], True)  # noqa: E731
                 with concurrent.futures.ThreadPoolExecutor(self.jobs) as pool:
-                    futures = [pool.submit(self.perform, s) for s in warm + early]
-                    for future in futures[:len(warm)]:
-                        future.result()
+                    futures = [pool.submit(self.perform, s) for s in warm]
+
+                    def warmed() -> None:
+                        for future in futures[:len(warm)]:
+                            future.result()
+
+                    for step in first:
+                        if reads_world(step):
+                            warmed()
+                        self.perform(step, alone=True)
+                    late = [s for s in rest if reads_world(s)]
+                    futures += [pool.submit(self.perform, s) for s in rest if s not in late]
+                    warmed()
                     futures += [pool.submit(self.perform, s) for s in late]
                     for future in futures:
                         future.result()
