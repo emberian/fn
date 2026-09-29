@@ -4,6 +4,9 @@
 
 (in-package "ACL2")
 (include-book "config-owner-live-complete")
+; Withdrawn on export by part 1; this part reasons about them, as it did
+; when the withdrawal was the umbrella book's.
+(local (in-theory (enable fn-ocl-vocabulary)))
 
 ; The local prelude of config-owner-live-complete, replayed (local events do not
 ; cross include-book).

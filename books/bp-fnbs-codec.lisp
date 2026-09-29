@@ -4,6 +4,7 @@
 (include-book "bp-node-foundation")
 (include-book "bp-node-machine-codec")
 (include-book "frame-invariants")
+(include-book "consumer-position")
 
 (set-verify-guards-eagerness 0)
 

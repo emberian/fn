@@ -997,7 +997,26 @@ uncertain, as it does everywhere else."
                          (lambda (conn xfer-id octets)
                            (fnn-bp-deliver-node
                             bp conn session-counter xfer-id octets owner
-                            observed-channel))))
+                            observed-channel)))
+                       ;; PKT-873: the custody a turn acknowledged is
+                       ;; delivered in that turn, not when the session
+                       ;; ends (a keepalive session need never end).  The
+                       ;; forwarding, outbox and receipt sends, which open
+                       ;; sessions of their own, still run between sessions.
+                       (*fnn-tcl-progress*
+                         (lambda (conn)
+                           (declare (ignore conn))
+                           (when (eq (fnn-bps-outcome bp) :fenced)
+                             (fnn-indeterminate
+                              "BP node custody publication uncertain; recovery required"))
+                           (fnn-bpnode-pause-at-durable-cut
+                            "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE"
+                            "BP NODE KIND5 DURABLE")
+                           (fnn-bpc-advance-clock
+                            bp (fnn-bp-observation wall wall-error))
+                           (fnn-bpnode-dispatch-pending
+                            bp owner receipt-root workflow-root destination policy
+                            issuer node-id peer-id))))
                   (unwind-protect
                        (let ((conn
                                (fnn-tcl-session

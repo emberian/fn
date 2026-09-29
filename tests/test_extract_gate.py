@@ -18,6 +18,7 @@ import json
 import os
 import shutil
 import stat
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -248,7 +249,13 @@ class Fixture:
         # image_command reads the runtime words from the launcher's exec line
         self.image.write_text("#!/bin/sh\nexec %s %s sbcl --end-runtime-options \"$@\"\n" % (PY, self.standin))
         self.image.chmod(0o755)
-        (bin_ / "libcrypto.so.3").write_text("stand-in libcrypto\n")
+        # The stand-in libcrypto lives outside chicken_lib: the gate puts
+        # chicken_lib on LD_LIBRARY_PATH, and on hbox a text file named
+        # libcrypto.so.3 there shadowed the real one for every Python child
+        # (the stand-ins import hashlib and ssl), so the test failed on hbox only.
+        fakelib = Path(self.tmp.name) / "fakelib"
+        fakelib.mkdir()
+        (fakelib / "libcrypto.so.3").write_text("stand-in libcrypto\n")
         self.store = Path(self.tmp.name) / "store"
         self.store.mkdir()
         (self.store / "segment").write_text("stand-in store\n")
@@ -257,7 +264,7 @@ class Fixture:
                                 ldd=[str(bin_ / "ldd")], cc=["echo", "cc stand-in"],
                                 store=str(self.store), per=400, source="stand-in")
         self.env = {"FAKE_EXTRACT_DIR": str(ROOT / "tools" / "extract"),
-                    "FAKE_LIBCRYPTO": str(bin_ / "libcrypto.so.3")}
+                    "FAKE_LIBCRYPTO": str(fakelib / "libcrypto.so.3")}
 
     def run(self, fault=""):
         g = gate.Gate(self.tree, self.image, self.tools)
@@ -293,6 +300,14 @@ class ExtractGateTest(unittest.TestCase):
         self.assertEqual(status["step"], step)
         self.assertIn(reason, status["reason"])
         return out, status
+
+    def test_the_gate_environment_leaves_pythons_own_libraries_alone(self):
+        g = gate.Gate(self.fx.tree, self.fx.image, self.fx.tools)
+        lib = Path(g.env["LD_LIBRARY_PATH"])
+        self.assertEqual(sorted(one.name for one in lib.glob("lib*.so*")), [])
+        done = subprocess.run([PY, "-c", "import hashlib, ssl; hashlib.sha256(b'')"],
+                              env=g.env, capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
 
     def test_clean_run_passes_with_manifests(self):
         rc, out, status, g = self.fx.run("")

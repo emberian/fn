@@ -29,6 +29,7 @@
 (include-book "owner-verdict-read")
 (include-book "peer-authored-accept")
 (include-book "hybrid-lifecycle-store-invariants")
+(include-book "byte-store-scan")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md

@@ -11,8 +11,8 @@ import sys
 import unittest
 
 from tests.native_harness import (
-    EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, environment, executable,
-    native_image, run, scratch)
+    EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, Acl2Session, acl2_keyword,
+    acl2_octets, acl2_result, environment, executable, native_image, run, scratch)
 
 IMAGE = native_image("FN_NATIVE_HOST")
 # A fault selector is a developer-image selector: a production image refuses
@@ -20,41 +20,39 @@ IMAGE = native_image("FN_NATIVE_HOST")
 # `fnn-developer-selector-gate'), so every faulted step runs this image.
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 sys.path.insert(0, str(ROOT / "tools"))
-import frame_bridge  # noqa: E402  the ACL2 bridge session the fixtures are framed in
 import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
 
 
 def missing_enrollment_fixture():
-    """Return transaction/frontier bytes produced entirely by ACL2."""
-    bridge = frame_bridge.session()
-    bridge.store.call('(include-book "books/hybrid-store")')
-    bridge.store.call('(include-book "books/store-node")')
-    transaction = bytes(bridge.call(
-        "(let* ((msgid \"<missing-keyring@example.invalid>\")"
-        " (source '(70 114 111 109 58 32 97 64 98 13 10 78 101 119 115 103 114 111 117 112 115 58 32 102 110 46 116 101 115 116 13 10 83 117 98 106 101 99 116 58 32 120 13 10 77 101 115 115 97 103 101 45 73 68 58 32 60 109 105 115 115 105 110 103 45 107 101 121 114 105 110 103 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 13 10 120 13 10))"
-        " (profile *fn-hsig-profile-tag*) (subject \"fixture-subject\")"
-        " (record (fn-record-make 0 0 0 msgid source '(\"fn.test\")"
-        "                         \"fixture-obligation\" subject \"fixture-release\" 2 :legacy))"
-        " (verdict (fn-stxe-make 0 0 0 msgid :verified '(1) 7 profile))"
-        " (event (fn-stxa-make 0 0 0 7 profile"
-        "                       (fn-record-string-octets subject)"
-        "                       (fn-record-encode record)"
-        "                       (fn-stxe-encode verdict)))"
-        # The store's predicates read the HELD history the open interns
-        # (records flip: host/store-host.lisp fn-store-intern-records-local,
-        # the open's intern into a local arena); the journal stores the
-        # wire event.
-        " (rows (fn-store-intern-records-local (list event))))"
-        " (if (and (fn-stxa-bindsp event)"
-        "          (consp rows)"
-        "          (fn-sn-observed-historyp 1 rows)"
-        "          (fn-sf-history-recoverablep '(\"fn.test\") 32 rows 1)"
-        "          (equal (fn-stxk-context-kind (fn-replay-identity rows))"
-        "                 :fault))"
-        "     (fn-store-event-encode event) nil))"))
+    """The kind-4 record without its kind-3 enrollment, encoded entirely by
+    ACL2 (the developer image's own session, `fn acl2 session`)."""
+    with Acl2Session(DEVELOPER) as bridge:
+        transaction = acl2_octets(bridge.call(
+            "(let* ((msgid \"<missing-keyring@example.invalid>\")"
+            " (source '(70 114 111 109 58 32 97 64 98 13 10 78 101 119 115 103 114 111 117 112 115 58 32 102 110 46 116 101 115 116 13 10 83 117 98 106 101 99 116 58 32 120 13 10 77 101 115 115 97 103 101 45 73 68 58 32 60 109 105 115 115 105 110 103 45 107 101 121 114 105 110 103 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 13 10 120 13 10))"
+            " (profile *fn-hsig-profile-tag*) (subject \"fixture-subject\")"
+            " (record (fn-record-make 0 0 0 msgid source '(\"fn.test\")"
+            "                         \"fixture-obligation\" subject \"fixture-release\" 2 :legacy))"
+            " (verdict (fn-stxe-make 0 0 0 msgid :verified '(1) 7 profile))"
+            " (event (fn-stxa-make 0 0 0 7 profile"
+            "                       (fn-record-string-octets subject)"
+            "                       (fn-record-encode record)"
+            "                       (fn-stxe-encode verdict)))"
+            # The store's predicates read the HELD history the open interns
+            # (records flip: host/store-host.lisp fn-store-intern-records-local,
+            # the open's intern into a local arena); the journal stores the
+            # wire event.
+            " (rows (fn-store-intern-records-local (list event))))"
+            " (if (and (fn-stxa-bindsp event)"
+            "          (consp rows)"
+            "          (fn-sn-observed-historyp 1 rows)"
+            "          (fn-sf-history-recoverablep '(\"fn.test\") 32 rows 1)"
+            "          (equal (fn-stxk-context-kind (fn-replay-identity rows))"
+            "                 :fault))"
+            "     (fn-store-event-encode event) nil))"))
     if not transaction:
         raise AssertionError("fixture must pass article replay and fail identity replay")
-    return bridge.store_frame(transaction), bridge.metadata_frontier_frame(1)
+    return transaction
 
 
 class NativeRecoverySourceMapTests(unittest.TestCase):
@@ -101,17 +99,12 @@ class NativeRecoverySourceMapTests(unittest.TestCase):
                             "{} is staged but not swept".format(prefix))
 
     def test_missing_enrollment_fixture_is_acl2_encoded_and_nonempty(self):
-        try:
-            transaction, frontier = missing_enrollment_fixture()
-            decoded = frame_bridge.session().store_unframe(transaction)
-            self.assertTrue(decoded.startswith(b"\x44fn-e"))
-            self.assertTrue(frontier.startswith(b"FNSM"))
-        finally:
-            frame_bridge.close()
+        self.assertTrue(missing_enrollment_fixture().startswith(b"\x44fn-e"))
 
 
+@unittest.skipUnless(executable(DEVELOPER), "the developer image is absent")
 class StagingSweepDecisionTests(unittest.TestCase):
-    """The ACL2 sweep decision itself, evaluated without a native image."""
+    """The ACL2 sweep decision itself, evaluated in the developer image's session."""
 
     @staticmethod
     def octets(name):
@@ -122,22 +115,18 @@ class StagingSweepDecisionTests(unittest.TestCase):
 
     def test_sweep_rounds_collect_sixty_five_allocation_orphans(self):
         orphans = [".allocation-4242-{:024x}".format(number) for number in range(65)]
-        try:
-            bridge = frame_bridge.session()
-            bridge.store.call('(include-book "books/store-sweep")')
+        with Acl2Session(DEVELOPER) as bridge:
             ready = "(fn-sn-initial nil 0)"
             rounds = bridge.call("(fn-sn-sweep-rounds {} {} nil (fn-sn-staging-observation-limit))"
                                  .format(ready, self.names(orphans)))
-            self.assertEqual(rounds, [frame_bridge.Keyword("done"), []])
+            self.assertEqual(acl2_result(rounds).upper(), b"(:DONE NIL)")
             first = bridge.call("(car (fn-sn-sweep-round {} {} t nil))"
                                 .format(ready, self.names(orphans[:64])))
-            self.assertEqual(first, frame_bridge.Keyword("again"))
+            self.assertEqual(acl2_keyword(first), "again")
             foreign = [".operator-{:02d}".format(number) for number in range(65)]
             refused = bridge.call("(car (fn-sn-sweep-rounds {} {} nil 64))"
                                   .format(ready, self.names(foreign)))
-            self.assertEqual(refused, frame_bridge.Keyword("refused"))
-        finally:
-            frame_bridge.close()
+            self.assertEqual(acl2_keyword(refused), "refused")
 
 
 @unittest.skipUnless(executable(IMAGE),
@@ -146,7 +135,6 @@ class StagingSweepDecisionTests(unittest.TestCase):
 class NativeRecoveryFidelityTests(unittest.TestCase):
     def setUp(self):
         self.base = scratch(self, "fn-native-recovery-")
-        self.addCleanup(frame_bridge.close)
 
     def invoke(self, store, command, recovery_fault=None):
         image = IMAGE
@@ -291,8 +279,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         exported = self.store_words(source, "export", archive)
         self.assertEqual(exported.returncode, EXIT_OK, exported.stderr)
         self.assertEqual(list((archive / "records").iterdir()), [])
-        transaction, _frontier = missing_enrollment_fixture()
-        record = frame_bridge.session().store_unframe(transaction)
+        record = missing_enrollment_fixture()
         name = "records/00000000000000000000.txn"
         (archive / name).write_bytes(record)
         # The archive's MANIFEST line for the record (b3sum's format, the

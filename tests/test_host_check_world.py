@@ -91,6 +91,18 @@ class WorldFixtureTests(unittest.TestCase):
         self.assertIn("1 computed name(s)", self.notes[0])
 
 
+class GeneratedNameTests(unittest.TestCase):
+    def test_a_defevent_defines_its_encoder_decoder_and_recognizer(self):
+        # Lane generators G6: books/owner-time-journal.lisp's defevent names
+        # fn-otm-wordp, which host/native/owner.lisp calls through fnn-core.
+        with tempfile.TemporaryDirectory() as directory:
+            book = Path(directory) / "b.lisp"
+            book.write_text('(in-package "ACL2")\n(defevent fam :version 1 :var w '
+                            ':codes ((:a 1)) :encode fam-code :decode fam-kind '
+                            ':code-var c :recognizer famp)\n', encoding="utf-8")
+            self.assertEqual(host_check.stobj_names(book), {"fam-code", "fam-kind", "famp"})
+
+
 class TreeTests(unittest.TestCase):
     def test_the_images_worlds_define_every_named_counterpart(self):
         refused, notes = host_check.world_check()

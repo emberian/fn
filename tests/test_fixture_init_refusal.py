@@ -80,5 +80,67 @@ class InitRefusalTests(unittest.TestCase):
             self.assertGreater(k, 1000)
 
 
+class CheckpointSuffixTests(unittest.TestCase):
+    """cp100k-sfx20k-2k: a 20,000-record suffix over a 100,000-record checkpoint
+    (heap-bounds, 2026-09-28: every registered store's capacity capped a suffix
+    over syn100k-2k at 2,000 posts)."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="fn-fixture-suffix-")
+        self.addCleanup(self.temporary.cleanup)
+
+    def test_the_seed_has_room_for_the_whole_suffix(self):
+        self.assertEqual(fixtures.suffix_capacity(100000, 0), 204000)  # syn100k-2k's
+        self.assertEqual(fixtures.suffix_capacity(100000, 20000), 244000)
+        fixture = fixtures.BY_NAME["cp100k-sfx20k-2k"]
+        self.assertEqual(fixture.stores, ("store",))
+        self.assertIn("open=checkpoint:100000 suffix=20000", fixture.readme)
+        # T (max transactions) holds the seed, the synthesized records and the suffix.
+        flags = dict(zip(fixtures.SYNTH_100K[::2], fixtures.SYNTH_100K[1::2]))
+        self.assertGreater(int(flags["--max-transactions"]), 1000 + 100000 + 20000)
+        self.assertGreater(int(flags["--max-open-suffix"]), 20000)
+
+    def test_post_suffix_checkpoints_then_posts_every_record_to_one_owner(self):
+        from unittest import mock
+        import rep_measure
+        import msgid_measure
+        work = Path(self.temporary.name).resolve() / "base"
+        store = work / "store"
+        store.mkdir(parents=True)
+        verbs, posted, envs = [], [], []
+
+        class Conn:
+            def __init__(self, port):
+                pass
+
+            def close(self):
+                pass
+
+        def run(argv, env, check):
+            verbs.append(argv[3:])
+            return subprocess.CompletedProcess(argv, 0)
+
+        def start(image, config, env, stderr_path, timeout=3600):
+            envs.append(env)
+            self.assertIn(str(store), config.read_text())
+            return object(), 1.0, None
+
+        report = work / "suffix.json"
+        with mock.patch.object(fixtures.subprocess, "run", run), \
+                mock.patch.object(rep_measure, "start_owner", start), \
+                mock.patch.object(rep_measure, "stop_owner", lambda proc, err: None), \
+                mock.patch.object(rep_measure, "post",
+                                  lambda conn, i, octets: posted.append((i, octets))), \
+                mock.patch.object(msgid_measure, "free_port", lambda: 1), \
+                mock.patch.object(msgid_measure, "Conn", Conn):
+            code = fixtures.main(["post-suffix", "/img", str(store), "3", "--json", str(report)])
+        self.assertEqual(code, 0)
+        self.assertEqual(verbs, [[str(store), "rebind-filesystem"], [str(store), "checkpoint"]])
+        self.assertEqual(envs[0]["FN_NATIVE_CHECKPOINT_BUDGET_TEST"], "1")
+        self.assertEqual(posted, [(5000000, 2048), (5000001, 2048), (5000002, 2048)])
+        self.assertEqual(json.loads(report.read_text())["posted"], 3)
+        self.assertTrue((store / "writer.lock").is_file())
+
+
 if __name__ == "__main__":
     unittest.main()

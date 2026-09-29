@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "bp-fnbs-delivery-codec")
 (include-book "bp-fnbs-byte-publisher")
+(include-book "consumer-position")
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpah-publication-authorize

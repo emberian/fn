@@ -8,6 +8,7 @@
 (include-book "../books/store-reclaim-stream")
 (include-book "../books/store-log-reclaim")
 (include-book "../books/reclaim-instant")
+(include-book "../books/expiry-instant")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -171,10 +172,21 @@
          (stamp (fn-record-stamp-of-observation clock)))
     (mv rule (if (natp stamp) stamp nil))))
 
-(defun fn-store-reclaim-context (clock state)
-  (declare (xargs :stobjs state :mode :program))
+; The context carries the Message-IDs the operator's expiry policy expires
+; at the same instant (books/expiry.lisp fn-xpy-ctx; Q14): the configuration's
+; quota rows, the Store's articles and their payload headers in the arena.
+(defun fn-store-reclaim-context (clock fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (mv-let (rule now) (fn-store-reclaim-rule-and-stamp clock state)
-    (value (fn-rclp-ctx rule now (f-get-global 'fn-store-sn state)))))
+    (value (fn-xpy-ctx rule now (f-get-global 'fn-store-sn state)
+                       (fn-cfg-value (f-get-global 'fn-store-cfg state)) fn-arena))))
+
+;; The classes the verb reports before it rewrites (books/expiry.lisp
+;; fn-xpy-ctx-classes, KEYSTONE fn-xpy-classes-partition-the-articles):
+;; (reclaimable expired held reclaimed signed kept) over the context.
+(defun fn-store-reclaim-ctx-classes (ctx fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (value (fn-xpy-ctx-classes ctx fn-arena)))
 
 (defun fn-store-reclaim-init ()
   (declare (xargs :mode :program))
@@ -223,10 +235,10 @@
 ;; reclaim was ever recorded).  KEYSTONE fn-rci-recorded-decision-is-the-
 ;; decision: over the record `store reclaim' published, this is the decision
 ;; it took at its clock.
-(defun fn-store-reclaim-context-recorded (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-rci-context (fn-cfg-value (f-get-global 'fn-store-cfg state))
-                         (f-get-global 'fn-store-sn state))))
+(defun fn-store-reclaim-context-recorded (fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (value (fn-xpy-rci-context (fn-cfg-value (f-get-global 'fn-store-cfg state))
+                             (f-get-global 'fn-store-sn state) fn-arena)))
 
 (defun fn-store-log-reclaim-decide-recorded (profile acc dry fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
