@@ -115,3 +115,37 @@
   :rule-classes nil
   :hints (("Goal" :cases ((consp records)) :do-not-induct t
            :in-theory (disable fn-rcls-fold))))
+
+; -----------------------------------------------------------------------------
+; The per-step work (row A8).
+;
+; One record's step reads the context's rule, instant, holders, verdicts,
+; expired set and article INDEX (books/store-reclaim-pack.lisp
+; `fn-rclp-article-index', a fast alist: one hashed lookup) and never the
+; Store's article list: replacing the context's ARTICLES slot changes neither
+; the fold's step nor the record's rewrite.  The step's work is the record's
+; decode (and, when it rewrites, re-encode), one hashed lookup for its
+; article and one for its expiry (`fn-xpy-expiredp'), and the holders and
+; verdicts the retention rule consults when it permits a release -- none of
+; it the Store's article count.  Before A8 each step walked the article list
+; (`fn-find-article'), N steps of up to N: 485 s at 100k for `store reclaim
+; --dry-run'.  The holders and verdicts walks remain linear in THEIR tables
+; (reader pins, consumer cursors, undelivered feeds, BP obligations, signed
+; verdicts), which the keep-forever default never consults.
+
+(local
+ (defthm fn-rcls-rcl-nth-is-nth
+   (equal (fn-rcl-nth n x) (nth n x))
+   :hints (("Goal" :in-theory (enable fn-rcl-nth nth)))))
+
+(defthm fn-rclp-event-reads-no-article-list
+  (equal (fn-rclp-event octets (update-nth 4 articles ctx))
+         (fn-rclp-event octets ctx))
+  :hints (("Goal" :in-theory (enable fn-rclp-event fn-rclp-rewrites-p
+                                     fn-rclp-ctx-reclaimable))))
+
+(defthm fn-rcls-step-reads-no-article-list
+  (equal (fn-rcls-step acc octets (update-nth 4 articles ctx))
+         (fn-rcls-step acc octets ctx))
+  :hints (("Goal" :in-theory (enable fn-rcls-step fn-rclp-event fn-rclp-rewrites-p
+                                     fn-rclp-ctx-reclaimable))))

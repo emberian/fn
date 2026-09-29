@@ -1067,10 +1067,13 @@
           (update-fn-cat$c-hz hz fn-cat$c))
       fn-cat$c)))
 
+;; The rows array is resized to nothing: a cleared catalog keeps no
+;; reference to a row it held (PKT-733 (3)); the next append grows it.
 (defun fn-cat$c-clear (fn-cat$c)
   (declare (xargs :stobjs fn-cat$c))
   (let* ((fn-cat$c (fn-cat$c-clear-base fn-cat$c))
-         (fn-cat$c (fn-cat$c-lives-clear fn-cat$c)))
+         (fn-cat$c (fn-cat$c-lives-clear fn-cat$c))
+         (fn-cat$c (resize-fn-cat$c-rows 0 fn-cat$c)))
     (update-fn-cat$c-hz 0 fn-cat$c)))
 
 ; -----------------------------------------------------------------------------
@@ -3309,6 +3312,21 @@
                             (h (fn-held-with-context (nth seq fn-cat) context))
                             (tab (nth 6 fn-cat$c)))))))
 
+(local
+ (defthm fn-ctg-corr-base-nil-of-resize-rows
+   (implies (and (fn-cat$corr-base x nil) (fn-cat$cp x))
+            (fn-cat$corr-base (resize-fn-cat$c-rows 0 x) nil))
+   :hints (("Goal" :in-theory (e/d (fn-cat$corr-base resize-fn-cat$c-rows) (fn-cat$cp))
+            :use ((:instance fn-ctg-cp-of-resize (n 0) (fn-cat$c x)))))))
+
+(local
+ (defthm fn-ctg-nth-of-resize-rows
+   (and (equal (nth *fn-cat$c-lives-get* (resize-fn-cat$c-rows n x))
+               (nth *fn-cat$c-lives-get* x))
+        (equal (nth *fn-cat$c-hz* (resize-fn-cat$c-rows n x))
+               (nth *fn-cat$c-hz* x)))
+   :hints (("Goal" :in-theory (enable resize-fn-cat$c-rows)))))
+
 (defthm fn-cat-clear{correspondence-bl}
   (implies (fn-cat$corr fn-cat$c fn-cat)
            (fn-cat$corr (fn-cat$c-clear fn-cat$c) (fn-cat$a-clear fn-cat)))
@@ -3319,8 +3337,16 @@
            :use ((:instance fn-ctg-clear-base-corr)
                  (:instance fn-ctg-corr-base-fields
                             (x (fn-cat$c-clear-base fn-cat$c))
-                            (y (update-fn-cat$c-hz 0 (fn-cat$c-lives-clear
-                                                      (fn-cat$c-clear-base fn-cat$c))))
+                            (y (fn-cat$c-lives-clear (fn-cat$c-clear-base fn-cat$c)))
+                            (a (fn-cat$a-clear fn-cat)))
+                 (:instance fn-ctg-corr-base-nil-of-resize-rows
+                            (x (fn-cat$c-lives-clear (fn-cat$c-clear-base fn-cat$c))))
+                 (:instance fn-ctg-corr-base-fields
+                            (x (resize-fn-cat$c-rows
+                                0 (fn-cat$c-lives-clear (fn-cat$c-clear-base fn-cat$c))))
+                            (y (update-fn-cat$c-hz
+                                0 (resize-fn-cat$c-rows
+                                   0 (fn-cat$c-lives-clear (fn-cat$c-clear-base fn-cat$c)))))
                             (a (fn-cat$a-clear fn-cat)))))))
 
 (defthm fn-cat-group-live-count{correspondence-bl}

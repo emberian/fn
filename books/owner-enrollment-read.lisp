@@ -3,8 +3,8 @@
 ;;
 ;; Host path (reader), as for HDR :fn-verified (books/owner-verdict-read) and
 ;; HDR :fn-control (books/owner-control-read): host/native/owner.lisp
-;; (fnn-owner-action 'fn-owner-chunk ...) runs host/owner-host.lisp
-;; fn-owner-chunk, that is fn-ocfg-read-tls-prefix, equal to fn-ocfg-read over
+;; fnn-owner-handle-chunk runs host/owner-host.lisp fn-owner-chunk-span-at,
+;; that is fn-ocfg-read-tls-prefix over the span (fn-scr-ocfg-read-span-is-reference-under-ocl-relation), equal to fn-ocfg-read over
 ;; the octets it consumed (all of them unless a submission made it yield) by
 ;; fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix (books/owner-tls-prefix), whose reply
 ;; is (car (fn-own-read ...)).  fn-own-read builds the served connection from
@@ -57,7 +57,7 @@
            :use ((:instance fn-nntp-enrollment-hdr-response-is-the-pinned-enrollment)))))
 
 ;; PRF-168 KEYSTONE over the host-called reader port (host/owner-host.lisp
-;; fn-owner-chunk).  Uses fn-own-read-archive-command-is-the-pinned-dispatcher
+;; fn-owner-chunk-span-at).  Uses fn-own-read-archive-command-is-the-pinned-dispatcher
 ;; (books/owner-control-read) as a lemma.
 (defthm fn-own-read-hdr-fn-enrollment-is-the-pinned-enrollment
   (let* ((conn (fn-own-find-conn id (fn-own-conns o)))

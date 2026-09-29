@@ -46,6 +46,11 @@
           (cons :open-per-record (* 2 *fn-heap-open-record-octets* on))
           (cons :inflight-lists (* 2 *fn-heap-list-octets-per-octet*
                                    (+ r (* *fn-heap-inflight-header-copies* hdr))))
+          ;; the submission the committer took, unpacked (lane chunked-body-2)
+          (cons :taken-submission-lists
+                (* 2 *fn-heap-list-octets-per-octet*
+                   (+ (nfix (fn-bs-profile-max-article-octets profile)) hdr
+                      *fn-heap-message-id-octets*)))
           (cons :octet-buffers (* 2 (fn-ock-capture-budget profile)))
           ;; the articles in flight (lane zero-copy-commit): the slots' pool
           (cons :articles (fn-heap-articles-octets profile)))))
@@ -96,7 +101,8 @@
                                     fn-heap-open-octets-bound fn-heap-open-records-bound
                                     fn-bs-profile-max-history-octets
                                     fn-bs-profile-max-transactions
-                                    fn-bs-profile-max-record-octets fn-bs-profile-field))))))
+                                    fn-bs-profile-max-record-octets fn-bs-profile-field
+                                    fn-bs-profile-max-article-octets))))))
 
 (local
  (defthm fn-heap-breakdown-figure-covers-base

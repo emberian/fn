@@ -11,16 +11,19 @@ own body and queue, never what the committer or its fdatasync still owns
 
 1. THE BATCH IN FLIGHT KEEPS ITS CREDIT (SCN-194; developer image, the
    barrier held 3 s by FN_NATIVE_OWNER_TEST_BARRIER_MS, under D = 5 s so the
-   disk is not yet slow).  A = 4 MiB: the pool holds one article.  Poster A
-   sends its whole article and hangs up; while its batch's barrier runs, B's
-   POST is answered the memory 440 by name.  Before this lane the owner's
+   disk is not yet slow).  A = 4 MiB: the pool holds seven articles (lane
+   chunked-body-2: the reserve is the packed article); six posters hold six
+   of them mid-article.  Poster A sends its whole article and hangs up; while
+   its batch's barrier runs, B's POST is answered the memory 440 by name.  Before this lane the owner's
    queue, its in-flight field and A's connection were all empty by then
    (the pipeline feeds each member's outcome before the barrier), so the
    slots admitted B's body beside the batch the syncer still held.  After
-   the barrier B is admitted and accepted, and A's article is durable.
+   the barrier B is admitted and accepted, and A's article is durable; the
+   six finish.
 
 2. MANY LARGE POSTERS AND READERS AT ONCE never fault the node (no exit 4):
-   A = 600,000 (three articles in flight), twelve posters racing and four
+   A = 600,000 (32 articles in flight, the default configuration's
+   connections, since the reserve is the packed article), twelve posters racing and four
    readers reading; every POST is offered 340 or refused the memory 440 by
    name, every offered article is accepted, and the node stops cleanly.
 
@@ -32,12 +35,18 @@ import time
 import unittest
 
 from tests.native_harness import EXIT_OK, executable, native_image
-from tests.test_native_article_slots import A600K, DEADLOCK_PROFILE, INIT_PROFILE, MEMORY_440, MIB4, Poster
+from tests.test_native_article_slots import INIT_PROFILE, MEMORY_440, MIB4, SLOTS_4MIB, Poster
 from tests.test_native_bounds_join import JoinFixture, article, dot_stuff
 
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST", "build/fn-host-developer")
 POSTERS = 12
 READERS = 4
+A600K = 600000
+DEADLOCK_PROFILE = ("--profile", "development", "--max-transactions", "1024",
+                    "--max-history-octets", str(64 << 20),
+                    "--max-record-octets", "4199563",
+                    "--max-article-octets", str(A600K),
+                    "--max-groups-per-article", "16")
 
 
 class Reader(threading.Thread):
@@ -87,9 +96,15 @@ class CreditsTests(JoinFixture):
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         owner = self.node.start(image=DEVELOPER, env={"FN_NATIVE_OWNER_TEST_BARRIER_MS": "3000"})
         wire = [dot_stuff(article("<credit-{}@example.invalid>".format(n), MIB4 - 4096)) + b".\r\n"
-                for n in range(2)]
+                for n in range(2 + SLOTS_4MIB - 1)]
         a, b = Poster(self.port), Poster(self.port)
+        fillers = [Poster(self.port) for _ in range(SLOTS_4MIB - 1)]
         try:
+            for n, p in enumerate(fillers, start=2):
+                offered = p.ask()
+                self.assertTrue(offered.startswith("340"), (n, offered))
+                p.stream.write(wire[n][:len(wire[n]) // 2])
+                p.stream.flush()
             offered = a.ask()
             self.assertTrue(offered.startswith("340"), offered)
             a.stream.write(wire[0])
@@ -110,11 +125,16 @@ class CreditsTests(JoinFixture):
             self.assertTrue(offered.startswith("340"), offered)
             accepted = b.send(wire[1], pieces=4)
             self.assertTrue(accepted.startswith("240"), accepted)
+            for n, p in enumerate(fillers, start=2):
+                done = p.send(wire[n][len(wire[n]) // 2:], pieces=2)
+                self.assertTrue(done.startswith("240"), (n, done))
             self.assertIsNone(owner.poll(), "the node stopped")
         finally:
             b.close()
+            for p in fillers:
+                p.close()
         self.node.stop(process=owner)
-        self.assertEqual(self.headroom()["transactions-used"], 2)
+        self.assertEqual(self.headroom()["transactions-used"], 2 + SLOTS_4MIB - 1)
 
     def test_many_large_posters_and_readers_never_fault_the_node(self):
         created = self.op("init", *DEADLOCK_PROFILE, "fn.test")
