@@ -11,8 +11,8 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 1564 |
-| Certification roots in the Makefile | 1509 |
-| Books inside the root closure | 1554 |
+| Certification roots in the Makefile | 1512 |
+| Books inside the root closure | 1557 |
 | `defthm` and `defthmd` events | 25360 |
 | `defun` events | 16715 |
 | Functions with verified guards | 3037 |
@@ -337,7 +337,7 @@ that `make certify` requests.
 | `books/clock-unit.lisp` | root | 4 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/clock-wall-reading.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 4 |
-| `books/closure-open.lisp` | - | 15 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `books/closure-open.lisp` | root | 15 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/codec-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-carried-candidate.lisp` | root | 13 | 4 | 3/1/0/0 | 0 | 0 | 0 |
 | `books/config-carried-open.lisp` | root | 13 | 5 | 2/0/3/0 | 0 | 0 | 0 |
@@ -1168,8 +1168,8 @@ that `make certify` requests.
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 0 | 0 |
 | `tests/acl2/clock-reading-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
-| `tests/acl2/closure-export-tests.lisp` | - | 0 | 1 | 0/1/0/0 | 17 | 0 | 0 |
-| `tests/acl2/closure-open-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |
+| `tests/acl2/closure-export-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 17 | 0 | 0 |
+| `tests/acl2/closure-open-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |
 | `tests/acl2/codec-seam-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 15 | 0 | 0 |
 | `tests/acl2/config-carried-candidate-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 27 | 4 | 0 |
 | `tests/acl2/config-carried-open-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 5 | 0 |
