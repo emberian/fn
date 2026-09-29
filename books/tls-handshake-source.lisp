@@ -6,6 +6,9 @@
 ; WORD') admits the override list with the parse the owner reads, without
 ; the decision's closure (connection-budget and what it includes).
 ;
+; It also holds the trusted PROXY peers' row (`tls-proxy-trusted-peers',
+; books/tls-proxy.lisp), for the same reason.
+;
 ; THE SOURCE is the peer's address as the listener sees it: an IPv4 address,
 ; or an IPv6 address's /64; an IPv4-mapped IPv6 address is its IPv4 address.
 
@@ -14,6 +17,7 @@
 (include-book "node-config")    ; fn-cfg-policy
 (include-book "profile-limits") ; fn-profile-limit
 (include-book "records-shape")  ; fn-record-string-octets
+(include-book "public-exposure-rows") ; the CIDR list (fn-exp-trusted-of-word)
 
 ; An IPv4-mapped IPv6 address (::ffff:a.b.c.d, RFC 4291 section 2.5.5.2:
 ; what a dual-stack listener reports for an IPv4 peer) is that IPv4 address:
@@ -116,3 +120,34 @@
     (implies (not (member-equal r '(:override-address :overrides-full)))
              (and (true-listp r) (<= (len r) (nfix most)))))
   :hints (("Goal" :in-theory (disable fn-hsb-override-entries))))
+
+;; THE TRUSTED PROXY PEERS (books/tls-proxy.lisp): the policy row
+;; `tls-proxy-trusted-peers' holds `none' or a comma-separated CIDR list, the
+;; syntax of `exposure-trusted' (fn-exp-trusted-of-word).  Only a transport
+;; peer inside one of these ranges is read for a PROXY header; nothing else
+;; ever is.  An absent row, `none', or a row that does not parse lists
+;; nothing.
+(defconst *fn-pxy-peers-slot* "tls-proxy-trusted-peers")
+
+(defun fn-pxy-config-peers (v)
+  (declare (xargs :guard t))
+  (let* ((word (fn-cfg-policy v *fn-pxy-peers-slot*))
+         (r (if (equal word "") nil (fn-exp-trusted-of-word word))))
+    (if (equal r :bad) nil r)))
+
+;; The range of PEERS the transport peer ADDRESS is in (why it is trusted),
+;; or nil.  An IPv4-mapped IPv6 peer is its IPv4 address.
+(defun fn-pxy-trusted-peer (address peers)
+  (declare (xargs :guard t))
+  (if (consp peers)
+      (if (fn-exp-cidr-matchp (car peers) (fn-hsb-normal-address address))
+          (car peers)
+        (fn-pxy-trusted-peer address (cdr peers)))
+    nil))
+
+(defthm fn-pxy-trusted-peer-is-a-listed-match
+  (let ((c (fn-pxy-trusted-peer address peers)))
+    (implies c
+             (and (member-equal c peers)
+                  (fn-exp-cidr-matchp c (fn-hsb-normal-address address)))))
+  :hints (("Goal" :in-theory (disable fn-exp-cidr-matchp fn-hsb-normal-address))))

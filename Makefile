@@ -1416,6 +1416,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-bars \
 	tests/acl2/owner-time-bars-tests \
 	tests/acl2/tls-handshake-budget-tests \
+	tests/acl2/tls-proxy-tests \
 	tests/acl2/owner-cold-line-tests \
 	books/arena-reader-pins \
 	tests/acl2/arena-reader-pins-tests \

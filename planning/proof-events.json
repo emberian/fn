@@ -14193,6 +14193,18 @@
         {
           "kind": "theorem",
           "name": "fn-hsb-overrides-of-word-is-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-direct-unless-trusted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-step-reads-within-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-handover-keeps-the-bound"
         }
       ]
     },

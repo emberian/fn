@@ -481,6 +481,25 @@
           (fn-na-test-argv (list "policy" "set" "tls-handshake-source-overrides"
                                  (fn-na-hs-many 64)))))
         :overrides-full))
+; PRF-986 item 4: the trusted PROXY peers, a :set-policy row of CIDR ranges;
+; the owner's read of the configuration the plan's delta makes is those
+; ranges; a malformed range is not admitted.
+(defconst *fn-na-proxy-peers*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("policy" "set" "tls-proxy-trusted-peers" "10.0.0.0/8,fd00::/8"))))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-proxy-peers*) :set-policy))
+(assert-event
+ (equal (fn-pxy-config-peers
+         (fn-cfg-apply (fn-cfg-value (fn-cfg-initial)) 1 0
+                       (fn-native-admin-plan-deltas *fn-na-proxy-peers*)))
+        (fn-exp-trusted-of-word "10.0.0.0/8,fd00::/8")))
+(assert-event (fn-pxy-trusted-peer '(:inet 10 9 8 7)
+                                   (fn-exp-trusted-of-word "10.0.0.0/8,fd00::/8")))
+(assert-event
+ (not (equal (fn-native-admin-result-status
+              (fn-native-admin-plan
+               (fn-na-test-argv '("policy" "set" "tls-proxy-trusted-peers" "10.0.0.0/33"))))
+             :accepted)))
 ; The other kinds carry no value.
 (assert-event (null (fn-native-admin-result-value *fn-na-create*)))
 (assert-event (null (fn-native-admin-result-value *fn-na-capacity*)))

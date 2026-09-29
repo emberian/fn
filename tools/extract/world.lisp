@@ -273,6 +273,7 @@
 (include-book "../../books/owner-ack-after-barrier")
 (include-book "../../books/login-binding-live")
 (include-book "../../books/connection-budget")
+(include-book "../../books/tls-proxy")
 (include-book "../../books/owner-stop-drain")
 (include-book "../../books/owner-time-journal-writer")
 (include-book "../../books/owner-time-bars")

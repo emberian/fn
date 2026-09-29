@@ -91,8 +91,13 @@
 
 (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn))
   socket fd implicit-tls channel ssl cid opened-cid
-  ;; :new :tls-queued :handshake :hs-wait :serving :draining :done
+  ;; :new :proxy :tls-queued :handshake :hs-wait :serving :draining :done
   (phase :new)
+  ;; PRF-986 item 4 (books/tls-proxy.lisp): a trusted proxy's connection
+  ;; while its PROXY header is read -- PROXY-READ the octets so far (a list),
+  ;; PROXY-WANT the most ACL2 said to read next -- and, once the header named
+  ;; it, SOURCE the asserted (FAMILY . ADDRESS) the connection is served as.
+  (proxy-read nil) (proxy-want 0) (source nil)
   ;; The handshake ACL2 admitted (fn-owner-handshake-admit's id) until its
   ;; end is reported (fn-owner-handshake-done).
   (hs-id nil)
@@ -245,6 +250,14 @@ direction to wait for."
                             (or (fnn-mux-conn-opened-cid conn) 0))))))
     (when (stringp line)
       (ignore-errors (fnn-log-line (map 'list #'char-code line))))))
+
+(defun fnn-mux-source (loop conn)
+  "CONN's source (values FAMILY ADDRESS): the address a trusted proxy's
+header asserted (books/tls-proxy.lisp), else the kernel's peer."
+  (let ((source (fnn-mux-conn-source conn)))
+    (if source
+        (values (car source) (cdr source))
+      (fnn-owner-socket-address (fnn-mux-service loop) (fnn-mux-conn-socket conn)))))
 
 (defun fnn-mux-finish (loop conn)
   "The worker's unwind: the owner close (CID), the exposure release (the id
@@ -707,8 +720,7 @@ nothing."
   "ACL2's decision on a handshake for CONN's source, before any handshake
 work: (values VERDICT X DEADLINE-MS LINE), fn-owner-handshake-admit's."
   (let ((service (fnn-mux-service loop)))
-    (multiple-value-bind (family address)
-        (fnn-owner-socket-address service (fnn-mux-conn-socket conn))
+    (multiple-value-bind (family address) (fnn-mux-source loop conn)
       (let ((answer (fnn-owner-serialized
                      service nil
                      (lambda ()
@@ -795,7 +807,7 @@ answers :wait (the node's slots or this second's starts are spent)."
                         (setf (fnn-mux-conn-phase next) :new
                               (fnn-mux-conn-hs-deadline next) nil
                               (fnn-mux-conn-hs-id next) x)
-                        (fnn-mux-admit loop next ms))
+                        (fnn-mux-proxy-or-admit loop next ms))
                 (:wait (setq waits t))
                 (:refuse (pop (fnn-mux-loop-queued loop))
                          (setf (fnn-mux-conn-phase next) :new)
@@ -856,7 +868,7 @@ answers :wait (the node's slots or this second's starts are spent)."
       (multiple-value-bind (verdict x ms line) (fnn-mux-handshake-ask loop conn nil)
         (ecase verdict
           (:admit (setf (fnn-mux-conn-hs-id conn) x)
-                  (fnn-mux-admit loop conn ms))
+                  (fnn-mux-proxy-or-admit loop conn ms))
           (:wait (setf (fnn-mux-conn-phase conn) :tls-queued
                        (fnn-mux-conn-hs-deadline conn) (fnn-mux-ms-ticks ms)
                        (fnn-mux-loop-queued loop)
@@ -865,17 +877,99 @@ answers :wait (the node's slots or this second's starts are spent)."
       (return-from fnn-mux-begin nil))
     (fnn-mux-admit loop conn nil)))
 
+;;; PRF-986 item 4: the PROXY header, read only from a trusted proxy
+;;; (books/tls-proxy.lisp).  The proxy's own handshake slot is already
+;;; admitted (its bucket charged); ACL2 says whether the transport peer is in
+;;; `tls-proxy-trusted-peers' (else nothing is read: the connection is
+;;; direct), how many octets to read at each step (never past the header,
+;;; never past 528 in all), and, once the header named the original source,
+;;; hands the slot over to that source (its own budget charged too).  The
+;;; read is bounded by ACL2's handshake deadline: past it the connection is
+;;; closed and named `tls refused reason=proxy-timeout proxy=...'.
+
+(defun fnn-mux-proxy-or-admit (loop conn ms)
+  (if (fnn-mux-conn-source conn)
+      ;; The header was read already (the handover waited for a slot).
+      (fnn-mux-admit loop conn ms)
+    (let ((service (fnn-mux-service loop)))
+      (multiple-value-bind (family address)
+          (fnn-owner-socket-address service (fnn-mux-conn-socket conn))
+        (let ((path (fnn-owner-serialized
+                     service nil
+                     (lambda () (fnn-owner-core 'fn-owner-proxy-begin family address))
+                     :reader)))
+          (cond ((equal path '(:direct)) (fnn-mux-admit loop conn ms))
+                ((and (consp path) (eq (first path) :read) (posp (second path)))
+                 (setf (fnn-mux-conn-phase conn) :proxy
+                       (fnn-mux-conn-proxy-read conn) nil
+                       (fnn-mux-conn-proxy-want conn) (second path)
+                       (fnn-mux-conn-hs-deadline conn) (fnn-mux-ms-ticks ms)
+                       (fnn-mux-conn-want conn) :input))
+                (t (fnn-fault "owner returned a malformed proxy path"))))))))
+
+(defun fnn-mux-proxy-readable (loop conn)
+  "Read at most what ACL2 asked for of the PROXY header, then ask again."
+  (let ((got (fnn-mux-read-plain (fnn-mux-conn-fd conn)
+                                 (fnn-make-octets (fnn-mux-conn-proxy-want conn)))))
+    (cond ((eq got :input) nil)
+          ((zerop (length got)) (fnn-mux-finish loop conn))
+          (t
+           (setf (fnn-mux-conn-proxy-read conn)
+                 (append (fnn-mux-conn-proxy-read conn) (coerce got 'list)))
+           (let ((service (fnn-mux-service loop)))
+             (multiple-value-bind (family address)
+                 (fnn-owner-socket-address service (fnn-mux-conn-socket conn))
+               (let ((r (fnn-owner-serialized
+                         service nil
+                         (lambda () (fnn-owner-core 'fn-owner-proxy-step family address
+                                                    (fnn-mux-conn-proxy-read conn)))
+                         :reader)))
+                 (case (and (consp r) (first r))
+                   (:more (unless (posp (second r))
+                            (fnn-fault "owner returned a malformed proxy read"))
+                          (setf (fnn-mux-conn-proxy-want conn) (second r)))
+                   (:header (fnn-mux-proxy-handover loop conn family address (third r)))
+                   (:refuse (fnn-mux-handshake-refused loop conn (third r)))
+                   (t (fnn-fault "owner returned a malformed proxy step"))))))))))
+
+(defun fnn-mux-proxy-handover (loop conn family address header-source)
+  (let* ((service (fnn-mux-service loop))
+         (id (fnn-mux-conn-hs-id conn))
+         (answer (fnn-owner-serialized
+                  service nil
+                  (lambda ()
+                    (fnn-owner-advance-clock)
+                    (fnn-owner-core 'fn-owner-proxy-handover id family address
+                                    header-source))
+                  :reader)))
+    (unless (and (consp answer) (member (first answer) '(:admit :wait :refuse))
+                 (posp (third answer)) (consp (fifth answer)))
+      (fnn-fault "owner returned a malformed proxy handover"))
+    ;; ACL2 ended the proxy's handshake in the handover.
+    (setf (fnn-mux-conn-hs-id conn) nil
+          (fnn-mux-conn-proxy-read conn) nil
+          (fnn-mux-conn-want conn) nil
+          (fnn-mux-conn-source conn) (fifth answer)
+          (fnn-mux-conn-phase conn) :new)
+    (ecase (first answer)
+      (:admit (setf (fnn-mux-conn-hs-id conn) (second answer))
+              (fnn-mux-admit loop conn (third answer)))
+      (:wait (setf (fnn-mux-conn-phase conn) :tls-queued
+                   (fnn-mux-conn-hs-deadline conn) (fnn-mux-ms-ticks (third answer))
+                   (fnn-mux-loop-queued loop)
+                   (append (fnn-mux-loop-queued loop) (list conn))))
+      (:refuse (fnn-mux-handshake-refused loop conn (fourth answer))))))
+
 (defun fnn-mux-admit (loop conn hs-ms)
   "The accept: the peer's address, then ACL2's admission and open in one
 call (books/public-exposure.lisp fn-exp-open), as the worker did it.  HS-MS
 is the deadline of the handshake ACL2 already admitted (implicit TLS)."
   (let* ((service (fnn-mux-service loop))
-         (socket (fnn-mux-conn-socket conn))
          ;; A plaintext connection's SASL context (no binding), read off the
          ;; mutex; an implicit-TLS one gets its context after the handshake
          ;; (fnn-mux-handshake-step), before its first read either way.
          (seed (and (not (fnn-mux-conn-implicit-tls conn)) (fnn-owner-sasl-seed))))
-    (multiple-value-bind (family address) (fnn-owner-socket-address service socket)
+    (multiple-value-bind (family address) (fnn-mux-source loop conn)
       (multiple-value-bind (opened greeting peerp)
           (fnn-owner-serialized
            service nil
@@ -883,8 +977,11 @@ is the deadline of the handshake ACL2 already admitted (implicit TLS)."
              ;; fn-own-open pins this reading as the connection's READER
              ;; environment (DATE, NEWGROUPS).
              (fnn-owner-advance-clock)
-             (let ((peer (fnn-owner-core 'fn-owner-peer-for-socket-address
-                                         family address)))
+             ;; A proxied connection names no peer: an asserted source
+             ;; is the proxy's word, not the kernel's (books/tls-proxy.lisp).
+             (let ((peer (and (null (fnn-mux-conn-source conn))
+                              (fnn-owner-core 'fn-owner-peer-for-socket-address
+                                              family address))))
                (unless (or (null peer) (fnn-octet-list-p peer))
                  (fnn-fault "owner returned a malformed peer identity"))
                (let* ((opened (fnn-owner-core 'fn-owner-exposure-open
@@ -941,6 +1038,7 @@ descriptor (a timer, or a step it can take now)."
       (case (fnn-mux-conn-phase conn)
         (:draining +fnn-mux-pollin+)
         (:handshake (bits (or want :input)))
+        (:proxy +fnn-mux-pollin+)
         (:serving
          (cond ((fnn-mux-conn-out conn) (bits (or want :output)))
                ((or (fnn-mux-conn-input conn) (fnn-mux-conn-resume-at conn)) 0)
@@ -954,6 +1052,7 @@ operation then observes the error or the end of input)."
     (case (fnn-mux-conn-phase conn)
       (:draining (fnn-mux-drain-readable loop conn))
       (:handshake (fnn-mux-handshake-step loop conn))
+      (:proxy (fnn-mux-proxy-readable loop conn))
       (:serving
        (if (fnn-mux-conn-out conn)
            (fnn-mux-flush loop conn)
@@ -983,6 +1082,17 @@ operation then observes the error or the end of input)."
                     (due (fnn-mux-conn-hs-deadline conn)))
                (fnn-mux-tls-log loop conn :timeout)
                (fnn-mux-finish loop conn))
+              ((and (eq (fnn-mux-conn-phase conn) :proxy)
+                    (due (fnn-mux-conn-hs-deadline conn)))
+               (multiple-value-bind (family address)
+                   (fnn-owner-socket-address service (fnn-mux-conn-socket conn))
+                 (let ((line (ignore-errors
+                              (fnn-owner-serialized
+                               service nil
+                               (lambda () (fnn-owner-core 'fn-owner-proxy-timeout-line
+                                                          family address))
+                               :reader))))
+                   (fnn-mux-handshake-refused loop conn line))))
               ((and (eq (fnn-mux-conn-phase conn) :draining)
                     (due (fnn-mux-conn-drain-deadline conn)))
                (fnn-mux-finish loop conn))
@@ -1000,7 +1110,7 @@ operation then observes the error or the end of input)."
           (unless (eq (fnn-mux-conn-phase conn) :done)
             (when (fnn-mux-conn-out conn) (note (fnn-mux-conn-out-deadline conn)))
             (case (fnn-mux-conn-phase conn)
-              ((:handshake :tls-queued :hs-wait) (note (fnn-mux-conn-hs-deadline conn)))
+              ((:handshake :tls-queued :hs-wait :proxy) (note (fnn-mux-conn-hs-deadline conn)))
               (:draining (note (fnn-mux-conn-drain-deadline conn)))
               (:serving (note (fnn-mux-conn-resume-at conn))
                (unless (or (fnn-mux-conn-out conn) (fnn-mux-conn-input conn)

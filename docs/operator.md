@@ -597,10 +597,32 @@ holds for every source. A flood from many addresses is held by the node's
 bound, so honest readers then wait their turn too.
 
 You do not need a proxy to be safe. A TCP proxy in front of fn adds nothing
-here and costs the per-address limits (fn sees the proxy's address); fn does
-not read PROXY headers. A proxy that terminates TLS is a different profile
-again: it holds the TLS session, so channel binding (SCRAM-PLUS's
-`tls-exporter` under TLS 1.3) cannot reach fn through it.
+here, and by default it costs the per-address limits: fn sees the proxy's
+address. If you run one that passes TLS through untouched (HAProxy
+`mode tcp`, nginx `stream`) and sends the PROXY protocol header (version 1
+or 2), name it, and fn reads the original client's address from it:
+
+```
+fn operator /etc/fn/fn.toml policy set tls-proxy-trusted-peers 10.0.0.5/32
+fn operator /etc/fn/fn.toml policy set tls-handshake-source-overrides 10.0.0.5=6000
+```
+
+Only a connection from an address in `tls-proxy-trusted-peers` (CIDR
+ranges, `none` clears) is read for a header, on the TLS port, and such a
+connection must send one; nothing any other client sends is ever taken as a
+header. The header is read in bounded pieces (at most 528 octets, never into
+the TLS octets after it) within `tls-handshake-ms`; a malformed one is
+refused `tls refused reason=proxy-malformed proxy=ADDRESS`, a late one
+`reason=proxy-timeout`. Both addresses pay: the proxy's own per-source
+budget when the connection arrives (give it its own rate, as above, or put
+it in `exposure-trusted`), and the original client's when the header names
+it; both count against the node's 16 in flight. A connection through a
+proxy is never recognized as a peer (peering stays on the kernel's address).
+
+Terminating TLS in the proxy is a different profile, and fn does not build
+it: the proxy then holds the TLS session, so SCRAM-PLUS's channel binding
+(`tls-exporter` under TLS 1.3, RFC 9266) binds the client to the proxy, not
+to fn, and cannot reach fn through it. Pass TLS through instead.
 
 ## 8. Peers
 

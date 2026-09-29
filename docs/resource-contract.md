@@ -541,6 +541,11 @@ under "Not bounded".
   `fn-hsb-overrides-of-word-is-bounded`), the accounting table at most
   64 x L rows (a new source past it refused `sources-full`, no row evicted;
   `fn-hsb-buckets-are-bounded`), an IPv4-mapped IPv6 peer its IPv4 source,
+  a trusted proxy's PROXY header (`tls-proxy-trusted-peers`,
+  books/tls-proxy.lisp) read in pieces ACL2 sizes, at most 528 octets
+  (`fn-pxy-step-reads-within-the-bound`), only from a listed transport peer
+  (`fn-pxy-direct-unless-trusted`), the slot handed to the asserted source
+  under the same bound (`fn-pxy-handover-keeps-the-bound`),
   node-wide at most L in flight and L started a second
   (`tls-handshakes-in-flight`), each within D (`tls-handshake-ms`), at most
   32 x L sockets waiting unadmitted; refused by name `tls refused
@@ -550,7 +555,9 @@ under "Not bounded".
 - Evidence: THEOREM for the prefix (PRF-213) and the handshake admission
   (PRF-986: `fn-hsb-steps-keep-the-bound`, `fn-hsb-admits-per-tick-are-bounded`,
   `fn-hsb-source-admits-are-bounded`, `fn-hsb-buckets-are-bounded`,
-  `fn-hsb-overrides-of-word-is-bounded`); MEASURED for the memory
+  `fn-hsb-overrides-of-word-is-bounded`, `fn-pxy-direct-unless-trusted`,
+  `fn-pxy-step-reads-within-the-bound`, `fn-pxy-handover-keeps-the-bound`);
+  MEASURED for the memory
   (`*fn-cbud-tls-octets*`, 128 KiB, connection-multiplexing record, hbox,
   OpenSSL 3.3.1); the library itself is TRUSTED, stated in
   `host/native/tls.lisp` and HST-016 (specs/host.md), and it has no `A-*`

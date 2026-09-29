@@ -730,6 +730,17 @@
               (fn-native-admin-result :refused r nil nil 0 nil nil)
             (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
                                     (cadddr argv)))))
+       ; PRF-986 item 4 (books/tls-proxy.lisp): `policy set
+       ; tls-proxy-trusted-peers WORD', the transport peers whose PROXY
+       ; header the implicit-TLS listener reads (no other peer's octets are
+       ; ever read as one); the syntax of exposure-trusted, `none' clears.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (equal (caddr words) *fn-pxy-peers-slot*)
+             (fn-exp-trusted-wordp (cadddr words)))
+        (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
+                                (cadddr argv)))
        ; PRF-161: a limit of the public reader port, a `:set-limit' row
        ; (SLOT, "") staged, published and replayed like the retention rule.
        ((and (equal (len words) 4)

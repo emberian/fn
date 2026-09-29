@@ -177,6 +177,10 @@
 ; PKT-605 (PRF-223): the connection budget the run installs and every live
 ; reconfiguration keeps (fn-owner-connection-budget, fn-owner-reconfigure-deltas).
 (include-book "../books/connection-budget")
+; PRF-986 (PKT-639): the TLS handshake admission (fn-owner-handshake-admit/
+; -done/-leave) and the PROXY header on a trusted path (fn-owner-proxy-*);
+; books/tls-proxy includes the budget, the decision and the source.
+(include-book "../books/tls-proxy")
 ; PRF-192: the served reply as a range of the octet buffer (fn-served-reply-to-buffer;
 ; since HST-023 the host renders the step's plan off the mutex instead).
 (include-book "../books/served-reply-buffer")
@@ -3763,6 +3767,53 @@
                  (if (equal verdict :refuse)
                      (fn-hsb-refusal-line (fn-hsb-detail r) source)
                    nil)))))
+
+;; THE PROXY HEADER ON A TRUSTED PATH (books/tls-proxy.lisp, PRF-986 item 4).
+;; After the proxy's own handshake slot is admitted (fn-owner-handshake-admit
+;; with the transport peer), the host asks whether the peer is a trusted
+;; proxy: (:direct), or (:read K WHY) -- read the header, K octets first.  A
+;; peer outside the operator's `tls-proxy-trusted-peers' is never read.
+(defun fn-owner-proxy-begin (family address state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pxy-begin (cons family address)
+                       (fn-pxy-config-peers (fn-cfg-value (fn-owner-config state))))))
+
+;; OCTETS, everything read for the header so far: (:more K), (:header N
+;; SOURCE) or (:refuse REASON LINE), LINE the service log's line naming the
+;; transport peer (FAMILY . ADDRESS).
+(defun fn-owner-proxy-step (family address octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((r (fn-pxy-step octets)))
+    (value (if (equal (car r) :refuse)
+               (list :refuse (cadr r) (fn-pxy-refusal-line (cadr r) (cons family address)))
+             r))))
+
+;; The header's deadline passed: the service log's line.
+(defun fn-owner-proxy-timeout-line (family address state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pxy-refusal-line :proxy-timeout (cons family address))))
+
+;; The header named SOURCE (or :local): the proxy's handshake ID is handed
+;; over to the asserted source, which is charged its own per-source budget
+;; under the node-wide bound (fn-pxy-handover-keeps-the-bound).  The value is
+;; fn-owner-handshake-admit's (VERDICT X DEADLINE-MS LINE) plus the asserted
+;; (FAMILY . ADDRESS) the connection is then served as.
+(defun fn-owner-proxy-handover (id family address source state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((hl (fn-owner-handshake-limits state))
+         (asserted (fn-pxy-asserted (cons family address) source))
+         (trustedp (fn-exp-trusted-addressp
+                    (fn-hsb-normal-address asserted)
+                    (fn-exp-lim-trusted (fn-owner-exposure-limits state))))
+         (r (fn-pxy-handover (fn-owner-handshake-state state) hl id trustedp asserted
+                             (fn-owner-exposure-now state)))
+         (state (f-put-global 'fn-owner-handshakes (fn-hsb-state r) state))
+         (verdict (fn-hsb-verdict r)))
+    (value (list verdict (fn-hsb-detail r) (fn-hsb-lim-deadline hl)
+                 (if (equal verdict :refuse)
+                     (fn-hsb-refusal-line (fn-hsb-detail r) asserted)
+                   nil)
+                 asserted))))
 
 ;; A handshake fn-owner-handshake-admit admitted ended: completed, failed,
 ;; timed out or closed.

@@ -274,6 +274,7 @@
 (include-book "owner-ack-after-barrier")
 (include-book "login-binding-live")
 (include-book "connection-budget")
+(include-book "tls-proxy")
 (include-book "owner-stop-drain")
 (include-book "owner-time-journal-writer")
 (include-book "owner-time-bars")
