@@ -642,14 +642,6 @@ if [ $BUILD -eq 0 ] && [ -z "$IMAGE_SET" ] && [ -z "$REUSE" ]; then
     fi
 fi
 echo "hbox_native: $SOURCE -> $HOST:$S"
-# --no-build over a tree that holds no image would run every module against
-# nothing (a --label given as native-X names native-native-X): refuse by
-# name, listing the trees this --name has (lane limits-live, 2026-09-29).
-if [ $BUILD -eq 0 ] && [ -z "$REUSE" ] && [ -z "$IMAGE_SET" ] \
-   && ! ssh -n "$HOST" "ls $S/tree/build/fn-host* >/dev/null 2>&1"; then
-    echo "hbox_native: --no-build: $HOST:$S/tree/build holds no image; this --name's trees: $(ssh -n "$HOST" "cd /tank/fn/scratch/$NAME 2>/dev/null && ls -d native-* 2>/dev/null | sed 's/^native-//' | tr '\n' ' '")(pass one as --label, without native-)" >&2
-    exit 2
-fi
 ssh -n "$HOST" "mkdir -p $S/tree $S/logs" || { echo "hbox_native: cannot create $S on $HOST" >&2; exit 3; }
 # --no-build keeps the tree's certificates: its images and any REPL session
 # there were made against them, and a re-ship that deleted them left those
