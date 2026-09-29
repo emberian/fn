@@ -97,5 +97,15 @@
                 (equal (nth 2 r) file) (not (eq (nth 6 r) :settled)))
            (not (fn-pio-file-clear-p file rows))))
 
+; A reaper quantum inspects one owned worker, not the whole pool. These
+; are work limits/OS-observation decisions, never ceilings on stored data.
+(defun fn-pio-reap-work ()
+  (declare (xargs :guard t))
+  1)
+
+(defun fn-pio-worker-death-step (deadp)
+  (declare (xargs :guard (booleanp deadp)))
+  (if deadp :settle :rotate))
+
 (in-theory (disable fn-pio-rowp fn-pio-token fn-pio-complete fn-pio-cancel
                     fn-pio-file-clear-p fn-pio-issue))

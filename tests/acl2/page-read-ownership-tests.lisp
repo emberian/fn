@@ -90,3 +90,8 @@
  (let ((bad (append *piot-token* '(:settled))))
    (and (not (fn-pio-file-clear-p 11 (list *piot-cancelled*)))
         (fn-pio-file-clear-p 11 (list bad)))))
+
+; The reaper's constant work quantum is independent of stored-data size.
+(assert-event (equal (fn-pio-reap-work) 1))
+(assert-event (and (equal (fn-pio-worker-death-step t) :settle)
+                   (equal (fn-pio-worker-death-step nil) :rotate)))

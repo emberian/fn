@@ -305,60 +305,30 @@ settlement calls this. A missing/stale token has no publish or release."
     answer))
 
 (defun fnn-extent-prefetch (token)
-  "TOKEN is a previously issued read. Pread runs off the mutex; cancellation
-never closes its fd. ACL2 settles its original identity before publication."
-  (unless token (return-from fnn-extent-prefetch t))
+  "Read and verify TOKEN, off owner mutex. Return its private verified result;
+only an owner observation of actual worker death may settle/publish/refund."
+  (unless token (return-from fnn-extent-prefetch (list :ok nil)))
   (destructuring-bind (id cid file eoff elen trailer) token
     (declare (ignore id cid))
-    (let ((fd nil) (settled nil) (octets nil)
+    (let ((fd nil)
+          (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8)))
           (hold (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
           (mode (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT")))
-      (unwind-protect
-           (progn
-             (setq octets (make-array (+ elen 32) :element-type '(unsigned-byte 8)))
-             (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-               (setq fd (gethash file *fnn-extent-fds*))
-               (incf (second *fnn-extent-stats*)))
-             (unless fd
-               (error 'fnn-extent-fault :message "arena-extent-read: issued file closed"))
-             ;; Hold an actual issued pread, off both locks. Unlike the
-             ;; response-plan hold, this worker still owns its buffer/fd.
-             (when (and hold (plusp (length hold)) (not (probe-file hold)))
-               (fnn-err "PAGE-IO held token=~s file=~d" token file)
-               (loop until (probe-file hold) do (sleep 0.05)))
-             (when (equal mode "error")
-               (error 'fnn-extent-fault :message "arena-extent-read: injected pread error"))
-             (let ((got (if (equal mode "short") 0 (fnn-extent-pread fd octets eoff))))
-               (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-                 (when (equal mode "stale")
-                   (fnn-err "PAGE-IO stale answer=~s" (fnn-extent-complete-read nil :ok)))
-                 (let* ((verdict (if (= got (+ elen 32))
-                                     (fnn-extent-entry-verdict octets elen trailer) :read))
-                        (answer (fnn-extent-complete-read token verdict)))
-                   (setq settled t)
-                   (when hold (fnn-err "PAGE-IO settled token=~s answer=~s" token answer))
-                   (when (equal mode "duplicate")
-                     (fnn-err "PAGE-IO duplicate answer=~s" (fnn-extent-complete-read token verdict)))
-                   (cond
-                     ((and (consp answer) (eq (car answer) :fault))
-                      (incf (third *fnn-extent-stats*))
-                      (error 'fnn-extent-fault
-                             :message (case (second answer)
-                                        (:read "arena-extent-read: issued read was short")
-                                        (:trailer "arena-extent-trailer: issued read commitment differs")
-                                        (:digest "arena-extent-digest: issued read digest differs")
-                                        (t "arena-extent-verdict: issued read failed"))))
-                     ((eq answer :publish)
-                      (let ((limit (fnn-extent-cache-limit)))
-                        (when (plusp limit)
-                          (push (list* file eoff elen trailer octets) *fnn-extent-cache*)
-                          (when (> (length *fnn-extent-cache*) limit)
-                            (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit))))))))))
-             t)
-        (unless settled
-          (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-            (let ((answer (fnn-extent-complete-read token :error)))
-              (when hold (fnn-err "PAGE-IO settled token=~s answer=~s" token answer)))))))))
+      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+        (setq fd (gethash file *fnn-extent-fds*))
+        (incf (second *fnn-extent-stats*)))
+      (unless fd
+        (error 'fnn-extent-fault :message "arena-extent-read: issued file closed"))
+      (when (and hold (plusp (length hold)) (not (probe-file hold)))
+        (fnn-err "PAGE-IO held token=~s file=~d" token file)
+        (loop until (probe-file hold) do (sleep 0.05)))
+      (when (equal mode "error")
+        (error 'fnn-extent-fault :message "arena-extent-read: injected pread error"))
+      (let ((got (if (equal mode "short") 0 (fnn-extent-pread fd octets eoff))))
+        (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+          (list (if (= got (+ elen 32))
+                    (fnn-extent-entry-verdict octets elen trailer) :read)
+                octets))))))
 
 ;;; The realizer (A-DURABLE-EXTENT's constrained function), raw and *1*.
 ;;; The descriptor's guard (books/payload-arena-extent-logic.lisp
