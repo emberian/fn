@@ -88,9 +88,22 @@ class HostBindingTests(unittest.TestCase):
         found = self.problems(defined={"fn-c", "fn-d"})
         self.assertTrue(any("fn-a is defined by no book" in p for p in found), found)
 
+    def test_undeclared_dispatched_entry(self):
+        found = self.problems(dispatched={"fn-c": {"host/native/io.lisp"},
+                                          "fn-z": {"host/native/owner.lisp"}})
+        self.assertTrue(any("dispatches fn-z (host/native/owner.lisp) and no definterface"
+                            in p for p in found), found)
+
     def test_duplicate(self):
         found = self.problems(SOURCE + "(definterface fn-c :class :program)\n")
         self.assertTrue(any("fn-c is declared twice" in p for p in found), found)
+
+
+class GapTests(unittest.TestCase):
+    def test_subsystem_prefix_then_file(self):
+        self.assertEqual(interface_emit.subsystem("fn-owner-x", {"host/native/bp.lisp"}), "owner")
+        self.assertEqual(interface_emit.subsystem("fn-q", {"host/native/bp-node.lisp"}), "bp")
+        self.assertEqual(interface_emit.subsystem("fn-q", ()), "nntp/served")
 
 
 if __name__ == "__main__":
