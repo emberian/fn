@@ -1438,6 +1438,8 @@ without replaying the logical transition.
 
 ### AUTHINFO SASL (NNT-056)
 
+NNT-056: AUTHINFO SASL: SCRAM-SHA-256 (and -PLUS over TLS 1.3 with tls-exporter) and PLAIN over TLS, with ACL2 deciding the whole exchange and the server never storing the password
+
 RFC 4643 section 2.4 defines `AUTHINFO SASL`; fn offers three mechanisms,
 chosen for what they let fn state, not for coverage:
 
