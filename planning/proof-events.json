@@ -13598,6 +13598,24 @@
         "fn-mpx-candidates-nat-listp",
         "fn-mpx-spec-from-is-records-for"
       ]
+    },
+    {
+      "id": "PRF-969",
+      "events": [
+        "fn-mpxt-seqs-is-spec-from",
+        "fn-mpxt-confirm-is-the-spec",
+        "fn-mpxt-faithful-from-complete",
+        "fn-mpxt-candidates-ascending",
+        "fn-mpxt-candidates-below",
+        "fn-mpxt-candidates-nat-listp"
+      ]
+    },
+    {
+      "id": "PRF-970",
+      "events": [
+        "fn-mpxt-seqs-is-cat-msgid-seqs",
+        "fn-mpxt-spec-from-is-cat-seqs-for"
+      ]
     }
   ]
 }
