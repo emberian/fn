@@ -54,7 +54,7 @@
 (defun fn-omr-held-line (verb)
   (declare (xargs :guard (stringp verb)))
   (concatenate 'string verb
-               " refused reason=owner-holds-the-store: an owner holds the writer lock and answers nothing on its control socket; what it would take: wait for its start or its stop to finish, or stop it"))
+               " refused reason=owner-holds-the-store: the store is already locked by an owner that answers nothing on its control socket; what it would take: wait for its start or its stop to finish, or stop it"))
 
 ; `status --replay': the operator asked for the report over the replayed
 ; log (books/native-operator.lisp, the status grammar).
@@ -95,8 +95,7 @@
   (declare (xargs :guard t))
   (cond ((equal route :owner)
          "recover accepted owner=serving: the owner's open recovered the store and it is serving; nothing to recover; its status follows")
-        ((equal route :held)
-         "recover refused reason=owner-holds-the-store: an owner holds the writer lock and answers nothing on its control socket; what it would take: wait for its start or its stop to finish, or stop it")
+        ((equal route :held) (fn-omr-held-line "recover"))
         (t nil)))
 
 ; The verb never touches an owner: with a live owner it is a status read

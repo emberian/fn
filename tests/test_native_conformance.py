@@ -111,7 +111,7 @@ class NodeOperatorRows(unittest.TestCase):
                 self.assertIn(message_id.encode(), status)
                 self.assertIn(b"first octets", served)
         self.node.stop(EXIT.OK)
-        self.assertRegex(self.node.operator("status", expect=EXIT.OK).stdout,
+        self.assertRegex(self.node.operator("status", "--replay", expect=EXIT.OK).stdout,
                          rb"articles=1 ")
 
     def test_a_wildcard_listener_is_refused_before_bind(self):

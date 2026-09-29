@@ -46,8 +46,9 @@ class OperatorRefusalTests(auto.AutoCheckpointFixture):
         out = (result.stdout + result.stderr).decode("utf-8", "replace")
         # The reply names the Store's word, not the bare status.
         self.assertIn("refused operator post ", out)
+        # `STATUS WORD': the bare `REFUSED' no longer stands alone.
         self.assertNotRegex(out, r"refused operator post REFUSED\s*$")
-        self.assertRegex(out, r"refused operator post [a-z0-9-]+")
+        self.assertRegex(out, r"refused operator post REFUSED [a-z0-9-]+")
         # The line names the same reason.
         line = self.owner_line(owner, CONTROL_REFUSED, deadline=60.0)
         self.assertIsNotNone(line, "no refused control post line with a reason")

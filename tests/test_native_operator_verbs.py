@@ -712,7 +712,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertIn(line.group(1), (b"custom", b"small"), created.stdout.decode())
         self.assertEqual(fields["format"], 10)  # the record log with its genesis (fn-store-10)
         self.assertIn(fields["max-transactions"], (131072, 65536, 32768, 16384))
-        status = self.operator("status")
+        status = self.operator("status", "--replay")
         self.assertIn(b"capacity articles-left=", status.stdout, status.stdout.decode())
 
     def test_init_refuses_a_profile_by_the_relation_it_breaks(self):

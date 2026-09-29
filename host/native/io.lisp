@@ -4661,7 +4661,11 @@ it is shorter), or NIL when there is none."
     (and st
          (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
            (unwind-protect
-                (fnn-read-bounded-fd fd maximum (min maximum (sb-posix:stat-size st)))
+                ;; One read of MAXIMUM octets: never the whole file
+                ;; (fnn-read-bounded-fd refuses a longer file by design).
+                (let* ((buffer (fnn-make-octets maximum))
+                       (count (fnn-read-fd fd buffer)))
+                  (if (= count (length buffer)) buffer (subseq buffer 0 count)))
              (fnn-close fd))))))
 
 (defun fnn-stopped-observation (root)
@@ -4687,9 +4691,10 @@ fn-omr-stopped-report, fn-omr-stopped-health-report): (EXIT OCTETS) for
 :status, the health octets (their exit is the header's) for :health.  A
 writer lock an owner holds refuses by name first (fn-omr-route :held): the
 report is never rendered behind an owner."
-  (let ((liveness (fnn-core 'fn-native-control-host-liveness nil
-                            (fnn-store-owner-observation root))))
-    (when (eq (fnn-core 'fn-omr-route liveness) :held)
+  (let ((lock (fnn-store-owner-observation root)))
+    (when (eq lock :unknown)
+      (fnn-indeterminate "the store's writer lock could not be observed"))
+    (when (eq (fnn-core 'fn-omr-route (if (eq lock :held) :held :offline)) :held)
       (fnn-refuse "~a" (fnn-core 'fn-omr-held-line
                                  (if (eq kind :health) "health" "status")))))
   (destructuring-bind (config header journal obs) (fnn-stopped-observation root)

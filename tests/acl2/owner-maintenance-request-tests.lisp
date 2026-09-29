@@ -17,8 +17,9 @@
 (assert-event (equal (fn-omr-recover-status :offline) :offline))
 (assert-event (equal (fn-omr-recover-line :owner)
                      "recover accepted owner=serving: the owner's open recovered the store and it is serving; nothing to recover; its status follows"))
-(assert-event (equal (fn-omr-recover-line :held)
-                     "recover refused reason=owner-holds-the-store: an owner holds the writer lock and answers nothing on its control socket; what it would take: wait for its start or its stop to finish, or stop it"))
+(assert-event (equal (fn-omr-recover-line :held) (fn-omr-held-line "recover")))
+(assert-event (equal (fn-omr-held-line "status")
+                     "status refused reason=owner-holds-the-store: the store is already locked by an owner that answers nothing on its control socket; what it would take: wait for its start or its stop to finish, or stop it"))
 (assert-event (null (fn-omr-recover-line :offline)))
 
 ; KEYSTONE fn-omr-inspect-live-is-the-offline-report, positive witnesses:
