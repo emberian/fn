@@ -533,6 +533,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
+	books/store-finalize-incremental \
+	tests/acl2/store-finalize-incremental-tests \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \
