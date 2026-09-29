@@ -144,20 +144,49 @@
                        (fn-bp-journal-nth 2 record) :indeterminate)))
     bp))
 
+; Guard-verified (lane depth-debt-2, PRF-919): EFFECTS grows with the journal
+; replayed, and an unverified function's *1* appended onto it one control-
+; stack frame per effect.  The :exec is the replay with the machine's
+; functions called through ec-call and the appends in constant stack
+; (fn-ag-append).
 (defun fn-bpiw-replay-records (bp ion records effects fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil
                   :measure (acl2-count records)))
-  (if (endp records)
-      (let ((restarted (fn-bp-step bp (fn-bp-restart-event))))
-        (list t (fn-bp-result-state restarted)
-              (append effects (fn-bp-result-effects restarted)) ion))
-    (let ((answer (fn-bpiw-apply (fn-bpiw-replay-fence bp (car records))
-                                 ion (car records) fn-arena)))
-      (if (not (car answer))
-          (list nil bp effects ion)
-        (fn-bpiw-replay-records
-         (nth 1 answer) (nth 3 answer) (cdr records)
-         (append effects (nth 2 answer)) fn-arena)))))
+  (mbe
+   :logic
+   (if (endp records)
+       (let ((restarted (fn-bp-step bp (fn-bp-restart-event))))
+         (list t (fn-bp-result-state restarted)
+               (append effects (fn-bp-result-effects restarted)) ion))
+     (let ((answer (fn-bpiw-apply (fn-bpiw-replay-fence bp (car records))
+                                  ion (car records) fn-arena)))
+       (if (not (car answer))
+           (list nil bp effects ion)
+         (fn-bpiw-replay-records
+          (nth 1 answer) (nth 3 answer) (cdr records)
+          (append effects (nth 2 answer)) fn-arena))))
+   :exec
+   (if (atom records)
+       (let ((restarted (ec-call (fn-bp-step bp (ec-call (fn-bp-restart-event))))))
+         (list t (ec-call (fn-bp-result-state restarted))
+               (fn-ag-append effects (ec-call (fn-bp-result-effects restarted))) ion))
+     (let ((answer (ec-call (fn-bpiw-apply (ec-call (fn-bpiw-replay-fence bp (car records)))
+                                           ion (car records) fn-arena))))
+       (if (not (fn-ag-car answer))
+           (list nil bp effects ion)
+         (fn-bpiw-replay-records
+          (fn-ag-car (fn-ag-cdr answer)) (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr answer))))
+          (cdr records)
+          (fn-ag-append effects (fn-ag-car (fn-ag-cdr (fn-ag-cdr answer)))) fn-arena))))))
+
+(local
+ (defthm fn-bpiw-nth-1-2-3
+   (and (equal (nth 1 x) (car (cdr x)))
+        (equal (nth 2 x) (car (cdr (cdr x))))
+        (equal (nth 3 x) (car (cdr (cdr (cdr x))))))))
+
+(verify-guards fn-bpiw-replay-records
+  :hints (("Goal" :in-theory (disable fn-bpiw-apply fn-bpiw-replay-fence fn-bp-step nth))))
 
 (defun fn-bpiw-replay-journal (node records fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))

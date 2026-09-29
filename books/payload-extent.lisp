@@ -332,10 +332,31 @@
                             (a fn-arena) (xs (fn-durable-octets file poff plen)))))))
 
 ; WS the decoded events, RS their octets, PS their positions (FILE . POSITION).
-(defun fn-arx-intern-events (ws rs ps keyring generation fn-arena)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of data with no fixed cap.  The :logic is
+; the recursion, unchanged; the :exec is the loop, equal by the lemma below.
+(defun fn-arx-intern-events-loop (ws rs ps keyring generation acc fn-arena)
   (declare (xargs :stobjs fn-arena
                   :guard (and (fn-prin-keyringp keyring) (natp generation))
                   :guard-hints (("Goal" :in-theory (disable fn-arx-intern-event)))))
+  (if (atom ws)
+      (mv (fn-ag-rev-onto acc nil) fn-arena)
+    (let* ((r (and (consp rs) (car rs)))
+           (p (and (consp ps) (consp (car ps)) (car ps)))
+           (file (nfix (and (consp p) (car p))))
+           (position (and (consp p) (cdr p))))
+      (mv-let (row fn-arena)
+        (fn-arx-intern-event (car ws) r position file keyring generation fn-arena)
+        (if (eq row :bad)
+            (mv :bad fn-arena)
+          (fn-arx-intern-events-loop (cdr ws) (and (consp rs) (cdr rs)) (and (consp ps) (cdr ps))
+                                     keyring generation (cons row acc) fn-arena))))))
+
+(defun fn-arx-intern-events (ws rs ps keyring generation fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-prin-keyringp keyring) (natp generation))
+                  :verify-guards nil))
+  (mbe :logic
   (if (atom ws)
       (mv nil fn-arena)
     (let* ((r (and (consp rs) (car rs)))
@@ -351,7 +372,19 @@
                                 keyring generation fn-arena)
           (if (eq rest :bad)
               (mv :bad fn-arena)
-            (mv (cons row rest) fn-arena))))))))
+            (mv (cons row rest) fn-arena)))))))
+  :exec (fn-arx-intern-events-loop ws rs ps keyring generation nil fn-arena)))
+
+(defthm fn-arx-intern-events-loop-is-rev-onto
+  (equal (fn-arx-intern-events-loop ws rs ps keyring generation acc fn-arena)
+         (mv-let (r a) (fn-arx-intern-events ws rs ps keyring generation fn-arena)
+           (mv (if (eq r :bad) :bad (fn-ag-rev-onto acc r)) a)))
+  :hints (("Goal" :induct (fn-arx-intern-events-loop ws rs ps keyring generation acc fn-arena)
+                  :do-not '(generalize fertilize eliminate-destructors)
+                  :in-theory (disable fn-arx-intern-event nfix))))
+
+(verify-guards fn-arx-intern-events
+  :hints (("Goal" :in-theory (disable fn-arx-intern-event))))
 
 (defthm fn-arx-intern-events-true-listp
   (or (true-listp (mv-nth 0 (fn-arx-intern-events ws rs ps keyring generation fn-arena)))

@@ -253,6 +253,15 @@
   :hints (("Goal" :induct (fn-scka-seal-n i end n1 fn-octets fn-arena)
            :in-theory (e/d (fn-scka-seal-n) (fn-arena-seal-range-is-append)))))
 
+; A plan's first frame carries the segment header octets (fn-sccr-framep):
+; what fn-scka-open-run's header parse reads.
+(defthm fn-sccr-planp-first-frame-octets
+  (implies (and (consp plan) (fn-sccr-planp plan pos fn-octets))
+           (fn-scc-octet-listp (car (car plan))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-sccr-framep)
+           :expand ((fn-sccr-planp plan pos fn-octets)))))
+
 (defun fn-scka-open-run (plan fn-octets)
   (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
   (let ((start (if (consp plan) (fn-sccr-at 1 (car plan)) 0)))
@@ -475,6 +484,15 @@
                              fn-scka-program fn-scka-body fn-scc-nat-octets fn-scc-read-nat
                              fn-oct-slice-list-is-take-nthcdr))))))
 
+; The :ok run's bounds are naturals (books/store-checkpoint-tables-reader
+; fn-sctr-next-run-ok-shape, exported for this event); used explicitly since
+; the guard asks acl2-numberp of them, which a natp rewrite never yields.
+(verify-guards fn-scka-open-run
+  :hints (("Goal" :use ((:instance fn-sctr-restp-of-plan)
+                        (:instance fn-sctr-next-run-ok-shape (rest plan)
+                                   (s (nth 3 (fn-scc-parse-header (fn-sccr-at 0 (car plan)))))))
+           :in-theory (disable fn-sctr-next-run-ok-shape fn-sctr-restp-of-plan))))
+
 (defthm fn-scka-open-run-of-written
   (implies (and (fn-octets-p fn-octets)
                 (fn-sccr-planp plan (if (consp plan) (fn-sccr-at 1 (car plan)) 0) fn-octets)
@@ -533,6 +551,7 @@
           (if (not ok)
               (mv (list :refused :arena) fn-arena)
             (mv (fn-scka-finish (nth 4 o) (nth 5 o) i (nth 2 o) fn-octets) fn-arena)))))))
+(verify-guards fn-scka-load)
 
 (local
  (defthm fn-scka-f-of-tables-of-capture

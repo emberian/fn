@@ -169,16 +169,38 @@
             (< (len (nthcdr k x)) (len x)))
    :rule-classes :linear))
 
-(defun fn-lgw-unpack (x)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of data with no fixed cap.  The :logic is
+; the recursion, unchanged; the :exec is the loop, equal by the lemma below.
+(defun fn-lgw-unpack-loop (x acc)
   (declare (xargs :guard (fn-cbor-octet-listp x) :measure (len x)
                   :hints (("Goal" :in-theory (disable fn-cbor-u32-from take nthcdr len)))
                   :verify-guards nil))
   (if (and (consp x) (<= 4 (len x)))
       (let ((n (nfix (fn-cbor-u32-from (take 4 x)))))
         (if (<= (+ 4 n) (len x))
-            (cons (take n (nthcdr 4 x)) (fn-lgw-unpack (nthcdr (+ 4 n) x)))
-          nil))
-    nil))
+            (fn-lgw-unpack-loop (nthcdr (+ 4 n) x) (cons (take n (nthcdr 4 x)) acc))
+          (fn-ag-rev-onto acc nil)))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-lgw-unpack (x)
+  (declare (xargs :guard (fn-cbor-octet-listp x) :measure (len x)
+                  :hints (("Goal" :in-theory (disable fn-cbor-u32-from take nthcdr len)))
+                  :verify-guards nil))
+  (mbe :logic
+       (if (and (consp x) (<= 4 (len x)))
+           (let ((n (nfix (fn-cbor-u32-from (take 4 x)))))
+             (if (<= (+ 4 n) (len x))
+                 (cons (take n (nthcdr 4 x)) (fn-lgw-unpack (nthcdr (+ 4 n) x)))
+               nil))
+         nil)
+       :exec (fn-lgw-unpack-loop x nil)))
+
+(defthm fn-lgw-unpack-loop-is-rev-onto
+  (equal (fn-lgw-unpack-loop x acc)
+         (fn-ag-rev-onto acc (fn-lgw-unpack x)))
+  :hints (("Goal" :induct (fn-lgw-unpack-loop x acc)
+                  :in-theory (disable fn-cbor-u32-from take nthcdr len))))
 
 (defun fn-lgw-unpack-exactp (x)
   (declare (xargs :guard (fn-cbor-octet-listp x) :measure (len x)
@@ -191,6 +213,8 @@
                   (fn-lgw-unpack-exactp (nthcdr (+ 4 n) x)))))
     t))
 
+(verify-guards fn-lgw-unpack-loop
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp))))
 (verify-guards fn-lgw-unpack
   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp))))
 (verify-guards fn-lgw-unpack-exactp

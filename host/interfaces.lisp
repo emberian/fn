@@ -30,37 +30,37 @@
   :root :extract)
 
 (definterface fn-reader-use-seed
-  :class :program
+  :class :common-lisp-compliant
   :keystones ((fn-rdc-selection-establishes :via fn-rdc-selection))
   :root :extract)
 
 (definterface fn-reader-set-posting
-  :class :program
+  :class :common-lisp-compliant
   :root :extract)
 
 (definterface fn-reader-model-octets
-  :class :program
+  :class :common-lisp-compliant
   :root :extract)
 
 (definterface fn-reader-reset
-  :class :program
+  :class :common-lisp-compliant
   :keystones ((fn-rdc-reset-is-served-open :via fn-rdc-reset))
   :root :extract)
 
 (definterface fn-reader-chunk
-  :class :program
+  :class :common-lisp-compliant
   :kinds ((octets fn-cbor-octet-listp))
   :keystones ((fn-oag-served-step-submission-names-the-pinned-agent :via fn-served-step))
   :root :extract)
 
 (definterface fn-reader-outcome
-  :class :program
+  :class :common-lisp-compliant
   :keystones ((fn-own-consumed-completion-is-240-or-uncertain
                :via fn-served-post-outcome))
   :root :extract)
 
 (definterface fn-reader-observe-clock
-  :class :program
+  :class :common-lisp-compliant
   :keystones ((fn-clock-observation-shapep-of-fn-clock-observation
                :via fn-clock-observation))
   :root :extract)
@@ -94,7 +94,7 @@
 ; host/store-open-host.lisp).
 
 (definterface fn-reader-use-store
-  :class :program
+  :class :common-lisp-compliant
   :keystones ((fn-rdc-store-selection-unfolds :via fn-rdc-store-selection))
   :root :extract)
 
@@ -207,7 +207,7 @@
 
 ; Not guard-verified (:ideal): the host's call runs the logic definition.
 (definterface fn-bpnf-inspect-adu
-  :class :ideal
+  :class :common-lisp-compliant
   :exempt ((frame "total unframe (fn-bpnf-stored-recordp gates it)")))
 
 (definterface fn-bpnpf-node-profile-write-octets
@@ -2566,13 +2566,13 @@
   :class ::ideal)
 
 (definterface fn-bpnf-mixed-legacy-observed
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-received-names
   :class ::ideal)
 
 (definterface fn-bpnf-mixed-recovery-plan
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-recovery-planp
   :class ::common-lisp-compliant)
@@ -2727,7 +2727,7 @@
   :keystones (fn-bpnp-rotate-step-proposes-only-own-projection))
 
 (definterface fn-bpnr-generation-directory
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-next-generation
   :class ::common-lisp-compliant)
@@ -2754,11 +2754,11 @@
   :class ::ideal)
 
 (definterface fn-bpnr-retired-names
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnr-retired-names-never-the-selected-directory))
 
 (definterface fn-bpnr-selection-name
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnrb-selection-plan
   :class ::common-lisp-compliant

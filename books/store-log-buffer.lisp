@@ -265,16 +265,44 @@
     t))
 
 ; How many records the unpack takes from [I, END).
-(defun fn-lgb-count (i end fn-octets)
+; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
+; control-stack frame per element of data with no fixed cap.  The :logic is
+; the recursion, unchanged; the :exec is the loop, equal by the lemma below.
+(defun fn-lgb-count-loop (i end fn-octets acc)
   (declare (xargs :stobjs fn-octets
-                  :guard (and (natp i) (natp end) (<= end (fn-octets-len fn-octets)))
+                  :guard (and (natp i) (natp end) (<= end (fn-octets-len fn-octets))
+                              (acl2-numberp acc))
                   :measure (nfix (- end i))))
   (if (and (natp i) (natp end) (< i end) (<= (+ i 4) end))
       (let ((n (fn-lgb-u32-at i fn-octets)))
         (if (and (natp n) (<= (+ i 4 n) end))
-            (+ 1 (fn-lgb-count (+ i 4 n) end fn-octets))
-          0))
-    0))
+            (fn-lgb-count-loop (+ i 4 n) end fn-octets (+ 1 acc))
+          acc))
+    acc))
+
+(defun fn-lgb-count (i end fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp i) (natp end) (<= end (fn-octets-len fn-octets)))
+                  :measure (nfix (- end i))
+                  :verify-guards nil))
+  (mbe :logic
+       (if (and (natp i) (natp end) (< i end) (<= (+ i 4) end))
+           (let ((n (fn-lgb-u32-at i fn-octets)))
+             (if (and (natp n) (<= (+ i 4 n) end))
+                 (+ 1 (fn-lgb-count (+ i 4 n) end fn-octets))
+               0))
+         0)
+       :exec (fn-lgb-count-loop i end fn-octets 0)))
+
+(defthm fn-lgb-count-loop-is-plus
+  (implies (acl2-numberp acc)
+           (equal (fn-lgb-count-loop i end fn-octets acc)
+                  (+ acc (fn-lgb-count i end fn-octets))))
+  :hints (("Goal" :induct (fn-lgb-count-loop i end fn-octets acc)
+                  :in-theory (disable fn-lgb-u32-at))))
+
+(verify-guards fn-lgb-count
+  :hints (("Goal" :in-theory (disable fn-lgb-u32-at))))
 
 ; Each record the unpack takes fits the log's payload bound MAX.
 (defun fn-lgb-records-okp (i end max fn-octets)

@@ -17,8 +17,8 @@
 
 ; The host runs compiled code: every function it calls here is
 ; guard-verified, as its reference is.  The resolution publication's
-; reference (fn-ores-submission-resolution-publication) is :ideal, and so is
-; its twin.
+; reference (fn-ores-submission-resolution-publication) and its twin were
+; :ideal until lane depth-debt-5 verified both (row K2).
 (assert-event
  (equal (list (symbol-class 'fn-apc-take (w state))
               (symbol-class 'fn-apc-icar-carry-of (w state))
@@ -35,7 +35,7 @@
         '(:common-lisp-compliant :common-lisp-compliant :common-lisp-compliant
           :common-lisp-compliant :common-lisp-compliant :common-lisp-compliant
           :common-lisp-compliant :common-lisp-compliant :common-lisp-compliant
-          :common-lisp-compliant :common-lisp-compliant :ideal)))
+          :common-lisp-compliant :common-lisp-compliant :common-lisp-compliant)))
 
 ; -----------------------------------------------------------------------------
 ; Reachable witness 1: owner-served-invariants-tests' *osi-completing*,

@@ -227,6 +227,7 @@
 (include-book "reclaim-instant")
 (include-book "expiry-instant")
 (include-book "anchor-invariants")
+(include-book "state-globals")
 (include-book "owner-config")
 (include-book "deflate-inflate")
 (include-book "owner-checkpoint-open")

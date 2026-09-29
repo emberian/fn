@@ -93,12 +93,53 @@
 
 (defconst *fn-lg-batch-kind* 2)
 
+; The log's functions execute guard-verified, every walk by a loop (lane
+; depth-debt-2, PRF-919): the host reaches fn-lg-log, fn-lg-last-trailer and
+; fn-lg-unpack through the concrete kernel's and the stream's fallbacks, and
+; an unverified function's *1* ran its recursion, one control-stack frame
+; per record or octet.  Each :logic is the definition, unchanged; each :exec
+; takes any value (guard t), calling the frame's sealer and the CBOR length
+; codec through ec-call where the value may not be the octets they expect.
+
+; nthcdr on any value, by a tail call.
+(defun fn-lg-nthcdr (n x)
+  (declare (xargs :guard t))
+  (cond ((not (posp n)) x)
+        ((consp x) (fn-lg-nthcdr (1- n) (cdr x)))
+        (t nil)))
+
+(defthm fn-lg-nthcdr-is-nthcdr
+  (equal (fn-lg-nthcdr n x) (nthcdr n x)))
+
+(local
+ (defthm fn-lg-rev-onto-of-rev-onto
+   (equal (fn-ag-rev-onto (fn-ag-rev-onto x acc) y)
+          (fn-ag-rev-onto acc (append x y)))))
+
+(defun fn-lg-pack-loop (records acc)
+  (declare (xargs :guard t))
+  (if (consp records)
+      (fn-lg-pack-loop (cdr records)
+                       (fn-ag-rev-onto (true-list-fix (car records))
+                                       (fn-ag-rev-onto
+                                        (ec-call (fn-cbor-u32-bytes (len (car records))))
+                                        acc)))
+    (fn-ag-rev-onto acc nil)))
+
 (defun fn-lg-pack (records)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp records)
-      (append (fn-cbor-u32-bytes (len (car records)))
-              (append (true-list-fix (car records)) (fn-lg-pack (cdr records))))
-    nil))
+  (mbe :logic
+       (if (consp records)
+           (append (fn-cbor-u32-bytes (len (car records)))
+                   (append (true-list-fix (car records)) (fn-lg-pack (cdr records))))
+         nil)
+       :exec (fn-lg-pack-loop records nil)))
+
+(local
+ (defthm fn-lg-pack-loop-is-rev-onto
+   (equal (fn-lg-pack-loop records acc) (fn-ag-rev-onto acc (fn-lg-pack records)))))
+
+(verify-guards fn-lg-pack)
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
@@ -146,14 +187,32 @@
    :rule-classes :linear))
 
 ; The records of a packed body, read while each length lies within it.
+(defun fn-lg-unpack-loop (x acc)
+  (declare (xargs :guard t :measure (len x)))
+  (if (and (consp x) (<= 4 (len x)))
+      (let ((n (nfix (ec-call (fn-cbor-u32-from (fn-bs-take 4 x))))))
+        (if (<= (+ 4 n) (len x))
+            (fn-lg-unpack-loop (fn-lg-nthcdr (+ 4 n) x)
+                               (cons (fn-bs-take n (fn-lg-nthcdr 4 x)) acc))
+          (fn-ag-rev-onto acc nil)))
+    (fn-ag-rev-onto acc nil)))
+
 (defun fn-lg-unpack (x)
   (declare (xargs :guard t :verify-guards nil :measure (len x)))
-  (if (and (consp x) (<= 4 (len x)))
-      (let ((n (nfix (fn-cbor-u32-from (fn-bs-take 4 x)))))
-        (if (<= (+ 4 n) (len x))
-            (cons (fn-bs-take n (nthcdr 4 x)) (fn-lg-unpack (nthcdr (+ 4 n) x)))
-          nil))
-    nil))
+  (mbe :logic
+       (if (and (consp x) (<= 4 (len x)))
+           (let ((n (nfix (fn-cbor-u32-from (fn-bs-take 4 x)))))
+             (if (<= (+ 4 n) (len x))
+                 (cons (fn-bs-take n (nthcdr 4 x)) (fn-lg-unpack (nthcdr (+ 4 n) x)))
+               nil))
+         nil)
+       :exec (fn-lg-unpack-loop x nil)))
+
+(local
+ (defthm fn-lg-unpack-loop-is-rev-onto
+   (equal (fn-lg-unpack-loop x acc) (fn-ag-rev-onto acc (fn-lg-unpack x)))))
+
+(verify-guards fn-lg-unpack)
 
 ; The body is exactly its packed records: every length lies within it and
 ; the last record ends it.
@@ -216,22 +275,35 @@
 
 (defun fn-lg-frame-body (chunk)
   (declare (xargs :guard t :verify-guards nil))
-  (if (and (consp chunk) (consp (cdr chunk))) (fn-lg-pack chunk) (car chunk)))
+  (mbe :logic (if (and (consp chunk) (consp (cdr chunk))) (fn-lg-pack chunk) (car chunk))
+       :exec (if (and (consp chunk) (consp (cdr chunk))) (fn-lg-pack chunk) (fn-ag-car chunk))))
+
+(verify-guards fn-lg-frame-body)
 
 (defun fn-lg-frame (prev chunk)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-frame-seal *fn-lg-magic* *fn-lg-version* (fn-lg-frame-kind chunk)
-                 (append prev (fn-lg-frame-body chunk))))
+  (mbe :logic (fn-frame-seal *fn-lg-magic* *fn-lg-version* (fn-lg-frame-kind chunk)
+                             (append prev (fn-lg-frame-body chunk)))
+       :exec (ec-call (fn-frame-seal *fn-lg-magic* *fn-lg-version* (fn-lg-frame-kind chunk)
+                                     (fn-ag-append prev (fn-lg-frame-body chunk))))))
+
+(verify-guards fn-lg-frame)
 
 (defun fn-lg-entry (prev chunk unit)
   (declare (xargs :guard t :verify-guards nil))
   (let ((frame (fn-lg-frame prev chunk)))
-    (append frame (fn-bs-zeros (fn-lg-pad-len (len frame) unit)))))
+    (mbe :logic (append frame (fn-bs-zeros (fn-lg-pad-len (len frame) unit)))
+         :exec (fn-ag-append frame (fn-bs-zeros (fn-lg-pad-len (len frame) unit))))))
+
+(verify-guards fn-lg-entry)
 
 ; The last 32 octets of a frame.
 (defun fn-lg-trailer (frame)
   (declare (xargs :guard t :verify-guards nil))
-  (nthcdr (nfix (- (len frame) *fn-frame-trailer-octets*)) frame))
+  (mbe :logic (nthcdr (nfix (- (len frame) *fn-frame-trailer-octets*)) frame)
+       :exec (fn-lg-nthcdr (nfix (- (len frame) *fn-frame-trailer-octets*)) frame)))
+
+(verify-guards fn-lg-trailer)
 
 ; A record the log admits under the payload bound MAX.
 (defun fn-lg-recordp (record max)
@@ -395,23 +467,66 @@
 ; -----------------------------------------------------------------------------
 ; A well-formed log: the chained entries of RECORDS from PREV.
 
+(defun fn-lg-log-loop (records prev unit acc)
+  (declare (xargs :guard t :measure (len records)))
+  (if (consp records)
+      (let* ((k (fn-lg-chunk-len records))
+             (chunk (fn-bs-take k records)))
+        (fn-lg-log-loop (fn-lg-nthcdr k records)
+                        (fn-lg-trailer (fn-lg-frame prev chunk))
+                        unit
+                        (fn-ag-rev-onto (fn-lg-entry prev chunk unit) acc)))
+    (fn-ag-rev-onto acc nil)))
+
 (defun fn-lg-log (records prev unit)
   (declare (xargs :guard t :verify-guards nil :measure (len records)))
+  (mbe :logic
+       (if (consp records)
+           (let ((k (fn-lg-chunk-len records)))
+             (append (fn-lg-entry prev (fn-bs-take k records) unit)
+                     (fn-lg-log (nthcdr k records)
+                                (fn-lg-trailer (fn-lg-frame prev (fn-bs-take k records)))
+                                unit)))
+         nil)
+       :exec (fn-lg-log-loop records prev unit nil)))
+
+(local
+ (defthm fn-lg-log-loop-is-rev-onto
+   (equal (fn-lg-log-loop records prev unit acc)
+          (fn-ag-rev-onto acc (fn-lg-log records prev unit)))
+   :hints (("Goal" :induct (fn-lg-log-loop records prev unit acc)
+            :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer fn-bs-take
+                                fn-lg-chunk-len)))))
+
+(verify-guards fn-lg-log
+  :hints (("Goal" :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer fn-bs-take
+                                      fn-lg-chunk-len fn-lg-log-loop))))
+
+(defun fn-lg-last-trailer-loop (records prev)
+  (declare (xargs :guard t :measure (len records)))
   (if (consp records)
       (let ((k (fn-lg-chunk-len records)))
-        (append (fn-lg-entry prev (fn-bs-take k records) unit)
-                (fn-lg-log (nthcdr k records)
-                           (fn-lg-trailer (fn-lg-frame prev (fn-bs-take k records)))
-                           unit)))
-    nil))
+        (fn-lg-last-trailer-loop (fn-lg-nthcdr k records)
+                                 (fn-lg-trailer (fn-lg-frame prev (fn-bs-take k records)))))
+    prev))
 
 (defun fn-lg-last-trailer (records prev)
   (declare (xargs :guard t :verify-guards nil :measure (len records)))
-  (if (consp records)
-      (let ((k (fn-lg-chunk-len records)))
-        (fn-lg-last-trailer (nthcdr k records)
-                            (fn-lg-trailer (fn-lg-frame prev (fn-bs-take k records)))))
-    prev))
+  (mbe :logic
+       (if (consp records)
+           (let ((k (fn-lg-chunk-len records)))
+             (fn-lg-last-trailer (nthcdr k records)
+                                 (fn-lg-trailer (fn-lg-frame prev (fn-bs-take k records)))))
+         prev)
+       :exec (fn-lg-last-trailer-loop records prev)))
+
+(local
+ (defthm fn-lg-last-trailer-loop-is-last-trailer
+   (equal (fn-lg-last-trailer-loop records prev) (fn-lg-last-trailer records prev))
+   :hints (("Goal" :induct (fn-lg-last-trailer-loop records prev)
+            :in-theory (disable fn-lg-frame fn-lg-trailer fn-bs-take fn-lg-chunk-len)))))
+
+(verify-guards fn-lg-last-trailer)
 
 ; -----------------------------------------------------------------------------
 ; The frame's shape: its length, its header's length field, its trailer.

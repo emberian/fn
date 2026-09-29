@@ -226,6 +226,7 @@
 (include-book "../../books/reclaim-instant")
 (include-book "../../books/expiry-instant")
 (include-book "../../books/anchor-invariants")
+(include-book "../../books/state-globals")
 (include-book "../../books/owner-config")
 (include-book "../../books/deflate-inflate")
 (include-book "../../books/owner-checkpoint-open")

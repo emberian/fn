@@ -42,13 +42,38 @@
           (fn-rcl-lagging-consumerp (cdr entries) frontier))
     nil))
 
-(defun fn-rcl-cursors-at-zero (groups)
+; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
+; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-rcl-cursors-at-zero-loop (groups acc)
   (declare (xargs :guard t))
   (if (consp groups)
-      (if (stringp (car groups))
-          (cons (cons (car groups) 0) (fn-rcl-cursors-at-zero (cdr groups)))
-        (fn-rcl-cursors-at-zero (cdr groups)))
-    nil))
+      (fn-rcl-cursors-at-zero-loop (cdr groups)
+       (if (stringp (car groups)) (cons (cons (car groups) 0) acc) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-rcl-cursors-at-zero (groups)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp groups)
+           (if (stringp (car groups))
+               (cons (cons (car groups) 0) (fn-rcl-cursors-at-zero (cdr groups)))
+             (fn-rcl-cursors-at-zero (cdr groups)))
+         nil)
+       :exec (fn-rcl-cursors-at-zero-loop groups nil)))
+
+(defthm fn-rcl-cursors-at-zero-loop-is-rev-onto
+  (equal (fn-rcl-cursors-at-zero-loop groups acc)
+         (fn-ag-rev-onto acc (fn-rcl-cursors-at-zero groups)))
+  :hints (("Goal" :induct (fn-rcl-cursors-at-zero-loop groups acc)
+                  :in-theory (union-theories
+                              '(fn-rcl-cursors-at-zero-loop fn-rcl-cursors-at-zero fn-ag-rev-onto not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-rcl-cursors-at-zero
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-rcl-cursors-at-zero fn-ag-rev-onto fn-rcl-cursors-at-zero-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defun fn-rcl-store-holders (s)
   (declare (xargs :guard t :verify-guards nil))

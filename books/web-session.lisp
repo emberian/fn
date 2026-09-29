@@ -523,16 +523,47 @@
          (count (if (and high low (<= low high) (< 0 high)) (+ 1 (- high low)) 0)))
     (list name (fn-ot-decimal-octets count) (equal status (list 110)))))
 
-(defun fn-wss-active-rows (j be fn-web-in)
+; Executes by a loop (lane depth-debt, PRF-919): one row per newsgroup of
+; the reply, as many as the operator's group table holds (D27: data, not a
+; bound).  The loop conses the rows reversed and rev-onto's them back.
+(defun fn-wss-active-rows-loop (j be fn-web-in acc)
   (declare (xargs :stobjs fn-web-in
                   :guard (and (natp j) (natp be) (<= be (fn-octets-len fn-web-in)))
                   :measure (nfix (- be j))))
   (if (or (not (natp j)) (not (natp be)) (>= j be) (>= j (fn-octets-len fn-web-in)))
-      nil
+      (fn-ag-rev-onto acc nil)
     (let* ((le (min be (fn-oct-line-end j fn-web-in)))
            (ce (fn-wss-content-end j le fn-web-in)))
-      (cons (fn-wss-active-row (fn-wss-split j ce j 32 fn-web-in) fn-web-in)
-            (fn-wss-active-rows le be fn-web-in)))))
+      (fn-wss-active-rows-loop
+       le be fn-web-in
+       (cons (fn-wss-active-row (fn-wss-split j ce j 32 fn-web-in) fn-web-in) acc)))))
+
+(defun fn-wss-active-rows (j be fn-web-in)
+  (declare (xargs :stobjs fn-web-in
+                  :guard (and (natp j) (natp be) (<= be (fn-octets-len fn-web-in)))
+                  :measure (nfix (- be j))
+                  :verify-guards nil))
+  (mbe :logic
+       (if (or (not (natp j)) (not (natp be)) (>= j be) (>= j (fn-octets-len fn-web-in)))
+           nil
+         (let* ((le (min be (fn-oct-line-end j fn-web-in)))
+                (ce (fn-wss-content-end j le fn-web-in)))
+           (cons (fn-wss-active-row (fn-wss-split j ce j 32 fn-web-in) fn-web-in)
+                 (fn-wss-active-rows le be fn-web-in))))
+       :exec (fn-wss-active-rows-loop j be fn-web-in nil)))
+
+(defthm fn-wss-active-rows-loop-is-rev-onto
+  (equal (fn-wss-active-rows-loop j be fn-web-in acc)
+         (fn-ag-rev-onto acc (fn-wss-active-rows j be fn-web-in)))
+  :hints (("Goal" :induct (fn-wss-active-rows-loop j be fn-web-in acc)
+                  :in-theory (e/d (fn-ag-rev-onto)
+                                  (fn-wss-active-row fn-wss-split fn-wss-content-end
+                                   fn-oct-line-end)))))
+
+(verify-guards fn-wss-active-rows
+  :hints (("Goal" :in-theory (e/d (fn-ag-rev-onto)
+                                  (fn-wss-active-row fn-wss-split fn-wss-content-end
+                                   fn-oct-line-end)))))
 
 ; OVER (RFC 3977 8.3): "number TAB subject TAB from TAB date TAB ..." per
 ; line.  A row for the page: (NUMBER SUBJECT FROM DATE), the last three
@@ -1117,16 +1148,57 @@
         (fn-wss-utf8-back acc xs)
       (cons (fn-wrq-rev acc nil) xs))))
 
-(defun fn-wss-ew (xs fuel)
-  ; The encoded-words of XS, one per line after the first.
+; fn-wss-ew executes by a loop (lane depth-debt, PRF-919): FUEL is the
+; subject's length, one encoded word per 45 octets of it.  ACC holds the
+; octets so far, reversed; the :logic is the recursion, unchanged.
+(local
+ (defthm fn-wss-ew-rev-onto-of-rev-onto
+   (equal (fn-ag-rev-onto (fn-ag-rev-onto a acc) b)
+          (fn-ag-rev-onto acc (append a b)))
+   :hints (("Goal" :induct (fn-ag-rev-onto a acc)))))
+
+(defun fn-wss-ew-loop (xs fuel acc)
   (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
   (if (or (zp fuel) (atom xs))
-      nil
-    (let ((cut (fn-wss-utf8-take xs 45 nil)))
-      (append (fn-wrq-oct "=?UTF-8?B?") (fn-wss-b64 (car cut) nil t) (fn-wrq-oct "?=")
-              (if (consp (cdr cut))
-                  (append (list 13 10 32) (fn-wss-ew (cdr cut) (1- fuel)))
-                nil)))))
+      (fn-ag-rev-onto acc nil)
+    (let* ((cut (fn-wss-utf8-take xs 45 nil))
+           (acc (fn-ag-rev-onto (fn-wrq-oct "?=")
+                                (fn-ag-rev-onto (fn-wss-b64 (car cut) nil t)
+                                                (fn-ag-rev-onto (fn-wrq-oct "=?UTF-8?B?") acc)))))
+      (if (consp (cdr cut))
+          (fn-wss-ew-loop (cdr cut) (1- fuel) (fn-ag-rev-onto (list 13 10 32) acc))
+        (fn-ag-rev-onto acc nil)))))
+
+(defun fn-wss-ew (xs fuel)
+  ; The encoded-words of XS, one per line after the first.
+  (declare (xargs :guard (natp fuel) :measure (nfix fuel) :verify-guards nil))
+  (mbe :logic (if (or (zp fuel) (atom xs))
+                  nil
+                (let ((cut (fn-wss-utf8-take xs 45 nil)))
+                  (append (fn-wrq-oct "=?UTF-8?B?") (fn-wss-b64 (car cut) nil t) (fn-wrq-oct "?=")
+                          (if (consp (cdr cut))
+                              (append (list 13 10 32) (fn-wss-ew (cdr cut) (1- fuel)))
+                            nil))))
+       :exec (fn-wss-ew-loop xs fuel nil)))
+
+(defthm fn-wss-ew-loop-is-rev-onto
+  (equal (fn-wss-ew-loop xs fuel acc)
+         (fn-ag-rev-onto acc (fn-wss-ew xs fuel)))
+  :hints (("Goal" :induct (fn-wss-ew-loop xs fuel acc)
+                  :in-theory (union-theories
+                              '(fn-wss-ew-loop fn-wss-ew fn-wss-ew-rev-onto-of-rev-onto atom)
+                              (theory 'minimal-theory)))))
+
+(defthm fn-wss-ew-loop-nil
+  (equal (fn-wss-ew-loop xs fuel nil) (fn-wss-ew xs fuel))
+  :hints (("Goal" :in-theory (union-theories '(fn-wss-ew-loop-is-rev-onto fn-ag-rev-onto)
+                                             (theory 'minimal-theory)))))
+
+(verify-guards fn-wss-ew
+  :hints (("Goal" :expand ((fn-wss-ew xs fuel))
+                  :in-theory (disable (:definition fn-wss-ew) (:definition fn-wss-ew-loop)
+                                      fn-wss-ew-loop-is-rev-onto
+                                      fn-wss-utf8-take fn-wss-b64))))
 
 (defun fn-wss-subject-field (subject)
   (declare (xargs :guard t))

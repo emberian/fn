@@ -325,15 +325,43 @@
     (fn-auth-make-cred name (fn-acct-local-principal name)
                        (fn-acct-text-verifier (fn-cfg-row-c row)) t)))
 
-(defun fn-auth-account-creds (rows)
+; Executes by a loop (lane depth-debt, PRF-919): it walks the configuration's accounts rows, operator
+; data with no fixed cap (D27), and the recursion took one control-stack frame
+; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
+; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
+(defun fn-auth-account-creds-loop (rows acc)
   (declare (xargs :guard t))
   (if (consp rows)
-      (if (and (equal (fn-cfg-row-n (car rows)) 1)
-               (fn-auth-credp (fn-auth-account-cred (car rows))))
-          (cons (fn-auth-account-cred (car rows))
-                (fn-auth-account-creds (cdr rows)))
-        (fn-auth-account-creds (cdr rows)))
-    nil))
+      (fn-auth-account-creds-loop (cdr rows)
+       (if (and (equal (fn-cfg-row-n (car rows)) 1)
+            (fn-auth-credp (fn-auth-account-cred (car rows)))) (cons (fn-auth-account-cred (car rows)) acc) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-auth-account-creds (rows)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp rows)
+           (if (and (equal (fn-cfg-row-n (car rows)) 1)
+                    (fn-auth-credp (fn-auth-account-cred (car rows))))
+               (cons (fn-auth-account-cred (car rows))
+                     (fn-auth-account-creds (cdr rows)))
+             (fn-auth-account-creds (cdr rows)))
+         nil)
+       :exec (fn-auth-account-creds-loop rows nil)))
+
+(defthm fn-auth-account-creds-loop-is-rev-onto
+  (equal (fn-auth-account-creds-loop rows acc)
+         (fn-ag-rev-onto acc (fn-auth-account-creds rows)))
+  :hints (("Goal" :induct (fn-auth-account-creds-loop rows acc)
+                  :in-theory (union-theories
+                              '(fn-auth-account-creds-loop fn-auth-account-creds fn-ag-rev-onto not car-cons cdr-cons)
+                              (theory 'minimal-theory)))))
+
+(verify-guards fn-auth-account-creds
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-auth-account-creds fn-ag-rev-onto fn-auth-account-creds-loop-is-rev-onto)
+                              (union-theories (theory 'minimal-theory)
+                                              (executable-counterpart-theory :here))))))
 
 (defthm fn-auth-account-creds-are-creds
   (fn-auth-cred-listp (fn-auth-account-creds rows))
@@ -642,14 +670,35 @@
                         (fn-auth-session-handshakingp as)
                         (fn-auth-session-compress as)))
 
+; Executes by a loop (lane depth-debt, PRF-919): it walks the configuration's peer rows, operator
+; data with no fixed cap (D27), and the recursion took one control-stack frame
+; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
+; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
+(defun fn-auth-principal-peer-count-loop (hex rows acc)
+  (declare (xargs :guard (acl2-numberp acc)))
+  (if (consp rows)
+      (fn-auth-principal-peer-count-loop hex (cdr rows) (+ acc (if (and (equal (fn-cfg-row-b (car rows)) "auth-principal")
+              (equal (fn-cfg-row-c (car rows)) hex)) 1 0)))
+    acc))
+
 (defun fn-auth-principal-peer-count (hex rows)
   "How many configured peer records bind HEX as their AUTHINFO principal."
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (+ (if (and (equal (fn-cfg-row-b (car rows)) "auth-principal")
-                  (equal (fn-cfg-row-c (car rows)) hex)) 1 0)
-         (fn-auth-principal-peer-count hex (cdr rows)))
-    0))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp rows)
+           (+ (if (and (equal (fn-cfg-row-b (car rows)) "auth-principal")
+                       (equal (fn-cfg-row-c (car rows)) hex)) 1 0)
+              (fn-auth-principal-peer-count hex (cdr rows)))
+         0)
+       :exec (fn-auth-principal-peer-count-loop hex rows 0)))
+
+(defthm fn-auth-principal-peer-count-loop-is-plus
+  (implies (acl2-numberp acc)
+           (equal (fn-auth-principal-peer-count-loop hex rows acc)
+                  (+ acc (fn-auth-principal-peer-count hex rows))))
+  :hints (("Goal" :induct (fn-auth-principal-peer-count-loop hex rows acc))))
+
+(verify-guards fn-auth-principal-peer-count)
 
 (defun fn-auth-principal-peer-name (hex rows)
   (declare (xargs :guard t))

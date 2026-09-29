@@ -924,10 +924,32 @@
                                 fn-served-result-conn-of-fn-served-make-result)
                               (theory 'minimal-theory)))))
 
+; The event fold and the span scan execute by loops (lane depth-debt,
+; PRF-919): the recursion took one control-stack frame per event and per
+; framed event of a read (up to 262,708 octets).  Each loop threads the
+; connection forward as the recursion does and carries the effects reversed
+; (fn-ag-rev-onto); the :logic is the recursion, unchanged.
+(local
+ (defthm fn-scr-rev-onto-of-rev-onto
+   (equal (fn-ag-rev-onto (fn-ag-rev-onto a acc) b)
+          (fn-ag-rev-onto acc (append a b)))))
+
+(defun fn-scr-dispatch-events-loop (conn events live trie lver arts cache fn-arena fn-cat acc)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
+                  :verify-guards nil))
+  (if (consp events)
+      (let ((here (fn-scr-dispatch conn (car events) live trie lver arts cache fn-arena fn-cat)))
+        (fn-scr-dispatch-events-loop
+         (fn-served-result-conn here) (cdr events) live trie lver arts cache fn-arena fn-cat
+         (fn-ag-rev-onto (fn-served-result-effects here) acc)))
+    (fn-served-make-result conn (fn-ag-rev-onto acc nil))))
+
 (defun fn-scr-dispatch-events (conn events live trie lver arts cache fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
                   :verify-guards nil))
+  (mbe :logic
   (if (consp events)
       (let* ((here (fn-scr-dispatch conn (car events) live trie lver arts cache fn-arena fn-cat))
              (tail (fn-scr-dispatch-events (fn-served-result-conn here)
@@ -938,7 +960,20 @@
                              (fn-served-result-effects tail))
               :exec (fn-ag-append (fn-served-result-effects here)
                                   (fn-served-result-effects tail)))))
-    (fn-served-make-result conn nil)))
+    (fn-served-make-result conn nil))
+  :exec (fn-scr-dispatch-events-loop conn events live trie lver arts cache fn-arena fn-cat nil)))
+
+(defthm fn-scr-dispatch-events-loop-is-rev-onto
+  (equal (fn-scr-dispatch-events-loop conn events live trie lver arts cache fn-arena fn-cat acc)
+         (fn-served-make-result
+          (fn-served-result-conn
+           (fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat))
+          (fn-ag-rev-onto acc (fn-served-result-effects
+                               (fn-scr-dispatch-events conn events live trie lver arts
+                                                       cache fn-arena fn-cat)))))
+  :hints (("Goal" :induct (fn-scr-dispatch-events-loop conn events live trie lver arts
+                                                       cache fn-arena fn-cat acc)
+                  :in-theory (disable fn-scr-dispatch))))
 
 (defthm fn-scr-dispatch-events-is-scar-dispatch-events
   (implies (and (fn-gacc-okp cache) (fn-scr-live-joinp trie lver arts fn-arena fn-cat) (fn-scr-conn-okp conn fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
@@ -950,7 +985,11 @@
                          fn-scr-dispatch-is-scar-dispatch fn-scr-conn-okp-of-scar-dispatch)
                        (theory 'minimal-theory)))))
 
-(verify-guards fn-scr-dispatch-events)
+(verify-guards fn-scr-dispatch-events-loop)
+
+(verify-guards fn-scr-dispatch-events
+  :hints (("Goal" :expand ((fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat))
+                  :in-theory (disable fn-scr-dispatch))))
 
 (defthm fn-scr-conn-okp-of-scar-dispatch-events
   (implies (fn-scr-conn-okp conn fn-arena fn-cat)
@@ -1159,6 +1198,37 @@
                           fn-scr-dispatch-events-is-scar-dispatch-events
                           fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp)))
 
+(defun fn-scr-scan-span-loop (conn i end live trie lver arts cache fn-octets fn-arena fn-cat
+                                   consumed acc)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                  :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
+                              (natp i) (natp end) (<= i end)
+                              (<= end (fn-octets-len fn-octets))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
+                              (acl2-numberp consumed))
+                  :measure (nfix (- end i))
+                  :verify-guards nil
+                  :hints (("Goal" :in-theory (disable fn-scr-dispatch-events
+                                                      fn-served-submission)))))
+  (if (or (not (natp i)) (not (natp end)) (>= i end)
+          (fn-served-closed-wirep (fn-served-conn-wire conn))
+          (fn-served-haltedp conn))
+      (fn-served-counted-make consumed (fn-served-make-result conn (fn-ag-rev-onto acc nil)))
+    (let* ((w (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets))
+           (next (fn-wsp-next w))
+           (here (fn-scr-dispatch-events
+                  (fn-served-conn-with-wire conn (fn-wsp-state w))
+                  (fn-wsp-events w) live trie lver arts cache fn-arena fn-cat)))
+      (if (fn-served-submission (fn-served-result-effects here))
+          (fn-served-counted-make
+           (+ consumed (- next i))
+           (fn-served-make-result (fn-served-result-conn here)
+                                  (fn-ag-rev-onto acc (fn-served-result-effects here))))
+        (fn-scr-scan-span-loop (fn-served-result-conn here) next end
+                               live trie lver arts cache fn-octets fn-arena fn-cat
+                               (+ consumed (- next i))
+                               (fn-ag-rev-onto (fn-served-result-effects here) acc))))))
+
 (defun fn-scr-scan-span (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
@@ -1169,6 +1239,7 @@
                   :verify-guards nil
                   :hints (("Goal" :in-theory (disable fn-scr-dispatch-events
                                                       fn-served-submission)))))
+  (mbe :logic
   (if (or (not (natp i)) (not (natp end)) (>= i end)
           (fn-served-closed-wirep (fn-served-conn-wire conn))
           (fn-served-haltedp conn))
@@ -1195,7 +1266,28 @@
             (mbe :logic (append (fn-served-result-effects here)
                                 (fn-served-result-effects tail-result))
                  :exec (fn-ag-append (fn-served-result-effects here)
-                                     (fn-served-result-effects tail-result))))))))))
+                                     (fn-served-result-effects tail-result)))))))))
+  :exec (fn-scr-scan-span-loop conn i end live trie lver arts cache fn-octets fn-arena fn-cat 0 nil)))
+
+(defthm fn-scr-scan-span-loop-is-rev-onto
+  (implies (acl2-numberp consumed)
+           (equal (fn-scr-scan-span-loop conn i end live trie lver arts cache fn-octets fn-arena fn-cat
+                                         consumed acc)
+                  (let ((r (fn-scr-scan-span conn i end live trie lver arts cache fn-octets fn-arena
+                                             fn-cat)))
+                    (fn-served-counted-make
+                     (+ consumed (fn-served-counted-consumed r))
+                     (fn-served-make-result
+                      (fn-served-result-conn (fn-served-counted-result r))
+                      (fn-ag-rev-onto acc (fn-served-result-effects
+                                           (fn-served-counted-result r))))))))
+  :hints (("Goal" :induct (fn-scr-scan-span-loop conn i end live trie lver arts cache fn-octets
+                                                 fn-arena fn-cat consumed acc)
+                  :in-theory (e/d (fn-served-counted-make fn-served-counted-result
+                                   fn-served-counted-consumed)
+                                  (fn-scr-dispatch-events fn-wire-scan
+                                   fn-served-submission fn-served-closed-wirep
+                                   fn-served-haltedp fn-wire-fast-statep)))))
 
 (defthm fn-scr-scan-span-consumed-is-natural
   (natp (fn-served-counted-consumed
@@ -1204,6 +1296,47 @@
   :hints (("Goal" :induct (fn-scr-scan-span conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
            :in-theory (e/d (fn-served-counted-make fn-served-counted-consumed)
                            (fn-scr-dispatch-events fn-wire-fast-statep)))))
+
+(verify-guards fn-scr-scan-span-loop
+  :hints (("Goal"
+           :in-theory (e/d (fn-served-counted-make fn-served-counted-result)
+                           (fn-scr-dispatch-events fn-wire-fast-statep
+                            fn-served-counted-consumed))
+           :use ((:instance fn-scr-dispatch-events-preserves-fast-statep
+                            (conn (fn-served-conn-with-wire
+                                   conn (fn-wsp-state (fn-wire-scan (fn-served-conn-wire conn)
+                                                                    i end fn-octets))))
+                            (events (fn-wsp-events (fn-wire-scan (fn-served-conn-wire conn)
+                                                                 i end fn-octets))))))))
+
+(local
+ (defthm fn-scr-scan-span-is-its-counted-parts
+   (let ((r (fn-scr-scan-span conn i end live trie lver arts cache fn-octets fn-arena fn-cat)))
+     (equal (fn-served-counted-make
+             (+ 0 (fn-served-counted-consumed r))
+             (fn-served-make-result
+              (fn-served-result-conn (fn-served-counted-result r))
+              (fn-ag-rev-onto nil (fn-served-result-effects (fn-served-counted-result r)))))
+            r))
+   :hints (("Goal" :expand ((fn-scr-scan-span conn i end live trie lver arts cache fn-octets fn-arena fn-cat))
+                   :in-theory (e/d (fn-served-counted-make fn-served-counted-result
+                                    fn-served-counted-consumed)
+                                   (fn-scr-dispatch-events fn-wire-scan
+                                    fn-served-submission fn-served-closed-wirep
+                                    fn-served-haltedp fn-wire-fast-statep
+                                    fn-scr-scan-span-loop-is-rev-onto))))))
+
+(local
+ (defthm fn-scr-scan-span-loop-at-zero
+   (equal (fn-scr-scan-span-loop conn i end live trie lver arts cache fn-octets fn-arena fn-cat 0 nil)
+          (fn-scr-scan-span conn i end live trie lver arts cache fn-octets fn-arena fn-cat))
+   :hints (("Goal" :use ((:instance fn-scr-scan-span-loop-is-rev-onto (consumed 0) (acc nil))
+                         fn-scr-scan-span-is-its-counted-parts)
+                   :in-theory (disable fn-scr-scan-span-loop-is-rev-onto
+                                       fn-scr-scan-span-is-its-counted-parts
+                                       fn-scr-scan-span fn-scr-scan-span-loop
+                                       fn-served-counted-make fn-served-make-result
+                                       fn-ag-rev-onto)))))
 
 (verify-guards fn-scr-scan-span
   :hints (("Goal"
