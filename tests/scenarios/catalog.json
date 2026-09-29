@@ -6301,6 +6301,33 @@
         "tests/acl2/page-read-ownership-tests.lisp"
       ],
       "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
+    },
+    {
+      "id": "SCN-1007",
+      "title": "History image write descriptors resume through all phases",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-040"
+      ],
+      "steps": [
+        "Capture a nonempty existing plan with two data pages, a table page and a two-page directory.",
+        "Tick through data, table, directory and terminal phases, checking the literal residual theorem and identity preservation each time.",
+        "Corrupt the directory counter; separately mutate an emitted selector."
+      ],
+      "expected": [
+        "Each valid tick emits one exact original descriptor or yields without losing remaining writes.",
+        "The captured lease and source epoch are unchanged.",
+        "Invalid counter fails both the invariant and theorem conclusion; selector mutation fails exact plan equality."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-page-cursor-tests.lisp",
+        "native": false
+      },
+      "evidence": [
+        "tests/acl2/history-page-cursor-tests.lisp"
+      ],
+      "execution_scope": "Library component only; no actual host or funded producer completion claim."
     }
   ]
 }

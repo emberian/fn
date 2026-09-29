@@ -18001,6 +18001,27 @@
         "tests/acl2/nov-column-window-tests.lisp"
       ],
       "progress_note": "Clean persvati REPL: gpt61-nbw4 25/25 forms (21 same +2 macro named forms), gpt61-nbwt4 12/12 (11 named exact), gpt61-nbwc2 10/10 (6 named exact), gpt61-nbwct3 16/16 including actual intern/commit/lookup positive and literal hypothesis removal for F, exact facts and ok. All stopped. Source-dependency loads are not certificates. No host call, qualified image, allocator measurement or completed Q5c/J1 claim. Work/fuel models loop iterations and output length, not measured physical resources. Numeric setup still requires maintained codec/profile premise. Legacy parse/cache hydration remains owned open. The two named library theorems are retained as component evidence, not cited registry events: no served keystone is claimed until the actual host-called byte cursor composes them."
+    },
+    {
+      "id": "PRF-1086",
+      "title": "History page descriptor cursor retains the exact existing write plan",
+      "statement": "Library component fn-hpc-begin/tick carries source references and capture/lease identities; each tick emits one data/table/directory descriptor or changes phase. fn-hpc-tick-refines-existing-plan preserves the exact residual of fn-his-plan-writes under the constant outer-spine/scalar cursor invariant. Runtime guards never inspect retained source suffixes. Source-ready component only: no host caller, full history build, page allocation/digest, I/O or funded producer completion claim. Scalar arithmetic cost remains relative to the admitted current-format/profile widths.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-hpc-tick-refines-existing-plan"
+      ],
+      "evidence": [
+        "books/history-page-cursor.lisp",
+        "tests/acl2/history-page-cursor-tests.lisp",
+        "planning/history-page-cursor-contract.md"
+      ],
+      "progress_note": "Clean protected auto-selected persvati hpct64: source book in proper encapsulate plus 25 test forms, zero refusal, 7.39 ACL2 seconds/381482 prover steps; two additional production-plan tooth forms passed in that clean session. Build+commit witness uses actual fn-his-build and fn-his-commit over nonempty history. No certificate, host call or native claim."
     }
   ]
 }

@@ -319,3 +319,21 @@ separate from the Store statement keytable. Canonical row handles and paused
 checkpoint summaries do not become identical to live fields by assertion.
 Existing publication assumptions connect verified bytes to checkpoint tables;
 this carry adds no new assumption and does not replace that boundary.
+
+## History page write continuation (PRF-1086)
+
+`books/history-page-cursor.lisp` provides a library continuation over the current
+history image commit plan. Begin retains source list references; a tick emits
+one `(physical-address selector word-base)` descriptor or advances between data,
+table, directory and terminal phases. Its runtime guard inspects at most ten
+outer cells and three scalar counters, never a retained source suffix. The
+residual theorem equates emitted prefix plus remaining descriptors with
+`fn-his-plan-writes`; capture and lease identities remain unchanged. The caller
+must retain the source image and resource lease until consumption completes.
+SCN-1007 supplies nonempty phase and corrupted-state/mutation witnesses.
+
+This component has no host caller yet and does not bound existing whole-history
+build/flush, commit allocation/digests, or the native by-address hash. Those are
+replaced by the selected census plus disk-backed bounded-buffer design in
+[the preparation contract](../planning/history-page-cursor-contract.md), whose
+full representation, effect and funded-publication proofs remain open.
