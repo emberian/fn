@@ -45,8 +45,8 @@
                 (fn-scar-view-indexedp (fn-ocfg-owner (if (consp views)
                                                           (fn-ocfg-at-reader-view oc views)
                                                         oc)))
-                (fn-scol-okp fn-arena fn-cat))
-           (equal (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)
+                (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache))
+           (equal (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat)
                   (orrt-read-span-scar oc views id i end fn-octets fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-orr-read-span fn-scr-ocfg-read-span-is-scar-ocfg-read-span)
                                   (fn-scr-owner-catalogp fn-scar-view-indexedp fn-ocfg-at-reader-view)))))
@@ -217,10 +217,10 @@
                         (fn-sn-config-history (fn-own-store (fn-ocfg-owner oc0))))
                  (fn-scr-owner-catalogp (fn-ocfg-owner (fn-ocfg-with-view oc (car views)))
                                         id fn-arena fn-cat)
-                 (fn-scol-okp fn-arena fn-cat)
+                 (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp i) (natp end))
             (fn-ocri-relation
-             (fn-own-tls-result-owner (fn-orr-read-span oc views id i end fn-octets fn-arena
+             (fn-own-tls-result-owner (fn-orr-read-span oc views id i end cache fn-octets fn-arena
                                                         fn-cat))))
    :hints (("Goal" :use ((:instance fn-orr-reader-relation-at-a-captured-view)
                          (:instance fn-orr-span-read-keeps-the-reader-relation-and-the-rest
@@ -228,7 +228,7 @@
                          (:instance fn-orr-restoring-the-working-view-keeps-the-reader-relation
                                     (x2 (fn-own-tls-result-owner
                                          (fn-scr-ocfg-read-span (fn-ocfg-with-view oc (car views))
-                                                                id i end fn-octets fn-arena fn-cat)))))
+                                                                id i end cache fn-octets fn-arena fn-cat)))))
             :in-theory (union-theories '(fn-orr-read-span fn-ocfg-at-reader-view fn-ocv-reader-view
                                          fn-orr-tls-result-of-make fn-orr-with-view-fields)
                                        (theory 'minimal-theory))))))
@@ -251,7 +251,7 @@
                  (equal (fn-ocfg-config oc) (fn-ocfg-config oc0))
                  (natp i) (natp end))
             (fn-ocri-relation
-             (fn-own-tls-result-owner (fn-orr-read-span oc views id i end fn-octets fn-arena
+             (fn-own-tls-result-owner (fn-orr-read-span oc views id i end cache fn-octets fn-arena
                                                         fn-cat))))
    :hints (("Goal" :use ((:instance fn-orr-reader-relation-at-a-captured-view)
                          (:instance fn-orr-span-read-keeps-the-reader-relation-and-the-rest
@@ -259,7 +259,7 @@
                          (:instance fn-orr-restoring-the-working-view-keeps-the-reader-relation
                                     (x2 (fn-own-tls-result-owner
                                          (fn-scr-ocfg-read-span (fn-ocfg-with-view oc (car views))
-                                                                id i end fn-octets fn-arena fn-cat)))))
+                                                                id i end cache fn-octets fn-arena fn-cat)))))
             :in-theory (union-theories '(fn-orr-read-span fn-ocfg-at-reader-view fn-ocv-reader-view
                                          fn-orr-tls-result-of-make fn-orr-with-view-fields)
                                        (theory 'minimal-theory))))))
@@ -450,7 +450,7 @@
          (fn-arena (fn-arn-seal-many payloads fn-arena))
          (fn-cat (fn-sca-load-held-rows rows (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
                                         fn-arena fn-cat)))
-    (mv (list (fn-orr-read-span oc views id 0 (len octs) fn-octets fn-arena fn-cat)
+    (mv (list (fn-orr-read-span oc views id 0 (len octs) nil fn-octets fn-arena fn-cat)
               (fn-cat-count fn-cat)
               (g12b-cat-rows 0 (fn-cat-count fn-cat) fn-cat))
         fn-octets fn-arena fn-cat)))

@@ -166,6 +166,9 @@
   (declare (xargs :guard t))
   (cond
    ((equal reason :unparsable) (fn-proto-text "POST" :refused-unparsable))
+   ;; PKT-506: RFC 5322 section 2.1.1's line bound, by name
+   ;; (books/injection.lisp fn-inj-parse-refusal).
+   ((equal reason :line-length) (fn-proto-text "POST" :refused-line-length))
    ;; PRF-230: the store profile's header limits, each by its field name.
    ((equal reason :header-fields-limit) (fn-proto-text "POST" :refused-header-fields-limit))
    ((equal reason :header-lines-limit) (fn-proto-text "POST" :refused-header-lines-limit))

@@ -151,9 +151,9 @@
   (implies (and (fn-ocl-relation oc)
                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
-                (fn-scol-okp fn-arena fn-cat)
+                (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (natp i) (natp end))
-           (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+           (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
@@ -164,9 +164,9 @@
  (defthm scct-read-span-needs-ocl-relation
    (implies (and (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
-                 (fn-scol-okp fn-arena fn-cat)
+                 (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp i) (natp end))
-            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
@@ -176,9 +176,9 @@
  (defthm scct-read-span-needs-view-indexedp
    (implies (and (fn-ocl-relation oc)
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
-                 (fn-scol-okp fn-arena fn-cat)
+                 (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp i) (natp end))
-            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
@@ -192,8 +192,26 @@
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+                 (fn-gacc-okp cache)
                  (natp i) (natp end))
-            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
+                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
+                                       (theory 'minimal-theory))))))
+
+;; PKT-643: without the access cache's invariant (books/group-access-cache.lisp
+;; fn-gacc-okp, which the host keeps: fn-gacc-okp-of-nil and
+;; fn-gacc-prepare-keeps-okp), a restricted session's commands would read a
+;; view the cache merely claims.
+(must-fail-checked
+ (defthm scct-read-span-needs-the-access-cache
+   (implies (and (fn-ocl-relation oc)
+                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
+                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+                 (fn-scol-okp fn-arena fn-cat)
+                 (natp i) (natp end))
+            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
@@ -203,9 +221,9 @@
  (defthm scct-read-span-needs-the-catalog-relation
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                 (fn-scol-okp fn-arena fn-cat)
+                 (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp i) (natp end))
-            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
@@ -216,9 +234,9 @@
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
-                 (fn-scol-okp fn-arena fn-cat)
+                 (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp end))
-            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
@@ -229,9 +247,9 @@
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
-                 (fn-scol-okp fn-arena fn-cat)
+                 (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp i))
-            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
@@ -257,8 +275,8 @@
 
 (defun scct-scan-agree (conn i end fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil))
-  (equal (fn-scr-scan-span conn i end nil nil nil nil fn-octets fn-arena fn-cat)
-         (fn-scr-feed-span conn i end nil nil nil nil fn-octets fn-arena fn-cat)))
+  (equal (fn-scr-scan-span conn i end nil nil nil nil nil fn-octets fn-arena fn-cat)
+         (fn-scr-feed-span conn i end nil nil nil nil nil fn-octets fn-arena fn-cat)))
 
 (defun scct-scan-cuts (conn cut n fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil
@@ -280,10 +298,10 @@
               (let ((fn-octets (fn-octets-from-list octets fn-octets)))
                 (mv (list (scct-scan-cuts conn 0 (fn-octets-len fn-octets) fn-octets fn-arena fn-cat)
                           (fn-served-counted-consumed
-                           (fn-scr-step-span-core conn 0 (fn-octets-len fn-octets) nil nil nil nil
+                           (fn-scr-step-span-core conn 0 (fn-octets-len fn-octets) nil nil nil nil nil
                                                   fn-octets fn-arena fn-cat))
                           (fn-served-counted-consumed
-                           (fn-scr-feed-span conn 0 (fn-octets-len fn-octets) nil nil nil nil
+                           (fn-scr-feed-span conn 0 (fn-octets-len fn-octets) nil nil nil nil nil
                                              fn-octets fn-arena fn-cat)))
                     fn-octets fn-arena fn-cat))
               (mv v fn-arena fn-cat)))

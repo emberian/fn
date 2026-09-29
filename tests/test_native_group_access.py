@@ -117,10 +117,15 @@ class NativeGroupAccessTests(unittest.TestCase):
         self.assertTrue(status.startswith("215"), status)
         return [row.split()[0] for row in rows if row.strip()]
 
+    def statuses(self, stream, command, field):
+        status, rows = self.multi(stream, command)
+        self.assertTrue(status.startswith("215"), status)
+        return {row.split()[0]: row.split()[field] for row in rows if row.strip()}
+
     def scenario(self, image):
         node = self.node(image)
         self.ok(node, "init", "local.general")
-        for group in ("fn.public", "fn.private.x"):
+        for group in ("fn.public", "fn.private.x", "fn.announce"):
             self.ok(node, "group", "create", group)
         node.start()
         self.account(node, "alice")
@@ -145,6 +150,13 @@ class NativeGroupAccessTests(unittest.TestCase):
                 groups = self.listed(bob, command)
                 self.assertNotIn("fn.private.x", groups, (phase, command))
                 self.assertIn("fn.public", groups, (phase, command))
+            # PKT-703: fn.announce is readable and not postable for bob: `n'
+            # in LIST ACTIVE and in LIST COUNTS (RFC 6048 section 2.2.2), `y'
+            # for alice.
+            self.assertEqual(self.statuses(bob, "LIST ACTIVE", 3),
+                             {"fn.public": "y", "fn.announce": "n"})
+            self.assertEqual(self.statuses(bob, "LIST COUNTS", 4),
+                             {"fn.public": "y", "fn.announce": "n"})
             absent = self.line(bob, "GROUP fn.absent")
             self.assertTrue(absent.startswith("411"), absent)
             self.assertEqual(self.line(bob, "GROUP fn.private.x"), absent)
@@ -169,6 +181,7 @@ class NativeGroupAccessTests(unittest.TestCase):
 
             alice = self.login(node, "alice")
             self.assertIn("fn.private.x", self.listed(alice, "LIST ACTIVE"))
+            self.assertEqual(self.statuses(alice, "LIST COUNTS", 4)["fn.announce"], "y")
             self.assertTrue(self.line(alice, "GROUP fn.private.x").startswith("211"))
             status, _ = self.multi(alice, "ARTICLE <secret@example.invalid>")
             self.assertTrue(status.startswith("220"), status)

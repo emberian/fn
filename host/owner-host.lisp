@@ -958,6 +958,13 @@
         (value (fn-ores-config-refused memory))
       (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state))))
 
+; PKT-643: the restricted views prepared for read-restricted sessions
+; (books/group-access-cache.lisp), nil before the first read.
+(defun fn-owner-access-cache (state)
+  (declare (xargs :stobjs state :mode :program))
+  (and (boundp-global 'fn-owner-access-cache state)
+       (f-get-global 'fn-owner-access-cache state)))
+
 (defun fn-owner-article-slots (state)
   ; The slots the run installed (fn-owner-connection-budget), or one before
   ; any run has: a node always admits one article in flight.
@@ -3475,10 +3482,21 @@
         ;; (fn-mca-read-span-within-the-credit-unfolds); past it the read is
         ;; refused by name (POST 440, else 400 and close) and the ledger is
         ;; never over-committed (fn-mca-read-span-keeps-funded).
-        (let* ((rc (fn-mca-read-span
+        ;; PKT-643: a read-restricted session's view is prepared here, once
+        ;; per pin (books/served-catalog-chain.lisp fn-scr-prepare-access:
+        ;; kept, grown by the acceptances since, or built), and every command
+        ;; of the read takes it from the cache instead of building it
+        ;; (fn-scr-cached-view).  The cache is `fn-owner-access-cache': nil
+        ;; at start (fn-gacc-okp-of-nil), written only here
+        ;; (fn-scr-prepare-access-keeps-okp), so every read's cache satisfies
+        ;; the chain equation's fn-gacc-okp.  Memory: one entry per read rule
+        ;; text in use (measure at convergence).
+        (let* ((cache (fn-scr-prepare-access (fn-owner-access-cache state) owner id))
+               (state (f-put-global 'fn-owner-access-cache cache state))
+               (rc (fn-mca-read-span
                     (fn-owner-credits state)
                     (fn-owner-ocfg state) (fn-owner-reader-views state)
-                    id start end sched
+                    id start end cache sched
                     (fn-owner-article-slots state)
                     (fn-owner-credit-reserve state)
                     fn-octets fn-arena fn-cat))

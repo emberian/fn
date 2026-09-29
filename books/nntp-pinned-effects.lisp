@@ -147,8 +147,8 @@
 ; summary, so no bucket relation is needed for their shape.
 (defthm fn-gidx-counts-lines-are-response-text
   (implies (fn-nntp-safe-group-listp groups)
-           (fn-nntp-block-textp (fn-gidx-counts-lines archive buckets groups)))
-  :hints (("Goal" :induct (fn-gidx-counts-lines archive buckets groups)
+           (fn-nntp-block-textp (fn-gidx-counts-lines archive buckets groups closed)))
+  :hints (("Goal" :induct (fn-gidx-counts-lines archive buckets groups closed)
            :in-theory (e/d (fn-gidx-counts-lines fn-gidx-counts-line
                             fn-nntp-block-textp fn-nntp-safe-group-listp)
                            (fn-nntp-counts-summary-line)))))
@@ -157,7 +157,7 @@
   (implies (fn-nntp-projectionp archive)
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-gidx-list-counts-command session archive buckets args))))
+             (fn-gidx-list-counts-command session archive buckets closed args))))
   :hints (("Goal" :in-theory (e/d (fn-gidx-list-counts-command)
                                   (fn-nntp-projectionp
                                    fn-statep fn-state-groups
@@ -352,6 +352,7 @@
                  (:instance fn-nntp-withdrawn-reply-effects (msgidp t))
                  (:instance fn-nntp-effects-gidx-list-counts-command
                             (buckets (fn-gidx-pin-buckets index))
+                            (closed (fn-nntp-env-closed env))
                             (args (cdr args)))
                  (:instance fn-nntp-effects-xref-reply)
                  (:instance fn-nntp-effects-rcompat-reply))
