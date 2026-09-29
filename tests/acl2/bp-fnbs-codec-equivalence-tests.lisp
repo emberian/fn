@@ -49,16 +49,20 @@
                            *bpnfce-bad-wire-values*)))))
 
 ; Inputs that are not lists: equal (nil) on both sides, as the theorems say
-; of every input.
-(assert-event (and (equal (fn-bpnf-stored-recordp 7)
-                          (fn-bpnf-stored-recordp-before-guards 7))
-                   (equal (fn-bpnf-stored-recordp '(:bpnf-stored 1 2 . 3))
-                          (fn-bpnf-stored-recordp-before-guards
-                           '(:bpnf-stored 1 2 . 3)))
-                   (equal (fn-bpnf-stored-from-values '(1 2 . 3))
-                          (fn-bpnf-stored-from-values-before-guards '(1 2 . 3)))
-                   (equal (fn-bpnf-stored-from-values :atom)
-                          (fn-bpnf-stored-from-values-before-guards :atom))))
+; of every input.  The earlier definitions read slots through nth before any
+; recognizer (their guards were never verified), which a dotted list
+; violates, so they are evaluated with guard checking off.
+(with-guard-checking-event
+ :none
+ (assert-event (and (equal (fn-bpnf-stored-recordp 7)
+                           (fn-bpnf-stored-recordp-before-guards 7))
+                    (equal (fn-bpnf-stored-recordp '(:bpnf-stored 1 2 . 3))
+                           (fn-bpnf-stored-recordp-before-guards
+                            '(:bpnf-stored 1 2 . 3)))
+                    (equal (fn-bpnf-stored-from-values '(1 2 . 3))
+                           (fn-bpnf-stored-from-values-before-guards '(1 2 . 3)))
+                    (equal (fn-bpnf-stored-from-values :atom)
+                           (fn-bpnf-stored-from-values-before-guards :atom)))))
 
 ; The host-called projection under the served recognizer on the actual
 ; frame: the ADU is the bundle's payload.
