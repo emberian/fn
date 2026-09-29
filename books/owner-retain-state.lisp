@@ -27,4 +27,12 @@
                   (fn-owner-retain-carry state)))
   :hints (("Goal" :in-theory (enable fn-owner-retain-carry))))
 
+; The actual caller's later global puts require the returned state's
+; shape. Export this rule while the setter stays closed.
+(defthm fn-owner-retain-carry-put-preserves-state-p1
+  (implies (state-p1 state)
+           (state-p1 (fn-owner-retain-carry-put carry state)))
+  :hints (("Goal" :in-theory (e/d (fn-owner-retain-carry-put)
+                                  (state-p1)))))
+
 (in-theory (disable fn-owner-retain-carry fn-owner-retain-carry-put))
